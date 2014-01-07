@@ -91,7 +91,15 @@ public final class WriteNode extends FixedAccessNode implements StateSplit, LIRL
     @Override
     public void generate(LIRGeneratorTool gen) {
         Value address = location().generateAddress(gen, gen.operand(object()));
-        gen.emitStore(location().getValueKind(), address, gen.operand(value()), this);
+        // It's possible a constant was forced for other usages so inspect the value directly and
+        // use a constant if it can be directly stored.
+        Value v;
+        if (value().isConstant() && gen.canStoreConstant(value().asConstant(), isCompressible())) {
+            v = value().asConstant();
+        } else {
+            v = gen.operand(value());
+        }
+        gen.emitStore(location().getValueKind(), address, v, this);
     }
 
     @NodeIntrinsic

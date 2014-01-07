@@ -275,7 +275,7 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
         }
         if (isConstant(inputVal)) {
             Constant c = asConstant(inputVal);
-            if (canStoreConstant(c)) {
+            if (canStoreConstant(c, isCompressCandidate(access))) {
                 if (inputVal.getKind() == Kind.Object) {
                     append(new StoreConstantOp(kind, storeAddress, c, state, config.useCompressedOops && isCompressCandidate(access)));
                 } else if (inputVal.getKind() == Kind.Long) {

@@ -55,7 +55,7 @@ public class AMD64OptimizedCallTargetInstrumentationFactory implements Optimized
                 if (config.useCompressedOops) {
                     asm.movl(spillRegister, nMethodAddress);
                     asm.nop(AMD64HotSpotBackend.PATCHED_VERIFIED_ENTRY_POINT_INSTRUCTION_SIZE - (asm.codeBuffer.position() - verifiedEntryPoint));
-                    AMD64HotSpotMove.decodePointer(asm, spillRegister, registers.getHeapBaseRegister(), config.narrowOopBase, config.narrowOopShift, config.logMinObjAlignment());
+                    AMD64HotSpotMove.decodePointer(asm, spillRegister, registers.getHeapBaseRegister(), config.getOopEncoding());
                 } else {
                     asm.movq(spillRegister, nMethodAddress);
                     asm.nop(AMD64HotSpotBackend.PATCHED_VERIFIED_ENTRY_POINT_INSTRUCTION_SIZE - (asm.codeBuffer.position() - verifiedEntryPoint));

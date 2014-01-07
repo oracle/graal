@@ -49,6 +49,8 @@ public interface LIRGeneratorTool extends ArithmeticLIRGenerator {
      */
     boolean canInlineConstant(Constant c);
 
+    boolean canStoreConstant(Constant c, boolean isCompressed);
+
     RegisterAttributes attributes(Register register);
 
     AllocatableValue newVariable(PlatformKind kind);

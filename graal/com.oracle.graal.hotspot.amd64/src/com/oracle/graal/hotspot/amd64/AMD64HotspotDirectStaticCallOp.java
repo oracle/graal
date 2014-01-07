@@ -56,7 +56,8 @@ final class AMD64HotspotDirectStaticCallOp extends DirectCallOp {
         // instruction that loads the Klass from the inline cache.
         AMD64Move.move(crb, masm, AMD64.rbx.asValue(Kind.Long), metaspaceMethod);
         crb.recordMark(invokeKind == InvokeKind.Static ? Marks.MARK_INVOKESTATIC : Marks.MARK_INVOKESPECIAL);
-        AMD64Move.move(crb, masm, AMD64.rax.asValue(Kind.Long), Constant.forLong(HotSpotGraalRuntime.runtime().getConfig().nonOopBits));
+        // This must be emitted exactly like this to ensure it's patchable
+        masm.movq(AMD64.rax, HotSpotGraalRuntime.runtime().getConfig().nonOopBits);
         super.emitCode(crb, masm);
     }
 }

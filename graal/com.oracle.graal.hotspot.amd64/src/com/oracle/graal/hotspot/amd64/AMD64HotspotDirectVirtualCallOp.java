@@ -30,7 +30,6 @@ import com.oracle.graal.asm.amd64.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.bridge.*;
 import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.amd64.*;
 import com.oracle.graal.lir.amd64.AMD64Call.DirectCallOp;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
@@ -55,7 +54,8 @@ final class AMD64HotspotDirectVirtualCallOp extends DirectCallOp {
         // The mark for an invocation that uses an inline cache must be placed at the
         // instruction that loads the Klass from the inline cache.
         crb.recordMark(invokeKind == Virtual ? Marks.MARK_INVOKEVIRTUAL : Marks.MARK_INVOKEINTERFACE);
-        AMD64Move.move(crb, masm, AMD64.rax.asValue(Kind.Long), Constant.forLong(HotSpotGraalRuntime.runtime().getConfig().nonOopBits));
+        // This must be emitted exactly like this to ensure it's patchable
+        masm.movq(AMD64.rax, HotSpotGraalRuntime.runtime().getConfig().nonOopBits);
         super.emitCode(crb, masm);
     }
 }

@@ -167,7 +167,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
      * @return True if the constant can be used directly, false if the constant needs to be in a
      *         register.
      */
-    public abstract boolean canStoreConstant(Constant c);
+    public abstract boolean canStoreConstant(Constant c, boolean isCompressed);
 
     public LIRGenerator(StructuredGraph graph, Providers providers, FrameMap frameMap, CallingConvention cc, LIR lir) {
         this.graph = graph;

@@ -268,7 +268,7 @@ public class HotSpotReplacementsUtil {
 
     public static void initializeObjectHeader(Word memory, Word markWord, Word hub) {
         memory.writeWord(markOffset(), markWord, MARK_WORD_LOCATION);
-        StoreHubNode.write(memory.toObject(), hub);
+        StoreHubNode.write(memory, hub);
     }
 
     @Fold

@@ -40,6 +40,7 @@ import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
+import com.oracle.graal.hotspot.HotSpotVMConfig.CompressEncoding;
 import com.oracle.graal.hotspot.amd64.AMD64HotSpotMove.CompareAndSwapCompressedOp;
 import com.oracle.graal.hotspot.amd64.AMD64HotSpotMove.LoadCompressedPointer;
 import com.oracle.graal.hotspot.amd64.AMD64HotSpotMove.StoreCompressedConstantOp;
@@ -446,10 +447,23 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     }
 
     /**
-     * Returns whether or not the input access is a (de)compression candidate.
+     * Returns whether or not the input access should be (de)compressed.
      */
-    private static boolean isCompressCandidate(Access access) {
-        return access != null && access.isCompressible();
+    private boolean isCompressedOperation(Kind kind, Access access) {
+        return access != null && access.isCompressible() && ((kind == Kind.Long && config.useCompressedClassPointers) || (kind == Kind.Object && config.useCompressedOops));
+    }
+
+    /**
+     * @return a compressed version of the incoming constant
+     */
+    protected static Constant compress(Constant c, CompressEncoding encoding) {
+        if (c.getKind() == Kind.Long) {
+            return Constant.forIntegerKind(Kind.Int, (int) (((c.asLong() - encoding.base) >> encoding.shift) & 0xffffffffL), c.getPrimitiveAnnotation());
+        } else if (c.getKind() == Kind.Object) {
+            return Constant.forIntegerKind(Kind.Int, 0xdeaddead, c.asObject());
+        } else {
+            throw GraalInternalError.shouldNotReachHere();
+        }
     }
 
     @Override
@@ -465,20 +479,16 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
          * kind==Object) and some addresses (klass pointers, kind==Long). Initially, the input
          * operation is checked to discover if it has been tagged as a potential "compression"
          * candidate. Consequently, depending on the appropriate kind, the specific (de)compression
-         * functions are being called. Although, currently, the compression and decompression
-         * algorithms of oops and klass pointers are identical, in hotspot, they are implemented as
-         * separate methods. That means that in the future there might be the case where the
-         * algorithms may differ.
+         * functions are being called.
          */
-        if (isCompressCandidate(access)) {
-            if (config.useCompressedOops && kind == Kind.Object) {
-                append(new LoadCompressedPointer(kind, result, getProviders().getRegisters().getHeapBaseRegister().asValue(), loadAddress, state, getNarrowKlassBase(), getNarrowOopBase(),
-                                getNarrowOopShift(), getLogMinObjectAlignment()));
-            } else if (config.useCompressedClassPointers && kind == Kind.Long) {
-                append(new LoadCompressedPointer(kind, result, getProviders().getRegisters().getHeapBaseRegister().asValue(), loadAddress, state, getNarrowKlassBase(), getNarrowOopBase(),
-                                getNarrowKlassShift(), getLogKlassAlignment()));
+        if (isCompressedOperation(kind, access)) {
+            if (kind == Kind.Object) {
+                append(new LoadCompressedPointer(kind, result, getProviders().getRegisters().getHeapBaseRegister().asValue(), loadAddress, state, config.getOopEncoding()));
+            } else if (kind == Kind.Long) {
+                Variable scratch = config.getKlassEncoding().base != 0 ? newVariable(Kind.Long) : null;
+                append(new LoadCompressedPointer(kind, result, scratch, loadAddress, state, config.getKlassEncoding()));
             } else {
-                append(new LoadOp(kind, result, loadAddress, state));
+                throw GraalInternalError.shouldNotReachHere("can't handle: " + access);
             }
         } else {
             append(new LoadOp(kind, result, loadAddress, state));
@@ -493,64 +503,45 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         if (access instanceof DeoptimizingNode) {
             state = state((DeoptimizingNode) access);
         }
+        boolean isCompressed = isCompressedOperation(kind, access);
         if (isConstant(inputVal)) {
             Constant c = asConstant(inputVal);
-            if (canStoreConstant(c)) {
-                if (inputVal.getKind() == Kind.Object && config.useCompressedOops && isCompressCandidate(access)) {
-                    append(new StoreCompressedConstantOp(kind, storeAddress, c, state));
-                } else if (inputVal.getKind() == Kind.Long && config.useCompressedClassPointers && isCompressCandidate(access)) {
-                    append(new StoreCompressedConstantOp(kind, storeAddress, c, state));
+            if (isCompressed && canStoreConstant(c, isCompressed)) {
+                if (c.getKind() == Kind.Object) {
+                    Constant value = c.isNull() ? c : compress(c, config.getOopEncoding());
+                    append(new StoreCompressedConstantOp(kind, storeAddress, value, state));
+                } else if (c.getKind() == Kind.Long) {
+                    // It's always a good idea to directly store compressed constants since they
+                    // have to be materialized as 64 bits encoded otherwise.
+                    Constant value = compress(c, config.getKlassEncoding());
+                    append(new StoreCompressedConstantOp(kind, storeAddress, value, state));
                 } else {
-                    append(new StoreConstantOp(kind, storeAddress, c, state));
+                    throw GraalInternalError.shouldNotReachHere("can't handle: " + access);
                 }
                 return;
             }
         }
         Variable input = load(inputVal);
-        if (isCompressCandidate(access)) {
-            if (config.useCompressedOops && kind == Kind.Object) {
+        if (isCompressed) {
+            if (kind == Kind.Object) {
                 if (input.getKind() == Kind.Object) {
                     Variable scratch = newVariable(Kind.Long);
                     Register heapBaseReg = getProviders().getRegisters().getHeapBaseRegister();
-                    append(new StoreCompressedPointer(kind, storeAddress, input, scratch, state, getNarrowKlassBase(), getNarrowOopBase(), getNarrowOopShift(), getLogMinObjectAlignment(), heapBaseReg));
+                    append(new StoreCompressedPointer(kind, storeAddress, input, scratch, state, config.getOopEncoding(), heapBaseReg));
                 } else {
                     // the input oop is already compressed
                     append(new StoreOp(input.getKind(), storeAddress, input, state));
                 }
-            } else if (config.useCompressedClassPointers && kind == Kind.Long) {
+            } else if (kind == Kind.Long) {
                 Variable scratch = newVariable(Kind.Long);
                 Register heapBaseReg = getProviders().getRegisters().getHeapBaseRegister();
-                append(new StoreCompressedPointer(kind, storeAddress, input, scratch, state, getNarrowKlassBase(), getNarrowOopBase(), getNarrowKlassShift(), getLogKlassAlignment(), heapBaseReg));
+                append(new StoreCompressedPointer(kind, storeAddress, input, scratch, state, config.getKlassEncoding(), heapBaseReg));
             } else {
                 append(new StoreOp(kind, storeAddress, input, state));
             }
         } else {
             append(new StoreOp(kind, storeAddress, input, state));
         }
-    }
-
-    private int getLogMinObjectAlignment() {
-        return config.logMinObjAlignment();
-    }
-
-    private int getNarrowOopShift() {
-        return config.narrowOopShift;
-    }
-
-    private long getNarrowOopBase() {
-        return config.narrowOopBase;
-    }
-
-    private int getLogKlassAlignment() {
-        return config.logKlassAlignment;
-    }
-
-    private int getNarrowKlassShift() {
-        return config.narrowKlassShift;
-    }
-
-    private long getNarrowKlassBase() {
-        return config.narrowKlassBase;
     }
 
     @Override
@@ -565,7 +556,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         if (config.useCompressedOops && node.isCompressible()) {
             Variable scratch = newVariable(Kind.Long);
             Register heapBaseReg = getProviders().getRegisters().getHeapBaseRegister();
-            append(new CompareAndSwapCompressedOp(raxRes, addressValue, raxRes, newValue, scratch, getNarrowOopBase(), getNarrowOopShift(), getLogMinObjectAlignment(), heapBaseReg));
+            append(new CompareAndSwapCompressedOp(raxRes, addressValue, raxRes, newValue, scratch, config.getOopEncoding(), heapBaseReg));
         } else {
             append(new CompareAndSwapOp(raxRes, addressValue, raxRes, newValue));
         }

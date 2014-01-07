@@ -157,7 +157,21 @@ public class HotSpotVMConfig extends CompilerObject {
             }
         }
 
+        oopEncoding = new CompressEncoding(narrowOopBase, narrowOopShift, logMinObjAlignment());
+        klassEncoding = new CompressEncoding(narrowKlassBase, narrowKlassShift, logKlassAlignment);
+
         assert check();
+    }
+
+    private final CompressEncoding oopEncoding;
+    private final CompressEncoding klassEncoding;
+
+    public CompressEncoding getOopEncoding() {
+        return oopEncoding;
+    }
+
+    public CompressEncoding getKlassEncoding() {
+        return klassEncoding;
     }
 
     private void setField(Field field, Object value) {
@@ -1308,5 +1322,25 @@ public class HotSpotVMConfig extends CompilerObject {
         assert (layoutHelperArrayTagObjectValue & layoutHelperArrayTagTypeValue & arrayKlassLayoutHelperIdentifier) != 0 : "object array and type array must have first bit set";
 
         return true;
+    }
+
+    /**
+     * A compact representation of the different encoding strategies for Objects and metadata.
+     */
+    public static class CompressEncoding {
+        public final long base;
+        public final int shift;
+        public final int alignment;
+
+        CompressEncoding(long base, int shift, int alignment) {
+            this.base = base;
+            this.shift = shift;
+            this.alignment = alignment;
+        }
+
+        @Override
+        public String toString() {
+            return "base: " + base + " shift: " + shift + " alignment: " + alignment;
+        }
     }
 }

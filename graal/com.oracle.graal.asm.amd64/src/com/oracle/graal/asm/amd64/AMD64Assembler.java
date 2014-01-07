@@ -2178,6 +2178,13 @@ public class AMD64Assembler extends AbstractAssembler {
         emitLong(imm64);
     }
 
+    public final void movslq(Register dst, int imm32) {
+        int encode = prefixqAndEncode(dst.encoding);
+        emitByte(0xC7);
+        emitByte(0xC0 | encode);
+        emitInt(imm32);
+    }
+
     public final void movdq(Register dst, Register src) {
 
         // table D-1 says MMX/SSE2
