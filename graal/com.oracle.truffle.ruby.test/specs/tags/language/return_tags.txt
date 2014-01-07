@@ -1,0 +1,3 @@
+fails:The return keyword in a Thread raises a LocalJumpError if used to exit a thread
+fails:The return keyword when passed a splat calls 'to_a' on the splatted value first
+fails:The return keyword within define_method stops at the method when the return is used directly

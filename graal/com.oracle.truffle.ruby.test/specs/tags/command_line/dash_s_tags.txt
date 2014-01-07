@@ -1,0 +1,8 @@
+fails:The -s command line option when using -- to stop parsing sets the value to true without an explicit value
+fails:The -s command line option when using -- to stop parsing parses single letter args into globals
+fails:The -s command line option when using -- to stop parsing parses long args into globals
+fails:The -s command line option when using -- to stop parsing converts extra dashes into underscores
+fails:The -s command line option when running a script sets the value to true without an explicit value
+fails:The -s command line option when running a script parses single letter args into globals
+fails:The -s command line option when running a script parses long args into globals
+fails:The -s command line option when running a script converts extra dashes into underscores

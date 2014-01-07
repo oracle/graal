@@ -1,0 +1,11 @@
+fails:The alias keyword creates a new name for an existing method
+fails:The alias keyword adds the new method to the list of methods
+fails:The alias keyword adds the new method to the list of public methods
+fails:The alias keyword overwrites an existing method with the target name
+fails:The alias keyword is reversible
+fails:The alias keyword operates on the object's metaclass when used in instance_eval
+fails:The alias keyword operates on methods with splat arguments
+fails:The alias keyword operates on methods with splat arguments on eigenclasses
+fails:The alias keyword operates on methods with splat arguments defined in a superclass
+fails:The alias keyword operates on methods with splat arguments defined in a superclass using text block for class eval
+fails:The alias keyword is not allowed against Fixnum or String instances

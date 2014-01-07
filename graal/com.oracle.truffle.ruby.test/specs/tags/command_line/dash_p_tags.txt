@@ -1,0 +1,2 @@
+fails:The -p command line option runs the code in loop conditional on Kernel.gets() and prints $_
+fails:The -p command line option sets $-p

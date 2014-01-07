@@ -1,0 +1,1 @@
+fails:Regexps with grouping raise a SyntaxError when parentheses aren't balanced

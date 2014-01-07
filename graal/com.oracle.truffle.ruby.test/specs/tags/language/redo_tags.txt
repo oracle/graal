@@ -1,0 +1,3 @@
+fails:The redo statement restarts block execution if used within block
+fails:The redo statement re-executes the closest loop
+fails:The redo statement re-executes the last step in enumeration

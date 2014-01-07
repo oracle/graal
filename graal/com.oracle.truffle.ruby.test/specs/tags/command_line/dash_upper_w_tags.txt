@@ -1,0 +1,3 @@
+fails:The -W command line option with 0 sets $VERBOSE to nil
+fails:The -W command line option with 1 sets $VERBOSE to false
+fails:The -W command line option with 2 sets $VERBOSE to true

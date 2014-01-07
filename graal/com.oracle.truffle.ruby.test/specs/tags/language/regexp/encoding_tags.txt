@@ -1,0 +1,23 @@
+fails:Regexps with encoding modifiers supports /e (EUC encoding)
+fails:Regexps with encoding modifiers supports /e (EUC encoding) with interpolation
+fails:Regexps with encoding modifiers supports /e (EUC encoding) with interpolation /o
+fails:Regexps with encoding modifiers uses EUC-JP as /e encoding
+fails:Regexps with encoding modifiers preserves EUC-JP as /e encoding through interpolation
+fails:Regexps with encoding modifiers supports /n (No encoding)
+fails:Regexps with encoding modifiers supports /n (No encoding) with interpolation
+fails:Regexps with encoding modifiers supports /n (No encoding) with interpolation /o
+fails:Regexps with encoding modifiers uses US-ASCII as /n encoding if all chars are 7-bit
+fails:Regexps with encoding modifiers uses ASCII-8BIT as /n encoding if not all chars are 7-bit
+fails:Regexps with encoding modifiers preserves US-ASCII as /n encoding through interpolation if all chars are 7-bit
+fails:Regexps with encoding modifiers preserves ASCII-8BIT as /n encoding through interpolation if all chars are 7-bit
+fails:Regexps with encoding modifiers supports /s (Windows_31J encoding)
+fails:Regexps with encoding modifiers supports /s (Windows_31J encoding) with interpolation
+fails:Regexps with encoding modifiers supports /s (Windows_31J encoding) with interpolation and /o
+fails:Regexps with encoding modifiers uses Windows-31J as /s encoding
+fails:Regexps with encoding modifiers preserves Windows-31J as /s encoding through interpolation
+fails:Regexps with encoding modifiers supports /u (UTF8 encoding)
+fails:Regexps with encoding modifiers supports /u (UTF8 encoding) with interpolation
+fails:Regexps with encoding modifiers supports /u (UTF8 encoding) with interpolation and /o
+fails:Regexps with encoding modifiers uses UTF-8 as /u encoding
+fails:Regexps with encoding modifiers preserves UTF-8 as /u encoding through interpolation
+fails:Regexps with encoding modifiers selects last of multiple encoding specifiers

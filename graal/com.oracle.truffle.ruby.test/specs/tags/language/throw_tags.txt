@@ -1,0 +1,3 @@
+fails:The throw keyword does not convert strings to a symbol
+fails:The throw keyword raises an ArgumentError if outside of scope of a matching catch
+fails:The throw keyword raises a ArgumentError if used to exit a thread

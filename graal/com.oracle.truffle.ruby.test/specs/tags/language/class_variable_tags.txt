@@ -1,0 +1,10 @@
+fails:A class variable can be accessed from a subclass
+fails:A class variable is set in the superclass
+fails:A class variable defined in a module can be accessed from classes that extend the module
+fails:A class variable defined in a module is not defined in these classes
+fails:A class variable defined in a module is only updated in the module a method defined in the module is used
+fails:A class variable defined in a module is updated in the class when a Method defined in the class is used
+fails:A class variable defined in a module can be accessed from modules that extend the module
+fails:A class variable defined in a module is defined in the extended module
+fails:A class variable defined in a module is not defined in the extending module
+fails:A class variable defined in a module can be accessed inside the class using the module methods

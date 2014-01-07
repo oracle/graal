@@ -1,0 +1,7 @@
+fails:Regexps with interpolation allows interpolation of literal regexps
+fails:Regexps with interpolation allows interpolation of any class that responds to to_s
+fails:Regexps with interpolation allows interpolation which mixes modifiers
+fails:Regexps with interpolation gives precedence to escape sequences over substitution
+fails:Regexps with interpolation throws RegexpError for malformed interpolation
+fails:Regexps with interpolation allows interpolation in extended mode
+fails:Regexps with interpolation allows escape sequences in interpolated regexps
