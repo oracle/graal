@@ -716,7 +716,7 @@ public class HotSpotVMConfig extends CompilerObject {
     @HotSpotVMFlag(name = "UseTLAB") @Stable public boolean useTLAB;
     @HotSpotVMFlag(name = "UseBiasedLocking") @Stable public boolean useBiasedLocking;
     @HotSpotVMFlag(name = "UsePopCountInstruction") @Stable public boolean usePopCountInstruction;
-    @HotSpotVMFlag(name = "UseCountLeadingZerosInstruction") @Stable public boolean useCountLeadingZerosInstruction;
+    @HotSpotVMFlag(name = "UseCountLeadingZerosInstruction", optional = true) @Stable public boolean useCountLeadingZerosInstruction;
     @HotSpotVMFlag(name = "UseAESIntrinsics") @Stable public boolean useAESIntrinsics;
     @HotSpotVMFlag(name = "UseCRC32Intrinsics") @Stable public boolean useCRC32Intrinsics;
     @HotSpotVMFlag(name = "UseG1GC") @Stable public boolean useG1GC;
