@@ -109,7 +109,7 @@ public abstract class NodeMethodParser<E extends TemplateMethod> extends Templat
 
     protected void addDefaultFieldMethodSpec(MethodSpec methodSpec) {
         for (NodeFieldData field : getNode().getFields()) {
-            if (getNode().isNodeContainer() || field.getGetter() == null) {
+            if (field.getGetter() == null) {
                 ParameterSpec spec = new ParameterSpec(field.getName(), field.getType());
                 spec.setLocal(true);
                 methodSpec.addOptional(spec);

@@ -28,14 +28,13 @@ import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.dsl.test.ImplicitCastTestFactory.ImplicitCast0NodeFactory;
 import com.oracle.truffle.api.dsl.test.ImplicitCastTestFactory.ImplicitCast1NodeFactory;
 import com.oracle.truffle.api.dsl.test.ImplicitCastTestFactory.ImplicitCast2NodeFactory;
-import com.oracle.truffle.api.dsl.test.NodeContainerTest.Str;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.TestRootNode;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
 import com.oracle.truffle.api.frame.*;
 
 public class ImplicitCastTest {
 
-    @TypeSystem({int.class, boolean.class, String.class, Str.class})
+    @TypeSystem({int.class, boolean.class, String.class})
     static class ImplicitCast0Types {
 
         @ImplicitCast

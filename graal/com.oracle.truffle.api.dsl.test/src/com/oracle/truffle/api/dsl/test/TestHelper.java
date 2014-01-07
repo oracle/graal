@@ -28,7 +28,6 @@ import java.util.*;
 
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.dsl.*;
-import com.oracle.truffle.api.dsl.test.NodeContainerTest.BuiltinNode;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ArgumentNode;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ChildrenNode;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.TestArguments;
@@ -52,7 +51,7 @@ class TestHelper {
         ArgumentNode[] argumentNodes = arguments(factory.getExecutionSignature().size());
 
         List<Object> argumentList = new ArrayList<>();
-        if (ChildrenNode.class.isAssignableFrom(factory.getNodeClass()) || BuiltinNode.class.isAssignableFrom(factory.getNodeClass())) {
+        if (ChildrenNode.class.isAssignableFrom(factory.getNodeClass())) {
             argumentList.add(argumentNodes);
         } else {
             argumentList.addAll(Arrays.asList(argumentNodes));

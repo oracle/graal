@@ -31,7 +31,6 @@ import javax.lang.model.element.*;
 import javax.lang.model.type.*;
 import javax.lang.model.util.*;
 
-import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.dsl.processor.*;
 import com.oracle.truffle.dsl.processor.typesystem.*;
 
@@ -141,11 +140,6 @@ public abstract class TemplateMethodParser<T extends Template, E extends Templat
         methodSpecification.applyTypeDefinitions("types");
 
         String id = method.getSimpleName().toString();
-        AnnotationMirror idAnnotation = Utils.findAnnotationMirror(context.getEnvironment(), method, NodeId.class);
-        if (idAnnotation != null) {
-            id = Utils.getAnnotationValue(String.class, idAnnotation, "value");
-        }
-
         TypeMirror returnType = method.getReturnType();
         List<TypeMirror> parameterTypes = new ArrayList<>();
         for (VariableElement var : method.getParameters()) {

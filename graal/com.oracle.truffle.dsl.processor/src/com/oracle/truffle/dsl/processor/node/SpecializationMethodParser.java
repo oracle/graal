@@ -30,6 +30,7 @@ import javax.lang.model.type.*;
 
 import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.dsl.processor.*;
+import com.oracle.truffle.dsl.processor.node.SpecializationData.SpecializationKind;
 import com.oracle.truffle.dsl.processor.template.*;
 
 public class SpecializationMethodParser extends NodeMethodParser<SpecializationData> {
@@ -77,7 +78,7 @@ public class SpecializationMethodParser extends NodeMethodParser<SpecializationD
                 return Utils.compareByTypeHierarchy(o1.getJavaClass(), o2.getJavaClass());
             }
         });
-        SpecializationData specialization = new SpecializationData(method, order, exceptionData);
+        SpecializationData specialization = new SpecializationData(getNode(), method, SpecializationKind.SPECIALIZED, order, exceptionData);
         List<String> guardDefs = Utils.getAnnotationValueList(String.class, specialization.getMarkerAnnotation(), "guards");
         specialization.setGuardDefinitions(guardDefs);
 

@@ -45,24 +45,20 @@ public class NodeChildData extends MessageContainer {
         }
     }
 
-    private final NodeData parent;
+    private NodeData parentNode;
     private final Element sourceElement;
     private final AnnotationMirror sourceAnnotationMirror;
-
     private final String name;
     private final TypeMirror type;
     private final TypeMirror originalType;
     private final Element accessElement;
-
     private final Cardinality cardinality;
 
     private List<NodeChildData> executeWith = Collections.emptyList();
 
-    private NodeData nodeData;
+    private NodeData childNode;
 
-    public NodeChildData(NodeData parent, Element sourceElement, AnnotationMirror sourceMirror, String name, TypeMirror nodeType, TypeMirror originalNodeType, Element accessElement,
-                    Cardinality cardinality) {
-        this.parent = parent;
+    public NodeChildData(Element sourceElement, AnnotationMirror sourceMirror, String name, TypeMirror nodeType, TypeMirror originalNodeType, Element accessElement, Cardinality cardinality) {
         this.sourceElement = sourceElement;
         this.sourceAnnotationMirror = sourceMirror;
         this.name = name;
@@ -70,6 +66,10 @@ public class NodeChildData extends MessageContainer {
         this.originalType = originalNodeType;
         this.accessElement = accessElement;
         this.cardinality = cardinality;
+    }
+
+    void setParentNode(NodeData parentNode) {
+        this.parentNode = parentNode;
     }
 
     public List<NodeChildData> getExecuteWith() {
@@ -81,12 +81,12 @@ public class NodeChildData extends MessageContainer {
     }
 
     public boolean needsImplicitCast(ProcessorContext context) {
-        if (!parent.needsRewrites(context)) {
+        if (!parentNode.needsRewrites(context)) {
             return false;
         }
 
         boolean used = false;
-        for (NodeExecutionData execution : parent.getChildExecutions()) {
+        for (NodeExecutionData execution : parentNode.getChildExecutions()) {
             if (execution.getChild() == this) {
                 used = true;
                 break;
@@ -100,7 +100,7 @@ public class NodeChildData extends MessageContainer {
     }
 
     public ExecutableTypeData findExecutableType(ProcessorContext context, TypeData targetType) {
-        ExecutableTypeData executableType = nodeData.findExecutableType(targetType, getExecuteWith().size());
+        ExecutableTypeData executableType = childNode.findExecutableType(targetType, getExecuteWith().size());
         if (executableType == null) {
             executableType = findAnyGenericExecutableType(context);
         }
@@ -108,15 +108,15 @@ public class NodeChildData extends MessageContainer {
     }
 
     public List<ExecutableTypeData> findGenericExecutableTypes(ProcessorContext context) {
-        return nodeData.findGenericExecutableTypes(context, getExecuteWith().size());
+        return childNode.findGenericExecutableTypes(context, getExecuteWith().size());
     }
 
     public ExecutableTypeData findAnyGenericExecutableType(ProcessorContext context) {
-        return nodeData.findAnyGenericExecutableType(context, getExecuteWith().size());
+        return childNode.findAnyGenericExecutableType(context, getExecuteWith().size());
     }
 
     public List<ExecutableTypeData> findExecutableTypes() {
-        return nodeData.getExecutableTypes(getExecuteWith().size());
+        return childNode.getExecutableTypes(getExecuteWith().size());
     }
 
     public TypeMirror getOriginalType() {
@@ -134,7 +134,7 @@ public class NodeChildData extends MessageContainer {
     }
 
     void setNode(NodeData nodeData) {
-        this.nodeData = nodeData;
+        this.childNode = nodeData;
         if (nodeData != null) {
             getMessages().addAll(nodeData.collectMessages());
         }
@@ -153,7 +153,7 @@ public class NodeChildData extends MessageContainer {
     }
 
     public NodeData getNodeData() {
-        return nodeData;
+        return childNode;
     }
 
     public String getName() {

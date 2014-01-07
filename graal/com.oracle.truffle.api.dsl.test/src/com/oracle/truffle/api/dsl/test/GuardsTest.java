@@ -38,8 +38,6 @@ import com.oracle.truffle.api.dsl.test.GuardsTestFactory.TestAbstractGuard1Facto
 import com.oracle.truffle.api.dsl.test.GuardsTestFactory.TestGuardResolve1Factory;
 import com.oracle.truffle.api.dsl.test.GuardsTestFactory.TestGuardResolve2Factory;
 import com.oracle.truffle.api.dsl.test.GuardsTestFactory.TestGuardResolve3Factory;
-import com.oracle.truffle.api.dsl.test.NodeContainerTest.Str;
-import com.oracle.truffle.api.dsl.test.NodeContainerTest.StrBase;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.Abstract;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.BExtendsAbstract;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.CExtendsAbstract;
@@ -124,18 +122,18 @@ public class GuardsTest {
     public void testGuardWithBaseClass() {
         TestRootNode<?> root = createRoot(GuardWithBaseClassFactory.getInstance());
 
-        assertEquals(42, executeWith(root, new Str("42")));
+        assertEquals(42, executeWith(root, new BExtendsAbstract()));
     }
 
     @NodeChild("expression")
     public abstract static class GuardWithBaseClass extends ValueNode {
 
-        boolean baseGuard(StrBase base) {
+        boolean baseGuard(Abstract base) {
             return true;
         }
 
         @Specialization(guards = "baseGuard")
-        int doSpecialized(Str value0) {
+        int doSpecialized(BExtendsAbstract value0) {
             return 42;
         }
     }
@@ -227,7 +225,7 @@ public class GuardsTest {
     @Test
     public void testGuardResolve2() {
         TestRootNode<?> root = createRoot(TestGuardResolve2Factory.getInstance());
-        assertEquals(42, executeWith(root, new Str("")));
+        assertEquals(42, executeWith(root, new BExtendsAbstract()));
     }
 
     @NodeChild("expression")
@@ -237,12 +235,12 @@ public class GuardsTest {
             return false;
         }
 
-        boolean guard(StrBase primitive) {
+        boolean guard(Abstract primitive) {
             return true;
         }
 
         @Specialization(guards = "guard")
-        int doSpecialized(Str value0) {
+        int doSpecialized(BExtendsAbstract value0) {
             return 42;
         }
     }
@@ -251,7 +249,7 @@ public class GuardsTest {
     public void testGuardResolve3() {
         TestRootNode<?> root = createRoot(TestGuardResolve3Factory.getInstance());
 
-        assertEquals(42, executeWith(root, new Str("")));
+        assertEquals(42, executeWith(root, new BExtendsAbstract()));
     }
 
     @NodeChild("expression")
@@ -261,16 +259,16 @@ public class GuardsTest {
             return false;
         }
 
-        boolean guard(StrBase primitive) {
+        boolean guard(Abstract primitive) {
             return false;
         }
 
-        boolean guard(Str primitive) {
+        boolean guard(BExtendsAbstract primitive) {
             return true;
         }
 
         @Specialization(guards = "guard")
-        int doSpecialized(Str value0) {
+        int doSpecialized(BExtendsAbstract value0) {
             return 42;
         }
     }
@@ -278,12 +276,12 @@ public class GuardsTest {
     @NodeChild("expression")
     public abstract static class TestGuardResolve4 extends ValueNode {
 
-        boolean guard(StrBase primitive) {
+        boolean guard(Abstract primitive) {
             return false;
         }
 
         @Specialization(guards = "guard")
-        int doSpecialized(Str value0) {
+        int doSpecialized(BExtendsAbstract value0) {
             return 42;
         }
     }

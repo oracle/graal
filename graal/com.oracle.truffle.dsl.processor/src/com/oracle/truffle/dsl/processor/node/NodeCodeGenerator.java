@@ -47,6 +47,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
 
     private static final String EXECUTE_GENERIC_NAME = "executeGeneric0";
     private static final String EXECUTE_SPECIALIZE_NAME = "executeAndSpecialize0";
+    private static final String EXECUTE_POLYMORPHIC_NAME = "executePolymorphic0";
 
     private static final String UPDATE_TYPES_NAME = "updateTypes";
 
@@ -70,16 +71,8 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
         return name;
     }
 
-    private static String nodePolymorphicClassName(NodeData node, SpecializationData specialization) {
-        String nodeid = resolveNodeId(node);
-
-        String name = Utils.firstLetterUpperCase(nodeid);
-        if (specialization == node.getGenericPolymorphicSpecialization()) {
-            name += "PolymorphicNode";
-        } else {
-            name += "Polymorphic" + polymorphicIndex(node, specialization) + "Node";
-        }
-        return name;
+    private static String nodePolymorphicClassName(NodeData node) {
+        return Utils.firstLetterUpperCase(resolveNodeId(node)) + "PolymorphicNode";
     }
 
     private static String resolveNodeId(NodeData node) {
@@ -108,30 +101,6 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
 
     private static String castValueName(ActualParameter parameter) {
         return valueName(parameter) + "Cast";
-    }
-
-    private static String executeCachedName(SpecializationData polymorphic) {
-        NodeData node = polymorphic.getNode();
-        boolean generic = polymorphic == node.getGenericPolymorphicSpecialization();
-
-        if (generic) {
-            return "executeCachedGeneric0";
-        } else {
-            return "executeCached" + polymorphicIndex(node, polymorphic);
-        }
-    }
-
-    private static int polymorphicIndex(NodeData node, SpecializationData polymorphic) {
-        int index = 0;
-        for (SpecializationData specialization : node.getPolymorphicSpecializations()) {
-            if (specialization == polymorphic) {
-                break;
-            }
-            if (specialization != node.getGenericPolymorphicSpecialization()) {
-                index++;
-            }
-        }
-        return index;
     }
 
     private void addInternalValueParameters(CodeExecutableElement method, TemplateMethod specialization, boolean forceFrame, boolean evaluated) {
@@ -439,11 +408,9 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
         getElement().getEnclosedElements().clear();
 
         Map<NodeData, List<TypeElement>> childTypes = new LinkedHashMap<>();
-        if (node.getDeclaredNodes() != null && !node.getDeclaredNodes().isEmpty()) {
-            for (NodeData nodeChild : node.getDeclaredNodes()) {
-                NodeCodeGenerator generator = new NodeCodeGenerator(getContext());
-                childTypes.put(nodeChild, generator.process(null, nodeChild).getEnclosedElements());
-            }
+        for (NodeData nodeChild : node.getEnclosingNodes()) {
+            NodeCodeGenerator generator = new NodeCodeGenerator(getContext());
+            childTypes.put(nodeChild, generator.process(null, nodeChild).getEnclosedElements());
         }
 
         if (node.needsFactory() || node.getNodeDeclaringChildren().size() > 0) {
@@ -525,15 +492,18 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
 
                 createFactoryMethods(node, clazz, createVisibility);
 
-                if (node.isPolymorphic()) {
-                    PolymorphicNodeFactory generic = new PolymorphicNodeFactory(getContext(), generatedNode);
-                    add(generic, node.getGenericPolymorphicSpecialization());
-                    polymorphicNode = generic.getElement();
-                }
                 for (SpecializationData specialization : node.getSpecializations()) {
                     if (!specialization.isReachable()) {
                         continue;
                     }
+
+                    if (specialization.isPolymorphic() && node.isPolymorphic()) {
+                        PolymorphicNodeFactory polymorphicFactory = new PolymorphicNodeFactory(getContext(), generatedNode);
+                        add(polymorphicFactory, specialization);
+                        polymorphicNode = polymorphicFactory.getElement();
+                        continue;
+                    }
+
                     add(new SpecializedNodeFactory(context, generatedNode), specialization);
                 }
 
@@ -572,7 +542,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
             }
 
             List<NodeData> children = node.getNodeDeclaringChildren();
-            if (node.getParent() == null && children.size() > 0) {
+            if (node.getDeclaringNode() == null && children.size() > 0) {
                 clazz.add(createGetFactories(node));
             }
 
@@ -755,7 +725,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
         }
 
         private String instanceVarName(NodeData node) {
-            if (node.getParent() != null) {
+            if (node.getDeclaringNode() != null) {
                 return Utils.firstLetterLowerCase(factoryClassName(node)) + "Instance";
             } else {
                 return "instance";
@@ -808,9 +778,9 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
                 builder.startGroup();
                 NodeData childNode = child;
                 List<NodeData> factories = new ArrayList<>();
-                while (childNode.getParent() != null) {
+                while (childNode.getDeclaringNode() != null) {
                     factories.add(childNode);
-                    childNode = childNode.getParent();
+                    childNode = childNode.getDeclaringNode();
                 }
                 Collections.reverse(factories);
                 for (NodeData nodeData : factories) {
@@ -950,7 +920,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
                     builder.statement("this.next0 = adoptChild(next0)");
                     clazz.add(setter);
 
-                    CodeExecutableElement genericCachedExecute = createCachedExecute(node, node.getGenericPolymorphicSpecialization());
+                    CodeExecutableElement genericCachedExecute = createCachedExecute(node, node.getPolymorphicSpecialization());
                     clazz.add(genericCachedExecute);
 
                     getElement().add(createUpdateTypes(clazz.asType()));
@@ -1144,8 +1114,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
         }
 
         private CodeExecutableElement createCachedExecute(NodeData node, SpecializationData polymorph) {
-            String name = executeCachedName(polymorph);
-            CodeExecutableElement cachedExecute = new CodeExecutableElement(modifiers(PROTECTED, ABSTRACT), polymorph.getReturnType().getType(), name);
+            CodeExecutableElement cachedExecute = new CodeExecutableElement(modifiers(PROTECTED, ABSTRACT), polymorph.getReturnType().getType(), EXECUTE_POLYMORPHIC_NAME);
             addInternalValueParameters(cachedExecute, polymorph, true, true);
 
             ExecutableTypeData sourceExecutableType = node.findExecutableType(polymorph.getReturnType().getTypeSystemType(), 0);
@@ -1305,8 +1274,6 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
             builder.startStaticCall(getContext().getTruffleTypes().getCompilerAsserts(), "neverPartOfCompilation").end();
             builder.end();
 
-            emitSpecializationListeners(builder, node);
-
             String currentNode = "this";
             for (SpecializationData specialization : node.getSpecializations()) {
                 if (!specialization.getExceptions().isEmpty()) {
@@ -1330,7 +1297,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
 
             boolean firstUnreachable = true;
             for (SpecializationData current : node.getSpecializations()) {
-                if (current.isUninitialized() || current.isReachable()) {
+                if (current.isReachable()) {
                     continue;
                 }
                 if (firstUnreachable) {
@@ -1347,7 +1314,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
             List<SpecializationData> specializations = node.getSpecializations();
             List<SpecializationData> filteredSpecializations = new ArrayList<>();
             for (SpecializationData current : specializations) {
-                if (current.isUninitialized() || !current.isReachable()) {
+                if (current.isUninitialized() || current.isPolymorphic() || !current.isReachable()) {
                     continue;
                 }
                 filteredSpecializations.add(current);
@@ -1380,7 +1347,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
 
         private void emitUnreachableSpecializations(final CodeTreeBuilder builder, NodeData node) {
             for (SpecializationData current : node.getSpecializations()) {
-                if (current.isUninitialized() || current.isReachable()) {
+                if (current.isReachable()) {
                     continue;
                 }
                 builder.string("// unreachable ").string(current.getId()).newLine();
@@ -1751,7 +1718,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
             }
             builder.end();
             builder.startDoWhile();
-            builder.string("!").startParantheses().instanceOf("root", nodePolymorphicClassName(node, node.getGenericPolymorphicSpecialization())).end();
+            builder.string("!").startParantheses().instanceOf("root", nodePolymorphicClassName(node)).end();
             builder.end();
             return builder.getRoot();
         }
@@ -1829,7 +1796,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
         }
 
         private CodeTree createRewritePolymorphic(CodeTreeBuilder parent, NodeData node, String currentNode) {
-            String polyClassName = nodePolymorphicClassName(node, node.getGenericPolymorphicSpecialization());
+            String polyClassName = nodePolymorphicClassName(node);
             String uninitializedName = nodeSpecializationClassName(node.getUninitializedSpecialization());
             CodeTreeBuilder builder = parent.create();
 
@@ -1840,20 +1807,12 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
             builder.startStatement().startCall("currentCopy", "setNext0").startNew(uninitializedName).string(currentNode).end().end().end();
 
             builder.startReturn();
-            builder.startCall("currentCopy.next0", executeCachedName(node.getGenericPolymorphicSpecialization()));
+            builder.startCall("currentCopy.next0", EXECUTE_POLYMORPHIC_NAME);
             addInternalValueParameterNames(builder, node.getGenericSpecialization(), node.getGenericSpecialization(), null, true, true, null);
             builder.end();
             builder.end();
 
             return builder.getRoot();
-        }
-
-        private void emitSpecializationListeners(CodeTreeBuilder builder, NodeData node) {
-            for (TemplateMethod listener : node.getSpecializationListeners()) {
-                builder.startStatement();
-                builder.tree(createTemplateMethodCall(builder, null, listener, listener, null));
-                builder.end(); // statement
-            }
         }
 
         protected CodeTree createCastingExecute(CodeTreeBuilder parent, SpecializationData specialization, ExecutableTypeData executable, ExecutableTypeData castExecutable) {
@@ -2302,8 +2261,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
 
         private CodeTree createReturnOptimizeTypes(CodeTreeBuilder parent, ExecutableTypeData currentExecutable, SpecializationData specialization, ActualParameter param) {
             NodeData node = specialization.getNode();
-            assert !node.getPolymorphicSpecializations().isEmpty();
-            SpecializationData generic = node.getGenericPolymorphicSpecialization();
+            SpecializationData polymorphic = node.getPolymorphicSpecialization();
 
             CodeTreeBuilder builder = new CodeTreeBuilder(parent);
             builder.startStatement().string(polymorphicTypeName(param)).string(" = ").typeLiteral(getContext().getType(Object.class)).end();
@@ -2311,11 +2269,11 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
             builder.startReturn();
 
             CodeTreeBuilder execute = new CodeTreeBuilder(builder);
-            execute.startCall("next0", executeCachedName(generic));
-            addInternalValueParameterNames(execute, specialization, generic, param.getLocalName(), true, true, null);
+            execute.startCall("next0", EXECUTE_POLYMORPHIC_NAME);
+            addInternalValueParameterNames(execute, specialization, polymorphic, param.getLocalName(), true, true, null);
             execute.end();
 
-            TypeData sourceType = generic.getReturnType().getTypeSystemType();
+            TypeData sourceType = polymorphic.getReturnType().getTypeSystemType();
 
             builder.tree(createExpectExecutableType(node, sourceType, currentExecutable, execute.getRoot()));
 
@@ -2505,7 +2463,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
             if (nodeGen != null) {
                 baseType = nodeGen.asType();
             }
-            CodeTypeElement clazz = createClass(node, modifiers(PRIVATE, STATIC, FINAL), nodePolymorphicClassName(node, polymorph), baseType, false);
+            CodeTypeElement clazz = createClass(node, modifiers(PRIVATE, STATIC, FINAL), nodePolymorphicClassName(node), baseType, false);
 
             clazz.getAnnotationMirrors().add(createNodeInfo(node, Kind.POLYMORPHIC));
 
@@ -2602,8 +2560,12 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
                 kind = Kind.GENERIC;
             } else if (specialization.isUninitialized()) {
                 kind = Kind.UNINITIALIZED;
-            } else {
+            } else if (specialization.isPolymorphic()) {
+                kind = Kind.POLYMORPHIC;
+            } else if (specialization.isSpecialized()) {
                 kind = Kind.SPECIALIZED;
+            } else {
+                throw new AssertionError();
             }
             clazz.getAnnotationMirrors().add(createNodeInfo(node, kind));
 
@@ -2709,9 +2671,9 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
 
             CodeTypeElement clazz = getElement();
 
-            final SpecializationData polymorphic = node.getGenericPolymorphicSpecialization();
+            final SpecializationData polymorphic = node.getPolymorphicSpecialization();
 
-            ExecutableElement executeCached = nodeGen.getMethod(executeCachedName(polymorphic));
+            ExecutableElement executeCached = nodeGen.getMethod(EXECUTE_POLYMORPHIC_NAME);
             // ExecutableTypeData execType = new ExecutableTypeData(polymorphic, executeCached,
             // node.getTypeSystem(), polymorphic.getReturnType().getTypeSystemType());
 
@@ -2729,7 +2691,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
                 builder.tree(createAppendPolymorphic(builder, specialization));
             } else {
                 CodeTreeBuilder elseBuilder = new CodeTreeBuilder(builder);
-                elseBuilder.startReturn().startCall("this.next0", executeCachedName(polymorphic));
+                elseBuilder.startReturn().startCall("this.next0", EXECUTE_POLYMORPHIC_NAME);
                 addInternalValueParameterNames(elseBuilder, polymorphic, polymorphic, null, true, true, null);
                 elseBuilder.end().end();
 
@@ -2759,7 +2721,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
             builder.startBlock();
             String message = "Polymorphic limit reached (" + node.getPolymorphicDepth() + ")";
             String castRoot = "(" + baseClassName(node) + ") root";
-            builder.tree(createGenericInvoke(builder, node.getGenericPolymorphicSpecialization(), node.getGenericSpecialization(),
+            builder.tree(createGenericInvoke(builder, node.getPolymorphicSpecialization(), node.getGenericSpecialization(),
                             createReplaceCall(builder, node.getGenericSpecialization(), "root", castRoot, message), null));
             builder.end();
 
@@ -2777,7 +2739,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
 
             builder.declaration(node.getGenericSpecialization().getReturnType().getType(), "result", specializeCall.getRoot());
 
-            CodeTree root = builder.create().cast(nodePolymorphicClassName(node, node.getGenericPolymorphicSpecialization())).string("root").getRoot();
+            CodeTree root = builder.create().cast(nodePolymorphicClassName(node)).string("root").getRoot();
             builder.startIf().string("this.next0 != null").end().startBlock();
             builder.startStatement().string("(").tree(root).string(").").startCall(UPDATE_TYPES_NAME).tree(root).end().end();
             builder.end();
@@ -2950,7 +2912,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
 
             CodeTreeBuilder returnBuilder = new CodeTreeBuilder(parent);
             if (specialization.isPolymorphic()) {
-                returnBuilder.startCall("next0", executeCachedName(specialization));
+                returnBuilder.startCall("next0", EXECUTE_POLYMORPHIC_NAME);
                 addInternalValueParameterNames(returnBuilder, specialization, specialization, null, true, true, null);
                 returnBuilder.end();
             } else if (specialization.isUninitialized()) {

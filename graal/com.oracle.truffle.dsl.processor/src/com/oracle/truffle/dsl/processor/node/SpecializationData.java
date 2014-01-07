@@ -33,24 +33,25 @@ import com.oracle.truffle.dsl.processor.typesystem.*;
 
 public class SpecializationData extends TemplateMethod {
 
+    public enum SpecializationKind {
+        UNINITIALIZED, SPECIALIZED, POLYMORPHIC, GENERIC
+    }
+
+    private final NodeData node;
     private final int order;
-    private final boolean generic;
-    private final boolean polymorphic;
-    private final boolean uninitialized;
+    private final SpecializationKind kind;
     private final List<SpecializationThrowsData> exceptions;
     private List<String> guardDefinitions = Collections.emptyList();
     private List<GuardData> guards = Collections.emptyList();
     private List<ShortCircuitData> shortCircuits;
     private List<String> assumptions = Collections.emptyList();
-    private NodeData node;
     private boolean reachable;
 
-    public SpecializationData(TemplateMethod template, int order, List<SpecializationThrowsData> exceptions) {
+    public SpecializationData(NodeData node, TemplateMethod template, SpecializationKind kind, int order, List<SpecializationThrowsData> exceptions) {
         super(template);
+        this.node = node;
         this.order = order;
-        this.generic = false;
-        this.uninitialized = false;
-        this.polymorphic = false;
+        this.kind = kind;
         this.exceptions = exceptions;
 
         for (SpecializationThrowsData exception : exceptions) {
@@ -58,13 +59,8 @@ public class SpecializationData extends TemplateMethod {
         }
     }
 
-    public SpecializationData(TemplateMethod template, boolean generic, boolean uninitialized, boolean polymorphic) {
-        super(template);
-        this.order = Specialization.DEFAULT_ORDER;
-        this.generic = generic;
-        this.uninitialized = uninitialized;
-        this.polymorphic = polymorphic;
-        this.exceptions = Collections.emptyList();
+    public SpecializationData(NodeData node, TemplateMethod template, SpecializationKind kind) {
+        this(node, template, kind, Specialization.DEFAULT_ORDER, new ArrayList<SpecializationThrowsData>());
     }
 
     public void setReachable(boolean reachable) {
@@ -76,7 +72,7 @@ public class SpecializationData extends TemplateMethod {
     }
 
     public boolean isPolymorphic() {
-        return polymorphic;
+        return kind == SpecializationKind.POLYMORPHIC;
     }
 
     @Override
@@ -141,12 +137,12 @@ public class SpecializationData extends TemplateMethod {
 
         SpecializationData m2 = (SpecializationData) other;
 
+        int kindOrder = kind.compareTo(m2.kind);
+        if (kindOrder != 0) {
+            return kindOrder;
+        }
         if (getOrder() != Specialization.DEFAULT_ORDER && m2.getOrder() != Specialization.DEFAULT_ORDER) {
             return getOrder() - m2.getOrder();
-        } else if (isUninitialized() ^ m2.isUninitialized()) {
-            return isUninitialized() ? -1 : 1;
-        } else if (isGeneric() ^ m2.isGeneric()) {
-            return isGeneric() ? 1 : -1;
         }
 
         if (getTemplate() != m2.getTemplate()) {
@@ -158,10 +154,6 @@ public class SpecializationData extends TemplateMethod {
 
     public NodeData getNode() {
         return node;
-    }
-
-    public void setNode(NodeData node) {
-        this.node = node;
     }
 
     public void setGuards(List<GuardData> guards) {
@@ -177,15 +169,15 @@ public class SpecializationData extends TemplateMethod {
     }
 
     public boolean isSpecialized() {
-        return !isGeneric() && !isUninitialized() && !isPolymorphic();
+        return kind == SpecializationKind.SPECIALIZED;
     }
 
     public boolean isGeneric() {
-        return generic;
+        return kind == SpecializationKind.GENERIC;
     }
 
     public boolean isUninitialized() {
-        return uninitialized;
+        return kind == SpecializationKind.UNINITIALIZED;
     }
 
     public List<SpecializationThrowsData> getExceptions() {

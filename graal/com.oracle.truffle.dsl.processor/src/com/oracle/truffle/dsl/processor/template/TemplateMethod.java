@@ -211,12 +211,10 @@ public class TemplateMethod extends MessageContainer implements Comparable<Templ
         return prev;
     }
 
+    @SuppressWarnings("unused")
     public int getSignatureSize() {
         int signatureSize = 0;
-        for (ActualParameter parameter : getParameters()) {
-            if (!parameter.getSpecification().isSignature()) {
-                continue;
-            }
+        for (ActualParameter parameter : getSignatureParameters()) {
             signatureSize++;
         }
         return signatureSize;

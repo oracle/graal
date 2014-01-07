@@ -28,8 +28,13 @@ import static org.junit.Assert.*;
 import org.junit.*;
 
 import com.oracle.truffle.api.dsl.*;
-import com.oracle.truffle.api.dsl.test.NodeFieldTestFactory.*;
-import com.oracle.truffle.api.dsl.test.NodeFieldTestFactory.TestContainerFactory.TestContainerContainerFieldFactory;
+import com.oracle.truffle.api.dsl.test.NodeFieldTestFactory.IntFieldNoGetterTestNodeFactory;
+import com.oracle.truffle.api.dsl.test.NodeFieldTestFactory.IntFieldTestNodeFactory;
+import com.oracle.truffle.api.dsl.test.NodeFieldTestFactory.MultipleFieldsTestNodeFactory;
+import com.oracle.truffle.api.dsl.test.NodeFieldTestFactory.ObjectContainerNodeFactory;
+import com.oracle.truffle.api.dsl.test.NodeFieldTestFactory.RewriteTestNodeFactory;
+import com.oracle.truffle.api.dsl.test.NodeFieldTestFactory.StringFieldTestNodeFactory;
+import com.oracle.truffle.api.dsl.test.NodeFieldTestFactory.TestContainerFactory;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
 
 public class NodeFieldTest {
@@ -125,7 +130,7 @@ public class NodeFieldTest {
 
     @Test
     public void testStringContainer() {
-        assertEquals(42, createCallTarget(TestContainerContainerFieldFactory.create(42, "42")).call());
+        assertEquals(42, createCallTarget(TestContainerFactory.create("42")).call());
     }
 
     @NodeField(name = "field", type = int.class)
@@ -135,13 +140,12 @@ public class NodeFieldTest {
 
     }
 
-    @NodeContainer(IntContainerNode.class)
     @NodeField(name = "anotherField", type = String.class)
-    abstract static class TestContainer {
+    abstract static class TestContainer extends ValueNode {
 
         @Specialization
-        static int containerField(int field, String anotherField) {
-            return anotherField.equals("42") ? field : -1;
+        int containerField(String field) {
+            return field.equals("42") ? 42 : -1;
         }
 
     }

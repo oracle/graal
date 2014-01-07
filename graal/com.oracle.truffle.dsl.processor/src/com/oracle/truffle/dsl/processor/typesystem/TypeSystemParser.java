@@ -35,7 +35,7 @@ import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.dsl.processor.*;
 import com.oracle.truffle.dsl.processor.template.*;
 
-public class TypeSystemParser extends TemplateParser<TypeSystemData> {
+public class TypeSystemParser extends AbstractParser<TypeSystemData> {
 
     public static final List<Class<? extends Annotation>> ANNOTATIONS = Arrays.asList(TypeSystem.class, ExpectError.class);
 
@@ -113,6 +113,28 @@ public class TypeSystemParser extends TemplateParser<TypeSystemData> {
         verifyNamesUnique(typeSystem);
 
         return typeSystem;
+    }
+
+    protected void verifyExclusiveMethodAnnotation(Template template, Class<?>... annotationTypes) {
+        List<ExecutableElement> methods = ElementFilter.methodsIn(template.getTemplateType().getEnclosedElements());
+        for (ExecutableElement method : methods) {
+            List<AnnotationMirror> foundAnnotations = new ArrayList<>();
+            for (int i = 0; i < annotationTypes.length; i++) {
+                Class<?> annotationType = annotationTypes[i];
+                AnnotationMirror mirror = Utils.findAnnotationMirror(context.getEnvironment(), method, annotationType);
+                if (mirror != null) {
+                    foundAnnotations.add(mirror);
+                }
+            }
+            if (foundAnnotations.size() > 1) {
+                List<String> annotationNames = new ArrayList<>();
+                for (AnnotationMirror mirror : foundAnnotations) {
+                    annotationNames.add("@" + Utils.getSimpleName(mirror.getAnnotationType()));
+                }
+
+                template.addError("Non exclusive usage of annotations %s.", annotationNames);
+            }
+        }
     }
 
     private static void verifyGenericTypeChecksAndCasts(TypeSystemData typeSystem) {

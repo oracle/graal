@@ -34,56 +34,55 @@ import com.oracle.truffle.dsl.processor.typesystem.*;
 public class NodeData extends Template implements Comparable<NodeData> {
 
     private final String nodeId;
+    private final String shortName;
+    private final List<NodeData> enclosingNodes = new ArrayList<>();
     private NodeData declaringNode;
-    private List<NodeData> declaredNodes = new ArrayList<>();
-    private boolean nodeContainer;
 
-    private TypeSystemData typeSystem;
-    private List<NodeChildData> children;
-    private List<NodeExecutionData> childExecutions;
-    private List<NodeFieldData> fields;
-    private TypeMirror nodeType;
+    private final TypeSystemData typeSystem;
+    private final List<NodeChildData> children;
+    private final List<NodeExecutionData> childExecutions;
+    private final List<NodeFieldData> fields;
+    private final List<String> assumptions;
+
     private ParameterSpec instanceParameterSpec;
 
-    private List<SpecializationData> specializations;
-    private List<SpecializationData> polymorphicSpecializations;
-    private SpecializationData genericPolymorphicSpecialization;
-    private List<SpecializationListenerData> specializationListeners;
+    private final List<SpecializationData> specializations = new ArrayList<>();
+    private final List<ShortCircuitData> shortCircuits = new ArrayList<>();
+    private final List<CreateCastData> casts = new ArrayList<>();
     private Map<Integer, List<ExecutableTypeData>> executableTypes;
-    private List<ShortCircuitData> shortCircuits;
-    private List<String> assumptions;
-    private List<CreateCastData> casts;
 
     private int polymorphicDepth = -1;
-    private String shortName;
 
-    public NodeData(TypeElement type, String id) {
+    public NodeData(TypeElement type, String shortName, TypeSystemData typeSystem, List<NodeChildData> children, List<NodeExecutionData> executions, List<NodeFieldData> fields,
+                    List<String> assumptions, int polymorphicDepth) {
         super(type, null, null);
-        this.nodeId = id;
+        this.nodeId = type.getSimpleName().toString();
+        this.shortName = shortName;
+        this.typeSystem = typeSystem;
+        this.fields = fields;
+        this.children = children;
+        this.childExecutions = executions;
+        this.assumptions = assumptions;
+        this.polymorphicDepth = polymorphicDepth;
+
+        if (children != null) {
+            for (NodeChildData child : children) {
+                child.setParentNode(this);
+            }
+        }
     }
 
-    public NodeData(NodeData splitSource, String templateMethodName, String nodeId) {
-        super(splitSource.getTemplateType(), templateMethodName, null);
-        this.nodeId = nodeId;
-        this.declaringNode = splitSource.declaringNode;
-        this.declaredNodes = splitSource.declaredNodes;
-        this.typeSystem = splitSource.typeSystem;
-        this.nodeType = splitSource.nodeType;
-        this.specializations = splitSource.specializations;
-        this.specializationListeners = splitSource.specializationListeners;
-        this.executableTypes = splitSource.executableTypes;
-        this.shortCircuits = splitSource.shortCircuits;
-        this.fields = splitSource.fields;
-        this.children = splitSource.children;
-        this.assumptions = splitSource.assumptions;
+    public NodeData(TypeElement type) {
+        this(type, null, null, null, null, null, null, -1);
+    }
+
+    public void addEnclosedNode(NodeData node) {
+        this.enclosingNodes.add(node);
+        node.declaringNode = this;
     }
 
     public List<NodeExecutionData> getChildExecutions() {
         return childExecutions;
-    }
-
-    void setChildExecutions(List<NodeExecutionData> signature) {
-        this.childExecutions = signature;
     }
 
     public int getSignatureSize() {
@@ -122,7 +121,7 @@ public class NodeData extends Template implements Comparable<NodeData> {
         return polymorphicDepth > 1;
     }
 
-    void setPolymorphicDepth(int polymorphicDepth) {
+    public void setPolymorphicDepth(int polymorphicDepth) {
         this.polymorphicDepth = polymorphicDepth;
     }
 
@@ -130,43 +129,19 @@ public class NodeData extends Template implements Comparable<NodeData> {
         return casts;
     }
 
-    void setCasts(List<CreateCastData> casts) {
-        this.casts = casts;
-    }
-
-    void setShortName(String shortName) {
-        this.shortName = shortName;
-    }
-
     public String getShortName() {
         return shortName;
-    }
-
-    public boolean isNodeContainer() {
-        return nodeContainer;
-    }
-
-    void setTypeSystem(TypeSystemData typeSystem) {
-        this.typeSystem = typeSystem;
-    }
-
-    void setFields(List<NodeFieldData> fields) {
-        this.fields = fields;
     }
 
     public List<NodeFieldData> getFields() {
         return fields;
     }
 
-    void setNodeContainer(boolean splitByMethodName) {
-        this.nodeContainer = splitByMethodName;
-    }
-
     @Override
     protected List<MessageContainer> findChildContainers() {
         List<MessageContainer> containerChildren = new ArrayList<>();
-        if (declaredNodes != null) {
-            containerChildren.addAll(declaredNodes);
+        if (enclosingNodes != null) {
+            containerChildren.addAll(enclosingNodes);
         }
         if (typeSystem != null) {
             containerChildren.add(typeSystem);
@@ -177,9 +152,6 @@ public class NodeData extends Template implements Comparable<NodeData> {
                     containerChildren.add(specialization);
                 }
             }
-        }
-        if (specializationListeners != null) {
-            containerChildren.addAll(specializationListeners);
         }
         if (executableTypes != null) {
             containerChildren.addAll(getExecutableTypes());
@@ -212,14 +184,7 @@ public class NodeData extends Template implements Comparable<NodeData> {
     }
 
     public TypeMirror getNodeType() {
-        if (nodeType != null) {
-            return nodeType;
-        }
         return getTemplateType().asType();
-    }
-
-    void setAssumptions(List<String> assumptions) {
-        this.assumptions = assumptions;
     }
 
     public List<String> getAssumptions() {
@@ -236,7 +201,7 @@ public class NodeData extends Template implements Comparable<NodeData> {
 
         boolean noSpecialization = true;
         for (SpecializationData specialization : specializations) {
-            noSpecialization = noSpecialization && specialization.isGeneric() || specialization.isUninitialized();
+            noSpecialization = noSpecialization && !specialization.isSpecialized();
         }
         return !noSpecialization;
     }
@@ -254,7 +219,7 @@ public class NodeData extends Template implements Comparable<NodeData> {
 
     public List<NodeData> getNodeDeclaringChildren() {
         List<NodeData> nodeChildren = new ArrayList<>();
-        for (NodeData child : getDeclaredNodes()) {
+        for (NodeData child : getEnclosingNodes()) {
             if (child.needsFactory()) {
                 nodeChildren.add(child);
             }
@@ -263,24 +228,12 @@ public class NodeData extends Template implements Comparable<NodeData> {
         return nodeChildren;
     }
 
-    void setDeclaredNodes(List<NodeData> declaredChildren) {
-        this.declaredNodes = declaredChildren;
-
-        for (NodeData child : declaredChildren) {
-            child.declaringNode = this;
-        }
-    }
-
-    public NodeData getParent() {
+    public NodeData getDeclaringNode() {
         return declaringNode;
     }
 
-    public List<NodeData> getDeclaredNodes() {
-        return declaredNodes;
-    }
-
-    public void setNodeType(TypeMirror nodeType) {
-        this.nodeType = nodeType;
+    public List<NodeData> getEnclosingNodes() {
+        return enclosingNodes;
     }
 
     public List<TemplateMethod> getAllTemplateMethods() {
@@ -290,7 +243,6 @@ public class NodeData extends Template implements Comparable<NodeData> {
             methods.add(specialization);
         }
 
-        methods.addAll(getSpecializationListeners());
         methods.addAll(getExecutableTypes());
         methods.addAll(getShortCircuits());
         if (getCasts() != null) {
@@ -394,6 +346,15 @@ public class NodeData extends Template implements Comparable<NodeData> {
         return needsRewrites || getSpecializations().size() > 1;
     }
 
+    public SpecializationData getPolymorphicSpecialization() {
+        for (SpecializationData specialization : specializations) {
+            if (specialization.isPolymorphic()) {
+                return specialization;
+            }
+        }
+        return null;
+    }
+
     public SpecializationData getGenericSpecialization() {
         for (SpecializationData specialization : specializations) {
             if (specialization.isGeneric()) {
@@ -436,13 +397,12 @@ public class NodeData extends Template implements Comparable<NodeData> {
         dumpProperty(builder, indent, "executableTypes", getExecutableTypes());
         dumpProperty(builder, indent, "specializations", getSpecializations());
         dumpProperty(builder, indent, "polymorphicDepth", getPolymorphicDepth());
-        dumpProperty(builder, indent, "polymorphic", getPolymorphicSpecializations());
         dumpProperty(builder, indent, "assumptions", getAssumptions());
         dumpProperty(builder, indent, "casts", getCasts());
         dumpProperty(builder, indent, "messages", collectMessages());
-        if (getDeclaredNodes().size() > 0) {
+        if (getEnclosingNodes().size() > 0) {
             builder.append(String.format("\n%s  children = [", indent));
-            for (NodeData node : getDeclaredNodes()) {
+            for (NodeData node : getEnclosingNodes()) {
                 builder.append("\n");
                 builder.append(node.dump(level + 1));
             }
@@ -513,30 +473,8 @@ public class NodeData extends Template implements Comparable<NodeData> {
         return children;
     }
 
-    void setChildren(List<NodeChildData> fields) {
-        this.children = fields;
-    }
-
     public List<SpecializationData> getSpecializations() {
-        return getSpecializations(false);
-    }
-
-    public List<SpecializationData> getSpecializations(boolean userDefinedOnly) {
-        if (userDefinedOnly) {
-            List<SpecializationData> specs = new ArrayList<>();
-            for (SpecializationData spec : specializations) {
-                if (spec.getMethod() != null) {
-                    specs.add(spec);
-                }
-            }
-            return specs;
-        } else {
-            return specializations;
-        }
-    }
-
-    public List<SpecializationListenerData> getSpecializationListeners() {
-        return specializationListeners;
+        return specializations;
     }
 
     public List<ExecutableTypeData> getExecutableTypes() {
@@ -547,41 +485,8 @@ public class NodeData extends Template implements Comparable<NodeData> {
         return shortCircuits;
     }
 
-    void setSpecializations(List<SpecializationData> specializations) {
-        this.specializations = specializations;
-        if (this.specializations != null) {
-            for (SpecializationData specialization : specializations) {
-                specialization.setNode(this);
-            }
-        }
-    }
-
-    void setPolymorphicSpecializations(List<SpecializationData> polymorphicSpecializations) {
-        this.polymorphicSpecializations = polymorphicSpecializations;
-    }
-
-    public List<SpecializationData> getPolymorphicSpecializations() {
-        return polymorphicSpecializations;
-    }
-
-    void setGenericPolymorphicSpecialization(SpecializationData genericPolymoprhicSpecialization) {
-        this.genericPolymorphicSpecialization = genericPolymoprhicSpecialization;
-    }
-
-    public SpecializationData getGenericPolymorphicSpecialization() {
-        return genericPolymorphicSpecialization;
-    }
-
-    void setSpecializationListeners(List<SpecializationListenerData> specializationListeners) {
-        this.specializationListeners = specializationListeners;
-    }
-
-    void setExecutableTypes(Map<Integer, List<ExecutableTypeData>> executableTypes) {
+    public void setExecutableTypes(Map<Integer, List<ExecutableTypeData>> executableTypes) {
         this.executableTypes = executableTypes;
-    }
-
-    void setShortCircuits(List<ShortCircuitData> shortCircuits) {
-        this.shortCircuits = shortCircuits;
     }
 
     @Override
