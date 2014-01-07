@@ -1115,7 +1115,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
 
         private CodeExecutableElement createCachedExecute(NodeData node, SpecializationData polymorph) {
             CodeExecutableElement cachedExecute = new CodeExecutableElement(modifiers(PROTECTED, ABSTRACT), polymorph.getReturnType().getType(), EXECUTE_POLYMORPHIC_NAME);
-            addInternalValueParameters(cachedExecute, polymorph, true, true);
+            addInternalValueParameters(cachedExecute, polymorph, true, false);
 
             ExecutableTypeData sourceExecutableType = node.findExecutableType(polymorph.getReturnType().getTypeSystemType(), 0);
             boolean sourceThrowsUnexpected = sourceExecutableType != null && sourceExecutableType.hasUnexpectedValue(getContext());
@@ -2467,10 +2467,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
 
             clazz.getAnnotationMirrors().add(createNodeInfo(node, Kind.POLYMORPHIC));
 
-            for (ActualParameter polymorphParameter : polymorph.getParameters()) {
-                if (!polymorphParameter.getSpecification().isSignature()) {
-                    continue;
-                }
+            for (ActualParameter polymorphParameter : polymorph.getSignatureParameters()) {
                 if (!polymorphParameter.getTypeSystemType().isGeneric()) {
                     continue;
                 }
@@ -2672,16 +2669,10 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
             CodeTypeElement clazz = getElement();
 
             final SpecializationData polymorphic = node.getPolymorphicSpecialization();
-
             ExecutableElement executeCached = nodeGen.getMethod(EXECUTE_POLYMORPHIC_NAME);
-            // ExecutableTypeData execType = new ExecutableTypeData(polymorphic, executeCached,
-            // node.getTypeSystem(), polymorphic.getReturnType().getTypeSystemType());
-
-            ExecutableTypeMethodParser parser = new ExecutableTypeMethodParser(getContext(), node);
-            ExecutableTypeData execType = parser.parse(Arrays.asList(executeCached)).get(0);
-
-            CodeExecutableElement executeMethod = createExecutableTypeOverride(execType, false);
-            CodeTreeBuilder builder = executeMethod.getBuilder();
+            CodeExecutableElement executeMethod = CodeExecutableElement.clone(getContext().getEnvironment(), executeCached);
+            executeMethod.getModifiers().remove(Modifier.ABSTRACT);
+            CodeTreeBuilder builder = executeMethod.createBuilder();
 
             if (specialization.isGeneric() || specialization.isPolymorphic()) {
                 builder.startThrow().startNew(getContext().getType(AssertionError.class));
