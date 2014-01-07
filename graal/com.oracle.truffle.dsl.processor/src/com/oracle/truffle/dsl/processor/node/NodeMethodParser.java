@@ -76,7 +76,6 @@ public abstract class NodeMethodParser<E extends TemplateMethod> extends Templat
         MethodSpec methodSpec = new MethodSpec(createReturnParameterSpec());
 
         addDefaultFrame(methodSpec);
-        addDefaultImplicitThis(method, methodSpec);
         addDefaultFieldMethodSpec(methodSpec);
         addDefaultChildren(shortCircuitsEnabled, shortCircuitName, methodSpec);
 
@@ -114,17 +113,6 @@ public abstract class NodeMethodParser<E extends TemplateMethod> extends Templat
                 spec.setLocal(true);
                 methodSpec.addOptional(spec);
             }
-        }
-    }
-
-    protected void addDefaultImplicitThis(ExecutableElement method, MethodSpec methodSpec) {
-        if (method == null) {
-            return;
-        }
-        TypeMirror declaredType = Utils.findNearestEnclosingType(method).asType();
-
-        if (!method.getModifiers().contains(Modifier.STATIC) && !Utils.isAssignable(getContext(), declaredType, getContext().getTruffleTypes().getNode())) {
-            methodSpec.addImplicitRequiredType(getNode().getTemplateType().asType());
         }
     }
 

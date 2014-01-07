@@ -35,32 +35,30 @@ public class ActualParameter {
     private final String localName;
     private final int specificationVarArgsIndex;
     private final int typeVarArgsIndex;
-    private final boolean implicit;
     private final TypeMirror actualType;
 
-    public ActualParameter(ParameterSpec specification, TypeMirror actualType, int specificationVarArgsIndex, int typeVarArgsIndex, boolean implicit) {
+    public ActualParameter(ParameterSpec specification, TypeMirror actualType, int specificationVarArgsIndex, int typeVarArgsIndex) {
         this.specification = specification;
         this.actualType = actualType;
         this.typeSystemType = null;
 
         this.specificationVarArgsIndex = specificationVarArgsIndex;
-        this.implicit = implicit;
 
         String valueName = specification.getName() + "Value";
         if (specificationVarArgsIndex > -1) {
-            valueName += "_" + specificationVarArgsIndex;
+            valueName += specificationVarArgsIndex;
         }
         this.typeVarArgsIndex = typeVarArgsIndex;
         this.localName = valueName;
     }
 
-    public ActualParameter(ParameterSpec specification, TypeData actualType, int specificationIndex, int varArgsIndex, boolean implicit) {
-        this(specification, actualType.getPrimitiveType(), specificationIndex, varArgsIndex, implicit);
+    public ActualParameter(ParameterSpec specification, TypeData actualType, int specificationIndex, int varArgsIndex) {
+        this(specification, actualType.getPrimitiveType(), specificationIndex, varArgsIndex);
         this.typeSystemType = actualType;
     }
 
     public ActualParameter(ActualParameter parameter, TypeData otherType) {
-        this(parameter.specification, otherType, parameter.specificationVarArgsIndex, parameter.typeVarArgsIndex, parameter.implicit);
+        this(parameter.specification, otherType, parameter.specificationVarArgsIndex, parameter.typeVarArgsIndex);
     }
 
     public ActualParameter(ActualParameter parameter) {
@@ -68,17 +66,12 @@ public class ActualParameter {
         this.actualType = parameter.actualType;
         this.typeSystemType = parameter.typeSystemType;
         this.specificationVarArgsIndex = parameter.specificationVarArgsIndex;
-        this.implicit = parameter.implicit;
         this.localName = parameter.localName;
         this.typeVarArgsIndex = parameter.typeVarArgsIndex;
     }
 
     public int getTypeVarArgsIndex() {
         return typeVarArgsIndex;
-    }
-
-    public boolean isImplicit() {
-        return implicit;
     }
 
     public int getSpecificationVarArgsIndex() {
