@@ -28,7 +28,7 @@ import javax.lang.model.type.*;
 
 import com.oracle.truffle.dsl.processor.*;
 import com.oracle.truffle.dsl.processor.template.*;
-import com.oracle.truffle.dsl.processor.template.TemplateMethod.Signature;
+import com.oracle.truffle.dsl.processor.template.TemplateMethod.TypeSignature;
 import com.oracle.truffle.dsl.processor.typesystem.*;
 
 /**
@@ -55,7 +55,7 @@ public final class SpecializationGroup {
         this.specialization = data;
 
         this.assumptions.addAll(data.getAssumptions());
-        Signature sig = data.getSignature();
+        TypeSignature sig = data.getTypeSignature();
         for (int i = 1; i < sig.size(); i++) {
             typeGuards.add(new TypeGuard(sig.get(i), i - 1));
         }

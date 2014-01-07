@@ -64,8 +64,8 @@ public abstract class MessageContainer {
         }
         verifyExpectedMessages(context, log, childMessages);
 
-        for (Message message : getMessages()) {
-            emitDefault(context, baseElement, log, message);
+        for (int i = getMessages().size() - 1; i >= 0; i--) {
+            emitDefault(context, baseElement, log, getMessages().get(i));
         }
 
         for (MessageContainer sink : findChildContainers()) {

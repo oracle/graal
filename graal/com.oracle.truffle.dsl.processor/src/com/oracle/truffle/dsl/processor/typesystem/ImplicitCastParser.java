@@ -50,7 +50,7 @@ public class ImplicitCastParser extends TypeSystemMethodParser<ImplicitCastData>
             types.add(typeData.getPrimitiveType());
         }
         MethodSpec spec = new MethodSpec(new ParameterSpec("target", types));
-        spec.addRequired(new ParameterSpec("source", types)).setSignature(true);
+        spec.addRequired(new ParameterSpec("source", types));
         return spec;
     }
 

@@ -45,10 +45,6 @@ public class NodeChildData extends MessageContainer {
         }
     }
 
-    public enum ExecutionKind {
-        DEFAULT, SHORT_CIRCUIT
-    }
-
     private final NodeData parent;
     private final Element sourceElement;
     private final AnnotationMirror sourceAnnotationMirror;
@@ -59,14 +55,13 @@ public class NodeChildData extends MessageContainer {
     private final Element accessElement;
 
     private final Cardinality cardinality;
-    private final ExecutionKind executionKind;
 
     private List<NodeChildData> executeWith = Collections.emptyList();
 
     private NodeData nodeData;
 
     public NodeChildData(NodeData parent, Element sourceElement, AnnotationMirror sourceMirror, String name, TypeMirror nodeType, TypeMirror originalNodeType, Element accessElement,
-                    Cardinality cardinality, ExecutionKind executionKind) {
+                    Cardinality cardinality) {
         this.parent = parent;
         this.sourceElement = sourceElement;
         this.sourceAnnotationMirror = sourceMirror;
@@ -75,7 +70,6 @@ public class NodeChildData extends MessageContainer {
         this.originalType = originalNodeType;
         this.accessElement = accessElement;
         this.cardinality = cardinality;
-        this.executionKind = executionKind;
     }
 
     public List<NodeChildData> getExecuteWith() {
@@ -92,18 +86,12 @@ public class NodeChildData extends MessageContainer {
         }
 
         boolean used = false;
-        SpecializationData generic = parent.getGenericSpecialization();
-        for (ActualParameter param : generic.getParameters()) {
-            if (!param.getSpecification().isSignature()) {
-                continue;
-            }
-            NodeChildData child = parent.findChild(param.getSpecification().getName());
-            if (child == this) {
+        for (NodeExecutionData execution : parent.getChildExecutions()) {
+            if (execution.getChild() == this) {
                 used = true;
                 break;
             }
         }
-
         if (!used) {
             return false;
         }
@@ -145,10 +133,6 @@ public class NodeChildData extends MessageContainer {
         return sourceAnnotationMirror;
     }
 
-    public boolean isShortCircuit() {
-        return executionKind == ExecutionKind.SHORT_CIRCUIT;
-    }
-
     void setNode(NodeData nodeData) {
         this.nodeData = nodeData;
         if (nodeData != null) {
@@ -168,10 +152,6 @@ public class NodeChildData extends MessageContainer {
         return cardinality;
     }
 
-    public ExecutionKind getExecutionKind() {
-        return executionKind;
-    }
-
     public NodeData getNodeData() {
         return nodeData;
     }
@@ -182,7 +162,7 @@ public class NodeChildData extends MessageContainer {
 
     @Override
     public String toString() {
-        return "NodeFieldData[name=" + getName() + ", kind=" + cardinality + ", execution=" + executionKind + ", node=" + getNodeData() + "]";
+        return "NodeFieldData[name=" + getName() + ", kind=" + cardinality + ", node=" + getNodeData() + "]";
     }
 
 }

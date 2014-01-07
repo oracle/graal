@@ -34,9 +34,8 @@ import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.dsl.processor.*;
 import com.oracle.truffle.dsl.processor.node.NodeChildData.Cardinality;
-import com.oracle.truffle.dsl.processor.node.NodeChildData.ExecutionKind;
 import com.oracle.truffle.dsl.processor.template.*;
-import com.oracle.truffle.dsl.processor.template.TemplateMethod.Signature;
+import com.oracle.truffle.dsl.processor.template.TemplateMethod.TypeSignature;
 import com.oracle.truffle.dsl.processor.typesystem.*;
 
 public class NodeParser extends TemplateParser<NodeData> {
@@ -205,7 +204,6 @@ public class NodeParser extends TemplateParser<NodeData> {
 
             finalizeSpecializations(elements, splittedNode);
             verifyNode(splittedNode, elements);
-            expandExecutableTypeVarArgs(splittedNode);
             createPolymorphicSpecializations(splittedNode);
             assignShortCircuitsToSpecializations(splittedNode);
         }
@@ -216,26 +214,6 @@ public class NodeParser extends TemplateParser<NodeData> {
             node.setSpecializations(new ArrayList<SpecializationData>());
         }
         return node;
-    }
-
-    private static void expandExecutableTypeVarArgs(NodeData node) {
-        for (ExecutableTypeData executableMethod : node.getExecutableTypes()) {
-            if (!(executableMethod.getMethod().isVarArgs() && executableMethod.getSpecification().isVariableRequiredArguments())) {
-                continue;
-            }
-            int expandArguments = node.getSignatureSize() - executableMethod.getSignatureSize();
-            if (expandArguments > 0) {
-                int signatureSize = executableMethod.getSignatureSize();
-                ActualParameter parameter = executableMethod.getSignatureParameter(signatureSize - 1);
-                for (int i = 0; i < expandArguments; i++) {
-                    int newVarArgsIndex = parameter.getVarArgsIndex() + i + 1;
-                    int newSpecificationIndex = parameter.getSpecificationIndex() + i + 1;
-                    executableMethod.getParameters().add(
-                                    new ActualParameter(parameter.getSpecification(), parameter.getTypeSystemType(), newSpecificationIndex, newVarArgsIndex, parameter.isImplicit()));
-                }
-
-            }
-        }
     }
 
     private void createPolymorphicSpecializations(NodeData node) {
@@ -277,7 +255,7 @@ public class NodeParser extends TemplateParser<NodeData> {
         }
 
         SpecializationData specialization = new SpecializationData(generic, false, false, true);
-        specialization.updateSignature(new Signature(polymorphicSignature));
+        specialization.updateSignature(new TypeSignature(polymorphicSignature));
         specialization.setNode(node);
         node.setGenericPolymorphicSpecialization(specialization);
         // TODO remove polymoprhic specializations
@@ -336,6 +314,7 @@ public class NodeParser extends TemplateParser<NodeData> {
         nodeData.setTypeSystem(typeSystem);
         nodeData.setFields(parseFields(typeHierarchy, elements));
         nodeData.setChildren(parseChildren(nodeData, elements, typeHierarchy));
+        nodeData.setChildExecutions(parseDefaultSignature(nodeData, elements));
         nodeData.setExecutableTypes(groupExecutableTypes(new ExecutableTypeMethodParser(context, nodeData).parse(elements)));
 
         // resolveChildren invokes cyclic parsing.
@@ -343,6 +322,90 @@ public class NodeParser extends TemplateParser<NodeData> {
         resolveChildren(nodeData);
 
         return nodeData;
+    }
+
+    private List<NodeExecutionData> parseDefaultSignature(NodeData node, List<? extends Element> elements) {
+        if (node.getChildren() == null) {
+            return null;
+        }
+
+        // pre-parse short circuits
+        Set<String> shortCircuits = new HashSet<>();
+        List<ExecutableElement> methods = ElementFilter.methodsIn(elements);
+        for (ExecutableElement method : methods) {
+            AnnotationMirror mirror = Utils.findAnnotationMirror(processingEnv, method, ShortCircuit.class);
+            if (mirror != null) {
+                shortCircuits.add(Utils.getAnnotationValue(String.class, mirror, "value"));
+            }
+        }
+
+        boolean hasVarArgs = false;
+        int maxSignatureSize = 0;
+        if (!node.getChildren().isEmpty()) {
+            int lastIndex = node.getChildren().size() - 1;
+            hasVarArgs = node.getChildren().get(lastIndex).getCardinality() == Cardinality.MANY;
+            if (hasVarArgs) {
+                maxSignatureSize = lastIndex;
+            } else {
+                maxSignatureSize = node.getChildren().size();
+            }
+        }
+
+        // pre-parse specializations
+        for (ExecutableElement method : methods) {
+            AnnotationMirror mirror = Utils.findAnnotationMirror(processingEnv, method, Specialization.class);
+            if (mirror == null) {
+                continue;
+            }
+
+            int currentArgumentCount = 0;
+            boolean skipShortCircuit = false;
+            for (VariableElement var : method.getParameters()) {
+                TypeMirror type = var.asType();
+                if (currentArgumentCount == 0) {
+                    // skip optionals
+                    if (Utils.typeEquals(type, context.getTruffleTypes().getFrame())) {
+                        continue;
+                    }
+                    // TODO skip optional fields?
+                }
+                int childIndex = currentArgumentCount < node.getChildren().size() ? currentArgumentCount : node.getChildren().size() - 1;
+                if (childIndex == -1) {
+                    continue;
+                }
+                if (!skipShortCircuit) {
+                    NodeChildData child = node.getChildren().get(childIndex);
+                    if (shortCircuits.contains(NodeExecutionData.createShortCircuitId(child, currentArgumentCount - childIndex))) {
+                        skipShortCircuit = true;
+                        continue;
+                    }
+                } else {
+                    skipShortCircuit = false;
+                }
+
+                currentArgumentCount++;
+            }
+            maxSignatureSize = Math.max(maxSignatureSize, currentArgumentCount);
+        }
+
+        List<NodeExecutionData> executions = new ArrayList<>();
+        for (int i = 0; i < maxSignatureSize; i++) {
+            int childIndex = i;
+            boolean varArg = false;
+            if (childIndex >= node.getChildren().size() - 1) {
+                if (hasVarArgs) {
+                    childIndex = node.getChildren().size() - 1;
+                    varArg = hasVarArgs;
+                } else if (childIndex >= node.getChildren().size()) {
+                    break;
+                }
+            }
+            int varArgsIndex = varArg ? Math.abs(childIndex - i) : -1;
+            NodeChildData child = node.getChildren().get(childIndex);
+            boolean shortCircuit = shortCircuits.contains(NodeExecutionData.createShortCircuitId(child, varArgsIndex));
+            executions.add(new NodeExecutionData(child, varArgsIndex, shortCircuit));
+        }
+        return executions;
     }
 
     private List<NodeFieldData> parseFields(List<TypeElement> typeHierarchy, List<? extends Element> elements) {
@@ -470,12 +533,7 @@ public class NodeParser extends TemplateParser<NodeData> {
 
                 Element getter = findGetter(elements, name, childType);
 
-                ExecutionKind kind = ExecutionKind.DEFAULT;
-                if (shortCircuits.contains(name)) {
-                    kind = ExecutionKind.SHORT_CIRCUIT;
-                }
-
-                NodeChildData nodeChild = new NodeChildData(parent, type, childMirror, name, childType, originalChildType, getter, cardinality, kind);
+                NodeChildData nodeChild = new NodeChildData(parent, type, childMirror, name, childType, originalChildType, getter, cardinality);
 
                 parsedChildren.add(nodeChild);
 
@@ -727,62 +785,64 @@ public class NodeParser extends TemplateParser<NodeData> {
     }
 
     private SpecializationData createGenericSpecialization(final NodeData node, List<SpecializationData> specializations) {
-        SpecializationData genericSpecialization;
         SpecializationData specialization = specializations.get(0);
         GenericParser parser = new GenericParser(context, node);
         MethodSpec specification = parser.createDefaultMethodSpec(specialization.getMethod(), null, true, null);
+        specification.getImplicitRequiredTypes().clear();
 
-        List<ActualParameter> parameters = new ArrayList<>();
-        for (ActualParameter parameter : specialization.getReturnTypeAndParameters()) {
-            if (!parameter.getSpecification().isSignature()) {
-                parameters.add(new ActualParameter(parameter));
-                continue;
+        List<TypeMirror> parameterTypes = new ArrayList<>();
+        int signatureIndex = 1;
+        for (ParameterSpec spec : specification.getRequired()) {
+            parameterTypes.add(createGenericType(spec, specializations, signatureIndex));
+            if (spec.isSignature()) {
+                signatureIndex++;
             }
-            NodeData childNode = node;
-            NodeChildData child = node.findChild(parameter.getSpecification().getName());
-            if (child != null) {
-                childNode = child.getNodeData();
+        }
+        TypeMirror returnType = createGenericType(specification.getReturnType(), specializations, 0);
+        return parser.create("Generic", null, null, returnType, parameterTypes);
+    }
+
+    private TypeMirror createGenericType(ParameterSpec spec, List<SpecializationData> specializations, int signatureIndex) {
+        NodeExecutionData execution = spec.getExecution();
+        if (execution == null) {
+            if (spec.getAllowedTypes().size() == 1) {
+                return spec.getAllowedTypes().get(0);
+            } else {
+                return Utils.getCommonSuperType(context, spec.getAllowedTypes().toArray(new TypeMirror[0]));
             }
+        } else {
+            Set<TypeData> types = new HashSet<>();
+            for (SpecializationData specialization : specializations) {
+                types.add(specialization.getTypeSignature().get(signatureIndex));
+            }
+
+            NodeChildData child = execution.getChild();
 
             TypeData genericType = null;
-
-            Set<TypeData> types = new HashSet<>();
-            for (SpecializationData otherSpecialization : specializations) {
-                ActualParameter otherParameter = otherSpecialization.findParameter(parameter.getLocalName());
-                if (otherParameter != null) {
-                    types.add(otherParameter.getTypeSystemType());
-                }
-            }
-
-            assert !types.isEmpty();
-
             if (types.size() == 1) {
-                ExecutableTypeData executable = childNode.findExecutableType(types.iterator().next(), 0);
+                ExecutableTypeData executable = child.findExecutableType(context, types.iterator().next());
                 if (executable != null && !executable.hasUnexpectedValue(context)) {
                     genericType = types.iterator().next();
-                } else {
-                    genericType = childNode.findAnyGenericExecutableType(context, 0).getType();
                 }
-            } else {
-                genericType = childNode.findAnyGenericExecutableType(context, 0).getType();
             }
-
-            parameters.add(new ActualParameter(parameter, genericType));
+            if (genericType == null) {
+                genericType = child.findAnyGenericExecutableType(context).getType();
+            }
+            return genericType.getPrimitiveType();
         }
-        ActualParameter returnType = parameters.get(0);
-        parameters = parameters.subList(1, parameters.size());
-
-        TemplateMethod genericMethod = new TemplateMethod("Generic", node, specification, null, null, returnType, parameters);
-        genericSpecialization = new SpecializationData(genericMethod, true, false, false);
-        return genericSpecialization;
     }
 
     private void assignShortCircuitsToSpecializations(NodeData node) {
         Map<String, List<ShortCircuitData>> groupedShortCircuits = groupShortCircuits(node.getShortCircuits());
 
         boolean valid = true;
-        for (NodeChildData field : node.filterFields(ExecutionKind.SHORT_CIRCUIT)) {
-            String valueName = field.getName();
+        List<NodeExecutionData> shortCircuitExecutions = new ArrayList<>();
+        for (NodeExecutionData execution : node.getChildExecutions()) {
+            if (!execution.isShortCircuit()) {
+                continue;
+            }
+            shortCircuitExecutions.add(execution);
+            String valueName = execution.getShortCircuitId();
             List<ShortCircuitData> availableCircuits = groupedShortCircuits.get(valueName);
 
             if (availableCircuits == null || availableCircuits.isEmpty()) {
@@ -809,7 +869,7 @@ public class NodeParser extends TemplateParser<NodeData> {
 
             ShortCircuitData genericCircuit = null;
             for (ShortCircuitData circuit : availableCircuits) {
-                if (isGenericShortCutMethod(node, circuit)) {
+                if (isGenericShortCutMethod(circuit)) {
                     genericCircuit = circuit;
                     break;
                 }
@@ -832,16 +892,15 @@ public class NodeParser extends TemplateParser<NodeData> {
             return;
         }
 
-        NodeChildData[] fields = node.filterFields(ExecutionKind.SHORT_CIRCUIT);
         List<SpecializationData> specializations = new ArrayList<>();
         specializations.addAll(node.getSpecializations());
         specializations.addAll(node.getPolymorphicSpecializations());
 
         for (SpecializationData specialization : specializations) {
-            List<ShortCircuitData> assignedShortCuts = new ArrayList<>(fields.length);
+            List<ShortCircuitData> assignedShortCuts = new ArrayList<>(shortCircuitExecutions.size());
 
-            for (int i = 0; i < fields.length; i++) {
-                List<ShortCircuitData> availableShortCuts = groupedShortCircuits.get(fields[i].getName());
+            for (NodeExecutionData shortCircuit : shortCircuitExecutions) {
+                List<ShortCircuitData> availableShortCuts = groupedShortCircuits.get(shortCircuit.getShortCircuitId());
 
                 ShortCircuitData genericShortCircuit = null;
                 ShortCircuitData compatibleShortCircuit = null;
@@ -897,7 +956,7 @@ public class NodeParser extends TemplateParser<NodeData> {
             List<String> paramIds = new LinkedList<>();
             paramIds.add(Utils.getTypeId(other.getReturnType().getType()));
             for (ActualParameter param : other.getParameters()) {
-                if (other.getNode().findChild(param.getSpecification().getName()) == null) {
+                if (param.getSpecification().getExecution() == null) {
                     continue;
                 }
                 paramIds.add(Utils.getTypeId(param.getType()));
@@ -1230,14 +1289,14 @@ public class NodeParser extends TemplateParser<NodeData> {
         return null;
     }
 
-    private boolean isGenericShortCutMethod(NodeData node, TemplateMethod method) {
+    private boolean isGenericShortCutMethod(ShortCircuitData method) {
         for (ActualParameter parameter : method.getParameters()) {
-            NodeChildData field = node.findChild(parameter.getSpecification().getName());
-            if (field == null) {
+            NodeExecutionData execution = parameter.getSpecification().getExecution();
+            if (execution == null) {
                 continue;
             }
             ExecutableTypeData found = null;
-            List<ExecutableTypeData> executableElements = field.findGenericExecutableTypes(context);
+            List<ExecutableTypeData> executableElements = execution.getChild().findGenericExecutableTypes(context);
             for (ExecutableTypeData executable : executableElements) {
                 if (executable.getType().equalsType(parameter.getTypeSystemType())) {
                     found = executable;

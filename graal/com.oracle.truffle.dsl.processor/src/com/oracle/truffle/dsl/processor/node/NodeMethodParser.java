@@ -28,7 +28,6 @@ import javax.lang.model.element.*;
 import javax.lang.model.type.*;
 
 import com.oracle.truffle.dsl.processor.*;
-import com.oracle.truffle.dsl.processor.node.NodeChildData.*;
 import com.oracle.truffle.dsl.processor.template.*;
 
 public abstract class NodeMethodParser<E extends TemplateMethod> extends TemplateMethodParser<NodeData, E> {
@@ -41,10 +40,9 @@ public abstract class NodeMethodParser<E extends TemplateMethod> extends Templat
         return template;
     }
 
-    @SuppressWarnings("unused")
-    protected ParameterSpec createValueParameterSpec(String valueName, NodeData nodeData, int evaluatedCount) {
-        ParameterSpec spec = new ParameterSpec(valueName, nodeTypeMirrors(nodeData));
-        spec.setSignature(true);
+    protected ParameterSpec createValueParameterSpec(NodeExecutionData execution) {
+        ParameterSpec spec = new ParameterSpec(execution.getName(), nodeTypeMirrors(execution.getChild().getNodeData()));
+        spec.setExecution(execution);
         return spec;
     }
 
@@ -61,7 +59,7 @@ public abstract class NodeMethodParser<E extends TemplateMethod> extends Templat
     }
 
     protected ParameterSpec createReturnParameterSpec() {
-        return createValueParameterSpec("returnValue", getNode(), 0);
+        return new ParameterSpec("returnValue", nodeTypeMirrors(getNode()));
     }
 
     @Override
@@ -85,31 +83,21 @@ public abstract class NodeMethodParser<E extends TemplateMethod> extends Templat
         return methodSpec;
     }
 
-    public void addDefaultChildren(boolean shortCircuitsEnabled, String breakName, MethodSpec methodSpec) {
-        // children are null when parsing executable types
-        if (getNode().getChildren() != null) {
-            for (NodeChildData child : getNode().getChildren()) {
-                String valueName = child.getName();
-                if (breakName != null && valueName.equals(breakName)) {
-                    break;
-                }
-                if (child.getExecutionKind() == ExecutionKind.DEFAULT) {
-                    ParameterSpec spec = createValueParameterSpec(child.getName(), child.getNodeData(), child.getExecuteWith().size());
-                    if (child.getCardinality().isMany()) {
-                        spec.setCardinality(Cardinality.MANY);
-                        spec.setIndexed(true);
-                    }
-                    methodSpec.addRequired(spec);
-                } else if (child.getExecutionKind() == ExecutionKind.SHORT_CIRCUIT) {
+    public void addDefaultChildren(boolean shortCircuitsEnabled, String breakName, MethodSpec spec) {
+        if (getNode().getChildren() == null) {
+            // children are null when parsing executable types
+            return;
+        }
 
-                    if (shortCircuitsEnabled) {
-                        methodSpec.addRequired(new ParameterSpec(shortCircuitValueName(valueName), getContext().getType(boolean.class)));
-                    }
-                    methodSpec.addRequired(createValueParameterSpec(valueName, child.getNodeData(), child.getExecuteWith().size()));
-                } else {
-                    assert false;
-                }
+        for (NodeExecutionData execution : getNode().getChildExecutions()) {
+            if (breakName != null && execution.getShortCircuitId().equals(breakName)) {
+                break;
             }
+
+            if (execution.isShortCircuit() && shortCircuitsEnabled) {
+                spec.addRequired(new ParameterSpec(shortCircuitValueName(execution.getName()), getContext().getType(boolean.class)));
+            }
+            spec.addRequired(createValueParameterSpec(execution));
         }
     }
 
@@ -130,6 +118,9 @@ public abstract class NodeMethodParser<E extends TemplateMethod> extends Templat
     }
 
     protected void addDefaultImplicitThis(ExecutableElement method, MethodSpec methodSpec) {
+        if (method == null) {
+            return;
+        }
         TypeMirror declaredType = Utils.findNearestEnclosingType(method).asType();
 
         if (!method.getModifiers().contains(Modifier.STATIC) && !Utils.isAssignable(getContext(), declaredType, getContext().getTruffleTypes().getNode())) {

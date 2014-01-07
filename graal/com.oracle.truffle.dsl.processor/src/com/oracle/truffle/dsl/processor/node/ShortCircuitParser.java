@@ -29,7 +29,6 @@ import javax.lang.model.element.*;
 
 import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.dsl.processor.*;
-import com.oracle.truffle.dsl.processor.node.NodeChildData.*;
 import com.oracle.truffle.dsl.processor.template.*;
 
 public class ShortCircuitParser extends NodeMethodParser<ShortCircuitData> {
@@ -40,15 +39,17 @@ public class ShortCircuitParser extends NodeMethodParser<ShortCircuitData> {
         super(context, node);
 
         shortCircuitValues = new HashSet<>();
-        NodeChildData[] shortCircuitFields = node.filterFields(ExecutionKind.SHORT_CIRCUIT);
-        for (NodeChildData field : shortCircuitFields) {
-            shortCircuitValues.add(field.getName());
+        for (NodeExecutionData execution : node.getChildExecutions()) {
+            if (execution.isShortCircuit()) {
+                shortCircuitValues.add(execution.getShortCircuitId());
+            }
         }
     }
 
     @Override
     public MethodSpec createSpecification(ExecutableElement method, AnnotationMirror mirror) {
         String shortCircuitValue = Utils.getAnnotationValue(String.class, mirror, "value");
+
         return createDefaultMethodSpec(method, mirror, true, shortCircuitValue);
     }
 

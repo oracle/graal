@@ -29,7 +29,6 @@ import javax.lang.model.element.*;
 import javax.lang.model.type.*;
 
 import com.oracle.truffle.dsl.processor.*;
-import com.oracle.truffle.dsl.processor.node.NodeChildData.*;
 import com.oracle.truffle.dsl.processor.template.*;
 import com.oracle.truffle.dsl.processor.typesystem.*;
 
@@ -52,13 +51,11 @@ public class ExecutableTypeMethodParser extends NodeMethodParser<ExecutableTypeD
         for (ParameterSpec originalSpec : requiredSpecs) {
             spec.addRequired(new ParameterSpec(originalSpec, allowedTypes));
         }
-
-        spec.setVariableRequiredArguments(true);
-        ParameterSpec other = new ParameterSpec("other", allowedTypes);
-        other.setCardinality(Cardinality.MANY);
-        other.setSignature(true);
-        other.setIndexed(true);
-        spec.addRequired(other);
+        spec.setIgnoreAdditionalSpecifications(true);
+        spec.setIgnoreAdditionalParameters(true);
+        spec.setVariableRequiredParameters(true);
+        // varargs
+        spec.addRequired(new ParameterSpec("other", allowedTypes));
         return spec;
     }
 

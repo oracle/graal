@@ -29,6 +29,7 @@ import javax.lang.model.type.*;
 
 import com.oracle.truffle.dsl.processor.*;
 import com.oracle.truffle.dsl.processor.typesystem.*;
+import com.oracle.truffle.dsl.processor.util.*;
 
 /**
  * Note: this class has a natural ordering that is inconsistent with equals.
@@ -133,6 +134,14 @@ public class TemplateMethod extends MessageContainer implements Comparable<Templ
         return requiredParameters;
     }
 
+    public Iterable<ActualParameter> getSignatureParameters() {
+        return new FilteredIterable<>(getParameters(), new Predicate<ActualParameter>() {
+            public boolean evaluate(ActualParameter value) {
+                return value.getSpecification().isSignature();
+            }
+        });
+    }
+
     public List<ActualParameter> getParameters() {
         return parameters;
     }
@@ -213,12 +222,10 @@ public class TemplateMethod extends MessageContainer implements Comparable<Templ
         return signatureSize;
     }
 
-    public Signature getSignature() {
-        Signature signature = new Signature();
-        for (ActualParameter parameter : getReturnTypeAndParameters()) {
-            if (!parameter.getSpecification().isSignature()) {
-                continue;
-            }
+    public TypeSignature getTypeSignature() {
+        TypeSignature signature = new TypeSignature();
+        signature.types.add(getReturnType().getTypeSystemType());
+        for (ActualParameter parameter : getSignatureParameters()) {
             TypeData typeData = parameter.getTypeSystemType();
             if (typeData != null) {
                 signature.types.add(typeData);
@@ -241,7 +248,7 @@ public class TemplateMethod extends MessageContainer implements Comparable<Templ
         return null;
     }
 
-    public void updateSignature(Signature signature) {
+    public void updateSignature(TypeSignature signature) {
         assert signature.size() >= 1;
         int signatureIndex = 0;
         for (ActualParameter parameter : getReturnTypeAndParameters()) {
@@ -297,8 +304,8 @@ public class TemplateMethod extends MessageContainer implements Comparable<Templ
             throw new IllegalStateException("Cannot compare two methods with different type systems.");
         }
 
-        List<TypeMirror> signature1 = getSignatureTypes(getReturnTypeAndParameters());
-        List<TypeMirror> signature2 = getSignatureTypes(compareMethod.getReturnTypeAndParameters());
+        List<TypeMirror> signature1 = getSignatureTypes(this);
+        List<TypeMirror> signature2 = getSignatureTypes(compareMethod);
         if (signature1.size() != signature2.size()) {
             return signature2.size() - signature1.size();
         }
@@ -347,25 +354,24 @@ public class TemplateMethod extends MessageContainer implements Comparable<Templ
         return Utils.getSimpleName(signature1).compareTo(Utils.getSimpleName(signature2));
     }
 
-    public static List<TypeMirror> getSignatureTypes(List<ActualParameter> params) {
+    public static List<TypeMirror> getSignatureTypes(TemplateMethod method) {
         List<TypeMirror> types = new ArrayList<>();
-        for (ActualParameter param : params) {
-            if (param.getSpecification().isSignature()) {
-                types.add(param.getType());
-            }
+        types.add(method.getReturnType().getType());
+        for (ActualParameter param : method.getSignatureParameters()) {
+            types.add(param.getType());
         }
         return types;
     }
 
-    public static class Signature implements Iterable<TypeData>, Comparable<Signature> {
+    public static class TypeSignature implements Iterable<TypeData>, Comparable<TypeSignature> {
 
         final List<TypeData> types;
 
-        public Signature() {
+        public TypeSignature() {
             this.types = new ArrayList<>();
         }
 
-        public Signature(List<TypeData> signature) {
+        public TypeSignature(List<TypeData> signature) {
             this.types = signature;
         }
 
@@ -382,7 +388,7 @@ public class TemplateMethod extends MessageContainer implements Comparable<Templ
             return types.get(index);
         }
 
-        public int compareTo(Signature other) {
+        public int compareTo(TypeSignature other) {
             if (this == other) {
                 return 0;
             } else if (types.size() != other.types.size()) {
@@ -404,7 +410,7 @@ public class TemplateMethod extends MessageContainer implements Comparable<Templ
             return 0;
         }
 
-        public Signature combine(Signature genericSignature, Signature other) {
+        public TypeSignature combine(TypeSignature genericSignature, TypeSignature other) {
             assert types.size() == other.types.size();
             assert genericSignature.types.size() == other.types.size();
 
@@ -412,7 +418,7 @@ public class TemplateMethod extends MessageContainer implements Comparable<Templ
                 return this;
             }
 
-            Signature signature = new Signature();
+            TypeSignature signature = new TypeSignature();
             for (int i = 0; i < types.size(); i++) {
                 TypeData type1 = types.get(i);
                 TypeData type2 = other.types.get(i);
@@ -425,7 +431,7 @@ public class TemplateMethod extends MessageContainer implements Comparable<Templ
             return signature;
         }
 
-        public boolean equalsParameters(Signature other) {
+        public boolean equalsParameters(TypeSignature other) {
             if (size() != other.size()) {
                 return false;
             }
@@ -434,8 +440,8 @@ public class TemplateMethod extends MessageContainer implements Comparable<Templ
 
         @Override
         public boolean equals(Object obj) {
-            if (obj instanceof Signature) {
-                return ((Signature) obj).types.equals(types);
+            if (obj instanceof TypeSignature) {
+                return ((TypeSignature) obj).types.equals(types);
             }
             return super.equals(obj);
         }
@@ -449,7 +455,7 @@ public class TemplateMethod extends MessageContainer implements Comparable<Templ
             return types.toString();
         }
 
-        public boolean hasAnyParameterMatch(Signature other) {
+        public boolean hasAnyParameterMatch(TypeSignature other) {
             for (int i = 1; i < types.size(); i++) {
                 TypeData type1 = types.get(i);
                 TypeData type2 = other.types.get(i);
@@ -460,7 +466,7 @@ public class TemplateMethod extends MessageContainer implements Comparable<Templ
             return false;
         }
 
-        public boolean isCompatibleTo(Signature signature) {
+        public boolean isCompatibleTo(TypeSignature signature) {
             if (size() != signature.size()) {
                 return false;
             }

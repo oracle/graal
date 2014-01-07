@@ -28,7 +28,6 @@ import javax.lang.model.element.*;
 import javax.lang.model.type.*;
 
 import com.oracle.truffle.dsl.processor.*;
-import com.oracle.truffle.dsl.processor.node.NodeChildData.*;
 import com.oracle.truffle.dsl.processor.template.*;
 import com.oracle.truffle.dsl.processor.typesystem.*;
 
@@ -41,6 +40,7 @@ public class NodeData extends Template implements Comparable<NodeData> {
 
     private TypeSystemData typeSystem;
     private List<NodeChildData> children;
+    private List<NodeExecutionData> childExecutions;
     private List<NodeFieldData> fields;
     private TypeMirror nodeType;
     private ParameterSpec instanceParameterSpec;
@@ -76,6 +76,14 @@ public class NodeData extends Template implements Comparable<NodeData> {
         this.fields = splitSource.fields;
         this.children = splitSource.children;
         this.assumptions = splitSource.assumptions;
+    }
+
+    public List<NodeExecutionData> getChildExecutions() {
+        return childExecutions;
+    }
+
+    void setChildExecutions(List<NodeExecutionData> signature) {
+        this.childExecutions = signature;
     }
 
     public int getSignatureSize() {
@@ -374,16 +382,6 @@ public class NodeData extends Template implements Comparable<NodeData> {
         return result;
     }
 
-    public NodeChildData[] filterFields(ExecutionKind usage) {
-        List<NodeChildData> filteredFields = new ArrayList<>();
-        for (NodeChildData field : getChildren()) {
-            if (usage == null || field.getExecutionKind() == usage) {
-                filteredFields.add(field);
-            }
-        }
-        return filteredFields.toArray(new NodeChildData[filteredFields.size()]);
-    }
-
     public boolean needsRewrites(ProcessorContext context) {
         boolean needsRewrites = false;
 
@@ -490,6 +488,18 @@ public class NodeData extends Template implements Comparable<NodeData> {
         return b.toString();
     }
 
+    public NodeExecutionData findExecution(String name) {
+        if (getChildExecutions() == null) {
+            return null;
+        }
+        for (NodeExecutionData execution : getChildExecutions()) {
+            if (execution.getName().equals(name)) {
+                return execution;
+            }
+        }
+        return null;
+    }
+
     public NodeChildData findChild(String name) {
         for (NodeChildData field : getChildren()) {
             if (field.getName().equals(name)) {
@@ -593,4 +603,5 @@ public class NodeData extends Template implements Comparable<NodeData> {
     public int compareTo(NodeData o) {
         return getNodeId().compareTo(o.getNodeId());
     }
+
 }

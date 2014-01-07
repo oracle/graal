@@ -99,20 +99,12 @@ public class SpecializationData extends TemplateMethod {
             return false;
         }
 
-        for (ActualParameter parameter : getParameters()) {
-            if (!parameter.getSpecification().isSignature()) {
-                continue;
-            }
-            NodeChildData child = getNode().findChild(parameter.getSpecification().getName());
-            if (child == null) {
-                continue;
-            }
+        for (ActualParameter parameter : getSignatureParameters()) {
             ActualParameter genericParameter = getNode().getGenericSpecialization().findParameter(parameter.getLocalName());
             if (!parameter.getTypeSystemType().equals(genericParameter.getTypeSystemType())) {
                 return false;
             }
         }
-
         return true;
     }
 
@@ -126,12 +118,8 @@ public class SpecializationData extends TemplateMethod {
         if (!getAssumptions().isEmpty()) {
             return true;
         }
-        for (ActualParameter parameter : getParameters()) {
-            NodeChildData child = getNode().findChild(parameter.getSpecification().getName());
-            if (child == null) {
-                continue;
-            }
-            ExecutableTypeData type = child.findExecutableType(context, parameter.getTypeSystemType());
+        for (ActualParameter parameter : getSignatureParameters()) {
+            ExecutableTypeData type = parameter.getSpecification().getExecution().getChild().findExecutableType(context, parameter.getTypeSystemType());
             if (type.hasUnexpectedValue(context)) {
                 return true;
             }
@@ -254,7 +242,7 @@ public class SpecializationData extends TemplateMethod {
 
     @Override
     public String toString() {
-        return String.format("%s [id = %s, method = %s, guards = %s, signature = %s]", getClass().getSimpleName(), getId(), getMethod(), getGuards(), getSignature());
+        return String.format("%s [id = %s, method = %s, guards = %s, signature = %s]", getClass().getSimpleName(), getId(), getMethod(), getGuards(), getTypeSignature());
     }
 
     public void forceFrame(TypeMirror frameType) {
@@ -267,7 +255,7 @@ public class SpecializationData extends TemplateMethod {
     }
 
     public boolean equalsGuards(SpecializationData specialization) {
-        if (assumptions.equals(specialization.getAssumptions()) && guards.equals(specialization.getGuards()) && getSignature().equalsParameters(specialization.getSignature())) {
+        if (assumptions.equals(specialization.getAssumptions()) && guards.equals(specialization.getGuards()) && getTypeSignature().equalsParameters(specialization.getTypeSignature())) {
             return true;
         }
         return false;
@@ -281,4 +269,5 @@ public class SpecializationData extends TemplateMethod {
         }
         return false;
     }
+
 }
