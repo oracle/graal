@@ -57,6 +57,7 @@ public class ParameterSpec {
         this.local = o.local;
         this.typeDefinition = o.typeDefinition;
         this.execution = o.execution;
+        this.signature = o.signature;
         this.allowedTypes = allowedTypes;
     }
 
