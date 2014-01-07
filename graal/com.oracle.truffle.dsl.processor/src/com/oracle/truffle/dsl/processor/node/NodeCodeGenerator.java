@@ -964,16 +964,16 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
             CodeTreeBuilder resetBuilder = builder.create();
 
             for (ActualParameter param : getModel().getSignatureParameters()) {
-                NodeChildData child = param.getSpecification().getExecution().getChild();
+                NodeExecutionData execution = param.getSpecification().getExecution();
 
                 CodeTreeBuilder access = builder.create();
-                access.string("this.").string(child.getName());
-                if (child.getCardinality().isMany()) {
-                    access.string("[").string(String.valueOf(param.getSpecificationVarArgsIndex())).string("]");
+                access.string("this.").string(execution.getChild().getName());
+                if (execution.isIndexed()) {
+                    access.string("[").string(String.valueOf(execution.getIndex())).string("]");
                 }
 
                 String oldName = "old" + Utils.firstLetterUpperCase(param.getLocalName());
-                oldBuilder.declaration(child.getNodeData().getNodeType(), oldName, access);
+                oldBuilder.declaration(execution.getChild().getNodeData().getNodeType(), oldName, access);
                 nullBuilder.startStatement().tree(access.getRoot()).string(" = null").end();
                 resetBuilder.startStatement().tree(access.getRoot()).string(" = ").string(oldName).end();
             }
@@ -1111,7 +1111,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
 
             ExecutableTypeData sourceExecutableType = node.findExecutableType(polymorph.getReturnType().getTypeSystemType(), 0);
             boolean sourceThrowsUnexpected = sourceExecutableType != null && sourceExecutableType.hasUnexpectedValue(getContext());
-            if (sourceExecutableType.getType().equals(node.getGenericSpecialization().getReturnType().getTypeSystemType())) {
+            if (sourceThrowsUnexpected && sourceExecutableType.getType().equals(node.getGenericSpecialization().getReturnType().getTypeSystemType())) {
                 sourceThrowsUnexpected = false;
             }
             if (sourceThrowsUnexpected) {

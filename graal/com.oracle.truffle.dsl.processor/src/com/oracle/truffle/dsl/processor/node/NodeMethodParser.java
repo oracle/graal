@@ -59,7 +59,9 @@ public abstract class NodeMethodParser<E extends TemplateMethod> extends Templat
     }
 
     protected ParameterSpec createReturnParameterSpec() {
-        return new ParameterSpec("returnValue", nodeTypeMirrors(getNode()));
+        ParameterSpec returnValue = new ParameterSpec("returnValue", nodeTypeMirrors(getNode()));
+        returnValue.setExecution(getNode().getThisExecution());
+        return returnValue;
     }
 
     @Override

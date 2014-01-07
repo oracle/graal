@@ -34,7 +34,7 @@ import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.dsl.processor.*;
 import com.oracle.truffle.dsl.processor.node.NodeChildData.Cardinality;
-import com.oracle.truffle.dsl.processor.node.SpecializationData.*;
+import com.oracle.truffle.dsl.processor.node.SpecializationData.SpecializationKind;
 import com.oracle.truffle.dsl.processor.template.*;
 import com.oracle.truffle.dsl.processor.template.TemplateMethod.TypeSignature;
 import com.oracle.truffle.dsl.processor.typesystem.*;
@@ -761,10 +761,8 @@ public class NodeParser extends AbstractParser<NodeData> {
     }
 
     private SpecializationData createGenericSpecialization(final NodeData node) {
-        SpecializationData specialization = node.getSpecializations().get(0);
         GenericParser parser = new GenericParser(context, node);
-        MethodSpec specification = parser.createDefaultMethodSpec(specialization.getMethod(), null, true, null);
-        specification.getImplicitRequiredTypes().clear();
+        MethodSpec specification = parser.createDefaultMethodSpec(node.getSpecializations().iterator().next().getMethod(), null, true, null);
 
         List<TypeMirror> parameterTypes = new ArrayList<>();
         int signatureIndex = 1;
@@ -774,8 +772,14 @@ public class NodeParser extends AbstractParser<NodeData> {
                 signatureIndex++;
             }
         }
+
         TypeMirror returnType = createGenericType(specification.getReturnType(), node.getSpecializations(), 0);
-        return parser.create("Generic", null, null, returnType, parameterTypes);
+        SpecializationData generic = parser.create("Generic", null, null, returnType, parameterTypes);
+        if (generic == null) {
+            throw new RuntimeException("Unable to create generic signature for node " + node.getNodeId() + " with " + parameterTypes + ". Specification " + specification + ".");
+        }
+
+        return generic;
     }
 
     private TypeMirror createGenericType(ParameterSpec spec, List<SpecializationData> specializations, int signatureIndex) {
@@ -793,11 +797,10 @@ public class NodeParser extends AbstractParser<NodeData> {
             }
 
             NodeChildData child = execution.getChild();
-
             TypeData genericType = null;
             if (types.size() == 1) {
                 ExecutableTypeData executable = child.findExecutableType(context, types.iterator().next());
-                if (executable != null && !executable.hasUnexpectedValue(context)) {
+                if (executable != null && (signatureIndex == 0 || !executable.hasUnexpectedValue(context))) {
                     genericType = types.iterator().next();
                 }
             }

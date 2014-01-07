@@ -169,9 +169,9 @@ public abstract class TemplateMethodParser<T extends Template, E extends Templat
 
         List<ActualParameter> parameters = parseParameters(methodSpecification, parameterTypes, isUseVarArgs() && method != null ? method.isVarArgs() : false);
         if (parameters == null) {
-            if (isEmitErrors()) {
+            if (isEmitErrors() && method != null) {
                 E invalidMethod = create(new TemplateMethod(id, template, methodSpecification, method, annotation, returnTypeMirror, Collections.<ActualParameter> emptyList()), true);
-                String message = String.format("Method signature %s does not match to the expected signature: \n%s", createActualSignature(methodSpecification, method),
+                String message = String.format("Method signature %s does not match to the expected signature: \n%s", createActualSignature(method),
                                 methodSpecification.toSignatureString(method.getSimpleName().toString()));
                 invalidMethod.addError(message);
                 return invalidMethod;
@@ -183,18 +183,15 @@ public abstract class TemplateMethodParser<T extends Template, E extends Templat
         return create(new TemplateMethod(id, template, methodSpecification, method, annotation, returnTypeMirror, parameters), false);
     }
 
-    private static String createActualSignature(MethodSpec spec, ExecutableElement method) {
+    private static String createActualSignature(ExecutableElement method) {
         StringBuilder b = new StringBuilder("(");
         String sep = "";
-        for (TypeMirror implicitType : spec.getImplicitRequiredTypes()) {
-            b.append(sep);
-            b.append("implicit " + Utils.getSimpleName(implicitType));
-            sep = ", ";
-        }
-        for (VariableElement var : method.getParameters()) {
-            b.append(sep);
-            b.append(Utils.getSimpleName(var.asType()));
-            sep = ", ";
+        if (method != null) {
+            for (VariableElement var : method.getParameters()) {
+                b.append(sep);
+                b.append(Utils.getSimpleName(var.asType()));
+                sep = ", ";
+            }
         }
         b.append(")");
         return b.toString();
@@ -207,12 +204,10 @@ public abstract class TemplateMethodParser<T extends Template, E extends Templat
      * ones are cut and used to parse the optional parameters.
      */
     private List<ActualParameter> parseParameters(MethodSpec spec, List<TypeMirror> parameterTypes, boolean varArgs) {
-        List<TypeMirror> implicitTypes = spec.getImplicitRequiredTypes();
-
         List<ActualParameter> parsedRequired = null;
         int offset = 0;
         for (; offset <= parameterTypes.size(); offset++) {
-            List<TypeMirror> parameters = new ArrayList<>(implicitTypes);
+            List<TypeMirror> parameters = new ArrayList<>();
             parameters.addAll(parameterTypes.subList(offset, parameterTypes.size()));
             parsedRequired = parseParametersRequired(spec, parameters, varArgs);
             if (parsedRequired != null) {

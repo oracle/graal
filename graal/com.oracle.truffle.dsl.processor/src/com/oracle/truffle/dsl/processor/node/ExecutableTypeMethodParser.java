@@ -55,7 +55,9 @@ public class ExecutableTypeMethodParser extends NodeMethodParser<ExecutableTypeD
         spec.setIgnoreAdditionalParameters(true);
         spec.setVariableRequiredParameters(true);
         // varargs
-        spec.addRequired(new ParameterSpec("other", allowedTypes));
+        ParameterSpec otherParameters = new ParameterSpec("other", allowedTypes);
+        otherParameters.setSignature(true);
+        spec.addRequired(otherParameters);
         return spec;
     }
 

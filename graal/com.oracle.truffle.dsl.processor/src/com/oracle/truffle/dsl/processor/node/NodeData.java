@@ -28,6 +28,7 @@ import javax.lang.model.element.*;
 import javax.lang.model.type.*;
 
 import com.oracle.truffle.dsl.processor.*;
+import com.oracle.truffle.dsl.processor.node.NodeChildData.*;
 import com.oracle.truffle.dsl.processor.template.*;
 import com.oracle.truffle.dsl.processor.typesystem.*;
 
@@ -51,6 +52,8 @@ public class NodeData extends Template implements Comparable<NodeData> {
     private final List<CreateCastData> casts = new ArrayList<>();
     private Map<Integer, List<ExecutableTypeData>> executableTypes;
 
+    private final NodeExecutionData thisExecution;
+
     private int polymorphicDepth = -1;
 
     public NodeData(TypeElement type, String shortName, TypeSystemData typeSystem, List<NodeChildData> children, List<NodeExecutionData> executions, List<NodeFieldData> fields,
@@ -64,7 +67,8 @@ public class NodeData extends Template implements Comparable<NodeData> {
         this.childExecutions = executions;
         this.assumptions = assumptions;
         this.polymorphicDepth = polymorphicDepth;
-
+        this.thisExecution = new NodeExecutionData(new NodeChildData(null, null, "this", getNodeType(), getNodeType(), null, Cardinality.ONE), -1, false);
+        this.thisExecution.getChild().setNode(this);
         if (children != null) {
             for (NodeChildData child : children) {
                 child.setParentNode(this);
@@ -74,6 +78,10 @@ public class NodeData extends Template implements Comparable<NodeData> {
 
     public NodeData(TypeElement type) {
         this(type, null, null, null, null, null, null, -1);
+    }
+
+    public NodeExecutionData getThisExecution() {
+        return thisExecution;
     }
 
     public void addEnclosedNode(NodeData node) {

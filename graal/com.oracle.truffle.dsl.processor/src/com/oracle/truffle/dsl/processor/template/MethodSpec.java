@@ -30,8 +30,6 @@ import com.oracle.truffle.dsl.processor.*;
 
 public class MethodSpec {
 
-    private final List<TypeMirror> implicitRequiredTypes = new ArrayList<>();
-
     private final ParameterSpec returnType;
     private final List<ParameterSpec> optional = new ArrayList<>();
     private final List<ParameterSpec> required = new ArrayList<>();
@@ -54,10 +52,6 @@ public class MethodSpec {
         return variableRequiredParameters;
     }
 
-    public void addImplicitRequiredType(TypeMirror type) {
-        this.implicitRequiredTypes.add(type);
-    }
-
     public void setIgnoreAdditionalParameters(boolean ignoreAdditionalParameter) {
         this.ignoreAdditionalParameters = ignoreAdditionalParameter;
     }
@@ -73,10 +67,6 @@ public class MethodSpec {
     public ParameterSpec addRequired(ParameterSpec spec) {
         required.add(spec);
         return spec;
-    }
-
-    public List<TypeMirror> getImplicitRequiredTypes() {
-        return implicitRequiredTypes;
     }
 
     public ParameterSpec getReturnType() {
