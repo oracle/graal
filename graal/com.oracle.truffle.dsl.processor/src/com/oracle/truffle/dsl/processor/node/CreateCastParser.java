@@ -60,7 +60,9 @@ public class CreateCastParser extends NodeMethodParser<CreateCastData> {
 
         MethodSpec spec = new MethodSpec(new InheritsParameterSpec(getContext(), "child", baseType));
         addDefaultFieldMethodSpec(spec);
-        spec.addRequired(new ParameterSpec("castedChild", baseType));
+        ParameterSpec childSpec = new ParameterSpec("castedChild", baseType);
+        childSpec.setSignature(true);
+        spec.addRequired(childSpec);
         return spec;
     }
 

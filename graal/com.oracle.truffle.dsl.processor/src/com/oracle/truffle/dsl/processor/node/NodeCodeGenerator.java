@@ -1160,11 +1160,10 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
             }
 
             for (VariableElement var : type.getFields()) {
-                NodeExecutionData execution = node.findExecution(var.getSimpleName().toString());
-                NodeChildData child = execution != null ? execution.getChild() : null;
+                NodeChildData child = node.findChild(var.getSimpleName().toString());
 
-                if (execution != null) {
-                    method.getParameters().add(new CodeVariableElement(execution.getNodeType(), execution.getName()));
+                if (child != null) {
+                    method.getParameters().add(new CodeVariableElement(child.getNodeType(), child.getName()));
                 } else {
                     method.getParameters().add(new CodeVariableElement(var.asType(), var.getSimpleName().toString()));
                 }

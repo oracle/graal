@@ -37,6 +37,7 @@ public class ParameterSpec {
 
     /** Type is bound to local final variable. */
     private boolean local;
+    private boolean signature;
 
     /** Optional bound execution of node. */
     private NodeExecutionData execution;
@@ -65,6 +66,11 @@ public class ParameterSpec {
 
     public void setExecution(NodeExecutionData executionData) {
         this.execution = executionData;
+        this.signature = execution != null;
+    }
+
+    public void setSignature(boolean signature) {
+        this.signature = signature;
     }
 
     void setTypeDefinition(TypeDef typeDefinition) {
@@ -80,7 +86,7 @@ public class ParameterSpec {
     }
 
     public boolean isSignature() {
-        return execution != null;
+        return signature;
     }
 
     public boolean isLocal() {

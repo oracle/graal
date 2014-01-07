@@ -28,6 +28,7 @@ import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.dsl.test.CreateCastTestFactory.CreateCastNode1Factory;
 import com.oracle.truffle.api.dsl.test.CreateCastTestFactory.CreateCastNode2Factory;
 import com.oracle.truffle.api.dsl.test.CreateCastTestFactory.CreateCastNode3Factory;
+import com.oracle.truffle.api.dsl.test.TypeSystemTest.ChildrenNode;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.TestRootNode;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
 import com.oracle.truffle.api.nodes.*;
@@ -87,12 +88,11 @@ public class CreateCastTest {
         }
     }
 
-    @NodeChild(value = "a", type = ValueNode[].class)
-    abstract static class CreateCastNode3 extends ValueNode {
+    abstract static class CreateCastNode3 extends ChildrenNode {
 
         int invocations = 0;
 
-        @CreateCast("a")
+        @CreateCast("children")
         public ValueNode[] createCast(ValueNode[] node) {
             invocations++;
             return node;
