@@ -68,7 +68,7 @@ public final class FixedGuardNode extends AbstractFixedGuardNode implements Lowe
             ValueAnchorNode newAnchor = graph().add(new ValueAnchorNode(guard.asNode()));
             graph().replaceFixedWithFixed(this, newAnchor);
         } else {
-            lowerToIf(tool);
+            lowerToIf().lower(tool);
         }
     }
 
