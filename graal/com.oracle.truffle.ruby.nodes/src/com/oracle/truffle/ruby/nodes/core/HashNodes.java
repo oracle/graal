@@ -44,7 +44,10 @@ public abstract class HashNodes {
                     hash.put(keyValue.get(0), keyValue.get(1));
                 }
             } else {
-                assert args.length % 2 == 0;
+                if (args.length % 2 != 0) {
+                    // TODO(CS): figure out what error to throw here
+                    throw new UnsupportedOperationException();
+                }
 
                 for (int n = 0; n < args.length; n += 2) {
                     hash.put(args[n], args[n + 1]);
