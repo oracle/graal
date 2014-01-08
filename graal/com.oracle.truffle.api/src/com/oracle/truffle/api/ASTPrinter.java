@@ -24,27 +24,25 @@
  */
 package com.oracle.truffle.api;
 
+import java.io.*;
+
+import com.oracle.truffle.api.nodes.*;
+
 /**
- * Information about the runtime context of a Truffle program.
+ * Language-agnostic access to AST-based debugging support.
  * <p>
- * <strong>Disclaimer:</strong> this interface is under development and will change.
+ * <strong>WARNING:</strong> this interface is under development and will change substantially.
  */
-public interface ExecutionContext {
+public interface ASTPrinter {
 
     /**
-     * Gets the name of the language, possibly with version number. in short enough form that it
-     * might be used for an interactive prompt.
+     * Print a textual AST display, one line per node, with nesting.
+     * 
+     * @param p
+     * @param node the root node of the display.
+     * @param maxDepth the maximum number of levels to print below the root
+     * @param markNode a node to mark with a textual arrow prefix, if present.
      */
-    String getLanguageShortName();
-
-    /**
-     * Gets access to debugging services, {@code null} if not enabled in this context.
-     */
-    DebugManager getDebugManager();
-
-    /**
-     * Gets access to utilities for printing different aspects of a Truffle AST.
-     */
-    ASTPrinter getASTPrinter();
+    void printTree(PrintWriter p, Node node, int maxDepth, Node markNode);
 
 }

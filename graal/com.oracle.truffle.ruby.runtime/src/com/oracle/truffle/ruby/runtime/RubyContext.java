@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013 Oracle and/or its affiliates. All rights reserved. This
+ * Copyright (c) 2013, 2014 Oracle and/or its affiliates. All rights reserved. This
  * code is released under a tri EPL/GPL/LGPL license. You can use it,
  * redistribute it and/or modify it under the terms of the:
  *
@@ -42,6 +42,7 @@ public class RubyContext implements ExecutionContext {
     private final AtExitManager atExitManager;
     private final RubyDebugManager debugManager;
     private final SourceManager sourceManager;
+    private final ASTPrinter astPrinter;
 
     private AtomicLong nextObjectID = new AtomicLong(0);
 
@@ -50,14 +51,19 @@ public class RubyContext implements ExecutionContext {
     private POSIX posix = POSIXFactory.getPOSIX();
 
     public RubyContext(RubyParser parser) {
-        this(new Configuration(new ConfigurationBuilder()), parser);
+        this(new Configuration(new ConfigurationBuilder()), parser, null);
     }
 
     public RubyContext(Configuration configuration, RubyParser parser) {
+        this(configuration, parser, null);
+    }
+
+    public RubyContext(Configuration configuration, RubyParser parser, ASTPrinter astPrinter) {
         assert configuration != null;
 
         this.configuration = configuration;
         this.parser = parser;
+        this.astPrinter = astPrinter;
 
         objectSpaceManager = new ObjectSpaceManager(this);
         traceManager = new TraceManager(this);
@@ -89,6 +95,10 @@ public class RubyContext implements ExecutionContext {
 
     public RubyDebugManager getDebugManager() {
         return debugManager;
+    }
+
+    public ASTPrinter getASTPrinter() {
+        return astPrinter;
     }
 
     public void implementationMessage(String format, Object... arguments) {
