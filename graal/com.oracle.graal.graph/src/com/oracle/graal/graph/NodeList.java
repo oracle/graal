@@ -46,7 +46,7 @@ public abstract class NodeList<T extends Node> extends AbstractList<T> implement
     }
 
     protected NodeList(T[] elements) {
-        if (elements == null) {
+        if (elements == null || elements.length == 0) {
             this.size = 0;
             this.nodes = EMPTY_NODE_ARRAY;
             this.initialSize = 0;
