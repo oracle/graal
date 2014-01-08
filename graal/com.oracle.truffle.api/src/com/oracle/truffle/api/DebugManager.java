@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,14 +24,22 @@
  */
 package com.oracle.truffle.api;
 
+import com.oracle.truffle.api.frame.*;
+import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.nodes.instrument.*;
 import com.oracle.truffle.api.source.*;
 
 /**
  * Language-agnostic access to AST-based debugging support.
  * <p>
- * <strong>WARNING:</strong> this interface is under development and will change substantially.
+ * <strong>Disclaimer:</strong> this interface is under development and will change.
  */
 public interface DebugManager {
+
+    /**
+     * Gets a list of current breakpoints.
+     */
+    LineBreakpoint[] getBreakpoints();
 
     /**
      * Sets a breakpoint at a line-based location.
@@ -45,14 +53,32 @@ public interface DebugManager {
     LineBreakpoint setConditionalBreakpoint(SourceLineLocation lineLocation, String condition);
 
     /**
-     * Gets a list of current breakpoints.
+     * Sets a breakpoint at a line-based location that will remove itself when hit.
      */
-    LineBreakpoint[] getBreakpoints();
+    LineBreakpoint setOneShotBreakpoint(SourceLineLocation lineLocation);
+
+    /**
+     * Is there a line-based breakpoint set at a location?
+     */
+    boolean hasBreakpoint(SourceLineLocation lineLocation);
 
     /**
      * Removes a breakpoint at a line-based location.
      */
     void removeBreakpoint(SourceLineLocation lineLocation);
+
+    /**
+     * Notification from Truffle execution that execution should halt in a debugging context.
+     */
+    /**
+     * Receives notification of a suspended execution context; execution resumes when this method
+     * returns.
+     * 
+     * @param astNode a guest language AST node that represents the current execution site, assumed
+     *            not to be any kind of {@link InstrumentationNode},
+     * @param frame execution frame at the site where execution suspended
+     */
+    void haltedAt(Node astNode, MaterializedFrame frame);
 
     /**
      * Description of a line-based breakpoint.
