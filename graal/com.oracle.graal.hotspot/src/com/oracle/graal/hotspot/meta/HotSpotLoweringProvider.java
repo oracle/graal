@@ -310,67 +310,42 @@ public class HotSpotLoweringProvider implements LoweringProvider {
                     FixedWithNextNode newObject;
                     if (virtual instanceof VirtualInstanceNode) {
                         newObject = graph.add(new NewInstanceNode(virtual.type(), true));
-                        graph.addBeforeFixed(commit, newObject);
-                        allocations[objIndex] = newObject;
-                        for (int i = 0; i < entryCount; i++) {
-                            ValueNode value = commit.getValues().get(valuePos);
-                            if (value instanceof VirtualObjectNode) {
-                                value = allocations[commit.getVirtualObjects().indexOf(value)];
-                            }
-                            if (value == null) {
-                                omittedValues.set(valuePos);
-                            } else if (!(value.isConstant() && value.asConstant().isDefaultForKind())) {
-                                // Constant.illegal is always the defaultForKind, so it is skipped
-                                VirtualInstanceNode virtualInstance = (VirtualInstanceNode) virtual;
-                                Kind accessKind;
-                                HotSpotResolvedJavaField field = (HotSpotResolvedJavaField) virtualInstance.field(i);
-                                if (value.kind().getStackKind() != field.getKind().getStackKind()) {
-                                    assert value.kind() == Kind.Long || value.kind() == Kind.Double;
-                                    accessKind = value.kind();
-                                } else {
-                                    accessKind = field.getKind();
-                                }
-                                ConstantLocationNode location = ConstantLocationNode.create(INIT_LOCATION, accessKind, field.offset(), graph);
-                                BarrierType barrierType = (virtualInstance.field(i).getKind() == Kind.Object && !useDeferredInitBarriers()) ? BarrierType.IMPRECISE : BarrierType.NONE;
-                                WriteNode write = new WriteNode(newObject, value, location, barrierType, virtualInstance.field(i).getKind() == Kind.Object);
-                                graph.addAfterFixed(newObject, graph.add(write));
-                            }
-                            valuePos++;
-                        }
                     } else {
-                        ResolvedJavaType element = ((VirtualArrayNode) virtual).componentType();
-                        newObject = graph.add(new NewArrayNode(element, ConstantNode.forInt(entryCount, graph), true));
-                        graph.addBeforeFixed(commit, newObject);
-                        allocations[objIndex] = newObject;
-                        for (int i = 0; i < entryCount; i++) {
-                            ValueNode value = commit.getValues().get(valuePos);
-                            if (value instanceof VirtualObjectNode) {
-                                value = allocations[commit.getVirtualObjects().indexOf(value)];
-                            }
-                            if (value == null) {
-                                omittedValues.set(valuePos);
-                            } else if (!(value.isConstant() && value.asConstant().isDefaultForKind())) {
-                                // Constant.illegal is always the defaultForKind, so it is skipped
-                                Kind componentKind = element.getKind();
-                                Kind accessKind;
-                                Kind valueKind = value.kind();
-                                if (valueKind.getStackKind() != componentKind.getStackKind()) {
-                                    // Given how Truffle uses unsafe, it can happen that
-                                    // valueKind is Kind.Int
-                                    // assert valueKind == Kind.Long || valueKind == Kind.Double;
-                                    accessKind = valueKind;
-                                } else {
-                                    accessKind = componentKind;
-                                }
-
-                                int scale = getScalingFactor(componentKind);
-                                ConstantLocationNode location = ConstantLocationNode.create(INIT_LOCATION, accessKind, getArrayBaseOffset(componentKind) + i * scale, graph);
-                                BarrierType barrierType = (componentKind == Kind.Object && !useDeferredInitBarriers()) ? BarrierType.PRECISE : BarrierType.NONE;
-                                WriteNode write = new WriteNode(newObject, value, location, barrierType, componentKind == Kind.Object);
-                                graph.addAfterFixed(newObject, graph.add(write));
-                            }
-                            valuePos++;
+                        newObject = graph.add(new NewArrayNode(((VirtualArrayNode) virtual).componentType(), ConstantNode.forInt(entryCount, graph), true));
+                    }
+                    graph.addBeforeFixed(commit, newObject);
+                    allocations[objIndex] = newObject;
+                    for (int i = 0; i < entryCount; i++) {
+                        ValueNode value = commit.getValues().get(valuePos);
+                        if (value instanceof VirtualObjectNode) {
+                            value = allocations[commit.getVirtualObjects().indexOf(value)];
                         }
+                        if (value == null) {
+                            omittedValues.set(valuePos);
+                        } else if (!(value.isConstant() && value.asConstant().isDefaultForKind())) {
+                            // Constant.illegal is always the defaultForKind, so it is skipped
+                            Kind valueKind = value.kind();
+                            Kind entryKind = virtual.entryKind(i);
+
+                            // Truffle requires some leniency in terms of what can be put where:
+                            Kind accessKind = valueKind.getStackKind() == entryKind.getStackKind() ? entryKind : valueKind;
+                            assert valueKind.getStackKind() == entryKind.getStackKind() ||
+                                            (valueKind == Kind.Long || valueKind == Kind.Double || (valueKind == Kind.Int && virtual instanceof VirtualArrayNode));
+                            ConstantLocationNode location;
+                            BarrierType barrierType;
+                            if (virtual instanceof VirtualInstanceNode) {
+                                ResolvedJavaField field = ((VirtualInstanceNode) virtual).field(i);
+                                location = ConstantLocationNode.create(INIT_LOCATION, accessKind, ((HotSpotResolvedJavaField) field).offset(), graph);
+                                barrierType = (entryKind == Kind.Object && !useDeferredInitBarriers()) ? BarrierType.IMPRECISE : BarrierType.NONE;
+                            } else {
+                                location = ConstantLocationNode.create(INIT_LOCATION, accessKind, getArrayBaseOffset(entryKind) + i * getScalingFactor(entryKind), graph);
+                                barrierType = (entryKind == Kind.Object && !useDeferredInitBarriers()) ? BarrierType.PRECISE : BarrierType.NONE;
+                            }
+                            WriteNode write = new WriteNode(newObject, value, location, barrierType, entryKind == Kind.Object);
+                            graph.addAfterFixed(newObject, graph.add(write));
+                        }
+                        valuePos++;
+
                     }
                 }
                 valuePos = 0;
@@ -379,58 +354,28 @@ public class HotSpotLoweringProvider implements LoweringProvider {
                     VirtualObjectNode virtual = commit.getVirtualObjects().get(objIndex);
                     int entryCount = virtual.entryCount();
                     ValueNode newObject = allocations[objIndex];
-                    if (virtual instanceof VirtualInstanceNode) {
-                        for (int i = 0; i < entryCount; i++) {
-                            if (omittedValues.get(valuePos)) {
-                                ValueNode value = commit.getValues().get(valuePos);
-                                assert value instanceof VirtualObjectNode;
-                                ValueNode allocValue = allocations[commit.getVirtualObjects().indexOf(value)];
-                                if (!(allocValue.isConstant() && allocValue.asConstant().isDefaultForKind())) {
+                    for (int i = 0; i < entryCount; i++) {
+                        if (omittedValues.get(valuePos)) {
+                            ValueNode value = commit.getValues().get(valuePos);
+                            assert value instanceof VirtualObjectNode;
+                            ValueNode allocValue = allocations[commit.getVirtualObjects().indexOf(value)];
+                            if (!(allocValue.isConstant() && allocValue.asConstant().isDefaultForKind())) {
+                                assert virtual.entryKind(i) == Kind.Object && allocValue.kind() == Kind.Object;
+                                WriteNode write;
+                                if (virtual instanceof VirtualInstanceNode) {
                                     VirtualInstanceNode virtualInstance = (VirtualInstanceNode) virtual;
-                                    assert virtualInstance.field(i).getKind() == Kind.Object;
-                                    WriteNode write = new WriteNode(newObject, allocValue, createFieldLocation(graph, (HotSpotResolvedJavaField) virtualInstance.field(i), true),
-                                                    BarrierType.IMPRECISE, true);
-                                    graph.addBeforeFixed(commit, graph.add(write));
+                                    write = new WriteNode(newObject, allocValue, createFieldLocation(graph, (HotSpotResolvedJavaField) virtualInstance.field(i), true), BarrierType.IMPRECISE, true);
+                                } else {
+                                    write = new WriteNode(newObject, allocValue, createArrayLocation(graph, virtual.entryKind(i), ConstantNode.forInt(i, graph), true), BarrierType.PRECISE, true);
                                 }
+                                graph.addBeforeFixed(commit, graph.add(write));
                             }
-                            valuePos++;
                         }
-                    } else {
-                        ResolvedJavaType element = ((VirtualArrayNode) virtual).componentType();
-                        for (int i = 0; i < entryCount; i++) {
-                            if (omittedValues.get(valuePos)) {
-                                ValueNode value = commit.getValues().get(valuePos);
-                                assert value instanceof VirtualObjectNode;
-                                ValueNode allocValue = allocations[commit.getVirtualObjects().indexOf(value)];
-                                if (!(allocValue.isConstant() && allocValue.asConstant().isDefaultForKind())) {
-                                    assert allocValue.kind() == Kind.Object;
-                                    WriteNode write = new WriteNode(newObject, allocValue, createArrayLocation(graph, element.getKind(), ConstantNode.forInt(i, graph), true), BarrierType.PRECISE,
-                                                    true);
-                                    graph.addBeforeFixed(commit, graph.add(write));
-                                }
-                            }
-                            valuePos++;
-                        }
+                        valuePos++;
                     }
                 }
 
-                for (int objIndex = 0; objIndex < commit.getVirtualObjects().size(); objIndex++) {
-                    FixedValueAnchorNode anchor = graph.add(new FixedValueAnchorNode(allocations[objIndex]));
-                    allocations[objIndex] = anchor;
-                    graph.addBeforeFixed(commit, anchor);
-                }
-                for (int objIndex = 0; objIndex < commit.getVirtualObjects().size(); objIndex++) {
-                    for (int lockDepth : commit.getLocks().get(objIndex)) {
-                        MonitorEnterNode enter = graph.add(new MonitorEnterNode(allocations[objIndex], lockDepth));
-                        graph.addBeforeFixed(commit, enter);
-                        enter.lower(tool);
-                    }
-                }
-                for (Node usage : commit.usages().snapshot()) {
-                    AllocatedObjectNode addObject = (AllocatedObjectNode) usage;
-                    int index = commit.getVirtualObjects().indexOf(addObject.getVirtualObject());
-                    graph.replaceFloating(addObject, allocations[index]);
-                }
+                finishAllocatedObjects(tool, commit, allocations);
                 graph.removeFixed(commit);
             }
         } else if (n instanceof OSRStartNode) {
@@ -526,6 +471,27 @@ public class HotSpotLoweringProvider implements LoweringProvider {
         } else {
             assert false : "Node implementing Lowerable not handled: " + n;
             throw GraalInternalError.shouldNotReachHere();
+        }
+    }
+
+    protected static void finishAllocatedObjects(LoweringTool tool, CommitAllocationNode commit, ValueNode[] allocations) {
+        StructuredGraph graph = commit.graph();
+        for (int objIndex = 0; objIndex < commit.getVirtualObjects().size(); objIndex++) {
+            FixedValueAnchorNode anchor = graph.add(new FixedValueAnchorNode(allocations[objIndex]));
+            allocations[objIndex] = anchor;
+            graph.addBeforeFixed(commit, anchor);
+        }
+        for (int objIndex = 0; objIndex < commit.getVirtualObjects().size(); objIndex++) {
+            for (int lockDepth : commit.getLocks().get(objIndex)) {
+                MonitorEnterNode enter = graph.add(new MonitorEnterNode(allocations[objIndex], lockDepth));
+                graph.addBeforeFixed(commit, enter);
+                enter.lower(tool);
+            }
+        }
+        for (Node usage : commit.usages().snapshot()) {
+            AllocatedObjectNode addObject = (AllocatedObjectNode) usage;
+            int index = commit.getVirtualObjects().indexOf(addObject.getVirtualObject());
+            graph.replaceFloating(addObject, allocations[index]);
         }
     }
 
