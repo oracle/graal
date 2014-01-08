@@ -506,19 +506,24 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         boolean isCompressed = isCompressedOperation(kind, access);
         if (isConstant(inputVal)) {
             Constant c = asConstant(inputVal);
-            if (isCompressed && canStoreConstant(c, isCompressed)) {
-                if (c.getKind() == Kind.Object) {
-                    Constant value = c.isNull() ? c : compress(c, config.getOopEncoding());
-                    append(new StoreCompressedConstantOp(kind, storeAddress, value, state));
-                } else if (c.getKind() == Kind.Long) {
-                    // It's always a good idea to directly store compressed constants since they
-                    // have to be materialized as 64 bits encoded otherwise.
-                    Constant value = compress(c, config.getKlassEncoding());
-                    append(new StoreCompressedConstantOp(kind, storeAddress, value, state));
+            if (canStoreConstant(c, isCompressed)) {
+                if (isCompressed) {
+                    if (c.getKind() == Kind.Object) {
+                        Constant value = c.isNull() ? c : compress(c, config.getOopEncoding());
+                        append(new StoreCompressedConstantOp(kind, storeAddress, value, state));
+                    } else if (c.getKind() == Kind.Long) {
+                        // It's always a good idea to directly store compressed constants since they
+                        // have to be materialized as 64 bits encoded otherwise.
+                        Constant value = compress(c, config.getKlassEncoding());
+                        append(new StoreCompressedConstantOp(kind, storeAddress, value, state));
+                    } else {
+                        throw GraalInternalError.shouldNotReachHere("can't handle: " + access);
+                    }
+                    return;
                 } else {
-                    throw GraalInternalError.shouldNotReachHere("can't handle: " + access);
+                    append(new StoreConstantOp(kind, storeAddress, c, state));
+                    return;
                 }
-                return;
             }
         }
         Variable input = load(inputVal);
