@@ -12,8 +12,10 @@ package com.oracle.truffle.ruby.nodes.core;
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.frame.*;
+import com.oracle.truffle.api.utilities.*;
 import com.oracle.truffle.ruby.nodes.call.*;
 import com.oracle.truffle.ruby.runtime.*;
+import com.oracle.truffle.ruby.runtime.control.*;
 import com.oracle.truffle.ruby.runtime.core.*;
 import com.oracle.truffle.ruby.runtime.core.array.*;
 import com.oracle.truffle.ruby.runtime.core.range.*;
@@ -50,6 +52,10 @@ public abstract class RangeNodes {
     @CoreMethod(names = "each", needsBlock = true, maxArgs = 0)
     public abstract static class EachNode extends YieldingCoreMethodNode {
 
+        private final BranchProfile breakProfile = new BranchProfile();
+        private final BranchProfile nextProfile = new BranchProfile();
+        private final BranchProfile redoProfile = new BranchProfile();
+
         public EachNode(RubyContext context, SourceSection sourceSection) {
             super(context, sourceSection);
         }
@@ -59,9 +65,22 @@ public abstract class RangeNodes {
         }
 
         @Specialization
-        public FixnumRange each(VirtualFrame frame, FixnumRange range, RubyProc block) {
-            for (int n = range.getBegin(); n < range.getExclusiveEnd(); n++) {
-                yield(frame, block, n);
+        public Object each(VirtualFrame frame, FixnumRange range, RubyProc block) {
+            outer: for (int n = range.getBegin(); n < range.getExclusiveEnd(); n++) {
+                while (true) {
+                    try {
+                        yield(frame, block, n);
+                        continue outer;
+                    } catch (BreakException e) {
+                        breakProfile.enter();
+                        return e.getResult();
+                    } catch (NextException e) {
+                        nextProfile.enter();
+                        continue outer;
+                    } catch (RedoException e) {
+                        redoProfile.enter();
+                    }
+                }
             }
 
             return range;
@@ -182,6 +201,10 @@ public abstract class RangeNodes {
     @CoreMethod(names = "step", needsBlock = true, minArgs = 1, maxArgs = 1)
     public abstract static class StepNode extends YieldingCoreMethodNode {
 
+        private final BranchProfile breakProfile = new BranchProfile();
+        private final BranchProfile nextProfile = new BranchProfile();
+        private final BranchProfile redoProfile = new BranchProfile();
+
         public StepNode(RubyContext context, SourceSection sourceSection) {
             super(context, sourceSection);
         }
@@ -191,9 +214,22 @@ public abstract class RangeNodes {
         }
 
         @Specialization
-        public FixnumRange step(VirtualFrame frame, FixnumRange range, int step, RubyProc block) {
-            for (int n = range.getBegin(); n < range.getExclusiveEnd(); n += step) {
-                yield(frame, block, n);
+        public Object step(VirtualFrame frame, FixnumRange range, int step, RubyProc block) {
+            outer: for (int n = range.getBegin(); n < range.getExclusiveEnd(); n += step) {
+                while (true) {
+                    try {
+                        yield(frame, block, n);
+                        continue outer;
+                    } catch (BreakException e) {
+                        breakProfile.enter();
+                        return e.getResult();
+                    } catch (NextException e) {
+                        nextProfile.enter();
+                        continue outer;
+                    } catch (RedoException e) {
+                        redoProfile.enter();
+                    }
+                }
             }
 
             return range;

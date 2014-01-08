@@ -16,6 +16,7 @@ import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.utilities.*;
 import com.oracle.truffle.ruby.runtime.*;
 import com.oracle.truffle.ruby.runtime.control.*;
 import com.oracle.truffle.ruby.runtime.core.*;
@@ -457,6 +458,10 @@ public abstract class ArrayNodes {
     @CoreMethod(names = "each", needsBlock = true, maxArgs = 0)
     public abstract static class EachNode extends YieldingCoreMethodNode {
 
+        private final BranchProfile breakProfile = new BranchProfile();
+        private final BranchProfile nextProfile = new BranchProfile();
+        private final BranchProfile redoProfile = new BranchProfile();
+
         public EachNode(RubyContext context, SourceSection sourceSection) {
             super(context, sourceSection);
         }
@@ -466,12 +471,21 @@ public abstract class ArrayNodes {
         }
 
         @Specialization
-        public NilPlaceholder each(VirtualFrame frame, RubyArray array, RubyProc block) {
-            for (int n = 0; n < array.size(); n++) {
-                try {
-                    yield(frame, block, array.get(n));
-                } catch (BreakException e) {
-                    break;
+        public Object each(VirtualFrame frame, RubyArray array, RubyProc block) {
+            outer: for (int n = 0; n < array.size(); n++) {
+                while (true) {
+                    try {
+                        yield(frame, block, array.get(n));
+                        continue outer;
+                    } catch (BreakException e) {
+                        breakProfile.enter();
+                        return e.getResult();
+                    } catch (NextException e) {
+                        nextProfile.enter();
+                        continue outer;
+                    } catch (RedoException e) {
+                        redoProfile.enter();
+                    }
                 }
             }
 

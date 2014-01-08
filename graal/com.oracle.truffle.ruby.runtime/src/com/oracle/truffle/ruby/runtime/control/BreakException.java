@@ -17,6 +17,8 @@ import com.oracle.truffle.ruby.runtime.*;
  */
 public final class BreakException extends ControlFlowException {
 
+    public static final BreakException NIL = new BreakException(NilPlaceholder.INSTANCE);
+
     private final Object result;
 
     public BreakException(Object result) {

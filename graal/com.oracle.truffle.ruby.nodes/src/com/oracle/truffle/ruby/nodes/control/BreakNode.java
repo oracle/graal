@@ -13,6 +13,7 @@ import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.ruby.nodes.*;
+import com.oracle.truffle.ruby.nodes.literal.*;
 import com.oracle.truffle.ruby.runtime.*;
 import com.oracle.truffle.ruby.runtime.control.*;
 
@@ -28,7 +29,11 @@ public class BreakNode extends RubyNode {
 
     @Override
     public Object execute(VirtualFrame frame) {
-        throw new BreakException(child.execute(frame));
+        if (child instanceof NilNode) {
+            throw BreakException.NIL;
+        } else {
+            throw new BreakException(child.execute(frame));
+        }
     }
 
 }
