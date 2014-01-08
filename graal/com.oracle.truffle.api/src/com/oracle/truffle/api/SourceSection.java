@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -95,7 +95,7 @@ public interface SourceSection {
     /**
      * Singleton instance with no content.
      */
-    SourceSection NULL = new SourceSection() {
+    SourceSection NULL = new NullSourceSection() {
 
         public Source getSource() {
             return null;
