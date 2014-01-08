@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,6 +25,7 @@ package com.oracle.graal.virtual.phases.ea;
 import java.util.*;
 
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.spi.Virtualizable.EscapeState;
 import com.oracle.graal.nodes.virtual.*;
@@ -36,37 +37,6 @@ import com.oracle.graal.nodes.virtual.*;
  */
 public class ObjectState extends Virtualizable.State {
 
-    private static final int[] EMPTY_INT_ARRAY = new int[0];
-
-    public static final class LockState {
-
-        public final int depth;
-        public final LockState next;
-
-        private LockState(int depth, LockState next) {
-            this.depth = depth;
-            this.next = next;
-        }
-
-        @Override
-        public String toString() {
-            return next == null ? String.valueOf(depth) : depth + "," + next;
-        }
-
-        public static boolean equals(LockState a, LockState b) {
-            if ((a == null) != (b == null)) {
-                return false;
-            }
-            if (a != null) {
-                if (a.depth != b.depth) {
-                    return false;
-                }
-                return equals(a.next, b.next);
-            }
-            return true;
-        }
-    }
-
     final VirtualObjectNode virtual;
 
     private EscapeState state;
@@ -74,17 +44,18 @@ public class ObjectState extends Virtualizable.State {
     private ValueNode materializedValue;
     private LockState locks;
 
-    public ObjectState(VirtualObjectNode virtual, ValueNode[] entries, EscapeState state, int[] locks) {
+    public ObjectState(VirtualObjectNode virtual, ValueNode[] entries, EscapeState state, List<MonitorIdNode> locks) {
+        this(virtual, entries, state, (LockState) null);
+        for (int i = locks.size() - 1; i >= 0; i--) {
+            this.locks = new LockState(locks.get(i), this.locks);
+        }
+    }
+
+    public ObjectState(VirtualObjectNode virtual, ValueNode[] entries, EscapeState state, LockState locks) {
         this.virtual = virtual;
         this.entries = entries;
         this.state = state;
-        if (locks == null) {
-            this.locks = null;
-        } else {
-            for (int i = locks.length - 1; i >= 0; i--) {
-                this.locks = new LockState(locks[i], this.locks);
-            }
-        }
+        this.locks = locks;
     }
 
     public ObjectState(VirtualObjectNode virtual, ValueNode materializedValue, EscapeState state, LockState locks) {
@@ -156,37 +127,21 @@ public class ObjectState extends Virtualizable.State {
     }
 
     @Override
-    public void addLock(int depth) {
-        locks = new LockState(depth, locks);
+    public void addLock(MonitorIdNode monitorId) {
+        locks = new LockState(monitorId, locks);
     }
 
     @Override
-    public int removeLock() {
+    public MonitorIdNode removeLock() {
         try {
-            return locks.depth;
+            return locks.monitorId;
         } finally {
             locks = locks.next;
         }
     }
 
-    public int[] getLocks() {
-        if (locks == null) {
-            return EMPTY_INT_ARRAY;
-        }
-        int cnt = 0;
-        LockState current = locks;
-        while (current != null) {
-            cnt++;
-            current = current.next;
-        }
-        int[] result = new int[cnt];
-        current = locks;
-        cnt = 0;
-        while (current != null) {
-            result[cnt++] = current.depth;
-            current = current.next;
-        }
-        return result;
+    public LockState getLocks() {
+        return locks;
     }
 
     public boolean hasLocks() {
@@ -194,7 +149,13 @@ public class ObjectState extends Virtualizable.State {
     }
 
     public boolean locksEqual(ObjectState other) {
-        return LockState.equals(locks, other.locks);
+        LockState a = locks;
+        LockState b = other.locks;
+        while (a != null && b != null && a.monitorId == b.monitorId) {
+            a = a.next;
+            b = b.next;
+        }
+        return a == null && b == null;
     }
 
     @Override
@@ -220,7 +181,7 @@ public class ObjectState extends Virtualizable.State {
         final int prime = 31;
         int result = 1;
         result = prime * result + Arrays.hashCode(entries);
-        result = prime * result + (locks != null ? locks.depth : 0);
+        result = prime * result + (locks != null ? locks.monitorId.getLockDepth() : 0);
         result = prime * result + ((materializedValue == null) ? 0 : materializedValue.hashCode());
         result = prime * result + ((state == null) ? 0 : state.hashCode());
         result = prime * result + ((virtual == null) ? 0 : virtual.hashCode());
@@ -239,7 +200,7 @@ public class ObjectState extends Virtualizable.State {
         if (!Arrays.equals(entries, other.entries)) {
             return false;
         }
-        if (!LockState.equals(locks, other.locks)) {
+        if (!locksEqual(other)) {
             return false;
         }
         if (materializedValue == null) {

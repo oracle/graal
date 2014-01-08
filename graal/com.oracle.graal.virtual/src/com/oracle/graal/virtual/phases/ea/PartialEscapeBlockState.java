@@ -25,6 +25,7 @@ package com.oracle.graal.virtual.phases.ea;
 import java.util.*;
 
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.Virtualizable.EscapeState;
 import com.oracle.graal.nodes.virtual.*;
 
@@ -68,15 +69,15 @@ public abstract class PartialEscapeBlockState<T extends PartialEscapeBlockState<
         PartialEscapeClosure.METRIC_MATERIALIZATIONS.increment();
         List<AllocatedObjectNode> objects = new ArrayList<>(2);
         List<ValueNode> values = new ArrayList<>(8);
-        List<int[]> locks = new ArrayList<>(2);
+        List<List<MonitorIdNode>> locks = new ArrayList<>(2);
         List<ValueNode> otherAllocations = new ArrayList<>(2);
         materializeWithCommit(fixed, virtual, objects, locks, values, otherAllocations, state);
 
         materializeEffects.addMaterializationBefore(fixed, objects, locks, values, otherAllocations);
     }
 
-    private void materializeWithCommit(FixedNode fixed, VirtualObjectNode virtual, List<AllocatedObjectNode> objects, List<int[]> locks, List<ValueNode> values, List<ValueNode> otherAllocations,
-                    EscapeState state) {
+    private void materializeWithCommit(FixedNode fixed, VirtualObjectNode virtual, List<AllocatedObjectNode> objects, List<List<MonitorIdNode>> locks, List<ValueNode> values,
+                    List<ValueNode> otherAllocations, EscapeState state) {
         ObjectState obj = getObjectState(virtual);
 
         ValueNode[] entries = obj.getEntries();
@@ -84,7 +85,7 @@ public abstract class PartialEscapeBlockState<T extends PartialEscapeBlockState<
         obj.escape(representation, state);
         if (representation instanceof AllocatedObjectNode) {
             objects.add((AllocatedObjectNode) representation);
-            locks.add(obj.getLocks());
+            locks.add(LockState.asList(obj.getLocks()));
             int pos = values.size();
             while (values.size() < pos + entries.length) {
                 values.add(null);
@@ -104,7 +105,7 @@ public abstract class PartialEscapeBlockState<T extends PartialEscapeBlockState<
         } else {
             VirtualUtil.trace("materialized %s as %s", virtual, representation);
             otherAllocations.add(representation);
-            assert obj.getLocks().length == 0;
+            assert obj.getLocks() == null;
         }
     }
 

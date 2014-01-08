@@ -102,7 +102,7 @@ public class NewFrameNode extends FixedWithNextNode implements IterableNodeType,
         }
 
         @Override
-        public ValueNode getMaterializedRepresentation(FixedNode fixed, ValueNode[] entries, int[] locks) {
+        public ValueNode getMaterializedRepresentation(FixedNode fixed, ValueNode[] entries, LockState locks) {
             if (allowMaterialization) {
                 return super.getMaterializedRepresentation(fixed, entries, locks);
             }
@@ -173,9 +173,9 @@ public class NewFrameNode extends FixedWithNextNode implements IterableNodeType,
             tool.getAssumptions().record(new AssumptionValidAssumption((OptimizedAssumption) frameDescriptor.getVersion()));
         }
 
-        tool.createVirtualObject(virtualFrameObjectArray, objectArrayEntryState, null);
-        tool.createVirtualObject(virtualFramePrimitiveArray, primitiveArrayEntryState, null);
-        tool.createVirtualObject(virtualFrameTagArray, tagArrayEntryState, null);
+        tool.createVirtualObject(virtualFrameObjectArray, objectArrayEntryState, Collections.<MonitorIdNode> emptyList());
+        tool.createVirtualObject(virtualFramePrimitiveArray, primitiveArrayEntryState, Collections.<MonitorIdNode> emptyList());
+        tool.createVirtualObject(virtualFrameTagArray, tagArrayEntryState, Collections.<MonitorIdNode> emptyList());
 
         assert frameFields.length == 6;
         ValueNode[] frameEntryState = new ValueNode[frameFields.length];

@@ -24,11 +24,14 @@ package com.oracle.graal.virtual.phases.ea;
 
 import static com.oracle.graal.phases.GraalOptions.*;
 
+import java.util.*;
+
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
+import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.Virtualizable.EscapeState;
 import com.oracle.graal.nodes.spi.Virtualizable.State;
 import com.oracle.graal.nodes.spi.*;
@@ -150,7 +153,7 @@ class VirtualizerToolImpl implements VirtualizerTool {
     }
 
     @Override
-    public void createVirtualObject(VirtualObjectNode virtualObject, ValueNode[] entryState, int[] locks) {
+    public void createVirtualObject(VirtualObjectNode virtualObject, ValueNode[] entryState, List<MonitorIdNode> locks) {
         VirtualUtil.trace("{{%s}} ", current);
         if (!virtualObject.isAlive()) {
             effects.addFloatingNode(virtualObject, "newVirtualObject");

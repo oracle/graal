@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,6 +28,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
@@ -36,7 +37,8 @@ public final class CommitAllocationNode extends FixedWithNextNode implements Vir
 
     @Input private final NodeInputList<VirtualObjectNode> virtualObjects = new NodeInputList<>(this);
     @Input private final NodeInputList<ValueNode> values = new NodeInputList<>(this);
-    private List<int[]> locks = new ArrayList<>();
+    @Input private final NodeInputList<MonitorIdNode> locks = new NodeInputList<>(this);
+    private ArrayList<Integer> lockIndexes = new ArrayList<>(Arrays.asList(0));
 
     public CommitAllocationNode() {
         super(StampFactory.forVoid());
@@ -50,13 +52,14 @@ public final class CommitAllocationNode extends FixedWithNextNode implements Vir
         return values;
     }
 
-    public List<int[]> getLocks() {
-        return locks;
+    public List<MonitorIdNode> getLocks(int objIndex) {
+        return locks.subList(lockIndexes.get(objIndex), lockIndexes.get(objIndex + 1));
     }
 
     @Override
     public boolean verify() {
-        assertTrue(virtualObjects.size() == locks.size(), "lockCounts size doesn't match " + virtualObjects + ", " + locks);
+        assertTrue(virtualObjects.size() + 1 == lockIndexes.size(), "lockIndexes size doesn't match " + virtualObjects + ", " + lockIndexes);
+        assertTrue(lockIndexes.get(lockIndexes.size() - 1) == locks.size(), "locks size doesn't match " + lockIndexes + ", " + locks);
         int valueCount = 0;
         for (VirtualObjectNode virtual : virtualObjects) {
             valueCount += virtual.entryCount();
@@ -72,7 +75,12 @@ public final class CommitAllocationNode extends FixedWithNextNode implements Vir
 
     @Override
     public void afterClone(Node other) {
-        locks = new ArrayList<>(((CommitAllocationNode) other).locks);
+        lockIndexes = new ArrayList<>(lockIndexes);
+    }
+
+    public void addLocks(List<MonitorIdNode> monitorIds) {
+        locks.addAll(monitorIds);
+        lockIndexes.add(locks.size());
     }
 
     @Override
@@ -81,7 +89,7 @@ public final class CommitAllocationNode extends FixedWithNextNode implements Vir
         for (int i = 0; i < virtualObjects.size(); i++) {
             VirtualObjectNode virtualObject = virtualObjects.get(i);
             int entryCount = virtualObject.entryCount();
-            tool.createVirtualObject(virtualObject, values.subList(pos, pos + entryCount).toArray(new ValueNode[entryCount]), locks.get(i));
+            tool.createVirtualObject(virtualObject, values.subList(pos, pos + entryCount).toArray(new ValueNode[entryCount]), getLocks(i));
             pos += entryCount;
         }
         tool.delete();
@@ -100,8 +108,8 @@ public final class CommitAllocationNode extends FixedWithNextNode implements Vir
                 s.append(i == 0 ? "" : ",").append(value == null ? "_" : value.toString(Verbosity.Id));
             }
             s.append("]");
-            if (locks.get(objIndex).length > 0) {
-                s.append(" locked(").append(Arrays.toString(locks.get(objIndex))).append(")");
+            if (!getLocks(objIndex).isEmpty()) {
+                s.append(" locked(").append(locks.get(objIndex)).append(")");
             }
             properties.put("object(" + virtual.toString(Verbosity.Id) + ")", s.toString());
         }
@@ -150,14 +158,17 @@ public final class CommitAllocationNode extends FixedWithNextNode implements Vir
 
         if (usedCount < virtualObjects.size()) {
             List<VirtualObjectNode> newVirtualObjects = new ArrayList<>(usedCount);
-            List<int[]> newLocks = new ArrayList<>(usedCount);
+            List<MonitorIdNode> newLocks = new ArrayList<>(usedCount);
+            ArrayList<Integer> newLockIndexes = new ArrayList<>(usedCount + 1);
+            newLockIndexes.add(0);
             List<ValueNode> newValues = new ArrayList<>();
             int valuePos = 0;
             for (int objIndex = 0; objIndex < virtualObjects.size(); objIndex++) {
                 VirtualObjectNode virtualObject = virtualObjects.get(objIndex);
                 if (used[objIndex]) {
                     newVirtualObjects.add(virtualObject);
-                    newLocks.add(locks.get(objIndex));
+                    newLocks.addAll(getLocks(objIndex));
+                    newLockIndexes.add(newLocks.size());
                     newValues.addAll(values.subList(valuePos, valuePos + virtualObject.entryCount()));
                 }
                 valuePos += virtualObject.entryCount();
@@ -168,6 +179,7 @@ public final class CommitAllocationNode extends FixedWithNextNode implements Vir
             locks.addAll(newLocks);
             values.clear();
             values.addAll(newValues);
+            lockIndexes = newLockIndexes;
         }
     }
 

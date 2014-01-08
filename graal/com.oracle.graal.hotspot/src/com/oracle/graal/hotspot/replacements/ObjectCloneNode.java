@@ -25,6 +25,7 @@ package com.oracle.graal.hotspot.replacements;
 import static com.oracle.graal.compiler.GraalCompiler.*;
 
 import java.lang.reflect.*;
+import java.util.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
@@ -138,7 +139,7 @@ public class ObjectCloneNode extends MacroNode implements VirtualizableAllocatio
                     newEntryState[i] = originalState.getEntry(i);
                 }
                 VirtualObjectNode newVirtual = originalVirtual.duplicate();
-                tool.createVirtualObject(newVirtual, newEntryState, null);
+                tool.createVirtualObject(newVirtual, newEntryState, Collections.<MonitorIdNode> emptyList());
                 tool.replaceWithVirtual(newVirtual);
             }
         } else {
@@ -159,7 +160,7 @@ public class ObjectCloneNode extends MacroNode implements VirtualizableAllocatio
                     state[i] = loads[i] = new LoadFieldNode(obj, fields[i]);
                     tool.addNode(loads[i]);
                 }
-                tool.createVirtualObject(newVirtual, state, null);
+                tool.createVirtualObject(newVirtual, state, Collections.<MonitorIdNode> emptyList());
                 tool.replaceWithVirtual(newVirtual);
             }
         }

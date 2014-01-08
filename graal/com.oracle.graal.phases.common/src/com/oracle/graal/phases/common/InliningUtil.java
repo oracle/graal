@@ -1395,10 +1395,9 @@ public class InliningUtil {
         if (stateAfter != null) {
             FrameState outerFrameState = null;
             int callerLockDepth = stateAfter.nestedLockDepth();
-            for (Node inlinedNode : inlineGraph.getNodes()) {
-                Node node = duplicates.get(inlinedNode);
-                if (node instanceof FrameState) {
-                    FrameState frameState = (FrameState) node;
+            for (FrameState original : inlineGraph.getNodes(FrameState.class)) {
+                FrameState frameState = (FrameState) duplicates.get(original);
+                if (frameState != null) {
                     assert frameState.bci != FrameState.BEFORE_BCI : frameState;
                     if (frameState.bci == FrameState.AFTER_BCI) {
                         frameState.replaceAndDelete(stateAfter);
@@ -1421,8 +1420,10 @@ public class InliningUtil {
                         }
                     }
                 }
-                if (callerLockDepth != 0 && node instanceof MonitorReference) {
-                    MonitorReference monitor = (MonitorReference) node;
+            }
+            if (callerLockDepth != 0) {
+                for (MonitorIdNode original : inlineGraph.getNodes(MonitorIdNode.class)) {
+                    MonitorIdNode monitor = (MonitorIdNode) duplicates.get(original);
                     monitor.setLockDepth(monitor.getLockDepth() + callerLockDepth);
                 }
             }

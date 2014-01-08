@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.nodes.java;
 
+import java.util.*;
+
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
@@ -66,7 +68,7 @@ public class NewArrayNode extends AbstractNewArrayNode implements VirtualizableA
                     state[i] = defaultForKind;
                 }
                 VirtualObjectNode virtualObject = new VirtualArrayNode(elementType(), constantLength);
-                tool.createVirtualObject(virtualObject, state, null);
+                tool.createVirtualObject(virtualObject, state, Collections.<MonitorIdNode> emptyList());
                 tool.replaceWithVirtual(virtualObject);
             }
         }

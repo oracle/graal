@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,20 +20,36 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes.extended;
+package com.oracle.graal.nodes.java;
+
+import com.oracle.graal.graph.*;
+import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.type.*;
 
 /**
- * Denotes an instruction that references a monitor and wants to know its lock nesting depth.
+ * This node describes one locking scope; it ties the monitor enter, monitor exit and the frame
+ * states together. It is thus referenced from the {@link MonitorEnterNode}, from the
+ * {@link MonitorExitNode} and from the {@link FrameState}.
  */
-public interface MonitorReference {
+public final class MonitorIdNode extends ValueNode implements IterableNodeType, LIRLowerable {
 
-    /**
-     * Sets the depth of the lock referenced by this operation.
-     */
-    void setLockDepth(int lockDepth);
+    private int lockDepth;
 
-    /**
-     * Gets the depth of the lock referenced by this operation.
-     */
-    int getLockDepth();
+    public MonitorIdNode(int lockDepth) {
+        super(StampFactory.dependency());
+        this.lockDepth = lockDepth;
+    }
+
+    public int getLockDepth() {
+        return lockDepth;
+    }
+
+    public void setLockDepth(int lockDepth) {
+        this.lockDepth = lockDepth;
+    }
+
+    public void generate(LIRGeneratorTool generator) {
+        // nothing to do
+    }
 }

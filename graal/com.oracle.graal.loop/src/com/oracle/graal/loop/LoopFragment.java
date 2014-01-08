@@ -31,6 +31,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.VirtualState.NodeClosure;
 import com.oracle.graal.nodes.VirtualState.VirtualClosure;
 import com.oracle.graal.nodes.cfg.*;
+import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.virtual.*;
 
 public abstract class LoopFragment {
@@ -198,11 +199,13 @@ public abstract class LoopFragment {
                         markFloating(obj, nodes, notloopNodes);
                     }
                 }
+                if (n instanceof MonitorEnterNode) {
+                    markFloating(((MonitorEnterNode) n).getMonitorId(), nodes, notloopNodes);
+                }
                 for (Node usage : n.usages()) {
                     markFloating(usage, nodes, notloopNodes);
                 }
             }
-
         }
 
         return nodes;

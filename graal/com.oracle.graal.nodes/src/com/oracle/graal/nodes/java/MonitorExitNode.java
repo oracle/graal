@@ -34,19 +34,16 @@ import com.oracle.graal.nodes.spi.*;
  * a synchronized method, then the return value of the method will be referenced, so that it will be
  * materialized before releasing the monitor.
  */
-public final class MonitorExitNode extends AccessMonitorNode implements Virtualizable, Simplifiable, Lowerable, IterableNodeType, MonitorExit, MemoryCheckpoint.Single, MonitorReference {
+public final class MonitorExitNode extends AccessMonitorNode implements Virtualizable, Simplifiable, Lowerable, IterableNodeType, MonitorExit, MemoryCheckpoint.Single {
 
     @Input private ValueNode escapedReturnValue;
-
-    private int lockDepth;
 
     /**
      * Creates a new MonitorExitNode.
      */
-    public MonitorExitNode(ValueNode object, ValueNode escapedReturnValue, int lockDepth) {
-        super(object);
+    public MonitorExitNode(ValueNode object, MonitorIdNode monitorId, ValueNode escapedReturnValue) {
+        super(object, monitorId);
         this.escapedReturnValue = escapedReturnValue;
-        this.lockDepth = lockDepth;
     }
 
     public void setEscapedReturnValue(ValueNode x) {
@@ -73,22 +70,17 @@ public final class MonitorExitNode extends AccessMonitorNode implements Virtuali
         tool.getLowerer().lower(this, tool);
     }
 
-    public int getLockDepth() {
-        return lockDepth;
-    }
-
-    public void setLockDepth(int lockDepth) {
-        this.lockDepth = lockDepth;
-    }
-
     @Override
     public void virtualize(VirtualizerTool tool) {
         State state = tool.getObjectState(object());
         // the monitor exit for a synchronized method should never be virtualized
         assert stateAfter().bci != FrameState.AFTER_BCI || state == null;
         if (state != null && state.getState() == EscapeState.Virtual && state.getVirtualObject().hasIdentity()) {
-            int removedLock = state.removeLock();
-            assert removedLock == getLockDepth();
+            MonitorIdNode removedLock = state.removeLock();
+            if (removedLock != getMonitorId()) {
+                throw new GraalInternalError("mismatch at %s: %s vs. %s", this, removedLock, getMonitorId());
+            }
+            assert removedLock == getMonitorId() : "mismatch at " + this + ": " + removedLock + " vs. " + getMonitorId();
             tool.delete();
         }
     }

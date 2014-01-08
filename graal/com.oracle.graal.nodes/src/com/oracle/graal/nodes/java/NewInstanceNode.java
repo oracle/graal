@@ -23,6 +23,7 @@
 package com.oracle.graal.nodes.java;
 
 import java.lang.ref.*;
+import java.util.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
@@ -74,7 +75,7 @@ public class NewInstanceNode extends AbstractNewObjectNode implements Virtualiza
             for (int i = 0; i < state.length; i++) {
                 state[i] = defaultFieldValue(fields[i]);
             }
-            tool.createVirtualObject(virtualObject, state, null);
+            tool.createVirtualObject(virtualObject, state, Collections.<MonitorIdNode> emptyList());
             tool.replaceWithVirtual(virtualObject);
         }
     }

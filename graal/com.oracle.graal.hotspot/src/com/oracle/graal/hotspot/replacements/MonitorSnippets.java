@@ -434,7 +434,7 @@ public class MonitorSnippets implements Snippets {
                 args = new Arguments(monitorenterStub, graph.getGuardsStage(), tool.getLoweringStage());
             }
             args.add("object", monitorenterNode.object());
-            args.addConst("lockDepth", monitorenterNode.getLockDepth());
+            args.addConst("lockDepth", monitorenterNode.getMonitorId().getLockDepth());
             boolean tracingEnabledForMethod = stateAfter != null && (isTracingEnabledForMethod(stateAfter.method()) || isTracingEnabledForMethod(graph.method()));
             args.addConst("threadRegister", registers.getThreadRegister());
             args.addConst("stackPointerRegister", registers.getStackPointerRegister());
@@ -461,7 +461,7 @@ public class MonitorSnippets implements Snippets {
                 args = new Arguments(monitorexitStub, graph.getGuardsStage(), tool.getLoweringStage());
             }
             args.add("object", monitorexitNode.object());
-            args.addConst("lockDepth", monitorexitNode.getLockDepth());
+            args.addConst("lockDepth", monitorexitNode.getMonitorId().getLockDepth());
             args.addConst("trace", isTracingEnabledForType(monitorexitNode.object()) || isTracingEnabledForMethod(stateAfter.method()) || isTracingEnabledForMethod(graph.method()));
 
             Map<Node, Node> nodes = template(args).instantiate(providers.getMetaAccess(), monitorexitNode, DEFAULT_REPLACER, args);
@@ -529,7 +529,7 @@ public class MonitorSnippets implements Snippets {
                         callTarget = graph.add(new MethodCallTargetNode(InvokeKind.Static, checkCounter.getMethod(), new ValueNode[]{errMsg}, returnType));
                         invoke = graph.add(new InvokeNode(callTarget, 0));
                         List<ValueNode> stack = Collections.emptyList();
-                        FrameState stateAfter = new FrameState(graph.method(), FrameState.AFTER_BCI, new ValueNode[0], stack, new ValueNode[0], false, false);
+                        FrameState stateAfter = new FrameState(graph.method(), FrameState.AFTER_BCI, new ValueNode[0], stack, new ValueNode[0], new MonitorIdNode[0], false, false);
                         invoke.setStateAfter(graph.add(stateAfter));
                         graph.addBeforeFixed(ret, invoke);
 

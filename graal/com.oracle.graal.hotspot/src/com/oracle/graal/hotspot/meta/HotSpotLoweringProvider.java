@@ -482,8 +482,8 @@ public class HotSpotLoweringProvider implements LoweringProvider {
             graph.addBeforeFixed(commit, anchor);
         }
         for (int objIndex = 0; objIndex < commit.getVirtualObjects().size(); objIndex++) {
-            for (int lockDepth : commit.getLocks().get(objIndex)) {
-                MonitorEnterNode enter = graph.add(new MonitorEnterNode(allocations[objIndex], lockDepth));
+            for (MonitorIdNode monitorId : commit.getLocks(objIndex)) {
+                MonitorEnterNode enter = graph.add(new MonitorEnterNode(allocations[objIndex], monitorId));
                 graph.addBeforeFixed(commit, enter);
                 enter.lower(tool);
             }

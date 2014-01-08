@@ -141,7 +141,7 @@ public class VirtualArrayNode extends VirtualObjectNode {
     }
 
     @Override
-    public ValueNode getMaterializedRepresentation(FixedNode fixed, ValueNode[] entries, int[] locks) {
+    public ValueNode getMaterializedRepresentation(FixedNode fixed, ValueNode[] entries, LockState locks) {
         return new AllocatedObjectNode(this);
     }
 }

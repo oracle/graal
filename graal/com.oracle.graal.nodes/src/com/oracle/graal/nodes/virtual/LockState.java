@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,28 +22,40 @@
  */
 package com.oracle.graal.nodes.virtual;
 
-import com.oracle.graal.api.meta.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.extended.*;
+import java.util.*;
 
-public class VirtualBoxingNode extends VirtualInstanceNode {
+import com.oracle.graal.nodes.java.*;
 
-    private final Kind boxingKind;
+/**
+ * The class implements a simple linked list of MonitorIdNodes, which can be used to describe the
+ * current lock state of an object.
+ */
+public final class LockState {
 
-    public VirtualBoxingNode(ResolvedJavaType type, Kind boxingKind) {
-        super(type, false);
-        this.boxingKind = boxingKind;
+    public final MonitorIdNode monitorId;
+    public final LockState next;
+
+    public LockState(MonitorIdNode monitorId, LockState next) {
+        this.monitorId = monitorId;
+        this.next = next;
     }
 
     @Override
-    public VirtualBoxingNode duplicate() {
-        return new VirtualBoxingNode(type(), boxingKind);
+    public String toString() {
+        return monitorId.getLockDepth() + (next == null ? "" : "," + next);
     }
 
-    @Override
-    public ValueNode getMaterializedRepresentation(FixedNode fixed, ValueNode[] entries, LockState locks) {
-        assert entries.length == 1;
-        assert locks == null;
-        return new BoxNode(entries[0], type(), boxingKind);
+    public static List<MonitorIdNode> asList(LockState state) {
+        if (state == null) {
+            return Collections.emptyList();
+        } else {
+            ArrayList<MonitorIdNode> result = new ArrayList<>();
+            LockState a = state;
+            do {
+                result.add(a.monitorId);
+                a = a.next;
+            } while (a != null);
+            return result;
+        }
     }
 }

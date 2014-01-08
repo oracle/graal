@@ -36,9 +36,14 @@ import com.oracle.graal.nodes.type.*;
 public abstract class AccessMonitorNode extends AbstractMemoryCheckpoint implements MemoryCheckpoint {
 
     @Input private ValueNode object;
+    @Input private MonitorIdNode monitorId;
 
     public ValueNode object() {
         return object;
+    }
+
+    public MonitorIdNode getMonitorId() {
+        return monitorId;
     }
 
     /**
@@ -46,8 +51,9 @@ public abstract class AccessMonitorNode extends AbstractMemoryCheckpoint impleme
      * 
      * @param object the instruction producing the object
      */
-    public AccessMonitorNode(ValueNode object) {
+    public AccessMonitorNode(ValueNode object, MonitorIdNode monitorId) {
         super(StampFactory.forVoid());
         this.object = object;
+        this.monitorId = monitorId;
     }
 }

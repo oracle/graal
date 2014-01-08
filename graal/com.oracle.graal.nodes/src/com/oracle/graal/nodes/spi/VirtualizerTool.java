@@ -22,10 +22,13 @@
  */
 package com.oracle.graal.nodes.spi;
 
+import java.util.*;
+
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.Virtualizable.State;
 import com.oracle.graal.nodes.virtual.*;
 
@@ -66,7 +69,7 @@ public interface VirtualizerTool {
      * @param entryState the initial state of the virtual object's fields.
      * @param locks the initial locking depths.
      */
-    void createVirtualObject(VirtualObjectNode virtualObject, ValueNode[] entryState, int[] locks);
+    void createVirtualObject(VirtualObjectNode virtualObject, ValueNode[] entryState, List<MonitorIdNode> locks);
 
     /**
      * Queries the current state of the given value: if it is virtualized (thread-local and the
