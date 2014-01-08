@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,7 @@
  */
 package com.oracle.truffle.api.nodes.instrument;
 
+import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.api.nodes.instrument.InstrumentationProbeNode.ProbeChain;
 
 /**
@@ -36,7 +37,12 @@ import com.oracle.truffle.api.nodes.instrument.InstrumentationProbeNode.ProbeCha
  * probe chain} which passes along {@linkplain InstrumentationProbeEvents events} to any
  * {@linkplain InstrumentationProbeNode probes} that might have been attached.
  */
-public interface InstrumentationProxyNode extends InstrumentationNode {
+public interface InstrumentationProxyNode extends InstrumentationNode, PhylumMarked {
+
+    /**
+     * Gets the non-instrumentation node being proxied.
+     */
+    Node getChild();
 
     /**
      * Gets the chain of probes to which events at this node are delegated. Note that a chain of

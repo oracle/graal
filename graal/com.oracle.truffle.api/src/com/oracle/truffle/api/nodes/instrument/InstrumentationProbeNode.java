@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,6 +23,8 @@
  * questions.
  */
 package com.oracle.truffle.api.nodes.instrument;
+
+import java.util.*;
 
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.frame.*;
@@ -50,6 +52,11 @@ public abstract class InstrumentationProbeNode extends Node implements Instrumen
         return next == null ? 0 : next.countProbes() + 1;
     }
 
+    protected boolean isStepping() {
+        final InstrumentationProbeNode parent = (InstrumentationProbeNode) getParent();
+        return parent.isStepping();
+    }
+
     /**
      * Add a probe to the end of this probe chain.
      */
@@ -69,6 +76,7 @@ public abstract class InstrumentationProbeNode extends Node implements Instrumen
                 this.next = null;
             } else {
                 this.next = adoptChild(oldProbeNode.next);
+                oldProbeNode.next = null;
             }
         } else {
             next.internalRemoveProbe(oldProbeNode);
@@ -186,6 +194,16 @@ public abstract class InstrumentationProbeNode extends Node implements Instrumen
      */
     public static class DefaultProbeNode extends InstrumentationProbeNode {
 
+        private final ExecutionContext executionContext;
+
+        protected DefaultProbeNode(ExecutionContext context) {
+            this.executionContext = context;
+        }
+
+        public ExecutionContext getContext() {
+            return executionContext;
+        }
+
         public void enter(Node astNode, VirtualFrame frame) {
         }
 
@@ -230,17 +248,28 @@ public abstract class InstrumentationProbeNode extends Node implements Instrumen
     /**
      * Holder of a chain of {@linkplain InstrumentationProbeNode probes}: manages the
      * {@link Assumption} that the chain has not changed since checked checked.
+     * <p>
+     * May be categorized by one or more {@linkplain NodePhylum node phyla}, signifying information
+     * useful for instrumentation about its AST location(s).
      */
-    public static final class ProbeChain extends DefaultProbeNode {
+    public static final class ProbeChain extends DefaultProbeNode implements PhylumMarked {
 
         @CompilerDirectives.CompilationFinal private Assumption probeUnchanged;
+
+        /**
+         * When in stepping mode, ordinary line breakpoints are ignored, but every entry at a line
+         * will cause a halt.
+         */
+        @CompilerDirectives.CompilationFinal private boolean stepping;
 
         /**
          * Source information about the node to which this probe chain is attached; it isn't
          * otherwise available. A probe chain is shared by every copy made during runtime, so there
          * is no parent pointer.
          */
-        @SuppressWarnings("unused") private final SourceSection sourceSection;
+        private final SourceSection probedSourceSection;
+
+        private final Set<NodePhylum> phyla = EnumSet.noneOf(NodePhylum.class);
 
         private final String description; // for debugging
 
@@ -249,9 +278,10 @@ public abstract class InstrumentationProbeNode extends Node implements Instrumen
          * probes can be added/removed, and all of which will be notified of
          * {@linkplain InstrumentationProbeEvents events} when the chain is notified.
          */
-        public ProbeChain(SourceSection sourceSection, String description) {
+        public ProbeChain(ExecutionContext context, SourceSection sourceSection, String description) {
+            super(context);
             this.probeUnchanged = Truffle.getRuntime().createAssumption();
-            this.sourceSection = sourceSection;
+            this.probedSourceSection = sourceSection;
             this.description = description;
             this.next = null;
         }
@@ -262,6 +292,51 @@ public abstract class InstrumentationProbeNode extends Node implements Instrumen
 
         public String getDescription() {
             return description;
+        }
+
+        public SourceSection getProbedSourceSection() {
+            return probedSourceSection;
+        }
+
+        /**
+         * Mark this probe chain as being associated with an AST node in some category useful for
+         * debugging and other tools.
+         */
+        public void markAs(NodePhylum phylum) {
+            assert phylum != null;
+            phyla.add(phylum);
+        }
+
+        /**
+         * Is this probe chain as being associated with an AST node in some category useful for
+         * debugging and other tools.
+         */
+        public boolean isMarkedAs(NodePhylum phylum) {
+            assert phylum != null;
+            return phyla.contains(phylum);
+        }
+
+        /**
+         * In which categories is the AST (with which this probe is associated) marked?
+         */
+        public Set<NodePhylum> getPhylumMarks() {
+            return phyla;
+        }
+
+        /**
+         * Change <em>stepping mode</em> for statements.
+         */
+        public void setStepping(boolean stepping) {
+            if (this.stepping != stepping) {
+                this.stepping = stepping;
+                probeUnchanged.invalidate();
+                probeUnchanged = Truffle.getRuntime().createAssumption();
+            }
+        }
+
+        @Override
+        protected boolean isStepping() {
+            return stepping;
         }
 
         @Override
@@ -291,9 +366,12 @@ public abstract class InstrumentationProbeNode extends Node implements Instrumen
         }
 
         public void notifyEnter(Node astNode, VirtualFrame frame) {
-            if (next != null) {
+            if (stepping || next != null) {
                 if (!probeUnchanged.isValid()) {
                     CompilerDirectives.transferToInterpreter();
+                }
+                if (stepping) {
+                    getContext().getDebugManager().haltedAt(astNode, frame.materialize());
                 }
                 next.internalEnter(astNode, frame);
             }
