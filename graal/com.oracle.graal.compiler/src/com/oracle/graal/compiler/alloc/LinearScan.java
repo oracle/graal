@@ -1839,7 +1839,7 @@ public final class LinearScan {
         /*
          * This is the point to enable debug logging for the whole register allocation.
          */
-        Indent indent = Debug.logAndIndent(false, "LinearScan allocate %s", gen.getGraph().method());
+        Indent indent = Debug.logAndIndent("LinearScan allocate %s", gen.getGraph().method());
 
         try (Scope s = Debug.scope("LifetimeAnalysis")) {
             numberInstructions();
@@ -1942,7 +1942,7 @@ public final class LinearScan {
 
     private void verifyRegisters() {
         // Enable this logging to get output for the verification process.
-        try (Indent indent = Debug.logAndIndent(false, "verifying register allocation")) {
+        try (Indent indent = Debug.logAndIndent("verifying register allocation")) {
             RegisterVerifier verifier = new RegisterVerifier(this);
             verifier.verify(blockAt(0));
         }

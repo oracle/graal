@@ -572,7 +572,7 @@ final class LinearScanWalker extends IntervalWalker {
             // ignored safely
             if (Debug.isLogEnabled()) {
                 // Enable this logging to see all register states
-                try (Indent indent2 = Debug.logAndIndent(false, "state of registers:")) {
+                try (Indent indent2 = Debug.logAndIndent("state of registers:")) {
                     for (Register register : availableRegs) {
                         int i = register.number;
                         Debug.log("reg %d: usePos: %d", register.number, usePos[i]);
