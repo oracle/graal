@@ -35,13 +35,11 @@ public final class DebugScope implements Debug.Scope {
         private static final String INDENTATION_INCREMENT = "  ";
 
         final String indent;
-        boolean enabled;
         final IndentImpl parentIndent;
 
-        IndentImpl(IndentImpl parentIndent, boolean enabled) {
+        IndentImpl(IndentImpl parentIndent) {
             this.parentIndent = parentIndent;
             this.indent = (parentIndent == null ? "" : parentIndent.indent + INDENTATION_INCREMENT);
-            this.enabled = enabled;
         }
 
         private void printScopeName() {
@@ -56,7 +54,7 @@ public final class DebugScope implements Debug.Scope {
 
         @Override
         public void log(String msg, Object... args) {
-            if (enabled) {
+            if (isLogEnabled()) {
                 printScopeName();
                 output.println(indent + String.format(msg, args));
                 lastUsedIndent = this;
@@ -64,13 +62,8 @@ public final class DebugScope implements Debug.Scope {
         }
 
         @Override
-        public void setEnabled(boolean enabled) {
-            this.enabled = enabled;
-        }
-
-        @Override
         public Indent indent() {
-            lastUsedIndent = new IndentImpl(this, enabled);
+            lastUsedIndent = new IndentImpl(this);
             return lastUsedIndent;
         }
 
@@ -115,6 +108,7 @@ public final class DebugScope implements Debug.Scope {
     private boolean meterEnabled;
     private boolean timeEnabled;
     private boolean dumpEnabled;
+    private boolean logEnabled;
 
     private PrintStream output;
 
@@ -141,10 +135,10 @@ public final class DebugScope implements Debug.Scope {
         this.context = context;
         this.qualifiedName = qualifiedName;
         if (parent != null) {
-            lastUsedIndent = new IndentImpl(parent.lastUsedIndent, parent.isLogEnabled());
+            lastUsedIndent = new IndentImpl(parent.lastUsedIndent);
             logScopeName = !parent.qualifiedName.equals(qualifiedName);
         } else {
-            lastUsedIndent = new IndentImpl(null, false);
+            lastUsedIndent = new IndentImpl(null);
             logScopeName = true;
         }
 
@@ -178,11 +172,7 @@ public final class DebugScope implements Debug.Scope {
     }
 
     public boolean isLogEnabled() {
-        return lastUsedIndent.enabled;
-    }
-
-    public void setLogEnabled(boolean enabled) {
-        lastUsedIndent.setEnabled(enabled);
+        return logEnabled;
     }
 
     public boolean isMeterEnabled() {
@@ -251,7 +241,6 @@ public final class DebugScope implements Debug.Scope {
             newScope = this.createChild(name, context);
         }
         instanceTL.set(newScope);
-        newScope.setLogEnabled(this.isLogEnabled());
         newScope.updateFlags();
         return newScope;
     }
@@ -297,10 +286,8 @@ public final class DebugScope implements Debug.Scope {
             meterEnabled = config.isMeterEnabled();
             timeEnabled = config.isTimeEnabled();
             dumpEnabled = config.isDumpEnabled();
+            logEnabled = config.isLogEnabled();
             output = config.output();
-            if (config.isLogEnabled()) {
-                setLogEnabled(true);
-            }
         }
     }
 

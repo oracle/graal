@@ -73,13 +73,6 @@ public interface Indent extends AutoCloseable {
     void log(String msg, Object... args);
 
     /**
-     * Turns on/off logging for this indentation level.
-     * 
-     * @param enabled If true, logging is enabled, otherwise disabled
-     */
-    void setEnabled(boolean enabled);
-
-    /**
      * Creates a new indentation level (by adding some spaces).
      * 
      * @return The new indentation level
