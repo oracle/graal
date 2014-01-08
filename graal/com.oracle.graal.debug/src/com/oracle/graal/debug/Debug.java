@@ -169,7 +169,7 @@ public class Debug {
      */
     public static Scope scope(String name, Object... context) {
         if (ENABLED) {
-            return DebugScope.getInstance().scope(name, false, null, context);
+            return DebugScope.getInstance().scope(name, null, context);
         } else {
             return null;
         }
@@ -198,7 +198,7 @@ public class Debug {
     public static Scope sandbox(String name, DebugConfig config, Object... context) {
         if (ENABLED) {
             DebugConfig sandboxConfig = config == null ? silentConfig() : config;
-            return DebugScope.getInstance().scope(name, true, sandboxConfig, context);
+            return DebugScope.getInstance().scope(name, sandboxConfig, context);
         } else {
             return null;
         }
