@@ -79,7 +79,7 @@ public class CallNode extends RubyNode {
         this.name = name;
         this.isSplatted = isSplatted;
 
-        dispatchHead = adoptChild(adoptChild(new DispatchHeadNode(context, section, name, isSplatted)));
+        dispatchHead = adoptChild(new DispatchHeadNode(context, section, name, isSplatted));
     }
 
     @Override

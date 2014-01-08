@@ -14,7 +14,9 @@ import java.math.*;
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.frame.*;
+import com.oracle.truffle.api.utilities.*;
 import com.oracle.truffle.ruby.runtime.*;
+import com.oracle.truffle.ruby.runtime.control.*;
 import com.oracle.truffle.ruby.runtime.core.*;
 import com.oracle.truffle.ruby.runtime.core.array.*;
 
@@ -755,6 +757,10 @@ public abstract class FixnumNodes {
     @CoreMethod(names = "times", needsBlock = true, maxArgs = 0)
     public abstract static class TimesNode extends YieldingCoreMethodNode {
 
+        private final BranchProfile breakProfile = new BranchProfile();
+        private final BranchProfile nextProfile = new BranchProfile();
+        private final BranchProfile redoProfile = new BranchProfile();
+
         public TimesNode(RubyContext context, SourceSection sourceSection) {
             super(context, sourceSection);
         }
@@ -764,9 +770,22 @@ public abstract class FixnumNodes {
         }
 
         @Specialization
-        public int times(VirtualFrame frame, int n, RubyProc block) {
-            for (int i = 0; i < n; i++) {
-                yield(frame, block, i);
+        public Object times(VirtualFrame frame, int n, RubyProc block) {
+            outer: for (int i = 0; i < n; i++) {
+                while (true) {
+                    try {
+                        yield(frame, block, i);
+                        continue outer;
+                    } catch (BreakException e) {
+                        breakProfile.enter();
+                        return e.getResult();
+                    } catch (NextException e) {
+                        nextProfile.enter();
+                        continue outer;
+                    } catch (RedoException e) {
+                        redoProfile.enter();
+                    }
+                }
             }
 
             return n;
@@ -831,6 +850,10 @@ public abstract class FixnumNodes {
     @CoreMethod(names = "upto", needsBlock = true, minArgs = 1, maxArgs = 1)
     public abstract static class UpToNode extends YieldingCoreMethodNode {
 
+        private final BranchProfile breakProfile = new BranchProfile();
+        private final BranchProfile nextProfile = new BranchProfile();
+        private final BranchProfile redoProfile = new BranchProfile();
+
         public UpToNode(RubyContext context, SourceSection sourceSection) {
             super(context, sourceSection);
         }
@@ -840,9 +863,22 @@ public abstract class FixnumNodes {
         }
 
         @Specialization
-        public NilPlaceholder upto(VirtualFrame frame, int from, int to, RubyProc block) {
-            for (int i = from; i <= to; i++) {
-                yield(frame, block, i);
+        public Object upto(VirtualFrame frame, int from, int to, RubyProc block) {
+            outer: for (int i = from; i <= to; i++) {
+                while (true) {
+                    try {
+                        yield(frame, block, i);
+                        continue outer;
+                    } catch (BreakException e) {
+                        breakProfile.enter();
+                        return e.getResult();
+                    } catch (NextException e) {
+                        nextProfile.enter();
+                        continue outer;
+                    } catch (RedoException e) {
+                        redoProfile.enter();
+                    }
+                }
             }
 
             return NilPlaceholder.INSTANCE;

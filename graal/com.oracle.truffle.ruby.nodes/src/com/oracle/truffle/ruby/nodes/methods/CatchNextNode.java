@@ -36,8 +36,7 @@ public class CatchNextNode extends RubyNode {
             return body.execute(frame);
         } catch (NextException e) {
             nextProfile.enter();
-            return NilPlaceholder.INSTANCE;
+            return e.getResult();
         }
     }
-
 }

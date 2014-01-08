@@ -1513,7 +1513,17 @@ public class Translator implements org.jrubyparser.NodeVisitor {
 
     @Override
     public Object visitNextNode(org.jrubyparser.ast.NextNode node) {
-        return new NextNode(context, translate(node.getPosition()));
+        final SourceSection sourceSection = translate(node.getPosition());
+
+        RubyNode resultNode;
+
+        if (node.getValueNode() == null) {
+            resultNode = new NilNode(context, sourceSection);
+        } else {
+            resultNode = (RubyNode) node.getValueNode().accept(this);
+        }
+
+        return new NextNode(context, sourceSection, resultNode);
     }
 
     @Override

@@ -304,13 +304,13 @@ public abstract class StringNodes {
     }
 
     @CoreMethod(names = "inspect", maxArgs = 0)
-    public abstract static class InpsectNode extends CoreMethodNode {
+    public abstract static class InspectNode extends CoreMethodNode {
 
-        public InpsectNode(RubyContext context, SourceSection sourceSection) {
+        public InspectNode(RubyContext context, SourceSection sourceSection) {
             super(context, sourceSection);
         }
 
-        public InpsectNode(InpsectNode prev) {
+        public InspectNode(InspectNode prev) {
             super(prev);
         }
 
