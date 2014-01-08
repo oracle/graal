@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013 Oracle and/or its affiliates. All rights reserved. This
+ * Copyright (c) 2013, 2014 Oracle and/or its affiliates. All rights reserved. This
  * code is released under a tri EPL/GPL/LGPL license. You can use it,
  * redistribute it and/or modify it under the terms of the:
  *
@@ -18,14 +18,24 @@ import com.oracle.truffle.ruby.runtime.*;
  */
 public abstract class RubyProbe extends InstrumentationProbeNode.DefaultProbeNode {
 
+    protected final boolean oneShot;
+
     protected final RubyContext context;
 
-    public RubyProbe(RubyContext context) {
+    /**
+     * OneShot is this a one-shot (self-removing) probe?
+     */
+    public RubyProbe(RubyContext context, boolean oneShot) {
+        super(context);
+        this.oneShot = oneShot;
         this.context = context;
-        assert context != null;
     }
 
-    public RubyContext getContext() {
-        return context;
+    /**
+     * Is this a one-shot (self-removing) probe? If so, it will remove itself the first time
+     * activated.
+     */
+    public boolean isOneShot() {
+        return oneShot;
     }
 }

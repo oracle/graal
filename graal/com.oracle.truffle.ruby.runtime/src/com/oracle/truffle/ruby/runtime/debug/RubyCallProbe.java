@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013 Oracle and/or its affiliates. All rights reserved. This
+ * Copyright (c) 2014 Oracle and/or its affiliates. All rights reserved. This
  * code is released under a tri EPL/GPL/LGPL license. You can use it,
  * redistribute it and/or modify it under the terms of the:
  *
@@ -12,48 +12,48 @@ package com.oracle.truffle.ruby.runtime.debug;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.ruby.runtime.*;
-import com.oracle.truffle.ruby.runtime.core.*;
 
-/**
- * A probe for instrumenting a Ruby program with a Ruby procedure to run on the return value from
- * node execution.
- */
-public final class RubyProcAfterProbe extends RubyProbe {
+public final class RubyCallProbe extends RubyProbe {
 
-    private final RubyProc proc;
+    private final String name;
 
-    public RubyProcAfterProbe(RubyContext context, RubyProc proc) {
-        super(context);
-        this.proc = proc;
+    public RubyCallProbe(RubyContext context, String name) {
+        super(context, false);
+        this.name = name;
+    }
+
+    @Override
+    public void enter(Node astNode, VirtualFrame frame) {
+        context.getDebugManager().notifyCallEntry(astNode, name);
     }
 
     @Override
     public void leave(Node astNode, VirtualFrame frame) {
-        proc.call(frame.pack());
+        context.getDebugManager().notifyCallExit(astNode, name);
     }
 
     @Override
     public void leave(Node astNode, VirtualFrame frame, boolean result) {
-        proc.call(frame.pack(), result);
+        context.getDebugManager().notifyCallExit(astNode, name);
     }
 
     @Override
     public void leave(Node astNode, VirtualFrame frame, int result) {
-        proc.call(frame.pack(), result);
+        context.getDebugManager().notifyCallExit(astNode, name);
     }
 
     @Override
     public void leave(Node astNode, VirtualFrame frame, double result) {
-        proc.call(frame.pack(), result);
+        context.getDebugManager().notifyCallExit(astNode, name);
     }
 
     @Override
     public void leave(Node astNode, VirtualFrame frame, Object result) {
-        proc.call(frame.pack(), result);
+        context.getDebugManager().notifyCallExit(astNode, name);
     }
 
     @Override
     public void leaveExceptional(Node astNode, VirtualFrame frame, Exception e) {
-        proc.call(frame.pack());
+        context.getDebugManager().notifyCallExit(astNode, name);
     }
 }
