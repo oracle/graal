@@ -22,9 +22,11 @@
  */
 package com.oracle.graal.nodes.cfg;
 
+import java.io.*;
 import java.util.*;
 
 import com.oracle.graal.debug.*;
+import com.oracle.graal.debug.internal.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 
@@ -197,10 +199,22 @@ public class ControlFlowGraph {
         }
     }
 
+    static final DebugHistogram H = Debug.createHistogram("Predecessors");
+    static final DebugHistogram S = Debug.createHistogram("Succecessors");
+    static {
+        Runtime.getRuntime().addShutdownHook(new Thread() {
+            @Override
+            public void run() {
+                new DebugHistogramAsciiPrinter(new PrintStream(System.out)).print(H);
+                new DebugHistogramAsciiPrinter(new PrintStream(System.out)).print(S);
+            }
+        });
+    }
+
     // Connect blocks (including loop backward edges), but ignoring dead code (blocks with id < 0).
     private void connectBlocks() {
         for (Block block : reversePostOrder) {
-            List<Block> predecessors = new ArrayList<>();
+            List<Block> predecessors = new ArrayList<>(4);
             for (Node predNode : block.getBeginNode().cfgPredecessors()) {
                 Block predBlock = nodeToBlock.get(predNode);
                 if (predBlock.id >= 0) {
@@ -216,8 +230,9 @@ public class ControlFlowGraph {
                 }
             }
             block.predecessors = predecessors;
+            H.add(predecessors.size());
 
-            List<Block> successors = new ArrayList<>();
+            List<Block> successors = new ArrayList<>(4);
             for (Node suxNode : block.getEndNode().cfgSuccessors()) {
                 Block suxBlock = nodeToBlock.get(suxNode);
                 assert suxBlock.id >= 0;
@@ -229,6 +244,7 @@ public class ControlFlowGraph {
                 successors.add(suxBlock);
             }
             block.successors = successors;
+            S.add(predecessors.size());
         }
     }
 
