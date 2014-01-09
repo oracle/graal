@@ -25,6 +25,7 @@ package com.oracle.graal.api.code;
 import static java.util.Collections.*;
 
 import java.io.*;
+import java.nio.*;
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
@@ -136,6 +137,65 @@ public class CompilationResult implements Serializable {
         }
     }
 
+    public abstract static class Data {
+
+        public final int size;
+        public final int alignment;
+
+        public abstract void emit(ByteBuffer buffer);
+
+        protected Data(int size, int alignment) {
+            this.size = size;
+            this.alignment = alignment;
+        }
+    }
+
+    public static final class ConstantData extends Data {
+
+        public final Constant constant;
+
+        public ConstantData(Constant constant, int alignment) {
+            super(8, alignment);
+            this.constant = constant;
+        }
+
+        @Override
+        public void emit(ByteBuffer buffer) {
+            constant.putPrimitive(buffer);
+        }
+
+        @Override
+        public String toString() {
+            return constant.toString();
+        }
+    }
+
+    public static final class RawData extends Data {
+
+        public final byte[] data;
+
+        public RawData(byte[] data, int alignment) {
+            super(data.length, alignment);
+            this.data = data;
+        }
+
+        @Override
+        public void emit(ByteBuffer buffer) {
+            buffer.put(data);
+        }
+
+        @Override
+        public String toString() {
+            Formatter ret = new Formatter();
+            boolean first = true;
+            for (byte b : data) {
+                ret.format(first ? "%02X" : " %02X", b);
+                first = false;
+            }
+            return ret.toString();
+        }
+    }
+
     /**
      * Represents a reference to data from the code. The associated data can be either a
      * {@link Constant} or a raw byte array. The raw byte array is patched as is, no endian swapping
@@ -144,44 +204,39 @@ public class CompilationResult implements Serializable {
     public static final class DataPatch extends Site {
 
         private static final long serialVersionUID = 5771730331604867476L;
-        public final Constant constant;
-        public final byte[] rawConstant;
-        public final int alignment;
+        public Data externalData;
+        public Constant inlineData;
 
-        /**
-         * Determines if the data is encoded inline or is loaded from a separate data area.
-         */
-        public final boolean inlined;
-
-        DataPatch(int pcOffset, byte[] data, int alignment) {
-            this(pcOffset, null, data, alignment, false);
+        DataPatch(int pcOffset, Data externalData) {
+            this(pcOffset, externalData, null);
         }
 
-        DataPatch(int pcOffset, Constant data, int alignment, boolean inlined) {
-            this(pcOffset, data, null, alignment, inlined);
+        DataPatch(int pcOffset, Constant inlineData) {
+            this(pcOffset, null, inlineData);
         }
 
-        private DataPatch(int pcOffset, Constant data, byte[] rawData, int alignment, boolean inlined) {
+        private DataPatch(int pcOffset, Data externalData, Constant inlineData) {
             super(pcOffset);
-            assert (data == null) != (rawData == null) : "only one of data and rawData is allowed";
-            assert !inlined || rawData == null : "rawData can not be inlined";
-            this.constant = data;
-            this.rawConstant = rawData;
-            this.alignment = alignment;
-            this.inlined = inlined;
+            assert (externalData == null) != (inlineData == null) : "data patch can not be both external and inlined";
+            this.externalData = externalData;
+            this.inlineData = inlineData;
+        }
+
+        public Constant getConstant() {
+            if (inlineData != null) {
+                return inlineData;
+            } else if (externalData instanceof ConstantData) {
+                return ((ConstantData) externalData).constant;
+            } else {
+                return null;
+            }
         }
 
         public String getDataString() {
-            if (constant != null) {
-                return constant.toString();
+            if (inlineData != null) {
+                return inlineData.toString();
             } else {
-                Formatter ret = new Formatter();
-                boolean first = true;
-                for (byte b : rawConstant) {
-                    ret.format(first ? "%02X" : " %02X", b);
-                    first = false;
-                }
-                return ret.toString();
+                return externalData.toString();
             }
         }
 
@@ -400,27 +455,21 @@ public class CompilationResult implements Serializable {
      * 
      * @param codePos the position in the code where the data reference occurs
      * @param data the data that is referenced
-     * @param alignment the alignment requirement of the data or 0 if there is no alignment
-     *            requirement
-     * @param inlined specifies if the data is encoded inline or is loaded from a separate data area
      */
-    public void recordDataReference(int codePos, Constant data, int alignment, boolean inlined) {
+    public void recordDataReference(int codePos, Data data) {
         assert codePos >= 0 && data != null;
-        dataReferences.add(new DataPatch(codePos, data, alignment, inlined));
+        dataReferences.add(new DataPatch(codePos, data));
     }
 
     /**
-     * Records a reference to the data section in the code section (e.g. to load an integer or
-     * floating point constant).
+     * Records a reference to an inlined constant in the code section (e.g. to load a constant oop).
      * 
-     * @param codePos the position in the code where the data reference occurs
-     * @param data a byte array containing the raw data that is referenced
-     * @param alignment the alignment requirement of the data or 0 if there is no alignment
-     *            requirement
+     * @param codePos the position in the code where the inlined constant occurs
+     * @param constant the constant that is referenced
      */
-    public void recordDataReference(int codePos, byte[] data, int alignment) {
-        assert codePos >= 0 && data != null && data.length > 0;
-        dataReferences.add(new DataPatch(codePos, data, alignment));
+    public void recordInlineData(int codePos, Constant constant) {
+        assert codePos >= 0 && constant != null;
+        dataReferences.add(new DataPatch(codePos, constant));
     }
 
     /**

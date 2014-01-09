@@ -27,6 +27,8 @@ import static com.oracle.graal.api.code.ValueUtil.*;
 import java.util.*;
 
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.code.CompilationResult.ConstantData;
+import com.oracle.graal.api.code.CompilationResult.Data;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
 import com.oracle.graal.debug.*;
@@ -158,19 +160,23 @@ public class CompilationResultBuilder {
         compilationResult.recordInfopoint(pos, debugInfo, reason);
     }
 
-    public AbstractAddress recordDataReferenceInCode(Constant data, int alignment, boolean inlined) {
+    public void recordInlineDataInCode(Constant data) {
+        assert data != null;
+        int pos = asm.codeBuffer.position();
+        Debug.log("Inline data in code: pos = %d, data = %s", pos, data.toString());
+        compilationResult.recordInlineData(pos, data);
+    }
+
+    public AbstractAddress recordDataReferenceInCode(Constant data, int alignment) {
+        assert data != null;
+        return recordDataReferenceInCode(new ConstantData(data, alignment));
+    }
+
+    public AbstractAddress recordDataReferenceInCode(Data data) {
         assert data != null;
         int pos = asm.codeBuffer.position();
         Debug.log("Data reference in code: pos = %d, data = %s", pos, data.toString());
-        compilationResult.recordDataReference(pos, data, alignment, inlined);
-        return asm.getPlaceholder();
-    }
-
-    public AbstractAddress recordDataReferenceInCode(byte[] data, int alignment) {
-        assert data != null;
-        int pos = asm.codeBuffer.position();
-        Debug.log("Raw data reference in code: pos = %d, data = %s", pos, data.toString());
-        compilationResult.recordDataReference(pos, data, alignment);
+        compilationResult.recordDataReference(pos, data);
         return asm.getPlaceholder();
     }
 
@@ -228,7 +234,7 @@ public class CompilationResultBuilder {
 
     public AbstractAddress asFloatConstRef(Value value, int alignment) {
         assert value.getKind() == Kind.Float && isConstant(value);
-        return recordDataReferenceInCode((Constant) value, alignment, false);
+        return recordDataReferenceInCode((Constant) value, alignment);
     }
 
     /**
@@ -240,7 +246,7 @@ public class CompilationResultBuilder {
 
     public AbstractAddress asDoubleConstRef(Value value, int alignment) {
         assert value.getKind() == Kind.Double && isConstant(value);
-        return recordDataReferenceInCode((Constant) value, alignment, false);
+        return recordDataReferenceInCode((Constant) value, alignment);
     }
 
     /**
@@ -248,7 +254,7 @@ public class CompilationResultBuilder {
      */
     public AbstractAddress asLongConstRef(Value value) {
         assert value.getKind() == Kind.Long && isConstant(value);
-        return recordDataReferenceInCode((Constant) value, 8, false);
+        return recordDataReferenceInCode((Constant) value, 8);
     }
 
     /**
@@ -256,7 +262,7 @@ public class CompilationResultBuilder {
      */
     public AbstractAddress asObjectConstRef(Value value) {
         assert value.getKind() == Kind.Object && isConstant(value);
-        return recordDataReferenceInCode((Constant) value, 8, false);
+        return recordDataReferenceInCode((Constant) value, 8);
     }
 
     public AbstractAddress asIntAddr(Value value) {

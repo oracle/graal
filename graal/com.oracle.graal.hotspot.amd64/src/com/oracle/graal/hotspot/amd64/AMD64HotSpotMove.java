@@ -59,7 +59,7 @@ public class AMD64HotSpotMove {
                 if (input.isNull()) {
                     masm.movl(address.toAddress(), 0);
                 } else if (crb.target.inlineObjects) {
-                    crb.recordDataReferenceInCode(input, 0, true);
+                    crb.recordInlineDataInCode(input);
                     masm.movl(address.toAddress(), 0xDEADDEAD);
                 } else {
                     throw GraalInternalError.shouldNotReachHere("Cannot store 64-bit constants to memory");

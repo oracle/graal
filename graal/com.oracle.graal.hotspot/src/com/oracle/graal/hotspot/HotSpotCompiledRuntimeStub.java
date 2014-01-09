@@ -50,7 +50,7 @@ public final class HotSpotCompiledRuntimeStub extends HotSpotCompiledCode {
     private boolean checkStubInvariants(CompilationResult compResult) {
         assert compResult.getExceptionHandlers().isEmpty();
         for (DataPatch data : compResult.getDataReferences()) {
-            Constant constant = data.constant;
+            Constant constant = data.getConstant();
             if (constant != null) {
                 assert constant.getKind() != Kind.Object : this + " cannot have embedded object constant: " + constant;
                 assert constant.getPrimitiveAnnotation() == null : this + " cannot have embedded metadata: " + constant;

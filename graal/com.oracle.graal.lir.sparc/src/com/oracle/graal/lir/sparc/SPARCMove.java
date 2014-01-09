@@ -432,7 +432,7 @@ public class SPARCMove {
         switch (input.getKind().getStackKind()) {
             case Int:
                 if (crb.codeCache.needsDataPatch(input)) {
-                    crb.recordDataReferenceInCode(input, 0, true);
+                    crb.recordInlineDataInCode(input);
                     new Setuw(input.asInt(), asRegister(result)).emit(masm);
                 } else {
                     if (input.isDefaultForKind()) {
@@ -444,7 +444,7 @@ public class SPARCMove {
                 break;
             case Long: {
                 if (crb.codeCache.needsDataPatch(input)) {
-                    crb.recordDataReferenceInCode(input, 0, true);
+                    crb.recordInlineDataInCode(input);
                     new Setx(input.asLong(), asRegister(result), true).emit(masm);
                 } else {
                     if (input.isDefaultForKind()) {
@@ -459,7 +459,7 @@ public class SPARCMove {
                 if (input.isNull()) {
                     new Clr(asRegister(result)).emit(masm);
                 } else if (crb.target.inlineObjects) {
-                    crb.recordDataReferenceInCode(input, 0, true);
+                    crb.recordInlineDataInCode(input);
                     new Setx(0xDEADDEADDEADDEADL, asRegister(result), true).emit(masm);
                 } else {
                     Register dst = asRegister(result);

@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.api.meta;
 
+import java.nio.*;
+
 /**
  * Represents a constant (boxed) value, such as an integer, floating point number, or object
  * reference, within the compiler and across the compiler/runtime interface. Exports a set of
@@ -108,6 +110,10 @@ public final class Constant extends Value {
      */
     public boolean isDefaultForKind() {
         return object == null && primitive == 0;
+    }
+
+    public void putPrimitive(ByteBuffer buffer) {
+        buffer.putLong(primitive);
     }
 
     @Override

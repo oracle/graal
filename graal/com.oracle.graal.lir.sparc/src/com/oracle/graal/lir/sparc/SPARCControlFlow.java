@@ -313,7 +313,7 @@ public class SPARCControlFlow {
                     switch (key.getKind()) {
                         case Int:
                             if (crb.codeCache.needsDataPatch(keyConstants[index])) {
-                                crb.recordDataReferenceInCode(keyConstants[index], 0, true);
+                                crb.recordInlineDataInCode(keyConstants[index]);
                             }
                             long lc = keyConstants[index].asLong();
                             assert NumUtil.isInt(lc);

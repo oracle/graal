@@ -27,6 +27,8 @@ import java.nio.*;
 import org.junit.*;
 
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.code.CompilationResult.ConstantData;
+import com.oracle.graal.api.code.CompilationResult.RawData;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.Buffer;
 import com.oracle.graal.asm.amd64.*;
@@ -58,7 +60,7 @@ public class SimpleAssemblerTest extends AssemblerTest {
             public Buffer generateCode(CompilationResult compResult, TargetDescription target, RegisterConfig registerConfig, CallingConvention cc) {
                 AMD64MacroAssembler asm = new AMD64MacroAssembler(target, registerConfig);
                 Register ret = registerConfig.getReturnRegister(Kind.Double);
-                compResult.recordDataReference(asm.codeBuffer.position(), Constant.forDouble(84.72), 8, false);
+                compResult.recordDataReference(asm.codeBuffer.position(), new ConstantData(Constant.forDouble(84.72), 8));
                 asm.movdbl(ret, asm.getPlaceholder());
                 asm.ret(0);
                 return asm.codeBuffer;
@@ -78,7 +80,7 @@ public class SimpleAssemblerTest extends AssemblerTest {
 
                 byte[] rawBytes = new byte[8];
                 ByteBuffer.wrap(rawBytes).order(ByteOrder.nativeOrder()).putDouble(84.72);
-                compResult.recordDataReference(asm.codeBuffer.position(), rawBytes, 8);
+                compResult.recordDataReference(asm.codeBuffer.position(), new RawData(rawBytes, 8));
                 asm.movdbl(ret, asm.getPlaceholder());
                 asm.ret(0);
                 return asm.codeBuffer;

@@ -22,12 +22,20 @@
  */
 package com.oracle.graal.hotspot;
 
+import java.nio.*;
 import java.util.*;
 
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.code.CompilationResult.CodeAnnotation;
 import com.oracle.graal.api.code.CompilationResult.CodeComment;
+import com.oracle.graal.api.code.CompilationResult.Data;
+import com.oracle.graal.api.code.CompilationResult.DataPatch;
+import com.oracle.graal.api.code.CompilationResult.ExceptionHandler;
 import com.oracle.graal.api.code.CompilationResult.JumpTable;
-import com.oracle.graal.api.code.CompilationResult.*;
+import com.oracle.graal.api.code.CompilationResult.Mark;
+import com.oracle.graal.api.code.CompilationResult.Site;
+import com.oracle.graal.api.meta.*;
+import com.oracle.graal.asm.*;
 
 /**
  * A {@link CompilationResult} with additional HotSpot-specific information required for installing
@@ -41,6 +49,76 @@ public abstract class HotSpotCompiledCode extends CompilerObject {
     public final Site[] sites;
     public final ExceptionHandler[] exceptionHandlers;
     public final Comment[] comments;
+
+    public final DataSection dataSection;
+
+    public static final class HotSpotData extends Data {
+
+        public int offset;
+        public Constant constant;
+
+        public HotSpotData(int offset) {
+            super(0, 0);
+            this.offset = offset;
+        }
+
+        @Override
+        public void emit(ByteBuffer buffer) {
+        }
+    }
+
+    public static final class DataSection {
+
+        public final int sectionAlignment;
+        public final byte[] data;
+        public final HotSpotData[] patches;
+
+        public DataSection(Site[] sites) {
+            int size = 0;
+            int patchCount = 0;
+            List<DataPatch> externalDataList = new ArrayList<>();
+            for (Site site : sites) {
+                if (site instanceof DataPatch) {
+                    DataPatch dataPatch = (DataPatch) site;
+                    if (dataPatch.externalData != null) {
+                        Data d = dataPatch.externalData;
+                        size = NumUtil.roundUp(size, d.alignment);
+                        size += d.size;
+                        externalDataList.add(dataPatch);
+                        if (dataPatch.getConstant() != null && dataPatch.getConstant().getKind() == Kind.Object) {
+                            patchCount++;
+                        }
+                    }
+                }
+            }
+
+            data = new byte[size];
+            patches = new HotSpotData[patchCount];
+            ByteBuffer buffer = ByteBuffer.wrap(data).order(ByteOrder.nativeOrder());
+            int index = 0;
+            int patchIndex = 0;
+            int alignment = 0;
+            for (DataPatch dataPatch : externalDataList) {
+                Data d = dataPatch.externalData;
+
+                alignment = Math.max(alignment, d.alignment);
+                index = NumUtil.roundUp(index, d.alignment);
+                buffer.position(index);
+
+                HotSpotData hsData = new HotSpotData(index);
+                if (dataPatch.getConstant() != null && dataPatch.getConstant().getKind() == Kind.Object) {
+                    hsData.constant = dataPatch.getConstant();
+                    patches[patchIndex++] = hsData;
+                }
+                dataPatch.externalData = hsData;
+
+                index += d.size;
+                d.emit(buffer);
+            }
+
+            this.sectionAlignment = alignment;
+        }
+    }
 
     public static class Comment {
 
@@ -56,6 +134,7 @@ public abstract class HotSpotCompiledCode extends CompilerObject {
     public HotSpotCompiledCode(CompilationResult compResult) {
         this.comp = compResult;
         sites = getSortedSites(compResult);
+        dataSection = new DataSection(sites);
         if (compResult.getExceptionHandlers().isEmpty()) {
             exceptionHandlers = null;
         } else {

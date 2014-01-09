@@ -216,7 +216,7 @@ public class PTXMove {
             case Int:
             case Long:
                 if (crb.codeCache.needsDataPatch(input)) {
-                    crb.recordDataReferenceInCode(input, 0, true);
+                    crb.recordInlineDataInCode(input);
                 }
                 new Mov(dest, input).emit(masm);
                 break;
@@ -224,7 +224,7 @@ public class PTXMove {
                 if (input.isNull()) {
                     new Mov(dest, Constant.forLong(0x0L)).emit(masm);
                 } else if (crb.target.inlineObjects) {
-                    crb.recordDataReferenceInCode(input, 0, true);
+                    crb.recordInlineDataInCode(input);
                     new Mov(dest, Constant.forLong(0xDEADDEADDEADDEADL)).emit(masm);
                 } else {
                     // new Mov(dest, crb.recordDataReferenceInCode(input, 0, false));

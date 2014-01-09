@@ -460,7 +460,7 @@ public class AMD64Move {
         switch (input.getKind().getStackKind()) {
             case Int:
                 if (crb.codeCache.needsDataPatch(input)) {
-                    crb.recordDataReferenceInCode(input, 0, true);
+                    crb.recordInlineDataInCode(input);
                 }
                 // Do not optimize with an XOR as this instruction may be between
                 // a CMP and a Jcc in which case the XOR will modify the condition
@@ -472,7 +472,7 @@ public class AMD64Move {
                 boolean patch = false;
                 if (crb.codeCache.needsDataPatch(input)) {
                     patch = true;
-                    crb.recordDataReferenceInCode(input, 0, true);
+                    crb.recordInlineDataInCode(input);
                 }
                 // Do not optimize with an XOR as this instruction may be between
                 // a CMP and a Jcc in which case the XOR will modify the condition
@@ -516,10 +516,10 @@ public class AMD64Move {
                 if (input.isNull()) {
                     masm.movq(asRegister(result), 0x0L);
                 } else if (crb.target.inlineObjects) {
-                    crb.recordDataReferenceInCode(input, 0, true);
+                    crb.recordInlineDataInCode(input);
                     masm.movq(asRegister(result), 0xDEADDEADDEADDEADL);
                 } else {
-                    masm.movq(asRegister(result), (AMD64Address) crb.recordDataReferenceInCode(input, 0, false));
+                    masm.movq(asRegister(result), (AMD64Address) crb.recordDataReferenceInCode(input, 0));
                 }
                 break;
             default:

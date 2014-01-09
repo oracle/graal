@@ -79,7 +79,7 @@ public class AMD64HotSpotSafepointOp extends AMD64LIRInstruction {
             Constant pollingPageAddress = Constant.forIntegerKind(hostWordKind, config.safepointPollingAddress, null);
             // This move will be patched to load the safepoint page from a data segment
             // co-located with the immutable code.
-            asm.movq(scratch, (AMD64Address) crb.recordDataReferenceInCode(pollingPageAddress, alignment, false));
+            asm.movq(scratch, (AMD64Address) crb.recordDataReferenceInCode(pollingPageAddress, alignment));
             final int pos = asm.codeBuffer.position();
             crb.recordMark(atReturn ? MARK_POLL_RETURN_FAR : MARK_POLL_FAR);
             if (state != null) {

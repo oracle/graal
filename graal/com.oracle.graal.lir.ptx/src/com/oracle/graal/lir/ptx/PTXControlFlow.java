@@ -226,7 +226,7 @@ public class PTXControlFlow {
                         case Int:
                         case Long:
                             if (crb.codeCache.needsDataPatch(keyConstants[index])) {
-                                crb.recordDataReferenceInCode(keyConstants[index], 0, true);
+                                crb.recordInlineDataInCode(keyConstants[index]);
                             }
                             new Setp(EQ, keyConstants[index], key, predRegNum).emit(masm);
                             break;

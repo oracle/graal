@@ -298,8 +298,8 @@ public class GraalCompiler {
             DebugMetric dmRaw = Debug.metric("DataPatches-raw");
 
             for (DataPatch dp : ldp) {
-                if (dp.constant != null) {
-                    dms[dp.constant.getKind().ordinal()].add(1);
+                if (dp.getConstant() != null) {
+                    dms[dp.getConstant().getKind().ordinal()].add(1);
                 } else {
                     dmRaw.add(1);
                 }
