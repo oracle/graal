@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.phases.tiers;
 
+import com.oracle.graal.phases.*;
+
 public interface SuitesProvider {
 
     /**
@@ -34,4 +36,10 @@ public interface SuitesProvider {
      * {@link #getDefaultSuites default} suites.
      */
     Suites createSuites();
+
+    /**
+     * Get the default phase suite for creating new graphs.
+     */
+    PhaseSuite<HighTierContext> getDefaultGraphBuilderSuite();
+
 }

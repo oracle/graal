@@ -42,7 +42,6 @@ import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.*;
-import com.oracle.graal.phases.PhasePlan.PhasePosition;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.phases.util.*;
@@ -195,17 +194,16 @@ public final class GraalTruffleRuntime implements TruffleRuntime {
     private static CompilationResult compileMethod(ResolvedJavaMethod javaMethod) {
         Providers providers = getGraalProviders();
         MetaAccessProvider metaAccess = providers.getMetaAccess();
-        Suites suites = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend().getSuites().createSuites();
+        SuitesProvider suitesProvider = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend().getSuites();
+        Suites suites = suitesProvider.createSuites();
         suites.getHighTier().findPhase(InliningPhase.class).remove();
         StructuredGraph graph = new StructuredGraph(javaMethod);
-        new GraphBuilderPhase(metaAccess, GraphBuilderConfiguration.getEagerDefault(), OptimisticOptimizations.ALL).apply(graph);
-        PhasePlan phasePlan = new PhasePlan();
-        GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(metaAccess, GraphBuilderConfiguration.getDefault(), OptimisticOptimizations.ALL);
-        phasePlan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);
+        new GraphBuilderPhase.Instance(metaAccess, GraphBuilderConfiguration.getEagerDefault(), OptimisticOptimizations.ALL).apply(graph);
+        PhaseSuite<HighTierContext> graphBuilderSuite = suitesProvider.getDefaultGraphBuilderSuite();
         CallingConvention cc = getCallingConvention(providers.getCodeCache(), Type.JavaCallee, graph.method(), false);
         Backend backend = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend();
         CompilationResultBuilderFactory factory = getOptimizedCallTargetInstrumentationFactory(backend.getTarget().arch.getName(), javaMethod);
-        return compileGraph(graph, cc, javaMethod, providers, backend, providers.getCodeCache().getTarget(), null, phasePlan, OptimisticOptimizations.ALL, getProfilingInfo(graph),
+        return compileGraph(graph, cc, javaMethod, providers, backend, providers.getCodeCache().getTarget(), null, graphBuilderSuite, OptimisticOptimizations.ALL, getProfilingInfo(graph),
                         new SpeculationLog(), suites, true, new CompilationResult(), factory);
     }
 

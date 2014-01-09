@@ -72,4 +72,10 @@ public class PhaseSuite<C> extends BasePhase<C> {
             phase.apply(graph, context);
         }
     }
+
+    public PhaseSuite<C> copy() {
+        PhaseSuite<C> suite = new PhaseSuite<>();
+        suite.phases.addAll(phases);
+        return suite;
+    }
 }

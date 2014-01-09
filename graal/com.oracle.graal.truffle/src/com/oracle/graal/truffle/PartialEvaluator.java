@@ -104,7 +104,7 @@ public class PartialEvaluator {
         final StructuredGraph graph = new StructuredGraph(executeHelperMethod);
 
         try (Scope s = Debug.scope("createGraph", graph)) {
-            new GraphBuilderPhase(providers.getMetaAccess(), config, TruffleCompilerImpl.Optimizations).apply(graph);
+            new GraphBuilderPhase.Instance(providers.getMetaAccess(), config, TruffleCompilerImpl.Optimizations).apply(graph);
 
             // Replace thisNode with constant.
             LocalNode thisNode = graph.getLocal(0);
@@ -142,9 +142,8 @@ public class PartialEvaluator {
             }
 
             // Additional inlining.
-            final PhasePlan plan = new PhasePlan();
             canonicalizer.apply(graph, baseContext);
-            HighTierContext tierContext = new HighTierContext(providers, assumptions, cache, plan, OptimisticOptimizations.NONE);
+            HighTierContext tierContext = new HighTierContext(providers, assumptions, cache, new PhaseSuite<HighTierContext>(), OptimisticOptimizations.NONE);
 
             for (NeverPartOfCompilationNode neverPartOfCompilationNode : graph.getNodes(NeverPartOfCompilationNode.class)) {
                 Throwable exception = new VerificationError(neverPartOfCompilationNode.getMessage());

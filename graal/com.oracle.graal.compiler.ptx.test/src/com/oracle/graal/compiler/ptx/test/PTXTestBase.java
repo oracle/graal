@@ -38,12 +38,10 @@ import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.bridge.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.ptx.*;
-import com.oracle.graal.java.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.ptx.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.*;
-import com.oracle.graal.phases.PhasePlan.PhasePosition;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.ptx.*;
 
@@ -73,10 +71,8 @@ public abstract class PTXTestBase extends GraalCompilerTest {
             Debug.dump(graph, "Graph");
             Backend ptxBackend = getBackend();
             TargetDescription target = ptxBackend.getTarget();
-            PhasePlan phasePlan = new PhasePlan();
-            GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(getMetaAccess(), GraphBuilderConfiguration.getDefault(), OptimisticOptimizations.NONE);
-            phasePlan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);
-            phasePlan.addPhase(PhasePosition.AFTER_PARSING, new PTXPhase());
+            PhaseSuite<HighTierContext> graphBuilderSuite = getDefaultGraphBuilderSuite().copy();
+            graphBuilderSuite.appendPhase(new PTXPhase());
             new PTXPhase().apply(graph);
             CallingConvention cc = getCallingConvention(getCodeCache(), Type.JavaCallee, graph.method(), false);
             /*
@@ -89,8 +85,8 @@ public abstract class PTXTestBase extends GraalCompilerTest {
              * GPU fallback to CPU in cases of ECC failure on kernel invocation.
              */
             Suites suites = Suites.createDefaultSuites();
-            ExternalCompilationResult result = compileGraph(graph, cc, graph.method(), getProviders(), ptxBackend, target, null, phasePlan, OptimisticOptimizations.NONE, getProfilingInfo(graph),
-                            new SpeculationLog(), suites, true, new ExternalCompilationResult(), CompilationResultBuilderFactory.Default);
+            ExternalCompilationResult result = compileGraph(graph, cc, graph.method(), getProviders(), ptxBackend, target, null, graphBuilderSuite, OptimisticOptimizations.NONE,
+                            getProfilingInfo(graph), new SpeculationLog(), suites, true, new ExternalCompilationResult(), CompilationResultBuilderFactory.Default);
 
             ResolvedJavaMethod method = graph.method();
 

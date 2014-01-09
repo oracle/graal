@@ -37,7 +37,6 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.*;
-import com.oracle.graal.phases.PhasePlan.PhasePosition;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.phases.util.*;
@@ -160,7 +159,6 @@ public class PartialEvaluationTest extends GraalCompilerTest {
         new DeadCodeEliminationPhase().apply(graph);
     }
 
-    @SuppressWarnings("deprecation")
     protected StructuredGraph parseForComparison(final String methodName) {
 
         try (Scope s = Debug.scope("Truffle", new DebugDumpScope("Comparison: " + methodName))) {
@@ -171,17 +169,15 @@ public class PartialEvaluationTest extends GraalCompilerTest {
             canonicalizer.apply(graph, context);
 
             // Additional inlining.
-            final PhasePlan plan = new PhasePlan();
-            GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(getMetaAccess(), GraphBuilderConfiguration.getEagerDefault(), TruffleCompilerImpl.Optimizations);
-            plan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);
-            canonicalizer.addToPhasePlan(plan, context);
-            plan.addPhase(PhasePosition.AFTER_PARSING, new DeadCodeEliminationPhase());
+            PhaseSuite<HighTierContext> graphBuilderSuite = getEagerGraphBuilderSuite();
+            graphBuilderSuite.appendPhase(canonicalizer);
+            graphBuilderSuite.appendPhase(new DeadCodeEliminationPhase());
 
             new ConvertDeoptimizeToGuardPhase().apply(graph);
             canonicalizer.apply(graph, context);
             new DeadCodeEliminationPhase().apply(graph);
 
-            HighTierContext highTierContext = new HighTierContext(getProviders(), assumptions, null, plan, OptimisticOptimizations.NONE);
+            HighTierContext highTierContext = new HighTierContext(getProviders(), assumptions, null, graphBuilderSuite, TruffleCompilerImpl.Optimizations);
             InliningPhase inliningPhase = new InliningPhase(canonicalizer);
             inliningPhase.apply(graph, highTierContext);
             removeFrameStates(graph);

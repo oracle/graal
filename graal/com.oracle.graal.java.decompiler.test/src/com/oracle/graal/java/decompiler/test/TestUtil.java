@@ -24,7 +24,6 @@ package com.oracle.graal.java.decompiler.test;
 
 import static com.oracle.graal.api.code.CodeUtil.*;
 import static com.oracle.graal.compiler.GraalCompiler.*;
-
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.CallingConvention.Type;
 import com.oracle.graal.api.meta.*;
@@ -34,7 +33,6 @@ import com.oracle.graal.java.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.*;
-import com.oracle.graal.phases.PhasePlan.PhasePosition;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.phases.util.*;
 import com.oracle.graal.runtime.*;
@@ -45,15 +43,13 @@ public class TestUtil {
         Backend backend = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend();
         Providers providers = backend.getProviders();
         SuitesProvider suitesProvider = backend.getSuites();
-        Suites suites = suitesProvider.createSuites();
+        Suites suites = suitesProvider.getDefaultSuites();
         StructuredGraph graph = new StructuredGraph(method);
         MetaAccessProvider metaAccess = providers.getMetaAccess();
-        new GraphBuilderPhase(metaAccess, GraphBuilderConfiguration.getEagerDefault(), OptimisticOptimizations.ALL).apply(graph);
-        PhasePlan phasePlan = new PhasePlan();
-        GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(metaAccess, GraphBuilderConfiguration.getDefault(), OptimisticOptimizations.ALL);
-        phasePlan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);
+        new GraphBuilderPhase.Instance(metaAccess, GraphBuilderConfiguration.getEagerDefault(), OptimisticOptimizations.ALL).apply(graph);
+        PhaseSuite<HighTierContext> graphBuilderSuite = suitesProvider.getDefaultGraphBuilderSuite();
         CallingConvention cc = getCallingConvention(providers.getCodeCache(), Type.JavaCallee, graph.method(), false);
-        compileGraph(graph, cc, method, providers, backend, providers.getCodeCache().getTarget(), null, phasePlan, OptimisticOptimizations.ALL, getProfilingInfo(graph), new SpeculationLog(), suites,
-                        true, new CompilationResult(), CompilationResultBuilderFactory.Default);
+        compileGraph(graph, cc, method, providers, backend, providers.getCodeCache().getTarget(), null, graphBuilderSuite, OptimisticOptimizations.ALL, getProfilingInfo(graph), new SpeculationLog(),
+                        suites, true, new CompilationResult(), CompilationResultBuilderFactory.Default);
     }
 }

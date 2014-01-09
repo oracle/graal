@@ -47,7 +47,6 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.options.*;
 import com.oracle.graal.phases.*;
-import com.oracle.graal.phases.PhasePlan.PhasePosition;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.graph.*;
 import com.oracle.graal.phases.schedule.*;
@@ -137,13 +136,13 @@ public class GraalCompiler {
      * @return the result of the compilation
      */
     public static <T extends CompilationResult> T compileGraph(StructuredGraph graph, CallingConvention cc, ResolvedJavaMethod installedCodeOwner, Providers providers, Backend backend,
-                    TargetDescription target, GraphCache cache, PhasePlan plan, OptimisticOptimizations optimisticOpts, ProfilingInfo profilingInfo, SpeculationLog speculationLog, Suites suites,
-                    boolean withScope, T compilationResult, CompilationResultBuilderFactory factory) {
+                    TargetDescription target, GraphCache cache, PhaseSuite<HighTierContext> graphBuilderSuite, OptimisticOptimizations optimisticOpts, ProfilingInfo profilingInfo,
+                    SpeculationLog speculationLog, Suites suites, boolean withScope, T compilationResult, CompilationResultBuilderFactory factory) {
         try (Scope s0 = withScope ? Debug.scope("GraalCompiler", graph, providers.getCodeCache()) : null) {
             Assumptions assumptions = new Assumptions(OptAssumptions.getValue());
             LIR lir = null;
             try (Scope s = Debug.scope("FrontEnd"); TimerCloseable a = FrontEnd.start()) {
-                lir = emitHIR(providers, target, graph, assumptions, cache, plan, optimisticOpts, profilingInfo, speculationLog, suites);
+                lir = emitHIR(providers, target, graph, assumptions, cache, graphBuilderSuite, optimisticOpts, profilingInfo, speculationLog, suites);
             } catch (Throwable e) {
                 throw Debug.handle(e);
             }
@@ -189,21 +188,21 @@ public class GraalCompiler {
     /**
      * Builds the graph, optimizes it.
      */
-    public static LIR emitHIR(Providers providers, TargetDescription target, StructuredGraph graph, Assumptions assumptions, GraphCache cache, PhasePlan plan, OptimisticOptimizations optimisticOpts,
-                    ProfilingInfo profilingInfo, SpeculationLog speculationLog, Suites suites) {
+    public static LIR emitHIR(Providers providers, TargetDescription target, StructuredGraph graph, Assumptions assumptions, GraphCache cache, PhaseSuite<HighTierContext> graphBuilderSuite,
+                    OptimisticOptimizations optimisticOpts, ProfilingInfo profilingInfo, SpeculationLog speculationLog, Suites suites) {
 
         if (speculationLog != null) {
             speculationLog.snapshot();
         }
 
+        HighTierContext highTierContext = new HighTierContext(providers, assumptions, cache, graphBuilderSuite, optimisticOpts);
         if (graph.start().next() == null) {
-            plan.runPhases(PhasePosition.AFTER_PARSING, graph);
+            graphBuilderSuite.apply(graph, highTierContext);
             new DeadCodeEliminationPhase().apply(graph);
         } else {
             Debug.dump(graph, "initial state");
         }
 
-        HighTierContext highTierContext = new HighTierContext(providers, assumptions, cache, plan, optimisticOpts);
         suites.getHighTier().apply(graph, highTierContext);
         graph.maybeCompress();
 

@@ -85,7 +85,7 @@ public class IterativeInliningTest extends GraalCompilerTest {
 
     private void processMethod(final String snippet) {
         graph = parse(snippet);
-        HighTierContext context = new HighTierContext(getProviders(), new Assumptions(false), null, getDefaultPhasePlan(), OptimisticOptimizations.ALL);
+        HighTierContext context = new HighTierContext(getProviders(), new Assumptions(false), null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL);
         new IterativeInliningPhase(new CanonicalizerPhase(true)).apply(graph, context);
     }
 }

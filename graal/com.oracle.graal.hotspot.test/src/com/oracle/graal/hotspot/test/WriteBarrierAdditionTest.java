@@ -247,7 +247,7 @@ public class WriteBarrierAdditionTest extends GraalCompilerTest {
     private void test(final String snippet, final int expectedBarriers) throws Exception, SecurityException {
         try (Scope s = Debug.scope("WriteBarrierAdditionTest", new DebugDumpScope(snippet))) {
             StructuredGraph graph = parse(snippet);
-            HighTierContext highContext = new HighTierContext(getProviders(), new Assumptions(false), null, getDefaultPhasePlan(), OptimisticOptimizations.ALL);
+            HighTierContext highContext = new HighTierContext(getProviders(), new Assumptions(false), null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL);
             MidTierContext midContext = new MidTierContext(getProviders(), new Assumptions(false), getCodeCache().getTarget(), OptimisticOptimizations.ALL, graph.method().getProfilingInfo());
             new InliningPhase(new InliningPhase.InlineEverythingPolicy(), new CanonicalizerPhase(true)).apply(graph, highContext);
             new LoweringPhase(new CanonicalizerPhase(true), LoweringTool.StandardLoweringStage.HIGH_TIER).apply(graph, highContext);

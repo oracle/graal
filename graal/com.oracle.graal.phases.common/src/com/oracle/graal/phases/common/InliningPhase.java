@@ -39,7 +39,6 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.options.*;
-import com.oracle.graal.phases.PhasePlan.PhasePosition;
 import com.oracle.graal.phases.common.InliningUtil.InlineInfo;
 import com.oracle.graal.phases.common.InliningUtil.Inlineable;
 import com.oracle.graal.phases.common.InliningUtil.InlineableGraph;
@@ -294,8 +293,8 @@ public class InliningPhase extends AbstractInliningPhase {
     private StructuredGraph parseBytecodes(StructuredGraph newGraph, HighTierContext context) {
         boolean hasMatureProfilingInfo = newGraph.method().getProfilingInfo().isMature();
 
-        if (context.getPhasePlan() != null) {
-            context.getPhasePlan().runPhases(PhasePosition.AFTER_PARSING, newGraph);
+        if (context.getGraphBuilderSuite() != null) {
+            context.getGraphBuilderSuite().apply(newGraph, context);
         }
         assert newGraph.start().next() != null : "graph needs to be populated during PhasePosition.AFTER_PARSING";
 

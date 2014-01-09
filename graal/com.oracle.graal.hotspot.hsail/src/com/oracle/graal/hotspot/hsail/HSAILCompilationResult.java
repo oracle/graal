@@ -45,7 +45,6 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.phases.*;
-import com.oracle.graal.phases.PhasePlan.PhasePosition;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.phases.util.*;
 import com.oracle.graal.runtime.*;
@@ -93,7 +92,7 @@ public class HSAILCompilationResult extends ExternalCompilationResult {
     public static HSAILCompilationResult getHSAILCompilationResult(ResolvedJavaMethod javaMethod) {
         HotSpotMetaAccessProvider metaAccess = backend.getProviders().getMetaAccess();
         StructuredGraph graph = new StructuredGraph(javaMethod);
-        new GraphBuilderPhase(metaAccess, GraphBuilderConfiguration.getEagerDefault(), OptimisticOptimizations.ALL).apply(graph);
+        new GraphBuilderPhase.Instance(metaAccess, GraphBuilderConfiguration.getEagerDefault(), OptimisticOptimizations.ALL).apply(graph);
         return getHSAILCompilationResult(graph);
     }
 
@@ -142,8 +141,7 @@ public class HSAILCompilationResult extends ExternalCompilationResult {
         HotSpotMetaAccessProvider metaAccess = (HotSpotMetaAccessProvider) providers.getMetaAccess();
         ResolvedJavaMethod rm = metaAccess.lookupJavaMethod(acceptMethod);
         StructuredGraph graph = new StructuredGraph(rm);
-        GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(providers.getMetaAccess(), GraphBuilderConfiguration.getDefault(), OptimisticOptimizations.ALL);
-        graphBuilderPhase.apply(graph);
+        new GraphBuilderPhase.Instance(providers.getMetaAccess(), GraphBuilderConfiguration.getDefault(), OptimisticOptimizations.ALL).apply(graph);
         NodeIterable<Node> nin = graph.getNodes();
         ResolvedJavaMethod lambdaMethod = null;
         for (Node n : nin) {
@@ -167,15 +165,13 @@ public class HSAILCompilationResult extends ExternalCompilationResult {
         Debug.dump(graph, "Graph");
         Providers providers = backend.getProviders();
         TargetDescription target = providers.getCodeCache().getTarget();
-        PhasePlan phasePlan = new PhasePlan();
-        GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(providers.getMetaAccess(), GraphBuilderConfiguration.getDefault(), OptimisticOptimizations.NONE);
-        phasePlan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);
-        phasePlan.addPhase(PhasePosition.AFTER_PARSING, new HSAILPhase());
+        PhaseSuite<HighTierContext> graphBuilderSuite = backend.getSuites().getDefaultGraphBuilderSuite().copy();
+        graphBuilderSuite.appendPhase(new HSAILPhase());
         new HSAILPhase().apply(graph);
         CallingConvention cc = getHSAILCallingConvention(Type.JavaCallee, target, graph.method(), false);
         SuitesProvider suitesProvider = backend.getSuites();
         try {
-            HSAILCompilationResult compResult = compileGraph(graph, cc, graph.method(), providers, backend, target, null, phasePlan, OptimisticOptimizations.NONE, getProfilingInfo(graph),
+            HSAILCompilationResult compResult = compileGraph(graph, cc, graph.method(), providers, backend, target, null, graphBuilderSuite, OptimisticOptimizations.NONE, getProfilingInfo(graph),
                             new SpeculationLog(), suitesProvider.getDefaultSuites(), true, new HSAILCompilationResult(), CompilationResultBuilderFactory.Default);
             if ((validDevice) && (compResult.getTargetCode() != null)) {
                 long kernel = toGPU.generateKernel(compResult.getTargetCode(), graph.method().getName());

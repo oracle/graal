@@ -77,7 +77,7 @@ public class InvokeHintsTest extends GraalCompilerTest {
         }
 
         Assumptions assumptions = new Assumptions(false);
-        HighTierContext context = new HighTierContext(getProviders(), assumptions, null, getDefaultPhasePlan(), OptimisticOptimizations.ALL);
+        HighTierContext context = new HighTierContext(getProviders(), assumptions, null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL);
         new InliningPhase(hints, new CanonicalizerPhase(true)).apply(graph, context);
         new CanonicalizerPhase(true).apply(graph, context);
         new DeadCodeEliminationPhase().apply(graph);

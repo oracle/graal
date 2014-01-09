@@ -30,25 +30,25 @@ import com.oracle.graal.phases.util.*;
 
 public class HighTierContext extends PhaseContext {
 
-    private final PhasePlan plan;
+    private final PhaseSuite<HighTierContext> graphBuilderSuite;
 
     private final GraphCache cache;
     private final OptimisticOptimizations optimisticOpts;
 
     public HighTierContext(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, LoweringProvider lowerer, Replacements replacements, Assumptions assumptions,
-                    GraphCache cache, PhasePlan plan, OptimisticOptimizations optimisticOpts) {
+                    GraphCache cache, PhaseSuite<HighTierContext> graphBuilderSuite, OptimisticOptimizations optimisticOpts) {
         super(metaAccess, constantReflection, lowerer, replacements, assumptions);
-        this.plan = plan;
         this.cache = cache;
+        this.graphBuilderSuite = graphBuilderSuite;
         this.optimisticOpts = optimisticOpts;
     }
 
-    public HighTierContext(Providers providers, Assumptions assumptions, GraphCache cache, PhasePlan plan, OptimisticOptimizations optimisticOpts) {
-        this(providers.getMetaAccess(), providers.getConstantReflection(), providers.getLowerer(), providers.getReplacements(), assumptions, cache, plan, optimisticOpts);
+    public HighTierContext(Providers providers, Assumptions assumptions, GraphCache cache, PhaseSuite<HighTierContext> graphBuilderSuite, OptimisticOptimizations optimisticOpts) {
+        this(providers.getMetaAccess(), providers.getConstantReflection(), providers.getLowerer(), providers.getReplacements(), assumptions, cache, graphBuilderSuite, optimisticOpts);
     }
 
-    public PhasePlan getPhasePlan() {
-        return plan;
+    public PhaseSuite<HighTierContext> getGraphBuilderSuite() {
+        return graphBuilderSuite;
     }
 
     public GraphCache getGraphCache() {
@@ -60,6 +60,6 @@ public class HighTierContext extends PhaseContext {
     }
 
     public HighTierContext replaceAssumptions(Assumptions newAssumptions) {
-        return new HighTierContext(getMetaAccess(), getConstantReflection(), getLowerer(), getReplacements(), newAssumptions, getGraphCache(), getPhasePlan(), getOptimisticOptimizations());
+        return new HighTierContext(getMetaAccess(), getConstantReflection(), getLowerer(), getReplacements(), newAssumptions, getGraphCache(), getGraphBuilderSuite(), getOptimisticOptimizations());
     }
 }

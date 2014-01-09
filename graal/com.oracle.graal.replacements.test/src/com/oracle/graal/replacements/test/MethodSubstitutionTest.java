@@ -45,9 +45,8 @@ public abstract class MethodSubstitutionTest extends GraalCompilerTest {
     protected StructuredGraph test(final String snippet) {
         try (Scope s = Debug.scope("MethodSubstitutionTest", getMetaAccess().lookupJavaMethod(getMethod(snippet)))) {
             StructuredGraph graph = parse(snippet);
-            PhasePlan phasePlan = getDefaultPhasePlan();
             Assumptions assumptions = new Assumptions(true);
-            HighTierContext context = new HighTierContext(getProviders(), assumptions, null, phasePlan, OptimisticOptimizations.ALL);
+            HighTierContext context = new HighTierContext(getProviders(), assumptions, null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL);
             Debug.dump(graph, "Graph");
             new InliningPhase(new CanonicalizerPhase(true)).apply(graph, context);
             Debug.dump(graph, "Graph");

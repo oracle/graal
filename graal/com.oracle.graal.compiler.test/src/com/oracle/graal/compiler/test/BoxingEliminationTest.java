@@ -306,7 +306,7 @@ public class BoxingEliminationTest extends GraalCompilerTest {
     private void processMethod(final String snippet) {
         graph = parse(snippet);
         Assumptions assumptions = new Assumptions(false);
-        HighTierContext context = new HighTierContext(getProviders(), assumptions, null, getDefaultPhasePlan(), OptimisticOptimizations.ALL);
+        HighTierContext context = new HighTierContext(getProviders(), assumptions, null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL);
         new InliningPhase(new CanonicalizerPhase(true)).apply(graph, context);
         new PartialEscapePhase(false, new CanonicalizerPhase(true)).apply(graph, context);
     }
@@ -319,7 +319,7 @@ public class BoxingEliminationTest extends GraalCompilerTest {
         graph = parse(snippet);
 
         Assumptions assumptions = new Assumptions(false);
-        HighTierContext context = new HighTierContext(getProviders(), assumptions, null, getDefaultPhasePlan(), OptimisticOptimizations.ALL);
+        HighTierContext context = new HighTierContext(getProviders(), assumptions, null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL);
         CanonicalizerPhase canonicalizer = new CanonicalizerPhase(true);
         new InliningPhase(new CanonicalizerPhase(true)).apply(graph, context);
         if (loopPeeling) {

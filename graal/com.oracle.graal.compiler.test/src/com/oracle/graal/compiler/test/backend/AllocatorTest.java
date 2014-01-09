@@ -107,13 +107,12 @@ public class AllocatorTest extends GraalCompilerTest {
     }
 
     private RegisterStats getRegisterStats(final StructuredGraph graph) {
-        final PhasePlan phasePlan = getDefaultPhasePlan();
         final Assumptions assumptions = new Assumptions(OptAssumptions.getValue());
 
         LIR lir = null;
         try (Scope s = Debug.scope("FrontEnd")) {
-            lir = GraalCompiler.emitHIR(getProviders(), getBackend().getTarget(), graph, assumptions, null, phasePlan, OptimisticOptimizations.NONE, graph.method().getProfilingInfo(),
-                            new SpeculationLog(), getSuites());
+            lir = GraalCompiler.emitHIR(getProviders(), getBackend().getTarget(), graph, assumptions, null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.NONE,
+                            graph.method().getProfilingInfo(), new SpeculationLog(), getSuites());
         } catch (Throwable e) {
             throw Debug.handle(e);
         }

@@ -89,9 +89,8 @@ public class LockEliminationTest extends GraalCompilerTest {
     private StructuredGraph getGraph(String snippet) {
         Method method = getMethod(snippet);
         StructuredGraph graph = parse(method);
-        PhasePlan phasePlan = getDefaultPhasePlan();
         Assumptions assumptions = new Assumptions(true);
-        HighTierContext context = new HighTierContext(getProviders(), assumptions, null, phasePlan, OptimisticOptimizations.ALL);
+        HighTierContext context = new HighTierContext(getProviders(), assumptions, null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL);
         new CanonicalizerPhase(true).apply(graph, context);
         new InliningPhase(new CanonicalizerPhase(true)).apply(graph, context);
         new CanonicalizerPhase(true).apply(graph, context);

@@ -363,7 +363,7 @@ public class ReplacementsImpl implements Replacements {
             final StructuredGraph graph = new StructuredGraph(methodToParse);
             try (Scope s = Debug.scope("buildInitialGraph", graph)) {
                 MetaAccessProvider metaAccess = providers.getMetaAccess();
-                new GraphBuilderPhase(metaAccess, GraphBuilderConfiguration.getSnippetDefault(), OptimisticOptimizations.NONE).apply(graph);
+                new GraphBuilderPhase.Instance(metaAccess, GraphBuilderConfiguration.getSnippetDefault(), OptimisticOptimizations.NONE).apply(graph);
                 new WordTypeVerificationPhase(metaAccess, target.wordKind).apply(graph);
                 new WordTypeRewriterPhase(metaAccess, target.wordKind).apply(graph);
 

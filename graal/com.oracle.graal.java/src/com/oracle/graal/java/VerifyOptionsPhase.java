@@ -66,7 +66,7 @@ public class VerifyOptionsPhase extends Phase {
             ResolvedJavaMethod clinit = type.getClassInitializer();
             if (clinit != null) {
                 StructuredGraph graph = new StructuredGraph(clinit);
-                new GraphBuilderPhase(metaAccess, GraphBuilderConfiguration.getEagerDefault(), OptimisticOptimizations.ALL).apply(graph);
+                new GraphBuilderPhase.Instance(metaAccess, GraphBuilderConfiguration.getEagerDefault(), OptimisticOptimizations.ALL).apply(graph);
                 new VerifyOptionsPhase(type, metaAccess, option).apply(graph);
             }
         }

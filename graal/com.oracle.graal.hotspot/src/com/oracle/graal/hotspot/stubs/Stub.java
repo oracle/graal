@@ -38,11 +38,9 @@ import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.bridge.CompilerToVM.CodeInstallResult;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.*;
-import com.oracle.graal.java.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.*;
-import com.oracle.graal.phases.PhasePlan.PhasePosition;
 
 //JaCoCo Exclude
 
@@ -144,15 +142,12 @@ public abstract class Stub {
                     graph.replaceFixed(graph.start(), newStart);
                 }
 
-                PhasePlan phasePlan = new PhasePlan();
-                MetaAccessProvider metaAccess = providers.getMetaAccess();
                 CodeCacheProvider codeCache = providers.getCodeCache();
-                GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(metaAccess, GraphBuilderConfiguration.getDefault(), OptimisticOptimizations.ALL);
-                phasePlan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);
                 // The stub itself needs the incoming calling convention.
                 CallingConvention incomingCc = linkage.getIncomingCallingConvention();
-                final CompilationResult compResult = compileGraph(graph, incomingCc, getInstalledCodeOwner(), providers, backend, codeCache.getTarget(), null, phasePlan, OptimisticOptimizations.ALL,
-                                getProfilingInfo(graph), new SpeculationLog(), providers.getSuites().getDefaultSuites(), true, new CompilationResult(), CompilationResultBuilderFactory.Default);
+                final CompilationResult compResult = compileGraph(graph, incomingCc, getInstalledCodeOwner(), providers, backend, codeCache.getTarget(), null,
+                                providers.getSuites().getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL, getProfilingInfo(graph), new SpeculationLog(),
+                                providers.getSuites().getDefaultSuites(), true, new CompilationResult(), CompilationResultBuilderFactory.Default);
 
                 assert destroyedRegisters != null;
                 try (Scope s = Debug.scope("CodeInstall")) {

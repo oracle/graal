@@ -587,7 +587,7 @@ public class MemoryScheduleTest extends GraphScheduleTest {
         try (Scope d = Debug.scope("FloatingReadTest", graph)) {
             try (OverrideScope s = OptionValue.override(OptScheduleOutOfLoops, schedulingStrategy == SchedulingStrategy.LATEST_OUT_OF_LOOPS)) {
                 Assumptions assumptions = new Assumptions(false);
-                HighTierContext context = new HighTierContext(getProviders(), assumptions, null, getDefaultPhasePlan(), OptimisticOptimizations.ALL);
+                HighTierContext context = new HighTierContext(getProviders(), assumptions, null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL);
                 CanonicalizerPhase canonicalizer = new CanonicalizerPhase(true);
                 canonicalizer.apply(graph, context);
                 if (mode == TestMode.INLINED_WITHOUT_FRAMESTATES) {
