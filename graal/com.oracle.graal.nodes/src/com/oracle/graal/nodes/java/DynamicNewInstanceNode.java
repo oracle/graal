@@ -44,7 +44,9 @@ public class DynamicNewInstanceNode extends AbstractNewObjectNode {
             if (clazzConstant.getKind() == Kind.Object && clazzConstant.asObject() instanceof Class) {
                 Class staticClass = (Class) clazzConstant.asObject();
                 ResolvedJavaType type = tool.getMetaAccess().lookupJavaType(staticClass);
-                return new NewInstanceNode(type, fillContents());
+                if (type.isInitialized()) {
+                    return new NewInstanceNode(type, fillContents());
+                }
             }
         }
         return super.canonical(tool);

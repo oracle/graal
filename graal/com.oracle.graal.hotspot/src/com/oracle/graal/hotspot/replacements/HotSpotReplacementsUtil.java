@@ -24,7 +24,7 @@ package com.oracle.graal.hotspot.replacements;
 
 import static com.oracle.graal.graph.UnsafeAccess.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
-import static com.oracle.graal.hotspot.meta.HotSpotHostForeignCallsProvider.*;
+import static com.oracle.graal.hotspot.meta.HotSpotForeignCallsProviderImpl.*;
 import static com.oracle.graal.nodes.extended.BranchProbabilityNode.*;
 import sun.misc.*;
 
@@ -504,6 +504,14 @@ public class HotSpotReplacementsUtil {
     @Fold
     public static int klassStateFullyInitialized() {
         return config().klassStateFullyInitialized;
+    }
+
+    public static boolean isKlassFullyInitialized(Word hub) {
+        return readKlassState(hub) == klassStateFullyInitialized();
+    }
+
+    public static byte readKlassState(Word hub) {
+        return hub.readByte(klassStateOffset(), CLASS_STATE_LOCATION);
     }
 
     @Fold

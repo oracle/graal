@@ -107,7 +107,7 @@ public class NewInstanceStub extends SnippetStub {
         int sizeInBytes = hub.readInt(klassInstanceSizeOffset(), LocationIdentity.FINAL_LOCATION);
         Word thread = registerAsWord(threadRegister);
         if (!forceSlowPath() && inlineContiguousAllocationSupported()) {
-            if (hub.readByte(klassStateOffset(), CLASS_STATE_LOCATION) == klassStateFullyInitialized()) {
+            if (isKlassFullyInitialized(hub)) {
                 Word memory = refillAllocate(thread, intArrayHub, sizeInBytes, logging());
                 if (memory.notEqual(0)) {
                     Word prototypeMarkWord = hub.readWord(prototypeMarkWordOffset(), PROTOTYPE_MARK_WORD_LOCATION);

@@ -35,10 +35,6 @@ import com.oracle.graal.jtt.*;
  */
 public class UnsafeAllocateInstance01 extends JTTTest {
 
-    private static abstract class AbstractClass {
-
-    }
-
     int field01 = 42;
 
     public static int testInstance() throws SecurityException, InstantiationException {
@@ -79,7 +75,7 @@ public class UnsafeAllocateInstance01 extends JTTTest {
 
     @Test
     public void run2() throws Throwable {
-        runTest("testClassForException", AbstractClass.class);
+        runTest("testClassForException", AbstractList.class);
     }
 
     @Test

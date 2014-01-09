@@ -152,16 +152,18 @@ public class NewObjectSnippets implements Snippets {
     public static Object allocateInstanceDynamic(Class<?> type, @ConstantParameter boolean fillContents, @ConstantParameter Register threadRegister, @ConstantParameter String typeContext) {
         Word hub = loadWordFromObject(type, klassOffset());
         if (!hub.equal(Word.zero())) {
-            int layoutHelper = readLayoutHelper(hub);
-            /*
-             * src/share/vm/oops/klass.hpp: For instances, layout helper is a positive number, the
-             * instance size. This size is already passed through align_object_size and scaled to
-             * bytes. The low order bit is set if instances of this class cannot be allocated using
-             * the fastpath.
-             */
-            if ((layoutHelper & 1) == 0) {
-                Word prototypeMarkWord = hub.readWord(prototypeMarkWordOffset(), PROTOTYPE_MARK_WORD_LOCATION);
-                return allocateInstance(layoutHelper, hub, prototypeMarkWord, fillContents, threadRegister, false, typeContext);
+            if (isKlassFullyInitialized(hub)) {
+                int layoutHelper = readLayoutHelper(hub);
+                /*
+                 * src/share/vm/oops/klass.hpp: For instances, layout helper is a positive number,
+                 * the instance size. This size is already passed through align_object_size and
+                 * scaled to bytes. The low order bit is set if instances of this class cannot be
+                 * allocated using the fastpath.
+                 */
+                if ((layoutHelper & 1) == 0) {
+                    Word prototypeMarkWord = hub.readWord(prototypeMarkWordOffset(), PROTOTYPE_MARK_WORD_LOCATION);
+                    return allocateInstance(layoutHelper, hub, prototypeMarkWord, fillContents, threadRegister, false, typeContext);
+                }
             }
         }
         return dynamicNewInstanceStub(type);
