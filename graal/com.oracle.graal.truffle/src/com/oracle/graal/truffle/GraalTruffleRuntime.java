@@ -198,10 +198,9 @@ public final class GraalTruffleRuntime implements TruffleRuntime {
         Suites suites = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend().getSuites().createSuites();
         suites.getHighTier().findPhase(InliningPhase.class).remove();
         StructuredGraph graph = new StructuredGraph(javaMethod);
-        ForeignCallsProvider foreignCalls = providers.getForeignCalls();
-        new GraphBuilderPhase(metaAccess, foreignCalls, GraphBuilderConfiguration.getEagerDefault(), OptimisticOptimizations.ALL).apply(graph);
+        new GraphBuilderPhase(metaAccess, GraphBuilderConfiguration.getEagerDefault(), OptimisticOptimizations.ALL).apply(graph);
         PhasePlan phasePlan = new PhasePlan();
-        GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(metaAccess, foreignCalls, GraphBuilderConfiguration.getDefault(), OptimisticOptimizations.ALL);
+        GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(metaAccess, GraphBuilderConfiguration.getDefault(), OptimisticOptimizations.ALL);
         phasePlan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);
         CallingConvention cc = getCallingConvention(providers.getCodeCache(), Type.JavaCallee, graph.method(), false);
         Backend backend = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend();

@@ -241,10 +241,6 @@ public abstract class GraalCompilerTest extends GraalTest {
         return getProviders().getConstantReflection();
     }
 
-    protected ForeignCallsProvider getForeignCalls() {
-        return getProviders().getForeignCalls();
-    }
-
     protected MetaAccessProvider getMetaAccess() {
         return getProviders().getMetaAccess();
     }
@@ -554,7 +550,7 @@ public abstract class GraalCompilerTest extends GraalTest {
             }
             long start = System.currentTimeMillis();
             PhasePlan phasePlan = new PhasePlan();
-            GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(getMetaAccess(), getForeignCalls(), GraphBuilderConfiguration.getDefault(), OptimisticOptimizations.ALL);
+            GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(getMetaAccess(), GraphBuilderConfiguration.getDefault(), OptimisticOptimizations.ALL);
             phasePlan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);
             CallingConvention cc = getCallingConvention(getCodeCache(), Type.JavaCallee, graph.method(), false);
             final CompilationResult compResult = compileGraph(graph, cc, method, getProviders(), getBackend(), getCodeCache().getTarget(), null, phasePlan, OptimisticOptimizations.ALL,
@@ -621,7 +617,7 @@ public abstract class GraalCompilerTest extends GraalTest {
         assert m.getAnnotation(Test.class) == null : "shouldn't parse method with @Test annotation: " + m;
         ResolvedJavaMethod javaMethod = getMetaAccess().lookupJavaMethod(m);
         StructuredGraph graph = new StructuredGraph(javaMethod);
-        new GraphBuilderPhase(getMetaAccess(), getForeignCalls(), conf, OptimisticOptimizations.ALL).apply(graph);
+        new GraphBuilderPhase(getMetaAccess(), conf, OptimisticOptimizations.ALL).apply(graph);
         return graph;
     }
 
@@ -633,7 +629,7 @@ public abstract class GraalCompilerTest extends GraalTest {
         PhasePlan plan = new PhasePlan();
         GraphBuilderConfiguration gbConf = GraphBuilderConfiguration.getEagerDefault();
         gbConf.setEagerInfopointMode(eagerInfopointMode);
-        plan.addPhase(PhasePosition.AFTER_PARSING, new GraphBuilderPhase(getMetaAccess(), getForeignCalls(), gbConf, OptimisticOptimizations.ALL));
+        plan.addPhase(PhasePosition.AFTER_PARSING, new GraphBuilderPhase(getMetaAccess(), gbConf, OptimisticOptimizations.ALL));
         return plan;
     }
 

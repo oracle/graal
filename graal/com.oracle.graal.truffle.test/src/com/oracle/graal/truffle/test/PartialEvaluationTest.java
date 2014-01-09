@@ -172,7 +172,7 @@ public class PartialEvaluationTest extends GraalCompilerTest {
 
             // Additional inlining.
             final PhasePlan plan = new PhasePlan();
-            GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(getMetaAccess(), getForeignCalls(), GraphBuilderConfiguration.getEagerDefault(), TruffleCompilerImpl.Optimizations);
+            GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(getMetaAccess(), GraphBuilderConfiguration.getEagerDefault(), TruffleCompilerImpl.Optimizations);
             plan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);
             canonicalizer.addToPhasePlan(plan, context);
             plan.addPhase(PhasePosition.AFTER_PARSING, new DeadCodeEliminationPhase());

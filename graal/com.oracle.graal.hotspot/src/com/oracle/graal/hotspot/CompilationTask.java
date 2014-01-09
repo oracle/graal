@@ -122,8 +122,7 @@ public class CompilationTask implements Runnable {
         boolean osrCompilation = entryBCI != StructuredGraph.INVOCATION_ENTRY_BCI;
         PhasePlan phasePlan = new PhasePlan();
         MetaAccessProvider metaAccess = providers.getMetaAccess();
-        ForeignCallsProvider foreignCalls = providers.getForeignCalls();
-        phasePlan.addPhase(PhasePosition.AFTER_PARSING, new GraphBuilderPhase(metaAccess, foreignCalls, GraphBuilderConfiguration.getDefault(), optimisticOpts));
+        phasePlan.addPhase(PhasePosition.AFTER_PARSING, new GraphBuilderPhase(metaAccess, GraphBuilderConfiguration.getDefault(), optimisticOpts));
         if (osrCompilation) {
             phasePlan.addPhase(PhasePosition.AFTER_PARSING, new OnStackReplacementPhase());
         }

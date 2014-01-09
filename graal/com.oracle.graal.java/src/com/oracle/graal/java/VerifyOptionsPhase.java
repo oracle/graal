@@ -28,7 +28,6 @@ import static java.lang.reflect.Modifier.*;
 
 import java.util.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
@@ -45,29 +44,29 @@ import com.oracle.graal.phases.*;
  */
 public class VerifyOptionsPhase extends Phase {
 
-    public static boolean checkOptions(MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls) {
+    public static boolean checkOptions(MetaAccessProvider metaAccess) {
         ServiceLoader<Options> sl = ServiceLoader.loadInstalled(Options.class);
         Set<ResolvedJavaType> checked = new HashSet<>();
         for (Options opts : sl) {
             for (OptionDescriptor desc : opts) {
                 ResolvedJavaType holder = metaAccess.lookupJavaType(desc.getDeclaringClass());
-                checkType(holder, desc, metaAccess, foreignCalls, checked);
+                checkType(holder, desc, metaAccess, checked);
             }
         }
         return true;
     }
 
-    private static void checkType(ResolvedJavaType type, OptionDescriptor option, MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls, Set<ResolvedJavaType> checked) {
+    private static void checkType(ResolvedJavaType type, OptionDescriptor option, MetaAccessProvider metaAccess, Set<ResolvedJavaType> checked) {
         if (!checked.contains(type)) {
             checked.add(type);
             ResolvedJavaType superType = type.getSuperclass();
             if (superType != null && !MetaUtil.isJavaLangObject(superType)) {
-                checkType(superType, option, metaAccess, foreignCalls, checked);
+                checkType(superType, option, metaAccess, checked);
             }
             ResolvedJavaMethod clinit = type.getClassInitializer();
             if (clinit != null) {
                 StructuredGraph graph = new StructuredGraph(clinit);
-                new GraphBuilderPhase(metaAccess, foreignCalls, GraphBuilderConfiguration.getEagerDefault(), OptimisticOptimizations.ALL).apply(graph);
+                new GraphBuilderPhase(metaAccess, GraphBuilderConfiguration.getEagerDefault(), OptimisticOptimizations.ALL).apply(graph);
                 new VerifyOptionsPhase(type, metaAccess, option).apply(graph);
             }
         }

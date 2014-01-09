@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.nodes.extended;
 
+import java.util.*;
+
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
@@ -42,6 +44,13 @@ public class ForeignCallNode extends AbstractMemoryCheckpoint implements LIRLowe
     private final ForeignCallDescriptor descriptor;
 
     public ForeignCallNode(@InjectedNodeParameter ForeignCallsProvider foreignCalls, ForeignCallDescriptor descriptor, ValueNode... arguments) {
+        super(StampFactory.forKind(Kind.fromJavaClass(descriptor.getResultType())));
+        this.arguments = new NodeInputList<>(this, arguments);
+        this.descriptor = descriptor;
+        this.foreignCalls = foreignCalls;
+    }
+
+    public ForeignCallNode(@InjectedNodeParameter ForeignCallsProvider foreignCalls, ForeignCallDescriptor descriptor, List<ValueNode> arguments) {
         super(StampFactory.forKind(Kind.fromJavaClass(descriptor.getResultType())));
         this.arguments = new NodeInputList<>(this, arguments);
         this.descriptor = descriptor;

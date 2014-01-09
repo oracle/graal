@@ -48,10 +48,9 @@ public class TestUtil {
         Suites suites = suitesProvider.createSuites();
         StructuredGraph graph = new StructuredGraph(method);
         MetaAccessProvider metaAccess = providers.getMetaAccess();
-        ForeignCallsProvider foreignCalls = providers.getForeignCalls();
-        new GraphBuilderPhase(metaAccess, foreignCalls, GraphBuilderConfiguration.getEagerDefault(), OptimisticOptimizations.ALL).apply(graph);
+        new GraphBuilderPhase(metaAccess, GraphBuilderConfiguration.getEagerDefault(), OptimisticOptimizations.ALL).apply(graph);
         PhasePlan phasePlan = new PhasePlan();
-        GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(metaAccess, foreignCalls, GraphBuilderConfiguration.getDefault(), OptimisticOptimizations.ALL);
+        GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(metaAccess, GraphBuilderConfiguration.getDefault(), OptimisticOptimizations.ALL);
         phasePlan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);
         CallingConvention cc = getCallingConvention(providers.getCodeCache(), Type.JavaCallee, graph.method(), false);
         compileGraph(graph, cc, method, providers, backend, providers.getCodeCache().getTarget(), null, phasePlan, OptimisticOptimizations.ALL, getProfilingInfo(graph), new SpeculationLog(), suites,

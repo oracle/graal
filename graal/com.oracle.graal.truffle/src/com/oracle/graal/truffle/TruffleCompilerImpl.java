@@ -264,7 +264,7 @@ public class TruffleCompilerImpl implements TruffleCompiler {
 
     private PhasePlan createPhasePlan(final GraphBuilderConfiguration config) {
         final PhasePlan phasePlan = new PhasePlan();
-        GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(providers.getMetaAccess(), providers.getForeignCalls(), config, TruffleCompilerImpl.Optimizations);
+        GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(providers.getMetaAccess(), config, TruffleCompilerImpl.Optimizations);
         phasePlan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);
         return phasePlan;
     }

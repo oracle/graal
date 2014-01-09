@@ -145,10 +145,9 @@ public abstract class Stub {
                 }
 
                 PhasePlan phasePlan = new PhasePlan();
-                ForeignCallsProvider foreignCalls = providers.getForeignCalls();
                 MetaAccessProvider metaAccess = providers.getMetaAccess();
                 CodeCacheProvider codeCache = providers.getCodeCache();
-                GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(metaAccess, foreignCalls, GraphBuilderConfiguration.getDefault(), OptimisticOptimizations.ALL);
+                GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(metaAccess, GraphBuilderConfiguration.getDefault(), OptimisticOptimizations.ALL);
                 phasePlan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);
                 // The stub itself needs the incoming calling convention.
                 CallingConvention incomingCc = linkage.getIncomingCallingConvention();

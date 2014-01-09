@@ -203,7 +203,7 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
 
         try (OverrideScope s = OptionValue.override(ImmutableCode, compileAOT)) {
             PhasePlan phasePlan = new PhasePlan();
-            GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(getMetaAccess(), getForeignCalls(), GraphBuilderConfiguration.getDefault(), OptimisticOptimizations.ALL);
+            GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(getMetaAccess(), GraphBuilderConfiguration.getDefault(), OptimisticOptimizations.ALL);
             phasePlan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);
             CallingConvention cc = getCallingConvention(getCodeCache(), Type.JavaCallee, graph.method(), false);
             // create suites everytime, as we modify options for the compiler

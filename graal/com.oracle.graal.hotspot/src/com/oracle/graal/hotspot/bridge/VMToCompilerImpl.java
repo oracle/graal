@@ -145,7 +145,7 @@ public class VMToCompilerImpl implements VMToCompiler {
 
         HotSpotBackend hostBackend = runtime.getHostBackend();
         final HotSpotProviders hostProviders = hostBackend.getProviders();
-        assert VerifyOptionsPhase.checkOptions(hostProviders.getMetaAccess(), hostProviders.getForeignCalls());
+        assert VerifyOptionsPhase.checkOptions(hostProviders.getMetaAccess());
 
         // Complete initialization of backends
         hostBackend.completeInitialization();

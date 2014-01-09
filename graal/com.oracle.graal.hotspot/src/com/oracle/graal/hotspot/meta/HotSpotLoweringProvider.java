@@ -409,6 +409,12 @@ public class HotSpotLoweringProvider implements LoweringProvider {
             if (graph.getGuardsStage() == StructuredGraph.GuardsStage.AFTER_FSA) {
                 BenchmarkCounters.lower((DynamicCounterNode) n, registers, runtime.getConfig(), wordKind);
             }
+        } else if (n instanceof DeferredForeignCallNode) {
+            if (graph.getGuardsStage() == StructuredGraph.GuardsStage.FLOATING_GUARDS) {
+                DeferredForeignCallNode deferred = (DeferredForeignCallNode) n;
+                ForeignCallNode foreignCallNode = graph.add(new ForeignCallNode(foreignCalls, deferred.getDescriptor(), deferred.getArguments()));
+                graph.replaceFixedWithFixed(deferred, foreignCallNode);
+            }
         } else if (n instanceof CheckCastDynamicNode) {
             checkcastDynamicSnippets.lower((CheckCastDynamicNode) n, tool);
         } else if (n instanceof InstanceOfNode) {

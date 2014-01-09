@@ -92,9 +92,8 @@ public class HSAILCompilationResult extends ExternalCompilationResult {
 
     public static HSAILCompilationResult getHSAILCompilationResult(ResolvedJavaMethod javaMethod) {
         HotSpotMetaAccessProvider metaAccess = backend.getProviders().getMetaAccess();
-        ForeignCallsProvider foreignCalls = backend.getProviders().getForeignCalls();
         StructuredGraph graph = new StructuredGraph(javaMethod);
-        new GraphBuilderPhase(metaAccess, foreignCalls, GraphBuilderConfiguration.getEagerDefault(), OptimisticOptimizations.ALL).apply(graph);
+        new GraphBuilderPhase(metaAccess, GraphBuilderConfiguration.getEagerDefault(), OptimisticOptimizations.ALL).apply(graph);
         return getHSAILCompilationResult(graph);
     }
 
@@ -143,7 +142,7 @@ public class HSAILCompilationResult extends ExternalCompilationResult {
         HotSpotMetaAccessProvider metaAccess = (HotSpotMetaAccessProvider) providers.getMetaAccess();
         ResolvedJavaMethod rm = metaAccess.lookupJavaMethod(acceptMethod);
         StructuredGraph graph = new StructuredGraph(rm);
-        GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(providers.getMetaAccess(), providers.getForeignCalls(), GraphBuilderConfiguration.getDefault(), OptimisticOptimizations.ALL);
+        GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(providers.getMetaAccess(), GraphBuilderConfiguration.getDefault(), OptimisticOptimizations.ALL);
         graphBuilderPhase.apply(graph);
         NodeIterable<Node> nin = graph.getNodes();
         ResolvedJavaMethod lambdaMethod = null;
@@ -169,7 +168,7 @@ public class HSAILCompilationResult extends ExternalCompilationResult {
         Providers providers = backend.getProviders();
         TargetDescription target = providers.getCodeCache().getTarget();
         PhasePlan phasePlan = new PhasePlan();
-        GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(providers.getMetaAccess(), providers.getForeignCalls(), GraphBuilderConfiguration.getDefault(), OptimisticOptimizations.NONE);
+        GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(providers.getMetaAccess(), GraphBuilderConfiguration.getDefault(), OptimisticOptimizations.NONE);
         phasePlan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);
         phasePlan.addPhase(PhasePosition.AFTER_PARSING, new HSAILPhase());
         new HSAILPhase().apply(graph);
