@@ -423,6 +423,10 @@ public class HotSpotLoweringProvider implements LoweringProvider {
             if (graph.getGuardsStage() == StructuredGraph.GuardsStage.AFTER_FSA) {
                 newObjectSnippets.lower((NewInstanceNode) n, registers, tool);
             }
+        } else if (n instanceof DynamicNewInstanceNode) {
+            if (graph.getGuardsStage() == StructuredGraph.GuardsStage.AFTER_FSA) {
+                newObjectSnippets.lower((DynamicNewInstanceNode) n, registers, tool);
+            }
         } else if (n instanceof NewArrayNode) {
             if (graph.getGuardsStage() == StructuredGraph.GuardsStage.AFTER_FSA) {
                 newObjectSnippets.lower((NewArrayNode) n, registers, tool);

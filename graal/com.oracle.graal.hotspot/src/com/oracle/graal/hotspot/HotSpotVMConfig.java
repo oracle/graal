@@ -1244,6 +1244,7 @@ public class HotSpotVMConfig extends CompilerObject {
     @Stable public long newArrayAddress;
     @Stable public long newMultiArrayAddress;
     @Stable public long dynamicNewArrayAddress;
+    @Stable public long dynamicNewInstanceAddress;
     @Stable public long registerFinalizerAddress;
     @Stable public long threadIsInterruptedAddress;
     @Stable public long vmMessageAddress;

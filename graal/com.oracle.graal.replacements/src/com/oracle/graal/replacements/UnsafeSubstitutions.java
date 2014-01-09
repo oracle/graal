@@ -24,6 +24,10 @@ package com.oracle.graal.replacements;
 
 import static com.oracle.graal.api.code.MemoryBarriers.*;
 
+import java.lang.reflect.*;
+
+import sun.misc.*;
+
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.nodes.extended.*;
@@ -380,5 +384,19 @@ public class UnsafeSubstitutions {
     @MethodSubstitution(isStatic = false)
     public static double getDouble(@SuppressWarnings("unused") final Object thisObj, long address) {
         return DirectReadNode.read(address, Kind.Double);
+    }
+
+    @MethodSubstitution(isStatic = false)
+    public static Object allocateInstance(final Unsafe thisObj, Class clazz) throws InstantiationException {
+        if (clazz.isPrimitive()) {
+            throw new InstantiationException(clazz.getName());
+        }
+        if (clazz.isArray() || clazz.isInterface() || Modifier.isAbstract(clazz.getModifiers())) {
+            throw new InstantiationException(clazz.getName());
+        }
+        if (clazz == Class.class) {
+            thisObj.throwException(new IllegalAccessException(clazz.getName()));
+        }
+        return DynamicNewInstanceNode.allocateInstance(clazz, true);
     }
 }
