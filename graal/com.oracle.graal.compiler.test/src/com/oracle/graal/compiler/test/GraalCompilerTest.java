@@ -124,7 +124,9 @@ public abstract class GraalCompilerTest extends GraalTest {
 
     @After
     public void afterTest() {
+        if (debugScope != null) {
         debugScope.close();
+        }
         debugScope = null;
     }
 
