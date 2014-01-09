@@ -273,7 +273,9 @@ public class HSAILAssembler extends AbstractHSAILAssembler {
      */
     public void emitCompare(Value src0, Value src1, String condition, boolean unordered, boolean isUnsignedCompare) {
         // Formulate the prefix of the instruction.
-        String prefix = "cmp_" + condition + (unordered ? "u" : "") + "_b1_" + (isUnsignedCompare ? getArgTypeForceUnsigned(src1) : getArgType(src1));
+        // if unordered is true, it should be ignored unless the src type is f32 or f64
+        String unorderedPrefix = (getArgType(src1).startsWith("f") && unordered ? "u" : "");
+        String prefix = "cmp_" + condition + unorderedPrefix + "_b1_" + (isUnsignedCompare ? getArgTypeForceUnsigned(src1) : getArgType(src1));
         // Generate a comment for debugging purposes
         String comment = (isConstant(src1) && (src1.getKind() == Kind.Object) && (asConstant(src1).asObject() == null) ? " // null test " : "");
         // Emit the instruction.
