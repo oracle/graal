@@ -125,7 +125,7 @@ public abstract class GraalCompilerTest extends GraalTest {
     @After
     public void afterTest() {
         if (debugScope != null) {
-        debugScope.close();
+            debugScope.close();
         }
         debugScope = null;
     }
@@ -503,8 +503,8 @@ public abstract class GraalCompilerTest extends GraalTest {
     protected void assertEquals(Result expect, Result actual) {
         if (expect.exception != null) {
             Assert.assertTrue("expected " + expect.exception, actual.exception != null);
-            Assert.assertEquals(expect.exception.getClass(), actual.exception.getClass());
-            Assert.assertEquals(expect.exception.getMessage(), actual.exception.getMessage());
+            Assert.assertEquals("Exception class", expect.exception.getClass(), actual.exception.getClass());
+            Assert.assertEquals("Exception message", expect.exception.getMessage(), actual.exception.getMessage());
         } else {
             if (actual.exception != null) {
                 actual.exception.printStackTrace();
