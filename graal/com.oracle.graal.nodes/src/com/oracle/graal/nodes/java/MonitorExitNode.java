@@ -77,9 +77,6 @@ public final class MonitorExitNode extends AccessMonitorNode implements Virtuali
         assert stateAfter().bci != FrameState.AFTER_BCI || state == null;
         if (state != null && state.getState() == EscapeState.Virtual && state.getVirtualObject().hasIdentity()) {
             MonitorIdNode removedLock = state.removeLock();
-            if (removedLock != getMonitorId()) {
-                throw new GraalInternalError("mismatch at %s: %s vs. %s", this, removedLock, getMonitorId());
-            }
             assert removedLock == getMonitorId() : "mismatch at " + this + ": " + removedLock + " vs. " + getMonitorId();
             tool.delete();
         }
