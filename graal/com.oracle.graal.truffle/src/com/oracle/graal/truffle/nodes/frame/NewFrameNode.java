@@ -186,7 +186,7 @@ public class NewFrameNode extends FixedWithNextNode implements IterableNodeType,
         frameEntryState[frameFieldList.indexOf(localsField)] = virtualFrameObjectArray;
         frameEntryState[frameFieldList.indexOf(primitiveLocalsField)] = virtualFramePrimitiveArray;
         frameEntryState[frameFieldList.indexOf(tagsField)] = virtualFrameTagArray;
-        tool.createVirtualObject(virtualFrame, frameEntryState, null);
+        tool.createVirtualObject(virtualFrame, frameEntryState, Collections.<MonitorIdNode> emptyList());
         tool.replaceWithVirtual(virtualFrame);
     }
 
