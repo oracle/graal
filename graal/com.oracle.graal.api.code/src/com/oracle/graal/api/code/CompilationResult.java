@@ -137,6 +137,9 @@ public class CompilationResult implements Serializable {
         }
     }
 
+    /**
+     * Represents some external data that is referenced by the code.
+     */
     public abstract static class Data {
 
         public final int size;
@@ -161,7 +164,12 @@ public class CompilationResult implements Serializable {
 
         @Override
         public void emit(ByteBuffer buffer) {
-            constant.putPrimitive(buffer);
+            if (constant.getKind().isPrimitive()) {
+                buffer.putLong(constant.getPrimitive());
+            } else {
+                // emit placeholder for oop value
+                buffer.putLong(0);
+            }
         }
 
         @Override
@@ -197,9 +205,9 @@ public class CompilationResult implements Serializable {
     }
 
     /**
-     * Represents a reference to data from the code. The associated data can be either a
-     * {@link Constant} or a raw byte array. The raw byte array is patched as is, no endian swapping
-     * is done on it.
+     * Represents a code site that references some data. The associated data can be either a
+     * reference to an external {@link Data} item in the data section, or it may be an inlined
+     * {@link Constant} that needs to be patched.
      */
     public static final class DataPatch extends Site {
 
