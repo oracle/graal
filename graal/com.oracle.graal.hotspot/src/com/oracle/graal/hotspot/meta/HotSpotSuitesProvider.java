@@ -71,7 +71,7 @@ public class HotSpotSuitesProvider implements SuitesProvider {
         return ret;
     }
 
-    private static PhaseSuite<HighTierContext> createGraphBuilderSuite() {
+    protected PhaseSuite<HighTierContext> createGraphBuilderSuite() {
         PhaseSuite<HighTierContext> suite = new PhaseSuite<>();
         suite.appendPhase(new GraphBuilderPhase(GraphBuilderConfiguration.getDefault()));
         return suite;
