@@ -107,7 +107,7 @@ public class ArrayCopyNode extends MacroNode implements Virtualizable, Lowerable
             final ResolvedJavaMethod snippetMethod = tool.getMetaAccess().lookupJavaMethod(ArrayCopySnippets.genericArraycopySnippet);
             snippetGraph = null;
             try (Scope s = Debug.scope("ArrayCopySnippet", snippetMethod)) {
-                snippetGraph = replacements.getSnippet(snippetMethod).copy();
+                snippetGraph = replacements.getSnippet(snippetMethod, getTargetMethod()).copy();
             } catch (Throwable e) {
                 throw Debug.handle(e);
             }
