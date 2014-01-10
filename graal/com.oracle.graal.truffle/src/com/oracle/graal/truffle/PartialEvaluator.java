@@ -194,7 +194,7 @@ public class PartialEvaluator {
                     Replacements replacements = providers.getReplacements();
                     Class<? extends FixedWithNextNode> macroSubstitution = replacements.getMacroSubstitution(methodCallTargetNode.targetMethod());
                     if (macroSubstitution != null) {
-                        InliningUtil.inlineMacroNode(methodCallTargetNode.invoke(), methodCallTargetNode.targetMethod(), methodCallTargetNode.graph(), macroSubstitution);
+                        InliningUtil.inlineMacroNode(methodCallTargetNode.invoke(), methodCallTargetNode.targetMethod(), macroSubstitution);
                         changed = true;
                         continue;
                     }

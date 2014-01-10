@@ -49,7 +49,7 @@ public class ReplaceIntrinsicsPhase extends Phase {
                 if (invokeKind == InvokeKind.Static || invokeKind == InvokeKind.Special) {
                     Class<? extends FixedWithNextNode> macroSubstitution = replacements.getMacroSubstitution(methodCallTarget.targetMethod());
                     if (macroSubstitution != null) {
-                        InliningUtil.inlineMacroNode(methodCallTarget.invoke(), methodCallTarget.targetMethod(), graph, macroSubstitution);
+                        InliningUtil.inlineMacroNode(methodCallTarget.invoke(), methodCallTarget.targetMethod(), macroSubstitution);
                         Debug.dump(graph, "After inlining %s", methodCallTarget.targetMethod().toString());
                     } else {
                         StructuredGraph inlineGraph = replacements.getMethodSubstitution(methodCallTarget.targetMethod());

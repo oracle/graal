@@ -421,29 +421,29 @@ public class ReplacementsImpl implements Replacements {
                     } else {
                         Class<? extends FixedWithNextNode> macroNodeClass = InliningUtil.getMacroNodeClass(ReplacementsImpl.this, callee);
                         if (macroNodeClass != null) {
-                            InliningUtil.inlineMacroNode(callTarget.invoke(), callee, graph, macroNodeClass);
+                            InliningUtil.inlineMacroNode(callTarget.invoke(), callee, macroNodeClass);
                         } else {
-                        StructuredGraph intrinsicGraph = InliningUtil.getIntrinsicGraph(ReplacementsImpl.this, callee);
-                        if ((callTarget.invokeKind() == InvokeKind.Static || callTarget.invokeKind() == InvokeKind.Special) &&
-                                        (policy.shouldInline(callee, methodToParse) || (intrinsicGraph != null && policy.shouldUseReplacement(callee, methodToParse)))) {
-                            StructuredGraph targetGraph;
-                            if (intrinsicGraph != null && policy.shouldUseReplacement(callee, methodToParse)) {
-                                targetGraph = intrinsicGraph;
-                            } else {
-                                if (callee.getName().startsWith("$jacoco")) {
-                                    throw new GraalInternalError("Parsing call to JaCoCo instrumentation method " + format("%H.%n(%p)", callee) + " from " + format("%H.%n(%p)", methodToParse) +
-                                                    " while preparing replacement " + format("%H.%n(%p)", method) + ". Placing \"//JaCoCo Exclude\" anywhere in " +
-                                                    methodToParse.getDeclaringClass().getSourceFileName() + " should fix this.");
+                            StructuredGraph intrinsicGraph = InliningUtil.getIntrinsicGraph(ReplacementsImpl.this, callee);
+                            if ((callTarget.invokeKind() == InvokeKind.Static || callTarget.invokeKind() == InvokeKind.Special) &&
+                                            (policy.shouldInline(callee, methodToParse) || (intrinsicGraph != null && policy.shouldUseReplacement(callee, methodToParse)))) {
+                                StructuredGraph targetGraph;
+                                if (intrinsicGraph != null && policy.shouldUseReplacement(callee, methodToParse)) {
+                                    targetGraph = intrinsicGraph;
+                                } else {
+                                    if (callee.getName().startsWith("$jacoco")) {
+                                        throw new GraalInternalError("Parsing call to JaCoCo instrumentation method " + format("%H.%n(%p)", callee) + " from " + format("%H.%n(%p)", methodToParse) +
+                                                        " while preparing replacement " + format("%H.%n(%p)", method) + ". Placing \"//JaCoCo Exclude\" anywhere in " +
+                                                        methodToParse.getDeclaringClass().getSourceFileName() + " should fix this.");
+                                    }
+                                    targetGraph = parseGraph(callee, policy);
                                 }
-                                targetGraph = parseGraph(callee, policy);
+                                Object beforeInlineData = beforeInline(callTarget, targetGraph);
+                                InliningUtil.inline(callTarget.invoke(), targetGraph, true);
+                                Debug.dump(graph, "after inlining %s", callee);
+                                afterInline(graph, targetGraph, beforeInlineData);
                             }
-                            Object beforeInlineData = beforeInline(callTarget, targetGraph);
-                            InliningUtil.inline(callTarget.invoke(), targetGraph, true);
-                            Debug.dump(graph, "after inlining %s", callee);
-                            afterInline(graph, targetGraph, beforeInlineData);
                         }
                     }
-                }
                 }
 
                 afterInlining(graph);
