@@ -98,7 +98,7 @@ public class HotSpotResolvedJavaField extends CompilerObject implements Resolved
         ResolvedJavaMethod initMethod = null;
         try {
             Class<?> rjm = ResolvedJavaMethod.class;
-            makeGraphMethod = metaAccess.lookupJavaMethod(ReplacementsImpl.class.getDeclaredMethod("makeGraph", rjm, rjm, SnippetInliningPolicy.class, boolean.class));
+            makeGraphMethod = metaAccess.lookupJavaMethod(ReplacementsImpl.class.getDeclaredMethod("makeGraph", rjm, rjm, rjm, SnippetInliningPolicy.class, boolean.class, boolean.class));
             initMethod = metaAccess.lookupJavaMethod(SnippetTemplate.AbstractTemplates.class.getDeclaredMethod("template", Arguments.class));
         } catch (NoSuchMethodException | SecurityException e) {
             throw new GraalInternalError(e);
