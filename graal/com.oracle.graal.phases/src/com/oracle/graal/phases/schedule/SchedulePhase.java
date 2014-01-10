@@ -491,7 +491,7 @@ public final class SchedulePhase extends Phase {
             return latestBlock;
         }
 
-        Stack<Block> path = computePathInDominatorTree(earliestBlock, latestBlock);
+        Deque<Block> path = computePathInDominatorTree(earliestBlock, latestBlock);
         Debug.printf("|path| is %d: %s\n", path.size(), path);
 
         // follow path, start at earliest schedule
@@ -542,8 +542,8 @@ public final class SchedulePhase extends Phase {
      * 
      * @return the order of the stack is such as the first element is the earliest schedule.
      */
-    private static Stack<Block> computePathInDominatorTree(Block earliestBlock, Block latestBlock) {
-        Stack<Block> path = new Stack<>();
+    private static Deque<Block> computePathInDominatorTree(Block earliestBlock, Block latestBlock) {
+        Deque<Block> path = new LinkedList<>();
         Block currentBlock = latestBlock;
         while (currentBlock != null && earliestBlock.dominates(currentBlock)) {
             path.push(currentBlock);
@@ -559,17 +559,17 @@ public final class SchedulePhase extends Phase {
      */
     private static HashSet<Block> computeRegion(Block dominatorBlock, Block dominatedBlock) {
         HashSet<Block> region = new HashSet<>();
-        Stack<Block> workList = new Stack<>();
+        Queue<Block> workList = new LinkedList<>();
 
         region.add(dominatorBlock);
-        workList.addAll(0, dominatorBlock.getSuccessors());
+        workList.addAll(dominatorBlock.getSuccessors());
         while (workList.size() > 0) {
-            Block current = workList.pop();
+            Block current = workList.poll();
             if (current != dominatedBlock) {
                 region.add(current);
                 for (Block b : current.getSuccessors()) {
                     if (!region.contains(b) && !workList.contains(b)) {
-                        workList.add(b);
+                        workList.offer(b);
                     }
                 }
             }
