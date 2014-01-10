@@ -787,7 +787,6 @@ public class AMD64Assembler extends AbstractAssembler {
             emitByte(0x70 | cc.getValue());
             emitByte((int) ((disp - shortSize) & 0xFF));
         } else {
-
             l.addPatchAt(codeBuffer.position());
             emitByte(0x70 | cc.getValue());
             emitByte(0);
@@ -1021,14 +1020,14 @@ public class AMD64Assembler extends AbstractAssembler {
         }
     }
 
-    public final void movsxb(Register dst, AMD64Address src) {
+    public final void movsbl(Register dst, AMD64Address src) {
         prefix(src, dst);
         emitByte(0x0F);
         emitByte(0xBE);
         emitOperandHelper(dst, src);
     }
 
-    public final void movsxb(Register dst, Register src) {
+    public final void movsbl(Register dst, Register src) {
         int encode = prefixAndEncode(dst.encoding, src.encoding, true);
         emitByte(0x0F);
         emitByte(0xBE);
@@ -1098,18 +1097,11 @@ public class AMD64Assembler extends AbstractAssembler {
         emitOperandHelper(dst, src);
     }
 
-    public final void movsxw(Register dst, Register src) {
+    public final void movswl(Register dst, Register src) {
         int encode = prefixAndEncode(dst.encoding, src.encoding);
         emitByte(0x0F);
         emitByte(0xBF);
         emitByte(0xC0 | encode);
-    }
-
-    public final void movsxw(Register dst, AMD64Address src) {
-        prefix(src, dst);
-        emitByte(0x0F);
-        emitByte(0xBF);
-        emitOperandHelper(dst, src);
     }
 
     public final void movw(AMD64Address dst, int imm16) {
@@ -1127,7 +1119,14 @@ public class AMD64Assembler extends AbstractAssembler {
         emitOperandHelper(src, dst);
     }
 
-    public final void movzxl(Register dst, AMD64Address src) {
+    public final void movzbl(Register dst, AMD64Address src) {
+        prefix(src, dst);
+        emitByte(0x0F);
+        emitByte(0xB6);
+        emitOperandHelper(dst, src);
+    }
+
+    public final void movzwl(Register dst, AMD64Address src) {
         prefix(src, dst);
         emitByte(0x0F);
         emitByte(0xB7);

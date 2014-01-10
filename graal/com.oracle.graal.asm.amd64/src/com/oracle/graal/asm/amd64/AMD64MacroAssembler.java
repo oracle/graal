@@ -168,7 +168,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
     }
 
     public final void signExtendShort(Register reg) {
-        movsxw(reg, reg);
+        movswl(reg, reg);
     }
 
     public void movflt(Register dst, Register src) {

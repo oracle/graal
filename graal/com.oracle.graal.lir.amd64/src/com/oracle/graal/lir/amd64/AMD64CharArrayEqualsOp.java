@@ -145,8 +145,8 @@ public class AMD64CharArrayEqualsOp extends AMD64LIRInstruction {
         masm.bind(compareChar);
         masm.testl(result, 0x2); // tail char
         masm.jccb(ConditionFlag.Zero, trueLabel);
-        masm.movzxl(temp, new AMD64Address(array1, 0));
-        masm.movzxl(length, new AMD64Address(array2, 0));
+        masm.movzwl(temp, new AMD64Address(array1, 0));
+        masm.movzwl(length, new AMD64Address(array2, 0));
         masm.cmpl(temp, length);
         masm.jccb(ConditionFlag.NotEqual, falseLabel);
 

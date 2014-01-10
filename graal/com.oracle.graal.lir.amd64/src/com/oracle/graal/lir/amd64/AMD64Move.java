@@ -140,10 +140,10 @@ public class AMD64Move {
             switch (kind) {
                 case Boolean:
                 case Byte:
-                    masm.movsxb(asRegister(result), address.toAddress());
+                    masm.movsbl(asRegister(result), address.toAddress());
                     break;
                 case Char:
-                    masm.movzxl(asRegister(result), address.toAddress());
+                    masm.movzwl(asRegister(result), address.toAddress());
                     break;
                 case Short:
                     masm.movswl(asRegister(result), address.toAddress());

@@ -496,10 +496,10 @@ public enum AMD64Arithmetic {
                     break;
 
                 case I2B:
-                    masm.movsxb(asIntReg(dst), asIntReg(src));
+                    masm.movsbl(asIntReg(dst), asIntReg(src));
                     break;
                 case I2S:
-                    masm.movsxw(asIntReg(dst), asIntReg(src));
+                    masm.movswl(asIntReg(dst), asIntReg(src));
                     break;
                 case I2L:
                     masm.movslq(asLongReg(dst), asIntReg(src));
@@ -756,10 +756,10 @@ public enum AMD64Arithmetic {
                     break;
 
                 case I2B:
-                    masm.movsxb(asIntReg(dst), (AMD64Address) crb.asIntAddr(src));
+                    masm.movsbl(asIntReg(dst), (AMD64Address) crb.asIntAddr(src));
                     break;
                 case I2S:
-                    masm.movsxw(asIntReg(dst), (AMD64Address) crb.asIntAddr(src));
+                    masm.movswl(asIntReg(dst), (AMD64Address) crb.asIntAddr(src));
                     break;
                 case I2L:
                     masm.movslq(asLongReg(dst), (AMD64Address) crb.asIntAddr(src));
