@@ -245,4 +245,27 @@ public class EscapeAnalysisTest extends EATestBase {
         new LoopTransformLowPhase().apply(graph);
         new SchedulePhase().apply(graph);
     }
+
+    public static void testDeoptMonitorSnippetInner(Object o2, Object t, int i) {
+        staticField = null;
+        if (i == 0) {
+            staticField = o2;
+            Number n = (Number) t;
+            n.toString();
+        }
+    }
+
+    public static void testDeoptMonitorSnippet(Object t, int i) {
+        TestClassObject o = new TestClassObject();
+        TestClassObject o2 = new TestClassObject(o);
+
+        synchronized (o) {
+            testDeoptMonitorSnippetInner(o2, t, i);
+        }
+    }
+
+    @Test
+    public void testDeoptMonitor() {
+        test("testDeoptMonitorSnippet", new Object(), 0);
+    }
 }

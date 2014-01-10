@@ -109,7 +109,7 @@ public final class CommitAllocationNode extends FixedWithNextNode implements Vir
             }
             s.append("]");
             if (!getLocks(objIndex).isEmpty()) {
-                s.append(" locked(").append(locks.get(objIndex)).append(")");
+                s.append(" locked(").append(getLocks(objIndex)).append(")");
             }
             properties.put("object(" + virtual.toString(Verbosity.Id) + ")", s.toString());
         }
