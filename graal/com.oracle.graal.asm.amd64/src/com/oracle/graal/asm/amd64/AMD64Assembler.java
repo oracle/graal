@@ -2437,7 +2437,14 @@ public class AMD64Assembler extends AbstractAssembler {
         } else if (op == 0xEB || (op & 0xF0) == 0x70) {
 
             // short offset operators (jmp and jcc)
-            int imm8 = branchTarget - (branch + 2);
+            final int imm8 = branchTarget - (branch + 2);
+            /*
+             * Since a wrongly patched short branch can potentially lead to working but really bad
+             * behaving code we should always fail with an exception instead of having an assert.
+             */
+            if (!NumUtil.isByte(imm8)) {
+                throw new InternalError("branch displacement out of range: " + imm8);
+            }
             codeBuffer.emitByte(imm8, branch + 1);
 
         } else {
