@@ -291,8 +291,6 @@ public class ReplacementsImpl implements Replacements {
          */
         protected final ResolvedJavaMethod original;
 
-        boolean substituteCallsOriginal;
-
         protected GraphMaker(ResolvedJavaMethod substitute, ResolvedJavaMethod original) {
             this.method = substitute;
             this.original = original;
@@ -417,7 +415,6 @@ public class ReplacementsImpl implements Replacements {
 
                         Debug.dump(graph, "after inlining %s", callee);
                         afterInline(graph, originalGraph, null);
-                        substituteCallsOriginal = true;
                     } else {
                         Class<? extends FixedWithNextNode> macroNodeClass = InliningUtil.getMacroNodeClass(ReplacementsImpl.this, callee);
                         if (macroNodeClass != null) {
