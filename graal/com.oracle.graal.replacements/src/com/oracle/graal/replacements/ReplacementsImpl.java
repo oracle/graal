@@ -419,6 +419,10 @@ public class ReplacementsImpl implements Replacements {
                         afterInline(graph, originalGraph, null);
                         substituteCallsOriginal = true;
                     } else {
+                        Class<? extends FixedWithNextNode> macroNodeClass = InliningUtil.getMacroNodeClass(ReplacementsImpl.this, callee);
+                        if (macroNodeClass != null) {
+                            InliningUtil.inlineMacroNode(callTarget.invoke(), callee, graph, macroNodeClass);
+                        } else {
                         StructuredGraph intrinsicGraph = InliningUtil.getIntrinsicGraph(ReplacementsImpl.this, callee);
                         if ((callTarget.invokeKind() == InvokeKind.Static || callTarget.invokeKind() == InvokeKind.Special) &&
                                         (policy.shouldInline(callee, methodToParse) || (intrinsicGraph != null && policy.shouldUseReplacement(callee, methodToParse)))) {
@@ -439,6 +443,7 @@ public class ReplacementsImpl implements Replacements {
                             afterInline(graph, targetGraph, beforeInlineData);
                         }
                     }
+                }
                 }
 
                 afterInlining(graph);
