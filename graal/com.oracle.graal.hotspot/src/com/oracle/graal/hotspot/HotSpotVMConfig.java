@@ -1101,11 +1101,6 @@ public class HotSpotVMConfig extends CompilerObject {
         return (layoutHelperArrayTagTypeValue & ~layoutHelperArrayTagObjectValue) << layoutHelperArrayTagShift;
     }
 
-    /**
-     * Bit pattern in the klass layout helper that can be used to identify arrays.
-     */
-    public final int arrayKlassLayoutHelperIdentifier = 0x80000000;
-
     @HotSpotVMField(name = "ArrayKlass::_component_mirror", type = "oop", get = HotSpotVMField.Type.OFFSET) @Stable public int arrayKlassComponentMirrorOffset;
 
     @HotSpotVMField(name = "java_lang_Class::_klass_offset", type = "int", get = HotSpotVMField.Type.VALUE) @Stable public int klassOffset;
@@ -1320,7 +1315,8 @@ public class HotSpotVMConfig extends CompilerObject {
         }
 
         assert codeEntryAlignment > 0 : codeEntryAlignment;
-        assert (layoutHelperArrayTagObjectValue & layoutHelperArrayTagTypeValue & arrayKlassLayoutHelperIdentifier) != 0 : "object array and type array must have first bit set";
+        assert (layoutHelperArrayTagObjectValue & (1 << (Integer.SIZE - 1))) != 0 : "object array must have first bit set";
+        assert (layoutHelperArrayTagTypeValue & (1 << (Integer.SIZE - 1))) != 0 : "type array must have first bit set";
 
         return true;
     }

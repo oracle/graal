@@ -237,9 +237,22 @@ public class HotSpotReplacementsUtil {
         return hub.readInt(klassLayoutHelperOffset(), LocationIdentity.FINAL_LOCATION);
     }
 
-    @Fold
-    public static int arrayKlassLayoutHelperIdentifier() {
-        return config().arrayKlassLayoutHelperIdentifier;
+    /**
+     * Checks if class {@code klass} is an array.
+     * 
+     * See: Klass::layout_helper_is_array
+     * 
+     * @param klass the class to be checked
+     * @return true if klass is an array, false otherwise
+     */
+    public static boolean klassIsArray(Word klass) {
+        /*
+         * The less-than check only works if both values are ints. We use local variables to make
+         * sure these are still ints and haven't changed.
+         */
+        final int layoutHelper = readLayoutHelper(klass);
+        final int layoutHelperNeutralValue = config().klassLayoutHelperNeutralValue;
+        return (layoutHelper < layoutHelperNeutralValue);
     }
 
     @Fold
