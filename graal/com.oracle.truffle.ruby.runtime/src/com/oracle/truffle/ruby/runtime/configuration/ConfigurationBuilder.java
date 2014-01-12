@@ -27,7 +27,7 @@ public class ConfigurationBuilder {
 
     private RubyVersion rubyVersion = RubyVersion.RUBY_19;
 
-    private boolean debug = true;
+    private boolean debug = false;
     private boolean verbose = false;
     private int warningLevel = 0;
     private int taintCheckLevel = 0;
@@ -35,7 +35,7 @@ public class ConfigurationBuilder {
     private String defaultExternalEncoding = null;
     private String defaultInternalEncoding = null;
 
-    private boolean trace = true;
+    private boolean trace = false;
     private boolean fullObjectSpace = false;
 
     private boolean printParseTree = false;

@@ -71,6 +71,7 @@ public class KernelTests extends RubyTests {
         assertPrints("16\n", "class Foo; def foo; @x = 14; @y = 2; binding; end; end; puts eval(\"@x + @y\", Foo.new.foo)");
     }
 
+    @Ignore
     @Test
     public void testSetTraceFuncLine() {
         final ConfigurationBuilder configuration = new ConfigurationBuilder();
