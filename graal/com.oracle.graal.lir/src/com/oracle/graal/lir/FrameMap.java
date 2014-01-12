@@ -73,9 +73,9 @@ public abstract class FrameMap {
     private boolean hasOutgoingStackArguments;
 
     /**
-     * The list of stack areas allocated in this frame that are present in every reference map.
+     * The list of stack slots allocated in this frame that are present in every reference map.
      */
-    private final List<StackSlot> objectStackBlocks;
+    private final List<StackSlot> objectStackSlots;
 
     /**
      * Records whether an offset to an incoming stack argument was ever returned by
@@ -91,7 +91,7 @@ public abstract class FrameMap {
         this.registerConfig = codeCache.getRegisterConfig();
         this.frameSize = -1;
         this.outgoingSize = codeCache.getMinimumOutgoingSize();
-        this.objectStackBlocks = new ArrayList<>();
+        this.objectStackSlots = new ArrayList<>();
     }
 
     protected int returnAddressSize() {
@@ -296,29 +296,46 @@ public abstract class FrameMap {
     }
 
     /**
-     * Reserves a block of memory in the frame of the method being compiled. The returned block is
-     * aligned on a word boundary. If the requested size is 0, the method returns {@code null}.
+     * Reserves a number of contiguous slots in the frame of the method being compiled. If the
+     * requested number of slots is 0, this method returns {@code null}.
      * 
-     * @param size The size to reserve (in bytes).
-     * @param refs Specifies if the block is all references. If true, the block will be in all
-     *            reference maps for this method. The caller is responsible to initialize the memory
-     *            block before the first instruction that uses a reference map.
-     * @return A stack slot describing the begin of the memory block.
+     * @param slots the number of slots to reserve
+     * @param objects specifies the indexes of the object pointer slots. The caller is responsible
+     *            for guaranteeing that each such object pointer slot is initialized before any
+     *            instruction that uses a reference map. Without this guarantee, the garbage
+     *            collector could see garbage object values.
+     * @param outObjectStackSlots if non-null, the object pointer slots allocated are added to this
+     *            list
+     * @return the first reserved stack slot (i.e., at the lowest address)
      */
-    public StackSlot allocateStackBlock(int size, boolean refs) {
+    public StackSlot allocateStackSlots(int slots, BitSet objects, List<StackSlot> outObjectStackSlots) {
         assert frameSize == -1 : "frame size must not yet be fixed";
-        if (size == 0) {
+        if (slots == 0) {
             return null;
         }
-        spillSize = NumUtil.roundUp(spillSize + size, target.wordSize);
+        spillSize += (slots * target.wordSize);
 
-        if (refs) {
-            assert size % target.wordSize == 0;
-            StackSlot result = allocateNewSpillSlot(Kind.Object, 0);
-            objectStackBlocks.add(result);
-            for (int i = target.wordSize; i < size; i += target.wordSize) {
-                objectStackBlocks.add(allocateNewSpillSlot(Kind.Object, i));
+        if (!objects.isEmpty()) {
+            assert objects.length() < slots;
+            StackSlot result = null;
+            for (int slotIndex = 0; slotIndex < slots; slotIndex++) {
+                StackSlot objectSlot = null;
+                if (objects.get(slotIndex)) {
+                    objectSlot = allocateNewSpillSlot(Kind.Object, slotIndex * target.wordSize);
+                    objectStackSlots.add(objectSlot);
+                    if (outObjectStackSlots != null) {
+                        outObjectStackSlots.add(objectSlot);
+                    }
+                }
+                if (slotIndex == 0) {
+                    if (objectSlot != null) {
+                        result = objectSlot;
+                    } else {
+                        result = allocateNewSpillSlot(target.wordKind, 0);
+                    }
+                }
             }
+            assert result != null;
             return result;
 
         } else {
@@ -340,7 +357,7 @@ public abstract class FrameMap {
      */
     public BitSet initFrameRefMap() {
         BitSet frameRefMap = new BitSet(frameSize() / target.wordSize);
-        for (StackSlot slot : objectStackBlocks) {
+        for (StackSlot slot : objectStackSlots) {
             setReference(slot, null, frameRefMap);
         }
         return frameRefMap;
