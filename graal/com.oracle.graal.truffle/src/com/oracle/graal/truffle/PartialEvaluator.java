@@ -141,7 +141,6 @@ public class PartialEvaluator {
                 new DebugHistogramAsciiPrinter(TTY.out().out()).print(histogram);
             }
 
-            // Additional inlining.
             canonicalizer.apply(graph, baseContext);
             HighTierContext tierContext = new HighTierContext(providers, assumptions, cache, new PhaseSuite<HighTierContext>(), OptimisticOptimizations.NONE);
 

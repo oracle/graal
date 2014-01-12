@@ -94,7 +94,8 @@ public final class TruffleCache {
         try (Scope s = Debug.scope("TruffleCache", new Object[]{providers.getMetaAccess(), method})) {
 
             final StructuredGraph graph = new StructuredGraph(method);
-            PhaseContext phaseContext = new PhaseContext(providers, new Assumptions(false));
+            final PhaseContext phaseContext = new PhaseContext(providers, new Assumptions(false));
+            Mark mark = graph.getMark();
             new GraphBuilderPhase.Instance(phaseContext.getMetaAccess(), config, optimisticOptimizations).apply(graph);
 
             for (LocalNode l : graph.getNodes(LocalNode.class)) {
@@ -113,7 +114,6 @@ public final class TruffleCache {
             CanonicalizerPhase canonicalizerPhase = new CanonicalizerPhase(!ImmutableCode.getValue());
             PartialEscapePhase partialEscapePhase = new PartialEscapePhase(false, canonicalizerPhase);
 
-            Mark mark = null;
             while (true) {
 
                 partialEscapePhase.apply(graph, phaseContext);
@@ -127,7 +127,7 @@ public final class TruffleCache {
 
                 boolean inliningProgress = false;
                 for (MethodCallTargetNode methodCallTarget : graph.getNodes(MethodCallTargetNode.class)) {
-                    if (graph.getMark().equals(mark)) {
+                    if (!graph.getMark().equals(mark)) {
                         // Make sure macro substitutions such as
                         // CompilerDirectives.transferToInterpreter get processed first.
                         for (Node newNode : graph.getNewNodes(mark)) {
