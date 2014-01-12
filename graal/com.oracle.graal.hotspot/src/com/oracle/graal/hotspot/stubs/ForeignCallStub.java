@@ -26,10 +26,6 @@ import static com.oracle.graal.api.code.CallingConvention.Type.*;
 import static com.oracle.graal.api.meta.MetaUtil.*;
 import static com.oracle.graal.hotspot.HotSpotForeignCallLinkage.RegisterEffect.*;
 
-import java.lang.reflect.*;
-import java.util.*;
-
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.hotspot.*;
@@ -38,15 +34,9 @@ import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.hotspot.replacements.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.calc.*;
-import com.oracle.graal.nodes.java.*;
-import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.type.*;
-import com.oracle.graal.phases.common.*;
-import com.oracle.graal.replacements.*;
 import com.oracle.graal.replacements.nodes.*;
 import com.oracle.graal.word.*;
-import com.oracle.graal.word.phases.*;
 
 /**
  * A {@linkplain #getGraph() generated} stub for a {@link Transition non-leaf} foreign call from
@@ -146,35 +136,6 @@ public class ForeignCallStub extends Stub {
         };
     }
 
-    static class GraphBuilder {
-
-        public GraphBuilder(Stub stub) {
-            this.graph = new StructuredGraph(stub.toString(), null);
-            graph.replaceFixed(graph.start(), graph.add(new StubStartNode(stub)));
-            this.lastFixedNode = graph.start();
-        }
-
-        final StructuredGraph graph;
-        private FixedWithNextNode lastFixedNode;
-
-        <T extends FloatingNode> T add(T node) {
-            return graph.unique(node);
-        }
-
-        <T extends FixedNode> T append(T node) {
-            T result = graph.add(node);
-            assert lastFixedNode != null;
-            assert result.predecessor() == null;
-            graph.addAfterFixed(lastFixedNode, result);
-            if (result instanceof FixedWithNextNode) {
-                lastFixedNode = (FixedWithNextNode) result;
-            } else {
-                lastFixedNode = null;
-            }
-            return result;
-        }
-    }
-
     /**
      * Creates a graph for this stub.
      * <p>
@@ -222,43 +183,37 @@ public class ForeignCallStub extends Stub {
     protected StructuredGraph getGraph() {
         Class<?>[] args = linkage.getDescriptor().getArgumentTypes();
         boolean isObjectResult = linkage.getOutgoingCallingConvention().getReturn().getKind() == Kind.Object;
-        GraphBuilder builder = new GraphBuilder(this);
-        LocalNode[] locals = createLocals(builder, args);
-        List<InvokeNode> invokes = new ArrayList<>(3);
 
-        ReadRegisterNode thread = builder.append(new ReadRegisterNode(providers.getRegisters().getThreadRegister(), true, false));
-        ValueNode result = createTargetCall(builder, locals, thread);
-        invokes.add(createInvoke(builder, StubUtil.class, "handlePendingException", thread, ConstantNode.forBoolean(isObjectResult, builder.graph)));
+        StructuredGraph graph = new StructuredGraph(toString(), null);
+        graph.replaceFixed(graph.start(), graph.add(new StubStartNode(this)));
+
+        GraphKit kit = new GraphKit(graph, providers);
+        LocalNode[] locals = createLocals(kit, args);
+
+        ReadRegisterNode thread = kit.append(new ReadRegisterNode(providers.getRegisters().getThreadRegister(), true, false));
+        ValueNode result = createTargetCall(kit, locals, thread);
+        kit.createInvoke(StubUtil.class, "handlePendingException", thread, ConstantNode.forBoolean(isObjectResult, graph));
         if (isObjectResult) {
-            InvokeNode object = createInvoke(builder, HotSpotReplacementsUtil.class, "getAndClearObjectResult", thread);
-            result = createInvoke(builder, StubUtil.class, "verifyObject", object);
-            invokes.add(object);
-            invokes.add((InvokeNode) result);
+            InvokeNode object = kit.createInvoke(HotSpotReplacementsUtil.class, "getAndClearObjectResult", thread);
+            result = kit.createInvoke(StubUtil.class, "verifyObject", object);
         }
-        builder.append(new ReturnNode(linkage.getDescriptor().getResultType() == void.class ? null : result));
+        kit.append(new ReturnNode(linkage.getDescriptor().getResultType() == void.class ? null : result));
 
         if (Debug.isDumpEnabled()) {
-            Debug.dump(builder.graph, "Initial stub graph");
+            Debug.dump(graph, "Initial stub graph");
         }
 
-        /* Rewrite all word types that can come in from the method argument types. */
-        new WordTypeRewriterPhase(providers.getMetaAccess(), providers.getCodeCache().getTarget().wordKind).apply(builder.graph);
-        /* Inline all method calls that are create above. */
-        for (InvokeNode invoke : invokes) {
-            inline(invoke);
-        }
-        /* Clean up all code that is now dead after inlining. */
-        new DeadCodeEliminationPhase().apply(builder.graph);
-        assert builder.graph.getNodes().filter(InvokeNode.class).isEmpty();
+        kit.rewriteWordTypes();
+        kit.inlineInvokes();
 
         if (Debug.isDumpEnabled()) {
-            Debug.dump(builder.graph, "Stub graph before compilation");
+            Debug.dump(graph, "Stub graph before compilation");
         }
 
-        return builder.graph;
+        return graph;
     }
 
-    private LocalNode[] createLocals(GraphBuilder builder, Class<?>[] args) {
+    private LocalNode[] createLocals(GraphKit kit, Class<?>[] args) {
         LocalNode[] locals = new LocalNode[args.length];
         ResolvedJavaType accessingClass = providers.getMetaAccess().lookupJavaType(getClass());
         for (int i = 0; i < args.length; i++) {
@@ -270,55 +225,20 @@ public class ForeignCallStub extends Stub {
             } else {
                 stamp = StampFactory.forKind(type.getKind());
             }
-            LocalNode local = builder.add(new LocalNode(i, stamp));
+            LocalNode local = kit.unique(new LocalNode(i, stamp));
             locals[i] = local;
         }
         return locals;
     }
 
-    private InvokeNode createInvoke(GraphBuilder builder, Class<?> declaringClass, String name, ValueNode... args) {
-        ResolvedJavaMethod method = null;
-        for (Method m : declaringClass.getDeclaredMethods()) {
-            if (Modifier.isStatic(m.getModifiers()) && m.getName().equals(name)) {
-                assert method == null : "found more than one method in " + declaringClass + " named " + name;
-                method = providers.getMetaAccess().lookupJavaMethod(m);
-            }
-        }
-        assert method != null : "did not find method in " + declaringClass + " named " + name;
-        Signature signature = method.getSignature();
-        JavaType returnType = signature.getReturnType(null);
-        assert checkArgs(method, args);
-        MethodCallTargetNode callTarget = builder.graph.add(new MethodCallTargetNode(InvokeKind.Static, method, args, returnType));
-        InvokeNode invoke = builder.append(new InvokeNode(callTarget, FrameState.UNKNOWN_BCI));
-        return invoke;
-    }
-
-    private boolean checkArgs(ResolvedJavaMethod method, ValueNode... args) {
-        Signature signature = method.getSignature();
-        assert signature.getParameterCount(false) == args.length : target + ": wrong number of arguments to " + method;
-        for (int i = 0; i != args.length; i++) {
-            Kind expected = signature.getParameterKind(i).getStackKind();
-            Kind actual = args[i].stamp().kind();
-            assert expected == actual : target + ": wrong kind of value for argument " + i + " of calls to " + method + " [" + actual + " != " + expected + "]";
-        }
-        return true;
-    }
-
-    private StubForeignCallNode createTargetCall(GraphBuilder builder, LocalNode[] locals, ReadRegisterNode thread) {
+    private StubForeignCallNode createTargetCall(GraphKit kit, LocalNode[] locals, ReadRegisterNode thread) {
         if (prependThread) {
             ValueNode[] targetArguments = new ValueNode[1 + locals.length];
             targetArguments[0] = thread;
             System.arraycopy(locals, 0, targetArguments, 1, locals.length);
-            return builder.append(new StubForeignCallNode(providers.getForeignCalls(), target.getDescriptor(), targetArguments));
+            return kit.append(new StubForeignCallNode(providers.getForeignCalls(), target.getDescriptor(), targetArguments));
         } else {
-            return builder.append(new StubForeignCallNode(providers.getForeignCalls(), target.getDescriptor(), locals));
+            return kit.append(new StubForeignCallNode(providers.getForeignCalls(), target.getDescriptor(), locals));
         }
-    }
-
-    private void inline(InvokeNode invoke) {
-        ResolvedJavaMethod method = ((MethodCallTargetNode) invoke.callTarget()).targetMethod();
-        ReplacementsImpl repl = new ReplacementsImpl(providers, new Assumptions(false), providers.getCodeCache().getTarget());
-        StructuredGraph calleeGraph = repl.makeGraph(method, null, null, false);
-        InliningUtil.inline(invoke, calleeGraph, false);
     }
 }
