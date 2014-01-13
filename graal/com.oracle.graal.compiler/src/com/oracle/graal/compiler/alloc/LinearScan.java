@@ -1036,7 +1036,7 @@ public final class LinearScan {
             // detection of method-parameters and roundfp-results
             interval.setSpillState(SpillState.StartInMemory);
         }
-        interval.addMaterializationValue(gen.getMaterializedValue(op, operand));
+        interval.addMaterializationValue(gen.getMaterializedValue(op, operand, interval));
 
         Debug.log("add def: %s defPos %d (%s)", interval, defPos, registerPriority.name());
     }
