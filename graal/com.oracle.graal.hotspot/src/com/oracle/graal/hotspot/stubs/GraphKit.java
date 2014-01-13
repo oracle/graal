@@ -64,14 +64,14 @@ public class GraphKit {
      * 
      * @return a node similar to {@code node} if one exists, otherwise {@code node}
      */
-    <T extends FloatingNode> T unique(T node) {
+    protected <T extends FloatingNode> T unique(T node) {
         return graph.unique(node);
     }
 
     /**
      * Appends a fixed node to the graph.
      */
-    <T extends FixedNode> T append(T node) {
+    protected <T extends FixedNode> T append(T node) {
         T result = graph.add(node);
         assert lastFixedNode != null;
         assert result.predecessor() == null;
