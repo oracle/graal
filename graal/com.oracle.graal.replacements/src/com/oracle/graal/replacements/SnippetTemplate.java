@@ -702,8 +702,8 @@ public class SnippetTemplate {
     /**
      * The named parameters of this template that must be bound to values during instantiation. For
      * a parameter that is still live after specialization, the value in this map is either a
-     * {@link ParameterNode} instance or a {@link ParameterNode} array. For an eliminated parameter, the
-     * value is identical to the key.
+     * {@link ParameterNode} instance or a {@link ParameterNode} array. For an eliminated parameter,
+     * the value is identical to the key.
      */
     private final Object[] parameters;
 
