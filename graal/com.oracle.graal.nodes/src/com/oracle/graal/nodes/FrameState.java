@@ -410,7 +410,9 @@ public final class FrameState extends VirtualState implements IterableNodeType {
             closure.apply(this, value);
         }
         for (MonitorIdNode monitorId : monitorIds) {
-            closure.apply(this, monitorId);
+            if (monitorId != null) {
+                closure.apply(this, monitorId);
+            }
         }
         for (EscapeObjectState state : virtualObjectMappings) {
             state.applyToNonVirtual(closure);
