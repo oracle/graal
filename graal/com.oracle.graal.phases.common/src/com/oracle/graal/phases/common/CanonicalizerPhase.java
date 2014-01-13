@@ -234,7 +234,6 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
 
         public boolean baseTryCanonicalize(final Node node, NodeClass nodeClass) {
             if (nodeClass.isCanonicalizable()) {
-                assert !nodeClass.isSimplifiable();
                 METRIC_CANONICALIZATION_CONSIDERED_NODES.increment();
                 try (Scope s = Debug.scope("CanonicalizeNode", node)) {
                     Node canonical = node.canonical(tool);
@@ -242,7 +241,9 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
                 } catch (Throwable e) {
                     throw Debug.handle(e);
                 }
-            } else if (nodeClass.isSimplifiable()) {
+            }
+
+            if (nodeClass.isSimplifiable()) {
                 Debug.log("Canonicalizer: simplifying %s", node);
                 METRIC_SIMPLIFICATION_CONSIDERED_NODES.increment();
                 try (Scope s = Debug.scope("SimplifyNode", node)) {

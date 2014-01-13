@@ -28,7 +28,7 @@ import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.type.*;
 
-public class DynamicNewInstanceNode extends AbstractNewObjectNode {
+public class DynamicNewInstanceNode extends AbstractNewObjectNode implements Canonicalizable {
 
     @Input private ValueNode clazz;
 
@@ -45,11 +45,11 @@ public class DynamicNewInstanceNode extends AbstractNewObjectNode {
                 Class staticClass = (Class) clazzConstant.asObject();
                 ResolvedJavaType type = tool.getMetaAccess().lookupJavaType(staticClass);
                 if (type.isInitialized()) {
-                    return new NewInstanceNode(type, fillContents());
+                    return graph().add(new NewInstanceNode(type, fillContents()));
                 }
             }
         }
-        return super.canonical(tool);
+        return this;
     }
 
     public ValueNode getInstanceType() {

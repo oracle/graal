@@ -183,7 +183,7 @@ public final class Interval {
      * increasing order of priority are are used to optimize spilling when multiple overlapping
      * intervals compete for limited registers.
      */
-    enum RegisterPriority {
+    public enum RegisterPriority {
         /**
          * No special reason for an interval to be allocated a register.
          */

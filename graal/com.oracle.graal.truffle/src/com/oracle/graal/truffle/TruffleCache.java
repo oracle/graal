@@ -135,7 +135,7 @@ public final class TruffleCache {
                                 MethodCallTargetNode methodCallTargetNode = (MethodCallTargetNode) newNode;
                                 Class<? extends FixedWithNextNode> macroSubstitution = providers.getReplacements().getMacroSubstitution(methodCallTargetNode.targetMethod());
                                 if (macroSubstitution != null) {
-                                    InliningUtil.inlineMacroNode(methodCallTargetNode.invoke(), methodCallTargetNode.targetMethod(), methodCallTargetNode.graph(), macroSubstitution);
+                                    InliningUtil.inlineMacroNode(methodCallTargetNode.invoke(), methodCallTargetNode.targetMethod(), macroSubstitution);
                                 } else {
                                     tryCutOffRuntimeExceptions(methodCallTargetNode);
                                 }
