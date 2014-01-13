@@ -169,7 +169,7 @@ public class PartialEvaluationTest extends GraalCompilerTest {
             canonicalizer.apply(graph, context);
 
             // Additional inlining.
-            PhaseSuite<HighTierContext> graphBuilderSuite = getEagerGraphBuilderSuite();
+            PhaseSuite<HighTierContext> graphBuilderSuite = getCustomGraphBuilderSuite(GraphBuilderConfiguration.getEagerInfopointDefault());
             graphBuilderSuite.appendPhase(canonicalizer);
             graphBuilderSuite.appendPhase(new DeadCodeEliminationPhase());
 

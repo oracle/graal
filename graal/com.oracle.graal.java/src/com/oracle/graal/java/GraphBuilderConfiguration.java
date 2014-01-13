@@ -38,9 +38,10 @@ public class GraphBuilderConfiguration {
      */
     private boolean eagerInfopointMode;
 
-    protected GraphBuilderConfiguration(boolean eagerResolving, boolean omitAllExceptionEdges) {
+    protected GraphBuilderConfiguration(boolean eagerResolving, boolean omitAllExceptionEdges, boolean eagerInfopointMode) {
         this.eagerResolving = eagerResolving;
         this.omitAllExceptionEdges = omitAllExceptionEdges;
+        this.eagerInfopointMode = eagerInfopointMode;
     }
 
     public void setSkippedExceptionTypes(ResolvedJavaType[] skippedExceptionTypes) {
@@ -68,15 +69,19 @@ public class GraphBuilderConfiguration {
     }
 
     public static GraphBuilderConfiguration getDefault() {
-        return new GraphBuilderConfiguration(false, false);
+        return new GraphBuilderConfiguration(false, false, false);
     }
 
     public static GraphBuilderConfiguration getEagerDefault() {
-        return new GraphBuilderConfiguration(true, false);
+        return new GraphBuilderConfiguration(true, false, false);
     }
 
     public static GraphBuilderConfiguration getSnippetDefault() {
-        return new GraphBuilderConfiguration(true, true);
+        return new GraphBuilderConfiguration(true, true, false);
+    }
+
+    public static GraphBuilderConfiguration getEagerInfopointDefault() {
+        return new GraphBuilderConfiguration(true, false, true);
     }
 
     /**

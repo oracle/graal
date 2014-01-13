@@ -590,30 +590,28 @@ public abstract class GraalCompilerTest extends GraalTest {
      * Parses a Java method to produce a graph.
      */
     protected StructuredGraph parse(Method m) {
-        return parse0(m, GraphBuilderConfiguration.getEagerDefault());
+        return parse0(m, getCustomGraphBuilderSuite(GraphBuilderConfiguration.getEagerDefault()));
     }
 
     /**
      * Parses a Java method to produce a graph.
      */
     protected StructuredGraph parseProfiled(Method m) {
-        return parse0(m, GraphBuilderConfiguration.getDefault());
+        return parse0(m, getDefaultGraphBuilderSuite());
     }
 
     /**
      * Parses a Java method in debug mode to produce a graph with extra infopoints.
      */
     protected StructuredGraph parseDebug(Method m) {
-        GraphBuilderConfiguration gbConf = GraphBuilderConfiguration.getEagerDefault();
-        gbConf.setEagerInfopointMode(true);
-        return parse0(m, gbConf);
+        return parse0(m, getCustomGraphBuilderSuite(GraphBuilderConfiguration.getEagerInfopointDefault()));
     }
 
-    private StructuredGraph parse0(Method m, GraphBuilderConfiguration conf) {
+    private StructuredGraph parse0(Method m, PhaseSuite<HighTierContext> graphBuilderSuite) {
         assert m.getAnnotation(Test.class) == null : "shouldn't parse method with @Test annotation: " + m;
         ResolvedJavaMethod javaMethod = getMetaAccess().lookupJavaMethod(m);
         StructuredGraph graph = new StructuredGraph(javaMethod);
-        new GraphBuilderPhase.Instance(getMetaAccess(), conf, OptimisticOptimizations.ALL).apply(graph);
+        graphBuilderSuite.apply(graph, new HighTierContext(providers, null, null, graphBuilderSuite, OptimisticOptimizations.ALL));
         return graph;
     }
 
@@ -622,10 +620,7 @@ public abstract class GraalCompilerTest extends GraalTest {
         return backend.getSuites().getDefaultGraphBuilderSuite().copy();
     }
 
-    protected PhaseSuite<HighTierContext> getEagerGraphBuilderSuite() {
-        GraphBuilderConfiguration gbConf = GraphBuilderConfiguration.getEagerDefault();
-        gbConf.setEagerInfopointMode(true);
-
+    protected PhaseSuite<HighTierContext> getCustomGraphBuilderSuite(GraphBuilderConfiguration gbConf) {
         PhaseSuite<HighTierContext> suite = getDefaultGraphBuilderSuite().copy();
         ListIterator<BasePhase<? super HighTierContext>> iterator = suite.findPhase(GraphBuilderPhase.class);
         iterator.remove();

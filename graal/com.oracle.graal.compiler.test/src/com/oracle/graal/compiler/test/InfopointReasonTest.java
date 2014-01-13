@@ -34,9 +34,11 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.CallingConvention.Type;
 import com.oracle.graal.api.code.CompilationResult.Call;
 import com.oracle.graal.api.code.CompilationResult.Infopoint;
+import com.oracle.graal.java.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.*;
+import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.test.*;
 
 /**
@@ -82,7 +84,8 @@ public class InfopointReasonTest extends GraalCompilerTest {
         }
         assertTrue(graphLineSPs > 0);
         CallingConvention cc = getCallingConvention(getCodeCache(), Type.JavaCallee, graph.method(), false);
-        final CompilationResult cr = compileGraph(graph, cc, graph.method(), getProviders(), getBackend(), getCodeCache().getTarget(), null, getEagerGraphBuilderSuite(), OptimisticOptimizations.ALL,
+        PhaseSuite<HighTierContext> graphBuilderSuite = getCustomGraphBuilderSuite(GraphBuilderConfiguration.getEagerInfopointDefault());
+        final CompilationResult cr = compileGraph(graph, cc, graph.method(), getProviders(), getBackend(), getCodeCache().getTarget(), null, graphBuilderSuite, OptimisticOptimizations.ALL,
                         getProfilingInfo(graph), new SpeculationLog(), getSuites(), true, new CompilationResult(), CompilationResultBuilderFactory.Default);
         int lineSPs = 0;
         for (Infopoint sp : cr.getInfopoints()) {

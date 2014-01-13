@@ -33,6 +33,7 @@ import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.java.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
@@ -232,7 +233,7 @@ public class InliningTest extends GraalCompilerTest {
         try (Scope s = Debug.scope("InliningTest", new DebugDumpScope(snippet))) {
             Method method = getMethod(snippet);
             StructuredGraph graph = eagerInfopointMode ? parseDebug(method) : parse(method);
-            PhaseSuite<HighTierContext> graphBuilderSuite = eagerInfopointMode ? getEagerGraphBuilderSuite() : getDefaultGraphBuilderSuite();
+            PhaseSuite<HighTierContext> graphBuilderSuite = eagerInfopointMode ? getCustomGraphBuilderSuite(GraphBuilderConfiguration.getEagerInfopointDefault()) : getDefaultGraphBuilderSuite();
             Assumptions assumptions = new Assumptions(true);
             HighTierContext context = new HighTierContext(getProviders(), assumptions, null, graphBuilderSuite, OptimisticOptimizations.ALL);
             Debug.dump(graph, "Graph");
