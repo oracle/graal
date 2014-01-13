@@ -382,7 +382,7 @@ public class HotSpotLoweringProvider implements LoweringProvider {
             if (graph.getGuardsStage() == StructuredGraph.GuardsStage.FIXED_DEOPTS) {
                 OSRStartNode osrStart = (OSRStartNode) n;
                 StartNode newStart = graph.add(new StartNode());
-                LocalNode buffer = graph.unique(new LocalNode(0, StampFactory.forKind(wordKind)));
+                ParameterNode buffer = graph.unique(new ParameterNode(0, StampFactory.forKind(wordKind)));
                 ForeignCallNode migrationEnd = graph.add(new ForeignCallNode(foreignCalls, OSR_MIGRATION_END, buffer));
                 migrationEnd.setStateAfter(osrStart.stateAfter());
 

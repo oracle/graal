@@ -112,7 +112,7 @@ public class PointerTest extends GraalCompilerTest implements Snippets {
         Assert.assertEquals(kind.getStackKind(), read.kind());
 
         Assert.assertEquals(cast, read.object());
-        Assert.assertEquals(graph.getLocal(0), cast.getInput());
+        Assert.assertEquals(graph.getParameter(0), cast.getInput());
         Assert.assertEquals(target.wordKind, cast.kind());
 
         IndexedLocationNode location = (IndexedLocationNode) read.location();
@@ -124,9 +124,9 @@ public class PointerTest extends GraalCompilerTest implements Snippets {
             ConvertNode convert = (ConvertNode) location.getIndex();
             Assert.assertEquals(Kind.Int, convert.getFromKind());
             Assert.assertEquals(Kind.Long, convert.getToKind());
-            Assert.assertEquals(graph.getLocal(1), convert.value());
+            Assert.assertEquals(graph.getParameter(1), convert.value());
         } else {
-            Assert.assertEquals(graph.getLocal(1), location.getIndex());
+            Assert.assertEquals(graph.getParameter(1), location.getIndex());
         }
 
         ReturnNode ret = (ReturnNode) read.next();
@@ -137,12 +137,12 @@ public class PointerTest extends GraalCompilerTest implements Snippets {
         WordCastNode cast = (WordCastNode) graph.start().next();
 
         WriteNode write = (WriteNode) cast.next();
-        Assert.assertEquals(graph.getLocal(2), write.value());
+        Assert.assertEquals(graph.getParameter(2), write.value());
         Assert.assertEquals(Kind.Void, write.kind());
         Assert.assertEquals(FrameState.AFTER_BCI, write.stateAfter().bci);
 
         Assert.assertEquals(cast, write.object());
-        Assert.assertEquals(graph.getLocal(0), cast.getInput());
+        Assert.assertEquals(graph.getParameter(0), cast.getInput());
         Assert.assertEquals(target.wordKind, cast.kind());
 
         IndexedLocationNode location = (IndexedLocationNode) write.location();
@@ -154,9 +154,9 @@ public class PointerTest extends GraalCompilerTest implements Snippets {
             ConvertNode convert = (ConvertNode) location.getIndex();
             Assert.assertEquals(Kind.Int, convert.getFromKind());
             Assert.assertEquals(Kind.Long, convert.getToKind());
-            Assert.assertEquals(graph.getLocal(1), convert.value());
+            Assert.assertEquals(graph.getParameter(1), convert.value());
         } else {
-            Assert.assertEquals(graph.getLocal(1), location.getIndex());
+            Assert.assertEquals(graph.getParameter(1), location.getIndex());
         }
 
         ReturnNode ret = (ReturnNode) write.next();

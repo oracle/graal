@@ -139,15 +139,15 @@ public class IfCanonicalizerTest extends GraalCompilerTest {
 
     private void test(String snippet) {
         StructuredGraph graph = parse(snippet);
-        LocalNode local = graph.getNodes(LocalNode.class).iterator().next();
+        ParameterNode param = graph.getNodes(ParameterNode.class).iterator().next();
         ConstantNode constant = ConstantNode.forInt(0, graph);
-        for (Node n : local.usages().filter(isNotA(FrameState.class)).snapshot()) {
-            n.replaceFirstInput(local, constant);
+        for (Node n : param.usages().filter(isNotA(FrameState.class)).snapshot()) {
+            n.replaceFirstInput(param, constant);
         }
         Debug.dump(graph, "Graph");
         new CanonicalizerPhase(true).apply(graph, new PhaseContext(getProviders(), new Assumptions(false)));
-        for (FrameState fs : local.usages().filter(FrameState.class).snapshot()) {
-            fs.replaceFirstInput(local, null);
+        for (FrameState fs : param.usages().filter(FrameState.class).snapshot()) {
+            fs.replaceFirstInput(param, null);
         }
         StructuredGraph referenceGraph = parse(REFERENCE_SNIPPET);
         assertEquals(referenceGraph, graph);

@@ -76,7 +76,7 @@ public class PushNodesThroughPiTest extends GraalCompilerTest {
 
                     assert field != null : "Node " + rn + " tries to access a field which doesn't exists for this type";
                     if (field.getName().equals("x")) {
-                        Assert.assertTrue(rn.object() instanceof LocalNode);
+                        Assert.assertTrue(rn.object() instanceof ParameterNode);
                     } else {
                         Assert.assertTrue(rn.object().toString(), rn.object() instanceof PiNode);
                     }

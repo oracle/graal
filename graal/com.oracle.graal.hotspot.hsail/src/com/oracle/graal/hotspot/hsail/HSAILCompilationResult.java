@@ -204,9 +204,9 @@ public class HSAILCompilationResult extends ExternalCompilationResult {
 
         @Override
         protected void run(StructuredGraph graph) {
-            for (LocalNode local : graph.getNodes(LocalNode.class)) {
-                if (local.stamp() instanceof ObjectStamp) {
-                    local.setStamp(StampFactory.declaredNonNull(((ObjectStamp) local.stamp()).type()));
+            for (ParameterNode param : graph.getNodes(ParameterNode.class)) {
+                if (param.stamp() instanceof ObjectStamp) {
+                    param.setStamp(StampFactory.declaredNonNull(((ObjectStamp) param.stamp()).type()));
                 }
             }
         }

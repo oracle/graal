@@ -188,10 +188,10 @@ public class ForeignCallStub extends Stub {
         graph.replaceFixed(graph.start(), graph.add(new StubStartNode(this)));
 
         GraphKit kit = new GraphKit(graph, providers);
-        LocalNode[] locals = createLocals(kit, args);
+        ParameterNode[] params = createParameters(kit, args);
 
         ReadRegisterNode thread = kit.append(new ReadRegisterNode(providers.getRegisters().getThreadRegister(), true, false));
-        ValueNode result = createTargetCall(kit, locals, thread);
+        ValueNode result = createTargetCall(kit, params, thread);
         kit.createInvoke(StubUtil.class, "handlePendingException", thread, ConstantNode.forBoolean(isObjectResult, graph));
         if (isObjectResult) {
             InvokeNode object = kit.createInvoke(HotSpotReplacementsUtil.class, "getAndClearObjectResult", thread);
@@ -213,8 +213,8 @@ public class ForeignCallStub extends Stub {
         return graph;
     }
 
-    private LocalNode[] createLocals(GraphKit kit, Class<?>[] args) {
-        LocalNode[] locals = new LocalNode[args.length];
+    private ParameterNode[] createParameters(GraphKit kit, Class<?>[] args) {
+        ParameterNode[] params = new ParameterNode[args.length];
         ResolvedJavaType accessingClass = providers.getMetaAccess().lookupJavaType(getClass());
         for (int i = 0; i < args.length; i++) {
             ResolvedJavaType type = providers.getMetaAccess().lookupJavaType(args[i]).resolve(accessingClass);
@@ -225,20 +225,20 @@ public class ForeignCallStub extends Stub {
             } else {
                 stamp = StampFactory.forKind(type.getKind());
             }
-            LocalNode local = kit.unique(new LocalNode(i, stamp));
-            locals[i] = local;
+            ParameterNode param = kit.unique(new ParameterNode(i, stamp));
+            params[i] = param;
         }
-        return locals;
+        return params;
     }
 
-    private StubForeignCallNode createTargetCall(GraphKit kit, LocalNode[] locals, ReadRegisterNode thread) {
+    private StubForeignCallNode createTargetCall(GraphKit kit, ParameterNode[] params, ReadRegisterNode thread) {
         if (prependThread) {
-            ValueNode[] targetArguments = new ValueNode[1 + locals.length];
+            ValueNode[] targetArguments = new ValueNode[1 + params.length];
             targetArguments[0] = thread;
-            System.arraycopy(locals, 0, targetArguments, 1, locals.length);
+            System.arraycopy(params, 0, targetArguments, 1, params.length);
             return kit.append(new StubForeignCallNode(providers.getForeignCalls(), target.getDescriptor(), targetArguments));
         } else {
-            return kit.append(new StubForeignCallNode(providers.getForeignCalls(), target.getDescriptor(), locals));
+            return kit.append(new StubForeignCallNode(providers.getForeignCalls(), target.getDescriptor(), params));
         }
     }
 }

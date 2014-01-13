@@ -189,10 +189,10 @@ public class StructuredGraph extends Graph {
         return copy(newName, method);
     }
 
-    public LocalNode getLocal(int index) {
-        for (LocalNode local : getNodes(LocalNode.class)) {
-            if (local.index() == index) {
-                return local;
+    public ParameterNode getParameter(int index) {
+        for (ParameterNode param : getNodes(ParameterNode.class)) {
+            if (param.index() == index) {
+                return param;
             }
         }
         return null;

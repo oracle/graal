@@ -80,14 +80,14 @@ public class ObjectCloneNode extends MacroNode implements VirtualizableAllocatio
                 type = getConcreteType(getObject().stamp(), tool.assumptions(), tool.getMetaAccess());
                 if (type != null) {
                     StructuredGraph newGraph = new StructuredGraph();
-                    LocalNode local = newGraph.unique(new LocalNode(0, getObject().stamp()));
+                    ParameterNode param = newGraph.unique(new ParameterNode(0, getObject().stamp()));
                     NewInstanceNode newInstance = newGraph.add(new NewInstanceNode(type, true));
                     newGraph.addAfterFixed(newGraph.start(), newInstance);
                     ReturnNode returnNode = newGraph.add(new ReturnNode(newInstance));
                     newGraph.addAfterFixed(newInstance, returnNode);
 
                     for (ResolvedJavaField field : type.getInstanceFields(true)) {
-                        LoadFieldNode load = newGraph.add(new LoadFieldNode(local, field));
+                        LoadFieldNode load = newGraph.add(new LoadFieldNode(param, field));
                         newGraph.addBeforeFixed(returnNode, load);
                         newGraph.addBeforeFixed(returnNode, newGraph.add(new StoreFieldNode(newInstance, field, load)));
                     }

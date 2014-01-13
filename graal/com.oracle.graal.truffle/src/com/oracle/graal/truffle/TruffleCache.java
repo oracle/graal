@@ -98,10 +98,10 @@ public final class TruffleCache {
             Mark mark = graph.getMark();
             new GraphBuilderPhase.Instance(phaseContext.getMetaAccess(), config, optimisticOptimizations).apply(graph);
 
-            for (LocalNode l : graph.getNodes(LocalNode.class)) {
-                if (l.kind() == Kind.Object) {
-                    ValueNode actualArgument = arguments.get(l.index());
-                    l.setStamp(l.stamp().join(actualArgument.stamp()));
+            for (ParameterNode param : graph.getNodes(ParameterNode.class)) {
+                if (param.kind() == Kind.Object) {
+                    ValueNode actualArgument = arguments.get(param.index());
+                    param.setStamp(param.stamp().join(actualArgument.stamp()));
                 }
             }
 

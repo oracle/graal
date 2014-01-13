@@ -83,9 +83,9 @@ public class ArrayCopyNode extends MacroNode implements Virtualizable, Lowerable
     }
 
     private static void unrollFixedLengthLoop(StructuredGraph snippetGraph, int length, LoweringTool tool) {
-        LocalNode lengthLocal = snippetGraph.getLocal(4);
-        if (lengthLocal != null) {
-            snippetGraph.replaceFloating(lengthLocal, ConstantNode.forInt(length, snippetGraph));
+        ParameterNode lengthParam = snippetGraph.getParameter(4);
+        if (lengthParam != null) {
+            snippetGraph.replaceFloating(lengthParam, ConstantNode.forInt(length, snippetGraph));
         }
         // the canonicalization before loop unrolling is needed to propagate the length into
         // additions, etc.

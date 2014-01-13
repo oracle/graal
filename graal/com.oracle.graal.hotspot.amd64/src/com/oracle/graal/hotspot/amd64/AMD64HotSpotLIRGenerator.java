@@ -176,10 +176,10 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         saveRbp = new SaveRbp(new NoOp(currentBlock, lir.lir(currentBlock).size()));
         append(saveRbp.placeholder);
 
-        for (LocalNode local : graph.getNodes(LocalNode.class)) {
-            Value param = params[local.index()];
-            assert param.getKind() == local.kind().getStackKind();
-            setResult(local, emitMove(param));
+        for (ParameterNode param : graph.getNodes(ParameterNode.class)) {
+            Value paramValue = params[param.index()];
+            assert paramValue.getKind() == param.kind().getStackKind();
+            setResult(param, emitMove(paramValue));
         }
     }
 

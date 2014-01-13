@@ -153,9 +153,9 @@ public class PTXLIRGenerator extends LIRGenerator {
             append(new PTXParameterOp(params, true));
         }
 
-        for (LocalNode local : graph.getNodes(LocalNode.class)) {
-            Value param = params[local.index()];
-            Annotation[] annos = graph.method().getParameterAnnotations()[local.index()];
+        for (ParameterNode param : graph.getNodes(ParameterNode.class)) {
+            Value paramValue = params[param.index()];
+            Annotation[] annos = graph.method().getParameterAnnotations()[param.index()];
             Warp warpAnnotation = null;
 
             if (annos != null) {
@@ -166,9 +166,9 @@ public class PTXLIRGenerator extends LIRGenerator {
                 }
             }
             if (warpAnnotation != null) {
-                setResult(local, emitWarpParam(param.getKind(), warpAnnotation));
+                setResult(param, emitWarpParam(paramValue.getKind(), warpAnnotation));
             } else {
-                setResult(local, emitLoadParam(param.getKind(), param, null));
+                setResult(param, emitLoadParam(paramValue.getKind(), paramValue, null));
             }
         }
     }

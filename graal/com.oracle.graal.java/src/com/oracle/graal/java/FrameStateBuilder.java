@@ -72,8 +72,8 @@ public class FrameStateBuilder {
         int index = 0;
         if (!isStatic(method.getModifiers())) {
             // add the receiver
-            LocalNode local = graph.unique(new LocalNode(javaIndex, StampFactory.declaredNonNull(method.getDeclaringClass())));
-            storeLocal(javaIndex, local);
+            ParameterNode receiver = graph.unique(new ParameterNode(javaIndex, StampFactory.declaredNonNull(method.getDeclaringClass())));
+            storeLocal(javaIndex, receiver);
             javaIndex = 1;
             index = 1;
         }
@@ -92,8 +92,8 @@ public class FrameStateBuilder {
             } else {
                 stamp = StampFactory.forKind(type.getKind());
             }
-            LocalNode local = graph.unique(new LocalNode(index, stamp));
-            storeLocal(javaIndex, local);
+            ParameterNode param = graph.unique(new ParameterNode(index, stamp));
+            storeLocal(javaIndex, param);
             javaIndex += stackSlots(kind);
             index++;
         }

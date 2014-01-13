@@ -62,10 +62,10 @@ public class JTTTest extends GraalCompilerTest {
             JavaType[] parameterTypes = signatureToTypes(getMetaAccess().lookupJavaMethod(m));
             assert parameterTypes.length == args.length;
             for (int i = 0; i < args.length; i++) {
-                LocalNode local = graph.getLocal(i);
+                ParameterNode param = graph.getParameter(i);
                 Constant c = Constant.forBoxed(parameterTypes[i].getKind(), args[i]);
                 ConstantNode replacement = ConstantNode.forConstant(c, getMetaAccess(), graph);
-                local.replaceAtUsages(replacement);
+                param.replaceAtUsages(replacement);
             }
         }
         return graph;

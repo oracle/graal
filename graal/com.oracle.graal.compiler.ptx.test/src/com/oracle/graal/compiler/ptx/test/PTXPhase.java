@@ -34,9 +34,9 @@ public class PTXPhase extends Phase {
          * Assume that null checks would be done on the CPU caller side prior to copying data onto
          * the GPU.
          */
-        for (LocalNode local : graph.getNodes(LocalNode.class)) {
-            if (local.stamp() instanceof ObjectStamp) {
-                local.setStamp(StampFactory.declaredNonNull(((ObjectStamp) local.stamp()).type()));
+        for (ParameterNode param : graph.getNodes(ParameterNode.class)) {
+            if (param.stamp() instanceof ObjectStamp) {
+                param.setStamp(StampFactory.declaredNonNull(((ObjectStamp) param.stamp()).type()));
             }
         }
     }

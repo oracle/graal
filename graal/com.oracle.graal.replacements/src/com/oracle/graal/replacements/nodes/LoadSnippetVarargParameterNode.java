@@ -35,18 +35,18 @@ public final class LoadSnippetVarargParameterNode extends FixedWithNextNode impl
 
     @Input private ValueNode index;
 
-    private final LocalNode[] locals;
+    private final ParameterNode[] parameters;
 
-    public LoadSnippetVarargParameterNode(LocalNode[] locals, ValueNode index, Stamp stamp) {
+    public LoadSnippetVarargParameterNode(ParameterNode[] locals, ValueNode index, Stamp stamp) {
         super(stamp);
         this.index = index;
-        this.locals = locals;
+        this.parameters = locals;
     }
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
         if (index.isConstant()) {
-            return locals[index.asConstant().asInt()];
+            return parameters[index.asConstant().asInt()];
         }
         return this;
     }

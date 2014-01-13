@@ -1051,7 +1051,7 @@ public class InliningUtil {
         }
         if (receiverStamp.type() != null) {
             // the invoke target might be more specific than the holder (happens after inlining:
-            // locals lose their declared type...)
+            // parameters lose their declared type...)
             ResolvedJavaType receiverType = receiverStamp.type();
             if (receiverType != null && holder.isAssignableFrom(receiverType)) {
                 holder = receiverType;
@@ -1313,7 +1313,7 @@ public class InliningUtil {
             throw new IllegalStateException("Inlined graph is in invalid state");
         }
         for (Node node : inlineGraph.getNodes()) {
-            if (node == entryPointNode || node == entryPointNode.stateAfter() || node instanceof LocalNode) {
+            if (node == entryPointNode || node == entryPointNode.stateAfter() || node instanceof ParameterNode) {
                 // Do nothing.
             } else {
                 nodes.add(node);
@@ -1331,8 +1331,8 @@ public class InliningUtil {
         DuplicationReplacement localReplacement = new DuplicationReplacement() {
 
             public Node replacement(Node node) {
-                if (node instanceof LocalNode) {
-                    return parameters.get(((LocalNode) node).index());
+                if (node instanceof ParameterNode) {
+                    return parameters.get(((ParameterNode) node).index());
                 } else if (node == entryPointNode) {
                     return prevBegin;
                 }
@@ -1432,7 +1432,7 @@ public class InliningUtil {
         }
         Node returnValue = null;
         if (returnNode != null) {
-            if (returnNode.result() instanceof LocalNode) {
+            if (returnNode.result() instanceof ParameterNode) {
                 returnValue = localReplacement.replacement(returnNode.result());
             } else if (returnNode.result() != null) {
                 returnValue = duplicates.get(returnNode.result());

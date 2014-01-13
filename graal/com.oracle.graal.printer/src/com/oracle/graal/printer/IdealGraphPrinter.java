@@ -135,7 +135,7 @@ public class IdealGraphPrinter extends BasicIdealGraphPrinter implements GraphPr
             if (block != null) {
                 printProperty("block", Integer.toString(block.getId()));
                 // if (!(node instanceof PhiNode || node instanceof FrameState || node instanceof
-                // LocalNode) && !block.nodes().contains(node)) {
+                // ParameterNode) && !block.nodes().contains(node)) {
                 // printProperty("notInOwnBlock", "true");
                 // }
             } else {
@@ -256,7 +256,7 @@ public class IdealGraphPrinter extends BasicIdealGraphPrinter implements GraphPr
             // if this is the first block: add all locals to this block
             if (block.getBeginNode() == ((StructuredGraph) graph).start()) {
                 for (Node node : graph.getNodes()) {
-                    if (node instanceof LocalNode) {
+                    if (node instanceof ParameterNode) {
                         nodes.add(node);
                     }
                 }

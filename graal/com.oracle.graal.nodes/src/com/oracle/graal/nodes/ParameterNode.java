@@ -26,12 +26,12 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.type.*;
 
 /**
- * The {@code Local} instruction is a placeholder for an incoming argument to a function call.
+ * The {@code Parameter} instruction is a placeholder for an incoming argument to a function call.
  */
 @NodeInfo(nameTemplate = "Local({p#index})")
-public final class LocalNode extends AbstractLocalNode implements IterableNodeType {
+public final class ParameterNode extends AbstractLocalNode implements IterableNodeType {
 
-    public LocalNode(int index, Stamp stamp) {
+    public ParameterNode(int index, Stamp stamp) {
         super(index, stamp);
     }
 }

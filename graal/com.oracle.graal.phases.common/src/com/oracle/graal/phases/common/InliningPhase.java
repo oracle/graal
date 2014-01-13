@@ -249,16 +249,16 @@ public class InliningPhase extends AbstractInliningPhase {
 
             boolean callerHasMoreInformationAboutArguments = false;
             NodeInputList<ValueNode> args = invoke.callTarget().arguments();
-            for (LocalNode localNode : newGraph.getNodes(LocalNode.class).snapshot()) {
-                ValueNode arg = args.get(localNode.index());
+            for (ParameterNode param : newGraph.getNodes(ParameterNode.class).snapshot()) {
+                ValueNode arg = args.get(param.index());
                 if (arg.isConstant()) {
                     Constant constant = arg.asConstant();
-                    newGraph.replaceFloating(localNode, ConstantNode.forConstant(constant, context.getMetaAccess(), newGraph));
+                    newGraph.replaceFloating(param, ConstantNode.forConstant(constant, context.getMetaAccess(), newGraph));
                     callerHasMoreInformationAboutArguments = true;
                 } else {
-                    Stamp joinedStamp = localNode.stamp().join(arg.stamp());
-                    if (joinedStamp != null && !joinedStamp.equals(localNode.stamp())) {
-                        localNode.setStamp(joinedStamp);
+                    Stamp joinedStamp = param.stamp().join(arg.stamp());
+                    if (joinedStamp != null && !joinedStamp.equals(param.stamp())) {
+                        param.setStamp(joinedStamp);
                         callerHasMoreInformationAboutArguments = true;
                     }
                 }

@@ -565,10 +565,10 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
 
         emitIncomingValues(params);
 
-        for (LocalNode local : graph.getNodes(LocalNode.class)) {
-            Value param = params[local.index()];
-            assert param.getKind() == local.kind().getStackKind();
-            setResult(local, emitMove(param));
+        for (ParameterNode param : graph.getNodes(ParameterNode.class)) {
+            Value paramValue = params[param.index()];
+            assert paramValue.getKind() == param.kind().getStackKind();
+            setResult(param, emitMove(paramValue));
         }
     }
 

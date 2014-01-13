@@ -107,7 +107,7 @@ public class PartialEvaluator {
             new GraphBuilderPhase.Instance(providers.getMetaAccess(), config, TruffleCompilerImpl.Optimizations).apply(graph);
 
             // Replace thisNode with constant.
-            LocalNode thisNode = graph.getLocal(0);
+            ParameterNode thisNode = graph.getParameter(0);
             thisNode.replaceAndDelete(ConstantNode.forObject(callTarget, providers.getMetaAccess(), graph));
 
             // Canonicalize / constant propagate.
@@ -247,16 +247,16 @@ public class PartialEvaluator {
             assert graph.hasLoops();
             final StructuredGraph graphCopy = graph.copy();
             final List<Node> modifiedNodes = new ArrayList<>();
-            for (LocalNode local : graphCopy.getNodes(LocalNode.class)) {
-                ValueNode arg = arguments.get(local.index());
+            for (ParameterNode param : graphCopy.getNodes(ParameterNode.class)) {
+                ValueNode arg = arguments.get(param.index());
                 if (arg.isConstant()) {
                     Constant constant = arg.asConstant();
-                    for (Node usage : local.usages()) {
+                    for (Node usage : param.usages()) {
                         if (usage instanceof Canonicalizable) {
                             modifiedNodes.add(usage);
                         }
                     }
-                    local.replaceAndDelete(ConstantNode.forConstant(constant, phaseContext.getMetaAccess(), graphCopy));
+                    param.replaceAndDelete(ConstantNode.forConstant(constant, phaseContext.getMetaAccess(), graphCopy));
                 }
             }
             try (Scope s = Debug.scope("TruffleUnrollLoop", targetMethod)) {

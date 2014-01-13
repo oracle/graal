@@ -500,11 +500,11 @@ public class SnippetTemplate {
                 } else {
                     constantArg = Constant.forBoxed(kind, arg);
                 }
-                nodeReplacements.put(snippetGraph.getLocal(i), ConstantNode.forConstant(constantArg, metaAccess, snippetCopy));
+                nodeReplacements.put(snippetGraph.getParameter(i), ConstantNode.forConstant(constantArg, metaAccess, snippetCopy));
             } else if (args.info.isVarargsParameter(i)) {
                 Varargs varargs = (Varargs) args.values[i];
                 VarargsPlaceholderNode placeholder = snippetCopy.unique(new VarargsPlaceholderNode(varargs, providers.getMetaAccess()));
-                nodeReplacements.put(snippetGraph.getLocal(i), placeholder);
+                nodeReplacements.put(snippetGraph.getParameter(i), placeholder);
                 placeholders[i] = placeholder;
             }
         }
@@ -521,18 +521,18 @@ public class SnippetTemplate {
             if (args.info.isConstantParameter(i)) {
                 parameters[i] = CONSTANT_PARAMETER;
             } else if (args.info.isVarargsParameter(i)) {
-                assert snippetCopy.getLocal(i) == null;
+                assert snippetCopy.getParameter(i) == null;
                 Varargs varargs = (Varargs) args.values[i];
                 int length = varargs.length;
-                LocalNode[] locals = new LocalNode[length];
+                ParameterNode[] params = new ParameterNode[length];
                 Stamp stamp = varargs.stamp;
                 for (int j = 0; j < length; j++) {
                     assert (parameterCount & 0xFFFF) == parameterCount;
                     int idx = i << 16 | j;
-                    LocalNode local = snippetCopy.unique(new LocalNode(idx, stamp));
-                    locals[j] = local;
+                    ParameterNode local = snippetCopy.unique(new ParameterNode(idx, stamp));
+                    params[j] = local;
                 }
-                parameters[i] = locals;
+                parameters[i] = params;
 
                 VarargsPlaceholderNode placeholder = placeholders[i];
                 assert placeholder != null;
@@ -540,13 +540,13 @@ public class SnippetTemplate {
                     if (usage instanceof LoadIndexedNode) {
                         LoadIndexedNode loadIndexed = (LoadIndexedNode) usage;
                         Debug.dump(snippetCopy, "Before replacing %s", loadIndexed);
-                        LoadSnippetVarargParameterNode loadSnippetParameter = snippetCopy.add(new LoadSnippetVarargParameterNode(locals, loadIndexed.index(), loadIndexed.stamp()));
+                        LoadSnippetVarargParameterNode loadSnippetParameter = snippetCopy.add(new LoadSnippetVarargParameterNode(params, loadIndexed.index(), loadIndexed.stamp()));
                         snippetCopy.replaceFixedWithFixed(loadIndexed, loadSnippetParameter);
                         Debug.dump(snippetCopy, "After replacing %s", loadIndexed);
                     }
                 }
             } else {
-                LocalNode local = snippetCopy.getLocal(i);
+                ParameterNode local = snippetCopy.getParameter(i);
                 if (local == null) {
                     // Parameter value was eliminated
                     parameters[i] = UNUSED_PARAMETER;
@@ -702,7 +702,7 @@ public class SnippetTemplate {
     /**
      * The named parameters of this template that must be bound to values during instantiation. For
      * a parameter that is still live after specialization, the value in this map is either a
-     * {@link LocalNode} instance or a {@link LocalNode} array. For an eliminated parameter, the
+     * {@link ParameterNode} instance or a {@link ParameterNode} array. For an eliminated parameter, the
      * value is identical to the key.
      */
     private final Object[] parameters;
@@ -765,19 +765,19 @@ public class SnippetTemplate {
             Object parameter = parameters[i];
             assert parameter != null : this + " has no parameter named " + args.info.names[i];
             Object argument = args.values[i];
-            if (parameter instanceof LocalNode) {
+            if (parameter instanceof ParameterNode) {
                 if (argument instanceof ValueNode) {
-                    replacements.put((LocalNode) parameter, (ValueNode) argument);
+                    replacements.put((ParameterNode) parameter, (ValueNode) argument);
                 } else {
-                    Kind kind = ((LocalNode) parameter).kind();
+                    Kind kind = ((ParameterNode) parameter).kind();
                     assert argument != null || kind == Kind.Object : this + " cannot accept null for non-object parameter named " + args.info.names[i];
                     Constant constant = forBoxed(argument, kind);
-                    replacements.put((LocalNode) parameter, ConstantNode.forConstant(constant, metaAccess, replaceeGraph));
+                    replacements.put((ParameterNode) parameter, ConstantNode.forConstant(constant, metaAccess, replaceeGraph));
                 }
-            } else if (parameter instanceof LocalNode[]) {
-                LocalNode[] locals = (LocalNode[]) parameter;
+            } else if (parameter instanceof ParameterNode[]) {
+                ParameterNode[] params = (ParameterNode[]) parameter;
                 Varargs varargs = (Varargs) argument;
-                int length = locals.length;
+                int length = params.length;
                 List list = null;
                 Object array = null;
                 if (varargs.value instanceof List) {
@@ -790,15 +790,15 @@ public class SnippetTemplate {
                 }
 
                 for (int j = 0; j < length; j++) {
-                    LocalNode local = locals[j];
-                    assert local != null;
+                    ParameterNode param = params[j];
+                    assert param != null;
                     Object value = list != null ? list.get(j) : Array.get(array, j);
                     if (value instanceof ValueNode) {
-                        replacements.put(local, (ValueNode) value);
+                        replacements.put(param, (ValueNode) value);
                     } else {
-                        Constant constant = forBoxed(value, local.kind());
+                        Constant constant = forBoxed(value, param.kind());
                         ConstantNode element = ConstantNode.forConstant(constant, metaAccess, replaceeGraph);
-                        replacements.put(local, element);
+                        replacements.put(param, element);
                     }
                 }
             } else {
@@ -1022,7 +1022,7 @@ public class SnippetTemplate {
             // Replace all usages of the replacee with the value returned by the snippet
             ValueNode returnValue = null;
             if (returnNode != null && !(replacee instanceof ControlSinkNode)) {
-                if (returnNode.result() instanceof LocalNode) {
+                if (returnNode.result() instanceof ParameterNode) {
                     returnValue = (ValueNode) replacements.get(returnNode.result());
                 } else if (returnNode.result() != null) {
                     returnValue = (ValueNode) duplicates.get(returnNode.result());
@@ -1105,7 +1105,7 @@ public class SnippetTemplate {
             // Replace all usages of the replacee with the value returned by the snippet
             assert returnNode != null : replaceeGraph;
             ValueNode returnValue = null;
-            if (returnNode.result() instanceof LocalNode) {
+            if (returnNode.result() instanceof ParameterNode) {
                 returnValue = (ValueNode) replacements.get(returnNode.result());
             } else {
                 returnValue = (ValueNode) duplicates.get(returnNode.result());
@@ -1138,13 +1138,13 @@ public class SnippetTemplate {
                 buf.append("<unused> ").append(name);
             } else if (value == CONSTANT_PARAMETER) {
                 buf.append("<constant> ").append(name);
-            } else if (value instanceof LocalNode) {
-                LocalNode local = (LocalNode) value;
-                buf.append(local.kind().getJavaName()).append(' ').append(name);
+            } else if (value instanceof ParameterNode) {
+                ParameterNode param = (ParameterNode) value;
+                buf.append(param.kind().getJavaName()).append(' ').append(name);
             } else {
-                LocalNode[] locals = (LocalNode[]) value;
-                String kind = locals.length == 0 ? "?" : locals[0].kind().getJavaName();
-                buf.append(kind).append('[').append(locals.length).append("] ").append(name);
+                ParameterNode[] parameters = (ParameterNode[]) value;
+                String kind = parameters.length == 0 ? "?" : parameters[0].kind().getJavaName();
+                buf.append(kind).append('[').append(parameters.length).append("] ").append(name);
             }
         }
         return buf.append(')').toString();

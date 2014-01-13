@@ -46,8 +46,8 @@ public final class ReadNode extends FloatableAccessNode implements LIRLowerable,
     private ReadNode(ValueNode object, ValueNode location, ValueNode guard, BarrierType barrierType, boolean compressible) {
         /*
          * Used by node intrinsics. Really, you can trust me on that! Since the initial value for
-         * location is a parameter, i.e., a LocalNode, the constructor cannot use the declared type
-         * LocationNode.
+         * location is a parameter, i.e., a ParameterNode, the constructor cannot use the declared
+         * type LocationNode.
          */
         super(object, location, StampFactory.forNodeIntrinsic(), (GuardingNode) guard, barrierType, compressible);
     }
