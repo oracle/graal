@@ -25,7 +25,6 @@ package com.oracle.graal.nodes;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
-import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.type.*;
 
@@ -106,16 +105,6 @@ public class GuardNode extends FloatingGuardedNode implements Canonicalizable, I
     }
 
     public FixedWithNextNode lowerGuard() {
-        if (negated() && condition() instanceof IsNullNode) {
-            IsNullNode isNull = (IsNullNode) condition();
-            NullCheckNode nullCheck = graph().add(new NullCheckNode(isNull.object()));
-            setCondition(null);
-            if (isNull.usages().isEmpty()) {
-                isNull.safeDelete();
-            }
-            return nullCheck;
-        }
-
         return null;
     }
 
