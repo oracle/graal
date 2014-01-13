@@ -151,8 +151,8 @@ public class NewObjectSnippets implements Snippets {
     @Snippet
     public static Object allocateInstanceDynamic(Class<?> type, @ConstantParameter boolean fillContents, @ConstantParameter Register threadRegister, @ConstantParameter String typeContext) {
         Word hub = loadWordFromObject(type, klassOffset());
-        if (!hub.equal(Word.zero())) {
-            if (isKlassFullyInitialized(hub)) {
+        if (probability(FAST_PATH_PROBABILITY, !hub.equal(Word.zero()))) {
+            if (probability(FAST_PATH_PROBABILITY, isKlassFullyInitialized(hub))) {
                 int layoutHelper = readLayoutHelper(hub);
                 /*
                  * src/share/vm/oops/klass.hpp: For instances, layout helper is a positive number,
@@ -160,7 +160,7 @@ public class NewObjectSnippets implements Snippets {
                  * scaled to bytes. The low order bit is set if instances of this class cannot be
                  * allocated using the fastpath.
                  */
-                if ((layoutHelper & 1) == 0) {
+                if (probability(FAST_PATH_PROBABILITY, (layoutHelper & 1) == 0)) {
                     Word prototypeMarkWord = hub.readWord(prototypeMarkWordOffset(), PROTOTYPE_MARK_WORD_LOCATION);
                     return allocateInstance(layoutHelper, hub, prototypeMarkWord, fillContents, threadRegister, false, typeContext);
                 }
