@@ -58,4 +58,9 @@ public interface CompilerToGPU {
     Object executeExternalMethodVarargs(Object[] args, HotSpotInstalledCode hotspotInstalledCode) throws InvalidInstalledCodeException;
 
     Object executeParallelMethodVarargs(int dimX, int dimY, int dimZ, Object[] args, HotSpotInstalledCode hotspotInstalledCode) throws InvalidInstalledCodeException;
+
+    /**
+     * Gets the address of the runtime function for launching a kernel function.
+     */
+    long getLaunchKernelAddress();
 }

@@ -57,7 +57,7 @@ public class PTXControlFlow {
         }
     }
 
-    public static class ReturnNoValOp extends PTXLIRInstruction {
+    public static class ReturnNoValOp extends PTXLIRInstruction implements BlockEndOp {
 
         public ReturnNoValOp() {
         }

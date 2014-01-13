@@ -22,6 +22,11 @@
  */
 package com.oracle.graal.hotspot.ptx;
 
+import static com.oracle.graal.api.code.CallingConvention.Type.*;
+import static com.oracle.graal.api.meta.LocationIdentity.*;
+import static com.oracle.graal.hotspot.HotSpotForeignCallLinkage.RegisterEffect.*;
+import static com.oracle.graal.hotspot.HotSpotForeignCallLinkage.Transition.*;
+import static com.oracle.graal.hotspot.meta.HotSpotForeignCallsProviderImpl.*;
 import static com.oracle.graal.lir.LIRValueUtil.*;
 
 import java.util.*;
@@ -42,14 +47,24 @@ import com.oracle.graal.lir.LIRInstruction.ValueProcedure;
 import com.oracle.graal.lir.StandardOp.LabelOp;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.ptx.*;
+import com.oracle.graal.lir.ptx.PTXMemOp.LoadReturnAddrOp;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.cfg.*;
-import com.oracle.graal.lir.ptx.PTXMemOp.LoadReturnAddrOp;
+import com.oracle.graal.word.*;
 
 /**
  * HotSpot PTX specific backend.
  */
 public class PTXHotSpotBackend extends HotSpotBackend {
+
+    /**
+     * Descriptor for the PTX runtime method for launching a kernel. The C++ signature is:
+     * 
+     * <pre>
+     *     jlong gpu::Ptx::execute_kernel_from_vm(JavaThread* thread, jlong kernel, jlong parametersAndReturnValueBuffer, jint parametersAndReturnValueBufferSize, jint encodedReturnTypeSize)
+     * </pre>
+     */
+    public static final ForeignCallDescriptor LAUNCH_KERNEL = new ForeignCallDescriptor("execute_kernel_from_vm", long.class, Word.class, long.class, long.class, int.class, int.class);
 
     public PTXHotSpotBackend(HotSpotGraalRuntime runtime, HotSpotProviders providers) {
         super(runtime, providers);
@@ -58,6 +73,14 @@ public class PTXHotSpotBackend extends HotSpotBackend {
     @Override
     public boolean shouldAllocateRegisters() {
         return false;
+    }
+
+    @Override
+    public void completeInitialization() {
+        HotSpotHostForeignCallsProvider hostForeignCalls = (HotSpotHostForeignCallsProvider) getRuntime().getHostProviders().getForeignCalls();
+        long launchKernel = getRuntime().getCompilerToGPU().getLaunchKernelAddress();
+        hostForeignCalls.registerForeignCall(LAUNCH_KERNEL, launchKernel, NativeCall, DESTROYS_REGISTERS, NOT_LEAF, NOT_REEXECUTABLE, ANY_LOCATION);
+        super.completeInitialization();
     }
 
     @Override
