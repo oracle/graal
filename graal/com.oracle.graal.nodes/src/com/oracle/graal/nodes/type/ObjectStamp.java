@@ -37,7 +37,7 @@ public class ObjectStamp extends Stamp {
 
     public ObjectStamp(ResolvedJavaType type, boolean exactType, boolean nonNull, boolean alwaysNull) {
         super(Kind.Object);
-        assert !exactType || (type != null && (!Modifier.isAbstract(type.getModifiers()) || type.isArray()));
+        assert !exactType || (type != null && (isConcreteType(type)));
         this.type = type;
         this.exactType = exactType;
         this.nonNull = nonNull;
@@ -198,7 +198,7 @@ public class ObjectStamp extends Stamp {
         }
         if (joinAlwaysNull && joinNonNull) {
             return StampFactory.illegal(Kind.Object);
-        } else if (joinExactType && Modifier.isAbstract(joinType.getModifiers()) && !joinType.isArray()) {
+        } else if (joinExactType && !isConcreteType(joinType)) {
             return StampFactory.illegal(Kind.Object);
         }
         if (joinType == type && joinExactType == exactType && joinNonNull == nonNull && joinAlwaysNull == alwaysNull) {
@@ -208,6 +208,10 @@ public class ObjectStamp extends Stamp {
         } else {
             return new ObjectStamp(joinType, joinExactType, joinNonNull, joinAlwaysNull);
         }
+    }
+
+    public static boolean isConcreteType(ResolvedJavaType type) {
+        return !(Modifier.isAbstract(type.getModifiers()) && !type.isArray());
     }
 
     private static ResolvedJavaType meetTypes(ResolvedJavaType a, ResolvedJavaType b) {
