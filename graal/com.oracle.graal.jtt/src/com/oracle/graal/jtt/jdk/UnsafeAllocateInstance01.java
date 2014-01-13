@@ -74,6 +74,7 @@ public class UnsafeAllocateInstance01 extends JTTTest {
     }
 
     @Test
+    @Ignore("abstract type isn't allowed by ObjectStamp")
     public void run2() throws Throwable {
         runTest("testClassForException", AbstractList.class);
     }
