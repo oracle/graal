@@ -96,7 +96,9 @@ public class ReplacementsImpl implements Replacements {
         StructuredGraph graph = UseSnippetGraphCache ? graphs.get(method) : null;
         if (graph == null) {
             try (TimerCloseable a = SnippetPreparationTime.start()) {
-                StructuredGraph newGraph = makeGraph(method, recursiveEntry, recursiveEntry, inliningPolicy(method), method.getAnnotation(Snippet.class).removeAllFrameStates(), false);
+                FrameStateProcessing frameStateProcessing = method.getAnnotation(Snippet.class).removeAllFrameStates() ? FrameStateProcessing.Removal
+                                : FrameStateProcessing.CollapseFrameForSingleSideEffect;
+                StructuredGraph newGraph = makeGraph(method, recursiveEntry, recursiveEntry, inliningPolicy(method), frameStateProcessing);
                 Debug.metric("SnippetNodeCount[" + method.getName() + "]").add(newGraph.getNodeCount());
                 if (!UseSnippetGraphCache) {
                     return newGraph;
@@ -131,7 +133,7 @@ public class ReplacementsImpl implements Replacements {
         }
         StructuredGraph graph = graphs.get(substitute);
         if (graph == null) {
-            graphs.putIfAbsent(substitute, makeGraph(substitute, original, substitute, inliningPolicy(substitute), false, true));
+            graphs.putIfAbsent(substitute, makeGraph(substitute, original, substitute, inliningPolicy(substitute), FrameStateProcessing.None));
             graph = graphs.get(substitute);
         }
         return graph;
@@ -261,24 +263,27 @@ public class ReplacementsImpl implements Replacements {
      * @param original the original method if {@code method} is a {@linkplain MethodSubstitution
      *            substitution} otherwise null
      * @param policy the inlining policy to use during preprocessing
-     * @param removeAllFrameStates removes all frame states from side effecting instructions
+     * @param frameStateProcessing controls how {@link FrameState FrameStates} should be handled.
      */
-    public StructuredGraph makeGraph(ResolvedJavaMethod method, ResolvedJavaMethod original, ResolvedJavaMethod recursiveEntry, SnippetInliningPolicy policy, boolean removeAllFrameStates,
-                    boolean isMethodSubstitution) {
-        return createGraphMaker(method, original, recursiveEntry, isMethodSubstitution).makeGraph(policy, removeAllFrameStates);
+    public StructuredGraph makeGraph(ResolvedJavaMethod method, ResolvedJavaMethod original, ResolvedJavaMethod recursiveEntry, SnippetInliningPolicy policy, FrameStateProcessing frameStateProcessing) {
+        return createGraphMaker(method, original, recursiveEntry, frameStateProcessing).makeGraph(policy);
     }
 
     /**
      * Can be overridden to return an object that specializes various parts of graph preprocessing.
      */
-    protected GraphMaker createGraphMaker(ResolvedJavaMethod substitute, ResolvedJavaMethod original, ResolvedJavaMethod recursiveEntry, boolean isMethodSubstitution) {
-        return new GraphMaker(substitute, original, recursiveEntry, isMethodSubstitution);
+    protected GraphMaker createGraphMaker(ResolvedJavaMethod substitute, ResolvedJavaMethod original, ResolvedJavaMethod recursiveEntry, FrameStateProcessing frameStateProcessing) {
+        return new GraphMaker(substitute, original, recursiveEntry, frameStateProcessing);
     }
 
     /**
      * Cache to speed up preprocessing of replacement graphs.
      */
     final ConcurrentMap<ResolvedJavaMethod, StructuredGraph> graphCache = new ConcurrentHashMap<>();
+
+    public enum FrameStateProcessing {
+        None, CollapseFrameForSingleSideEffect, Removal
+    }
 
     /**
      * Creates and preprocesses a graph for a replacement.
@@ -300,26 +305,25 @@ public class ReplacementsImpl implements Replacements {
         protected final ResolvedJavaMethod recursiveEntry;
 
         /**
-         * Controls if FrameStates should be removed or processed with the
-         * {@link SnippetFrameStateCleanupPhase}.
+         * Controls how FrameStates are processed.
          */
-        protected final boolean isMethodSubstitution;
+        private FrameStateProcessing frameStateProcessing;
 
-        protected GraphMaker(ResolvedJavaMethod substitute, ResolvedJavaMethod substitutedMethod, ResolvedJavaMethod recursiveEntry, boolean isMethodSubstitution) {
+        protected GraphMaker(ResolvedJavaMethod substitute, ResolvedJavaMethod substitutedMethod, ResolvedJavaMethod recursiveEntry, FrameStateProcessing frameStateProcessing) {
             this.method = substitute;
             this.substitutedMethod = substitutedMethod;
             this.recursiveEntry = recursiveEntry;
-            this.isMethodSubstitution = isMethodSubstitution;
+            this.frameStateProcessing = frameStateProcessing;
         }
 
-        public StructuredGraph makeGraph(final SnippetInliningPolicy policy, final boolean removeAllFrameStates) {
+        public StructuredGraph makeGraph(final SnippetInliningPolicy policy) {
             try (Scope s = Debug.scope("BuildSnippetGraph", method)) {
                 StructuredGraph graph = parseGraph(method, policy);
 
                 // Cannot have a finalized version of a graph in the cache
                 graph = graph.copy();
 
-                finalizeGraph(graph, removeAllFrameStates);
+                finalizeGraph(graph);
 
                 Debug.dump(graph, "%s: Final", method.getName());
 
@@ -332,23 +336,24 @@ public class ReplacementsImpl implements Replacements {
         /**
          * Does final processing of a snippet graph.
          */
-        protected void finalizeGraph(StructuredGraph graph, boolean removeAllFrameStates) {
+        protected void finalizeGraph(StructuredGraph graph) {
             new NodeIntrinsificationPhase(providers).apply(graph);
             if (!SnippetTemplate.hasConstantParameter(method)) {
                 NodeIntrinsificationVerificationPhase.verify(graph);
             }
             new ConvertDeoptimizeToGuardPhase().apply(graph);
 
-            if (!isMethodSubstitution) {
-                if (removeAllFrameStates) {
+            switch (frameStateProcessing) {
+                case Removal:
                     for (Node node : graph.getNodes()) {
                         if (node instanceof StateSplit) {
                             ((StateSplit) node).setStateAfter(null);
                         }
                     }
-                } else {
-                    new SnippetFrameStateCleanupPhase().apply(graph);
-                }
+                    break;
+                case CollapseFrameForSingleSideEffect:
+                    new CollapseFrameForSingleSideEffectPhase().apply(graph);
+                    break;
             }
             new DeadCodeEliminationPhase().apply(graph);
         }

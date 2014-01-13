@@ -36,6 +36,7 @@ import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.replacements.*;
+import com.oracle.graal.replacements.ReplacementsImpl.*;
 import com.oracle.graal.replacements.Snippet.SnippetInliningPolicy;
 import com.oracle.graal.word.*;
 import com.oracle.graal.word.nodes.*;
@@ -60,7 +61,7 @@ public class PointerTest extends GraalCompilerTest implements Snippets {
     @Override
     protected StructuredGraph parse(Method m) {
         ResolvedJavaMethod resolvedMethod = getMetaAccess().lookupJavaMethod(m);
-        return installer.makeGraph(resolvedMethod, null, resolvedMethod, inliningPolicy.get(), false, false);
+        return installer.makeGraph(resolvedMethod, null, resolvedMethod, inliningPolicy.get(), FrameStateProcessing.CollapseFrameForSingleSideEffect);
     }
 
     @Test

@@ -92,7 +92,7 @@ public class MacroNode extends AbstractMemoryCheckpoint implements Lowerable, Me
                  * handles the case of a MacroNode inside a snippet used for another MacroNode
                  * lowering
                  */
-                new SnippetFrameStateCleanupPhase().apply(methodSubstitution);
+                new CollapseFrameForSingleSideEffectPhase().apply(methodSubstitution);
             }
             return lowerReplacement(methodSubstitution.copy(), tool);
         }

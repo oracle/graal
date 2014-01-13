@@ -32,23 +32,22 @@ import com.oracle.graal.phases.graph.ReentrantNodeIterator.LoopInfo;
 import com.oracle.graal.phases.graph.ReentrantNodeIterator.NodeIteratorClosure;
 
 /**
- * Removes frame states from {@linkplain StateSplit#hasSideEffect() non-side-effecting} nodes in a
- * snippet.
+ * This phase ensures that there's a single {@linkplain FrameState#AFTER_BCI collapsed frame state}
+ * per path.
  * 
- * The frame states of side-effecting nodes are replaced with
- * {@linkplain FrameState#INVALID_FRAMESTATE_BCI invalid} frame states. Loops that contain invalid
- * frame states are also assigned an invalid frame state.
+ * Removes other frame states from {@linkplain StateSplit#hasSideEffect() non-side-effecting} nodes
+ * in the graph, and replaces them with {@linkplain FrameState#INVALID_FRAMESTATE_BCI invalid frame
+ * states}.
  * 
  * The invalid frame states ensure that no deoptimization to a snippet frame state will happen.
  */
-public class SnippetFrameStateCleanupPhase extends Phase {
-
+public class CollapseFrameForSingleSideEffectPhase extends Phase {
     @Override
     protected void run(StructuredGraph graph) {
-        ReentrantNodeIterator.apply(new SnippetFrameStateCleanupClosure(), graph.start(), null, null);
+        ReentrantNodeIterator.apply(new CollapseFrameForSingleSideEffectClosure(), graph.start(), null, null);
     }
 
-    private static class SnippetFrameStateCleanupClosure extends NodeIteratorClosure<StateSplit> {
+    private static class CollapseFrameForSingleSideEffectClosure extends NodeIteratorClosure<StateSplit> {
 
         @Override
         protected StateSplit processNode(FixedNode node, StateSplit currentState) {

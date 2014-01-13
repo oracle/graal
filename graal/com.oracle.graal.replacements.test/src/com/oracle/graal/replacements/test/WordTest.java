@@ -29,6 +29,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.replacements.*;
+import com.oracle.graal.replacements.ReplacementsImpl.*;
 import com.oracle.graal.replacements.Snippet.SnippetInliningPolicy;
 import com.oracle.graal.test.*;
 import com.oracle.graal.word.*;
@@ -49,7 +50,7 @@ public class WordTest extends GraalCompilerTest implements Snippets {
     @Override
     protected StructuredGraph parse(Method m) {
         ResolvedJavaMethod resolvedMethod = getMetaAccess().lookupJavaMethod(m);
-        return installer.makeGraph(resolvedMethod, null, resolvedMethod, inliningPolicy.get(), false, false);
+        return installer.makeGraph(resolvedMethod, null, resolvedMethod, inliningPolicy.get(), FrameStateProcessing.CollapseFrameForSingleSideEffect);
     }
 
     @LongTest

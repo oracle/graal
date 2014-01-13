@@ -35,6 +35,7 @@ import com.oracle.graal.nodes.java.MethodCallTargetNode.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.util.*;
 import com.oracle.graal.replacements.*;
+import com.oracle.graal.replacements.ReplacementsImpl.*;
 import com.oracle.graal.word.phases.*;
 
 /**
@@ -158,7 +159,7 @@ public class GraphKit {
     public void inline(InvokeNode invoke) {
         ResolvedJavaMethod method = ((MethodCallTargetNode) invoke.callTarget()).targetMethod();
         ReplacementsImpl repl = new ReplacementsImpl(providers, new Assumptions(false), providers.getCodeCache().getTarget());
-        StructuredGraph calleeGraph = repl.makeGraph(method, null, method, null, false, false);
+        StructuredGraph calleeGraph = repl.makeGraph(method, null, method, null, FrameStateProcessing.CollapseFrameForSingleSideEffect);
         InliningUtil.inline(invoke, calleeGraph, false);
     }
 }
