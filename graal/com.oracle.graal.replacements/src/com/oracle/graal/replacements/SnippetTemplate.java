@@ -1142,9 +1142,9 @@ public class SnippetTemplate {
                 ParameterNode param = (ParameterNode) value;
                 buf.append(param.kind().getJavaName()).append(' ').append(name);
             } else {
-                ParameterNode[] parameters = (ParameterNode[]) value;
-                String kind = parameters.length == 0 ? "?" : parameters[0].kind().getJavaName();
-                buf.append(kind).append('[').append(parameters.length).append("] ").append(name);
+                ParameterNode[] params = (ParameterNode[]) value;
+                String kind = params.length == 0 ? "?" : params[0].kind().getJavaName();
+                buf.append(kind).append('[').append(params.length).append("] ").append(name);
             }
         }
         return buf.append(')').toString();
