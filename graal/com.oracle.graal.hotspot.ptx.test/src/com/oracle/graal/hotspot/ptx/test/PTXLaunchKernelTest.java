@@ -67,7 +67,7 @@ public class PTXLaunchKernelTest extends GraalCompilerTest {
 
         @Override
         protected CompilationResult compile(ResolvedJavaMethod method, StructuredGraph graph) {
-            CallingConvention cc = getCallingConvention(getCodeCache(), Type.JavaCallee, graph.method(), false);
+            Assume.assumeTrue(getBackend() instanceof PTXHotSpotBackend);
 
             /*
              * Use Suites.createDefaultSuites() instead of GraalCompilerTest.suites. The
@@ -78,6 +78,7 @@ public class PTXLaunchKernelTest extends GraalCompilerTest {
              * Ultimately we might want to have both the kernel and the code natively compiled for
              * GPU fallback to CPU in cases of ECC failure on kernel invocation.
              */
+            CallingConvention cc = getCallingConvention(getCodeCache(), Type.JavaCallee, graph.method(), false);
             Suites suites = Suites.createDefaultSuites();
             PTXHotSpotBackend ptxBackend = (PTXHotSpotBackend) getBackend();
             ExternalCompilationResult kernelResult = compileGraph(graph, cc, method, getProviders(), ptxBackend, ptxBackend.getTarget(), null, getDefaultGraphBuilderSuite(),
