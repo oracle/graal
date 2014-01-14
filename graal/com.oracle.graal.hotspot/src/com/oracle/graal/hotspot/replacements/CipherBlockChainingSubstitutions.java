@@ -39,7 +39,7 @@ import com.oracle.graal.word.*;
 /**
  * Substitutions for {@code com.sun.crypto.provider.CipherBlockChaining} methods.
  */
-@ClassSubstitution(className = "com.sun.crypto.provider.CipherBlockChaining", optional = true)
+@ClassSubstitution(className = "com.sun.crypto.provider.CipherBlockChaining", optional = true, defaultGuard = AESCryptSubstitutions.Guard.class)
 public class CipherBlockChainingSubstitutions {
 
     private static final long embeddedCipherOffset;

@@ -70,4 +70,10 @@ public @interface MethodSubstitution {
      * omitted if the original method cannot be found.
      */
     boolean optional() default false;
+
+    /**
+     * Determines if the substitution is globally enabled.
+     */
+
+    Class<? extends SubstitutionGuard> guard() default SubstitutionGuard.class;
 }

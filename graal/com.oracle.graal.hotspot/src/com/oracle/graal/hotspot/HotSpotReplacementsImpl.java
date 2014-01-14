@@ -59,14 +59,6 @@ public class HotSpotReplacementsImpl extends ReplacementsImpl {
                     return null;
                 }
             }
-        } else if (substituteClass == AESCryptSubstitutions.class || substituteClass == CipherBlockChainingSubstitutions.class) {
-            if (!config.useAESIntrinsics) {
-                return null;
-            }
-            assert config.aescryptEncryptBlockStub != 0L;
-            assert config.aescryptDecryptBlockStub != 0L;
-            assert config.cipherBlockChainingEncryptAESCryptStub != 0L;
-            assert config.cipherBlockChainingDecryptAESCryptStub != 0L;
         } else if (substituteClass == CRC32Substitutions.class) {
             if (!config.useCRC32Intrinsics) {
                 return null;

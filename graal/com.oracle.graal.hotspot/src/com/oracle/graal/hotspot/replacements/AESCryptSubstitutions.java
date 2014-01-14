@@ -23,6 +23,7 @@
 package com.oracle.graal.hotspot.replacements;
 
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
+
 import sun.misc.*;
 
 import com.oracle.graal.api.meta.*;
@@ -30,6 +31,7 @@ import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
+import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.nodes.extended.*;
@@ -38,8 +40,21 @@ import com.oracle.graal.word.*;
 /**
  * Substitutions for {@code com.sun.crypto.provider.AESCrypt} methods.
  */
-@ClassSubstitution(className = "com.sun.crypto.provider.AESCrypt", optional = true)
+@ClassSubstitution(className = "com.sun.crypto.provider.AESCrypt", optional = true, defaultGuard = AESCryptSubstitutions.Guard.class)
 public class AESCryptSubstitutions {
+
+    public static class Guard implements SubstitutionGuard {
+        public boolean execute() {
+            HotSpotVMConfig config = HotSpotGraalRuntime.runtime().getConfig();
+            if (config.useAESIntrinsics) {
+                assert config.aescryptEncryptBlockStub != 0L;
+                assert config.aescryptDecryptBlockStub != 0L;
+                assert config.cipherBlockChainingEncryptAESCryptStub != 0L;
+                assert config.cipherBlockChainingDecryptAESCryptStub != 0L;
+            }
+            return config.useAESIntrinsics;
+        }
+    }
 
     static final long kOffset;
     static final LocationIdentity kLocationIdentity;

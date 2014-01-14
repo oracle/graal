@@ -56,4 +56,11 @@ public @interface ClassSubstitution {
      * Substitutions for such classes are omitted if the original classes cannot be found.
      */
     boolean optional() default false;
+
+    /**
+     * Determines if the substitutions in a class are globally enabled. Individual
+     * MethodSubstitutions can also have guards and those override this guard.
+     */
+
+    Class<? extends SubstitutionGuard> defaultGuard() default SubstitutionGuard.class;
 }

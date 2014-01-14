@@ -148,10 +148,22 @@ public class ReplacementsImpl implements Replacements {
         return assumptions;
     }
 
+    private static SubstitutionGuard getGuard(Class<? extends SubstitutionGuard> guardClass) {
+        if (guardClass != SubstitutionGuard.class) {
+            try {
+                return guardClass.newInstance();
+            } catch (Exception e) {
+                throw new GraalInternalError(e);
+            }
+        }
+        return null;
+    }
+
     public void registerSubstitutions(Class<?> substitutions) {
         ClassSubstitution classSubstitution = substitutions.getAnnotation(ClassSubstitution.class);
         assert classSubstitution != null;
         assert !Snippets.class.isAssignableFrom(substitutions);
+        SubstitutionGuard defaultGuard = getGuard(classSubstitution.defaultGuard());
         for (Method substituteMethod : substitutions.getDeclaredMethods()) {
             MethodSubstitution methodSubstitution = substituteMethod.getAnnotation(MethodSubstitution.class);
             MacroSubstitution macroSubstitution = substituteMethod.getAnnotation(MacroSubstitution.class);
@@ -165,6 +177,11 @@ public class ReplacementsImpl implements Replacements {
             }
 
             if (methodSubstitution != null) {
+                SubstitutionGuard guard = getGuard(methodSubstitution.guard());
+                if (guard == null) {
+                    guard = defaultGuard;
+                }
+
                 if (macroSubstitution != null && macroSubstitution.isStatic() != methodSubstitution.isStatic()) {
                     throw new GraalInternalError("Macro and method substitution must agree on isStatic attribute: " + substituteMethod);
                 }
@@ -174,7 +191,7 @@ public class ReplacementsImpl implements Replacements {
                 String originalName = originalName(substituteMethod, methodSubstitution.value());
                 JavaSignature originalSignature = originalSignature(substituteMethod, methodSubstitution.signature(), methodSubstitution.isStatic());
                 Member originalMethod = originalMethod(classSubstitution, methodSubstitution.optional(), originalName, originalSignature);
-                if (originalMethod != null) {
+                if (originalMethod != null && (guard == null || guard.execute())) {
                     ResolvedJavaMethod original = registerMethodSubstitution(originalMethod, substituteMethod);
                     if (original != null && methodSubstitution.forced() && shouldIntrinsify(original)) {
                         forcedSubstitutions.add(original);
