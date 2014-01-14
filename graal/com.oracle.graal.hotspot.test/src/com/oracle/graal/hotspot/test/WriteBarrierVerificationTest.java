@@ -547,7 +547,7 @@ public class WriteBarrierVerificationTest extends GraalCompilerTest {
         test("test11Snippet", 11, new int[]{5});
     }
 
-    @Test(expected = AssertionError.class)
+    @Test
     public void test56() {
         test("test11Snippet", 11, new int[]{11});
     }
