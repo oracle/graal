@@ -27,6 +27,7 @@ import java.util.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.target.*;
+import com.oracle.graal.hotspot.HotSpotReplacementsImpl.GraphProducer;
 import com.oracle.graal.hotspot.bridge.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.stubs.*;
@@ -91,6 +92,14 @@ public abstract class HotSpotBackend extends Backend {
      * runtime} object was initialized and this backend was registered with it.
      */
     public void completeInitialization() {
+    }
+
+    /**
+     * Gets the graph producer provided by this backend (if any). A primary use case for this is a
+     * GPU backend that may want to offload certain methods to the GPU.
+     */
+    public GraphProducer getGraphProducer() {
+        return null;
     }
 
     /**
