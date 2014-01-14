@@ -380,6 +380,9 @@ public class CompilationResult implements Serializable {
         }
     }
 
+    private int id = -1;
+    private int entryBCI = -1;
+
     private final List<Infopoint> infopoints = new ArrayList<>();
     private final List<DataPatch> dataReferences = new ArrayList<>();
     private final List<ExceptionHandler> exceptionHandlers = new ArrayList<>();
@@ -418,6 +421,34 @@ public class CompilationResult implements Serializable {
 
     public CompilationResult(String name) {
         this.name = name;
+    }
+
+    /**
+     * @return the compile id
+     */
+    public int getId() {
+        return id;
+    }
+
+    /**
+     * @param id the compile id to set
+     */
+    public void setId(int id) {
+        this.id = id;
+    }
+
+    /**
+     * @return the entryBCI
+     */
+    public int getEntryBCI() {
+        return entryBCI;
+    }
+
+    /**
+     * @param entryBCI the entryBCI to set
+     */
+    public void setEntryBCI(int entryBCI) {
+        this.entryBCI = entryBCI;
     }
 
     public void setAssumptions(Assumptions assumptions) {
@@ -527,11 +558,11 @@ public class CompilationResult implements Serializable {
      * Records an instruction mark within this method.
      * 
      * @param codePos the position in the code that is covered by the handler
-     * @param id the identifier for this mark
+     * @param markId the identifier for this mark
      * @param references an array of other marks that this mark references
      */
-    public Mark recordMark(int codePos, Object id, Mark[] references) {
-        Mark mark = new Mark(codePos, id, references);
+    public Mark recordMark(int codePos, Object markId, Mark[] references) {
+        Mark mark = new Mark(codePos, markId, references);
         marks.add(mark);
         return mark;
     }

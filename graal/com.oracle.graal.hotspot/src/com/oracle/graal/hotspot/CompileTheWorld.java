@@ -41,6 +41,7 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.HotSpotOptions.OptionConsumer;
 import com.oracle.graal.hotspot.bridge.*;
 import com.oracle.graal.hotspot.meta.*;
+import com.oracle.graal.nodes.*;
 import com.oracle.graal.options.*;
 import com.oracle.graal.options.OptionValue.OverrideScope;
 import com.oracle.graal.phases.tiers.*;
@@ -350,7 +351,7 @@ public final class CompileTheWorld {
         try {
             long start = System.currentTimeMillis();
 
-            int id = vmToCompiler.allocateCompileTaskId();
+            int id = vmToCompiler.allocateCompileTaskId(method, StructuredGraph.INVOCATION_ENTRY_BCI);
             HotSpotBackend backend = runtime.getHostBackend();
             CompilationTask task = new CTWCompilationTask(backend, method, id);
             task.runCompilation(false);

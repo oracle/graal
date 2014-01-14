@@ -257,4 +257,9 @@ public interface CompilerToVM {
      * Collects the current values of all Graal benchmark counters, summed up over all threads.
      */
     long[] collectCounters();
+
+    /**
+     * Generate a unique id to identify the result of the compile.
+     */
+    int allocateCompileId(HotSpotResolvedJavaMethod method, int entryBCI);
 }

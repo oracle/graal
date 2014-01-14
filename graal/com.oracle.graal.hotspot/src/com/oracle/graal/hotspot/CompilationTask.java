@@ -184,7 +184,8 @@ public class CompilationTask implements Runnable {
                 OptimisticOptimizations optimisticOpts = getOptimisticOpts(profilingInfo);
                 result = compileGraph(graph, cc, method, providers, backend, backend.getTarget(), graphCache, getGraphBuilderSuite(providers), optimisticOpts, profilingInfo,
                                 method.getSpeculationLog(), suites, true, new CompilationResult(), CompilationResultBuilderFactory.Default);
-
+                result.setId(getId());
+                result.setEntryBCI(entryBCI);
             } catch (Throwable e) {
                 throw Debug.handle(e);
             } finally {
@@ -254,7 +255,7 @@ public class CompilationTask implements Runnable {
         final HotSpotCodeCacheProvider codeCache = backend.getProviders().getCodeCache();
         HotSpotInstalledCode installedCode = null;
         try (Scope s = Debug.scope("CodeInstall", new DebugDumpScope(String.valueOf(id), true), codeCache, method)) {
-            installedCode = codeCache.installMethod(method, entryBCI, compResult);
+            installedCode = codeCache.installMethod(method, compResult);
         } catch (Throwable e) {
             throw Debug.handle(e);
         }

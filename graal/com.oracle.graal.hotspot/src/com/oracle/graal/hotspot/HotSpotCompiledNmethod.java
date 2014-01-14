@@ -33,10 +33,12 @@ public final class HotSpotCompiledNmethod extends HotSpotCompiledCode {
     private static final long serialVersionUID = 1492412603674834024L;
     public final HotSpotResolvedJavaMethod method;
     public final int entryBCI;
+    public final int id;
 
-    public HotSpotCompiledNmethod(HotSpotResolvedJavaMethod method, int entryBCI, CompilationResult compResult) {
+    public HotSpotCompiledNmethod(HotSpotResolvedJavaMethod method, CompilationResult compResult) {
         super(compResult);
         this.method = method;
-        this.entryBCI = entryBCI;
+        this.entryBCI = compResult.getEntryBCI();
+        this.id = compResult.getId();
     }
 }
