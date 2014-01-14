@@ -137,11 +137,8 @@ public class CompilationResultBuilder {
     }
 
     public void recordImplicitException(int pcOffset, LIRFrameState info) {
-        // record an implicit exception point
-        if (info != null) {
-            compilationResult.recordInfopoint(pcOffset, info.debugInfo(), InfopointReason.IMPLICIT_EXCEPTION);
-            assert info.exceptionEdge == null;
-        }
+        compilationResult.recordInfopoint(pcOffset, info.debugInfo(), InfopointReason.IMPLICIT_EXCEPTION);
+        assert info.exceptionEdge == null;
     }
 
     public void recordDirectCall(int posBefore, int posAfter, InvokeTarget callTarget, LIRFrameState info) {
