@@ -39,6 +39,8 @@ import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.ptx.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
+import com.oracle.graal.hotspot.HotSpotReplacementsImpl.GraphProducer;
+import com.oracle.graal.hotspot.bridge.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
@@ -78,14 +80,33 @@ public class PTXHotSpotBackend extends HotSpotBackend {
     @Override
     public void completeInitialization() {
         HotSpotHostForeignCallsProvider hostForeignCalls = (HotSpotHostForeignCallsProvider) getRuntime().getHostProviders().getForeignCalls();
-        long launchKernel = getRuntime().getCompilerToGPU().getLaunchKernelAddress();
-        hostForeignCalls.registerForeignCall(LAUNCH_KERNEL, launchKernel, NativeCall, DESTROYS_REGISTERS, NOT_LEAF, NOT_REEXECUTABLE, ANY_LOCATION);
+        CompilerToGPU compilerToGPU = getRuntime().getCompilerToGPU();
+        deviceInitialized = compilerToGPU.deviceInit();
+        if (deviceInitialized) {
+            long launchKernel = compilerToGPU.getLaunchKernelAddress();
+            hostForeignCalls.registerForeignCall(LAUNCH_KERNEL, launchKernel, NativeCall, DESTROYS_REGISTERS, NOT_LEAF, NOT_REEXECUTABLE, ANY_LOCATION);
+        }
         super.completeInitialization();
     }
+
+    private boolean deviceInitialized;
 
     @Override
     public FrameMap newFrameMap() {
         return new PTXFrameMap(getCodeCache());
+    }
+
+    public boolean isDeviceInitialized() {
+        return deviceInitialized;
+    }
+
+    @Override
+    public GraphProducer getGraphProducer() {
+        if (!deviceInitialized) {
+            // GPU could not be initialized so offload is disabled
+            return null;
+        }
+        return new PTXGraphProducer(getRuntime().getHostBackend(), this);
     }
 
     static final class RegisterAnalysis extends ValueProcedure {

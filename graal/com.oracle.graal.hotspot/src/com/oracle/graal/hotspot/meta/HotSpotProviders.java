@@ -24,6 +24,7 @@ package com.oracle.graal.hotspot.meta;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.phases.util.*;
 
 /**
@@ -33,11 +34,11 @@ import com.oracle.graal.phases.util.*;
 public class HotSpotProviders extends Providers {
 
     private final HotSpotDisassemblerProvider disassembler;
-    private final HotSpotSuitesProvider suites;
+    private final SuitesProvider suites;
     private final HotSpotRegistersProvider registers;
 
     public HotSpotProviders(HotSpotMetaAccessProvider metaAccess, HotSpotCodeCacheProvider codeCache, ConstantReflectionProvider constantReflection, HotSpotForeignCallsProvider foreignCalls,
-                    LoweringProvider lowerer, Replacements replacements, HotSpotDisassemblerProvider disassembler, HotSpotSuitesProvider suites, HotSpotRegistersProvider registers) {
+                    LoweringProvider lowerer, Replacements replacements, HotSpotDisassemblerProvider disassembler, SuitesProvider suites, HotSpotRegistersProvider registers) {
         super(metaAccess, codeCache, constantReflection, foreignCalls, lowerer, replacements);
         this.disassembler = disassembler;
         this.suites = suites;
@@ -63,7 +64,7 @@ public class HotSpotProviders extends Providers {
         return (HotSpotForeignCallsProvider) super.getForeignCalls();
     }
 
-    public HotSpotSuitesProvider getSuites() {
+    public SuitesProvider getSuites() {
         return suites;
     }
 

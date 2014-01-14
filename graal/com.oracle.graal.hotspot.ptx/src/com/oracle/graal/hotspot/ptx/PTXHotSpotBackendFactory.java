@@ -27,7 +27,9 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
+import com.oracle.graal.java.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.ptx.*;
 
 @ServiceProvider(HotSpotBackendFactory.class)
@@ -43,7 +45,7 @@ public class PTXHotSpotBackendFactory implements HotSpotBackendFactory {
         LoweringProvider lowerer = new PTXHotSpotLoweringProvider(host.getLowerer());
         Replacements replacements = host.getReplacements();
         HotSpotDisassemblerProvider disassembler = host.getDisassembler();
-        HotSpotSuitesProvider suites = host.getSuites();
+        SuitesProvider suites = new DefaultSuitesProvider();
         HotSpotRegistersProvider registers = new HotSpotRegisters(PTX.tid, Register.None, Register.None);
         HotSpotProviders providers = new HotSpotProviders(metaAccess, codeCache, constantReflection, foreignCalls, lowerer, replacements, disassembler, suites, registers);
         return new PTXHotSpotBackend(runtime, providers);
