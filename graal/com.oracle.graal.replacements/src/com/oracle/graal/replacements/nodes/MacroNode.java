@@ -87,6 +87,7 @@ public class MacroNode extends AbstractMemoryCheckpoint implements Lowerable, Me
     protected StructuredGraph getLoweredSubstitutionGraph(LoweringTool tool) {
         StructuredGraph methodSubstitution = tool.getReplacements().getMethodSubstitution(getTargetMethod());
         if (methodSubstitution != null) {
+            methodSubstitution = methodSubstitution.copy();
             if (stateAfter() == null || stateAfter().bci == FrameState.AFTER_BCI) {
                 /*
                  * handles the case of a MacroNode inside a snippet used for another MacroNode
@@ -94,7 +95,7 @@ public class MacroNode extends AbstractMemoryCheckpoint implements Lowerable, Me
                  */
                 new CollapseFrameForSingleSideEffectPhase().apply(methodSubstitution);
             }
-            return lowerReplacement(methodSubstitution.copy(), tool);
+            return lowerReplacement(methodSubstitution, tool);
         }
         return null;
     }
