@@ -114,7 +114,7 @@ public class RubyClass extends RubyModule {
 
         include(superclass);
 
-        objectLayoutForInstances = new ObjectLayout(getName(), getContext(), superclass.objectLayoutForInstances);
+        objectLayoutForInstances = new ObjectLayout(getName(), superclass.objectLayoutForInstances);
     }
 
     public RubyBasicObject newInstance() {
@@ -157,7 +157,7 @@ public class RubyClass extends RubyModule {
     }
 
     private void renewObjectLayoutForInstances() {
-        objectLayoutForInstances = objectLayoutForInstances.renew(getContext(), superclass.objectLayoutForInstances);
+        objectLayoutForInstances = objectLayoutForInstances.renew(superclass.objectLayoutForInstances);
 
         for (RubyClass subClass : subClasses) {
             subClass.renewObjectLayoutForInstances();

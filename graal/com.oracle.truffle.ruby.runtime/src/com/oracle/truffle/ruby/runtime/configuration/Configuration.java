@@ -32,8 +32,6 @@ public class Configuration {
     private final boolean fullObjectSpace;
 
     private final boolean printParseTree;
-    private final boolean printExecutedFiles;
-    private final boolean printSpiltInstanceVariables;
     private final boolean printUninitializedCalls;
     private final boolean printJavaExceptions;
     private final boolean printRubyExceptions;
@@ -58,8 +56,6 @@ public class Configuration {
         fullObjectSpace = builder.getFullObjectSpace();
 
         printParseTree = builder.getPrintParseTree();
-        printExecutedFiles = builder.getPrintExecutedFiles();
-        printSpiltInstanceVariables = builder.getPrintSpiltInstanceVariables();
         printUninitializedCalls = builder.getPrintUninitializedCalls();
         printJavaExceptions = builder.getPrintJavaExceptions();
         printRubyExceptions = builder.getPrintRubyExceptions();
@@ -106,14 +102,6 @@ public class Configuration {
 
     public boolean getPrintParseTree() {
         return printParseTree;
-    }
-
-    public boolean getPrintExecutedFiles() {
-        return printExecutedFiles;
-    }
-
-    public boolean getPrintSpiltInstanceVariables() {
-        return printSpiltInstanceVariables;
     }
 
     public boolean getPrintUninitializedCalls() {

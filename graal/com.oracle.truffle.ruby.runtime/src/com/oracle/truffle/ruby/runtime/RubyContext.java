@@ -169,10 +169,6 @@ public class RubyContext implements ExecutionContext {
     }
 
     public Object execute(RubyContext context, Source source, RubyParser.ParserContext parserContext, Object self, MaterializedFrame parentFrame) {
-        if (configuration.getPrintExecutedFiles()) {
-            implementationMessage("executing: %s", source.getName());
-        }
-
         try {
             final RubyParserResult parseResult = parser.parse(context, source, parserContext, parentFrame);
             final RubyArguments arguments = new RubyArguments(parentFrame, self, null);

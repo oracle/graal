@@ -124,7 +124,7 @@ public class RubyBasicObject {
              * the layout of this object.
              */
 
-            rubyClass.setObjectLayoutForInstances(rubyClass.getObjectLayoutForInstances().withNewVariable(rubyClass.getContext(), name, value.getClass()));
+            rubyClass.setObjectLayoutForInstances(rubyClass.getObjectLayoutForInstances().withNewVariable(name, value.getClass()));
             updateLayout();
 
             storageLocation = objectLayout.findStorageLocation(name);
@@ -140,7 +140,7 @@ public class RubyBasicObject {
              * layout and update the layout of this object.
              */
 
-            rubyClass.setObjectLayoutForInstances(rubyClass.getObjectLayoutForInstances().withGeneralisedVariable(rubyClass.getContext(), name));
+            rubyClass.setObjectLayoutForInstances(rubyClass.getObjectLayoutForInstances().withGeneralisedVariable(name));
             updateLayout();
 
             storageLocation = objectLayout.findStorageLocation(name);
@@ -315,15 +315,13 @@ public class RubyBasicObject {
     }
 
     public void switchToPrivateLayout() {
-        final RubyContext context = getRubyClass().getContext();
-
         final Map<String, Object> instanceVariables = getInstanceVariables();
 
         hasPrivateLayout = true;
         objectLayout = ObjectLayout.EMPTY;
 
         for (Entry<String, Object> entry : instanceVariables.entrySet()) {
-            objectLayout = objectLayout.withNewVariable(context, entry.getKey(), entry.getValue().getClass());
+            objectLayout = objectLayout.withNewVariable(entry.getKey(), entry.getValue().getClass());
         }
 
         setInstanceVariables(instanceVariables);

@@ -17,7 +17,6 @@ import sun.misc.*;
 
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.api.nodes.NodeUtil.*;
-import com.oracle.truffle.ruby.runtime.*;
 
 /**
  * Maps names of instance variables to storage locations, which are either the offset of a primitive
@@ -49,11 +48,11 @@ public class ObjectLayout {
         objectStorageLocationsUsed = 0;
     }
 
-    public ObjectLayout(String originHint, RubyContext context, ObjectLayout parent) {
-        this(originHint, context, parent, new HashMap<String, Class>());
+    public ObjectLayout(String originHint, ObjectLayout parent) {
+        this(originHint, parent, new HashMap<String, Class>());
     }
 
-    public ObjectLayout(String originHint, RubyContext context, ObjectLayout parent, Map<String, Class> storageTypes) {
+    public ObjectLayout(String originHint, ObjectLayout parent, Map<String, Class> storageTypes) {
         this.originHint = originHint;
         this.parent = parent;
 
@@ -105,10 +104,6 @@ public class ObjectLayout {
                     storageLocations.put(entry.getKey(), newStorageLocation);
                     primitiveStorageLocationIndex += primitivesNeeded;
                 } else {
-                    if (canStoreInPrimitive && context.getConfiguration().getPrintSpiltInstanceVariables()) {
-                        context.implementationMessage("instance variable %s of type %s spilt due to lack of space", name, type.getName());
-                    }
-
                     final ObjectStorageLocation newStorageLocation = new ObjectStorageLocation(this, objectStorageLocationIndex);
                     storageLocations.put(entry.getKey(), newStorageLocation);
                     objectStorageLocationIndex++;
@@ -125,25 +120,25 @@ public class ObjectLayout {
      * comes from the same Ruby class as it did, but it's a new layout because layouts are
      * immutable, so modifications to the superclass yields a new layout.
      */
-    public ObjectLayout renew(RubyContext context, ObjectLayout newParent) {
-        return new ObjectLayout(originHint + ".renewed", context, newParent, getStorageTypes());
+    public ObjectLayout renew(ObjectLayout newParent) {
+        return new ObjectLayout(originHint + ".renewed", newParent, getStorageTypes());
     }
 
     /**
      * Create a new version of this layout but with a new variable.
      */
-    public ObjectLayout withNewVariable(RubyContext context, String name, Class type) {
+    public ObjectLayout withNewVariable(String name, Class type) {
         final Map<String, Class> storageTypes = getStorageTypes();
         storageTypes.put(name, type);
-        return new ObjectLayout(originHint + ".withnew", context, parent, storageTypes);
+        return new ObjectLayout(originHint + ".withnew", parent, storageTypes);
     }
 
     /**
      * Create a new version of this layout but with an existing variable generalized to support any
      * type.
      */
-    public ObjectLayout withGeneralisedVariable(RubyContext context, String name) {
-        return withNewVariable(context, name, Object.class);
+    public ObjectLayout withGeneralisedVariable(String name) {
+        return withNewVariable(name, Object.class);
     }
 
     /**

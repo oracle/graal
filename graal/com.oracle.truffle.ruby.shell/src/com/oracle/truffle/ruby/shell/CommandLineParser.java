@@ -217,12 +217,6 @@ public abstract class CommandLineParser {
                         case "--print-parse-tree":
                             configurationBuilder.setPrintParseTree(true);
                             break;
-                        case "--print-executed-files":
-                            configurationBuilder.setPrintExecutedFiles(true);
-                            break;
-                        case "--print-spilt-instance-variables":
-                            configurationBuilder.setPrintSpiltInstanceVariables(true);
-                            break;
                         case "--print-uninitialized-calls":
                             configurationBuilder.setPrintUninitializedCalls(true);
                             break;
@@ -337,9 +331,6 @@ public abstract class CommandLineParser {
         out.println("  --no-intrinsic-method-calls       don't turn method calls into intrinsic nodes");
         out.println("  --no-jline                        don't use JLine");
         out.println("  --print-parse-tree                print the result of parsing");
-        out.println("  --print-executed-files            print the name of files as they are executed");
-        out.println("  --print-missing-intrinsics        print method calls that don't have intrinsic nodes");
-        out.println("  --print-spilt-instance-variables  print each time a native-typed instance variable is spilt to the boxed array");
         out.println("  --print-uninitialized-calls       print each time a method call is uninitialized");
         out.println("  --print-java-exceptions           print Java exception back traces at the point of translating them to Ruby exceptions");
         out.println("  --print-ruby-exceptions           print the Java exception back traces at the point of raising Ruby exceptions");
