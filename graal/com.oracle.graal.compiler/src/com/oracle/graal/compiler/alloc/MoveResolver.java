@@ -109,7 +109,7 @@ final class MoveResolver {
         if (!multipleReadsAllowed) {
             for (i = 0; i < mappingFrom.size(); i++) {
                 Interval interval = mappingFrom.get(i);
-                if (interval != null) {
+                if (interval != null && !isIllegal(interval.location())) {
                     boolean unique = usedRegs.add(interval.location());
                     assert unique : "cannot read from same register twice";
                 }
