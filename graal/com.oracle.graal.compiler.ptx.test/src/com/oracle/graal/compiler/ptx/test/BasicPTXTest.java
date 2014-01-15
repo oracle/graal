@@ -22,37 +22,41 @@
  */
 package com.oracle.graal.compiler.ptx.test;
 
-import java.lang.reflect.*;
-
 import org.junit.*;
 
 /**
  * Test class for small Java methods compiled to PTX kernels.
  */
-public class BasicPTXTest extends PTXTestBase {
+public class BasicPTXTest extends PTXTest {
 
     @Test
-    public void testAdd() {
-        invoke(compile("testConstI"));
-    }
-
-    @Test
-    public void testInvoke() {
-        invoke(compile("testConstI"));
+    public void test() {
+        test("testConstI");
     }
 
     public static int testConstI() {
         return 42;
     }
 
+    @Test
+    public void testStaticIntKernel() {
+        test("staticIntKernel", 'a', 42);
+    }
+
+    @Test
+    public void testVirtualIntKernel() {
+        test("virtualIntKernel", 'a', 42);
+    }
+
+    public static int staticIntKernel(char p0, int p1) {
+        return p1 + p0;
+    }
+
+    public int virtualIntKernel(char p0, int p1) {
+        return p1 + p0;
+    }
+
     public static void main(String[] args) {
-        BasicPTXTest test = new BasicPTXTest();
-        Method[] methods = BasicPTXTest.class.getMethods();
-        for (Method m : methods) {
-            String name = m.getName();
-            if (m.getAnnotation(Test.class) == null && name.startsWith("test")) {
-                printReport(name + ": \n" + new String(test.compile(name).getTargetCode()));
-            }
-        }
+        compileAndPrintCode(new BasicPTXTest());
     }
 }

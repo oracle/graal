@@ -22,96 +22,22 @@
  */
 package com.oracle.graal.compiler.ptx.test;
 
-import java.lang.reflect.*;
-
 import org.junit.*;
 
-public class ControlPTXTest extends PTXTestBase {
+public class ControlPTXTest extends PTXTest {
 
     @Test
     public void testControl() {
-        String testName = "testLoop";
-        int argVal1 = 42;
-        int argVal2;
-        Integer ret = (Integer) invoke(compile(testName), argVal1);
-        int jres = testLoop(argVal1);
-        if (ret != null) {
-            if (ret.intValue() == jres) {
-                printReport(testName + ": PASSED");
-            } else {
-                printReport(testName + ": FAILED " + "Expected " + jres + " Got " + ret);
-            }
-        } else {
-            printReport(testName + ": FAILED (null returned)");
-        }
+        test("testLoop", 42);
+        test("testSwitchDefault1I", 3);
+        test("testSwitch1I", 2);
+        test("testIfElse1I", 222);
+        test("testIfElse2I", 19, 64);
 
-        testName = "testSwitchDefault1I";
-        argVal1 = 3;
-        ret = (Integer) invoke(compile(testName), argVal1);
-        jres = testSwitchDefault1I(argVal1);
-        if (ret != null) {
-            if (ret.intValue() == jres) {
-                printReport(testName + ": PASSED");
-            } else {
-                printReport(testName + ": FAILED " + "Expected " + jres + " Got " + ret);
-            }
-        } else {
-            printReport(testName + ": FAILED (null returned)");
-        }
-
-        testName = "testSwitch1I";
-        argVal1 = 2;
-        ret = (Integer) invoke(compile(testName), argVal1);
-        jres = testSwitch1I(argVal1);
-        if (ret != null) {
-            if (ret.intValue() == jres) {
-                printReport(testName + ": PASSED");
-            } else {
-                printReport(testName + ": FAILED " + "Expected " + jres + " Got " + ret);
-            }
-        } else {
-            printReport(testName + ": FAILED (null returned)");
-        }
-
-        testName = "testIfElse1I";
-        argVal1 = 222;
-        ret = (Integer) invoke(compile(testName), argVal1);
-        jres = testIfElse1I(argVal1);
-        if (ret != null) {
-            if (ret.intValue() == jres) {
-                printReport(testName + ": PASSED");
-            } else {
-                printReport(testName + ": FAILED " + "Expected " + jres + " Got " + ret);
-            }
-        } else {
-            printReport(testName + ": FAILED (null returned)");
-        }
-
-        testName = "testIfElse2I";
-        argVal1 = 19;
-        argVal2 = 64;
-        ret = (Integer) invoke(compile(testName), argVal1, argVal2);
-        jres = testIfElse2I(argVal1, argVal2);
-        if (ret != null) {
-            if (ret.intValue() == jres) {
-                printReport(testName + ": PASSED");
-            } else {
-                printReport(testName + ": FAILED " + "Expected " + jres + " Got " + ret);
-            }
-        } else {
-            printReport(testName + ": FAILED " + "Expected " + jres + " Got " + ret);
-        }
-
-        Boolean bret = (Boolean) invoke(compile("testIntegerTestBranch2I"), 0xff00, 0x00ff);
-        if (bret != null) {
-            printReport("testIntegerTestBranch2I: " + bret);
-            printReport("testIntegerTestBranch2I: actual: " + testIntegerTestBranch2I(0xff00, 0x00ff));
-        } else {
-            printReport("testIntegerTestBranch2I: no VALUE");
-        }
-        compile("testStatic");
-        compile("testCall");
-        compile("testLookupSwitch1I");
+        test("testIntegerTestBranch2I", 0xff00, 0x00ff);
+        compileKernel("testStatic");
+        compileKernel("testCall");
+        compileKernel("testLookupSwitch1I");
     }
 
     public static boolean testIntegerTestBranch2I(int x, int y) {
@@ -210,12 +136,6 @@ public class ControlPTXTest extends PTXTestBase {
     }
 
     public static void main(String[] args) {
-        ControlPTXTest test = new ControlPTXTest();
-        for (Method m : ControlPTXTest.class.getMethods()) {
-            String name = m.getName();
-            if (m.getAnnotation(Test.class) == null && name.startsWith("test")) {
-                printReport(name + ": \n" + new String(test.compile(name).getTargetCode()));
-            }
-        }
+        compileAndPrintCode(new ControlPTXTest());
     }
 }

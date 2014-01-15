@@ -22,17 +22,15 @@
  */
 package com.oracle.graal.compiler.ptx.test;
 
-import java.lang.reflect.Method;
-
-import org.junit.Test;
+import org.junit.*;
 
 /* PTX ISA 3.1 - 8.7.5 Logic and Shift Instructions */
-public class LogicPTXTest extends PTXTestBase {
+public class LogicPTXTest extends PTXTest {
 
     @Test
     public void testAnd() {
-        compile("testAnd2I");
-        compile("testAnd2L");
+        compileKernel("testAnd2I");
+        compileKernel("testAnd2L");
     }
 
     public static int testAnd2I(int a, int b) {
@@ -45,8 +43,8 @@ public class LogicPTXTest extends PTXTestBase {
 
     @Test
     public void testOr() {
-        compile("testOr2I");
-        compile("testOr2L");
+        compileKernel("testOr2I");
+        compileKernel("testOr2L");
     }
 
     public static int testOr2I(int a, int b) {
@@ -59,8 +57,8 @@ public class LogicPTXTest extends PTXTestBase {
 
     @Test
     public void testXor() {
-        compile("testXor2I");
-        compile("testXor2L");
+        compileKernel("testXor2I");
+        compileKernel("testXor2L");
     }
 
     public static int testXor2I(int a, int b) {
@@ -73,8 +71,8 @@ public class LogicPTXTest extends PTXTestBase {
 
     @Test
     public void testNot() {
-        compile("testNot1I");
-        compile("testNot1L");
+        compileKernel("testNot1I");
+        compileKernel("testNot1L");
     }
 
     public static int testNot1I(int a) {
@@ -87,8 +85,8 @@ public class LogicPTXTest extends PTXTestBase {
 
     @Test
     public void testShiftLeft() {
-        compile("testShiftLeft2I");
-        compile("testShiftLeft2L");
+        compileKernel("testShiftLeft2I");
+        compileKernel("testShiftLeft2L");
     }
 
     public static int testShiftLeft2I(int a, int b) {
@@ -101,10 +99,10 @@ public class LogicPTXTest extends PTXTestBase {
 
     @Test
     public void testShiftRight() {
-        compile("testShiftRight2I");
-        compile("testShiftRight2L");
-        compile("testUnsignedShiftRight2I");
-        // compile("testUnsignedShiftRight2L");
+        compileKernel("testShiftRight2I");
+        compileKernel("testShiftRight2L");
+        compileKernel("testUnsignedShiftRight2I");
+        // compileKernel("testUnsignedShiftRight2L");
     }
 
     public static int testShiftRight2I(int a, int b) {
@@ -124,12 +122,6 @@ public class LogicPTXTest extends PTXTestBase {
     }
 
     public static void main(String[] args) {
-        LogicPTXTest test = new LogicPTXTest();
-        for (Method m : LogicPTXTest.class.getMethods()) {
-            String name = m.getName();
-            if (m.getAnnotation(Test.class) == null && name.startsWith("test")) {
-                printReport(name + ": \n" + new String(test.compile(name).getTargetCode()));
-            }
-        }
+        compileAndPrintCode(new LogicPTXTest());
     }
 }

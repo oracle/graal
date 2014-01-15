@@ -24,34 +24,28 @@ package com.oracle.graal.compiler.ptx.test;
 
 import static com.oracle.graal.lir.ptx.ThreadDimension.*;
 
-import java.lang.reflect.*;
-import java.util.*;
-
 import org.junit.*;
 
 import com.oracle.graal.lir.ptx.*;
 
-public class ArrayPTXTest extends PTXTestBase {
+public class ArrayPTXTest extends PTXTest {
 
+    @Ignore("PTXHotSpotForeignCallsProvider.lookupForeignCall() is unimplemented")
     @Test
-    public void testArray() {
-        int[] array1 = {1, 2, 3, 4, 5, 6, 7, 8, 9};
-        int[] array2 = {1, 2, 3, 4, 5, 6, 7, 8, 9};
-        int[] array3 = {1, 2, 3, 4, 5, 6, 7, 8, 9};
+    public void test1() {
+        test("testStoreArray1I", new int[]{1, 2, 3, 4, 5, 6, 7, 8, 9}, 2);
+    }
 
-        invoke(compile("testStoreArray1I"), array1, 2);
-        if (array1[2] == 42) {
-            printReport("testStoreArray1I: " + Arrays.toString(array1) + " PASSED");
-        } else {
-            printReport("testStoreArray1I: " + Arrays.toString(array1) + " FAILED");
-        }
+    @Ignore("PTXHotSpotForeignCallsProvider.lookupForeignCall() is unimplemented")
+    @Test
+    public void test2() {
+        test("testStoreArrayWarp0", new int[]{1, 2, 3, 4, 5, 6, 7, 8, 9}, 2);
+    }
 
-        invoke(compile("testStoreArrayWarp0"), array2, 2);
-        printReport("testStoreArrayWarp0: " + Arrays.toString(array2));
-
-        invoke(compile("testStoreArrayWarp1I"), array3, 2);
-        printReport("testStoreArrayWarp1I: " + Arrays.toString(array3));
-
+    @Ignore("PTXHotSpotForeignCallsProvider.lookupForeignCall() is unimplemented")
+    @Test
+    public void test3() {
+        test("testStoreArrayWarp1I", new int[]{1, 2, 3, 4, 5, 6, 7, 8, 9}, 2);
     }
 
     public static void testStoreArray1I(int[] array, int i) {
@@ -67,12 +61,6 @@ public class ArrayPTXTest extends PTXTestBase {
     }
 
     public static void main(String[] args) {
-        ArrayPTXTest test = new ArrayPTXTest();
-        for (Method m : ArrayPTXTest.class.getMethods()) {
-            String name = m.getName();
-            if (m.getAnnotation(Test.class) == null && name.startsWith("test")) {
-                printReport(name + ": \n" + new String(test.compile(name).getTargetCode()));
-            }
-        }
+        compileAndPrintCode(new ArrayPTXTest());
     }
 }

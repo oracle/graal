@@ -22,45 +22,17 @@
  */
 package com.oracle.graal.compiler.ptx.test;
 
-import java.lang.reflect.Method;
-
 import org.junit.*;
 
-import com.oracle.graal.api.code.CompilationResult;
-
 /* PTX ISA 3.1 - 8.7.3 Floating-Point Instructions */
-public class FloatPTXTest extends PTXTestBase {
+public class FloatPTXTest extends PTXTest {
 
     @Test
     public void testAdd() {
-        Float ret = (Float) invoke(compile("testAdd2I"), 42, 43);
-        if (ret != null) {
-            printReport("testAdd2I: " + ret);
-        } else {
-            printReport("testAdd2I: no VALUE");
-        }
-
-        ret = (Float) invoke(compile("testAdd2F"), 42.1F, 43.5F);
-        if (ret != null) {
-            printReport("testAdd2F: " + ret);
-        } else {
-            printReport("testAdd2F: no VALUE");
-        }
-
-        ret = (Float) invoke(compile("testAddFConst"), 42.1F);
-        if (ret != null) {
-            printReport("testAddFConst: " + ret);
-        } else {
-            printReport("testAddFConst: no VALUE");
-        }
-
-        Double dret = (Double) invoke(compile("testAdd2D"), 42.1, 43.5);
-        if (dret != null) {
-            printReport("testAdd2D: " + dret);
-        } else {
-            printReport("testAdd2D: no VALUE");
-        }
-
+        test("testAdd2I", 42, 43);
+        test("testAdd2F", 42.1F, 43.5F);
+        test("testAddFConst", 42.1F);
+        test("testAdd2D", 42.1, 43.5);
     }
 
     public static float testAdd2I(int a, int b) {
@@ -94,35 +66,12 @@ public class FloatPTXTest extends PTXTestBase {
     @Ignore
     @Test
     public void testSub() {
-        CompilationResult r = compile("testSub2F");
-        if (r.getTargetCode() == null) {
-            printReport("Compilation of testSub2F FAILED");
-        }
-
-        r = compile("testSub2D");
-        if (r.getTargetCode() == null) {
-            printReport("Compilation of testSub2D FAILED");
-        }
-
-        r = compile("testSubFConst");
-        if (r.getTargetCode() == null) {
-            printReport("Compilation of testSubFConst FAILED");
-        }
-
-        r = compile("testSubConstF");
-        if (r.getTargetCode() == null) {
-            printReport("Compilation of testSubConstF FAILED");
-        }
-
-        r = compile("testSubDConst");
-        if (r.getTargetCode() == null) {
-            printReport("Compilation of testSubDconst FAILED");
-        }
-
-        r = compile("testSubConstD");
-        if (r.getTargetCode() == null) {
-            printReport("Compilation of testConstD FAILED");
-        }
+        compileKernel("testSub2F");
+        compileKernel("testSub2D");
+        compileKernel("testSubFConst");
+        compileKernel("testSubConstF");
+        compileKernel("testSubDConst");
+        compileKernel("testSubConstD");
     }
 
     public static float testSub2F(float a, float b) {
@@ -152,35 +101,12 @@ public class FloatPTXTest extends PTXTestBase {
     @Ignore
     @Test
     public void testMul() {
-        CompilationResult r = compile("testMul2F");
-        if (r.getTargetCode() == null) {
-            printReport("Compilation of testAdd2F FAILED");
-        }
-
-        r = compile("testMul2D");
-        if (r.getTargetCode() == null) {
-            printReport("Compilation of testAdd2F FAILED");
-        }
-
-        r = compile("testMulFConst");
-        if (r.getTargetCode() == null) {
-            printReport("Compilation of testAdd2F FAILED");
-        }
-
-        r = compile("testMulConstF");
-        if (r.getTargetCode() == null) {
-            printReport("Compilation of testAdd2F FAILED");
-        }
-
-        r = compile("testMulDConst");
-        if (r.getTargetCode() == null) {
-            printReport("Compilation of testAdd2F FAILED");
-        }
-
-        r = compile("testMulConstD");
-        if (r.getTargetCode() == null) {
-            printReport("Compilation of testAdd2F FAILED");
-        }
+        compileKernel("testMul2F");
+        compileKernel("testMul2D");
+        compileKernel("testMulFConst");
+        compileKernel("testMulConstF");
+        compileKernel("testMulDConst");
+        compileKernel("testMulConstD");
     }
 
     public static float testMul2F(float a, float b) {
@@ -210,35 +136,12 @@ public class FloatPTXTest extends PTXTestBase {
     @Ignore
     @Test
     public void testDiv() {
-        CompilationResult r = compile("testDiv2F");
-        if (r.getTargetCode() == null) {
-            printReport("Compilation of testDiv2F FAILED");
-        }
-
-        r = compile("testDiv2D");
-        if (r.getTargetCode() == null) {
-            printReport("Compilation of testDiv2D FAILED");
-        }
-
-        r = compile("testDivFConst");
-        if (r.getTargetCode() == null) {
-            printReport("Compilation of testDivFConst FAILED");
-        }
-
-        r = compile("testDivConstF");
-        if (r.getTargetCode() == null) {
-            printReport("Compilation of testDivConstF FAILED");
-        }
-
-        r = compile("testDivDConst");
-        if (r.getTargetCode() == null) {
-            printReport("Compilation of testDivDConst FAILED");
-        }
-
-        r = compile("testDivConstD");
-        if (r.getTargetCode() == null) {
-            printReport("Compilation of testDivConstD FAILED");
-        }
+        compileKernel("testDiv2F");
+        compileKernel("testDiv2D");
+        compileKernel("testDivFConst");
+        compileKernel("testDivConstF");
+        compileKernel("testDivDConst");
+        compileKernel("testDivConstD");
     }
 
     public static float testDiv2F(float a, float b) {
@@ -268,15 +171,8 @@ public class FloatPTXTest extends PTXTestBase {
     @Ignore
     @Test
     public void testNeg() {
-        CompilationResult r = compile("testNeg2F");
-        if (r.getTargetCode() == null) {
-            printReport("Compilation of testNeg2F FAILED");
-        }
-
-        r = compile("testNeg2D");
-        if (r.getTargetCode() == null) {
-            printReport("Compilation of testNeg2D FAILED");
-        }
+        compileKernel("testNeg2F");
+        compileKernel("testNeg2D");
     }
 
     public static float testNeg2F(float a) {
@@ -291,8 +187,8 @@ public class FloatPTXTest extends PTXTestBase {
     @Test
     public void testRem() {
         // need linkage to PTX remainder()
-        // compile("testRem2F");
-        // compile("testRem2D");
+        // compileKernel("testRem2F");
+        // compileKernel("testRem2D");
     }
 
     public static float testRem2F(float a, float b) {
@@ -306,35 +202,12 @@ public class FloatPTXTest extends PTXTestBase {
     @Ignore
     @Test
     public void testFloatConversion() {
-        CompilationResult r = compile("testF2I");
-        if (r.getTargetCode() == null) {
-            printReport("Compilation of tesF2I FAILED");
-        }
-
-        r = compile("testF2L");
-        if (r.getTargetCode() == null) {
-            printReport("Compilation of testF2L FAILED");
-        }
-
-        r = compile("testF2D");
-        if (r.getTargetCode() == null) {
-            printReport("Compilation of testF2D FAILED");
-        }
-
-        r = compile("testD2I");
-        if (r.getTargetCode() == null) {
-            printReport("Compilation of testD2I FAILED");
-        }
-
-        r = compile("testD2L");
-        if (r.getTargetCode() == null) {
-            printReport("Compilation of testD2L FAILED");
-        }
-
-        r = compile("testD2F");
-        if (r.getTargetCode() == null) {
-            printReport("Compilation of testD2F FAILED");
-        }
+        compileKernel("testF2I");
+        compileKernel("testF2L");
+        compileKernel("testF2D");
+        compileKernel("testD2I");
+        compileKernel("testD2L");
+        compileKernel("testD2F");
     }
 
     public static int testF2I(float a) {
@@ -362,12 +235,6 @@ public class FloatPTXTest extends PTXTestBase {
     }
 
     public static void main(String[] args) {
-        FloatPTXTest test = new FloatPTXTest();
-        for (Method m : FloatPTXTest.class.getMethods()) {
-            String name = m.getName();
-            if (m.getAnnotation(Test.class) == null && name.startsWith("test") && name.startsWith("testRem") == false) {
-                printReport(name + ": \n" + new String(test.compile(name).getTargetCode()));
-            }
-        }
+        compileAndPrintCode(new FloatPTXTest());
     }
 }
