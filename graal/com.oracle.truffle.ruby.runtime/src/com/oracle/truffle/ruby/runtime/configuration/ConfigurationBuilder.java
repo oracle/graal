@@ -39,7 +39,6 @@ public class ConfigurationBuilder {
     private boolean printParseTree = false;
     private boolean printUninitializedCalls = false;
     private boolean printJavaExceptions = false;
-    private boolean printRubyExceptions = false;
 
     private PrintStream standardOut = System.out;
 
@@ -77,7 +76,6 @@ public class ConfigurationBuilder {
         printParseTree = configuration.getPrintParseTree();
         printUninitializedCalls = configuration.getPrintUninitializedCalls();
         printJavaExceptions = configuration.getPrintJavaExceptions();
-        printRubyExceptions = configuration.getPrintRubyExceptions();
 
         standardOut = configuration.getStandardOut();
     }
@@ -179,14 +177,6 @@ public class ConfigurationBuilder {
 
     public void setPrintJavaExceptions(boolean printJavaExceptions) {
         this.printJavaExceptions = printJavaExceptions;
-    }
-
-    public boolean getPrintRubyExceptions() {
-        return printRubyExceptions;
-    }
-
-    public void setPrintRubyExceptions(boolean printRubyExceptions) {
-        this.printRubyExceptions = printRubyExceptions;
     }
 
     public PrintStream getStandardOut() {

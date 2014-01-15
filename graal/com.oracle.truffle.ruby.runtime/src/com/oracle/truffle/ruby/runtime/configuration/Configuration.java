@@ -34,7 +34,6 @@ public class Configuration {
     private final boolean printParseTree;
     private final boolean printUninitializedCalls;
     private final boolean printJavaExceptions;
-    private final boolean printRubyExceptions;
 
     private final PrintStream standardOut;
     private final InputReader inputReader;
@@ -58,7 +57,6 @@ public class Configuration {
         printParseTree = builder.getPrintParseTree();
         printUninitializedCalls = builder.getPrintUninitializedCalls();
         printJavaExceptions = builder.getPrintJavaExceptions();
-        printRubyExceptions = builder.getPrintRubyExceptions();
 
         standardOut = builder.getStandardOut();
         inputReader = builder.getInputReader();
@@ -110,10 +108,6 @@ public class Configuration {
 
     public boolean getPrintJavaExceptions() {
         return printJavaExceptions;
-    }
-
-    public boolean getPrintRubyExceptions() {
-        return printRubyExceptions;
     }
 
     public PrintStream getStandardOut() {

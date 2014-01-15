@@ -223,9 +223,6 @@ public abstract class CommandLineParser {
                         case "--print-java-exceptions":
                             configurationBuilder.setPrintJavaExceptions(true);
                             break;
-                        case "--print-ruby-exceptions":
-                            configurationBuilder.setPrintRubyExceptions(true);
-                            break;
                         default:
                             throw new IllegalArgumentException("unknown flag " + arg);
                     }
@@ -333,7 +330,6 @@ public abstract class CommandLineParser {
         out.println("  --print-parse-tree                print the result of parsing");
         out.println("  --print-uninitialized-calls       print each time a method call is uninitialized");
         out.println("  --print-java-exceptions           print Java exception back traces at the point of translating them to Ruby exceptions");
-        out.println("  --print-ruby-exceptions           print the Java exception back traces at the point of raising Ruby exceptions");
         out.println("Relevant environment variables:");
         out.println("  RUBYHOME                          location of the Ruby Truffle installation");
         out.println("  RUBYOPT                           extra command line arguments");

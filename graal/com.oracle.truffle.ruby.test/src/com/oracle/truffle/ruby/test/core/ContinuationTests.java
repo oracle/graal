@@ -20,23 +20,23 @@ public class ContinuationTests extends RubyTests {
 
     @Test
     public void testRequired() {
-        assertPrints("", "require \"continuation\"; callcc { |c| c.call }");
+        assertPrints("", "callcc { |c| c.call }");
     }
 
     @Test
     public void testOneShotGoingUpCallstack() {
-        assertPrints("1\n3\n", "require \"continuation\"; callcc { |c| puts 1; c.call; puts 2 }; puts 3");
+        assertPrints("1\n3\n", "callcc { |c| puts 1; c.call; puts 2 }; puts 3");
     }
 
     @Test
     public void testOneShotGoingUpCallstackReturnValue() {
-        assertPrints("14\n", "require \"continuation\"; puts callcc { |c| c.call 14 }");
+        assertPrints("14\n", "puts callcc { |c| c.call 14 }");
     }
 
     @Test
     public void testNestedOneShotGoingUpCallstack() {
-        assertPrints("1\n2\n4\n5\n", "require \"continuation\"; callcc { |c1| puts 1; callcc { |c2| puts 2; c2.call; puts 3 }; puts 4 }; puts 5");
-        assertPrints("1\n2\n5\n", "require \"continuation\"; callcc { |c1| puts 1; callcc { |c2| puts 2; c1.call; puts 3 }; puts 4 }; puts 5");
+        assertPrints("1\n2\n4\n5\n", "callcc { |c1| puts 1; callcc { |c2| puts 2; c2.call; puts 3 }; puts 4 }; puts 5");
+        assertPrints("1\n2\n5\n", "callcc { |c1| puts 1; callcc { |c2| puts 2; c1.call; puts 3 }; puts 4 }; puts 5");
     }
 
 }
