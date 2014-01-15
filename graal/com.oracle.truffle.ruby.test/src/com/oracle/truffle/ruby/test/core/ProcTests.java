@@ -11,7 +11,6 @@ package com.oracle.truffle.ruby.test.core;
 
 import org.junit.*;
 
-import com.oracle.truffle.ruby.runtime.configuration.*;
 import com.oracle.truffle.ruby.test.*;
 
 /**
@@ -38,18 +37,8 @@ public class ProcTests extends RubyTests {
     }
 
     @Test
-    public void testProcReturn18() {
-        assertPrints(RubyVersion.RUBY_18, "2\n", "def foo; x = proc { return 1 }; x.call; return 2; end; puts foo");
-    }
-
-    @Test
-    public void testProcReturn19() {
-        assertPrints(RubyVersion.RUBY_19, "1\n", "def foo; x = proc { return 1 }; x.call; return 2; end; puts foo");
-    }
-
-    @Test
-    public void testProcReturn20() {
-        assertPrints(RubyVersion.RUBY_20, "1\n", "def foo; x = proc { return 1 }; x.call; return 2; end; puts foo");
+    public void testProcReturn() {
+        assertPrints("1\n", "def foo; x = proc { return 1 }; x.call; return 2; end; puts foo");
     }
 
     @Test

@@ -20,8 +20,6 @@ public class Configuration {
 
     private final String standardLibrary;
 
-    private final RubyVersion rubyVersion;
-
     private final boolean verbose;
     private final int warningLevel;
     private final int taintCheckLevel;
@@ -48,8 +46,6 @@ public class Configuration {
 
         standardLibrary = builder.getStandardLibrary();
 
-        rubyVersion = builder.getRubyVersion();
-
         verbose = builder.getVerbose();
         warningLevel = builder.getWarningLevel();
         taintCheckLevel = builder.getTaintCheckLevel();
@@ -74,10 +70,6 @@ public class Configuration {
 
     public String getStandardLibrary() {
         return standardLibrary;
-    }
-
-    public RubyVersion getRubyVersion() {
-        return rubyVersion;
     }
 
     public boolean getDebug() {

@@ -25,8 +25,6 @@ public class ConfigurationBuilder {
 
     private String standardLibrary = JRUBY_STDLIB_JAR;
 
-    private RubyVersion rubyVersion = RubyVersion.RUBY_19;
-
     private boolean debug = false;
     private boolean verbose = false;
     private int warningLevel = 0;
@@ -67,8 +65,6 @@ public class ConfigurationBuilder {
 
         standardLibrary = configuration.getStandardLibrary();
 
-        rubyVersion = configuration.getRubyVersion();
-
         debug = configuration.getDebug();
         verbose = configuration.getVerbose();
         warningLevel = configuration.getWarningLevel();
@@ -97,15 +93,6 @@ public class ConfigurationBuilder {
     public void setStandardLibrary(String standardLibrary) {
         assert standardLibrary != null;
         this.standardLibrary = standardLibrary;
-    }
-
-    public RubyVersion getRubyVersion() {
-        return rubyVersion;
-    }
-
-    public void setRubyVersion(RubyVersion rubyVersion) {
-        assert rubyVersion != null;
-        this.rubyVersion = rubyVersion;
     }
 
     public boolean getDebug() {

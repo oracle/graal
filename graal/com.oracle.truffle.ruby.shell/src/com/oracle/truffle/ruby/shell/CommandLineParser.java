@@ -208,15 +208,6 @@ public abstract class CommandLineParser {
                             configurationBuilder.setStandardLibrary(normalizedArgs.get(n + 1));
                             n++;
                             break;
-                        case "--1.8":
-                            configurationBuilder.setRubyVersion(RubyVersion.RUBY_18);
-                            break;
-                        case "--1.9":
-                            configurationBuilder.setRubyVersion(RubyVersion.RUBY_19);
-                            break;
-                        case "--2.0":
-                            configurationBuilder.setRubyVersion(RubyVersion.RUBY_20);
-                            break;
                         case "--full-object-space":
                             configurationBuilder.setFullObjectSpace(true);
                             break;
@@ -337,9 +328,6 @@ public abstract class CommandLineParser {
         out.println("Extra rubytruffle switches:");
         out.println("  --home dir                        set the location of the Ruby Truffle installation (default . or $RUBY_TRUFFLE_HOME)");
         out.println("  --stdlib dir                      use a directory for the Ruby standard library");
-        out.println("  --1.8                             1.8 compatibility mode");
-        out.println("  --1.9                             1.9 compatibility mode (default)");
-        out.println("  --2.0                             2.0 compatibility mode");
         out.println("  --full-object-space               enable full ObjectSpace#each_object and similar");
         out.println("  --no-debug                        disable debugging");
         out.println("  --no-trace                        disable tracing");

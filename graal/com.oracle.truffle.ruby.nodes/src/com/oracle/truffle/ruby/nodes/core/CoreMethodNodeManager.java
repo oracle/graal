@@ -32,9 +32,7 @@ public abstract class CoreMethodNodeManager {
      */
     public static void addMethods(RubyClass rubyObjectClass) {
         for (MethodDetails methodDetails : getMethods()) {
-            if (Arrays.asList(methodDetails.getMethodAnnotation().versions()).contains(rubyObjectClass.getContext().getConfiguration().getRubyVersion())) {
-                addMethod(rubyObjectClass, methodDetails);
-            }
+            addMethod(rubyObjectClass, methodDetails);
         }
     }
 

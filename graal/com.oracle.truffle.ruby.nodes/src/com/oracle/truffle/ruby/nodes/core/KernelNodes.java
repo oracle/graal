@@ -25,7 +25,6 @@ import com.oracle.truffle.ruby.nodes.control.*;
 import com.oracle.truffle.ruby.nodes.literal.*;
 import com.oracle.truffle.ruby.nodes.yield.*;
 import com.oracle.truffle.ruby.runtime.*;
-import com.oracle.truffle.ruby.runtime.configuration.*;
 import com.oracle.truffle.ruby.runtime.control.*;
 import com.oracle.truffle.ruby.runtime.core.*;
 import com.oracle.truffle.ruby.runtime.core.array.*;
@@ -534,25 +533,7 @@ public abstract class KernelNodes {
         }
     }
 
-    @CoreMethod(names = "proc", isModuleMethod = true, needsBlock = true, maxArgs = 0, versions = RubyVersion.RUBY_18)
-    public abstract static class Proc18Node extends CoreMethodNode {
-
-        public Proc18Node(RubyContext context, SourceSection sourceSection) {
-            super(context, sourceSection);
-        }
-
-        public Proc18Node(Proc18Node prev) {
-            super(prev);
-        }
-
-        @Specialization
-        public RubyProc proc(Object self, RubyProc block) {
-            return new RubyProc(getContext().getCoreLibrary().getProcClass(), RubyProc.Type.LAMBDA, self, block, block.getMethod());
-
-        }
-    }
-
-    @CoreMethod(names = "proc", isModuleMethod = true, needsBlock = true, maxArgs = 0, versions = {RubyVersion.RUBY_19, RubyVersion.RUBY_20, RubyVersion.RUBY_21})
+    @CoreMethod(names = "proc", isModuleMethod = true, needsBlock = true, maxArgs = 0)
     public abstract static class ProcNode extends CoreMethodNode {
 
         public ProcNode(RubyContext context, SourceSection sourceSection) {

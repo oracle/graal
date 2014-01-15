@@ -51,24 +51,6 @@ public class RubyTests {
     }
 
     /**
-     * Executes some Ruby code of a particular version and asserts that it prints an expected
-     * string. Remember to include the newline characters.
-     */
-    public static void assertPrints(RubyVersion rubyVersion, String expectedOutput, String code, String... args) {
-        ConfigurationBuilder configurationBuilder = new ConfigurationBuilder();
-        configurationBuilder.setRubyVersion(rubyVersion);
-        assertPrints(new Configuration(configurationBuilder), expectedOutput, "(test)", code, "", args);
-    }
-
-    /**
-     * Executes some Ruby code in a file and asserts that it prints an expected string. Remember to
-     * include the newline characters.
-     */
-    public static void assertFilePrints(String expectedOutput, String fileName, String... args) {
-        assertPrints(null, expectedOutput, fileName, null, "", args);
-    }
-
-    /**
      * Executes some Ruby code and asserts that it prints an expected string. Remember to include
      * the newline characters. Also takes a string to simulate input.
      */

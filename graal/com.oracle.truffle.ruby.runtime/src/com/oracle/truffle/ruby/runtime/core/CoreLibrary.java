@@ -164,8 +164,8 @@ public class CoreLibrary {
 
         // Set constants
 
-        objectClass.setConstant("RUBY_VERSION", new RubyString(stringClass, context.getConfiguration().getRubyVersion().getVersion()));
-        objectClass.setConstant("RUBY_PATCHLEVEL", context.getConfiguration().getRubyVersion().getPatch());
+        objectClass.setConstant("RUBY_VERSION", new RubyString(stringClass, "2.1.0"));
+        objectClass.setConstant("RUBY_PATCHLEVEL", 0);
         objectClass.setConstant("RUBY_ENGINE", new RubyString(stringClass, "rubytruffle"));
         objectClass.setConstant("RUBY_PLATFORM", new RubyString(stringClass, "jvm"));
 

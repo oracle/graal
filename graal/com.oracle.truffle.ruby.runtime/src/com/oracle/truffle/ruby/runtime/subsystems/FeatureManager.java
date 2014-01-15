@@ -35,7 +35,7 @@ public class FeatureManager {
     public boolean require(String feature) throws IOException {
         // Some features are handled specially
 
-        if (context.getConfiguration().getRubyVersion().is19OrLater() && feature.equals("continuation")) {
+        if (feature.equals("continuation")) {
             // We always load continuations
             return true;
         }

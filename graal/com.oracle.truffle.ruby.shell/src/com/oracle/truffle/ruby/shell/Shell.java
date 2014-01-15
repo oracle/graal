@@ -117,25 +117,11 @@ public class Shell {
         }
 
         if (context.getConfiguration().getStandardLibrary().endsWith(".jar")) {
-            String version = null;
-
-            switch (configurationBuilder.getRubyVersion()) {
-                case RUBY_18:
-                    version = "1.8";
-                    break;
-                case RUBY_19:
-                    version = "1.9";
-                    break;
-                case RUBY_20:
-                    version = "2.0";
-                    break;
-                case RUBY_21:
-                    version = "2.0";
-                    break;
-            }
-
-            loadPath.push(context.makeString("jar:file:" + context.getConfiguration().getStandardLibrary() + "!/META-INF/jruby.home/lib/ruby/" + version));
-
+            /*
+             * Use the 1.9 library, even though we're emulating 2.1, as there are some bugs running
+             * the 2.1 library at the moment.
+             */
+            loadPath.push(context.makeString("jar:file:" + context.getConfiguration().getStandardLibrary() + "!/META-INF/jruby.home/lib/ruby/1.9"));
         } else {
             loadPath.push(context.makeString(context.getConfiguration().getStandardLibrary()));
         }

@@ -34,23 +34,6 @@ public class JRubyParser implements RubyParser {
 
         final org.jrubyparser.Parser parser = new org.jrubyparser.Parser();
 
-        org.jrubyparser.CompatVersion parserVersion = null;
-
-        switch (context.getConfiguration().getRubyVersion()) {
-            case RUBY_18:
-                parserVersion = org.jrubyparser.CompatVersion.RUBY1_8;
-                break;
-            case RUBY_19:
-                parserVersion = org.jrubyparser.CompatVersion.RUBY1_9;
-                break;
-            case RUBY_20:
-                parserVersion = org.jrubyparser.CompatVersion.RUBY2_0;
-                break;
-            case RUBY_21:
-                parserVersion = org.jrubyparser.CompatVersion.RUBY2_0;
-                break;
-        }
-
         // TODO(cs) should this get a new unique method identifier or not?
         final TranslatorEnvironment environment = new TranslatorEnvironment(context, environmentForFrame(context, parentFrame), this, allocateReturnID(), true, true, new UniqueMethodIdentifier());
 
@@ -83,7 +66,7 @@ public class JRubyParser implements RubyParser {
             }
         }
 
-        final org.jrubyparser.parser.ParserConfiguration parserConfiguration = new org.jrubyparser.parser.ParserConfiguration(0, parserVersion, staticScope);
+        final org.jrubyparser.parser.ParserConfiguration parserConfiguration = new org.jrubyparser.parser.ParserConfiguration(0, org.jrubyparser.CompatVersion.RUBY2_0, staticScope);
 
         // Parse to the JRuby AST
 
