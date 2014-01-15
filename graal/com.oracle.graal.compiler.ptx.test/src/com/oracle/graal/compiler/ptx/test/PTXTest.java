@@ -63,8 +63,8 @@ public abstract class PTXTest extends GraalCompilerTest {
         ExternalCompilationResult ptxCode = compileKernel(method);
         Assume.assumeTrue(ptxBackend.isDeviceInitialized());
         InstalledCode installedPTXCode = ptxBackend.installKernel(method, ptxCode);
-        StructuredGraph kernelWrapper = new PTXLaunchKernelGraphKit(method, installedPTXCode.getStart(), (HotSpotProviders) getProviders()).getGraph();
-        return super.getCode(method, kernelWrapper);
+        StructuredGraph wrapper = new PTXWrapperBuilder(method, installedPTXCode.getStart(), (HotSpotProviders) getProviders()).getGraph();
+        return super.getCode(method, wrapper);
     }
 
     protected static void compileAndPrintCode(PTXTest test) {

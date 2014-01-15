@@ -27,7 +27,7 @@ import static com.oracle.graal.api.meta.LocationIdentity.*;
 import static com.oracle.graal.api.meta.MetaUtil.*;
 import static com.oracle.graal.asm.NumUtil.*;
 import static com.oracle.graal.hotspot.ptx.PTXHotSpotBackend.*;
-import static com.oracle.graal.hotspot.ptx.PTXLaunchKernelGraphKit.LaunchArg.*;
+import static com.oracle.graal.hotspot.ptx.PTXWrapperBuilder.LaunchArg.*;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 import static com.oracle.graal.nodes.ConstantNode.*;
 import static java.lang.reflect.Modifier.*;
@@ -53,35 +53,36 @@ import com.oracle.graal.replacements.nodes.*;
 import com.oracle.graal.word.*;
 
 /**
- * Utility for building a graph for launching a PTX kernel compiled for a method. This graph created
- * is something like the following pseudo code:
+ * Utility for building a graph that "wraps" the PTX binary compiled for a method. Such a wrapper
+ * handles the transition from the host CPU to the GPU and back. The graph created is something like
+ * the following pseudo code with UPPER CASE denoting compile-time constants:
  * 
  * <pre>
- *     jlong kernel(p0, p1, ..., pN) {
+ *     T kernel(p0, p1, ..., pN) {
  *         jint bufSize = SIZE_OF_ALIGNED_PARAMS_AND_RETURN_VALUE_WITH_PADDING(p0, p1, ..., pN);
  *         jbyte buf[bufSize] = {p0, PAD(p1), p1, ..., PAD(pN), pN};
  *         jlong result = PTX_LAUNCH_KERNEL(THREAD_REGISTER, KERNEL_ENTRY_POINT, dimX, dimY, dimZ, buf, bufSize, encodedReturnTypeSize);
- *         return result;
+ *         return convert(result);
  *     }
  * </pre>
  */
-public class PTXLaunchKernelGraphKit extends GraphKit {
+public class PTXWrapperBuilder extends GraphKit {
 
     /**
-     * The incoming Java arguments to the kernel invocation.
+     * The incoming Java arguments to the method.
      */
     ParameterNode[] javaParameters;
 
     /**
-     * The size of the buffer holding the parameters and the extra word for storing the pointer to
-     * device memory for the return value.
+     * The size of the buffer holding the kernel parameters and the extra word for storing the
+     * pointer to device memory for the return value.
      * 
      * @see LaunchArg#ParametersAndReturnValueBufferSize
      */
     int bufSize;
 
     /**
-     * Offsets of each Java argument in the parameters buffer.
+     * Offset of each Java argument in the kernel parameters buffer.
      */
     int[] javaParameterOffsetsInKernelParametersBuffer;
 
@@ -93,18 +94,17 @@ public class PTXLaunchKernelGraphKit extends GraphKit {
     }
 
     /**
-     * Creates a graph implementing the transition from Java to the native routine that launches
-     * some compiled PTX code.
+     * Creates the graph implementing the CPU to GPU transition.
      * 
-     * @param kernelMethod a method that has been compiled to PTX kernel code
-     * @param kernelAddress the address of the installed PTX code for {@code kernelMethod}
+     * @param method a method that has been compiled to GPU binary code
+     * @param kernelAddress the entry point of the GPU binary for {@code kernelMethod}
      */
-    public PTXLaunchKernelGraphKit(ResolvedJavaMethod kernelMethod, long kernelAddress, HotSpotProviders providers) {
-        super(new StructuredGraph(kernelMethod), providers);
+    public PTXWrapperBuilder(ResolvedJavaMethod method, long kernelAddress, HotSpotProviders providers) {
+        super(new StructuredGraph(method), providers);
         int wordSize = providers.getCodeCache().getTarget().wordSize;
         Kind wordKind = providers.getCodeCache().getTarget().wordKind;
-        Signature sig = kernelMethod.getSignature();
-        boolean isStatic = isStatic(kernelMethod.getModifiers());
+        Signature sig = method.getSignature();
+        boolean isStatic = isStatic(method.getModifiers());
         int sigCount = sig.getParameterCount(false);
         javaParameters = new ParameterNode[(!isStatic ? 1 : 0) + sigCount];
         javaParameterOffsetsInKernelParametersBuffer = new int[javaParameters.length];
@@ -113,11 +113,11 @@ public class PTXLaunchKernelGraphKit extends GraphKit {
 
         BitSet objects = new BitSet();
         if (!isStatic) {
-            doParameter(wordSize, Kind.Object, javaParametersIndex++, objects);
+            allocateParameter(Kind.Object, javaParametersIndex++, objects, wordSize);
         }
         for (int sigIndex = 0; sigIndex < sigCount; sigIndex++) {
             Kind kind = sig.getParameterKind(sigIndex);
-            doParameter(wordSize, kind, javaParametersIndex++, objects);
+            allocateParameter(kind, javaParametersIndex++, objects, wordSize);
         }
         bufSize = roundUp(bufSize, wordSize);
 
@@ -150,14 +150,14 @@ public class PTXLaunchKernelGraphKit extends GraphKit {
             int javaParameterOffset = javaParameterOffsetsInKernelParametersBuffer[javaParametersIndex];
             LocationNode location = ConstantLocationNode.create(FINAL_LOCATION, javaParameter.kind(), javaParameterOffset, getGraph());
             append(new WriteNode(buf, javaParameter, location, BarrierType.NONE, false, false));
-            updateDimArg(kernelMethod, providers, sig, sigIndex++, args, javaParameter);
+            updateDimArg(method, providers, sig, sigIndex++, args, javaParameter);
         }
         if (returnKind != Kind.Void) {
             LocationNode location = ConstantLocationNode.create(FINAL_LOCATION, wordKind, bufSize - wordSize, getGraph());
             append(new WriteNode(buf, ConstantNode.forIntegerKind(wordKind, 0L, getGraph()), location, BarrierType.NONE, false, false));
         }
 
-        FrameStateBuilder fsb = new FrameStateBuilder(kernelMethod, getGraph(), true);
+        FrameStateBuilder fsb = new FrameStateBuilder(method, getGraph(), true);
         FrameState fs = fsb.create(0);
         getGraph().start().setStateAfter(fs);
 
@@ -211,7 +211,13 @@ public class PTXLaunchKernelGraphKit extends GraphKit {
         }
     }
 
-    private void doParameter(int wordSize, Kind kind, int javaParametersIndex, BitSet objects) {
+    /**
+     * Allocates a slot in the kernel parameters' buffer for a Java parameter.
+     * 
+     * @param kind the kind of the parameter
+     * @param javaParametersIndex the index of the Java parameter
+     */
+    private void allocateParameter(Kind kind, int javaParametersIndex, BitSet objects, int wordSize) {
         int kindByteSize = kind == Kind.Object ? wordSize : kind.getBitCount() / Byte.SIZE;
         bufSize = roundUp(bufSize, kindByteSize);
         javaParameterOffsetsInKernelParametersBuffer[javaParametersIndex] = bufSize;

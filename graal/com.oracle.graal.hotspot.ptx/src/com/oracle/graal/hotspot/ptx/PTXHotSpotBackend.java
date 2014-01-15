@@ -135,7 +135,21 @@ public class PTXHotSpotBackend extends HotSpotBackend {
             // GPU could not be initialized so offload is disabled
             return null;
         }
-        return new PTXGraphProducer(getRuntime().getHostBackend(), this);
+        return new GraphProducer() {
+
+            public StructuredGraph getGraphFor(ResolvedJavaMethod method) {
+                if (canOffloadToGPU(method)) {
+                    ExternalCompilationResult ptxCode = PTXHotSpotBackend.this.compileKernel(method, true);
+                    InstalledCode installedPTXCode = PTXHotSpotBackend.this.installKernel(method, ptxCode);
+                    return new PTXWrapperBuilder(method, installedPTXCode.getStart(), getRuntime().getHostBackend().getProviders()).getGraph();
+                }
+                return null;
+            }
+
+            private boolean canOffloadToGPU(ResolvedJavaMethod method) {
+                return method.getName().contains("lambda$main$") & method.isSynthetic();
+            }
+        };
     }
 
     /**
