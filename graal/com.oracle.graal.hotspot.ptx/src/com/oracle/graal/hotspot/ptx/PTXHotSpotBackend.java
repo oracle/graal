@@ -23,7 +23,9 @@
 package com.oracle.graal.hotspot.ptx;
 
 import static com.oracle.graal.api.code.CallingConvention.Type.*;
+import static com.oracle.graal.api.code.CodeUtil.*;
 import static com.oracle.graal.api.meta.LocationIdentity.*;
+import static com.oracle.graal.compiler.GraalCompiler.*;
 import static com.oracle.graal.hotspot.HotSpotForeignCallLinkage.RegisterEffect.*;
 import static com.oracle.graal.hotspot.HotSpotForeignCallLinkage.Transition.*;
 import static com.oracle.graal.hotspot.meta.HotSpotForeignCallsProviderImpl.*;
@@ -32,11 +34,14 @@ import static com.oracle.graal.lir.LIRValueUtil.*;
 import java.util.*;
 
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.code.CallingConvention.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
 import com.oracle.graal.asm.ptx.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.ptx.*;
+import com.oracle.graal.debug.*;
+import com.oracle.graal.debug.Debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.HotSpotReplacementsImpl.GraphProducer;
@@ -52,6 +57,8 @@ import com.oracle.graal.lir.ptx.*;
 import com.oracle.graal.lir.ptx.PTXMemOp.LoadReturnAddrOp;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.cfg.*;
+import com.oracle.graal.phases.*;
+import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.word.*;
 
 /**
@@ -63,10 +70,27 @@ public class PTXHotSpotBackend extends HotSpotBackend {
      * Descriptor for the PTX runtime method for launching a kernel. The C++ signature is:
      * 
      * <pre>
-     *     jlong gpu::Ptx::execute_kernel_from_vm(JavaThread* thread, jlong kernel, jlong parametersAndReturnValueBuffer, jint parametersAndReturnValueBufferSize, jint encodedReturnTypeSize)
+     *     jlong (JavaThread* thread,
+     *            jlong kernel,
+     *            jint dimX,
+     *            jint dimY,
+     *            jint dimZ,
+     *            jlong parametersAndReturnValueBuffer,
+     *            jint parametersAndReturnValueBufferSize,
+     *            jint encodedReturnTypeSize)
      * </pre>
      */
-    public static final ForeignCallDescriptor LAUNCH_KERNEL = new ForeignCallDescriptor("execute_kernel_from_vm", long.class, Word.class, long.class, long.class, int.class, int.class);
+    // @formatter:off
+    public static final ForeignCallDescriptor LAUNCH_KERNEL = new ForeignCallDescriptor("execute_kernel_from_vm", long.class,
+                    Word.class, // thread
+                    long.class, // kernel
+                    int.class,  // dimX
+                    int.class,  // dimY
+                    int.class,  // dimZ
+                    long.class, // parametersAndReturnValueBuffer
+                    int.class,  // parametersAndReturnValueBufferSize
+                    int.class); // encodedReturnTypeSize
+    // @formatter:on
 
     public PTXHotSpotBackend(HotSpotGraalRuntime runtime, HotSpotProviders providers) {
         super(runtime, providers);
@@ -77,11 +101,16 @@ public class PTXHotSpotBackend extends HotSpotBackend {
         return false;
     }
 
+    /**
+     * Used to omit {@linkplain CompilerToGPU#deviceInit() device initialization}.
+     */
+    private static final boolean OmitDeviceInit = Boolean.getBoolean("graal.ptx.omitDeviceInit");
+
     @Override
     public void completeInitialization() {
         HotSpotHostForeignCallsProvider hostForeignCalls = (HotSpotHostForeignCallsProvider) getRuntime().getHostProviders().getForeignCalls();
         CompilerToGPU compilerToGPU = getRuntime().getCompilerToGPU();
-        deviceInitialized = compilerToGPU.deviceInit();
+        deviceInitialized = OmitDeviceInit || compilerToGPU.deviceInit();
         if (deviceInitialized) {
             long launchKernel = compilerToGPU.getLaunchKernelAddress();
             hostForeignCalls.registerForeignCall(LAUNCH_KERNEL, launchKernel, NativeCall, DESTROYS_REGISTERS, NOT_LEAF, NOT_REEXECUTABLE, ANY_LOCATION);
@@ -107,6 +136,39 @@ public class PTXHotSpotBackend extends HotSpotBackend {
             return null;
         }
         return new PTXGraphProducer(getRuntime().getHostBackend(), this);
+    }
+
+    /**
+     * Compiles a given method to PTX code.
+     * 
+     * @param makeBinary specifies whether a GPU binary should also be generated for the PTX code.
+     *            If true, the returned value is guaranteed to have a non-zero
+     *            {@linkplain ExternalCompilationResult#getEntryPoint() entry point}.
+     * @return the PTX code compiled from {@code method}'s bytecode
+     */
+    public ExternalCompilationResult compileKernel(ResolvedJavaMethod method, boolean makeBinary) {
+        StructuredGraph graph = new StructuredGraph(method);
+        HotSpotProviders providers = getProviders();
+        CallingConvention cc = getCallingConvention(providers.getCodeCache(), Type.JavaCallee, method, false);
+        PhaseSuite<HighTierContext> graphBuilderSuite = providers.getSuites().getDefaultGraphBuilderSuite();
+        Suites suites = providers.getSuites().getDefaultSuites();
+        ExternalCompilationResult ptxCode = compileGraph(graph, cc, method, providers, this, this.getTarget(), null, graphBuilderSuite, OptimisticOptimizations.NONE, getProfilingInfo(graph),
+                        new SpeculationLog(), suites, true, new ExternalCompilationResult(), CompilationResultBuilderFactory.Default);
+        if (makeBinary) {
+            try (Scope ds = Debug.scope("GeneratingKernelBinary")) {
+                long kernel = getRuntime().getCompilerToGPU().generateKernel(ptxCode.getTargetCode(), method.getName());
+                ptxCode.setEntryPoint(kernel);
+            } catch (Throwable e) {
+                throw Debug.handle(e);
+            }
+        }
+        return ptxCode;
+
+    }
+
+    public InstalledCode installKernel(ResolvedJavaMethod method, ExternalCompilationResult ptxCode) {
+        assert ptxCode.getEntryPoint() != 0L;
+        return getProviders().getCodeCache().addExternalMethod(method, ptxCode);
     }
 
     static final class RegisterAnalysis extends ValueProcedure {
