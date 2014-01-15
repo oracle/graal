@@ -86,8 +86,9 @@ public class UnsafeEATest extends EATestBase {
     @Test
     public void testMergedDouble() {
         testEscapeAnalysis("testMergedDoubleSnippet", null, false);
-        Assert.assertTrue(returnNode.result() instanceof PhiNode);
-        PhiNode phi = (PhiNode) returnNode.result();
+        Assert.assertEquals(1, returnNodes.size());
+        Assert.assertTrue(returnNodes.get(0).result() instanceof PhiNode);
+        PhiNode phi = (PhiNode) returnNodes.get(0).result();
         Assert.assertTrue(phi.valueAt(0) instanceof LoadFieldNode);
         Assert.assertTrue(phi.valueAt(1) instanceof LoadFieldNode);
     }

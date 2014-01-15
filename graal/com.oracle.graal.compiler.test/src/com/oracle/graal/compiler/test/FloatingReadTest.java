@@ -68,6 +68,7 @@ public class FloatingReadTest extends GraphScheduleTest {
 
             for (Node n : graph.getNodes()) {
                 if (n instanceof ReturnNode) {
+                    assert returnNode == null;
                     returnNode = (ReturnNode) n;
                 } else if (n instanceof MonitorExit) {
                     monitorexit = (MonitorExit) n;

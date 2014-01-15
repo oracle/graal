@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.compiler.test.ea;
 
+import java.util.*;
+
 import org.junit.*;
 
 import com.oracle.graal.api.code.*;
@@ -119,7 +121,7 @@ public class EATestBase extends GraalCompilerTest {
 
     protected StructuredGraph graph;
     protected HighTierContext context;
-    protected ReturnNode returnNode;
+    protected List<ReturnNode> returnNodes;
 
     /**
      * Runs Escape Analysis on the given snippet and makes sure that no allocations remain in the
@@ -134,8 +136,10 @@ public class EATestBase extends GraalCompilerTest {
     protected void testEscapeAnalysis(String snippet, final Constant expectedConstantResult, final boolean iterativeEscapeAnalysis) {
         prepareGraph(snippet, iterativeEscapeAnalysis);
         if (expectedConstantResult != null) {
-            Assert.assertTrue(returnNode.result().toString(), returnNode.result().isConstant());
-            Assert.assertEquals(expectedConstantResult, returnNode.result().asConstant());
+            for (ReturnNode returnNode : returnNodes) {
+                Assert.assertTrue(returnNode.result().toString(), returnNode.result().isConstant());
+                Assert.assertEquals(expectedConstantResult, returnNode.result().asConstant());
+            }
         }
         int newInstanceCount = graph.getNodes().filter(NewInstanceNode.class).count() + graph.getNodes().filter(NewArrayNode.class).count() +
                         graph.getNodes().filter(CommitAllocationNode.class).count();
@@ -153,8 +157,7 @@ public class EATestBase extends GraalCompilerTest {
             new DeadCodeEliminationPhase().apply(graph);
             new CanonicalizerPhase(true).apply(graph, context);
             new PartialEscapePhase(iterativeEscapeAnalysis, false, new CanonicalizerPhase(true)).apply(graph, context);
-            Assert.assertEquals(1, graph.getNodes().filter(ReturnNode.class).count());
-            returnNode = graph.getNodes().filter(ReturnNode.class).first();
+            returnNodes = graph.getNodes(ReturnNode.class).snapshot();
         } catch (Throwable e) {
             throw Debug.handle(e);
         }

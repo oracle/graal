@@ -76,7 +76,6 @@ public class StraighteningTest extends GraalCompilerTest {
         test("test1Snippet");
     }
 
-    @Test(expected = AssertionError.class)
     public void test2() {
         test("test2Snippet");
     }

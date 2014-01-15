@@ -120,7 +120,6 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
         private ValueNode methodSynchronizedObject;
         private ExceptionDispatchBlock unwindBlock;
-        private Block returnBlock;
 
         private FixedWithNextNode lastInstr;                 // the last instruction added
 
@@ -198,7 +197,6 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             this.stream = new BytecodeStream(method.getCode());
             this.constantPool = method.getConstantPool();
             unwindBlock = null;
-            returnBlock = null;
             methodSynchronizedObject = null;
             this.currentGraph = graph;
             this.frameState = new FrameStateBuilder(method, graph, graphBuilderConfig.eagerResolving());
@@ -270,7 +268,6 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             for (Block block : blockMap.blocks) {
                 processBlock(block);
             }
-            processBlock(returnBlock);
             processBlock(unwindBlock);
 
             Debug.dump(currentGraph, "After bytecode parsing");
@@ -303,16 +300,6 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 unwindBlock.blockID = Integer.MAX_VALUE;
             }
             return unwindBlock;
-        }
-
-        private Block returnBlock(int bci) {
-            if (returnBlock == null) {
-                returnBlock = new Block();
-                returnBlock.startBci = bci;
-                returnBlock.endBci = bci;
-                returnBlock.blockID = Integer.MAX_VALUE;
-            }
-            return returnBlock;
         }
 
         public BytecodeStream stream() {
@@ -1264,11 +1251,18 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
         }
 
         private void genReturn(ValueNode x) {
+            frameState.setRethrowException(false);
             frameState.clearStack();
-            if (x != null) {
-                frameState.push(x.kind(), x);
+            if (graphBuilderConfig.eagerInfopointMode()) {
+                append(new InfopointNode(InfopointReason.METHOD_END, frameState.create(bci())));
             }
-            appendGoto(createTarget(returnBlock(bci()), frameState));
+
+            synchronizedEpilogue(FrameState.AFTER_BCI, x);
+            if (frameState.lockDepth() != 0) {
+                throw new BailoutException("unbalanced monitors");
+            }
+
+            append(new ReturnNode(x));
         }
 
         private MonitorEnterNode genMonitorEnter(ValueNode x) {
@@ -1648,10 +1642,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 ((MergeNode) lastInstr).setStateAfter(frameState.create(bci));
             }
 
-            if (block == returnBlock) {
-                frameState.setRethrowException(false);
-                createReturn();
-            } else if (block == unwindBlock) {
+            if (block == unwindBlock) {
                 frameState.setRethrowException(false);
                 createUnwind();
             } else if (block instanceof ExceptionDispatchBlock) {
@@ -1692,26 +1683,12 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             append(new UnwindNode(exception));
         }
 
-        private void createReturn() {
-            Kind returnKind = method.getSignature().getReturnKind().getStackKind();
-            ValueNode x = returnKind == Kind.Void ? null : frameState.pop(returnKind);
-            assert frameState.stackSize() == 0;
-
-            if (graphBuilderConfig.eagerInfopointMode()) {
-                append(new InfopointNode(InfopointReason.METHOD_END, frameState.create(bci())));
-            }
-
-            synchronizedEpilogue(FrameState.AFTER_BCI, x);
-            if (frameState.lockDepth() != 0) {
-                throw new BailoutException("unbalanced monitors");
-            }
-
-            append(new ReturnNode(x));
-        }
-
         private void synchronizedEpilogue(int bci, ValueNode returnValue) {
             if (Modifier.isSynchronized(method.getModifiers())) {
                 MonitorExitNode monitorExit = genMonitorExit(methodSynchronizedObject, returnValue);
+                if (returnValue != null) {
+                    frameState.push(returnValue.kind(), returnValue);
+                }
                 monitorExit.setStateAfter(frameState.create(bci));
                 assert !frameState.rethrowException();
             }
