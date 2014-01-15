@@ -720,7 +720,7 @@ public class SnippetTemplate {
 
     /**
      * Nodes that inherit the {@link DeoptimizingNode#getDeoptimizationState()} from the replacee
-     * during insantiation.
+     * during instantiation.
      */
     private final ArrayList<DeoptimizingNode> deoptNodes;
 
@@ -876,7 +876,7 @@ public class SnippetTemplate {
                         // MemoryCheckPoint inside the snippet graph
                         MemoryNode lastAccess = mmap.getLastLocationAccess(identity);
 
-                        assert lastAccess != null : "no mapping found for lowerable node " + oldNode + ". (No node in the snippet kill the same location as the lowerable node?)";
+                        assert lastAccess != null : "no mapping found for lowerable node " + oldNode + ". (No node in the snippet kills the same location as the lowerable node?)";
                         if (usage instanceof MemoryAccess) {
                             MemoryAccess access = (MemoryAccess) usage;
                             if (access.getLastLocationAccess() == oldNode) {
@@ -960,6 +960,11 @@ public class SnippetTemplate {
             } else {
                 return (MemoryNode) duplicates.get(ValueNodeUtil.asNode(lastLocationAccess));
             }
+        }
+
+        @Override
+        public Set<LocationIdentity> getLocations() {
+            return memoryMap.getLocations();
         }
     }
 
