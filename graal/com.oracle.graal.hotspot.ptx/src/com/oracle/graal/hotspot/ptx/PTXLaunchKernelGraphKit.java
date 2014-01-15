@@ -24,9 +24,12 @@ package com.oracle.graal.hotspot.ptx;
 
 import static com.oracle.graal.api.meta.DeoptimizationReason.*;
 import static com.oracle.graal.api.meta.LocationIdentity.*;
+import static com.oracle.graal.api.meta.MetaUtil.*;
 import static com.oracle.graal.asm.NumUtil.*;
 import static com.oracle.graal.hotspot.ptx.PTXHotSpotBackend.*;
+import static com.oracle.graal.hotspot.ptx.PTXLaunchKernelGraphKit.LaunchArg.*;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
+import static com.oracle.graal.nodes.ConstantNode.*;
 import static java.lang.reflect.Modifier.*;
 
 import java.util.*;
@@ -38,11 +41,14 @@ import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.hotspot.stubs.*;
 import com.oracle.graal.java.*;
+import com.oracle.graal.lir.ptx.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.HeapAccess.BarrierType;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.type.*;
+import com.oracle.graal.replacements.*;
 import com.oracle.graal.replacements.nodes.*;
 import com.oracle.graal.word.*;
 
@@ -52,9 +58,9 @@ import com.oracle.graal.word.*;
  * 
  * <pre>
  *     jlong kernel(p0, p1, ..., pN) {
- *         jint kernelParamsBufSize = SIZE_OF_ALIGNED_PARAMS_WITH_PADDING(p0, p1, ..., pN);
- *         jbyte kernelParamsBuf[kernelParamsBufSize] = {p0, PAD(p1), p1, ..., PAD(pN), pN};
- *         jlong result = PTX_LAUNCH_KERNEL(THREAD_REGISTER, kernelParamsBuf, kernelParamsBuf);
+ *         jint bufSize = SIZE_OF_ALIGNED_PARAMS_AND_RETURN_VALUE_WITH_PADDING(p0, p1, ..., pN);
+ *         jbyte buf[bufSize] = {p0, PAD(p1), p1, ..., PAD(pN), pN};
+ *         jlong result = PTX_LAUNCH_KERNEL(THREAD_REGISTER, KERNEL_ENTRY_POINT, dimX, dimY, dimZ, buf, bufSize, encodedReturnTypeSize);
  *         return result;
  *     }
  * </pre>
@@ -68,15 +74,23 @@ public class PTXLaunchKernelGraphKit extends GraphKit {
 
     /**
      * The size of the buffer holding the parameters and the extra word for storing the pointer to
-     * device memory for the return value. This will be the same as
-     * PTXKernelArguments::device_argument_buffer_size().
+     * device memory for the return value.
+     * 
+     * @see LaunchArg#ParametersAndReturnValueBufferSize
      */
-    int kernelParametersAndReturnValueBufferSize;
+    int bufSize;
 
     /**
      * Offsets of each Java argument in the parameters buffer.
      */
     int[] javaParameterOffsetsInKernelParametersBuffer;
+
+    /**
+     * Constants denoting the arguments to {@link PTXHotSpotBackend#LAUNCH_KERNEL}.
+     */
+    enum LaunchArg {
+        Thread, Kernel, DimX, DimY, DimZ, ParametersAndReturnValueBuffer, ParametersAndReturnValueBufferSize, EncodedReturnTypeSize
+    }
 
     /**
      * Creates a graph implementing the transition from Java to the native routine that launches
@@ -99,36 +113,18 @@ public class PTXLaunchKernelGraphKit extends GraphKit {
 
         BitSet objects = new BitSet();
         if (!isStatic) {
-            javaParameters[javaParametersIndex] = unique(new ParameterNode(javaParametersIndex, StampFactory.declaredNonNull(kernelMethod.getDeclaringClass())));
-            kernelParametersAndReturnValueBufferSize += wordSize;
-            javaParameterOffsetsInKernelParametersBuffer[javaParametersIndex++] = 0;
-            objects.set(0);
+            doParameter(wordSize, Kind.Object, javaParametersIndex++, objects);
         }
-        for (int i = 0; i < sigCount; i++) {
-            Kind kind = sig.getParameterKind(i);
-            int kindByteSize = kind.getBitCount() / Byte.SIZE;
-            while ((kernelParametersAndReturnValueBufferSize % kindByteSize) != 0) {
-                kernelParametersAndReturnValueBufferSize++;
-            }
-            javaParameterOffsetsInKernelParametersBuffer[javaParametersIndex] = kernelParametersAndReturnValueBufferSize;
-            Stamp stamp;
-            if (kind == Kind.Object) {
-                stamp = StampFactory.object();
-                int slot = kernelParametersAndReturnValueBufferSize / wordSize;
-                objects.set(slot);
-            } else {
-                stamp = StampFactory.forKind(kind);
-            }
-            ParameterNode param = unique(new ParameterNode(javaParametersIndex, stamp));
-            javaParameters[javaParametersIndex++] = param;
-            kernelParametersAndReturnValueBufferSize += kindByteSize;
+        for (int sigIndex = 0; sigIndex < sigCount; sigIndex++) {
+            Kind kind = sig.getParameterKind(sigIndex);
+            doParameter(wordSize, kind, javaParametersIndex++, objects);
         }
-        kernelParametersAndReturnValueBufferSize = roundUp(kernelParametersAndReturnValueBufferSize, wordSize);
+        bufSize = roundUp(bufSize, wordSize);
 
         // Add slot for holding pointer to device memory storing return value
         int encodedReturnTypeSize = 0;
         if (returnKind != Kind.Void) {
-            kernelParametersAndReturnValueBufferSize += wordSize;
+            bufSize += wordSize;
             if (returnKind == Kind.Object) {
                 encodedReturnTypeSize = -wordSize;
             } else {
@@ -136,33 +132,41 @@ public class PTXLaunchKernelGraphKit extends GraphKit {
             }
         }
 
-        ReadRegisterNode threadArg = append(new ReadRegisterNode(providers.getRegisters().getThreadRegister(), true, false));
-        ConstantNode kernelAddressArg = ConstantNode.forLong(kernelAddress, getGraph());
-        AllocaNode kernelParametersAndReturnValueBufferArg = append(new AllocaNode(kernelParametersAndReturnValueBufferSize / wordSize, objects));
-        ConstantNode kernelParametersAndReturnValueBufferSizeArg = ConstantNode.forInt(kernelParametersAndReturnValueBufferSize, getGraph());
-        ConstantNode encodedReturnTypeSizeArg = ConstantNode.forInt(encodedReturnTypeSize, getGraph());
+        AllocaNode buf = append(new AllocaNode(bufSize / wordSize, objects));
 
+        Map<LaunchArg, ValueNode> args = new EnumMap<>(LaunchArg.class);
+        args.put(Thread, append(new ReadRegisterNode(providers.getRegisters().getThreadRegister(), true, false)));
+        args.put(Kernel, ConstantNode.forLong(kernelAddress, getGraph()));
+        args.put(DimX, forInt(1, getGraph()));
+        args.put(DimY, forInt(1, getGraph()));
+        args.put(DimZ, forInt(1, getGraph()));
+        args.put(ParametersAndReturnValueBuffer, buf);
+        args.put(ParametersAndReturnValueBufferSize, forInt(bufSize, getGraph()));
+        args.put(EncodedReturnTypeSize, forInt(encodedReturnTypeSize, getGraph()));
+
+        int sigIndex = isStatic ? 0 : -1;
         for (javaParametersIndex = 0; javaParametersIndex < javaParameters.length; javaParametersIndex++) {
             ParameterNode javaParameter = javaParameters[javaParametersIndex];
             int javaParameterOffset = javaParameterOffsetsInKernelParametersBuffer[javaParametersIndex];
             LocationNode location = ConstantLocationNode.create(FINAL_LOCATION, javaParameter.kind(), javaParameterOffset, getGraph());
-            append(new WriteNode(kernelParametersAndReturnValueBufferArg, javaParameter, location, BarrierType.NONE, false, false));
+            append(new WriteNode(buf, javaParameter, location, BarrierType.NONE, false, false));
+            updateDimArg(kernelMethod, providers, sig, sigIndex++, args, javaParameter);
         }
         if (returnKind != Kind.Void) {
-            LocationNode location = ConstantLocationNode.create(FINAL_LOCATION, wordKind, kernelParametersAndReturnValueBufferSize - wordSize, getGraph());
-            append(new WriteNode(kernelParametersAndReturnValueBufferArg, ConstantNode.forIntegerKind(wordKind, 0L, getGraph()), location, BarrierType.NONE, false, false));
+            LocationNode location = ConstantLocationNode.create(FINAL_LOCATION, wordKind, bufSize - wordSize, getGraph());
+            append(new WriteNode(buf, ConstantNode.forIntegerKind(wordKind, 0L, getGraph()), location, BarrierType.NONE, false, false));
         }
 
         FrameStateBuilder fsb = new FrameStateBuilder(kernelMethod, getGraph(), true);
         FrameState fs = fsb.create(0);
         getGraph().start().setStateAfter(fs);
 
-        ForeignCallNode result = append(new ForeignCallNode(providers.getForeignCalls(), LAUNCH_KERNEL, threadArg, kernelAddressArg, kernelParametersAndReturnValueBufferArg,
-                        kernelParametersAndReturnValueBufferSizeArg, encodedReturnTypeSizeArg));
+        ValueNode[] launchArgsArray = args.values().toArray(new ValueNode[args.size()]);
+        ForeignCallNode result = append(new ForeignCallNode(providers.getForeignCalls(), LAUNCH_KERNEL, launchArgsArray));
         result.setDeoptimizationState(fs);
 
         ConstantNode isObjectResultArg = ConstantNode.forBoolean(returnKind == Kind.Object, getGraph());
-        InvokeNode handlePendingException = createInvoke(getClass(), "handlePendingException", threadArg, isObjectResultArg);
+        InvokeNode handlePendingException = createInvoke(getClass(), "handlePendingException", args.get(Thread), isObjectResultArg);
         handlePendingException.setStateAfter(fs);
         InvokeNode getObjectResult = null;
 
@@ -186,7 +190,7 @@ public class PTXLaunchKernelGraphKit extends GraphKit {
                 returnValue = unique(new ReinterpretNode(returnKind, result));
                 break;
             case Object:
-                getObjectResult = createInvoke(getClass(), "getObjectResult", threadArg);
+                getObjectResult = createInvoke(getClass(), "getObjectResult", args.get(Thread));
                 returnValue = append(getObjectResult);
                 break;
             default:
@@ -207,7 +211,45 @@ public class PTXLaunchKernelGraphKit extends GraphKit {
         }
     }
 
-    public static void handlePendingException(Word thread, boolean isObjectResult) {
+    private void doParameter(int wordSize, Kind kind, int javaParametersIndex, BitSet objects) {
+        int kindByteSize = kind == Kind.Object ? wordSize : kind.getBitCount() / Byte.SIZE;
+        bufSize = roundUp(bufSize, kindByteSize);
+        javaParameterOffsetsInKernelParametersBuffer[javaParametersIndex] = bufSize;
+        Stamp stamp;
+        if (kind == Kind.Object) {
+            stamp = StampFactory.object();
+            int slot = bufSize / wordSize;
+            objects.set(slot);
+        } else {
+            stamp = StampFactory.forKind(kind);
+        }
+        javaParameters[javaParametersIndex] = unique(new ParameterNode(javaParametersIndex, stamp));
+        bufSize += kindByteSize;
+    }
+
+    /**
+     * Updates the {@code dimX}, {@code dimY} or {@code dimZ} argument passed to the kernel if
+     * {@code javaParameter} is annotated with {@link ParallelOver}.
+     */
+    private void updateDimArg(ResolvedJavaMethod method, HotSpotProviders providers, Signature sig, int sigIndex, Map<LaunchArg, ValueNode> launchArgs, ParameterNode javaParameter) {
+        if (sigIndex >= 0) {
+            ParallelOver parallelOver = getParameterAnnotation(ParallelOver.class, sigIndex, method);
+            if (parallelOver != null && sig.getParameterType(sigIndex, method.getDeclaringClass()).equals(providers.getMetaAccess().lookupJavaType(int[].class))) {
+                ArrayLengthNode dimension = append(new ArrayLengthNode(javaParameter));
+                LaunchArg argKey = LaunchArg.valueOf(LaunchArg.class, "Dim" + parallelOver.dimension());
+                ValueNode existing = launchArgs.put(argKey, dimension);
+                if (existing != null && existing instanceof ArrayLengthNode) {
+                    throw new GraalInternalError("@" + ParallelOver.class.getSimpleName() + " with dimension=" + parallelOver.dimension() + " applied to multiple parameters");
+                }
+            }
+        }
+    }
+
+    /**
+     * Snippet invoked upon return from the kernel to handle any pending exceptions.
+     */
+    @Snippet
+    private static void handlePendingException(Word thread, boolean isObjectResult) {
         if (clearPendingException(thread)) {
             if (isObjectResult) {
                 getAndClearObjectResult(thread);
@@ -216,7 +258,12 @@ public class PTXLaunchKernelGraphKit extends GraphKit {
         }
     }
 
-    public static Object getObjectResult(Word thread) {
+    /**
+     * Snippet invoked upon return from the kernel to retrieve an object return value from the
+     * thread local used for communicating object return values from VM calls.
+     */
+    @Snippet
+    private static Object getObjectResult(Word thread) {
         return getAndClearObjectResult(thread);
     }
 }
