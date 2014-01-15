@@ -36,7 +36,7 @@ public class HotSpotSuitesProvider implements SuitesProvider {
 
     protected final Suites defaultSuites;
     protected final PhaseSuite<HighTierContext> defaultGraphBuilderSuite;
-    private final HotSpotGraalRuntime runtime;
+    protected final HotSpotGraalRuntime runtime;
 
     public HotSpotSuitesProvider(HotSpotGraalRuntime runtime) {
         this.runtime = runtime;
