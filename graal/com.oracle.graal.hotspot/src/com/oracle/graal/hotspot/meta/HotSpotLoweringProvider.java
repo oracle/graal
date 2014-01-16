@@ -705,6 +705,9 @@ public class HotSpotLoweringProvider implements LoweringProvider {
     }
 
     private static GuardingNode createNullCheck(ValueNode object, FixedNode before, LoweringTool tool) {
+        if (ObjectStamp.isObjectNonNull(object)) {
+            return null;
+        }
         return tool.createGuard(before, before.graph().unique(new IsNullNode(object)), DeoptimizationReason.NullCheckException, DeoptimizationAction.InvalidateReprofile, true);
     }
 
