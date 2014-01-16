@@ -55,7 +55,6 @@ public final class OptimizedCallTarget extends DefaultCallTarget implements Fram
         super(rootNode, descriptor);
         this.compiler = compiler;
         this.compilationProfile = new CompilationProfile(compilationThreshold, invokeCounter, rootNode.toString());
-        this.inlining = new TruffleInliningImpl();
         this.rootNode.setCallTarget(this);
 
         if (TruffleUseTimeForCompilationDecision.getValue()) {
@@ -68,6 +67,8 @@ public final class OptimizedCallTarget extends DefaultCallTarget implements Fram
         if (TruffleCallTargetProfiling.getValue()) {
             registerCallTarget(this);
         }
+        this.inlining = new TruffleInliningImpl();
+
     }
 
     @Override
@@ -204,7 +205,7 @@ public final class OptimizedCallTarget extends DefaultCallTarget implements Fram
     public boolean inline() {
         boolean result = inlining.performInlining(this);
         if (result) {
-            compilationProfile.reportInliningPerformed();
+            compilationProfile.reportInliningPerformed(inlining);
         }
         return result;
     }

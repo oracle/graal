@@ -33,7 +33,17 @@ import com.oracle.truffle.api.nodes.*;
 
 class TruffleInliningImpl implements TruffleInlining {
 
+    private static final int MIN_INVOKES_AFTER_INLINING = 2;
+
     private static final PrintStream OUT = TTY.out().out();
+
+    public int getReprofileCount() {
+        return TruffleCompilerOptions.TruffleInliningReprofileCount.getValue();
+    }
+
+    public int getInvocationReprofileCount() {
+        return MIN_INVOKES_AFTER_INLINING;
+    }
 
     @Override
     public boolean performInlining(OptimizedCallTarget target) {

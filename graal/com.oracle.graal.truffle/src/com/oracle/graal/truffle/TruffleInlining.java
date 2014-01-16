@@ -24,5 +24,18 @@ package com.oracle.graal.truffle;
 
 public interface TruffleInlining {
 
+    /** Returns true if reprofiling is required else false. */
     boolean performInlining(OptimizedCallTarget callTarget);
+
+    /**
+     * Returns the minimum number of invocations required until the next inlining can occur. Only
+     * used if {@link #performInlining(OptimizedCallTarget)} returned true.
+     */
+    int getInvocationReprofileCount();
+
+    /**
+     * Returns the number of invocations or loop invocations required until the next inlining can
+     * occur. Only used if {@link #performInlining(OptimizedCallTarget)} returned true.
+     */
+    int getReprofileCount();
 }
