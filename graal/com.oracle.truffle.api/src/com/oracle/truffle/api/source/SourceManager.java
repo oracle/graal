@@ -33,7 +33,7 @@ import com.oracle.truffle.api.*;
  * A representation of source code information, suitable for hash table keys with equality defined
  * in terms of content. There are three kinds of sources supported at present.
  * <ul>
- * <li><strong>File:</strong>Each file is represented as a canonical object, indexed by the
+ * <li><strong>File:</strong> Each file is represented as a canonical object, indexed by the
  * absolute, canonical path name of the file. The textual contents of the file may be supplied when
  * the object is created, or it may be read lazily. Only one lazy attempt will be made to read a
  * file, and failure will result silently in null content.</li>
@@ -43,6 +43,20 @@ import com.oracle.truffle.api.*;
  * <li><strong>Fake Files:</strong> A named text string used for testing; its contents can be
  * retrieved by name, unlike literal sources.</li>
  * </ul>
+ * <p>
+ * <strong>Cache:</strong>
+ * <ol>
+ * <li>Access to source file contents via {@link Source#getInputStream()} or
+ * {@link Source#getReader()} does <em>not</em> by itself result in the file's contents being cached
+ * in the {@link Source} object.</li>
+ * <li>Access to source file contents via {@link Source#getCode()} or any other {@link Source}
+ * methods related to file's contents <em>will</em> result in the contents being cached in the
+ * {@link Source} object.</li>
+ * <li>Once source file contents have been cached, access to source file contents via
+ * {@link Source#getInputStream()} or {@link Source#getReader()} will be provided from the cache.</li>
+ * <li>Any access to source file contents via the cache will result in a timestamp check and
+ * possible cache reload.</li>
+ * </ol>
  */
 public final class SourceManager {
 
