@@ -60,9 +60,12 @@ public class DynamicDeoptimizeNode extends AbstractDeoptimizeNode implements LIR
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        if (actionAndReason.isConstant()) {
+        if (actionAndReason.isConstant() && speculation.isConstant()) {
             Constant constant = actionAndReason.asConstant();
-            DeoptimizeNode newDeopt = graph().add(new DeoptimizeNode(tool.getMetaAccess().decodeDeoptAction(constant), tool.getMetaAccess().decodeDeoptReason(constant)));
+            Constant speculationConstant = speculation.asConstant();
+            DeoptimizeNode newDeopt = graph().add(
+                            new DeoptimizeNode(tool.getMetaAccess().decodeDeoptAction(constant), tool.getMetaAccess().decodeDeoptReason(constant), tool.getMetaAccess().decodeDebugId(constant),
+                                            speculationConstant));
             newDeopt.setDeoptimizationState(getDeoptimizationState());
             return newDeopt;
         }
