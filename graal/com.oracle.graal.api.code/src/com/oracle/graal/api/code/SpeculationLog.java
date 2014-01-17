@@ -47,10 +47,15 @@ public final class SpeculationLog {
         }
     }
 
-    public Constant maySpeculate(Object reason) {
+    public boolean maySpeculate(Object reason) {
         if (failedSpeculations != null && failedSpeculations.contains(reason)) {
-            return null;
+            return false;
         }
+        return true;
+    }
+
+    public Constant speculate(Object reason) {
+        assert maySpeculate(reason);
         if (speculations == null) {
             synchronized (this) {
                 if (speculations == null) {
