@@ -206,7 +206,7 @@ public class GraalCompiler {
         suites.getHighTier().apply(graph, highTierContext);
         graph.maybeCompress();
 
-        MidTierContext midTierContext = new MidTierContext(providers, assumptions, target, optimisticOpts, profilingInfo);
+        MidTierContext midTierContext = new MidTierContext(providers, assumptions, target, optimisticOpts, profilingInfo, speculationLog);
         suites.getMidTier().apply(graph, midTierContext);
         graph.maybeCompress();
 
