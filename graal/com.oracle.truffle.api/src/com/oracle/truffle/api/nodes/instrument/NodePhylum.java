@@ -29,7 +29,7 @@ package com.oracle.truffle.api.nodes.instrument;
  * and other simple tool behavior. These categories (<em>phyla</em>) should correspond to program
  * structures that are meaningful to a programmer using the guest language. A Truffle node without a
  * proxy carrying some phylum should be treated as an artifact of the guest language implementation
- * and should never to the user of a guest language programming tool.
+ * and should never be visible to the user of a guest language programming tool.
  * <p>
  * Note that phyla are not intended to represent a partition of user-visible node categories, as the
  * relative categorization of nodes can change with the particular programming tasks at hand.
