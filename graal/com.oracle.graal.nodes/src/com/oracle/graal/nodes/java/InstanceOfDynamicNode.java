@@ -62,7 +62,11 @@ public final class InstanceOfDynamicNode extends LogicNode implements Canonicali
         if (mirror().isConstant()) {
             Class clazz = (Class) mirror().asConstant().asObject();
             ResolvedJavaType t = tool.getMetaAccess().lookupJavaType(clazz);
-            return graph().unique(new InstanceOfNode(t, object(), null));
+            if (t.isPrimitive()) {
+                return LogicConstantNode.contradiction(graph());
+            } else {
+                return graph().unique(new InstanceOfNode(t, object(), null));
+            }
         }
         return this;
     }

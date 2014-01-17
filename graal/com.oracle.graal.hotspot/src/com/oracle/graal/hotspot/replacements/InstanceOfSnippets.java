@@ -187,7 +187,7 @@ public class InstanceOfSnippets implements Snippets {
         BeginNode anchorNode = BeginNode.anchor();
         Word hub = loadWordFromObject(mirror, klassOffset());
         Word objectHub = loadHubIntrinsic(object, getWordKind(), anchorNode);
-        if (!checkUnknownSubType(hub, objectHub)) {
+        if (hub.equal(0) || !checkUnknownSubType(hub, objectHub)) {
             return falseValue;
         }
         return trueValue;
