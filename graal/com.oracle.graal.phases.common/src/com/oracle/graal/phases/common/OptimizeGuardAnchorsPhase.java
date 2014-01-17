@@ -32,7 +32,7 @@ import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.phases.*;
 
-public class OptimizeGuardAnchors extends Phase {
+public class OptimizeGuardAnchorsPhase extends Phase {
     private static final DebugMetric metricGuardsAnchorOptimized = Debug.metric("GuardsAnchorOptimized");
     private static final DebugMetric metricGuardsOptimizedAtSplit = Debug.metric("GuardsOptimizedAtSplit");
 
