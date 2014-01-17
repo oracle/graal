@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,11 +20,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-/**
- * Package that defines the interface between a Java application that wants to install code and the runtime.
- * The runtime provides in implementation of the {@link com.oracle.graal.api.code.CodeCacheProvider} interface.
- * The method {@link com.oracle.graal.api.code.CodeCacheProvider#addMethod(com.oracle.graal.api.meta.ResolvedJavaMethod, CompilationResult, SpeculationLog)}
- * can be used to install code for a given method.
- */
-package com.oracle.graal.api.code;
+package com.oracle.graal.replacements;
 
+import com.oracle.graal.api.replacements.*;
+import com.oracle.graal.replacements.nodes.*;
+
+@ClassSubstitution(Character.class)
+public class CharacterSubstitutions {
+    @MethodSubstitution
+    public static char reverseBytes(char i) {
+        return (char) (ReverseBytesNode.reverse(i) >> 16);
+    }
+}

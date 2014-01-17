@@ -45,7 +45,7 @@ public class GuardNode extends FloatingGuardedNode implements Canonicalizable, I
 
     @Input private LogicNode condition;
     private final DeoptimizationReason reason;
-    private final Constant speculation;
+    private Constant speculation;
     private DeoptimizationAction action;
     private boolean negated;
 
@@ -84,6 +84,10 @@ public class GuardNode extends FloatingGuardedNode implements Canonicalizable, I
 
     public Constant getSpeculation() {
         return speculation;
+    }
+
+    public void setSpeculation(Constant speculation) {
+        this.speculation = speculation;
     }
 
     @Override

@@ -76,6 +76,10 @@ public class DeoptimizeNode extends AbstractDeoptimizeNode implements Lowerable,
         return ConstantNode.forConstant(speculation, metaAccess, graph());
     }
 
+    public Constant getSpeculation() {
+        return speculation;
+    }
+
     @NodeIntrinsic
     public static native void deopt(@ConstantNodeParameter DeoptimizationAction action, @ConstantNodeParameter DeoptimizationReason reason);
 }

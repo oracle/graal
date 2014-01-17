@@ -71,12 +71,17 @@ public abstract class HotSpotCompiledCode extends CompilerObject {
         public Constant constant;
 
         public HotSpotData(int offset) {
-            super(0, 0);
+            super(0);
             this.offset = offset;
         }
 
         @Override
-        public void emit(ByteBuffer buffer) {
+        public int getSize(Architecture arch) {
+            return 0;
+        }
+
+        @Override
+        public void emit(Architecture arch, ByteBuffer buffer) {
         }
     }
 
@@ -100,7 +105,7 @@ public abstract class HotSpotCompiledCode extends CompilerObject {
          */
         public final HotSpotData[] patches;
 
-        public DataSection(Site[] sites) {
+        public DataSection(Architecture arch, Site[] sites) {
             int size = 0;
             int patchCount = 0;
             List<DataPatch> externalDataList = new ArrayList<>();
@@ -111,8 +116,8 @@ public abstract class HotSpotCompiledCode extends CompilerObject {
                     DataPatch dataPatch = (DataPatch) site;
                     if (dataPatch.externalData != null) {
                         Data d = dataPatch.externalData;
-                        size = NumUtil.roundUp(size, d.alignment);
-                        size += d.size;
+                        size = NumUtil.roundUp(size, d.getAlignment());
+                        size += d.getSize(arch);
                         externalDataList.add(dataPatch);
                         if (dataPatch.getConstant() != null && dataPatch.getConstant().getKind() == Kind.Object) {
                             patchCount++;
@@ -132,8 +137,8 @@ public abstract class HotSpotCompiledCode extends CompilerObject {
             for (DataPatch dataPatch : externalDataList) {
                 Data d = dataPatch.externalData;
 
-                alignment = Math.max(alignment, d.alignment);
-                index = NumUtil.roundUp(index, d.alignment);
+                alignment = Math.max(alignment, d.getAlignment());
+                index = NumUtil.roundUp(index, d.getAlignment());
                 buffer.position(index);
 
                 HotSpotData hsData = new HotSpotData(index);
@@ -144,8 +149,8 @@ public abstract class HotSpotCompiledCode extends CompilerObject {
                 }
                 dataPatch.externalData = hsData;
 
-                index += d.size;
-                d.emit(buffer);
+                index += d.getSize(arch);
+                d.emit(arch, buffer);
             }
 
             this.sectionAlignment = alignment;
@@ -163,10 +168,10 @@ public abstract class HotSpotCompiledCode extends CompilerObject {
         }
     }
 
-    public HotSpotCompiledCode(CompilationResult compResult) {
+    public HotSpotCompiledCode(Architecture arch, CompilationResult compResult) {
         this.comp = compResult;
         sites = getSortedSites(compResult);
-        dataSection = new DataSection(sites);
+        dataSection = new DataSection(arch, sites);
         if (compResult.getExceptionHandlers().isEmpty()) {
             exceptionHandlers = null;
         } else {

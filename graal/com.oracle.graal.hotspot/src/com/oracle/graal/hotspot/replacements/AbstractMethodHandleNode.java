@@ -176,9 +176,9 @@ public abstract class AbstractMethodHandleNode extends MacroNode implements Cano
         // Create a method from the vmtarget pointer
         Class<?> c = (Class<?>) clazz.asObject();
         HotSpotResolvedObjectType holderClass = (HotSpotResolvedObjectType) HotSpotResolvedObjectType.fromClass(c);
-        HotSpotResolvedJavaMethod targetMethod = holderClass.createMethod(vmtarget.asLong());
+        HotSpotResolvedJavaMethod targetMethod = HotSpotResolvedJavaMethod.fromMetaspace(vmtarget.asLong());
 
-        // In lamda forms we erase signature types to avoid resolving issues
+        // In lambda forms we erase signature types to avoid resolving issues
         // involving class loaders. When we optimize a method handle invoke
         // to a direct call we must cast the receiver and arguments to its
         // actual types.

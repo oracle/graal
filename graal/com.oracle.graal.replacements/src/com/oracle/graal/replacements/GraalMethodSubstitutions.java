@@ -47,6 +47,8 @@ public class GraalMethodSubstitutions implements ReplacementsProvider {
             replacements.registerSubstitutions(FloatSubstitutions.class);
             replacements.registerSubstitutions(LongSubstitutions.class);
             replacements.registerSubstitutions(IntegerSubstitutions.class);
+            replacements.registerSubstitutions(CharacterSubstitutions.class);
+            replacements.registerSubstitutions(ShortSubstitutions.class);
             replacements.registerSubstitutions(UnsignedMathSubstitutions.class);
             replacements.registerSubstitutions(NodeClassSubstitutions.class);
             replacements.registerSubstitutions(CompositeValueClassSubstitutions.class);

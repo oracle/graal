@@ -244,7 +244,7 @@ public class TruffleCompilerImpl implements TruffleCompiler {
 
         InstalledCode installedCode = null;
         try (Scope s = Debug.scope("CodeInstall", providers.getCodeCache()); TimerCloseable a = CodeInstallationTime.start()) {
-            installedCode = providers.getCodeCache().addMethod(graph.method(), result);
+            installedCode = providers.getCodeCache().addMethod(graph.method(), result, null);
         } catch (Throwable e) {
             throw Debug.handle(e);
         }
