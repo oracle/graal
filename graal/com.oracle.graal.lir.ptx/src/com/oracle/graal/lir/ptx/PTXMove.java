@@ -32,7 +32,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.ptx.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.StandardOp.MoveOp;
+import com.oracle.graal.lir.StandardOp.*;
 import com.oracle.graal.lir.asm.*;
 
 public class PTXMove {
@@ -238,5 +238,30 @@ public class PTXMove {
     @SuppressWarnings("unused")
     protected static void compareAndSwap(CompilationResultBuilder crb, PTXAssembler masm, AllocatableValue result, PTXAddressValue address, AllocatableValue cmpValue, AllocatableValue newValue) {
         throw new InternalError("NYI");
+    }
+
+    public static class NullCheckOp extends PTXLIRInstruction implements NullCheck {
+
+        @Use({REG}) protected AllocatableValue input;
+        @State protected LIRFrameState state;
+
+        public NullCheckOp(Variable input, LIRFrameState state) {
+            this.input = input;
+            this.state = state;
+        }
+
+        @Override
+        public void emitCode(CompilationResultBuilder crb, PTXMacroAssembler masm) {
+            crb.recordImplicitException(masm.codeBuffer.position(), state);
+            masm.nullCheck(asRegister(input));
+        }
+
+        public Value getCheckedValue() {
+            return input;
+        }
+
+        public LIRFrameState getState() {
+            return state;
+        }
     }
 }

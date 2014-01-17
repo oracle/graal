@@ -33,10 +33,12 @@ public class PTXHotSpotForeignCallsProvider implements HotSpotForeignCallsProvid
         throw GraalInternalError.unimplemented();
     }
 
+    @Override
     public LocationIdentity[] getKilledLocations(ForeignCallDescriptor descriptor) {
         throw GraalInternalError.unimplemented();
     }
 
+    @Override
     public boolean canDeoptimize(ForeignCallDescriptor descriptor) {
         throw GraalInternalError.unimplemented();
     }

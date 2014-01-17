@@ -43,13 +43,13 @@ public class BasicPTXTest extends PTXTest {
         test("staticIntKernel", 'a', 42);
     }
 
+    public static int staticIntKernel(char p0, int p1) {
+        return p1 + p0;
+    }
+
     @Test
     public void testVirtualIntKernel() {
         test("virtualIntKernel", 'a', 42);
-    }
-
-    public static int staticIntKernel(char p0, int p1) {
-        return p1 + p0;
     }
 
     public int virtualIntKernel(char p0, int p1) {
