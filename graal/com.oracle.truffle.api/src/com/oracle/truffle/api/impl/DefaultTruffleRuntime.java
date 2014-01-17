@@ -41,12 +41,7 @@ public final class DefaultTruffleRuntime implements TruffleRuntime {
 
     @Override
     public CallTarget createCallTarget(RootNode rootNode) {
-        return createCallTarget(rootNode, new FrameDescriptor());
-    }
-
-    @Override
-    public CallTarget createCallTarget(RootNode rootNode, FrameDescriptor frameDescriptor) {
-        return new DefaultCallTarget(rootNode, frameDescriptor);
+        return new DefaultCallTarget(rootNode);
     }
 
     @Override

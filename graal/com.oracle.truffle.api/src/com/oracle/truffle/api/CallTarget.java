@@ -28,8 +28,7 @@ import com.oracle.truffle.api.frame.*;
 
 /**
  * Represents the target of a call. Instances of this interface can be created using the
- * {@link TruffleRuntime#createCallTarget(com.oracle.truffle.api.nodes.RootNode, FrameDescriptor)}
- * method.
+ * {@link TruffleRuntime#createCallTarget(com.oracle.truffle.api.nodes.RootNode)} method.
  */
 public abstract class CallTarget {
 

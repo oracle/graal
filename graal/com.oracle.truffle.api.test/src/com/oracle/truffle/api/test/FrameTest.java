@@ -66,7 +66,7 @@ public class FrameTest {
         FrameDescriptor frameDescriptor = new FrameDescriptor();
         FrameSlot slot = frameDescriptor.addFrameSlot("localVar", FrameSlotKind.Int);
         TestRootNode rootNode = new TestRootNode(new AssignLocal(slot), new ReadLocal(slot));
-        CallTarget target = runtime.createCallTarget(rootNode, frameDescriptor);
+        CallTarget target = runtime.createCallTarget(rootNode);
         Object result = target.call();
         Assert.assertEquals(42, result);
     }
