@@ -36,7 +36,7 @@ public class OptimizeGuardAnchors extends Phase {
     private static final DebugMetric metricGuardsAnchorOptimized = Debug.metric("GuardsAnchorOptimized");
     private static final DebugMetric metricGuardsOptimizedAtSplit = Debug.metric("GuardsOptimizedAtSplit");
 
-    private static class LazyCFG {
+    public static class LazyCFG {
         private ControlFlowGraph cfg;
         private StructuredGraph graph;
 
@@ -74,6 +74,13 @@ public class OptimizeGuardAnchors extends Phase {
         for (ControlSplitNode controlSplit : graph.getNodes(ControlSplitNode.class)) {
             optimizeAtControlSplit(controlSplit, cfg);
         }
+    }
+
+    public static AbstractBeginNode getOptimalAnchor(LazyCFG cfg, AbstractBeginNode begin) {
+        if (begin instanceof StartNode || begin.predecessor() instanceof ControlSplitNode) {
+            return begin;
+        }
+        return computeOptimalAnchor(cfg.get(), begin);
     }
 
     private static AbstractBeginNode computeOptimalAnchor(ControlFlowGraph cfg, AbstractBeginNode begin) {
