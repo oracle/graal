@@ -46,11 +46,6 @@ public class CompareCanonicalizerTest extends GraalCompilerTest {
         return ret.result();
     }
 
-    private static IfNode getIfNode(StructuredGraph graph) {
-        assertTrue(graph.start().next() instanceof IfNode);
-        return (IfNode) graph.start().next();
-    }
-
     @Test
     public void testCanonicalComparison() {
         StructuredGraph referenceGraph = parse("referenceCanonicalComparison");
@@ -103,9 +98,9 @@ public class CompareCanonicalizerTest extends GraalCompilerTest {
         for (int i = 1; i <= 4; i++) {
             StructuredGraph graph = getCanonicalizedGraph("integerTest" + i);
 
-            IfNode ifNode = getIfNode(graph);
-            assertTrue(ifNode.condition() instanceof IntegerTestNode);
-            IntegerTestNode test = (IntegerTestNode) ifNode.condition();
+            ReturnNode returnNode = (ReturnNode) graph.start().next();
+            ConditionalNode conditional = (ConditionalNode) returnNode.result();
+            IntegerTestNode test = (IntegerTestNode) conditional.condition();
             ParameterNode param0 = graph.getParameter(0);
             ParameterNode param1 = graph.getParameter(1);
             assertTrue((test.x() == param0 && test.y() == param1) || (test.x() == param1 && test.y() == param0));
@@ -137,7 +132,8 @@ public class CompareCanonicalizerTest extends GraalCompilerTest {
         result = getResult(getCanonicalizedGraph("integerTestCanonicalization2"));
         assertTrue(result.isConstant() && result.asConstant().asLong() == 1);
         StructuredGraph graph = getCanonicalizedGraph("integerTestCanonicalization3");
-        assertEquals(2, graph.getNodes(ReturnNode.class).count());
+        assertEquals(1, graph.getNodes(ReturnNode.class).count());
+        assertTrue(graph.getNodes(ReturnNode.class).first().result() instanceof ConditionalNode);
     }
 
     public static int integerTestCanonicalization1(boolean b) {

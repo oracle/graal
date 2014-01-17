@@ -131,6 +131,7 @@ public class MemoryScheduleTest extends GraphScheduleTest {
             } else {
                 container.b = 15;
             }
+            container.obj = null;
         }
     }
 
@@ -208,7 +209,7 @@ public class MemoryScheduleTest extends GraphScheduleTest {
     @Test
     public void testLoop3() {
         SchedulePhase schedule = getFinalSchedule("testLoop3Snippet", TestMode.WITHOUT_FRAMESTATES);
-        assertEquals(7, schedule.getCFG().getBlocks().length);
+        assertEquals(6, schedule.getCFG().getBlocks().length);
         assertReadWithinStartBlock(schedule, true);
         assertReadWithinAllReturnBlocks(schedule, false);
     }
@@ -282,7 +283,7 @@ public class MemoryScheduleTest extends GraphScheduleTest {
     @Test
     public void testIfRead1() {
         SchedulePhase schedule = getFinalSchedule("testIfRead1Snippet", TestMode.WITHOUT_FRAMESTATES);
-        assertEquals(4, schedule.getCFG().getBlocks().length);
+        assertEquals(3, schedule.getCFG().getBlocks().length);
         assertReadWithinStartBlock(schedule, true);
         assertReadAndWriteInSameBlock(schedule, false);
     }
@@ -303,7 +304,7 @@ public class MemoryScheduleTest extends GraphScheduleTest {
     @Test
     public void testIfRead2() {
         SchedulePhase schedule = getFinalSchedule("testIfRead2Snippet", TestMode.WITHOUT_FRAMESTATES);
-        assertEquals(4, schedule.getCFG().getBlocks().length);
+        assertEquals(3, schedule.getCFG().getBlocks().length);
         assertEquals(1, schedule.getCFG().graph.getNodes().filter(FloatingReadNode.class).count());
         assertReadWithinStartBlock(schedule, false);
         assertReadWithinAllReturnBlocks(schedule, false);
