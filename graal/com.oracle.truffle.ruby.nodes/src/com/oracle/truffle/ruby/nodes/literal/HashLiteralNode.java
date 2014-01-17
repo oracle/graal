@@ -41,4 +41,9 @@ public class HashLiteralNode extends RubyNode {
         return hash;
     }
 
+    @Override
+    public Object isDefined(VirtualFrame frame) {
+        return getContext().makeString("expression");
+    }
+
 }

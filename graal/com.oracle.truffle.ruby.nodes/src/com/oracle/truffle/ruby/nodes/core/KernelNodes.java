@@ -629,13 +629,6 @@ public abstract class KernelNodes {
 
         @Specialization(order = 3)
         public Object raise(VirtualFrame frame, RubyClass exceptionClass, RubyString message) {
-            final RubyContext context = getContext();
-
-            if (context.getConfiguration().getPrintRubyExceptions()) {
-                context.implementationMessage("Ruby raise: %s", message);
-                new Exception().printStackTrace();
-            }
-
             final RubyBasicObject exception = exceptionClass.newInstance();
             initialize.dispatch(frame, exception, null, message);
             throw new RaiseException(exception);

@@ -39,4 +39,5 @@ public class CatchNextNode extends RubyNode {
             return e.getResult();
         }
     }
+
 }

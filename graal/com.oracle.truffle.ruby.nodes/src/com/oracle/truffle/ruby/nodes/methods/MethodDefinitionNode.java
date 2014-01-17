@@ -91,4 +91,8 @@ public class MethodDefinitionNode extends RubyNode {
         return name;
     }
 
+    public CallTarget getCallTarget() {
+        return callTarget;
+    }
+
 }

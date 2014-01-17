@@ -35,11 +35,6 @@ public class FeatureManager {
     public boolean require(String feature) throws IOException {
         // Some features are handled specially
 
-        if (feature.equals("continuation")) {
-            // We always load continuations
-            return true;
-        }
-
         if (feature.equals("stringio")) {
             context.implementationMessage("stringio not yet implemented");
             return true;
