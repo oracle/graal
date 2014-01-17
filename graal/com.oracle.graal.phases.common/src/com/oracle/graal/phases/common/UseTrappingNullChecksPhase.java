@@ -50,7 +50,7 @@ public class UseTrappingNullChecksPhase extends BasePhase<LowTierContext> {
         if (deopt.reason() != DeoptimizationReason.NullCheckException) {
             return;
         }
-        if (deopt.getSpeculation() != null && deopt.getSpeculation() != Constant.NULL_OBJECT) {
+        if (deopt.getSpeculation() != null && !deopt.getSpeculation().equals(Constant.NULL_OBJECT)) {
             return;
         }
         Node predecessor = deopt.predecessor();
