@@ -37,8 +37,8 @@ public final class FunctionRootNode extends RootNode {
     private final String name;
     private final boolean inlineImmediatly;
 
-    private FunctionRootNode(TypedNode body, String name, boolean inlineImmediatly) {
-        super(null);
+    private FunctionRootNode(FrameDescriptor frameDescriptor, TypedNode body, String name, boolean inlineImmediatly) {
+        super(null, frameDescriptor);
         this.uninitializedBody = NodeUtil.cloneNode(body);
         this.body = adoptChild(body);
         this.name = name;
@@ -52,14 +52,14 @@ public final class FunctionRootNode extends RootNode {
             arguments[i] = new ReadArgumentNode(i);
         }
         BuiltinNode buitinBody = factory.createNode(arguments, context);
-        FunctionRootNode root = new FunctionRootNode(buitinBody, name, true);
+        FunctionRootNode root = new FunctionRootNode(new FrameDescriptor(), buitinBody, name, true);
         return Truffle.getRuntime().createCallTarget(root);
     }
 
     public static CallTarget createFunction(StatementNode body, FrameDescriptor frameDescriptor, String name, TypedNode returnValue, String[] parameterNames) {
         FunctionBodyNode bodyContainer = new FunctionBodyNode(frameDescriptor, body, returnValue, parameterNames);
-        FunctionRootNode root = new FunctionRootNode(bodyContainer, name, false);
-        return Truffle.getRuntime().createCallTarget(root, frameDescriptor);
+        FunctionRootNode root = new FunctionRootNode(frameDescriptor, bodyContainer, name, false);
+        return Truffle.getRuntime().createCallTarget(root);
     }
 
     @Override
