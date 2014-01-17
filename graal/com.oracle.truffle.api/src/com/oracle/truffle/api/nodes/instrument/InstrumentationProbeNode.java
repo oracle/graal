@@ -373,7 +373,9 @@ public abstract class InstrumentationProbeNode extends Node implements Instrumen
                 if (stepping) {
                     getContext().getDebugManager().haltedAt(astNode, frame.materialize());
                 }
-                next.internalEnter(astNode, frame);
+                if (next != null) {
+                    next.internalEnter(astNode, frame);
+                }
             }
         }
 
