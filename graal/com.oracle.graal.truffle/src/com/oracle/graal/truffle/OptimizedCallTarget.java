@@ -51,8 +51,8 @@ public final class OptimizedCallTarget extends DefaultCallTarget implements Fram
     private boolean compilationEnabled;
     private int callCount;
 
-    protected OptimizedCallTarget(RootNode rootNode, FrameDescriptor descriptor, TruffleCompiler compiler, int invokeCounter, int compilationThreshold) {
-        super(rootNode, descriptor);
+    protected OptimizedCallTarget(RootNode rootNode, TruffleCompiler compiler, int invokeCounter, int compilationThreshold) {
+        super(rootNode);
         this.compiler = compiler;
         this.compilationProfile = new CompilationProfile(compilationThreshold, invokeCounter, rootNode.toString());
         this.rootNode.setCallTarget(this);
@@ -211,7 +211,7 @@ public final class OptimizedCallTarget extends DefaultCallTarget implements Fram
     }
 
     public Object executeHelper(PackedFrame caller, Arguments args) {
-        VirtualFrame frame = createFrame(frameDescriptor, caller, args);
+        VirtualFrame frame = createFrame(rootNode.getFrameDescriptor(), caller, args);
         return rootNode.execute(frame);
     }
 

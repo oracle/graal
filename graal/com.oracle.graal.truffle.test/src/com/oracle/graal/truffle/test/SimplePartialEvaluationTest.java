@@ -38,28 +38,28 @@ public class SimplePartialEvaluationTest extends PartialEvaluationTest {
     public void constantValue() {
         FrameDescriptor fd = new FrameDescriptor();
         AbstractTestNode result = new ConstantTestNode(42);
-        assertPartialEvalEquals("constant42", new RootTestNode("constantValue", result), fd);
+        assertPartialEvalEquals("constant42", new RootTestNode(fd, "constantValue", result));
     }
 
     @Test
     public void addConstants() {
         FrameDescriptor fd = new FrameDescriptor();
         AbstractTestNode result = new AddTestNode(new ConstantTestNode(40), new ConstantTestNode(2));
-        assertPartialEvalEquals("constant42", new RootTestNode("addConstants", result), fd);
+        assertPartialEvalEquals("constant42", new RootTestNode(fd, "addConstants", result));
     }
 
     @Test
     public void sequenceConstants() {
         FrameDescriptor fd = new FrameDescriptor();
         AbstractTestNode result = new BlockTestNode(new AbstractTestNode[]{new ConstantTestNode(40), new ConstantTestNode(42)});
-        assertPartialEvalEquals("constant42", new RootTestNode("sequenceConstants", result), fd);
+        assertPartialEvalEquals("constant42", new RootTestNode(fd, "sequenceConstants", result));
     }
 
     @Test
     public void localVariable() {
         FrameDescriptor fd = new FrameDescriptor();
         AbstractTestNode result = new BlockTestNode(new AbstractTestNode[]{new StoreLocalTestNode("x", fd, new ConstantTestNode(42)), new LoadLocalTestNode("x", fd)});
-        assertPartialEvalEquals("constant42", new RootTestNode("localVariable", result), fd);
+        assertPartialEvalEquals("constant42", new RootTestNode(fd, "localVariable", result));
     }
 
     @Test
@@ -72,7 +72,7 @@ public class SimplePartialEvaluationTest extends PartialEvaluationTest {
         }
 
         AbstractTestNode result = new BlockTestNode(children);
-        assertPartialEvalEquals("constant42", new RootTestNode("longSequenceConstants", result), fd);
+        assertPartialEvalEquals("constant42", new RootTestNode(fd, "longSequenceConstants", result));
     }
 
     @Test
@@ -82,7 +82,7 @@ public class SimplePartialEvaluationTest extends PartialEvaluationTest {
         for (int i = 0; i < 20; ++i) {
             result = new AddTestNode(result, new ConstantTestNode(2));
         }
-        assertPartialEvalEquals("constant42", new RootTestNode("longAddConstants", result), fd);
+        assertPartialEvalEquals("constant42", new RootTestNode(fd, "longAddConstants", result));
     }
 
     @Test
@@ -90,7 +90,7 @@ public class SimplePartialEvaluationTest extends PartialEvaluationTest {
         FrameDescriptor fd = new FrameDescriptor();
         AbstractTestNode result = new BlockTestNode(new AbstractTestNode[]{new StoreLocalTestNode("x", fd, new ConstantTestNode(40)),
                         new StoreLocalTestNode("x", fd, new AddTestNode(new LoadLocalTestNode("x", fd), new ConstantTestNode(2))), new LoadLocalTestNode("x", fd)});
-        assertPartialEvalEquals("constant42", new RootTestNode("mixLocalAndAdd", result), fd);
+        assertPartialEvalEquals("constant42", new RootTestNode(fd, "mixLocalAndAdd", result));
     }
 
     @Test
@@ -98,7 +98,7 @@ public class SimplePartialEvaluationTest extends PartialEvaluationTest {
         FrameDescriptor fd = new FrameDescriptor();
         AbstractTestNode result = new BlockTestNode(new AbstractTestNode[]{new StoreLocalTestNode("x", fd, new ConstantTestNode(0)),
                         new LoopTestNode(21, new StoreLocalTestNode("x", fd, new AddTestNode(new LoadLocalTestNode("x", fd), new ConstantTestNode(2))))});
-        assertPartialEvalEquals("constant42", new RootTestNode("loop", result), fd);
+        assertPartialEvalEquals("constant42", new RootTestNode(fd, "loop", result));
     }
 
     @Test
@@ -106,6 +106,6 @@ public class SimplePartialEvaluationTest extends PartialEvaluationTest {
         FrameDescriptor fd = new FrameDescriptor();
         AbstractTestNode result = new BlockTestNode(new AbstractTestNode[]{new StoreLocalTestNode("x", fd, new ConstantTestNode(0)),
                         new LoopTestNode(42, new StoreLocalTestNode("x", fd, new AddTestNode(new LoadLocalTestNode("x", fd), new ConstantTestNode(1))))});
-        assertPartialEvalNoInvokes(new RootTestNode("loop", result), fd);
+        assertPartialEvalNoInvokes(new RootTestNode(fd, "loop", result));
     }
 }

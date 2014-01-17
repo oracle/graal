@@ -45,7 +45,6 @@ import com.oracle.graal.runtime.*;
 import com.oracle.graal.truffle.*;
 import com.oracle.graal.virtual.phases.ea.*;
 import com.oracle.truffle.api.*;
-import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
 
 public class PartialEvaluationTest extends GraalCompilerTest {
@@ -64,13 +63,13 @@ public class PartialEvaluationTest extends GraalCompilerTest {
         DebugEnvironment.initialize(System.out);
     }
 
-    protected InstalledCode assertPartialEvalEquals(String methodName, RootNode root, FrameDescriptor descriptor) {
-        return assertPartialEvalEquals(methodName, root, descriptor, Arguments.EMPTY_ARGUMENTS);
+    protected InstalledCode assertPartialEvalEquals(String methodName, RootNode root) {
+        return assertPartialEvalEquals(methodName, root, Arguments.EMPTY_ARGUMENTS);
     }
 
-    protected InstalledCode assertPartialEvalEquals(String methodName, RootNode root, FrameDescriptor descriptor, Arguments arguments) {
+    protected InstalledCode assertPartialEvalEquals(String methodName, RootNode root, Arguments arguments) {
         Assumptions assumptions = new Assumptions(true);
-        StructuredGraph actual = partialEval(root, descriptor, arguments, assumptions, true);
+        StructuredGraph actual = partialEval(root, arguments, assumptions, true);
         InstalledCode result = new TruffleCompilerImpl().compileMethodHelper(actual, GraphBuilderConfiguration.getDefault(), assumptions);
         StructuredGraph expected = parseForComparison(methodName);
         removeFrameStates(actual);
@@ -78,21 +77,21 @@ public class PartialEvaluationTest extends GraalCompilerTest {
         return result;
     }
 
-    protected void assertPartialEvalNoInvokes(RootNode root, FrameDescriptor descriptor) {
-        assertPartialEvalNoInvokes(root, descriptor, Arguments.EMPTY_ARGUMENTS);
+    protected void assertPartialEvalNoInvokes(RootNode root) {
+        assertPartialEvalNoInvokes(root, Arguments.EMPTY_ARGUMENTS);
     }
 
-    protected void assertPartialEvalNoInvokes(RootNode root, FrameDescriptor descriptor, Arguments arguments) {
+    protected void assertPartialEvalNoInvokes(RootNode root, Arguments arguments) {
         Assumptions assumptions = new Assumptions(true);
-        StructuredGraph actual = partialEval(root, descriptor, arguments, assumptions, true);
+        StructuredGraph actual = partialEval(root, arguments, assumptions, true);
         removeFrameStates(actual);
         for (MethodCallTargetNode node : actual.getNodes(MethodCallTargetNode.class)) {
             Assert.fail("Found invalid method call target node: " + node);
         }
     }
 
-    protected StructuredGraph partialEval(RootNode root, FrameDescriptor descriptor, Arguments arguments, final Assumptions assumptions, final boolean canonicalizeReads) {
-        final OptimizedCallTarget compilable = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(root, descriptor);
+    protected StructuredGraph partialEval(RootNode root, Arguments arguments, final Assumptions assumptions, final boolean canonicalizeReads) {
+        final OptimizedCallTarget compilable = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(root);
 
         // Executed AST so that all classes are loaded and initialized.
         do {

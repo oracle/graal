@@ -42,8 +42,8 @@ public class AssumptionPartialEvaluationTest extends PartialEvaluationTest {
         FrameDescriptor fd = new FrameDescriptor();
         Assumption assumption = Truffle.getRuntime().createAssumption();
         AbstractTestNode result = new ConstantWithAssumptionTestNode(assumption, 42);
-        RootTestNode rootNode = new RootTestNode("constantValue", result);
-        InstalledCode installedCode = assertPartialEvalEquals("constant42", rootNode, fd);
+        RootTestNode rootNode = new RootTestNode(fd, "constantValue", result);
+        InstalledCode installedCode = assertPartialEvalEquals("constant42", rootNode);
         Assert.assertTrue(installedCode.isValid());
         try {
             assertEquals(42, installedCode.execute(null, null, null));

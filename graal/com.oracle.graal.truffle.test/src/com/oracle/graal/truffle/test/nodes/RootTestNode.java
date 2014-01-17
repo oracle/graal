@@ -30,8 +30,8 @@ public class RootTestNode extends RootNode {
     private final String name;
     @Child AbstractTestNode node;
 
-    public RootTestNode(String name, AbstractTestNode node) {
-        super(null);
+    public RootTestNode(FrameDescriptor descriptor, String name, AbstractTestNode node) {
+        super(null, descriptor);
         this.name = name;
         this.node = node;
     }
