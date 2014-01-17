@@ -23,15 +23,14 @@
 package com.oracle.graal.hotspot.bridge;
 
 import static com.oracle.graal.compiler.GraalDebugConfig.*;
-import static com.oracle.graal.graph.UnsafeAccess.*;
 import static com.oracle.graal.hotspot.CompileTheWorld.Options.*;
-import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 
 import java.io.*;
 import java.lang.reflect.*;
 import java.security.*;
 import java.util.*;
 import java.util.concurrent.*;
+
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.CompilerThreadFactory.DebugConfigAccess;
