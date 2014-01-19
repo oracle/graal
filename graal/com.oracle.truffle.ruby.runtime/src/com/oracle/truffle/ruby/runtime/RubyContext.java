@@ -16,12 +16,12 @@ import jnr.posix.*;
 
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.frame.*;
+import com.oracle.truffle.api.impl.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.api.source.*;
 import com.oracle.truffle.ruby.runtime.configuration.*;
 import com.oracle.truffle.ruby.runtime.control.*;
 import com.oracle.truffle.ruby.runtime.core.*;
-import com.oracle.truffle.ruby.runtime.debug.*;
 import com.oracle.truffle.ruby.runtime.methods.*;
 import com.oracle.truffle.ruby.runtime.objects.*;
 import com.oracle.truffle.ruby.runtime.subsystems.*;
@@ -40,7 +40,7 @@ public class RubyContext implements ExecutionContext {
     private final ThreadManager threadManager;
     private final FiberManager fiberManager;
     private final AtExitManager atExitManager;
-    private final RubyDebugManager debugManager;
+    private final DebugManager debugManager;
     private final SourceManager sourceManager;
     private final ASTPrinter astPrinter;
 
@@ -76,7 +76,7 @@ public class RubyContext implements ExecutionContext {
         atExitManager = new AtExitManager();
         sourceManager = new SourceManager();
 
-        debugManager = configuration.getDebug() ? new RubyDebugManager(this) : null;
+        debugManager = configuration.getDebug() ? new DefaultDebugManager(this) : null;
 
         // Must initialize threads before fibers
 
@@ -88,7 +88,7 @@ public class RubyContext implements ExecutionContext {
         return "Ruby";
     }
 
-    public RubyDebugManager getDebugManager() {
+    public DebugManager getDebugManager() {
         return debugManager;
     }
 

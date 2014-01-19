@@ -16,8 +16,6 @@ import java.util.regex.*;
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.impl.*;
-import com.oracle.truffle.api.nodes.instrument.*;
-import com.oracle.truffle.api.nodes.instrument.InstrumentationProbeNode.ProbeChain;
 import com.oracle.truffle.ruby.nodes.*;
 import com.oracle.truffle.ruby.nodes.call.*;
 import com.oracle.truffle.ruby.nodes.cast.*;
@@ -87,15 +85,6 @@ public class Translator implements org.jrubyparser.NodeVisitor {
         nodeDefinedNames.put(org.jrubyparser.ast.OrNode.class, "expression");
         nodeDefinedNames.put(org.jrubyparser.ast.LocalVarNode.class, "local-variable");
         nodeDefinedNames.put(org.jrubyparser.ast.DVarNode.class, "local-variable");
-    }
-
-    private static final Set<String> debugIgnoredCalls = new HashSet<>();
-
-    static {
-        debugIgnoredCalls.add("downto");
-        debugIgnoredCalls.add("each");
-        debugIgnoredCalls.add("times");
-        debugIgnoredCalls.add("upto");
     }
 
     /**
@@ -301,17 +290,6 @@ public class Translator implements org.jrubyparser.NodeVisitor {
         final ArgumentsAndBlockTranslation argumentsAndBlock = translateArgumentsAndBlock(sourceSection, block, args, extraArgument);
 
         RubyNode translated = new CallNode(context, sourceSection, node.getName(), receiverTranslated, argumentsAndBlock.getBlock(), argumentsAndBlock.isSplatted(), argumentsAndBlock.getArguments());
-
-        if (context.getConfiguration().getDebug()) {
-            final CallNode callNode = (CallNode) translated;
-            if (!debugIgnoredCalls.contains(callNode.getName())) {
-
-                final RubyProxyNode proxy = new RubyProxyNode(context, translated);
-                proxy.markAs(NodePhylum.CALL);
-                proxy.getProbeChain().appendProbe(new RubyCallProbe(context, node.getName()));
-                translated = proxy;
-            }
-        }
 
         return translated;
     }
@@ -1162,21 +1140,6 @@ public class Translator implements org.jrubyparser.NodeVisitor {
 
         RubyNode translated = ((ReadNode) lhs).makeWriteNode(rhs);
 
-        if (context.getConfiguration().getDebug()) {
-            final UniqueMethodIdentifier methodIdentifier = environment.findMethodForLocalVar(node.getName());
-
-            RubyProxyNode proxy;
-            if (translated instanceof RubyProxyNode) {
-                proxy = (RubyProxyNode) translated;
-            } else {
-                proxy = new RubyProxyNode(context, translated);
-            }
-            proxy.markAs(NodePhylum.ASSIGNMENT);
-            context.getDebugManager().registerLocalDebugProxy(methodIdentifier, node.getName(), proxy.getProbeChain());
-
-            translated = proxy;
-        }
-
         return translated;
     }
 
@@ -1476,25 +1439,6 @@ public class Translator implements org.jrubyparser.NodeVisitor {
     @Override
     public Object visitNewlineNode(org.jrubyparser.ast.NewlineNode node) {
         RubyNode translated = (RubyNode) node.getNextNode().accept(this);
-
-        if (context.getConfiguration().getDebug()) {
-
-            RubyProxyNode proxy;
-            if (translated instanceof RubyProxyNode) {
-                proxy = (RubyProxyNode) translated;
-                if (proxy.getChild() instanceof CallNode) {
-                    // Special case; replace proxy with one registered by line, merge in information
-                    final CallNode callNode = (CallNode) proxy.getChild();
-                    final ProbeChain probeChain = proxy.getProbeChain();
-
-                    proxy = new RubyProxyNode(context, callNode, probeChain);
-                }
-            } else {
-                proxy = new RubyProxyNode(context, translated);
-            }
-            proxy.markAs(NodePhylum.STATEMENT);
-            translated = proxy;
-        }
 
         if (context.getConfiguration().getTrace()) {
             RubyProxyNode proxy;

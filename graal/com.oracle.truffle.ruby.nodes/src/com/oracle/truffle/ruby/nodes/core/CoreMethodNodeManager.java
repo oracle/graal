@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013 Oracle and/or its affiliates. All rights reserved. This
+ * Copyright (c) 2013, 2014 Oracle and/or its affiliates. All rights reserved. This
  * code is released under a tri EPL/GPL/LGPL license. You can use it,
  * redistribute it and/or modify it under the terms of the:
  *
@@ -17,7 +17,6 @@ import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.ruby.nodes.*;
 import com.oracle.truffle.ruby.nodes.control.*;
-import com.oracle.truffle.ruby.nodes.debug.*;
 import com.oracle.truffle.ruby.nodes.methods.arguments.*;
 import com.oracle.truffle.ruby.nodes.objects.*;
 import com.oracle.truffle.ruby.runtime.*;
@@ -48,7 +47,6 @@ public abstract class CoreMethodNodeManager {
         getMethods(methods, ClassNodesFactory.getFactories());
         getMethods(methods, ContinuationNodesFactory.getFactories());
         getMethods(methods, ComparableNodesFactory.getFactories());
-        getMethods(methods, DebugNodesFactory.getFactories());
         getMethods(methods, DirNodesFactory.getFactories());
         getMethods(methods, ExceptionNodesFactory.getFactories());
         getMethods(methods, FalseClassNodesFactory.getFactories());

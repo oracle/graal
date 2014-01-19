@@ -42,9 +42,4 @@ public interface ExecutionContext {
      */
     DebugManager getDebugManager();
 
-    /**
-     * Gets access to utilities for printing different aspects of a Truffle AST.
-     */
-    ASTPrinter getASTPrinter();
-
 }

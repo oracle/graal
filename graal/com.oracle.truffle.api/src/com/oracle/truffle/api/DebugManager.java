@@ -27,7 +27,7 @@ package com.oracle.truffle.api;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.api.nodes.instrument.*;
-import com.oracle.truffle.api.source.*;
+import com.oracle.truffle.api.nodes.instrument.InstrumentationProbeNode.ProbeChain;
 
 /**
  * Language-agnostic access to AST-based debugging support.
@@ -36,40 +36,6 @@ import com.oracle.truffle.api.source.*;
  */
 public interface DebugManager {
 
-    /**
-     * Gets a list of current breakpoints.
-     */
-    LineBreakpoint[] getBreakpoints();
-
-    /**
-     * Sets a breakpoint at a line-based location.
-     */
-    LineBreakpoint setBreakpoint(SourceLineLocation lineLocation);
-
-    /**
-     * Sets a breakpoint at a line-based location with a boolean expression in the guest language to
-     * serve as a break condition.
-     */
-    LineBreakpoint setConditionalBreakpoint(SourceLineLocation lineLocation, String condition);
-
-    /**
-     * Sets a breakpoint at a line-based location that will remove itself when hit.
-     */
-    LineBreakpoint setOneShotBreakpoint(SourceLineLocation lineLocation);
-
-    /**
-     * Is there a line-based breakpoint set at a location?
-     */
-    boolean hasBreakpoint(SourceLineLocation lineLocation);
-
-    /**
-     * Removes a breakpoint at a line-based location.
-     */
-    void removeBreakpoint(SourceLineLocation lineLocation);
-
-    /**
-     * Notification from Truffle execution that execution should halt in a debugging context.
-     */
     /**
      * Receives notification of a suspended execution context; execution resumes when this method
      * returns.
@@ -80,14 +46,10 @@ public interface DebugManager {
      */
     void haltedAt(Node astNode, MaterializedFrame frame);
 
-    /**
-     * Description of a line-based breakpoint.
-     */
-    interface LineBreakpoint {
+    void notifyFinishedLoading(Source source);
 
-        SourceLineLocation getSourceLineLocation();
+    void notifyStartLoading(Source source);
 
-        String getDebugStatus();
-    }
+    ProbeChain getProbeChain(SourceSection sourceSection);
 
 }
