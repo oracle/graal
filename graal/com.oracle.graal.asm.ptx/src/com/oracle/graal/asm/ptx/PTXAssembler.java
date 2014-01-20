@@ -700,6 +700,9 @@ public class PTXAssembler extends AbstractPTXAssembler {
         bra(str);
     }
 
+    /**
+     * @param r
+     */
     public void nullCheck(Register r) {
         // setp(....);
     }
