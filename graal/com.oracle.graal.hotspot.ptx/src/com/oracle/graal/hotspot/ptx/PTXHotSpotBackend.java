@@ -141,8 +141,8 @@ public class PTXHotSpotBackend extends HotSpotBackend {
             public StructuredGraph getGraphFor(ResolvedJavaMethod method) {
                 if (canOffloadToGPU(method)) {
                     ExternalCompilationResult ptxCode = PTXHotSpotBackend.this.compileKernel(method, true);
-                    InstalledCode installedPTXCode = PTXHotSpotBackend.this.installKernel(method, ptxCode);
-                    return new PTXWrapperBuilder(method, installedPTXCode.getStart(), getRuntime().getHostBackend().getProviders()).getGraph();
+                    HotSpotNmethod installedPTXCode = PTXHotSpotBackend.this.installKernel(method, ptxCode);
+                    return new PTXWrapperBuilder(method, installedPTXCode, getRuntime().getHostBackend().getProviders()).getGraph();
                 }
                 return null;
             }
@@ -181,7 +181,7 @@ public class PTXHotSpotBackend extends HotSpotBackend {
 
     }
 
-    public InstalledCode installKernel(ResolvedJavaMethod method, ExternalCompilationResult ptxCode) {
+    public HotSpotNmethod installKernel(ResolvedJavaMethod method, ExternalCompilationResult ptxCode) {
         assert ptxCode.getEntryPoint() != 0L;
         return getProviders().getCodeCache().addExternalMethod(method, ptxCode);
     }
