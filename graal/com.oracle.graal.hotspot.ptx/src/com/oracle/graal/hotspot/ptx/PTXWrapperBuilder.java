@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.hotspot.ptx;
 
+import static com.oracle.graal.api.meta.DeoptimizationAction.*;
 import static com.oracle.graal.api.meta.DeoptimizationReason.*;
 import static com.oracle.graal.api.meta.LocationIdentity.*;
 import static com.oracle.graal.api.meta.MetaUtil.*;
@@ -97,9 +98,9 @@ public class PTXWrapperBuilder extends GraphKit {
      * Creates the graph implementing the CPU to GPU transition.
      * 
      * @param method a method that has been compiled to GPU binary code
-     * @param kernelAddress the entry point of the GPU binary for {@code kernelMethod}
+     * @param ptxInstalledCode the installed GPU binary for {@code method}
      */
-    public PTXWrapperBuilder(ResolvedJavaMethod method, long kernelAddress, HotSpotProviders providers) {
+    public PTXWrapperBuilder(ResolvedJavaMethod method, HotSpotNmethod ptxInstalledCode, HotSpotProviders providers) {
         super(new StructuredGraph(method), providers);
         int wordSize = providers.getCodeCache().getTarget().wordSize;
         Kind wordKind = providers.getCodeCache().getTarget().wordKind;
@@ -132,11 +133,13 @@ public class PTXWrapperBuilder extends GraphKit {
             }
         }
 
+        InvokeNode kernel = createInvoke(getClass(), "getKernelStart", ConstantNode.forObject(ptxInstalledCode, providers.getMetaAccess(), getGraph()));
+
         AllocaNode buf = append(new AllocaNode(bufSize / wordSize, objects));
 
         Map<LaunchArg, ValueNode> args = new EnumMap<>(LaunchArg.class);
         args.put(Thread, append(new ReadRegisterNode(providers.getRegisters().getThreadRegister(), true, false)));
-        args.put(Kernel, ConstantNode.forLong(kernelAddress, getGraph()));
+        args.put(Kernel, kernel);
         args.put(DimX, forInt(1, getGraph()));
         args.put(DimY, forInt(1, getGraph()));
         args.put(DimZ, forInt(1, getGraph()));
@@ -249,6 +252,19 @@ public class PTXWrapperBuilder extends GraphKit {
                 }
             }
         }
+    }
+
+    /**
+     * Snippet invoked to get the {@linkplain HotSpotNmethod#getStart() entry point} of the kernel,
+     * deoptimizing if the kernel is invalid.
+     */
+    @Snippet
+    private static long getKernelStart(HotSpotNmethod ptxKernel) {
+        long start = ptxKernel.getStart();
+        if (start == 0L) {
+            DeoptimizeNode.deopt(InvalidateRecompile, RuntimeConstraint);
+        }
+        return start;
     }
 
     /**

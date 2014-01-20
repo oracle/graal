@@ -57,13 +57,18 @@ public abstract class PTXTest extends GraalCompilerTest {
         return compileKernel(getMetaAccess().lookupJavaMethod(getMethod(test)));
     }
 
+    protected HotSpotNmethod installKernel(ResolvedJavaMethod method, ExternalCompilationResult ptxCode) {
+        PTXHotSpotBackend ptxBackend = getPTXBackend();
+        return ptxBackend.installKernel(method, ptxCode);
+    }
+
     @Override
     protected InstalledCode getCode(ResolvedJavaMethod method, StructuredGraph graph) {
         PTXHotSpotBackend ptxBackend = getPTXBackend();
         ExternalCompilationResult ptxCode = compileKernel(method);
         Assume.assumeTrue(ptxBackend.isDeviceInitialized());
-        InstalledCode installedPTXCode = ptxBackend.installKernel(method, ptxCode);
-        StructuredGraph wrapper = new PTXWrapperBuilder(method, installedPTXCode.getStart(), (HotSpotProviders) getProviders()).getGraph();
+        HotSpotNmethod installedPTXCode = installKernel(method, ptxCode);
+        StructuredGraph wrapper = new PTXWrapperBuilder(method, installedPTXCode, (HotSpotProviders) getProviders()).getGraph();
         return super.getCode(method, wrapper);
     }
 
