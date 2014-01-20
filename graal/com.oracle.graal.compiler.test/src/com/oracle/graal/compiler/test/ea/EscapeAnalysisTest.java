@@ -213,8 +213,9 @@ public class EscapeAnalysisTest extends EATestBase {
         prepareGraph("testFullyUnrolledLoopSnippet", false);
         new LoopFullUnrollPhase(new CanonicalizerPhase(true)).apply(graph, context);
         new PartialEscapePhase(false, new CanonicalizerPhase(true)).apply(graph, context);
-        Assert.assertTrue(returnNode.result() instanceof AllocatedObjectNode);
-        CommitAllocationNode commit = ((AllocatedObjectNode) returnNode.result()).getCommit();
+        Assert.assertEquals(1, returnNodes.size());
+        Assert.assertTrue(returnNodes.get(0).result() instanceof AllocatedObjectNode);
+        CommitAllocationNode commit = ((AllocatedObjectNode) returnNodes.get(0).result()).getCommit();
         Assert.assertEquals(2, commit.getValues().size());
         Assert.assertEquals(1, commit.getVirtualObjects().size());
         Assert.assertTrue("non-cyclic data structure expected", commit.getVirtualObjects().get(0) != commit.getValues().get(0));

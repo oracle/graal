@@ -94,6 +94,8 @@ public class PTXHotSpotBackend extends HotSpotBackend {
 
     public PTXHotSpotBackend(HotSpotGraalRuntime runtime, HotSpotProviders providers) {
         super(runtime, providers);
+        CompilerToGPU compilerToGPU = getRuntime().getCompilerToGPU();
+        deviceInitialized = OmitDeviceInit || compilerToGPU.deviceInit();
     }
 
     @Override
@@ -110,7 +112,6 @@ public class PTXHotSpotBackend extends HotSpotBackend {
     public void completeInitialization() {
         HotSpotHostForeignCallsProvider hostForeignCalls = (HotSpotHostForeignCallsProvider) getRuntime().getHostProviders().getForeignCalls();
         CompilerToGPU compilerToGPU = getRuntime().getCompilerToGPU();
-        deviceInitialized = OmitDeviceInit || compilerToGPU.deviceInit();
         if (deviceInitialized) {
             long launchKernel = compilerToGPU.getLaunchKernelAddress();
             hostForeignCalls.registerForeignCall(LAUNCH_KERNEL, launchKernel, NativeCall, DESTROYS_REGISTERS, NOT_LEAF, NOT_REEXECUTABLE, ANY_LOCATION);

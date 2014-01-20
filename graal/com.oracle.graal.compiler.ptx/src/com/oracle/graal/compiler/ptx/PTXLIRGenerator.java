@@ -827,7 +827,8 @@ public class PTXLIRGenerator extends LIRGenerator {
 
     @Override
     public void emitNullCheck(ValueNode v, DeoptimizingNode deopting) {
-        throw GraalInternalError.unimplemented("PTXLIRGenerator.emitNullCheck()");
+        assert v.kind() == Kind.Object;
+        append(new PTXMove.NullCheckOp(load(operand(v)), state(deopting)));
     }
 
     @Override

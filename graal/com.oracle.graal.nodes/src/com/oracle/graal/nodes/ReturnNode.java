@@ -22,10 +22,11 @@
  */
 package com.oracle.graal.nodes;
 
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
-public final class ReturnNode extends ControlSinkNode implements LIRLowerable {
+public final class ReturnNode extends ControlSinkNode implements LIRLowerable, IterableNodeType {
 
     @Input private ValueNode result;
     @Input private MemoryMapNode memoryMap;

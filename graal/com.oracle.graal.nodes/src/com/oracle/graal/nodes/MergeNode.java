@@ -24,6 +24,8 @@ package com.oracle.graal.nodes;
 
 import static com.oracle.graal.graph.iterators.NodePredicates.*;
 
+import java.util.*;
+
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.iterators.*;
@@ -194,6 +196,35 @@ public class MergeNode extends BeginStateSplitNode implements IterableNodeType, 
                 tool.addToWorkList(newEnd.predecessor()); // ?
             }
             graph().reduceTrivialMerge(this);
+        } else if (next instanceof ReturnNode) {
+            ReturnNode returnNode = (ReturnNode) next;
+            if (anchored().isNotEmpty() || returnNode.getMemoryMap() != null) {
+                return;
+            }
+            List<PhiNode> phis = phis().snapshot();
+            for (PhiNode phi : phis) {
+                for (Node usage : phi.usages().filter(isNotA(FrameState.class))) {
+                    if (usage != returnNode) {
+                        return;
+                    }
+                }
+            }
+
+            PhiNode returnValuePhi = returnNode.result() == null || !isPhiAtMerge(returnNode.result()) ? null : (PhiNode) returnNode.result();
+            List<AbstractEndNode> endNodes = forwardEnds().snapshot();
+            for (AbstractEndNode end : endNodes) {
+                ReturnNode newReturn = graph().add(new ReturnNode(returnValuePhi == null ? returnNode.result() : returnValuePhi.valueAt(end)));
+                end.replaceAtPredecessor(newReturn);
+            }
+            GraphUtil.killCFG(this);
+            for (AbstractEndNode end : endNodes) {
+                end.safeDelete();
+            }
+            for (PhiNode phi : phis) {
+                if (phi.isAlive() && phi.usages().isEmpty()) {
+                    GraphUtil.killWithUnusedFloatingInputs(phi);
+                }
+            }
         }
     }
 }

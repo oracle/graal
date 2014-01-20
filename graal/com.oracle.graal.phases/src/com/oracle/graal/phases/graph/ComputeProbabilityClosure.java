@@ -153,7 +153,7 @@ public class ComputeProbabilityClosure {
     }
 
     private static boolean doesNotAlwaysDeopt(StructuredGraph graph) {
-        return graph.getNodes().filter(ReturnNode.class).iterator().hasNext();
+        return graph.getNodes(ReturnNode.class).isNotEmpty();
     }
 
     private void computeLoopFactors() {

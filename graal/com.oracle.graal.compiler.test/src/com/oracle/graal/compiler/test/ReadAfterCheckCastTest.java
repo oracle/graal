@@ -86,7 +86,7 @@ public class ReadAfterCheckCastTest extends GraphScheduleTest {
             PhaseContext context = new PhaseContext(getProviders(), new Assumptions(false));
             new LoweringPhase(new CanonicalizerPhase(true), LoweringTool.StandardLoweringStage.HIGH_TIER).apply(graph, context);
             new FloatingReadPhase().apply(graph);
-            new OptimizeGuardAnchors().apply(graph);
+            new OptimizeGuardAnchorsPhase().apply(graph);
             new ReadEliminationPhase().apply(graph);
             new CanonicalizerPhase(true).apply(graph, context);
 

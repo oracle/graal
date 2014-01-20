@@ -30,67 +30,37 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.tiers.*;
 
-public class StraighteningTest extends GraalCompilerTest {
+public class MergeCanonicalizerTest extends GraalCompilerTest {
 
-    private static final String REFERENCE_SNIPPET = "ref";
+    public static int staticField;
 
-    public static boolean ref(int a, int b) {
-        return a == b;
+    private int field;
+
+    @Test
+    public void testSplitReturn() {
+        test("testSplitReturnSnippet", 2);
+        testReturnCount("testSplitReturnSnippet", 2);
     }
 
-    public static boolean test1Snippet(int a, int b) {
-        int c = a;
-        if (c == b) {
-            c = 0x55;
-        }
-        if (c != 0x55) {
-            return false;
-        }
-        return true;
-    }
-
-    public static boolean test3Snippet(int a, int b) {
-        int val = (int) System.currentTimeMillis();
-        int c = val + 1;
-        if (a == b) {
-            c = val;
-        }
-        if (c != val) {
-            return false;
-        }
-        return true;
-    }
-
-    public static boolean test2Snippet(int a, int b) {
-        int c;
-        if (a == b) {
-            c = 1;
+    public int testSplitReturnSnippet(int b) {
+        int v;
+        if (b < 0) {
+            staticField = 1;
+            v = 10;
         } else {
-            c = 0;
+            staticField = 2;
+            v = 20;
         }
-        return c == 1;
+        int i = field;
+        i = field + i;
+        return v;
     }
 
-    @Test(expected = AssertionError.class)
-    public void test1() {
-        test("test1Snippet");
-    }
-
-    public void test2() {
-        test("test2Snippet");
-    }
-
-    @Test(expected = AssertionError.class)
-    public void test3() {
-        test("test3Snippet");
-    }
-
-    private void test(final String snippet) {
-        // No debug scope to reduce console noise for @Test(expected = ...) tests
+    private void testReturnCount(String snippet, int returnCount) {
         StructuredGraph graph = parse(snippet);
-        Debug.dump(graph, "Graph");
         new CanonicalizerPhase(true).apply(graph, new PhaseContext(getProviders(), new Assumptions(false)));
-        StructuredGraph referenceGraph = parse(REFERENCE_SNIPPET);
-        assertEquals(referenceGraph, graph);
+        new CanonicalizerPhase(true).apply(graph, new PhaseContext(getProviders(), new Assumptions(false)));
+        Debug.dump(graph, "Graph");
+        assertEquals(returnCount, graph.getNodes(ReturnNode.class).count());
     }
 }

@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.nodes;
 
+import java.util.*;
+
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
@@ -34,4 +36,6 @@ public abstract class MemoryMapNode extends FloatingNode {
     }
 
     public abstract MemoryNode getLastLocationAccess(LocationIdentity locationIdentity);
+
+    public abstract Set<LocationIdentity> getLocations();
 }

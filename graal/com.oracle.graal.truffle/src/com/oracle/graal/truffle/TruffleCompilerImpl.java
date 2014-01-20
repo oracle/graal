@@ -156,7 +156,7 @@ public class TruffleCompilerImpl implements TruffleCompiler {
         }
         long timePartialEvaluationFinished = System.nanoTime();
         int nodeCountPartialEval = graph.getNodeCount();
-        InstalledCode compiledMethod = compileMethodHelper(graph, config, assumptions);
+        InstalledCode compiledMethod = compileMethodHelper(graph, config, assumptions, compilable.toString());
         long timeCompilationFinished = System.nanoTime();
         int nodeCountLowered = graph.getNodeCount();
 
@@ -208,7 +208,7 @@ public class TruffleCompilerImpl implements TruffleCompiler {
         }
     }
 
-    public InstalledCode compileMethodHelper(StructuredGraph graph, GraphBuilderConfiguration config, Assumptions assumptions) {
+    public InstalledCode compileMethodHelper(StructuredGraph graph, GraphBuilderConfiguration config, Assumptions assumptions, String name) {
         try (Scope s = Debug.scope("TruffleFinal")) {
             Debug.dump(graph, "After TruffleTier");
         } catch (Throwable e) {
@@ -219,7 +219,7 @@ public class TruffleCompilerImpl implements TruffleCompiler {
         try (TimerCloseable a = CompilationTime.start(); Scope s = Debug.scope("TruffleGraal.GraalCompiler", graph, providers.getCodeCache())) {
             CodeCacheProvider codeCache = providers.getCodeCache();
             CallingConvention cc = getCallingConvention(codeCache, Type.JavaCallee, graph.method(), false);
-            CompilationResult compilationResult = new CompilationResult(graph.method().toString());
+            CompilationResult compilationResult = new CompilationResult(name);
             result = compileGraph(graph, cc, graph.method(), providers, backend, codeCache.getTarget(), null, createGraphBuilderSuite(config), OptimisticOptimizations.ALL, getProfilingInfo(graph),
                             new SpeculationLog(), suites, false, compilationResult, CompilationResultBuilderFactory.Default);
         } catch (Throwable e) {

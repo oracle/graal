@@ -65,7 +65,7 @@ public class MidTier extends PhaseSuite<MidTierContext> {
         }
 
         if (OptEliminatePartiallyRedundantGuards.getValue()) {
-            appendPhase(new OptimizeGuardAnchors());
+            appendPhase(new OptimizeGuardAnchorsPhase());
         }
 
         if (ConditionalElimination.getValue() && OptCanonicalizer.getValue()) {
@@ -73,7 +73,7 @@ public class MidTier extends PhaseSuite<MidTierContext> {
         }
 
         if (OptEliminatePartiallyRedundantGuards.getValue()) {
-            appendPhase(new OptimizeGuardAnchors());
+            appendPhase(new OptimizeGuardAnchorsPhase());
         }
 
         if (OptCanonicalizer.getValue()) {
