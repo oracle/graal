@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.compiler.ptx.test;
 
+import java.lang.ref.*;
+
 import org.junit.*;
 
 import com.oracle.graal.api.code.*;
@@ -31,26 +33,32 @@ import com.oracle.graal.hotspot.ptx.*;
 import com.oracle.graal.nodes.*;
 
 /**
- * A full GC on HotSpot will unload an nmethod that has an embedded oop that is only referenced from
- * the nmethod. The nmethod created for a {@linkplain PTXWrapperBuilder PTX kernel wrapper} has an
- * embedded oop referring to the {@link HotSpotNmethod} linked with the nmethod for the installed
- * PTX kernel. This embedded oop is a weak as described above sp there must be another strong
- * reference from the wrapper to the {@link HotSpotNmethod} object.
+ * A full GC on HotSpot will unload an nmethod that contains an embedded oop which is the only
+ * reference to its referent. The nmethod created for a {@linkplain PTXWrapperBuilder PTX kernel
+ * wrapper} has an embedded oop referring to a {@link HotSpotNmethod} object associated with the
+ * nmethod for the installed PTX kernel. This embedded oop is a weak reference as described above so
+ * there must be another strong reference from the wrapper to the {@link HotSpotNmethod} object.
  */
 public class PTXMethodInvalidation2Test extends PTXTest {
 
     @Test
+    @Ignore("still need to make a strong reference from a PTX wrapper to a PTX kernel")
     public void test() {
         test("testSnippet", 100);
     }
 
     @Override
-    @Ignore("still need to make a strong reference from a PTX wrapper to a PTX kernel")
     protected InstalledCode getCode(ResolvedJavaMethod method, StructuredGraph graph) {
         InstalledCode code = super.getCode(method, graph);
 
-        // This seems to result in a full GC on HotSpot but there's no guarantee of that
-        System.gc();
+        // Try hard to force a full GC
+        int attempts = 0;
+        WeakReference<Object> ref = new WeakReference<>(new Object());
+        while (ref.get() != null) {
+            System.gc();
+            // Give up after 1000 attempts
+            Assume.assumeTrue(attempts++ < 1000);
+        }
 
         Assert.assertFalse(code.getStart() == 0L);
         return code;
