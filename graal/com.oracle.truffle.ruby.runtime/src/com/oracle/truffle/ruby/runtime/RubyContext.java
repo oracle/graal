@@ -172,7 +172,7 @@ public class RubyContext implements ExecutionContext {
         try {
             final RubyParserResult parseResult = parser.parse(context, source, parserContext, parentFrame);
             final RubyArguments arguments = new RubyArguments(parentFrame, self, null);
-            final CallTarget callTarget = Truffle.getRuntime().createCallTarget(parseResult.getRootNode(), parseResult.getFrameDescriptor());
+            final CallTarget callTarget = Truffle.getRuntime().createCallTarget(parseResult.getRootNode());
 
             return callTarget.call(null, arguments);
         } catch (RaiseException e) {

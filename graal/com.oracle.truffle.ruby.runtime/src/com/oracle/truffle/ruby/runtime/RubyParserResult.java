@@ -9,7 +9,6 @@
  */
 package com.oracle.truffle.ruby.runtime;
 
-import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
 
 /**
@@ -19,23 +18,15 @@ import com.oracle.truffle.api.nodes.*;
  */
 public class RubyParserResult {
 
-    private RootNode rootNode;
-    private FrameDescriptor frameDescriptor;
+    private final RootNode rootNode;
 
-    public RubyParserResult(RootNode rootNode, FrameDescriptor frameDescriptor) {
+    public RubyParserResult(RootNode rootNode) {
         assert rootNode != null;
-        assert frameDescriptor != null;
-
         this.rootNode = rootNode;
-        this.frameDescriptor = frameDescriptor;
     }
 
     public RootNode getRootNode() {
         return rootNode;
-    }
-
-    public FrameDescriptor getFrameDescriptor() {
-        return frameDescriptor;
     }
 
 }
