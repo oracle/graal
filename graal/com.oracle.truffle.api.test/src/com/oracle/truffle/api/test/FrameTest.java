@@ -65,7 +65,7 @@ public class FrameTest {
         TruffleRuntime runtime = Truffle.getRuntime();
         FrameDescriptor frameDescriptor = new FrameDescriptor();
         FrameSlot slot = frameDescriptor.addFrameSlot("localVar", FrameSlotKind.Int);
-        TestRootNode rootNode = new TestRootNode(new AssignLocal(slot), new ReadLocal(slot));
+        TestRootNode rootNode = new TestRootNode(frameDescriptor, new AssignLocal(slot), new ReadLocal(slot));
         CallTarget target = runtime.createCallTarget(rootNode);
         Object result = target.call();
         Assert.assertEquals(42, result);
@@ -76,8 +76,8 @@ public class FrameTest {
         @Child TestChildNode left;
         @Child TestChildNode right;
 
-        public TestRootNode(TestChildNode left, TestChildNode right) {
-            super(null);
+        public TestRootNode(FrameDescriptor descriptor, TestChildNode left, TestChildNode right) {
+            super(null, descriptor);
             this.left = adoptChild(left);
             this.right = adoptChild(right);
         }
