@@ -181,9 +181,27 @@ public class PTXHotSpotBackend extends HotSpotBackend {
 
     }
 
-    public HotSpotNmethod installKernel(ResolvedJavaMethod method, ExternalCompilationResult ptxCode) {
-        assert ptxCode.getEntryPoint() != 0L;
-        return getProviders().getCodeCache().addExternalMethod(method, ptxCode);
+    /**
+     * A list of the {@linkplain #installKernel(ResolvedJavaMethod, ExternalCompilationResult)
+     * installed} kernels. This is required so that there is a strong reference to each installed
+     * kernel as long as it is {@linkplain HotSpotNmethod#isValid() valid}. The list is pruned of
+     * invalid kernels every time a new kernel is installed.
+     */
+    private List<HotSpotNmethod> installedKernels = new LinkedList<>();
+
+    public final HotSpotNmethod installKernel(ResolvedJavaMethod method, ExternalCompilationResult ptxCode) {
+        assert OmitDeviceInit || ptxCode.getEntryPoint() != 0L;
+        HotSpotNmethod kernel = getProviders().getCodeCache().addExternalMethod(method, ptxCode);
+        synchronized (installedKernels) {
+            for (Iterator<HotSpotNmethod> i = installedKernels.iterator(); i.hasNext();) {
+                HotSpotNmethod entry = i.next();
+                if (!entry.isValid()) {
+                    i.remove();
+                }
+            }
+            installedKernels.add(kernel);
+        }
+        return kernel;
     }
 
     static final class RegisterAnalysis extends ValueProcedure {

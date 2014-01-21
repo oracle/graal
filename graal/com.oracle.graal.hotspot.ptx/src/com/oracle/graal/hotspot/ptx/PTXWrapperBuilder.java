@@ -54,9 +54,9 @@ import com.oracle.graal.replacements.nodes.*;
 import com.oracle.graal.word.*;
 
 /**
- * Utility for building a graph that "wraps" the PTX binary compiled for a method. Such a wrapper
- * handles the transition from the host CPU to the GPU and back. The graph created is something like
- * the following pseudo code with UPPER CASE denoting compile-time constants:
+ * Utility for building a graph that "wraps" a compiled PTX kernel. Such a wrapper handles the
+ * transition from the host CPU to the GPU and back. The graph created is something like the
+ * following pseudo code with UPPER CASE denoting compile-time constants:
  * 
  * <pre>
  *     T kernel(p0, p1, ..., pN) {
@@ -66,6 +66,10 @@ import com.oracle.graal.word.*;
  *         return convert(result);
  *     }
  * </pre>
+ * <p>
+ * The generated graph includes a reference to the {@link HotSpotNmethod} for the kernel. There must
+ * be another reference to the same {@link HotSpotNmethod} object to ensure that the nmethod is not
+ * unloaded by the next full GC.
  */
 public class PTXWrapperBuilder extends GraphKit {
 
@@ -98,9 +102,10 @@ public class PTXWrapperBuilder extends GraphKit {
      * Creates the graph implementing the CPU to GPU transition.
      * 
      * @param method a method that has been compiled to GPU binary code
-     * @param ptxInstalledCode the installed GPU binary for {@code method}
+     * @param kernel the installed GPU binary for {@code method}
+     * @see PTXWrapperBuilder
      */
-    public PTXWrapperBuilder(ResolvedJavaMethod method, HotSpotNmethod ptxInstalledCode, HotSpotProviders providers) {
+    public PTXWrapperBuilder(ResolvedJavaMethod method, HotSpotNmethod kernel, HotSpotProviders providers) {
         super(new StructuredGraph(method), providers);
         int wordSize = providers.getCodeCache().getTarget().wordSize;
         Kind wordKind = providers.getCodeCache().getTarget().wordKind;
@@ -133,13 +138,13 @@ public class PTXWrapperBuilder extends GraphKit {
             }
         }
 
-        InvokeNode kernel = createInvoke(getClass(), "getKernelStart", ConstantNode.forObject(ptxInstalledCode, providers.getMetaAccess(), getGraph()));
+        InvokeNode kernelStart = createInvoke(getClass(), "getKernelStart", ConstantNode.forObject(kernel, providers.getMetaAccess(), getGraph()));
 
         AllocaNode buf = append(new AllocaNode(bufSize / wordSize, objects));
 
         Map<LaunchArg, ValueNode> args = new EnumMap<>(LaunchArg.class);
         args.put(Thread, append(new ReadRegisterNode(providers.getRegisters().getThreadRegister(), true, false)));
-        args.put(Kernel, kernel);
+        args.put(Kernel, kernelStart);
         args.put(DimX, forInt(1, getGraph()));
         args.put(DimY, forInt(1, getGraph()));
         args.put(DimZ, forInt(1, getGraph()));

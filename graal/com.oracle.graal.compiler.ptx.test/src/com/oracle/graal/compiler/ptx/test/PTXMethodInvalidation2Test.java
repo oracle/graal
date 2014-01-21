@@ -42,7 +42,6 @@ import com.oracle.graal.nodes.*;
 public class PTXMethodInvalidation2Test extends PTXTest {
 
     @Test
-    @Ignore("still need to make a strong reference from a PTX wrapper to a PTX kernel")
     public void test() {
         test("testSnippet", 100);
     }
@@ -57,7 +56,7 @@ public class PTXMethodInvalidation2Test extends PTXTest {
         while (ref.get() != null) {
             System.gc();
             // Give up after 1000 attempts
-            Assume.assumeTrue(attempts++ < 1000);
+            Assume.assumeTrue(++attempts < 1000);
         }
 
         Assert.assertFalse(code.getStart() == 0L);
