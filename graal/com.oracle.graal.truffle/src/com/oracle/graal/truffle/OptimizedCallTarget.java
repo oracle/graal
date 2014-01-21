@@ -71,6 +71,7 @@ public final class OptimizedCallTarget extends DefaultCallTarget implements Fram
 
     }
 
+    @CompilerDirectives.SlowPath
     @Override
     public Object call(PackedFrame caller, Arguments args) {
         return callHelper(caller, args);
