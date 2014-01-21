@@ -27,6 +27,7 @@ import static com.oracle.graal.phases.GraalOptions.*;
 import java.util.*;
 import java.util.Map.Entry;
 
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
@@ -107,7 +108,7 @@ public class GuardLoweringPhase extends BasePhase<MidTierContext> {
 
         private void processGuard(Node node) {
             GuardNode guard = (GuardNode) node;
-            if (guard.negated() && guard.condition() instanceof IsNullNode) {
+            if (guard.negated() && guard.condition() instanceof IsNullNode && (guard.getSpeculation() == null || guard.getSpeculation().equals(Constant.NULL_OBJECT))) {
                 ValueNode obj = ((IsNullNode) guard.condition()).object();
                 nullGuarded.put(obj, guard);
             }
