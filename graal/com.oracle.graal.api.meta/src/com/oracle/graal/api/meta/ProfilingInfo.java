@@ -121,4 +121,9 @@ public interface ProfilingInfo {
      */
     boolean isMature();
 
+    /**
+     * Force data to be treated as mature if possible.
+     */
+
+    void setMature();
 }
