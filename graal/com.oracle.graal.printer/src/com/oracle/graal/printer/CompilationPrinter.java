@@ -28,6 +28,7 @@ import java.io.*;
 import java.util.*;
 
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.code.CodeUtil.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
 
@@ -111,26 +112,38 @@ public class CompilationPrinter implements Closeable {
         end("compilation");
     }
 
+    private static class ArchitectureRegFormatter implements RefMapFormatter {
+
+        private final Register[] registers;
+
+        public ArchitectureRegFormatter(Architecture arch) {
+            registers = arch.getRegisters();
+        }
+
+        public String formatStackSlot(int frameRefMapIndex) {
+            return null;
+        }
+
+        public String formatRegister(int regRefMapIndex) {
+            return registers[regRefMapIndex].toString();
+        }
+    }
+
     /**
      * Formats given debug info as a multi line string.
      */
-    protected String debugInfoToString(BytecodePosition codePos, BitSet registerRefMap, BitSet frameRefMap, RegisterSaveLayout calleeSaveInfo, Architecture arch) {
+    protected String debugInfoToString(BytecodePosition codePos, ReferenceMap refMap, RegisterSaveLayout calleeSaveInfo, Architecture arch) {
         StringBuilder sb = new StringBuilder();
 
-        if (registerRefMap != null) {
+        if (refMap != null && refMap.hasRegisterRefMap()) {
             sb.append("reg-ref-map:");
-            Register[] registers = arch.getRegisters();
-            for (int reg = registerRefMap.nextSetBit(0); reg >= 0; reg = registerRefMap.nextSetBit(reg + 1)) {
-                sb.append(' ').append(arch == null ? "r" + reg : registers[reg]);
-            }
+            refMap.appendRegisterMap(sb, arch != null ? new ArchitectureRegFormatter(arch) : null);
             sb.append("\n");
         }
 
-        if (frameRefMap != null) {
+        if (refMap != null && refMap.hasFrameRefMap()) {
             sb.append("frame-ref-map:");
-            for (int slot = frameRefMap.nextSetBit(0); slot >= 0; slot = frameRefMap.nextSetBit(slot + 1)) {
-                sb.append(' ').append("s").append(slot);
-            }
+            refMap.appendFrameMap(sb, null);
             sb.append("\n");
         }
 

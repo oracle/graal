@@ -26,6 +26,7 @@ import java.lang.reflect.*;
 import java.util.*;
 
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.code.CodeUtil.DefaultRefMapFormatter;
 import com.oracle.graal.api.code.CodeUtil.RefMapFormatter;
 import com.oracle.graal.api.code.CompilationResult.Call;
 import com.oracle.graal.api.code.CompilationResult.DataPatch;
@@ -65,7 +66,7 @@ public abstract class HotSpotCodeCacheProvider implements CodeCacheProvider {
             HexCodeFile.addAnnotations(hcf, compResult.getAnnotations());
             addExceptionHandlersComment(compResult, hcf);
             Register fp = regConfig.getFrameRegister();
-            RefMapFormatter slotFormatter = new RefMapFormatter(target.arch, target.wordSize, fp, 0);
+            RefMapFormatter slotFormatter = new DefaultRefMapFormatter(target.arch, target.wordSize, fp, 0);
             for (Infopoint infopoint : compResult.getInfopoints()) {
                 if (infopoint instanceof Call) {
                     Call call = (Call) infopoint;

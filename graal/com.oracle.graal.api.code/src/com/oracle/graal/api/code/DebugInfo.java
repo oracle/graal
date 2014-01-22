@@ -23,15 +23,13 @@
 package com.oracle.graal.api.code;
 
 import java.io.*;
-import java.util.*;
 
 /**
  * Represents the debugging information for a particular point of execution. This information
  * includes:
  * <ul>
  * <li>a {@linkplain #getBytecodePosition() bytecode position}</li>
- * <li>a reference map for {@linkplain #getRegisterRefMap() registers}</li>
- * <li>a reference map for {@linkplain #getFrameRefMap() stack slots} in the current frame</li>
+ * <li>a reference map for registers and stack slots in the current frame</li>
  * <li>a map from bytecode locals and operand stack slots to their values or locations from which
  * their values can be read</li>
  * <li>a map from the registers (in the caller's frame) to the slots where they are saved in the
@@ -42,8 +40,7 @@ public class DebugInfo implements Serializable {
     private static final long serialVersionUID = -6047206624915812516L;
 
     private final BytecodePosition bytecodePosition;
-    private final BitSet registerRefMap;
-    private final BitSet frameRefMap;
+    private final ReferenceMap referenceMap;
     private RegisterSaveLayout calleeSaveInfo;
 
     /**
@@ -51,13 +48,11 @@ public class DebugInfo implements Serializable {
      * 
      * @param codePos the {@linkplain BytecodePosition code position} or {@linkplain BytecodeFrame
      *            frame} info
-     * @param registerRefMap the register map
-     * @param frameRefMap the reference map for {@code frame}, which may be {@code null}
+     * @param referenceMap the reference map
      */
-    public DebugInfo(BytecodePosition codePos, BitSet registerRefMap, BitSet frameRefMap) {
+    public DebugInfo(BytecodePosition codePos, ReferenceMap referenceMap) {
         this.bytecodePosition = codePos;
-        this.registerRefMap = registerRefMap;
-        this.frameRefMap = frameRefMap;
+        this.referenceMap = referenceMap;
     }
 
     /**
@@ -65,20 +60,6 @@ public class DebugInfo implements Serializable {
      */
     public boolean hasFrame() {
         return getBytecodePosition() instanceof BytecodeFrame;
-    }
-
-    /**
-     * @return {@code true} if this debug info has a reference map for the registers
-     */
-    public boolean hasRegisterRefMap() {
-        return getRegisterRefMap() != null && getRegisterRefMap().size() > 0;
-    }
-
-    /**
-     * @return {@code true} if this debug info has a reference map for the stack
-     */
-    public boolean hasStackRefMap() {
-        return getFrameRefMap() != null && getFrameRefMap().size() > 0;
     }
 
     /**
@@ -107,21 +88,8 @@ public class DebugInfo implements Serializable {
         return bytecodePosition;
     }
 
-    /**
-     * @return The reference map for the registers at this point. The reference map is <i>packed</i>
-     *         in that for bit {@code k} in byte {@code n}, it refers to the register whose
-     *         {@linkplain Register#number number} is {@code (k + n * 8)}.
-     */
-    public BitSet getRegisterRefMap() {
-        return registerRefMap;
-    }
-
-    /**
-     * @return The reference map for the stack frame at this point. A set bit at {@code k} in the
-     *         map represents stack slot number {@code k}.
-     */
-    public BitSet getFrameRefMap() {
-        return frameRefMap;
+    public ReferenceMap getReferenceMap() {
+        return referenceMap;
     }
 
     /**

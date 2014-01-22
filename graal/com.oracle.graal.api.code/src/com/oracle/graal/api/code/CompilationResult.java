@@ -696,8 +696,19 @@ public class CompilationResult implements Serializable {
 
     private static void appendDebugInfo(StringBuilder sb, DebugInfo info) {
         if (info != null) {
-            appendRefMap(sb, "stackMap", info.getFrameRefMap());
-            appendRefMap(sb, "registerMap", info.getRegisterRefMap());
+            ReferenceMap refMap = info.getReferenceMap();
+            if (refMap != null) {
+                if (refMap.hasFrameRefMap()) {
+                    sb.append(" stackMap[");
+                    refMap.appendFrameMap(sb, null);
+                    sb.append(']');
+                }
+                if (refMap.hasRegisterRefMap()) {
+                    sb.append(" registerMap[");
+                    refMap.appendRegisterMap(sb, null);
+                    sb.append(']');
+                }
+            }
             RegisterSaveLayout calleeSaveInfo = info.getCalleeSaveInfo();
             if (calleeSaveInfo != null) {
                 sb.append(" callee-save-info[");
@@ -718,12 +729,6 @@ public class CompilationResult implements Serializable {
                     }
                 }
             }
-        }
-    }
-
-    private static void appendRefMap(StringBuilder sb, String name, BitSet map) {
-        if (map != null) {
-            sb.append(' ').append(name).append('[').append(map.toString()).append(']');
         }
     }
 

@@ -116,8 +116,7 @@ public class LIRFrameState {
      * @param canHaveRegisters True if there can be any register map entries.
      */
     public void initDebugInfo(FrameMap frameMap, boolean canHaveRegisters) {
-        BitSet registerRefMap = (canHaveRegisters ? frameMap.initRegisterRefMap() : null);
-        debugInfo = new DebugInfo(topFrame, registerRefMap, frameMap.initFrameRefMap());
+        debugInfo = new DebugInfo(topFrame, frameMap.initReferenceMap(canHaveRegisters));
     }
 
     /**
@@ -129,16 +128,7 @@ public class LIRFrameState {
      * @param frameMap The frame map.
      */
     public void markLocation(Value location, FrameMap frameMap) {
-        if (location.getKind() == Kind.Object) {
-            if (isRegister(location)) {
-                debugInfo.getRegisterRefMap().set(asRegister(location).number);
-            } else if (isStackSlot(location)) {
-                int index = frameMap.indexForStackSlot(asStackSlot(location));
-                debugInfo.getFrameRefMap().set(index);
-            } else {
-                assert isConstant(location);
-            }
-        }
+        frameMap.setReference(location, debugInfo.getReferenceMap());
     }
 
     /**
