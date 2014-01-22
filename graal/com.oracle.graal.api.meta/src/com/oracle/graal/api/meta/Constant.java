@@ -159,6 +159,7 @@ public final class Constant extends Value {
             case Double:
                 return asDouble();
             case Object:
+            case NarrowOop:
                 return object;
             case Illegal:
                 return this;
@@ -171,7 +172,7 @@ public final class Constant extends Value {
         if (!ignoreKind && getKind() != other.getKind()) {
             return false;
         }
-        if (getKind() == Kind.Object) {
+        if (getKind() == Kind.Object || getKind() == Kind.NarrowOop) {
             return object == other.object;
         }
         return primitive == other.primitive && getPrimitiveAnnotation() == other.getPrimitiveAnnotation();
@@ -234,12 +235,12 @@ public final class Constant extends Value {
 
     /**
      * Returns the object reference this constant represents. The constant must have kind
-     * {@link Kind#Object}.
+     * {@link Kind#Object} or {@link Kind#NarrowOop}.
      * 
      * @return the constant value
      */
     public Object asObject() {
-        assert getKind() == Kind.Object;
+        assert getKind() == Kind.Object || getKind() == Kind.NarrowOop;
         return object;
     }
 
@@ -249,7 +250,7 @@ public final class Constant extends Value {
      * @return null if this constant is not primitive or has no annotation
      */
     public Object getPrimitiveAnnotation() {
-        return getKind() == Kind.Object ? null : object;
+        return getKind() == Kind.Object || getKind() == Kind.NarrowOop ? null : object;
     }
 
     /**
@@ -259,7 +260,7 @@ public final class Constant extends Value {
      */
     @Override
     public int hashCode() {
-        if (getKind() == Kind.Object) {
+        if (getKind() == Kind.Object || getKind() == Kind.NarrowOop) {
             return System.identityHashCode(object);
         }
         return (int) primitive * getKind().ordinal();
@@ -393,6 +394,16 @@ public final class Constant extends Value {
     }
 
     /**
+     * Creates a boxed narrow oop constant.
+     * 
+     * @param o the object value to box
+     * @return a boxed copy of {@code value}
+     */
+    public static Constant forNarrowOop(Object o) {
+        return new Constant(Kind.NarrowOop, o, 0L);
+    }
+
+    /**
      * Creates an annotated int or long constant. An annotation enables a client to associate some
      * extra semantic or debugging information with a primitive. An annotated primitive constant is
      * never {@linkplain #equals(Object) equal} to a non-annotated constant.
@@ -440,6 +451,8 @@ public final class Constant extends Value {
                 return forDouble((Double) value);
             case Object:
                 return forObject(value);
+            case NarrowOop:
+                return forNarrowOop(value);
             default:
                 throw new RuntimeException("cannot create Constant for boxed " + kind + " value");
         }
@@ -472,6 +485,8 @@ public final class Constant extends Value {
                 return LONG_0;
             case Object:
                 return NULL_OBJECT;
+            case NarrowOop:
+                return forNarrowOop(null);
             default:
                 throw new IllegalArgumentException(kind.toString());
         }

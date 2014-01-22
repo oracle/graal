@@ -31,24 +31,51 @@ public class ReferenceMap implements Serializable {
 
     private static final long serialVersionUID = -1052183095979496819L;
 
+    /**
+     * Contains 2 bits per register.
+     * <ul>
+     * <li>bit0 = 0: contains no references</li>
+     * <li>bit0 = 1, bit1 = 0: contains a wide oop</li>
+     * <li>bit0 = 1, bit1 = 1: contains a narrow oop</li>
+     * </ul>
+     */
     private final BitSet registerRefMap;
+
+    /**
+     * Contains 3 bits per stack slot.
+     * <ul>
+     * <li>bit0 = 0: contains no references</li>
+     * <li>bit0 = 1, bit1+2 = 0: contains a wide oop</li>
+     * <li>bit0 = 1, bit1 = 1: contains a narrow oop in the lower half</li>
+     * <li>bit0 = 1, bit2 = 1: contains a narrow oop in the upper half</li>
+     * </ul>
+     */
     private final BitSet frameRefMap;
 
     public ReferenceMap(int registerCount, int frameSlotCount) {
         if (registerCount > 0) {
-            this.registerRefMap = new BitSet(registerCount);
+            this.registerRefMap = new BitSet(registerCount * 2);
         } else {
             this.registerRefMap = null;
         }
-        this.frameRefMap = new BitSet(frameSlotCount);
+        this.frameRefMap = new BitSet(frameSlotCount * 3);
     }
 
-    public void setRegister(int idx) {
-        registerRefMap.set(idx);
+    public void setRegister(int idx, boolean narrow) {
+        registerRefMap.set(2 * idx);
+        if (narrow) {
+            registerRefMap.set(2 * idx + 1);
+        }
     }
 
-    public void setStackSlot(int idx) {
-        frameRefMap.set(idx);
+    public void setStackSlot(int idx, boolean narrow1, boolean narrow2) {
+        frameRefMap.set(3 * idx);
+        if (narrow1) {
+            frameRefMap.set(3 * idx + 1);
+        }
+        if (narrow2) {
+            frameRefMap.set(3 * idx + 2);
+        }
     }
 
     public boolean hasRegisterRefMap() {
@@ -76,8 +103,8 @@ public class ReferenceMap implements Serializable {
             formatter = new NumberedRefMapFormatter();
         }
 
-        for (int reg = registerRefMap.nextSetBit(0); reg >= 0; reg = registerRefMap.nextSetBit(reg + 1)) {
-            sb.append(' ').append(formatter.formatRegister(reg));
+        for (int reg = registerRefMap.nextSetBit(0); reg >= 0; reg = registerRefMap.nextSetBit(reg + 2)) {
+            sb.append(' ').append(formatter.formatRegister(reg / 2));
         }
     }
 
@@ -87,8 +114,8 @@ public class ReferenceMap implements Serializable {
             formatter = new NumberedRefMapFormatter();
         }
 
-        for (int slot = frameRefMap.nextSetBit(0); slot >= 0; slot = frameRefMap.nextSetBit(slot + 1)) {
-            sb.append(' ').append(formatter.formatStackSlot(slot));
+        for (int slot = frameRefMap.nextSetBit(0); slot >= 0; slot = frameRefMap.nextSetBit(slot + 3)) {
+            sb.append(' ').append(formatter.formatStackSlot(slot / 3));
         }
     }
 }

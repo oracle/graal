@@ -458,7 +458,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         if (c.getKind() == Kind.Long) {
             return Constant.forIntegerKind(Kind.Int, (int) (((c.asLong() - encoding.base) >> encoding.shift) & 0xffffffffL), c.getPrimitiveAnnotation());
         } else if (c.getKind() == Kind.Object) {
-            return Constant.forIntegerKind(Kind.Int, 0xdeaddead, c.asObject());
+            return Constant.forNarrowOop(c.asObject());
         } else {
             throw GraalInternalError.shouldNotReachHere();
         }

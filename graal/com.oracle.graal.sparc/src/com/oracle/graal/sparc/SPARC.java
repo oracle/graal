@@ -162,6 +162,7 @@ public class SPARC extends Architecture {
                 case Int:
                 case Long:
                 case Object:
+                case NarrowOop:
                     return true;
             }
         } else if (category == FPU) {

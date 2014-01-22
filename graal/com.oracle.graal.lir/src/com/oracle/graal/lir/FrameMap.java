@@ -360,12 +360,19 @@ public abstract class FrameMap {
      * @param refMap A reference map, as created by {@link #initReferenceMap(boolean)}.
      */
     public void setReference(Value location, ReferenceMap refMap) {
-        if (location.getKind() == Kind.Object) {
+        Kind kind = location.getKind();
+        if (kind == Kind.Object || kind == Kind.NarrowOop) {
             if (isRegister(location)) {
-                refMap.setRegister(asRegister(location).number);
+                refMap.setRegister(asRegister(location).number, kind == Kind.NarrowOop);
             } else if (isStackSlot(location)) {
-                int index = indexForStackSlot(asStackSlot(location));
-                refMap.setStackSlot(index);
+                if (kind == Kind.NarrowOop) {
+                    int offset = offsetForStackSlot(asStackSlot(location));
+                    assert offset % target.wordSize == 0 || offset % target.wordSize == target.wordSize / 2;
+                    refMap.setStackSlot(offset / target.wordSize, offset % target.wordSize == 0, offset % target.wordSize != 0);
+                } else {
+                    int index = indexForStackSlot(asStackSlot(location));
+                    refMap.setStackSlot(index, false, false);
+                }
             } else {
                 assert isConstant(location);
             }

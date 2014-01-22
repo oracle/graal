@@ -29,7 +29,6 @@ import java.nio.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.Register.RegisterCategory;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.graph.*;
 
 /**
  * Represents the HSAIL architecture.
@@ -166,39 +165,16 @@ public class HSAIL extends Architecture {
         Register reg;
         int encoding = 0;
         String regPrefix = null;
-        String argType = arg.getKind().getJavaName();
-        if (argType.equals("double") || argType.equals("long")) {
+        Kind kind = arg.getKind();
+        if (kind == Kind.Double || kind == Kind.Long) {
             regPrefix = "$d";
-        } else if (argType.equals("int") || argType.equals("float")) {
+        } else if (kind == Kind.Int || kind == Kind.Float || kind == Kind.NarrowOop) {
             regPrefix = "$s";
         } else {
             regPrefix = "$d";
         }
-        switch (argType) {
-            case "float":
-                reg = asFloatReg(arg);
-                encoding = reg.encoding();
-                break;
-            case "int":
-                reg = asIntReg(arg);
-                encoding = reg.encoding();
-                break;
-            case "long":
-                reg = asLongReg(arg);
-                encoding = reg.encoding();
-                break;
-            case "double":
-                reg = asDoubleReg(arg);
-                encoding = reg.encoding();
-                break;
-            case "Object":
-                reg = asObjectReg(arg);
-                encoding = reg.encoding();
-                break;
-            default:
-                GraalInternalError.shouldNotReachHere();
-                break;
-        }
+        reg = asRegister(arg);
+        encoding = reg.encoding();
         return new String(regPrefix + encoding);
     }
 
@@ -217,6 +193,7 @@ public class HSAIL extends Architecture {
                 case Int:
                 case Long:
                 case Object:
+                case NarrowOop:
                     return true;
             }
         } else if (category == FPU) {

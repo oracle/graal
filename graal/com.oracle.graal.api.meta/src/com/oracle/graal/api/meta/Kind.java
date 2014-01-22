@@ -57,6 +57,9 @@ public enum Kind implements PlatformKind {
     /** The Object kind, also used for arrays. */
     Object('a', "Object", false, null, null),
 
+    /** The narrow oop kind. */
+    NarrowOop('n', "NarrowOop", false, null, null),
+
     /** The void float kind. */
     Void('v', "void", false, java.lang.Void.TYPE, java.lang.Void.class),
 
