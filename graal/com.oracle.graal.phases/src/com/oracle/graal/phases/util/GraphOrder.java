@@ -26,102 +26,88 @@ import java.util.*;
 
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.phases.graph.*;
 
-public final class GraphOrder implements Iterable<Node> {
-
-    private final ArrayList<Node> nodes = new ArrayList<>();
+public final class GraphOrder {
 
     private GraphOrder() {
     }
 
-    public static GraphOrder forwardGraph(Graph graph) {
-        GraphOrder result = new GraphOrder();
-
+    /**
+     * Asserts that there are no (invalid) cycles in the given graph. First, an ordered list of all
+     * nodes in the graph (a total ordering) is created. A second run over this list checks whether
+     * inputs are scheduled before their usages.
+     * 
+     * @param graph the graph to be checked.
+     * @throws AssertionError if a cycle was detected.
+     */
+    public static boolean assertNonCyclicGraph(StructuredGraph graph) {
+        List<Node> order = createOrder(graph);
         NodeBitMap visited = graph.createNodeBitMap();
-
-        for (ControlSinkNode node : graph.getNodes().filter(ControlSinkNode.class)) {
-            result.visitForward(visited, node);
-        }
-        return result;
-    }
-
-    public static GraphOrder backwardGraph(Graph graph) {
-        GraphOrder result = new GraphOrder();
-
-        NodeBitMap visited = graph.createNodeBitMap();
-
-        for (Node node : forwardGraph(graph)) {
-            result.visitBackward(visited, node);
-        }
-        return result;
-    }
-
-    private void visitForward(NodeBitMap visited, Node node) {
-        if (node != null && !visited.isMarked(node)) {
-            visited.mark(node);
-            if (node.predecessor() != null) {
-                visitForward(visited, node.predecessor());
-            }
-            if (node instanceof MergeNode) {
-                // make sure that the cfg predecessors of a MergeNode are processed first
-                MergeNode merge = (MergeNode) node;
-                for (int i = 0; i < merge.forwardEndCount(); i++) {
-                    visitForward(visited, merge.forwardEndAt(i));
+        visited.clearAll();
+        for (Node node : order) {
+            if (node instanceof PhiNode && ((PhiNode) node).merge() instanceof LoopBeginNode) {
+                assert visited.isMarked(((PhiNode) node).valueAt(0));
+                // nothing to do
+            } else {
+                for (Node input : node.inputs()) {
+                    if (!visited.isMarked(input)) {
+                        if (input instanceof FrameState && node instanceof StateSplit && input == ((StateSplit) node).stateAfter()) {
+                            // nothing to do - after frame states are known, allowed cycles
+                        } else {
+                            assert false : "cycle detected: " + node + " -> " + input;
+                        }
+                    }
                 }
+            }
+            visited.mark(node);
+        }
+
+        return true;
+    }
+
+    private static List<Node> createOrder(StructuredGraph graph) {
+        final ArrayList<Node> nodes = new ArrayList<>();
+        final NodeBitMap visited = graph.createNodeBitMap();
+
+        new PostOrderNodeIterator<MergeableState.EmptyState>(graph.start(), new MergeableState.EmptyState()) {
+            @Override
+            protected void node(FixedNode node) {
+                visitForward(nodes, visited, node, false);
+            }
+        }.apply();
+        return nodes;
+    }
+
+    private static void visitForward(ArrayList<Node> nodes, NodeBitMap visited, Node node, boolean floatingOnly) {
+        if (node != null && !visited.isMarked(node)) {
+            assert !floatingOnly || !(node instanceof FixedNode) : "unexpected reference to fixed node: " + node;
+            visited.mark(node);
+            FrameState stateAfter = null;
+            if (node instanceof StateSplit) {
+                stateAfter = ((StateSplit) node).stateAfter();
             }
             for (Node input : node.inputs()) {
-                visitForward(visited, input);
+                if (input != stateAfter) {
+                    visitForward(nodes, visited, input, true);
+                }
             }
-            if (node instanceof LoopBeginNode) {
-                LoopBeginNode loopBegin = (LoopBeginNode) node;
-                for (LoopEndNode loopEnd : loopBegin.loopEnds()) {
-                    visitForward(visited, loopEnd);
+            if (node instanceof EndNode) {
+                EndNode end = (EndNode) node;
+                for (PhiNode phi : end.merge().phis()) {
+                    visitForward(nodes, visited, phi.valueAt(end), true);
                 }
             }
             nodes.add(node);
-        }
-    }
-
-    private void visitBackward(NodeBitMap visited, Node node) {
-        if (node != null && !visited.isMarked(node)) {
-            visited.mark(node);
-            for (Node successor : node.successors()) {
-                visitBackward(visited, successor);
-            }
-            for (Node usage : node.usages()) {
-                visitBackward(visited, usage);
-            }
-            nodes.add(node);
-        }
-    }
-
-    @Override
-    public Iterator<Node> iterator() {
-        return new Iterator<Node>() {
-
-            private int pos = 0;
-
-            private void removeDeleted() {
-                while (pos < nodes.size() && nodes.get(pos).isDeleted()) {
-                    pos++;
+            if (node instanceof MergeNode) {
+                for (PhiNode phi : ((MergeNode) node).phis()) {
+                    visited.mark(phi);
+                    nodes.add(phi);
                 }
             }
-
-            @Override
-            public boolean hasNext() {
-                removeDeleted();
-                return pos < nodes.size();
+            if (stateAfter != null) {
+                visitForward(nodes, visited, stateAfter, true);
             }
-
-            @Override
-            public Node next() {
-                return nodes.get(pos++);
-            }
-
-            @Override
-            public void remove() {
-                throw new UnsupportedOperationException();
-            }
-        };
+        }
     }
 }

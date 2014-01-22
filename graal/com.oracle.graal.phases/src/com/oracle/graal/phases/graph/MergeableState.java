@@ -61,4 +61,17 @@ public abstract class MergeableState<T> {
     public void afterSplit(AbstractBeginNode node) {
         // empty default implementation
     }
+
+    public static final class EmptyState extends MergeableState<EmptyState> {
+
+        @Override
+        public EmptyState clone() {
+            return this;
+        }
+
+        @Override
+        public boolean merge(MergeNode merge, List<EmptyState> withStates) {
+            return true;
+        }
+    }
 }
