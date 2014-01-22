@@ -112,7 +112,7 @@ public class GuardNode extends FloatingGuardedNode implements Canonicalizable, I
         } else if (negated && condition() instanceof ShortCircuitOrNode) {
             ShortCircuitOrNode or = (ShortCircuitOrNode) condition();
             GuardNode firstGuard = graph().unique(new GuardNode(or.getX(), getGuard(), reason, action, !or.isXNegated(), speculation));
-            GuardNode secondGuard = graph().unique(new GuardNode(or.getY(), firstGuard, reason, action, or.isYNegated(), speculation));
+            GuardNode secondGuard = graph().unique(new GuardNode(or.getY(), firstGuard, reason, action, !or.isYNegated(), speculation));
             return secondGuard;
         }
         return this;
