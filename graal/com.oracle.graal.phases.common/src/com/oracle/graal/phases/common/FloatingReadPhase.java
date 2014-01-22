@@ -308,19 +308,21 @@ public class FloatingReadPhase extends Phase {
                 modifiedLocations.addAll(initialState.lastMemorySnapshot.keySet());
             }
 
-            Map<LocationIdentity, PhiNode> phis = new HashMap<>();
+            Map<LocationIdentity, MemoryPhiNode> phis = new HashMap<>();
             for (LocationIdentity location : modifiedLocations) {
                 MemoryPhiNode phi = loop.graph().addWithoutUnique(new MemoryPhiNode(loop, location));
                 phi.addInput(ValueNodeUtil.asNode(initialState.getLastLocationAccess(location)));
                 phis.put(location, phi);
-                initialState.lastMemorySnapshot.put(location, phi);
+            }
+            for (Map.Entry<LocationIdentity, MemoryPhiNode> entry : phis.entrySet()) {
+                initialState.lastMemorySnapshot.put(entry.getKey(), entry.getValue());
             }
 
             LoopInfo<MemoryMapImpl> loopInfo = ReentrantNodeIterator.processLoop(this, loop, initialState);
 
             for (Map.Entry<LoopEndNode, MemoryMapImpl> entry : loopInfo.endStates.entrySet()) {
                 int endIndex = loop.phiPredecessorIndex(entry.getKey());
-                for (Map.Entry<LocationIdentity, PhiNode> phiEntry : phis.entrySet()) {
+                for (Map.Entry<LocationIdentity, MemoryPhiNode> phiEntry : phis.entrySet()) {
                     LocationIdentity key = phiEntry.getKey();
                     PhiNode phi = phiEntry.getValue();
                     phi.initializeValueAt(endIndex, ValueNodeUtil.asNode(entry.getValue().getLastLocationAccess(key)));
