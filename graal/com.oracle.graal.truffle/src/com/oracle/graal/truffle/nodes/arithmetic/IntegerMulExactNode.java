@@ -80,8 +80,12 @@ public class IntegerMulExactNode extends IntegerMulNode implements Canonicalizab
     }
 
     @NodeIntrinsic
-    public static native int multiplyExact(int a, int b);
+    public static int multiplyExact(int a, int b) {
+        return ExactMath.multiplyExact(a, b);
+    }
 
     @NodeIntrinsic
-    public static native long multiplyExact(long a, long b);
+    public static long multiplyExact(long a, long b) {
+        return ExactMath.multiplyExact(a, b);
+    }
 }

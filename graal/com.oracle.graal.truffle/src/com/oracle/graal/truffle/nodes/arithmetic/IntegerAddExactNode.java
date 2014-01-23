@@ -84,8 +84,12 @@ public class IntegerAddExactNode extends IntegerAddNode implements Canonicalizab
     }
 
     @NodeIntrinsic
-    public static native int addExact(int a, int b);
+    public static int addExact(int a, int b) {
+        return ExactMath.addExact(a, b);
+    }
 
     @NodeIntrinsic
-    public static native long addExact(long a, long b);
+    public static long addExact(long a, long b) {
+        return ExactMath.addExact(a, b);
+    }
 }

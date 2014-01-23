@@ -84,8 +84,12 @@ public class IntegerSubExactNode extends IntegerSubNode implements Canonicalizab
     }
 
     @NodeIntrinsic
-    public static native int subtractExact(int a, int b);
+    public static int subtractExact(int a, int b) {
+        return ExactMath.subtractExact(a, b);
+    }
 
     @NodeIntrinsic
-    public static native long subtractExact(long a, long b);
+    public static long subtractExact(long a, long b) {
+        return ExactMath.subtractExact(a, b);
+    }
 }
