@@ -172,6 +172,7 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
         return Boolean.valueOf(true);
     }
 
+    @Ignore("ImmutableCode override may not work reliably in non-hosted mode")
     @Test
     public void testBoxedBooleanAOT() {
         StructuredGraph result = compile("getBoxedBoolean", true);
