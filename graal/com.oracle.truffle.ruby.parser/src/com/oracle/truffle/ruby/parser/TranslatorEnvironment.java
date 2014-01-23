@@ -224,4 +224,8 @@ public class TranslatorEnvironment {
     public List<FrameSlot> getFlipFlopStates() {
         return flipFlopStates;
     }
+
+    public RubyNodeInstrumenter getNodeInstrumenter() {
+        return parser.getNodeInstrumenter();
+    }
 }

@@ -22,7 +22,6 @@ import com.oracle.truffle.ruby.nodes.cast.*;
 import com.oracle.truffle.ruby.nodes.constants.*;
 import com.oracle.truffle.ruby.nodes.control.*;
 import com.oracle.truffle.ruby.nodes.core.*;
-import com.oracle.truffle.ruby.nodes.debug.*;
 import com.oracle.truffle.ruby.nodes.literal.*;
 import com.oracle.truffle.ruby.nodes.literal.array.*;
 import com.oracle.truffle.ruby.nodes.methods.*;
@@ -33,7 +32,6 @@ import com.oracle.truffle.ruby.nodes.yield.*;
 import com.oracle.truffle.ruby.runtime.*;
 import com.oracle.truffle.ruby.runtime.core.*;
 import com.oracle.truffle.ruby.runtime.core.range.*;
-import com.oracle.truffle.ruby.runtime.debug.*;
 import com.oracle.truffle.ruby.runtime.methods.*;
 
 /**
@@ -48,6 +46,7 @@ public class Translator implements org.jrubyparser.NodeVisitor {
     protected final RubyContext context;
     protected final TranslatorEnvironment environment;
     protected final Source source;
+    protected final RubyNodeInstrumenter instrumenter;
 
     private boolean translatingForStatement = false;
 
@@ -97,6 +96,7 @@ public class Translator implements org.jrubyparser.NodeVisitor {
         this.parent = parent;
         this.environment = environment;
         this.source = source;
+        this.instrumenter = environment.getNodeInstrumenter();
     }
 
     @Override
@@ -291,7 +291,7 @@ public class Translator implements org.jrubyparser.NodeVisitor {
 
         RubyNode translated = new CallNode(context, sourceSection, node.getName(), receiverTranslated, argumentsAndBlock.getBlock(), argumentsAndBlock.isSplatted(), argumentsAndBlock.getArguments());
 
-        return translated;
+        return instrumenter.instrumentAsCall(translated, node.getName());
     }
 
     protected class ArgumentsAndBlockTranslation {
@@ -1140,7 +1140,9 @@ public class Translator implements org.jrubyparser.NodeVisitor {
 
         RubyNode translated = ((ReadNode) lhs).makeWriteNode(rhs);
 
-        return translated;
+        final UniqueMethodIdentifier methodIdentifier = environment.findMethodForLocalVar(node.getName());
+
+        return instrumenter.instrumentAsLocalAssignment(translated, methodIdentifier, node.getName());
     }
 
     @Override
@@ -1439,20 +1441,7 @@ public class Translator implements org.jrubyparser.NodeVisitor {
     @Override
     public Object visitNewlineNode(org.jrubyparser.ast.NewlineNode node) {
         RubyNode translated = (RubyNode) node.getNextNode().accept(this);
-
-        if (context.getConfiguration().getTrace()) {
-            RubyProxyNode proxy;
-            if (translated instanceof RubyProxyNode) {
-                proxy = (RubyProxyNode) translated;
-            } else {
-                proxy = new RubyProxyNode(context, translated);
-            }
-            proxy.getProbeChain().appendProbe(new RubyTraceProbe(context));
-
-            translated = proxy;
-        }
-
-        return translated;
+        return instrumenter.instrumentAsStatement(translated);
     }
 
     @Override

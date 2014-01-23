@@ -27,8 +27,20 @@ public class JRubyParser implements RubyParser {
 
     private long nextReturnID = 0;
 
+    private final RubyNodeInstrumenter instrumenter;
+
+    public JRubyParser() {
+        this(new DefaultRubyNodeInstrumenter());
+    }
+
+    public JRubyParser(RubyNodeInstrumenter instrumenter) {
+        assert instrumenter != null;
+        this.instrumenter = instrumenter;
+    }
+
     @Override
     public RubyParserResult parse(RubyContext context, Source source, ParserContext parserContext, MaterializedFrame parentFrame) {
+
         // Set up the JRuby parser
 
         final org.jrubyparser.Parser parser = new org.jrubyparser.Parser();
@@ -169,6 +181,10 @@ public class JRubyParser implements RubyParser {
         final long allocated = nextReturnID;
         nextReturnID++;
         return allocated;
+    }
+
+    public RubyNodeInstrumenter getNodeInstrumenter() {
+        return instrumenter;
     }
 
     private TranslatorEnvironment environmentForFrame(RubyContext context, MaterializedFrame frame) {

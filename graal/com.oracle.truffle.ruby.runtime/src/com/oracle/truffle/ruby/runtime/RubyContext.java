@@ -76,7 +76,7 @@ public class RubyContext implements ExecutionContext {
         atExitManager = new AtExitManager();
         sourceManager = new SourceManager();
 
-        debugManager = configuration.getDebug() ? new DefaultDebugManager(this) : null;
+        debugManager = new DefaultDebugManager(this);
 
         // Must initialize threads before fibers
 
@@ -84,8 +84,8 @@ public class RubyContext implements ExecutionContext {
         fiberManager = new FiberManager(this);
     }
 
-    public String getLanguageShortName() {
-        return "Ruby";
+    public final String getLanguageShortName() {
+        return "Ruby " + CoreLibrary.RUBY_VERSION;
     }
 
     public DebugManager getDebugManager() {
