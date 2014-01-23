@@ -57,9 +57,9 @@ class ModuleTranslator extends Translator {
 
         body = new CatchReturnNode(context, sourceSection, body, environment.getReturnID());
 
-        final RubyRootNode pristineRootNode = new RubyRootNode(sourceSection, methodName, body);
+        final RubyRootNode pristineRootNode = new RubyRootNode(sourceSection, environment.getFrameDescriptor(), methodName, body);
 
-        final CallTarget callTarget = Truffle.getRuntime().createCallTarget(NodeUtil.cloneNode(pristineRootNode), environment.getFrameDescriptor());
+        final CallTarget callTarget = Truffle.getRuntime().createCallTarget(NodeUtil.cloneNode(pristineRootNode));
 
         return new MethodDefinitionNode(context, sourceSection, methodName, environment.getUniqueMethodIdentifier(), environment.getFrameDescriptor(), environment.needsDeclarationFrame(),
                         pristineRootNode, callTarget);

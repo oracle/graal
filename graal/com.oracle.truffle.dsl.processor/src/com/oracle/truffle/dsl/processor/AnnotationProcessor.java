@@ -102,18 +102,18 @@ class AnnotationProcessor<M extends Template> {
 
     private static class CodeWriter extends AbstractCodeWriter {
 
-        private final Element orignalElement;
+        private final Element originalElement;
         private final ProcessingEnvironment env;
 
         public CodeWriter(ProcessingEnvironment env, Element originalElement) {
             this.env = env;
-            this.orignalElement = originalElement;
+            this.originalElement = originalElement;
         }
 
         @Override
         protected Writer createWriter(CodeTypeElement clazz) throws IOException {
-            JavaFileObject jfo = env.getFiler().createSourceFile(clazz.getQualifiedName(), orignalElement);
-            return jfo.openWriter();
+            JavaFileObject jfo = env.getFiler().createSourceFile(clazz.getQualifiedName(), originalElement);
+            return new BufferedWriter(jfo.openWriter());
         }
 
         @Override
@@ -121,7 +121,7 @@ class AnnotationProcessor<M extends Template> {
             if (env == null) {
                 return;
             }
-            String comment = CompilerFactory.getCompiler(orignalElement).getHeaderComment(env, orignalElement);
+            String comment = CompilerFactory.getCompiler(originalElement).getHeaderComment(env, originalElement);
             if (comment != null) {
                 writeLn(comment);
             }

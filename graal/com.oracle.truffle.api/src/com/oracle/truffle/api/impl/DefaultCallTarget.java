@@ -31,11 +31,9 @@ import com.oracle.truffle.api.nodes.*;
 public class DefaultCallTarget extends CallTarget {
 
     protected final RootNode rootNode;
-    protected final FrameDescriptor frameDescriptor;
 
-    public DefaultCallTarget(RootNode function, FrameDescriptor frameDescriptor) {
+    public DefaultCallTarget(RootNode function) {
         this.rootNode = function;
-        this.frameDescriptor = frameDescriptor;
         this.rootNode.setCallTarget(this);
     }
 
@@ -46,12 +44,8 @@ public class DefaultCallTarget extends CallTarget {
 
     @Override
     public Object call(PackedFrame caller, Arguments args) {
-        VirtualFrame frame = new DefaultVirtualFrame(frameDescriptor, caller, args);
+        VirtualFrame frame = new DefaultVirtualFrame(rootNode.getFrameDescriptor(), caller, args);
         return rootNode.execute(frame);
-    }
-
-    public FrameDescriptor getFrameDescriptor() {
-        return frameDescriptor;
     }
 
     public RootNode getRootNode() {

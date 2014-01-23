@@ -96,7 +96,7 @@ public abstract class ModuleNodes {
 
             final SequenceNode block = new SequenceNode(context, sourceSection, checkArity, readInstanceVariable);
 
-            final RubyRootNode pristineRoot = new RubyRootNode(sourceSection, name + "(attr_reader)", block);
+            final RubyRootNode pristineRoot = new RubyRootNode(sourceSection, null, name + "(attr_reader)", block);
             final CallTarget callTarget = Truffle.getRuntime().createCallTarget(NodeUtil.cloneNode(pristineRoot));
             final InlinableMethodImplementation methodImplementation = new InlinableMethodImplementation(callTarget, null, new FrameDescriptor(), pristineRoot, true, false);
             final RubyMethod method = new RubyMethod(sourceSection, module, new UniqueMethodIdentifier(), null, name, Visibility.PUBLIC, false, methodImplementation);
@@ -139,7 +139,7 @@ public abstract class ModuleNodes {
 
             final SequenceNode block = new SequenceNode(context, sourceSection, checkArity, writeInstanceVariable);
 
-            final RubyRootNode pristineRoot = new RubyRootNode(sourceSection, name + "(attr_writer)", block);
+            final RubyRootNode pristineRoot = new RubyRootNode(sourceSection, null, name + "(attr_writer)", block);
             final CallTarget callTarget = Truffle.getRuntime().createCallTarget(NodeUtil.cloneNode(pristineRoot));
             final InlinableMethodImplementation methodImplementation = new InlinableMethodImplementation(callTarget, null, new FrameDescriptor(), pristineRoot, true, false);
             final RubyMethod method = new RubyMethod(sourceSection, module, new UniqueMethodIdentifier(), null, name + "=", Visibility.PUBLIC, false, methodImplementation);

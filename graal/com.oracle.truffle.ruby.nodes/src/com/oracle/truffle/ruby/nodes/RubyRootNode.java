@@ -22,8 +22,8 @@ public class RubyRootNode extends RootNode {
     protected final String indicativeName;
     @Child protected RubyNode body;
 
-    public RubyRootNode(SourceSection sourceSection, String indicativeName, RubyNode body) {
-        super(sourceSection);
+    public RubyRootNode(SourceSection sourceSection, FrameDescriptor descriptor, String indicativeName, RubyNode body) {
+        super(sourceSection, descriptor);
 
         assert indicativeName != null;
         assert body != null;

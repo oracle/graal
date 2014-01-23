@@ -189,7 +189,7 @@ public abstract class CallNode extends TypedNode {
 
         InlinedDirectCallNode(InlinableDirectCallNode prev, TypedNode inlinedBody) {
             super(prev.functionNode, prev.argumentsNode, prev.cachedFunction, prev.nextNode);
-            this.descriptor = cachedFunction.getFrameDescriptor();
+            this.descriptor = cachedFunction.getRootNode().getFrameDescriptor();
             this.inlinedBody = adoptChild(inlinedBody);
         }
 

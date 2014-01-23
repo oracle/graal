@@ -30,15 +30,28 @@ import com.oracle.truffle.api.frame.*;
 /**
  * A root node is a node with a method to execute it given only a frame as a parameter. Therefore, a
  * root node can be used to create a call target using
- * {@link TruffleRuntime#createCallTarget(RootNode, FrameDescriptor)}.
+ * {@link TruffleRuntime#createCallTarget(RootNode)}.
  */
 public abstract class RootNode extends Node {
 
+    private CallTarget callTarget;
+    private final FrameDescriptor frameDescriptor;
+
     protected RootNode() {
+        this(null, null);
     }
 
     protected RootNode(SourceSection sourceSection) {
+        this(sourceSection, null);
+    }
+
+    protected RootNode(SourceSection sourceSection, FrameDescriptor frameDescriptor) {
         super(sourceSection);
+        if (frameDescriptor == null) {
+            this.frameDescriptor = new FrameDescriptor();
+        } else {
+            this.frameDescriptor = frameDescriptor;
+        }
     }
 
     /**
@@ -49,10 +62,12 @@ public abstract class RootNode extends Node {
      */
     public abstract Object execute(VirtualFrame frame);
 
-    private CallTarget callTarget;
-
     public CallTarget getCallTarget() {
         return callTarget;
+    }
+
+    public FrameDescriptor getFrameDescriptor() {
+        return frameDescriptor;
     }
 
     public void setCallTarget(CallTarget callTarget) {

@@ -161,11 +161,10 @@ public class JRubyParser implements RubyParser {
                     throw new UnsupportedOperationException();
             }
 
-            final RootNode root = new RubyRootNode(truffleNode.getSourceSection(), indicativeName, truffleNode);
+            final RootNode root = new RubyRootNode(truffleNode.getSourceSection(), environment.getFrameDescriptor(), indicativeName, truffleNode);
 
             // Return the root and the frame descriptor
-
-            return new RubyParserResult(root, environment.getFrameDescriptor());
+            return new RubyParserResult(root);
         } finally {
             if (debugManager != null) {
                 debugManager.notifyFinishedLoading(source);

@@ -59,9 +59,9 @@ class MethodTranslator extends Translator {
             body = new CatchNextNode(context, sourceSection, body);
         }
 
-        final RubyRootNode pristineRootNode = new RubyRootNode(sourceSection, methodName, body);
+        final RubyRootNode pristineRootNode = new RubyRootNode(sourceSection, environment.getFrameDescriptor(), methodName, body);
 
-        final CallTarget callTarget = Truffle.getRuntime().createCallTarget(NodeUtil.cloneNode(pristineRootNode), environment.getFrameDescriptor());
+        final CallTarget callTarget = Truffle.getRuntime().createCallTarget(NodeUtil.cloneNode(pristineRootNode));
 
         if (isBlock) {
             return new BlockDefinitionNode(context, sourceSection, methodName, environment.getUniqueMethodIdentifier(), environment.getFrameDescriptor(), environment.needsDeclarationFrame(),
