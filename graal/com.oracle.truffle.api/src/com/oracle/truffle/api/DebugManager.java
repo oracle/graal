@@ -37,19 +37,34 @@ import com.oracle.truffle.api.nodes.instrument.InstrumentationProbeNode.ProbeCha
 public interface DebugManager {
 
     /**
-     * Receives notification of a suspended execution context; execution resumes when this method
-     * returns.
+     * Informs the {@link DebugManager} that the Guest Language runtime is starting to load a
+     * source. Care should be taken to ensure that under any circumstance there is always a
+     * following call to {@link #notifyFinishedLoading(Source)} with the same argument.
+     */
+    void notifyStartLoading(Source source);
+
+    /**
+     * Informs the {@link DebugManager} that the Guest Language runtime has finished loading a
+     * source. Care should be taken to ensure that under any circumstance there is always a prior
+     * call to {@link #notifyStartLoading(Source)} with the same argument.
+     */
+    void notifyFinishedLoading(Source source);
+
+    /**
+     * Return a reference to the (canonical) instrumentation site associated with a particular
+     * source code location; this site will have effect on any Truffle/AST implementation
+     * corresponding to the source location, even if the AST is copied multiple times.
+     */
+    ProbeChain getProbeChain(SourceSection sourceSection);
+
+    /**
+     * Informs the {@link DebugManager} that Truffle execution has halted; execution will resume
+     * when this method returns.
      * 
      * @param astNode a guest language AST node that represents the current execution site, assumed
      *            not to be any kind of {@link InstrumentationNode},
      * @param frame execution frame at the site where execution suspended
      */
     void haltedAt(Node astNode, MaterializedFrame frame);
-
-    void notifyFinishedLoading(Source source);
-
-    void notifyStartLoading(Source source);
-
-    ProbeChain getProbeChain(SourceSection sourceSection);
 
 }
