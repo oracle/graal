@@ -19,6 +19,7 @@ import com.oracle.truffle.api.nodes.instrument.*;
 import com.oracle.truffle.api.nodes.instrument.InstrumentationProbeNode.ProbeChain;
 import com.oracle.truffle.ruby.nodes.*;
 import com.oracle.truffle.ruby.runtime.*;
+import com.oracle.truffle.ruby.runtime.control.*;
 import com.oracle.truffle.ruby.runtime.core.*;
 import com.oracle.truffle.ruby.runtime.core.array.*;
 
@@ -69,6 +70,8 @@ public class RubyProxyNode extends RubyNode implements InstrumentationProxyNode 
         try {
             result = child.execute(frame);
             probeChain.notifyLeave(child, frame, result);
+        } catch (BreakShellException e) {
+            throw (e);
         } catch (Exception e) {
             probeChain.notifyLeaveExceptional(child, frame, e);
             throw (e);
@@ -86,6 +89,8 @@ public class RubyProxyNode extends RubyNode implements InstrumentationProxyNode 
         try {
             result = child.executeArray(frame);
             probeChain.notifyLeave(child, frame, result);
+        } catch (BreakShellException e) {
+            throw (e);
         } catch (Exception e) {
             probeChain.notifyLeaveExceptional(child, frame, e);
             throw (e);
@@ -103,6 +108,8 @@ public class RubyProxyNode extends RubyNode implements InstrumentationProxyNode 
         try {
             result = child.executeBignum(frame);
             probeChain.notifyLeave(child, frame, result);
+        } catch (BreakShellException e) {
+            throw (e);
         } catch (Exception e) {
             probeChain.notifyLeaveExceptional(child, frame, e);
             throw (e);
@@ -120,6 +127,8 @@ public class RubyProxyNode extends RubyNode implements InstrumentationProxyNode 
         try {
             result = child.executeBoolean(frame);
             probeChain.notifyLeave(child, frame, result);
+        } catch (BreakShellException e) {
+            throw (e);
         } catch (Exception e) {
             probeChain.notifyLeaveExceptional(child, frame, e);
             throw (e);
@@ -142,6 +151,8 @@ public class RubyProxyNode extends RubyNode implements InstrumentationProxyNode 
         try {
             result = child.executeFixnum(frame);
             probeChain.notifyLeave(child, frame, result);
+        } catch (BreakShellException e) {
+            throw (e);
         } catch (Exception e) {
             probeChain.notifyLeaveExceptional(child, frame, e);
             throw (e);
@@ -159,6 +170,8 @@ public class RubyProxyNode extends RubyNode implements InstrumentationProxyNode 
         try {
             result = child.executeFloat(frame);
             probeChain.notifyLeave(child, frame, result);
+        } catch (BreakShellException e) {
+            throw (e);
         } catch (Exception e) {
             probeChain.notifyLeaveExceptional(child, frame, e);
             throw (e);
@@ -176,6 +189,8 @@ public class RubyProxyNode extends RubyNode implements InstrumentationProxyNode 
         try {
             result = child.executeString(frame);
             probeChain.notifyLeave(child, frame, result);
+        } catch (BreakShellException e) {
+            throw (e);
         } catch (Exception e) {
             probeChain.notifyLeaveExceptional(child, frame, e);
             throw (e);
@@ -191,6 +206,8 @@ public class RubyProxyNode extends RubyNode implements InstrumentationProxyNode 
         try {
             child.executeVoid(frame);
             probeChain.notifyLeave(child, frame);
+        } catch (BreakShellException e) {
+            throw (e);
         } catch (Exception e) {
             probeChain.notifyLeaveExceptional(child, frame, e);
             throw (e);
