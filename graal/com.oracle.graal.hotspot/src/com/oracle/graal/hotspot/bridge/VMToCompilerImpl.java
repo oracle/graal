@@ -556,9 +556,8 @@ public class VMToCompilerImpl implements VMToCompiler {
                 int id = allocateCompileTaskId(method, entryBCI);
                 HotSpotBackend backend = runtime.getHostBackend();
                 CompilationTask task = new CompilationTask(backend, method, entryBCI, id);
-                boolean isLambdaMethod = (method.getName().contains("lambda$main$") & method.isSynthetic());
 
-                if (blocking || isLambdaMethod) {
+                if (blocking) {
                     task.runCompilation(true);
                 } else {
                     try {
