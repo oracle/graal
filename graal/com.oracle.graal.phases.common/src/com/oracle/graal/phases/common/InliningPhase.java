@@ -857,7 +857,7 @@ public class InliningPhase extends AbstractInliningPhase {
 
         @Override
         public String toString() {
-            return MetaUtil.format("%H.%n(%p)", method()) + remainingInvokes;
+            return (graph != null ? MetaUtil.format("%H.%n(%p)", method()) : "<null method>") + remainingInvokes;
         }
     }
 
