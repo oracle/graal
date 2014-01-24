@@ -24,6 +24,7 @@ package com.oracle.graal.replacements;
 
 import java.util.*;
 
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.*;
@@ -42,25 +43,94 @@ import com.oracle.graal.phases.graph.ReentrantNodeIterator.NodeIteratorClosure;
  * The invalid frame states ensure that no deoptimization to a snippet frame state will happen.
  */
 public class CollapseFrameForSingleSideEffectPhase extends Phase {
-    @Override
-    protected void run(StructuredGraph graph) {
-        ReentrantNodeIterator.apply(new CollapseFrameForSingleSideEffectClosure(), graph.start(), null, null);
+
+    private static class IterationState {
+        public final IterationState previous;
+        public final Node node;
+        public final Collection<IterationState> merge;
+        public final boolean invalid;
+
+        private IterationState(IterationState previous, Node node, Collection<IterationState> merge, boolean invalid) {
+            this.previous = previous;
+            this.node = node;
+            this.merge = merge;
+            this.invalid = invalid;
+        }
+
+        public IterationState() {
+            this(null, null, null, false);
+        }
+
+        public IterationState addSideEffect(StateSplit sideEffect) {
+            return new IterationState(this, sideEffect.asNode(), null, true);
+        }
+
+        public IterationState addBranch(AbstractBeginNode begin) {
+            return new IterationState(this, begin, null, this.invalid);
+        }
+
+        public static IterationState merge(MergeNode merge, Collection<IterationState> before, boolean invalid) {
+            return new IterationState(null, merge, before, invalid);
+        }
+
+        public void markAll(NodeBitMap set) {
+            IterationState state = this;
+            while (state != null && state.node != null && !set.contains(state.node)) {
+                set.mark(state.node);
+                if (state.merge != null) {
+                    for (IterationState branch : state.merge) {
+                        branch.markAll(set);
+                    }
+                }
+                state = state.previous;
+            }
+        }
+
+        public void markMasked(NodeBitMap unmasked, NodeBitMap masked) {
+            IterationState state = this;
+            while (state != null && state.node != null && !masked.contains(state.node)) {
+                if (state.node instanceof StateSplit) {
+                    unmasked.mark(state.node);
+                    StateSplit split = (StateSplit) state.node;
+                    if (split.hasSideEffect() && state.previous != null) {
+                        state.previous.markAll(masked);
+                        return;
+                    }
+                }
+
+                if (state.merge != null) {
+                    for (IterationState branch : state.merge) {
+                        branch.markMasked(unmasked, masked);
+                    }
+                }
+                state = state.previous;
+            }
+        }
     }
 
-    private static class CollapseFrameForSingleSideEffectClosure extends NodeIteratorClosure<StateSplit> {
+    @Override
+    protected void run(StructuredGraph graph) {
+        CollapseFrameForSingleSideEffectClosure closure = new CollapseFrameForSingleSideEffectClosure();
+        ReentrantNodeIterator.apply(closure, graph.start(), new IterationState(), null);
+        closure.finishProcessing(graph);
+    }
+
+    private static class CollapseFrameForSingleSideEffectClosure extends NodeIteratorClosure<IterationState> {
+
+        private List<IterationState> returnStates = new ArrayList<>();
+        private List<IterationState> unwindStates = new ArrayList<>();
 
         @Override
-        protected StateSplit processNode(FixedNode node, StateSplit currentState) {
-            StateSplit state = currentState;
+        protected IterationState processNode(FixedNode node, IterationState currentState) {
+            IterationState state = currentState;
             if (node instanceof StateSplit) {
                 StateSplit stateSplit = (StateSplit) node;
                 FrameState frameState = stateSplit.stateAfter();
                 if (frameState != null) {
-                    // the stateSplit == currentState case comes from merge handling
-                    if (stateSplit.hasSideEffect() || stateSplit == currentState) {
+                    if (stateSplit.hasSideEffect()) {
                         stateSplit.setStateAfter(createInvalidFrameState(node));
-                        state = stateSplit;
-                    } else if (hasInvalidState(state)) {
+                        state = state.addSideEffect(stateSplit);
+                    } else if (currentState.invalid) {
                         stateSplit.setStateAfter(createInvalidFrameState(node));
                     } else {
                         stateSplit.setStateAfter(null);
@@ -70,53 +140,77 @@ public class CollapseFrameForSingleSideEffectPhase extends Phase {
                     }
                 }
             }
-            if (node instanceof ControlSinkNode && state != null) {
-                state.setStateAfter(node.graph().add(new FrameState(FrameState.AFTER_BCI)));
+            if (node instanceof ReturnNode) {
+                returnStates.add(currentState);
+            } else if (node instanceof UnwindNode) {
+                unwindStates.add(currentState);
             }
             return state;
         }
 
         @Override
-        protected StateSplit merge(MergeNode merge, List<StateSplit> states) {
+        protected IterationState merge(MergeNode merge, List<IterationState> states) {
             boolean invalid = false;
-            for (StateSplit state : states) {
-                if (state != null && state.stateAfter() != null && state.stateAfter().bci == FrameState.INVALID_FRAMESTATE_BCI) {
+            for (IterationState state : states) {
+                if (state.invalid) {
                     invalid = true;
-                    state.setStateAfter(merge.graph().add(new FrameState(FrameState.AFTER_BCI)));
+                    break;
                 }
             }
-            if (invalid) {
-                // at the next processNode call, stateSplit == currentState == merge
-                return merge;
-            } else {
-                return null;
+            return IterationState.merge(merge, states, invalid);
+        }
+
+        public void finishProcessing(StructuredGraph graph) {
+            NodeBitMap maskedSideEffects = new NodeBitMap(graph);
+            NodeBitMap returnSideEffects = new NodeBitMap(graph);
+            NodeBitMap unwindSideEffects = new NodeBitMap(graph);
+
+            for (IterationState returnState : returnStates) {
+                returnState.markMasked(returnSideEffects, maskedSideEffects);
+            }
+            for (IterationState unwindState : unwindStates) {
+                unwindState.markMasked(unwindSideEffects, maskedSideEffects);
+            }
+
+            for (Node returnSideEffect : returnSideEffects) {
+                if (!unwindSideEffects.contains(returnSideEffect) && !maskedSideEffects.contains(returnSideEffect)) {
+                    StateSplit split = (StateSplit) returnSideEffect;
+                    if (split.getState() != null) {
+                        split.setStateAfter(graph.add(new FrameState(FrameState.AFTER_BCI)));
+                    }
+                }
+            }
+
+            for (Node unwindSideEffect : unwindSideEffects) {
+                if (!returnSideEffects.contains(unwindSideEffect) && !maskedSideEffects.contains(unwindSideEffect)) {
+                    StateSplit split = (StateSplit) unwindSideEffect;
+                    if (split.getState() != null) {
+                        split.setStateAfter(graph.add(new FrameState(FrameState.AFTER_EXCEPTION_BCI)));
+                    }
+                }
             }
         }
 
         @Override
-        protected StateSplit afterSplit(AbstractBeginNode node, StateSplit oldState) {
-            return oldState;
+        protected IterationState afterSplit(AbstractBeginNode node, IterationState oldState) {
+            return oldState.addBranch(node);
         }
 
         @Override
-        protected Map<LoopExitNode, StateSplit> processLoop(LoopBeginNode loop, StateSplit initialState) {
-            LoopInfo<StateSplit> info = ReentrantNodeIterator.processLoop(this, loop, initialState);
-            if (!hasInvalidState(initialState)) {
-                boolean isNowInvalid = false;
-                for (StateSplit endState : info.endStates.values()) {
-                    isNowInvalid |= hasInvalidState(endState);
-                }
-                if (isNowInvalid) {
-                    loop.setStateAfter(createInvalidFrameState(loop));
-                    info = ReentrantNodeIterator.processLoop(this, loop, loop);
-                }
-            }
-            return info.exitStates;
-        }
+        protected Map<LoopExitNode, IterationState> processLoop(LoopBeginNode loop, IterationState initialState) {
+            LoopInfo<IterationState> info = ReentrantNodeIterator.processLoop(this, loop, initialState);
 
-        private static boolean hasInvalidState(StateSplit state) {
-            assert state == null || (state.stateAfter() != null && state.stateAfter().bci == FrameState.INVALID_FRAMESTATE_BCI) : state + " " + state.stateAfter();
-            return state != null;
+            boolean isNowInvalid = initialState.invalid;
+            for (IterationState endState : info.endStates.values()) {
+                isNowInvalid |= endState.invalid;
+            }
+
+            if (isNowInvalid) {
+                loop.setStateAfter(createInvalidFrameState(loop));
+            }
+
+            IterationState endState = IterationState.merge(loop, info.endStates.values(), isNowInvalid);
+            return ReentrantNodeIterator.processLoop(this, loop, endState).exitStates;
         }
 
         private static FrameState createInvalidFrameState(FixedNode node) {
