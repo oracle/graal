@@ -58,6 +58,7 @@ import com.oracle.graal.lir.ptx.PTXMemOp.LoadReturnAddrOp;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.phases.*;
+import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.word.*;
 
@@ -172,6 +173,7 @@ public class PTXHotSpotBackend extends HotSpotBackend {
         HotSpotProviders providers = getProviders();
         CallingConvention cc = getCallingConvention(providers.getCodeCache(), Type.JavaCallee, method, false);
         PhaseSuite<HighTierContext> graphBuilderSuite = providers.getSuites().getDefaultGraphBuilderSuite();
+        graphBuilderSuite.appendPhase(new NonNullParametersPhase());
         Suites suites = providers.getSuites().getDefaultSuites();
         ExternalCompilationResult ptxCode = compileGraph(graph, cc, method, providers, this, this.getTarget(), null, graphBuilderSuite, OptimisticOptimizations.NONE, getProfilingInfo(graph),
                         new SpeculationLog(), suites, true, new ExternalCompilationResult(), CompilationResultBuilderFactory.Default);

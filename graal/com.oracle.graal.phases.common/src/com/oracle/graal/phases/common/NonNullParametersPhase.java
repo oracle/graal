@@ -20,20 +20,20 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.ptx.test;
+package com.oracle.graal.phases.common;
 
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.phases.*;
 
-public class PTXPhase extends Phase {
+/**
+ * Modifies the stamp of all object {@linkplain ParameterNode parameters} in a graph to denote they
+ * are non-null. This can be used for graphs where the caller null checks all arguments.
+ */
+public class NonNullParametersPhase extends Phase {
 
     @Override
     protected void run(StructuredGraph graph) {
-        /*
-         * Assume that null checks would be done on the CPU caller side prior to copying data onto
-         * the GPU.
-         */
         for (ParameterNode param : graph.getNodes(ParameterNode.class)) {
             if (param.stamp() instanceof ObjectStamp) {
                 param.setStamp(StampFactory.declaredNonNull(((ObjectStamp) param.stamp()).type()));
