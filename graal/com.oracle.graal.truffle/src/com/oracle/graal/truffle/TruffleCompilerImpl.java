@@ -186,13 +186,15 @@ public class TruffleCompilerImpl implements TruffleCompiler {
     private class InlineTreeVisitor implements NodeVisitor {
 
         public boolean visit(Node node) {
-            if (node instanceof InlinedCallSite) {
-                InlinedCallSite inlinedCallSite = (InlinedCallSite) node;
-                int indent = this.indent(node);
-                for (int i = 0; i < indent; ++i) {
-                    OUT.print("   ");
+            if (node instanceof CallNode) {
+                CallNode callNode = (CallNode) node;
+                if (callNode.isInlined()) {
+                    int indent = this.indent(node);
+                    for (int i = 0; i < indent; ++i) {
+                        OUT.print("   ");
+                    }
+                    OUT.println(callNode.getCallTarget());
                 }
-                OUT.println(inlinedCallSite.getCallTarget());
             }
             return true;
         }
@@ -200,7 +202,7 @@ public class TruffleCompilerImpl implements TruffleCompiler {
         private int indent(Node n) {
             if (n instanceof RootNode) {
                 return 0;
-            } else if (n instanceof InlinedCallSite) {
+            } else if (n instanceof CallNode && ((CallNode) n).isInlined()) {
                 return indent(n.getParent()) + 1;
             } else {
                 return indent(n.getParent());

@@ -261,7 +261,7 @@ public final class OptimizedCallTarget extends DefaultCallTarget implements Fram
 
             int notInlinedCallSiteCount = TruffleInliningImpl.getInlinableCallSites(callTarget).size();
             int nodeCount = NodeUtil.countNodes(callTarget.rootNode);
-            int inlinedCallSiteCount = NodeUtil.countNodes(callTarget.rootNode, InlinedCallSite.class);
+            int inlinedCallSiteCount = countInlinedNodes(callTarget.rootNode);
             String comment = callTarget.installedCode == null ? " int" : "";
             comment += callTarget.compilationEnabled ? "" : " fail";
             OUT.printf("%-50s | %10d | %15d | %15d | %10d | %3d%s\n", callTarget.getRootNode(), callTarget.callCount, inlinedCallSiteCount, notInlinedCallSiteCount, nodeCount,
@@ -274,6 +274,17 @@ public final class OptimizedCallTarget extends DefaultCallTarget implements Fram
             totalInvalidationCount += callTarget.getCompilationProfile().getInvalidationCount();
         }
         OUT.printf("%-50s | %10d | %15d | %15d | %10d | %3d\n", "Total", totalCallCount, totalInlinedCallSiteCount, totalNotInlinedCallSiteCount, totalNodeCount, totalInvalidationCount);
+    }
+
+    private static int countInlinedNodes(Node rootNode) {
+        List<CallNode> callers = NodeUtil.findAllNodeInstances(rootNode, CallNode.class);
+        int count = 0;
+        for (CallNode callNode : callers) {
+            if (callNode.isInlined()) {
+                count++;
+            }
+        }
+        return count;
     }
 
     private static void registerCallTarget(OptimizedCallTarget callTarget) {
