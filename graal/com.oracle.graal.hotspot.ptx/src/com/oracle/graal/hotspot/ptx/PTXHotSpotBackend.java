@@ -67,7 +67,7 @@ import com.oracle.graal.word.*;
 public class PTXHotSpotBackend extends HotSpotBackend {
 
     /**
-     * Descriptor for the PTX runtime method for launching a kernel. The C++ signature is:
+     * Descriptor for the PTX runtime method for calling a kernel. The C++ signature is:
      * 
      * <pre>
      *     jlong (JavaThread* thread,
@@ -77,11 +77,14 @@ public class PTXHotSpotBackend extends HotSpotBackend {
      *            jint dimZ,
      *            jlong parametersAndReturnValueBuffer,
      *            jint parametersAndReturnValueBufferSize,
+     *            jint objectParametersCount,
+     *            jlong objectParametersOffsets,
+     *            jlong pinnedObjects,
      *            jint encodedReturnTypeSize)
      * </pre>
      */
     // @formatter:off
-    public static final ForeignCallDescriptor LAUNCH_KERNEL = new ForeignCallDescriptor("execute_kernel_from_vm", long.class,
+    public static final ForeignCallDescriptor CALL_KERNEL = new ForeignCallDescriptor("execute_kernel_from_vm", long.class,
                     Word.class, // thread
                     long.class, // kernel
                     int.class,  // dimX
@@ -89,6 +92,9 @@ public class PTXHotSpotBackend extends HotSpotBackend {
                     int.class,  // dimZ
                     long.class, // parametersAndReturnValueBuffer
                     int.class,  // parametersAndReturnValueBufferSize
+                    int.class,  // objectParameterCount
+                    long.class, // objectParameterOffsets
+                    long.class, // pinnedObjects
                     int.class); // encodedReturnTypeSize
     // @formatter:on
 
@@ -114,7 +120,7 @@ public class PTXHotSpotBackend extends HotSpotBackend {
         CompilerToGPU compilerToGPU = getRuntime().getCompilerToGPU();
         if (deviceInitialized) {
             long launchKernel = compilerToGPU.getLaunchKernelAddress();
-            hostForeignCalls.registerForeignCall(LAUNCH_KERNEL, launchKernel, NativeCall, DESTROYS_REGISTERS, NOT_LEAF, NOT_REEXECUTABLE, ANY_LOCATION);
+            hostForeignCalls.registerForeignCall(CALL_KERNEL, launchKernel, NativeCall, DESTROYS_REGISTERS, NOT_LEAF, NOT_REEXECUTABLE, ANY_LOCATION);
         }
         super.completeInitialization();
     }
@@ -171,6 +177,7 @@ public class PTXHotSpotBackend extends HotSpotBackend {
                         new SpeculationLog(), suites, true, new ExternalCompilationResult(), CompilationResultBuilderFactory.Default);
         if (makeBinary) {
             try (Scope ds = Debug.scope("GeneratingKernelBinary")) {
+                assert ptxCode.getTargetCode() != null;
                 long kernel = getRuntime().getCompilerToGPU().generateKernel(ptxCode.getTargetCode(), method.getName());
                 ptxCode.setEntryPoint(kernel);
             } catch (Throwable e) {
