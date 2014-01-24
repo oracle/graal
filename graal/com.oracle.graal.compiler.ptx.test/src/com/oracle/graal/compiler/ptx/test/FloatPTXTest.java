@@ -63,7 +63,6 @@ public class FloatPTXTest extends PTXTest {
         return 32.0 + a;
     }
 
-    @Ignore
     @Test
     public void testSub() {
         compileKernel("testSub2F");
@@ -98,7 +97,7 @@ public class FloatPTXTest extends PTXTest {
         return 32.0 - a;
     }
 
-    @Ignore
+    @Ignore("[CUDA] *** Error (209) Failed to load module data with online compiler options for method testMul2F")
     @Test
     public void testMul() {
         compileKernel("testMul2F");
@@ -133,7 +132,7 @@ public class FloatPTXTest extends PTXTest {
         return 32.0 * a;
     }
 
-    @Ignore
+    @Ignore("[CUDA] *** Error (209) Failed to load module data with online compiler options for method testDiv2F")
     @Test
     public void testDiv() {
         compileKernel("testDiv2F");
@@ -168,7 +167,6 @@ public class FloatPTXTest extends PTXTest {
         return 32.0 / a;
     }
 
-    @Ignore
     @Test
     public void testNeg() {
         compileKernel("testNeg2F");
@@ -183,12 +181,11 @@ public class FloatPTXTest extends PTXTest {
         return -a;
     }
 
-    @Ignore
+    @Ignore("need linkage to PTX remainder")
     @Test
     public void testRem() {
-        // need linkage to PTX remainder()
-        // compileKernel("testRem2F");
-        // compileKernel("testRem2D");
+        compileKernel("testRem2F");
+        compileKernel("testRem2D");
     }
 
     public static float testRem2F(float a, float b) {
@@ -199,7 +196,7 @@ public class FloatPTXTest extends PTXTest {
         return a % b;
     }
 
-    @Ignore
+    @Ignore("[CUDA] *** Error (209) Failed to load module data with online compiler options for method testF2I")
     @Test
     public void testFloatConversion() {
         compileKernel("testF2I");
