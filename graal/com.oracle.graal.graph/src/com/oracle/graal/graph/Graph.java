@@ -75,6 +75,12 @@ public class Graph {
     NodeChangedListener usagesDroppedToZeroListener;
     private final HashMap<CacheEntry, Node> cachedNodes = new HashMap<>();
 
+    /*
+     * Indicates that the graph should no longer be modified. Frozen graphs can be used my multiple
+     * threads so it's only safe to read them.
+     */
+    private boolean isFrozen = false;
+
     private static final class CacheEntry {
 
         private final Node node;
@@ -761,6 +767,7 @@ public class Graph {
     }
 
     void register(Node node) {
+        assert !isFrozen();
         assert node.id() == Node.INITIAL_ID;
         if (nodes.length == nodesSize) {
             nodes = Arrays.copyOf(nodes, (nodesSize * 2) + 1);
@@ -812,6 +819,7 @@ public class Graph {
     }
 
     void unregister(Node node) {
+        assert !isFrozen();
         assert !node.isDeleted() : "cannot delete a node twice! node=" + node;
         logNodeDeleted(node);
         nodes[node.id] = null;
@@ -895,5 +903,13 @@ public class Graph {
     @SuppressWarnings("all")
     public Map<Node, Node> addDuplicates(Iterable<Node> newNodes, final Graph oldGraph, int estimatedNodeCount, DuplicationReplacement replacements) {
         return NodeClass.addGraphDuplicate(this, oldGraph, estimatedNodeCount, newNodes, replacements);
+    }
+
+    public boolean isFrozen() {
+        return isFrozen;
+    }
+
+    public void freeze() {
+        this.isFrozen = true;
     }
 }

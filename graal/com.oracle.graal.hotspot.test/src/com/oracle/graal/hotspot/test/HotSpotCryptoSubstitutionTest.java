@@ -115,6 +115,7 @@ public class HotSpotCryptoSubstitutionTest extends GraalCompilerTest {
                 ResolvedJavaMethod installedCodeOwner = getMetaAccess().lookupJavaMethod(method);
                 StructuredGraph graph = getReplacements().getMethodSubstitution(installedCodeOwner);
                 if (graph != null) {
+                    graph = graph.copy();
                     Assert.assertNotNull(getCode(installedCodeOwner, graph, true));
                     atLeastOneCompiled = true;
                 } else {

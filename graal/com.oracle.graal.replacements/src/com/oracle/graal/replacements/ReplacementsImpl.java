@@ -135,7 +135,9 @@ public class ReplacementsImpl implements Replacements {
         if (graph == null) {
             graphs.putIfAbsent(substitute, makeGraph(substitute, original, substitute, inliningPolicy(substitute), FrameStateProcessing.None));
             graph = graphs.get(substitute);
+            graph.freeze();
         }
+        assert graph.isFrozen();
         return graph;
 
     }

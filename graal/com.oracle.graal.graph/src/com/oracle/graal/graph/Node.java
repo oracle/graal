@@ -488,6 +488,7 @@ public abstract class Node implements Cloneable, Formattable {
      * this node to newSuccessor's predecessors.
      */
     protected void updatePredecessor(Node oldSuccessor, Node newSuccessor) {
+        assert graph == null || !graph.isFrozen();
         if (oldSuccessor != newSuccessor) {
             if (oldSuccessor != null) {
                 assert assertTrue(oldSuccessor.predecessor == this, "wrong predecessor in old successor (%s): %s", oldSuccessor, oldSuccessor.predecessor);
@@ -517,6 +518,7 @@ public abstract class Node implements Cloneable, Formattable {
     }
 
     private boolean checkReplaceWith(Node other) {
+        assert assertTrue(graph == null || !graph.isFrozen(), "cannot modify frozen graph");
         assert assertFalse(other == this, "cannot replace a node with itself");
         assert assertFalse(isDeleted(), "cannot replace deleted node");
         assert assertTrue(other == null || !other.isDeleted(), "cannot replace with deleted node %s", other);
@@ -574,6 +576,7 @@ public abstract class Node implements Cloneable, Formattable {
 
     public void clearInputs() {
         assert assertFalse(isDeleted(), "cannot clear inputs of deleted node");
+        assert graph == null || !graph.isFrozen();
 
         for (Node input : inputs()) {
             if (input.recordsUsages()) {

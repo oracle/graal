@@ -138,6 +138,7 @@ public class GraalCompiler {
     public static <T extends CompilationResult> T compileGraph(StructuredGraph graph, CallingConvention cc, ResolvedJavaMethod installedCodeOwner, Providers providers, Backend backend,
                     TargetDescription target, GraphCache cache, PhaseSuite<HighTierContext> graphBuilderSuite, OptimisticOptimizations optimisticOpts, ProfilingInfo profilingInfo,
                     SpeculationLog speculationLog, Suites suites, boolean withScope, T compilationResult, CompilationResultBuilderFactory factory) {
+        assert !graph.isFrozen();
         try (Scope s0 = withScope ? Debug.scope("GraalCompiler", graph, providers.getCodeCache()) : null) {
             Assumptions assumptions = new Assumptions(OptAssumptions.getValue());
             LIR lir = null;
