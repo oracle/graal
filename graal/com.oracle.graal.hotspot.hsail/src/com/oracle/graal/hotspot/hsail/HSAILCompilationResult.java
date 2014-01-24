@@ -96,33 +96,6 @@ public class HSAILCompilationResult extends ExternalCompilationResult {
         return getHSAILCompilationResult(graph);
     }
 
-    /**
-     * HSAIL doesn't have a calling convention as such. Function arguments are actually passed in
-     * memory but then loaded into registers in the function body. This routine makes sure that
-     * arguments to a kernel or function are loaded (by the kernel or function body) into registers
-     * of the appropriate sizes. For example, int and float parameters should appear in S registers,
-     * whereas double and long parameters should appear in d registers.
-     */
-    public static CallingConvention getHSAILCallingConvention(CallingConvention.Type type, TargetDescription target, ResolvedJavaMethod method, boolean stackOnly) {
-        Signature sig = method.getSignature();
-        JavaType retType = sig.getReturnType(null);
-        int sigCount = sig.getParameterCount(false);
-        JavaType[] argTypes;
-        int argIndex = 0;
-        if (!Modifier.isStatic(method.getModifiers())) {
-            argTypes = new JavaType[sigCount + 1];
-            argTypes[argIndex++] = method.getDeclaringClass();
-        } else {
-            argTypes = new JavaType[sigCount];
-        }
-        for (int i = 0; i < sigCount; i++) {
-            argTypes[argIndex++] = sig.getParameterType(i, null);
-        }
-
-        RegisterConfig registerConfig = backend.getProviders().getCodeCache().getRegisterConfig();
-        return registerConfig.getCallingConvention(type, retType, argTypes, target, stackOnly);
-    }
-
     public static HSAILCompilationResult getCompiledLambda(Class consumerClass) {
         /**
          * Find the accept() method in the IntConsumer, then use Graal API to find the target lambda
@@ -168,7 +141,7 @@ public class HSAILCompilationResult extends ExternalCompilationResult {
         PhaseSuite<HighTierContext> graphBuilderSuite = backend.getSuites().getDefaultGraphBuilderSuite().copy();
         graphBuilderSuite.appendPhase(new HSAILPhase());
         new HSAILPhase().apply(graph);
-        CallingConvention cc = getHSAILCallingConvention(Type.JavaCallee, target, graph.method(), false);
+        CallingConvention cc = CodeUtil.getCallingConvention(providers.getCodeCache(), Type.JavaCallee, graph.method(), false);
         SuitesProvider suitesProvider = backend.getSuites();
         try {
             HSAILCompilationResult compResult = compileGraph(graph, cc, graph.method(), providers, backend, target, null, graphBuilderSuite, OptimisticOptimizations.NONE, getProfilingInfo(graph),
