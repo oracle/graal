@@ -71,8 +71,19 @@ public final class FunctionRootNode extends RootNode {
         return inlineImmediatly;
     }
 
-    public TypedNode inline() {
-        return NodeUtil.cloneNode(uninitializedBody);
+    @Override
+    public RootNode inline() {
+        return new FunctionRootNode(getFrameDescriptor().shallowCopy(), NodeUtil.cloneNode(uninitializedBody), name, inlineImmediatly);
+    }
+
+    @Override
+    public int getInlineNodeCount() {
+        return NodeUtil.countNodes(uninitializedBody);
+    }
+
+    @Override
+    public boolean isInlinable() {
+        return true;
     }
 
     public Node getUninitializedBody() {

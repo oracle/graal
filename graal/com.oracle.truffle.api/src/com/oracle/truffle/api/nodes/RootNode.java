@@ -55,6 +55,58 @@ public abstract class RootNode extends Node {
     }
 
     /**
+     * Creates a copy of the current {@link RootNode} for use as inlined AST. The default
+     * implementation copies this {@link RootNode} and all its children recursively. It is
+     * recommended to override this method to provide an implementation that copies an uninitialized
+     * version of this AST. An uninitialized version of an AST was usually never executed which
+     * means that it has not yet collected any profiling feedback. Please note that changes in the
+     * behavior of this method might also require changes in {@link #getInlineNodeCount()}.
+     * 
+     * @see RootNode#getInlineNodeCount()
+     * @see RootNode#isInlinable()
+     * 
+     * @return the copied RootNode for inlining
+     * @throws UnsupportedOperationException if {@link #isInlinable()} returns false
+     */
+    public RootNode inline() {
+        if (!isInlinable()) {
+            throw new UnsupportedOperationException("Inlining is not enabled.");
+        }
+        return NodeUtil.cloneNode(this);
+    }
+
+    /**
+     * Returns the number of nodes that would be returned if {@link #inline()} would get invoked.
+     * This node count may be used for the calculation of a smart inlining heuristic.
+     * 
+     * @see RootNode#inline()
+     * @see RootNode#isInlinable()
+     * 
+     * @return the number of nodes that will get inlined
+     * @throws UnsupportedOperationException if {@link #isInlinable()} returns false
+     */
+    public int getInlineNodeCount() {
+        if (!isInlinable()) {
+            throw new UnsupportedOperationException("Inlining is not enabled.");
+        }
+        return NodeUtil.countNodes(this);
+    }
+
+    /**
+     * Returns true if this RootNode can be inlined. If this method returns true proper
+     * implementations of {@link #inline()} and {@link #getInlineNodeCount()} must be provided.
+     * Returns true by default.
+     * 
+     * @see RootNode#inline()
+     * @see RootNode#getInlineNodeCount()
+     * 
+     * @return true if this RootNode can be inlined
+     */
+    public boolean isInlinable() {
+        return true;
+    }
+
+    /**
      * Executes this function using the specified frame and returns the result value.
      * 
      * @param frame the frame of the currently executing guest language method
@@ -66,7 +118,7 @@ public abstract class RootNode extends Node {
         return callTarget;
     }
 
-    public FrameDescriptor getFrameDescriptor() {
+    public final FrameDescriptor getFrameDescriptor() {
         return frameDescriptor;
     }
 

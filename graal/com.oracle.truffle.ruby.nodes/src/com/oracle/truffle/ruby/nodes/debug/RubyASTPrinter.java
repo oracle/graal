@@ -19,7 +19,7 @@ import com.oracle.truffle.api.nodes.NodeUtil.NodeField;
 import com.oracle.truffle.api.nodes.NodeUtil.NodeFieldKind;
 import com.oracle.truffle.api.nodes.instrument.*;
 import com.oracle.truffle.ruby.nodes.*;
-import com.oracle.truffle.ruby.nodes.call.*;
+import com.oracle.truffle.ruby.nodes.call.CallNode;
 import com.oracle.truffle.ruby.nodes.literal.*;
 import com.oracle.truffle.ruby.nodes.methods.*;
 

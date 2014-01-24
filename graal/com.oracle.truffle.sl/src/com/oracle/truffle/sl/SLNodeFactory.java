@@ -96,7 +96,7 @@ public class SLNodeFactory {
     }
 
     public TypedNode createCall(TypedNode function, TypedNode[] parameters) {
-        return assignSource(CallNode.create(function, parameters));
+        return assignSource(FunctionCallNode.create(function, parameters));
     }
 
     public TypedNode createBinary(String operation, TypedNode left, TypedNode right) {
