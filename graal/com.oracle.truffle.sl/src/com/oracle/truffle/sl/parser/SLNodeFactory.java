@@ -218,17 +218,10 @@ public class SLNodeFactory {
     }
 
     public SLStatementNode createReturn(SLExpressionNode value) {
-// FrameSlot slot = frameDescriptor.findOrAddFrameSlot("<retval>", FrameSlotKind.Int);
-// if (returnValue == null) {
-// returnValue = ReadLocalNodeFactory.create(slot);
-// }
-// SLStatementNode write = WriteLocalNodeFactory.create(slot, value);
-// return assignSource(new SLReturnNode(write));
         return assignSource(new SLReturnNode(value));
     }
 
     public SLStatementNode createIf(SLExpressionNode condition, SLStatementNode then, SLStatementNode elseNode) {
         return assignSource(new SLIfNode(condition, then, elseNode));
     }
-
 }
