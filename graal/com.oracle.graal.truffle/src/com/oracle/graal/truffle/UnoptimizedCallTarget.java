@@ -22,23 +22,15 @@
  */
 package com.oracle.graal.truffle;
 
-import com.oracle.graal.debug.*;
-import com.oracle.truffle.api.*;
+import com.oracle.truffle.api.impl.*;
 import com.oracle.truffle.api.nodes.*;
 
-public class TruffleTreeDumpHandler implements DebugDumpHandler {
+/**
+ * Call target that is not optimized by Graal upon surpassing a specific invocation threshold.
+ */
+public final class UnoptimizedCallTarget extends DefaultCallTarget {
 
-    @Override
-    public void dump(Object object, final String message) {
-        if (object instanceof RootCallTarget) {
-            RootCallTarget callTarget = (RootCallTarget) object;
-            if (callTarget.getRootNode() != null) {
-                new GraphPrintVisitor().beginGroup(callTarget.toString()).beginGraph(message).visit(callTarget.getRootNode()).printToNetwork();
-            }
-        }
-    }
-
-    public void close() {
-        // nothing to do
+    protected UnoptimizedCallTarget(RootNode rootNode) {
+        super(rootNode);
     }
 }
