@@ -20,31 +20,42 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.sl.runtime;
+package com.oracle.truffle.sl.nodes.controlflow;
 
-import java.util.*;
+import com.oracle.truffle.api.frame.*;
+import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.sl.nodes.*;
+import com.oracle.truffle.sl.runtime.*;
 
-import com.oracle.truffle.api.*;
+public class SLFunctionBodyNode extends SLExpressionNode {
 
-public final class SLFunctionRegistry {
+    @Child private SLStatementNode body;
 
-    private final Map<String, SLFunction> functions = new HashMap<>();
+    private FrameDescriptor frameDescriptor;
 
-    public SLFunction lookup(String name) {
-        SLFunction result = functions.get(name);
-        if (result == null) {
-            result = new SLFunction(name);
-            functions.put(name, result);
+    public SLFunctionBodyNode(FrameDescriptor frameDescriptor, SLStatementNode body) {
+        this.frameDescriptor = frameDescriptor;
+        this.body = adoptChild(body);
+    }
+
+    @Override
+    public Object executeGeneric(VirtualFrame frame) {
+        try {
+            body.executeVoid(frame);
+        } catch (SLReturnException ex) {
+            return ex.getResult();
         }
-        return result;
+        return SLNull.INSTANCE;
     }
 
-    public void register(String name, RootCallTarget callTarget) {
-        SLFunction function = lookup(name);
-        function.setCallTarget(callTarget);
+    @Override
+    public Node copy() {
+        SLFunctionBodyNode copy = (SLFunctionBodyNode) super.copy();
+        copy.frameDescriptor = frameDescriptor.shallowCopy();
+        return copy;
     }
 
-    public Collection<SLFunction> getFunctions() {
-        return functions.values();
+    public FrameDescriptor getFrameDescriptor() {
+        return frameDescriptor;
     }
 }

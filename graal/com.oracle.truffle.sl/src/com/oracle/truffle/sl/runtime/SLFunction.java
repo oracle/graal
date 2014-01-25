@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,29 +22,39 @@
  */
 package com.oracle.truffle.sl.runtime;
 
-import java.util.*;
-
 import com.oracle.truffle.api.*;
+import com.oracle.truffle.api.utilities.*;
 
-public final class SLFunctionRegistry {
+public final class SLFunction {
 
-    private final Map<String, SLFunction> functions = new HashMap<>();
+    private final String name;
+    private RootCallTarget callTarget;
+    private final CyclicAssumption callTargetStable;
 
-    public SLFunction lookup(String name) {
-        SLFunction result = functions.get(name);
-        if (result == null) {
-            result = new SLFunction(name);
-            functions.put(name, result);
-        }
-        return result;
+    protected SLFunction(String name) {
+        this.name = name;
+        this.callTargetStable = new CyclicAssumption(name);
     }
 
-    public void register(String name, RootCallTarget callTarget) {
-        SLFunction function = lookup(name);
-        function.setCallTarget(callTarget);
+    public String getName() {
+        return name;
     }
 
-    public Collection<SLFunction> getFunctions() {
-        return functions.values();
+    protected void setCallTarget(RootCallTarget callTarget) {
+        this.callTarget = callTarget;
+        callTargetStable.invalidate();
+    }
+
+    public RootCallTarget getCallTarget() {
+        return callTarget;
+    }
+
+    public Assumption getCallTargetStable() {
+        return callTargetStable.getAssumption();
+    }
+
+    @Override
+    public String toString() {
+        return "function " + name;
     }
 }

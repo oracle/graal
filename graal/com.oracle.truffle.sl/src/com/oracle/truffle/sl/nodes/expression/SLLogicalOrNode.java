@@ -20,31 +20,31 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.sl.runtime;
+package com.oracle.truffle.sl.nodes.expression;
 
-import java.util.*;
+import com.oracle.truffle.api.dsl.*;
+import com.oracle.truffle.sl.nodes.*;
 
-import com.oracle.truffle.api.*;
+@SuppressWarnings("unused")
+public abstract class SLLogicalOrNode extends SLBinaryNode {
 
-public final class SLFunctionRegistry {
-
-    private final Map<String, SLFunction> functions = new HashMap<>();
-
-    public SLFunction lookup(String name) {
-        SLFunction result = functions.get(name);
-        if (result == null) {
-            result = new SLFunction(name);
-            functions.put(name, result);
-        }
-        return result;
+    @ShortCircuit("rightNode")
+    public boolean needsRightNode(boolean left) {
+        return !left;
     }
 
-    public void register(String name, RootCallTarget callTarget) {
-        SLFunction function = lookup(name);
-        function.setCallTarget(callTarget);
+    @ShortCircuit("rightNode")
+    public boolean needsRightNode(Object left) {
+        return left instanceof Boolean && needsRightNode(((Boolean) left).booleanValue());
     }
 
-    public Collection<SLFunction> getFunctions() {
-        return functions.values();
+    @Specialization
+    public boolean doBoolean(boolean left, boolean hasRight, boolean right) {
+        return left || right;
+    }
+
+    @Generic
+    public Object doGeneric(Object left, boolean hasRight, Object right) {
+        throw new RuntimeException("operation not defined for type " + left.getClass().getSimpleName());
     }
 }

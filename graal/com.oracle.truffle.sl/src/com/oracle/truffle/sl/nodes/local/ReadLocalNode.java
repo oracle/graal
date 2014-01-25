@@ -20,20 +20,42 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.sl.runtime;
+package com.oracle.truffle.sl.nodes.local;
 
-import com.oracle.truffle.api.*;
+import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.frame.*;
+import com.oracle.truffle.sl.nodes.*;
 
-public final class SLArguments extends Arguments {
+@PolymorphicLimit(1)
+public abstract class ReadLocalNode extends SLExpressionNode {
 
-    private final Object[] arguments;
+    private final FrameSlot slot;
 
-    public SLArguments(Object[] arguments) {
-        this.arguments = arguments;
+    public ReadLocalNode(FrameSlot slot) {
+        this.slot = slot;
     }
 
-    public static Object[] getFromFrame(VirtualFrame frame) {
-        return frame.getArguments(SLArguments.class).arguments;
+    public ReadLocalNode(ReadLocalNode specialized) {
+        this(specialized.slot);
+    }
+
+    @Specialization(rewriteOn = {FrameSlotTypeException.class})
+    public long readLong(VirtualFrame frame) throws FrameSlotTypeException {
+        return frame.getLong(slot);
+    }
+
+    @Specialization(rewriteOn = {FrameSlotTypeException.class})
+    public boolean readBoolean(VirtualFrame frame) throws FrameSlotTypeException {
+        return frame.getBoolean(slot);
+    }
+
+    @Specialization(rewriteOn = {FrameSlotTypeException.class})
+    public Object readObject(VirtualFrame frame) throws FrameSlotTypeException {
+        return frame.getObject(slot);
+    }
+
+    @Generic
+    public Object doGeneric(VirtualFrame frame) {
+        return frame.getValue(slot);
     }
 }

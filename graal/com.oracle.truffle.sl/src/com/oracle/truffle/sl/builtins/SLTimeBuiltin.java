@@ -20,31 +20,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.sl.runtime;
+package com.oracle.truffle.sl.builtins;
 
-import java.util.*;
+import com.oracle.truffle.api.dsl.*;
 
-import com.oracle.truffle.api.*;
+public abstract class SLTimeBuiltin extends SLBuiltinNode {
 
-public final class SLFunctionRegistry {
+    public static final long START_TIME = System.currentTimeMillis();
 
-    private final Map<String, SLFunction> functions = new HashMap<>();
-
-    public SLFunction lookup(String name) {
-        SLFunction result = functions.get(name);
-        if (result == null) {
-            result = new SLFunction(name);
-            functions.put(name, result);
-        }
-        return result;
-    }
-
-    public void register(String name, RootCallTarget callTarget) {
-        SLFunction function = lookup(name);
-        function.setCallTarget(callTarget);
-    }
-
-    public Collection<SLFunction> getFunctions() {
-        return functions.values();
+    @Specialization
+    public long time() {
+        return System.nanoTime();
     }
 }

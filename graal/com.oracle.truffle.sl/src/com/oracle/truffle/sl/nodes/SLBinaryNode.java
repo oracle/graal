@@ -20,31 +20,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.sl.runtime;
+package com.oracle.truffle.sl.nodes;
 
-import java.util.*;
+import com.oracle.truffle.api.dsl.*;
 
-import com.oracle.truffle.api.*;
+@NodeChildren({@NodeChild("leftNode"), @NodeChild("rightNode")})
+public abstract class SLBinaryNode extends SLExpressionNode {
 
-public final class SLFunctionRegistry {
-
-    private final Map<String, SLFunction> functions = new HashMap<>();
-
-    public SLFunction lookup(String name) {
-        SLFunction result = functions.get(name);
-        if (result == null) {
-            result = new SLFunction(name);
-            functions.put(name, result);
-        }
-        return result;
-    }
-
-    public void register(String name, RootCallTarget callTarget) {
-        SLFunction function = lookup(name);
-        function.setCallTarget(callTarget);
-    }
-
-    public Collection<SLFunction> getFunctions() {
-        return functions.values();
+    public boolean isString(Object a, Object b) {
+        return a instanceof String || b instanceof String;
     }
 }

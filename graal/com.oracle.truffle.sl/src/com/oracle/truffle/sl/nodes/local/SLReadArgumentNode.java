@@ -20,31 +20,31 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.sl.runtime;
+package com.oracle.truffle.sl.nodes.local;
 
-import java.util.*;
+import com.oracle.truffle.api.frame.*;
+import com.oracle.truffle.api.utilities.*;
+import com.oracle.truffle.sl.nodes.*;
+import com.oracle.truffle.sl.runtime.*;
 
-import com.oracle.truffle.api.*;
+public class SLReadArgumentNode extends SLExpressionNode {
 
-public final class SLFunctionRegistry {
+    private final int index;
 
-    private final Map<String, SLFunction> functions = new HashMap<>();
+    private final BranchProfile outOfBounds = new BranchProfile();
 
-    public SLFunction lookup(String name) {
-        SLFunction result = functions.get(name);
-        if (result == null) {
-            result = new SLFunction(name);
-            functions.put(name, result);
+    public SLReadArgumentNode(int index) {
+        this.index = index;
+    }
+
+    @Override
+    public Object executeGeneric(VirtualFrame frame) {
+        Object[] args = SLArguments.getFromFrame(frame);
+        if (index < args.length) {
+            return args[index];
+        } else {
+            outOfBounds.enter();
+            return SLNull.INSTANCE;
         }
-        return result;
-    }
-
-    public void register(String name, RootCallTarget callTarget) {
-        SLFunction function = lookup(name);
-        function.setCallTarget(callTarget);
-    }
-
-    public Collection<SLFunction> getFunctions() {
-        return functions.values();
     }
 }

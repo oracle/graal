@@ -20,20 +20,36 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.sl.runtime;
+package com.oracle.truffle.sl.nodes.controlflow;
 
-import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.frame.*;
+import com.oracle.truffle.api.utilities.*;
+import com.oracle.truffle.sl.nodes.*;
 
-public final class SLArguments extends Arguments {
+public class SLIfNode extends SLStatementNode {
+    @Child private SLExpressionNode conditionNode;
+    @Child private SLStatementNode thenPartNode;
+    @Child private SLStatementNode elsePartNode;
 
-    private final Object[] arguments;
+    private final BranchProfile thenTaken = new BranchProfile();
+    private final BranchProfile elseTaken = new BranchProfile();
 
-    public SLArguments(Object[] arguments) {
-        this.arguments = arguments;
+    public SLIfNode(SLExpressionNode conditionNode, SLStatementNode thenPartNode, SLStatementNode elsePartNode) {
+        this.conditionNode = adoptChild(conditionNode);
+        this.thenPartNode = adoptChild(thenPartNode);
+        this.elsePartNode = adoptChild(elsePartNode);
     }
 
-    public static Object[] getFromFrame(VirtualFrame frame) {
-        return frame.getArguments(SLArguments.class).arguments;
+    @Override
+    public void executeVoid(VirtualFrame frame) {
+        if (conditionNode.executeCondition(frame)) {
+            thenTaken.enter();
+            thenPartNode.executeVoid(frame);
+        } else {
+            if (elsePartNode != null) {
+                elseTaken.enter();
+                elsePartNode.executeVoid(frame);
+            }
+        }
     }
 }

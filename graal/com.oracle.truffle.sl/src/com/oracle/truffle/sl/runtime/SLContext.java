@@ -24,32 +24,43 @@ package com.oracle.truffle.sl.runtime;
 
 import java.io.*;
 
+import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.source.*;
 import com.oracle.truffle.sl.builtins.*;
+import com.oracle.truffle.sl.nodes.*;
 
 public final class SLContext {
-
-    private final PrintStream printOutput;
-    private final SLFunctionRegistry functionRegistry;
     private final SourceManager sourceManager;
+    private final PrintStream output;
+    private final SLFunctionRegistry functionRegistry;
 
-    public SLContext(PrintStream print) {
-        this.printOutput = print;
+    public SLContext(SourceManager sourceManager, PrintStream output) {
+        this.sourceManager = sourceManager;
+        this.output = output;
         this.functionRegistry = new SLFunctionRegistry();
-        DefaultBuiltins.install(this);
-        this.sourceManager = new SourceManager();
-    }
 
-    public PrintStream getPrintOutput() {
-        return printOutput;
-    }
-
-    public SLFunctionRegistry getFunctionRegistry() {
-        return functionRegistry;
+        installBuiltins();
     }
 
     public SourceManager getSourceManager() {
         return sourceManager;
     }
 
+    public PrintStream getPrintOutput() {
+        return output;
+    }
+
+    public SLFunctionRegistry getFunctionRegistry() {
+        return functionRegistry;
+    }
+
+    private void installBuiltins() {
+        installBuiltin(SLPrintBuiltinFactory.getInstance(), "print");
+        installBuiltin(SLTimeBuiltinFactory.getInstance(), "time");
+        installBuiltin(SLDefineFunctionBuiltinFactory.getInstance(), "defineFunction");
+    }
+
+    private void installBuiltin(NodeFactory<? extends SLBuiltinNode> factory, String name) {
+        getFunctionRegistry().register(name, SLRootNode.createBuiltin(this, factory, name));
+    }
 }

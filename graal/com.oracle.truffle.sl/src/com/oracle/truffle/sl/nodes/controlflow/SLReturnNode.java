@@ -20,31 +20,22 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.sl.runtime;
+package com.oracle.truffle.sl.nodes.controlflow;
 
-import java.util.*;
+import com.oracle.truffle.api.frame.*;
+import com.oracle.truffle.sl.nodes.*;
 
-import com.oracle.truffle.api.*;
+public class SLReturnNode extends SLStatementNode {
 
-public final class SLFunctionRegistry {
+    @Child private SLExpressionNode expr;
 
-    private final Map<String, SLFunction> functions = new HashMap<>();
-
-    public SLFunction lookup(String name) {
-        SLFunction result = functions.get(name);
-        if (result == null) {
-            result = new SLFunction(name);
-            functions.put(name, result);
-        }
-        return result;
+    public SLReturnNode(SLExpressionNode expr) {
+        this.expr = adoptChild(expr);
     }
 
-    public void register(String name, RootCallTarget callTarget) {
-        SLFunction function = lookup(name);
-        function.setCallTarget(callTarget);
-    }
-
-    public Collection<SLFunction> getFunctions() {
-        return functions.values();
+    @Override
+    public void executeVoid(VirtualFrame frame) {
+        Object result = expr.executeGeneric(frame);
+        throw new SLReturnException(result);
     }
 }

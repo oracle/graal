@@ -20,31 +20,25 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.sl.runtime;
+package com.oracle.truffle.sl.nodes.expression;
 
-import java.util.*;
+import com.oracle.truffle.api.dsl.*;
+import com.oracle.truffle.sl.nodes.*;
 
-import com.oracle.truffle.api.*;
+public abstract class SLNotEqualNode extends SLBinaryNode {
 
-public final class SLFunctionRegistry {
-
-    private final Map<String, SLFunction> functions = new HashMap<>();
-
-    public SLFunction lookup(String name) {
-        SLFunction result = functions.get(name);
-        if (result == null) {
-            result = new SLFunction(name);
-            functions.put(name, result);
-        }
-        return result;
+    @Specialization
+    public boolean notEqual(long left, long right) {
+        return left != right;
     }
 
-    public void register(String name, RootCallTarget callTarget) {
-        SLFunction function = lookup(name);
-        function.setCallTarget(callTarget);
+    @Specialization
+    public boolean notEqual(boolean left, boolean right) {
+        return left != right;
     }
 
-    public Collection<SLFunction> getFunctions() {
-        return functions.values();
+    @Generic
+    public boolean equal(Object left, Object right) {
+        return !left.equals(right);
     }
 }

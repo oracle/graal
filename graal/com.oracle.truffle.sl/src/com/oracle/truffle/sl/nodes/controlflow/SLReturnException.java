@@ -20,31 +20,21 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.sl.runtime;
+package com.oracle.truffle.sl.nodes.controlflow;
 
-import java.util.*;
+import com.oracle.truffle.api.nodes.*;
 
-import com.oracle.truffle.api.*;
+public final class SLReturnException extends ControlFlowException {
 
-public final class SLFunctionRegistry {
+    private static final long serialVersionUID = 4073191346281369231L;
 
-    private final Map<String, SLFunction> functions = new HashMap<>();
+    private final Object result;
 
-    public SLFunction lookup(String name) {
-        SLFunction result = functions.get(name);
-        if (result == null) {
-            result = new SLFunction(name);
-            functions.put(name, result);
-        }
+    public SLReturnException(Object result) {
+        this.result = result;
+    }
+
+    public Object getResult() {
         return result;
-    }
-
-    public void register(String name, RootCallTarget callTarget) {
-        SLFunction function = lookup(name);
-        function.setCallTarget(callTarget);
-    }
-
-    public Collection<SLFunction> getFunctions() {
-        return functions.values();
     }
 }

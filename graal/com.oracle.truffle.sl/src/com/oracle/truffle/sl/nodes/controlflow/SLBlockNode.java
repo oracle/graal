@@ -20,31 +20,25 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.sl.runtime;
+package com.oracle.truffle.sl.nodes.controlflow;
 
-import java.util.*;
+import com.oracle.truffle.api.frame.*;
+import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.sl.nodes.*;
 
-import com.oracle.truffle.api.*;
+public class SLBlockNode extends SLStatementNode {
 
-public final class SLFunctionRegistry {
+    @Children private final SLStatementNode[] statements;
 
-    private final Map<String, SLFunction> functions = new HashMap<>();
+    public SLBlockNode(SLStatementNode[] statements) {
+        this.statements = adoptChildren(statements);
+    }
 
-    public SLFunction lookup(String name) {
-        SLFunction result = functions.get(name);
-        if (result == null) {
-            result = new SLFunction(name);
-            functions.put(name, result);
+    @Override
+    @ExplodeLoop
+    public void executeVoid(VirtualFrame frame) {
+        for (SLStatementNode statement : statements) {
+            statement.executeVoid(frame);
         }
-        return result;
-    }
-
-    public void register(String name, RootCallTarget callTarget) {
-        SLFunction function = lookup(name);
-        function.setCallTarget(callTarget);
-    }
-
-    public Collection<SLFunction> getFunctions() {
-        return functions.values();
     }
 }

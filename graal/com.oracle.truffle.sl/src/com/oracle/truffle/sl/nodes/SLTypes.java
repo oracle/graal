@@ -20,31 +20,29 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.sl.runtime;
+package com.oracle.truffle.sl.nodes;
 
-import java.util.*;
+import java.math.*;
 
-import com.oracle.truffle.api.*;
+import com.oracle.truffle.api.dsl.*;
+import com.oracle.truffle.sl.runtime.*;
 
-public final class SLFunctionRegistry {
+@TypeSystem({long.class, BigInteger.class, boolean.class, String.class, SLFunction.class, SLNull.class, Object[].class})
+public class SLTypes {
 
-    private final Map<String, SLFunction> functions = new HashMap<>();
-
-    public SLFunction lookup(String name) {
-        SLFunction result = functions.get(name);
-        if (result == null) {
-            result = new SLFunction(name);
-            functions.put(name, result);
-        }
-        return result;
+    @TypeCheck
+    public boolean isSLNull(Object value) {
+        return SLNull.INSTANCE == value;
     }
 
-    public void register(String name, RootCallTarget callTarget) {
-        SLFunction function = lookup(name);
-        function.setCallTarget(callTarget);
+    @TypeCast
+    public SLNull asSLNull(Object value) {
+        assert isSLNull(value);
+        return SLNull.INSTANCE;
     }
 
-    public Collection<SLFunction> getFunctions() {
-        return functions.values();
+    @ImplicitCast
+    public BigInteger castBigInteger(long value) {
+        return BigInteger.valueOf(value);
     }
 }

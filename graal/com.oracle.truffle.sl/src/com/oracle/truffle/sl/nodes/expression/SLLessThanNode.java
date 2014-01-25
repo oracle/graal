@@ -20,31 +20,27 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.sl.runtime;
+package com.oracle.truffle.sl.nodes.expression;
 
-import java.util.*;
+import java.math.*;
 
-import com.oracle.truffle.api.*;
+import com.oracle.truffle.api.dsl.*;
+import com.oracle.truffle.sl.nodes.*;
 
-public final class SLFunctionRegistry {
+public abstract class SLLessThanNode extends SLBinaryNode {
 
-    private final Map<String, SLFunction> functions = new HashMap<>();
-
-    public SLFunction lookup(String name) {
-        SLFunction result = functions.get(name);
-        if (result == null) {
-            result = new SLFunction(name);
-            functions.put(name, result);
-        }
-        return result;
+    @Specialization
+    public boolean lessThan(long left, long right) {
+        return left < right;
     }
 
-    public void register(String name, RootCallTarget callTarget) {
-        SLFunction function = lookup(name);
-        function.setCallTarget(callTarget);
+    @Specialization
+    public boolean lessThan(BigInteger left, BigInteger right) {
+        return left.compareTo(right) < 0;
     }
 
-    public Collection<SLFunction> getFunctions() {
-        return functions.values();
+    @Specialization(guards = "isString")
+    public boolean lessThan(Object left, Object right) {
+        return left.toString().compareTo(right.toString()) < 0;
     }
 }

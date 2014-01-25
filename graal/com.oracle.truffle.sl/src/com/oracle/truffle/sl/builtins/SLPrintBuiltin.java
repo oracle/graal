@@ -20,31 +20,33 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.sl.runtime;
+package com.oracle.truffle.sl.builtins;
 
-import java.util.*;
+import com.oracle.truffle.api.dsl.*;
 
-import com.oracle.truffle.api.*;
+public abstract class SLPrintBuiltin extends SLBuiltinNode {
 
-public final class SLFunctionRegistry {
-
-    private final Map<String, SLFunction> functions = new HashMap<>();
-
-    public SLFunction lookup(String name) {
-        SLFunction result = functions.get(name);
-        if (result == null) {
-            result = new SLFunction(name);
-            functions.put(name, result);
-        }
-        return result;
+    @Specialization
+    public long print(long value) {
+        getContext().getPrintOutput().println(value);
+        return value;
     }
 
-    public void register(String name, RootCallTarget callTarget) {
-        SLFunction function = lookup(name);
-        function.setCallTarget(callTarget);
+    @Specialization
+    public boolean print(boolean value) {
+        getContext().getPrintOutput().println(value);
+        return value;
     }
 
-    public Collection<SLFunction> getFunctions() {
-        return functions.values();
+    @Specialization
+    public String print(String value) {
+        getContext().getPrintOutput().println(value);
+        return value;
+    }
+
+    @Specialization
+    public Object print(Object value) {
+        getContext().getPrintOutput().println(value.toString());
+        return value;
     }
 }

@@ -20,31 +20,36 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.sl.runtime;
+package com.oracle.truffle.sl.nodes.call;
 
-import java.util.*;
+import com.oracle.truffle.api.frame.*;
+import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.sl.nodes.*;
 
-import com.oracle.truffle.api.*;
+public final class SLArgumentsNode extends SLExpressionNode {
 
-public final class SLFunctionRegistry {
+    @Children private final SLExpressionNode[] arguments;
 
-    private final Map<String, SLFunction> functions = new HashMap<>();
+    public SLArgumentsNode(SLExpressionNode[] arguments) {
+        this.arguments = adoptChildren(arguments);
+    }
 
-    public SLFunction lookup(String name) {
-        SLFunction result = functions.get(name);
-        if (result == null) {
-            result = new SLFunction(name);
-            functions.put(name, result);
+    public SLExpressionNode[] getArguments() {
+        return arguments;
+    }
+
+    @Override
+    public Object[] executeGeneric(VirtualFrame frame) {
+        return executeArray(frame);
+    }
+
+    @Override
+    @ExplodeLoop
+    public Object[] executeArray(VirtualFrame frame) {
+        Object[] argumentValues = new Object[arguments.length];
+        for (int i = 0; i < arguments.length; i++) {
+            argumentValues[i] = arguments[i].executeGeneric(frame);
         }
-        return result;
-    }
-
-    public void register(String name, RootCallTarget callTarget) {
-        SLFunction function = lookup(name);
-        function.setCallTarget(callTarget);
-    }
-
-    public Collection<SLFunction> getFunctions() {
-        return functions.values();
+        return argumentValues;
     }
 }

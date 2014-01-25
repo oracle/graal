@@ -20,31 +20,18 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.sl.runtime;
-
-import java.util.*;
+package com.oracle.truffle.sl.builtins;
 
 import com.oracle.truffle.api.*;
+import com.oracle.truffle.api.dsl.*;
+import com.oracle.truffle.sl.parser.*;
 
-public final class SLFunctionRegistry {
+public abstract class SLDefineFunctionBuiltin extends SLBuiltinNode {
 
-    private final Map<String, SLFunction> functions = new HashMap<>();
-
-    public SLFunction lookup(String name) {
-        SLFunction result = functions.get(name);
-        if (result == null) {
-            result = new SLFunction(name);
-            functions.put(name, result);
-        }
-        return result;
-    }
-
-    public void register(String name, RootCallTarget callTarget) {
-        SLFunction function = lookup(name);
-        function.setCallTarget(callTarget);
-    }
-
-    public Collection<SLFunction> getFunctions() {
-        return functions.values();
+    @Specialization
+    public String defineFunction(String code) {
+        Source source = getContext().getSourceManager().get("dynamic", code);
+        Parser.parseSL(getContext(), source);
+        return code;
     }
 }

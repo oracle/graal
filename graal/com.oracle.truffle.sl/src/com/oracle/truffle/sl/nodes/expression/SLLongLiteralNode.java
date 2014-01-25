@@ -16,35 +16,31 @@
  * 2 along with this work; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
  *
- * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA 
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.sl.runtime;
+package com.oracle.truffle.sl.nodes.expression;
 
-import java.util.*;
+import com.oracle.truffle.api.frame.*;
+import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.sl.nodes.*;
 
-import com.oracle.truffle.api.*;
+public final class SLLongLiteralNode extends SLExpressionNode {
 
-public final class SLFunctionRegistry {
+    private final long value;
 
-    private final Map<String, SLFunction> functions = new HashMap<>();
-
-    public SLFunction lookup(String name) {
-        SLFunction result = functions.get(name);
-        if (result == null) {
-            result = new SLFunction(name);
-            functions.put(name, result);
-        }
-        return result;
+    public SLLongLiteralNode(long value) {
+        this.value = value;
     }
 
-    public void register(String name, RootCallTarget callTarget) {
-        SLFunction function = lookup(name);
-        function.setCallTarget(callTarget);
+    @Override
+    public long executeLong(VirtualFrame frame) throws UnexpectedResultException {
+        return value;
     }
 
-    public Collection<SLFunction> getFunctions() {
-        return functions.values();
+    @Override
+    public Object executeGeneric(VirtualFrame frame) {
+        return value;
     }
 }
