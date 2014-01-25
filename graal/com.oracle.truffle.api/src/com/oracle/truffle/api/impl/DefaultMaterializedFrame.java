@@ -27,11 +27,16 @@ package com.oracle.truffle.api.impl;
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.frame.*;
 
+/**
+ * This is an implementation-specific class. Do not use or instantiate it. Instead, use
+ * {@link TruffleRuntime#createMaterializedFrame(Arguments)} or {@link Frame#materialize()} to
+ * create a {@link MaterializedFrame}.
+ */
 final class DefaultMaterializedFrame implements MaterializedFrame, PackedFrame {
 
     private final DefaultVirtualFrame wrapped;
 
-    protected DefaultMaterializedFrame(DefaultVirtualFrame wrapped) {
+    DefaultMaterializedFrame(DefaultVirtualFrame wrapped) {
         this.wrapped = wrapped;
     }
 

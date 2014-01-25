@@ -22,35 +22,29 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.impl;
+package com.oracle.truffle.api;
 
-import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.nodes.*;
 
 /**
- * This is an implementation-specific class. Do not use or instantiate it. Instead, use
- * {@link TruffleRuntime#createAssumption()} to create an {@link Assumption}.
+ * Represents the target of a call to a {@link RootNode}, i.e., to another tree of nodes. Instances
+ * of this class can be created using {@link TruffleRuntime#createCallTarget(RootNode)}.
  */
-final class DefaultAssumption extends AbstractAssumption {
+public abstract class RootCallTarget extends CallTarget {
 
-    DefaultAssumption(String name) {
-        super(name);
+    private final RootNode rootNode;
+
+    public RootCallTarget(RootNode function) {
+        this.rootNode = function;
+        this.rootNode.setCallTarget(this);
     }
 
     @Override
-    public void check() throws InvalidAssumptionException {
-        if (!isValid) {
-            throw new InvalidAssumptionException();
-        }
+    public String toString() {
+        return rootNode.toString();
     }
 
-    @Override
-    public void invalidate() {
-        isValid = false;
-    }
-
-    @Override
-    public boolean isValid() {
-        return isValid;
+    public RootNode getRootNode() {
+        return rootNode;
     }
 }
