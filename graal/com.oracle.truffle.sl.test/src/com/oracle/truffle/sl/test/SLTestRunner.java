@@ -37,7 +37,7 @@ import com.oracle.truffle.sl.runtime.*;
 public class SLTestRunner {
 
     private static final int REPEATS = 10;
-    private static final String TEST_DIR = "tests";
+    private static final String TEST_DIR = "graal/com.oracle.truffle.sl.test/tests";
     private static final String INPUT_SUFFIX = ".sl";
     private static final String OUTPUT_SUFFIX = ".output";
 
