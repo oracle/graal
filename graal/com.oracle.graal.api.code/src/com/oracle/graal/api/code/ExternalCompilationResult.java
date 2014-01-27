@@ -60,4 +60,11 @@ public class ExternalCompilationResult extends CompilationResult {
     public long getEntryPoint() {
         return entryPoint;
     }
+
+    /**
+     * Gets the {@linkplain #getTargetCode() code} in this compilation result as a string.
+     */
+    public String getCodeString() {
+        return new String(getTargetCode(), 0, getTargetCodeSize());
+    }
 }
