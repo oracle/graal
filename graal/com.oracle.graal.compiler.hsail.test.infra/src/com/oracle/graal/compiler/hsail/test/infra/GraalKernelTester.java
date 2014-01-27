@@ -27,33 +27,46 @@ package com.oracle.graal.compiler.hsail.test.infra;
  * This class extends KernelTester and provides a base class
  * for which the HSAIL code comes from the Graal compiler.
  */
+import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 import static com.oracle.graal.phases.GraalOptions.*;
 
 import java.io.*;
 import java.lang.reflect.*;
 
+import org.junit.*;
+
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.hsail.*;
 import com.oracle.graal.hotspot.meta.*;
+import com.oracle.graal.hsail.*;
 import com.oracle.graal.options.*;
-
-import com.oracle.graal.phases.GraalOptions;
-import static com.oracle.graal.options.OptionValue.OverrideScope;
+import com.oracle.graal.options.OptionValue.OverrideScope;
+import com.oracle.graal.phases.*;
 
 public abstract class GraalKernelTester extends KernelTester {
 
-    HSAILCompilationResult hsailCompResult;
+    private static HSAILHotSpotBackend getHSAILBackend() {
+        Backend backend = runtime().getBackend(HSAIL.class);
+        Assume.assumeTrue(backend instanceof HSAILHotSpotBackend);
+        return (HSAILHotSpotBackend) backend;
+    }
+
+    ExternalCompilationResult hsailCode;
     private boolean showHsailSource = false;
     private boolean saveInFile = false;
 
     @Override
     public String getCompiledHSAILSource(Method method) {
-        if (hsailCompResult == null) {
-            hsailCompResult = HSAILCompilationResult.getHSAILCompilationResult(method);
+        if (hsailCode == null) {
+            HSAILHotSpotBackend backend = getHSAILBackend();
+            ResolvedJavaMethod javaMethod = backend.getProviders().getMetaAccess().lookupJavaMethod(method);
+            hsailCode = backend.compileKernel(javaMethod, false);
         }
-        String hsailSource = hsailCompResult.getHSAILCode();
+        String hsailSource = hsailCode.getCodeString();
         if (showHsailSource) {
             logger.severe(hsailSource);
         }
@@ -86,8 +99,8 @@ public abstract class GraalKernelTester extends KernelTester {
 
     @Override
     protected void dispatchKernelOkra(int range, Object... args) {
-        HSAILCompilationResult hcr = HSAILCompilationResult.getHSAILCompilationResult(testMethod);
-        HotSpotNmethod code = (HotSpotNmethod) hcr.getInstalledCode();
+        HSAILHotSpotBackend backend = getHSAILBackend();
+        HotSpotNmethod code = backend.compileAndInstallKernel(testMethod);
 
         if (code != null) {
             try {

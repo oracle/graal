@@ -23,25 +23,34 @@
 package com.oracle.graal.hotspot.hsail;
 
 import static com.oracle.graal.api.code.CallingConvention.Type.*;
+import static com.oracle.graal.api.code.CodeUtil.*;
 import static com.oracle.graal.api.code.ValueUtil.*;
+import static com.oracle.graal.compiler.GraalCompiler.*;
 
 import java.lang.reflect.*;
 import java.util.*;
 
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.code.CallingConvention.Type;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
 import com.oracle.graal.asm.hsail.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.debug.*;
+import com.oracle.graal.debug.Debug.Scope;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hsail.*;
+import com.oracle.graal.java.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.hsail.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.spi.Replacements;
+import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.phases.*;
+import com.oracle.graal.phases.common.*;
+import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.replacements.hsail.*;
 
 /**
@@ -82,6 +91,60 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
 
         // Register the substitutions for java.lang.Math routines.
         replacements.registerSubstitutions(HSAILMathSubstitutions.class);
+    }
+
+    /**
+     * Compiles and installs a given method to a GPU binary.
+     */
+    public HotSpotNmethod compileAndInstallKernel(Method method) {
+        ResolvedJavaMethod javaMethod = getProviders().getMetaAccess().lookupJavaMethod(method);
+        return installKernel(javaMethod, compileKernel(javaMethod, true));
+    }
+
+    /**
+     * Compiles a given method to HSAIL code.
+     * 
+     * @param makeBinary specifies whether a GPU binary should also be generated for the HSAIL code.
+     *            If true, the returned value is guaranteed to have a non-zero
+     *            {@linkplain ExternalCompilationResult#getEntryPoint() entry point}.
+     * @return the HSAIL code compiled from {@code method}'s bytecode
+     */
+    public ExternalCompilationResult compileKernel(ResolvedJavaMethod method, boolean makeBinary) {
+        StructuredGraph graph = new StructuredGraph(method);
+        HotSpotProviders providers = getProviders();
+        new GraphBuilderPhase.Instance(providers.getMetaAccess(), GraphBuilderConfiguration.getEagerDefault(), OptimisticOptimizations.ALL).apply(graph);
+        PhaseSuite<HighTierContext> graphBuilderSuite = providers.getSuites().getDefaultGraphBuilderSuite();
+        graphBuilderSuite.appendPhase(new NonNullParametersPhase());
+        CallingConvention cc = getCallingConvention(providers.getCodeCache(), Type.JavaCallee, graph.method(), false);
+        Suites suites = providers.getSuites().getDefaultSuites();
+        ExternalCompilationResult hsailCode = compileGraph(graph, cc, method, providers, this, this.getTarget(), null, graphBuilderSuite, OptimisticOptimizations.NONE, getProfilingInfo(graph),
+                        new SpeculationLog(), suites, true, new ExternalCompilationResult(), CompilationResultBuilderFactory.Default);
+
+        if (makeBinary) {
+            try (Scope ds = Debug.scope("GeneratingKernelBinary")) {
+                long kernel = getRuntime().getCompilerToGPU().generateKernel(hsailCode.getTargetCode(), method.getName());
+                if (kernel == 0) {
+                    throw new GraalInternalError("Failed to compile HSAIL kernel");
+                }
+                hsailCode.setEntryPoint(kernel);
+            } catch (Throwable e) {
+                throw Debug.handle(e);
+            }
+        }
+        return hsailCode;
+    }
+
+    /**
+     * Installs the {@linkplain ExternalCompilationResult#getEntryPoint() GPU binary} associated
+     * with some given HSAIL code in the code cache and returns a {@link HotSpotNmethod} handle to
+     * the installed code.
+     * 
+     * @param hsailCode HSAIL compilation result for which a GPU binary has been generated
+     * @return a handle to the binary as installed in the HotSpot code cache
+     */
+    public final HotSpotNmethod installKernel(ResolvedJavaMethod method, ExternalCompilationResult hsailCode) {
+        assert hsailCode.getEntryPoint() != 0L;
+        return getProviders().getCodeCache().addExternalMethod(method, hsailCode);
     }
 
     /**
