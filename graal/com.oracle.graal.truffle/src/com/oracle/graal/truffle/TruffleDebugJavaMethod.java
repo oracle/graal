@@ -26,14 +26,14 @@ import static com.oracle.graal.api.meta.MetaUtil.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
-import com.oracle.truffle.api.impl.*;
+import com.oracle.truffle.api.*;
 
 /**
  * Enables a Truffle compilable to masquerade as a {@link JavaMethod} for use as a context value in
  * {@linkplain Debug#scope(String, Object...) debug scopes}.
  */
 public class TruffleDebugJavaMethod implements JavaMethod {
-    private final DefaultCallTarget compilable;
+    private final RootCallTarget compilable;
 
     private static final JavaType declaringClass = new JavaType() {
 
@@ -95,7 +95,7 @@ public class TruffleDebugJavaMethod implements JavaMethod {
         }
     };
 
-    public TruffleDebugJavaMethod(DefaultCallTarget compilable) {
+    public TruffleDebugJavaMethod(RootCallTarget compilable) {
         this.compilable = compilable;
     }
 

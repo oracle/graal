@@ -315,9 +315,18 @@ public class ConditionalEliminationPhase extends Phase {
 
         private void registerCondition(boolean isTrue, LogicNode condition, ValueNode anchor) {
             if (!isTrue && condition instanceof ShortCircuitOrNode) {
-                ShortCircuitOrNode disjunction = (ShortCircuitOrNode) condition;
-                registerCondition(disjunction.isXNegated(), disjunction.getX(), anchor);
-                registerCondition(disjunction.isYNegated(), disjunction.getY(), anchor);
+                /*
+                 * We can only do this for fixed nodes, because floating guards will be registered
+                 * at a BeginNode but might be "valid" only later due to data flow dependencies.
+                 * Therefore, registering both conditions of a ShortCircuitOrNode for a floating
+                 * guard could lead to cycles in data flow, because the guard will be used as anchor
+                 * for both conditions, and one condition could be depending on the other.
+                 */
+                if (anchor instanceof FixedNode) {
+                    ShortCircuitOrNode disjunction = (ShortCircuitOrNode) condition;
+                    registerCondition(disjunction.isXNegated(), disjunction.getX(), anchor);
+                    registerCondition(disjunction.isYNegated(), disjunction.getY(), anchor);
+                }
             }
             state.addCondition(isTrue, condition, anchor);
 

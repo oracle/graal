@@ -26,6 +26,7 @@ import org.junit.*;
 
 public class ControlPTXTest extends PTXTest {
 
+    @Ignore("[CUDA] *** Error (status=702): Synchronize kernel")
     @Test
     public void testControl() {
         test("testLoop", 42);

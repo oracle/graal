@@ -20,25 +20,24 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.truffle;
+package com.oracle.graal.phases.common;
 
-import com.oracle.graal.debug.*;
-import com.oracle.truffle.api.*;
-import com.oracle.truffle.api.nodes.*;
+import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.type.*;
+import com.oracle.graal.phases.*;
 
-public class TruffleTreeDumpHandler implements DebugDumpHandler {
+/**
+ * Modifies the stamp of all object {@linkplain ParameterNode parameters} in a graph to denote they
+ * are non-null. This can be used for graphs where the caller null checks all arguments.
+ */
+public class NonNullParametersPhase extends Phase {
 
     @Override
-    public void dump(Object object, final String message) {
-        if (object instanceof RootCallTarget) {
-            RootCallTarget callTarget = (RootCallTarget) object;
-            if (callTarget.getRootNode() != null) {
-                new GraphPrintVisitor().beginGroup(callTarget.toString()).beginGraph(message).visit(callTarget.getRootNode()).printToNetwork();
+    protected void run(StructuredGraph graph) {
+        for (ParameterNode param : graph.getNodes(ParameterNode.class)) {
+            if (param.stamp() instanceof ObjectStamp) {
+                param.setStamp(StampFactory.declaredNonNull(((ObjectStamp) param.stamp()).type()));
             }
         }
-    }
-
-    public void close() {
-        // nothing to do
     }
 }

@@ -20,24 +20,17 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.ptx.test;
+package com.oracle.graal.truffle;
 
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.type.*;
-import com.oracle.graal.phases.*;
+import com.oracle.truffle.api.impl.*;
+import com.oracle.truffle.api.nodes.*;
 
-public class PTXPhase extends Phase {
+/**
+ * Call target that is not optimized by Graal upon surpassing a specific invocation threshold.
+ */
+public final class UnoptimizedCallTarget extends DefaultCallTarget {
 
-    @Override
-    protected void run(StructuredGraph graph) {
-        /*
-         * Assume that null checks would be done on the CPU caller side prior to copying data onto
-         * the GPU.
-         */
-        for (ParameterNode param : graph.getNodes(ParameterNode.class)) {
-            if (param.stamp() instanceof ObjectStamp) {
-                param.setStamp(StampFactory.declaredNonNull(((ObjectStamp) param.stamp()).type()));
-            }
-        }
+    protected UnoptimizedCallTarget(RootNode rootNode) {
+        super(rootNode);
     }
 }
