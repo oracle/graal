@@ -34,14 +34,14 @@ import static com.oracle.graal.lir.LIRValueUtil.*;
 import java.util.*;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.CallingConvention.*;
+import com.oracle.graal.api.code.CallingConvention.Type;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
 import com.oracle.graal.asm.ptx.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.ptx.*;
 import com.oracle.graal.debug.*;
-import com.oracle.graal.debug.Debug.*;
+import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.HotSpotReplacementsImpl.GraphProducer;
@@ -187,7 +187,6 @@ public class PTXHotSpotBackend extends HotSpotBackend {
             }
         }
         return ptxCode;
-
     }
 
     /**
