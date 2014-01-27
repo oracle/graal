@@ -578,7 +578,11 @@ public abstract class GraalCompilerTest extends GraalTest {
     protected CompilationResult compile(ResolvedJavaMethod method, final StructuredGraph graph) {
         CallingConvention cc = getCallingConvention(getCodeCache(), Type.JavaCallee, graph.method(), false);
         return compileGraph(graph, cc, method, getProviders(), getBackend(), getCodeCache().getTarget(), null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL, getProfilingInfo(graph),
-                        new SpeculationLog(), getSuites(), true, new CompilationResult(), CompilationResultBuilderFactory.Default);
+                        getSpeculationLog(), getSuites(), true, new CompilationResult(), CompilationResultBuilderFactory.Default);
+    }
+
+    protected SpeculationLog getSpeculationLog() {
+        return null;
     }
 
     protected InstalledCode addMethod(final ResolvedJavaMethod method, final CompilationResult compResult) {

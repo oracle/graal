@@ -175,8 +175,8 @@ public class PTXHotSpotBackend extends HotSpotBackend {
         PhaseSuite<HighTierContext> graphBuilderSuite = providers.getSuites().getDefaultGraphBuilderSuite();
         graphBuilderSuite.appendPhase(new NonNullParametersPhase());
         Suites suites = providers.getSuites().getDefaultSuites();
-        ExternalCompilationResult ptxCode = compileGraph(graph, cc, method, providers, this, this.getTarget(), null, graphBuilderSuite, OptimisticOptimizations.NONE, getProfilingInfo(graph),
-                        new SpeculationLog(), suites, true, new ExternalCompilationResult(), CompilationResultBuilderFactory.Default);
+        ExternalCompilationResult ptxCode = compileGraph(graph, cc, method, providers, this, this.getTarget(), null, graphBuilderSuite, OptimisticOptimizations.NONE, getProfilingInfo(graph), null,
+                        suites, true, new ExternalCompilationResult(), CompilationResultBuilderFactory.Default);
         if (makeBinary) {
             try (Scope ds = Debug.scope("GeneratingKernelBinary")) {
                 assert ptxCode.getTargetCode() != null;

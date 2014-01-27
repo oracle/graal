@@ -144,7 +144,7 @@ public class HSAILCompilationResult extends ExternalCompilationResult {
         SuitesProvider suitesProvider = backend.getSuites();
         try {
             HSAILCompilationResult compResult = compileGraph(graph, cc, graph.method(), providers, backend, target, null, graphBuilderSuite, OptimisticOptimizations.NONE, getProfilingInfo(graph),
-                            new SpeculationLog(), suitesProvider.getDefaultSuites(), true, new HSAILCompilationResult(), CompilationResultBuilderFactory.Default);
+                            null, suitesProvider.getDefaultSuites(), true, new HSAILCompilationResult(), CompilationResultBuilderFactory.Default);
             if ((validDevice) && (compResult.getTargetCode() != null)) {
                 long kernel = toGPU.generateKernel(compResult.getTargetCode(), graph.method().getName());
 
