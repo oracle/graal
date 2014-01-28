@@ -40,7 +40,7 @@ final class SLDirectDispatchNode extends SLAbstractDispatchNode {
         this.cachedFunction = cachedFunction;
         this.cachedCallTarget = cachedFunction.getCallTarget();
         this.cachedCallTargetStable = cachedFunction.getCallTargetStable();
-        this.callNode = CallNode.create(cachedCallTarget);
+        this.callNode = adoptChild(CallNode.create(cachedCallTarget));
         this.nextNode = adoptChild(next);
     }
 
