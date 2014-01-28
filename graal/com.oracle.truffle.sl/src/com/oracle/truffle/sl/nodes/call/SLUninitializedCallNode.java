@@ -43,7 +43,7 @@ final class SLUninitializedCallNode extends SLAbstractDispatchNode {
         SLAbstractDispatchNode specialized;
         if (depth < INLINE_CACHE_SIZE) {
             SLAbstractDispatchNode next = new SLUninitializedCallNode();
-            SLAbstractDispatchNode direct = new SLInlinableDirectDispatchNode(next, function);
+            SLAbstractDispatchNode direct = new SLDirectDispatchNode(next, function);
             specialized = replace(direct);
         } else {
             SLAbstractDispatchNode generic = new SLGenericDispatchNode();

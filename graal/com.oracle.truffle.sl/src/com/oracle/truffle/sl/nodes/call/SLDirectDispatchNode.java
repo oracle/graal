@@ -27,27 +27,29 @@ import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.sl.runtime.*;
 
-abstract class SLDirectDispatchNode extends SLAbstractDispatchNode {
+final class SLDirectDispatchNode extends SLAbstractDispatchNode {
 
     protected final SLFunction cachedFunction;
     protected final RootCallTarget cachedCallTarget;
     protected final Assumption cachedCallTargetStable;
 
+    @Child protected CallNode callNode;
     @Child protected SLAbstractDispatchNode nextNode;
 
     protected SLDirectDispatchNode(SLAbstractDispatchNode next, SLFunction cachedFunction) {
         this.cachedFunction = cachedFunction;
         this.cachedCallTarget = cachedFunction.getCallTarget();
         this.cachedCallTargetStable = cachedFunction.getCallTargetStable();
+        this.callNode = CallNode.create(cachedCallTarget);
         this.nextNode = adoptChild(next);
     }
 
     @Override
-    protected final Object executeCall(VirtualFrame frame, SLFunction function, SLArguments arguments) {
+    protected Object executeCall(VirtualFrame frame, SLFunction function, SLArguments arguments) {
         if (this.cachedFunction == function) {
             try {
                 cachedCallTargetStable.check();
-                return executeCurrent(frame, arguments);
+                return callNode.call(frame.pack(), arguments);
             } catch (InvalidAssumptionException ex) {
                 /*
                  * Remove ourselfs from the polymorphic inline cache, so that we fail the check only
@@ -61,6 +63,4 @@ abstract class SLDirectDispatchNode extends SLAbstractDispatchNode {
         }
         return nextNode.executeCall(frame, function, arguments);
     }
-
-    protected abstract Object executeCurrent(VirtualFrame frame, SLArguments arguments);
 }

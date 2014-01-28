@@ -75,7 +75,7 @@ public final class SLRootNode extends RootNode {
 
     @Override
     public RootNode inline() {
-        return new FunctionRootNode(getFrameDescriptor().shallowCopy(), NodeUtil.cloneNode(uninitializedBody), name, inlineImmediatly);
+        return new SLRootNode(getFrameDescriptor().shallowCopy(), NodeUtil.cloneNode(uninitializedBody), name, inlineImmediatly);
     }
 
     @Override
