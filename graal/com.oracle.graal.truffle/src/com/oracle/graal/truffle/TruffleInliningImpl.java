@@ -84,7 +84,7 @@ class TruffleInliningImpl implements TruffleInlining {
 
         if (inlined) {
             for (InlinableCallSiteInfo callSite : inlinableCallSites) {
-                if (callSite.getCallSite().isInlinable()) {
+                if (callSite.getCallSite().isInlinable() && !callSite.getCallSite().isInlined()) {
                     CallNode.internalResetCallCount(callSite.getCallSite());
                 }
             }
@@ -215,7 +215,7 @@ class TruffleInliningImpl implements TruffleInlining {
             public boolean visit(Node node) {
                 if (node instanceof CallNode) {
                     CallNode callNode = (CallNode) node;
-                    if (callNode.isInlinable()) {
+                    if (callNode.isInlinable() && !callNode.isInlined()) {
                         inlinableCallSites.add(new InlinableCallSiteInfo(callNode));
                     }
                 }
