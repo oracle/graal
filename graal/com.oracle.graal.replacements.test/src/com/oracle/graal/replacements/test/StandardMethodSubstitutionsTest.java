@@ -32,6 +32,7 @@ import org.junit.*;
 
 import sun.misc.*;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
@@ -350,19 +351,54 @@ public class StandardMethodSubstitutionsTest extends MethodSubstitutionTest {
         // Math.pow(value, 13);
     }
 
+    private static Object executeVarargsSafe(InstalledCode code, Object... args) {
+        try {
+            return code.executeVarargs(args);
+        } catch (InvalidInstalledCodeException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private static Object invokeSafe(Method method, Object... args) {
+        method.setAccessible(true);
+        try {
+            Object result = method.invoke(null, args);
+            return result;
+        } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public void testSubstitution(String testMethodName, Class<?> intrinsicClass, Class<?> holder, String methodName, boolean optional, Object... args) {
+        Method realMethod = getMethod(holder, methodName);
+        Method testMethod = getMethod(testMethodName);
+        StructuredGraph graph = test(testMethodName);
+
+        // Check to see if the resulting graph contains the expected node
+        StructuredGraph replacement = getReplacements().getMethodSubstitution(getMetaAccess().lookupJavaMethod(realMethod));
+        if (replacement == null && !optional) {
+            assertInGraph(graph, intrinsicClass);
+        }
+
+        // Force compilation
+        InstalledCode code = getCode(getMetaAccess().lookupJavaMethod(testMethod), parse(testMethod));
+        assert optional || code != null;
+        for (Object l : args) {
+            // Verify that the original method and the substitution produce the same value
+            assertEquals(invokeSafe(testMethod, l), invokeSafe(realMethod, l));
+            // Verify that the generated code and the original produce the same value
+            assertEquals(executeVarargsSafe(code, l), invokeSafe(realMethod, l));
+        }
+    }
+
     @Test
     public void testIntegerSubstitutions() {
-        assertInGraph(test("integerReverseBytes"), ReverseBytesNode.class);              // Java
-        assertInGraph(test("integerNumberOfLeadingZeros"), BitScanReverseNode.class);    // Java
-        assertInGraph(test("integerNumberOfTrailingZeros"), BitScanForwardNode.class);   // Java
-        assertInGraph(test("integerBitCount"), BitCountNode.class);                      // Java
+        Object[] args = new Object[]{Integer.MIN_VALUE, -1, 0, 1, Integer.MAX_VALUE};
 
-        for (int i : new int[]{Integer.MIN_VALUE, -1, 0, 1, Integer.MAX_VALUE}) {
-            assertEquals(Integer.reverseBytes(i), IntegerSubstitutions.reverseBytes(i));
-            assertEquals(Integer.numberOfLeadingZeros(i), IntegerSubstitutions.numberOfLeadingZeros(i));
-            assertEquals(Integer.numberOfTrailingZeros(i), IntegerSubstitutions.numberOfTrailingZeros(i));
-            assertEquals(Integer.bitCount(i), IntegerSubstitutions.bitCount(i));
-        }
+        testSubstitution("integerReverseBytes", ReverseBytesNode.class, Integer.class, "reverseBytes", false, args);
+        testSubstitution("integerNumberOfLeadingZeros", BitScanReverseNode.class, Integer.class, "numberOfLeadingZeros", true, args);
+        testSubstitution("integerNumberOfTrailingZeros", BitScanForwardNode.class, Integer.class, "numberOfTrailingZeros", false, args);
+        testSubstitution("integerBitCount", BitCountNode.class, Integer.class, "bitCount", true, args);
     }
 
     @SuppressWarnings("all")
@@ -387,17 +423,12 @@ public class StandardMethodSubstitutionsTest extends MethodSubstitutionTest {
 
     @Test
     public void testLongSubstitutions() {
-        assertInGraph(test("longReverseBytes"), ReverseBytesNode.class);              // Java
-        assertInGraph(test("longNumberOfLeadingZeros"), BitScanReverseNode.class);    // Java
-        assertInGraph(test("longNumberOfTrailingZeros"), BitScanForwardNode.class);   // Java
-        assertInGraph(test("longBitCount"), BitCountNode.class);                      // Java
+        Object[] args = new Object[]{Long.MIN_VALUE, -1L, 0L, 1L, Long.MAX_VALUE};
 
-        for (long l : new long[]{Long.MIN_VALUE, -1L, 0L, 1L, Long.MAX_VALUE}) {
-            assertEquals(Long.reverseBytes(l), LongSubstitutions.reverseBytes(l));
-            assertEquals(Long.numberOfLeadingZeros(l), LongSubstitutions.numberOfLeadingZeros(l));
-            assertEquals(Long.numberOfTrailingZeros(l), LongSubstitutions.numberOfTrailingZeros(l));
-            assertEquals(Long.bitCount(l), LongSubstitutions.bitCount(l));
-        }
+        testSubstitution("longReverseBytes", ReverseBytesNode.class, Long.class, "reverseBytes", false, args);
+        testSubstitution("longNumberOfLeadingZeros", BitScanReverseNode.class, Long.class, "numberOfLeadingZeros", true, args);
+        testSubstitution("longNumberOfTrailingZeros", BitScanForwardNode.class, Long.class, "numberOfTrailingZeros", false, args);
+        testSubstitution("longBitCount", BitCountNode.class, Long.class, "bitCount", true, args);
     }
 
     @SuppressWarnings("all")
@@ -406,12 +437,12 @@ public class StandardMethodSubstitutionsTest extends MethodSubstitutionTest {
     }
 
     @SuppressWarnings("all")
-    public static long longNumberOfLeadingZeros(long value) {
+    public static int longNumberOfLeadingZeros(long value) {
         return Long.numberOfLeadingZeros(value);
     }
 
     @SuppressWarnings("all")
-    public static long longNumberOfTrailingZeros(long value) {
+    public static int longNumberOfTrailingZeros(long value) {
         return Long.numberOfTrailingZeros(value);
     }
 

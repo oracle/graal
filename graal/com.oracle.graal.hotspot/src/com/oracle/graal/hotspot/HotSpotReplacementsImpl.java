@@ -58,6 +58,11 @@ public class HotSpotReplacementsImpl extends ReplacementsImpl {
                 if (!config.usePopCountInstruction) {
                     return null;
                 }
+            } else if (substituteMethod.getName().equals("numberOfLeadingZeros")) {
+                if (config.useCountLeadingZerosInstruction) {
+                    // bsr is lzcnt
+                    return null;
+                }
             }
         } else if (substituteClass == CRC32Substitutions.class) {
             if (!config.useCRC32Intrinsics) {

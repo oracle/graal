@@ -36,8 +36,12 @@ import org.junit.runner.*;
 public class GraalTest {
 
     protected Method getMethod(String methodName) {
+        return getMethod(getClass(), methodName);
+    }
+
+    protected Method getMethod(Class<?> clazz, String methodName) {
         Method found = null;
-        for (Method m : this.getClass().getMethods()) {
+        for (Method m : clazz.getMethods()) {
             if (m.getName().equals(methodName)) {
                 Assert.assertNull(found);
                 found = m;
