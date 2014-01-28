@@ -30,8 +30,10 @@ package com.oracle.truffle.sl.parser;
 
 import java.util.*;
 
+import com.oracle.truffle.api.*;
 import com.oracle.truffle.sl.*;
 import com.oracle.truffle.sl.nodes.*;
+import com.oracle.truffle.sl.runtime.*;
 
 // Checkstyle: stop
 // @formatter:off
@@ -49,9 +51,9 @@ public class Parser {
     public final Errors errors;
     private final SLNodeFactory factory;
     -->declarations
-    public Parser(Scanner scanner, SLNodeFactory factory) {
-        this.scanner = scanner;
-        this.factory = factory;
+    public Parser(SLContext context, Source source) {
+        this.scanner = new Scanner(source.getInputStream());
+        this.factory = new SLNodeFactory(context, source, this);
         errors = new Errors();
     }
 
@@ -132,28 +134,22 @@ public class Parser {
 -->initialization
     };
 
-    public String ParseErrors() {
-        java.io.PrintStream oldStream = System.out;
-
-        java.io.OutputStream out = new java.io.ByteArrayOutputStream();
-        java.io.PrintStream newStream = new java.io.PrintStream(out);
-
-        errors.errorStream = newStream;
-
-        Parse();
-
-        String errorStream = out.toString();
-        errors.errorStream = oldStream;
-
-        return errorStream;
-
+    public static void parseSL(SLContext context, Source source) {
+        Parser parser = new Parser(context, source);
+        parser.Parse();
+        if (parser.errors.errors.size() > 0) {
+            StringBuilder msg = new StringBuilder("Error(s) parsing script:\n");
+            for (String error : parser.errors.errors) {
+                msg.append(error).append("\n");
+            }
+            throw new SLException(msg.toString());
+        }
     }
 } // end Parser
 
 class Errors {
 
-    public int count = 0; // number of errors detected
-    public java.io.PrintStream errorStream = System.out; // error messages go to this stream
+    protected final List<String> errors = new ArrayList<>();
     public String errMsgFormat = "-- line {0} col {1}: {2}"; // 0=line, 1=column, 2=text
 
     protected void printMsg(int line, int column, String msg) {
@@ -171,7 +167,7 @@ class Errors {
         pos = b.indexOf("{2}");
         if (pos >= 0)
             b.replace(pos, pos + 3, msg);
-        errorStream.println(b.toString());
+        errors.add(b.toString());
     }
 
     public void SynErr(int line, int col, int n) {
@@ -182,17 +178,14 @@ class Errors {
                 break;
         }
         printMsg(line, col, s);
-        count++;
     }
 
     public void SemErr(int line, int col, String s) {
         printMsg(line, col, s);
-        count++;
     }
 
     public void SemErr(String s) {
-        errorStream.println(s);
-        count++;
+        errors.add(s);
     }
 
     public void Warning(int line, int col, String s) {
@@ -200,7 +193,7 @@ class Errors {
     }
 
     public void Warning(String s) {
-        errorStream.println(s);
+        errors.add(s);
     }
 } // Errors
 

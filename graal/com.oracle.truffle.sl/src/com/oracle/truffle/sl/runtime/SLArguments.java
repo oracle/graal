@@ -27,13 +27,13 @@ import com.oracle.truffle.api.frame.*;
 
 public final class SLArguments extends Arguments {
 
-    public final Object[] arguments;
+    private final Object[] arguments;
 
     public SLArguments(Object[] arguments) {
         this.arguments = arguments;
     }
 
-    public static SLArguments get(VirtualFrame frame) {
-        return frame.getArguments(SLArguments.class);
+    public static Object[] getFromFrame(VirtualFrame frame) {
+        return frame.getArguments(SLArguments.class).arguments;
     }
 }

@@ -28,17 +28,23 @@ import com.oracle.truffle.api.*;
 
 public final class SLFunctionRegistry {
 
-    private Map<String, CallTarget> map = new HashMap<>();
+    private final Map<String, SLFunction> functions = new HashMap<>();
 
-    public void register(String name, CallTarget target) {
-        if (map.containsKey(name)) {
-            throw new IllegalArgumentException(String.format("Function with name '%s' already exists.", name));
+    public SLFunction lookup(String name) {
+        SLFunction result = functions.get(name);
+        if (result == null) {
+            result = new SLFunction(name);
+            functions.put(name, result);
         }
-        map.put(name, target);
+        return result;
     }
 
-    public CallTarget lookup(String name) {
-        return map.get(name);
+    public void register(String name, RootCallTarget callTarget) {
+        SLFunction function = lookup(name);
+        function.setCallTarget(callTarget);
     }
 
+    public Collection<SLFunction> getFunctions() {
+        return functions.values();
+    }
 }

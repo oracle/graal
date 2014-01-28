@@ -31,8 +31,17 @@ import com.oracle.truffle.api.nodes.*;
 /**
  * Default implementation of the Truffle runtime if the virtual machine does not provide a better
  * performing alternative.
+ * <p>
+ * This is an implementation-specific class. Do not use or instantiate it. Instead, use
+ * {@link Truffle#getRuntime()} to retrieve the current {@link TruffleRuntime}.
  */
 public final class DefaultTruffleRuntime implements TruffleRuntime {
+
+    public DefaultTruffleRuntime() {
+        if (Truffle.getRuntime() != null) {
+            throw new IllegalArgumentException("Cannot instantiate DefaultTruffleRuntime. Use Truffle.getRuntime() instead.");
+        }
+    }
 
     @Override
     public String getName() {
@@ -40,7 +49,7 @@ public final class DefaultTruffleRuntime implements TruffleRuntime {
     }
 
     @Override
-    public CallTarget createCallTarget(RootNode rootNode) {
+    public RootCallTarget createCallTarget(RootNode rootNode) {
         return new DefaultCallTarget(rootNode);
     }
 

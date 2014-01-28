@@ -26,11 +26,15 @@ package com.oracle.truffle.api.impl;
 
 import com.oracle.truffle.api.frame.*;
 
+/**
+ * This is an implementation-specific class. Do not use or instantiate it. Instead, use
+ * {@link Frame#pack()} to create a {@link PackedFrame}.
+ */
 final class DefaultPackedFrame implements PackedFrame {
 
     private final DefaultVirtualFrame wrapped;
 
-    protected DefaultPackedFrame(DefaultVirtualFrame wrapped) {
+    DefaultPackedFrame(DefaultVirtualFrame wrapped) {
         this.wrapped = wrapped;
     }
 
