@@ -62,6 +62,7 @@ public class StaticMethod16InArraysTest extends StaticMethodTwoIntArrays {
      * there are registers.
      */
     @Test(expected = java.lang.ClassCastException.class)
+    @Ignore("until GPU backends can co-exist")
     public void test() {
         DebugConfig debugConfig = DebugScope.getConfig();
         DebugConfig noInterceptConfig = new DelegatingDebugConfig(debugConfig) {
