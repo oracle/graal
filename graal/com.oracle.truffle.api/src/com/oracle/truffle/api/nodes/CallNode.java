@@ -29,9 +29,9 @@ import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.impl.*;
 
 /**
- * This node represents a call to a constant {@link CallTarget} in the Truffle AST. This node should
- * be used whenever a {@link CallTarget} is considered constant at a certain location. This enables
- * the Truffle runtime to perform inlining or other optimizations for this call-site.
+ * This node represents a call to a static {@link CallTarget}. This node should be used whenever a
+ * {@link CallTarget} is considered constant at a certain location in the tree. This enables the
+ * Truffle runtime to perform inlining or other optimizations for this call-site.
  * 
  * @see #create(CallTarget) to create a CallNode instance.
  */
@@ -44,7 +44,7 @@ public abstract class CallNode extends Node {
     }
 
     /**
-     * Returns the constant {@link CallTarget} that is associated with this {@link CallNode}.
+     * @return the constant {@link CallTarget} that is associated with this {@link CallNode}.
      */
     public CallTarget getCallTarget() {
         return callTarget;
@@ -60,44 +60,34 @@ public abstract class CallNode extends Node {
     public abstract Object call(PackedFrame caller, Arguments arguments);
 
     /**
-     * Returns <code>true</code> if this {@link CallNode} can be inlined. A {@link CallTarget} is
-     * considered inlinable if it was created using
+     * Returns <code>true</code> if the {@link CallTarget} contained in this {@link CallNode} can be
+     * inlined. A {@link CallTarget} is considered inlinable if it was created using
      * {@link TruffleRuntime#createCallTarget(RootNode)} and if the enclosed {@link RootNode}
      * returns <code>true</code> for {@link RootNode#isInlinable()}.
      */
-    public boolean isInlinable() {
-        return false;
-    }
+    public abstract boolean isInlinable();
 
     /**
-     * Returns true if this {@link CallNode} was already inlined.
+     * @return true if this {@link CallNode} was already inlined.
      */
-    public boolean isInlined() {
-        return false;
-    }
+    public abstract boolean isInlined();
 
     /**
      * Enforces an inlining optimization on this {@link CallNode} instance. If not performed
      * manually the Truffle runtime may perform inlining using an heuristic to optimize the
-     * performance of the execution. It is recommended to implement an optimized version of
-     * {@link RootNode#inline()}.
+     * performance of the execution. It is recommended to implement an version of
+     * {@link RootNode#inline()} that adapts the inlining for possible guest language specific
+     * behavior. If the this {@link CallNode} is not inlinable or is already inlined
+     * <code>false</code> is returned.
      * 
-     * @return true if the inlining operation was successful.
-     * @throws IllegalStateException if {@link #isInlinable()} is false.
+     * @return <code>true</code> if the inlining operation was successful.
      */
-    public boolean inline() {
-        CompilerDirectives.transferToInterpreter();
-        if (!isInlinable()) {
-            throw new IllegalStateException("Invoked inline on a non inlinable CallNode.");
-        }
-        assert !isInlined();
-        return false;
-    }
+    public abstract boolean inline();
 
     /**
-     * Creates a new {@link CallNode} using a constant {@link CallTarget}.
+     * Creates a new {@link CallNode} using a {@link CallTarget}.
      * 
-     * @param target the {@link CallTarget} the {@link CallNode} should call
+     * @param target the {@link CallTarget} to call
      * @return a call node that calls the provided target
      */
     public static CallNode create(CallTarget target) {
@@ -112,7 +102,7 @@ public abstract class CallNode extends Node {
      * Warning: this is internal API and may change without notice.
      */
     public static int internalGetCallCount(CallNode callNode) {
-        if (callNode.isInlinable()) {
+        if (callNode.isInlinable() && !callNode.isInlined()) {
             return ((InlinableCallNode) callNode).getCallCount();
         }
         throw new UnsupportedOperationException();
@@ -122,7 +112,7 @@ public abstract class CallNode extends Node {
      * Warning: this is internal API and may change without notice.
      */
     public static void internalResetCallCount(CallNode callNode) {
-        if (callNode.isInlinable()) {
+        if (callNode.isInlinable() && !callNode.isInlined()) {
             ((InlinableCallNode) callNode).resetCallCount();
             return;
         }
@@ -147,6 +137,21 @@ public abstract class CallNode extends Node {
             return callTarget.call(caller, arguments);
         }
 
+        @Override
+        public boolean inline() {
+            return false;
+        }
+
+        @Override
+        public boolean isInlinable() {
+            return false;
+        }
+
+        @Override
+        public boolean isInlined() {
+            return false;
+        }
+
     }
 
     static final class InlinableCallNode extends CallNode {
@@ -167,7 +172,6 @@ public abstract class CallNode extends Node {
 
         @Override
         public boolean inline() {
-            super.inline();
             DefaultCallTarget defaultTarget = (DefaultCallTarget) getCallTarget();
             RootNode originalRootNode = defaultTarget.getRootNode();
             boolean inlined = false;
@@ -177,6 +181,11 @@ public abstract class CallNode extends Node {
                 inlined = true;
             }
             return inlined;
+        }
+
+        @Override
+        public boolean isInlined() {
+            return false;
         }
 
         @Override
@@ -216,8 +225,13 @@ public abstract class CallNode extends Node {
         }
 
         @Override
-        public boolean isInlinable() {
+        public boolean inline() {
             return false;
+        }
+
+        @Override
+        public boolean isInlinable() {
+            return true;
         }
 
         @Override

@@ -77,7 +77,7 @@ public abstract class RootNode extends Node {
 
     /**
      * Returns the number of nodes that would be returned if {@link #inline()} would get invoked.
-     * This node count may be used for the calculation of a smart inlining heuristic.
+     * This node count may be used for the calculation in a smart inlining heuristic.
      * 
      * @see RootNode#inline()
      * @see RootNode#isInlinable()
@@ -93,9 +93,9 @@ public abstract class RootNode extends Node {
     }
 
     /**
-     * Returns true if this RootNode can be inlined. If this method returns true proper
-     * implementations of {@link #inline()} and {@link #getInlineNodeCount()} must be provided.
-     * Returns true by default.
+     * Returns true if this RootNode can be inlined. If this method returns true implementations of
+     * {@link #inline()} and {@link #getInlineNodeCount()} must be provided. Returns
+     * <code>true</code> by default.
      * 
      * @see RootNode#inline()
      * @see RootNode#getInlineNodeCount()

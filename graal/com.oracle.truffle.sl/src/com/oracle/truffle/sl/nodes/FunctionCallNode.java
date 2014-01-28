@@ -105,9 +105,7 @@ public abstract class FunctionCallNode extends TypedNode {
 
             // inline usually known functions that should always be inlined
             if (findSLFunctionRoot(cachedFunction).isInlineImmediatly()) {
-                if (callNode.isInlinable() && !callNode.isInlined()) {
-                    callNode.inline();
-                }
+                callNode.inline();
             }
         }
 
