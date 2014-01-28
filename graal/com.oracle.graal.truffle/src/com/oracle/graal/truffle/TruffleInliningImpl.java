@@ -166,7 +166,7 @@ class TruffleInliningImpl implements TruffleInlining {
             assert callSite.isInlinable();
             this.callSite = callSite;
             this.callCount = CallNode.internalGetCallCount(callSite);
-            DefaultCallTarget target = (DefaultCallTarget) callSite.getCallTarget();
+            RootCallTarget target = (RootCallTarget) callSite.getCallTarget();
             this.nodeCount = target.getRootNode().getInlineNodeCount();
             this.recursiveDepth = calculateRecursiveDepth();
         }

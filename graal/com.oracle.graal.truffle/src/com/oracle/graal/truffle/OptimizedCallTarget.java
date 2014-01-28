@@ -261,8 +261,8 @@ public final class OptimizedCallTarget extends DefaultCallTarget implements Fram
             }
 
             int notInlinedCallSiteCount = TruffleInliningImpl.getInlinableCallSites(callTarget).size();
-            int nodeCount = NodeUtil.countNodes(callTarget.rootNode);
-            int inlinedCallSiteCount = countInlinedNodes(callTarget.rootNode);
+            int nodeCount = NodeUtil.countNodes(callTarget.getRootNode());
+            int inlinedCallSiteCount = countInlinedNodes(callTarget.getRootNode());
             String comment = callTarget.installedCode == null ? " int" : "";
             comment += callTarget.compilationEnabled ? "" : " fail";
             OUT.printf("%-50s | %10d | %15d | %15d | %10d | %3d%s\n", callTarget.getRootNode(), callTarget.callCount, inlinedCallSiteCount, notInlinedCallSiteCount, nodeCount,
