@@ -157,14 +157,18 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
         return getMetaspaceMethodConstant();
     }
 
-    public int getRawModifiers() {
+    /**
+     * Gets the complete set of modifiers for this method which includes the JVM specification
+     * modifiers as well as the HotSpot internal modifiers.
+     */
+    public int getAllModifiers() {
         HotSpotVMConfig config = runtime().getConfig();
         return unsafe.getInt(metaspaceMethod + config.methodAccessFlagsOffset);
     }
 
     @Override
     public int getModifiers() {
-        return getRawModifiers() & Modifier.methodModifiers();
+        return getAllModifiers() & Modifier.methodModifiers();
     }
 
     @Override
@@ -431,6 +435,8 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
     private static final int SYNTHETIC;
     static {
         try {
+            // Unfortunately, Modifier.SYNTHETIC is not public so we have
+            // to jump though hoops to get it.
             Field field = Modifier.class.getDeclaredField("SYNTHETIC");
             field.setAccessible(true);
             SYNTHETIC = field.getInt(null);
@@ -441,7 +447,7 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
 
     @Override
     public boolean isSynthetic() {
-        int modifiers = getRawModifiers();
+        int modifiers = getAllModifiers();
         return (SYNTHETIC & modifiers) != 0;
     }
 
