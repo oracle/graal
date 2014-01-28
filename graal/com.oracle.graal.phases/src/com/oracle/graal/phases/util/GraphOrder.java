@@ -55,7 +55,7 @@ public final class GraphOrder {
                         if (input instanceof FrameState && node instanceof StateSplit && input == ((StateSplit) node).stateAfter()) {
                             // nothing to do - after frame states are known, allowed cycles
                         } else {
-                            assert false : "cycle detected: " + node + " -> " + input;
+                            assert false : "unexpected cycle detected at input " + node + " -> " + input;
                         }
                     }
                 }
@@ -81,7 +81,7 @@ public final class GraphOrder {
 
     private static void visitForward(ArrayList<Node> nodes, NodeBitMap visited, Node node, boolean floatingOnly) {
         if (node != null && !visited.isMarked(node)) {
-            assert !floatingOnly || !(node instanceof FixedNode) : "unexpected reference to fixed node: " + node;
+            assert !floatingOnly || !(node instanceof FixedNode) : "unexpected reference to fixed node: " + node + " (this indicates an unexpected cycle)";
             visited.mark(node);
             FrameState stateAfter = null;
             if (node instanceof StateSplit) {

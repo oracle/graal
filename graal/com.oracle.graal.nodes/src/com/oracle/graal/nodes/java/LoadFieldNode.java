@@ -74,6 +74,9 @@ public final class LoadFieldNode extends AccessFieldNode implements Canonicaliza
                 return phi;
             }
         }
+        if (!isStatic() && object().isNullConstant()) {
+            return graph().add(new DeoptimizeNode(DeoptimizationAction.None, DeoptimizationReason.NullCheckException));
+        }
         return this;
     }
 

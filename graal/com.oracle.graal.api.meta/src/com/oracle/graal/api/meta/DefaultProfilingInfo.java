@@ -95,4 +95,8 @@ public final class DefaultProfilingInfo implements ProfilingInfo {
     public String toString() {
         return "BaseProfilingInfo<" + MetaUtil.profileToString(this, null, "; ") + ">";
     }
+
+    public void setMature() {
+        // Do nothing
+    }
 }

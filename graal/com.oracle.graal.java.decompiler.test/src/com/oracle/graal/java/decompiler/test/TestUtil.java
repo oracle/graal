@@ -49,7 +49,7 @@ public class TestUtil {
         new GraphBuilderPhase.Instance(metaAccess, GraphBuilderConfiguration.getEagerDefault(), OptimisticOptimizations.ALL).apply(graph);
         PhaseSuite<HighTierContext> graphBuilderSuite = suitesProvider.getDefaultGraphBuilderSuite();
         CallingConvention cc = getCallingConvention(providers.getCodeCache(), Type.JavaCallee, graph.method(), false);
-        compileGraph(graph, cc, method, providers, backend, providers.getCodeCache().getTarget(), null, graphBuilderSuite, OptimisticOptimizations.ALL, getProfilingInfo(graph), new SpeculationLog(),
-                        suites, true, new CompilationResult(), CompilationResultBuilderFactory.Default);
+        compileGraph(graph, cc, method, providers, backend, providers.getCodeCache().getTarget(), null, graphBuilderSuite, OptimisticOptimizations.ALL, getProfilingInfo(graph), null, suites, true,
+                        new CompilationResult(), CompilationResultBuilderFactory.Default);
     }
 }
