@@ -23,103 +23,143 @@
 package com.oracle.truffle.sl.test;
 
 import java.io.*;
+import java.nio.charset.*;
 import java.nio.file.*;
 import java.nio.file.attribute.*;
 import java.util.*;
 
 import org.junit.*;
+import org.junit.internal.*;
+import org.junit.runner.*;
+import org.junit.runner.manipulation.*;
+import org.junit.runner.notification.*;
+import org.junit.runners.*;
+import org.junit.runners.model.*;
 
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.source.*;
 import com.oracle.truffle.sl.*;
 import com.oracle.truffle.sl.runtime.*;
+import com.oracle.truffle.sl.test.SLTestRunner.TestCase;
 
-public class SLTestRunner {
+public final class SLTestRunner extends ParentRunner<TestCase> {
 
     private static final int REPEATS = 10;
-    private static final String TEST_DIR = "graal/com.oracle.truffle.sl.test/tests";
+
     private static final String INPUT_SUFFIX = ".sl";
     private static final String OUTPUT_SUFFIX = ".output";
 
-    static class TestCase {
-        protected final String name;
-        protected final Source input;
-        protected final String expectedOutput;
-        protected String actualOutput;
+    private static final String LF = System.getProperty("line.separator");
 
-        protected TestCase(String name, Source input, String expectedOutput) {
-            this.name = name;
+    public static final class TestCase {
+        private final Source input;
+        private final String expectedOutput;
+        private final Description name;
+
+        public TestCase(Class<?> testClass, String name, Source input, String expectedOutput) {
             this.input = input;
             this.expectedOutput = expectedOutput;
+            this.name = Description.createTestDescription(testClass, name);
         }
     }
 
-    protected boolean useConsole = false;
+    private final SourceManager sourceManager = new SourceManager();
+    private final List<TestCase> testCases;
 
-    protected final SourceManager sourceManager = new SourceManager();
-    protected final List<TestCase> testCases = new ArrayList<>();
+    public SLTestRunner(Class<?> runningClass) throws InitializationError {
+        super(runningClass);
+        try {
+            testCases = createTests(runningClass);
+        } catch (IOException e) {
+            throw new InitializationError(e);
+        }
+    }
 
-    protected boolean runTests(String namePattern) throws IOException {
-        Path testsRoot = FileSystems.getDefault().getPath(TEST_DIR);
+    @Override
+    protected Description describeChild(TestCase child) {
+        return child.name;
+    }
 
-        Files.walkFileTree(testsRoot, new SimpleFileVisitor<Path>() {
+    @Override
+    protected List<TestCase> getChildren() {
+        return testCases;
+    }
+
+    @Override
+    public void filter(Filter filter) throws NoTestsRemainException {
+        super.filter(filter);
+    }
+
+    protected List<TestCase> createTests(final Class<?> c) throws IOException, InitializationError {
+        SLTestSuite suite = c.getAnnotation(SLTestSuite.class);
+        if (suite == null) {
+            throw new InitializationError(String.format("@%s annotation required on class '%s' to run with '%s'.", SLTestSuite.class.getSimpleName(), c.getName(), SLTestRunner.class.getSimpleName()));
+        }
+
+        String[] pathes = suite.value();
+
+        Path root = null;
+        for (String path : pathes) {
+            root = FileSystems.getDefault().getPath(path);
+            if (Files.exists(root)) {
+                break;
+            }
+        }
+        if (root == null && pathes.length > 0) {
+            throw new FileNotFoundException(pathes[0]);
+        }
+
+        final Path rootPath = root;
+
+        final List<TestCase> foundCases = new ArrayList<>();
+        Files.walkFileTree(rootPath, new SimpleFileVisitor<Path>() {
             @Override
             public FileVisitResult visitFile(Path inputFile, BasicFileAttributes attrs) throws IOException {
                 String name = inputFile.getFileName().toString();
                 if (name.endsWith(INPUT_SUFFIX)) {
-                    name = name.substring(0, name.length() - INPUT_SUFFIX.length());
-                    Path outputFile = inputFile.resolveSibling(name + OUTPUT_SUFFIX);
+                    String baseName = name.substring(0, name.length() - INPUT_SUFFIX.length());
+
+                    Path outputFile = inputFile.resolveSibling(baseName + OUTPUT_SUFFIX);
                     if (!Files.exists(outputFile)) {
                         throw new Error("Output file does not exist: " + outputFile);
                     }
 
-                    testCases.add(new TestCase(name, sourceManager.get(inputFile.toString()), new String(Files.readAllBytes(outputFile))));
+                    // fix line feeds for non unix os
+                    StringBuilder outFile = new StringBuilder();
+                    for (String line : Files.readAllLines(outputFile, Charset.defaultCharset())) {
+                        outFile.append(line);
+                        outFile.append(LF);
+                    }
+                    foundCases.add(new TestCase(c, baseName, sourceManager.get(inputFile.toString()), outFile.toString()));
                 }
                 return FileVisitResult.CONTINUE;
             }
         });
-
-        if (testCases.size() == 0) {
-            System.out.format("No test cases match filter %s", namePattern);
-            return false;
-        }
-
-        boolean success = true;
-        for (TestCase testCase : testCases) {
-            if (namePattern.length() == 0 || testCase.name.toLowerCase().contains(namePattern.toLowerCase())) {
-                success = success & executeTest(testCase);
-            }
-        }
-        return success;
+        return foundCases;
     }
 
-    protected boolean executeTest(TestCase testCase) {
-        System.out.format("Running %s\n", testCase.name);
+    @Override
+    protected void runChild(TestCase testCase, RunNotifier notifier) {
+        notifier.fireTestStarted(testCase.name);
 
         ByteArrayOutputStream out = new ByteArrayOutputStream();
-        PrintStream printer = new PrintStream(useConsole ? new SplitOutputStream(out, System.err) : out);
+        PrintStream printer = new PrintStream(out);
         PrintStream origErr = System.err;
         try {
             System.setErr(printer);
             SLContext context = new SLContext(sourceManager, printer);
             SLMain.run(context, testCase.input, null, REPEATS);
+
+            String actualOutput = new String(out.toByteArray());
+
+            Assert.assertEquals(repeat(testCase.expectedOutput, REPEATS), actualOutput);
+        } catch (AssertionError e) {
+            notifier.fireTestFailure(new Failure(testCase.name, e));
         } catch (Throwable ex) {
-            ex.printStackTrace(printer);
+            notifier.fireTestFailure(new Failure(testCase.name, ex));
         } finally {
             System.setErr(origErr);
-        }
-        testCase.actualOutput = new String(out.toByteArray());
-
-        if (testCase.actualOutput.equals(repeat(testCase.expectedOutput, REPEATS))) {
-            System.out.format("OK %s\n", testCase.name);
-            return true;
-        } else {
-            if (!useConsole) {
-                System.out.format("== Expected ==\n%s\n", testCase.expectedOutput);
-                System.out.format("== Actual ==\n%s\n", testCase.actualOutput);
-            }
-            System.out.format("FAILED %s\n", testCase.name);
-            return false;
+            notifier.fireTestFinished(testCase.name);
         }
     }
 
@@ -131,19 +171,35 @@ public class SLTestRunner {
         return result.toString();
     }
 
-    public static void main(String[] args) throws IOException {
-        String namePattern = "";
+    public static void runInMain(Class<?> testClass, String[] args) throws InitializationError, NoTestsRemainException {
+        JUnitCore core = new JUnitCore();
+        core.addListener(new TextListener(System.out));
+        SLTestRunner suite = new SLTestRunner(testClass);
         if (args.length > 0) {
-            namePattern = args[0];
+            suite.filter(new NameFilter(args[0]));
         }
-        boolean success = new SLTestRunner().runTests(namePattern);
-        if (!success) {
+        Result r = core.run(suite);
+        if (!r.wasSuccessful()) {
             System.exit(1);
         }
     }
 
-    @Test
-    public void test() throws IOException {
-        Assert.assertTrue(runTests(""));
+    private static final class NameFilter extends Filter {
+        private final String pattern;
+
+        private NameFilter(String pattern) {
+            this.pattern = pattern.toLowerCase();
+        }
+
+        @Override
+        public boolean shouldRun(Description description) {
+            return description.getMethodName().toLowerCase().contains(pattern);
+        }
+
+        @Override
+        public String describe() {
+            return "Filter contains " + pattern;
+        }
     }
+
 }
