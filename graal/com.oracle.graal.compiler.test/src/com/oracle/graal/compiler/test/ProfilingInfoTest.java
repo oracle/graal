@@ -323,7 +323,10 @@ public class ProfilingInfoTest extends GraalCompilerTest {
             }
         }
 
-        return javaMethod.getProfilingInfo();
+        ProfilingInfo info = javaMethod.getProfilingInfo();
+        // The execution counts are low so force maturity
+        info.setMature();
+        return info;
     }
 
     private void resetProfile(String methodName) {

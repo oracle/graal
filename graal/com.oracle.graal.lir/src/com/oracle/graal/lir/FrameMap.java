@@ -316,7 +316,7 @@ public abstract class FrameMap {
         spillSize += (slots * target.wordSize);
 
         if (!objects.isEmpty()) {
-            assert objects.length() < slots;
+            assert objects.length() <= slots;
             StackSlot result = null;
             for (int slotIndex = 0; slotIndex < slots; slotIndex++) {
                 StackSlot objectSlot = null;

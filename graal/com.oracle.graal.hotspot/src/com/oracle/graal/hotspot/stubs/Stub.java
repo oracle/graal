@@ -146,8 +146,8 @@ public abstract class Stub {
                 // The stub itself needs the incoming calling convention.
                 CallingConvention incomingCc = linkage.getIncomingCallingConvention();
                 final CompilationResult compResult = compileGraph(graph, incomingCc, getInstalledCodeOwner(), providers, backend, codeCache.getTarget(), null,
-                                providers.getSuites().getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL, getProfilingInfo(graph), new SpeculationLog(),
-                                providers.getSuites().getDefaultSuites(), true, new CompilationResult(), CompilationResultBuilderFactory.Default);
+                                providers.getSuites().getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL, getProfilingInfo(graph), null, providers.getSuites().getDefaultSuites(), true,
+                                new CompilationResult(), CompilationResultBuilderFactory.Default);
 
                 assert destroyedRegisters != null;
                 try (Scope s = Debug.scope("CodeInstall")) {

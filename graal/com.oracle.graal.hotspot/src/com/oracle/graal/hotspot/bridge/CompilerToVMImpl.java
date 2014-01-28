@@ -169,5 +169,7 @@ public class CompilerToVMImpl implements CompilerToVM {
 
     public native long[] collectCounters();
 
+    public native boolean isMature(long method);
+
     public native int allocateCompileId(HotSpotResolvedJavaMethod method, int entryBCI);
 }

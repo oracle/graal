@@ -50,12 +50,13 @@ public final class OptimizedCallTarget extends DefaultCallTarget implements Fram
     private final TruffleInlining inlining;
     private boolean compilationEnabled;
     private int callCount;
+    private SpeculationLog speculationLog = new SpeculationLog();
 
     protected OptimizedCallTarget(RootNode rootNode, TruffleCompiler compiler, int invokeCounter, int compilationThreshold) {
         super(rootNode);
         this.compiler = compiler;
         this.compilationProfile = new CompilationProfile(compilationThreshold, invokeCounter, rootNode.toString());
-        this.rootNode.setCallTarget(this);
+        this.getRootNode().setCallTarget(this);
 
         if (TruffleUseTimeForCompilationDecision.getValue()) {
             compilationPolicy = new TimedCompilationPolicy();
@@ -117,7 +118,7 @@ public final class OptimizedCallTarget extends DefaultCallTarget implements Fram
             installedCode = null;
             compilationProfile.reportInvalidated();
             if (TraceTruffleCompilation.getValue()) {
-                OUT.printf("[truffle] invalidated %-48s |Inv# %d                                     |Replace# %d\n", rootNode, compilationProfile.getInvalidationCount(),
+                OUT.printf("[truffle] invalidated %-48s |Inv# %d                                     |Replace# %d\n", getRootNode(), compilationProfile.getInvalidationCount(),
                                 compilationProfile.getNodeReplaceCount());
             }
         }
@@ -183,7 +184,7 @@ public final class OptimizedCallTarget extends DefaultCallTarget implements Fram
             return installedCodeTask.get();
         } catch (InterruptedException | ExecutionException e) {
             compilationEnabled = false;
-            OUT.printf("[truffle] opt failed %-48s  %s\n", rootNode, e.getMessage());
+            OUT.printf("[truffle] opt failed %-48s  %s\n", getRootNode(), e.getMessage());
             if (e.getCause() instanceof BailoutException) {
                 // Bailout => move on.
             } else {
@@ -212,8 +213,8 @@ public final class OptimizedCallTarget extends DefaultCallTarget implements Fram
     }
 
     public Object executeHelper(PackedFrame caller, Arguments args) {
-        VirtualFrame frame = createFrame(rootNode.getFrameDescriptor(), caller, args);
-        return rootNode.execute(frame);
+        VirtualFrame frame = createFrame(getRootNode().getFrameDescriptor(), caller, args);
+        return getRootNode().execute(frame);
     }
 
     protected static FrameWithoutBoxing createFrame(FrameDescriptor descriptor, PackedFrame caller, Arguments args) {
@@ -304,5 +305,9 @@ public final class OptimizedCallTarget extends DefaultCallTarget implements Fram
                 }
             });
         }
+    }
+
+    public SpeculationLog getSpeculationLog() {
+        return speculationLog;
     }
 }

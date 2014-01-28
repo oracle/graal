@@ -207,6 +207,14 @@ public final class HotSpotMethodData extends CompilerObject {
         return cells * config.dataLayoutCellSize;
     }
 
+    /**
+     * Returns whether profiling ran long enough that the profile information is mature. Other
+     * informational data will still be valid even if the profile isn't mature.
+     */
+    public boolean isProfileMature() {
+        return runtime().getCompilerToVM().isMature(metaspaceMethodData);
+    }
+
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();

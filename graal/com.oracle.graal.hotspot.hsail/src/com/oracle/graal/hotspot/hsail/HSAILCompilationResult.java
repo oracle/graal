@@ -43,8 +43,8 @@ import com.oracle.graal.java.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
-import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.phases.*;
+import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.phases.util.*;
 import com.oracle.graal.runtime.*;
@@ -139,13 +139,12 @@ public class HSAILCompilationResult extends ExternalCompilationResult {
         Providers providers = backend.getProviders();
         TargetDescription target = providers.getCodeCache().getTarget();
         PhaseSuite<HighTierContext> graphBuilderSuite = backend.getSuites().getDefaultGraphBuilderSuite().copy();
-        graphBuilderSuite.appendPhase(new HSAILPhase());
-        new HSAILPhase().apply(graph);
+        graphBuilderSuite.appendPhase(new NonNullParametersPhase());
         CallingConvention cc = CodeUtil.getCallingConvention(providers.getCodeCache(), Type.JavaCallee, graph.method(), false);
         SuitesProvider suitesProvider = backend.getSuites();
         try {
             HSAILCompilationResult compResult = compileGraph(graph, cc, graph.method(), providers, backend, target, null, graphBuilderSuite, OptimisticOptimizations.NONE, getProfilingInfo(graph),
-                            new SpeculationLog(), suitesProvider.getDefaultSuites(), true, new HSAILCompilationResult(), CompilationResultBuilderFactory.Default);
+                            null, suitesProvider.getDefaultSuites(), true, new HSAILCompilationResult(), CompilationResultBuilderFactory.Default);
             if ((validDevice) && (compResult.getTargetCode() != null)) {
                 long kernel = toGPU.generateKernel(compResult.getTargetCode(), graph.method().getName());
 
@@ -170,18 +169,6 @@ public class HSAILCompilationResult extends ExternalCompilationResult {
                 Debug.log("-------------------\nEnd of Partial Code Generation\n--------------------");
             }
             throw e;
-        }
-    }
-
-    private static class HSAILPhase extends Phase {
-
-        @Override
-        protected void run(StructuredGraph graph) {
-            for (ParameterNode param : graph.getNodes(ParameterNode.class)) {
-                if (param.stamp() instanceof ObjectStamp) {
-                    param.setStamp(StampFactory.declaredNonNull(((ObjectStamp) param.stamp()).type()));
-                }
-            }
         }
     }
 

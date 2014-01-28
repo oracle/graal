@@ -28,7 +28,7 @@ import java.io.*;
 import java.util.*;
 
 import com.oracle.graal.debug.*;
-import com.oracle.truffle.api.impl.*;
+import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.nodes.*;
 
 class TruffleInliningImpl implements TruffleInlining {
@@ -207,7 +207,7 @@ class TruffleInliningImpl implements TruffleInlining {
         }
     }
 
-    static List<InlinableCallSiteInfo> getInlinableCallSites(final DefaultCallTarget target) {
+    static List<InlinableCallSiteInfo> getInlinableCallSites(final RootCallTarget target) {
         final ArrayList<InlinableCallSiteInfo> inlinableCallSites = new ArrayList<>();
         target.getRootNode().accept(new NodeVisitor() {
 

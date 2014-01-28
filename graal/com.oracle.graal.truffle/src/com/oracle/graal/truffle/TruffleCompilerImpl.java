@@ -156,7 +156,7 @@ public class TruffleCompilerImpl implements TruffleCompiler {
         }
         long timePartialEvaluationFinished = System.nanoTime();
         int nodeCountPartialEval = graph.getNodeCount();
-        InstalledCode compiledMethod = compileMethodHelper(graph, config, assumptions, compilable.toString());
+        InstalledCode compiledMethod = compileMethodHelper(graph, config, assumptions, compilable.toString(), compilable.getSpeculationLog());
         long timeCompilationFinished = System.nanoTime();
         int nodeCountLowered = graph.getNodeCount();
 
@@ -210,7 +210,7 @@ public class TruffleCompilerImpl implements TruffleCompiler {
         }
     }
 
-    public InstalledCode compileMethodHelper(StructuredGraph graph, GraphBuilderConfiguration config, Assumptions assumptions, String name) {
+    public InstalledCode compileMethodHelper(StructuredGraph graph, GraphBuilderConfiguration config, Assumptions assumptions, String name, SpeculationLog speculationLog) {
         try (Scope s = Debug.scope("TruffleFinal")) {
             Debug.dump(graph, "After TruffleTier");
         } catch (Throwable e) {
@@ -223,7 +223,7 @@ public class TruffleCompilerImpl implements TruffleCompiler {
             CallingConvention cc = getCallingConvention(codeCache, Type.JavaCallee, graph.method(), false);
             CompilationResult compilationResult = new CompilationResult(name);
             result = compileGraph(graph, cc, graph.method(), providers, backend, codeCache.getTarget(), null, createGraphBuilderSuite(config), OptimisticOptimizations.ALL, getProfilingInfo(graph),
-                            new SpeculationLog(), suites, false, compilationResult, CompilationResultBuilderFactory.Default);
+                            speculationLog, suites, false, compilationResult, CompilationResultBuilderFactory.Default);
         } catch (Throwable e) {
             throw Debug.handle(e);
         }
@@ -246,7 +246,7 @@ public class TruffleCompilerImpl implements TruffleCompiler {
 
         InstalledCode installedCode = null;
         try (Scope s = Debug.scope("CodeInstall", providers.getCodeCache()); TimerCloseable a = CodeInstallationTime.start()) {
-            installedCode = providers.getCodeCache().addMethod(graph.method(), result, null);
+            installedCode = providers.getCodeCache().addMethod(graph.method(), result, speculationLog);
         } catch (Throwable e) {
             throw Debug.handle(e);
         }
