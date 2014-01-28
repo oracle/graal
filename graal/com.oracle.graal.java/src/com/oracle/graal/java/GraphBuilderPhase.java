@@ -1711,7 +1711,11 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 ResolvedJavaType resolvedCatchType = (ResolvedJavaType) catchType;
                 for (ResolvedJavaType skippedType : graphBuilderConfig.getSkippedExceptionTypes()) {
                     if (skippedType.isAssignableFrom(resolvedCatchType)) {
-                        append(new DeoptimizeNode(InvalidateReprofile, UnreachedCode));
+                        Block nextBlock = block.successors.size() == 1 ? unwindBlock(block.deoptBci) : block.successors.get(1);
+                        ValueNode exception = frameState.stackAt(0);
+                        FixedNode trueSuccessor = currentGraph.add(new DeoptimizeNode(InvalidateReprofile, UnreachedCode));
+                        FixedNode nextDispatch = createTarget(nextBlock, frameState);
+                        append(new IfNode(currentGraph.unique(new InstanceOfNode((ResolvedJavaType) catchType, exception, null)), trueSuccessor, nextDispatch, 0));
                         return;
                     }
                 }
