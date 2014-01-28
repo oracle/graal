@@ -198,9 +198,9 @@ public class HotSpotResolvedJavaField extends CompilerObject implements Resolved
             Object object = receiver.asObject();
 
             // Canonicalization may attempt to process an unsafe read before
-            // processing a guard (e.g. a type check) for this read
-            // so we need to type check the object being read
-            if (isInObject(object)) {
+            // processing a guard (e.g. a null check or a type check) for this read
+            // so we need to check the object being read
+            if (object != null && isInObject(object)) {
                 if (Modifier.isFinal(getModifiers())) {
                     Constant value = readValue(receiver);
                     if (assumeNonStaticFinalFieldsAsFinal(object.getClass()) || !value.isDefaultForKind()) {
