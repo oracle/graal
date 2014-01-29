@@ -26,18 +26,26 @@ import org.junit.*;
 
 public class ControlPTXTest extends PTXTest {
 
-    @Ignore("[CUDA] *** Error (status=702): Synchronize kernel")
     @Test
-    public void testControl() {
+    public void testControl1() {
         test("testLoop", 42);
         test("testSwitchDefault1I", 3);
         test("testSwitch1I", 2);
         test("testIfElse1I", 222);
         test("testIfElse2I", 19, 64);
+    }
 
-        test("testIntegerTestBranch2I", 0xff00, 0x00ff);
+    @Test
+    public void testControl2() {
         compileKernel("testStatic");
         compileKernel("testCall");
+    }
+
+    @Ignore("[CUDA] Check for malformed PTX kernel or incorrect PTX compilation options")
+    @Test
+    public void testControl3() {
+        // test("testIntegerTestBranch2I", 0xff00, 0x00ff);
+        compileKernel("testIntegerTestBranch2I");
         compileKernel("testLookupSwitch1I");
     }
 
