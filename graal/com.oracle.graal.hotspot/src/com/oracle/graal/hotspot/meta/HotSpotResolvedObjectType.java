@@ -422,10 +422,12 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
         ResolvedJavaField result = null;
 
         /*
-         * Filter out flags used internally by HotSpot, to get a canonical id value. When a field is
-         * created from a java.lang.reflect.Field, these flags would not be available anyway.
+         * Filter flags to be only those return by Field.getModifiers() to get a canonical id value.
+         * Strangely, Field.getModifiers() uses JVM_RECOGNIZED_FIELD_MODIFIERS in jvm.h instead of
+         * Modifier.fieldModifiers() to mask out HotSpot internal flags.
          */
-        int flags = rawFlags & fieldModifiers();
+        int reflectionFieldModifiers = runtime().getConfig().recognizedFieldModifiers;
+        int flags = rawFlags & reflectionFieldModifiers;
 
         long id = offset + ((long) flags << 32);
 

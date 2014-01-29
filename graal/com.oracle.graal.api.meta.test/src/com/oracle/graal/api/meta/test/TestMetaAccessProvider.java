@@ -69,7 +69,7 @@ public class TestMetaAccessProvider extends TypeUniverse {
             for (Field reflect : c.getDeclaredFields()) {
                 ResolvedJavaField field = metaAccess.lookupJavaField(reflect);
                 assertNotNull(field);
-                int expected = reflect.getModifiers() & Modifier.fieldModifiers();
+                int expected = reflect.getModifiers();
                 int actual = field.getModifiers();
                 assertEquals(String.format("%s: 0x%x != 0x%x", reflect, expected, actual), expected, actual);
                 assertTrue(field.getDeclaringClass().equals(metaAccess.lookupJavaType(reflect.getDeclaringClass())));

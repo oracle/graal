@@ -29,6 +29,7 @@ import java.util.*;
 
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.bridge.*;
+import com.oracle.graal.hotspot.meta.*;
 
 /**
  * Used to access native configuration details.
@@ -998,6 +999,14 @@ public class HotSpotVMConfig extends CompilerObject {
     @HotSpotVMField(name = "Symbol::_body[0]", type = "jbyte", get = HotSpotVMField.Type.OFFSET) @Stable public int symbolBodyOffset;
 
     @HotSpotVMConstant(name = "JVM_ACC_HAS_FINALIZER") @Stable public int klassHasFinalizerFlag;
+
+    // Modifier.SYNTHETIC is not public so we get it via vmStructs.
+    @HotSpotVMConstant(name = "JVM_ACC_SYNTHETIC") @Stable public int syntheticFlag;
+
+    /**
+     * @see HotSpotResolvedObjectType#createField
+     */
+    @HotSpotVMConstant(name = "JVM_RECOGNIZED_FIELD_MODIFIERS") @Stable public int recognizedFieldModifiers;
 
     /**
      * Bit pattern that represents a non-oop. Neither the high bits nor the low bits of this value

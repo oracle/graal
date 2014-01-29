@@ -64,7 +64,7 @@ public interface ResolvedJavaField extends JavaField, LocationIdentity {
     /**
      * Gets the current value of this field for a given object, if available. There is no guarantee
      * that the same value will be returned by this method for a field unless the field is
-     * considered to be {@link #readConstantValue(Constant)} by the runtime.
+     * considered to be {@linkplain #readConstantValue(Constant) constant} by the runtime.
      * 
      * @param receiver object from which this field's value is to be read. This value is ignored if
      *            this field is static.

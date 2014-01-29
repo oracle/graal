@@ -432,23 +432,10 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
         return javaMethod == null ? null : javaMethod.getAnnotation(annotationClass);
     }
 
-    private static final int SYNTHETIC;
-    static {
-        try {
-            // Unfortunately, Modifier.SYNTHETIC is not public so we have
-            // to jump though hoops to get it.
-            Field field = Modifier.class.getDeclaredField("SYNTHETIC");
-            field.setAccessible(true);
-            SYNTHETIC = field.getInt(null);
-        } catch (IllegalArgumentException | IllegalAccessException | NoSuchFieldException | SecurityException e) {
-            throw GraalInternalError.shouldNotReachHere(e.toString());
-        }
-    }
-
     @Override
     public boolean isSynthetic() {
         int modifiers = getAllModifiers();
-        return (SYNTHETIC & modifiers) != 0;
+        return (runtime().getConfig().syntheticFlag & modifiers) != 0;
     }
 
     public boolean isDefault() {

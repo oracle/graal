@@ -73,7 +73,7 @@ public class HotSpotResolvedJavaField extends CompilerObject implements Resolved
 
     @Override
     public int getModifiers() {
-        return modifiers & Modifier.fieldModifiers();
+        return modifiers;
     }
 
     @Override
