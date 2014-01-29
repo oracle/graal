@@ -331,11 +331,10 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
     }
 
     protected void emitEncounteredSynthetic(CodeTreeBuilder builder, TemplateMethod current) {
-        builder.startThrow().startNew(getContext().getType(UnsupportedOperationException.class));
-        builder.startCall("createInfo0");
-        builder.doubleQuote("Unsupported values");
+        builder.startThrow().startNew(getContext().getType(UnsupportedSpecializationException.class));
+        builder.string("this");
         addInternalValueParameterNames(builder, current, current, null, false, null);
-        builder.end().end().end();
+        builder.end().end();
     }
 
     private static List<ExecutableElement> findUserConstructors(TypeMirror nodeType) {
