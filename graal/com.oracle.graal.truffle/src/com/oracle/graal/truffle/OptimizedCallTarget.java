@@ -56,7 +56,6 @@ public final class OptimizedCallTarget extends DefaultCallTarget implements Fram
         super(rootNode);
         this.compiler = compiler;
         this.compilationProfile = new CompilationProfile(compilationThreshold, invokeCounter, rootNode.toString());
-        this.getRootNode().setCallTarget(this);
 
         if (TruffleUseTimeForCompilationDecision.getValue()) {
             compilationPolicy = new TimedCompilationPolicy();
@@ -261,7 +260,7 @@ public final class OptimizedCallTarget extends DefaultCallTarget implements Fram
             }
 
             int notInlinedCallSiteCount = TruffleInliningImpl.getInlinableCallSites(callTarget).size();
-            int nodeCount = NodeUtil.countNodes(callTarget.getRootNode());
+            int nodeCount = NodeUtil.countNodes(callTarget.getRootNode(), null, true);
             int inlinedCallSiteCount = countInlinedNodes(callTarget.getRootNode());
             String comment = callTarget.installedCode == null ? " int" : "";
             comment += callTarget.compilationEnabled ? "" : " fail";
@@ -283,6 +282,7 @@ public final class OptimizedCallTarget extends DefaultCallTarget implements Fram
         for (CallNode callNode : callers) {
             if (callNode.isInlined()) {
                 count++;
+                count += countInlinedNodes(callNode.getInlinedRoot());
             }
         }
         return count;

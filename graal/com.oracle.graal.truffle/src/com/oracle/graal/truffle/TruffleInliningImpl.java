@@ -84,9 +84,7 @@ class TruffleInliningImpl implements TruffleInlining {
 
         if (inlined) {
             for (InlinableCallSiteInfo callSite : inlinableCallSites) {
-                if (callSite.getCallSite().isInlinable() && !callSite.getCallSite().isInlined()) {
-                    CallNode.internalResetCallCount(callSite.getCallSite());
-                }
+                CallNode.internalResetCallCount(callSite.getCallSite());
             }
         } else {
             if (TraceTruffleInliningDetails.getValue()) {
@@ -116,7 +114,7 @@ class TruffleInliningImpl implements TruffleInlining {
         private final int callerInvocationCount;
 
         public InliningPolicy(OptimizedCallTarget caller) {
-            this.callerNodeCount = NodeUtil.countNodes(caller.getRootNode());
+            this.callerNodeCount = NodeUtil.countNodes(caller.getRootNode(), null, true);
             this.callerInvocationCount = caller.getCompilationProfile().getOriginalInvokeCounter();
         }
 
@@ -177,19 +175,18 @@ class TruffleInliningImpl implements TruffleInlining {
 
         private int calculateRecursiveDepth() {
             int depth = 0;
-            Node parent = ((Node) callSite).getParent();
-            while (!(parent instanceof RootNode)) {
-                assert parent != null;
-                if (parent instanceof CallNode) {
-                    CallNode parentCall = (CallNode) parent;
-                    if (parentCall.isInlined() && parentCall.getCallTarget() == callSite.getCallTarget()) {
+
+            Node parent = callSite.getParent();
+            while (parent != null) {
+                if (parent instanceof RootNode) {
+                    RootNode root = ((RootNode) parent);
+                    if (root.getCallTarget() == callSite.getCallTarget()) {
                         depth++;
                     }
+                    parent = root.getParentInlinedCall();
+                } else {
+                    parent = parent.getParent();
                 }
-                parent = parent.getParent();
-            }
-            if (((RootNode) parent).getCallTarget() == callSite.getCallTarget()) {
-                depth++;
             }
             return depth;
         }
@@ -215,8 +212,12 @@ class TruffleInliningImpl implements TruffleInlining {
             public boolean visit(Node node) {
                 if (node instanceof CallNode) {
                     CallNode callNode = (CallNode) node;
-                    if (callNode.isInlinable() && !callNode.isInlined()) {
-                        inlinableCallSites.add(new InlinableCallSiteInfo(callNode));
+                    if (!callNode.isInlined()) {
+                        if (callNode.isInlinable()) {
+                            inlinableCallSites.add(new InlinableCallSiteInfo(callNode));
+                        }
+                    } else {
+                        callNode.getInlinedRoot().accept(this);
                     }
                 }
                 return true;
