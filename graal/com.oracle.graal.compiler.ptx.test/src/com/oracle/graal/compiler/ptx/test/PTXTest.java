@@ -43,7 +43,7 @@ import com.oracle.graal.ptx.*;
  */
 public abstract class PTXTest extends GraalCompilerTest {
 
-    private static PTXHotSpotBackend getPTXBackend() {
+    public static PTXHotSpotBackend getPTXBackend() {
         Backend backend = runtime().getBackend(PTX.class);
         Assume.assumeTrue(backend instanceof PTXHotSpotBackend);
         return (PTXHotSpotBackend) backend;

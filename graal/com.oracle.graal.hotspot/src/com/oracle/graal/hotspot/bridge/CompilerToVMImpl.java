@@ -172,4 +172,6 @@ public class CompilerToVMImpl implements CompilerToVM {
     public native boolean isMature(long method);
 
     public native int allocateCompileId(HotSpotResolvedJavaMethod method, int entryBCI);
+
+    public native String getGPUs();
 }

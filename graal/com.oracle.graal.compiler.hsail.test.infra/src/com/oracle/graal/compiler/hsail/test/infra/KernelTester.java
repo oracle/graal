@@ -108,17 +108,17 @@ public abstract class KernelTester {
 
     private static boolean gaveNoOkraWarning = false;
     private boolean onSimulator;
-    private boolean okraLibExists;
+    private final boolean okraLibExists;
 
     public boolean runningOnSimulator() {
         return onSimulator;
     }
 
-    public KernelTester() {
-        okraLibExists = OkraUtil.okraLibExists();
+    public KernelTester(boolean okraLibExists) {
         dispatchMode = DispatchMode.SEQ;
         hsailMode = HsailMode.COMPILED;
         useLambdaMethod = false;
+        this.okraLibExists = okraLibExists;
     }
 
     public abstract void runTest();

@@ -115,25 +115,11 @@ public final class HotSpotNmethod extends HotSpotInstalledCode {
         return true;
     }
 
-    public Object executeParallel(int dimX, int dimY, int dimZ, Object... args) throws InvalidInstalledCodeException {
-
-        // For HSAIL, we do not pass the iteration variable, it comes from the workitemid
-        // assert checkArgs(args);
-
-        assert isExternal(); // for now
-
-        return runtime().getCompilerToGPU().executeParallelMethodVarargs(dimX, dimY, dimZ, args, this);
-
-    }
-
     @Override
     public Object executeVarargs(Object... args) throws InvalidInstalledCodeException {
         assert checkArgs(args);
-        if (isExternal()) {
-            return runtime().getCompilerToGPU().executeExternalMethodVarargs(args, this);
-        } else {
-            return runtime().getCompilerToVM().executeCompiledMethodVarargs(args, this);
-        }
+        assert !isExternal();
+        return runtime().getCompilerToVM().executeCompiledMethodVarargs(args, this);
     }
 
     @Override

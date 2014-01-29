@@ -45,7 +45,6 @@ import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.HotSpotReplacementsImpl.GraphProducer;
-import com.oracle.graal.hotspot.bridge.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
@@ -66,6 +65,8 @@ import com.oracle.graal.word.*;
  * HotSpot PTX specific backend.
  */
 public class PTXHotSpotBackend extends HotSpotBackend {
+
+    private final boolean deviceInitialized;
 
     /**
      * Descriptor for the PTX runtime method for calling a kernel. The C++ signature is:
@@ -101,9 +102,24 @@ public class PTXHotSpotBackend extends HotSpotBackend {
 
     public PTXHotSpotBackend(HotSpotGraalRuntime runtime, HotSpotProviders providers) {
         super(runtime, providers);
-        CompilerToGPU compilerToGPU = getRuntime().getCompilerToGPU();
-        deviceInitialized = OmitDeviceInit || compilerToGPU.deviceInit();
+        if (OmitDeviceInit) {
+            deviceInitialized = true;
+        } else {
+            boolean init = false;
+            try {
+                init = initialize();
+            } catch (UnsatisfiedLinkError e) {
+            }
+            deviceInitialized = init;
+        }
     }
+
+    /**
+     * Initializes the GPU device.
+     * 
+     * @return whether or not initialization was successful
+     */
+    private static native boolean initialize();
 
     @Override
     public boolean shouldAllocateRegisters() {
@@ -111,28 +127,33 @@ public class PTXHotSpotBackend extends HotSpotBackend {
     }
 
     /**
-     * Used to omit {@linkplain CompilerToGPU#deviceInit() device initialization}.
+     * Used to omit {@linkplain #initialize() device initialization}.
      */
     private static final boolean OmitDeviceInit = Boolean.getBoolean("graal.ptx.omitDeviceInit");
 
     @Override
     public void completeInitialization() {
         HotSpotHostForeignCallsProvider hostForeignCalls = (HotSpotHostForeignCallsProvider) getRuntime().getHostProviders().getForeignCalls();
-        CompilerToGPU compilerToGPU = getRuntime().getCompilerToGPU();
         if (deviceInitialized) {
-            long launchKernel = compilerToGPU.getLaunchKernelAddress();
+            long launchKernel = getLaunchKernelAddress();
             hostForeignCalls.registerForeignCall(CALL_KERNEL, launchKernel, NativeCall, DESTROYS_REGISTERS, NOT_LEAF, NOT_REEXECUTABLE, ANY_LOCATION);
         }
         super.completeInitialization();
     }
 
-    private boolean deviceInitialized;
+    /**
+     * Gets the address of {@code gpu::Ptx::execute_kernel_from_vm()}.
+     */
+    private static native long getLaunchKernelAddress();
 
     @Override
     public FrameMap newFrameMap() {
         return new PTXFrameMap(getCodeCache());
     }
 
+    /**
+     * Determines if the GPU device (or simulator) is available and initialized.
+     */
     public boolean isDeviceInitialized() {
         return deviceInitialized;
     }
@@ -181,7 +202,7 @@ public class PTXHotSpotBackend extends HotSpotBackend {
         if (makeBinary) {
             try (Scope ds = Debug.scope("GeneratingKernelBinary")) {
                 assert ptxCode.getTargetCode() != null;
-                long kernel = getRuntime().getCompilerToGPU().generateKernel(ptxCode.getTargetCode(), method.getName());
+                long kernel = generateKernel(ptxCode.getTargetCode(), method.getName());
                 ptxCode.setEntryPoint(kernel);
             } catch (Throwable e) {
                 throw Debug.handle(e);
@@ -189,6 +210,11 @@ public class PTXHotSpotBackend extends HotSpotBackend {
         }
         return ptxCode;
     }
+
+    /**
+     * Generates a GPU binary from PTX code.
+     */
+    private static native long generateKernel(byte[] targetCode, String name);
 
     /**
      * A list of the {@linkplain #installKernel(ResolvedJavaMethod, ExternalCompilationResult)
@@ -446,4 +472,17 @@ public class PTXHotSpotBackend extends HotSpotBackend {
         codeBuffer.emitString0("}");
         codeBuffer.emitString("");
     }
+
+    /**
+     * Gets the total number of available CUDA cores.
+     */
+    public int getAvailableProcessors() {
+        if (!deviceInitialized) {
+            return 0;
+        }
+        return getAvailableProcessors0();
+    }
+
+    private static native int getAvailableProcessors0();
+
 }

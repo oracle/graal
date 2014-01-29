@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.compiler.ptx.test;
 
+import static org.junit.Assert.*;
+
 import org.junit.*;
 
 /**
@@ -54,6 +56,11 @@ public class BasicPTXTest extends PTXTest {
 
     public int virtualIntKernel(char p0, int p1) {
         return p1 + p0;
+    }
+
+    @Test
+    public void testGetAvailableProcessors() {
+        assertTrue(getPTXBackend().getAvailableProcessors() >= 0);
     }
 
     public static void main(String[] args) {

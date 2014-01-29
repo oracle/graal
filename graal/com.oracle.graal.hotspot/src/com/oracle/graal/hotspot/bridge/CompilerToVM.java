@@ -264,4 +264,11 @@ public interface CompilerToVM {
      * Generate a unique id to identify the result of the compile.
      */
     int allocateCompileId(HotSpotResolvedJavaMethod method, int entryBCI);
+
+    /**
+     * Gets the names of the supported GPU architectures.
+     * 
+     * @return a comma separated list of names
+     */
+    String getGPUs();
 }

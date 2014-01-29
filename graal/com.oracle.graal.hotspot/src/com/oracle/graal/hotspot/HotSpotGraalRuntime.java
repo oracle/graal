@@ -181,7 +181,6 @@ public final class HotSpotGraalRuntime implements GraalRuntime, RuntimeProvider 
     }
 
     protected/* final */CompilerToVM compilerToVm;
-    protected/* final */CompilerToGPU compilerToGpu;
     protected/* final */VMToCompiler vmToCompiler;
 
     private HotSpotRuntimeInterpreterInterface runtimeInterpreterInterface;
@@ -211,11 +210,9 @@ public final class HotSpotGraalRuntime implements GraalRuntime, RuntimeProvider 
 
     private HotSpotGraalRuntime() {
         CompilerToVM toVM = new CompilerToVMImpl();
-        CompilerToGPU toGPU = new CompilerToGPUImpl();
         VMToCompiler toCompiler = new VMToCompilerImpl(this);
 
         compilerToVm = toVM;
-        compilerToGpu = toGPU;
         vmToCompiler = toCompiler;
         config = new HotSpotVMConfig(compilerToVm);
 
@@ -237,7 +234,7 @@ public final class HotSpotGraalRuntime implements GraalRuntime, RuntimeProvider 
         String hostArchitecture = config.getHostArchitectureName();
         hostBackend = registerBackend(findFactory(hostArchitecture).createBackend(this, null));
 
-        String[] gpuArchitectures = getGPUArchitectureNames();
+        String[] gpuArchitectures = getGPUArchitectureNames(compilerToVm);
         for (String arch : gpuArchitectures) {
             HotSpotBackendFactory factory = findFactory(arch);
             if (factory == null) {
@@ -271,15 +268,12 @@ public final class HotSpotGraalRuntime implements GraalRuntime, RuntimeProvider 
 
     /**
      * Gets the names of the supported GPU architectures for the purpose of finding the
-     * corresponding {@linkplain HotSpotBackendFactory backend} objects. This method first looks for
-     * a comma or {@link java.io.File#pathSeparatorChar} separated list of names in the
-     * {@value #GRAAL_GPU_ISALIST_PROPERTY_NAME} system property. If this property is not set, then
-     * the GPU native support code is queried.
+     * corresponding {@linkplain HotSpotBackendFactory backend} objects.
      */
-    private static String[] getGPUArchitectureNames() {
-        String gpuList = System.getProperty(GRAAL_GPU_ISALIST_PROPERTY_NAME);
-        if (gpuList != null && !gpuList.isEmpty()) {
-            String[] gpus = gpuList.split("[,:]");
+    private static String[] getGPUArchitectureNames(CompilerToVM c2vm) {
+        String gpuList = c2vm.getGPUs();
+        if (!gpuList.isEmpty()) {
+            String[] gpus = gpuList.split(",");
             return gpus;
         }
         return new String[0];
@@ -318,10 +312,6 @@ public final class HotSpotGraalRuntime implements GraalRuntime, RuntimeProvider 
 
     public VMToCompiler getVMToCompiler() {
         return vmToCompiler;
-    }
-
-    public CompilerToGPU getCompilerToGPU() {
-        return compilerToGpu;
     }
 
     /**

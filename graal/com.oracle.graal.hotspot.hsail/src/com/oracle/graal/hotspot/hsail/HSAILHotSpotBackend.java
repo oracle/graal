@@ -30,6 +30,7 @@ import static com.oracle.graal.compiler.GraalCompiler.*;
 import java.lang.reflect.*;
 import java.util.*;
 
+import com.amd.okra.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.CallingConvention.Type;
 import com.oracle.graal.api.meta.*;
@@ -60,6 +61,7 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
 
     private Map<String, String> paramTypeMap = new HashMap<>();
     private Buffer codeBuffer;
+    private final boolean deviceInitialized;
 
     public HSAILHotSpotBackend(HotSpotGraalRuntime runtime, HotSpotProviders providers) {
         super(runtime, providers);
@@ -67,11 +69,29 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
         paramTypeMap.put("HotSpotResolvedPrimitiveType<float>", "f32");
         paramTypeMap.put("HotSpotResolvedPrimitiveType<double>", "f64");
         paramTypeMap.put("HotSpotResolvedPrimitiveType<long>", "s64");
+
+        // The order of the conjunction below is important: the OkraUtil
+        // call may provision the native library required by the initialize() call
+        deviceInitialized = OkraUtil.okraLibExists() && initialize();
     }
 
     @Override
     public boolean shouldAllocateRegisters() {
         return true;
+    }
+
+    /**
+     * Initializes the GPU device.
+     * 
+     * @return whether or not initialization was successful
+     */
+    private static native boolean initialize();
+
+    /**
+     * Determines if the GPU device (or simulator) is available and initialized.
+     */
+    public boolean isDeviceInitialized() {
+        return deviceInitialized;
     }
 
     /**
@@ -117,12 +137,15 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
         graphBuilderSuite.appendPhase(new NonNullParametersPhase());
         CallingConvention cc = getCallingConvention(providers.getCodeCache(), Type.JavaCallee, graph.method(), false);
         Suites suites = providers.getSuites().getDefaultSuites();
-        ExternalCompilationResult hsailCode = compileGraph(graph, cc, method, providers, this, this.getTarget(), null, graphBuilderSuite, OptimisticOptimizations.NONE, getProfilingInfo(graph),
-                        new SpeculationLog(), suites, true, new ExternalCompilationResult(), CompilationResultBuilderFactory.Default);
+        ExternalCompilationResult hsailCode = compileGraph(graph, cc, method, providers, this, this.getTarget(), null, graphBuilderSuite, OptimisticOptimizations.NONE, getProfilingInfo(graph), null,
+                        suites, true, new ExternalCompilationResult(), CompilationResultBuilderFactory.Default);
 
         if (makeBinary) {
+            if (!deviceInitialized) {
+                throw new GraalInternalError("Cannot generate GPU kernel if device is not initialized");
+            }
             try (Scope ds = Debug.scope("GeneratingKernelBinary")) {
-                long kernel = getRuntime().getCompilerToGPU().generateKernel(hsailCode.getTargetCode(), method.getName());
+                long kernel = generateKernel(hsailCode.getTargetCode(), method.getName());
                 if (kernel == 0) {
                     throw new GraalInternalError("Failed to compile HSAIL kernel");
                 }
@@ -133,6 +156,11 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
         }
         return hsailCode;
     }
+
+    /**
+     * Generates a GPU binary from HSAIL code.
+     */
+    private static native long generateKernel(byte[] hsailCode, String name);
 
     /**
      * Installs the {@linkplain ExternalCompilationResult#getEntryPoint() GPU binary} associated
@@ -146,6 +174,15 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
         assert hsailCode.getEntryPoint() != 0L;
         return getProviders().getCodeCache().addExternalMethod(method, hsailCode);
     }
+
+    public boolean executeKernel(HotSpotInstalledCode kernel, int jobSize, Object[] args) throws InvalidInstalledCodeException {
+        if (!deviceInitialized) {
+            throw new GraalInternalError("Cannot execute GPU kernel if device is not initialized");
+        }
+        return executeKernel0(kernel, jobSize, args);
+    }
+
+    private static native boolean executeKernel0(HotSpotInstalledCode kernel, int jobSize, Object[] args) throws InvalidInstalledCodeException;
 
     /**
      * Use the HSAIL register set when the compilation target is HSAIL.
