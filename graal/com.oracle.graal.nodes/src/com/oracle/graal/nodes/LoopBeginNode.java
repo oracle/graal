@@ -31,6 +31,7 @@ import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.util.*;
 
 public class LoopBeginNode extends MergeNode implements IterableNodeType, LIRLowerable {
 
@@ -184,7 +185,11 @@ public class LoopBeginNode extends MergeNode implements IterableNodeType, LIRLow
     public void removeExits() {
         for (LoopExitNode loopexit : loopExits().snapshot()) {
             loopexit.removeProxies();
+            FrameState stateAfter = loopexit.stateAfter();
             graph().replaceFixedWithFixed(loopexit, graph().add(new BeginNode()));
+            if (stateAfter != null && stateAfter.isAlive() && stateAfter.usages().isEmpty()) {
+                GraphUtil.killWithUnusedFloatingInputs(stateAfter);
+            }
         }
     }
 

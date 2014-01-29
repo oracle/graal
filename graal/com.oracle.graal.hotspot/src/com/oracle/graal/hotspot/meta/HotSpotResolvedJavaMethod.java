@@ -157,10 +157,18 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
         return getMetaspaceMethodConstant();
     }
 
+    /**
+     * Gets the complete set of modifiers for this method which includes the JVM specification
+     * modifiers as well as the HotSpot internal modifiers.
+     */
+    public int getAllModifiers() {
+        HotSpotVMConfig config = runtime().getConfig();
+        return unsafe.getInt(metaspaceMethod + config.methodAccessFlagsOffset);
+    }
+
     @Override
     public int getModifiers() {
-        HotSpotVMConfig config = runtime().getConfig();
-        return unsafe.getInt(metaspaceMethod + config.methodAccessFlagsOffset) & Modifier.methodModifiers();
+        return getAllModifiers() & Modifier.methodModifiers();
     }
 
     @Override
@@ -424,27 +432,23 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
         return javaMethod == null ? null : javaMethod.getAnnotation(annotationClass);
     }
 
+    private static final int SYNTHETIC;
+    static {
+        try {
+            // Unfortunately, Modifier.SYNTHETIC is not public so we have
+            // to jump though hoops to get it.
+            Field field = Modifier.class.getDeclaredField("SYNTHETIC");
+            field.setAccessible(true);
+            SYNTHETIC = field.getInt(null);
+        } catch (IllegalArgumentException | IllegalAccessException | NoSuchFieldException | SecurityException e) {
+            throw GraalInternalError.shouldNotReachHere(e.toString());
+        }
+    }
+
     @Override
     public boolean isSynthetic() {
-        if (isConstructor()) {
-            Constructor<?> javaConstructor = toJavaConstructor();
-            return javaConstructor == null ? false : javaConstructor.isSynthetic();
-        }
-
-        // Cannot use toJava() as it ignores the return type
-        HotSpotSignature sig = getSignature();
-        JavaType[] sigTypes = MetaUtil.signatureToTypes(sig, null);
-        MetaAccessProvider metaAccess = runtime().getHostProviders().getMetaAccess();
-        for (Method method : holder.mirror().getDeclaredMethods()) {
-            if (method.getName().equals(name)) {
-                if (metaAccess.lookupJavaType(method.getReturnType()).equals(sig.getReturnType(holder))) {
-                    if (matches(metaAccess, sigTypes, method.getParameterTypes())) {
-                        return method.isSynthetic();
-                    }
-                }
-            }
-        }
-        return false;
+        int modifiers = getAllModifiers();
+        return (SYNTHETIC & modifiers) != 0;
     }
 
     public boolean isDefault() {
@@ -474,18 +478,6 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
             result[i] = ((HotSpotResolvedJavaType) sig.getParameterType(i, holder).resolve(holder)).mirror();
         }
         return result;
-    }
-
-    private static boolean matches(MetaAccessProvider metaAccess, JavaType[] sigTypes, Class<?>[] parameterTypes) {
-        if (parameterTypes.length == sigTypes.length) {
-            for (int i = 0; i < parameterTypes.length; i++) {
-                if (!metaAccess.lookupJavaType(parameterTypes[i]).equals(sigTypes[i])) {
-                    return false;
-                }
-            }
-            return true;
-        }
-        return false;
     }
 
     private Method toJava() {

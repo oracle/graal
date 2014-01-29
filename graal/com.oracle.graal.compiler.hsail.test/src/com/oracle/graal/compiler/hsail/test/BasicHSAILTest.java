@@ -22,14 +22,17 @@
  */
 package com.oracle.graal.compiler.hsail.test;
 
+import java.lang.reflect.*;
+
 import org.junit.*;
 
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.hotspot.hsail.*;
 import com.oracle.graal.hsail.*;
-import com.oracle.graal.nodes.*;
 
 /**
  * Test class for small Java methods compiled to HSAIL kernels.
@@ -332,11 +335,18 @@ public class BasicHSAILTest extends GraalCompilerTest {
         out[gid] = val;
     }
 
+    @Override
+    protected HSAILHotSpotBackend getBackend() {
+        Backend backend = super.getBackend();
+        Assume.assumeTrue(backend instanceof HSAILHotSpotBackend);
+        return (HSAILHotSpotBackend) backend;
+    }
+
     private void test(final String snippet) {
         try (Scope s = Debug.scope("HSAILCodeGen")) {
-            StructuredGraph graph = parse(snippet);
-            HSAILCompilationResult compResult = HSAILCompilationResult.getHSAILCompilationResult(graph);
-            Debug.log("HSAIL code generated for %s:%n%s", snippet, compResult.getHSAILCode());
+            Method method = getMethod(snippet);
+            ExternalCompilationResult hsailCode = getBackend().compileKernel(getMetaAccess().lookupJavaMethod(method), false);
+            Debug.log("HSAIL code generated for %s:%n%s", snippet, hsailCode.getCodeString());
         } catch (Throwable e) {
             throw Debug.handle(e);
         }

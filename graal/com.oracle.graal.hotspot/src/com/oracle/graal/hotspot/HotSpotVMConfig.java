@@ -39,12 +39,19 @@ public class HotSpotVMConfig extends CompilerObject {
 
     private static final long serialVersionUID = -4744897993263044184L;
 
-    private static boolean containsString(String[] array, String item) {
-        if (array == null) {
-            return false;
+    /**
+     * Determines if the current architecture is included in a given architecture set specification.
+     * 
+     * @param currentArch
+     * @param archsSpecification specifies a set of architectures. A zero length value implies all
+     *            architectures.
+     */
+    private static boolean isRequired(String currentArch, String[] archsSpecification) {
+        if (archsSpecification.length == 0) {
+            return true;
         }
-        for (String arch : array) {
-            if (arch.equals(item)) {
+        for (String arch : archsSpecification) {
+            if (arch.equals(currentArch)) {
                 return true;
             }
         }
@@ -90,7 +97,7 @@ public class HotSpotVMConfig extends CompilerObject {
                 String type = annotation.type();
                 VMFields.Field entry = vmFields.get(name);
                 if (entry == null) {
-                    if (annotation.optional() || !containsString(annotation.archs(), currentArch)) {
+                    if (annotation.optional() || !isRequired(currentArch, annotation.archs())) {
                         continue;
                     }
                     throw new IllegalArgumentException("field not found: " + name);
@@ -135,11 +142,10 @@ public class HotSpotVMConfig extends CompilerObject {
                 String name = annotation.name();
                 AbstractConstant entry = vmConstants.get(name);
                 if (entry == null) {
-                    if (!containsString(annotation.archs(), currentArch)) {
+                    if (!isRequired(currentArch, annotation.archs())) {
                         continue;
-                    } else {
-                        throw new IllegalArgumentException("constant not found: " + name);
                     }
+                    throw new IllegalArgumentException("constant not found: " + name);
                 }
                 setField(f, entry.getValue());
             } else if (f.isAnnotationPresent(HotSpotVMFlag.class)) {
@@ -147,11 +153,11 @@ public class HotSpotVMConfig extends CompilerObject {
                 String name = annotation.name();
                 Flags.Flag entry = flags.get(name);
                 if (entry == null) {
-                    if (annotation.optional() || !containsString(annotation.archs(), currentArch)) {
+                    if (!isRequired(currentArch, annotation.archs())) {
                         continue;
-                    } else {
-                        throw new IllegalArgumentException("flag not found: " + name);
                     }
+                    throw new IllegalArgumentException("flag not found: " + name);
+
                 }
                 setField(f, entry.getValue());
             }
@@ -712,6 +718,7 @@ public class HotSpotVMConfig extends CompilerObject {
     @HotSpotVMFlag(name = "PrintInlining") @Stable public boolean printInlining;
     @HotSpotVMFlag(name = "GraalUseFastLocking") @Stable public boolean useFastLocking;
     @HotSpotVMFlag(name = "ForceUnreachable") @Stable public boolean forceUnreachable;
+    @HotSpotVMFlag(name = "GPUOffload") @Stable public boolean gpuOffload;
 
     @HotSpotVMFlag(name = "UseTLAB") @Stable public boolean useTLAB;
     @HotSpotVMFlag(name = "UseBiasedLocking") @Stable public boolean useBiasedLocking;
@@ -831,8 +838,6 @@ public class HotSpotVMConfig extends CompilerObject {
     @HotSpotVMField(name = "JavaThread::_satb_mark_queue", type = "ObjPtrQueue", get = HotSpotVMField.Type.OFFSET) @Stable public int javaThreadSatbMarkQueueOffset;
     @HotSpotVMField(name = "JavaThread::_vm_result", type = "oop", get = HotSpotVMField.Type.OFFSET) @Stable public int threadObjectResultOffset;
     @HotSpotVMField(name = "JavaThread::_graal_counters[0]", type = "jlong", get = HotSpotVMField.Type.OFFSET, optional = true) @Stable public int graalCountersThreadOffset;
-
-    @HotSpotVMConstant(name = "GRAAL_COUNTERS_SIZE") @Stable public int graalCountersSize;
 
     /**
      * This field is used to pass exception objects into and out of the runtime system during
@@ -1266,6 +1271,8 @@ public class HotSpotVMConfig extends CompilerObject {
     @Stable public long arithmeticCosAddress;
     @Stable public long arithmeticTanAddress;
     @Stable public long loadAndClearExceptionAddress;
+
+    @Stable public int graalCountersSize;
 
     @HotSpotVMConstant(name = "Deoptimization::Reason_none") @Stable public int deoptReasonNone;
     @HotSpotVMConstant(name = "Deoptimization::Reason_null_check") @Stable public int deoptReasonNullCheck;

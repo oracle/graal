@@ -20,26 +20,46 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.phases.common;
+package com.oracle.graal.compiler.test;
 
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.java.*;
-import com.oracle.graal.nodes.util.*;
-import com.oracle.graal.phases.*;
+import org.junit.*;
 
-public class LockEliminationPhase extends Phase {
+import com.oracle.graal.compiler.test.ea.EATestBase.TestClassInt;
 
-    @Override
-    protected void run(StructuredGraph graph) {
-        for (MonitorExitNode node : graph.getNodes(MonitorExitNode.class)) {
-            FixedNode next = node.next();
-            if (next instanceof MonitorEnterNode) {
-                MonitorEnterNode monitorEnterNode = (MonitorEnterNode) next;
-                if (monitorEnterNode.object() == node.object()) {
-                    GraphUtil.removeFixedWithUnusedInputs(monitorEnterNode);
-                    GraphUtil.removeFixedWithUnusedInputs(node);
-                }
+public class ShortCircuitNodeTest extends GraalCompilerTest {
+
+    @Test
+    public void test1() {
+        // only executeActual, to avoid creating profiling information
+        executeActual(getMethod("test1Snippet"), 1, 2);
+    }
+
+    public static final TestClassInt field = null;
+    public static TestClassInt field2 = null;
+
+    @SuppressWarnings("unused")
+    public static void test1Snippet(int a, int b) {
+        /*
+         * if a ShortCircuitOrNode is created for the check inside test2, then faulty handling of
+         * guards can create a cycle in the graph.
+         */
+        int v;
+        if (a == 1) {
+            if (b != 1) {
+                int i = field.x;
             }
+            field2 = null;
+            v = 0;
+        } else {
+            v = 1;
         }
+
+        if (test2(v, b)) {
+            int i = field.x;
+        }
+    }
+
+    public static boolean test2(int a, int b) {
+        return a != 0 || b != 1;
     }
 }

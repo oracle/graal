@@ -23,10 +23,24 @@
 
 package com.oracle.graal.hotspot.hsail;
 
+import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
+
+import java.lang.reflect.*;
+import java.util.*;
+
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.hsail.*;
+import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.debug.*;
+import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.hotspot.meta.*;
+import com.oracle.graal.hsail.*;
+import com.oracle.graal.java.*;
+import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.java.*;
+import com.oracle.graal.phases.*;
+import com.oracle.graal.phases.util.*;
 
 /**
  * Implements compile and dispatch of Java code containing lambda constructs. Currently only used by
@@ -34,18 +48,53 @@ import com.oracle.graal.hotspot.meta.*;
  */
 public class ForEachToGraal implements CompileAndDispatch {
 
-    private static HSAILCompilationResult getCompiledLambda(Class consumerClass) {
-        return HSAILCompilationResult.getCompiledLambda(consumerClass);
+    private static HSAILHotSpotBackend getHSAILBackend() {
+        Backend backend = runtime().getBackend(HSAIL.class);
+        return (HSAILHotSpotBackend) backend;
     }
 
-    // Implementations of the CompileAndDispatch interface.
+    /**
+     * Gets a compiled and installed kernel for the lambda called by the {@code accept(int value)}
+     * method in a class implementing {@code java.util.function.IntConsumer}.
+     * 
+     * @param intConsumerClass a class implementing {@code java.util.function.IntConsumer}
+     * @return a {@link HotSpotNmethod} handle to the compiled and installed kernel
+     */
+    private static HotSpotNmethod getCompiledLambda(Class intConsumerClass) {
+        Method acceptMethod = null;
+        for (Method m : intConsumerClass.getMethods()) {
+            if (m.getName().equals("accept") && Arrays.equals(new Class[]{int.class}, m.getParameterTypes())) {
+                assert acceptMethod == null : "found more than one implementation of accept(int) in " + intConsumerClass;
+                acceptMethod = m;
+            }
+        }
+
+        HSAILHotSpotBackend backend = getHSAILBackend();
+        Providers providers = backend.getProviders();
+        StructuredGraph graph = new StructuredGraph(((HotSpotMetaAccessProvider) providers.getMetaAccess()).lookupJavaMethod(acceptMethod));
+        new GraphBuilderPhase.Instance(providers.getMetaAccess(), GraphBuilderConfiguration.getDefault(), OptimisticOptimizations.ALL).apply(graph);
+        NodeIterable<MethodCallTargetNode> calls = graph.getNodes(MethodCallTargetNode.class);
+        assert calls.count() == 1;
+        ResolvedJavaMethod lambdaMethod = calls.first().targetMethod();
+        assert lambdaMethod.getName().startsWith("lambda$");
+        Debug.log("target ... " + lambdaMethod);
+
+        if (lambdaMethod == null) {
+            Debug.log("Did not find call in accept()");
+            return null;
+        }
+
+        ExternalCompilationResult hsailCode = backend.compileKernel(lambdaMethod, true);
+        return backend.installKernel(lambdaMethod, hsailCode);
+    }
+
     @Override
     public Object createKernel(Class<?> consumerClass) {
         try {
             return getCompiledLambda(consumerClass);
         } catch (Throwable e) {
-            // Note: Graal throws Errors. We want to revert to regular Java in these cases.
-            Debug.log("WARNING:Graal compilation failed.");
+            // If Graal compilation throws an exception, we want to revert to regular Java
+            Debug.log("WARNING: Graal compilation failed");
             e.printStackTrace();
             return null;
         }
@@ -53,16 +102,14 @@ public class ForEachToGraal implements CompileAndDispatch {
 
     @Override
     public boolean dispatchKernel(Object kernel, int jobSize, Object[] args) {
-        // kernel is an HSAILCompilationResult
-        HotSpotNmethod code = (HotSpotNmethod) ((HSAILCompilationResult) kernel).getInstalledCode();
-
+        HotSpotNmethod code = (HotSpotNmethod) kernel;
         if (code != null) {
             try {
                 // No return value from HSAIL kernels
                 code.executeParallel(jobSize, 0, 0, args);
                 return true;
             } catch (InvalidInstalledCodeException iice) {
-                Debug.log("WARNING:Invalid installed code at exec time." + iice);
+                Debug.log("WARNING: Invalid installed code at exec time." + iice);
                 iice.printStackTrace();
                 return false;
             }
