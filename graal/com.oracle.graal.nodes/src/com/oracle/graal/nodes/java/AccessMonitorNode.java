@@ -33,10 +33,33 @@ import com.oracle.graal.nodes.type.*;
  * The Java bytecode specification allows non-balanced locking. Graal does not handle such cases and
  * throws a {@link BailoutException} instead during graph building.
  */
-public abstract class AccessMonitorNode extends AbstractMemoryCheckpoint implements MemoryCheckpoint {
+public abstract class AccessMonitorNode extends AbstractMemoryCheckpoint implements MemoryCheckpoint, DeoptimizingNode {
 
+    @Input private FrameState deoptState;
     @Input private ValueNode object;
     @Input private MonitorIdNode monitorId;
+
+    @Override
+    public boolean canDeoptimize() {
+        return true;
+    }
+
+    @Override
+    public FrameState getDeoptimizationState() {
+        return deoptState;
+    }
+
+    @Override
+    public void setDeoptimizationState(FrameState f) {
+        updateUsages(deoptState, f);
+        deoptState = f;
+    }
+
+    @Override
+    public FrameState getState() {
+        assert deoptState == null || stateAfter() == null;
+        return deoptState == null ? stateAfter() : deoptState;
+    }
 
     public ValueNode object() {
         return object;

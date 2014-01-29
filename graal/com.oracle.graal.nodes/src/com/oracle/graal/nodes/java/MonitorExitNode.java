@@ -58,7 +58,7 @@ public final class MonitorExitNode extends AccessMonitorNode implements Virtuali
 
     @Override
     public void simplify(SimplifierTool tool) {
-        if (escapedReturnValue != null && stateAfter().bci != FrameState.AFTER_BCI) {
+        if (escapedReturnValue != null && stateAfter() != null && stateAfter().bci != FrameState.AFTER_BCI) {
             ValueNode returnValue = escapedReturnValue;
             setEscapedReturnValue(null);
             tool.removeIfUnused(returnValue);

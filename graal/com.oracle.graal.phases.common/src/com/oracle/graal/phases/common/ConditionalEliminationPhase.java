@@ -626,7 +626,7 @@ public class ConditionalEliminationPhase extends Phase {
                         if (type != ObjectStamp.typeOrNull(receiver)) {
                             ResolvedJavaMethod method = type.resolveMethod(callTarget.targetMethod());
                             if (method != null) {
-                                if ((method.getModifiers() & Modifier.FINAL) != 0 || (type.getModifiers() & Modifier.FINAL) != 0) {
+                                if (Modifier.isFinal(method.getModifiers()) || Modifier.isFinal(type.getModifiers())) {
                                     callTarget.setInvokeKind(InvokeKind.Special);
                                     callTarget.setTargetMethod(method);
                                 }
