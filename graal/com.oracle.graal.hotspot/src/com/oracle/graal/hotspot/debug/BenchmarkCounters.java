@@ -107,7 +107,7 @@ public class BenchmarkCounters {
 
     public static int getIndex(DynamicCounterNode counter) {
         if (!enabled) {
-            throw new GraalInternalError("counter nodes shouldn't exist when counters are not enabled");
+            throw new GraalInternalError("counter nodes shouldn't exist when counters are not enabled: " + counter.getGroup() + ", " + counter.getName());
         }
         String name = counter.getName();
         String group = counter.getGroup();
@@ -332,12 +332,15 @@ public class BenchmarkCounters {
             if (index >= config.graalCountersSize) {
                 throw new GraalInternalError("too many counters, reduce number of counters or increase GRAAL_COUNTERS_SIZE (current value: " + config.graalCountersSize + ")");
             }
-            ConstantLocationNode location = ConstantLocationNode.create(LocationIdentity.ANY_LOCATION, Kind.Long, config.graalCountersThreadOffset + Unsafe.ARRAY_LONG_INDEX_SCALE * index, graph);
-            ReadNode read = graph.add(new ReadNode(thread, location, StampFactory.forKind(Kind.Long), BarrierType.NONE, false));
+            ConstantLocationNode arrayLocation = ConstantLocationNode.create(LocationIdentity.ANY_LOCATION, Kind.Long, config.graalCountersThreadOffset, graph);
+            ReadNode readArray = graph.add(new ReadNode(thread, arrayLocation, StampFactory.forKind(wordKind), BarrierType.NONE, false));
+            ConstantLocationNode location = ConstantLocationNode.create(LocationIdentity.ANY_LOCATION, Kind.Long, Unsafe.ARRAY_LONG_INDEX_SCALE * index, graph);
+            ReadNode read = graph.add(new ReadNode(readArray, location, StampFactory.forKind(Kind.Long), BarrierType.NONE, false));
             IntegerAddNode add = graph.unique(new IntegerAddNode(Kind.Long, read, counter.getIncrement()));
-            WriteNode write = graph.add(new WriteNode(thread, add, location, BarrierType.NONE, false));
+            WriteNode write = graph.add(new WriteNode(readArray, add, location, BarrierType.NONE, false));
 
             graph.addBeforeFixed(counter, thread);
+            graph.addBeforeFixed(counter, readArray);
             graph.addBeforeFixed(counter, read);
             graph.addBeforeFixed(counter, write);
         }
