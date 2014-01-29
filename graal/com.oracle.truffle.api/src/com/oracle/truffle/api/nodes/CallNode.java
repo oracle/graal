@@ -85,6 +85,16 @@ public abstract class CallNode extends Node {
     public abstract boolean inline();
 
     /**
+     * Returns the inlined root node if the call node was inlined. If the {@link CallNode} was not
+     * inlined <code>null</code> is returned.
+     * 
+     * @return the inlined root node returned by {@link RootNode#inline()}
+     */
+    public RootNode getInlinedRoot() {
+        return null;
+    }
+
+    /**
      * Creates a new {@link CallNode} using a {@link CallTarget}.
      * 
      * @param target the {@link CallTarget} to call
@@ -116,7 +126,6 @@ public abstract class CallNode extends Node {
             ((InlinableCallNode) callNode).resetCallCount();
             return;
         }
-        throw new UnsupportedOperationException();
     }
 
     private static boolean isInlinable(CallTarget callTarget) {
@@ -124,6 +133,11 @@ public abstract class CallNode extends Node {
             return (((DefaultCallTarget) callTarget).getRootNode()).isInlinable();
         }
         return false;
+    }
+
+    @Override
+    public String toString() {
+        return getParent() != null ? getParent().toString() : super.toString();
     }
 
     static final class DefaultCallNode extends CallNode {
@@ -174,13 +188,14 @@ public abstract class CallNode extends Node {
         public boolean inline() {
             DefaultCallTarget defaultTarget = (DefaultCallTarget) getCallTarget();
             RootNode originalRootNode = defaultTarget.getRootNode();
-            boolean inlined = false;
             if (originalRootNode.isInlinable()) {
                 RootNode inlinedRootNode = defaultTarget.getRootNode().inline();
+                inlinedRootNode.setCallTarget(callTarget);
+                inlinedRootNode.setParentInlinedCall(this);
                 replace(new InlinedCallNode(defaultTarget, inlinedRootNode));
-                inlined = true;
+                return true;
             }
-            return inlined;
+            return false;
         }
 
         @Override
@@ -222,6 +237,11 @@ public abstract class CallNode extends Node {
         @Override
         public InlinedCallNode copy() {
             return new InlinedCallNode((DefaultCallTarget) getCallTarget(), NodeUtil.cloneNode(inlinedRoot));
+        }
+
+        @Override
+        public RootNode getInlinedRoot() {
+            return inlinedRoot;
         }
 
         @Override

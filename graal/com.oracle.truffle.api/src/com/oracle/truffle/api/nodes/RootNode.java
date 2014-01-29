@@ -25,6 +25,7 @@
 package com.oracle.truffle.api.nodes;
 
 import com.oracle.truffle.api.*;
+import com.oracle.truffle.api.CompilerDirectives.*;
 import com.oracle.truffle.api.frame.*;
 
 /**
@@ -36,6 +37,12 @@ public abstract class RootNode extends Node {
 
     private CallTarget callTarget;
     private final FrameDescriptor frameDescriptor;
+
+    /*
+     * Internal field to keep reference to the inlined call node. The inlined parent should not be
+     * the same as the Node parent to keep the same tree hierarchy if inlined vs not inlined.
+     */
+    @CompilationFinal private CallNode parentInlinedCall;
 
     protected RootNode() {
         this(null, null);
@@ -124,5 +131,21 @@ public abstract class RootNode extends Node {
 
     public void setCallTarget(CallTarget callTarget) {
         this.callTarget = callTarget;
+    }
+
+    /* Internal API. Do not use. */
+    void setParentInlinedCall(CallNode inlinedParent) {
+        this.parentInlinedCall = inlinedParent;
+    }
+
+    /**
+     * Returns the {@link CallNode} that uses this {@link RootNode} for an inlined call. Returns
+     * <code>null</code> if this {@link RootNode} is not inlined into a caller. This method can be
+     * used to also traverse parent {@link CallTarget} that have been inlined into this call.
+     * 
+     * @return the responsible {@link CallNode} for inlining.
+     */
+    public final CallNode getParentInlinedCall() {
+        return parentInlinedCall;
     }
 }

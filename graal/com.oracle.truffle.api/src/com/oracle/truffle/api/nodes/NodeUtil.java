@@ -451,6 +451,31 @@ public final class NodeUtil {
         return null;
     }
 
+    /**
+     * Returns the outermost not inlined {@link RootNode} which is a parent of this node.
+     * 
+     * @see RootNode#getParentInlinedCall()
+     * @param node to search
+     * @return the outermost {@link RootNode}
+     */
+    public static RootNode findOutermostRootNode(Node node) {
+        Node parent = node;
+        while (parent != null) {
+            if (parent instanceof RootNode) {
+                RootNode root = (RootNode) parent;
+                Node next = root.getParentInlinedCall();
+                if (next != null) {
+                    parent = next;
+                } else {
+                    return root;
+                }
+            } else {
+                parent = parent.getParent();
+            }
+        }
+        return null;
+    }
+
     public static <T> T findParent(Node start, Class<T> clazz) {
         Node parent = start.getParent();
         if (parent == null) {
@@ -571,24 +596,26 @@ public final class NodeUtil {
     }
 
     public static int countNodes(Node root) {
-        return countNodes(root, null);
+        return countNodes(root, null, false);
     }
 
-    public static int countNodes(Node root, Class<?> clazz) {
-        NodeCountVisitor nodeCount = new NodeCountVisitor(root, clazz);
+    public static int countNodes(Node root, Class<?> clazz, boolean countInlinedCallNodes) {
+        NodeCountVisitor nodeCount = new NodeCountVisitor(root, clazz, countInlinedCallNodes);
         root.accept(nodeCount);
         return nodeCount.nodeCount;
     }
 
     private static final class NodeCountVisitor implements NodeVisitor {
 
+        private Node root;
+        private boolean inspectInlinedCalls;
         int nodeCount;
-        private final Node root;
         private final Class<?> clazz;
 
-        private NodeCountVisitor(Node root, Class<?> clazz) {
+        private NodeCountVisitor(Node root, Class<?> clazz, boolean inspectInlinedCalls) {
             this.root = root;
             this.clazz = clazz;
+            this.inspectInlinedCalls = inspectInlinedCalls;
         }
 
         @Override
@@ -596,9 +623,18 @@ public final class NodeUtil {
             if (node instanceof RootNode && node != root) {
                 return false;
             }
+
             if (clazz == null || clazz.isInstance(node)) {
                 nodeCount++;
             }
+
+            if (inspectInlinedCalls && node instanceof CallNode) {
+                CallNode call = (CallNode) node;
+                if (call.isInlined()) {
+                    call.getInlinedRoot().getChildren().iterator().next().accept(this);
+                }
+            }
+
             return true;
         }
     }
