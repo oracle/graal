@@ -86,9 +86,9 @@ public class PTXControlFlow {
         @Override
         public void emitCode(CompilationResultBuilder crb, PTXMacroAssembler masm) {
             if (crb.isSuccessorEdge(trueDestination)) {
-                masm.bra(masm.nameOf(falseDestination.label()), predRegNum);
+                masm.bra(masm.nameOf(falseDestination.label()), predRegNum, false);
             } else {
-                masm.bra(masm.nameOf(trueDestination.label()));
+                masm.bra(masm.nameOf(trueDestination.label()), predRegNum, true);
                 if (!crb.isSuccessorEdge(falseDestination)) {
                     masm.jmp(falseDestination.label());
                 }
@@ -238,7 +238,7 @@ public class PTXControlFlow {
                         default:
                             throw new GraalInternalError("switch only supported for int, long and object");
                     }
-                    masm.bra(masm.nameOf(target), predRegNum);
+                    masm.bra(masm.nameOf(target), predRegNum, true);
                 }
             };
             strategy.run(closure);
@@ -281,7 +281,7 @@ public class PTXControlFlow {
 
             // Jump to default target if index is not within the jump table
             if (defaultTarget != null) {
-                masm.bra(masm.nameOf(defaultTarget.label()), predRegNum);
+                masm.bra(masm.nameOf(defaultTarget.label()), predRegNum, true);
             }
 
             // address of jump table

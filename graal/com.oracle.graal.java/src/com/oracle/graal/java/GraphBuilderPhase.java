@@ -1067,15 +1067,6 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             }
         }
 
-        private ConstantNode genTypeOrDeopt(Representation representation, JavaType type, boolean initialized) {
-            if (initialized) {
-                return appendConstant(((ResolvedJavaType) type).getEncoding(representation));
-            } else {
-                handleUnresolvedExceptionType(representation, type);
-                return null;
-            }
-        }
-
         private void appendOptimizedStoreField(StoreFieldNode store) {
             append(store);
         }
@@ -1711,14 +1702,17 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 ResolvedJavaType resolvedCatchType = (ResolvedJavaType) catchType;
                 for (ResolvedJavaType skippedType : graphBuilderConfig.getSkippedExceptionTypes()) {
                     if (skippedType.isAssignableFrom(resolvedCatchType)) {
-                        append(new DeoptimizeNode(InvalidateReprofile, UnreachedCode));
+                        Block nextBlock = block.successors.size() == 1 ? unwindBlock(block.deoptBci) : block.successors.get(1);
+                        ValueNode exception = frameState.stackAt(0);
+                        FixedNode trueSuccessor = currentGraph.add(new DeoptimizeNode(InvalidateReprofile, UnreachedCode));
+                        FixedNode nextDispatch = createTarget(nextBlock, frameState);
+                        append(new IfNode(currentGraph.unique(new InstanceOfNode((ResolvedJavaType) catchType, exception, null)), trueSuccessor, nextDispatch, 0));
                         return;
                     }
                 }
             }
 
-            ConstantNode typeInstruction = genTypeOrDeopt(Representation.ObjectHub, catchType, initialized);
-            if (typeInstruction != null) {
+            if (initialized) {
                 Block nextBlock = block.successors.size() == 1 ? unwindBlock(block.deoptBci) : block.successors.get(1);
                 ValueNode exception = frameState.stackAt(0);
                 CheckCastNode checkCast = currentGraph.add(new CheckCastNode((ResolvedJavaType) catchType, exception, null, false));
@@ -1730,6 +1724,8 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 FixedNode nextDispatch = createTarget(nextBlock, frameState);
                 checkCast.setNext(catchSuccessor);
                 append(new IfNode(currentGraph.unique(new InstanceOfNode((ResolvedJavaType) catchType, exception, null)), checkCast, nextDispatch, 0.5));
+            } else {
+                handleUnresolvedExceptionType(Representation.ObjectHub, catchType);
             }
         }
 

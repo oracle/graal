@@ -27,7 +27,6 @@ import java.util.*;
 import org.junit.*;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
@@ -39,9 +38,7 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.tiers.*;
-import com.oracle.graal.phases.util.*;
 import com.oracle.graal.printer.*;
-import com.oracle.graal.runtime.*;
 import com.oracle.graal.truffle.*;
 import com.oracle.graal.virtual.phases.ea.*;
 import com.oracle.truffle.api.*;
@@ -50,15 +47,12 @@ import com.oracle.truffle.api.nodes.*;
 public class PartialEvaluationTest extends GraalCompilerTest {
 
     private static final long UNROLL_LIMIT = 100;
-    private final PartialEvaluator partialEvaluator;
+    private final TruffleCompilerImpl truffleCompiler;
 
     public PartialEvaluationTest() {
         // Make sure Truffle runtime is initialized.
         Assert.assertTrue(Truffle.getRuntime() instanceof GraalTruffleRuntime);
-        Replacements truffleReplacements = ((GraalTruffleRuntime) Truffle.getRuntime()).getReplacements();
-        Providers providers = getProviders().copyWith(truffleReplacements);
-        TruffleCache truffleCache = new TruffleCache(providers, GraphBuilderConfiguration.getDefault(), TruffleCompilerImpl.Optimizations);
-        this.partialEvaluator = new PartialEvaluator(Graal.getRequiredCapability(RuntimeProvider.class), providers, truffleCache);
+        this.truffleCompiler = new TruffleCompilerImpl();
 
         DebugEnvironment.initialize(System.out);
     }
@@ -70,7 +64,7 @@ public class PartialEvaluationTest extends GraalCompilerTest {
     protected InstalledCode assertPartialEvalEquals(String methodName, RootNode root, Arguments arguments) {
         Assumptions assumptions = new Assumptions(true);
         StructuredGraph actual = partialEval(root, arguments, assumptions, true);
-        InstalledCode result = new TruffleCompilerImpl().compileMethodHelper(actual, GraphBuilderConfiguration.getDefault(), assumptions, root.toString(), getSpeculationLog());
+        InstalledCode result = truffleCompiler.compileMethodHelper(actual, assumptions, root.toString(), getSpeculationLog());
         StructuredGraph expected = parseForComparison(methodName);
         removeFrameStates(actual);
         Assert.assertEquals(getCanonicalGraphString(expected, true), getCanonicalGraphString(actual, true));
@@ -102,7 +96,7 @@ public class PartialEvaluationTest extends GraalCompilerTest {
 
         try (Scope s = Debug.scope("TruffleCompilation", new TruffleDebugJavaMethod(compilable))) {
 
-            StructuredGraph resultGraph = partialEvaluator.createGraph(compilable, assumptions);
+            StructuredGraph resultGraph = truffleCompiler.getPartialEvaluator().createGraph(compilable, assumptions);
             CanonicalizerPhase canonicalizer = new CanonicalizerPhase(canonicalizeReads);
             PhaseContext context = new PhaseContext(getProviders(), assumptions);
 

@@ -569,11 +569,7 @@ public class SnippetTemplate {
                     LoopTransformations.fullUnroll(loop, phaseContext, new CanonicalizerPhase(true));
                     new CanonicalizerPhase(true).applyIncremental(snippetCopy, phaseContext, mark);
                 }
-                FixedNode explodeLoopNext = explodeLoop.next();
-                explodeLoop.clearSuccessors();
-                explodeLoop.replaceAtPredecessor(explodeLoopNext);
-                explodeLoop.replaceAtUsages(null);
-                GraphUtil.killCFG(explodeLoop);
+                GraphUtil.removeFixedWithUnusedInputs(explodeLoop);
                 exploded = true;
             }
         } while (exploded);

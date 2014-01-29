@@ -22,52 +22,29 @@
  */
 package com.oracle.graal.compiler.test.deopt;
 
-import java.lang.reflect.*;
-
 import org.junit.*;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.test.*;
-import com.oracle.graal.nodes.*;
+import com.oracle.graal.compiler.test.ea.EATestBase.TestClassObject;
 
 /**
  * In the following tests, we try to deoptimize out of synchronized methods.
  */
 public class SynchronizedMethodDeoptimizationTest extends GraalCompilerTest {
 
-    public static final int N = 15000;
+    public static final TestClassObject testObject = null;
 
     public static synchronized Object testMethodSynchronized(Object o) {
         if (o == null) {
-            return null;
+            // this branch will always deoptimize
+            return testObject.x;
         }
         return o;
     }
 
     @Test
     public void test1() {
-        Method method = getMethod("testMethodSynchronized");
-        String testString = "test";
-        for (int i = 0; i < N; ++i) {
-            Assert.assertEquals(testString, testMethodSynchronized(testString));
-        }
-        final StructuredGraph graph = parseProfiled(method);
-        final ResolvedJavaMethod javaMethod = getMetaAccess().lookupJavaMethod(method);
-        InstalledCode compiledMethod = getCode(javaMethod, graph);
-        try {
-            Object result = compiledMethod.executeVarargs(testString);
-            Assert.assertEquals(testString, result);
-        } catch (InvalidInstalledCodeException t) {
-            Assert.fail("method invalidated");
-        }
-
-        try {
-            Object result = compiledMethod.executeVarargs(new Object[]{null});
-            Assert.assertEquals(null, result);
-            Assert.assertFalse(compiledMethod.isValid());
-        } catch (InvalidInstalledCodeException t) {
-            Assert.fail("method invalidated");
-        }
+        test("testMethodSynchronized", "test");
+        test("testMethodSynchronized", (Object) null);
     }
 }

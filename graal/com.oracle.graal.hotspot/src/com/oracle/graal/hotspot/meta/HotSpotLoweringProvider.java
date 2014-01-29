@@ -282,7 +282,7 @@ public class HotSpotLoweringProvider implements LoweringProvider {
             write.setStateAfter(store.stateAfter());
             graph.replaceFixedWithFixed(store, write);
         } else if (n instanceof LoadHubNode) {
-            if (graph.getGuardsStage().ordinal() == StructuredGraph.GuardsStage.FIXED_DEOPTS.ordinal()) {
+            if (graph.getGuardsStage().ordinal() >= StructuredGraph.GuardsStage.FIXED_DEOPTS.ordinal()) {
                 LoadHubNode loadHub = (LoadHubNode) n;
                 assert loadHub.kind() == wordKind;
                 ValueNode object = loadHub.object();
@@ -443,11 +443,11 @@ public class HotSpotLoweringProvider implements LoweringProvider {
                 newObjectSnippets.lower((DynamicNewArrayNode) n, registers, tool);
             }
         } else if (n instanceof MonitorEnterNode) {
-            if (graph.getGuardsStage() == StructuredGraph.GuardsStage.FIXED_DEOPTS) {
+            if (graph.getGuardsStage() == StructuredGraph.GuardsStage.AFTER_FSA) {
                 monitorSnippets.lower((MonitorEnterNode) n, registers, tool);
             }
         } else if (n instanceof MonitorExitNode) {
-            if (graph.getGuardsStage() == StructuredGraph.GuardsStage.FIXED_DEOPTS) {
+            if (graph.getGuardsStage() == StructuredGraph.GuardsStage.AFTER_FSA) {
                 monitorSnippets.lower((MonitorExitNode) n, tool);
             }
         } else if (n instanceof G1PreWriteBarrier) {

@@ -68,16 +68,16 @@ public class PartialEvaluator {
     private final Providers providers;
     private final ResolvedJavaMethod executeHelperMethod;
     private final CanonicalizerPhase canonicalizer;
-    private final ResolvedJavaType[] skippedExceptionTypes;
+    private final GraphBuilderConfiguration config;
     private Set<Constant> constantReceivers;
     private final GraphCache cache;
     private final TruffleCache truffleCache;
 
-    public PartialEvaluator(RuntimeProvider runtime, Providers providers, TruffleCache truffleCache) {
+    public PartialEvaluator(RuntimeProvider runtime, Providers providers, TruffleCache truffleCache, GraphBuilderConfiguration config) {
         this.providers = providers;
         CustomCanonicalizer customCanonicalizer = new PartialEvaluatorCanonicalizer(providers.getMetaAccess(), providers.getConstantReflection());
         this.canonicalizer = new CanonicalizerPhase(!ImmutableCode.getValue(), customCanonicalizer);
-        this.skippedExceptionTypes = TruffleCompilerImpl.getSkippedExceptionTypes(providers.getMetaAccess());
+        this.config = config;
         this.cache = runtime.getGraphCache();
         this.truffleCache = truffleCache;
         try {
@@ -97,9 +97,6 @@ public class PartialEvaluator {
         if (TraceTruffleCompilationDetails.getValue()) {
             constantReceivers = new HashSet<>();
         }
-
-        final GraphBuilderConfiguration config = GraphBuilderConfiguration.getDefault();
-        config.setSkippedExceptionTypes(skippedExceptionTypes);
 
         final StructuredGraph graph = new StructuredGraph(executeHelperMethod);
 
