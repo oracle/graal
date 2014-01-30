@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,18 +26,19 @@ import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.sl.nodes.*;
 
+@NodeInfo(shortName = "block")
 public class SLBlockNode extends SLStatementNode {
 
-    @Children private final SLStatementNode[] statements;
+    @Children private final SLStatementNode[] bodyNodes;
 
-    public SLBlockNode(SLStatementNode[] statements) {
-        this.statements = adoptChildren(statements);
+    public SLBlockNode(SLStatementNode[] bodyNodes) {
+        this.bodyNodes = adoptChildren(bodyNodes);
     }
 
     @Override
     @ExplodeLoop
     public void executeVoid(VirtualFrame frame) {
-        for (SLStatementNode statement : statements) {
+        for (SLStatementNode statement : bodyNodes) {
             statement.executeVoid(frame);
         }
     }

@@ -22,6 +22,11 @@
  */
 package com.oracle.truffle.sl;
 
+/**
+ * SL does not need a sophisticated error checking and reporting mechanism, so all unexpected
+ * conditions just abort execution. This exception class is used when we abort from within the SL
+ * implementation.
+ */
 public class SLException extends RuntimeException {
     private static final long serialVersionUID = -6799734410727348507L;
 

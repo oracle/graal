@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,15 +22,24 @@
  */
 package com.oracle.truffle.sl.nodes.call;
 
+import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.sl.nodes.*;
 import com.oracle.truffle.sl.runtime.*;
 
+/**
+ * The node for a function call in SL. Since SL has first class functions, the {@link SLFunction
+ * target function} can be computed by an {@link #functionNode arbitrary expression}. This node is
+ * responsible for evaluating this expression, as well as evaluating the {@link #argumentNodes
+ * arguments}. The actual call dispatch is then delegated to a chain of
+ * {@link SLAbstractDispatchNode}s that form a polymorphic inline cache.
+ */
+@NodeInfo(shortName = "call")
 public final class SLCallNode extends SLExpressionNode {
 
     public static SLCallNode create(SLExpressionNode function, SLExpressionNode[] arguments) {
-        return new SLCallNode(function, arguments, new SLUninitializedCallNode());
+        return new SLCallNode(function, arguments, new SLUninitializedDispatchNode());
     }
 
     @Child protected SLExpressionNode functionNode;
@@ -46,12 +55,7 @@ public final class SLCallNode extends SLExpressionNode {
     @Override
     @ExplodeLoop
     public Object executeGeneric(VirtualFrame frame) {
-        SLFunction function;
-        try {
-            function = functionNode.executeFunction(frame);
-        } catch (UnexpectedResultException e) {
-            throw new UnsupportedOperationException("Call to " + e.getMessage() + " not supported.");
-        }
+        SLFunction function = evaluateFunction(frame);
 
         Object[] argumentValues = new Object[argumentNodes.length];
         for (int i = 0; i < argumentNodes.length; i++) {
@@ -59,6 +63,23 @@ public final class SLCallNode extends SLExpressionNode {
         }
         SLArguments arguments = new SLArguments(argumentValues);
 
-        return dispatchNode.executeCall(frame, function, arguments);
+        return dispatchNode.executeDispatch(frame, function, arguments);
+    }
+
+    private SLFunction evaluateFunction(VirtualFrame frame) {
+        try {
+            /*
+             * The function node must evaluate to a SLFunction value, so we call
+             * function-specialized method.
+             */
+            return functionNode.executeFunction(frame);
+        } catch (UnexpectedResultException ex) {
+            /*
+             * The function node evaluated to a non-function result. This is a type error in the SL
+             * program. We report it with the same exception that Truffle DSL generated nodes use to
+             * report type errors.
+             */
+            throw new UnsupportedSpecializationException(this, ex.getResult());
+        }
     }
 }

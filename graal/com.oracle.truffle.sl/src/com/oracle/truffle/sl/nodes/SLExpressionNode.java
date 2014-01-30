@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,13 +24,39 @@ package com.oracle.truffle.sl.nodes;
 
 import java.math.*;
 
+import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.sl.runtime.*;
 
+/**
+ * Base class for all SL nodes that produce a value and therefore benefit from type specialization.
+ * The annotation {@Link TypeSystemReference} specifies the SL types. Specifying it here
+ * defines the type system for all subclasses.
+ */
+@TypeSystemReference(SLTypes.class)
 public abstract class SLExpressionNode extends SLStatementNode {
 
+    /**
+     * The execute method when no specialization is possible. This is the most general case,
+     * therefore it must be provided by all subclasses.
+     */
     public abstract Object executeGeneric(VirtualFrame frame);
+
+    /**
+     * When we use an expression at places where a {@SLStatmentNode statement} is
+     * already sufficient, the return value is just discarded.
+     */
+    @Override
+    public void executeVoid(VirtualFrame frame) {
+        executeGeneric(frame);
+    }
+
+    /*
+     * Execute methods for specialized types. They all follow the same pattern: they call the
+     * generic execution method and then expect a result of their return type. Type-specialized
+     * subclasses overwrite the appropriate methods.
+     */
 
     public boolean executeBoolean(VirtualFrame frame) throws UnexpectedResultException {
         return SLTypesGen.SLTYPES.expectBoolean(executeGeneric(frame));
@@ -52,24 +78,7 @@ public abstract class SLExpressionNode extends SLStatementNode {
         return SLTypesGen.SLTYPES.expectSLFunction(executeGeneric(frame));
     }
 
-    public Object[] executeArray(VirtualFrame frame) throws UnexpectedResultException {
-        return SLTypesGen.SLTYPES.expectObjectArray(executeGeneric(frame));
-    }
-
     public SLNull executeNull(VirtualFrame frame) throws UnexpectedResultException {
         return SLTypesGen.SLTYPES.expectSLNull(executeGeneric(frame));
-    }
-
-    public final boolean executeCondition(VirtualFrame frame) {
-        try {
-            return executeBoolean(frame);
-        } catch (UnexpectedResultException ex) {
-            throw new RuntimeException("Illegal type for condition: " + ex.getResult().getClass().getSimpleName());
-        }
-    }
-
-    @Override
-    public void executeVoid(VirtualFrame frame) {
-        executeGeneric(frame);
     }
 }

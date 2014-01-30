@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,19 +23,27 @@
 package com.oracle.truffle.sl.nodes.controlflow;
 
 import com.oracle.truffle.api.frame.*;
+import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.sl.nodes.*;
+import com.oracle.truffle.sl.runtime.*;
 
+@NodeInfo(shortName = "return")
 public class SLReturnNode extends SLStatementNode {
 
-    @Child private SLExpressionNode expr;
+    @Child private SLExpressionNode valueNode;
 
-    public SLReturnNode(SLExpressionNode expr) {
-        this.expr = adoptChild(expr);
+    public SLReturnNode(SLExpressionNode valueNode) {
+        this.valueNode = adoptChild(valueNode);
     }
 
     @Override
     public void executeVoid(VirtualFrame frame) {
-        Object result = expr.executeGeneric(frame);
+        Object result;
+        if (valueNode != null) {
+            result = valueNode.executeGeneric(frame);
+        } else {
+            result = SLNull.SINGLETON;
+        }
         throw new SLReturnException(result);
     }
 }

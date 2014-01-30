@@ -1,4 +1,4 @@
 function main() {  
-  print("Hello World!");  
-  time();  
+  println("Hello World!");  
+  nanoTime();  
 }  

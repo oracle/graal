@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,65 +22,53 @@
  */
 package com.oracle.truffle.sl.nodes;
 
-import com.oracle.truffle.api.*;
-import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.sl.builtins.*;
 import com.oracle.truffle.sl.nodes.controlflow.*;
-import com.oracle.truffle.sl.nodes.local.*;
-import com.oracle.truffle.sl.runtime.*;
 
+/**
+ * The root of all SL execution trees. It is a Truffle requirement that the tree root extends the
+ * class {@link RootNode}. This class is used for both builtin and user-defined functions. For
+ * builtin functions, the {@link #bodyNode} is a subclass of {@link SLBuiltinNode}. For user-defined
+ * functions, the {@link #bodyNode} is a {@link SLFunctionBodyNode}.
+ */
 public final class SLRootNode extends RootNode {
 
-    @Child private SLExpressionNode body;
+    /** The function body that is executed, and specialized during execution. */
+    @Child private SLExpressionNode bodyNode;
 
-    private final SLExpressionNode uninitializedBody;
+    /**
+     * A copy of the uninitialized body. When performing method inlining, it is beneficial to inline
+     * the unspecialized function body, so that it is specialized in the context of the caller. This
+     * makes the specializations of the inlined function more precise.
+     */
+    private final SLExpressionNode uninitializedBodyNode;
+
+    /** The name of the function, for printing purposes only. */
     private final String name;
-    private final boolean inlineImmediatly;
 
-    public static RootCallTarget createFunction(String name, FrameDescriptor frameDescriptor, SLStatementNode body) {
-        SLFunctionBodyNode bodyContainer = new SLFunctionBodyNode(frameDescriptor, body);
-        SLRootNode root = new SLRootNode(frameDescriptor, bodyContainer, name, false);
-        return Truffle.getRuntime().createCallTarget(root);
-    }
-
-    public static RootCallTarget createBuiltin(SLContext context, NodeFactory<? extends SLBuiltinNode> factory, String name) {
-        int argumentCount = factory.getExecutionSignature().size();
-        SLExpressionNode[] arguments = new SLExpressionNode[argumentCount];
-        for (int i = 0; i < arguments.length; i++) {
-            arguments[i] = new SLReadArgumentNode(i);
-        }
-        SLBuiltinNode buitinBody = factory.createNode(arguments, context);
-        SLRootNode root = new SLRootNode(new FrameDescriptor(), buitinBody, name, true);
-        return Truffle.getRuntime().createCallTarget(root);
-    }
-
-    private SLRootNode(FrameDescriptor frameDescriptor, SLExpressionNode body, String name, boolean inlineImmediatly) {
+    public SLRootNode(FrameDescriptor frameDescriptor, SLExpressionNode bodyNode, String name) {
         super(null, frameDescriptor);
-        this.uninitializedBody = NodeUtil.cloneNode(body);
-        this.body = adoptChild(body);
+        /* Deep copy the body before any specialization occurs during execution. */
+        this.uninitializedBodyNode = NodeUtil.cloneNode(bodyNode);
+        this.bodyNode = adoptChild(bodyNode);
         this.name = name;
-        this.inlineImmediatly = inlineImmediatly;
     }
 
     @Override
     public Object execute(VirtualFrame frame) {
-        return body.executeGeneric(frame);
-    }
-
-    public boolean isInlineImmediatly() {
-        return inlineImmediatly;
+        return bodyNode.executeGeneric(frame);
     }
 
     @Override
     public RootNode inline() {
-        return new SLRootNode(getFrameDescriptor().shallowCopy(), NodeUtil.cloneNode(uninitializedBody), name, inlineImmediatly);
+        return new SLRootNode(getFrameDescriptor().shallowCopy(), NodeUtil.cloneNode(uninitializedBodyNode), name);
     }
 
     @Override
     public int getInlineNodeCount() {
-        return NodeUtil.countNodes(uninitializedBody);
+        return NodeUtil.countNodes(uninitializedBodyNode);
     }
 
     @Override
@@ -88,12 +76,8 @@ public final class SLRootNode extends RootNode {
         return true;
     }
 
-    public Node getUninitializedBody() {
-        return uninitializedBody;
-    }
-
     @Override
     public String toString() {
-        return "function " + name;
+        return "root " + name;
     }
 }

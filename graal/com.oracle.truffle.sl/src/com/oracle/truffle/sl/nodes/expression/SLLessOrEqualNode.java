@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,22 +25,19 @@ package com.oracle.truffle.sl.nodes.expression;
 import java.math.*;
 
 import com.oracle.truffle.api.dsl.*;
+import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.sl.nodes.*;
 
+@NodeInfo(shortName = "<=")
 public abstract class SLLessOrEqualNode extends SLBinaryNode {
 
     @Specialization
-    public boolean lessOrEqual(long left, long right) {
+    protected boolean lessOrEqual(long left, long right) {
         return left <= right;
     }
 
     @Specialization
-    public boolean lessOrEqual(BigInteger left, BigInteger right) {
+    protected boolean lessOrEqual(BigInteger left, BigInteger right) {
         return left.compareTo(right) <= 0;
-    }
-
-    @Specialization(guards = "isString")
-    public boolean lessOrEqual(Object left, Object right) {
-        return left.toString().compareTo(right.toString()) <= 0;
     }
 }

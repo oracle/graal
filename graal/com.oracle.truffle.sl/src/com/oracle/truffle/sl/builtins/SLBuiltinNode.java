@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,12 +26,25 @@ import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.sl.nodes.*;
 import com.oracle.truffle.sl.runtime.*;
 
-@NodeField(name = "context", type = SLContext.class)
+/**
+ * Base class for all builtin functions. It contains the Truffle DSL annotation {@link NodeChild}
+ * that defines the function arguments.<br>
+ * Builtin functions need access to the {@link SLContext}. Instead of defining a Java field manually
+ * and setting it in a constructor, we use the Truffle DSL annotation {@link NodeField} that
+ * generates the field and constructor automatically.
+ * <p>
+ * The builitin functions are registered in {@link SLContext#installBuiltins}. Every builtin node
+ * subclass is instantiated there, wrapped into a function, and added to the
+ * {@link SLFunctionRegistry}. This ensures that builtin functions can be called like user-defined
+ * functions; there is no special function lookup or call node for builtin functions.
+ */
 @NodeChild(value = "arguments", type = SLExpressionNode[].class)
+@NodeField(name = "context", type = SLContext.class)
 public abstract class SLBuiltinNode extends SLExpressionNode {
 
+    /**
+     * Accessor for the {@link SLContext}. The implementation of this method is generated
+     * automatically based on the {@link NodeField} annotation on the class.
+     */
     public abstract SLContext getContext();
-
-    public abstract SLExpressionNode[] getArguments();
-
 }

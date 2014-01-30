@@ -169,7 +169,7 @@ public class GraphPrintVisitor {
         }
     }
 
-    public void printToNetwork() {
+    public void printToNetwork(boolean ignoreErrors) {
         try {
             Transformer tr = TransformerFactory.newInstance().newTransformer();
             tr.setOutputProperty(OutputKeys.METHOD, "xml");
@@ -178,7 +178,9 @@ public class GraphPrintVisitor {
             BufferedOutputStream stream = new BufferedOutputStream(socket.getOutputStream(), 0x4000);
             tr.transform(new DOMSource(dom), new StreamResult(stream));
         } catch (TransformerException | IOException e) {
-            e.printStackTrace();
+            if (!ignoreErrors) {
+                e.printStackTrace();
+            }
         }
     }
 

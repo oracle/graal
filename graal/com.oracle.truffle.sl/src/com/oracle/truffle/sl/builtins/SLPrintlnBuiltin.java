@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,30 +23,38 @@
 package com.oracle.truffle.sl.builtins;
 
 import com.oracle.truffle.api.dsl.*;
+import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.sl.runtime.*;
 
-public abstract class SLPrintBuiltin extends SLBuiltinNode {
+/**
+ * Builtin function to write a value to the {@link SLContext#getOutput() standard output}. The
+ * different specialization leverage the typed {@code println} methods available in Java, i.e.,
+ * primitive values are printed without converting them to a {@link String} first.
+ */
+@NodeInfo(shortName = "println")
+public abstract class SLPrintlnBuiltin extends SLBuiltinNode {
 
     @Specialization
-    public long print(long value) {
-        getContext().getPrintOutput().println(value);
+    public long println(long value) {
+        getContext().getOutput().println(value);
         return value;
     }
 
     @Specialization
-    public boolean print(boolean value) {
-        getContext().getPrintOutput().println(value);
+    public boolean println(boolean value) {
+        getContext().getOutput().println(value);
         return value;
     }
 
     @Specialization
-    public String print(String value) {
-        getContext().getPrintOutput().println(value);
+    public String println(String value) {
+        getContext().getOutput().println(value);
         return value;
     }
 
     @Specialization
-    public Object print(Object value) {
-        getContext().getPrintOutput().println(value.toString());
+    public Object println(Object value) {
+        getContext().getOutput().println(value);
         return value;
     }
 }

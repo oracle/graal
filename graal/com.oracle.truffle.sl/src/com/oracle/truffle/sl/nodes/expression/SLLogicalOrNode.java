@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,28 +23,25 @@
 package com.oracle.truffle.sl.nodes.expression;
 
 import com.oracle.truffle.api.dsl.*;
+import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.sl.nodes.*;
 
+@NodeInfo(shortName = "||")
 @SuppressWarnings("unused")
 public abstract class SLLogicalOrNode extends SLBinaryNode {
 
     @ShortCircuit("rightNode")
-    public boolean needsRightNode(boolean left) {
+    protected boolean needsRightNode(boolean left) {
         return !left;
     }
 
     @ShortCircuit("rightNode")
-    public boolean needsRightNode(Object left) {
+    protected boolean needsRightNode(Object left) {
         return left instanceof Boolean && needsRightNode(((Boolean) left).booleanValue());
     }
 
     @Specialization
-    public boolean doBoolean(boolean left, boolean hasRight, boolean right) {
+    protected boolean doBoolean(boolean left, boolean hasRight, boolean right) {
         return left || right;
-    }
-
-    @Generic
-    public Object doGeneric(Object left, boolean hasRight, Object right) {
-        throw new RuntimeException("operation not defined for type " + left.getClass().getSimpleName());
     }
 }

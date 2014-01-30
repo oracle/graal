@@ -1,5 +1,5 @@
 function foo() {
-  print(test(40, 2));
+  println(test(40, 2));
 }
 
 function main() {

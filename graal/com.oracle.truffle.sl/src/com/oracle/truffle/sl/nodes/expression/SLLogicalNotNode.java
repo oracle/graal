@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,16 +20,18 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.sl.builtins;
+package com.oracle.truffle.sl.nodes.expression;
 
 import com.oracle.truffle.api.dsl.*;
+import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.sl.nodes.*;
 
-public abstract class SLTimeBuiltin extends SLBuiltinNode {
-
-    public static final long START_TIME = System.currentTimeMillis();
+@NodeChild("valueNode")
+@NodeInfo(shortName = "!")
+public abstract class SLLogicalNotNode extends SLExpressionNode {
 
     @Specialization
-    public long time() {
-        return System.nanoTime();
+    protected boolean doBoolean(boolean value) {
+        return !value;
     }
 }

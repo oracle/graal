@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -55,7 +55,7 @@ public class Parser {
     
     public Parser(SLContext context, Source source) {
         this.scanner = new Scanner(source.getInputStream());
-        this.factory = new SLNodeFactory(context, source, this);
+        this.factory = new SLNodeFactory(context, source);
         errors = new Errors();
     }
 
@@ -133,20 +133,18 @@ public class Parser {
 	void Function() {
 		Expect(4);
 		Expect(1);
-		String name = t.val; 
+		factory.startFunction(t); 
 		Expect(5);
-		List<String> parameters = new ArrayList<>(); 
 		if (la.kind == 1) {
 			Get();
-			parameters.add(t.val); 
+			factory.addFormalParameter(t); 
 			while (la.kind == 6) {
 				Get();
 				Expect(1);
-				parameters.add(t.val); 
+				factory.addFormalParameter(t); 
 			}
 		}
 		Expect(7);
-		factory.startFunction(name, parameters); 
 		SLStatementNode body = Block();
 		factory.finishFunction(body); 
 	}
@@ -154,14 +152,14 @@ public class Parser {
 	SLStatementNode  Block() {
 		SLStatementNode  result;
 		factory.startBlock();
-		List<SLStatementNode> statements = new ArrayList<>(); 
+		List<SLStatementNode> body = new ArrayList<>(); 
 		Expect(8);
 		while (StartOf(1)) {
-			SLStatementNode statement = Statement();
-			statements.add(statement); 
+			SLStatementNode s = Statement();
+			body.add(s); 
 		}
 		Expect(9);
-		result = factory.finishBlock(statements); 
+		result = factory.finishBlock(body); 
 		return result;
 	}
 
@@ -169,23 +167,23 @@ public class Parser {
 		SLStatementNode  result;
 		result = null; 
 		switch (la.kind) {
-		case 15: {
+		case 13: {
 			result = WhileStatement();
 			break;
 		}
 		case 10: {
 			Get();
-			result = factory.createBreak(); 
+			result = factory.createBreak(t); 
 			Expect(11);
 			break;
 		}
 		case 12: {
 			Get();
-			result = factory.createContinue(); 
+			result = factory.createContinue(t); 
 			Expect(11);
 			break;
 		}
-		case 13: {
+		case 14: {
 			result = IfStatement();
 			break;
 		}
@@ -205,37 +203,43 @@ public class Parser {
 
 	SLStatementNode  WhileStatement() {
 		SLStatementNode  result;
-		Expect(15);
+		Expect(13);
 		Expect(5);
+		Token whileToken = t; 
 		SLExpressionNode condition = Expression();
 		Expect(7);
 		SLStatementNode body = Block();
-		result = factory.createWhile(condition, body); 
+		result = factory.createWhile(whileToken, condition, body); 
 		return result;
 	}
 
 	SLStatementNode  IfStatement() {
 		SLStatementNode  result;
-		Expect(13);
+		Expect(14);
 		Expect(5);
+		Token ifToken = t; 
 		SLExpressionNode condition = Expression();
 		Expect(7);
 		SLStatementNode thenPart = Block();
 		SLStatementNode elsePart = null; 
-		if (la.kind == 14) {
+		if (la.kind == 15) {
 			Get();
 			elsePart = Block();
 		}
-		result = factory.createIf(condition, thenPart, elsePart); 
+		result = factory.createIf(ifToken, condition, thenPart, elsePart); 
 		return result;
 	}
 
 	SLStatementNode  ReturnStatement() {
 		SLStatementNode  result;
 		Expect(16);
-		SLExpressionNode value = Expression();
+		Token returnToken = t;
+		SLExpressionNode value = null; 
+		if (StartOf(2)) {
+			value = Expression();
+		}
+		result = factory.createReturn(returnToken, value); 
 		Expect(11);
-		result = factory.createReturn(value); 
 		return result;
 	}
 
@@ -244,7 +248,7 @@ public class Parser {
 		result = LogicTerm();
 		while (la.kind == 17) {
 			Get();
-			String op = t.val; 
+			Token op = t; 
 			SLExpressionNode right = LogicTerm();
 			result = factory.createBinary(op, result, right); 
 		}
@@ -256,7 +260,7 @@ public class Parser {
 		result = LogicFactor();
 		while (la.kind == 18) {
 			Get();
-			String op = t.val; 
+			Token op = t; 
 			SLExpressionNode right = LogicFactor();
 			result = factory.createBinary(op, result, right); 
 		}
@@ -266,7 +270,7 @@ public class Parser {
 	SLExpressionNode  LogicFactor() {
 		SLExpressionNode  result;
 		result = Arithmetic();
-		if (StartOf(2)) {
+		if (StartOf(3)) {
 			switch (la.kind) {
 			case 19: {
 				Get();
@@ -293,7 +297,7 @@ public class Parser {
 				break;
 			}
 			}
-			String op = t.val; 
+			Token op = t; 
 			SLExpressionNode right = Arithmetic();
 			result = factory.createBinary(op, result, right); 
 		}
@@ -309,7 +313,7 @@ public class Parser {
 			} else {
 				Get();
 			}
-			String op = t.val; 
+			Token op = t; 
 			SLExpressionNode right = Term();
 			result = factory.createBinary(op, result, right); 
 		}
@@ -325,7 +329,7 @@ public class Parser {
 			} else {
 				Get();
 			}
-			String op = t.val; 
+			Token op = t; 
 			SLExpressionNode right = Factor();
 			result = factory.createBinary(op, result, right); 
 		}
@@ -337,12 +341,12 @@ public class Parser {
 		result = null; 
 		if (la.kind == 1) {
 			Get();
-			String name = t.val; 
+			Token nameToken = t; 
 			if (la.kind == 5) {
 				Get();
 				List<SLExpressionNode> parameters = new ArrayList<>();
 				SLExpressionNode parameter; 
-				if (StartOf(3)) {
+				if (StartOf(2)) {
 					parameter = Expression();
 					parameters.add(parameter); 
 					while (la.kind == 6) {
@@ -351,21 +355,21 @@ public class Parser {
 						parameters.add(parameter); 
 					}
 				}
-				result = factory.createCall(factory.createRead(name), parameters); 
+				result = factory.createCall(nameToken, parameters); 
 				Expect(7);
 			} else if (la.kind == 29) {
 				Get();
 				SLExpressionNode value = Expression();
-				result = factory.createAssignment(name, value); 
+				result = factory.createAssignment(nameToken, value); 
 			} else if (StartOf(4)) {
-				result = factory.createRead(name); 
+				result = factory.createRead(nameToken); 
 			} else SynErr(32);
 		} else if (la.kind == 2) {
 			Get();
-			result = factory.createStringLiteral(t.val.substring(1, t.val.length() - 1)); 
+			result = factory.createStringLiteral(t); 
 		} else if (la.kind == 3) {
 			Get();
-			result = factory.createNumericLiteral(t.val); 
+			result = factory.createNumericLiteral(t); 
 		} else if (la.kind == 5) {
 			Get();
 			result = Expression();
@@ -387,9 +391,9 @@ public class Parser {
 
     private static final boolean[][] set = {
 		{T,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x},
-		{x,T,T,T, x,T,x,x, x,x,T,x, T,T,x,T, T,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x},
-		{x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,T, T,T,T,T, T,x,x,x, x,x,x,x},
+		{x,T,T,T, x,T,x,x, x,x,T,x, T,T,T,x, T,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x},
 		{x,T,T,T, x,T,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x},
+		{x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,T, T,T,T,T, T,x,x,x, x,x,x,x},
 		{x,x,x,x, x,x,T,T, x,x,x,T, x,x,x,x, x,T,T,T, T,T,T,T, T,T,T,T, T,x,x,x}
 
     };
@@ -446,15 +450,15 @@ class Errors {
 			case 10: s = "\"break\" expected"; break;
 			case 11: s = "\";\" expected"; break;
 			case 12: s = "\"continue\" expected"; break;
-			case 13: s = "\"if\" expected"; break;
-			case 14: s = "\"else\" expected"; break;
-			case 15: s = "\"while\" expected"; break;
+			case 13: s = "\"while\" expected"; break;
+			case 14: s = "\"if\" expected"; break;
+			case 15: s = "\"else\" expected"; break;
 			case 16: s = "\"return\" expected"; break;
 			case 17: s = "\"||\" expected"; break;
 			case 18: s = "\"&&\" expected"; break;
 			case 19: s = "\"<\" expected"; break;
-			case 20: s = "\">\" expected"; break;
-			case 21: s = "\"<=\" expected"; break;
+			case 20: s = "\"<=\" expected"; break;
+			case 21: s = "\">\" expected"; break;
 			case 22: s = "\">=\" expected"; break;
 			case 23: s = "\"==\" expected"; break;
 			case 24: s = "\"!=\" expected"; break;

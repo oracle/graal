@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,38 +24,31 @@ package com.oracle.truffle.sl.nodes.controlflow;
 
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.utilities.*;
 import com.oracle.truffle.sl.nodes.*;
 import com.oracle.truffle.sl.runtime.*;
 
+@NodeInfo(shortName = "body")
 public class SLFunctionBodyNode extends SLExpressionNode {
 
-    @Child private SLStatementNode body;
+    @Child private SLStatementNode bodyNode;
 
-    private FrameDescriptor frameDescriptor;
+    private final BranchProfile exceptionTaken = new BranchProfile();
+    private final BranchProfile nullTaken = new BranchProfile();
 
-    public SLFunctionBodyNode(FrameDescriptor frameDescriptor, SLStatementNode body) {
-        this.frameDescriptor = frameDescriptor;
-        this.body = adoptChild(body);
+    public SLFunctionBodyNode(SLStatementNode bodyNode) {
+        this.bodyNode = adoptChild(bodyNode);
     }
 
     @Override
     public Object executeGeneric(VirtualFrame frame) {
         try {
-            body.executeVoid(frame);
+            bodyNode.executeVoid(frame);
         } catch (SLReturnException ex) {
+            exceptionTaken.enter();
             return ex.getResult();
         }
-        return SLNull.INSTANCE;
-    }
-
-    @Override
-    public Node copy() {
-        SLFunctionBodyNode copy = (SLFunctionBodyNode) super.copy();
-        copy.frameDescriptor = frameDescriptor.shallowCopy();
-        return copy;
-    }
-
-    public FrameDescriptor getFrameDescriptor() {
-        return frameDescriptor;
+        nullTaken.enter();
+        return SLNull.SINGLETON;
     }
 }

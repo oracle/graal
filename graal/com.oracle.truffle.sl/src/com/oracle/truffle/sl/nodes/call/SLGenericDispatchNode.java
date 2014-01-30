@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,10 +25,18 @@ package com.oracle.truffle.sl.nodes.call;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.sl.runtime.*;
 
+/**
+ * Slow-path code for a call, used when the polymorphic inline cache exceeded its maximum size. Such
+ * calls are not optimized any further, e.g., no method inlining is performed.
+ */
 final class SLGenericDispatchNode extends SLAbstractDispatchNode {
 
     @Override
-    protected Object executeCall(VirtualFrame frame, SLFunction function, SLArguments arguments) {
+    protected Object executeDispatch(VirtualFrame frame, SLFunction function, SLArguments arguments) {
+        /*
+         * SL has a quite simple call lookup: just ask the function for the current call target, and
+         * call it.
+         */
         return function.getCallTarget().call(frame.pack(), arguments);
     }
 }

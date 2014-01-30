@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,23 +22,58 @@
  */
 package com.oracle.truffle.sl.nodes.expression;
 
-import com.oracle.truffle.api.dsl.*;
-import com.oracle.truffle.sl.nodes.*;
+import java.math.*;
 
+import com.oracle.truffle.api.dsl.*;
+import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.sl.nodes.*;
+import com.oracle.truffle.sl.runtime.*;
+
+@NodeInfo(shortName = "==")
 public abstract class SLEqualNode extends SLBinaryNode {
 
     @Specialization
-    public boolean equal(long left, long right) {
+    protected boolean equal(long left, long right) {
         return left == right;
     }
 
     @Specialization
-    public boolean equal(boolean left, boolean right) {
+    protected boolean equal(BigInteger left, BigInteger right) {
+        return left.equals(right);
+    }
+
+    @Specialization
+    protected boolean equal(boolean left, boolean right) {
+        return left == right;
+    }
+
+    @Specialization
+    protected boolean equal(String left, String right) {
+        return left.equals(right);
+    }
+
+    @Specialization
+    protected boolean equal(SLFunction left, SLFunction right) {
+        /*
+         * Our function registry maintains one canonical SLFunction object per function name, so we
+         * do not need equals().
+         */
+        return left == right;
+    }
+
+    @Specialization
+    protected boolean equal(SLNull left, SLNull right) {
+        /* There is only the singleton instance of SLNull, so we do not need equals(). */
         return left == right;
     }
 
     @Generic
-    public boolean equal(Object left, Object right) {
-        return left.equals(right);
+    protected boolean equal(Object left, Object right) {
+        /*
+         * We covered all the cases that can return true in specializations. If we compare two
+         * values with different types, no specialization matches and we end up here.
+         */
+        assert !left.equals(right);
+        return false;
     }
 }

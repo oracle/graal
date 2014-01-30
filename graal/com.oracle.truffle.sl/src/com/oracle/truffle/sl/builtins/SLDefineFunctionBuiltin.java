@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,13 +24,20 @@ package com.oracle.truffle.sl.builtins;
 
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.dsl.*;
+import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.sl.parser.*;
 
+/**
+ * Builtin function to define (or redefine) functions. The provided source code is parsed the same
+ * way as the initial source of the script, so the same syntax applies.
+ */
+@NodeInfo(shortName = "defineFunction")
 public abstract class SLDefineFunctionBuiltin extends SLBuiltinNode {
 
     @Specialization
     public String defineFunction(String code) {
-        Source source = getContext().getSourceManager().get("dynamic", code);
+        Source source = getContext().getSourceManager().get("[defineFunction]", code);
+        /* The same parsing code as for parsing the initial source. */
         Parser.parseSL(getContext(), source);
         return code;
     }

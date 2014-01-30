@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,63 +27,51 @@ import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.sl.nodes.*;
 
-@NodeChild(value = "rightNode", type = SLExpressionNode.class)
-public abstract class WriteLocalNode extends SLExpressionNode {
+@NodeChild(value = "valueNode")
+@NodeField(name = "slot", type = FrameSlot.class)
+public abstract class SLWriteLocalVariableNode extends SLExpressionNode {
 
-    private final FrameSlot slot;
-
-    public WriteLocalNode(FrameSlot slot) {
-        this.slot = slot;
-    }
-
-    public WriteLocalNode(WriteLocalNode node) {
-        this(node.slot);
-    }
+    protected abstract FrameSlot getSlot();
 
     @Specialization(guards = "isLongKind")
-    protected final long write(VirtualFrame frame, long right) {
-        frame.setLong(slot, right);
-        return right;
+    protected long write(VirtualFrame frame, long value) {
+        frame.setLong(getSlot(), value);
+        return value;
     }
 
     @Specialization(guards = "isBooleanKind")
-    protected final boolean write(VirtualFrame frame, boolean right) {
-        frame.setBoolean(slot, right);
-        return right;
+    protected boolean write(VirtualFrame frame, boolean value) {
+        frame.setBoolean(getSlot(), value);
+        return value;
     }
 
-    @Specialization(guards = "isObjectKind")
-    protected final Object writeGeneric(VirtualFrame frame, Object right) {
-        frame.setObject(slot, right);
-        return right;
+    @Specialization
+    protected Object write(VirtualFrame frame, Object value) {
+        if (getSlot().getKind() != FrameSlotKind.Object) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            getSlot().setKind(FrameSlotKind.Object);
+        }
+        frame.setObject(getSlot(), value);
+        return value;
     }
 
-    protected final boolean isLongKind() {
+    protected boolean isLongKind() {
         return isKind(FrameSlotKind.Long);
     }
 
-    protected final boolean isBooleanKind() {
+    protected boolean isBooleanKind() {
         return isKind(FrameSlotKind.Boolean);
     }
 
-    protected final boolean isObjectKind() {
-        if (slot.getKind() != FrameSlotKind.Object) {
-            CompilerDirectives.transferToInterpreter();
-            slot.setKind(FrameSlotKind.Object);
-        }
-        return true;
-    }
-
     private boolean isKind(FrameSlotKind kind) {
-        return slot.getKind() == kind || initialSetKind(kind);
-    }
-
-    private boolean initialSetKind(FrameSlotKind kind) {
-        if (slot.getKind() == FrameSlotKind.Illegal) {
-            CompilerDirectives.transferToInterpreter();
-            slot.setKind(kind);
+        if (getSlot().getKind() == kind) {
             return true;
+        } else if (getSlot().getKind() == FrameSlotKind.Illegal) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            getSlot().setKind(kind);
+            return true;
+        } else {
+            return false;
         }
-        return false;
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,11 +25,19 @@ package com.oracle.truffle.sl.runtime;
 import java.util.*;
 
 import com.oracle.truffle.api.*;
+import com.oracle.truffle.sl.nodes.*;
 
+/**
+ * Manages the mapping from function names to {@link SLFunction function objects}.
+ */
 public final class SLFunctionRegistry {
 
     private final Map<String, SLFunction> functions = new HashMap<>();
 
+    /**
+     * Returns the canonical {@link SLFunction} object for the given name. If it does not exist yet,
+     * it is created.
+     */
     public SLFunction lookup(String name) {
         SLFunction result = functions.get(name);
         if (result == null) {
@@ -39,12 +47,27 @@ public final class SLFunctionRegistry {
         return result;
     }
 
-    public void register(String name, RootCallTarget callTarget) {
+    /**
+     * Associates the {@link SLFunction} with the given name with the given implementation root
+     * node. If the function did not exist before, it defines the function. If the function existed
+     * before, it redefines the function and the old implementation is discarded.
+     */
+    public void register(String name, SLRootNode rootNode) {
         SLFunction function = lookup(name);
+        RootCallTarget callTarget = Truffle.getRuntime().createCallTarget(rootNode);
         function.setCallTarget(callTarget);
     }
 
-    public Collection<SLFunction> getFunctions() {
-        return functions.values();
+    /**
+     * Returns the sorted list of all functions, for printing purposes only.
+     */
+    public List<SLFunction> getFunctions() {
+        List<SLFunction> result = new ArrayList<>(functions.values());
+        Collections.sort(result, new Comparator<SLFunction>() {
+            public int compare(SLFunction f1, SLFunction f2) {
+                return f1.toString().compareTo(f2.toString());
+            }
+        });
+        return result;
     }
 }

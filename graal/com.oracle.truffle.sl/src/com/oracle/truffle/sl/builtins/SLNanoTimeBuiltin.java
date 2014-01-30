@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,27 +20,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+package com.oracle.truffle.sl.builtins;
 
-package com.oracle.truffle.sl.parser;
+import com.oracle.truffle.api.dsl.*;
+import com.oracle.truffle.api.nodes.*;
 
-import com.oracle.truffle.api.*;
-import com.oracle.truffle.api.impl.*;
+/**
+ * Builtin function that returns the value of a high-resolution time, in nanoseconds.
+ */
+@NodeInfo(shortName = "nanoTime")
+public abstract class SLNanoTimeBuiltin extends SLBuiltinNode {
 
-public class ParserUtils {
-
-    public static SourceSection createSourceSection(Source source, String identifier, Parser p) {
-        Token t = p.t;
-        if (t == null) {
-            t = p.la;
-        }
-        int startLine = -1;
-        int startColumn = -1;
-        int length = 0;
-        if (t != null) {
-            startLine = t.line;
-            startColumn = t.col;
-            length = t.val.length();
-        }
-        return new DefaultSourceSection(source, identifier, startLine, startColumn, 0, length);
+    @Specialization
+    public long nanoTime() {
+        return System.nanoTime();
     }
 }

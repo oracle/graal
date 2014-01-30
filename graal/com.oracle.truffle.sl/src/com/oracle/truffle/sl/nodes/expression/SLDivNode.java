@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,17 +25,19 @@ package com.oracle.truffle.sl.nodes.expression;
 import java.math.*;
 
 import com.oracle.truffle.api.dsl.*;
+import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.sl.nodes.*;
 
+@NodeInfo(shortName = "/")
 public abstract class SLDivNode extends SLBinaryNode {
 
     @Specialization(rewriteOn = ArithmeticException.class)
-    long div(long left, long right) {
+    protected long div(long left, long right) {
         return left / right;
     }
 
     @Specialization
-    BigInteger div(BigInteger left, BigInteger right) {
+    protected BigInteger div(BigInteger left, BigInteger right) {
         return left.divide(right);
     }
 }

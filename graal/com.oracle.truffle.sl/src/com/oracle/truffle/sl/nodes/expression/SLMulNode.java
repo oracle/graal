@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,17 +26,19 @@ import java.math.*;
 
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.dsl.*;
+import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.sl.nodes.*;
 
+@NodeInfo(shortName = "*")
 public abstract class SLMulNode extends SLBinaryNode {
 
     @Specialization(rewriteOn = ArithmeticException.class)
-    long mul(long left, long right) {
+    protected long mul(long left, long right) {
         return ExactMath.multiplyExact(left, right);
     }
 
     @Specialization
-    BigInteger mul(BigInteger left, BigInteger right) {
+    protected BigInteger mul(BigInteger left, BigInteger right) {
         return left.multiply(right);
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,40 +27,86 @@ import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.sl.runtime.*;
 
+/**
+ * An entry in the polymorphic inline cache.
+ */
 final class SLDirectDispatchNode extends SLAbstractDispatchNode {
 
-    protected final SLFunction cachedFunction;
-    protected final RootCallTarget cachedCallTarget;
-    protected final Assumption cachedCallTargetStable;
+    /** The cached function. */
+    private final SLFunction cachedFunction;
 
-    @Child protected CallNode callNode;
-    @Child protected SLAbstractDispatchNode nextNode;
+    /**
+     * {@link CallNode} is part of the Truffle API and handles all the steps necessary for method
+     * inlining: if the call is executed frequently and the callee is small, then the call is
+     * inlined, i.e., the call node is replaced with a copy of the callee's AST.
+     */
+    @Child private CallNode callCachedTargetNode;
+
+    /** Assumption that the {@link #callCachedTargetNode} is still valid. */
+    private final Assumption cachedTargetStable;
+
+    /**
+     * The next entry of the polymorphic inline cache, either another {@link SLDirectDispatchNode}
+     * or a {@link SLUninitializedDispatchNode}.
+     */
+    @Child private SLAbstractDispatchNode nextNode;
 
     protected SLDirectDispatchNode(SLAbstractDispatchNode next, SLFunction cachedFunction) {
         this.cachedFunction = cachedFunction;
-        this.cachedCallTarget = cachedFunction.getCallTarget();
-        this.cachedCallTargetStable = cachedFunction.getCallTargetStable();
-        this.callNode = adoptChild(CallNode.create(cachedCallTarget));
+        this.callCachedTargetNode = adoptChild(CallNode.create(cachedFunction.getCallTarget()));
+        this.cachedTargetStable = cachedFunction.getCallTargetStable();
         this.nextNode = adoptChild(next);
     }
 
+    /**
+     * Perform the inline cache check. If it succeeds, execute the cached
+     * {@link #cachedTargetStable call target}; if it fails, defer to the next element in the chain.
+     * <p>
+     * Since SL is a quite simple language, the benefit of the inline cache is quite small: after
+     * checking that the actual function to be executed is the same as the
+     * {@link SLDirectDispatchNode#cachedFunction}, we can safely execute the cached call target.
+     * You can reasonably argue that caching the call target is overkill, since we could just
+     * retrieve it via {@code function.getCallTarget()}. However, in a more complex language the
+     * lookup of the call target is usually much more complicated than in SL. In addition, caching
+     * the call target allows method inlining.
+     */
     @Override
-    protected Object executeCall(VirtualFrame frame, SLFunction function, SLArguments arguments) {
+    protected Object executeDispatch(VirtualFrame frame, SLFunction function, SLArguments arguments) {
+        /*
+         * The inline cache check. Note that cachedFunction must be a final field so that the
+         * compiler can optimize the check.
+         */
         if (this.cachedFunction == function) {
+            /* Inline cache hit, we are safe to execute the cached call target. */
             try {
-                cachedCallTargetStable.check();
-                return callNode.call(frame.pack(), arguments);
+                /*
+                 * Support for function redefinition: When a function is redefined, the call target
+                 * maintained by the SLFunction object is change. To avoid a check for that, we use
+                 * an Assumption that is invalidated by the SLFunction when the change is performed.
+                 * Since checking an assumption is a no-op in compiled code, the line below does not
+                 * add any overhead during optimized execution.
+                 */
+                cachedTargetStable.check();
+
+                /*
+                 * Now we are really ready to perform the call. We use a Truffle CallNode for that,
+                 * because it does all the work for method inlining.
+                 */
+                return callCachedTargetNode.call(frame.pack(), arguments);
+
             } catch (InvalidAssumptionException ex) {
                 /*
-                 * Remove ourselfs from the polymorphic inline cache, so that we fail the check only
-                 * once.
+                 * The function has been redefined. Remove ourselfs from the polymorphic inline
+                 * cache, so that we fail the check only once. Note that this replacement has subtle
+                 * semantics: we are changing a node in the tree that is currently executed. This is
+                 * only safe because we know that after the call to replace(), there is no more code
+                 * that requires that this node is part of the tree.
                  */
                 replace(nextNode);
-                /*
-                 * Execute the next node in the chain by falling out of the if block.
-                 */
+                /* Execute the next node in the chain by falling out of the if block. */
             }
         }
-        return nextNode.executeCall(frame, function, arguments);
+        /* Inline cache miss, defer to the next element in the chain. */
+        return nextNode.executeDispatch(frame, function, arguments);
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,17 +22,18 @@
  */
 package com.oracle.truffle.sl.nodes;
 
-import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
 
-@TypeSystemReference(SLTypes.class)
+/**
+ * The base class of all Truffle nodes for SL. All nodes (even expressions) can be used as
+ * statements, i.e., without returning a value. The {@link VirtualFrame} provides access to the
+ * local variables.
+ */
 public abstract class SLStatementNode extends Node {
 
+    /**
+     * Execute this node as as statement, where no return value is necessary.
+     */
     public abstract void executeVoid(VirtualFrame frame);
-
-    @Override
-    public String toString() {
-        return getEncapsulatingSourceSection() != null ? getEncapsulatingSourceSection().toString() : super.toString();
-    }
 }

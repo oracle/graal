@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -361,9 +361,9 @@ public class Scanner {
 		literals.put("function", new Integer(4));
 		literals.put("break", new Integer(10));
 		literals.put("continue", new Integer(12));
-		literals.put("if", new Integer(13));
-		literals.put("else", new Integer(14));
-		literals.put("while", new Integer(15));
+		literals.put("while", new Integer(13));
+		literals.put("if", new Integer(14));
+		literals.put("else", new Integer(15));
 		literals.put("return", new Integer(16));
 
     }
@@ -557,7 +557,7 @@ public class Scanner {
 				case 15:
 					{t.kind = 18; break loop;}
 				case 16:
-					{t.kind = 21; break loop;}
+					{t.kind = 20; break loop;}
 				case 17:
 					{t.kind = 22; break loop;}
 				case 18:
@@ -580,9 +580,9 @@ public class Scanner {
 					if (ch == '=') {AddCh(); state = 16; break;}
 					else {t.kind = 19; break loop;}
 				case 26:
-					recEnd = pos; recKind = 20;
+					recEnd = pos; recKind = 21;
 					if (ch == '=') {AddCh(); state = 17; break;}
-					else {t.kind = 20; break loop;}
+					else {t.kind = 21; break loop;}
 				case 27:
 					recEnd = pos; recKind = 29;
 					if (ch == '=') {AddCh(); state = 18; break;}

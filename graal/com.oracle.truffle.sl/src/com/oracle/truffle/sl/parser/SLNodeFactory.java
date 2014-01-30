@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,6 +27,7 @@ import java.util.*;
 
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.frame.*;
+import com.oracle.truffle.api.impl.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.sl.nodes.*;
 import com.oracle.truffle.sl.nodes.call.*;
@@ -53,50 +54,56 @@ public class SLNodeFactory {
     /* State while parsing a source unit. */
     private final SLContext context;
     private final Source source;
-    private final Parser parser;
 
     /* State while parsing a function. */
     private String functionName;
+    private int parameterCount;
     private FrameDescriptor frameDescriptor;
     private List<SLStatementNode> methodNodes;
 
     /* State while parsing a block. */
     private LexicalScope lexicalScope;
 
-    public SLNodeFactory(SLContext context, Source source, Parser parser) {
+    public SLNodeFactory(SLContext context, Source source) {
         this.context = context;
         this.source = source;
-        this.parser = parser;
     }
 
-    public void startFunction(String name, List<String> parameters) {
+    public void startFunction(Token nameToken) {
         assert functionName == null;
+        assert parameterCount == 0;
         assert frameDescriptor == null;
         assert lexicalScope == null;
 
-        functionName = name;
+        functionName = nameToken.val;
         frameDescriptor = new FrameDescriptor();
+        methodNodes = new ArrayList<>();
         startBlock();
+    }
 
+    public void addFormalParameter(Token nameToken) {
         /*
          * Method parameters are assigned to local variables at the beginning of the method. This
          * ensures that accesses to parameters are specialized the same way as local variables are
          * specialized.
          */
-        methodNodes = new ArrayList<>(parameters.size());
-        for (int i = 0; i < parameters.size(); i++) {
-            methodNodes.add(createAssignment(parameters.get(i), new SLReadArgumentNode(i)));
-        }
+        SLReadArgumentNode readArg = assignSource(nameToken, new SLReadArgumentNode(parameterCount));
+        methodNodes.add(createAssignment(nameToken, readArg));
+        parameterCount++;
     }
 
-    public void finishFunction(SLStatementNode body) {
-        methodNodes.add(body);
+    public void finishFunction(SLStatementNode bodyNode) {
+        methodNodes.add(bodyNode);
         SLStatementNode methodBlock = finishBlock(methodNodes);
         assert lexicalScope == null : "Wrong scoping of blocks in parser";
 
-        context.getFunctionRegistry().register(functionName, SLRootNode.createFunction(functionName, frameDescriptor, methodBlock));
+        SLFunctionBodyNode functionBodyNode = new SLFunctionBodyNode(methodBlock);
+        SLRootNode rootNode = new SLRootNode(frameDescriptor, functionBodyNode, functionName);
+
+        context.getFunctionRegistry().register(functionName, rootNode);
 
         functionName = null;
+        parameterCount = 0;
         frameDescriptor = null;
         lexicalScope = null;
     }
@@ -105,123 +112,131 @@ public class SLNodeFactory {
         lexicalScope = new LexicalScope(lexicalScope);
     }
 
-    public SLStatementNode finishBlock(List<SLStatementNode> statements) {
+    public SLStatementNode finishBlock(List<SLStatementNode> bodyNodes) {
         lexicalScope = lexicalScope.outer;
 
-        List<SLStatementNode> flattened = new ArrayList<>(statements.size());
-        flattenBlocks(statements, flattened);
-        if (flattened.size() == 1) {
-            return flattened.get(0);
+        List<SLStatementNode> flattenedNodes = new ArrayList<>(bodyNodes.size());
+        flattenBlocks(bodyNodes, flattenedNodes);
+        if (flattenedNodes.size() == 1) {
+            /* A block containing one other node is unnecessary, we can just that other node. */
+            return flattenedNodes.get(0);
         } else {
-            return assignSource(new SLBlockNode(flattened.toArray(new SLStatementNode[flattened.size()])));
+            return new SLBlockNode(flattenedNodes.toArray(new SLStatementNode[flattenedNodes.size()]));
         }
     }
 
-    private void flattenBlocks(Iterable<? extends Node> statements, List<SLStatementNode> flattened) {
-        for (Node statement : statements) {
-            if (statement instanceof SLBlockNode) {
-                flattenBlocks(statement.getChildren(), flattened);
+    private void flattenBlocks(Iterable<? extends Node> bodyNodes, List<SLStatementNode> flattenedNodes) {
+        for (Node n : bodyNodes) {
+            if (n instanceof SLBlockNode) {
+                flattenBlocks(n.getChildren(), flattenedNodes);
             } else {
-                flattened.add((SLStatementNode) statement);
+                flattenedNodes.add((SLStatementNode) n);
             }
         }
     }
 
-    private <T extends Node> T assignSource(T node) {
-        assert functionName != null;
-        node.assignSourceSection(ParserUtils.createSourceSection(source, functionName, parser));
-        return node;
+    public SLStatementNode createBreak(Token t) {
+        return assignSource(t, new SLBreakNode());
     }
 
-    public SLExpressionNode createAssignment(String name, SLExpressionNode value) {
-        FrameSlot frameSlot = frameDescriptor.findOrAddFrameSlot(name);
-        lexicalScope.locals.put(name, frameSlot);
-        return assignSource(WriteLocalNodeFactory.create(frameSlot, value));
+    public SLStatementNode createContinue(Token t) {
+        return assignSource(t, new SLContinueNode());
     }
 
-    public SLExpressionNode createRead(String name) {
-        FrameSlot frameSlot = lexicalScope.locals.get(name);
+    public SLStatementNode createWhile(Token t, SLExpressionNode conditionNode, SLStatementNode bodyNode) {
+        return assignSource(t, new SLWhileNode(conditionNode, bodyNode));
+    }
+
+    public SLStatementNode createIf(Token t, SLExpressionNode conditionNode, SLStatementNode thenPartNode, SLStatementNode elsePartNode) {
+        return assignSource(t, new SLIfNode(conditionNode, thenPartNode, elsePartNode));
+    }
+
+    public SLStatementNode createReturn(Token t, SLExpressionNode valueNode) {
+        return assignSource(t, new SLReturnNode(valueNode));
+    }
+
+    public SLExpressionNode createBinary(Token opToken, SLExpressionNode leftNode, SLExpressionNode rightNode) {
+        switch (opToken.val) {
+            case "+":
+                return assignSource(opToken, SLAddNodeFactory.create(leftNode, rightNode));
+            case "*":
+                return assignSource(opToken, SLMulNodeFactory.create(leftNode, rightNode));
+            case "/":
+                return assignSource(opToken, SLDivNodeFactory.create(leftNode, rightNode));
+            case "-":
+                return assignSource(opToken, SLSubNodeFactory.create(leftNode, rightNode));
+            case "<":
+                return assignSource(opToken, SLLessThanNodeFactory.create(leftNode, rightNode));
+            case "<=":
+                return assignSource(opToken, SLLessOrEqualNodeFactory.create(leftNode, rightNode));
+            case ">":
+                return assignSource(opToken, SLLogicalNotNodeFactory.create(assignSource(opToken, SLLessOrEqualNodeFactory.create(leftNode, rightNode))));
+            case ">=":
+                return assignSource(opToken, SLLogicalNotNodeFactory.create(assignSource(opToken, SLLessThanNodeFactory.create(leftNode, rightNode))));
+            case "==":
+                return assignSource(opToken, SLEqualNodeFactory.create(leftNode, rightNode));
+            case "!=":
+                return assignSource(opToken, SLLogicalNotNodeFactory.create(assignSource(opToken, SLEqualNodeFactory.create(leftNode, rightNode))));
+            case "&&":
+                return assignSource(opToken, SLLogicalAndNodeFactory.create(leftNode, rightNode));
+            case "||":
+                return assignSource(opToken, SLLogicalOrNodeFactory.create(leftNode, rightNode));
+            default:
+                throw new RuntimeException("unexpected operation: " + opToken.val);
+        }
+    }
+
+    public SLExpressionNode createCall(Token nameToken, List<SLExpressionNode> parameterNodes) {
+        SLExpressionNode functionNode = createRead(nameToken);
+        return assignSource(nameToken, SLCallNode.create(functionNode, parameterNodes.toArray(new SLExpressionNode[parameterNodes.size()])));
+    }
+
+    public SLExpressionNode createAssignment(Token nameToken, SLExpressionNode valueNode) {
+        FrameSlot frameSlot = frameDescriptor.findOrAddFrameSlot(nameToken.val);
+        lexicalScope.locals.put(nameToken.val, frameSlot);
+        return assignSource(nameToken, SLWriteLocalVariableNodeFactory.create(valueNode, frameSlot));
+    }
+
+    public SLExpressionNode createRead(Token nameToken) {
+        FrameSlot frameSlot = lexicalScope.locals.get(nameToken.val);
         if (frameSlot != null) {
             /* Read of a local variable. */
-            return assignSource(ReadLocalNodeFactory.create(frameSlot));
+            return assignSource(nameToken, SLReadLocalVariableNodeFactory.create(frameSlot));
         } else {
             /* Read of a global name. In our language, the only global names are functions. */
-            return new SLFunctionLiteralNode(context.getFunctionRegistry().lookup(name));
+            return assignSource(nameToken, new SLFunctionLiteralNode(context.getFunctionRegistry().lookup(nameToken.val)));
         }
     }
 
-    public SLExpressionNode createNumericLiteral(String value) {
+    public SLExpressionNode createStringLiteral(Token literalToken) {
+        /* Remove the trailing and ending " */
+        String literal = literalToken.val;
+        assert literal.length() >= 2 && literal.startsWith("\"") && literal.endsWith("\"");
+        literal = literal.substring(1, literal.length() - 1);
+
+        return assignSource(literalToken, new SLStringLiteralNode(literal));
+    }
+
+    public SLExpressionNode createNumericLiteral(Token literalToken) {
         try {
-            return assignSource(new SLLongLiteralNode(Long.parseLong(value)));
+            /* Try if the literal is small enough to fit into a long value. */
+            return assignSource(literalToken, new SLLongLiteralNode(Long.parseLong(literalToken.val)));
         } catch (NumberFormatException ex) {
-            return assignSource(new SLBigIntegerLiteralNode(new BigInteger(value)));
+            /* Overflow of long value, so fall back to BigInteger. */
+            return assignSource(literalToken, new SLBigIntegerLiteralNode(new BigInteger(literalToken.val)));
         }
     }
 
-    public SLExpressionNode createStringLiteral(String value) {
-        return assignSource(new SLStringLiteralNode(value));
-    }
+    private <T extends Node> T assignSource(Token t, T node) {
+        assert functionName != null;
+        assert t != null;
 
-    public SLStatementNode createWhile(SLExpressionNode condition, SLStatementNode body) {
-        return assignSource(new SLWhileNode(condition, body));
-    }
+        int startLine = t.line;
+        int startColumn = t.col;
+        int charLength = t.val.length();
+        SourceSection sourceSection = new DefaultSourceSection(source, functionName, startLine, startColumn, 0, charLength);
 
-    public SLStatementNode createBreak() {
-        return assignSource(new SLBreakNode());
-    }
-
-    public SLStatementNode createContinue() {
-        return assignSource(new SLContinueNode());
-    }
-
-    public SLExpressionNode createCall(SLExpressionNode function, List<SLExpressionNode> parameters) {
-        return assignSource(SLCallNode.create(function, parameters.toArray(new SLExpressionNode[parameters.size()])));
-    }
-
-    public SLExpressionNode createBinary(String operation, SLExpressionNode left, SLExpressionNode right) {
-        SLExpressionNode binary;
-        switch (operation) {
-            case "+":
-                binary = SLAddNodeFactory.create(left, right);
-                break;
-            case "*":
-                binary = SLMulNodeFactory.create(left, right);
-                break;
-            case "/":
-                binary = SLDivNodeFactory.create(left, right);
-                break;
-            case "-":
-                binary = SLSubNodeFactory.create(left, right);
-                break;
-            case "<":
-                binary = SLLessThanNodeFactory.create(left, right);
-                break;
-            case "<=":
-                binary = SLLessOrEqualNodeFactory.create(left, right);
-                break;
-            case "==":
-                binary = SLEqualNodeFactory.create(left, right);
-                break;
-            case "!=":
-                binary = SLNotEqualNodeFactory.create(left, right);
-                break;
-            case "&&":
-                binary = SLLogicalAndNodeFactory.create(left, right);
-                break;
-            case "||":
-                binary = SLLogicalOrNodeFactory.create(left, right);
-                break;
-            default:
-                throw new RuntimeException("unexpected operation: " + operation);
-        }
-        return assignSource(binary);
-    }
-
-    public SLStatementNode createReturn(SLExpressionNode value) {
-        return assignSource(new SLReturnNode(value));
-    }
-
-    public SLStatementNode createIf(SLExpressionNode condition, SLStatementNode then, SLStatementNode elseNode) {
-        return assignSource(new SLIfNode(condition, then, elseNode));
+        node.assignSourceSection(sourceSection);
+        return node;
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,16 +24,28 @@ package com.oracle.truffle.sl.runtime;
 
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.frame.*;
+import com.oracle.truffle.sl.nodes.call.*;
+import com.oracle.truffle.sl.nodes.local.*;
 
+/**
+ * Encapsulation of SL function arguments, as required by the Truffle API. An instance of this class
+ * is allocated by the caller, and read by the callee.
+ */
 public final class SLArguments extends Arguments {
 
-    private final Object[] arguments;
+    private final Object[] argumentValues;
 
+    /**
+     * Used by the caller, i.e., the {@link SLCallNode node that performs a function call}.
+     */
     public SLArguments(Object[] arguments) {
-        this.arguments = arguments;
+        this.argumentValues = arguments;
     }
 
+    /**
+     * Used by the callee, i.e., the {@link SLReadArgumentNode note that reads a function argument}.
+     */
     public static Object[] getFromFrame(VirtualFrame frame) {
-        return frame.getArguments(SLArguments.class).arguments;
+        return frame.getArguments(SLArguments.class).argumentValues;
     }
 }

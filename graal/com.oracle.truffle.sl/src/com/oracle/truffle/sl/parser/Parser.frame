@@ -53,7 +53,7 @@ public class Parser {
     -->declarations
     public Parser(SLContext context, Source source) {
         this.scanner = new Scanner(source.getInputStream());
-        this.factory = new SLNodeFactory(context, source, this);
+        this.factory = new SLNodeFactory(context, source);
         errors = new Errors();
     }
 

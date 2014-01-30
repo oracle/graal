@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,10 +22,13 @@
  */
 package com.oracle.truffle.sl.nodes.controlflow;
 
+import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.frame.*;
+import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.api.utilities.*;
 import com.oracle.truffle.sl.nodes.*;
 
+@NodeInfo(shortName = "if")
 public class SLIfNode extends SLStatementNode {
     @Child private SLExpressionNode conditionNode;
     @Child private SLStatementNode thenPartNode;
@@ -42,7 +45,7 @@ public class SLIfNode extends SLStatementNode {
 
     @Override
     public void executeVoid(VirtualFrame frame) {
-        if (conditionNode.executeCondition(frame)) {
+        if (evaluateCondition(frame)) {
             thenTaken.enter();
             thenPartNode.executeVoid(frame);
         } else {
@@ -50,6 +53,23 @@ public class SLIfNode extends SLStatementNode {
                 elseTaken.enter();
                 elsePartNode.executeVoid(frame);
             }
+        }
+    }
+
+    private boolean evaluateCondition(VirtualFrame frame) {
+        try {
+            /*
+             * The condition must evaluate to a boolean value, so we call boolean-specialized
+             * method.
+             */
+            return conditionNode.executeBoolean(frame);
+        } catch (UnexpectedResultException ex) {
+            /*
+             * The condition evaluated to a non-boolean result. This is a type error in the SL
+             * program. We report it with the same exception that Truffle DSL generated nodes use to
+             * report type errors.
+             */
+            throw new UnsupportedSpecializationException(this, ex.getResult());
         }
     }
 }

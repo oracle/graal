@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,27 +26,33 @@ import java.math.*;
 
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.dsl.*;
+import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.sl.nodes.*;
 
+@NodeInfo(shortName = "+")
 public abstract class SLAddNode extends SLBinaryNode {
 
     @Specialization(rewriteOn = ArithmeticException.class)
-    long add(long left, long right) {
+    protected long add(long left, long right) {
         return ExactMath.addExact(left, right);
     }
 
     @Specialization
-    BigInteger add(BigInteger left, BigInteger right) {
+    protected BigInteger add(BigInteger left, BigInteger right) {
         return left.add(right);
     }
 
     @Specialization
-    String add(String left, String right) {
+    protected String add(String left, String right) {
         return left + right;
     }
 
     @Specialization(guards = "isString")
-    String add(Object left, Object right) {
+    protected String add(Object left, Object right) {
         return left.toString() + right.toString();
+    }
+
+    protected boolean isString(Object a, Object b) {
+        return a instanceof String || b instanceof String;
     }
 }

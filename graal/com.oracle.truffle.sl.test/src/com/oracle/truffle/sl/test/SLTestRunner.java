@@ -46,20 +46,24 @@ public final class SLTestRunner extends ParentRunner<TestCase> {
 
     private static final int REPEATS = 10;
 
-    private static final String INPUT_SUFFIX = ".sl";
+    private static final String SOURCE_SUFFIX = ".sl";
+    private static final String INPUT_SUFFIX = ".input";
     private static final String OUTPUT_SUFFIX = ".output";
 
     private static final String LF = System.getProperty("line.separator");
 
-    public static final class TestCase {
-        private final Source input;
-        private final String expectedOutput;
-        private final Description name;
+    static class TestCase {
+        protected final Description name;
+        protected final Source source;
+        protected final String testInput;
+        protected final String expectedOutput;
+        protected String actualOutput;
 
-        public TestCase(Class<?> testClass, String name, Source input, String expectedOutput) {
-            this.input = input;
-            this.expectedOutput = expectedOutput;
+        protected TestCase(Class<?> testClass, String name, Source source, String testInput, String expectedOutput) {
             this.name = Description.createTestDescription(testClass, name);
+            this.source = source;
+            this.testInput = testInput;
+            this.expectedOutput = expectedOutput;
         }
     }
 
@@ -114,28 +118,38 @@ public final class SLTestRunner extends ParentRunner<TestCase> {
         final List<TestCase> foundCases = new ArrayList<>();
         Files.walkFileTree(rootPath, new SimpleFileVisitor<Path>() {
             @Override
-            public FileVisitResult visitFile(Path inputFile, BasicFileAttributes attrs) throws IOException {
-                String name = inputFile.getFileName().toString();
-                if (name.endsWith(INPUT_SUFFIX)) {
-                    String baseName = name.substring(0, name.length() - INPUT_SUFFIX.length());
+            public FileVisitResult visitFile(Path sourceFile, BasicFileAttributes attrs) throws IOException {
+                String sourceName = sourceFile.getFileName().toString();
+                if (sourceName.endsWith(SOURCE_SUFFIX)) {
+                    String baseName = sourceName.substring(0, sourceName.length() - SOURCE_SUFFIX.length());
 
-                    Path outputFile = inputFile.resolveSibling(baseName + OUTPUT_SUFFIX);
-                    if (!Files.exists(outputFile)) {
-                        throw new Error("Output file does not exist: " + outputFile);
+                    Path inputFile = sourceFile.resolveSibling(baseName + INPUT_SUFFIX);
+                    String testInput = "";
+                    if (Files.exists(inputFile)) {
+                        testInput = readAllLines(inputFile);
                     }
 
-                    // fix line feeds for non unix os
-                    StringBuilder outFile = new StringBuilder();
-                    for (String line : Files.readAllLines(outputFile, Charset.defaultCharset())) {
-                        outFile.append(line);
-                        outFile.append(LF);
+                    Path outputFile = sourceFile.resolveSibling(baseName + OUTPUT_SUFFIX);
+                    String expectedOutput = "";
+                    if (Files.exists(outputFile)) {
+                        expectedOutput = readAllLines(outputFile);
                     }
-                    foundCases.add(new TestCase(c, baseName, sourceManager.get(inputFile.toString()), outFile.toString()));
+
+                    foundCases.add(new TestCase(c, baseName, sourceManager.get(sourceName, readAllLines(sourceFile)), testInput, expectedOutput));
                 }
                 return FileVisitResult.CONTINUE;
             }
         });
         return foundCases;
+    }
+
+    private static String readAllLines(Path file) throws IOException {
+        // fix line feeds for non unix os
+        StringBuilder outFile = new StringBuilder();
+        for (String line : Files.readAllLines(file, Charset.defaultCharset())) {
+            outFile.append(line).append(LF);
+        }
+        return outFile.toString();
     }
 
     @Override
@@ -144,21 +158,15 @@ public final class SLTestRunner extends ParentRunner<TestCase> {
 
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         PrintStream printer = new PrintStream(out);
-        PrintStream origErr = System.err;
         try {
-            System.setErr(printer);
-            SLContext context = new SLContext(sourceManager, printer);
-            SLMain.run(context, testCase.input, null, REPEATS);
+            SLContext context = new SLContext(sourceManager, new BufferedReader(new StringReader(repeat(testCase.testInput, REPEATS))), printer);
+            SLMain.run(context, testCase.source, null, REPEATS);
 
             String actualOutput = new String(out.toByteArray());
-
             Assert.assertEquals(repeat(testCase.expectedOutput, REPEATS), actualOutput);
-        } catch (AssertionError e) {
-            notifier.fireTestFailure(new Failure(testCase.name, e));
         } catch (Throwable ex) {
             notifier.fireTestFailure(new Failure(testCase.name, ex));
         } finally {
-            System.setErr(origErr);
             notifier.fireTestFinished(testCase.name);
         }
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,36 +20,35 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.sl.nodes.call;
+package com.oracle.truffle.sl.nodes.local;
 
+import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.frame.*;
-import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.sl.nodes.*;
 
-public final class SLArgumentsNode extends SLExpressionNode {
+@PolymorphicLimit(1)
+@NodeField(name = "slot", type = FrameSlot.class)
+public abstract class SLReadLocalVariableNode extends SLExpressionNode {
 
-    @Children private final SLExpressionNode[] arguments;
+    protected abstract FrameSlot getSlot();
 
-    public SLArgumentsNode(SLExpressionNode[] arguments) {
-        this.arguments = adoptChildren(arguments);
+    @Specialization(rewriteOn = {FrameSlotTypeException.class})
+    protected long readLong(VirtualFrame frame) throws FrameSlotTypeException {
+        return frame.getLong(getSlot());
     }
 
-    public SLExpressionNode[] getArguments() {
-        return arguments;
+    @Specialization(rewriteOn = {FrameSlotTypeException.class})
+    protected boolean readBoolean(VirtualFrame frame) throws FrameSlotTypeException {
+        return frame.getBoolean(getSlot());
     }
 
-    @Override
-    public Object[] executeGeneric(VirtualFrame frame) {
-        return executeArray(frame);
+    @Specialization(rewriteOn = {FrameSlotTypeException.class})
+    protected Object readObject(VirtualFrame frame) throws FrameSlotTypeException {
+        return frame.getObject(getSlot());
     }
 
-    @Override
-    @ExplodeLoop
-    public Object[] executeArray(VirtualFrame frame) {
-        Object[] argumentValues = new Object[arguments.length];
-        for (int i = 0; i < arguments.length; i++) {
-            argumentValues[i] = arguments[i].executeGeneric(frame);
-        }
-        return argumentValues;
+    @Generic
+    protected Object readGeneric(VirtualFrame frame) {
+        return frame.getValue(getSlot());
     }
 }

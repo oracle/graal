@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,9 +26,28 @@ import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.sl.runtime.*;
 
-abstract class SLAbstractDispatchNode extends Node {
+/**
+ * Before a call is executed the first time, the dispatch node is a
+ * {@link SLUninitializedDispatchNode}. During execution, the call is optimized using a polymprphic
+ * inline cache, i.e., a chain of {@link SLDirectDispatchNode}s. The chain is terminated by a
+ * {@link SLUninitializedDispatchNode}. If the chain gets too long (longer than
+ * {@link #INLINE_CACHE_SIZE}), i.e., if the call is too polymorphic, the whole chain is replaced by
+ * a single {@link SLGenericDispatchNode}. All this rewriting happens on runtime, based on profiling
+ * feedback of the actual execution.
+ * <p>
+ * Example of the chain of nodes ({@code C}: {@link SLCallNode}; {@code U}:
+ * {@link SLUninitializedDispatchNode}; {@code D}: {@link SLDirectDispatchNode}; {@code G}:
+ * {@link SLGenericDispatchNode}):
+ * <ol>
+ * <li>After parsing: {@code C->U}
+ * <li>After execution of function {@code f1}: {@code C->D(f1)->U}
+ * <li>After execution of function {@code f2}: {@code C->D(f1)->D(f2)->U}
+ * <li>After execution of function {@code f3}: {@code C->G}
+ * </ol>
+ * */
+public abstract class SLAbstractDispatchNode extends Node {
 
     protected static final int INLINE_CACHE_SIZE = 2;
 
-    protected abstract Object executeCall(VirtualFrame frame, SLFunction function, SLArguments arguments);
+    protected abstract Object executeDispatch(VirtualFrame frame, SLFunction function, SLArguments arguments);
 }

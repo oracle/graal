@@ -13,5 +13,5 @@ function fib(num) {
 }
 
 function main() {  
-  print(fib(42));
+  println(fib(42));
 }  
