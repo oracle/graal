@@ -353,6 +353,8 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     public void emitCCall(long address, CallingConvention nativeCallingConvention, Value[] args, int numberOfFloatingPointArguments) {
         Value[] argLocations = new Value[args.length];
         frameMap.callsMethod(nativeCallingConvention);
+        // TODO(mg): in case a native function uses floating point varargs, the ABI requires that
+        // RAX contains the length of the varargs
         AllocatableValue numberOfFloatingPointArgumentsRegister = AMD64.rax.asValue();
         emitMove(numberOfFloatingPointArgumentsRegister, Constant.forInt(numberOfFloatingPointArguments));
         for (int i = 0; i < args.length; i++) {

@@ -30,13 +30,24 @@ import sun.misc.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.runtime.*;
+import com.oracle.graal.compiler.target.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.runtime.*;
 
 public class LibCallTest {
 
     protected static final Unsafe unsafe = getUnsafe();
-    public static final RuntimeProvider runtimeProvider = Graal.getRequiredCapability(RuntimeProvider.class);
-    public static final NativeFunctionInterface ffi = runtimeProvider.getHostBackend().getNativeFunctionInterface();
+    public final RuntimeProvider runtimeProvider;
+    public final NativeFunctionInterface ffi;
+
+    public LibCallTest() {
+        this.runtimeProvider = Graal.getRequiredCapability(RuntimeProvider.class);
+        if (runtimeProvider.getHostBackend() instanceof HostBackend) {
+            ffi = ((HostBackend) runtimeProvider.getHostBackend()).getNativeFunctionInterface();
+        } else {
+            throw GraalInternalError.shouldNotReachHere("Cannot initialize GNFI - backend is not a HostBackend");
+        }
+    }
 
     @Test
     public void test() {

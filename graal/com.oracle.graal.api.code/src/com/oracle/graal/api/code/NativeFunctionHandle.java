@@ -24,7 +24,6 @@ package com.oracle.graal.api.code;
 
 /**
  * The function handle of a native foreign function.
- * 
  */
 public interface NativeFunctionHandle {
 

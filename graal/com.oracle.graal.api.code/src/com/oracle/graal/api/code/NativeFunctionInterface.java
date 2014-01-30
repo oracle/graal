@@ -37,7 +37,8 @@ public interface NativeFunctionInterface {
     NativeLibraryHandle getLibraryHandle(String libPath);
 
     /**
-     * Resolves the <code>NativeFunctionHandle</code> of a native function that can be called.
+     * Resolves the <code>NativeFunctionHandle</code> of a native function that can be called. Use a
+     * {@code NativeFunctionHandle} to invoke the native target function.
      * 
      * @param libraryHandle the handle to a resolved library
      * @param functionName the name of the function to be resolved
@@ -48,7 +49,8 @@ public interface NativeFunctionInterface {
     NativeFunctionHandle getFunctionHandle(NativeLibraryHandle libraryHandle, String functionName, Class returnType, Class[] argumentTypes);
 
     /**
-     * Resolves the <code>NativeFunctionHandle</code> of a native function that can be called.
+     * Resolves the <code>NativeFunctionHandle</code> of a native function that can be called. Use a
+     * {@code NativeFunctionHandle} to invoke the native target function.
      * 
      * @param functionPointer the function pointer
      * @param returnType the type of the return value
@@ -58,7 +60,8 @@ public interface NativeFunctionInterface {
     NativeFunctionHandle getFunctionHandle(NativeFunctionPointer functionPointer, Class returnType, Class[] argumentTypes);
 
     /**
-     * Resolves the function pointer <code>NativeFunctionPointer</code> of a native function.
+     * Resolves the function pointer <code>NativeFunctionPointer</code> of a native function. A
+     * {@code NativeFunctionPointer} wraps the raw pointer value.
      * 
      * @param libraryHandles the handles to a various resolved library, the first library containing
      *            the method wins
@@ -68,7 +71,8 @@ public interface NativeFunctionInterface {
     NativeFunctionPointer getFunctionPointer(NativeLibraryHandle[] libraryHandles, String functionName);
 
     /**
-     * Resolves the <code>NativeFunctionHandle</code> of a native function that can be called.
+     * Resolves the <code>NativeFunctionHandle</code> of a native function that can be called. Use a
+     * {@code NativeFunctionHandle} to invoke the native target function.
      * 
      * @param libraryHandles the handles to a various resolved library, the first library containing
      *            the method wins
@@ -80,7 +84,8 @@ public interface NativeFunctionInterface {
     NativeFunctionHandle getFunctionHandle(NativeLibraryHandle[] libraryHandles, String functionName, Class returnType, Class[] argumentTypes);
 
     /**
-     * Resolves the <code>NativeFunctionHandle</code> of a native function that can be called.
+     * Resolves the <code>NativeFunctionHandle</code> of a native function that can be called. Use a
+     * {@code NativeFunctionHandle} to invoke the native target function.
      * 
      * @param functionName the name of the function to be resolved
      * @param returnType the type of the return value
@@ -90,7 +95,8 @@ public interface NativeFunctionInterface {
     NativeFunctionHandle getFunctionHandle(String functionName, Class returnType, Class[] argumentTypes);
 
     /**
-     * Creates <code>NativeFunctionPointer</code> from raw value.
+     * Creates <code>NativeFunctionPointer</code> from raw value. A {@code NativeFunctionPointer}
+     * wraps the raw pointer value.
      * 
      * @param rawValue Raw pointer value
      * @return <code>NativeFunctionPointer</code> of the raw pointer

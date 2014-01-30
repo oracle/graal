@@ -32,6 +32,7 @@ import com.oracle.graal.asm.*;
 import com.oracle.graal.asm.sparc.*;
 import com.oracle.graal.asm.sparc.SPARCAssembler.*;
 import com.oracle.graal.compiler.gen.LIRGenerator;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.bridge.*;
 import com.oracle.graal.hotspot.meta.*;

@@ -67,7 +67,7 @@ public class InstallUtil {
             PhaseSuite<HighTierContext> phaseSuite = backend.getSuites().getDefaultGraphBuilderSuite().copy();
             CallingConvention cc = getCallingConvention(providers.getCodeCache(), Type.JavaCallee, g.method(), false);
             CompilationResult compResult = GraalCompiler.compileGraph(g, cc, g.method(), providers, backend, backend.getTarget(), null, phaseSuite, OptimisticOptimizations.ALL,
-                            DefaultProfilingInfo.get(TriState.UNKNOWN), new SpeculationLog(), suites, true, new CompilationResult(), CompilationResultBuilderFactory.Default);
+                            DefaultProfilingInfo.get(TriState.UNKNOWN), null, suites, true, new CompilationResult(), CompilationResultBuilderFactory.Default);
             InstalledCode installedCode;
             try (Scope s = Debug.scope("CodeInstall", providers.getCodeCache(), g.method())) {
                 installedCode = providers.getCodeCache().addMethod(g.method(), compResult, null);

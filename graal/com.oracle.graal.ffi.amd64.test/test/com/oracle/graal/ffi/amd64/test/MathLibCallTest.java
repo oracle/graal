@@ -28,8 +28,8 @@ import com.oracle.graal.api.code.*;
 
 public class MathLibCallTest extends LibCallTest {
 
-    static final Object[] args = new Object[]{Double.doubleToLongBits(3), Double.doubleToLongBits(5.5)};
-    static final NativeFunctionHandle handle = ffi.getFunctionHandle("pow", double.class, new Class[]{double.class, double.class});
+    private final Object[] args = new Object[]{Double.doubleToLongBits(3), Double.doubleToLongBits(5.5)};
+    private final NativeFunctionHandle handle = ffi.getFunctionHandle("pow", double.class, new Class[]{double.class, double.class});
 
     @Test
     public void powTest() {
@@ -47,7 +47,7 @@ public class MathLibCallTest extends LibCallTest {
 
     }
 
-    private static double callPow() {
+    private double callPow() {
         return (double) handle.call(args);
     }
 }
