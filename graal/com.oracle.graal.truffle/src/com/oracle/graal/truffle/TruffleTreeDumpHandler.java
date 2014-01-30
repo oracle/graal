@@ -33,7 +33,7 @@ public class TruffleTreeDumpHandler implements DebugDumpHandler {
         if (object instanceof RootCallTarget) {
             RootCallTarget callTarget = (RootCallTarget) object;
             if (callTarget.getRootNode() != null) {
-                new GraphPrintVisitor().beginGroup(callTarget.toString()).beginGraph(message).visit(callTarget.getRootNode()).printToNetwork();
+                new GraphPrintVisitor().beginGroup(callTarget.toString()).beginGraph(message).visit(callTarget.getRootNode()).printToNetwork(false);
             }
         }
     }

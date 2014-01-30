@@ -158,6 +158,103 @@ public class EscapeAnalysisTest extends EATestBase {
     }
 
     @Test
+    public void testMergeAllocationsInt() {
+        testEscapeAnalysis("testMergeAllocationsIntSnippet", Constant.forInt(1), false);
+    }
+
+    public int testMergeAllocationsIntSnippet(int a) {
+        TestClassInt obj;
+        if (a < 0) {
+            obj = new TestClassInt(1, 2);
+            notInlineable();
+        } else {
+            obj = new TestClassInt(1, 2);
+            notInlineable();
+        }
+        return obj.x <= 3 ? 1 : 0;
+    }
+
+    @Test
+    public void testMergeAllocationsObj() {
+        testEscapeAnalysis("testMergeAllocationsObjSnippet", Constant.forInt(1), false);
+    }
+
+    public int testMergeAllocationsObjSnippet(int a) {
+        TestClassObject obj;
+        Integer one = 1;
+        Integer two = 2;
+        Integer three = 3;
+        if (a < 0) {
+            obj = new TestClassObject(one, two);
+            notInlineable();
+        } else {
+            obj = new TestClassObject(one, three);
+            notInlineable();
+        }
+        return ((Integer) obj.x).intValue() <= 3 ? 1 : 0;
+    }
+
+    @Test
+    public void testMergeAllocationsObjCirc() {
+        testEscapeAnalysis("testMergeAllocationsObjCircSnippet", Constant.forInt(1), false);
+    }
+
+    public int testMergeAllocationsObjCircSnippet(int a) {
+        TestClassObject obj;
+        Integer one = 1;
+        Integer two = 2;
+        Integer three = 3;
+        if (a < 0) {
+            obj = new TestClassObject(one);
+            obj.y = obj;
+            obj.y = two;
+            notInlineable();
+        } else {
+            obj = new TestClassObject(one);
+            obj.y = obj;
+            obj.y = three;
+            notInlineable();
+        }
+        return ((Integer) obj.x).intValue() <= 3 ? 1 : 0;
+    }
+
+    static class MyException extends RuntimeException {
+
+        private static final long serialVersionUID = 0L;
+
+        protected Integer value;
+
+        public MyException(Integer value) {
+            super((Throwable) null);
+            this.value = value;
+        }
+
+        @SuppressWarnings("sync-override")
+        @Override
+        public final Throwable fillInStackTrace() {
+            return null;
+        }
+    }
+
+    @Test
+    public void testMergeAllocationsException() {
+        testEscapeAnalysis("testMergeAllocationsExceptionSnippet", Constant.forInt(1), false);
+    }
+
+    public int testMergeAllocationsExceptionSnippet(int a) {
+        MyException obj;
+        Integer one = 1;
+        if (a < 0) {
+            obj = new MyException(one);
+            notInlineable();
+        } else {
+            obj = new MyException(one);
+            notInlineable();
+        }
+        return obj.value <= 3 ? 1 : 0;
+    }
+
+    @Test
     public void testCheckCast() {
         testEscapeAnalysis("testCheckCastSnippet", Constant.forObject(TestClassObject.class), false);
     }
