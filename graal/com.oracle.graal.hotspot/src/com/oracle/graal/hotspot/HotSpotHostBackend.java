@@ -28,6 +28,7 @@ import java.util.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.hotspot.HotSpotReplacementsImpl.*;
@@ -37,7 +38,7 @@ import com.oracle.graal.nodes.spi.*;
 /**
  * Common functionality of HotSpot host backends.
  */
-public abstract class HotSpotHostBackend extends HotSpotBackend {
+public abstract class HotSpotHostBackend extends HotSpotBackend implements HostBackend {
 
     /**
      * This will be 0 if stack banging is disabled.
