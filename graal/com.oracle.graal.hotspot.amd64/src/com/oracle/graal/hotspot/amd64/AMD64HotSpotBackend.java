@@ -299,7 +299,11 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend {
         } else {
             // No need to emit the stubs for entries back into the method since
             // it has no calls that can cause such "return" entries
-            assert !frameMap.accessesCallerFrame() : lirGen.getGraph();
+
+            if (frameContext.omitFrame) {
+                // Cannot access slots in caller's frame if my frame is omitted
+                assert !frameMap.accessesCallerFrame() : lirGen.getGraph();
+            }
         }
     }
 }
