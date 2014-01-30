@@ -24,8 +24,6 @@ package com.oracle.graal.ffi.amd64.test;
 
 import java.lang.reflect.*;
 
-import org.junit.*;
-
 import sun.misc.*;
 
 import com.oracle.graal.api.code.*;
@@ -47,19 +45,6 @@ public class LibCallTest {
         } else {
             throw GraalInternalError.shouldNotReachHere("Cannot initialize GNFI - backend is not a HostBackend");
         }
-    }
-
-    @Test
-    public void test() {
-        Long str = unsafe.allocateMemory(4);
-        unsafe.putByte(str, (byte) 'A');
-        unsafe.putByte(str + 1, (byte) 'B');
-        unsafe.putByte(str + 2, (byte) 'C');
-        unsafe.putByte(str + 3, (byte) '\0');
-        NativeFunctionHandle handle = ffi.getFunctionHandle("puts", int.class, new Class[]{long.class});
-        Object[] args = new Object[]{str};
-        int result = (int) handle.call(args);
-        Assert.assertTrue(0 < result);
     }
 
     protected long getDouble(double val) {

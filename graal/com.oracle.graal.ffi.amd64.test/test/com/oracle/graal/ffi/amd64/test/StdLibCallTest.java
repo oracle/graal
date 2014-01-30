@@ -28,29 +28,43 @@ import com.oracle.graal.api.code.*;
 
 public class StdLibCallTest extends LibCallTest {
 
+    private static void copyString(long pointer, String s) {
+        for (int i = 0; i < s.length(); i++) {
+            unsafe.putByte(pointer + i, (byte) s.charAt(i));
+        }
+        unsafe.putByte(pointer + s.length(), (byte) '\0');
+    }
+
+    private static void checkString(long pointer, String s) {
+        for (int i = 0; i < s.length(); i++) {
+            Assert.assertEquals(unsafe.getByte(pointer + i) & 0xFF, (byte) s.charAt(i));
+        }
+        Assert.assertEquals(unsafe.getByte(pointer + s.length()) & 0xFF, (byte) '\0');
+    }
+
+    private static long getBuffer(int length) {
+        return unsafe.allocateMemory(length);
+    }
+
     @Test
     public void mallocTest() {
-        Object[] args = new Object[]{6};
+        String string = "GRAAL";
+        int stringLength = string.length() + 1;
+
+        Object[] args = new Object[]{1};
+        args[0] = stringLength;
         NativeFunctionHandle mallocHandle = ffi.getFunctionHandle("malloc", long.class, new Class[]{int.class});
 
         long p = (long) mallocHandle.call(args);
-        unsafe.putByte(p, (byte) 'G');
-        unsafe.putByte(p + 1, (byte) 'R');
-        unsafe.putByte(p + 2, (byte) 'A');
-        unsafe.putByte(p + 3, (byte) 'A');
-        unsafe.putByte(p + 4, (byte) 'L');
-        unsafe.putByte(p + 5, (byte) '\0');
+        copyString(p, string);
 
-        NativeFunctionHandle putsHandle = ffi.getFunctionHandle("puts", int.class, new Class[]{long.class});
-        Object[] args2 = new Object[]{p};
+        long buffer = getBuffer(stringLength);
+        NativeFunctionHandle putsHandle = ffi.getFunctionHandle("snprintf", int.class, new Class[]{long.class, int.class, long.class});
+        Object[] args2 = new Object[]{buffer, stringLength, p};
         int result = (int) putsHandle.call(args2);
         Assert.assertTrue(0 < result);
-        Assert.assertEquals(unsafe.getByte(p) & 0xFF, 'G');
-        Assert.assertEquals(unsafe.getByte(p + 1) & 0xFF, 'R');
-        Assert.assertEquals(unsafe.getByte(p + 2) & 0xFF, 'A');
-        Assert.assertEquals(unsafe.getByte(p + 3) & 0xFF, 'A');
-        Assert.assertEquals(unsafe.getByte(p + 4) & 0xFF, 'L');
-        Assert.assertEquals(unsafe.getByte(p + 5) & 0xFF, '\0');
+        checkString(p, string);
+        checkString(buffer, string);
 
         NativeFunctionHandle freeHandle = ffi.getFunctionHandle("free", void.class, new Class[]{long.class});
         freeHandle.call(args2);
@@ -59,35 +73,19 @@ public class StdLibCallTest extends LibCallTest {
     @Test
     public void printfSimpleTest() {
         long str = unsafe.allocateMemory(8);
-        unsafe.putByte(str, (byte) 'A');
-        unsafe.putByte(str + 1, (byte) 'B');
-        unsafe.putByte(str + 2, (byte) ' ');
-        unsafe.putByte(str + 3, (byte) '%');
-        unsafe.putByte(str + 4, (byte) 'f');
-        unsafe.putByte(str + 5, (byte) '%');
-        unsafe.putByte(str + 6, (byte) 'f');
-        unsafe.putByte(str + 7, (byte) '\0');
+        copyString(str, "AB %f%f");
 
-        Object[] args = new Object[]{str, Double.doubleToRawLongBits(1.0), Double.doubleToRawLongBits(1.0)};
-        NativeFunctionHandle printfHandle = ffi.getFunctionHandle("printf", int.class, new Class[]{long.class, double.class, double.class});
+        String referenceString = "AB 1.0000001.000000";
+        int referenceStringLenght = referenceString.length() + 1;
+
+        long buffer = getBuffer(referenceStringLenght);
+
+        Object[] args = new Object[]{buffer, referenceStringLenght, str, Double.doubleToRawLongBits(1.0), Double.doubleToRawLongBits(1.0)};
+        NativeFunctionHandle printfHandle = ffi.getFunctionHandle("snprintf", int.class, new Class[]{long.class, int.class, long.class, double.class, double.class});
 
         int result = (int) printfHandle.call(args);
-        Assert.assertTrue(0 < result);
-    }
 
-    @Test
-    public void putsSimpleTest() {
-        long str = unsafe.allocateMemory(6);
-        unsafe.putByte(str, (byte) 'A');
-        unsafe.putByte(str + 1, (byte) 'B');
-        unsafe.putByte(str + 2, (byte) 'B');
-        unsafe.putByte(str + 3, (byte) 'B');
-        unsafe.putByte(str + 4, (byte) '\0');
-
-        Object[] args = new Object[]{str};
-        NativeFunctionHandle printfHandle = ffi.getFunctionHandle("puts", int.class, new Class[]{long.class});
-
-        int result = (int) printfHandle.call(args);
+        checkString(buffer, referenceString);
         Assert.assertTrue(0 < result);
     }
 
@@ -102,11 +100,17 @@ public class StdLibCallTest extends LibCallTest {
         }
         unsafe.putByte(str + 24, (byte) '\0');
 
-        Object[] args = new Object[]{str, val[0], val[1], val[2], val[3], val[4], val[5], val[6], val[7], val[8], val[9], val[10], val[11]};
-        NativeFunctionHandle printfHandle = ffi.getFunctionHandle("printf", int.class, new Class[]{long.class, int.class, int.class, int.class, int.class, int.class, int.class, int.class, int.class,
-                        int.class, int.class, int.class, int.class});
+        String referenceString = "01234567891011";
+        int referenceStringLenght = referenceString.length() + 1;
+
+        long buffer = getBuffer(referenceStringLenght);
+
+        Object[] args = new Object[]{buffer, referenceStringLenght, str, val[0], val[1], val[2], val[3], val[4], val[5], val[6], val[7], val[8], val[9], val[10], val[11]};
+        NativeFunctionHandle printfHandle = ffi.getFunctionHandle("snprintf", int.class, new Class[]{long.class, int.class, long.class, int.class, int.class, int.class, int.class, int.class,
+                        int.class, int.class, int.class, int.class, int.class, int.class, int.class});
 
         int result = (int) printfHandle.call(args);
+        checkString(buffer, referenceString);
         Assert.assertTrue(0 < result);
     }
 
@@ -127,14 +131,20 @@ public class StdLibCallTest extends LibCallTest {
         }
         unsafe.putByte(str + 48, (byte) '\0');
 
-        Object[] args = new Object[]{str, val[0], val[1], val[2], val[3], val[4], val[5], val[6], val[7], val[8], val[9], val[10], val[11], dval[0], dval[1], dval[2], dval[3], dval[4], dval[5],
-                        dval[6], dval[7], dval[8], dval[9], dval[10], dval[11]};
+        String referenceString = "0123456789101112.50000013.50000014.50000015.50000016.50000017.50000018.50000019.50000020.500000" + "21.50000022.50000023.500000";
+        int referenceStringLenght = referenceString.length() + 1;
 
-        NativeFunctionHandle printfHandle = ffi.getFunctionHandle("printf", int.class, new Class[]{long.class, int.class, int.class, int.class, int.class, int.class, int.class, int.class, int.class,
-                        int.class, int.class, int.class, int.class, double.class, double.class, double.class, double.class, double.class, double.class, double.class, double.class, double.class,
-                        double.class, double.class, double.class});
+        long buffer = getBuffer(referenceStringLenght);
+
+        Object[] args = new Object[]{buffer, referenceStringLenght, str, val[0], val[1], val[2], val[3], val[4], val[5], val[6], val[7], val[8], val[9], val[10], val[11], dval[0], dval[1], dval[2],
+                        dval[3], dval[4], dval[5], dval[6], dval[7], dval[8], dval[9], dval[10], dval[11]};
+
+        NativeFunctionHandle printfHandle = ffi.getFunctionHandle("snprintf", int.class, new Class[]{long.class, int.class, long.class, int.class, int.class, int.class, int.class, int.class,
+                        int.class, int.class, int.class, int.class, int.class, int.class, int.class, double.class, double.class, double.class, double.class, double.class, double.class, double.class,
+                        double.class, double.class, double.class, double.class, double.class});
 
         int result = (int) printfHandle.call(args);
+        checkString(buffer, referenceString);
         Assert.assertTrue(0 < result);
     }
 
@@ -161,15 +171,22 @@ public class StdLibCallTest extends LibCallTest {
         }
         unsafe.putByte(str + 72, (byte) '\0');
 
-        Object[] args = new Object[]{str, val[0], val[1], val[2], val[3], val[4], val[5], val[6], val[7], val[8], val[9], val[10], val[11], dval[0], dval[1], dval[2], dval[3], dval[4], dval[5],
-                        dval[6], dval[7], dval[8], dval[9], dval[10], dval[11], cval[0], cval[1], cval[2], cval[3], cval[4], cval[5], cval[6], cval[7], cval[8], cval[9], cval[10], cval[11]};
+        String referenceString = "0123456789101112.50000013.50000014.50000015.50000016.50000017.50000018.50000019.50000020.50000021.50000022.50000023.500000abcdefghijkl";
+        int referenceStringLenght = referenceString.length() + 1;
 
-        NativeFunctionHandle printfHandle = ffi.getFunctionHandle("printf", int.class, new Class[]{long.class, int.class, int.class, int.class, int.class, int.class, int.class, int.class, int.class,
-                        int.class, int.class, int.class, int.class, double.class, double.class, double.class, double.class, double.class, double.class, double.class, double.class, double.class,
-                        double.class, double.class, double.class, char.class, char.class, char.class, char.class, char.class, char.class, char.class, char.class, char.class, char.class, char.class,
-                        char.class});
+        long buffer = getBuffer(referenceStringLenght);
+
+        Object[] args = new Object[]{buffer, referenceStringLenght, str, val[0], val[1], val[2], val[3], val[4], val[5], val[6], val[7], val[8], val[9], val[10], val[11], dval[0], dval[1], dval[2],
+                        dval[3], dval[4], dval[5], dval[6], dval[7], dval[8], dval[9], dval[10], dval[11], cval[0], cval[1], cval[2], cval[3], cval[4], cval[5], cval[6], cval[7], cval[8], cval[9],
+                        cval[10], cval[11]};
+
+        NativeFunctionHandle printfHandle = ffi.getFunctionHandle("snprintf", int.class, new Class[]{long.class, int.class, long.class, int.class, int.class, int.class, int.class, int.class,
+                        int.class, int.class, int.class, int.class, int.class, int.class, int.class, double.class, double.class, double.class, double.class, double.class, double.class, double.class,
+                        double.class, double.class, double.class, double.class, double.class, char.class, char.class, char.class, char.class, char.class, char.class, char.class, char.class,
+                        char.class, char.class, char.class, char.class});
 
         int result = (int) printfHandle.call(args);
+        checkString(buffer, referenceString);
         Assert.assertTrue(0 < result);
     }
 }
