@@ -24,13 +24,12 @@ package com.oracle.graal.hotspot.test;
 
 import org.junit.*;
 
-import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.hotspot.meta.*;
 
 /**
  * Tests {@link HotSpotResolvedObjectType} functionality.
  */
-public class HotSpotResolvedObjectTypeTest extends GraalCompilerTest {
+public class HotSpotResolvedObjectTypeTest {
 
     @Test
     public void testGetSourceFileName() throws Throwable {
