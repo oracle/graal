@@ -54,6 +54,7 @@ public class PTXMemOp {
         public void emitCode(CompilationResultBuilder crb, PTXMacroAssembler masm) {
             PTXAddress addr = address.toAddress();
             switch (kind) {
+                case Boolean:
                 case Byte:
                 case Short:
                 case Char:
