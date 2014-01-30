@@ -40,7 +40,6 @@ public class ObjectPTXTest extends PTXTest {
         double d;
     }
 
-    @Ignore("Object parameters not yet GC safe")
     @Test
     public void test0() {
         for (long l : new long[]{Long.MIN_VALUE, -10, 0, 1, 2, 10, Long.MAX_VALUE}) {
@@ -54,7 +53,6 @@ public class ObjectPTXTest extends PTXTest {
         return a.l + l;
     }
 
-    @Ignore("Object parameters not yet GC safe")
     @Test
     public void test1() {
         for (int i : new int[]{Integer.MIN_VALUE, -10, 0, 1, 2, 10, Integer.MAX_VALUE}) {
@@ -68,7 +66,6 @@ public class ObjectPTXTest extends PTXTest {
         return a.i + i;
     }
 
-    @Ignore("Object parameters not yet GC safe")
     @Test
     public void test2() {
         A a = new A();
@@ -82,7 +79,6 @@ public class ObjectPTXTest extends PTXTest {
         return a.z;
     }
 
-    @Ignore("Object parameters not yet GC safe")
     @Test
     public void test3() {
         for (byte b : new byte[]{Byte.MIN_VALUE, -10, 0, 1, 2, 10, Byte.MAX_VALUE}) {
@@ -96,7 +92,6 @@ public class ObjectPTXTest extends PTXTest {
         return a.b + b;
     }
 
-    @Ignore("Object parameters not yet GC safe")
     @Test
     public void test4() {
         for (short s : new short[]{Short.MIN_VALUE, -10, 0, 1, 2, 10, Short.MAX_VALUE}) {
@@ -110,7 +105,7 @@ public class ObjectPTXTest extends PTXTest {
         return a.s + s;
     }
 
-    @Ignore("Object parameters not yet GC safe")
+    @Ignore("java.lang.AssertionError: expected:<65531> but was:<809107451>")
     @Test
     public void test5() {
         for (char c : new char[]{Character.MIN_VALUE, 1, 2, 10, Character.MAX_VALUE}) {
@@ -124,7 +119,6 @@ public class ObjectPTXTest extends PTXTest {
         return a.c + c;
     }
 
-    @Ignore("Object parameters not yet GC safe")
     @Test
     public void test6() {
         for (float f : new float[]{Float.MIN_VALUE, Float.MIN_NORMAL, Float.NEGATIVE_INFINITY, Float.POSITIVE_INFINITY, Float.NaN, -11.45F, -0.0F, 0.0F, 2, 10, Float.MAX_VALUE}) {
@@ -138,7 +132,6 @@ public class ObjectPTXTest extends PTXTest {
         return a.f + f;
     }
 
-    @Ignore("Object parameters not yet GC safe")
     @Test
     public void test7() {
         for (double d : new double[]{Double.MIN_VALUE, Double.MIN_NORMAL, Double.NaN, Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY - 11.45D, -0.0D, 0.0D, 2, 10, Double.MAX_VALUE}) {
