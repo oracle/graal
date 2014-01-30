@@ -22,11 +22,9 @@
  */
 package com.oracle.graal.hotspot.ptx;
 
-import static com.oracle.graal.api.code.CallingConvention.Type.*;
 import static com.oracle.graal.api.code.CodeUtil.*;
 import static com.oracle.graal.api.meta.LocationIdentity.*;
 import static com.oracle.graal.compiler.GraalCompiler.*;
-import static com.oracle.graal.hotspot.HotSpotForeignCallLinkage.RegisterEffect.*;
 import static com.oracle.graal.hotspot.HotSpotForeignCallLinkage.Transition.*;
 import static com.oracle.graal.hotspot.meta.HotSpotForeignCallsProviderImpl.*;
 import static com.oracle.graal.lir.LIRValueUtil.*;
@@ -133,10 +131,11 @@ public class PTXHotSpotBackend extends HotSpotBackend {
 
     @Override
     public void completeInitialization() {
-        HotSpotHostForeignCallsProvider hostForeignCalls = (HotSpotHostForeignCallsProvider) getRuntime().getHostProviders().getForeignCalls();
+        HotSpotProviders hostProviders = getRuntime().getHostProviders();
+        HotSpotHostForeignCallsProvider hostForeignCalls = (HotSpotHostForeignCallsProvider) hostProviders.getForeignCalls();
         if (deviceInitialized) {
             long launchKernel = getLaunchKernelAddress();
-            hostForeignCalls.registerForeignCall(CALL_KERNEL, launchKernel, NativeCall, DESTROYS_REGISTERS, NOT_LEAF, NOT_REEXECUTABLE, ANY_LOCATION);
+            hostForeignCalls.linkForeignCall(hostProviders, CALL_KERNEL, launchKernel, false, NOT_LEAF, NOT_REEXECUTABLE, ANY_LOCATION);
         }
         super.completeInitialization();
     }
