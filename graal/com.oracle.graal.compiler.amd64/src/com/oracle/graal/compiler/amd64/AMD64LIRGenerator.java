@@ -899,6 +899,8 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         }
     }
 
+    public abstract void emitCCall(long address, CallingConvention nativeCallingConvention, Value[] args, int numberOfFloatingPointArguments);
+
     @Override
     protected void emitForeignCall(ForeignCallLinkage linkage, Value result, Value[] arguments, Value[] temps, LIRFrameState info) {
         long maxOffset = linkage.getMaxCallTargetOffset();

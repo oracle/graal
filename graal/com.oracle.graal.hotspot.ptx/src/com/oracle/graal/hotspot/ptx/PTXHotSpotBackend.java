@@ -484,4 +484,10 @@ public class PTXHotSpotBackend extends HotSpotBackend {
 
     private static native int getAvailableProcessors0();
 
+
+    @Override
+    public NativeFunctionInterface getNativeFunctionInterface() {
+        throw GraalInternalError.unimplemented("No NativeFunctionInterface of PTX");
+    }
+
 }

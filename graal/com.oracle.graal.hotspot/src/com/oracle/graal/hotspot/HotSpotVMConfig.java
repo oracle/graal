@@ -840,6 +840,10 @@ public class HotSpotVMConfig extends CompilerObject {
     @HotSpotVMField(name = "JavaThread::_vm_result", type = "oop", get = HotSpotVMField.Type.OFFSET) @Stable public int threadObjectResultOffset;
     @HotSpotVMField(name = "JavaThread::_graal_counters[0]", type = "jlong", get = HotSpotVMField.Type.OFFSET, optional = true) @Stable public int graalCountersThreadOffset;
 
+    @HotSpotVMConstant(name = "libraryLoadAddress") @Stable public long libraryLoadAddress;
+    @HotSpotVMConstant(name = "functionLookupAddress") @Stable public long functionLookupAddress;
+    @HotSpotVMConstant(name = "rtldDefault") @Stable public long rtldDefault;
+
     /**
      * This field is used to pass exception objects into and out of the runtime system during
      * exception handling for compiled code.

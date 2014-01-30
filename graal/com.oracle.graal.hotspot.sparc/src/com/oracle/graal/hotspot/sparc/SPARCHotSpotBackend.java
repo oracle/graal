@@ -227,4 +227,9 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
             SPARCCall.indirectJmp(crb, masm, scratch, foreignCalls.lookupForeignCall(IC_MISS_HANDLER));
         }
     }
+
+    @Override
+    public NativeFunctionInterface getNativeFunctionInterface() {
+        throw GraalInternalError.unimplemented("No NativeFunctionInterface of SPARC");
+    }
 }

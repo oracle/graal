@@ -414,4 +414,9 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
         codeBuffer.emitString0("};");
         codeBuffer.emitString("");
     }
+
+    @Override
+    public NativeFunctionInterface getNativeFunctionInterface() {
+        throw GraalInternalError.unimplemented("No NativeFunctionInterface of HSAIL");
+    }
 }

@@ -63,6 +63,8 @@ public abstract class Backend {
         return providers.getCodeCache().getTarget();
     }
 
+    public abstract NativeFunctionInterface getNativeFunctionInterface();
+
     public abstract FrameMap newFrameMap();
 
     public abstract LIRGenerator newLIRGenerator(StructuredGraph graph, FrameMap frameMap, CallingConvention cc, LIR lir);

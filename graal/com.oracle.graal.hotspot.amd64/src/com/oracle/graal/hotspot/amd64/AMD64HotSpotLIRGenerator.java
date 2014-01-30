@@ -350,6 +350,22 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     }
 
     @Override
+    public void emitCCall(long address, CallingConvention nativeCallingConvention, Value[] args, int numberOfFloatingPointArguments) {
+        Value[] argLocations = new Value[args.length];
+        frameMap.callsMethod(nativeCallingConvention);
+        AllocatableValue numberOfFloatingPointArgumentsRegister = AMD64.rax.asValue();
+        emitMove(numberOfFloatingPointArgumentsRegister, Constant.forInt(numberOfFloatingPointArguments));
+        for (int i = 0; i < args.length; i++) {
+            Value arg = args[i];
+            AllocatableValue loc = nativeCallingConvention.getArgument(i);
+            emitMove(loc, arg);
+            argLocations[i] = loc;
+        }
+        Value ptr = emitMove(Constant.forLong(address));
+        append(new AMD64CCall(nativeCallingConvention.getReturn(), ptr, numberOfFloatingPointArgumentsRegister, argLocations));
+    }
+
+    @Override
     protected void emitDirectCall(DirectCallTargetNode callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState callState) {
         InvokeKind invokeKind = ((HotSpotDirectCallTargetNode) callTarget).invokeKind();
         if (invokeKind == InvokeKind.Interface || invokeKind == InvokeKind.Virtual) {
