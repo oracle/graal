@@ -30,6 +30,7 @@ import java.util.*;
 import com.oracle.graal.debug.*;
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.nodes.CallNode.*;
 
 class TruffleInliningImpl implements TruffleInlining {
 
@@ -45,35 +46,41 @@ class TruffleInliningImpl implements TruffleInlining {
         return MIN_INVOKES_AFTER_INLINING;
     }
 
+    private static void refresh(InliningPolicy policy, List<InlinableCallSiteInfo> infos) {
+        for (InlinableCallSiteInfo info : infos) {
+            info.refresh(policy);
+        }
+    }
+
     @Override
     public boolean performInlining(OptimizedCallTarget target) {
         final InliningPolicy policy = new InliningPolicy(target);
         if (!policy.continueInlining()) {
             if (TraceTruffleInliningDetails.getValue()) {
-                List<InlinableCallSiteInfo> inlinableCallSites = getInlinableCallSites(target);
+                List<InlinableCallSiteInfo> inlinableCallSites = getInlinableCallSites(policy, target);
                 if (!inlinableCallSites.isEmpty()) {
                     OUT.printf("[truffle] inlining hit caller size limit (%3d >= %3d).%3d remaining call sites in %s:\n", policy.callerNodeCount, TruffleInliningMaxCallerSize.getValue(),
                                     inlinableCallSites.size(), target.getRootNode());
-                    policy.sortByRelevance(inlinableCallSites);
+                    InliningPolicy.sortByRelevance(inlinableCallSites);
                     printCallSiteInfo(policy, inlinableCallSites, "");
                 }
             }
             return false;
         }
 
-        List<InlinableCallSiteInfo> inlinableCallSites = getInlinableCallSites(target);
+        List<InlinableCallSiteInfo> inlinableCallSites = getInlinableCallSites(policy, target);
         if (inlinableCallSites.isEmpty()) {
             return false;
         }
 
-        policy.sortByRelevance(inlinableCallSites);
+        InliningPolicy.sortByRelevance(inlinableCallSites);
 
         boolean inlined = false;
         for (InlinableCallSiteInfo inlinableCallSite : inlinableCallSites) {
-            if (!policy.isWorthInlining(inlinableCallSite)) {
+            if (!inlinableCallSite.isWorth()) {
                 break;
             }
-            if (inlinableCallSite.getCallSite().inline()) {
+            if (inlinableCallSite.getCallNode().inline()) {
                 if (TraceTruffleInlining.getValue()) {
                     printCallSiteInfo(policy, inlinableCallSite, "inlined");
                 }
@@ -84,7 +91,10 @@ class TruffleInliningImpl implements TruffleInlining {
 
         if (inlined) {
             for (InlinableCallSiteInfo callSite : inlinableCallSites) {
-                CallNode.internalResetCallCount(callSite.getCallSite());
+                CompilerCallView callView = callSite.getCallNode().getCompilerCallView();
+                if (callView != null) {
+                    callView.resetCallCount();
+                }
             }
         } else {
             if (TraceTruffleInliningDetails.getValue()) {
@@ -105,7 +115,7 @@ class TruffleInliningImpl implements TruffleInlining {
     private static void printCallSiteInfo(InliningPolicy policy, InlinableCallSiteInfo callSite, String msg) {
         String calls = String.format("%4s/%4s", callSite.getCallCount(), policy.callerInvocationCount);
         String nodes = String.format("%3s/%3s", callSite.getInlineNodeCount(), policy.callerNodeCount);
-        OUT.printf("[truffle] %-9s %-50s |Nodes %6s |Calls %6s %7.3f |%s\n", msg, callSite.getCallSite(), nodes, calls, policy.metric(callSite), callSite.getCallSite().getCallTarget());
+        OUT.printf("[truffle] %-9s %-50s |Nodes %6s |Calls %6s %7.3f |%s\n", msg, callSite.getCallNode(), nodes, calls, policy.metric(callSite), callSite.getCallNode().getCallTarget());
     }
 
     private static final class InliningPolicy {
@@ -138,16 +148,19 @@ class TruffleInliningImpl implements TruffleInlining {
             return (double) callSite.getCallCount() / (double) callerInvocationCount;
         }
 
-        public void sortByRelevance(List<InlinableCallSiteInfo> inlinableCallSites) {
+        private static void sortByRelevance(List<InlinableCallSiteInfo> inlinableCallSites) {
             Collections.sort(inlinableCallSites, new Comparator<InlinableCallSiteInfo>() {
 
                 @Override
                 public int compare(InlinableCallSiteInfo cs1, InlinableCallSiteInfo cs2) {
-                    int result = (isWorthInlining(cs2) ? 1 : 0) - (isWorthInlining(cs1) ? 1 : 0);
-                    if (result == 0) {
-                        return Double.compare(metric(cs2), metric(cs1));
+                    boolean cs1Worth = cs1.isWorth();
+                    boolean cs2Worth = cs2.isWorth();
+                    if (cs1Worth && cs2Worth) {
+                        return Double.compare(cs2.getScore(), cs1.getScore());
+                    } else if (cs1Worth ^ cs2Worth) {
+                        return cs1Worth ? -1 : 1;
                     }
-                    return result;
+                    return 0;
                 }
             });
         }
@@ -155,16 +168,20 @@ class TruffleInliningImpl implements TruffleInlining {
 
     private static final class InlinableCallSiteInfo {
 
-        private final CallNode callSite;
-        private final int callCount;
+        private final CallNode callNode;
         private final int nodeCount;
         private final int recursiveDepth;
 
-        public InlinableCallSiteInfo(CallNode callSite) {
-            assert callSite.isInlinable();
-            this.callSite = callSite;
-            this.callCount = CallNode.internalGetCallCount(callSite);
-            RootCallTarget target = (RootCallTarget) callSite.getCallTarget();
+        private int callCount;
+        private boolean worth;
+        private double score;
+
+        @SuppressWarnings("unused")
+        public InlinableCallSiteInfo(InliningPolicy policy, CallNode callNode) {
+            assert callNode.isInlinable();
+            this.callNode = callNode;
+            RootCallTarget target = (RootCallTarget) callNode.getCallTarget();
+
             this.nodeCount = target.getRootNode().getInlineNodeCount();
             this.recursiveDepth = calculateRecursiveDepth();
         }
@@ -173,14 +190,31 @@ class TruffleInliningImpl implements TruffleInlining {
             return recursiveDepth;
         }
 
+        public void refresh(InliningPolicy policy) {
+            this.callCount = callNode.getCompilerCallView().getCallCount();
+            this.worth = policy.isWorthInlining(this);
+            if (worth) {
+                this.score = policy.metric(this);
+            }
+            // TODO shall we refresh the node count as well?
+        }
+
+        public boolean isWorth() {
+            return worth;
+        }
+
+        public double getScore() {
+            return score;
+        }
+
         private int calculateRecursiveDepth() {
             int depth = 0;
 
-            Node parent = callSite.getParent();
+            Node parent = callNode.getParent();
             while (parent != null) {
                 if (parent instanceof RootNode) {
                     RootNode root = ((RootNode) parent);
-                    if (root.getCallTarget() == callSite.getCallTarget()) {
+                    if (root.getCallTarget() == callNode.getCallTarget()) {
                         depth++;
                     }
                     parent = root.getParentInlinedCall();
@@ -191,8 +225,8 @@ class TruffleInliningImpl implements TruffleInlining {
             return depth;
         }
 
-        public CallNode getCallSite() {
-            return callSite;
+        public CallNode getCallNode() {
+            return callNode;
         }
 
         public int getCallCount() {
@@ -204,7 +238,7 @@ class TruffleInliningImpl implements TruffleInlining {
         }
     }
 
-    static List<InlinableCallSiteInfo> getInlinableCallSites(final RootCallTarget target) {
+    private static List<InlinableCallSiteInfo> getInlinableCallSites(final InliningPolicy policy, final RootCallTarget target) {
         final ArrayList<InlinableCallSiteInfo> inlinableCallSites = new ArrayList<>();
         target.getRootNode().accept(new NodeVisitor() {
 
@@ -212,9 +246,16 @@ class TruffleInliningImpl implements TruffleInlining {
             public boolean visit(Node node) {
                 if (node instanceof CallNode) {
                     CallNode callNode = (CallNode) node;
+
                     if (!callNode.isInlined()) {
                         if (callNode.isInlinable()) {
-                            inlinableCallSites.add(new InlinableCallSiteInfo(callNode));
+                            CompilerCallView view = callNode.getCompilerCallView();
+                            InlinableCallSiteInfo info = (InlinableCallSiteInfo) view.load();
+                            if (info == null) {
+                                info = new InlinableCallSiteInfo(policy, callNode);
+                                view.store(info);
+                            }
+                            inlinableCallSites.add(info);
                         }
                     } else {
                         callNode.getInlinedRoot().accept(this);
@@ -223,6 +264,11 @@ class TruffleInliningImpl implements TruffleInlining {
                 return true;
             }
         });
+        refresh(policy, inlinableCallSites);
         return inlinableCallSites;
+    }
+
+    static List<InlinableCallSiteInfo> getInlinableCallSites(final OptimizedCallTarget target, final RootCallTarget root) {
+        return getInlinableCallSites(new InliningPolicy(target), root);
     }
 }
