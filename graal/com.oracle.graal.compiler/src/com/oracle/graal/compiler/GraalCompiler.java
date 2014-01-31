@@ -276,6 +276,17 @@ public class GraalCompiler {
         } catch (Throwable e) {
             throw Debug.handle(e);
         }
+
+        try (Scope s = Debug.scope("ControlFlowOptimizations")) {
+            EdgeMoveOptimizer.optimize(lir);
+            ControlFlowOptimizer.optimize(lir);
+            RedundantMoveElimination.optimize(lir, frameMap, lirGen.getGraph().method());
+            NullCheckOptimizer.optimize(lir, target.implicitNullCheckLimit);
+
+            Debug.dump(lir, "After control flow optimization");
+        } catch (Throwable e) {
+            throw Debug.handle(e);
+        }
         return lirGen;
     }
 
