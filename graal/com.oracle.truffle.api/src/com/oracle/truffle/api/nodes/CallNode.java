@@ -102,7 +102,7 @@ public abstract class CallNode extends Node {
      */
     public static CallNode create(CallTarget target) {
         if (isInlinable(target)) {
-            return new InlinableCallNode(target);
+            return new InlinableCallNode((RootCallTarget) target);
         } else {
             return new DefaultCallNode(target);
         }
@@ -111,26 +111,27 @@ public abstract class CallNode extends Node {
     /**
      * Warning: this is internal API and may change without notice.
      */
-    public static int internalGetCallCount(CallNode callNode) {
-        if (callNode.isInlinable() && !callNode.isInlined()) {
-            return ((InlinableCallNode) callNode).getCallCount();
-        }
-        throw new UnsupportedOperationException();
+    public interface CompilerCallView {
+
+        int getCallCount();
+
+        void resetCallCount();
+
+        void store(Object value);
+
+        Object load();
     }
 
     /**
      * Warning: this is internal API and may change without notice.
      */
-    public static void internalResetCallCount(CallNode callNode) {
-        if (callNode.isInlinable() && !callNode.isInlined()) {
-            ((InlinableCallNode) callNode).resetCallCount();
-            return;
-        }
+    public CompilerCallView getCompilerCallView() {
+        return null;
     }
 
     private static boolean isInlinable(CallTarget callTarget) {
-        if (callTarget instanceof DefaultCallTarget) {
-            return (((DefaultCallTarget) callTarget).getRootNode()).isInlinable();
+        if (callTarget instanceof RootCallTarget) {
+            return (((RootCallTarget) callTarget).getRootNode()).isInlinable();
         }
         return false;
     }
@@ -168,11 +169,11 @@ public abstract class CallNode extends Node {
 
     }
 
-    static final class InlinableCallNode extends CallNode {
+    static final class InlinableCallNode extends CallNode implements CompilerCallView {
 
         private int callCount;
 
-        public InlinableCallNode(CallTarget target) {
+        public InlinableCallNode(RootCallTarget target) {
             super(target);
         }
 
@@ -208,14 +209,29 @@ public abstract class CallNode extends Node {
             return true;
         }
 
+        @Override
+        public CompilerCallView getCompilerCallView() {
+            return this;
+        }
+
         /* Truffle internal API. */
-        int getCallCount() {
+        public int getCallCount() {
             return callCount;
         }
 
         /* Truffle internal API. */
-        void resetCallCount() {
+        public void resetCallCount() {
             callCount = 0;
+        }
+
+        private Object storedCompilerInfo;
+
+        public void store(Object value) {
+            this.storedCompilerInfo = value;
+        }
+
+        public Object load() {
+            return storedCompilerInfo;
         }
 
     }
