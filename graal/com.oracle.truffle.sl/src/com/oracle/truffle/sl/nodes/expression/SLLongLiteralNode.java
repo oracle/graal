@@ -26,6 +26,11 @@ import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.sl.nodes.*;
 
+/**
+ * Constant literal for a primitive {@code long} value. The unboxed value can be returned when the
+ * parent expects a long value and calls {@link SLLongLiteralNode#executeLong}. In the generic case,
+ * the primitive value is automatically boxed by Java.
+ */
 @NodeInfo(shortName = "const")
 public final class SLLongLiteralNode extends SLExpressionNode {
 

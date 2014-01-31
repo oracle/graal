@@ -29,6 +29,9 @@ import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.sl.nodes.*;
 
+/**
+ * This class is similar to the extensively documented {@link SLAddNode}.
+ */
 @NodeInfo(shortName = "*")
 public abstract class SLMulNode extends SLBinaryNode {
 

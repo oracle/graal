@@ -28,6 +28,10 @@ import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.sl.nodes.*;
 
+/**
+ * Constant literal for a arbitrary-precision number that exceeds the range of
+ * {@link SLLongLiteralNode}.
+ */
 @NodeInfo(shortName = "const")
 public final class SLBigIntegerLiteralNode extends SLExpressionNode {
 

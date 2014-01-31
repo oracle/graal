@@ -96,7 +96,7 @@ final class SLDirectDispatchNode extends SLAbstractDispatchNode {
 
             } catch (InvalidAssumptionException ex) {
                 /*
-                 * The function has been redefined. Remove ourselfs from the polymorphic inline
+                 * The function has been redefined. Remove ourself from the polymorphic inline
                  * cache, so that we fail the check only once. Note that this replacement has subtle
                  * semantics: we are changing a node in the tree that is currently executed. This is
                  * only safe because we know that after the call to replace(), there is no more code

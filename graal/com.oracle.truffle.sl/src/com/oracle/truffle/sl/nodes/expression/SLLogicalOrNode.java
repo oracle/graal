@@ -26,6 +26,9 @@ import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.sl.nodes.*;
 
+/**
+ * This class is similar to the {@link SLLogicalAndNode}.
+ */
 @NodeInfo(shortName = "||")
 @SuppressWarnings("unused")
 public abstract class SLLogicalOrNode extends SLBinaryNode {

@@ -28,6 +28,9 @@ import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.sl.nodes.*;
 
+/**
+ * This class is similar to the {@link SLLessThanNode}.
+ */
 @NodeInfo(shortName = "<=")
 public abstract class SLLessOrEqualNode extends SLBinaryNode {
 

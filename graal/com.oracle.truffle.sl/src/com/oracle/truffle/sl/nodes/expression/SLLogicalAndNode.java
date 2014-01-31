@@ -26,15 +26,32 @@ import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.sl.nodes.*;
 
+/**
+ * This class declares specializations similar to the extensively documented {@link SLAddNode}. It
+ * uses one additional feature of the Truffle DSL: {@link ShortCircuit}.
+ * <p>
+ * Logical operations in SL use short circuit evaluation: if the evaluation of the left operand
+ * already decides the result of the operation, the right operand must not be executed. This is
+ * expressed in the Truffle DSL via a method annotated with {@link ShortCircuit}, which returns
+ * whether a child needs to be executed based on the result of already executed children.
+ */
 @NodeInfo(shortName = "&&")
 @SuppressWarnings("unused")
 public abstract class SLLogicalAndNode extends SLBinaryNode {
 
+    /**
+     * This method is called after the left child was evaluated, but before the right child is
+     * evaluated. The right child is only evaluated when the return value is {code true}.
+     */
     @ShortCircuit("rightNode")
     protected boolean needsRightNode(boolean left) {
         return left;
     }
 
+    /**
+     * Similar to {@link #needsRightNode(boolean)}, but for generic cases where the type of the left
+     * child is not known.
+     */
     @ShortCircuit("rightNode")
     protected boolean needsRightNode(Object left) {
         return left instanceof Boolean && needsRightNode(((Boolean) left).booleanValue());

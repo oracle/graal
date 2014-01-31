@@ -33,7 +33,7 @@ import com.oracle.truffle.sl.runtime.*;
  * and setting it in a constructor, we use the Truffle DSL annotation {@link NodeField} that
  * generates the field and constructor automatically.
  * <p>
- * The builitin functions are registered in {@link SLContext#installBuiltins}. Every builtin node
+ * The builtin functions are registered in {@link SLContext#installBuiltins}. Every builtin node
  * subclass is instantiated there, wrapped into a function, and added to the
  * {@link SLFunctionRegistry}. This ensures that builtin functions can be called like user-defined
  * functions; there is no special function lookup or call node for builtin functions.

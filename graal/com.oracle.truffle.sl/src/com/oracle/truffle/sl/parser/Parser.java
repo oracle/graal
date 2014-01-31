@@ -145,17 +145,17 @@ public class Parser {
 			}
 		}
 		Expect(7);
-		SLStatementNode body = Block();
+		SLStatementNode body = Block(false);
 		factory.finishFunction(body); 
 	}
 
-	SLStatementNode  Block() {
+	SLStatementNode  Block(boolean inLoop) {
 		SLStatementNode  result;
 		factory.startBlock();
 		List<SLStatementNode> body = new ArrayList<>(); 
 		Expect(8);
 		while (StartOf(1)) {
-			SLStatementNode s = Statement();
+			SLStatementNode s = Statement(inLoop);
 			body.add(s); 
 		}
 		Expect(9);
@@ -163,7 +163,7 @@ public class Parser {
 		return result;
 	}
 
-	SLStatementNode  Statement() {
+	SLStatementNode  Statement(boolean inLoop) {
 		SLStatementNode  result;
 		result = null; 
 		switch (la.kind) {
@@ -173,18 +173,18 @@ public class Parser {
 		}
 		case 10: {
 			Get();
-			result = factory.createBreak(t); 
+			if (inLoop) { result = factory.createBreak(t); } else { SemErr("break used outside of loop"); } 
 			Expect(11);
 			break;
 		}
 		case 12: {
 			Get();
-			result = factory.createContinue(t); 
+			if (inLoop) { result = factory.createContinue(t); } else { SemErr("continue used outside of loop"); } 
 			Expect(11);
 			break;
 		}
 		case 14: {
-			result = IfStatement();
+			result = IfStatement(inLoop);
 			break;
 		}
 		case 16: {
@@ -208,23 +208,23 @@ public class Parser {
 		Token whileToken = t; 
 		SLExpressionNode condition = Expression();
 		Expect(7);
-		SLStatementNode body = Block();
+		SLStatementNode body = Block(true);
 		result = factory.createWhile(whileToken, condition, body); 
 		return result;
 	}
 
-	SLStatementNode  IfStatement() {
+	SLStatementNode  IfStatement(boolean inLoop) {
 		SLStatementNode  result;
 		Expect(14);
 		Expect(5);
 		Token ifToken = t; 
 		SLExpressionNode condition = Expression();
 		Expect(7);
-		SLStatementNode thenPart = Block();
+		SLStatementNode thenPart = Block(inLoop);
 		SLStatementNode elsePart = null; 
 		if (la.kind == 15) {
 			Get();
-			elsePart = Block();
+			elsePart = Block(inLoop);
 		}
 		result = factory.createIf(ifToken, condition, thenPart, elsePart); 
 		return result;

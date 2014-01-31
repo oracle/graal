@@ -26,6 +26,12 @@ import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.sl.nodes.*;
 
+/**
+ * Implementation of the SL break statement. We need to unwind an unknown number of interpreter
+ * frames that are between this {@link SLBreakNode} and the {@link SLWhileNode} of the loop we are
+ * breaking out. This is done by throwing an {@link SLBreakException exception} that is caught by
+ * the {@link SLWhileNode#executeVoid loop node}.
+ */
 @NodeInfo(shortName = "break")
 public final class SLBreakNode extends SLStatementNode {
 

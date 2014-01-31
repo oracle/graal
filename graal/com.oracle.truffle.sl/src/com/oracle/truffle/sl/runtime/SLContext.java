@@ -89,7 +89,7 @@ public final class SLContext {
     }
 
     /**
-     * Adds all builitin functions to the {@link SLFunctionRegistry}. This method lists all
+     * Adds all builtin functions to the {@link SLFunctionRegistry}. This method lists all
      * {@link SLBuiltinNode builtin implementation classes}.
      */
     private void installBuiltins() {

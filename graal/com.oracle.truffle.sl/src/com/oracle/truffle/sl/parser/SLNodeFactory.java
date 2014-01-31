@@ -36,8 +36,17 @@ import com.oracle.truffle.sl.nodes.expression.*;
 import com.oracle.truffle.sl.nodes.local.*;
 import com.oracle.truffle.sl.runtime.*;
 
+/**
+ * Helper class used by the SL {@link Parser} to create nodes. The code is factored out of the
+ * automatically generated parser to keep the attributed grammar of SL small.
+ */
 public class SLNodeFactory {
 
+    /**
+     * Local variable names that are visible in the current block. Variables are not visible outside
+     * of their defining block, to prevent the usage of undefined variables. Because of that, we can
+     * decide during parsing if a name references a local variable or is a function name.
+     */
     static class LexicalScope {
         protected final LexicalScope outer;
         protected final Map<String, FrameSlot> locals;

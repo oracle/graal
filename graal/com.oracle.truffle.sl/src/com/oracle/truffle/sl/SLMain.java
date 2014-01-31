@@ -116,18 +116,21 @@ public class SLMain {
     /**
      * The main entry point. Use the mx command "mx sl" to run it with the correct class path setup.
      */
-    public static void main(String[] args) {
+    public static void main(String[] args) throws IOException {
+        SourceManager sourceManager = new SourceManager();
+
+        Source source;
         if (args.length == 0) {
-            throw new SLException("SL source file must be specified as the first argument");
+            source = sourceManager.get("stdin", System.in);
+        } else {
+            source = sourceManager.get(args[0]);
         }
-        String fileName = args[0];
+
         int repeats = 1;
         if (args.length >= 2) {
             repeats = Integer.parseInt(args[1]);
         }
 
-        SourceManager sourceManager = new SourceManager();
-        Source source = sourceManager.get(fileName);
         SLContext context = new SLContext(sourceManager, new BufferedReader(new InputStreamReader(System.in)), System.out);
         run(context, source, System.out, repeats);
     }

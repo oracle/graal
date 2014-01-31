@@ -26,15 +26,32 @@ import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.sl.nodes.*;
 
+/**
+ * A statement node that just executes a list of other statements.
+ */
 @NodeInfo(shortName = "block")
 public class SLBlockNode extends SLStatementNode {
 
+    /**
+     * The array of child nodes. The annotation {@link com.oracle.truffle.api.nodes.Node.Children
+     * Children} informs Truffle that the field contains multiple children. It is a Truffle
+     * requirement that the field is {@code final} and an array of nodes.
+     */
     @Children private final SLStatementNode[] bodyNodes;
 
     public SLBlockNode(SLStatementNode[] bodyNodes) {
+        /*
+         * It is a Truffle requirement to call adoptChildren(), which performs all the necessary
+         * steps to add the new children to the node tree.
+         */
         this.bodyNodes = adoptChildren(bodyNodes);
     }
 
+    /**
+     * Execute all child statements. The annotation {@link ExplodeLoop} triggers full unrolling of
+     * the loop during compilation. This allows the {@link SLStatementNode#executeVoid} method of
+     * all children to be inlined.
+     */
     @Override
     @ExplodeLoop
     public void executeVoid(VirtualFrame frame) {

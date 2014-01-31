@@ -26,6 +26,10 @@ import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.sl.nodes.*;
 
+/**
+ * Example of a simple unary node that uses type specialization. See {@link SLAddNode} for
+ * information on specializations.
+ */
 @NodeChild("valueNode")
 @NodeInfo(shortName = "!")
 public abstract class SLLogicalNotNode extends SLExpressionNode {

@@ -27,6 +27,13 @@ import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.sl.nodes.*;
 import com.oracle.truffle.sl.runtime.*;
 
+/**
+ * Implementation of the SL return statement. We need to unwind an unknown number of interpreter
+ * frames that are between this {@link SLReturnNode} and the {@link SLFunctionBodyNode} of the
+ * method we are exiting. This is done by throwing an {@link SLReturnException exception} that is
+ * caught by the {@link SLFunctionBodyNode#executeGeneric function body}. The exception transports
+ * the return value.
+ */
 @NodeInfo(shortName = "return")
 public class SLReturnNode extends SLStatementNode {
 
@@ -42,6 +49,7 @@ public class SLReturnNode extends SLStatementNode {
         if (valueNode != null) {
             result = valueNode.executeGeneric(frame);
         } else {
+            /* Return statement that was not followed by an expression, so return the SL null value. */
             result = SLNull.SINGLETON;
         }
         throw new SLReturnException(result);

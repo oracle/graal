@@ -26,6 +26,9 @@ import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.sl.nodes.*;
 
+/**
+ * Constant literal for a String value.
+ */
 @NodeInfo(shortName = "const")
 public final class SLStringLiteralNode extends SLExpressionNode {
 

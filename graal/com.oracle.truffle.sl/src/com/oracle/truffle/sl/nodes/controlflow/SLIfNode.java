@@ -30,14 +30,33 @@ import com.oracle.truffle.sl.nodes.*;
 
 @NodeInfo(shortName = "if")
 public class SLIfNode extends SLStatementNode {
+
+    /**
+     * The condition of the {@code if}. This in a {@link SLExpressionNode} because we require a
+     * result value. We do not have a node type that can only return a {@code boolean} value, so
+     * {@link #evaluateCondition executing the condition} can lead to a type error.
+     */
     @Child private SLExpressionNode conditionNode;
+
+    /** Statement (or {@SLBlockNode block}) executed when the condition is true. */
     @Child private SLStatementNode thenPartNode;
+
+    /** Statement (or {@SLBlockNode block}) executed when the condition is false. */
     @Child private SLStatementNode elsePartNode;
 
+    /**
+     * Profiling information, collected by the interpreter, capturing whether the then-branch was
+     * used (analogously for the {@link #elseTaken else-branch}). This allows the compiler to
+     * generate better code for conditions that are always true or always false.
+     */
     private final BranchProfile thenTaken = new BranchProfile();
     private final BranchProfile elseTaken = new BranchProfile();
 
     public SLIfNode(SLExpressionNode conditionNode, SLStatementNode thenPartNode, SLStatementNode elsePartNode) {
+        /*
+         * It is a Truffle requirement to call adoptChild(), which performs all the necessary steps
+         * to add the new child to the node tree.
+         */
         this.conditionNode = adoptChild(conditionNode);
         this.thenPartNode = adoptChild(thenPartNode);
         this.elsePartNode = adoptChild(elsePartNode);
@@ -46,11 +65,15 @@ public class SLIfNode extends SLStatementNode {
     @Override
     public void executeVoid(VirtualFrame frame) {
         if (evaluateCondition(frame)) {
+            /* In the interpreter, record profiling information that the then-branch was used. */
             thenTaken.enter();
+            /* Execute the then-branch. */
             thenPartNode.executeVoid(frame);
         } else {
+            /* In the interpreter, record profiling information that the else-branch was used. */
+            elseTaken.enter();
+            /* Execute the else-branch (which is optional according to the SL syntax). */
             if (elsePartNode != null) {
-                elseTaken.enter();
                 elsePartNode.executeVoid(frame);
             }
         }
@@ -59,8 +82,8 @@ public class SLIfNode extends SLStatementNode {
     private boolean evaluateCondition(VirtualFrame frame) {
         try {
             /*
-             * The condition must evaluate to a boolean value, so we call boolean-specialized
-             * method.
+             * The condition must evaluate to a boolean value, so we call the boolean-specialized
+             * execute method.
              */
             return conditionNode.executeBoolean(frame);
         } catch (UnexpectedResultException ex) {

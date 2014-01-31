@@ -28,6 +28,10 @@ import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.sl.nodes.*;
 
+/**
+ * This class is similar to the extensively documented {@link SLAddNode}. The only difference: the
+ * specialized methods return {@code boolean} instead of the input types.
+ */
 @NodeInfo(shortName = "<")
 public abstract class SLLessThanNode extends SLBinaryNode {
 

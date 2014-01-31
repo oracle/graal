@@ -24,6 +24,11 @@ package com.oracle.truffle.sl.nodes.controlflow;
 
 import com.oracle.truffle.api.nodes.*;
 
+/**
+ * Exception thrown by the {@link SLReturnNode return statement} and caught by the
+ * {@link SLFunctionBodyNode function body}. The exception transports the return value in its
+ * {@link #result} field.
+ */
 public final class SLReturnException extends ControlFlowException {
 
     private static final long serialVersionUID = 4073191346281369231L;

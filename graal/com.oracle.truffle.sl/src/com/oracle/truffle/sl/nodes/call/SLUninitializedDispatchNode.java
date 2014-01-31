@@ -65,13 +65,13 @@ final class SLUninitializedDispatchNode extends SLAbstractDispatchNode {
             /* Extend the inline cache. Allocate the new cache entry, and the new end of the cache. */
             SLAbstractDispatchNode next = new SLUninitializedDispatchNode();
             SLAbstractDispatchNode direct = new SLDirectDispatchNode(next, function);
-            /* Replace ourselfs with the new cache entry. */
+            /* Replace ourself with the new cache entry. */
             specialized = replace(direct);
 
         } else {
             /* Cache size exceeded, fall back to a single generic dispatch node. */
             SLAbstractDispatchNode generic = new SLGenericDispatchNode();
-            /* Replace the whole chain, not just ourselfs, with the new generic node. */
+            /* Replace the whole chain, not just ourself, with the new generic node. */
             specialized = callNode.dispatchNode.replace(generic);
         }
 

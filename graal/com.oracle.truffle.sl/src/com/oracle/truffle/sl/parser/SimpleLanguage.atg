@@ -70,34 +70,34 @@ identifier                                      (. factory.startFunction(t); .)
     }    
 ]
 ")"
-Block<out SLStatementNode body>                 (. factory.finishFunction(body); .)
+Block<out SLStatementNode body, false>          (. factory.finishFunction(body); .)
 .
 
 
 
-Block<out SLStatementNode result>
+Block<out SLStatementNode result, boolean inLoop>
 =                                               (. factory.startBlock();
                                                    List<SLStatementNode> body = new ArrayList<>(); .)
 "{" 
 {
-    Statement<out SLStatementNode s>            (. body.add(s); .)
+    Statement<out SLStatementNode s, inLoop>    (. body.add(s); .)
 }
 "}"                                             (. result = factory.finishBlock(body); .)
 .
 
 
-Statement<out SLStatementNode result>
+Statement<out SLStatementNode result, boolean inLoop>
 =                                               (. result = null; .)
 (
     WhileStatement<out result>
 |
-    "break"                                     (. result = factory.createBreak(t); .)
+    "break"                                     (. if (inLoop) { result = factory.createBreak(t); } else { SemErr("break used outside of loop"); } .)
     ";"
 |
-    "continue"                                  (. result = factory.createContinue(t); .)
+    "continue"                                  (. if (inLoop) { result = factory.createContinue(t); } else { SemErr("continue used outside of loop"); } .)
     ";"
 |   
-    IfStatement<out result>
+    IfStatement<out result, inLoop>
 |
     ReturnStatement<out result>
 |
@@ -112,20 +112,20 @@ WhileStatement<out SLStatementNode result>
 "("                                             (. Token whileToken = t; .)
 Expression<out SLExpressionNode condition>
 ")" 
-Block<out SLStatementNode body>                 (. result = factory.createWhile(whileToken, condition, body); .)
+Block<out SLStatementNode body, true>           (. result = factory.createWhile(whileToken, condition, body); .)
 .
 
 
-IfStatement<out SLStatementNode result>
+IfStatement<out SLStatementNode result, boolean inLoop>
 =
 "if" 
 "("                                             (. Token ifToken = t; .)
 Expression<out SLExpressionNode condition> 
 ")"
-Block<out SLStatementNode thenPart>             (. SLStatementNode elsePart = null; .)                             
+Block<out SLStatementNode thenPart, inLoop>     (. SLStatementNode elsePart = null; .)                             
 [
     "else" 
-    Block<out elsePart>
+    Block<out elsePart, inLoop>
 ]                                               (. result = factory.createIf(ifToken, condition, thenPart, elsePart); .)
 .
 

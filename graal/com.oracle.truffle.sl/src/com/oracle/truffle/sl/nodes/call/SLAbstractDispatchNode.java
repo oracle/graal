@@ -28,7 +28,7 @@ import com.oracle.truffle.sl.runtime.*;
 
 /**
  * Before a call is executed the first time, the dispatch node is a
- * {@link SLUninitializedDispatchNode}. During execution, the call is optimized using a polymprphic
+ * {@link SLUninitializedDispatchNode}. During execution, the call is optimized using a polymorphic
  * inline cache, i.e., a chain of {@link SLDirectDispatchNode}s. The chain is terminated by a
  * {@link SLUninitializedDispatchNode}. If the chain gets too long (longer than
  * {@link #INLINE_CACHE_SIZE}), i.e., if the call is too polymorphic, the whole chain is replaced by
