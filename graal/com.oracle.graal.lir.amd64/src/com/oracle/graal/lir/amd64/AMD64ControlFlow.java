@@ -75,6 +75,9 @@ public class AMD64ControlFlow {
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
             if (crb.isSuccessorEdge(trueDestination)) {
                 jcc(masm, true, falseDestination);
+            } else if (falseDestination.getSourceBlock() == falseDestination.getTargetBlock()) {
+                jcc(masm, true, falseDestination);
+                masm.jmp(trueDestination.label());
             } else {
                 jcc(masm, false, trueDestination);
                 if (!crb.isSuccessorEdge(falseDestination)) {
