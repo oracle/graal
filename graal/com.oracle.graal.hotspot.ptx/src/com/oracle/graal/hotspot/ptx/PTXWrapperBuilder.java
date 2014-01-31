@@ -253,11 +253,7 @@ public class PTXWrapperBuilder extends GraphKit {
         ForeignCallNode result = append(new ForeignCallNode(providers.getForeignCalls(), CALL_KERNEL, launchArgsArray));
         result.setDeoptimizationState(fs);
 
-        ConstantNode isObjectResultArg = ConstantNode.forBoolean(returnKind == Kind.Object, getGraph());
-        InvokeNode handlePendingException = createInvoke(getClass(), "handlePendingException", args.get(Thread), isObjectResultArg);
-        handlePendingException.setStateAfter(fs);
         InvokeNode getObjectResult = null;
-
         ValueNode returnValue;
         switch (returnKind) {
             case Void:
@@ -354,19 +350,6 @@ public class PTXWrapperBuilder extends GraphKit {
             DeoptimizeNode.deopt(InvalidateRecompile, RuntimeConstraint);
         }
         return start;
-    }
-
-    /**
-     * Snippet invoked upon return from the kernel to handle any pending exceptions.
-     */
-    @Snippet
-    private static void handlePendingException(Word thread, boolean isObjectResult) {
-        if (clearPendingException(thread)) {
-            if (isObjectResult) {
-                getAndClearObjectResult(thread);
-            }
-            DeoptimizeNode.deopt(DeoptimizationAction.None, RuntimeConstraint);
-        }
     }
 
     /**
