@@ -134,7 +134,7 @@ public class ObjectPTXTest extends PTXTest {
 
     @Test
     public void test7() {
-        for (double d : new double[]{Double.MIN_VALUE, Double.MIN_NORMAL, Double.NaN, Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY - 11.45D, -0.0D, 0.0D, 2, 10, Double.MAX_VALUE}) {
+        for (double d : new double[]{Double.MIN_VALUE, Double.MIN_NORMAL, Double.NaN, Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY, -11.45D, -0.0D, 0.0D, 2, 10, Double.MAX_VALUE}) {
             A a = new A();
             a.d = d;
             test("testDouble", d * 2, a);
