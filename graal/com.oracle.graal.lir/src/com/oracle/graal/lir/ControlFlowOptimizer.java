@@ -68,6 +68,16 @@ public final class ControlFlowOptimizer {
         return instructions.size() == 2 && !instructions.get(instructions.size() - 1).hasState() && !block.isExceptionEntry();
     }
 
+    private static void alignBlock(LIR lir, Block block) {
+        if (!block.isAligned()) {
+            block.setAlign(true);
+            List<LIRInstruction> instructions = lir.lir(block);
+            assert instructions.get(0) instanceof StandardOp.LabelOp : "first instruction must always be a label";
+            StandardOp.LabelOp label = (StandardOp.LabelOp) instructions.get(0);
+            instructions.set(0, new StandardOp.LabelOp(label.getLabel(), true));
+        }
+    }
+
     private static void deleteEmptyBlocks(LIR lir, List<Block> blocks) {
         assert verifyBlocks(lir, blocks);
         Iterator<Block> iterator = blocks.iterator();
@@ -87,6 +97,11 @@ public final class ControlFlowOptimizer {
                 }
                 block.getSuccessors().clear();
                 block.getPredecessors().clear();
+
+                if (block.isAligned()) {
+                    alignBlock(lir, other);
+                }
+
                 Debug.metric("BlocksDeleted").increment();
                 iterator.remove();
             }
