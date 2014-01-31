@@ -114,6 +114,16 @@ public abstract class RootNode extends Node {
     }
 
     /**
+     * Reports the execution count of a loop that is a child of this node. The optimization
+     * heuristics can use the loop count to guide compilation and inlining.
+     */
+    public void reportLoopCount(int count) {
+        if (getCallTarget() instanceof LoopCountReceiver) {
+            ((LoopCountReceiver) getCallTarget()).reportLoopCount(count);
+        }
+    }
+
+    /**
      * Executes this function using the specified frame and returns the result value.
      * 
      * @param frame the frame of the currently executing guest language method
