@@ -348,8 +348,13 @@ public abstract class CommandLineParser {
      * Print copyright information.
      */
     private static void copyright(PrintStream out) {
-        out.println("Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.");
-        out.println("ORACLE PROPRIETARY/CONFIDENTIAL. Use is subject to license terms.");
+        out.println("Copyright (c) 2013, 2014 Oracle and/or its affiliates. All rights reserved. This");
+        out.println("code is released under a tri EPL/GPL/LGPL license. You can use it,");
+        out.println("redistribute it and/or modify it under the terms of the:");
+        out.println();
+        out.println("Eclipse Public License version 1.0");
+        out.println("GNU General Public License version 2");
+        out.println("GNU Lesser General Public License version 2.1");
     }
 
 }
