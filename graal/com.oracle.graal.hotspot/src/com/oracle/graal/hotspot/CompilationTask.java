@@ -49,7 +49,7 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.tiers.*;
 
-public class CompilationTask implements Runnable {
+public class CompilationTask implements Runnable, Comparable {
 
     public static final ThreadLocal<Boolean> withinEnqueue = new ThreadLocal<Boolean>() {
 
@@ -60,7 +60,7 @@ public class CompilationTask implements Runnable {
     };
 
     private enum CompilationStatus {
-        Queued, Running
+        Queued, Running, Finished
     }
 
     private final HotSpotBackend backend;
@@ -71,12 +71,22 @@ public class CompilationTask implements Runnable {
 
     private StructuredGraph graph;
 
-    public CompilationTask(HotSpotBackend backend, HotSpotResolvedJavaMethod method, int entryBCI, int id) {
-        assert id >= 0;
+    private static final AtomicLong uniqueTaskIds = new AtomicLong();
+
+    /**
+     * A long representing the sequence number of this task. Used for sorting the compile queue.
+     */
+    private long taskId;
+
+    private boolean blocking;
+
+    public CompilationTask(HotSpotBackend backend, HotSpotResolvedJavaMethod method, int entryBCI, boolean blocking) {
         this.backend = backend;
         this.method = method;
         this.entryBCI = entryBCI;
-        this.id = id;
+        this.id = backend.getRuntime().getCompilerToVM().allocateCompileId(method, entryBCI);
+        this.blocking = blocking;
+        this.taskId = uniqueTaskIds.incrementAndGet();
         this.status = new AtomicReference<>(CompilationStatus.Queued);
     }
 
@@ -101,7 +111,40 @@ public class CompilationTask implements Runnable {
                 method.setCurrentTask(null);
             }
             withinEnqueue.set(Boolean.TRUE);
+            status.set(CompilationStatus.Finished);
+            synchronized (this) {
+                notifyAll();
+            }
         }
+    }
+
+    /**
+     * Block waiting till the compilation completes.
+     */
+    public synchronized void block() {
+        while (status.get() != CompilationStatus.Finished) {
+            try {
+                wait();
+            } catch (InterruptedException e) {
+                // Ignore and retry
+            }
+        }
+    }
+
+    /**
+     * Sort blocking tasks before non-blocking ones and then by lowest taskId within the group.
+     */
+    public int compareTo(Object o) {
+        if (!(o instanceof CompilationTask)) {
+            return 1;
+        }
+        CompilationTask task2 = (CompilationTask) o;
+        if (this.blocking != task2.blocking) {
+            // Blocking CompilationTasks are always higher than CompilationTasks
+            return task2.blocking ? 1 : -1;
+        }
+        // Within the two groups sort by sequence id, so they are processed in insertion order.
+        return this.taskId > task2.taskId ? 1 : -1;
     }
 
     /**

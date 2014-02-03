@@ -39,9 +39,7 @@ import com.oracle.graal.bytecode.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.HotSpotOptions.OptionConsumer;
-import com.oracle.graal.hotspot.bridge.*;
 import com.oracle.graal.hotspot.meta.*;
-import com.oracle.graal.nodes.*;
 import com.oracle.graal.options.*;
 import com.oracle.graal.options.OptionValue.OverrideScope;
 import com.oracle.graal.phases.tiers.*;
@@ -147,7 +145,6 @@ public final class CompileTheWorld {
 
     // Some runtime instances we need.
     private final HotSpotGraalRuntime runtime = runtime();
-    private final VMToCompilerImpl vmToCompiler = (VMToCompilerImpl) runtime.getVMToCompiler();
 
     /** List of Zip/Jar files to compile (see {@link #CompileTheWorldClasspath}. */
     private final String files;
@@ -320,8 +317,8 @@ public final class CompileTheWorld {
 
     class CTWCompilationTask extends CompilationTask {
 
-        CTWCompilationTask(HotSpotBackend backend, HotSpotResolvedJavaMethod method, int id) {
-            super(backend, method, INVOCATION_ENTRY_BCI, id);
+        CTWCompilationTask(HotSpotBackend backend, HotSpotResolvedJavaMethod method) {
+            super(backend, method, INVOCATION_ENTRY_BCI, false);
         }
 
         /**
@@ -351,9 +348,8 @@ public final class CompileTheWorld {
         try {
             long start = System.currentTimeMillis();
 
-            int id = vmToCompiler.allocateCompileTaskId(method, StructuredGraph.INVOCATION_ENTRY_BCI);
             HotSpotBackend backend = runtime.getHostBackend();
-            CompilationTask task = new CTWCompilationTask(backend, method, id);
+            CompilationTask task = new CTWCompilationTask(backend, method);
             task.runCompilation(false);
 
             compileTime += (System.currentTimeMillis() - start);
