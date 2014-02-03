@@ -73,7 +73,6 @@ public class TruffleCompilerImpl implements TruffleCompiler {
 
     public static final OptimisticOptimizations Optimizations = OptimisticOptimizations.ALL.remove(OptimisticOptimizations.Optimization.UseExceptionProbability,
                     OptimisticOptimizations.Optimization.RemoveNeverExecutedCode, OptimisticOptimizations.Optimization.UseTypeCheckedInlining, OptimisticOptimizations.Optimization.UseTypeCheckHints);
-    private static final OptimisticOptimizations OptimizationsGraal = OptimisticOptimizations.ALL.remove(OptimisticOptimizations.Optimization.UseExceptionProbability);
 
     public TruffleCompilerImpl() {
         this.runtime = Graal.getRequiredCapability(RuntimeProvider.class);
@@ -225,7 +224,7 @@ public class TruffleCompilerImpl implements TruffleCompiler {
             CodeCacheProvider codeCache = providers.getCodeCache();
             CallingConvention cc = getCallingConvention(codeCache, Type.JavaCallee, graph.method(), false);
             CompilationResult compilationResult = new CompilationResult(name);
-            result = compileGraph(graph, cc, graph.method(), providers, backend, codeCache.getTarget(), null, createGraphBuilderSuite(), OptimizationsGraal, getProfilingInfo(graph), speculationLog,
+            result = compileGraph(graph, cc, graph.method(), providers, backend, codeCache.getTarget(), null, createGraphBuilderSuite(), Optimizations, getProfilingInfo(graph), speculationLog,
                             suites, false, compilationResult, CompilationResultBuilderFactory.Default);
         } catch (Throwable e) {
             throw Debug.handle(e);
