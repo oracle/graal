@@ -37,11 +37,17 @@ public final class UnsupportedSpecializationException extends RuntimeException {
     private static final long serialVersionUID = -2122892028296836269L;
 
     private final Node node;
+    private final Node[] suppliedNodes;
     private final Object[] suppliedValues;
 
-    public UnsupportedSpecializationException(Node node, Object... suppliedValues) {
+    public UnsupportedSpecializationException(Node node, Node[] suppliedNodes, Object... suppliedValues) {
         super("Unexpected values provided for " + node + ": " + Arrays.toString(suppliedValues));
+        Objects.requireNonNull(suppliedNodes, "The suppliedNodes parameter must not be null.");
+        if (suppliedNodes.length != suppliedValues.length) {
+            throw new IllegalArgumentException("The length of suppliedNodes must match the length of suppliedValues.");
+        }
         this.node = node;
+        this.suppliedNodes = suppliedNodes;
         this.suppliedValues = suppliedValues;
     }
 
@@ -53,7 +59,19 @@ public final class UnsupportedSpecializationException extends RuntimeException {
     }
 
     /**
-     * Returns the dynamic values that were supplied to the node.
+     * Returns the children of the {@link Node} returned by {@link #getNode()} which produced the
+     * values returned by {@link #getSuppliedValues()}. The array returned by
+     * {@link #getSuppliedNodes()} has the same length as the array returned by
+     * {@link #getSuppliedValues()}. Never returns null.
+     */
+    public Node[] getSuppliedNodes() {
+        return suppliedNodes;
+    }
+
+    /**
+     * Returns the dynamic values that were supplied to the node.The array returned by
+     * {@link #getSuppliedNodes()} has the same length as the array returned by
+     * {@link #getSuppliedValues()}. Never returns null.
      */
     public Object[] getSuppliedValues() {
         return suppliedValues;
