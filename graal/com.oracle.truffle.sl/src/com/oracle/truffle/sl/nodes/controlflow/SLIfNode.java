@@ -92,7 +92,7 @@ public class SLIfNode extends SLStatementNode {
              * program. We report it with the same exception that Truffle DSL generated nodes use to
              * report type errors.
              */
-            throw new UnsupportedSpecializationException(this, ex.getResult());
+            throw new UnsupportedSpecializationException(this, new Node[]{conditionNode}, ex.getResult());
         }
     }
 }

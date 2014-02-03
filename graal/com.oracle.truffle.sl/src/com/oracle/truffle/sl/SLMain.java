@@ -154,8 +154,10 @@ public class SLMain {
 
         /* Change to true if you want to see the AST on the console. */
         boolean printASTToLog = false;
+        /* Change to dump the AST to IGV over the network. */
+        boolean dumpASTToIGV = false;
 
-        printScript("before execution", context, logOutput, printASTToLog);
+        printScript("before execution", context, logOutput, printASTToLog, dumpASTToIGV);
         try {
             for (int i = 0; i < repeats; i++) {
                 long start = System.nanoTime();
@@ -176,7 +178,7 @@ public class SLMain {
             }
 
         } finally {
-            printScript("after execution", context, logOutput, printASTToLog);
+            printScript("after execution", context, logOutput, printASTToLog, dumpASTToIGV);
         }
     }
 
@@ -184,21 +186,27 @@ public class SLMain {
      * Dumps the AST of all functions to the IGV visualizer, via a socket connection. IGV can be
      * started with the mx command "mx igv". Optionally, also prints the ASTs to the console.
      */
-    private static void printScript(String groupName, SLContext context, PrintStream logOutput, boolean printASTToLog) {
-        GraphPrintVisitor graphPrinter = new GraphPrintVisitor();
-        graphPrinter.beginGroup(groupName);
-        for (SLFunction function : context.getFunctionRegistry().getFunctions()) {
-            RootCallTarget callTarget = function.getCallTarget();
-            if (callTarget != null) {
-                graphPrinter.beginGraph(function.toString()).visit(callTarget.getRootNode());
-
-                if (logOutput != null && printASTToLog) {
+    private static void printScript(String groupName, SLContext context, PrintStream logOutput, boolean printASTToLog, boolean dumpASTToIGV) {
+        if (dumpASTToIGV) {
+            GraphPrintVisitor graphPrinter = new GraphPrintVisitor();
+            graphPrinter.beginGroup(groupName);
+            for (SLFunction function : context.getFunctionRegistry().getFunctions()) {
+                RootCallTarget callTarget = function.getCallTarget();
+                if (callTarget != null) {
+                    graphPrinter.beginGraph(function.toString()).visit(callTarget.getRootNode());
+                }
+            }
+            graphPrinter.printToNetwork(true);
+        }
+        if (printASTToLog && logOutput != null) {
+            for (SLFunction function : context.getFunctionRegistry().getFunctions()) {
+                RootCallTarget callTarget = function.getCallTarget();
+                if (callTarget != null) {
                     logOutput.println("=== " + function);
                     NodeUtil.printTree(logOutput, callTarget.getRootNode());
                 }
             }
         }
-        graphPrinter.printToNetwork(true);
     }
 
     /**
@@ -223,8 +231,10 @@ public class SLMain {
         result.append(" not defined for");
 
         String sep = " ";
-        for (Object value : ex.getSuppliedValues()) {
-            if (value != null) {
+        for (int i = 0; i < ex.getSuppliedValues().length; i++) {
+            Object value = ex.getSuppliedValues()[i];
+            Node node = ex.getSuppliedNodes()[i];
+            if (node != null) {
                 result.append(sep);
                 sep = ", ";
 
@@ -238,6 +248,9 @@ public class SLMain {
                     result.append("Function ").append(value);
                 } else if (value == SLNull.SINGLETON) {
                     result.append("NULL");
+                } else if (value == null) {
+                    // value is not evaluated because of short circuit evaluation
+                    result.append("ANY");
                 } else {
                     result.append(value);
                 }
