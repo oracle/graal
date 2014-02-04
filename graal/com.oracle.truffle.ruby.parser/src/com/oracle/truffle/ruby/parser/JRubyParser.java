@@ -27,15 +27,7 @@ public class JRubyParser implements RubyParser {
 
     private long nextReturnID = 0;
 
-    private final RubyNodeInstrumenter instrumenter;
-
     public JRubyParser() {
-        this(new DefaultRubyNodeInstrumenter());
-    }
-
-    public JRubyParser(RubyNodeInstrumenter instrumenter) {
-        assert instrumenter != null;
-        this.instrumenter = instrumenter;
     }
 
     @Override
@@ -111,11 +103,8 @@ public class JRubyParser implements RubyParser {
 
         RubyNode truffleNode;
 
-        final DebugManager debugManager = context.getDebugManager();
         try {
-            if (debugManager != null) {
-                debugManager.notifyStartLoading(source);
-            }
+            context.getDebugContext().getDebugManager().notifyStartLoading(source);
 
             if (node.getBody() == null) {
                 truffleNode = new NilNode(context, null);
@@ -166,9 +155,7 @@ public class JRubyParser implements RubyParser {
             // Return the root and the frame descriptor
             return new RubyParserResult(root);
         } finally {
-            if (debugManager != null) {
-                debugManager.notifyFinishedLoading(source);
-            }
+            context.getDebugContext().getDebugManager().notifyFinishedLoading(source);
         }
     }
 
@@ -180,10 +167,6 @@ public class JRubyParser implements RubyParser {
         final long allocated = nextReturnID;
         nextReturnID++;
         return allocated;
-    }
-
-    public RubyNodeInstrumenter getNodeInstrumenter() {
-        return instrumenter;
     }
 
     private TranslatorEnvironment environmentForFrame(RubyContext context, MaterializedFrame frame) {

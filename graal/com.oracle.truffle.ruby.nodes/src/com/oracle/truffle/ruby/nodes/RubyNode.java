@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013 Oracle and/or its affiliates. All rights reserved. This
+ * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved. This
  * code is released under a tri EPL/GPL/LGPL license. You can use it,
  * redistribute it and/or modify it under the terms of the:
  *
@@ -16,7 +16,7 @@ import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.ruby.nodes.call.*;
-import com.oracle.truffle.ruby.nodes.debug.*;
+import com.oracle.truffle.ruby.nodes.instrument.*;
 import com.oracle.truffle.ruby.nodes.yield.*;
 import com.oracle.truffle.ruby.runtime.*;
 import com.oracle.truffle.ruby.runtime.core.*;

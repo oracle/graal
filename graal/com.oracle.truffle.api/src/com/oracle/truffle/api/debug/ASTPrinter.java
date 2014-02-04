@@ -22,32 +22,44 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api;
+package com.oracle.truffle.api.debug;
 
-import com.oracle.truffle.api.debug.*;
-import com.oracle.truffle.api.source.*;
+import java.io.*;
+
+import com.oracle.truffle.api.nodes.*;
 
 /**
- * Information about the runtime context of a Truffle program.
+ * Language-agnostic access to AST-based debugging support.
  * <p>
- * <strong>Disclaimer:</strong> this interface is under development and will change.
+ * <strong>WARNING:</strong> this interface is under development and will change substantially.
  */
-public interface ExecutionContext {
+public interface ASTPrinter {
 
     /**
-     * Gets the name of the language, possibly with version number. in short enough form that it
-     * might be used for an interactive prompt.
+     * Prints a textual AST display, one line per node, with nesting.
+     * 
+     * @param p
+     * @param node the root node of the display.
+     * @param maxDepth the maximum number of levels to print below the root
+     * @param markNode a node to mark with a textual arrow prefix, if present.
      */
-    String getLanguageShortName();
+    void printTree(PrintWriter p, Node node, int maxDepth, Node markNode);
 
     /**
-     * Gets access to source management services.
+     * Creates a textual AST display, one line per node, with nesting.
+     * 
+     * @param node the root node of the display.
+     * @param maxDepth the maximum number of levels to print below the root
+     * @param markNode a node to mark with a textual arrow prefix, if present.
      */
-    SourceManager getSourceManager();
+    String printTreeToString(Node node, int maxDepth, Node markNode);
 
     /**
-     * Gets access to debugging services. Returns an inert instance if no services installed.
+     * Creates a textual AST display, one line per node, with nesting.
+     * 
+     * @param node the root node of the display.
+     * @param maxDepth the maximum number of levels to print below the root
      */
-    DebugContext getDebugContext();
+    String printTreeToString(Node node, int maxDepth);
 
 }

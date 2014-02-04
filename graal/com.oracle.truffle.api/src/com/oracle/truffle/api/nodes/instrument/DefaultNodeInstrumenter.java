@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,27 +22,17 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api;
-
-import java.io.*;
+package com.oracle.truffle.api.nodes.instrument;
 
 import com.oracle.truffle.api.nodes.*;
 
 /**
- * Language-agnostic access to AST-based debugging support.
- * <p>
- * <strong>WARNING:</strong> this interface is under development and will change substantially.
+ * A no-op node instrumenter; always returns the node unproxied and unmodified.
  */
-public interface ASTPrinter {
+public class DefaultNodeInstrumenter implements NodeInstrumenter {
 
-    /**
-     * Print a textual AST display, one line per node, with nesting.
-     * 
-     * @param p
-     * @param node the root node of the display.
-     * @param maxDepth the maximum number of levels to print below the root
-     * @param markNode a node to mark with a textual arrow prefix, if present.
-     */
-    void printTree(PrintWriter p, Node node, int maxDepth, Node markNode);
+    public Node instrumentAs(Node node, NodePhylum phylum, Object... args) {
+        return node;
+    }
 
 }

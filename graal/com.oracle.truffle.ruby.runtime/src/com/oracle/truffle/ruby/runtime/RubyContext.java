@@ -15,8 +15,8 @@ import java.util.concurrent.atomic.*;
 import jnr.posix.*;
 
 import com.oracle.truffle.api.*;
+import com.oracle.truffle.api.debug.*;
 import com.oracle.truffle.api.frame.*;
-import com.oracle.truffle.api.impl.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.api.source.*;
 import com.oracle.truffle.ruby.runtime.configuration.*;
@@ -40,9 +40,8 @@ public class RubyContext implements ExecutionContext {
     private final ThreadManager threadManager;
     private final FiberManager fiberManager;
     private final AtExitManager atExitManager;
-    private final DebugManager debugManager;
     private final SourceManager sourceManager;
-    private final ASTPrinter astPrinter;
+    private DebugContext debugContext = null;
 
     private AtomicLong nextObjectID = new AtomicLong(0);
 
@@ -51,20 +50,14 @@ public class RubyContext implements ExecutionContext {
     private POSIX posix = POSIXFactory.getPOSIX();
 
     public RubyContext(RubyParser parser) {
-        this(new Configuration(new ConfigurationBuilder()), parser, null);
+        this(new Configuration(new ConfigurationBuilder()), parser);
     }
 
     public RubyContext(Configuration configuration, RubyParser parser) {
-        this(configuration, parser, null);
-    }
-
-    public RubyContext(Configuration configuration, RubyParser parser, ASTPrinter astPrinter) {
         assert configuration != null;
 
         this.configuration = configuration;
         this.parser = parser;
-        this.astPrinter = astPrinter;
-
         objectSpaceManager = new ObjectSpaceManager(this);
         traceManager = new TraceManager(this);
 
@@ -76,8 +69,6 @@ public class RubyContext implements ExecutionContext {
         atExitManager = new AtExitManager();
         sourceManager = new SourceManager();
 
-        debugManager = new DefaultDebugManager(this);
-
         // Must initialize threads before fibers
 
         threadManager = new ThreadManager(this);
@@ -88,12 +79,16 @@ public class RubyContext implements ExecutionContext {
         return "Ruby " + CoreLibrary.RUBY_VERSION;
     }
 
-    public DebugManager getDebugManager() {
-        return debugManager;
+    public SourceManager getSourceManager() {
+        return sourceManager;
     }
 
-    public ASTPrinter getASTPrinter() {
-        return astPrinter;
+    public DebugContext getDebugContext() {
+        return debugContext;
+    }
+
+    public void setDebugContext(DebugContext debugContext) {
+        this.debugContext = debugContext;
     }
 
     public void implementationMessage(String format, Object... arguments) {
@@ -155,7 +150,7 @@ public class RubyContext implements ExecutionContext {
                 configuration.getStandardOut().println("=> " + result.getResult());
 
                 existingLocals = result.getFrame();
-            } catch (BreakShellException e) {
+            } catch (KillException e) {
                 return;
             } catch (Exception e) {
                 e.printStackTrace();
@@ -179,7 +174,7 @@ public class RubyContext implements ExecutionContext {
             throw e;
         } catch (ThrowException e) {
             throw new RaiseException(context.getCoreLibrary().argumentErrorUncaughtThrow(e.getTag()));
-        } catch (BreakShellException | QuitException e) {
+        } catch (KillException | QuitException e) {
             throw e;
         } catch (Throwable e) {
             throw new RaiseException(ExceptionTranslator.translateException(this, e));
@@ -294,10 +289,6 @@ public class RubyContext implements ExecutionContext {
 
     public AtExitManager getAtExitManager() {
         return atExitManager;
-    }
-
-    public SourceManager getSourceManager() {
-        return sourceManager;
     }
 
 }

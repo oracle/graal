@@ -22,8 +22,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api;
+package com.oracle.truffle.api.debug;
 
+import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.api.nodes.instrument.*;
@@ -65,6 +66,6 @@ public interface DebugManager {
      *            not to be any kind of {@link InstrumentationNode},
      * @param frame execution frame at the site where execution suspended
      */
-    void haltedAt(Node astNode, MaterializedFrame frame);
+    void haltedAt(Node astNode, VirtualFrame frame);
 
 }

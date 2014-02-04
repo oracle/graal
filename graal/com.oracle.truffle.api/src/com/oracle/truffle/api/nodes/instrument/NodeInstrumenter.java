@@ -22,33 +22,25 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.ruby.parser;
+package com.oracle.truffle.api.nodes.instrument;
 
-import com.oracle.truffle.api.nodes.instrument.*;
-import com.oracle.truffle.ruby.nodes.*;
-import com.oracle.truffle.ruby.runtime.methods.*;
+import com.oracle.truffle.api.nodes.*;
 
-public interface RubyNodeInstrumenter {
-
-    /**
-     * Adds instrumentation support at a node that should be considered a member of
-     * {@link NodePhylum#STATEMENT}, possibly returning a new {@link InstrumentationProxyNode} that
-     * holds the original as its child.
-     */
-    RubyNode instrumentAsStatement(RubyNode node);
-
-    /**
-     * Adds instrumentation support at a node that should be considered a member of
-     * {@link NodePhylum#CALL}, possibly returning a new {@link InstrumentationProxyNode} that holds
-     * the original as its child.
-     */
-    RubyNode instrumentAsCall(RubyNode node, String callName);
+/**
+ * Implements the instrumentation of a Truffle AST node and returning either:
+ * <ul>
+ * <li>the node itself, or</li>
+ * <li>a newly created {@linkplain InstrumentationProxyNode proxy node} that holds the instrumented
+ * node as its {@linkplain com.oracle.truffle.api.nodes.Node.Child child}.</li>
+ * </ul>
+ */
+public interface NodeInstrumenter {
 
     /**
-     * Adds instrumentation support at a node that should be considered a member of
-     * {@link NodePhylum#ASSIGNMENT}, possibly returning a new {@link InstrumentationProxyNode} that
-     * holds the original as its child.
+     * Wraps a {@linkplain InstrumentationProxyNode proxy node} around a node (if not already
+     * wrapped), marks the location with a {@linkplain NodePhylum phylum (category)} for user
+     * interaction, and passes along any characteristics of the particular node that are important
+     * for instrumentation (e.g. the function/method name at a call).
      */
-    RubyNode instrumentAsLocalAssignment(RubyNode node, UniqueMethodIdentifier methodIdentifier, String localName);
-
+    Node instrumentAs(Node node, NodePhylum phylum, Object... args);
 }

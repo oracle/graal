@@ -22,6 +22,7 @@ import com.oracle.truffle.ruby.nodes.cast.*;
 import com.oracle.truffle.ruby.nodes.constants.*;
 import com.oracle.truffle.ruby.nodes.control.*;
 import com.oracle.truffle.ruby.nodes.core.*;
+import com.oracle.truffle.ruby.nodes.instrument.*;
 import com.oracle.truffle.ruby.nodes.literal.*;
 import com.oracle.truffle.ruby.nodes.literal.array.*;
 import com.oracle.truffle.ruby.nodes.methods.*;

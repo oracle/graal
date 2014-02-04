@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.impl;
+package com.oracle.truffle.api.debug;
 
 import java.util.*;
 
@@ -34,7 +34,10 @@ import com.oracle.truffle.api.source.*;
 
 /**
  * A minimal, language-agnostic implementation that tracks loaded sources, and keeps maps describing
- * what locations in the source have instrumentation available.
+ * what locations in the source have instrumentation available. This implementation will do nothing
+ * unless there are calls to it during AST construction, notably {@link #notifyStartLoading(Source)}
+ * and {@link #notifyFinishedLoading(Source)} <em>and</em> there are at least some AST nodes being
+ * instrumented.
  */
 public class DefaultDebugManager implements DebugManager {
 
@@ -102,7 +105,7 @@ public class DefaultDebugManager implements DebugManager {
         beingLoaded = null;
     }
 
-    public void haltedAt(Node astNode, MaterializedFrame frame) {
+    public void haltedAt(Node astNode, VirtualFrame frame) {
     }
 
 }

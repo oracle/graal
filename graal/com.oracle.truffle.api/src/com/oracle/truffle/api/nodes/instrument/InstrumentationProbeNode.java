@@ -371,7 +371,7 @@ public abstract class InstrumentationProbeNode extends Node implements Instrumen
                     CompilerDirectives.transferToInterpreter();
                 }
                 if (stepping) {
-                    getContext().getDebugManager().haltedAt(astNode, frame.materialize());
+                    getContext().getDebugContext().getDebugManager().haltedAt(astNode, frame);
                 }
                 if (next != null) {
                     next.internalEnter(astNode, frame);

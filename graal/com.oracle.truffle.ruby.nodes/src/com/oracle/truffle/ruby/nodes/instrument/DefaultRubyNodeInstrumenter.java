@@ -7,11 +7,10 @@
  * GNU General Public License version 2
  * GNU Lesser General Public License version 2.1
  */
-package com.oracle.truffle.ruby.parser;
+package com.oracle.truffle.ruby.nodes.instrument;
 
 import com.oracle.truffle.api.nodes.instrument.*;
 import com.oracle.truffle.ruby.nodes.*;
-import com.oracle.truffle.ruby.nodes.debug.*;
 import com.oracle.truffle.ruby.runtime.*;
 import com.oracle.truffle.ruby.runtime.debug.*;
 import com.oracle.truffle.ruby.runtime.methods.*;
@@ -21,10 +20,9 @@ import com.oracle.truffle.ruby.runtime.methods.*;
  * href="http://www.ruby-doc.org/core-2.0.0/Kernel.html#method-i-set_trace_func">tracing
  * facility</A>. It ignores nodes other than {@linkplain NodePhylum#STATEMENT statements}.
  */
-final class DefaultRubyNodeInstrumenter implements RubyNodeInstrumenter {
+public final class DefaultRubyNodeInstrumenter extends DefaultNodeInstrumenter implements RubyNodeInstrumenter {
 
-    public DefaultRubyNodeInstrumenter() {
-    }
+    // TODO (mlvdv) convert methods to the general interface? will help with dependencies
 
     public RubyNode instrumentAsStatement(RubyNode rubyNode) {
         assert rubyNode != null;

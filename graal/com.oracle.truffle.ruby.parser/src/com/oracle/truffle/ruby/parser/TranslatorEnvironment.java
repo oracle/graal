@@ -14,6 +14,7 @@ import java.util.*;
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.ruby.nodes.*;
+import com.oracle.truffle.ruby.nodes.instrument.*;
 import com.oracle.truffle.ruby.nodes.methods.locals.*;
 import com.oracle.truffle.ruby.runtime.*;
 import com.oracle.truffle.ruby.runtime.core.*;
@@ -226,6 +227,6 @@ public class TranslatorEnvironment {
     }
 
     public RubyNodeInstrumenter getNodeInstrumenter() {
-        return parser.getNodeInstrumenter();
+        return (RubyNodeInstrumenter) context.getDebugContext().getNodeInstrumenter();
     }
 }

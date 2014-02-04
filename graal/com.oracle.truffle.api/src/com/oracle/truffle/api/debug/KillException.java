@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,32 +22,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api;
+package com.oracle.truffle.api.debug;
 
-import com.oracle.truffle.api.debug.*;
-import com.oracle.truffle.api.source.*;
+import com.oracle.truffle.api.nodes.*;
 
+// TODO (mlvdv) does this need to extend ControlFlowException?  It was originally part of the Ruby Shell.
 /**
- * Information about the runtime context of a Truffle program.
- * <p>
- * <strong>Disclaimer:</strong> this interface is under development and will change.
+ * Controls breaking out of an execution context, such as a shell or eval.
  */
-public interface ExecutionContext {
+public final class KillException extends ControlFlowException {
 
-    /**
-     * Gets the name of the language, possibly with version number. in short enough form that it
-     * might be used for an interactive prompt.
-     */
-    String getLanguageShortName();
-
-    /**
-     * Gets access to source management services.
-     */
-    SourceManager getSourceManager();
-
-    /**
-     * Gets access to debugging services. Returns an inert instance if no services installed.
-     */
-    DebugContext getDebugContext();
-
+    private static final long serialVersionUID = 3163641880088766957L;
 }
