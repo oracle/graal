@@ -244,8 +244,8 @@ public final class FrameState extends VirtualState implements IterableNodeType {
 
     /**
      * Creates a copy of this frame state with one stack element of type popKind popped from the
-     * stack and the values in pushedValues pushed on the stack. The pushedValues are expected to be
-     * in slot encoding: a long or double is followed by a null slot.
+     * stack and the values in pushedValues pushed on the stack. The pushedValues will be formatted
+     * correctly in slot encoding: a long or double will be followed by a null slot.
      */
     public FrameState duplicateModified(int newBci, boolean newRethrowException, Kind popKind, ValueNode... pushedValues) {
         ArrayList<ValueNode> copy = new ArrayList<>(values.subList(0, localsSize + stackSize));
@@ -257,7 +257,12 @@ public final class FrameState extends VirtualState implements IterableNodeType {
             assert lastSlot.kind().getStackKind() == popKind.getStackKind();
             copy.remove(copy.size() - 1);
         }
-        Collections.addAll(copy, pushedValues);
+        for (ValueNode node : pushedValues) {
+            copy.add(node);
+            if (node.kind() == Kind.Long || node.kind() == Kind.Double) {
+                copy.add(null);
+            }
+        }
         int newStackSize = copy.size() - localsSize;
         copy.addAll(values.subList(localsSize + stackSize, values.size()));
 
