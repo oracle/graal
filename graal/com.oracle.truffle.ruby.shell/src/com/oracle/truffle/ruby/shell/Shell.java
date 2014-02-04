@@ -75,7 +75,7 @@ public class Shell {
         final RubyContext context = new RubyContext(new Configuration(configurationBuilder), new JRubyParser());
 
         // Ruby should always have a debug context.
-        context.setDebugContext(new MinimumRubyDebugContext(context));
+        context.setDebugContext(new MinimalRubyDebugContext(context));
 
         // Bring in core method nodes
 

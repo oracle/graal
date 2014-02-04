@@ -80,7 +80,7 @@ public class RubyTests {
         });
 
         final RubyContext context = new RubyContext(new Configuration(configurationBuilder), new JRubyParser());
-        context.setDebugContext(new MinimumRubyDebugContext(context));
+        context.setDebugContext(new MinimalRubyDebugContext(context));
 
         CoreMethodNodeManager.addMethods(context.getCoreLibrary().getObjectClass());
         context.getCoreLibrary().initializeAfterMethodsAdded();

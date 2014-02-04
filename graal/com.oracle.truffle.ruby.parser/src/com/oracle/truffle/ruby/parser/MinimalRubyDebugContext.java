@@ -19,13 +19,13 @@ import com.oracle.truffle.ruby.runtime.*;
  * Minimum possible debugging support for Ruby implementation. Some facilities are needed to support
  * the Ruby trace mechanism.
  */
-public final class MinimumRubyDebugContext implements DebugContext {
+public final class MinimalRubyDebugContext implements DebugContext {
 
     private final RubyContext executionContext;
     private final RubyNodeInstrumenter instrumenter;
     private final DebugManager debugManager;
 
-    public MinimumRubyDebugContext(RubyContext context) {
+    public MinimalRubyDebugContext(RubyContext context) {
         this.executionContext = context;
         this.instrumenter = new DefaultRubyNodeInstrumenter();
         this.debugManager = new DefaultDebugManager(context);
