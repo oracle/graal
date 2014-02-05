@@ -22,6 +22,12 @@
  */
 package com.oracle.graal.api.code;
 
+/**
+ * Wraps the raw function pointer value.
+ * <p>
+ * Use the {@code NativeFunctionInterface} to resolve a {@code NativeFunctionHandle} of this pointer
+ * to invoke the native target function.
+ */
 public interface NativeFunctionPointer {
 
     /**

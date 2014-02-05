@@ -24,6 +24,9 @@ package com.oracle.graal.api.code;
 
 /**
  * The library handle of the native library.
+ * <p>
+ * The {@code NativeFunctionInterface} can use a {@code NativeLibraryHandle} to look up a
+ * {@code NativeFunctionPointer} or a {@code NativeFunctionHandle} in this library.
  */
 public interface NativeLibraryHandle {
 

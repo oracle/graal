@@ -23,8 +23,16 @@
 package com.oracle.graal.api.code;
 
 /**
- * Interface to resolve pointers to native foreign functions.
- * 
+ * Interface to resolve a {@code NativeFunctionHandle} or a {@code NativeFunctionPointer} to a
+ * native foreign function and a {@code NativeLibraryHandle} of a library. A
+ * {@code NativeFunctionPointer} wraps the raw function pointer. A {@code NativeFunctionHandle} is a
+ * callable representation of a native target function in Java.
+ * <p>
+ * To resolve a {@code NativeFunctionHandle}, one has to provide the signature of the native target
+ * function according to the calling convention of the target platform (e.g. Unix AMD64:
+ * {@link "http://www.uclibc.org/docs/psABI-x86_64.pdf"}). The signature contains the type (e.g.
+ * {@code int.class} for a C integer, ( {@code long.class} for a 64bit pointer) of each value, which
+ * is passed to the native target function.
  */
 public interface NativeFunctionInterface {
 

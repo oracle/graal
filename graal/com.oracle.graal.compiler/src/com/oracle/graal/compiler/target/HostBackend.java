@@ -24,6 +24,9 @@ package com.oracle.graal.compiler.target;
 
 import com.oracle.graal.api.code.*;
 
+/**
+ * Common functionality of host backends.
+ */
 public interface HostBackend {
     NativeFunctionInterface getNativeFunctionInterface();
 }

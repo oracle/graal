@@ -23,7 +23,16 @@
 package com.oracle.graal.api.code;
 
 /**
- * The function handle of a native foreign function.
+ * The handle of a native foreign function. Use a {@code NativeFunctionHandle} to invoke native
+ * target functions.
+ * <p>
+ * The user of a {@code NativeFunctionHandle} has to pack the boxed arguments into an
+ * {@code Object[]} according to the ABI of the target platform (e.g. Unix AMD64 system:
+ * {@link "http://www.uclibc.org/docs/psABI-x86_64.pdf"}). The {@code NativeFunctionHandle} unboxes
+ * the arguments and places them into the right location (register / stack) according to the ABI.
+ * <p>
+ * A {@code NativeFunctionHandle} returns the boxed return value of the native target function. The
+ * boxed value is the return value as specified by the ABI.
  */
 public interface NativeFunctionHandle {
 
