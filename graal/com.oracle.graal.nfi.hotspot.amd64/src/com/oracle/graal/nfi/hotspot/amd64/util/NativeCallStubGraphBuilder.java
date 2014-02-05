@@ -20,18 +20,18 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.ffi.amd64.util;
+package com.oracle.graal.nfi.hotspot.amd64.util;
 
 import java.util.*;
 
 import sun.misc.*;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.ffi.amd64.*;
-import com.oracle.graal.ffi.amd64.node.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
+import com.oracle.graal.nfi.hotspot.amd64.*;
+import com.oracle.graal.nfi.hotspot.amd64.node.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
@@ -88,7 +88,7 @@ public class NativeCallStubGraphBuilder {
      * @param argumentTypes the types of the arguments
      * @return the graph that represents the call stub
      */
-    public static StructuredGraph getGraph(HotSpotProviders providers, AMD64NativeFunctionPointer functionPointer, Class returnType, Class[] argumentTypes) {
+    public static StructuredGraph getGraph(HotSpotProviders providers, AMD64HotSpotNativeFunctionPointer functionPointer, Class returnType, Class[] argumentTypes) {
         ResolvedJavaMethod method;
         try {
             method = providers.getMetaAccess().lookupJavaMethod(NativeCallStubGraphBuilder.class.getMethod("libCall", Object.class, Object.class, Object.class));

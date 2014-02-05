@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.ffi.amd64.util;
+package com.oracle.graal.nfi.hotspot.amd64.util;
 
 import static com.oracle.graal.api.code.CodeUtil.*;
 
