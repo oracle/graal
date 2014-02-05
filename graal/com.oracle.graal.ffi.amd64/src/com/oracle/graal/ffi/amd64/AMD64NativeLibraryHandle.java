@@ -27,7 +27,12 @@ import com.oracle.graal.api.code.*;
 public class AMD64NativeLibraryHandle implements NativeLibraryHandle {
 
     private final long handle;
-    public static final long INVALID_HANDLE = 0xDEADFACE;
+    // The native side (graalCompilerToVM.cpp) sets the rtldDefault handle to 0xDEADFACE if the
+    // platform is Windows.
+    // AMD64NativeFunctionInterface checks if rtld_default handle is valid.
+    // Windows is currently not supported.
+    // Using 0 is not possible as it is a valid value for rtldDefault on some platforms.
+    public static final long INVALID_RTLD_DEFAULT_HANDLE = 0xDEADFACE;
 
     public AMD64NativeLibraryHandle(long handle) {
         this.handle = handle;
@@ -38,6 +43,6 @@ public class AMD64NativeLibraryHandle implements NativeLibraryHandle {
     }
 
     public boolean isValid() {
-        return handle != 0 && handle != INVALID_HANDLE;
+        return handle != 0;
     }
 }

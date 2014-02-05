@@ -99,7 +99,7 @@ public class AMD64NativeFunctionInterface implements NativeFunctionInterface {
 
     @Override
     public AMD64NativeFunctionHandle getFunctionHandle(String functionName, Class returnType, Class[] argumentTypes) {
-        if (rtldDefault.asRawValue() == AMD64NativeLibraryHandle.INVALID_HANDLE) {
+        if (rtldDefault.asRawValue() == AMD64NativeLibraryHandle.INVALID_RTLD_DEFAULT_HANDLE) {
             throw new AssertionError("No library provided or RTLD_DEFAULT not supported!");
         }
         return getFunctionHandle(rtldDefault, functionName, returnType, argumentTypes);
