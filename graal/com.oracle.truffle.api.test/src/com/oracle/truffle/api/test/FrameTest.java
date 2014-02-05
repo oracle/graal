@@ -37,7 +37,8 @@ import com.oracle.truffle.api.nodes.*;
  * {@link FrameDescriptor} represents the current structure of the frame. The method
  * {@link FrameDescriptor#addFrameSlot(Object, FrameSlotKind)} can be used to create predefined
  * frame slots. The setter and getter methods in the {@link Frame} class can be used to access the
- * current value of a particular frame slot.
+ * current value of a particular frame slot. Values can be removed from a frame via the
+ * {@link FrameDescriptor#removeFrameSlot(Object)} method.
  * </p>
  * 
  * <p>
@@ -64,11 +65,20 @@ public class FrameTest {
     public void test() {
         TruffleRuntime runtime = Truffle.getRuntime();
         FrameDescriptor frameDescriptor = new FrameDescriptor();
-        FrameSlot slot = frameDescriptor.addFrameSlot("localVar", FrameSlotKind.Int);
+        String varName = "localVar";
+        FrameSlot slot = frameDescriptor.addFrameSlot(varName, FrameSlotKind.Int);
         TestRootNode rootNode = new TestRootNode(frameDescriptor, new AssignLocal(slot), new ReadLocal(slot));
         CallTarget target = runtime.createCallTarget(rootNode);
         Object result = target.call();
         Assert.assertEquals(42, result);
+        frameDescriptor.removeFrameSlot(varName);
+        boolean slotMissing = false;
+        try {
+            result = target.call();
+        } catch (IllegalArgumentException iae) {
+            slotMissing = true;
+        }
+        Assert.assertTrue(slotMissing);
     }
 
     class TestRootNode extends RootNode {

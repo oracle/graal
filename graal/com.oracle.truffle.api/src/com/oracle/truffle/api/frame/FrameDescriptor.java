@@ -86,6 +86,14 @@ public final class FrameDescriptor implements Cloneable {
         return addFrameSlot(identifier, kind);
     }
 
+    public void removeFrameSlot(Object identifier) {
+        assert identifierToSlotMap.containsKey(identifier);
+        slots.remove(identifierToSlotMap.get(identifier));
+        identifierToSlotMap.remove(identifier);
+        updateVersion();
+        getNotInFrameAssumption(identifier);
+    }
+
     public int getSize() {
         return slots.size();
     }
