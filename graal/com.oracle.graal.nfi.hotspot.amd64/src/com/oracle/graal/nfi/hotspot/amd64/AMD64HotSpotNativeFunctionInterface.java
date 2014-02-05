@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.ffi.amd64;
+package com.oracle.graal.nfi.hotspot.amd64;
 
 import java.lang.reflect.*;
 
@@ -28,9 +28,10 @@ import sun.misc.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.compiler.target.*;
+import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 
-public class AMD64NativeFunctionInterface implements NativeFunctionInterface {
+public class AMD64HotSpotNativeFunctionInterface implements NativeFunctionInterface {
 
     private static final Class LOOKUP_FUNCTION_RETURNTYPE = long.class;
     private static final Class[] LOOKUP_FUNCTION_SIGNATURE = new Class[]{long.class, long.class};
@@ -41,15 +42,15 @@ public class AMD64NativeFunctionInterface implements NativeFunctionInterface {
 
     protected final HotSpotProviders providers;
     protected final Backend backend;
-    protected final AMD64NativeLibraryHandle rtldDefault;
-    protected final AMD64NativeFunctionPointer libraryLoadFunctionPointer;
-    protected final AMD64NativeFunctionPointer functionLookupFunctionPointer;
+    protected final AMD64HotSpotNativeLibraryHandle rtldDefault;
+    protected final AMD64HotSpotNativeFunctionPointer libraryLoadFunctionPointer;
+    protected final AMD64HotSpotNativeFunctionPointer functionLookupFunctionPointer;
 
-    private AMD64NativeFunctionHandle libraryLookupFunctionHandle;
-    private AMD64NativeFunctionHandle dllLookupFunctionHandle;
+    private AMD64HotSpotNativeFunctionHandle libraryLookupFunctionHandle;
+    private AMD64HotSpotNativeFunctionHandle dllLookupFunctionHandle;
 
-    public AMD64NativeFunctionInterface(HotSpotProviders providers, Backend backend, AMD64NativeFunctionPointer libraryLoadFunctionPointer, AMD64NativeFunctionPointer functionLookUpFunctionPointer,
-                    AMD64NativeLibraryHandle rtldDefault) {
+    public AMD64HotSpotNativeFunctionInterface(HotSpotProviders providers, Backend backend, AMD64HotSpotNativeFunctionPointer libraryLoadFunctionPointer,
+                    AMD64HotSpotNativeFunctionPointer functionLookUpFunctionPointer, AMD64HotSpotNativeLibraryHandle rtldDefault) {
         this.rtldDefault = rtldDefault;
         this.providers = providers;
         this.backend = backend;
@@ -58,9 +59,9 @@ public class AMD64NativeFunctionInterface implements NativeFunctionInterface {
     }
 
     @Override
-    public AMD64NativeLibraryHandle getLibraryHandle(String libPath) {
+    public AMD64HotSpotNativeLibraryHandle getLibraryHandle(String libPath) {
         if (libraryLookupFunctionHandle == null) {
-            libraryLookupFunctionHandle = new AMD64NativeFunctionHandle(providers, backend, libraryLoadFunctionPointer, long.class, new Class[]{long.class, long.class, int.class});
+            libraryLookupFunctionHandle = new AMD64HotSpotNativeFunctionHandle(providers, backend, libraryLoadFunctionPointer, long.class, new Class[]{long.class, long.class, int.class});
         }
 
         long allocatedMemory = -1;
@@ -73,12 +74,12 @@ public class AMD64NativeFunctionInterface implements NativeFunctionInterface {
         Object[] args = new Object[]{copyStringToMemory(libPath), allocatedMemory, STD_BUFFER_SIZE};
         long libraryHandle = (long) libraryLookupFunctionHandle.call(args);
         unsafe.freeMemory(allocatedMemory);
-        return new AMD64NativeLibraryHandle(libraryHandle);
+        return new AMD64HotSpotNativeLibraryHandle(libraryHandle);
     }
 
     @Override
-    public AMD64NativeFunctionHandle getFunctionHandle(NativeLibraryHandle libraryHandle, String functionName, Class returnType, Class[] argumentTypes) {
-        AMD64NativeFunctionPointer functionPointer = lookupFunctionPointer(functionName, libraryHandle);
+    public AMD64HotSpotNativeFunctionHandle getFunctionHandle(NativeLibraryHandle libraryHandle, String functionName, Class returnType, Class[] argumentTypes) {
+        AMD64HotSpotNativeFunctionPointer functionPointer = lookupFunctionPointer(functionName, libraryHandle);
         if (!functionPointer.isValid()) {
             throw new IllegalStateException(functionName + " not found!");
         }
@@ -86,38 +87,38 @@ public class AMD64NativeFunctionInterface implements NativeFunctionInterface {
     }
 
     @Override
-    public AMD64NativeFunctionHandle getFunctionHandle(NativeLibraryHandle[] libraryHandles, String functionName, Class returnType, Class[] argumentTypes) {
-        AMD64NativeFunctionPointer functionPointer = null;
+    public AMD64HotSpotNativeFunctionHandle getFunctionHandle(NativeLibraryHandle[] libraryHandles, String functionName, Class returnType, Class[] argumentTypes) {
+        AMD64HotSpotNativeFunctionPointer functionPointer = null;
         for (NativeLibraryHandle libraryHandle : libraryHandles) {
             functionPointer = lookupFunctionPointer(functionName, libraryHandle);
             if (functionPointer.isValid()) {
-                return new AMD64NativeFunctionHandle(providers, backend, functionPointer, returnType, argumentTypes);
+                return new AMD64HotSpotNativeFunctionHandle(providers, backend, functionPointer, returnType, argumentTypes);
             }
         }
         return getFunctionHandle(functionName, returnType, argumentTypes);
     }
 
     @Override
-    public AMD64NativeFunctionHandle getFunctionHandle(String functionName, Class returnType, Class[] argumentTypes) {
-        if (rtldDefault.asRawValue() == AMD64NativeLibraryHandle.INVALID_RTLD_DEFAULT_HANDLE) {
+    public AMD64HotSpotNativeFunctionHandle getFunctionHandle(String functionName, Class returnType, Class[] argumentTypes) {
+        if (rtldDefault.asRawValue() == HotSpotVMConfig.INVALID_RTLD_DEFAULT_HANDLE) {
             throw new AssertionError("No library provided or RTLD_DEFAULT not supported!");
         }
         return getFunctionHandle(rtldDefault, functionName, returnType, argumentTypes);
     }
 
-    private AMD64NativeFunctionPointer lookupFunctionPointer(String functionName, NativeLibraryHandle handle) {
+    private AMD64HotSpotNativeFunctionPointer lookupFunctionPointer(String functionName, NativeLibraryHandle handle) {
 
         if (!functionLookupFunctionPointer.isValid()) {
             throw new IllegalStateException("no dlsym function pointer");
         }
         if (dllLookupFunctionHandle == null) {
-            dllLookupFunctionHandle = new AMD64NativeFunctionHandle(providers, backend, functionLookupFunctionPointer, LOOKUP_FUNCTION_RETURNTYPE, LOOKUP_FUNCTION_SIGNATURE);
+            dllLookupFunctionHandle = new AMD64HotSpotNativeFunctionHandle(providers, backend, functionLookupFunctionPointer, LOOKUP_FUNCTION_RETURNTYPE, LOOKUP_FUNCTION_SIGNATURE);
         }
         long allocatedMemory = copyStringToMemory(functionName);
         Object[] args = new Object[]{handle, allocatedMemory};
         long functionPointer = (long) dllLookupFunctionHandle.call(args);
         unsafe.freeMemory(allocatedMemory);
-        return new AMD64NativeFunctionPointer(functionPointer, functionName);
+        return new AMD64HotSpotNativeFunctionPointer(functionPointer, functionName);
     }
 
     private static long copyStringToMemory(String str) {
@@ -145,21 +146,21 @@ public class AMD64NativeFunctionInterface implements NativeFunctionInterface {
     }
 
     @Override
-    public AMD64NativeFunctionHandle getFunctionHandle(NativeFunctionPointer functionPointer, Class returnType, Class[] argumentTypes) {
-        if (functionPointer instanceof AMD64NativeFunctionPointer) {
-            if (!((AMD64NativeFunctionPointer) functionPointer).isValid()) {
+    public AMD64HotSpotNativeFunctionHandle getFunctionHandle(NativeFunctionPointer functionPointer, Class returnType, Class[] argumentTypes) {
+        if (functionPointer instanceof AMD64HotSpotNativeFunctionPointer) {
+            if (!((AMD64HotSpotNativeFunctionPointer) functionPointer).isValid()) {
                 throw new IllegalStateException("Function Symbol not found");
             }
         } else {
             throw new IllegalStateException("AMD64 function pointer required!");
         }
-        return new AMD64NativeFunctionHandle(providers, backend, (AMD64NativeFunctionPointer) functionPointer, returnType, argumentTypes);
+        return new AMD64HotSpotNativeFunctionHandle(providers, backend, (AMD64HotSpotNativeFunctionPointer) functionPointer, returnType, argumentTypes);
     }
 
     @Override
-    public AMD64NativeFunctionPointer getFunctionPointer(NativeLibraryHandle[] libraryHandles, String functionName) {
+    public AMD64HotSpotNativeFunctionPointer getFunctionPointer(NativeLibraryHandle[] libraryHandles, String functionName) {
         for (NativeLibraryHandle libraryHandle : libraryHandles) {
-            AMD64NativeFunctionPointer functionPointer = lookupFunctionPointer(functionName, libraryHandle);
+            AMD64HotSpotNativeFunctionPointer functionPointer = lookupFunctionPointer(functionName, libraryHandle);
             if (functionPointer.isValid()) {
                 return functionPointer;
             }
@@ -169,7 +170,7 @@ public class AMD64NativeFunctionInterface implements NativeFunctionInterface {
 
     @Override
     public NativeFunctionPointer getNativeFunctionPointerFromRawValue(long rawValue) {
-        return new AMD64NativeFunctionPointer(rawValue, null);
+        return new AMD64HotSpotNativeFunctionPointer(rawValue, null);
     }
 
 }

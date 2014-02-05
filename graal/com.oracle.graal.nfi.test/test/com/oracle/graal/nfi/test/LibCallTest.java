@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.ffi.amd64.test;
+package com.oracle.graal.nfi.test;
 
 import java.lang.reflect.*;
 

@@ -20,16 +20,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.ffi.amd64;
+package com.oracle.graal.nfi.hotspot.amd64;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.compiler.target.*;
-import com.oracle.graal.ffi.amd64.util.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.meta.*;
+import com.oracle.graal.nfi.hotspot.amd64.util.*;
 import com.oracle.graal.nodes.*;
 
-public class AMD64NativeFunctionHandle implements NativeFunctionHandle {
+public class AMD64HotSpotNativeFunctionHandle implements NativeFunctionHandle {
 
     private final InstalledCode code;
     private final String functionName;
@@ -37,7 +37,7 @@ public class AMD64NativeFunctionHandle implements NativeFunctionHandle {
     protected final HotSpotProviders providers;
     protected final Backend backend;
 
-    public AMD64NativeFunctionHandle(HotSpotProviders providers, Backend backend, AMD64NativeFunctionPointer functionPointer, Class returnType, Class[] argumentTypes) {
+    public AMD64HotSpotNativeFunctionHandle(HotSpotProviders providers, Backend backend, AMD64HotSpotNativeFunctionPointer functionPointer, Class returnType, Class[] argumentTypes) {
         this.providers = providers;
         this.backend = backend;
         this.functionName = functionPointer.getFunctionName();

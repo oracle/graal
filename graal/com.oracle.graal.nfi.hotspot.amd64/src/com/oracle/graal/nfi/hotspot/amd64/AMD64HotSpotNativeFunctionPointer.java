@@ -20,29 +20,31 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.ffi.amd64;
+package com.oracle.graal.nfi.hotspot.amd64;
 
 import com.oracle.graal.api.code.*;
 
-public class AMD64NativeLibraryHandle implements NativeLibraryHandle {
+public class AMD64HotSpotNativeFunctionPointer implements NativeFunctionPointer {
 
-    private final long handle;
-    // The native side (graalCompilerToVM.cpp) sets the rtldDefault handle to 0xDEADFACE if the
-    // platform is Windows.
-    // AMD64NativeFunctionInterface checks if rtld_default handle is valid.
-    // Windows is currently not supported.
-    // Using 0 is not possible as it is a valid value for rtldDefault on some platforms.
-    public static final long INVALID_RTLD_DEFAULT_HANDLE = 0xDEADFACE;
+    private final long functionPointer;
+    private final String functionName;
 
-    public AMD64NativeLibraryHandle(long handle) {
-        this.handle = handle;
-    }
-
-    public long asRawValue() {
-        return handle;
+    public AMD64HotSpotNativeFunctionPointer(long functionPointer, String functionName) {
+        this.functionPointer = functionPointer;
+        this.functionName = functionName;
     }
 
     public boolean isValid() {
-        return handle != 0;
+        return functionPointer != 0;
     }
+
+    @Override
+    public long asRawValue() {
+        return functionPointer;
+    }
+
+    public String getFunctionName() {
+        return functionName;
+    }
+
 }

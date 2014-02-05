@@ -840,9 +840,15 @@ public class HotSpotVMConfig extends CompilerObject {
     @HotSpotVMField(name = "JavaThread::_vm_result", type = "oop", get = HotSpotVMField.Type.OFFSET) @Stable public int threadObjectResultOffset;
     @HotSpotVMField(name = "JavaThread::_graal_counters[0]", type = "jlong", get = HotSpotVMField.Type.OFFSET, optional = true) @Stable public int graalCountersThreadOffset;
 
+    // The native side (graalCompilerToVM.cpp) sets the rtldDefault if the
+    // platform is NOT Windows (Windows is currently not supported).
+    // AMD64NativeFunctionInterface checks if rtld_default handle is valid.
+    // Using 0 is not possible as it is a valid value for rtldDefault on some platforms.
+    public static final long INVALID_RTLD_DEFAULT_HANDLE = 0xDEADFACE;
+
     @Stable public long libraryLoadAddress;
     @Stable public long functionLookupAddress;
-    @Stable public long rtldDefault;
+    @Stable public long rtldDefault = INVALID_RTLD_DEFAULT_HANDLE;
 
     /**
      * This field is used to pass exception objects into and out of the runtime system during
