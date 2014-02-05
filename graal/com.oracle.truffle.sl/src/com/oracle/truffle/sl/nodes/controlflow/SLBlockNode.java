@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.sl.nodes.controlflow;
 
+import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.sl.nodes.*;
@@ -30,7 +31,7 @@ import com.oracle.truffle.sl.nodes.*;
  * A statement node that just executes a list of other statements.
  */
 @NodeInfo(shortName = "block")
-public class SLBlockNode extends SLStatementNode {
+public final class SLBlockNode extends SLStatementNode {
 
     /**
      * The array of child nodes. The annotation {@link com.oracle.truffle.api.nodes.Node.Children
@@ -55,6 +56,12 @@ public class SLBlockNode extends SLStatementNode {
     @Override
     @ExplodeLoop
     public void executeVoid(VirtualFrame frame) {
+        /*
+         * This assertion illustrates that the arryay length is really a constant during
+         * compilation.
+         */
+        CompilerAsserts.compilationConstant(bodyNodes.length);
+
         for (SLStatementNode statement : bodyNodes) {
             statement.executeVoid(frame);
         }

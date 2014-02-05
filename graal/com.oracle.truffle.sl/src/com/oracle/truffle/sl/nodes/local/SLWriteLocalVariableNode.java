@@ -42,7 +42,7 @@ public abstract class SLWriteLocalVariableNode extends SLExpressionNode {
     protected abstract FrameSlot getSlot();
 
     /**
-     * Specialized method to write a primitive {@code long} value}. This is only possible if the
+     * Specialized method to write a primitive {@code long} value. This is only possible if the
      * local variable also has currently the type {@code long}, therefore a Truffle DSL
      * {@link #isLongKind() custom guard} is specified.
      */

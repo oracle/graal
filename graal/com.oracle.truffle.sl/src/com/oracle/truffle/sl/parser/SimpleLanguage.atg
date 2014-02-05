@@ -21,6 +21,12 @@
  * questions.
  */
 
+/*
+ * This is the grammar of SL that is used to automatically generate the Parser.java and Scanner.java
+ * files. You can download the parser generator Coco/R from http://ssw.jku.at/coco/. Then run
+ * "java -jar Coco.jar SimpleLanguage.atg"
+ */
+
 COMPILER SimpleLanguage
 
 CHARACTERS

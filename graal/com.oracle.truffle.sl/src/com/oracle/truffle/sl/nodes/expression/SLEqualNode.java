@@ -30,7 +30,7 @@ import com.oracle.truffle.sl.nodes.*;
 import com.oracle.truffle.sl.runtime.*;
 
 /**
- * The {@code ==} operator of SL is defined on all types. Therefore, we need a (@link
+ * The {@code ==} operator of SL is defined on all types. Therefore, we need a
  * {@link #equal(Object, Object) generic implementation} that can handle all possible types. But
  * since {@code ==} can only return {@code true} when the type of the left and right operand are the
  * same, the specializations already cover all possible cases that can return {@code true} and the
@@ -78,7 +78,7 @@ public abstract class SLEqualNode extends SLBinaryNode {
     }
 
     /**
-     * The {@link Generic} annotation informs that Truffle DSL that this method should be executed
+     * The {@link Generic} annotation informs the Truffle DSL that this method should be executed
      * when no {@link Specialization specialized method} matches. The operand types must be
      * {@link Object}.
      */
