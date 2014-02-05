@@ -45,6 +45,9 @@ public class AMD64NativeFunctionInterface implements NativeFunctionInterface {
     protected final AMD64NativeFunctionPointer libraryLoadFunctionPointer;
     protected final AMD64NativeFunctionPointer functionLookupFunctionPointer;
 
+    private AMD64NativeFunctionHandle libraryLookupFunctionHandle;
+    private AMD64NativeFunctionHandle dllLookupFunctionHandle;
+
     public AMD64NativeFunctionInterface(HotSpotProviders providers, Backend backend, AMD64NativeFunctionPointer libraryLoadFunctionPointer, AMD64NativeFunctionPointer functionLookUpFunctionPointer,
                     AMD64NativeLibraryHandle rtldDefault) {
         this.rtldDefault = rtldDefault;
@@ -56,8 +59,9 @@ public class AMD64NativeFunctionInterface implements NativeFunctionInterface {
 
     @Override
     public AMD64NativeLibraryHandle getLibraryHandle(String libPath) {
-        AMD64NativeFunctionHandle libraryLookupFunctionHandle = new AMD64NativeFunctionHandle(providers, backend, libraryLoadFunctionPointer, long.class,
-                        new Class[]{long.class, long.class, int.class});
+        if (libraryLookupFunctionHandle == null) {
+            libraryLookupFunctionHandle = new AMD64NativeFunctionHandle(providers, backend, libraryLoadFunctionPointer, long.class, new Class[]{long.class, long.class, int.class});
+        }
 
         long allocatedMemory = -1;
         try {
@@ -106,7 +110,9 @@ public class AMD64NativeFunctionInterface implements NativeFunctionInterface {
         if (!functionLookupFunctionPointer.isValid()) {
             throw new IllegalStateException("no dlsym function pointer");
         }
-        AMD64NativeFunctionHandle dllLookupFunctionHandle = new AMD64NativeFunctionHandle(providers, backend, functionLookupFunctionPointer, LOOKUP_FUNCTION_RETURNTYPE, LOOKUP_FUNCTION_SIGNATURE);
+        if (dllLookupFunctionHandle == null) {
+            dllLookupFunctionHandle = new AMD64NativeFunctionHandle(providers, backend, functionLookupFunctionPointer, LOOKUP_FUNCTION_RETURNTYPE, LOOKUP_FUNCTION_SIGNATURE);
+        }
         long allocatedMemory = copyStringToMemory(functionName);
         Object[] args = new Object[]{handle, allocatedMemory};
         long functionPointer = (long) dllLookupFunctionHandle.call(args);
