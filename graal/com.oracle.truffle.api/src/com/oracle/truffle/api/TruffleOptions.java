@@ -33,7 +33,7 @@ import com.oracle.truffle.api.nodes.NodeInfo.Kind;
 public class TruffleOptions {
 
     /**
-     * Enables/disables the rewriting of traces in the truffle runtime to stdout.
+     * Enables/disables the rewriting of traces in the Truffle runtime to stdout.
      * <p>
      * Can be set with {@code -Dtruffle.TraceRewrites=true}.
      */
