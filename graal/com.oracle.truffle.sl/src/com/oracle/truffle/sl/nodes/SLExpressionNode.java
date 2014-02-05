@@ -58,16 +58,16 @@ public abstract class SLExpressionNode extends SLStatementNode {
      * subclasses overwrite the appropriate methods.
      */
 
-    public boolean executeBoolean(VirtualFrame frame) throws UnexpectedResultException {
-        return SLTypesGen.SLTYPES.expectBoolean(executeGeneric(frame));
-    }
-
     public long executeLong(VirtualFrame frame) throws UnexpectedResultException {
         return SLTypesGen.SLTYPES.expectLong(executeGeneric(frame));
     }
 
     public BigInteger executeBigInteger(VirtualFrame frame) throws UnexpectedResultException {
         return SLTypesGen.SLTYPES.expectBigInteger(executeGeneric(frame));
+    }
+
+    public boolean executeBoolean(VirtualFrame frame) throws UnexpectedResultException {
+        return SLTypesGen.SLTYPES.expectBoolean(executeGeneric(frame));
     }
 
     public String executeString(VirtualFrame frame) throws UnexpectedResultException {
