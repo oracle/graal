@@ -321,7 +321,7 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
         }
         // Emit the kernel function parameters.
         for (int i = 0; i < totalParamCount; i++) {
-            String str = "kernarg_" + paramHsailSizes[i] + " " + paramNames[i];
+            String str = "align 8 kernarg_" + paramHsailSizes[i] + " " + paramNames[i];
 
             if (i != totalParamCount - 1) {
                 str += ",";
