@@ -34,6 +34,10 @@ public class HotSpotNativeLibraryHandle implements NativeLibraryHandle {
         this.value = handle;
     }
 
+    public String getName() {
+        return name;
+    }
+
     @Override
     public String toString() {
         return name + "@" + value;

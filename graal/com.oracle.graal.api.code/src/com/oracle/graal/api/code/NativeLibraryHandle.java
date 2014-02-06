@@ -29,4 +29,9 @@ package com.oracle.graal.api.code;
  * {@linkplain NativeFunctionInterface#getFunctionPointer(NativeLibraryHandle[], String) pointer}.
  */
 public interface NativeLibraryHandle {
+    /**
+     * Gets a name for this library. This may be the path for the file from which the library was
+     * loaded.
+     */
+    String getName();
 }
