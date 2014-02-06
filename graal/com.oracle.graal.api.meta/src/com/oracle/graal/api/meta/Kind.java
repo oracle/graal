@@ -255,9 +255,17 @@ public enum Kind implements PlatformKind {
 
     /**
      * Marker interface for types that should be {@linkplain Kind#format(Object) formatted} with
-     * their {@link Object#toString()} value.
+     * their {@link Object#toString()} value. Calling {@link Object#toString()} on other objects
+     * poses a security risk because it can potentially call user code.
      */
     public interface FormatWithToString {
+    }
+
+    /**
+     * Classes for which invoking {@link Object#toString()} does not run user code.
+     */
+    private static boolean isToStringSafe(Class c) {
+        return c == Boolean.class || c == Byte.class || c == Character.class || c == Short.class || c == Integer.class || c == Float.class || c == Long.class || c == Double.class;
     }
 
     /**
@@ -267,7 +275,10 @@ public enum Kind implements PlatformKind {
      * @return a formatted string for {@code value} based on this kind
      */
     public String format(Object value) {
-        if (this == Kind.Object) {
+        if (isPrimitive()) {
+            assert isToStringSafe(value.getClass());
+            return value.toString();
+        } else {
             if (value == null) {
                 return "null";
             } else {
@@ -280,18 +291,20 @@ public enum Kind implements PlatformKind {
                     }
                 } else if (value instanceof JavaType) {
                     return "JavaType:" + MetaUtil.toJavaName((JavaType) value);
-                } else if (value instanceof Enum || value instanceof FormatWithToString || value instanceof Number) {
+                } else if (value instanceof Enum) {
+                    return MetaUtil.getSimpleName(value.getClass(), true) + ":" + ((Enum) value).name();
+                } else if (value instanceof FormatWithToString) {
                     return MetaUtil.getSimpleName(value.getClass(), true) + ":" + String.valueOf(value);
                 } else if (value instanceof Class<?>) {
                     return "Class:" + ((Class<?>) value).getName();
+                } else if (isToStringSafe(value.getClass())) {
+                    return value.toString();
                 } else if (value.getClass().isArray()) {
                     return formatArray(value);
                 } else {
                     return MetaUtil.getSimpleName(value.getClass(), true) + "@" + System.identityHashCode(value);
                 }
             }
-        } else {
-            return value.toString();
         }
     }
 
