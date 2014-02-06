@@ -183,8 +183,10 @@ public class SLMain {
     }
 
     /**
-     * Dumps the AST of all functions to the IGV visualizer, via a socket connection. IGV can be
-     * started with the mx command "mx igv". Optionally, also prints the ASTs to the console.
+     * When dumpASTToIGV is true: dumps the AST of all functions to the IGV visualizer, via a socket
+     * connection. IGV can be started with the mx command "mx igv".
+     * <p>
+     * When printASTToLog is true: prints the ASTs to the console.
      */
     private static void printScript(String groupName, SLContext context, PrintStream logOutput, boolean printASTToLog, boolean dumpASTToIGV) {
         if (dumpASTToIGV) {

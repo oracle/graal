@@ -29,10 +29,10 @@ import com.oracle.truffle.sl.*;
 import com.oracle.truffle.sl.runtime.*;
 
 /**
- * The type system of SL, as explained in {@link SLMain}. Based on the annotation {@link TypeSystem}
- * , the Truffle DSL generates the subclass {@link SLTypesGen} with type test and type conversion
- * methods for all types. In this class, we only cover types where the automatically generated ones
- * would not be sufficient.
+ * The type system of SL, as explained in {@link SLMain}. Based on the {@link TypeSystem}
+ * annotation, the Truffle DSL generates the subclass {@link SLTypesGen} with type test and type
+ * conversion methods for all types. In this class, we only cover types where the automatically
+ * generated ones would not be sufficient.
  */
 @TypeSystem({long.class, BigInteger.class, boolean.class, String.class, SLFunction.class, SLNull.class})
 public abstract class SLTypes {

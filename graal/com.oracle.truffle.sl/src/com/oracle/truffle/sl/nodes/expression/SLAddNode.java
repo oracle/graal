@@ -78,16 +78,6 @@ public abstract class SLAddNode extends SLBinaryNode {
     }
 
     /**
-     * Specialization for String concatenation. This specialization is not strictly necessary, since
-     * {@link #add(Object, Object)} covers this case too. But it leads to slightly better code,
-     * since we do not require the {@link Object#toString()} calls in this specialization.
-     */
-    @Specialization
-    protected String add(String left, String right) {
-        return left + right;
-    }
-
-    /**
      * Specialization for String concatenation. The SL specification says that String concatenation
      * works if either the left or the right operand is a String. The non-string operand is
      * converted then automatically converted to a String.

@@ -13,5 +13,9 @@ function fib(num) {
 }
 
 function main() {  
-  println(fib(42));
+  i = 1;
+  while (i <= 10) {
+    println(i + ": " + fib(i));
+    i = i + 1;
+  }
 }  

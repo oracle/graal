@@ -22,10 +22,12 @@
  */
 package com.oracle.truffle.sl.builtins;
 
+import com.oracle.truffle.api.CompilerDirectives.SlowPath;
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.sl.parser.*;
+import com.oracle.truffle.sl.runtime.*;
 
 /**
  * Builtin function to define (or redefine) functions. The provided source code is parsed the same
@@ -36,9 +38,14 @@ public abstract class SLDefineFunctionBuiltin extends SLBuiltinNode {
 
     @Specialization
     public String defineFunction(String code) {
-        Source source = getContext().getSourceManager().get("[defineFunction]", code);
+        return doDefineFunction(getContext(), code);
+    }
+
+    @SlowPath
+    private static String doDefineFunction(SLContext context, String code) {
+        Source source = context.getSourceManager().get("[defineFunction]", code);
         /* The same parsing code as for parsing the initial source. */
-        Parser.parseSL(getContext(), source);
+        Parser.parseSL(context, source);
         return code;
     }
 }

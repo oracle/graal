@@ -39,9 +39,9 @@ import com.oracle.truffle.sl.parser.*;
  * context is used during {@link SLNodeFactory parsing} and by {@link SLBuiltinNode#getContext()
  * builtin functions}.
  * <p>
- * It would be an error to have two different context instances at the same. From a software
- * engineering point of view, it is better to pass around this encapsulated context object instead
- * of storing the data in static Java fields.
+ * It would be an error to have two different context instances during the execution of one script.
+ * However, if two separate scripts run in one Java VM at the same time, they have a different
+ * context. Therefore, the context is not a singleton.
  */
 public final class SLContext {
     private final SourceManager sourceManager;

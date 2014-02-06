@@ -35,7 +35,7 @@ import com.oracle.truffle.sl.runtime.*;
  * the return value.
  */
 @NodeInfo(shortName = "return")
-public class SLReturnNode extends SLStatementNode {
+public final class SLReturnNode extends SLStatementNode {
 
     @Child private SLExpressionNode valueNode;
 
