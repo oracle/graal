@@ -718,14 +718,4 @@ public class HotSpotReplacementsUtil {
             throw new GraalInternalError(e);
         }
     }
-
-    @Fold
-    public static long dllLoad() {
-        return config().libraryLoadAddress;
-    }
-
-    @Fold
-    public static long dllLookup() {
-        return config().functionLookupAddress;
-    }
 }

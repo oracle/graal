@@ -23,24 +23,10 @@
 package com.oracle.graal.api.code;
 
 /**
- * The library handle of the native library.
- * <p>
- * The {@code NativeFunctionInterface} can use a {@code NativeLibraryHandle} to look up a
- * {@code NativeFunctionPointer} or a {@code NativeFunctionHandle} in this library.
+ * An opaque representation of a native library handle. A handle is obtained via
+ * {@link NativeFunctionInterface#getLibraryHandle(String)}. A handle is used to resolve a string to
+ * a {@linkplain NativeFunctionInterface#getFunctionHandle(String, Class, Class...) handle} or
+ * {@linkplain NativeFunctionInterface#getFunctionPointer(NativeLibraryHandle[], String) pointer}.
  */
 public interface NativeLibraryHandle {
-
-    /**
-     * Returns whether the handle is valid.
-     * 
-     * @return true if the handle is valid
-     */
-    boolean isValid();
-
-    /**
-     * Returns function pointer as raw value.
-     * 
-     * @return raw value of function pointer
-     */
-    long asRawValue();
 }

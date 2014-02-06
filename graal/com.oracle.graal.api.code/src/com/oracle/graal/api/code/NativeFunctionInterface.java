@@ -23,91 +23,91 @@
 package com.oracle.graal.api.code;
 
 /**
- * Interface to resolve a {@code NativeFunctionHandle} or a {@code NativeFunctionPointer} to a
- * native foreign function and a {@code NativeLibraryHandle} of a library. A
- * {@code NativeFunctionPointer} wraps the raw function pointer. A {@code NativeFunctionHandle} is a
- * callable representation of a native target function in Java.
- * <p>
- * To resolve a {@code NativeFunctionHandle}, one has to provide the signature of the native target
- * function according to the calling convention of the target platform (e.g. Unix AMD64:
- * {@link "http://www.uclibc.org/docs/psABI-x86_64.pdf"}). The signature contains the type (e.g.
- * {@code int.class} for a C integer, ( {@code long.class} for a 64bit pointer) of each value, which
- * is passed to the native target function.
+ * Interface to get a {@linkplain NativeFunctionHandle handle} or {@linkplain NativeFunctionPointer
+ * pointer} to a native function or a {@linkplain NativeLibraryHandle handle} to an open native
+ * library.
  */
 public interface NativeFunctionInterface {
 
     /**
-     * Resolves and returns a library handle.
+     * Resolves and returns a handle to an open native library. This method will open the library
+     * only if it is not already open.
      * 
      * @param libPath the absolute path to the library
      * @return the resolved library handle
+     * @throws UnsatisfiedLinkError if the library could not be found or opened
      */
     NativeLibraryHandle getLibraryHandle(String libPath);
 
     /**
-     * Resolves the {@code NativeFunctionHandle} of a native function that can be called. Use a
-     * {@code NativeFunctionHandle} to invoke the native target function.
+     * Resolves the function pointer {@code NativeFunctionPointer} of a native function.
      * 
-     * @param libraryHandle the handle to a resolved library
-     * @param functionName the name of the function to be resolved
+     * @param libraries the ordered list of libraries to search for the function
+     * @param name the name of the function to be resolved
+     * @return a pointer to the native function
+     * @throws UnsatisfiedLinkError if the function could not be resolved
+     */
+    NativeFunctionPointer getFunctionPointer(NativeLibraryHandle[] libraries, String name);
+
+    /**
+     * Resolves a function name to a {@linkplain NativeFunctionHandle handle} that can be called
+     * with a given signature. The signature contains the types of the arguments that will be passed
+     * to the handle when it is {@linkplain NativeFunctionHandle#call(Object...) called}.
+     * 
+     * @param library the handle to a resolved library
+     * @param name the name of the function to be resolved
      * @param returnType the type of the return value
      * @param argumentTypes the types of the arguments
-     * @return the function handle of the native foreign function
+     * @return the function handle of the native function
+     * @throws UnsatisfiedLinkError if the function handle could not be resolved
      */
-    NativeFunctionHandle getFunctionHandle(NativeLibraryHandle libraryHandle, String functionName, Class returnType, Class[] argumentTypes);
+    NativeFunctionHandle getFunctionHandle(NativeLibraryHandle library, String name, Class returnType, Class... argumentTypes);
 
     /**
-     * Resolves the {@code NativeFunctionHandle} of a native function that can be called. Use a
-     * {@code NativeFunctionHandle} to invoke the native target function.
+     * Resolves a function pointer to a {@linkplain NativeFunctionHandle handle} that can be called
+     * with a given signature. The signature contains the types of the arguments that will be passed
+     * to the handle when it is {@linkplain NativeFunctionHandle#call(Object...) called}.
      * 
-     * @param functionPointer the function pointer
+     * @param functionPointer a function pointer
      * @param returnType the type of the return value
      * @param argumentTypes the types of the arguments
-     * @return the function handle of the native foreign function
+     * @return the function handle of the native function
+     * @throws UnsatisfiedLinkError if the function handle could not be created
      */
-    NativeFunctionHandle getFunctionHandle(NativeFunctionPointer functionPointer, Class returnType, Class[] argumentTypes);
+    NativeFunctionHandle getFunctionHandle(NativeFunctionPointer functionPointer, Class returnType, Class... argumentTypes);
 
     /**
-     * Resolves the function pointer {@code NativeFunctionPointer} of a native function. A
-     * {@code NativeFunctionPointer} wraps the raw pointer value.
+     * Resolves a function name to a {@linkplain NativeFunctionHandle handle} that can be called
+     * with a given signature. The signature contains the types of the arguments that will be passed
+     * to the handle when it is {@linkplain NativeFunctionHandle#call(Object...) called}.
      * 
-     * @param libraryHandles the handles to a various resolved library, the first library containing
-     *            the method wins
-     * @param functionName the name of the function to be resolved
-     * @return the function handle of the native foreign function
-     */
-    NativeFunctionPointer getFunctionPointer(NativeLibraryHandle[] libraryHandles, String functionName);
-
-    /**
-     * Resolves the {@code NativeFunctionHandle} of a native function that can be called. Use a
-     * {@code NativeFunctionHandle} to invoke the native target function.
-     * 
-     * @param libraryHandles the handles to a various resolved library, the first library containing
-     *            the method wins
-     * @param functionName the name of the function to be resolved
+     * @param libraries the ordered list of libraries to search for the function
+     * @param name the name of the function to be resolved
      * @param returnType the type of the return value
      * @param argumentTypes the types of the arguments
-     * @return the function handle of the native foreign function
+     * @return the function handle of the native function
+     * @throws UnsatisfiedLinkError if the function handle could not be created
      */
-    NativeFunctionHandle getFunctionHandle(NativeLibraryHandle[] libraryHandles, String functionName, Class returnType, Class[] argumentTypes);
+    NativeFunctionHandle getFunctionHandle(NativeLibraryHandle[] libraries, String name, Class returnType, Class... argumentTypes);
 
     /**
-     * Resolves the {@code NativeFunctionHandle} of a native function that can be called. Use a
-     * {@code NativeFunctionHandle} to invoke the native target function.
+     * Resolves a function name to a {@linkplain NativeFunctionHandle handle} that can be called
+     * with a given signature. The signature contains the types of the arguments that will be passed
+     * to the handle when it is {@linkplain NativeFunctionHandle#call(Object...) called}.
      * 
-     * @param functionName the name of the function to be resolved
+     * @param name the name of the function to be resolved
      * @param returnType the type of the return value
      * @param argumentTypes the types of the arguments
-     * @return the function handle of the native foreign function
+     * @return the function handle of the native function
+     * @throws UnsatisfiedLinkError if the function could not be resolved
      */
-    NativeFunctionHandle getFunctionHandle(String functionName, Class returnType, Class[] argumentTypes);
+    NativeFunctionHandle getFunctionHandle(String name, Class returnType, Class... argumentTypes);
 
     /**
-     * Creates {@code NativeFunctionPointer} from raw value. A {@code NativeFunctionPointer} wraps
-     * the raw pointer value.
+     * Creates a {@link NativeFunctionPointer} from a raw value.
      * 
-     * @param rawValue Raw pointer value
-     * @return {@code NativeFunctionPointer} of the raw pointer
+     * @param rawValue raw function pointer
+     * @return {@code NativeFunctionPointer} for {@code rawValue}
      */
     NativeFunctionPointer getNativeFunctionPointerFromRawValue(long rawValue);
 }

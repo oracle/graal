@@ -840,14 +840,35 @@ public class HotSpotVMConfig extends CompilerObject {
     @HotSpotVMField(name = "JavaThread::_vm_result", type = "oop", get = HotSpotVMField.Type.OFFSET) @Stable public int threadObjectResultOffset;
     @HotSpotVMField(name = "JavaThread::_graal_counters[0]", type = "jlong", get = HotSpotVMField.Type.OFFSET, optional = true) @Stable public int graalCountersThreadOffset;
 
-    // The native side (graalCompilerToVM.cpp) sets the rtldDefault if the
-    // platform is NOT Windows (Windows is currently not supported).
-    // AMD64NativeFunctionInterface checks if rtld_default handle is valid.
-    // Using 0 is not possible as it is a valid value for rtldDefault on some platforms.
+    /**
+     * An invalid value for {@link #rtldDefault}.
+     */
     public static final long INVALID_RTLD_DEFAULT_HANDLE = 0xDEADFACE;
 
-    @Stable public long libraryLoadAddress;
-    @Stable public long functionLookupAddress;
+    /**
+     * Address of the library lookup routine. The C signature of this routine is:
+     * 
+     * <pre>
+     *     void* (const char *filename, char *ebuf, int ebuflen)
+     * </pre>
+     */
+    @Stable public long dllLoad;
+
+    /**
+     * Address of the library lookup routine. The C signature of this routine is:
+     * 
+     * <pre>
+     *     void* (void* handle, const char* name)
+     * </pre>
+     */
+    @Stable public long dllLookup;
+
+    /**
+     * A pseudo-handle which when used as the first argument to {@link #dllLookup} means
+     * lookup will return the first occurrence of the desired symbol using the default library
+     * search order. If this field is {@value #INVALID_RTLD_DEFAULT_HANDLE}, then this capability is
+     * not supported on the current platform.
+     */
     @Stable public long rtldDefault = INVALID_RTLD_DEFAULT_HANDLE;
 
     /**

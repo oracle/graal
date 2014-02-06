@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,34 +20,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nfi.test;
+package com.oracle.graal.hotspot.nfi;
 
-import org.junit.*;
+import com.oracle.graal.api.meta.*;
+import com.oracle.graal.nodes.*;
 
-import com.oracle.graal.api.code.*;
-
-public class MathLibCallTest extends LibCallTest {
-
-    private final Object[] args = new Object[]{Double.doubleToLongBits(3), Double.doubleToLongBits(5.5)};
-    private final NativeFunctionHandle handle = ffi.getFunctionHandle("pow", double.class, new Class[]{double.class, double.class});
-
-    @Test
-    public void powTest() {
-        double result = (double) handle.call(args);
-        Assert.assertEquals(Math.pow(3, 5.5), result, 0);
-    }
-
-    @Test
-    public void compilePowTest() {
-        double result = 0;
-        for (int i = 0; i < 100000; i++) {
-            result = callPow();
-        }
-        Assert.assertEquals(Math.pow(3, 5.5), result, 0);
-
-    }
-
-    private double callPow() {
-        return (double) handle.call(args);
-    }
+/**
+ * Factory for creating a node that makes a direct call to a native function pointer.
+ */
+public interface RawNativeCallNodeFactory {
+    FixedWithNextNode createRawCallNode(Kind returnType, Constant functionPointer, ValueNode... args);
 }

@@ -20,23 +20,33 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nfi.hotspot.amd64;
+package com.oracle.graal.hotspot.nfi;
 
 import com.oracle.graal.api.code.*;
 
-public class AMD64HotSpotNativeLibraryHandle implements NativeLibraryHandle {
+public class HotSpotNativeFunctionPointer implements NativeFunctionPointer {
 
-    private final long handle;
+    final long value;
+    final String name;
 
-    public AMD64HotSpotNativeLibraryHandle(long handle) {
-        this.handle = handle;
+    public HotSpotNativeFunctionPointer(long value, String name) {
+        if (value == 0) {
+            throw new UnsatisfiedLinkError(name);
+        }
+        this.value = value;
+        this.name = name;
     }
 
-    public long asRawValue() {
-        return handle;
+    public String getName() {
+        return name;
     }
 
-    public boolean isValid() {
-        return handle != 0;
+    public long getValue() {
+        return value;
+    }
+
+    @Override
+    public String toString() {
+        return name + "@0x" + Long.toHexString(value);
     }
 }

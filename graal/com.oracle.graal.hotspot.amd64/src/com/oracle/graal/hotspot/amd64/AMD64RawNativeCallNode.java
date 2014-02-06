@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nfi.hotspot.amd64.node;
+package com.oracle.graal.hotspot.amd64;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.CallingConvention.Type;
@@ -45,22 +45,18 @@ public class AMD64RawNativeCallNode extends FixedWithNextNode implements LIRGenL
 
     @Override
     public void generate(LIRGenerator generator) {
-        if (generator instanceof AMD64LIRGenerator) {
-            AMD64LIRGenerator amd64gen = (AMD64LIRGenerator) generator;
-            Value[] parameter = new Value[args.count()];
-            JavaType[] parameterTypes = new JavaType[args.count()];
-            for (int i = 0; i < args.count(); i++) {
-                parameter[i] = generator.operand(args.get(i));
-                parameterTypes[i] = args.get(i).stamp().javaType(amd64gen.getMetaAccess());
-            }
-            ResolvedJavaType returnType = stamp().javaType(amd64gen.getMetaAccess());
-            CallingConvention cc = generator.getCodeCache().getRegisterConfig().getCallingConvention(Type.NativeCall, returnType, parameterTypes, generator.target(), false);
-            amd64gen.emitCCall(functionPointer.asLong(), cc, parameter, countFloatingTypeArguments(args));
-            if (this.kind() != Kind.Void) {
-                generator.setResult(this, amd64gen.emitMove(cc.getReturn()));
-            }
-        } else {
-            throw GraalInternalError.shouldNotReachHere("GNFI Native call only supported with AMD64LIR Generator");
+        AMD64LIRGenerator gen = (AMD64LIRGenerator) generator;
+        Value[] parameter = new Value[args.count()];
+        JavaType[] parameterTypes = new JavaType[args.count()];
+        for (int i = 0; i < args.count(); i++) {
+            parameter[i] = generator.operand(args.get(i));
+            parameterTypes[i] = args.get(i).stamp().javaType(gen.getMetaAccess());
+        }
+        ResolvedJavaType returnType = stamp().javaType(gen.getMetaAccess());
+        CallingConvention cc = generator.getCodeCache().getRegisterConfig().getCallingConvention(Type.NativeCall, returnType, parameterTypes, generator.target(), false);
+        gen.emitCCall(functionPointer.asLong(), cc, parameter, countFloatingTypeArguments(args));
+        if (this.kind() != Kind.Void) {
+            generator.setResult(this, gen.emitMove(cc.getReturn()));
         }
     }
 
