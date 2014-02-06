@@ -73,7 +73,7 @@ OpenJDK 64-Bit Server VM (build 25.0-b43-internal, mixed mode)
 % mx --vm client-nograal vm -version
 java version "1.7.0_25"
 Java(TM) SE Runtime Environment (build 1.7.0_25-b15)
-OpenJDK 64-Bit Cleint VM (build 25.0-b43-internal, mixed mode)
+OpenJDK 64-Bit Client VM (build 25.0-b43-internal, mixed mode)
 ```
 
 These configurations aim to match as closely as possible the
