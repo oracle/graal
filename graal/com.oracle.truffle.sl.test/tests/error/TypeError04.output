@@ -1,0 +1,1 @@
+Type error at TypeError04.sl line 2 col 11: operation "||" not defined for Boolean false, Number 4

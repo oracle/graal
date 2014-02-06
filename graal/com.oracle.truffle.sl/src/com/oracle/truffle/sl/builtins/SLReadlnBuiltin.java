@@ -24,6 +24,7 @@ package com.oracle.truffle.sl.builtins;
 
 import java.io.*;
 
+import com.oracle.truffle.api.CompilerDirectives.SlowPath;
 import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.sl.*;
@@ -37,17 +38,22 @@ public abstract class SLReadlnBuiltin extends SLBuiltinNode {
 
     @Specialization
     public String readln() {
+        String result = doRead(getContext().getInput());
+        if (result == null) {
+            /*
+             * We do not have a sophisticated end of file handling, so returning an empty string is
+             * a reasonable alternative. Note that the Java null value should never be used, since
+             * it can interfere with the specialization logic in generated source code.
+             */
+            result = "";
+        }
+        return result;
+    }
+
+    @SlowPath
+    private static String doRead(BufferedReader in) {
         try {
-            String result = getContext().getInput().readLine();
-            if (result == null) {
-                /*
-                 * We do not have a sophisticated end of file handling, so returning an empty string
-                 * is a reasonable alternative. Note that the Java null value should never be used,
-                 * since it can interfere with the specialization logic in generated source code.
-                 */
-                result = "";
-            }
-            return result;
+            return in.readLine();
         } catch (IOException ex) {
             throw new SLException(ex.getMessage());
         }

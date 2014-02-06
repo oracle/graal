@@ -30,7 +30,7 @@ import com.oracle.truffle.api.utilities.*;
 import com.oracle.truffle.sl.nodes.*;
 
 @NodeInfo(shortName = "while")
-public class SLWhileNode extends SLStatementNode {
+public final class SLWhileNode extends SLStatementNode {
 
     /**
      * The condition of the loop. This in a {@link SLExpressionNode} because we require a result

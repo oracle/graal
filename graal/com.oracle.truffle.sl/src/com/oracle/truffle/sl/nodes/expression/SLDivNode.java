@@ -29,13 +29,16 @@ import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.sl.nodes.*;
 
 /**
- * This class is similar to the extensively documented {@link SLAddNode}.
+ * This class is similar to the extensively documented {@link SLAddNode}. Divisions by 0 throw the
+ * same {@link ArithmeticException exception} as in Java, SL has no special handling for it to keep
+ * the code simple.
  */
 @NodeInfo(shortName = "/")
 public abstract class SLDivNode extends SLBinaryNode {
 
-    @Specialization(rewriteOn = ArithmeticException.class)
+    @Specialization
     protected long div(long left, long right) {
+        /* No overflow is possible on a division. */
         return left / right;
     }
 
