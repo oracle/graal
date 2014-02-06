@@ -141,7 +141,7 @@ public class PTXHotSpotBackend extends HotSpotBackend {
     }
 
     /**
-     * Gets the address of {@code gpu::Ptx::execute_kernel_from_vm()}.
+     * Gets the address of {@code Ptx::execute_kernel_from_vm()}.
      */
     private static native long getLaunchKernelAddress();
 
