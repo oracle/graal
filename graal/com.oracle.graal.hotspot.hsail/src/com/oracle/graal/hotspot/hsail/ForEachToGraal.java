@@ -26,7 +26,6 @@ package com.oracle.graal.hotspot.hsail;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 
 import java.lang.reflect.*;
-import java.util.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
@@ -63,7 +62,7 @@ public class ForEachToGraal implements CompileAndDispatch {
     private static HotSpotNmethod getCompiledLambda(Class intConsumerClass) {
         Method acceptMethod = null;
         for (Method m : intConsumerClass.getMethods()) {
-            if (m.getName().equals("accept") && Arrays.equals(new Class[]{int.class}, m.getParameterTypes())) {
+            if (m.getName().equals("accept")) {
                 assert acceptMethod == null : "found more than one implementation of accept(int) in " + intConsumerClass;
                 acceptMethod = m;
             }
