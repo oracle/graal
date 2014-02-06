@@ -26,6 +26,8 @@ package com.oracle.graal.hotspot.hsail;
 import sun.misc.*;
 
 import com.oracle.graal.api.code.*;
+import static com.oracle.graal.api.code.ValueUtil.asConstant;
+import static com.oracle.graal.api.code.ValueUtil.isConstant;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.hsail.*;
 import com.oracle.graal.hotspot.*;
@@ -33,11 +35,12 @@ import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.hsail.*;
 import com.oracle.graal.lir.hsail.HSAILControlFlow.*;
 import com.oracle.graal.lir.hsail.HSAILMove.*;
+import com.oracle.graal.phases.util.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
-import com.oracle.graal.phases.util.*;
+import com.oracle.graal.graph.*;
 
 /**
  * The HotSpot specific portion of the HSAIL LIR generator.
@@ -79,6 +82,11 @@ public class HSAILHotSpotLIRGenerator extends HSAILLIRGenerator {
         return access != null && access.isCompressible();
     }
 
+    @Override
+    public boolean canStoreConstant(Constant c, boolean isCompressed) {
+        return true;
+    }
+
     /**
      * Appends either a {@link CompareAndSwapOp} or a {@link CompareAndSwapCompressedOp} depending
      * on whether the memory location of a given {@link LoweredCompareAndSwapNode} contains a
@@ -114,6 +122,13 @@ public class HSAILHotSpotLIRGenerator extends HSAILLIRGenerator {
         setResult(node, nodeResult);
     }
 
+    /**
+     * Returns whether or not the input access should be (de)compressed.
+     */
+    private boolean isCompressedOperation(Kind kind, Access access) {
+        return access != null && access.isCompressible() && ((kind == Kind.Long && config.useCompressedClassPointers) || (kind == Kind.Object && config.useCompressedOops));
+    }
+
     @Override
     public Variable emitLoad(Kind kind, Value address, Access access) {
         HSAILAddressValue loadAddress = asAddressValue(address);
@@ -140,6 +155,23 @@ public class HSAILHotSpotLIRGenerator extends HSAILLIRGenerator {
         LIRFrameState state = null;
         if (access instanceof DeoptimizingNode) {
             state = state((DeoptimizingNode) access);
+        }
+        boolean isCompressed = isCompressedOperation(kind, access);
+        if (isConstant(inputVal)) {
+            Constant c = asConstant(inputVal);
+            if (canStoreConstant(c, isCompressed)) {
+                if (isCompressed) {
+                    if ((c.getKind() == Kind.Object) && c.isNull()) {
+                        append(new StoreConstantOp(Kind.NarrowOop, storeAddress, c, state));
+                    } else {
+                        throw GraalInternalError.shouldNotReachHere("can't handle: " + access);
+                    }
+                    return;
+                } else {
+                    append(new StoreConstantOp(kind, storeAddress, c, state));
+                    return;
+                }
+            }
         }
         Variable input = load(inputVal);
         if (isCompressCandidate(access) && config.useCompressedOops && kind == Kind.Object) {

@@ -120,7 +120,13 @@ public class HSAILAssembler extends AbstractHSAILAssembler {
     }
 
     private void emitAddrOp(String instr, Value reg, HSAILAddress addr) {
-        emitString(instr + " " + HSAIL.mapRegister(reg) + ", " + mapAddress(addr) + ";");
+        String storeValue = null;
+        if (reg instanceof RegisterValue) {
+            storeValue = HSAIL.mapRegister(reg);
+        } else if (reg instanceof Constant) {
+            storeValue = ((Constant) reg).asBoxedValue().toString();
+        }
+        emitString(instr + " " + storeValue + ", " + mapAddress(addr) + ";");
     }
 
     /**
@@ -160,8 +166,29 @@ public class HSAILAssembler extends AbstractHSAILAssembler {
         emitAddrOp("st_global_" + argTypeStr, dest, addr);
     }
 
+    private void storeImmediateImpl(String storeType, String value, HSAILAddress addr) {
+        emitString("st_global_" + storeType + " " + value + ", " + mapAddress(addr) + ";");
+    }
+
+    public final void emitStoreImmediate(Kind kind, long src, HSAILAddress addr) {
+        assert (kind != Kind.Float && kind != Kind.Double);
+        storeImmediateImpl(getArgTypeFromKind(kind), Long.toString(src), addr);
+    }
+
+    public final void emitStoreImmediate(float src, HSAILAddress addr) {
+        storeImmediateImpl("f32", Float.toString(src), addr);
+    }
+
+    public final void emitStoreImmediate(double src, HSAILAddress addr) {
+        storeImmediateImpl("f64", Double.toString(src), addr);
+    }
+
     public final void emitSpillLoad(Value dest, Value src) {
         emitString("ld_spill_" + getArgType(dest) + " " + HSAIL.mapRegister(dest) + ", " + mapStackSlot(src, getArgSize(dest)) + ";");
+    }
+
+    public final void emitStore(Value src, HSAILAddress addr) {
+        emitString("st_global_" + getArgType(src) + " " + HSAIL.mapRegister(src) + ", " + mapAddress(addr) + ";");
     }
 
     public final void emitSpillStore(Value src, Value dest) {
@@ -206,7 +233,7 @@ public class HSAILAssembler extends AbstractHSAILAssembler {
         }
     }
 
-    public static final String getArgType(Value src) {
+    private static String getArgType(Value src) {
         return getArgTypeFromKind(src.getKind());
     }
 
@@ -236,6 +263,9 @@ public class HSAILAssembler extends AbstractHSAILAssembler {
                 break;
             case Byte:
                 prefix = "s8";
+                break;
+            case NarrowOop:
+                prefix = "u32";
                 break;
             default:
                 throw GraalInternalError.shouldNotReachHere();
@@ -505,5 +535,9 @@ public class HSAILAssembler extends AbstractHSAILAssembler {
      */
     public void emitComment(String comment) {
         emitString(comment);
+    }
+
+    public void emitStoreRelease(Value src, HSAILAddress address) {
+        emitAddrOp("st_global_rel_u" + getArgSize(src), src, address);
     }
 }
