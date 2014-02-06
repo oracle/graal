@@ -864,10 +864,10 @@ public class HotSpotVMConfig extends CompilerObject {
     @Stable public long dllLookup;
 
     /**
-     * A pseudo-handle which when used as the first argument to {@link #dllLookup} means
-     * lookup will return the first occurrence of the desired symbol using the default library
-     * search order. If this field is {@value #INVALID_RTLD_DEFAULT_HANDLE}, then this capability is
-     * not supported on the current platform.
+     * A pseudo-handle which when used as the first argument to {@link #dllLookup} means lookup will
+     * return the first occurrence of the desired symbol using the default library search order. If
+     * this field is {@value #INVALID_RTLD_DEFAULT_HANDLE}, then this capability is not supported on
+     * the current platform.
      */
     @Stable public long rtldDefault = INVALID_RTLD_DEFAULT_HANDLE;
 
