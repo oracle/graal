@@ -158,7 +158,6 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
 
         CallingConvention incomingArguments = cc;
 
-        RegisterValue rbpParam = rbp.asValue(Kind.Long);
         Value[] params = new Value[incomingArguments.getArgumentCount() + 1];
         for (int i = 0; i < params.length - 1; i++) {
             params[i] = toStackKind(incomingArguments.getArgument(i));
@@ -169,7 +168,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
                 }
             }
         }
-        params[params.length - 1] = rbpParam;
+        params[params.length - 1] = rbp.asValue(Kind.Long);
 
         emitIncomingValues(params);
 
