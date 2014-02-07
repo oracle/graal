@@ -35,37 +35,16 @@ public abstract class IntegerArithmeticNode extends BinaryNode implements Arithm
 
     public static IntegerAddNode add(StructuredGraph graph, ValueNode v1, ValueNode v2) {
         assert v1.kind() == v2.kind();
-        switch (v1.kind()) {
-            case Int:
-                return graph.unique(new IntegerAddNode(Kind.Int, v1, v2));
-            case Long:
-                return graph.unique(new IntegerAddNode(Kind.Long, v1, v2));
-            default:
-                throw ValueNodeUtil.shouldNotReachHere();
-        }
+        return graph.unique(new IntegerAddNode(v1.kind(), v1, v2));
     }
 
     public static IntegerMulNode mul(StructuredGraph graph, ValueNode v1, ValueNode v2) {
         assert v1.kind() == v2.kind();
-        switch (v1.kind()) {
-            case Int:
-                return graph.unique(new IntegerMulNode(Kind.Int, v1, v2));
-            case Long:
-                return graph.unique(new IntegerMulNode(Kind.Long, v1, v2));
-            default:
-                throw ValueNodeUtil.shouldNotReachHere();
-        }
+        return graph.unique(new IntegerMulNode(v1.kind(), v1, v2));
     }
 
     public static IntegerSubNode sub(StructuredGraph graph, ValueNode v1, ValueNode v2) {
         assert v1.kind() == v2.kind();
-        switch (v1.kind()) {
-            case Int:
-                return graph.unique(new IntegerSubNode(Kind.Int, v1, v2));
-            case Long:
-                return graph.unique(new IntegerSubNode(Kind.Long, v1, v2));
-            default:
-                throw ValueNodeUtil.shouldNotReachHere();
-        }
+        return graph.unique(new IntegerSubNode(v1.kind(), v1, v2));
     }
 }
