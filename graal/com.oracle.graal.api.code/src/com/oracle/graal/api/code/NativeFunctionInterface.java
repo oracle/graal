@@ -40,6 +40,13 @@ public interface NativeFunctionInterface {
     NativeLibraryHandle getLibraryHandle(String libPath);
 
     /**
+     * Determines if the underlying platform/runtime supports the notion of a default library search
+     * path. For example, on *nix systems, this is typically defined by the {@code LD_LIBRARY_PATH}
+     * environment variable.
+     */
+    boolean isDefaultLibrarySearchSupported();
+
+    /**
      * Resolves the function pointer {@code NativeFunctionPointer} of a native function.
      * 
      * @param libraries the ordered list of libraries to search for the function
@@ -72,7 +79,7 @@ public interface NativeFunctionInterface {
      * @param returnType the type of the return value
      * @param argumentTypes the types of the arguments
      * @return the function handle of the native function
-     * @throws UnsatisfiedLinkError if the function handle could not be created
+     * @throws UnsatisfiedLinkError the function handle could not be created
      */
     NativeFunctionHandle getFunctionHandle(NativeFunctionPointer functionPointer, Class returnType, Class... argumentTypes);
 
@@ -99,7 +106,9 @@ public interface NativeFunctionInterface {
      * @param returnType the type of the return value
      * @param argumentTypes the types of the arguments
      * @return the function handle of the native function
-     * @throws UnsatisfiedLinkError if the function could not be resolved
+     * @throws UnsatisfiedLinkError if default library searching is not
+     *             {@linkplain #isDefaultLibrarySearchSupported() supported} or if the function
+     *             could not be resolved
      */
     NativeFunctionHandle getFunctionHandle(String name, Class returnType, Class... argumentTypes);
 
