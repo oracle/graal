@@ -255,22 +255,14 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public void emitOverflowCheckBranch(LabelRef overflow, LabelRef noOverflow, boolean negated) {
-        if (negated) {
-            append(new BranchOp(ConditionFlag.NoOverflow, noOverflow, overflow));
-        } else {
-            append(new BranchOp(ConditionFlag.Overflow, overflow, noOverflow));
-        }
+    public void emitOverflowCheckBranch(LabelRef overflow, LabelRef noOverflow) {
+        append(new BranchOp(ConditionFlag.Overflow, overflow, noOverflow));
     }
 
     @Override
-    public void emitIntegerTestBranch(Value left, Value right, boolean negated, LabelRef trueDestination, LabelRef falseDestination) {
+    public void emitIntegerTestBranch(Value left, Value right, LabelRef trueDestination, LabelRef falseDestination) {
         emitIntegerTest(left, right);
-        if (negated) {
-            append(new BranchOp(Condition.NE, falseDestination, trueDestination));
-        } else {
-            append(new BranchOp(Condition.EQ, trueDestination, falseDestination));
-        }
+        append(new BranchOp(Condition.EQ, trueDestination, falseDestination));
     }
 
     @Override

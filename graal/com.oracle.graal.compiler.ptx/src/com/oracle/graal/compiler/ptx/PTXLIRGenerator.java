@@ -327,12 +327,12 @@ public class PTXLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public void emitOverflowCheckBranch(LabelRef overflow, LabelRef noOverflow, boolean negated) {
+    public void emitOverflowCheckBranch(LabelRef overflow, LabelRef noOverflow) {
         throw GraalInternalError.unimplemented("PTXLIRGenerator.emitOverflowCheckBranch()");
     }
 
     @Override
-    public void emitIntegerTestBranch(Value left, Value right, boolean negated, LabelRef trueDestination, LabelRef falseDestination) {
+    public void emitIntegerTestBranch(Value left, Value right, LabelRef trueDestination, LabelRef falseDestination) {
         // / emitIntegerTest(left, right);
         // append(new BranchOp(negated ? Condition.NE : Condition.EQ, label));
         throw GraalInternalError.unimplemented("emitIntegerTestBranch()");

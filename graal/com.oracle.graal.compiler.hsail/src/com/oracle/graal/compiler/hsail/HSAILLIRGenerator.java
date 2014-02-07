@@ -210,12 +210,12 @@ public abstract class HSAILLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public void emitOverflowCheckBranch(LabelRef overflow, LabelRef noOverflow, boolean negated) {
+    public void emitOverflowCheckBranch(LabelRef overflow, LabelRef noOverflow) {
         throw GraalInternalError.unimplemented();
     }
 
     @Override
-    public void emitIntegerTestBranch(Value left, Value right, boolean negated, LabelRef trueDestination, LabelRef falseDestination) {
+    public void emitIntegerTestBranch(Value left, Value right, LabelRef trueDestination, LabelRef falseDestination) {
         throw GraalInternalError.unimplemented();
     }
 

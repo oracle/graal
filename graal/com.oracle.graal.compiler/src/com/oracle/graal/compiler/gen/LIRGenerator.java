@@ -680,12 +680,8 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
         emitCompareBranch(operand(compare.x()), operand(compare.y()), compare.condition(), compare.unorderedIsTrue(), trueSuccessor, falseSuccessor);
     }
 
-    public void emitOverflowCheckBranch(LabelRef noOverflowBlock, LabelRef overflowBlock) {
-        emitOverflowCheckBranch(overflowBlock, noOverflowBlock, false);
-    }
-
     public void emitIntegerTestBranch(IntegerTestNode test, LabelRef trueSuccessor, LabelRef falseSuccessor) {
-        emitIntegerTestBranch(operand(test.x()), operand(test.y()), false, trueSuccessor, falseSuccessor);
+        emitIntegerTestBranch(operand(test.x()), operand(test.y()), trueSuccessor, falseSuccessor);
     }
 
     public void emitConstantBranch(boolean value, LabelRef trueSuccessorBlock, LabelRef falseSuccessorBlock) {
@@ -721,9 +717,9 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
 
     public abstract void emitCompareBranch(Value left, Value right, Condition cond, boolean unorderedIsTrue, LabelRef trueDestination, LabelRef falseDestination);
 
-    public abstract void emitOverflowCheckBranch(LabelRef overflow, LabelRef noOverflow, boolean negated);
+    public abstract void emitOverflowCheckBranch(LabelRef overflow, LabelRef noOverflow);
 
-    public abstract void emitIntegerTestBranch(Value left, Value right, boolean negated, LabelRef trueDestination, LabelRef falseDestination);
+    public abstract void emitIntegerTestBranch(Value left, Value right, LabelRef trueDestination, LabelRef falseDestination);
 
     public abstract Variable emitConditionalMove(Value leftVal, Value right, Condition cond, boolean unorderedIsTrue, Value trueValue, Value falseValue);
 
