@@ -23,8 +23,11 @@
 package com.oracle.graal.compiler.test.nfi;
 
 import static com.oracle.graal.graph.UnsafeAccess.*;
+import static java.io.File.*;
+import static java.lang.System.*;
 import static org.junit.Assert.*;
 
+import java.io.*;
 import java.util.*;
 
 import org.junit.*;
@@ -204,7 +207,7 @@ public class NativeFunctionInterfaceTest {
     public void test7() {
         double result = 0;
         NativeFunctionHandle handle = ffi.getFunctionHandle("pow", double.class, double.class, double.class);
-        for (int i = 0; i < 100000; i++) {
+        for (int i = 0; i < 10; i++) {
             result = (double) handle.call(3D, 5.5D);
         }
         assertEquals(Math.pow(3D, 5.5D), result, 0);
@@ -229,14 +232,99 @@ public class NativeFunctionInterfaceTest {
         Assert.assertEquals(expected.length(), result);
     }
 
+    private static double[] someDoubles = {2454.346D, 98789.22D, Double.MAX_VALUE, Double.MIN_NORMAL, Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY};
+
     @Test
     public void test9() {
-        double[] src = {2454.346D, 98789.22D, Double.MAX_VALUE, Double.MIN_NORMAL, Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY};
+        double[] src = someDoubles.clone();
         double[] dst = new double[src.length];
 
         NativeFunctionHandle memcpy = ffi.getFunctionHandle("memcpy", void.class, double[].class, double[].class, int.class);
         memcpy.call(dst, src, src.length * (Double.SIZE / Byte.SIZE));
 
         assertArrayEquals(src, dst, 0.0D);
+    }
+
+    private static String getVMName() {
+        String vmName = System.getProperty("java.vm.name").toLowerCase();
+        String vm = null;
+        if (vmName.contains("server")) {
+            vm = "server";
+        } else if (vmName.contains("graal")) {
+            vm = "graal";
+        } else if (vmName.contains("client")) {
+            vm = "client";
+        }
+
+        Assume.assumeTrue(vm != null);
+        return vm;
+    }
+
+    private static String getVMLibPath() {
+        String vm = getVMName();
+
+        String path = String.format("%s%c%s%c%s", getProperty("sun.boot.library.path"), separatorChar, vm, separatorChar, mapLibraryName("jvm"));
+        // Only continue if the library file exists
+        Assume.assumeTrue(new File(path).exists());
+        return path;
+    }
+
+    @Test
+    public void test10() {
+        NativeLibraryHandle vmLib = ffi.getLibraryHandle(getVMLibPath());
+        NativeFunctionHandle currentTimeMillis = ffi.getFunctionHandle(vmLib, "JVM_CurrentTimeMillis", long.class);
+        long time1 = (long) currentTimeMillis.call();
+        long time2 = System.currentTimeMillis();
+        long delta = time2 - time1;
+
+        // The 2 calls to get the current time should not differ by more than
+        // 100 milliseconds at the very most
+        assertTrue(String.valueOf(delta), delta >= 0);
+        assertTrue(String.valueOf(delta), delta < 100);
+    }
+
+    private static String getJavaLibPath() {
+        String path = String.format("%s%c%s", getProperty("sun.boot.library.path"), separatorChar, mapLibraryName("java"));
+        Assume.assumeTrue(new File(path).exists());
+        return path;
+    }
+
+    private static void testD2L(NativeFunctionHandle d2l) {
+        for (double d : someDoubles) {
+            long expected = Double.doubleToRawLongBits(d);
+            long actual = (long) d2l.call(0L, 0L, d);
+            assertEquals(Double.toString(d), expected, actual);
+        }
+    }
+
+    @Test
+    public void test11() {
+        NativeLibraryHandle javaLib = ffi.getLibraryHandle(getJavaLibPath());
+        NativeFunctionHandle d2l = ffi.getFunctionHandle(javaLib, "Java_java_lang_Double_doubleToRawLongBits", long.class, long.class, long.class, double.class);
+        testD2L(d2l);
+    }
+
+    @Test
+    public void test12() {
+        NativeLibraryHandle[] libs = {ffi.getLibraryHandle(getVMLibPath()), ffi.getLibraryHandle(getJavaLibPath())};
+        NativeFunctionHandle d2l = ffi.getFunctionHandle(libs, "Java_java_lang_Double_doubleToRawLongBits", long.class, long.class, long.class, double.class);
+        testD2L(d2l);
+
+        NativeLibraryHandle[] libsReveresed = {libs[1], libs[0]};
+        d2l = ffi.getFunctionHandle(libsReveresed, "Java_java_lang_Double_doubleToRawLongBits", long.class, long.class, long.class, double.class);
+        testD2L(d2l);
+    }
+
+    @Test
+    public void test13() {
+        NativeLibraryHandle[] libs = {ffi.getLibraryHandle(getVMLibPath()), ffi.getLibraryHandle(getJavaLibPath())};
+        NativeFunctionPointer functionPointer = ffi.getFunctionPointer(libs, "Java_java_lang_Double_doubleToRawLongBits");
+        NativeFunctionHandle d2l = ffi.getFunctionHandle(functionPointer, long.class, long.class, long.class, double.class);
+        testD2L(d2l);
+
+        NativeLibraryHandle[] libsReveresed = {libs[1], libs[0]};
+        functionPointer = ffi.getFunctionPointer(libsReveresed, "Java_java_lang_Double_doubleToRawLongBits");
+        d2l = ffi.getFunctionHandle(functionPointer, long.class, long.class, long.class, double.class);
+        testD2L(d2l);
     }
 }
