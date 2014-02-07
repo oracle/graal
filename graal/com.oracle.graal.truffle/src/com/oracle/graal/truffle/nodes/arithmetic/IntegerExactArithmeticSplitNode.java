@@ -74,7 +74,7 @@ public abstract class IntegerExactArithmeticSplitNode extends ControlSplitNode i
     @Override
     public void generate(LIRGenerator generator) {
         generator.setResult(this, generateArithmetic(generator));
-        generator.emitOverflowCheckBranch(generator.getLIRBlock(getOverflowSuccessor()), generator.getLIRBlock(getNext()));
+        generator.emitOverflowCheckBranch(generator.getLIRBlock(getOverflowSuccessor()), generator.getLIRBlock(getNext()), probability(getOverflowSuccessor()));
     }
 
     protected abstract Value generateArithmetic(LIRGeneratorTool generator);

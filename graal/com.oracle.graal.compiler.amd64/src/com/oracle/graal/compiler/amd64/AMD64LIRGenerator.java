@@ -229,18 +229,18 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public void emitCompareBranch(Value left, Value right, Condition cond, boolean unorderedIsTrue, LabelRef trueLabel, LabelRef falseLabel) {
+    public void emitCompareBranch(Value left, Value right, Condition cond, boolean unorderedIsTrue, LabelRef trueLabel, LabelRef falseLabel, double trueLabelProbability) {
         boolean mirrored = emitCompare(left, right);
         Condition finalCondition = mirrored ? cond.mirror() : cond;
         switch (left.getKind().getStackKind()) {
             case Int:
             case Long:
             case Object:
-                append(new BranchOp(finalCondition, trueLabel, falseLabel));
+                append(new BranchOp(finalCondition, trueLabel, falseLabel, trueLabelProbability));
                 break;
             case Float:
             case Double:
-                append(new FloatBranchOp(finalCondition, unorderedIsTrue, trueLabel, falseLabel));
+                append(new FloatBranchOp(finalCondition, unorderedIsTrue, trueLabel, falseLabel, trueLabelProbability));
                 break;
             default:
                 throw GraalInternalError.shouldNotReachHere("" + left.getKind());
@@ -255,14 +255,14 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public void emitOverflowCheckBranch(LabelRef overflow, LabelRef noOverflow) {
-        append(new BranchOp(ConditionFlag.Overflow, overflow, noOverflow));
+    public void emitOverflowCheckBranch(LabelRef overflow, LabelRef noOverflow, double overflowProbability) {
+        append(new BranchOp(ConditionFlag.Overflow, overflow, noOverflow, overflowProbability));
     }
 
     @Override
-    public void emitIntegerTestBranch(Value left, Value right, LabelRef trueDestination, LabelRef falseDestination) {
+    public void emitIntegerTestBranch(Value left, Value right, LabelRef trueDestination, LabelRef falseDestination, double trueDestinationProbability) {
         emitIntegerTest(left, right);
-        append(new BranchOp(Condition.EQ, trueDestination, falseDestination));
+        append(new BranchOp(Condition.EQ, trueDestination, falseDestination, trueDestinationProbability));
     }
 
     @Override
