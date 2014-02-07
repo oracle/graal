@@ -39,6 +39,20 @@ public class HotSpotNativeLibraryHandle implements NativeLibraryHandle {
     }
 
     @Override
+    public boolean equals(Object obj) {
+        if (obj instanceof HotSpotNativeLibraryHandle) {
+            HotSpotNativeLibraryHandle that = (HotSpotNativeLibraryHandle) obj;
+            return that.value == value;
+        }
+        return false;
+    }
+
+    @Override
+    public int hashCode() {
+        return (int) value;
+    }
+
+    @Override
     public String toString() {
         return name + "@" + value;
     }

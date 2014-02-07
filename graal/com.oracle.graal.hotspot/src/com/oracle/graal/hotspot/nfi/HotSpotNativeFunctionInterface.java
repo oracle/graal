@@ -27,13 +27,13 @@ import static com.oracle.graal.graph.UnsafeAccess.*;
 import static com.oracle.graal.hotspot.nfi.NativeCallStubGraphBuilder.*;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.CallingConvention.*;
+import com.oracle.graal.api.code.CallingConvention.Type;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.meta.ProfilingInfo.*;
+import com.oracle.graal.api.meta.ProfilingInfo.TriState;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.debug.*;
-import com.oracle.graal.debug.Debug.*;
+import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.lir.asm.*;
@@ -88,7 +88,7 @@ public class HotSpotNativeFunctionInterface implements NativeFunctionInterface {
     @Override
     public HotSpotNativeFunctionHandle getFunctionHandle(NativeLibraryHandle library, String name, Class returnType, Class... argumentTypes) {
         HotSpotNativeFunctionPointer functionPointer = lookupFunctionPointer(name, library, true);
-        return getFunctionHandle(functionPointer, returnType, argumentTypes);
+        return createHandle(functionPointer, returnType, argumentTypes);
     }
 
     @Override
@@ -116,6 +116,7 @@ public class HotSpotNativeFunctionInterface implements NativeFunctionInterface {
         if (name == null || library == null) {
             throw new NullPointerException();
         }
+
         if (dllLookupFunctionHandle == null) {
             dllLookupFunctionHandle = createHandle(functionLookupFunctionPointer, long.class, long.class, long.class);
         }

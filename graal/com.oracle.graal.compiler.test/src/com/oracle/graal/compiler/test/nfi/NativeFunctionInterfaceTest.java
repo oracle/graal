@@ -209,4 +209,34 @@ public class NativeFunctionInterfaceTest {
         }
         assertEquals(Math.pow(3D, 5.5D), result, 0);
     }
+
+    @Test
+    public void test8() {
+        String formatString = "AB %f%f";
+        long formatCString = writeCString("AB %f%f", malloc(formatString.length() + 1));
+
+        String expected = "AB 1.0000001.000000";
+        int bufferLength = expected.length() + 1;
+        byte[] buffer = new byte[bufferLength];
+
+        NativeFunctionHandle snprintf = ffi.getFunctionHandle("snprintf", int.class, byte[].class, int.class, long.class, double.class, double.class);
+        int result = (int) snprintf.call(buffer, bufferLength, formatCString, 1.0D, 1.0D);
+
+        // trim trailing '\0'
+        String actual = new String(buffer, 0, expected.length());
+
+        assertEquals(expected, actual);
+        Assert.assertEquals(expected.length(), result);
+    }
+
+    @Test
+    public void test9() {
+        double[] src = {2454.346D, 98789.22D, Double.MAX_VALUE, Double.MIN_NORMAL, Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY};
+        double[] dst = new double[src.length];
+
+        NativeFunctionHandle memcpy = ffi.getFunctionHandle("memcpy", void.class, double[].class, double[].class, int.class);
+        memcpy.call(dst, src, src.length * (Double.SIZE / Byte.SIZE));
+
+        assertArrayEquals(src, dst, 0.0D);
+    }
 }

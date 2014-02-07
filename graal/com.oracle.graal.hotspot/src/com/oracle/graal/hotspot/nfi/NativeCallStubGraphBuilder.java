@@ -146,7 +146,7 @@ public class NativeCallStubGraphBuilder {
             throw new IllegalArgumentException("Parameter type not supported: " + clazz);
         }
         if (componentType.isPrimitive()) {
-            Kind.fromJavaClass(componentType);
+            return Kind.fromJavaClass(componentType);
         }
         throw new IllegalArgumentException("Parameter type not supported: " + clazz);
     }
