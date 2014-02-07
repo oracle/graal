@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.compiler.gen;
 
-import static com.oracle.graal.api.code.CallingConvention.Type.*;
 import static com.oracle.graal.api.code.ValueUtil.*;
 import static com.oracle.graal.api.meta.Value.*;
 import static com.oracle.graal.lir.LIR.*;
@@ -41,7 +40,11 @@ import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.StandardOp.*;
+import com.oracle.graal.lir.StandardOp.BlockEndOp;
+import com.oracle.graal.lir.StandardOp.JumpOp;
+import com.oracle.graal.lir.StandardOp.LabelOp;
+import com.oracle.graal.lir.StandardOp.MoveOp;
+import com.oracle.graal.lir.StandardOp.NoOp;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.PhiNode.PhiType;
 import com.oracle.graal.nodes.calc.*;
@@ -174,13 +177,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
         this.graph = graph;
         this.providers = providers;
         this.frameMap = frameMap;
-        if (graph.getEntryBCI() == StructuredGraph.INVOCATION_ENTRY_BCI) {
-            this.cc = cc;
-        } else {
-            JavaType[] parameterTypes = new JavaType[]{getMetaAccess().lookupJavaType(long.class)};
-            CallingConvention tmp = frameMap.registerConfig.getCallingConvention(JavaCallee, getMetaAccess().lookupJavaType(void.class), parameterTypes, target(), false);
-            this.cc = new CallingConvention(cc.getStackSize(), cc.getReturn(), tmp.getArgument(0));
-        }
+        this.cc = cc;
         this.nodeOperands = graph.createNodeMap();
         this.lir = lir;
         this.debugInfoBuilder = createDebugInfoBuilder(nodeOperands);
