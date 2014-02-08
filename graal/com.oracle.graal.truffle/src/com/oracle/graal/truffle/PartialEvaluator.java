@@ -208,6 +208,7 @@ public class PartialEvaluator {
                         if (TraceTruffleExpansion.getValue()) {
                             expansionLogger.preExpand(methodCallTargetNode, inlineGraph);
                         }
+                        List<Node> invokeUsages = methodCallTargetNode.invoke().asNode().usages().snapshot();
                         Map<Node, Node> inlined = InliningUtil.inline(methodCallTargetNode.invoke(), inlineGraph, false);
                         if (TraceTruffleExpansion.getValue()) {
                             expansionLogger.postExpand(inlined);
@@ -216,7 +217,7 @@ public class PartialEvaluator {
                             int nodeCountAfter = graph.getNodeCount();
                             Debug.dump(graph, "After inlining %s %+d (%d)", methodCallTargetNode.targetMethod().toString(), nodeCountAfter - nodeCountBefore, nodeCountAfter);
                         }
-                        canonicalizer.applyIncremental(graph, phaseContext, mark);
+                        canonicalizer.applyIncremental(graph, phaseContext, invokeUsages, mark);
                         changed = true;
                     }
                 }
