@@ -172,7 +172,7 @@ public abstract class Node implements Cloneable {
      * @return the new node
      */
     public final <T extends Node> T replace(T newNode, String reason) {
-        CompilerDirectives.transferToInterpreter();
+        CompilerDirectives.transferToInterpreterAndInvalidate();
         if (this.getParent() == null) {
             throw new IllegalStateException("This node cannot be replaced, because it does not yet have a parent.");
         }
