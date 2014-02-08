@@ -46,10 +46,4 @@ public class OptimizedCallTargetSubstitutions {
     private static FrameWithoutBoxing createFrame(FrameDescriptor descriptor, PackedFrame caller, Arguments args) {
         return NewFrameNode.allocate(descriptor, caller, args);
     }
-
-    @SuppressWarnings("unused")
-    @MethodSubstitution(isStatic = false)
-    private static VirtualFrame create(OptimizedCallTarget target, FrameDescriptor descriptor, PackedFrame caller, Arguments args) {
-        return createFrame(descriptor, caller, args);
-    }
 }

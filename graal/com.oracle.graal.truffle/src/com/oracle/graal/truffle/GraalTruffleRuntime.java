@@ -73,13 +73,10 @@ public final class GraalTruffleRuntime implements TruffleRuntime {
     }
 
     public RootCallTarget createCallTarget(RootNode rootNode) {
-        if (!acceptForCompilation(rootNode)) {
-            return new UnoptimizedCallTarget(rootNode);
-        }
         if (truffleCompiler == null) {
             truffleCompiler = new TruffleCompilerImpl();
         }
-        return new OptimizedCallTarget(rootNode, truffleCompiler, TruffleMinInvokeThreshold.getValue(), TruffleCompilationThreshold.getValue());
+        return new OptimizedCallTarget(rootNode, truffleCompiler, TruffleMinInvokeThreshold.getValue(), TruffleCompilationThreshold.getValue(), acceptForCompilation(rootNode));
     }
 
     @Override

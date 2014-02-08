@@ -38,7 +38,7 @@ import com.oracle.truffle.api.nodes.*;
 /**
  * Call target that is optimized by Graal upon surpassing a specific invocation threshold.
  */
-public final class OptimizedCallTarget extends DefaultCallTarget implements FrameFactory, LoopCountReceiver, ReplaceObserver {
+public final class OptimizedCallTarget extends DefaultCallTarget implements LoopCountReceiver, ReplaceObserver {
 
     private static final PrintStream OUT = TTY.out().out();
 
@@ -52,7 +52,7 @@ public final class OptimizedCallTarget extends DefaultCallTarget implements Fram
     private int callCount;
     private SpeculationLog speculationLog = new SpeculationLog();
 
-    protected OptimizedCallTarget(RootNode rootNode, TruffleCompiler compiler, int invokeCounter, int compilationThreshold) {
+    OptimizedCallTarget(RootNode rootNode, TruffleCompiler compiler, int invokeCounter, int compilationThreshold, boolean compilationEnabled) {
         super(rootNode);
         this.compiler = compiler;
         this.compilationProfile = new CompilationProfile(compilationThreshold, invokeCounter, rootNode.toString());
@@ -62,7 +62,7 @@ public final class OptimizedCallTarget extends DefaultCallTarget implements Fram
         } else {
             compilationPolicy = new DefaultCompilationPolicy();
         }
-        this.compilationEnabled = true;
+        this.compilationEnabled = compilationEnabled;
 
         if (TruffleCallTargetProfiling.getValue()) {
             registerCallTarget(this);
@@ -79,13 +79,7 @@ public final class OptimizedCallTarget extends DefaultCallTarget implements Fram
 
     private Object callHelper(PackedFrame caller, Arguments args) {
         if (installedCode != null && installedCode.isValid()) {
-            TruffleRuntime runtime = Truffle.getRuntime();
-            if (runtime instanceof GraalTruffleRuntime) {
-                if (TraceTruffleCompilation.getValue()) {
-                    OUT.println("[truffle] reinstall OptimizedCallTarget.call code with frame prolog shortcut.");
-                }
-                GraalTruffleRuntime.installOptimizedCallTargetCallMethod();
-            }
+            reinstallCallMethodShortcut();
         }
         if (TruffleCallTargetProfiling.getValue()) {
             callCount++;
@@ -99,6 +93,13 @@ public final class OptimizedCallTarget extends DefaultCallTarget implements Fram
         } else {
             return interpreterCall(caller, args);
         }
+    }
+
+    private static void reinstallCallMethodShortcut() {
+        if (TraceTruffleCompilation.getValue()) {
+            OUT.println("[truffle] reinstall OptimizedCallTarget.call code with frame prolog shortcut.");
+        }
+        GraalTruffleRuntime.installOptimizedCallTargetCallMethod();
     }
 
     public CompilationProfile getCompilationProfile() {
@@ -117,7 +118,7 @@ public final class OptimizedCallTarget extends DefaultCallTarget implements Fram
             installedCode = null;
             compilationProfile.reportInvalidated();
             if (TraceTruffleCompilation.getValue()) {
-                OUT.printf("[truffle] invalidated %-48s |Inv# %d                                     |Replace# %d\n", getRootNode(), compilationProfile.getInvalidationCount(),
+                OUT.printf("[truffle] invalidated %-48s %08x |InvalidationCount %2d |ReplaceCount %3d\n", getRootNode(), getRootNode().hashCode(), compilationProfile.getInvalidationCount(),
                                 compilationProfile.getNodeReplaceCount());
             }
         }
@@ -221,11 +222,6 @@ public final class OptimizedCallTarget extends DefaultCallTarget implements Fram
     }
 
     @Override
-    public VirtualFrame create(FrameDescriptor descriptor, PackedFrame caller, Arguments args) {
-        return createFrame(descriptor, caller, args);
-    }
-
-    @Override
     public void reportLoopCount(int count) {
         compilationProfile.reportLoopCount(count);
     }
@@ -234,6 +230,10 @@ public final class OptimizedCallTarget extends DefaultCallTarget implements Fram
     public void nodeReplaced() {
         compilationProfile.reportNodeReplaced();
         invalidate();
+    }
+
+    public SpeculationLog getSpeculationLog() {
+        return speculationLog;
     }
 
     private static void printProfiling() {
@@ -305,9 +305,5 @@ public final class OptimizedCallTarget extends DefaultCallTarget implements Fram
                 }
             });
         }
-    }
-
-    public SpeculationLog getSpeculationLog() {
-        return speculationLog;
     }
 }
