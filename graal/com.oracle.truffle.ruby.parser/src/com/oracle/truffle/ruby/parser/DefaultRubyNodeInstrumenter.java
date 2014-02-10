@@ -9,7 +9,9 @@
  */
 package com.oracle.truffle.ruby.parser;
 
+import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.nodes.instrument.*;
+import com.oracle.truffle.api.source.*;
 import com.oracle.truffle.ruby.nodes.*;
 import com.oracle.truffle.ruby.nodes.debug.*;
 import com.oracle.truffle.ruby.runtime.*;
@@ -26,17 +28,33 @@ final class DefaultRubyNodeInstrumenter implements RubyNodeInstrumenter {
     public DefaultRubyNodeInstrumenter() {
     }
 
-    public RubyNode instrumentAsStatement(RubyNode rubyNode) {
-        assert rubyNode != null;
-        assert !(rubyNode instanceof RubyProxyNode);
-        final RubyContext context = rubyNode.getContext();
-        if (context.getConfiguration().getTrace()) {
-            final RubyProxyNode proxy = new RubyProxyNode(context, rubyNode);
+    public RubyNode instrumentAsStatement(RubyNode node) {
+        assert node != null;
+
+        final RubyContext context = node.getContext();
+
+        RubyProxyNode proxy;
+
+        if (node instanceof RubyProxyNode) {
+            proxy = (RubyProxyNode) node;
+        } else {
+            proxy = new RubyProxyNode(node.getContext(), node);
             proxy.markAs(NodePhylum.STATEMENT);
-            proxy.getProbeChain().appendProbe(new RubyTraceProbe(context));
-            return proxy;
+            proxy.clearSourceSection();
+            proxy.assignSourceSection(node.getSourceSection());
         }
-        return rubyNode;
+
+        if (context.getConfiguration().getTrace()) {
+            proxy.getProbeChain().appendProbe(new RubyTraceProbe(context));
+        }
+
+        if (context.getConfiguration().getDebug()) {
+            final SourceSection sourceSection = proxy.getChild().getSourceSection();
+            final SourceLineLocation sourceLine = new SourceLineLocation(sourceSection.getSource(), sourceSection.getStartLine());
+            proxy.getProbeChain().appendProbe(new InactiveLineDebugProbe(context, sourceLine, context.getRubyDebugManager().getAssumption(sourceLine)));
+        }
+
+        return proxy;
     }
 
     public RubyNode instrumentAsCall(RubyNode node, String callName) {
@@ -44,7 +62,27 @@ final class DefaultRubyNodeInstrumenter implements RubyNodeInstrumenter {
     }
 
     public RubyNode instrumentAsLocalAssignment(RubyNode node, UniqueMethodIdentifier methodIdentifier, String localName) {
-        return node;
+        assert node != null;
+
+        final RubyContext context = node.getContext();
+
+        RubyProxyNode proxy;
+
+        if (node instanceof RubyProxyNode) {
+            proxy = (RubyProxyNode) node;
+        } else {
+            proxy = new RubyProxyNode(node.getContext(), node);
+            proxy.markAs(NodePhylum.STATEMENT);
+            proxy.clearSourceSection();
+            proxy.assignSourceSection(node.getSourceSection());
+        }
+
+        if (context.getConfiguration().getDebug()) {
+            final MethodLocal methodLocal = new MethodLocal(methodIdentifier, localName);
+            proxy.getProbeChain().appendProbe(new InactiveLocalDebugProbe(context, methodLocal, context.getRubyDebugManager().getAssumption(methodLocal)));
+        }
+
+        return proxy;
     }
 
 }

@@ -1102,7 +1102,6 @@ public class Translator implements org.jrubyparser.NodeVisitor {
 
     @Override
     public Object visitLocalAsgnNode(org.jrubyparser.ast.LocalAsgnNode node) {
-
         final SourceSection sourceSection = translate(node.getPosition());
 
         if (environment.getNeverAssignInParentScope()) {

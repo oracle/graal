@@ -7,7 +7,7 @@
  * GNU General Public License version 2
  * GNU Lesser General Public License version 2.1
  */
-package com.oracle.truffle.ruby.runtime.debug;
+package com.oracle.truffle.ruby.nodes.debug;
 
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.frame.*;
@@ -45,4 +45,5 @@ public final class RubyTraceProbe extends RubyProbe {
             traceManager.trace("line", sourceSection.getSource().getName(), sourceSection.getStartLine(), 0, null, null);
         }
     }
+
 }

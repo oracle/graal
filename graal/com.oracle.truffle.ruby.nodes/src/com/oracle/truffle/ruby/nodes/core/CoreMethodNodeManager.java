@@ -17,6 +17,7 @@ import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.ruby.nodes.*;
 import com.oracle.truffle.ruby.nodes.control.*;
+import com.oracle.truffle.ruby.nodes.debug.*;
 import com.oracle.truffle.ruby.nodes.methods.arguments.*;
 import com.oracle.truffle.ruby.nodes.objects.*;
 import com.oracle.truffle.ruby.runtime.*;
@@ -74,6 +75,7 @@ public abstract class CoreMethodNodeManager {
         getMethods(methods, ThreadNodesFactory.getFactories());
         getMethods(methods, TimeNodesFactory.getFactories());
         getMethods(methods, TrueClassNodesFactory.getFactories());
+        getMethods(methods, DebugNodesFactory.getFactories());
         return methods;
     }
 
