@@ -139,6 +139,8 @@ public class AMD64Move {
         public void emitMemAccess(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
             switch (kind) {
                 case Boolean:
+                    masm.movzbl(asRegister(result), address.toAddress());
+                    break;
                 case Byte:
                     masm.movsbl(asRegister(result), address.toAddress());
                     break;
