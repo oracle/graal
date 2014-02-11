@@ -211,6 +211,11 @@ public class HotSpotReplacementsUtil {
         return Unsafe.getUnsafe().pageSize();
     }
 
+    @Fold
+    public static int heapWordSize() {
+        return config().heapWordSize;
+    }
+
     public static final LocationIdentity PROTOTYPE_MARK_WORD_LOCATION = new NamedLocationIdentity("PrototypeMarkWord");
 
     @Fold
