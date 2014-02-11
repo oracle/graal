@@ -44,12 +44,9 @@ import com.oracle.graal.nodes.ValueNode;
  */
 public class PTXHotSpotLIRGenerator extends PTXLIRGenerator implements HotSpotLIRGenerator {
 
-    private final HotSpotVMConfig config;
-
     protected PTXHotSpotLIRGenerator(StructuredGraph graph, HotSpotProviders providers, HotSpotVMConfig config, FrameMap frameMap, CallingConvention cc, LIR lir) {
         super(graph, providers, frameMap, cc, lir);
         assert config.basicLockSize == 8;
-        this.config = config;
     }
 
     public void emitPrefetchAllocate(ValueNode address, ValueNode distance) {
@@ -80,6 +77,7 @@ public class PTXHotSpotLIRGenerator extends PTXLIRGenerator implements HotSpotLI
         throw GraalInternalError.unimplemented();
     }
 
+    @Override
     public HotSpotProviders getProviders() {
         throw GraalInternalError.unimplemented();
     }
