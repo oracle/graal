@@ -36,7 +36,7 @@ import com.oracle.graal.nodes.spi.*;
  * loop.
  */
 @NodeInfo(nameTemplate = "{p#type/s}Proxy")
-public class ProxyNode extends FloatingNode implements IterableNodeType, ValueNumberable, Canonicalizable, Virtualizable, ValueProxy, GuardingNode {
+public class ProxyNode extends FloatingNode implements IterableNodeType, ValueNumberable, Canonicalizable, Virtualizable, ValueAndStampProxy, GuardingNode {
 
     @Input(notDataflow = true) private AbstractBeginNode proxyPoint;
     @Input private ValueNode value;
