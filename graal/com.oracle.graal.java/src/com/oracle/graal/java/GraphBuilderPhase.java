@@ -950,10 +950,14 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 dims[i] = frameState.ipop();
             }
             if (type instanceof ResolvedJavaType) {
-                frameState.apush(append(new NewMultiArrayNode((ResolvedJavaType) type, dims)));
+                frameState.apush(append(createNewMultiArray((ResolvedJavaType) type, dims)));
             } else {
                 handleUnresolvedNewMultiArray(type, dims);
             }
+        }
+
+        protected NewMultiArrayNode createNewMultiArray(ResolvedJavaType type, ValueNode[] dimensions) {
+            return new NewMultiArrayNode(type, dimensions);
         }
 
         private void genGetField(JavaField field) {
