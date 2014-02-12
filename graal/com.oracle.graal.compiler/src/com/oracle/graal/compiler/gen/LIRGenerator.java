@@ -219,6 +219,14 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
         return null;
     }
 
+    /**
+     * Returns true if the redundant move elimination optimization should be done after register
+     * allocation.
+     */
+    public boolean canEliminateRedundantMoves() {
+        return true;
+    }
+
     @SuppressWarnings("hiding")
     protected DebugInfoBuilder createDebugInfoBuilder(NodeMap<Value> nodeOperands) {
         return new DebugInfoBuilder(nodeOperands);
