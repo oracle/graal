@@ -54,7 +54,7 @@ final class SLUninitializedDispatchNode extends SLAbstractDispatchNode {
             cur = cur.getParent();
             depth++;
         }
-        SLCallNode callNode = (SLCallNode) cur.getParent();
+        SLInvokeNode invokeNode = (SLInvokeNode) cur.getParent();
 
         SLAbstractDispatchNode specialized;
         if (function.getCallTarget() == null) {
@@ -72,7 +72,7 @@ final class SLUninitializedDispatchNode extends SLAbstractDispatchNode {
             /* Cache size exceeded, fall back to a single generic dispatch node. */
             SLAbstractDispatchNode generic = new SLGenericDispatchNode();
             /* Replace the whole chain, not just ourself, with the new generic node. */
-            specialized = callNode.dispatchNode.replace(generic);
+            specialized = invokeNode.dispatchNode.replace(generic);
         }
 
         /*

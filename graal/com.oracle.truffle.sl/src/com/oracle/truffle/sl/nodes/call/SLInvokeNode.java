@@ -30,24 +30,24 @@ import com.oracle.truffle.sl.nodes.*;
 import com.oracle.truffle.sl.runtime.*;
 
 /**
- * The node for a function call in SL. Since SL has first class functions, the {@link SLFunction
- * target function} can be computed by an {@link #functionNode arbitrary expression}. This node is
- * responsible for evaluating this expression, as well as evaluating the {@link #argumentNodes
- * arguments}. The actual call dispatch is then delegated to a chain of
+ * The node for function invocation in SL. Since SL has first class functions, the
+ * {@link SLFunction target function} can be computed by an {@link #functionNode arbitrary
+ * expression}. This node is responsible for evaluating this expression, as well as evaluating the
+ * {@link #argumentNodes arguments}. The actual dispatch is then delegated to a chain of
  * {@link SLAbstractDispatchNode}s that form a polymorphic inline cache.
  */
-@NodeInfo(shortName = "call")
-public final class SLCallNode extends SLExpressionNode {
+@NodeInfo(shortName = "invoke")
+public final class SLInvokeNode extends SLExpressionNode {
 
-    public static SLCallNode create(SLExpressionNode function, SLExpressionNode[] arguments) {
-        return new SLCallNode(function, arguments, new SLUninitializedDispatchNode());
+    public static SLInvokeNode create(SLExpressionNode function, SLExpressionNode[] arguments) {
+        return new SLInvokeNode(function, arguments, new SLUninitializedDispatchNode());
     }
 
     @Child protected SLExpressionNode functionNode;
     @Children protected final SLExpressionNode[] argumentNodes;
     @Child protected SLAbstractDispatchNode dispatchNode;
 
-    private SLCallNode(SLExpressionNode functionNode, SLExpressionNode[] argumentNodes, SLAbstractDispatchNode dispatchNode) {
+    private SLInvokeNode(SLExpressionNode functionNode, SLExpressionNode[] argumentNodes, SLAbstractDispatchNode dispatchNode) {
         this.functionNode = adoptChild(functionNode);
         this.argumentNodes = adoptChildren(argumentNodes);
         this.dispatchNode = adoptChild(dispatchNode);
@@ -59,7 +59,7 @@ public final class SLCallNode extends SLExpressionNode {
         SLFunction function = evaluateFunction(frame);
 
         /*
-         * The number of arguments is constant for one call node. During compilation, the loop is
+         * The number of arguments is constant for one invoke node. During compilation, the loop is
          * unrolled and the execute methods of all arguments are inlined. This is triggered by the
          * ExplodeLoop annotation on the method. The compiler assertion below illustrates that the
          * array length is really constant.

@@ -197,7 +197,7 @@ public class SLNodeFactory {
 
     public SLExpressionNode createCall(Token nameToken, List<SLExpressionNode> parameterNodes) {
         SLExpressionNode functionNode = createRead(nameToken);
-        return assignSource(nameToken, SLCallNode.create(functionNode, parameterNodes.toArray(new SLExpressionNode[parameterNodes.size()])));
+        return assignSource(nameToken, SLInvokeNode.create(functionNode, parameterNodes.toArray(new SLExpressionNode[parameterNodes.size()])));
     }
 
     public SLExpressionNode createAssignment(Token nameToken, SLExpressionNode valueNode) {

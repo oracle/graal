@@ -80,7 +80,7 @@ import com.oracle.truffle.sl.runtime.*;
  * <li>Basic control flow statements: {@link SLBlockNode blocks}, {@link SLIfNode if},
  * {@link SLWhileNode while} with {@link SLBreakNode break} and {@link SLContinueNode continue},
  * {@link SLReturnNode return}.
- * <li>Function calls: {@link SLCallNode calls} are efficiently implemented with
+ * <li>Function calls: {@link SLInvokeNode invocations} are efficiently implemented with
  * {@link SLAbstractDispatchNode polymorphic inline caches}.
  * </ul>
  * 

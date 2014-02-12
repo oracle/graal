@@ -36,7 +36,7 @@ public final class SLArguments extends Arguments {
     private final Object[] argumentValues;
 
     /**
-     * Used by the caller, i.e., the {@link SLCallNode node that performs a function call}.
+     * Used by the caller, i.e., the {@link SLInvokeNode node that performs a function call}.
      */
     public SLArguments(Object[] arguments) {
         this.argumentValues = arguments;

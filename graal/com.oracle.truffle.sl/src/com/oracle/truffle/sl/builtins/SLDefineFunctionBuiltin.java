@@ -38,14 +38,14 @@ public abstract class SLDefineFunctionBuiltin extends SLBuiltinNode {
 
     @Specialization
     public String defineFunction(String code) {
-        return doDefineFunction(getContext(), code);
+        doDefineFunction(getContext(), code);
+        return code;
     }
 
     @SlowPath
-    private static String doDefineFunction(SLContext context, String code) {
+    private static void doDefineFunction(SLContext context, String code) {
         Source source = context.getSourceManager().get("[defineFunction]", code);
         /* The same parsing code as for parsing the initial source. */
         Parser.parseSL(context, source);
-        return code;
     }
 }
