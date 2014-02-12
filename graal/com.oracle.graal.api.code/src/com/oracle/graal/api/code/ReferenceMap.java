@@ -86,6 +86,29 @@ public class ReferenceMap implements Serializable {
         return frameRefMap != null && frameRefMap.size() > 0;
     }
 
+    public interface Iterator {
+        void register(int idx, boolean narrow);
+
+        void stackSlot(int idx, boolean narrow1, boolean narrow2);
+    }
+
+    public void iterate(Iterator iterator) {
+        if (hasRegisterRefMap()) {
+            for (int i = 0; i < registerRefMap.size() / 2; i++) {
+                if (registerRefMap.get(2 * i)) {
+                    iterator.register(i, registerRefMap.get(2 * i + 1));
+                }
+            }
+        }
+        if (hasFrameRefMap()) {
+            for (int i = 0; i < frameRefMap.size() / 3; i++) {
+                if (frameRefMap.get(3 * i)) {
+                    iterator.stackSlot(i, frameRefMap.get(3 * i + 1), frameRefMap.get(3 * i + 2));
+                }
+            }
+        }
+    }
+
     private static class NumberedRefMapFormatter implements RefMapFormatter {
 
         public String formatStackSlot(int frameRefMapIndex) {
