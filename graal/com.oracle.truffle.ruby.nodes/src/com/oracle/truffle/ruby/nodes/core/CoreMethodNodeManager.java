@@ -31,7 +31,13 @@ public abstract class CoreMethodNodeManager {
      * given the Object class object, which should already be initialized with all the core classes.
      */
     public static void addMethods(RubyClass rubyObjectClass) {
-        for (MethodDetails methodDetails : getMethods()) {
+        addMethods(rubyObjectClass, getMethods());
+    }
+
+    public static void addMethods(RubyClass rubyObjectClass, List<MethodDetails> methods) {
+        // Same as above, but allows passing of a specific list of core methods.
+        // This allows extending Truffle-Ruby with non-standard Core Method.
+        for (MethodDetails methodDetails : methods) {
             addMethod(rubyObjectClass, methodDetails);
         }
     }
@@ -82,7 +88,7 @@ public abstract class CoreMethodNodeManager {
     /**
      * Collect up the core methods created by a factory.
      */
-    private static void getMethods(List<MethodDetails> methods, List<? extends NodeFactory<? extends CoreMethodNode>> nodeFactories) {
+    public static void getMethods(List<MethodDetails> methods, List<? extends NodeFactory<? extends CoreMethodNode>> nodeFactories) {
         for (NodeFactory<? extends RubyNode> nodeFactory : nodeFactories) {
             final GeneratedBy generatedBy = nodeFactory.getClass().getAnnotation(GeneratedBy.class);
             final Class<?> nodeClass = generatedBy.value();
