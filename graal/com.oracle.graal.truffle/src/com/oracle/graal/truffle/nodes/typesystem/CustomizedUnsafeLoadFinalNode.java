@@ -28,35 +28,29 @@ import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
-import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.type.*;
 import com.oracle.truffle.api.*;
 
 /**
- * Macro node for method {@link CompilerDirectives#unsafeGetFinalObject} and friends.
+ * Load of a final value from a location specified as an offset relative to an object.
+ * 
+ * Substitution for method {@link CompilerDirectives#unsafeGetFinalObject} and friends.
  */
 public class CustomizedUnsafeLoadFinalNode extends FixedWithNextNode implements Canonicalizable, Virtualizable, Lowerable {
-    private static final int ARGUMENT_COUNT = 4;
-    private static final int OBJECT_ARGUMENT_INDEX = 0;
-    private static final int OFFSET_ARGUMENT_INDEX = 1;
-    private static final int CONDITION_ARGUMENT_INDEX = 2;
-    private static final int LOCATION_ARGUMENT_INDEX = 3;
-
     @Input private ValueNode object;
     @Input private ValueNode offset;
     @Input private ValueNode condition;
     @Input private ValueNode location;
     private final Kind accessKind;
 
-    public CustomizedUnsafeLoadFinalNode(Invoke invoke) {
-        super(invoke.asNode().stamp());
-        NodeInputList<ValueNode> arguments = invoke.callTarget().arguments();
-        assert arguments.size() == ARGUMENT_COUNT;
-        this.object = arguments.get(OBJECT_ARGUMENT_INDEX);
-        this.offset = arguments.get(OFFSET_ARGUMENT_INDEX);
-        this.condition = arguments.get(CONDITION_ARGUMENT_INDEX);
-        this.location = arguments.get(LOCATION_ARGUMENT_INDEX);
-        this.accessKind = ((MethodCallTargetNode) invoke.callTarget()).targetMethod().getSignature().getReturnKind();
+    public CustomizedUnsafeLoadFinalNode(ValueNode object, ValueNode offset, ValueNode condition, ValueNode location, Kind accessKind) {
+        super(StampFactory.forKind(accessKind.getStackKind()));
+        this.object = object;
+        this.offset = offset;
+        this.condition = condition;
+        this.location = location;
+        this.accessKind = accessKind;
     }
 
     @Override
@@ -102,5 +96,11 @@ public class CustomizedUnsafeLoadFinalNode extends FixedWithNextNode implements 
         UnsafeLoadNode result = graph().add(new UnsafeLoadNode(object, offset, accessKind, locationIdentity, compare));
         graph().replaceFixedWithFixed(this, result);
         result.lower(tool);
+    }
+
+    @SuppressWarnings("unused")
+    @NodeIntrinsic
+    public static <T> T load(Object object, long offset, boolean condition, Object locationIdentity, @ConstantNodeParameter Kind kind) {
+        return UnsafeLoadNode.load(object, offset, kind, null);
     }
 }
