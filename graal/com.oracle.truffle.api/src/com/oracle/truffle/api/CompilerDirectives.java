@@ -242,7 +242,7 @@ public final class CompilerDirectives {
     }
 
     /**
-     * Unsafe access to a int value within an object. The condition parameter gives a hint to the
+     * Unsafe access to an int value within an object. The condition parameter gives a hint to the
      * compiler under which circumstances this access can be moved to an earlier location in the
      * program. The location identity gives a hint to the compiler for improved global value
      * numbering.
@@ -314,8 +314,8 @@ public final class CompilerDirectives {
     }
 
     /**
-     * Unsafe access to a Object value within an object. The condition parameter gives a hint to the
-     * compiler under which circumstances this access can be moved to an earlier location in the
+     * Unsafe access to an Object value within an object. The condition parameter gives a hint to
+     * the compiler under which circumstances this access can be moved to an earlier location in the
      * program. The location identity gives a hint to the compiler for improved global value
      * numbering.
      * 
@@ -374,7 +374,7 @@ public final class CompilerDirectives {
     }
 
     /**
-     * Write a int value within an object. The location identity gives a hint to the compiler for
+     * Write an int value within an object. The location identity gives a hint to the compiler for
      * improved global value numbering.
      * 
      * @param receiver the object that is written to
@@ -430,8 +430,8 @@ public final class CompilerDirectives {
     }
 
     /**
-     * Write a Object value within an object. The location identity gives a hint to the compiler for
-     * improved global value numbering.
+     * Write an Object value within an object. The location identity gives a hint to the compiler
+     * for improved global value numbering.
      * 
      * @param receiver the object that is written to
      * @param offset the offset at which to write to the object in bytes
