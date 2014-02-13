@@ -48,4 +48,22 @@ public class BC_i2c extends JTTTest {
         runTest("test", 65535);
     }
 
+    public static int testInt(int a) {
+        return (char) a;
+    }
+
+    @Test
+    public void runI0() throws Throwable {
+        runTest("testInt", -1);
+    }
+
+    @Test
+    public void runI1() throws Throwable {
+        runTest("testInt", 645);
+    }
+
+    @Test
+    public void runI2() throws Throwable {
+        runTest("testInt", 65535);
+    }
 }
