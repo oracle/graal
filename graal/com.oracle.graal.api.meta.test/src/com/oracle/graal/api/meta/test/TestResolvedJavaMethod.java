@@ -290,6 +290,7 @@ public class TestResolvedJavaMethod extends MethodUniverse {
         "reprofile",
         "getCompilerStorage",
         "canBeInlined",
+        "shouldBeInlined",
         "getLineNumberTable",
         "getLocalVariableTable",
         "isInVirtualMethodTable",
