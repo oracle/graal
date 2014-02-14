@@ -125,4 +125,25 @@ public class CompilerDirectivesSubstitutions {
 
     @MacroSubstitution(macro = CustomizedUnsafeStoreMacroNode.class, isStatic = true)
     public static native void unsafePutObject(Object receiver, long offset, Object value, Object locationIdentity);
+
+    @MacroSubstitution(macro = CustomizedUnsafeLoadFinalNode.class, isStatic = true)
+    public static native boolean unsafeGetFinalBoolean(Object receiver, long offset, boolean condition, Object locationIdentity);
+
+    @MacroSubstitution(macro = CustomizedUnsafeLoadFinalNode.class, isStatic = true)
+    public static native byte unsafeGetFinalByte(Object receiver, long offset, boolean condition, Object locationIdentity);
+
+    @MacroSubstitution(macro = CustomizedUnsafeLoadFinalNode.class, isStatic = true)
+    public static native short unsafeGetFinalShort(Object receiver, long offset, boolean condition, Object locationIdentity);
+
+    @MacroSubstitution(macro = CustomizedUnsafeLoadFinalNode.class, isStatic = true)
+    public static native int unsafeGetFinalInt(Object receiver, long offset, boolean condition, Object locationIdentity);
+
+    @MacroSubstitution(macro = CustomizedUnsafeLoadFinalNode.class, isStatic = true)
+    public static native float unsafeGetFinalFloat(Object receiver, long offset, boolean condition, Object locationIdentity);
+
+    @MacroSubstitution(macro = CustomizedUnsafeLoadFinalNode.class, isStatic = true)
+    public static native double unsafeGetFinalDouble(Object receiver, long offset, boolean condition, Object locationIdentity);
+
+    @MacroSubstitution(macro = CustomizedUnsafeLoadFinalNode.class, isStatic = true)
+    public static native Object unsafeGetFinalObject(Object receiver, long offset, boolean condition, Object locationIdentity);
 }
