@@ -60,11 +60,11 @@ public abstract class SLTypes {
     }
 
     /**
-     * Informs the Truffle DSL that a primitive {@code long} value can used in all specializations
-     * where a {@link BigInteger} is expected. This models the semantic of SL: It only has an
-     * arbitrary precision Number type (implemented as {@link BigInteger}, and {@code long} is only
-     * used as a performance optimization to avoid the costly {@link BigInteger} arithmetic for
-     * values that fit into a 64-bit primitive value.
+     * Informs the Truffle DSL that a primitive {@code long} value can be used in all
+     * specializations where a {@link BigInteger} is expected. This models the semantic of SL: It
+     * only has an arbitrary precision Number type (implemented as {@link BigInteger}, and
+     * {@code long} is only used as a performance optimization to avoid the costly
+     * {@link BigInteger} arithmetic for values that fit into a 64-bit primitive value.
      */
     @ImplicitCast
     public BigInteger castBigInteger(long value) {
