@@ -1,1 +1,1 @@
-Type error at TypeError05.sl line 3 col 3: operation "call" not defined for Boolean true
+Type error at TypeError05.sl line 3 col 3: operation "invoke" not defined for Boolean true

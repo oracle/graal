@@ -89,11 +89,6 @@ public final class SLTestRunner extends ParentRunner<TestCase> {
         return testCases;
     }
 
-    @Override
-    public void filter(Filter filter) throws NoTestsRemainException {
-        super.filter(filter);
-    }
-
     protected List<TestCase> createTests(final Class<?> c) throws IOException, InitializationError {
         SLTestSuite suite = c.getAnnotation(SLTestSuite.class);
         if (suite == null) {
