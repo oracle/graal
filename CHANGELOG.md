@@ -2,6 +2,7 @@
 
 ## `tip`
 ### Graal
+* New methods for querying memory usage of individual objects and object graphs in Graal API (MetaAccessProvider#getMemorySize, MetaUtil#getMemorySizeRecursive).
 * ...
 
 ### Truffle

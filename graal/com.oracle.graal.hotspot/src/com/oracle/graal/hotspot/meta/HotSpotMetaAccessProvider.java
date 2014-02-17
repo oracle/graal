@@ -26,9 +26,11 @@ import static com.oracle.graal.graph.UnsafeAccess.*;
 
 import java.lang.reflect.*;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
+import com.oracle.graal.hotspot.replacements.*;
 
 /**
  * HotSpot implementation of {@link MetaAccessProvider}.
@@ -283,5 +285,31 @@ public class HotSpotMetaAccessProvider implements MetaAccessProvider {
             return DeoptimizationReason.Aliasing;
         }
         throw GraalInternalError.shouldNotReachHere(Integer.toHexString(reason));
+    }
+
+    @Override
+    public long getMemorySize(Constant constant) {
+        if (constant.getKind() == Kind.Object) {
+            HotSpotResolvedObjectType lookupJavaType = (HotSpotResolvedObjectType) this.lookupJavaType(constant);
+
+            if (lookupJavaType == null) {
+                return 0;
+            } else {
+                if (lookupJavaType.isArray()) {
+                    // TODO(tw): Add compressed pointer support.
+                    int length = Array.getLength(constant.asObject());
+                    ResolvedJavaType elementType = lookupJavaType.getComponentType();
+                    Kind elementKind = elementType.getKind();
+                    final int headerSize = HotSpotGraalRuntime.getArrayBaseOffset(elementKind);
+                    int sizeOfElement = HotSpotGraalRuntime.runtime().getTarget().arch.getSizeInBytes(elementKind);
+                    int alignment = HotSpotGraalRuntime.runtime().getTarget().wordSize;
+                    int log2ElementSize = CodeUtil.log2(sizeOfElement);
+                    return NewObjectSnippets.computeArrayAllocationSize(length, alignment, headerSize, log2ElementSize);
+                }
+                return lookupJavaType.instanceSize();
+            }
+        } else {
+            return constant.getKind().getByteCount();
+        }
     }
 }

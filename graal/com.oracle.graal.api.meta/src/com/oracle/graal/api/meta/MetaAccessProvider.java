@@ -60,6 +60,14 @@ public interface MetaAccessProvider {
     ResolvedJavaType lookupJavaType(Constant constant);
 
     /**
+     * Returns the number of bytes occupied by this constant value or constant object.
+     * 
+     * @param constant the constant whose bytes should be measured
+     * @return the number of bytes occupied by this constant
+     */
+    long getMemorySize(Constant constant);
+
+    /**
      * Parses a <a
      * href="http://docs.oracle.com/javase/specs/jvms/se7/html/jvms-4.html#jvms-4.3.3">method
      * descriptor</a> into a {@link Signature}. The behavior of this method is undefined if the

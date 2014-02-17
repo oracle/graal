@@ -383,6 +383,19 @@ public enum Kind implements PlatformKind {
     }
 
     /**
+     * Number of bytes that are necessary to represent a value of this kind.
+     * 
+     * @return the number of bytes
+     */
+    public int getByteCount() {
+        if (this == Boolean) {
+            return 1;
+        } else {
+            return getBitCount() >> 3;
+        }
+    }
+
+    /**
      * Number of bits that are necessary to represent a value of this kind.
      * 
      * @return the number of bits
