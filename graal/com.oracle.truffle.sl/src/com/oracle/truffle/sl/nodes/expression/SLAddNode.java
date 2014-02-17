@@ -70,7 +70,9 @@ public abstract class SLAddNode extends SLBinaryNode {
      * operand are {@link BigInteger} values. Because the type system defines an
      * {@link ImplicitCast implicit conversion} from {@code long} to {@link BigInteger} in
      * {@link SLTypes#castBigInteger(long)}, this specialization is also taken if the left or the
-     * right operand is a {@code long} value.
+     * right operand is a {@code long} value. Because the {@link #add(long, long) long}
+     * specialization} has the {@code rewriteOn} attribute, this specialization is also taken if
+     * both input values are {@code long} values but the primitive addition overflows.
      */
     @Specialization
     protected BigInteger add(BigInteger left, BigInteger right) {

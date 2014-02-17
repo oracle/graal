@@ -54,9 +54,9 @@ final class SLUninitializedDispatchNode extends SLAbstractDispatchNode {
             cur = cur.getParent();
             depth++;
         }
-        SLCallNode callNode = (SLCallNode) cur.getParent();
+        SLInvokeNode invokeNode = (SLInvokeNode) cur.getParent();
 
-        SLAbstractDispatchNode specialized;
+        SLAbstractDispatchNode replacement;
         if (function.getCallTarget() == null) {
             /* Corner case: the function is not defined, so report an error to the user. */
             throw new SLException("Call of undefined function: " + function.getName());
@@ -64,21 +64,21 @@ final class SLUninitializedDispatchNode extends SLAbstractDispatchNode {
         } else if (depth < INLINE_CACHE_SIZE) {
             /* Extend the inline cache. Allocate the new cache entry, and the new end of the cache. */
             SLAbstractDispatchNode next = new SLUninitializedDispatchNode();
-            SLAbstractDispatchNode direct = new SLDirectDispatchNode(next, function);
+            replacement = new SLDirectDispatchNode(next, function);
             /* Replace ourself with the new cache entry. */
-            specialized = replace(direct);
+            replace(replacement);
 
         } else {
             /* Cache size exceeded, fall back to a single generic dispatch node. */
-            SLAbstractDispatchNode generic = new SLGenericDispatchNode();
+            replacement = new SLGenericDispatchNode();
             /* Replace the whole chain, not just ourself, with the new generic node. */
-            specialized = callNode.dispatchNode.replace(generic);
+            invokeNode.dispatchNode.replace(replacement);
         }
 
         /*
          * Execute the newly created node perform the actual dispatch. That saves us from
          * duplicating the actual call logic here.
          */
-        return specialized.executeDispatch(frame, function, arguments);
+        return replacement.executeDispatch(frame, function, arguments);
     }
 }

@@ -211,27 +211,35 @@ public abstract class InstrumentationProbeNode extends Node implements Instrumen
         }
 
         public void leave(Node astNode, VirtualFrame frame, boolean result) {
+            leave(astNode, frame, (Object) result);
         }
 
         public void leave(Node astNode, VirtualFrame frame, byte result) {
+            leave(astNode, frame, (Object) result);
         }
 
         public void leave(Node astNode, VirtualFrame frame, short result) {
+            leave(astNode, frame, (Object) result);
         }
 
         public void leave(Node astNode, VirtualFrame frame, int result) {
+            leave(astNode, frame, (Object) result);
         }
 
         public void leave(Node astNode, VirtualFrame frame, long result) {
+            leave(astNode, frame, (Object) result);
         }
 
         public void leave(Node astNode, VirtualFrame frame, char result) {
+            leave(astNode, frame, (Object) result);
         }
 
         public void leave(Node astNode, VirtualFrame frame, float result) {
+            leave(astNode, frame, (Object) result);
         }
 
         public void leave(Node astNode, VirtualFrame frame, double result) {
+            leave(astNode, frame, (Object) result);
         }
 
         public void leave(Node astNode, VirtualFrame frame, Object result) {

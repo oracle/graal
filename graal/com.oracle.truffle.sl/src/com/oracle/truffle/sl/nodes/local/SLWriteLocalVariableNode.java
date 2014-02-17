@@ -31,7 +31,7 @@ import com.oracle.truffle.sl.nodes.*;
  * Node to write a local variable to a function's {@link VirtualFrame frame}. The Truffle frame API
  * allows to store primitive values of all Java primitive types, and Object values.
  */
-@NodeChild(value = "valueNode")
+@NodeChild("valueNode")
 @NodeField(name = "slot", type = FrameSlot.class)
 public abstract class SLWriteLocalVariableNode extends SLExpressionNode {
 

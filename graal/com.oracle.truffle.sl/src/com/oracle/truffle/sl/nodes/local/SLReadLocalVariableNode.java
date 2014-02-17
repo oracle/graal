@@ -42,17 +42,17 @@ public abstract class SLReadLocalVariableNode extends SLExpressionNode {
      */
     protected abstract FrameSlot getSlot();
 
-    @Specialization(rewriteOn = {FrameSlotTypeException.class})
+    @Specialization(rewriteOn = FrameSlotTypeException.class)
     protected long readLong(VirtualFrame frame) throws FrameSlotTypeException {
         return frame.getLong(getSlot());
     }
 
-    @Specialization(rewriteOn = {FrameSlotTypeException.class})
+    @Specialization(rewriteOn = FrameSlotTypeException.class)
     protected boolean readBoolean(VirtualFrame frame) throws FrameSlotTypeException {
         return frame.getBoolean(getSlot());
     }
 
-    @Specialization(order = 1, rewriteOn = {FrameSlotTypeException.class})
+    @Specialization(order = 1, rewriteOn = FrameSlotTypeException.class)
     protected Object readObject(VirtualFrame frame) throws FrameSlotTypeException {
         return frame.getObject(getSlot());
     }

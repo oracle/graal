@@ -35,14 +35,14 @@ import com.oracle.truffle.sl.runtime.*;
  * a single {@link SLGenericDispatchNode}. All this rewriting happens on runtime, based on profiling
  * feedback of the actual execution.
  * <p>
- * Example of the chain of nodes ({@code C}: {@link SLCallNode}; {@code U}:
+ * Example of the chain of nodes ({@code I}: {@link SLInvokeNode}; {@code U}:
  * {@link SLUninitializedDispatchNode}; {@code D}: {@link SLDirectDispatchNode}; {@code G}:
  * {@link SLGenericDispatchNode}):
  * <ol>
- * <li>After parsing: {@code C->U}
- * <li>After execution of function {@code f1}: {@code C->D(f1)->U}
- * <li>After execution of function {@code f2}: {@code C->D(f1)->D(f2)->U}
- * <li>After execution of function {@code f3}: {@code C->G}
+ * <li>After parsing: {@code I->U}
+ * <li>After execution of function {@code f1}: {@code I->D(f1)->U}
+ * <li>After execution of function {@code f2}: {@code I->D(f1)->D(f2)->U}
+ * <li>After execution of function {@code f3}: {@code I->G}
  * </ol>
  * */
 public abstract class SLAbstractDispatchNode extends Node {

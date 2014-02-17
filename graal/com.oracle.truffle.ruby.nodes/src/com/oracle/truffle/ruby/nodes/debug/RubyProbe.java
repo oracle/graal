@@ -7,7 +7,7 @@
  * GNU General Public License version 2
  * GNU Lesser General Public License version 2.1
  */
-package com.oracle.truffle.ruby.runtime.debug;
+package com.oracle.truffle.ruby.nodes.debug;
 
 import com.oracle.truffle.api.nodes.instrument.*;
 import com.oracle.truffle.ruby.runtime.*;

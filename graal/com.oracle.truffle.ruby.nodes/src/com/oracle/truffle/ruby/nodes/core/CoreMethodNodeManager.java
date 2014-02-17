@@ -17,6 +17,7 @@ import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.ruby.nodes.*;
 import com.oracle.truffle.ruby.nodes.control.*;
+import com.oracle.truffle.ruby.nodes.debug.*;
 import com.oracle.truffle.ruby.nodes.methods.arguments.*;
 import com.oracle.truffle.ruby.nodes.objects.*;
 import com.oracle.truffle.ruby.runtime.*;
@@ -30,7 +31,13 @@ public abstract class CoreMethodNodeManager {
      * given the Object class object, which should already be initialized with all the core classes.
      */
     public static void addMethods(RubyClass rubyObjectClass) {
-        for (MethodDetails methodDetails : getMethods()) {
+        addMethods(rubyObjectClass, getMethods());
+    }
+
+    public static void addMethods(RubyClass rubyObjectClass, List<MethodDetails> methods) {
+        // Same as above, but allows passing of a specific list of core methods.
+        // This allows extending Truffle-Ruby with non-standard Core Method.
+        for (MethodDetails methodDetails : methods) {
             addMethod(rubyObjectClass, methodDetails);
         }
     }
@@ -74,13 +81,14 @@ public abstract class CoreMethodNodeManager {
         getMethods(methods, ThreadNodesFactory.getFactories());
         getMethods(methods, TimeNodesFactory.getFactories());
         getMethods(methods, TrueClassNodesFactory.getFactories());
+        getMethods(methods, DebugNodesFactory.getFactories());
         return methods;
     }
 
     /**
      * Collect up the core methods created by a factory.
      */
-    private static void getMethods(List<MethodDetails> methods, List<? extends NodeFactory<? extends CoreMethodNode>> nodeFactories) {
+    public static void getMethods(List<MethodDetails> methods, List<? extends NodeFactory<? extends CoreMethodNode>> nodeFactories) {
         for (NodeFactory<? extends RubyNode> nodeFactory : nodeFactories) {
             final GeneratedBy generatedBy = nodeFactory.getClass().getAnnotation(GeneratedBy.class);
             final Class<?> nodeClass = generatedBy.value();

@@ -22,6 +22,7 @@ import com.oracle.truffle.api.source.*;
 import com.oracle.truffle.ruby.runtime.configuration.*;
 import com.oracle.truffle.ruby.runtime.control.*;
 import com.oracle.truffle.ruby.runtime.core.*;
+import com.oracle.truffle.ruby.runtime.debug.*;
 import com.oracle.truffle.ruby.runtime.methods.*;
 import com.oracle.truffle.ruby.runtime.objects.*;
 import com.oracle.truffle.ruby.runtime.subsystems.*;
@@ -41,6 +42,7 @@ public class RubyContext implements ExecutionContext {
     private final FiberManager fiberManager;
     private final AtExitManager atExitManager;
     private final DebugManager debugManager;
+    private final RubyDebugManager rubyDebugManager;
     private final SourceManager sourceManager;
     private final ASTPrinter astPrinter;
 
@@ -77,6 +79,7 @@ public class RubyContext implements ExecutionContext {
         sourceManager = new SourceManager();
 
         debugManager = new DefaultDebugManager(this);
+        rubyDebugManager = new RubyDebugManager();
 
         // Must initialize threads before fibers
 
@@ -298,6 +301,10 @@ public class RubyContext implements ExecutionContext {
 
     public SourceManager getSourceManager() {
         return sourceManager;
+    }
+
+    public RubyDebugManager getRubyDebugManager() {
+        return rubyDebugManager;
     }
 
 }
