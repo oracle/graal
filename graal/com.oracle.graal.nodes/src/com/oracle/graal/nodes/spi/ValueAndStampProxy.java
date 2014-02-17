@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,31 +20,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nfi.hotspot.amd64;
+package com.oracle.graal.nodes.spi;
 
-import com.oracle.graal.api.code.*;
-
-public class AMD64HotSpotNativeFunctionPointer implements NativeFunctionPointer {
-
-    private final long functionPointer;
-    private final String functionName;
-
-    public AMD64HotSpotNativeFunctionPointer(long functionPointer, String functionName) {
-        this.functionPointer = functionPointer;
-        this.functionName = functionName;
-    }
-
-    public boolean isValid() {
-        return functionPointer != 0;
-    }
-
-    @Override
-    public long asRawValue() {
-        return functionPointer;
-    }
-
-    public String getFunctionName() {
-        return functionName;
-    }
-
+/**
+ * This interface marks nodes whose result is the same as one of their inputs, and whose stamp is
+ * the same as one of their inputs.
+ * 
+ * For some algorithms it is necessary or advantageous to see through these proxies.
+ */
+public interface ValueAndStampProxy extends ValueProxy {
 }

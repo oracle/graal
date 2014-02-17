@@ -61,28 +61,39 @@ public class AMD64ControlFlow {
         protected final LabelRef trueDestination;
         protected final LabelRef falseDestination;
 
-        public BranchOp(Condition condition, LabelRef trueDestination, LabelRef falseDestination) {
-            this(intCond(condition), trueDestination, falseDestination);
+        private final double trueDestinationProbability;
+
+        public BranchOp(Condition condition, LabelRef trueDestination, LabelRef falseDestination, double trueDestinationProbability) {
+            this(intCond(condition), trueDestination, falseDestination, trueDestinationProbability);
         }
 
-        public BranchOp(ConditionFlag condition, LabelRef trueDestination, LabelRef falseDestination) {
+        public BranchOp(ConditionFlag condition, LabelRef trueDestination, LabelRef falseDestination, double trueDestinationProbability) {
             this.condition = condition;
             this.trueDestination = trueDestination;
             this.falseDestination = falseDestination;
+            this.trueDestinationProbability = trueDestinationProbability;
         }
 
         @Override
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
+            /*
+             * The strategy for emitting jumps is: If either trueDestination or falseDestination is
+             * the successor block, assume the block scheduler did the correct thing and jcc to the
+             * other. Otherwise, we need a jcc followed by a jmp. Use the branch probability to make
+             * sure it is more likely to branch on the jcc (= less likely to execute both the jcc
+             * and the jmp instead of just the jcc). In the case of loops, that means the jcc is the
+             * back-edge.
+             */
             if (crb.isSuccessorEdge(trueDestination)) {
                 jcc(masm, true, falseDestination);
-            } else if (falseDestination.getSourceBlock() == falseDestination.getTargetBlock()) {
+            } else if (crb.isSuccessorEdge(falseDestination)) {
+                jcc(masm, false, trueDestination);
+            } else if (trueDestinationProbability < 0.5) {
                 jcc(masm, true, falseDestination);
                 masm.jmp(trueDestination.label());
             } else {
                 jcc(masm, false, trueDestination);
-                if (!crb.isSuccessorEdge(falseDestination)) {
-                    masm.jmp(falseDestination.label());
-                }
+                masm.jmp(falseDestination.label());
             }
         }
 
@@ -94,8 +105,8 @@ public class AMD64ControlFlow {
     public static class FloatBranchOp extends BranchOp {
         protected boolean unorderedIsTrue;
 
-        public FloatBranchOp(Condition condition, boolean unorderedIsTrue, LabelRef trueDestination, LabelRef falseDestination) {
-            super(floatCond(condition), trueDestination, falseDestination);
+        public FloatBranchOp(Condition condition, boolean unorderedIsTrue, LabelRef trueDestination, LabelRef falseDestination, double trueDestinationProbability) {
+            super(floatCond(condition), trueDestination, falseDestination, trueDestinationProbability);
             this.unorderedIsTrue = unorderedIsTrue;
         }
 

@@ -169,11 +169,16 @@ public class TruffleCompilerImpl implements TruffleCompiler {
         if (TraceTruffleCompilation.getValue()) {
             int nodeCountTruffle = NodeUtil.countNodes(compilable.getRootNode(), null, true);
             byte[] code = compiledMethod.getCode();
-            OUT.printf("[truffle] optimized %-50s %x |Nodes %7d |Time %5.0f(%4.0f+%-4.0f)ms |Nodes %5d/%5d |CodeSize %d\n", compilable.getRootNode(), compilable.hashCode(), nodeCountTruffle,
+            OUT.printf("[truffle] optimized %-50s %08x |Tree %8d |Time %5.0f(%4.0f+%-4.0f)ms |Graph %5d/%5d |CodeSize %6d @ %s\n", compilable.getRootNode(), compilable.hashCode(), nodeCountTruffle,
                             (timeCompilationFinished - timeCompilationStarted) / 1e6, (timePartialEvaluationFinished - timeCompilationStarted) / 1e6,
-                            (timeCompilationFinished - timePartialEvaluationFinished) / 1e6, nodeCountPartialEval, nodeCountLowered, code != null ? code.length : 0);
+                            (timeCompilationFinished - timePartialEvaluationFinished) / 1e6, nodeCountPartialEval, nodeCountLowered, code != null ? code.length : 0,
+                            formatSourceSection(compilable.getRootNode().getSourceSection()));
         }
         return compiledMethod;
+    }
+
+    private static String formatSourceSection(SourceSection sourceSection) {
+        return sourceSection != null ? sourceSection.toString() : "n/a";
     }
 
     private void printInlineTree(RootNode rootNode) {

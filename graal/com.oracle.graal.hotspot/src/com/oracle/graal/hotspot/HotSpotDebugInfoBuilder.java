@@ -56,6 +56,7 @@ public class HotSpotDebugInfoBuilder extends DebugInfoBuilder {
         ValueNode lock = state.lockAt(lockIndex);
         Value object = toValue(lock);
         boolean eliminated = object instanceof VirtualObject && state.monitorIdAt(lockIndex) != null;
+        assert state.monitorIdAt(lockIndex) == null || state.monitorIdAt(lockIndex).getLockDepth() == lockDepth;
         return new HotSpotMonitorValue(object, slot, eliminated);
     }
 

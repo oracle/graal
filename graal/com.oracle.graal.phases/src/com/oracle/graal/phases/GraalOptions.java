@@ -232,6 +232,9 @@ public final class GraalOptions {
     @Option(help = "Try to avoid emitting code where patching is required")
     public static final OptionValue<Boolean> ImmutableCode = new OptionValue<>(false);
 
+    @Option(help = "")
+    public static final OptionValue<Boolean> CallArrayCopy = new OptionValue<>(true);
+
     // Runtime settings
     @Option(help = "")
     public static final OptionValue<Boolean> SupportJsrBytecodes = new OptionValue<>(true);

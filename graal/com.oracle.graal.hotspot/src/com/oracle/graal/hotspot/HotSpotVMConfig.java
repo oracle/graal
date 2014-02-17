@@ -840,14 +840,35 @@ public class HotSpotVMConfig extends CompilerObject {
     @HotSpotVMField(name = "JavaThread::_vm_result", type = "oop", get = HotSpotVMField.Type.OFFSET) @Stable public int threadObjectResultOffset;
     @HotSpotVMField(name = "JavaThread::_graal_counters[0]", type = "jlong", get = HotSpotVMField.Type.OFFSET, optional = true) @Stable public int graalCountersThreadOffset;
 
-    // The native side (graalCompilerToVM.cpp) sets the rtldDefault if the
-    // platform is NOT Windows (Windows is currently not supported).
-    // AMD64NativeFunctionInterface checks if rtld_default handle is valid.
-    // Using 0 is not possible as it is a valid value for rtldDefault on some platforms.
+    /**
+     * An invalid value for {@link #rtldDefault}.
+     */
     public static final long INVALID_RTLD_DEFAULT_HANDLE = 0xDEADFACE;
 
-    @Stable public long libraryLoadAddress;
-    @Stable public long functionLookupAddress;
+    /**
+     * Address of the library lookup routine. The C signature of this routine is:
+     * 
+     * <pre>
+     *     void* (const char *filename, char *ebuf, int ebuflen)
+     * </pre>
+     */
+    @Stable public long dllLoad;
+
+    /**
+     * Address of the library lookup routine. The C signature of this routine is:
+     * 
+     * <pre>
+     *     void* (void* handle, const char* name)
+     * </pre>
+     */
+    @Stable public long dllLookup;
+
+    /**
+     * A pseudo-handle which when used as the first argument to {@link #dllLookup} means lookup will
+     * return the first occurrence of the desired symbol using the default library search order. If
+     * this field is {@value #INVALID_RTLD_DEFAULT_HANDLE}, then this capability is not supported on
+     * the current platform.
+     */
     @Stable public long rtldDefault = INVALID_RTLD_DEFAULT_HANDLE;
 
     /**
@@ -1004,6 +1025,8 @@ public class HotSpotVMConfig extends CompilerObject {
     @HotSpotVMConstant(name = "JVM_CONSTANT_MethodHandleInError") @Stable public int jvmConstantMethodHandleInError;
     @HotSpotVMConstant(name = "JVM_CONSTANT_MethodType") @Stable public int jvmConstantMethodType;
     @HotSpotVMConstant(name = "JVM_CONSTANT_MethodTypeInError") @Stable public int jvmConstantMethodTypeInError;
+
+    @HotSpotVMConstant(name = "HeapWordSize") @Stable public int heapWordSize;
 
     @HotSpotVMField(name = "Symbol::_length", type = "unsigned short", get = HotSpotVMField.Type.OFFSET) @Stable public int symbolLengthOffset;
     @HotSpotVMField(name = "Symbol::_body[0]", type = "jbyte", get = HotSpotVMField.Type.OFFSET) @Stable public int symbolBodyOffset;
@@ -1260,6 +1283,35 @@ public class HotSpotVMConfig extends CompilerObject {
     @HotSpotVMField(name = "StubRoutines::_cipherBlockChaining_decryptAESCrypt", type = "address", get = HotSpotVMField.Type.VALUE) @Stable public long cipherBlockChainingDecryptAESCryptStub;
     @HotSpotVMField(name = "StubRoutines::_updateBytesCRC32", type = "address", get = HotSpotVMField.Type.VALUE) @Stable public long updateBytesCRC32Stub;
     @HotSpotVMField(name = "StubRoutines::_crc_table_adr", type = "address", get = HotSpotVMField.Type.VALUE) @Stable public long crcTableAddress;
+
+    @HotSpotVMField(name = "StubRoutines::_jbyte_arraycopy", type = "address", get = HotSpotVMField.Type.VALUE) @Stable public long jbyteArraycopy;
+    @HotSpotVMField(name = "StubRoutines::_jshort_arraycopy", type = "address", get = HotSpotVMField.Type.VALUE) @Stable public long jshortArraycopy;
+    @HotSpotVMField(name = "StubRoutines::_jint_arraycopy", type = "address", get = HotSpotVMField.Type.VALUE) @Stable public long jintArraycopy;
+    @HotSpotVMField(name = "StubRoutines::_jlong_arraycopy", type = "address", get = HotSpotVMField.Type.VALUE) @Stable public long jlongArraycopy;
+    @HotSpotVMField(name = "StubRoutines::_oop_arraycopy", type = "address", get = HotSpotVMField.Type.VALUE) @Stable public long oopArraycopy;
+    @HotSpotVMField(name = "StubRoutines::_oop_arraycopy_uninit", type = "address", get = HotSpotVMField.Type.VALUE) @Stable public long oopArraycopyUninit;
+    @HotSpotVMField(name = "StubRoutines::_jbyte_disjoint_arraycopy", type = "address", get = HotSpotVMField.Type.VALUE) @Stable public long jbyteDisjointArraycopy;
+    @HotSpotVMField(name = "StubRoutines::_jshort_disjoint_arraycopy", type = "address", get = HotSpotVMField.Type.VALUE) @Stable public long jshortDisjointArraycopy;
+    @HotSpotVMField(name = "StubRoutines::_jint_disjoint_arraycopy", type = "address", get = HotSpotVMField.Type.VALUE) @Stable public long jintDisjointArraycopy;
+    @HotSpotVMField(name = "StubRoutines::_jlong_disjoint_arraycopy", type = "address", get = HotSpotVMField.Type.VALUE) @Stable public long jlongDisjointArraycopy;
+    @HotSpotVMField(name = "StubRoutines::_oop_disjoint_arraycopy", type = "address", get = HotSpotVMField.Type.VALUE) @Stable public long oopDisjointArraycopy;
+    @HotSpotVMField(name = "StubRoutines::_oop_disjoint_arraycopy_uninit", type = "address", get = HotSpotVMField.Type.VALUE) @Stable public long oopDisjointArraycopyUninit;
+    @HotSpotVMField(name = "StubRoutines::_arrayof_jbyte_arraycopy", type = "address", get = HotSpotVMField.Type.VALUE) @Stable public long jbyteAlignedArraycopy;
+    @HotSpotVMField(name = "StubRoutines::_arrayof_jshort_arraycopy", type = "address", get = HotSpotVMField.Type.VALUE) @Stable public long jshortAlignedArraycopy;
+    @HotSpotVMField(name = "StubRoutines::_arrayof_jint_arraycopy", type = "address", get = HotSpotVMField.Type.VALUE) @Stable public long jintAlignedArraycopy;
+    @HotSpotVMField(name = "StubRoutines::_arrayof_jlong_arraycopy", type = "address", get = HotSpotVMField.Type.VALUE) @Stable public long jlongAlignedArraycopy;
+    @HotSpotVMField(name = "StubRoutines::_arrayof_oop_arraycopy", type = "address", get = HotSpotVMField.Type.VALUE) @Stable public long alignedOopAlignedArraycopy;
+    @HotSpotVMField(name = "StubRoutines::_arrayof_oop_arraycopy_uninit", type = "address", get = HotSpotVMField.Type.VALUE) @Stable public long alignedOopArraycopyUninit;
+    @HotSpotVMField(name = "StubRoutines::_arrayof_jbyte_disjoint_arraycopy", type = "address", get = HotSpotVMField.Type.VALUE) @Stable public long jbyteAlignedDisjointArraycopy;
+    @HotSpotVMField(name = "StubRoutines::_arrayof_jshort_disjoint_arraycopy", type = "address", get = HotSpotVMField.Type.VALUE) @Stable public long jshortAlignedDisjointArraycopy;
+    @HotSpotVMField(name = "StubRoutines::_arrayof_jint_disjoint_arraycopy", type = "address", get = HotSpotVMField.Type.VALUE) @Stable public long jintAlignedDisjointArraycopy;
+    @HotSpotVMField(name = "StubRoutines::_arrayof_jlong_disjoint_arraycopy", type = "address", get = HotSpotVMField.Type.VALUE) @Stable public long jlongAlignedDisjointArraycopy;
+    @HotSpotVMField(name = "StubRoutines::_arrayof_oop_disjoint_arraycopy", type = "address", get = HotSpotVMField.Type.VALUE) @Stable public long alignedOopDisjointArraycopy;
+    @HotSpotVMField(name = "StubRoutines::_arrayof_oop_disjoint_arraycopy_uninit", type = "address", get = HotSpotVMField.Type.VALUE) @Stable public long alignedOopDisjointArraycopyUninit;
+    @HotSpotVMField(name = "StubRoutines::_checkcast_arraycopy", type = "address", get = HotSpotVMField.Type.VALUE) @Stable public long checkcastArraycopy;
+    @HotSpotVMField(name = "StubRoutines::_checkcast_arraycopy_uninit", type = "address", get = HotSpotVMField.Type.VALUE) @Stable public long checkcastArraycopyUninit;
+    @HotSpotVMField(name = "StubRoutines::_unsafe_arraycopy", type = "address", get = HotSpotVMField.Type.VALUE) @Stable public long unsafeArraycopy;
+    @HotSpotVMField(name = "StubRoutines::_generic_arraycopy", type = "address", get = HotSpotVMField.Type.VALUE) @Stable public long genericArraycopy;
 
     @Stable public long newInstanceAddress;
     @Stable public long newArrayAddress;

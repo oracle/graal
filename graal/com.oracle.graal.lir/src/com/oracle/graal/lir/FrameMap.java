@@ -122,6 +122,10 @@ public abstract class FrameMap {
         return frameSize;
     }
 
+    public int outgoingSize() {
+        return outgoingSize;
+    }
+
     /**
      * Determines if any space is used in the frame apart from the
      * {@link Architecture#getReturnAddressSize() return address slot}.

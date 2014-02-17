@@ -66,6 +66,11 @@ public class BitScanForwardNode extends FloatingNode implements LIRGenLowerable,
         return index;
     }
 
+    @NodeIntrinsic
+    public static int scan(int v) {
+        return scan(v & 0xFFFFFFFFL);
+    }
+
     @Override
     public void generate(LIRGenerator gen) {
         Variable result = gen.newVariable(Kind.Int);

@@ -245,27 +245,9 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
     }
 
     /**
-     * Returns true if this method has a ForceInline annotation.
-     * 
-     * @return true if ForceInline annotation present, false otherwise
-     */
-    public boolean isForceInline() {
-        return forceInline;
-    }
-
-    /**
-     * Returns true if this method has a DontInline annotation.
-     * 
-     * @return true if DontInline annotation present, false otherwise
-     */
-    public boolean isDontInline() {
-        return dontInline;
-    }
-
-    /**
      * Manually adds a DontInline annotation to this method.
      */
-    public void setDontInline() {
+    public void setNotInlineable() {
         dontInline = true;
         runtime().getCompilerToVM().doNotInlineOrCompile(metaspaceMethod);
     }
@@ -488,7 +470,15 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
         if (dontInline) {
             return false;
         }
-        return runtime().getCompilerToVM().isMethodCompilable(metaspaceMethod);
+        return runtime().getCompilerToVM().canInlineMethod(metaspaceMethod);
+    }
+
+    @Override
+    public boolean shouldBeInlined() {
+        if (forceInline) {
+            return true;
+        }
+        return runtime().getCompilerToVM().shouldInlineMethod(metaspaceMethod);
     }
 
     @Override

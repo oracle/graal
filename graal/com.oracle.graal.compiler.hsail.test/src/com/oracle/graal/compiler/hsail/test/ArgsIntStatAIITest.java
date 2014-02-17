@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,18 +20,29 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.truffle.substitutions;
 
-import com.oracle.graal.api.replacements.*;
-import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.truffle.nodes.asserts.*;
-import com.oracle.truffle.api.*;
-import com.oracle.truffle.api.frame.*;
-import com.oracle.truffle.api.impl.*;
+package com.oracle.graal.compiler.hsail.test;
 
-@ClassSubstitution(DefaultCallTarget.class)
-public class DefaultCallTargetSubstitutions {
+import org.junit.*;
 
-    @MacroSubstitution(macro = NeverInlineMacroNode.class, isStatic = false)
-    public static native Object call(DefaultCallTarget target, PackedFrame caller, Arguments args);
+/**
+ * Tests codegen for an AII signature {@code IntStream} static function.
+ */
+public class ArgsIntStatAIITest extends ArgsIntBase {
+
+    public static void run(double[] out, int arg1, int arg2, int gid) {
+        out[gid] = gid + arg1 + arg2;
+    }
+
+    @Override
+    public void runTest() {
+        setupArrays();
+        dispatchMethodKernel(NUM, outArray, 7, 6);
+    }
+
+    @Test
+    public void test() {
+        testGeneratedHsail();
+    }
+
 }

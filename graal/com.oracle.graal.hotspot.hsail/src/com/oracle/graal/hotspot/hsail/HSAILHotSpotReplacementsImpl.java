@@ -30,6 +30,8 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.util.*;
 import com.oracle.graal.replacements.*;
+import com.oracle.graal.replacements.hsail.*;
+import java.util.HashSet;
 
 /**
  * The substitutions and snippets supported by HSAIL.
@@ -37,10 +39,29 @@ import com.oracle.graal.replacements.*;
 public class HSAILHotSpotReplacementsImpl extends ReplacementsImpl {
 
     private final Replacements host;
+    private HashSet<ResolvedJavaMethod> ignoredResolvedMethods = new HashSet<>();
 
     public HSAILHotSpotReplacementsImpl(Providers providers, Assumptions assumptions, TargetDescription target, Replacements host) {
         super(providers, assumptions, target);
         this.host = host;
+    }
+
+    public void addIgnoredResolvedMethod(Class<?> cls, String methName, Class<?>... params) {
+        try {
+            Method m = cls.getMethod(methName, params);
+            ResolvedJavaMethod rjm = providers.getMetaAccess().lookupJavaMethod(m);
+            ignoredResolvedMethods.add(rjm);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void completeInitialization() {
+        // Register the substitutions for java.lang.Math routines.
+        registerSubstitutions(HSAILMathSubstitutions.class);
+
+        // Register the ignored substitutions
+        addIgnoredResolvedMethod(String.class, "equals", Object.class);
     }
 
     @Override
@@ -70,9 +91,13 @@ public class HSAILHotSpotReplacementsImpl extends ReplacementsImpl {
     public StructuredGraph getMethodSubstitution(ResolvedJavaMethod original) {
         StructuredGraph m = super.getMethodSubstitution(original);
         if (m == null) {
-            // eventually we want to only defer certain substitutions to the host, but for now we
-            // will defer everything
-            return host.getMethodSubstitution(original);
+            // we check for a few special cases we do NOT want to defer here
+            // but basically we defer everything else to the host
+            if (ignoredResolvedMethods.contains(original)) {
+                return null;
+            } else {
+                return host.getMethodSubstitution(original);
+            }
         }
         return m;
     }

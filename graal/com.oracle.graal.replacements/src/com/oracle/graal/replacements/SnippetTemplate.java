@@ -526,8 +526,10 @@ public class SnippetTemplate {
                 ParameterNode[] params = new ParameterNode[length];
                 Stamp stamp = varargs.stamp;
                 for (int j = 0; j < length; j++) {
-                    assert (parameterCount & 0xFFFF) == parameterCount;
-                    int idx = i << 16 | j;
+                    // Use a decimal friendly numbering make it more obvious how values map
+                    assert parameterCount < 10000;
+                    int idx = (i + 1) * 10000 + j;
+                    assert idx >= parameterCount : "collision in parameter numbering";
                     ParameterNode local = snippetCopy.unique(new ParameterNode(idx, stamp));
                     params[j] = local;
                 }
@@ -542,6 +544,11 @@ public class SnippetTemplate {
                         LoadSnippetVarargParameterNode loadSnippetParameter = snippetCopy.add(new LoadSnippetVarargParameterNode(params, loadIndexed.index(), loadIndexed.stamp()));
                         snippetCopy.replaceFixedWithFixed(loadIndexed, loadSnippetParameter);
                         Debug.dump(snippetCopy, "After replacing %s", loadIndexed);
+                    } else if (usage instanceof StoreIndexedNode) {
+                        // The template lowering doesn't really treat this as an array so you can't
+                        // store back into the varargs. Allocate your own array if you really need
+                        // this and EA should eliminate it.
+                        throw new GraalInternalError("Can't store into VarargsParameter array");
                     }
                 }
             } else {

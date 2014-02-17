@@ -71,7 +71,7 @@ public final class ReadNode extends FloatableAccessNode implements LIRLowerable,
     public static ValueNode canonicalizeRead(ValueNode read, LocationNode location, ValueNode object, CanonicalizerTool tool, boolean compressible) {
         MetaAccessProvider metaAccess = tool.getMetaAccess();
         if (read.usages().isEmpty()) {
-            // Read without usages can be savely removed.
+            // Read without usages can be safely removed.
             return null;
         }
         if (tool.canonicalizeReads() && metaAccess != null && object != null && object.isConstant()) {

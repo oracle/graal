@@ -116,6 +116,26 @@ public class BytecodeFrame extends BytecodePosition implements Serializable {
         this.numStack = numStack;
         this.numLocks = numLocks;
         assert !rethrowException || numStack == 1 : "must have exception on top of the stack";
+        assert validateFormat();
+    }
+
+    /**
+     * Ensure that the frame state is formatted as expected by the JVM, with null or Illegal in the
+     * slot following a double word item. This should really be checked in FrameState itself but
+     * because of Word type rewriting that can't be done. If a frame makes it into this code, then
+     * could be materialized by the JVM so it must follow the rules. it
+     */
+    private boolean validateFormat() {
+        for (int i = 0; i < numLocals + numStack; i++) {
+            if (values[i] != null) {
+                Kind kind = values[i].getKind();
+                if (kind == Kind.Long || kind == Kind.Double) {
+                    assert values.length > i + 1 : String.format("missing second word %s", this);
+                    assert values[i + 1] == null || values[i + 1].getKind() == Kind.Illegal;
+                }
+            }
+        }
+        return true;
     }
 
     /**

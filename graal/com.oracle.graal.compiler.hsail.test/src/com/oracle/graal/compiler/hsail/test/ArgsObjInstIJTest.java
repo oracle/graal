@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,17 +20,29 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.truffle;
 
-import com.oracle.truffle.api.impl.*;
-import com.oracle.truffle.api.nodes.*;
+package com.oracle.graal.compiler.hsail.test;
+
+import org.junit.*;
 
 /**
- * Call target that is not optimized by Graal upon surpassing a specific invocation threshold.
+ * Tests codegen for an IJ signature Object stream instance function.
  */
-public final class UnoptimizedCallTarget extends DefaultCallTarget {
+public class ArgsObjInstIJTest extends ArgsObjBase {
 
-    protected UnoptimizedCallTarget(RootNode rootNode) {
-        super(rootNode);
+    public void run(int arg1, long arg2, MyObj myobj) {
+        myobj.d = myobj.id + arg1 + arg2;
     }
+
+    @Override
+    public void runTest() {
+        setupArrays();
+        dispatchMethodKernel(outArray, 7, 6);
+    }
+
+    @Test
+    public void test() {
+        testGeneratedHsail();
+    }
+
 }

@@ -73,12 +73,23 @@ public enum AMD64Compare {
                 default:   throw GraalInternalError.shouldNotReachHere();
             }
         } else if (isConstant(y)) {
+            boolean isZero = ((Constant) y).isDefaultForKind();
             switch (opcode) {
-                case ICMP: masm.cmpl(asIntReg(x), crb.asIntConst(y)); break;
-                case LCMP: masm.cmpq(asLongReg(x), crb.asIntConst(y)); break;
+                case ICMP: if (isZero) {
+                    masm.testl(asIntReg(x), asIntReg(x));
+                } else {
+                    masm.cmpl(asIntReg(x), crb.asIntConst(y));
+                }
+                break;
+                case LCMP: if (isZero) {
+                    masm.testq(asLongReg(x), asLongReg(x));
+                } else {
+                    masm.cmpq(asLongReg(x), crb.asIntConst(y));
+                }
+                break;
                 case ACMP:
-                    if (((Constant) y).isNull()) {
-                        masm.cmpq(asObjectReg(x), 0); break;
+                    if (isZero) {
+                        masm.testq(asObjectReg(x), asObjectReg(x)); break;
                     } else {
                         throw GraalInternalError.shouldNotReachHere("Only null object constants are allowed in comparisons");
                     }

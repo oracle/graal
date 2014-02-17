@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.hotspot;
 
+import static com.oracle.graal.api.code.CallingConvention.Type.*;
 import static com.oracle.graal.api.code.CodeUtil.*;
 import static com.oracle.graal.compiler.GraalCompiler.*;
 import static com.oracle.graal.hotspot.bridge.VMToCompilerImpl.*;
@@ -222,6 +223,13 @@ public class CompilationTask implements Runnable, Comparable {
                 }
                 InlinedBytecodes.add(method.getCodeSize());
                 CallingConvention cc = getCallingConvention(providers.getCodeCache(), Type.JavaCallee, graph.method(), false);
+                if (graph.getEntryBCI() != StructuredGraph.INVOCATION_ENTRY_BCI) {
+                    // for OSR, only a pointer is passed to the method.
+                    JavaType[] parameterTypes = new JavaType[]{providers.getMetaAccess().lookupJavaType(long.class)};
+                    CallingConvention tmp = providers.getCodeCache().getRegisterConfig().getCallingConvention(JavaCallee, providers.getMetaAccess().lookupJavaType(void.class), parameterTypes,
+                                    backend.getTarget(), false);
+                    cc = new CallingConvention(cc.getStackSize(), cc.getReturn(), tmp.getArgument(0));
+                }
                 Suites suites = getSuites(providers);
                 ProfilingInfo profilingInfo = getProfilingInfo();
                 OptimisticOptimizations optimisticOpts = getOptimisticOpts(profilingInfo);

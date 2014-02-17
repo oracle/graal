@@ -288,6 +288,14 @@ public class CompilationResult implements Serializable {
             }
         }
 
+        public int getAlignment() {
+            if (externalData instanceof ConstantData) {
+                return ((ConstantData) externalData).getAlignment();
+            } else {
+                return 0;
+            }
+        }
+
         public String getDataString() {
             if (inlineData != null) {
                 return inlineData.toString();

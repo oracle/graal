@@ -428,6 +428,10 @@ public class InliningPhase extends AbstractInliningPhase {
                 return InliningUtil.logInlinedMethod(info, inliningDepth, fullyProcessed, "intrinsic");
             }
 
+            if (info.shouldInline()) {
+                return InliningUtil.logInlinedMethod(info, inliningDepth, fullyProcessed, "forced inlining");
+            }
+
             double inliningBonus = getInliningBonus(info);
             int nodes = determineNodeCount(info);
             int lowLevelGraphSize = previousLowLevelGraphSize(info);

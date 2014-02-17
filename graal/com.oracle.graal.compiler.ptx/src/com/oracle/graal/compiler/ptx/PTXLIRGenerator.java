@@ -299,7 +299,7 @@ public class PTXLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public void emitCompareBranch(Value left, Value right, Condition cond, boolean unorderedIsTrue, LabelRef trueDestination, LabelRef falseDestination) {
+    public void emitCompareBranch(Value left, Value right, Condition cond, boolean unorderedIsTrue, LabelRef trueDestination, LabelRef falseDestination, double trueDestinationProbability) {
         switch (left.getKind().getStackKind()) {
             case Int:
                 append(new CompareOp(ICMP, cond, left, right, nextPredRegNum));
@@ -327,12 +327,12 @@ public class PTXLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public void emitOverflowCheckBranch(LabelRef overflow, LabelRef noOverflow, boolean negated) {
+    public void emitOverflowCheckBranch(LabelRef overflow, LabelRef noOverflow, double overflowProbability) {
         throw GraalInternalError.unimplemented("PTXLIRGenerator.emitOverflowCheckBranch()");
     }
 
     @Override
-    public void emitIntegerTestBranch(Value left, Value right, boolean negated, LabelRef trueDestination, LabelRef falseDestination) {
+    public void emitIntegerTestBranch(Value left, Value right, LabelRef trueDestination, LabelRef falseDestination, double trueDestinationProbability) {
         // / emitIntegerTest(left, right);
         // append(new BranchOp(negated ? Condition.NE : Condition.EQ, label));
         throw GraalInternalError.unimplemented("emitIntegerTestBranch()");

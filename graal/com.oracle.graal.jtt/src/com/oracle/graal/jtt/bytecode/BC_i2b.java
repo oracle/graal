@@ -53,4 +53,27 @@ public class BC_i2b extends JTTTest {
         runTest("test", 128);
     }
 
+    public static int testInt(int a) {
+        return (byte) a;
+    }
+
+    @Test
+    public void runI0() throws Throwable {
+        runTest("testInt", -1);
+    }
+
+    @Test
+    public void runI1() throws Throwable {
+        runTest("testInt", 2);
+    }
+
+    @Test
+    public void runI2() throws Throwable {
+        runTest("testInt", 255);
+    }
+
+    @Test
+    public void runI3() throws Throwable {
+        runTest("testInt", 128);
+    }
 }

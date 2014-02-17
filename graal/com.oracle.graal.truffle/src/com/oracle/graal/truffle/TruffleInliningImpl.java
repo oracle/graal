@@ -115,7 +115,8 @@ class TruffleInliningImpl implements TruffleInlining {
     private static void printCallSiteInfo(InliningPolicy policy, InlinableCallSiteInfo callSite, String msg) {
         String calls = String.format("%4s/%4s", callSite.getCallCount(), policy.callerInvocationCount);
         String nodes = String.format("%3s/%3s", callSite.getInlineNodeCount(), policy.callerNodeCount);
-        OUT.printf("[truffle] %-9s %-50s |Nodes %6s |Calls %6s %7.3f |%s\n", msg, callSite.getCallNode(), nodes, calls, policy.metric(callSite), callSite.getCallNode().getCallTarget());
+        CallTarget inlined = callSite.getCallNode().getCallTarget();
+        OUT.printf("[truffle] %-9s %-50s %08x |Tree %8s |Calls %6s %7.3f @ %s\n", msg, inlined, inlined.hashCode(), nodes, calls, policy.metric(callSite), callSite.getCallNode());
     }
 
     private static final class InliningPolicy {

@@ -23,6 +23,7 @@
 package com.oracle.graal.hotspot.replacements;
 
 import static com.oracle.graal.compiler.GraalCompiler.*;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
@@ -63,6 +64,10 @@ public class ArrayCopyNode extends MacroNode implements Virtualizable, Lowerable
         return arguments.get(4);
     }
 
+    private static boolean isHeapWordAligned(Constant value, Kind kind) {
+        return (arrayBaseOffset(kind) + value.asInt() * arrayIndexScale(kind)) % heapWordSize() == 0;
+    }
+
     private StructuredGraph selectSnippet(LoweringTool tool, final Replacements replacements) {
         ResolvedJavaType srcType = ObjectStamp.typeOrNull(getSource().stamp());
         ResolvedJavaType destType = ObjectStamp.typeOrNull(getDestination().stamp());
@@ -74,7 +79,23 @@ public class ArrayCopyNode extends MacroNode implements Virtualizable, Lowerable
             return null;
         }
         Kind componentKind = srcType.getComponentType().getKind();
-        final ResolvedJavaMethod snippetMethod = tool.getMetaAccess().lookupJavaMethod(ArrayCopySnippets.getSnippetForKind(componentKind));
+        boolean disjoint = false;
+        boolean aligned = false;
+        if (getSourcePosition() == getDestinationPosition()) {
+            // Can treat as disjoint
+            disjoint = true;
+        }
+        Constant constantSrc = getSourcePosition().stamp().asConstant();
+        Constant constantDst = getDestinationPosition().stamp().asConstant();
+        if (constantSrc != null && constantDst != null) {
+            aligned = isHeapWordAligned(constantSrc, componentKind) && isHeapWordAligned(constantDst, componentKind);
+            if (constantSrc.asInt() >= constantDst.asInt()) {
+                // low to high copy so treat as disjoint
+                disjoint = true;
+            }
+        }
+
+        final ResolvedJavaMethod snippetMethod = tool.getMetaAccess().lookupJavaMethod(ArrayCopySnippets.getSnippetForKind(componentKind, aligned, disjoint));
         try (Scope s = Debug.scope("ArrayCopySnippet", snippetMethod)) {
             return replacements.getSnippet(snippetMethod);
         } catch (Throwable e) {
@@ -188,4 +209,5 @@ public class ArrayCopyNode extends MacroNode implements Virtualizable, Lowerable
             }
         }
     }
+
 }

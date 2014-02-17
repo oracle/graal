@@ -137,8 +137,17 @@ public class PTXHotSpotBackend extends HotSpotBackend {
             long launchKernel = getLaunchKernelAddress();
             hostForeignCalls.linkForeignCall(hostProviders, CALL_KERNEL, launchKernel, false, NOT_LEAF, NOT_REEXECUTABLE, ANY_LOCATION);
         }
+        /* Add a shutdown hook to destroy CUDA context(s) */
+        Runtime.getRuntime().addShutdownHook(new Thread("PTXShutdown") {
+            @Override
+            public void run() {
+                destroyContext();
+            }
+        });
         super.completeInitialization();
     }
+
+    private static native void destroyContext();
 
     /**
      * Gets the address of {@code Ptx::execute_kernel_from_vm()}.
@@ -365,7 +374,7 @@ public class PTXHotSpotBackend extends HotSpotBackend {
 
     @Override
     public LIRGenerator newLIRGenerator(StructuredGraph graph, FrameMap frameMap, CallingConvention cc, LIR lir) {
-        return new PTXLIRGenerator(graph, getProviders(), frameMap, cc, lir);
+        return new PTXHotSpotLIRGenerator(graph, getProviders(), getRuntime().getConfig(), frameMap, cc, lir);
     }
 
     private static void emitKernelEntry(CompilationResultBuilder crb, LIRGenerator lirGen, ResolvedJavaMethod codeCacheOwner) {

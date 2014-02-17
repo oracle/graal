@@ -160,7 +160,7 @@ public class CompilationResultBuilder {
     public void recordInlineDataInCode(Constant data) {
         assert data != null;
         int pos = asm.codeBuffer.position();
-        Debug.log("Inline data in code: pos = %d, data = %s", pos, data.toString());
+        Debug.log("Inline data in code: pos = %d, data = %s", pos, data);
         compilationResult.recordInlineData(pos, data);
     }
 
@@ -172,7 +172,7 @@ public class CompilationResultBuilder {
     public AbstractAddress recordDataReferenceInCode(Data data) {
         assert data != null;
         int pos = asm.codeBuffer.position();
-        Debug.log("Data reference in code: pos = %d, data = %s", pos, data.toString());
+        Debug.log("Data reference in code: pos = %d, data = %s", pos, data);
         compilationResult.recordDataReference(pos, data);
         return asm.getPlaceholder();
     }

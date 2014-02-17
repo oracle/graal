@@ -40,15 +40,14 @@ import com.oracle.graal.asm.amd64.*;
 import com.oracle.graal.asm.amd64.AMD64Assembler.ConditionFlag;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.target.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.bridge.*;
 import com.oracle.graal.hotspot.meta.*;
+import com.oracle.graal.hotspot.nfi.*;
 import com.oracle.graal.hotspot.stubs.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.amd64.*;
 import com.oracle.graal.lir.asm.*;
-import com.oracle.graal.nfi.hotspot.amd64.*;
 import com.oracle.graal.nodes.*;
 
 /**
@@ -311,12 +310,12 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend {
 
     @Override
     public NativeFunctionInterface getNativeFunctionInterface() {
-        AMD64HotSpotNativeFunctionPointer libraryLoadPointer = new AMD64HotSpotNativeFunctionPointer(getRuntime().getConfig().libraryLoadAddress, "GNFI_UTIL_LOADLIBRARY");
-        AMD64HotSpotNativeFunctionPointer functionLookupPointer = new AMD64HotSpotNativeFunctionPointer(getRuntime().getConfig().functionLookupAddress, "GNFI_UTIL_FUNCTIONLOOKUP");
-        AMD64HotSpotNativeLibraryHandle rtldDefault = new AMD64HotSpotNativeLibraryHandle(getRuntime().getConfig().rtldDefault);
-        if (!libraryLoadPointer.isValid() || !functionLookupPointer.isValid()) {
-            throw GraalInternalError.shouldNotReachHere("Lookup Pointers null");
-        }
-        return new AMD64HotSpotNativeFunctionInterface(this.getProviders(), this, libraryLoadPointer, functionLookupPointer, rtldDefault);
+        HotSpotVMConfig config = getRuntime().getConfig();
+        RawNativeCallNodeFactory factory = new RawNativeCallNodeFactory() {
+            public FixedWithNextNode createRawCallNode(Kind returnType, Constant functionPointer, ValueNode... args) {
+                return new AMD64RawNativeCallNode(returnType, functionPointer, args);
+            }
+        };
+        return new HotSpotNativeFunctionInterface(getProviders(), factory, this, config.dllLoad, config.dllLookup, config.rtldDefault);
     }
 }

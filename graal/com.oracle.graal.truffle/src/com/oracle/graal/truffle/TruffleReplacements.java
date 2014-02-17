@@ -58,7 +58,6 @@ public final class TruffleReplacements extends ReplacementsImpl {
         truffleReplacements.registerSubstitutions(FrameWithoutBoxingSubstitutions.class);
         truffleReplacements.registerSubstitutions(OptimizedAssumptionSubstitutions.class);
         truffleReplacements.registerSubstitutions(OptimizedCallTargetSubstitutions.class);
-        truffleReplacements.registerSubstitutions(DefaultCallTargetSubstitutions.class);
 
         return truffleReplacements;
     }

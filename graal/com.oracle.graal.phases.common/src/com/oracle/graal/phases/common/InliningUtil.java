@@ -295,6 +295,8 @@ public class InliningUtil {
          * Try to make the call static bindable to avoid interface and virtual method calls.
          */
         void tryToDevirtualizeInvoke(MetaAccessProvider metaAccess, Assumptions assumptions);
+
+        boolean shouldInline();
     }
 
     public abstract static class AbstractInlineInfo implements InlineInfo {
@@ -411,6 +413,10 @@ public class InliningUtil {
             assert index == 0;
             this.inlineableElement = inlineableElement;
         }
+
+        public boolean shouldInline() {
+            return concrete.shouldBeInlined();
+        }
     }
 
     /**
@@ -496,6 +502,10 @@ public class InliningUtil {
         @Override
         public String toString() {
             return "type-checked with type " + type.getName() + " and method " + MetaUtil.format("%H.%n(%p):%r", concrete);
+        }
+
+        public boolean shouldInline() {
+            return concrete.shouldBeInlined();
         }
     }
 
@@ -590,6 +600,15 @@ public class InliningUtil {
             } else {
                 inlineMultipleMethods(graph(), providers, assumptions);
             }
+        }
+
+        public boolean shouldInline() {
+            for (ResolvedJavaMethod method : concretes) {
+                if (method.shouldBeInlined()) {
+                    return true;
+                }
+            }
+            return false;
         }
 
         private boolean hasSingleMethod() {

@@ -32,6 +32,7 @@ import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.*;
+import com.oracle.graal.phases.graph.*;
 import com.oracle.graal.word.*;
 import com.oracle.graal.word.Word.Operation;
 
@@ -58,7 +59,7 @@ public class WordTypeVerificationPhase extends Phase {
          * modifies the stamp of nodes, we copy the graph before running the verification.
          */
         StructuredGraph graph = inputGraph.copy();
-        wordAccess.inferStamps(graph);
+        InferStamps.inferStamps(graph);
 
         for (ValueNode node : graph.getNodes().filter(ValueNode.class)) {
             if (!node.recordsUsages()) {
@@ -81,7 +82,6 @@ public class WordTypeVerificationPhase extends Phase {
                 } else if (usage instanceof StoreIndexedNode) {
                     verify(!isWord(node) || ((StoreIndexedNode) usage).array() != node, node, usage, "cannot store to word value");
                     verify(!isWord(node) || ((StoreIndexedNode) usage).index() != node, node, usage, "cannot use word value as index");
-                    verify(!isWord(node) || ((StoreIndexedNode) usage).value() != node, node, usage, "cannot store word value to array");
                 } else if (usage instanceof MethodCallTargetNode) {
                     MethodCallTargetNode callTarget = (MethodCallTargetNode) usage;
                     verifyInvoke(node, callTarget);

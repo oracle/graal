@@ -48,11 +48,9 @@ import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.hsail.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.tiers.*;
-import com.oracle.graal.replacements.hsail.*;
 
 /**
  * HSAIL specific backend.
@@ -107,10 +105,8 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
         lowerer.initialize(providers, config);
 
         // Register the replacements used by the HSAIL backend.
-        Replacements replacements = providers.getReplacements();
-
-        // Register the substitutions for java.lang.Math routines.
-        replacements.registerSubstitutions(HSAILMathSubstitutions.class);
+        HSAILHotSpotReplacementsImpl replacements = (HSAILHotSpotReplacementsImpl) providers.getReplacements();
+        replacements.completeInitialization();
     }
 
     /**
@@ -321,7 +317,7 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
         }
         // Emit the kernel function parameters.
         for (int i = 0; i < totalParamCount; i++) {
-            String str = "kernarg_" + paramHsailSizes[i] + " " + paramNames[i];
+            String str = "align 8 kernarg_" + paramHsailSizes[i] + " " + paramNames[i];
 
             if (i != totalParamCount - 1) {
                 str += ",";

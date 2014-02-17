@@ -185,6 +185,8 @@ public interface ResolvedJavaMethod extends JavaMethod, InvokeTarget {
      */
     boolean canBeInlined();
 
+    boolean shouldBeInlined();
+
     /**
      * Returns the LineNumberTable of this method or null if this method does not have a line
      * numbers table.
