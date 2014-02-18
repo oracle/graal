@@ -73,6 +73,7 @@ public class AMD64HotSpotSafepointOp extends AMD64LIRInstruction {
     }
 
     public static void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler asm, HotSpotVMConfig config, boolean atReturn, LIRFrameState state, Register scratch) {
+        assert !atReturn || state == null : "state is unneeded at return";
         if (ImmutableCode.getValue()) {
             Kind hostWordKind = HotSpotGraalRuntime.getHostWordKind();
             int alignment = hostWordKind.getBitCount() / Byte.SIZE;

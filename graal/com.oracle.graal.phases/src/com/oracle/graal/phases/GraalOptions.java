@@ -254,8 +254,6 @@ public final class GraalOptions {
     @Option(help = "")
     public static final OptionValue<Boolean> OptEliminateGuards = new OptionValue<>(true);
     @Option(help = "")
-    public static final OptionValue<Boolean> OptEliminateSafepoints = new OptionValue<>(true);
-    @Option(help = "")
     public static final OptionValue<Boolean> OptImplicitNullChecks = new OptionValue<>(true);
     @Option(help = "")
     public static final OptionValue<Boolean> OptLivenessAnalysis = new OptionValue<>(true);

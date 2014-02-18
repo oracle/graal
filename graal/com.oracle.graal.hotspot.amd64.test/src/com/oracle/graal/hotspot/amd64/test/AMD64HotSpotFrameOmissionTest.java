@@ -48,6 +48,7 @@ public class AMD64HotSpotFrameOmissionTest extends GraalCompilerTest {
         return;
     }
 
+    @Ignore
     @Test
     public void test1() {
         testHelper("test1snippet", new CodeGenerator() {
@@ -64,6 +65,7 @@ public class AMD64HotSpotFrameOmissionTest extends GraalCompilerTest {
         return x + 5;
     }
 
+    @Ignore
     @Test
     public void test2() {
         testHelper("test2snippet", new CodeGenerator() {
@@ -83,6 +85,7 @@ public class AMD64HotSpotFrameOmissionTest extends GraalCompilerTest {
         return 1 + x;
     }
 
+    @Ignore
     @Test
     public void test3() {
         testHelper("test3snippet", new CodeGenerator() {
