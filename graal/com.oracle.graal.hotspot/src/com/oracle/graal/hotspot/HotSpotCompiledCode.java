@@ -31,6 +31,7 @@ import com.oracle.graal.api.code.CompilationResult.CodeComment;
 import com.oracle.graal.api.code.CompilationResult.Data;
 import com.oracle.graal.api.code.CompilationResult.DataPatch;
 import com.oracle.graal.api.code.CompilationResult.ExceptionHandler;
+import com.oracle.graal.api.code.CompilationResult.Infopoint;
 import com.oracle.graal.api.code.CompilationResult.JumpTable;
 import com.oracle.graal.api.code.CompilationResult.Mark;
 import com.oracle.graal.api.code.CompilationResult.Site;
@@ -195,6 +196,24 @@ public abstract class HotSpotCompiledCode extends CompilerObject {
                 comments[i] = new Comment(annotation.position, text);
             }
         }
+        assert validateFrames();
+    }
+
+    /**
+     * Ensure that all the frames passed into HotSpot are properly formatted with an empty or
+     * illegal slot following double word slots.
+     */
+    private boolean validateFrames() {
+        for (Site site : sites) {
+            if (site instanceof Infopoint) {
+                Infopoint info = (Infopoint) site;
+                if (info.debugInfo != null) {
+                    BytecodeFrame frame = info.debugInfo.frame();
+                    assert frame == null || frame.validateFormat();
+                }
+            }
+        }
+        return true;
     }
 
     static class SiteComparator implements Comparator<Site> {
