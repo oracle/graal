@@ -200,7 +200,9 @@ public class ReplacementsImpl implements Replacements {
                     }
                 }
             }
-            if (macroSubstitution != null) {
+            // We don't have per method guards for macro substitutions but at least respect the
+            // defaultGuard if there is one.
+            if (macroSubstitution != null && (defaultGuard == null || defaultGuard.execute())) {
                 String originalName = originalName(substituteMethod, macroSubstitution.value());
                 JavaSignature originalSignature = originalSignature(substituteMethod, macroSubstitution.signature(), macroSubstitution.isStatic());
                 Member originalMethod = originalMethod(classSubstitution, macroSubstitution.optional(), originalName, originalSignature);

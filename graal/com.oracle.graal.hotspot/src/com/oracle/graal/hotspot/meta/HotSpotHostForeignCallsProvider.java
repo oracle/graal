@@ -48,11 +48,13 @@ import static com.oracle.graal.nodes.java.RegisterFinalizerNode.*;
 import static com.oracle.graal.replacements.Log.*;
 import static com.oracle.graal.replacements.MathSubstitutionsX86.*;
 
+import java.util.*;
+
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.replacements.*;
 import com.oracle.graal.hotspot.stubs.*;
+import com.oracle.graal.word.*;
 
 /**
  * HotSpot implementation of {@link ForeignCallsProvider}.
@@ -67,12 +69,35 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         stub.getLinkage().setCompiledStub(stub);
     }
 
+    public static ForeignCallDescriptor lookupArraycopyDescriptor(Kind kind, boolean aligned, boolean disjoint) {
+        return (ForeignCallDescriptor) arraycopyDescriptors[aligned ? 1 : 0][disjoint ? 1 : 0].get(kind);
+    }
+
+    private static final EnumMap[][] arraycopyDescriptors = new EnumMap[2][2];
+
+    static {
+        // Populate the EnumMap instances
+        for (int i = 0; i < arraycopyDescriptors.length; i++) {
+            for (int j = 0; j < arraycopyDescriptors[i].length; j++) {
+                arraycopyDescriptors[i][j] = new EnumMap<Kind, ForeignCallDescriptor>(Kind.class);
+            }
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private static ForeignCallDescriptor registerArraycopyDescriptor(Kind kind, boolean aligned, boolean disjoint) {
+        String name = kind + (aligned ? "Aligned" : "") + (disjoint ? "Disjoint" : "") + "Arraycopy";
+        ForeignCallDescriptor desc = new ForeignCallDescriptor(name, void.class, Word.class, Word.class, Word.class);
+        arraycopyDescriptors[aligned ? 1 : 0][disjoint ? 1 : 0].put(kind, desc);
+        return desc;
+    }
+
     private void registerArrayCopy(Kind kind, long routine, long alignedRoutine, long disjointRoutine, long alignedDisjointRoutine) {
         LocationIdentity killed = NamedLocationIdentity.getArrayLocation(kind);
-        registerForeignCall(ArrayCopySnippets.lookupArraycopyDescriptor(kind, false, false), routine, NativeCall, DESTROYS_REGISTERS, LEAF_NOFP, NOT_REEXECUTABLE, killed);
-        registerForeignCall(ArrayCopySnippets.lookupArraycopyDescriptor(kind, true, false), alignedRoutine, NativeCall, DESTROYS_REGISTERS, LEAF_NOFP, NOT_REEXECUTABLE, killed);
-        registerForeignCall(ArrayCopySnippets.lookupArraycopyDescriptor(kind, false, true), disjointRoutine, NativeCall, DESTROYS_REGISTERS, LEAF_NOFP, NOT_REEXECUTABLE, killed);
-        registerForeignCall(ArrayCopySnippets.lookupArraycopyDescriptor(kind, true, true), alignedDisjointRoutine, NativeCall, DESTROYS_REGISTERS, LEAF_NOFP, NOT_REEXECUTABLE, killed);
+        registerForeignCall(registerArraycopyDescriptor(kind, false, false), routine, NativeCall, DESTROYS_REGISTERS, LEAF_NOFP, NOT_REEXECUTABLE, killed);
+        registerForeignCall(registerArraycopyDescriptor(kind, true, false), alignedRoutine, NativeCall, DESTROYS_REGISTERS, LEAF_NOFP, NOT_REEXECUTABLE, killed);
+        registerForeignCall(registerArraycopyDescriptor(kind, false, true), disjointRoutine, NativeCall, DESTROYS_REGISTERS, LEAF_NOFP, NOT_REEXECUTABLE, killed);
+        registerForeignCall(registerArraycopyDescriptor(kind, true, true), alignedDisjointRoutine, NativeCall, DESTROYS_REGISTERS, LEAF_NOFP, NOT_REEXECUTABLE, killed);
     }
 
     public void initialize(HotSpotProviders providers, HotSpotVMConfig c) {
@@ -128,6 +153,6 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         registerArrayCopy(Kind.Float, c.jintArraycopy, c.jintAlignedArraycopy, c.jintDisjointArraycopy, c.jintAlignedDisjointArraycopy);
         registerArrayCopy(Kind.Long, c.jlongArraycopy, c.jlongAlignedArraycopy, c.jlongDisjointArraycopy, c.jlongAlignedDisjointArraycopy);
         registerArrayCopy(Kind.Double, c.jlongArraycopy, c.jlongAlignedArraycopy, c.jlongDisjointArraycopy, c.jlongAlignedDisjointArraycopy);
-
+        registerArrayCopy(Kind.Object, c.oopArraycopy, c.oopArraycopy, c.oopDisjointArraycopy, c.oopDisjointArraycopy);
     }
 }

@@ -101,7 +101,7 @@ public class NodeMap<T> extends NodeIdAccessor {
         if (autogrow && isNew(node)) {
             grow();
         }
-        assert node.graph() == graph : "this node is not part of the graph";
+        assert node.graph() == graph : String.format("%s is not part of the graph", node);
         assert !isNew(node) : "this node was added to the graph after creating the node map : " + node;
     }
 

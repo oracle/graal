@@ -1317,6 +1317,8 @@ public class InliningUtil {
         FixedNode invokeNode = invoke.asNode();
         StructuredGraph graph = invokeNode.graph();
         assert inlineGraph.getGuardsStage().ordinal() >= graph.getGuardsStage().ordinal();
+        assert !invokeNode.graph().isAfterFloatingReadPhase() : "inline isn't handled correctly after floating reads phase";
+
         Kind returnKind = invokeNode.kind();
 
         FrameState stateAfter = invoke.stateAfter();
