@@ -41,7 +41,7 @@ public class ObjectSubstitutions {
     @MethodSubstitution(isStatic = false, forced = true)
     public static Class<?> getClass(final Object thisObj) {
         Word hub = loadHub(thisObj);
-        return piCast(hub.readObject(Word.signed(classMirrorOffset()), LocationIdentity.FINAL_LOCATION), Class.class, true, true);
+        return piCastExactNonNull(hub.readObject(Word.signed(classMirrorOffset()), LocationIdentity.FINAL_LOCATION), Class.class);
     }
 
     @MethodSubstitution(isStatic = false)

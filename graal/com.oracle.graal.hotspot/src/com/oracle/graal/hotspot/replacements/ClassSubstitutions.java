@@ -96,7 +96,7 @@ public class ClassSubstitutions {
                     if (superKlass.equal(0)) {
                         return null;
                     } else {
-                        return piCast(superKlass.readObject(classMirrorOffset(), LocationIdentity.FINAL_LOCATION), Class.class, true, true);
+                        return piCastExactNonNull(superKlass.readObject(classMirrorOffset(), LocationIdentity.FINAL_LOCATION), Class.class);
                     }
                 }
             }
@@ -110,7 +110,7 @@ public class ClassSubstitutions {
         Word klass = loadWordFromObject(thisObj, klassOffset());
         if (klass.notEqual(0)) {
             if (klassIsArray(klass)) {
-                return piCast(klass.readObject(arrayKlassComponentMirrorOffset(), LocationIdentity.FINAL_LOCATION), Class.class, true, true);
+                return piCastExactNonNull(klass.readObject(arrayKlassComponentMirrorOffset(), LocationIdentity.FINAL_LOCATION), Class.class);
             }
         }
         return null;
