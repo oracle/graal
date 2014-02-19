@@ -61,6 +61,5 @@ public @interface ClassSubstitution {
      * Determines if the substitutions in a class are globally enabled. Individual
      * MethodSubstitutions can also have guards and those override this guard.
      */
-
     Class<? extends SubstitutionGuard> defaultGuard() default SubstitutionGuard.class;
 }
