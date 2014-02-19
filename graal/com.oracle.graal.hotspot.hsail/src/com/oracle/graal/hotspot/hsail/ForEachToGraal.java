@@ -32,6 +32,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.hsail.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.debug.*;
+import com.oracle.graal.debug.internal.*;
 import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hsail.*;
@@ -40,6 +41,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.util.*;
+import com.oracle.graal.printer.*;
 
 /**
  * Implements compile and dispatch of Java code containing lambda constructs. Currently only used by
@@ -66,6 +68,11 @@ public class ForEachToGraal implements CompileAndDispatch {
                 assert acceptMethod == null : "found more than one implementation of accept(int) in " + intConsumerClass;
                 acceptMethod = m;
             }
+        }
+
+        // Ensure a debug configuration for this thread is initialized
+        if (DebugScope.getConfig() == null) {
+            DebugEnvironment.initialize(System.out);
         }
 
         HSAILHotSpotBackend backend = getHSAILBackend();
