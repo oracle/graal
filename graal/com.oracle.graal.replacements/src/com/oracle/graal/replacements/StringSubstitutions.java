@@ -66,9 +66,9 @@ public class StringSubstitutions {
             return true;
         }
 
-        final char[] thisArray = (char[]) unsafe.getObject(thisString, valueOffset);
-        final char[] thatArray = (char[]) unsafe.getObject(thatString, valueOffset);
+        final char[] array1 = (char[]) unsafe.getObject(thisString, valueOffset);
+        final char[] array2 = (char[]) unsafe.getObject(thatString, valueOffset);
 
-        return CharArrayEqualsNode.equals(thisArray, thatArray, thisArray.length);
+        return ArrayEqualsNode.equals(array1, array2, array1.length);
     }
 }

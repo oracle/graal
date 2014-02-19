@@ -23,6 +23,7 @@
 package com.oracle.graal.test;
 
 import java.lang.reflect.*;
+import java.util.*;
 
 import org.junit.*;
 import org.junit.runner.*;
@@ -51,6 +52,14 @@ public class GraalTest {
             return found;
         } else {
             throw new RuntimeException("method not found: " + methodName);
+        }
+    }
+
+    protected Method getMethod(Class<?> clazz, String methodName, Class<?>[] parameterTypes) {
+        try {
+            return clazz.getMethod(methodName, parameterTypes);
+        } catch (NoSuchMethodException | SecurityException e) {
+            throw new RuntimeException("method not found: " + methodName + "" + Arrays.toString(parameterTypes));
         }
     }
 }

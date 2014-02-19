@@ -443,7 +443,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public void emitCharArrayEquals(Variable result, Value array1, Value array2, Value length) {
+    public void emitArrayEquals(Kind kind, Variable result, Value array1, Value array2, Value length) {
         // TODO Auto-generated method stub
         throw GraalInternalError.unimplemented();
     }
