@@ -44,6 +44,6 @@ public class OptimizedCallTargetSubstitutions {
 
     @MethodSubstitution
     private static FrameWithoutBoxing createFrame(FrameDescriptor descriptor, PackedFrame caller, Arguments args) {
-        return NewFrameNode.allocate(descriptor, caller, args);
+        return NewFrameNode.allocate(FrameWithoutBoxing.class, descriptor, caller, args);
     }
 }

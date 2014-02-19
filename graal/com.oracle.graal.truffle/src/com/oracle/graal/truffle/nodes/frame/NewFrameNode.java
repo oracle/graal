@@ -25,7 +25,6 @@ package com.oracle.graal.truffle.nodes.frame;
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
@@ -34,7 +33,6 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.nodes.virtual.*;
-import com.oracle.graal.runtime.*;
 import com.oracle.graal.truffle.*;
 import com.oracle.graal.truffle.nodes.*;
 import com.oracle.truffle.api.*;
@@ -45,8 +43,6 @@ import com.oracle.truffle.api.frame.*;
  * class.
  */
 public class NewFrameNode extends FixedWithNextNode implements IterableNodeType, VirtualizableAllocation, Canonicalizable {
-
-    static final ResolvedJavaType FRAME_TYPE = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend().getProviders().getMetaAccess().lookupJavaType(FrameWithoutBoxing.class);
 
     @Input private ValueNode descriptor;
     @Input private ValueNode caller;
@@ -59,8 +55,8 @@ public class NewFrameNode extends FixedWithNextNode implements IterableNodeType,
         this.arguments = arguments;
     }
 
-    public NewFrameNode(ValueNode descriptor, ValueNode caller, ValueNode arguments) {
-        this(StampFactory.exactNonNull(FRAME_TYPE), descriptor, caller, arguments);
+    public NewFrameNode(ResolvedJavaType frameType, ValueNode descriptor, ValueNode caller, ValueNode arguments) {
+        this(StampFactory.exactNonNull(frameType), descriptor, caller, arguments);
     }
 
     public ValueNode getDescriptor() {
@@ -233,5 +229,5 @@ public class NewFrameNode extends FixedWithNextNode implements IterableNodeType,
     }
 
     @NodeIntrinsic
-    public static native FrameWithoutBoxing allocate(FrameDescriptor descriptor, PackedFrame caller, Arguments args);
+    public static native FrameWithoutBoxing allocate(@ConstantNodeParameter Class<? extends VirtualFrame> frameType, FrameDescriptor descriptor, PackedFrame caller, Arguments args);
 }
