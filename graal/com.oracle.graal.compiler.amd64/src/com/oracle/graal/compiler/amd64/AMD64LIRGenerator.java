@@ -64,6 +64,7 @@ import com.oracle.graal.lir.amd64.AMD64Move.MoveToRegOp;
 import com.oracle.graal.lir.amd64.AMD64Move.StackLeaOp;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
+import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.phases.util.*;
 
 /**
@@ -353,7 +354,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
 
     @Override
     public void emitNullCheck(ValueNode v, DeoptimizingNode deoping) {
-        assert v.kind() == Kind.Object;
+        assert v.stamp() instanceof ObjectStamp;
         append(new AMD64Move.NullCheckOp(load(operand(v)), state(deoping)));
     }
 

@@ -63,7 +63,7 @@ public class LoadJavaMirrorWithKlassPhase extends BasePhase<PhaseContext> {
             ConstantNode klassNode = ConstantNode.forConstant(klass, metaAccess, graph);
 
             Stamp stamp = StampFactory.exactNonNull(metaAccess.lookupJavaType(Class.class));
-            LocationNode location = ConstantLocationNode.create(FINAL_LOCATION, stamp.kind(), classMirrorOffset, graph);
+            LocationNode location = ConstantLocationNode.create(FINAL_LOCATION, Kind.Object, classMirrorOffset, graph);
             FloatingReadNode freadNode = graph.unique(new FloatingReadNode(klassNode, location, null, stamp));
             return freadNode;
         }

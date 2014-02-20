@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,20 +23,20 @@
 package com.oracle.graal.nodes.type;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.graph.*;
 
-public class FloatStamp extends Stamp {
+public class FloatStamp extends PrimitiveStamp {
 
     private final double lowerBound;
     private final double upperBound;
     private final boolean nonNaN;
 
-    protected FloatStamp(Kind kind) {
-        this(kind, Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY, false);
-        assert kind == Kind.Float || kind == Kind.Double;
+    protected FloatStamp(int bits) {
+        this(bits, Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY, false);
     }
 
-    protected FloatStamp(Kind kind, double lowerBound, double upperBound, boolean nonNaN) {
-        super(kind);
+    protected FloatStamp(int bits, double lowerBound, double upperBound, boolean nonNaN) {
+        super(bits);
         assert (!nonNaN && Double.isNaN(lowerBound) && Double.isNaN(upperBound)) || lowerBound <= upperBound;
         this.lowerBound = lowerBound;
         this.upperBound = upperBound;
@@ -44,8 +44,29 @@ public class FloatStamp extends Stamp {
     }
 
     @Override
+    public Stamp unrestricted() {
+        return new FloatStamp(getBits());
+    }
+
+    @Override
+    public Kind getStackKind() {
+        if (getBits() > 32) {
+            return Kind.Double;
+        } else {
+            return Kind.Float;
+        }
+    }
+
+    @Override
     public ResolvedJavaType javaType(MetaAccessProvider metaAccess) {
-        return metaAccess.lookupJavaType(kind().toJavaClass());
+        switch (getBits()) {
+            case 32:
+                return metaAccess.lookupJavaType(Float.TYPE);
+            case 64:
+                return metaAccess.lookupJavaType(Double.TYPE);
+            default:
+                throw GraalInternalError.shouldNotReachHere();
+        }
     }
 
     /**
@@ -81,7 +102,8 @@ public class FloatStamp extends Stamp {
     @Override
     public String toString() {
         StringBuilder str = new StringBuilder();
-        str.append(kind().getTypeChar());
+        str.append('f');
+        str.append(getBits());
         str.append(nonNaN ? "!" : "");
         if (lowerBound == upperBound) {
             str.append(" [").append(lowerBound).append(']');
@@ -103,7 +125,7 @@ public class FloatStamp extends Stamp {
             return StampFactory.illegal(Kind.Illegal);
         }
         FloatStamp other = (FloatStamp) otherStamp;
-        assert kind() == other.kind();
+        assert getBits() == other.getBits();
         double meetUpperBound = Math.max(upperBound, other.upperBound);
         double meetLowerBound = Math.min(lowerBound, other.lowerBound);
         boolean meetNonNaN = nonNaN && other.nonNaN;
@@ -112,7 +134,7 @@ public class FloatStamp extends Stamp {
         } else if (meetLowerBound == other.lowerBound && meetUpperBound == other.upperBound && meetNonNaN == other.nonNaN) {
             return other;
         } else {
-            return new FloatStamp(kind(), meetLowerBound, meetUpperBound, meetNonNaN);
+            return new FloatStamp(getBits(), meetLowerBound, meetUpperBound, meetNonNaN);
         }
     }
 
@@ -128,7 +150,7 @@ public class FloatStamp extends Stamp {
             return StampFactory.illegal(Kind.Illegal);
         }
         FloatStamp other = (FloatStamp) otherStamp;
-        assert kind() == other.kind();
+        assert getBits() == other.getBits();
         double joinUpperBound = Math.min(upperBound, other.upperBound);
         double joinLowerBound = Math.max(lowerBound, other.lowerBound);
         boolean joinNonNaN = nonNaN || other.nonNaN;
@@ -137,9 +159,9 @@ public class FloatStamp extends Stamp {
         } else if (joinLowerBound == other.lowerBound && joinUpperBound == other.upperBound && joinNonNaN == other.nonNaN) {
             return other;
         } else if (joinLowerBound > joinUpperBound) {
-            return StampFactory.illegal(kind());
+            return illegal();
         } else {
-            return new FloatStamp(kind(), joinLowerBound, joinUpperBound, joinNonNaN);
+            return new FloatStamp(getBits(), joinLowerBound, joinUpperBound, joinNonNaN);
         }
     }
 
@@ -148,7 +170,7 @@ public class FloatStamp extends Stamp {
         final int prime = 31;
         int result = 1;
         long temp;
-        result = prime * result + kind().hashCode();
+        result = prime * result + super.hashCode();
         temp = Double.doubleToLongBits(lowerBound);
         result = prime * result + (int) (temp ^ (temp >>> 32));
         result = prime * result + (nonNaN ? 1231 : 1237);
@@ -158,17 +180,26 @@ public class FloatStamp extends Stamp {
     }
 
     @Override
+    public boolean isCompatible(Stamp stamp) {
+        if (this == stamp) {
+            return true;
+        }
+        if (stamp instanceof FloatStamp) {
+            FloatStamp other = (FloatStamp) stamp;
+            return getBits() == other.getBits();
+        }
+        return false;
+    }
+
+    @Override
     public boolean equals(Object obj) {
         if (this == obj) {
             return true;
         }
-        if (obj == null || getClass() != obj.getClass()) {
+        if (obj == null || getClass() != obj.getClass() || !super.equals(obj)) {
             return false;
         }
         FloatStamp other = (FloatStamp) obj;
-        if (kind() != other.kind()) {
-            return false;
-        }
         if (Double.doubleToLongBits(lowerBound) != Double.doubleToLongBits(other.lowerBound)) {
             return false;
         }
@@ -184,10 +215,10 @@ public class FloatStamp extends Stamp {
     @Override
     public Constant asConstant() {
         if (nonNaN && lowerBound == upperBound) {
-            switch (kind()) {
-                case Float:
+            switch (getBits()) {
+                case 32:
                     return Constant.forFloat((float) lowerBound);
-                case Double:
+                case 64:
                     return Constant.forDouble(lowerBound);
             }
         }

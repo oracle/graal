@@ -370,7 +370,7 @@ public class WordTypeRewriterPhase extends Phase {
     }
 
     protected ValueNode readOp(StructuredGraph graph, ValueNode base, Invoke invoke, LocationNode location, Kind readKind, BarrierType barrierType, boolean compressible) {
-        ReadNode read = graph.add(new ReadNode(base, location, StampFactory.forKind(readKind), barrierType, compressible));
+        ReadNode read = graph.add(new ReadNode(base, location, StampFactory.forKind(readKind.getStackKind()), barrierType, compressible));
         graph.addBeforeFixed(invoke.asNode(), read);
         /*
          * The read must not float outside its block otherwise it may float above an explicit zero

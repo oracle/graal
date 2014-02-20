@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,12 +26,33 @@ import com.oracle.graal.api.meta.*;
 
 /**
  * This stamp represents the illegal type. Values with this type can not exist at run time.
- * 
  */
-public final class IllegalStamp extends Stamp {
+public final class IllegalStamp extends PrimitiveStamp {
+
+    private final Kind kind;
 
     public IllegalStamp(Kind kind) {
-        super(kind);
+        super(0);
+        this.kind = kind;
+    }
+
+    public Kind kind() {
+        return kind;
+    }
+
+    @Override
+    public Kind getStackKind() {
+        return kind;
+    }
+
+    @Override
+    public Stamp unrestricted() {
+        return this;
+    }
+
+    @Override
+    public Stamp illegal() {
+        return this;
     }
 
     @Override
@@ -47,6 +68,18 @@ public final class IllegalStamp extends Stamp {
     @Override
     public Stamp join(Stamp other) {
         return this;
+    }
+
+    @Override
+    public boolean isCompatible(Stamp stamp) {
+        if (this == stamp) {
+            return true;
+        }
+        if (stamp instanceof IllegalStamp) {
+            IllegalStamp other = (IllegalStamp) stamp;
+            return kind == other.kind;
+        }
+        return false;
     }
 
     @Override

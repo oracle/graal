@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -36,12 +36,21 @@ public class ObjectStamp extends Stamp {
     private final boolean alwaysNull;
 
     public ObjectStamp(ResolvedJavaType type, boolean exactType, boolean nonNull, boolean alwaysNull) {
-        super(Kind.Object);
         assert !exactType || (type != null && (isConcreteType(type)));
         this.type = type;
         this.exactType = exactType;
         this.nonNull = nonNull;
         this.alwaysNull = alwaysNull;
+    }
+
+    @Override
+    public Stamp unrestricted() {
+        return StampFactory.object();
+    }
+
+    @Override
+    public Kind getStackKind() {
+        return Kind.Object;
     }
 
     @Override
@@ -71,7 +80,7 @@ public class ObjectStamp extends Stamp {
     @Override
     public String toString() {
         StringBuilder str = new StringBuilder();
-        str.append(kind().getTypeChar());
+        str.append('a');
         str.append(nonNull ? "!" : "").append(exactType ? "#" : "").append(' ').append(type == null ? "-" : type.getName()).append(alwaysNull ? " NULL" : "");
         return str.toString();
     }
@@ -121,6 +130,20 @@ public class ObjectStamp extends Stamp {
     @Override
     public Stamp join(Stamp otherStamp) {
         return join0(otherStamp, false);
+    }
+
+    @Override
+    public boolean isCompatible(Stamp other) {
+        if (this == other) {
+            return true;
+        }
+        if (other instanceof ObjectStamp) {
+            return true;
+        }
+        if (other instanceof IllegalStamp) {
+            return ((IllegalStamp) other).kind() == Kind.Object;
+        }
+        return false;
     }
 
     /**
@@ -293,5 +316,15 @@ public class ObjectStamp extends Stamp {
             return ((ObjectStamp) stamp).isExactType();
         }
         return false;
+    }
+
+    public static boolean isObject(Stamp stamp) {
+        if (stamp instanceof ObjectStamp) {
+            return true;
+        } else if (stamp instanceof IllegalStamp) {
+            return ((IllegalStamp) stamp).kind() == Kind.Object;
+        } else {
+            return false;
+        }
     }
 }

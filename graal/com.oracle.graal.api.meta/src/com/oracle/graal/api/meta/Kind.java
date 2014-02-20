@@ -129,6 +129,15 @@ public enum Kind implements PlatformKind {
     }
 
     /**
+     * Checks whether this type is a Java primitive type representing an unsigned number.
+     * 
+     * @return {@code true} if the kind is {@link #Boolean} or {@link #Char}.
+     */
+    public boolean isUnsigned() {
+        return this == Kind.Boolean || this == Kind.Char;
+    }
+
+    /**
      * Checks whether this type is a Java primitive type representing a floating point number.
      * 
      * @return {@code true} if this is {@link #Float} or {@link #Double}.

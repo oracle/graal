@@ -123,7 +123,7 @@ public class GraphKit {
         }
         for (int i = 0; i != args.length; i++) {
             Kind expected = signature.getParameterKind(i).getStackKind();
-            Kind actual = args[i].stamp().kind();
+            Kind actual = args[i].stamp().getStackKind();
             if (expected != actual) {
                 throw new AssertionError(graph + ": wrong kind of value for argument " + i + " of calls to " + method + " [" + actual + " != " + expected + "]");
             }

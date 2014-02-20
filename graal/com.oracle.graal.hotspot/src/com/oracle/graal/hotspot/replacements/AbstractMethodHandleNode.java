@@ -45,6 +45,7 @@ import com.oracle.graal.nodes.java.MethodCallTargetNode;
 import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.java.SelfReplacingMethodCallTargetNode;
 import com.oracle.graal.nodes.type.*;
+import com.oracle.graal.nodes.type.GenericStamp.*;
 import com.oracle.graal.replacements.nodes.MacroNode;
 
 /**
@@ -281,7 +282,7 @@ public abstract class AbstractMethodHandleNode extends MacroNode implements Cano
         // invoker's stamp would be wrong because it's a less concrete type
         // (usually java.lang.Object).
         InvokeNode invoke;
-        if (callTarget.returnStamp().kind() != stamp().kind()) {
+        if (stamp() instanceof GenericStamp && ((GenericStamp) stamp()).type() == GenericStampType.Void) {
             invoke = new InvokeNode(callTarget, getBci(), stamp());
         } else {
             invoke = new InvokeNode(callTarget, getBci());

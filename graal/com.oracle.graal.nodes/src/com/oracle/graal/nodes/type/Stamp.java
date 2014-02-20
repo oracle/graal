@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,14 +30,7 @@ import com.oracle.graal.nodes.*;
  */
 public abstract class Stamp {
 
-    private final Kind kind;
-
-    protected Stamp(Kind kind) {
-        this.kind = kind;
-    }
-
-    public Kind kind() {
-        return kind;
+    protected Stamp() {
     }
 
     /**
@@ -49,6 +42,13 @@ public abstract class Stamp {
     public boolean alwaysDistinct(Stamp other) {
         return join(other) instanceof IllegalStamp;
     }
+
+    /**
+     * Gets a Java {@link Kind} that can be used to store a value of this stamp on the Java bytecode
+     * stack. Returns {@link Kind#Illegal} if a value of this stamp can not be stored on the
+     * bytecode stack.
+     */
+    public abstract Kind getStackKind();
 
     /**
      * Returns the union of this stamp and the given stamp. Typically used to create stamps for
@@ -66,6 +66,23 @@ public abstract class Stamp {
      * @return The intersection of this stamp and the given stamp.
      */
     public abstract Stamp join(Stamp other);
+
+    /**
+     * Returns a stamp of the same kind, but allowing the full value range of the kind.
+     */
+    public abstract Stamp unrestricted();
+
+    /**
+     * Returns an illegal stamp that has the same kind, but no valid values.
+     */
+    public Stamp illegal() {
+        return StampFactory.illegal(getStackKind());
+    }
+
+    /**
+     * Test whether two stamps have the same base type.
+     */
+    public abstract boolean isCompatible(Stamp other);
 
     /**
      * If this stamp represents a single value, the methods returns this single value. It returns

@@ -90,7 +90,7 @@ public class FrameStateBuilder {
             if (kind == Kind.Object && type instanceof ResolvedJavaType) {
                 stamp = StampFactory.declared((ResolvedJavaType) type);
             } else {
-                stamp = StampFactory.forKind(type.getKind());
+                stamp = StampFactory.forKind(kind);
             }
             ParameterNode param = graph.unique(new ParameterNode(index, stamp));
             storeLocal(javaIndex, param);

@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.phases.graph;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
@@ -50,9 +49,9 @@ public class InferStamps {
         for (Node n : graph.getNodes()) {
             if (n instanceof PhiNode || n instanceof ValueAndStampProxy) {
                 ValueNode node = (ValueNode) n;
-                if (node.kind() == Kind.Object) {
+                if (ObjectStamp.isObject(node.stamp())) {
                     assert !(node.stamp() instanceof IllegalStamp) : "We assume all Phi and Proxy stamps are legal before the analysis";
-                    node.setStamp(StampFactory.illegal(node.kind()));
+                    node.setStamp(node.stamp().illegal());
                 }
             }
         }
@@ -69,7 +68,7 @@ public class InferStamps {
             for (Node n : graph.getNodes()) {
                 if (n instanceof ValueNode) {
                     ValueNode node = (ValueNode) n;
-                    if (node.kind() == Kind.Object) {
+                    if (ObjectStamp.isObject(node.stamp())) {
                         stampChanged |= node.inferStamp();
                     }
                 }
