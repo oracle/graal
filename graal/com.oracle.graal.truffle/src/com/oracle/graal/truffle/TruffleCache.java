@@ -26,6 +26,7 @@ import static com.oracle.graal.phases.GraalOptions.*;
 
 import java.lang.reflect.*;
 import java.util.*;
+import java.util.Map.Entry;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
@@ -55,13 +56,16 @@ import com.oracle.truffle.api.nodes.*;
  */
 public final class TruffleCache {
 
+    private static final int MAX_CACHE_SIZE = 512;
     private final Providers providers;
     private final GraphBuilderConfiguration config;
     private final OptimisticOptimizations optimisticOptimizations;
 
     private final HashMap<List<Object>, StructuredGraph> cache = new HashMap<>();
+    private final HashMap<List<Object>, Long> lastUsed = new HashMap<>();
     private final StructuredGraph markerGraph = new StructuredGraph();
     private final ResolvedJavaType stringBuilderClass;
+    private long counter;
 
     public TruffleCache(Providers providers, GraphBuilderConfiguration config, OptimisticOptimizations optimisticOptimizations) {
         this.providers = providers;
@@ -82,6 +86,7 @@ public final class TruffleCache {
         }
         StructuredGraph resultGraph = cache.get(key);
         if (resultGraph != null) {
+            lastUsed.put(key, counter++);
             return resultGraph;
         }
 
@@ -90,6 +95,28 @@ public final class TruffleCache {
             return null;
         }
 
+        if (lastUsed.values().size() >= TruffleCompilerOptions.TruffleMaxCompilationCacheSize.getValue()) {
+            List<Long> lastUsedList = new ArrayList<>();
+            for (long l : lastUsed.values()) {
+                lastUsedList.add(l);
+            }
+            Collections.sort(lastUsedList);
+            long mid = lastUsedList.get(lastUsedList.size() / 2);
+
+            List<List<Object>> toRemoveList = new ArrayList<>();
+            for (Entry<List<Object>, Long> entry : lastUsed.entrySet()) {
+                if (entry.getValue() < mid) {
+                    toRemoveList.add(entry.getKey());
+                }
+            }
+
+            for (List<Object> entry : toRemoveList) {
+                cache.remove(entry);
+                lastUsed.remove(entry);
+            }
+        }
+
+        lastUsed.put(key, counter++);
         cache.put(key, markerGraph);
         try (Scope s = Debug.scope("TruffleCache", new Object[]{providers.getMetaAccess(), method})) {
 
