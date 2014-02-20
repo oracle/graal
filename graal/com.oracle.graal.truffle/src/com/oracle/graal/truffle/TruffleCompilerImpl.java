@@ -169,10 +169,18 @@ public class TruffleCompilerImpl implements TruffleCompiler {
         if (TraceTruffleCompilation.getValue()) {
             int nodeCountTruffle = NodeUtil.countNodes(compilable.getRootNode(), null, true);
             byte[] code = compiledMethod.getCode();
-            OUT.printf("[truffle] optimized %-50s %08x |Tree %8d |Time %5.0f(%4.0f+%-4.0f)ms |Graph %5d/%5d |CodeSize %6d @ %s\n", compilable.getRootNode(), compilable.hashCode(), nodeCountTruffle,
-                            (timeCompilationFinished - timeCompilationStarted) / 1e6, (timePartialEvaluationFinished - timeCompilationStarted) / 1e6,
-                            (timeCompilationFinished - timePartialEvaluationFinished) / 1e6, nodeCountPartialEval, nodeCountLowered, code != null ? code.length : 0,
-                            formatSourceSection(compilable.getRootNode().getSourceSection()));
+            Map<String, Object> properties = new LinkedHashMap<>();
+            properties.put("", String.format("%8x", compilable.hashCode()));
+            properties.put("Nodes", nodeCountTruffle);
+            properties.put("Time", String.format("%5.0f(%4.0f+%-4.0f)ms", //
+                            (timeCompilationFinished - timeCompilationStarted) / 1e6, //
+                            (timePartialEvaluationFinished - timeCompilationStarted) / 1e6, //
+                            (timeCompilationFinished - timePartialEvaluationFinished) / 1e6));
+            properties.put("Nodes", String.format("%5d/%5d", nodeCountPartialEval, nodeCountLowered));
+            properties.put("CodeSize", code != null ? code.length : 0);
+            properties.put("Source", formatSourceSection(compilable.getRootNode().getSourceSection()));
+
+            OptimizedCallTarget.logOptimized(compilable, properties);
         }
         return compiledMethod;
     }
