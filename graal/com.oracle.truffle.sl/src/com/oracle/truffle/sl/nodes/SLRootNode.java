@@ -62,18 +62,13 @@ public final class SLRootNode extends RootNode {
     }
 
     @Override
-    public RootNode inline() {
-        return new SLRootNode(getFrameDescriptor().shallowCopy(), NodeUtil.cloneNode(uninitializedBodyNode), name);
-    }
-
-    @Override
-    public int getInlineNodeCount() {
-        return NodeUtil.countNodes(uninitializedBodyNode);
-    }
-
-    @Override
-    public boolean isInlinable() {
+    public boolean isSplittable() {
         return true;
+    }
+
+    @Override
+    public RootNode split() {
+        return new SLRootNode(getFrameDescriptor().shallowCopy(), NodeUtil.cloneNode(uninitializedBodyNode), name);
     }
 
     @Override
