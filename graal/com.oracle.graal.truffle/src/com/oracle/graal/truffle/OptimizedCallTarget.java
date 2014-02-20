@@ -168,8 +168,12 @@ public final class OptimizedCallTarget extends DefaultCallTarget implements Loop
             return;
         }
         PriorityQueue<TruffleInliningProfile> queue = new PriorityQueue<>();
-        queueCallSitesForInlining(getRootNode(), queue);
 
+        // Used to avoid running in cycles or inline nodes in Truffle trees
+        // which do not suffice the tree property twice.
+        Set<CallNode> visitedCallNodes = new HashSet<>();
+
+        queueCallSitesForInlining(getRootNode(), visitedCallNodes, queue);
         TruffleInliningProfile callSite = queue.poll();
         while (callSite != null) {
             if (callSite.isInliningAllowed()) {
@@ -177,7 +181,7 @@ public final class OptimizedCallTarget extends DefaultCallTarget implements Loop
                 logInlined(callSite);
                 RootNode inlinedRoot = callNode.inlineImpl().getInlinedRoot();
                 assert inlinedRoot != null;
-                queueCallSitesForInlining(inlinedRoot, queue);
+                queueCallSitesForInlining(inlinedRoot, visitedCallNodes, queue);
             } else {
                 logInliningFailed(callSite);
             }
@@ -185,13 +189,14 @@ public final class OptimizedCallTarget extends DefaultCallTarget implements Loop
         }
     }
 
-    private static void queueCallSitesForInlining(RootNode rootNode, final PriorityQueue<TruffleInliningProfile> queue) {
+    private static void queueCallSitesForInlining(RootNode rootNode, final Set<CallNode> visitedCallSites, final PriorityQueue<TruffleInliningProfile> queue) {
         rootNode.accept(new NodeVisitor() {
             public boolean visit(Node node) {
                 if (node instanceof OptimizedCallNode) {
                     OptimizedCallNode call = ((OptimizedCallNode) node);
-                    if (call.isInlinable() && !call.isInlined()) {
+                    if (call.isInlinable() && !call.isInlined() && !visitedCallSites.contains(call)) {
                         queue.add(call.createInliningProfile());
+                        visitedCallSites.add(call);
                     } else if (call.getInlinedRoot() != null) {
                         call.getInlinedRoot().accept(this);
                     }
