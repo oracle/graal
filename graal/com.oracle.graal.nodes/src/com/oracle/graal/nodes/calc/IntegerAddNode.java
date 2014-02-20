@@ -95,24 +95,6 @@ public class IntegerAddNode extends IntegerArithmeticNode implements Canonicaliz
         return this;
     }
 
-    public static boolean isIntegerAddition(ValueNode result, ValueNode a, ValueNode b) {
-        Kind kind = result.kind();
-        if (kind != a.kind() || kind != b.kind() || !kind.isNumericInteger()) {
-            return false;
-        }
-        if (result.isConstant() && a.isConstant() && b.isConstant()) {
-            if (kind.getStackKind() == Kind.Int) {
-                return result.asConstant().asInt() == a.asConstant().asInt() + b.asConstant().asInt();
-            } else if (kind == Kind.Long) {
-                return result.asConstant().asLong() == a.asConstant().asLong() + b.asConstant().asLong();
-            }
-        } else if (result instanceof IntegerAddNode) {
-            IntegerAddNode add = (IntegerAddNode) result;
-            return (add.x() == a && add.y() == b) || (add.y() == a && add.x() == b);
-        }
-        return false;
-    }
-
     @Override
     public void generate(ArithmeticLIRGenerator gen) {
         Value op1 = gen.operand(x());
