@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.nodes;
 
+//JaCoCo Exclude
+
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
@@ -102,9 +104,17 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
     @NodeIntrinsic
     public static native <T> T piCast(Object object, @ConstantNodeParameter Stamp stamp, GuardingNode anchor);
 
+    public static <T> T piCastExactNonNull(Object object, @ConstantNodeParameter Class<T> toType) {
+        return piCast(object, toType, true, true);
+    }
+
+    public static <T> T piCast(Object object, @ConstantNodeParameter Class<T> toType) {
+        return piCast(object, toType, false, false);
+    }
+
     @SuppressWarnings("unused")
     @NodeIntrinsic
-    public static <T> T piCast(Object object, @ConstantNodeParameter Class<T> toType, @ConstantNodeParameter boolean exactType, @ConstantNodeParameter boolean nonNull) {
+    private static <T> T piCast(Object object, @ConstantNodeParameter Class<T> toType, @ConstantNodeParameter boolean exactType, @ConstantNodeParameter boolean nonNull) {
         return toType.cast(object);
     }
 }

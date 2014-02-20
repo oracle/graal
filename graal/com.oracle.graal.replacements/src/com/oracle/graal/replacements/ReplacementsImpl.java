@@ -133,9 +133,10 @@ public class ReplacementsImpl implements Replacements {
         }
         StructuredGraph graph = graphs.get(substitute);
         if (graph == null) {
-            graphs.putIfAbsent(substitute, makeGraph(substitute, original, substitute, inliningPolicy(substitute), FrameStateProcessing.None));
-            graph = graphs.get(substitute);
+            graph = makeGraph(substitute, original, substitute, inliningPolicy(substitute), FrameStateProcessing.None);
             graph.freeze();
+            graphs.putIfAbsent(substitute, graph);
+            graph = graphs.get(substitute);
         }
         assert graph.isFrozen();
         return graph;
