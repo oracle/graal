@@ -50,6 +50,8 @@ public interface TruffleRuntime {
      */
     RootCallTarget createCallTarget(RootNode rootNode);
 
+    CallNode createCallNode(CallTarget target);
+
     /**
      * Creates a new assumption object that can be checked and invalidated.
      * 

@@ -24,6 +24,8 @@
  */
 package com.oracle.truffle.api.nodes;
 
+import java.util.*;
+
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.CompilerDirectives.*;
 import com.oracle.truffle.api.frame.*;
@@ -42,7 +44,7 @@ public abstract class RootNode extends Node {
      * Internal field to keep reference to the inlined call node. The inlined parent should not be
      * the same as the Node parent to keep the same tree hierarchy if inlined vs not inlined.
      */
-    @CompilationFinal private CallNode parentInlinedCall;
+    @CompilationFinal private List<CallNode> parentInlinedCalls = new ArrayList<>();
 
     protected RootNode() {
         this(null, null);
@@ -62,55 +64,38 @@ public abstract class RootNode extends Node {
     }
 
     /**
-     * Creates a copy of the current {@link RootNode} for use as inlined AST. The default
-     * implementation copies this {@link RootNode} and all its children recursively. It is
-     * recommended to override this method to provide an implementation that copies an uninitialized
-     * version of this AST. An uninitialized version of an AST was usually never executed which
-     * means that it has not yet collected any profiling feedback. Please note that changes in the
-     * behavior of this method might also require changes in {@link #getInlineNodeCount()}.
-     * 
-     * @see RootNode#getInlineNodeCount()
-     * @see RootNode#isInlinable()
-     * 
-     * @return the copied RootNode for inlining
-     * @throws UnsupportedOperationException if {@link #isInlinable()} returns false
+     * @deprecated Not required anymore. Do not use.
      */
+    @Deprecated
     public RootNode inline() {
         if (!isInlinable()) {
             throw new UnsupportedOperationException("Inlining is not enabled.");
         }
+        return split();
+    }
+
+    /**
+     * @deprecated Not required anymore. Do not use.
+     */
+    @Deprecated
+    public int getInlineNodeCount() {
+        return 0;
+    }
+
+    /**
+     * @deprecated Not required anymore. Do not use.
+     */
+    @Deprecated
+    public boolean isInlinable() {
+        return true;
+    }
+
+    public RootNode split() {
         return NodeUtil.cloneNode(this);
     }
 
-    /**
-     * Returns the number of nodes that would be returned if {@link #inline()} would get invoked.
-     * This node count may be used for the calculation in a smart inlining heuristic.
-     * 
-     * @see RootNode#inline()
-     * @see RootNode#isInlinable()
-     * 
-     * @return the number of nodes that will get inlined
-     * @throws UnsupportedOperationException if {@link #isInlinable()} returns false
-     */
-    public int getInlineNodeCount() {
-        if (!isInlinable()) {
-            throw new UnsupportedOperationException("Inlining is not enabled.");
-        }
-        return NodeUtil.countNodes(this);
-    }
-
-    /**
-     * Returns true if this RootNode can be inlined. If this method returns true implementations of
-     * {@link #inline()} and {@link #getInlineNodeCount()} must be provided. Returns
-     * <code>true</code> by default.
-     * 
-     * @see RootNode#inline()
-     * @see RootNode#getInlineNodeCount()
-     * 
-     * @return true if this RootNode can be inlined
-     */
-    public boolean isInlinable() {
-        return true;
+    public boolean isSplittable() {
+        return false;
     }
 
     /**
@@ -118,8 +103,11 @@ public abstract class RootNode extends Node {
      * heuristics can use the loop count to guide compilation and inlining.
      */
     public void reportLoopCount(int count) {
-        if (getCallTarget() instanceof LoopCountReceiver) {
-            ((LoopCountReceiver) getCallTarget()).reportLoopCount(count);
+        List<CallTarget> callTargets = NodeUtil.findOutermostCallTargets(this);
+        for (CallTarget target : callTargets) {
+            if (target instanceof LoopCountReceiver) {
+                ((LoopCountReceiver) target).reportLoopCount(count);
+            }
         }
     }
 
@@ -144,18 +132,19 @@ public abstract class RootNode extends Node {
     }
 
     /* Internal API. Do not use. */
-    void setParentInlinedCall(CallNode inlinedParent) {
-        this.parentInlinedCall = inlinedParent;
+    void addParentInlinedCall(CallNode inlinedParent) {
+        this.parentInlinedCalls.add(inlinedParent);
+    }
+
+    public final List<CallNode> getParentInlinedCalls() {
+        return Collections.unmodifiableList(parentInlinedCalls);
     }
 
     /**
-     * Returns the {@link CallNode} that uses this {@link RootNode} for an inlined call. Returns
-     * <code>null</code> if this {@link RootNode} is not inlined into a caller. This method can be
-     * used to also traverse parent {@link CallTarget} that have been inlined into this call.
-     * 
-     * @return the responsible {@link CallNode} for inlining.
+     * @deprecated use {@link #getParentInlinedCalls()} instead.
      */
+    @Deprecated
     public final CallNode getParentInlinedCall() {
-        return parentInlinedCall;
+        return parentInlinedCalls.isEmpty() ? null : parentInlinedCalls.get(0);
     }
 }

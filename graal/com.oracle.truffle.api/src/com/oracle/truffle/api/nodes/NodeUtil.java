@@ -451,13 +451,28 @@ public final class NodeUtil {
         return null;
     }
 
+    public static List<CallTarget> findOutermostCallTargets(Node node) {
+        RootNode root = node.getRootNode();
+        if (root == null) {
+            return Collections.emptyList();
+        }
+        List<CallTarget> roots = new ArrayList<>();
+        roots.add(root.getCallTarget());
+        for (CallNode callNode : root.getParentInlinedCalls()) {
+            roots.addAll(findOutermostCallTargets(callNode));
+        }
+        return roots;
+    }
+
     /**
      * Returns the outermost not inlined {@link RootNode} which is a parent of this node.
      * 
-     * @see RootNode#getParentInlinedCall()
+     * @see RootNode#getParentInlinedCalls()
      * @param node to search
      * @return the outermost {@link RootNode}
+     * @deprecated use {@link #findOutermostCallTargets(Node)}
      */
+    @Deprecated
     public static RootNode findOutermostRootNode(Node node) {
         Node parent = node;
         while (parent != null) {

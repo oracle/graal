@@ -185,7 +185,7 @@ public abstract class Node implements Cloneable {
         if (!NodeUtil.replaceChild(this.parent, this, newNode)) {
             fixupTree();
         }
-        reportReplace();
+        reportReplace(this, newNode, reason);
         return newNode;
     }
 
@@ -245,11 +245,11 @@ public abstract class Node implements Cloneable {
         return false;
     }
 
-    private void reportReplace() {
-        RootNode rootNode = NodeUtil.findOutermostRootNode(this);
-        if (rootNode != null) {
-            if (rootNode.getCallTarget() instanceof ReplaceObserver) {
-                ((ReplaceObserver) rootNode.getCallTarget()).nodeReplaced();
+    private void reportReplace(Node oldNode, Node newNode, String reason) {
+        Collection<CallTarget> targets = NodeUtil.findOutermostCallTargets(this);
+        for (CallTarget target : targets) {
+            if (target instanceof ReplaceObserver) {
+                ((ReplaceObserver) target).nodeReplaced(oldNode, newNode, reason);
             }
         }
     }
@@ -395,7 +395,7 @@ public abstract class Node implements Cloneable {
      * 
      * @return the {@link RootNode} or {@code null} if there is none.
      */
-    protected final RootNode getRootNode() {
+    public final RootNode getRootNode() {
         Node rootNode = this;
         while (rootNode.getParent() != null) {
             assert !(rootNode instanceof RootNode) : "root node must not have a parent";

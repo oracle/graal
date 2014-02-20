@@ -53,6 +53,10 @@ public final class DefaultTruffleRuntime implements TruffleRuntime {
         return new DefaultCallTarget(rootNode);
     }
 
+    public CallNode createCallNode(CallTarget target) {
+        return new DefaultCallNode(target);
+    }
+
     @Override
     public VirtualFrame createVirtualFrame(PackedFrame caller, Arguments arguments, FrameDescriptor frameDescriptor) {
         return new DefaultVirtualFrame(frameDescriptor, caller, arguments);
