@@ -56,7 +56,6 @@ import com.oracle.truffle.api.nodes.*;
  */
 public final class TruffleCache {
 
-    private static final int MAX_CACHE_SIZE = 512;
     private final Providers providers;
     private final GraphBuilderConfiguration config;
     private final OptimisticOptimizations optimisticOptimizations;
