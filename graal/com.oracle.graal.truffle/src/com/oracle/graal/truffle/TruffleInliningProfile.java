@@ -22,20 +22,16 @@
  */
 package com.oracle.graal.truffle;
 
-public interface TruffleInlining {
+import java.util.*;
 
-    /** Returns true if reprofiling is required else false. */
-    boolean performInlining(OptimizedCallTarget callTarget);
+public interface TruffleInliningProfile extends Comparable<TruffleInliningProfile> {
 
-    /**
-     * Returns the minimum number of invocations required until the next inlining can occur. Only
-     * used if {@link #performInlining(OptimizedCallTarget)} returned true.
-     */
-    int getInvocationReprofileCount();
+    OptimizedCallNode getCallNode();
 
-    /**
-     * Returns the number of invocations or loop invocations required until the next inlining can
-     * occur. Only used if {@link #performInlining(OptimizedCallTarget)} returned true.
-     */
-    int getReprofileCount();
+    boolean isInliningAllowed();
+
+    int compareTo(TruffleInliningProfile o);
+
+    Map<String, Object> getDebugProperties();
+
 }

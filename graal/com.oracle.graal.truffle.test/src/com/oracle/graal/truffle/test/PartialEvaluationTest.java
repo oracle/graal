@@ -88,11 +88,10 @@ public class PartialEvaluationTest extends GraalCompilerTest {
         final OptimizedCallTarget compilable = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(root);
 
         // Executed AST so that all classes are loaded and initialized.
-        do {
-            compilable.call(null, arguments);
-            compilable.call(null, arguments);
-            compilable.call(null, arguments);
-        } while (compilable.inline());
+        compilable.call(null, arguments);
+        compilable.call(null, arguments);
+        compilable.call(null, arguments);
+        compilable.performInlining();
 
         try (Scope s = Debug.scope("TruffleCompilation", new TruffleDebugJavaMethod(compilable))) {
 
