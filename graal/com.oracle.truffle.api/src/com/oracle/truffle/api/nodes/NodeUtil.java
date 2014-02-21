@@ -34,6 +34,7 @@ import sun.misc.*;
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.nodes.Node.Child;
 import com.oracle.truffle.api.nodes.Node.Children;
+import com.oracle.truffle.api.nodes.NodeInfo.Kind;
 
 /**
  * Utility class that manages the special access methods for node instances.
@@ -611,25 +612,31 @@ public final class NodeUtil {
     }
 
     public static int countNodes(Node root) {
-        return countNodes(root, null, false);
+        return countNodes(root, null, null, false);
+    }
+
+    public static int countNodes(Node root, Class<?> clazz, Kind nodeKind, boolean countInlinedCallNodes) {
+        NodeCountVisitor nodeCount = new NodeCountVisitor(root, clazz, nodeKind, countInlinedCallNodes);
+        root.accept(nodeCount);
+        return nodeCount.nodeCount;
     }
 
     public static int countNodes(Node root, Class<?> clazz, boolean countInlinedCallNodes) {
-        NodeCountVisitor nodeCount = new NodeCountVisitor(root, clazz, countInlinedCallNodes);
-        root.accept(nodeCount);
-        return nodeCount.nodeCount;
+        return countNodes(root, clazz, null, countInlinedCallNodes);
     }
 
     private static final class NodeCountVisitor implements NodeVisitor {
 
         private Node root;
-        private boolean inspectInlinedCalls;
+        private final boolean inspectInlinedCalls;
         int nodeCount;
+        private final Kind kind;
         private final Class<?> clazz;
 
-        private NodeCountVisitor(Node root, Class<?> clazz, boolean inspectInlinedCalls) {
+        private NodeCountVisitor(Node root, Class<?> clazz, Kind kind, boolean inspectInlinedCalls) {
             this.root = root;
             this.clazz = clazz;
+            this.kind = kind;
             this.inspectInlinedCalls = inspectInlinedCalls;
         }
 
@@ -639,7 +646,7 @@ public final class NodeUtil {
                 return false;
             }
 
-            if (clazz == null || clazz.isInstance(node)) {
+            if ((clazz == null || clazz.isInstance(node)) && (kind == null || isKind(node))) {
                 nodeCount++;
             }
 
@@ -652,6 +659,42 @@ public final class NodeUtil {
 
             return true;
         }
+
+        private boolean isKind(Node n) {
+            return kind == n.getKind();
+        }
+    }
+
+    public static void printInliningTree(final PrintStream stream, RootNode root) {
+        printRootNode(stream, 0, root);
+        root.accept(new NodeVisitor() {
+            int depth = 1;
+
+            public boolean visit(Node node) {
+                if (node instanceof CallNode) {
+                    RootNode inlinedRoot = ((CallNode) node).getInlinedRoot();
+                    if (inlinedRoot != null) {
+                        depth++;
+                        printRootNode(stream, depth * 2, inlinedRoot);
+                        inlinedRoot.accept(this);
+                        depth--;
+                    }
+                }
+                return true;
+            }
+        });
+    }
+
+    private static void printRootNode(PrintStream stream, int indent, RootNode root) {
+        for (int i = 0; i < indent; i++) {
+            stream.print(" ");
+        }
+        stream.print(root.toString());
+        stream.print(" (");
+        stream.print(countNodes(root));
+        stream.print("/");
+        stream.print(countNodes(root, null, true));
+        stream.println(")");
     }
 
     public static String printCompactTreeToString(Node node) {
