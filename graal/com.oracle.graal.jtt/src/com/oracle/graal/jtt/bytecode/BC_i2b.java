@@ -76,4 +76,28 @@ public class BC_i2b extends JTTTest {
     public void runI3() throws Throwable {
         runTest("testInt", 128);
     }
+
+    public static long testLong(int a) {
+        return (byte) a;
+    }
+
+    @Test
+    public void runL0() throws Throwable {
+        runTest("testLong", -1);
+    }
+
+    @Test
+    public void runL1() throws Throwable {
+        runTest("testLong", 2);
+    }
+
+    @Test
+    public void runL2() throws Throwable {
+        runTest("testLong", 255);
+    }
+
+    @Test
+    public void runL3() throws Throwable {
+        runTest("testLong", 128);
+    }
 }
