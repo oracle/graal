@@ -172,31 +172,6 @@ public abstract class Architecture {
     }
 
     /**
-     * Determine the maximum vector length supported for vector operations on values of a given
-     * {@link Kind}.
-     * 
-     * @param kind the kind of the individual vector elements
-     * @return the maximum supported vector size
-     */
-    public int getMaxVectorLength(Kind kind) {
-        return 1;
-    }
-
-    /**
-     * Get a natively supported vector length for breaking down some vector operation on a constant
-     * length vector.
-     * 
-     * @param kind the kind of the individual vector elements
-     * @param maxLength the maximum length that should be returned
-     * @param arithmetic the arithmetic operation for which the vector size should be determined, or
-     *            null if no arithmetic needs to be performed on the vector
-     * @return a supported vector size, but at most {@code maxLength}
-     */
-    public int getSupportedVectorLength(Kind kind, int maxLength, Class<? extends ArithmeticOperation> arithmetic) {
-        return 1;
-    }
-
-    /**
      * Gets the size in bytes of the specified kind for this target.
      * 
      * @param kind the kind for which to get the size
