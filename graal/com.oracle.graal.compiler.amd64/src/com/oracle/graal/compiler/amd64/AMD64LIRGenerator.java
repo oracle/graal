@@ -802,22 +802,23 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
             return inputVal;
         } else if (toBits > 32) {
             // sign extend to 64 bits
-            if (fromBits == 32) {
-                return emitConvert2Op(Kind.Long, I2L, asAllocatable(inputVal));
-            } else if (fromBits < 32) {
-                // TODO implement direct x2L sign extension conversions
-                Value intVal = emitSignExtend(inputVal, fromBits, 32);
-                return emitSignExtend(intVal, 32, toBits);
-            } else {
-                throw GraalInternalError.unimplemented("unsupported sign extension (" + fromBits + " bit -> " + toBits + " bit)");
+            switch (fromBits) {
+                case 8:
+                    return emitConvert2Op(Kind.Long, B2L, asAllocatable(inputVal));
+                case 16:
+                    return emitConvert2Op(Kind.Long, S2L, asAllocatable(inputVal));
+                case 32:
+                    return emitConvert2Op(Kind.Long, I2L, asAllocatable(inputVal));
+                default:
+                    throw GraalInternalError.unimplemented("unsupported sign extension (" + fromBits + " bit -> " + toBits + " bit)");
             }
         } else {
             // sign extend to 32 bits (smaller values are internally represented as 32 bit values)
             switch (fromBits) {
                 case 8:
-                    return emitConvert2Op(Kind.Int, I2B, asAllocatable(inputVal));
+                    return emitConvert2Op(Kind.Int, B2I, asAllocatable(inputVal));
                 case 16:
-                    return emitConvert2Op(Kind.Int, I2S, asAllocatable(inputVal));
+                    return emitConvert2Op(Kind.Int, S2I, asAllocatable(inputVal));
                 case 32:
                     return inputVal;
                 default:

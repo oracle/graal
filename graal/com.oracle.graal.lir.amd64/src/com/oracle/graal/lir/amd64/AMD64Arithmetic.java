@@ -44,7 +44,7 @@ public enum AMD64Arithmetic {
     DADD, DSUB, DMUL, DDIV, DREM, DAND, DOR, DXOR,
     INEG, LNEG, INOT, LNOT,
     SQRT,
-    I2L, L2I, I2B, I2C, I2S,
+    L2I, B2I, S2I, B2L, S2L, I2L,
     F2D, D2F,
     I2F, I2D,
     L2F, L2D,
@@ -373,9 +373,6 @@ public enum AMD64Arithmetic {
             case L2I:
                 masm.andl(asIntReg(result), 0xFFFFFFFF);
                 break;
-            case I2C:
-                masm.andl(asIntReg(result), 0xFFFF);
-                break;
             default:
                 throw GraalInternalError.shouldNotReachHere();
         }
@@ -495,11 +492,17 @@ public enum AMD64Arithmetic {
                     masm.sqrtsd(asDoubleReg(dst), asDoubleReg(src));
                     break;
 
-                case I2B:
+                case B2I:
                     masm.movsbl(asIntReg(dst), asIntReg(src));
                     break;
-                case I2S:
+                case S2I:
                     masm.movswl(asIntReg(dst), asIntReg(src));
+                    break;
+                case B2L:
+                    masm.movsbq(asLongReg(dst), asIntReg(src));
+                    break;
+                case S2L:
+                    masm.movswq(asLongReg(dst), asIntReg(src));
                     break;
                 case I2L:
                     masm.movslq(asLongReg(dst), asIntReg(src));
@@ -755,11 +758,17 @@ public enum AMD64Arithmetic {
                     masm.sqrtsd(asDoubleReg(dst), (AMD64Address) crb.asDoubleAddr(src));
                     break;
 
-                case I2B:
+                case B2I:
                     masm.movsbl(asIntReg(dst), (AMD64Address) crb.asIntAddr(src));
                     break;
-                case I2S:
+                case S2I:
                     masm.movswl(asIntReg(dst), (AMD64Address) crb.asIntAddr(src));
+                    break;
+                case B2L:
+                    masm.movsbq(asLongReg(dst), (AMD64Address) crb.asIntAddr(src));
+                    break;
+                case S2L:
+                    masm.movswq(asLongReg(dst), (AMD64Address) crb.asIntAddr(src));
                     break;
                 case I2L:
                     masm.movslq(asLongReg(dst), (AMD64Address) crb.asIntAddr(src));

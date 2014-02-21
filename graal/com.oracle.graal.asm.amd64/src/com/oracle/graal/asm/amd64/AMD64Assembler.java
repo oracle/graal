@@ -1034,6 +1034,20 @@ public class AMD64Assembler extends AbstractAssembler {
         emitByte(0xC0 | encode);
     }
 
+    public final void movsbq(Register dst, AMD64Address src) {
+        prefixq(src, dst);
+        emitByte(0x0F);
+        emitByte(0xBE);
+        emitOperandHelper(dst, src);
+    }
+
+    public final void movsbq(Register dst, Register src) {
+        int encode = prefixqAndEncode(dst.encoding, src.encoding);
+        emitByte(0x0F);
+        emitByte(0xBE);
+        emitByte(0xC0 | encode);
+    }
+
     public final void movsd(Register dst, Register src) {
         assert dst.getRegisterCategory() == AMD64.XMM;
         assert src.getRegisterCategory() == AMD64.XMM;
@@ -1099,6 +1113,20 @@ public class AMD64Assembler extends AbstractAssembler {
 
     public final void movswl(Register dst, Register src) {
         int encode = prefixAndEncode(dst.encoding, src.encoding);
+        emitByte(0x0F);
+        emitByte(0xBF);
+        emitByte(0xC0 | encode);
+    }
+
+    public final void movswq(Register dst, AMD64Address src) {
+        prefixq(src, dst);
+        emitByte(0x0F);
+        emitByte(0xBF);
+        emitOperandHelper(dst, src);
+    }
+
+    public final void movswq(Register dst, Register src) {
+        int encode = prefixqAndEncode(dst.encoding, src.encoding);
         emitByte(0x0F);
         emitByte(0xBF);
         emitByte(0xC0 | encode);
