@@ -24,6 +24,8 @@ package com.oracle.graal.truffle;
 
 import static com.oracle.graal.truffle.TruffleCompilerOptions.*;
 
+import java.util.*;
+
 public class CompilationProfile {
 
     /**
@@ -55,6 +57,17 @@ public class CompilationProfile {
         this.originalInvokeCounter = initialInvokeCounter;
         this.originalCompilationThreshold = compilationThreshold;
         this.name = name;
+    }
+
+    public Map<String, Object> getDebugProperties() {
+        Map<String, Object> properties = new LinkedHashMap<>();
+        String callsThreshold = String.format("%7d/%5d", getCallCount(), getCompilationCallThreshold());
+        String loopsThreshold = String.format("%7d/%5d", getCallAndLoopCount(), getCompilationCallAndLoopThreshold());
+        String invalidationReplace = String.format("%5d/%5d", invalidationCount, nodeReplaceCount);
+        properties.put("C/T", callsThreshold);
+        properties.put("L/T", loopsThreshold);
+        properties.put("Inval#/Replace#", invalidationReplace);
+        return properties;
     }
 
     public void reset() {

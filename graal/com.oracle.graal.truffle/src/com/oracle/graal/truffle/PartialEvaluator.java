@@ -94,7 +94,7 @@ public class PartialEvaluator {
             throw Debug.handle(e);
         }
 
-        if (TraceTruffleCompilationDetails.getValue()) {
+        if (TraceTruffleCompilationHistogram.getValue()) {
             constantReceivers = new HashSet<>();
         }
 
@@ -130,7 +130,7 @@ public class PartialEvaluator {
 
             new VerifyFrameDoesNotEscapePhase().apply(graph, false);
 
-            if (TraceTruffleCompilationDetails.getValue() && constantReceivers != null) {
+            if (TraceTruffleCompilationHistogram.getValue() && constantReceivers != null) {
                 DebugHistogram histogram = Debug.createHistogram("Expanded Truffle Nodes");
                 for (Constant c : constantReceivers) {
                     histogram.add(c.asObject().getClass().getSimpleName());
@@ -184,7 +184,7 @@ public class PartialEvaluator {
             for (MethodCallTargetNode methodCallTargetNode : graph.getNodes(MethodCallTargetNode.class)) {
                 InvokeKind kind = methodCallTargetNode.invokeKind();
                 if (kind == InvokeKind.Static || (kind == InvokeKind.Special && (methodCallTargetNode.receiver().isConstant() || methodCallTargetNode.receiver() instanceof NewFrameNode))) {
-                    if (TraceTruffleCompilationDetails.getValue() && kind == InvokeKind.Special) {
+                    if (TraceTruffleCompilationHistogram.getValue() && kind == InvokeKind.Special) {
                         ConstantNode constantNode = (ConstantNode) methodCallTargetNode.arguments().first();
                         constantReceivers.add(constantNode.asConstant());
                     }

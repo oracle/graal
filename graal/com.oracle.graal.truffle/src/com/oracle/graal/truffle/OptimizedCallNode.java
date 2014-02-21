@@ -22,10 +22,13 @@
  */
 package com.oracle.graal.truffle;
 
+import java.util.concurrent.atomic.*;
+
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.impl.*;
 import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.nodes.NodeInfo.Kind;
 
 /**
  * Call target that is optimized by Graal upon surpassing a specific invocation threshold.
@@ -57,8 +60,8 @@ abstract class OptimizedCallNode extends DefaultCallNode {
         return callCount;
     }
 
-    public TruffleInliningProfile createInliningProfile() {
-        return new OptimizedCallNodeProfile(this);
+    public TruffleInliningProfile createInliningProfile(OptimizedCallTarget target) {
+        return new OptimizedCallNodeProfile(target, this);
     }
 
     @Override
@@ -66,10 +69,11 @@ abstract class OptimizedCallNode extends DefaultCallNode {
         return null;
     }
 
-    final OptimizedCallNode inlineImpl() {
+    protected OptimizedCallNode inlineImpl() {
         if (getParent() == null) {
             throw new IllegalStateException("CallNode must be adopted before it is split.");
         }
+
         return replace(new InlinedOptimizedCallNode(getCallTarget(), getSplitCallTarget(), getExecutedCallTarget().getRootNode(), callCount));
     }
 
@@ -103,15 +107,57 @@ abstract class OptimizedCallNode extends DefaultCallNode {
         private Object trySplit(PackedFrame caller, Arguments arguments) {
             int effectiveCallCount = callCount;
             // we try splitting for the first two invocations
-            if (effectiveCallCount == 1 || effectiveCallCount == 2) {
+            if (effectiveCallCount <= 3) {
                 if (isSplittable() && shouldSplit()) {
-                    return splitImpl().call(caller, arguments);
+                    return splitImpl(true).call(caller, arguments);
+                }
+                if (effectiveCallCount == 3) {
+                    splitTried = true;
                 }
             }
-            if (effectiveCallCount >= 2) {
-                splitTried = true;
-            }
             return callTarget.call(caller, arguments);
+        }
+
+        private boolean shouldSplit() {
+            if (!TruffleCompilerOptions.TruffleSplittingEnabled.getValue()) {
+                return false;
+            }
+
+            int nodeCount = NodeUtil.countNodes(getCallTarget().getRootNode(), null, false);
+
+            // max one child call and callCount > 2 and kind of small number of nodes
+            if (callCount > 2 && isCallMethod()) {
+                if (nodeCount <= 100) {
+                    return true;
+                }
+            }
+
+            if (nodeCount > TruffleCompilerOptions.TruffleSplittingMaxCalleeSize.getValue()) {
+                return false;
+            }
+            return countPolymorphic() > 1 || countGeneric() > 0;
+        }
+
+        private boolean isCallMethod() {
+            final AtomicInteger count = new AtomicInteger(0);
+            getExecutedCallTarget().getRootNode().accept(new NodeVisitor() {
+
+                public boolean visit(Node node) {
+                    if (node instanceof CallNode) {
+                        return count.incrementAndGet() > 1;
+                    }
+                    return true;
+                }
+            });
+            return count.get() <= 1;
+        }
+
+        private int countPolymorphic() {
+            return NodeUtil.countNodes(getCallTarget().getRootNode(), null, Kind.POLYMORPHIC, true);
+        }
+
+        private int countGeneric() {
+            return NodeUtil.countNodes(getCallTarget().getRootNode(), null, Kind.GENERIC, true);
         }
 
         @Override
@@ -128,30 +174,18 @@ abstract class OptimizedCallNode extends DefaultCallNode {
             if (getParent() == null) {
                 throw new IllegalStateException("CallNode must be adopted before it is split.");
             }
-            splitImpl();
+            splitImpl(false);
             return true;
         }
 
-        private OptimizedCallNode splitImpl() {
+        private OptimizedCallNode splitImpl(boolean heuristic) {
             RootNode splittedRoot = getCallTarget().getRootNode().split();
             OptimizedCallTarget splitCallTarget = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(splittedRoot);
-            OptimizedCallTarget.logSplit(getCallTarget(), splitCallTarget);
+            splitCallTarget.setSplitSource(getCallTarget());
+            if (heuristic) {
+                OptimizedCallTarget.logSplit(this, getCallTarget(), splitCallTarget);
+            }
             return replace(new SplitOptimizedCallNode(getCallTarget(), splitCallTarget, callCount));
-        }
-
-        private boolean shouldSplit() {
-            if (!TruffleCompilerOptions.TruffleSplittingEnabled.getValue()) {
-                return false;
-            }
-            RootNode targetRoot = getCallTarget().getRootNode();
-            int nodeCount = NodeUtil.countNodes(targetRoot, null, true);
-            if (nodeCount >= TruffleCompilerOptions.TruffleSplittingMaxCalleeSize.getValue()) {
-                return false;
-            }
-            SplitScoreVisitor visitor = new SplitScoreVisitor();
-            targetRoot.accept(visitor);
-            int genericNess = visitor.getSplitScore();
-            return genericNess > 0;
         }
 
         @Override
@@ -248,42 +282,6 @@ abstract class OptimizedCallNode extends DefaultCallNode {
         @Override
         public final OptimizedCallTarget getSplitCallTarget() {
             return splittedTarget;
-        }
-
-    }
-
-    private static final class SplitScoreVisitor implements NodeVisitor {
-
-        private int splitScore = 0;
-
-        public boolean visit(Node node) {
-            if (node instanceof OptimizedCallNode) {
-                OptimizedCallNode call = (OptimizedCallNode) node;
-                if (call.getInlinedRoot() != null) {
-                    call.getInlinedRoot().accept(this);
-                }
-            }
-            splitScore += splitScore(node);
-            return true;
-        }
-
-        public int getSplitScore() {
-            return splitScore;
-        }
-
-        private static int splitScore(Node node) {
-            NodeInfo info = node.getClass().getAnnotation(NodeInfo.class);
-            if (info == null) {
-                return 0;
-            }
-            switch (info.kind()) {
-                case GENERIC:
-                    return 3;
-                case POLYMORPHIC:
-                    return 1;
-                default:
-                    return 0;
-            }
         }
 
     }
