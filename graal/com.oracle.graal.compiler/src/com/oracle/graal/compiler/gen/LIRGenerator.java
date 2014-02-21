@@ -1032,7 +1032,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool, LIRTypeTool {
             case 32:
                 return Kind.Float;
             case 64:
-                return Kind.Long;
+                return Kind.Double;
             default:
                 throw GraalInternalError.shouldNotReachHere();
         }
