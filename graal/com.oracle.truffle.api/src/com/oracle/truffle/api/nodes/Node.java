@@ -82,6 +82,14 @@ public abstract class Node implements Cloneable {
         this.sourceSection = section;
     }
 
+    public Kind getKind() {
+        NodeInfo info = getClass().getAnnotation(NodeInfo.class);
+        if (info != null) {
+            return info.kind();
+        }
+        return Kind.SPECIALIZED;
+    }
+
     /**
      * Clears any previously assigned guest language source code from this node.
      */
