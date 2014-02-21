@@ -27,6 +27,7 @@ import java.util.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.spi.*;
 
 /**
  * Describes the possible values of a {@link ValueNode} that produces an int or long result.
@@ -71,6 +72,11 @@ public class IntegerStamp extends PrimitiveStamp {
         } else {
             return Kind.Int;
         }
+    }
+
+    @Override
+    public PlatformKind getPlatformKind(LIRTypeTool tool) {
+        return tool.getIntegerKind(getBits(), unsigned);
     }
 
     @Override

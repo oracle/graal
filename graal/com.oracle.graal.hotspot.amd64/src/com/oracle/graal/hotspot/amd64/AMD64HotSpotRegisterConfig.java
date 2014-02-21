@@ -216,7 +216,7 @@ public class AMD64HotSpotRegisterConfig implements RegisterConfig {
         }
 
         Kind returnKind = returnType == null ? Kind.Void : returnType.getKind();
-        AllocatableValue returnLocation = returnKind == Kind.Void ? Value.ILLEGAL : getReturnRegister(returnKind).asValue(returnKind);
+        AllocatableValue returnLocation = returnKind == Kind.Void ? Value.ILLEGAL : getReturnRegister(returnKind).asValue(returnKind.getStackKind());
         return new CallingConvention(currentStackOffset, returnLocation, locations);
     }
 

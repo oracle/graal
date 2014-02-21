@@ -23,6 +23,8 @@
 package com.oracle.graal.nodes.type;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.graph.*;
+import com.oracle.graal.nodes.spi.*;
 
 /**
  * This stamp represents the illegal type. Values with this type can not exist at run time.
@@ -43,6 +45,11 @@ public final class IllegalStamp extends PrimitiveStamp {
     @Override
     public Kind getStackKind() {
         return kind;
+    }
+
+    @Override
+    public PlatformKind getPlatformKind(LIRTypeTool tool) {
+        throw GraalInternalError.shouldNotReachHere("illegal stamp should not reach backend");
     }
 
     @Override

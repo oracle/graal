@@ -27,6 +27,7 @@ import java.util.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.spi.*;
 
 public class ObjectStamp extends Stamp {
 
@@ -51,6 +52,11 @@ public class ObjectStamp extends Stamp {
     @Override
     public Kind getStackKind() {
         return Kind.Object;
+    }
+
+    @Override
+    public PlatformKind getPlatformKind(LIRTypeTool tool) {
+        return tool.getObjectKind();
     }
 
     @Override

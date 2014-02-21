@@ -787,7 +787,8 @@ public class PTXLIRGenerator extends LIRGenerator {
         }
     }
 
-    public Value emitReinterpret(Kind to, Value inputVal) {
+    @Override
+    public Value emitReinterpret(PlatformKind to, Value inputVal) {
         Variable result = newVariable(to);
         emitMove(result, inputVal);
         return result;

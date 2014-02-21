@@ -243,7 +243,7 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
     @Override
     public Variable emitLoad(Kind kind, Value address, Access access) {
         SPARCAddressValue loadAddress = asAddressValue(address);
-        Variable result = newVariable(kind);
+        Variable result = newVariable(kind.getStackKind());
         LIRFrameState state = null;
         if (access instanceof DeoptimizingNode) {
             state = state((DeoptimizingNode) access);

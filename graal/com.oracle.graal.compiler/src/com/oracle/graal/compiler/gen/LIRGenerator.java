@@ -59,7 +59,7 @@ import com.oracle.graal.phases.util.*;
 /**
  * This class traverses the HIR instructions and generates LIR instructions from them.
  */
-public abstract class LIRGenerator implements LIRGeneratorTool {
+public abstract class LIRGenerator implements LIRGeneratorTool, LIRTypeTool {
 
     public static class Options {
         // @formatter:off
@@ -338,13 +338,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
      */
     @Override
     public Variable newVariable(PlatformKind platformKind) {
-        PlatformKind stackKind;
-        if (platformKind instanceof Kind) {
-            stackKind = ((Kind) platformKind).getStackKind();
-        } else {
-            stackKind = platformKind;
-        }
-        return new Variable(stackKind, lir.nextVariable());
+        return new Variable(platformKind, lir.nextVariable());
     }
 
     @Override
@@ -1016,6 +1010,36 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
             default:
                 throw new IllegalArgumentException(kind.toString());
         }
+    }
+
+    /**
+     * Default implementation: Return the Java stack kind for each stamp.
+     */
+    public PlatformKind getPlatformKind(Stamp stamp) {
+        return stamp.getPlatformKind(this);
+    }
+
+    public PlatformKind getIntegerKind(int bits, boolean unsigned) {
+        if (bits > 32) {
+            return Kind.Long;
+        } else {
+            return Kind.Int;
+        }
+    }
+
+    public PlatformKind getFloatingKind(int bits) {
+        switch (bits) {
+            case 32:
+                return Kind.Float;
+            case 64:
+                return Kind.Long;
+            default:
+                throw GraalInternalError.shouldNotReachHere();
+        }
+    }
+
+    public PlatformKind getObjectKind() {
+        return Kind.Object;
     }
 
     public abstract void emitBitCount(Variable result, Value operand);

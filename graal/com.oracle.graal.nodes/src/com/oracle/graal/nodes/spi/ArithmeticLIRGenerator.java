@@ -25,6 +25,7 @@ package com.oracle.graal.nodes.spi;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.FloatConvertNode.FloatConvert;
+import com.oracle.graal.nodes.type.*;
 
 /**
  * This interface can be used to generate LIR for arithmetic operations (@see
@@ -35,6 +36,8 @@ public interface ArithmeticLIRGenerator {
     Value operand(ValueNode object);
 
     Value setResult(ValueNode x, Value operand);
+
+    PlatformKind getPlatformKind(Stamp stamp);
 
     Value emitNegate(Value input);
 
@@ -68,7 +71,7 @@ public interface ArithmeticLIRGenerator {
 
     Value emitFloatConvert(FloatConvert op, Value inputVal);
 
-    Value emitReinterpret(Kind to, Value inputVal);
+    Value emitReinterpret(PlatformKind to, Value inputVal);
 
     Value emitNarrow(Value inputVal, int bits);
 

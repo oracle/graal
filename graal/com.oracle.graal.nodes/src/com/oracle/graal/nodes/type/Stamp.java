@@ -24,6 +24,7 @@ package com.oracle.graal.nodes.type;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.spi.*;
 
 /**
  * A stamp is the basis for a type system over the nodes in a graph.
@@ -49,6 +50,12 @@ public abstract class Stamp {
      * bytecode stack.
      */
     public abstract Kind getStackKind();
+
+    /**
+     * Gets a platform dependend {@link PlatformKind} that can be used to store a value of this
+     * stamp.
+     */
+    public abstract PlatformKind getPlatformKind(LIRTypeTool tool);
 
     /**
      * Returns the union of this stamp and the given stamp. Typically used to create stamps for

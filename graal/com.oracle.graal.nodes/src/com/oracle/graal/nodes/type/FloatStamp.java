@@ -24,6 +24,7 @@ package com.oracle.graal.nodes.type;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.nodes.spi.*;
 
 public class FloatStamp extends PrimitiveStamp {
 
@@ -55,6 +56,11 @@ public class FloatStamp extends PrimitiveStamp {
         } else {
             return Kind.Float;
         }
+    }
+
+    @Override
+    public PlatformKind getPlatformKind(LIRTypeTool tool) {
+        return tool.getFloatingKind(getBits());
     }
 
     @Override

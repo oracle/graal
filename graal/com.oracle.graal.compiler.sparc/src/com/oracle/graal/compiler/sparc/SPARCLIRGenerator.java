@@ -754,13 +754,13 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
         }
     }
 
-    private AllocatableValue emitConvertMove(Kind kind, AllocatableValue input) {
+    private AllocatableValue emitConvertMove(PlatformKind kind, AllocatableValue input) {
         Variable result = newVariable(kind);
         emitMove(result, input);
         return result;
     }
 
-    private AllocatableValue emitConvert2Op(Kind kind, SPARCArithmetic op, AllocatableValue input) {
+    private AllocatableValue emitConvert2Op(PlatformKind kind, SPARCArithmetic op, AllocatableValue input) {
         Variable result = newVariable(kind);
         append(new Unary2Op(op, result, input));
         return result;
@@ -861,12 +861,13 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
         }
     }
 
-    public AllocatableValue emitReinterpret(Kind to, Value inputVal) {
+    @Override
+    public AllocatableValue emitReinterpret(PlatformKind to, Value inputVal) {
         Kind from = inputVal.getKind();
         AllocatableValue input = asAllocatable(inputVal);
 
         // These cases require a move between CPU and FPU registers:
-        switch (to) {
+        switch ((Kind) to) {
             case Int:
                 switch (from) {
                     case Float:

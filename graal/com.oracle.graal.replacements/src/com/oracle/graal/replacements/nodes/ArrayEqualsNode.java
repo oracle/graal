@@ -130,7 +130,7 @@ public class ArrayEqualsNode extends FloatingNode implements LIRGenLowerable, Ca
 
     @Override
     public void generate(LIRGenerator gen) {
-        Variable result = gen.newVariable(Kind.Boolean);
+        Variable result = gen.newVariable(Kind.Int);
         gen.emitArrayEquals(kind, result, gen.operand(array1), gen.operand(array2), gen.operand(length));
         gen.setResult(this, result);
     }

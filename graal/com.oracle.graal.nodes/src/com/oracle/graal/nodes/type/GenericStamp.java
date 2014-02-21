@@ -23,6 +23,8 @@
 package com.oracle.graal.nodes.type;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.graph.*;
+import com.oracle.graal.nodes.spi.*;
 
 public final class GenericStamp extends Stamp {
 
@@ -52,6 +54,11 @@ public final class GenericStamp extends Stamp {
         } else {
             return Kind.Illegal;
         }
+    }
+
+    @Override
+    public PlatformKind getPlatformKind(LIRTypeTool tool) {
+        throw GraalInternalError.shouldNotReachHere(type + " stamp has no value");
     }
 
     @Override

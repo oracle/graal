@@ -679,7 +679,7 @@ public abstract class HSAILLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Value emitReinterpret(Kind to, Value inputVal) {
+    public Value emitReinterpret(PlatformKind to, Value inputVal) {
         Variable result = newVariable(to);
         emitMove(result, inputVal);
         return result;

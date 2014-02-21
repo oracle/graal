@@ -127,7 +127,13 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
 
     @Override
     public Variable emitMove(Value input) {
-        Variable result = newVariable(input.getPlatformKind());
+        PlatformKind kind;
+        if (input instanceof Constant) {
+            kind = input.getKind().getStackKind();
+        } else {
+            kind = input.getPlatformKind();
+        }
+        Variable result = newVariable(kind);
         emitMove(result, input);
         return result;
     }
@@ -708,19 +714,20 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         }
     }
 
-    private AllocatableValue emitConvert1Op(Kind kind, AMD64Arithmetic op, AllocatableValue input) {
+    private AllocatableValue emitConvert1Op(PlatformKind kind, AMD64Arithmetic op, AllocatableValue input) {
         Variable result = newVariable(kind);
         append(new Unary1Op(op, result, input));
         return result;
     }
 
-    private AllocatableValue emitConvert2Op(Kind kind, AMD64Arithmetic op, AllocatableValue input) {
+    private AllocatableValue emitConvert2Op(PlatformKind kind, AMD64Arithmetic op, AllocatableValue input) {
         Variable result = newVariable(kind);
         append(new Unary2Op(op, result, input));
         return result;
     }
 
-    public AllocatableValue emitReinterpret(Kind to, Value inputVal) {
+    @Override
+    public AllocatableValue emitReinterpret(PlatformKind to, Value inputVal) {
         Kind from = inputVal.getKind();
         AllocatableValue input = asAllocatable(inputVal);
 
@@ -728,7 +735,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
          * Conversions between integer to floating point types require moves between CPU and FPU
          * registers.
          */
-        switch (to) {
+        switch ((Kind) to) {
             case Int:
                 switch (from) {
                     case Float:

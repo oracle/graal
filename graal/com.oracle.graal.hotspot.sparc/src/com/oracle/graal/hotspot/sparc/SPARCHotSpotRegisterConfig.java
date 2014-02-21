@@ -208,7 +208,7 @@ public class SPARCHotSpotRegisterConfig implements RegisterConfig {
         }
 
         Kind returnKind = returnType == null ? Kind.Void : returnType.getKind();
-        AllocatableValue returnLocation = returnKind == Kind.Void ? Value.ILLEGAL : getReturnRegister(returnKind, type).asValue(returnKind);
+        AllocatableValue returnLocation = returnKind == Kind.Void ? Value.ILLEGAL : getReturnRegister(returnKind, type).asValue(returnKind.getStackKind());
         return new CallingConvention(currentStackOffset, returnLocation, locations);
     }
 
