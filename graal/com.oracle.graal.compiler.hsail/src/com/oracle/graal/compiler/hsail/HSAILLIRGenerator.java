@@ -53,6 +53,8 @@ import com.oracle.graal.lir.hsail.HSAILMove.MoveFromRegOp;
 import com.oracle.graal.lir.hsail.HSAILMove.MoveToRegOp;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
+import com.oracle.graal.nodes.calc.FloatConvertNode.FloatConvert;
+import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.phases.util.*;
 
 /**
@@ -145,7 +147,7 @@ public abstract class HSAILLIRGenerator extends LIRGenerator {
             } else {
                 Value indexRegister;
                 Value convertedIndex;
-                convertedIndex = this.emitConvert(Kind.Int, Kind.Long, index);
+                convertedIndex = this.emitSignExtend(index, 32, 64);
                 if (scale != 1) {
                     indexRegister = emitUMul(convertedIndex, Constant.forInt(scale));
                 } else {
@@ -592,10 +594,87 @@ public abstract class HSAILLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Variable emitConvert(Kind from, Kind to, Value inputVal) {
+    public Value emitFloatConvert(FloatConvert op, Value inputVal) {
         Variable input = load(inputVal);
-        Variable result = newVariable(to);
+
+        String from;
+        switch (op) {
+            case D2F:
+            case D2I:
+            case D2L:
+                from = "f64";
+                break;
+            case F2D:
+            case F2I:
+            case F2L:
+                from = "f32";
+                break;
+            case I2D:
+            case I2F:
+                from = "s32";
+                break;
+            case L2D:
+            case L2F:
+                from = "s64";
+                break;
+            default:
+                throw GraalInternalError.shouldNotReachHere();
+        }
+
+        Variable result;
+        String to;
+        switch (op) {
+            case D2I:
+            case F2I:
+                to = "s32";
+                result = newVariable(Kind.Int);
+                break;
+            case D2L:
+            case F2L:
+                to = "s64";
+                result = newVariable(Kind.Long);
+                break;
+            case F2D:
+            case I2D:
+            case L2D:
+                to = "f64";
+                result = newVariable(Kind.Double);
+                break;
+            case D2F:
+            case I2F:
+            case L2F:
+                to = "f32";
+                result = newVariable(Kind.Float);
+                break;
+            default:
+                throw GraalInternalError.shouldNotReachHere();
+        }
+
         append(new ConvertOp(result, input, to, from));
+        return result;
+    }
+
+    @Override
+    public Value emitNarrow(Value inputVal, int bits) {
+        Variable input = load(inputVal);
+        Variable result = newVariable(bits > 32 ? Kind.Long : Kind.Int);
+        append(new ConvertOp(result, input, "s" + bits, input.getKind() == Kind.Long ? "s64" : "s32"));
+        return result;
+    }
+
+    @Override
+    public Value emitSignExtend(Value inputVal, int fromBits, int toBits) {
+        Variable input = load(inputVal);
+        Variable result = newVariable(toBits > 32 ? Kind.Long : Kind.Int);
+        append(new ConvertOp(result, input, "s" + toBits, "s" + fromBits));
+        return result;
+    }
+
+    @Override
+    public Value emitZeroExtend(Value inputVal, int fromBits, int toBits) {
+        Variable input = load(inputVal);
+        Variable result = newVariable(toBits > 32 ? Kind.Long : Kind.Int);
+        append(new ConvertOp(result, input, "u" + toBits, "u" + fromBits));
         return result;
     }
 
@@ -816,7 +895,7 @@ public abstract class HSAILLIRGenerator extends LIRGenerator {
 
     @Override
     public void emitNullCheck(ValueNode v, DeoptimizingNode deopting) {
-        assert v.kind() == Kind.Object;
+        assert v.stamp() instanceof ObjectStamp;
         Variable obj = newVariable(Kind.Object);
         emitMove(obj, operand(v));
         append(new HSAILMove.NullCheckOp(obj, state(deopting)));

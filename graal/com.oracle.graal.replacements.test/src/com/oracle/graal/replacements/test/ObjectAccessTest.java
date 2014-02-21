@@ -102,7 +102,7 @@ public class ObjectAccessTest extends GraalCompilerTest implements Snippets {
 
     private static void assertRead(StructuredGraph graph, Kind kind, boolean indexConvert, LocationIdentity locationIdentity) {
         ReadNode read = (ReadNode) graph.start().next();
-        Assert.assertEquals(kind.getStackKind(), read.kind());
+        Assert.assertEquals(kind.getStackKind(), read.stamp().getStackKind());
         Assert.assertEquals(graph.getParameter(0), read.object());
 
         IndexedLocationNode location = (IndexedLocationNode) read.location();
@@ -111,10 +111,10 @@ public class ObjectAccessTest extends GraalCompilerTest implements Snippets {
         Assert.assertEquals(1, location.getIndexScaling());
 
         if (indexConvert) {
-            ConvertNode convert = (ConvertNode) location.getIndex();
-            Assert.assertEquals(Kind.Int, convert.getFromKind());
-            Assert.assertEquals(Kind.Long, convert.getToKind());
-            Assert.assertEquals(graph.getParameter(1), convert.value());
+            SignExtendNode convert = (SignExtendNode) location.getIndex();
+            Assert.assertEquals(convert.getInputBits(), 32);
+            Assert.assertEquals(convert.getResultBits(), 64);
+            Assert.assertEquals(graph.getParameter(1), convert.getInput());
         } else {
             Assert.assertEquals(graph.getParameter(1), location.getIndex());
         }
@@ -127,7 +127,6 @@ public class ObjectAccessTest extends GraalCompilerTest implements Snippets {
         WriteNode write = (WriteNode) graph.start().next();
         Assert.assertEquals(graph.getParameter(2), write.value());
         Assert.assertEquals(graph.getParameter(0), write.object());
-        Assert.assertEquals(Kind.Void, write.kind());
         Assert.assertEquals(FrameState.AFTER_BCI, write.stateAfter().bci);
 
         IndexedLocationNode location = (IndexedLocationNode) write.location();
@@ -136,10 +135,10 @@ public class ObjectAccessTest extends GraalCompilerTest implements Snippets {
         Assert.assertEquals(1, location.getIndexScaling());
 
         if (indexConvert) {
-            ConvertNode convert = (ConvertNode) location.getIndex();
-            Assert.assertEquals(Kind.Int, convert.getFromKind());
-            Assert.assertEquals(Kind.Long, convert.getToKind());
-            Assert.assertEquals(graph.getParameter(1), convert.value());
+            SignExtendNode convert = (SignExtendNode) location.getIndex();
+            Assert.assertEquals(convert.getInputBits(), 32);
+            Assert.assertEquals(convert.getResultBits(), 64);
+            Assert.assertEquals(graph.getParameter(1), convert.getInput());
         } else {
             Assert.assertEquals(graph.getParameter(1), location.getIndex());
         }

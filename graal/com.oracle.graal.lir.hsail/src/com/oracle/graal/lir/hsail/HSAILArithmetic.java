@@ -105,12 +105,12 @@ public enum HSAILArithmetic {
     UNDEF;
 
     public static class ConvertOp extends HSAILLIRInstruction {
-        private final Kind from;
-        private final Kind to;
+        private final String from;
+        private final String to;
         @Def({REG}) protected AllocatableValue result;
         @Use({REG, STACK}) protected AllocatableValue x;
 
-        public ConvertOp(AllocatableValue result, AllocatableValue x, Kind to, Kind from) {
+        public ConvertOp(AllocatableValue result, AllocatableValue x, String to, String from) {
             this.from = from;
             this.to = to;
             this.result = result;

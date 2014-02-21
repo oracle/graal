@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.loop;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
@@ -119,28 +118,28 @@ public class BasicInductionVariable extends InductionVariable {
     }
 
     @Override
-    public ValueNode extremumNode(boolean assumePositiveTripCount, Kind kind) {
-        Kind fromKind = phi.kind();
+    public ValueNode extremumNode(boolean assumePositiveTripCount, Stamp stamp) {
+        Stamp fromStamp = phi.stamp();
         StructuredGraph graph = graph();
         ValueNode stride = strideNode();
         ValueNode initNode = this.initNode();
-        if (fromKind != kind) {
-            stride = graph.unique(new ConvertNode(fromKind, kind, stride));
-            initNode = graph.unique(new ConvertNode(fromKind, kind, initNode));
+        if (!fromStamp.isCompatible(stamp)) {
+            stride = IntegerConvertNode.convert(stride, stamp);
+            initNode = IntegerConvertNode.convert(initNode, stamp);
         }
         ValueNode maxTripCount = loop.counted().maxTripCountNode(assumePositiveTripCount);
-        if (maxTripCount.kind() != kind) {
-            maxTripCount = graph.unique(new ConvertNode(maxTripCount.kind(), kind, maxTripCount));
+        if (!maxTripCount.stamp().isCompatible(stamp)) {
+            maxTripCount = IntegerConvertNode.convert(maxTripCount, stamp);
         }
-        return IntegerArithmeticNode.add(graph, IntegerArithmeticNode.mul(graph, stride, IntegerArithmeticNode.sub(graph, maxTripCount, ConstantNode.forIntegerKind(kind, 1, graph))), initNode);
+        return IntegerArithmeticNode.add(graph, IntegerArithmeticNode.mul(graph, stride, IntegerArithmeticNode.sub(graph, maxTripCount, ConstantNode.forIntegerStamp(stamp, 1, graph))), initNode);
     }
 
     @Override
     public ValueNode exitValueNode() {
-        Kind kind = phi.kind();
+        Stamp stamp = phi.stamp();
         ValueNode maxTripCount = loop.counted().maxTripCountNode(false);
-        if (maxTripCount.kind() != kind) {
-            maxTripCount = graph().unique(new ConvertNode(maxTripCount.kind(), kind, maxTripCount));
+        if (!maxTripCount.stamp().isCompatible(stamp)) {
+            maxTripCount = IntegerConvertNode.convert(maxTripCount, stamp);
         }
         return IntegerArithmeticNode.add(graph(), IntegerArithmeticNode.mul(graph(), strideNode(), maxTripCount), initNode());
     }

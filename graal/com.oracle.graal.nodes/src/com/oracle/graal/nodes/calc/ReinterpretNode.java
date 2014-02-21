@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,7 +30,9 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
 /**
- * The {@code ReinterpretNode} class represents a reinterpreting conversion between primitive types.
+ * The {@code ReinterpretNode} class represents a reinterpreting conversion that changes the stamp
+ * of a primitive value to some other incompatible stamp. The new stamp must have the same width as
+ * the old stamp.
  */
 public class ReinterpretNode extends FloatingNode implements Canonicalizable, ArithmeticLIRLowerable {
 
@@ -40,64 +42,45 @@ public class ReinterpretNode extends FloatingNode implements Canonicalizable, Ar
         return value;
     }
 
-    public ReinterpretNode(Kind to, ValueNode value) {
-        super(StampFactory.forKind(to.getStackKind()));
+    private ReinterpretNode(Kind to, ValueNode value) {
+        this(StampFactory.forKind(to), value);
+    }
+
+    public ReinterpretNode(Stamp to, ValueNode value) {
+        super(to);
+        assert to instanceof PrimitiveStamp;
         this.value = value;
     }
 
     public Constant evalConst(Constant... inputs) {
         assert inputs.length == 1;
         Constant c = inputs[0];
-        assert c.getKind() == value.kind();
+        assert c.getKind().getBitCount() == ((PrimitiveStamp) stamp()).getBits();
         switch (c.getKind()) {
             case Int:
-                switch (kind()) {
-                    case Int:
-                        return c;
-                    case Long:
-                        return Constant.forLong(c.asInt() & 0xFFFFFFFFL);
-                    case Float:
-                        return Constant.forFloat(Float.intBitsToFloat(c.asInt()));
-                    case Double:
-                        return Constant.forDouble(Double.longBitsToDouble(c.asInt() & 0xFFFFFFFFL));
+                if (stamp() instanceof FloatStamp) {
+                    return Constant.forFloat(Float.intBitsToFloat(c.asInt()));
+                } else {
+                    return c;
                 }
-                break;
             case Long:
-                switch (kind()) {
-                    case Int:
-                        return Constant.forInt((int) c.asLong());
-                    case Long:
-                        return c;
-                    case Float:
-                        return Constant.forFloat(Float.intBitsToFloat((int) c.asLong()));
-                    case Double:
-                        return Constant.forDouble(Double.longBitsToDouble(c.asLong()));
+                if (stamp() instanceof FloatStamp) {
+                    return Constant.forDouble(Double.longBitsToDouble(c.asLong()));
+                } else {
+                    return c;
                 }
-                break;
             case Float:
-                switch (kind()) {
-                    case Int:
-                        return Constant.forInt(Float.floatToRawIntBits(c.asFloat()));
-                    case Long:
-                        return Constant.forLong(Float.floatToRawIntBits(c.asFloat()) & 0xFFFFFFFFL);
-                    case Float:
-                        return c;
-                    case Double:
-                        return Constant.forDouble(Double.longBitsToDouble(Float.floatToRawIntBits(c.asFloat()) & 0xFFFFFFFFL));
+                if (stamp() instanceof IntegerStamp) {
+                    return Constant.forInt(Float.floatToRawIntBits(c.asFloat()));
+                } else {
+                    return c;
                 }
-                break;
             case Double:
-                switch (kind()) {
-                    case Int:
-                        return Constant.forInt((int) Double.doubleToRawLongBits(c.asDouble()));
-                    case Long:
-                        return Constant.forLong(Double.doubleToRawLongBits(c.asDouble()));
-                    case Float:
-                        return Constant.forFloat(Float.intBitsToFloat((int) Double.doubleToRawLongBits(c.asDouble())));
-                    case Double:
-                        return c;
+                if (stamp() instanceof IntegerStamp) {
+                    return Constant.forLong(Double.doubleToRawLongBits(c.asDouble()));
+                } else {
+                    return c;
                 }
-                break;
         }
         throw GraalInternalError.shouldNotReachHere();
     }
@@ -106,6 +89,9 @@ public class ReinterpretNode extends FloatingNode implements Canonicalizable, Ar
     public Node canonical(CanonicalizerTool tool) {
         if (value.isConstant()) {
             return ConstantNode.forPrimitive(evalConst(value.asConstant()), graph());
+        }
+        if (stamp().isCompatible(value.stamp())) {
+            return value;
         }
         return this;
     }
@@ -116,10 +102,6 @@ public class ReinterpretNode extends FloatingNode implements Canonicalizable, Ar
     }
 
     public static ValueNode reinterpret(Kind toKind, ValueNode value) {
-        Kind fromKind = value.kind();
-        if (fromKind == toKind) {
-            return value;
-        }
         return value.graph().unique(new ReinterpretNode(toKind, value));
     }
 

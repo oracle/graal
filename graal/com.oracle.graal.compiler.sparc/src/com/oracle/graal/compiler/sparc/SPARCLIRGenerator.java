@@ -60,7 +60,9 @@ import com.oracle.graal.lir.sparc.SPARCMove.NullCheckOp;
 import com.oracle.graal.lir.sparc.SPARCMove.StackLoadAddressOp;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
+import com.oracle.graal.nodes.calc.FloatConvertNode.FloatConvert;
 import com.oracle.graal.nodes.java.*;
+import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.phases.util.*;
 
 /**
@@ -153,8 +155,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
                 indexRegister = Value.ILLEGAL;
             } else {
                 if (scale != 1) {
-                    // Variable longIndex = newVariable(Kind.Long);
-                    AllocatableValue longIndex = emitConvert(Kind.Int, Kind.Long, index);
+                    Value longIndex = emitSignExtend(index, 32, 64);
                     if (CodeUtil.isPowerOf2(scale)) {
                         indexRegister = emitShl(longIndex, Constant.forLong(CodeUtil.log2(scale)));
                     } else {
@@ -766,108 +767,98 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public AllocatableValue emitConvert(Kind from, Kind to, Value inputVal) {
-        assert inputVal.getKind() == from.getStackKind();
-
+    public Value emitFloatConvert(FloatConvert op, Value inputVal) {
         AllocatableValue input = asAllocatable(inputVal);
-        if (from == to) {
-            return input;
+        switch (op) {
+            case D2F:
+                return emitConvert2Op(Kind.Float, D2F, input);
+            case D2I:
+                return emitConvert2Op(Kind.Int, D2I, input);
+            case D2L:
+                return emitConvert2Op(Kind.Long, D2L, input);
+            case F2D:
+                return emitConvert2Op(Kind.Double, F2D, input);
+            case F2I:
+                return emitConvert2Op(Kind.Int, F2I, input);
+            case F2L:
+                return emitConvert2Op(Kind.Long, F2L, input);
+            case I2D:
+                return emitConvert2Op(Kind.Double, I2D, input);
+            case I2F:
+                return emitConvert2Op(Kind.Float, I2F, input);
+            case L2D:
+                return emitConvert2Op(Kind.Double, L2D, input);
+            case L2F:
+                return emitConvert2Op(Kind.Float, L2F, input);
+            default:
+                throw GraalInternalError.shouldNotReachHere();
         }
-        switch (to) {
-            case Byte:
-                switch (from) {
-                    case Short:
-                    case Char:
-                    case Int:
-                    case Long:
-                        return emitConvert2Op(to, I2B, input);
-                    case Float:
-                    case Double:
-                        AllocatableValue intVal = emitConvert(from, Kind.Int, inputVal);
-                        return emitConvert(Kind.Int, to, intVal);
-                }
-                break;
-            case Char:
-                switch (from) {
-                    case Byte:
-                    case Short:
-                    case Int:
-                    case Long:
-                        return emitConvert2Op(to, I2C, input);
-                    case Float:
-                    case Double:
-                        AllocatableValue intVal = emitConvert(from, Kind.Int, inputVal);
-                        return emitConvert(Kind.Int, to, intVal);
-                }
-                break;
-            case Short:
-                switch (from) {
-                    case Byte:
-                    case Char:
-                    case Int:
-                    case Long:
-                        return emitConvert2Op(to, I2S, input);
-                    case Float:
-                    case Double:
-                        AllocatableValue intVal = emitConvert(from, Kind.Int, inputVal);
-                        return emitConvert(Kind.Int, to, intVal);
-                }
-                break;
-            case Int:
-                switch (from) {
-                    case Byte:
-                    case Short:
-                    case Char:
-                        return emitConvertMove(to, input);
-                    case Long:
-                        return emitConvert2Op(to, L2I, input);
-                    case Float:
-                        return emitConvert2Op(to, F2I, input);
-                    case Double:
-                        return emitConvert2Op(to, D2I, input);
-                }
-                break;
-            case Long:
-                switch (from) {
-                    case Byte:
-                    case Short:
-                    case Char:
-                    case Int:
-                        return emitConvert2Op(to, I2L, input);
-                    case Float:
-                        return emitConvert2Op(to, F2L, input);
-                    case Double:
-                        return emitConvert2Op(to, D2L, input);
-                }
-                break;
-            case Float:
-                switch (from) {
-                    case Byte:
-                    case Short:
-                    case Char:
-                    case Int:
-                        return emitConvert2Op(to, I2F, input);
-                    case Long:
-                        return emitConvert2Op(to, L2F, input);
-                    case Double:
-                        return emitConvert2Op(to, D2F, input);
-                }
-                break;
-            case Double:
-                switch (from) {
-                    case Byte:
-                    case Short:
-                    case Char:
-                    case Int:
-                        return emitConvert2Op(to, I2D, input);
-                    case Long:
-                        return emitConvert2Op(to, L2D, input);
-                    case Float:
-                        return emitConvert2Op(to, F2D, input);
-                }
-                break;
+    }
+
+    @Override
+    public Value emitNarrow(Value inputVal, int bits) {
+        if (inputVal.getKind() == Kind.Long && bits <= 32) {
+            return emitConvert2Op(Kind.Int, L2I, asAllocatable(inputVal));
+        } else {
+            return inputVal;
         }
-        throw GraalInternalError.shouldNotReachHere();
+    }
+
+    @Override
+    public Value emitSignExtend(Value inputVal, int fromBits, int toBits) {
+        assert fromBits <= toBits && toBits <= 64;
+        if (fromBits == toBits) {
+            return inputVal;
+        } else if (toBits > 32) {
+            // sign extend to 64 bits
+            if (fromBits == 32) {
+                return emitConvert2Op(Kind.Long, I2L, asAllocatable(inputVal));
+            } else if (fromBits < 32) {
+                // TODO implement direct x2L sign extension conversions
+                Value intVal = emitSignExtend(inputVal, fromBits, 32);
+                return emitSignExtend(intVal, 32, toBits);
+            } else {
+                throw GraalInternalError.unimplemented("unsupported sign extension (" + fromBits + " bit -> " + toBits + " bit)");
+            }
+        } else {
+            // sign extend to 32 bits (smaller values are internally represented as 32 bit values)
+            switch (fromBits) {
+                case 8:
+                    return emitConvert2Op(Kind.Int, I2B, asAllocatable(inputVal));
+                case 16:
+                    return emitConvert2Op(Kind.Int, I2S, asAllocatable(inputVal));
+                case 32:
+                    return inputVal;
+                default:
+                    throw GraalInternalError.unimplemented("unsupported sign extension (" + fromBits + " bit -> " + toBits + " bit)");
+            }
+        }
+    }
+
+    @Override
+    public Value emitZeroExtend(Value inputVal, int fromBits, int toBits) {
+        assert fromBits <= toBits && toBits <= 64;
+        if (fromBits == toBits) {
+            return inputVal;
+        } else if (fromBits > 32) {
+            assert inputVal.getKind() == Kind.Long;
+            Variable result = newVariable(Kind.Long);
+            long mask = IntegerStamp.defaultMask(fromBits);
+            append(new BinaryRegConst(SPARCArithmetic.LAND, result, asAllocatable(inputVal), Constant.forLong(mask)));
+            return result;
+        } else {
+            assert inputVal.getKind() == Kind.Int;
+            Variable result = newVariable(Kind.Int);
+            int mask = (int) IntegerStamp.defaultMask(fromBits);
+            append(new BinaryRegConst(SPARCArithmetic.IAND, result, asAllocatable(inputVal), Constant.forInt(mask)));
+            if (toBits > 32) {
+                Variable longResult = newVariable(Kind.Long);
+                emitMove(longResult, result);
+                return longResult;
+            } else {
+                return result;
+            }
+        }
     }
 
     public AllocatableValue emitReinterpret(Kind to, Value inputVal) {

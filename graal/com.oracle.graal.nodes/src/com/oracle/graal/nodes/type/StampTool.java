@@ -25,6 +25,7 @@ package com.oracle.graal.nodes.type;
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.nodes.calc.*;
 
 /**
  * Helper class that is used to keep all stamp-related operations in one place.
@@ -178,15 +179,15 @@ public class StampTool {
             lowerBound = (stamp1.lowerBound() + stamp2.lowerBound()) & defaultMask;
             upperBound = (stamp1.upperBound() + stamp2.upperBound()) & defaultMask;
             if (!unsigned) {
-                lowerBound = signExtend(lowerBound, bits);
-                upperBound = signExtend(upperBound, bits);
+                lowerBound = SignExtendNode.signExtend(lowerBound, bits);
+                upperBound = SignExtendNode.signExtend(upperBound, bits);
             }
         }
         IntegerStamp limit = StampFactory.forInteger(bits, unsigned, lowerBound, upperBound);
         newUpMask &= limit.upMask();
         upperBound &= newUpMask;
         if (!unsigned) {
-            upperBound = signExtend(upperBound, bits);
+            upperBound = SignExtendNode.signExtend(upperBound, bits);
         }
         newDownMask |= limit.downMask();
         lowerBound |= newDownMask;
@@ -213,6 +214,8 @@ public class StampTool {
             lowerBound = downMask | (-1L << (bits - 1));
             upperBound = IntegerStamp.defaultMaxValue(bits, false) & upMask;
         }
+        lowerBound = IntegerConvertNode.convert(lowerBound, bits, false);
+        upperBound = IntegerConvertNode.convert(upperBound, bits, false);
         return new IntegerStamp(bits, false, lowerBound, upperBound, downMask, upMask);
     }
 
@@ -316,14 +319,83 @@ public class StampTool {
         return value.unrestricted();
     }
 
+    public static Stamp signExtend(Stamp input, int resultBits) {
+        if (input instanceof IntegerStamp) {
+            IntegerStamp inputStamp = (IntegerStamp) input;
+            int inputBits = inputStamp.getBits();
+            assert inputBits <= resultBits;
+
+            long defaultMask = IntegerStamp.defaultMask(resultBits);
+            long downMask = SignExtendNode.signExtend(inputStamp.downMask(), inputBits) & defaultMask;
+            long upMask = SignExtendNode.signExtend(inputStamp.upMask(), inputBits) & defaultMask;
+
+            return new IntegerStamp(resultBits, inputStamp.isUnsigned(), inputStamp.lowerBound(), inputStamp.upperBound(), downMask, upMask);
+        } else {
+            return input.illegal();
+        }
+    }
+
+    public static Stamp zeroExtend(Stamp input, int resultBits) {
+        if (input instanceof IntegerStamp) {
+            IntegerStamp inputStamp = (IntegerStamp) input;
+            int inputBits = inputStamp.getBits();
+            assert inputBits <= resultBits;
+
+            long downMask = ZeroExtendNode.zeroExtend(inputStamp.downMask(), inputBits);
+            long upMask = ZeroExtendNode.zeroExtend(inputStamp.upMask(), inputBits);
+
+            return new IntegerStamp(resultBits, inputStamp.isUnsigned(), inputStamp.lowerBound(), inputStamp.upperBound(), downMask, upMask);
+        } else {
+            return input.illegal();
+        }
+    }
+
     public static Stamp intToLong(IntegerStamp intStamp) {
         long downMask = intStamp.downMask();
         long upMask = intStamp.upMask();
         if (!intStamp.isUnsigned()) {
-            downMask = signExtend(downMask, intStamp.getBits());
-            upMask = signExtend(upMask, intStamp.getBits());
+            downMask = SignExtendNode.signExtend(downMask, intStamp.getBits());
+            upMask = SignExtendNode.signExtend(upMask, intStamp.getBits());
         }
         return new IntegerStamp(64, intStamp.isUnsigned(), intStamp.lowerBound(), intStamp.upperBound(), downMask, upMask);
+    }
+
+    public static Stamp narrowingConversion(Stamp input, int resultBits) {
+        if (input instanceof IntegerStamp) {
+            IntegerStamp inputStamp = (IntegerStamp) input;
+            boolean unsigned = inputStamp.isUnsigned();
+            int inputBits = inputStamp.getBits();
+            assert resultBits <= inputBits;
+            if (resultBits == inputBits) {
+                return inputStamp;
+            }
+
+            final long upperBound;
+            if (inputStamp.lowerBound() < IntegerStamp.defaultMinValue(resultBits, unsigned)) {
+                upperBound = IntegerStamp.defaultMaxValue(resultBits, unsigned);
+            } else {
+                upperBound = saturate(inputStamp.upperBound(), resultBits, unsigned);
+            }
+            final long lowerBound;
+            if (inputStamp.upperBound() > IntegerStamp.defaultMaxValue(resultBits, unsigned)) {
+                lowerBound = IntegerStamp.defaultMinValue(resultBits, unsigned);
+            } else {
+                lowerBound = saturate(inputStamp.lowerBound(), resultBits, unsigned);
+            }
+
+            long defaultMask = IntegerStamp.defaultMask(resultBits);
+            long newDownMask = inputStamp.downMask() & defaultMask;
+            long newUpMask = inputStamp.upMask() & defaultMask;
+            long newLowerBound = (lowerBound | newDownMask) & newUpMask;
+            long newUpperBound = (upperBound | newDownMask) & newUpMask;
+            if (!unsigned) {
+                newLowerBound = SignExtendNode.signExtend(newLowerBound, resultBits);
+                newUpperBound = SignExtendNode.signExtend(newUpperBound, resultBits);
+            }
+            return new IntegerStamp(resultBits, unsigned, newLowerBound, newUpperBound, newDownMask, newUpMask);
+        } else {
+            return input.illegal();
+        }
     }
 
     public static IntegerStamp narrowingKindConversion(IntegerStamp fromStamp, Kind toKind) {
@@ -348,14 +420,6 @@ public class StampTool {
         return new IntegerStamp(toKind.getStackKind().getBitCount(), false, (int) ((lowerBound | newDownMask) & newUpMask), (int) ((upperBound | newDownMask) & newUpMask), newDownMask, newUpMask);
     }
 
-    private static long signExtend(long value, int bits) {
-        if (bits < 64 && (value >>> (bits - 1) & 1) == 1) {
-            return value | (-1L << bits);
-        } else {
-            return value;
-        }
-    }
-
     private static long signExtend(long value, Kind valueKind) {
         if (valueKind != Kind.Char && valueKind != Kind.Long && (value >>> (valueKind.getBitCount() - 1) & 1) == 1) {
             return value | (-1L << valueKind.getBitCount());
@@ -364,7 +428,21 @@ public class StampTool {
         }
     }
 
-    public static long saturate(long v, Kind kind) {
+    private static long saturate(long v, int bits, boolean unsigned) {
+        if (bits < 64) {
+            long max = IntegerStamp.defaultMaxValue(bits, unsigned);
+            if (v > max) {
+                return max;
+            }
+            long min = IntegerStamp.defaultMinValue(bits, unsigned);
+            if (v < min) {
+                return min;
+            }
+        }
+        return v;
+    }
+
+    private static long saturate(long v, Kind kind) {
         long max = kind.getMaxValue();
         if (v > max) {
             return max;

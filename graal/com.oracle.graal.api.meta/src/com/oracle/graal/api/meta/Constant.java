@@ -424,6 +424,18 @@ public final class Constant extends Value {
     }
 
     /**
+     * Creates a {@link Constant} from a primitive integer of a certain width.
+     */
+    public static Constant forPrimitiveInt(int bits, long i) {
+        assert bits <= 64;
+        if (bits > 32) {
+            return new Constant(Kind.Long, null, i);
+        } else {
+            return new Constant(Kind.Int, null, (int) i);
+        }
+    }
+
+    /**
      * Creates a boxed constant for the given kind from an Object. The object needs to be of the
      * Java boxed type corresponding to the kind.
      * 

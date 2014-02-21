@@ -158,42 +158,33 @@ public class AMD64ConvertSnippets implements Snippets {
             d2l = snippet(AMD64ConvertSnippets.class, "d2l");
         }
 
-        public void lower(ConvertNode convert, LoweringTool tool) {
-            SnippetInfo key = null;
-            switch (convert.getFromKind()) {
-                case Float:
-                    switch (convert.getToKind()) {
-                        case Int:
-                            key = f2i;
-                            break;
-                        case Long:
-                            key = f2l;
-                            break;
-                    }
+        public void lower(FloatConvertNode convert, LoweringTool tool) {
+            SnippetInfo key;
+            switch (convert.getOp()) {
+                case F2I:
+                    key = f2i;
                     break;
-                case Double:
-                    switch (convert.getToKind()) {
-                        case Int:
-                            key = d2i;
-                            break;
-                        case Long:
-                            key = d2l;
-                            break;
-                    }
+                case F2L:
+                    key = f2l;
                     break;
-            }
-            if (key == null) {
-                return;
+                case D2I:
+                    key = d2i;
+                    break;
+                case D2L:
+                    key = d2l;
+                    break;
+                default:
+                    return;
             }
 
             StructuredGraph graph = convert.graph();
 
             Arguments args = new Arguments(key, graph.getGuardsStage(), tool.getLoweringStage());
-            args.add("input", convert.value());
-            args.add("result", graph.unique(new AMD64ConvertNode(convert.getFromKind(), convert.getToKind(), convert.value())));
+            args.add("input", convert.getInput());
+            args.add("result", graph.unique(new AMD64FloatConvertNode(convert.stamp(), convert.getOp(), convert.getInput())));
 
             SnippetTemplate template = template(args);
-            Debug.log("Lowering %c2%c in %s: node=%s, template=%s, arguments=%s", convert.getFromKind().getTypeChar(), convert.getToKind().getTypeChar(), graph, convert, template, args);
+            Debug.log("Lowering %s in %s: node=%s, template=%s, arguments=%s", convert.getOp(), graph, convert, template, args);
             template.instantiate(providers.getMetaAccess(), convert, DEFAULT_REPLACER, tool, args);
             graph.removeFloating(convert);
         }

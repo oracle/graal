@@ -44,6 +44,7 @@ import com.oracle.graal.java.BciBlockMapping.Block;
 import com.oracle.graal.java.BciBlockMapping.ExceptionDispatchBlock;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
+import com.oracle.graal.nodes.calc.FloatConvertNode.FloatConvert;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
@@ -708,9 +709,30 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             frameState.ipush(append(new NormalizeCompareNode(x, y, isUnorderedLess)));
         }
 
-        private void genConvert(Kind from, Kind to) {
+        private void genFloatConvert(FloatConvert op, Kind from, Kind to) {
             ValueNode input = frameState.pop(from.getStackKind());
-            frameState.push(to.getStackKind(), append(new ConvertNode(from, to, input)));
+            frameState.push(to.getStackKind(), append(new FloatConvertNode(op, input)));
+        }
+
+        private void genSignExtend(Kind from, Kind to) {
+            ValueNode input = frameState.pop(from.getStackKind());
+            if (from != from.getStackKind()) {
+                input = append(new NarrowNode(input, from.getBitCount()));
+            }
+            frameState.push(to.getStackKind(), append(new SignExtendNode(input, to.getBitCount())));
+        }
+
+        private void genZeroExtend(Kind from, Kind to) {
+            ValueNode input = frameState.pop(from.getStackKind());
+            if (from != from.getStackKind()) {
+                input = append(new NarrowNode(input, from.getBitCount()));
+            }
+            frameState.push(to.getStackKind(), append(new ZeroExtendNode(input, to.getBitCount())));
+        }
+
+        private void genNarrow(Kind from, Kind to) {
+            ValueNode input = frameState.pop(from.getStackKind());
+            frameState.push(to.getStackKind(), append(new NarrowNode(input, to.getBitCount())));
         }
 
         private void genIncrement() {
@@ -1991,21 +2013,21 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             case LOR            : // fall through
             case LXOR           : genLogicOp(Kind.Long, opcode); break;
             case IINC           : genIncrement(); break;
-            case I2L            : genConvert(Kind.Int, Kind.Long); break;
-            case I2F            : genConvert(Kind.Int, Kind.Float); break;
-            case I2D            : genConvert(Kind.Int, Kind.Double); break;
-            case L2I            : genConvert(Kind.Long, Kind.Int); break;
-            case L2F            : genConvert(Kind.Long, Kind.Float); break;
-            case L2D            : genConvert(Kind.Long, Kind.Double); break;
-            case F2I            : genConvert(Kind.Float, Kind.Int); break;
-            case F2L            : genConvert(Kind.Float, Kind.Long); break;
-            case F2D            : genConvert(Kind.Float, Kind.Double); break;
-            case D2I            : genConvert(Kind.Double, Kind.Int); break;
-            case D2L            : genConvert(Kind.Double, Kind.Long); break;
-            case D2F            : genConvert(Kind.Double, Kind.Float); break;
-            case I2B            : genConvert(Kind.Int, Kind.Byte); break;
-            case I2C            : genConvert(Kind.Int, Kind.Char); break;
-            case I2S            : genConvert(Kind.Int, Kind.Short); break;
+            case I2F            : genFloatConvert(FloatConvert.I2F, Kind.Int, Kind.Float); break;
+            case I2D            : genFloatConvert(FloatConvert.I2D, Kind.Int, Kind.Double); break;
+            case L2F            : genFloatConvert(FloatConvert.L2F, Kind.Long, Kind.Float); break;
+            case L2D            : genFloatConvert(FloatConvert.L2D, Kind.Long, Kind.Double); break;
+            case F2I            : genFloatConvert(FloatConvert.F2I, Kind.Float, Kind.Int); break;
+            case F2L            : genFloatConvert(FloatConvert.F2L, Kind.Float, Kind.Long); break;
+            case F2D            : genFloatConvert(FloatConvert.F2D, Kind.Float, Kind.Double); break;
+            case D2I            : genFloatConvert(FloatConvert.D2I, Kind.Double, Kind.Int); break;
+            case D2L            : genFloatConvert(FloatConvert.D2L, Kind.Double, Kind.Long); break;
+            case D2F            : genFloatConvert(FloatConvert.D2F, Kind.Double, Kind.Float); break;
+            case L2I            : genNarrow(Kind.Long, Kind.Int); break;
+            case I2L            : genSignExtend(Kind.Int, Kind.Long); break;
+            case I2B            : genSignExtend(Kind.Byte, Kind.Int); break;
+            case I2S            : genSignExtend(Kind.Short, Kind.Int); break;
+            case I2C            : genZeroExtend(Kind.Char, Kind.Int); break;
             case LCMP           : genCompareOp(Kind.Long, false); break;
             case FCMPL          : genCompareOp(Kind.Float, true); break;
             case FCMPG          : genCompareOp(Kind.Float, false); break;

@@ -42,6 +42,14 @@ public abstract class PrimitiveStamp extends Stamp {
         return bits;
     }
 
+    public static int getBits(Stamp stamp) {
+        if (stamp instanceof PrimitiveStamp) {
+            return ((PrimitiveStamp) stamp).getBits();
+        } else {
+            return 0;
+        }
+    }
+
     @Override
     public int hashCode() {
         final int prime = 31;

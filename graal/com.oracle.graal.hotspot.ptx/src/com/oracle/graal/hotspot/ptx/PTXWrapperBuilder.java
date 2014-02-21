@@ -264,18 +264,18 @@ public class PTXWrapperBuilder extends GraphKit {
             case Short:
             case Char:
             case Int:
-                returnValue = unique(new ConvertNode(Kind.Long, Kind.Int, result));
+                returnValue = unique(new NarrowNode(result, 32));
                 break;
             case Long:
                 returnValue = result;
                 break;
             case Float: {
-                ValueNode asInt = unique(new ConvertNode(Kind.Long, Kind.Int, result));
-                returnValue = unique(new ReinterpretNode(Kind.Float, asInt));
+                ValueNode asInt = unique(new NarrowNode(result, 32));
+                returnValue = ReinterpretNode.reinterpret(Kind.Float, asInt);
                 break;
             }
             case Double:
-                returnValue = unique(new ReinterpretNode(returnKind, result));
+                returnValue = ReinterpretNode.reinterpret(Kind.Double, result);
                 break;
             case Object:
                 getObjectResult = createInvoke(getClass(), "getObjectResult", args.get(Thread));

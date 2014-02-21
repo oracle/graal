@@ -140,8 +140,8 @@ public final class ArrayCopyCallNode extends ArrayRangeWriteNode implements Lowe
             ValueNode srcAddr = computeBase(getSource(), getSourcePosition());
             ValueNode destAddr = computeBase(getDestination(), getDestinationPosition());
             ValueNode len = getLength();
-            if (len.kind() != Kind.Long) {
-                len = graph().unique(new ConvertNode(len.kind(), Kind.Long, len));
+            if (len.stamp().getStackKind() != Kind.Long) {
+                len = IntegerConvertNode.convert(len, StampFactory.forKind(Kind.Long));
             }
             ForeignCallNode call = graph.add(new ForeignCallNode(Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend().getForeignCalls(), desc, srcAddr, destAddr, len));
             call.setStateAfter(stateAfter());

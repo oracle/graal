@@ -136,15 +136,15 @@ public abstract class CompareNode extends LogicNode implements Canonicalizable, 
         if (x() instanceof ConvertNode && y() instanceof ConvertNode) {
             ConvertNode convertX = (ConvertNode) x();
             ConvertNode convertY = (ConvertNode) y();
-            if (convertX.isLossless() && convertY.isLossless() && convertX.getFromKind() == convertY.getFromKind()) {
-                setX(convertX.value());
-                setY(convertY.value());
+            if (convertX.isLossless() && convertY.isLossless() && convertX.getInput().stamp().isCompatible(convertY.getInput().stamp())) {
+                setX(convertX.getInput());
+                setY(convertY.getInput());
             }
         } else if (x() instanceof ConvertNode && y().isConstant()) {
             ConvertNode convertX = (ConvertNode) x();
             ConstantNode newY = canonicalConvertConstant(convertX, y().asConstant());
             if (newY != null) {
-                setX(convertX.value());
+                setX(convertX.getInput());
                 setY(newY);
             }
         } else if (y() instanceof ConvertNode && x().isConstant()) {
@@ -152,7 +152,7 @@ public abstract class CompareNode extends LogicNode implements Canonicalizable, 
             ConstantNode newX = canonicalConvertConstant(convertY, x().asConstant());
             if (newX != null) {
                 setX(newX);
-                setY(convertY.value());
+                setY(convertY.getInput());
             }
         }
         return this;
@@ -160,9 +160,8 @@ public abstract class CompareNode extends LogicNode implements Canonicalizable, 
 
     private static ConstantNode canonicalConvertConstant(ConvertNode convert, Constant constant) {
         if (convert.isLossless()) {
-            assert constant.getKind() == convert.getToKind();
-            Constant reverseConverted = ConvertNode.convert(convert.getToKind(), convert.getFromKind(), constant);
-            if (convert.evalConst(reverseConverted).equals(constant)) {
+            Constant reverseConverted = convert.reverse(constant);
+            if (convert.convert(reverseConverted).equals(constant)) {
                 return ConstantNode.forPrimitive(reverseConverted, convert.graph());
             }
         }

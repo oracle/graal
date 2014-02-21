@@ -301,14 +301,14 @@ public class WordTypeRewriterPhase extends Phase {
 
         if (toKind == Kind.Int) {
             assert value.kind() == Kind.Long;
-            return graph.unique(new ConvertNode(Kind.Long, Kind.Int, value));
+            return graph.unique(new NarrowNode(value, 32));
         } else {
             assert toKind == Kind.Long;
             assert value.kind().getStackKind() == Kind.Int;
             if (unsigned) {
-                return graph.unique(new ReinterpretNode(Kind.Long, value));
+                return graph.unique(new ZeroExtendNode(value, 64));
             } else {
-                return graph.unique(new ConvertNode(Kind.Int, Kind.Long, value));
+                return graph.unique(new SignExtendNode(value, 64));
             }
         }
     }

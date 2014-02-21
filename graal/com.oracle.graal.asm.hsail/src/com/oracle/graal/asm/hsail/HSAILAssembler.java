@@ -312,9 +312,7 @@ public class HSAILAssembler extends AbstractHSAILAssembler {
         emitString(prefix + " $c0, " + mapRegOrConstToString(src0) + ", " + mapRegOrConstToString(src1) + ";" + comment);
     }
 
-    public void emitConvert(Value dest, Value src, Kind destKind, Kind srcKind) {
-        String destType = getArgTypeFromKind(destKind);
-        String srcType = getArgTypeFromKind(srcKind);
+    public void emitConvert(Value dest, Value src, String destType, String srcType) {
         String prefix = (destType.equals("f32") && srcType.equals("f64")) ? "cvt_near_" : "cvt_";
         emitString(prefix + destType + "_" + srcType + " " + HSAIL.mapRegister(dest) + ", " + HSAIL.mapRegister(src) + ";");
     }
