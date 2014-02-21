@@ -76,6 +76,8 @@ public class TruffleCompilerOptions {
     @Option(help = "")
     public static final OptionValue<Integer> TruffleCompilationDecisionTime = new OptionValue<>(100);
     @Option(help = "")
+    public static final OptionValue<Integer> TruffleMaxCompilationCacheSize = new OptionValue<>(512);
+    @Option(help = "")
     public static final OptionValue<Boolean> TruffleCompilationDecisionTimePrintFail = new OptionValue<>(false);
     @Option(help = "")
     public static final OptionValue<Boolean> TruffleBackgroundCompilation = new OptionValue<>(true);
