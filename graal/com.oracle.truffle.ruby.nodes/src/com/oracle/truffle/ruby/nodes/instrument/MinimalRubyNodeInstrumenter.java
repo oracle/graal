@@ -20,7 +20,7 @@ import com.oracle.truffle.ruby.runtime.methods.*;
  * href="http://www.ruby-doc.org/core-2.0.0/Kernel.html#method-i-set_trace_func">tracing
  * facility</A>. It ignores nodes other than {@linkplain NodePhylum#STATEMENT statements}.
  */
-public final class DefaultRubyNodeInstrumenter extends DefaultNodeInstrumenter implements RubyNodeInstrumenter {
+public final class MinimalRubyNodeInstrumenter extends DefaultNodeInstrumenter implements RubyNodeInstrumenter {
 
     // TODO (mlvdv) convert methods to the general interface? will help with dependencies
 

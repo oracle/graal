@@ -27,7 +27,7 @@ public final class MinimalRubyDebugContext implements DebugContext {
 
     public MinimalRubyDebugContext(RubyContext context) {
         this.executionContext = context;
-        this.instrumenter = new DefaultRubyNodeInstrumenter();
+        this.instrumenter = new MinimalRubyNodeInstrumenter();
         this.debugManager = new DefaultDebugManager(context);
     }
 
@@ -43,7 +43,7 @@ public final class MinimalRubyDebugContext implements DebugContext {
         return debugManager;
     }
 
-    public RubyASTPrinter getASTPrinter() {
+    public ASTPrinter getASTPrinter() {
         return null;
     }
 
