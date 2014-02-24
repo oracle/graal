@@ -35,12 +35,31 @@ public class ConvertCompare extends JTTTest {
         runTest("test", 0, 2.87f);
     }
 
-    public static boolean testChar(int x) {
+    public static boolean testChar42(int x) {
         return ((char) x) == 42;
     }
 
     @Test
     public void run1() {
-        runTest("testChar", 42);
+        runTest("testChar42", 42);
+    }
+
+    @Test
+    public void run2() {
+        runTest("testChar42", (int) Character.MAX_VALUE);
+    }
+
+    public static boolean testCharMax(int x) {
+        return ((char) x) == Character.MAX_VALUE;
+    }
+
+    @Test
+    public void run3() {
+        runTest("testCharMax", 42);
+    }
+
+    @Test
+    public void run4() {
+        runTest("testCharMax", (int) Character.MAX_VALUE);
     }
 }

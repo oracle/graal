@@ -343,8 +343,25 @@ public class StampTool {
 
             long downMask = ZeroExtendNode.zeroExtend(inputStamp.downMask(), inputBits);
             long upMask = ZeroExtendNode.zeroExtend(inputStamp.upMask(), inputBits);
+            long lowerBound;
+            long upperBound;
+            if (inputStamp.lowerBound() < 0) {
+                if (inputStamp.upperBound() >= 0) {
+                    // signed range including 0 and -1
+                    // after sign extension, the whole range from 0 to MAX_INT is possible
+                    return stampForMask(resultBits, downMask, upMask);
+                } else {
+                    // negative range
+                    upperBound = ZeroExtendNode.zeroExtend(inputStamp.lowerBound(), inputBits);
+                    lowerBound = ZeroExtendNode.zeroExtend(inputStamp.upperBound(), inputBits);
+                }
+            } else {
+                // positive range
+                lowerBound = ZeroExtendNode.zeroExtend(inputStamp.lowerBound(), inputBits);
+                upperBound = ZeroExtendNode.zeroExtend(inputStamp.upperBound(), inputBits);
+            }
 
-            return new IntegerStamp(resultBits, inputStamp.isUnsigned(), inputStamp.lowerBound(), inputStamp.upperBound(), downMask, upMask);
+            return new IntegerStamp(resultBits, inputStamp.isUnsigned(), lowerBound, upperBound, downMask, upMask);
         } else {
             return input.illegal();
         }
