@@ -160,6 +160,19 @@ public final class ConstantNode extends FloatingNode implements LIRLowerable {
     }
 
     /**
+     * Returns a node for a primitive of a given type.
+     */
+    public static ConstantNode forPrimitive(Stamp stamp, Constant constant, StructuredGraph graph) {
+        if (stamp instanceof IntegerStamp) {
+            assert constant.getKind().isNumericInteger() && stamp.getStackKind() == constant.getKind().getStackKind();
+            return forIntegerStamp(stamp, constant.asLong(), graph);
+        } else {
+            assert constant.getKind().isNumericFloat() && stamp.getStackKind() == constant.getKind();
+            return forPrimitive(constant, graph);
+        }
+    }
+
+    /**
      * Returns a node for a double constant.
      * 
      * @param d the double value for which to create the instruction

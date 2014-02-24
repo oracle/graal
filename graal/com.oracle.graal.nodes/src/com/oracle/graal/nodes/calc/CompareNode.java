@@ -162,7 +162,7 @@ public abstract class CompareNode extends LogicNode implements Canonicalizable, 
         if (convert.isLossless()) {
             Constant reverseConverted = convert.reverse(constant);
             if (convert.convert(reverseConverted).equals(constant)) {
-                return ConstantNode.forPrimitive(reverseConverted, convert.graph());
+                return ConstantNode.forPrimitive(convert.getInput().stamp(), reverseConverted, convert.graph());
             }
         }
         return null;
