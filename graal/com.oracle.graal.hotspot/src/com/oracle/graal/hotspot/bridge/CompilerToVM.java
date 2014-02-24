@@ -204,8 +204,6 @@ public interface CompilerToVM {
 
     long resolveMethod(HotSpotResolvedObjectType klass, String name, String signature);
 
-    HotSpotResolvedJavaField[] getInstanceFields(HotSpotResolvedObjectType klass);
-
     long getClassInitializer(HotSpotResolvedObjectType klass);
 
     boolean hasFinalizableSubclass(HotSpotResolvedObjectType klass);

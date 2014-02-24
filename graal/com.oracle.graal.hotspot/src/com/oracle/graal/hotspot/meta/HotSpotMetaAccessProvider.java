@@ -112,14 +112,13 @@ public class HotSpotMetaAccessProvider implements MetaAccessProvider {
         // are not used (yet).
         final int modifiers = reflectionField.getModifiers();
         final long offset = Modifier.isStatic(modifiers) ? unsafe.staticFieldOffset(reflectionField) : unsafe.objectFieldOffset(reflectionField);
-        final boolean internal = false;
 
         ResolvedJavaType holder = HotSpotResolvedObjectType.fromClass(fieldHolder);
         ResolvedJavaType type = HotSpotResolvedObjectType.fromClass(fieldType);
 
         if (offset != -1) {
             HotSpotResolvedObjectType resolved = (HotSpotResolvedObjectType) holder;
-            return resolved.createField(name, type, offset, modifiers, internal);
+            return resolved.createField(name, type, offset, modifiers);
         } else {
             // TODO this cast will not succeed
             return (ResolvedJavaField) new HotSpotUnresolvedField(holder, name, type);

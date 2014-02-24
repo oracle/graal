@@ -58,8 +58,7 @@ public class HotSpotResolvedJavaFieldTest {
     }
 
     /**
-     * Tests that
-     * {@link HotSpotResolvedObjectType#createField(String, JavaType, long, int, boolean)} always
+     * Tests that {@link HotSpotResolvedObjectType#createField(String, JavaType, long, int)} always
      * returns the same object for an internal field.
      */
     @Test
@@ -69,7 +68,7 @@ public class HotSpotResolvedJavaFieldTest {
             for (ResolvedJavaField field : type.getInstanceFields(false)) {
                 if (field.isInternal()) {
                     HotSpotResolvedJavaField expected = (HotSpotResolvedJavaField) field;
-                    ResolvedJavaField actual = type.createField(expected.getName(), expected.getType(), expected.offset(), expected.getModifiers(), expected.isInternal());
+                    ResolvedJavaField actual = type.createField(expected.getName(), expected.getType(), expected.offset(), expected.getModifiers());
                     Assert.assertEquals(expected, actual);
                 }
             }

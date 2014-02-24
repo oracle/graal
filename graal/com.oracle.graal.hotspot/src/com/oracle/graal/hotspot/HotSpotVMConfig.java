@@ -806,6 +806,43 @@ public class HotSpotVMConfig extends CompilerObject {
     @HotSpotVMField(name = "Klass::_secondary_super_cache", type = "Klass*", get = HotSpotVMField.Type.OFFSET) @Stable public int secondarySuperCacheOffset;
     @HotSpotVMField(name = "Klass::_secondary_supers", type = "Array<Klass*>*", get = HotSpotVMField.Type.OFFSET) @Stable public int secondarySupersOffset;
 
+    /**
+     * The offset of the _java_mirror field (of type {@link Class}) in a Klass.
+     */
+    @HotSpotVMField(name = "Klass::_java_mirror", type = "oop", get = HotSpotVMField.Type.OFFSET) @Stable public int classMirrorOffset;
+
+    @HotSpotVMField(name = "Klass::_super", type = "Klass*", get = HotSpotVMField.Type.OFFSET) @Stable public int klassSuperKlassOffset;
+    @HotSpotVMField(name = "Klass::_modifier_flags", type = "jint", get = HotSpotVMField.Type.OFFSET) @Stable public int klassModifierFlagsOffset;
+    @HotSpotVMField(name = "Klass::_access_flags", type = "AccessFlags", get = HotSpotVMField.Type.OFFSET) @Stable public int klassAccessFlagsOffset;
+    @HotSpotVMField(name = "Klass::_layout_helper", type = "jint", get = HotSpotVMField.Type.OFFSET) @Stable public int klassLayoutHelperOffset;
+    @HotSpotVMField(name = "Klass::_layout_helper", type = "jint", get = HotSpotVMField.Type.OFFSET) @Stable public int klassInstanceSizeOffset;
+
+    @HotSpotVMConstant(name = "Klass::_lh_neutral_value") @Stable public int klassLayoutHelperNeutralValue;
+    @HotSpotVMConstant(name = "Klass::_lh_instance_slow_path_bit") @Stable public int klassLayoutHelperInstanceSlowPathBit;
+    @HotSpotVMConstant(name = "Klass::_lh_log2_element_size_shift") @Stable public int layoutHelperLog2ElementSizeShift;
+    @HotSpotVMConstant(name = "Klass::_lh_log2_element_size_mask") @Stable public int layoutHelperLog2ElementSizeMask;
+    @HotSpotVMConstant(name = "Klass::_lh_element_type_shift") @Stable public int layoutHelperElementTypeShift;
+    @HotSpotVMConstant(name = "Klass::_lh_element_type_mask") @Stable public int layoutHelperElementTypeMask;
+    @HotSpotVMConstant(name = "Klass::_lh_header_size_shift") @Stable public int layoutHelperHeaderSizeShift;
+    @HotSpotVMConstant(name = "Klass::_lh_header_size_mask") @Stable public int layoutHelperHeaderSizeMask;
+    @HotSpotVMConstant(name = "Klass::_lh_array_tag_shift") @Stable public int layoutHelperArrayTagShift;
+    @HotSpotVMConstant(name = "Klass::_lh_array_tag_type_value") @Stable public int layoutHelperArrayTagTypeValue;
+    @HotSpotVMConstant(name = "Klass::_lh_array_tag_obj_value") @Stable public int layoutHelperArrayTagObjectValue;
+
+    /**
+     * This filters out the bit that differentiates a type array from an object array.
+     */
+    public int layoutHelperElementTypePrimitiveInPlace() {
+        return (layoutHelperArrayTagTypeValue & ~layoutHelperArrayTagObjectValue) << layoutHelperArrayTagShift;
+    }
+
+    /**
+     * Bit pattern in the klass layout helper that can be used to identify arrays.
+     */
+    public final int arrayKlassLayoutHelperIdentifier = 0x80000000;
+
+    @HotSpotVMField(name = "ArrayKlass::_component_mirror", type = "oop", get = HotSpotVMField.Type.OFFSET) @Stable public int arrayKlassComponentMirrorOffset;
+
     @HotSpotVMType(name = "vtableEntry", get = HotSpotVMType.Type.SIZE) @Stable public int vtableEntrySize;
     @HotSpotVMField(name = "vtableEntry::_method", type = "Method*", get = HotSpotVMField.Type.OFFSET) @Stable public int vtableEntryMethodOffset;
     @Stable public int instanceKlassVtableStartOffset;
@@ -817,17 +854,33 @@ public class HotSpotVMConfig extends CompilerObject {
 
     @HotSpotVMField(name = "Array<int>::_length", type = "int", get = HotSpotVMField.Type.OFFSET) @Stable public int arrayU1LengthOffset;
     @HotSpotVMField(name = "Array<u1>::_data", type = "", get = HotSpotVMField.Type.OFFSET) @Stable public int arrayU1DataOffset;
+    @HotSpotVMField(name = "Array<u2>::_data", type = "", get = HotSpotVMField.Type.OFFSET) @Stable public int arrayU2DataOffset;
     @HotSpotVMField(name = "Array<Klass*>::_length", type = "int", get = HotSpotVMField.Type.OFFSET) @Stable public int metaspaceArrayLengthOffset;
     @HotSpotVMField(name = "Array<Klass*>::_data[0]", type = "Klass*", get = HotSpotVMField.Type.OFFSET) @Stable public int metaspaceArrayBaseOffset;
 
     @HotSpotVMField(name = "InstanceKlass::_source_file_name_index", type = "u2", get = HotSpotVMField.Type.OFFSET) @Stable public int klassSourceFileNameIndexOffset;
     @HotSpotVMField(name = "InstanceKlass::_init_state", type = "u1", get = HotSpotVMField.Type.OFFSET) @Stable public int klassStateOffset;
     @HotSpotVMField(name = "InstanceKlass::_constants", type = "ConstantPool*", get = HotSpotVMField.Type.OFFSET) @Stable public int instanceKlassConstantsOffset;
+    @HotSpotVMField(name = "InstanceKlass::_fields", type = "Array<u2>*", get = HotSpotVMField.Type.OFFSET) @Stable public int instanceKlassFieldsOffset;
 
     @HotSpotVMConstant(name = "InstanceKlass::linked") @Stable public int klassStateLinked;
     @HotSpotVMConstant(name = "InstanceKlass::fully_initialized") @Stable public int klassStateFullyInitialized;
 
     @HotSpotVMField(name = "ObjArrayKlass::_element_klass", type = "Klass*", get = HotSpotVMField.Type.OFFSET) @Stable public int arrayClassElementOffset;
+
+    @HotSpotVMConstant(name = "FieldInfo::access_flags_offset") @Stable public int fieldInfoAccessFlagsOffset;
+    @HotSpotVMConstant(name = "FieldInfo::name_index_offset") @Stable public int fieldInfoNameIndexOffset;
+    @HotSpotVMConstant(name = "FieldInfo::signature_index_offset") @Stable public int fieldInfoSignatureIndexOffset;
+    @HotSpotVMConstant(name = "FieldInfo::initval_index_offset") @Stable public int fieldInfoInitvalIndexOffset;
+    @HotSpotVMConstant(name = "FieldInfo::low_packed_offset") @Stable public int fieldInfoLowPackedOffset;
+    @HotSpotVMConstant(name = "FieldInfo::high_packed_offset") @Stable public int fieldInfoHighPackedOffset;
+    @HotSpotVMConstant(name = "FieldInfo::field_slots") @Stable public int fieldInfoFieldSlots;
+
+    @HotSpotVMConstant(name = "FIELDINFO_TAG_SIZE") @Stable public int fieldInfoTagSize;
+
+    @HotSpotVMConstant(name = "JVM_ACC_FIELD_INTERNAL") @Stable public int jvmAccFieldInternal;
+    @HotSpotVMConstant(name = "JVM_ACC_FIELD_STABLE") @Stable public int jvmAccFieldStable;
+    @HotSpotVMConstant(name = "JVM_ACC_FIELD_HAS_GENERIC_SIGNATURE") @Stable public int jvmAccFieldHasGenericSignature;
 
     @HotSpotVMField(name = "Thread::_tlab", type = "ThreadLocalAllocBuffer", get = HotSpotVMField.Type.OFFSET) @Stable public int threadTlabOffset;
 
@@ -908,6 +961,8 @@ public class HotSpotVMConfig extends CompilerObject {
         // TODO add an assert for SPARC
         return javaThreadAnchorOffset + javaFrameAnchorFlagsOffset;
     }
+
+    @HotSpotVMConstant(name = "frame::arg_reg_save_area_bytes", archs = {"amd64"}) @Stable public int runtimeCallStackSize;
 
     @HotSpotVMField(name = "PtrQueue::_active", type = "bool", get = HotSpotVMField.Type.OFFSET) @Stable public int ptrQueueActiveOffset;
     @HotSpotVMField(name = "PtrQueue::_buf", type = "void**", get = HotSpotVMField.Type.OFFSET) @Stable public int ptrQueueBufferOffset;
@@ -1028,8 +1083,13 @@ public class HotSpotVMConfig extends CompilerObject {
 
     @HotSpotVMConstant(name = "HeapWordSize") @Stable public int heapWordSize;
 
+    @HotSpotVMType(name = "Symbol*", get = HotSpotVMType.Type.SIZE) @Stable public int symbolPointerSize;
     @HotSpotVMField(name = "Symbol::_length", type = "unsigned short", get = HotSpotVMField.Type.OFFSET) @Stable public int symbolLengthOffset;
     @HotSpotVMField(name = "Symbol::_body[0]", type = "jbyte", get = HotSpotVMField.Type.OFFSET) @Stable public int symbolBodyOffset;
+
+    @HotSpotVMField(name = "vmSymbols::_symbols[0]", type = "Symbol*", get = HotSpotVMField.Type.ADDRESS) @Stable public long vmSymbolsSymbols;
+    @HotSpotVMConstant(name = "vmSymbols::FIRST_SID") @Stable public int vmSymbolsFirstSID;
+    @HotSpotVMConstant(name = "vmSymbols::SID_LIMIT") @Stable public int vmSymbolsSIDLimit;
 
     @HotSpotVMConstant(name = "JVM_ACC_HAS_FINALIZER") @Stable public int klassHasFinalizerFlag;
 
@@ -1117,40 +1177,6 @@ public class HotSpotVMConfig extends CompilerObject {
     public int g1SATBQueueBufferOffset() {
         return javaThreadSatbMarkQueueOffset + ptrQueueBufferOffset;
     }
-
-    /**
-     * The offset of the _java_mirror field (of type {@link Class}) in a Klass.
-     */
-    @HotSpotVMField(name = "Klass::_java_mirror", type = "oop", get = HotSpotVMField.Type.OFFSET) @Stable public int classMirrorOffset;
-
-    @HotSpotVMConstant(name = "frame::arg_reg_save_area_bytes", archs = {"amd64"}) @Stable public int runtimeCallStackSize;
-
-    @HotSpotVMField(name = "Klass::_super", type = "Klass*", get = HotSpotVMField.Type.OFFSET) @Stable public int klassSuperKlassOffset;
-    @HotSpotVMField(name = "Klass::_modifier_flags", type = "jint", get = HotSpotVMField.Type.OFFSET) @Stable public int klassModifierFlagsOffset;
-    @HotSpotVMField(name = "Klass::_access_flags", type = "AccessFlags", get = HotSpotVMField.Type.OFFSET) @Stable public int klassAccessFlagsOffset;
-    @HotSpotVMField(name = "Klass::_layout_helper", type = "jint", get = HotSpotVMField.Type.OFFSET) @Stable public int klassLayoutHelperOffset;
-    @HotSpotVMField(name = "Klass::_layout_helper", type = "jint", get = HotSpotVMField.Type.OFFSET) @Stable public int klassInstanceSizeOffset;
-
-    @HotSpotVMConstant(name = "Klass::_lh_neutral_value") @Stable public int klassLayoutHelperNeutralValue;
-    @HotSpotVMConstant(name = "Klass::_lh_instance_slow_path_bit") @Stable public int klassLayoutHelperInstanceSlowPathBit;
-    @HotSpotVMConstant(name = "Klass::_lh_log2_element_size_shift") @Stable public int layoutHelperLog2ElementSizeShift;
-    @HotSpotVMConstant(name = "Klass::_lh_log2_element_size_mask") @Stable public int layoutHelperLog2ElementSizeMask;
-    @HotSpotVMConstant(name = "Klass::_lh_element_type_shift") @Stable public int layoutHelperElementTypeShift;
-    @HotSpotVMConstant(name = "Klass::_lh_element_type_mask") @Stable public int layoutHelperElementTypeMask;
-    @HotSpotVMConstant(name = "Klass::_lh_header_size_shift") @Stable public int layoutHelperHeaderSizeShift;
-    @HotSpotVMConstant(name = "Klass::_lh_header_size_mask") @Stable public int layoutHelperHeaderSizeMask;
-    @HotSpotVMConstant(name = "Klass::_lh_array_tag_shift") @Stable public int layoutHelperArrayTagShift;
-    @HotSpotVMConstant(name = "Klass::_lh_array_tag_type_value") @Stable public int layoutHelperArrayTagTypeValue;
-    @HotSpotVMConstant(name = "Klass::_lh_array_tag_obj_value") @Stable public int layoutHelperArrayTagObjectValue;
-
-    /**
-     * This filters out the bit that differentiates a type array from an object array.
-     */
-    public int layoutHelperElementTypePrimitiveInPlace() {
-        return (layoutHelperArrayTagTypeValue & ~layoutHelperArrayTagObjectValue) << layoutHelperArrayTagShift;
-    }
-
-    @HotSpotVMField(name = "ArrayKlass::_component_mirror", type = "oop", get = HotSpotVMField.Type.OFFSET) @Stable public int arrayKlassComponentMirrorOffset;
 
     @HotSpotVMField(name = "java_lang_Class::_klass_offset", type = "int", get = HotSpotVMField.Type.VALUE) @Stable public int klassOffset;
     @HotSpotVMField(name = "java_lang_Class::_array_klass_offset", type = "int", get = HotSpotVMField.Type.VALUE) @Stable public int arrayKlassOffset;

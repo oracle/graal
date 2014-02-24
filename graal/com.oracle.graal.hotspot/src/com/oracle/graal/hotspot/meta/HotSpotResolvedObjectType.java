@@ -53,7 +53,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
      */
     private NodeClass nodeClass;
 
-    private HashMap<Long, ResolvedJavaField> fieldCache;
+    private HashMap<Long, HotSpotResolvedJavaField> fieldCache;
     private HashMap<Long, HotSpotResolvedJavaMethod> methodCache;
     private HotSpotResolvedJavaField[] instanceFields;
     private ResolvedJavaType[] interfaces;
@@ -427,12 +427,12 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
         return runtime().getConfig().recognizedFieldModifiers;
     }
 
-    public synchronized ResolvedJavaField createField(String fieldName, JavaType type, long offset, int rawFlags, boolean internal) {
-        ResolvedJavaField result = null;
+    public synchronized HotSpotResolvedJavaField createField(String fieldName, JavaType type, long offset, int rawFlags) {
+        HotSpotResolvedJavaField result = null;
 
-        int flags = rawFlags & getReflectionFieldModifiers();
+        final int flags = rawFlags & getReflectionFieldModifiers();
 
-        long id = offset + ((long) flags << 32);
+        final long id = offset + ((long) flags << 32);
 
         // (thomaswue) Must cache the fields, because the local load elimination only works if the
         // objects from two field lookups are identical.
@@ -443,10 +443,12 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
         }
 
         if (result == null) {
-            result = new HotSpotResolvedJavaField(this, fieldName, type, offset, flags, internal);
+            result = new HotSpotResolvedJavaField(this, fieldName, type, offset, rawFlags);
             fieldCache.put(id, result);
         } else {
             assert result.getName().equals(fieldName);
+            // assert result.getType().equals(type);
+            assert result.offset() == offset;
             assert result.getModifiers() == flags;
         }
 
@@ -458,8 +460,134 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
         return ((HotSpotResolvedJavaMethod) method).uniqueConcreteMethod();
     }
 
-    private static class OffsetComparator implements Comparator<HotSpotResolvedJavaField> {
+    /**
+     * This class represents the field information for one field contained in the fields array of an
+     * {@code InstanceKlass}. The implementation is similar to the native {@code FieldInfo} class.
+     */
+    private class FieldInfo {
+        /**
+         * Native pointer into the array of Java shorts.
+         */
+        private final long metaspaceData;
 
+        /**
+         * Creates a field info for the field in the fields array at index {@code index}.
+         * 
+         * @param index index to the fields array
+         */
+        public FieldInfo(int index) {
+            HotSpotVMConfig config = runtime().getConfig();
+            // Get Klass::_fields
+            final long metaspaceFields = unsafe.getAddress(metaspaceKlass() + config.instanceKlassFieldsOffset);
+            assert config.fieldInfoFieldSlots == 6 : "revisit the field parsing code";
+            metaspaceData = metaspaceFields + config.arrayU2DataOffset + config.fieldInfoFieldSlots * 2 * index;  // TODO
+            // Short.BYTES
+        }
+
+        private int getAccessFlags() {
+            return readFieldSlot(runtime().getConfig().fieldInfoAccessFlagsOffset);
+        }
+
+        private int getNameIndex() {
+            return readFieldSlot(runtime().getConfig().fieldInfoNameIndexOffset);
+        }
+
+        private int getSignatureIndex() {
+            return readFieldSlot(runtime().getConfig().fieldInfoSignatureIndexOffset);
+        }
+
+        public int getOffset() {
+            HotSpotVMConfig config = runtime().getConfig();
+            final int lowPacked = readFieldSlot(config.fieldInfoLowPackedOffset);
+            final int highPacked = readFieldSlot(config.fieldInfoHighPackedOffset);
+            final int offset = ((highPacked << Short.SIZE) | lowPacked) >> config.fieldInfoTagSize;
+            return offset;
+        }
+
+        /**
+         * Helper method to read an entry (slot) from the field array. Currently field info is laid
+         * on top an array of Java shorts.
+         */
+        private int readFieldSlot(int index) {
+            return unsafe.getChar(metaspaceData + 2 * index);  // TODO Short.BYTES
+        }
+
+        /**
+         * Returns the name of this field as a {@link String}. If the field is an internal field the
+         * name index is pointing into the vmSymbols table.
+         */
+        public String getName() {
+            final int nameIndex = getNameIndex();
+            return isInternal() ? HotSpotVmSymbols.symbolAt(nameIndex) : constantPool().lookupUtf8(nameIndex);
+        }
+
+        /**
+         * Returns the signature of this field as {@link String}. If the field is an internal field
+         * the signature index is pointing into the vmSymbols table.
+         */
+        public String getSignature() {
+            final int signatureIndex = getSignatureIndex();
+            return isInternal() ? HotSpotVmSymbols.symbolAt(signatureIndex) : constantPool().lookupUtf8(signatureIndex);
+        }
+
+        public JavaType getType() {
+            String signature = getSignature();
+            Kind kind = Kind.fromTypeString(signature);
+
+            JavaType type;
+            if (kind.isPrimitive()) {
+                type = HotSpotResolvedPrimitiveType.fromKind(kind);
+            } else {
+                String signatureClass = getNameForClassForName(signature);
+                Class<?> c = null;
+                try {
+                    // This class is the accessing class so we use its classloader.
+                    c = Class.forName(signatureClass, false, mirror().getClassLoader());
+                } catch (ClassNotFoundException e) {
+                    throw new GraalInternalError(e);
+                }
+                if (c == null) {
+                    type = runtime().getVMToCompiler().createUnresolvedJavaType(signature);
+                } else {
+                    type = HotSpotResolvedObjectType.fromClass(c);
+                }
+            }
+            return type;
+        }
+
+        /**
+         * Returns a name that is suitable to be passed to {@link Class#forName}.
+         */
+        private String getNameForClassForName(String name) {
+            // If this is an array type just return it.
+            if (name.charAt(0) == '[') {
+                return name.replace('/', '.');
+            }
+
+            // Decode name if necessary.
+            if (name.charAt(name.length() - 1) == ';') {
+                assert name.charAt(0) == 'L';
+                return name.substring(1, name.length() - 1).replace('/', '.');
+            }
+
+            // Primitive type name.
+            return name;
+        }
+
+        private boolean isInternal() {
+            return (getAccessFlags() & runtime().getConfig().jvmAccFieldInternal) != 0;
+        }
+
+        public boolean isStatic() {
+            return Modifier.isStatic(getAccessFlags());
+        }
+
+        public boolean hasGenericSignature() {
+            return (getAccessFlags() & runtime().getConfig().jvmAccFieldHasGenericSignature) != 0;
+        }
+    }
+
+    private static class OffsetComparator implements Comparator<HotSpotResolvedJavaField> {
         @Override
         public int compare(HotSpotResolvedJavaField o1, HotSpotResolvedJavaField o2) {
             return o1.offset() - o2.offset();
@@ -472,8 +600,24 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
             if (isArray() || isInterface()) {
                 instanceFields = new HotSpotResolvedJavaField[0];
             } else {
-                HotSpotResolvedJavaField[] myFields = runtime().getCompilerToVM().getInstanceFields(this);
-                Arrays.sort(myFields, new OffsetComparator());
+                final int fieldCount = getFieldCount();
+                ArrayList<HotSpotResolvedJavaField> fieldsArray = new ArrayList<>(fieldCount);
+
+                for (int i = 0; i < fieldCount; i++) {
+                    FieldInfo field = new FieldInfo(i);
+
+                    // We are only interested in instance fields.
+                    if (!field.isStatic()) {
+                        HotSpotResolvedJavaField resolvedJavaField = createField(field.getName(), field.getType(), field.getOffset(), field.getAccessFlags());
+                        fieldsArray.add(resolvedJavaField);
+                    }
+                }
+
+                // TODO use in 1.8: fieldsArray.sort(new OffsetComparator());
+                Collections.sort(fieldsArray, new OffsetComparator());
+
+                HotSpotResolvedJavaField[] myFields = fieldsArray.toArray(new HotSpotResolvedJavaField[0]);
+
                 if (javaClass != Object.class) {
                     HotSpotResolvedJavaField[] superFields = (HotSpotResolvedJavaField[]) getSuperclass().getInstanceFields(true);
                     HotSpotResolvedJavaField[] fields = Arrays.copyOf(superFields, superFields.length + myFields.length);
@@ -483,6 +627,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
                     assert myFields.length == 0 : "java.lang.Object has fields!";
                     instanceFields = myFields;
                 }
+
             }
         }
         if (!includeSuperclasses) {
@@ -499,6 +644,29 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
             return Arrays.copyOfRange(instanceFields, myFieldsStart, instanceFields.length);
         }
         return instanceFields;
+    }
+
+    /**
+     * Returns the actual field count of this class's internal {@code InstanceKlass::_fields} array
+     * by walking the array and discounting the generic signature slots at the end of the array.
+     * 
+     * <p>
+     * See {@code FieldStreamBase::init_generic_signature_start_slot}
+     */
+    private int getFieldCount() {
+        HotSpotVMConfig config = runtime().getConfig();
+        final long metaspaceFields = unsafe.getAddress(metaspaceKlass() + config.instanceKlassFieldsOffset);
+        int metaspaceFieldsLength = unsafe.getInt(metaspaceFields + config.arrayU1LengthOffset);
+        int fieldCount = 0;
+
+        for (int i = 0, index = 0; i < metaspaceFieldsLength; i += config.fieldInfoFieldSlots, index++) {
+            FieldInfo field = new FieldInfo(index);
+            if (field.hasGenericSignature()) {
+                metaspaceFieldsLength--;
+            }
+            fieldCount++;
+        }
+        return fieldCount;
     }
 
     @Override

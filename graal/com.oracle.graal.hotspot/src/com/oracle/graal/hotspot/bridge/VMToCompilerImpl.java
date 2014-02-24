@@ -579,7 +579,7 @@ public class VMToCompilerImpl implements VMToCompiler {
     public JavaField createJavaField(JavaType holder, String name, JavaType type, int offset, int flags, boolean internal) {
         if (offset != -1) {
             HotSpotResolvedObjectType resolved = (HotSpotResolvedObjectType) holder;
-            return resolved.createField(name, type, offset, flags, internal);
+            return resolved.createField(name, type, offset, flags);
         }
         return new HotSpotUnresolvedField(holder, name, type);
     }
