@@ -727,10 +727,13 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public AllocatableValue emitReinterpret(PlatformKind to, Value inputVal) {
+    public Value emitReinterpret(PlatformKind to, Value inputVal) {
         Kind from = inputVal.getKind();
-        AllocatableValue input = asAllocatable(inputVal);
+        if (to == from) {
+            return inputVal;
+        }
 
+        AllocatableValue input = asAllocatable(inputVal);
         /*
          * Conversions between integer to floating point types require moves between CPU and FPU
          * registers.
