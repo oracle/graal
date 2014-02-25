@@ -160,7 +160,7 @@ public class MethodCallTargetNode extends CallTargetNode implements IterableNode
         if (targetMethod() == null) {
             return "??Invalid!";
         }
-        return targetMethod().getName();
+        return MetaUtil.format("%h.%n", targetMethod());
     }
 
     public static MethodCallTargetNode find(StructuredGraph graph, ResolvedJavaMethod method) {

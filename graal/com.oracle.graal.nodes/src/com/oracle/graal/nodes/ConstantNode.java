@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.nodes;
 
+import java.lang.reflect.*;
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
@@ -36,7 +37,7 @@ import com.oracle.graal.nodes.type.*;
  * The {@code ConstantNode} represents a {@link Constant constant}.
  */
 @NodeInfo(shortName = "Const", nameTemplate = "Const({p#rawvalue})")
-public final class ConstantNode extends FloatingNode implements LIRLowerable {
+public final class ConstantNode extends FloatingNode implements LIRLowerable, ArrayLengthProvider {
 
     private static final DebugMetric ConstantNodes = Debug.metric("ConstantNodes");
 
@@ -354,5 +355,15 @@ public final class ConstantNode extends FloatingNode implements LIRLowerable {
         } else {
             return super.toString(verbosity);
         }
+    }
+
+    public ValueNode length() {
+        if (value.getKind().isObject()) {
+            Object object = value.asObject();
+            if (object != null && object.getClass().isArray()) {
+                return forIntegerKind(Kind.Int, Array.getLength(object), graph());
+            }
+        }
+        return null;
     }
 }

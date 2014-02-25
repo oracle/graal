@@ -36,6 +36,6 @@ public class DirectCallTargetNode extends LoweredCallTargetNode {
 
     @Override
     public String targetName() {
-        return "Direct#" + ((JavaMethod) target()).getName();
+        return MetaUtil.format("Direct#%h.%n", target());
     }
 }

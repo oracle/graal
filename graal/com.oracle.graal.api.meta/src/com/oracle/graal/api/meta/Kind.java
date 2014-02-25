@@ -147,6 +147,15 @@ public enum Kind implements PlatformKind {
     }
 
     /**
+     * Checks whether this represent an Object of some sort.
+     * 
+     * @return {@code true} if this is {@link #Object} or {@link #NarrowOop}.
+     */
+    public boolean isObject() {
+        return this == Kind.Object || this == Kind.NarrowOop;
+    }
+
+    /**
      * Returns the kind corresponding to the Java type string.
      * 
      * @param typeString the Java type string
