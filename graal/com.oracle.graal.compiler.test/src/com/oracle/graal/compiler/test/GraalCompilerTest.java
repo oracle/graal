@@ -83,10 +83,20 @@ public abstract class GraalCompilerTest extends GraalTest {
     private final Backend backend;
     private final Suites suites;
 
+    private static boolean substitutionsInstalled;
+
+    private void installSubstitutions() {
+        if (!substitutionsInstalled) {
+            this.providers.getReplacements().registerSubstitutions(InjectProfileDataSubstitutions.class);
+            substitutionsInstalled = true;
+        }
+    }
+
     public GraalCompilerTest() {
         this.backend = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend();
         this.providers = getBackend().getProviders();
         this.suites = backend.getSuites().createSuites();
+        installSubstitutions();
     }
 
     /**
@@ -106,6 +116,7 @@ public abstract class GraalCompilerTest extends GraalTest {
         }
         this.providers = backend.getProviders();
         this.suites = backend.getSuites().createSuites();
+        installSubstitutions();
     }
 
     @BeforeClass
@@ -642,5 +653,28 @@ public abstract class GraalCompilerTest extends GraalTest {
 
     protected Replacements getReplacements() {
         return getProviders().getReplacements();
+    }
+
+    /**
+     * Inject a probability for a branch condition into the profiling information of this test case.
+     * 
+     * @param p the probability that cond is true
+     * @param cond the condition of the branch
+     * @return cond
+     */
+    protected static boolean branchProbability(double p, boolean cond) {
+        return cond;
+    }
+
+    /**
+     * Inject an iteration count for a loop condition into the profiling information of this test
+     * case.
+     * 
+     * @param i the iteration count of the loop
+     * @param cond the condition of the loop
+     * @return cond
+     */
+    protected static boolean iterationCount(double i, boolean cond) {
+        return cond;
     }
 }
