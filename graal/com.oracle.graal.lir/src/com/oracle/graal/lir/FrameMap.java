@@ -382,4 +382,6 @@ public abstract class FrameMap {
             }
         }
     }
+
+    public abstract LIRInstruction createSpillMove(AllocatableValue result, Value input);
 }

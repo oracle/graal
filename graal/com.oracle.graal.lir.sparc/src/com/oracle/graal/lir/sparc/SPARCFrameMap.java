@@ -101,4 +101,9 @@ public final class SPARCFrameMap extends FrameMap {
     protected StackSlot allocateNewSpillSlot(PlatformKind kind, int additionalOffset) {
         return StackSlot.get(kind, -spillSize + additionalOffset, true);
     }
+
+    @Override
+    public LIRInstruction createSpillMove(AllocatableValue result, Value input) {
+        return SPARCMove.createMove(result, input);
+    }
 }

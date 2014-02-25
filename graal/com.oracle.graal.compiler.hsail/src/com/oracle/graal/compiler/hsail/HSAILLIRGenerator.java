@@ -62,23 +62,8 @@ import com.oracle.graal.phases.util.*;
  */
 public abstract class HSAILLIRGenerator extends LIRGenerator {
 
-    public static class HSAILSpillMoveFactory implements LIR.SpillMoveFactory {
-
-        @Override
-        public LIRInstruction createMove(AllocatableValue dst, Value src) {
-            if (src instanceof HSAILAddressValue) {
-                return new LeaOp(dst, (HSAILAddressValue) src);
-            } else if (isRegister(src) || isStackSlot(dst)) {
-                return new MoveFromRegOp(dst, src);
-            } else {
-                return new MoveToRegOp(dst, src);
-            }
-        }
-    }
-
     public HSAILLIRGenerator(StructuredGraph graph, Providers providers, FrameMap frameMap, CallingConvention cc, LIR lir) {
         super(graph, providers, frameMap, cc, lir);
-        lir.spillMoveFactory = new HSAILSpillMoveFactory();
     }
 
     @Override

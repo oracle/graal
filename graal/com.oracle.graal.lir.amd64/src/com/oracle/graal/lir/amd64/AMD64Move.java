@@ -41,6 +41,16 @@ import com.oracle.graal.lir.asm.*;
 
 public class AMD64Move {
 
+    public static AMD64LIRInstruction createMove(AllocatableValue dst, Value src) {
+        if (src instanceof AMD64AddressValue) {
+            return new LeaOp(dst, (AMD64AddressValue) src);
+        } else if (isRegister(src) || isStackSlot(dst)) {
+            return new MoveFromRegOp(dst, src);
+        } else {
+            return new MoveToRegOp(dst, src);
+        }
+    }
+
     @Opcode("MOVE")
     public static class MoveToRegOp extends AMD64LIRInstruction implements MoveOp {
 

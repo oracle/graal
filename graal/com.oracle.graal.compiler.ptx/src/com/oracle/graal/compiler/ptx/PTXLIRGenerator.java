@@ -81,17 +81,8 @@ public class PTXLIRGenerator extends LIRGenerator {
     public static final ForeignCallDescriptor ARITHMETIC_FREM = new ForeignCallDescriptor("arithmeticFrem", float.class, float.class, float.class);
     public static final ForeignCallDescriptor ARITHMETIC_DREM = new ForeignCallDescriptor("arithmeticDrem", double.class, double.class, double.class);
 
-    public static class PTXSpillMoveFactory implements LIR.SpillMoveFactory {
-
-        @Override
-        public LIRInstruction createMove(AllocatableValue result, Value input) {
-            throw GraalInternalError.unimplemented("PTXSpillMoveFactory.createMove()");
-        }
-    }
-
     public PTXLIRGenerator(StructuredGraph graph, Providers providers, FrameMap frameMap, CallingConvention cc, LIR lir) {
         super(graph, providers, frameMap, cc, lir);
-        lir.spillMoveFactory = new PTXSpillMoveFactory();
         int callVariables = cc.getArgumentCount() + (cc.getReturn().equals(Value.ILLEGAL) ? 0 : 1);
         lir.setFirstVariableNumber(callVariables);
         nextPredRegNum = 0;

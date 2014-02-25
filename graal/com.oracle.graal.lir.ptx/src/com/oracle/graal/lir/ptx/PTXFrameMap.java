@@ -24,6 +24,7 @@ package com.oracle.graal.lir.ptx;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
 
 /**
@@ -69,4 +70,10 @@ public final class PTXFrameMap extends FrameMap {
     protected StackSlot allocateNewSpillSlot(PlatformKind kind, int additionalOffset) {
         return StackSlot.get(kind, -spillSize + additionalOffset, true);
     }
+
+    @Override
+    public LIRInstruction createSpillMove(AllocatableValue result, Value input) {
+        throw GraalInternalError.shouldNotReachHere("Spill moves should never be necessary for PTX code");
+    }
+
 }

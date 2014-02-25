@@ -39,6 +39,16 @@ import com.oracle.graal.lir.asm.*;
 
 public class SPARCMove {
 
+    public static SPARCLIRInstruction createMove(AllocatableValue dst, Value src) {
+        if (src instanceof SPARCAddressValue) {
+            return new LoadAddressOp(dst, (SPARCAddressValue) src);
+        } else if (isRegister(src) || isStackSlot(dst)) {
+            return new MoveFromRegOp(dst, src);
+        } else {
+            return new MoveToRegOp(dst, src);
+        }
+    }
+
     @Opcode("MOVE")
     public static class MoveToRegOp extends SPARCLIRInstruction implements MoveOp {
 

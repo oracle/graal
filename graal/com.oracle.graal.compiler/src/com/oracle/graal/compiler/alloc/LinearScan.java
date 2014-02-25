@@ -563,7 +563,7 @@ public final class LinearScan {
                             assert isRegister(fromLocation) : "from operand must be a register but is: " + fromLocation + " toLocation=" + toLocation + " spillState=" + interval.spillState();
                             assert isStackSlot(toLocation) : "to operand must be a stack slot";
 
-                            insertionBuffer.append(j + 1, ir.spillMoveFactory.createMove(toLocation, fromLocation));
+                            insertionBuffer.append(j + 1, frameMap.createSpillMove(toLocation, fromLocation));
 
                             Debug.log("inserting move after definition of interval %d to stack slot %s at opId %d", interval.operandNumber, interval.spillSlot(), opId);
                         }
