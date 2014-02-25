@@ -128,7 +128,7 @@ public class OptionValue<T> {
         return new MultipleOverridesScope(current, map);
     }
 
-    private static ThreadLocal<OverrideScope> overrideScopes = new ThreadLocal<>();
+    private static final ThreadLocal<OverrideScope> overrideScopes = new ThreadLocal<>();
 
     /**
      * The raw option value.

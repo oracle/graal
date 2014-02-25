@@ -87,10 +87,10 @@ public final class DebugScope implements Debug.Scope {
         }
     }
 
-    private static ThreadLocal<DebugScope> instanceTL = new ThreadLocal<>();
-    private static ThreadLocal<DebugScope> lastClosedTL = new ThreadLocal<>();
-    private static ThreadLocal<DebugConfig> configTL = new ThreadLocal<>();
-    private static ThreadLocal<Throwable> lastExceptionThrownTL = new ThreadLocal<>();
+    private static final ThreadLocal<DebugScope> instanceTL = new ThreadLocal<>();
+    private static final ThreadLocal<DebugScope> lastClosedTL = new ThreadLocal<>();
+    private static final ThreadLocal<DebugConfig> configTL = new ThreadLocal<>();
+    private static final ThreadLocal<Throwable> lastExceptionThrownTL = new ThreadLocal<>();
 
     private final DebugScope parent;
     private final DebugConfig parentConfig;
