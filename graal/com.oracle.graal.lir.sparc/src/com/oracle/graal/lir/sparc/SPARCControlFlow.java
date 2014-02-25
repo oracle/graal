@@ -57,6 +57,26 @@ import com.oracle.graal.nodes.calc.*;
 
 public class SPARCControlFlow {
 
+    public static class ReturnOp extends SPARCLIRInstruction implements BlockEndOp {
+
+        @Use({REG, ILLEGAL}) protected Value x;
+
+        public ReturnOp(Value x) {
+            this.x = x;
+        }
+
+        @Override
+        public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
+            emitCodeHelper(crb, masm);
+        }
+
+        public static void emitCodeHelper(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
+            new Ret().emit(masm);
+            // On SPARC we always leave the frame (in the delay slot).
+            crb.frameContext.leave(crb);
+        }
+    }
+
     public static class BranchOp extends SPARCLIRInstruction implements StandardOp.BranchOp {
 
         protected final Condition condition;
@@ -129,6 +149,122 @@ public class SPARCControlFlow {
                 break;
             default:
                 throw GraalInternalError.shouldNotReachHere();
+        }
+    }
+
+    public static class StrategySwitchOp extends SPARCLIRInstruction implements BlockEndOp {
+        @Use({CONST}) protected Constant[] keyConstants;
+        private final LabelRef[] keyTargets;
+        private LabelRef defaultTarget;
+        @Alive({REG}) protected Value key;
+        @Temp({REG, ILLEGAL}) protected Value scratch;
+        private final SwitchStrategy strategy;
+
+        public StrategySwitchOp(SwitchStrategy strategy, LabelRef[] keyTargets, LabelRef defaultTarget, Value key, Value scratch) {
+            this.strategy = strategy;
+            this.keyConstants = strategy.keyConstants;
+            this.keyTargets = keyTargets;
+            this.defaultTarget = defaultTarget;
+            this.key = key;
+            this.scratch = scratch;
+            assert keyConstants.length == keyTargets.length;
+            assert keyConstants.length == strategy.keyProbabilities.length;
+            assert (scratch.getKind() == Kind.Illegal) == (key.getKind() == Kind.Int);
+        }
+
+        @Override
+        public void emitCode(final CompilationResultBuilder crb, final SPARCMacroAssembler masm) {
+            final Register keyRegister = asRegister(key);
+
+            BaseSwitchClosure closure = new BaseSwitchClosure(crb, masm, keyTargets, defaultTarget) {
+                @Override
+                protected void conditionalJump(int index, Condition condition, Label target) {
+                    switch (key.getKind()) {
+                        case Int:
+                            if (crb.codeCache.needsDataPatch(keyConstants[index])) {
+                                crb.recordInlineDataInCode(keyConstants[index]);
+                            }
+                            long lc = keyConstants[index].asLong();
+                            assert NumUtil.isInt(lc);
+                            new Cmp(keyRegister, (int) lc).emit(masm);
+                            emitCompare(masm, target, condition, CC.Icc);
+                            break;
+                        case Long: {
+                            Register temp = asLongReg(scratch);
+                            SPARCMove.move(crb, masm, temp.asValue(Kind.Long), keyConstants[index]);
+                            new Cmp(keyRegister, temp).emit(masm);
+                            emitCompare(masm, target, condition, CC.Xcc);
+                            break;
+                        }
+                        case Object: {
+                            Register temp = asObjectReg(scratch);
+                            SPARCMove.move(crb, masm, temp.asValue(Kind.Object), keyConstants[index]);
+                            new Cmp(keyRegister, temp).emit(masm);
+                            emitCompare(masm, target, condition, CC.Ptrcc);
+                            break;
+                        }
+                        default:
+                            throw new GraalInternalError("switch only supported for int, long and object");
+                    }
+                    new Nop().emit(masm);  // delay slot
+                }
+            };
+            strategy.run(closure);
+        }
+    }
+
+    public static class TableSwitchOp extends SPARCLIRInstruction implements BlockEndOp {
+
+        private final int lowKey;
+        private final LabelRef defaultTarget;
+        private final LabelRef[] targets;
+        @Alive protected Value index;
+        @Temp protected Value scratch;
+
+        public TableSwitchOp(final int lowKey, final LabelRef defaultTarget, final LabelRef[] targets, Variable index, Variable scratch) {
+            this.lowKey = lowKey;
+            this.defaultTarget = defaultTarget;
+            this.targets = targets;
+            this.index = index;
+            this.scratch = scratch;
+        }
+
+        @Override
+        public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
+            Register value = asIntReg(index);
+            Register scratchReg = asLongReg(scratch);
+
+            Buffer buf = masm.codeBuffer;
+            // Compare index against jump table bounds
+            int highKey = lowKey + targets.length - 1;
+            if (lowKey != 0) {
+                // subtract the low value from the switch value
+                new Sub(value, lowKey, value).emit(masm);
+                // masm.setp_gt_s32(value, highKey - lowKey);
+            } else {
+                // masm.setp_gt_s32(value, highKey);
+            }
+
+            // Jump to default target if index is not within the jump table
+            if (defaultTarget != null) {
+                new Bpgu(CC.Icc, defaultTarget.label()).emit(masm);
+                new Nop().emit(masm);  // delay slot
+            }
+
+            // Load jump table entry into scratch and jump to it
+            // masm.movslq(value, new AMD64Address(scratch, value, Scale.Times4, 0));
+            // masm.addq(scratch, value);
+            new Jmp(new SPARCAddress(scratchReg, 0)).emit(masm);
+            new Nop().emit(masm);  // delay slot
+
+            // address of jump table
+            int tablePos = buf.position();
+
+            JumpTable jt = new JumpTable(tablePos, lowKey, highKey, 4);
+            crb.compilationResult.addAnnotation(jt);
+
+            // SPARC: unimp: tableswitch extract
+            throw GraalInternalError.unimplemented();
         }
     }
 
@@ -260,142 +396,6 @@ public class SPARCControlFlow {
                 return true;
             default:
                 throw GraalInternalError.shouldNotReachHere();
-        }
-    }
-
-    public static class ReturnOp extends SPARCLIRInstruction {
-
-        @Use({REG, ILLEGAL}) protected Value x;
-
-        public ReturnOp(Value x) {
-            this.x = x;
-        }
-
-        @Override
-        public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
-            emitCodeHelper(crb, masm);
-        }
-
-        public static void emitCodeHelper(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
-            new Ret().emit(masm);
-            // On SPARC we always leave the frame (in the delay slot).
-            crb.frameContext.leave(crb);
-        }
-    }
-
-    public static class StrategySwitchOp extends SPARCLIRInstruction implements BlockEndOp {
-        @Use({CONST}) protected Constant[] keyConstants;
-        private final LabelRef[] keyTargets;
-        private LabelRef defaultTarget;
-        @Alive({REG}) protected Value key;
-        @Temp({REG, ILLEGAL}) protected Value scratch;
-        private final SwitchStrategy strategy;
-
-        public StrategySwitchOp(SwitchStrategy strategy, LabelRef[] keyTargets, LabelRef defaultTarget, Value key, Value scratch) {
-            this.strategy = strategy;
-            this.keyConstants = strategy.keyConstants;
-            this.keyTargets = keyTargets;
-            this.defaultTarget = defaultTarget;
-            this.key = key;
-            this.scratch = scratch;
-            assert keyConstants.length == keyTargets.length;
-            assert keyConstants.length == strategy.keyProbabilities.length;
-            assert (scratch.getKind() == Kind.Illegal) == (key.getKind() == Kind.Int);
-        }
-
-        @Override
-        public void emitCode(final CompilationResultBuilder crb, final SPARCMacroAssembler masm) {
-            final Register keyRegister = asRegister(key);
-
-            BaseSwitchClosure closure = new BaseSwitchClosure(crb, masm, keyTargets, defaultTarget) {
-                @Override
-                protected void conditionalJump(int index, Condition condition, Label target) {
-                    switch (key.getKind()) {
-                        case Int:
-                            if (crb.codeCache.needsDataPatch(keyConstants[index])) {
-                                crb.recordInlineDataInCode(keyConstants[index]);
-                            }
-                            long lc = keyConstants[index].asLong();
-                            assert NumUtil.isInt(lc);
-                            new Cmp(keyRegister, (int) lc).emit(masm);
-                            emitCompare(masm, target, condition, CC.Icc);
-                            break;
-                        case Long: {
-                            Register temp = asLongReg(scratch);
-                            SPARCMove.move(crb, masm, temp.asValue(Kind.Long), keyConstants[index]);
-                            new Cmp(keyRegister, temp).emit(masm);
-                            emitCompare(masm, target, condition, CC.Xcc);
-                            break;
-                        }
-                        case Object: {
-                            Register temp = asObjectReg(scratch);
-                            SPARCMove.move(crb, masm, temp.asValue(Kind.Object), keyConstants[index]);
-                            new Cmp(keyRegister, temp).emit(masm);
-                            emitCompare(masm, target, condition, CC.Ptrcc);
-                            break;
-                        }
-                        default:
-                            throw new GraalInternalError("switch only supported for int, long and object");
-                    }
-                    new Nop().emit(masm);  // delay slot
-                }
-            };
-            strategy.run(closure);
-        }
-    }
-
-    public static class TableSwitchOp extends SPARCLIRInstruction implements BlockEndOp {
-
-        private final int lowKey;
-        private final LabelRef defaultTarget;
-        private final LabelRef[] targets;
-        @Alive protected Value index;
-        @Temp protected Value scratch;
-
-        public TableSwitchOp(final int lowKey, final LabelRef defaultTarget, final LabelRef[] targets, Variable index, Variable scratch) {
-            this.lowKey = lowKey;
-            this.defaultTarget = defaultTarget;
-            this.targets = targets;
-            this.index = index;
-            this.scratch = scratch;
-        }
-
-        @Override
-        public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
-            Register value = asIntReg(index);
-            Register scratchReg = asLongReg(scratch);
-
-            Buffer buf = masm.codeBuffer;
-            // Compare index against jump table bounds
-            int highKey = lowKey + targets.length - 1;
-            if (lowKey != 0) {
-                // subtract the low value from the switch value
-                new Sub(value, lowKey, value).emit(masm);
-                // masm.setp_gt_s32(value, highKey - lowKey);
-            } else {
-                // masm.setp_gt_s32(value, highKey);
-            }
-
-            // Jump to default target if index is not within the jump table
-            if (defaultTarget != null) {
-                new Bpgu(CC.Icc, defaultTarget.label()).emit(masm);
-                new Nop().emit(masm);  // delay slot
-            }
-
-            // Load jump table entry into scratch and jump to it
-            // masm.movslq(value, new AMD64Address(scratch, value, Scale.Times4, 0));
-            // masm.addq(scratch, value);
-            new Jmp(new SPARCAddress(scratchReg, 0)).emit(masm);
-            new Nop().emit(masm);  // delay slot
-
-            // address of jump table
-            int tablePos = buf.position();
-
-            JumpTable jt = new JumpTable(tablePos, lowKey, highKey, 4);
-            crb.compilationResult.addAnnotation(jt);
-
-            // SPARC: unimp: tableswitch extract
-            throw GraalInternalError.unimplemented();
         }
     }
 }

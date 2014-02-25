@@ -490,6 +490,13 @@ public enum SPARCArithmetic {
             }
         } else if (isConstant(src2)) {
             switch (opcode) {
+                case IREM:
+                    assert isSimm13(crb.asIntConst(src2));
+                    new Sra(asIntReg(src1), 0, asIntReg(src1)).emit(masm);
+                    new Sdivx(asIntReg(src1), crb.asIntConst(src2), asIntReg(scratch1)).emit(masm);
+                    new Mulx(asIntReg(scratch1), crb.asIntConst(src2), asIntReg(scratch2)).emit(masm);
+                    new Sub(asIntReg(src1), asIntReg(scratch2), asIntReg(dst)).emit(masm);
+                    break;
                 case LREM:
                     assert isSimm13(crb.asIntConst(src2));
                     new Sdivx(asLongReg(src1), crb.asIntConst(src2), asLongReg(scratch1)).emit(masm);

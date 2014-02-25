@@ -26,11 +26,12 @@ import static com.oracle.graal.hotspot.HotSpotBackend.*;
 
 import com.oracle.graal.asm.sparc.*;
 import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.StandardOp.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.sparc.*;
 
 @Opcode("DEOPT")
-final class SPARCDeoptimizeOp extends SPARCLIRInstruction {
+final class SPARCDeoptimizeOp extends SPARCLIRInstruction implements BlockEndOp {
 
     @State private LIRFrameState info;
 

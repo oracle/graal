@@ -23,12 +23,13 @@
 package com.oracle.graal.hotspot.sparc;
 
 import com.oracle.graal.lir.sparc.*;
+import com.oracle.graal.lir.StandardOp.*;
 import com.oracle.graal.lir.asm.*;
 
 /**
  * Superclass for operations that leave a method's frame.
  */
-abstract class SPARCHotSpotEpilogueOp extends SPARCLIRInstruction {
+abstract class SPARCHotSpotEpilogueOp extends SPARCLIRInstruction implements BlockEndOp {
 
     protected void leaveFrame(CompilationResultBuilder crb) {
         crb.frameContext.leave(crb);

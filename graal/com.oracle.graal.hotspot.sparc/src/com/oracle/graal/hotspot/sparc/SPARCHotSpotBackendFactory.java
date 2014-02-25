@@ -49,7 +49,7 @@ public class SPARCHotSpotBackendFactory implements HotSpotBackendFactory {
         assert host == null;
         TargetDescription target = createTarget();
 
-        HotSpotRegistersProvider registers = new HotSpotRegisters(Register.None, Register.None, Register.None); // FIXME
+        HotSpotRegistersProvider registers = createRegisters();
         HotSpotMetaAccessProvider metaAccess = new HotSpotMetaAccessProvider(runtime);
         HotSpotCodeCacheProvider codeCache = new SPARCHotSpotCodeCacheProvider(runtime, target);
         HotSpotConstantReflectionProvider constantReflection = new HotSpotConstantReflectionProvider(runtime);
@@ -66,6 +66,10 @@ public class SPARCHotSpotBackendFactory implements HotSpotBackendFactory {
         HotSpotProviders providers = new HotSpotProviders(metaAccess, codeCache, constantReflection, foreignCalls, lowerer, replacements, disassembler, suites, registers);
 
         return new SPARCHotSpotBackend(runtime, providers);
+    }
+
+    protected HotSpotRegistersProvider createRegisters() {
+        return new HotSpotRegisters(SPARC.g2, SPARC.g6, SPARC.sp);
     }
 
     @SuppressWarnings("unused")

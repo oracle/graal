@@ -36,6 +36,4 @@ public @interface HotSpotVMFlag {
      * required on all architectures.
      */
     String[] archs() default {};
-
-    boolean optional() default false;
 }

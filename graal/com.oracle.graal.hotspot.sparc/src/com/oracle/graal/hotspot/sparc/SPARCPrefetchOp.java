@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,16 +23,16 @@
 
 package com.oracle.graal.hotspot.sparc;
 
+import static com.oracle.graal.asm.sparc.SPARCMacroAssembler.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 
 import com.oracle.graal.asm.sparc.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.sparc.*;
 
 public class SPARCPrefetchOp extends SPARCLIRInstruction {
 
-    private final int instr;  // AllocatePrefecthInstr
+    private final int instr;  // AllocatePrefetchInstr
     @Alive({COMPOSITE}) protected SPARCAddressValue address;
 
     public SPARCPrefetchOp(SPARCAddressValue address, int instr) {
@@ -43,8 +43,6 @@ public class SPARCPrefetchOp extends SPARCLIRInstruction {
     @Override
     public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
         assert instr == 0 : "only supported value is 0";
-        // masm.prefetch(address.toAddress(), 2);
-        throw GraalInternalError.unimplemented("prefetch instruction");
+        new Prefetch(address.toAddress(), Prefetch.Fcn.SeveralWritesAndPossiblyReads).emit(masm);
     }
-
 }

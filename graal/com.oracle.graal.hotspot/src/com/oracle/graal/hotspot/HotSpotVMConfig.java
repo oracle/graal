@@ -708,7 +708,7 @@ public class HotSpotVMConfig extends CompilerObject {
     @HotSpotVMFlag(name = "CodeEntryAlignment") @Stable public int codeEntryAlignment;
     @HotSpotVMFlag(name = "VerifyOops") @Stable public boolean verifyOops;
     @HotSpotVMFlag(name = "CITime") @Stable public boolean ciTime;
-    @HotSpotVMFlag(name = "CITimeEach", optional = true) @Stable public boolean ciTimeEach;
+    @HotSpotVMFlag(name = "CITimeEach") @Stable public boolean ciTimeEach;
     @HotSpotVMFlag(name = "CompileThreshold") @Stable public long compileThreshold;
     @HotSpotVMFlag(name = "CompileTheWorld") @Stable public boolean compileTheWorld;
     @HotSpotVMFlag(name = "CompileTheWorldStartAt") @Stable public int compileTheWorldStartAt;
@@ -724,7 +724,7 @@ public class HotSpotVMConfig extends CompilerObject {
     @HotSpotVMFlag(name = "UseTLAB") @Stable public boolean useTLAB;
     @HotSpotVMFlag(name = "UseBiasedLocking") @Stable public boolean useBiasedLocking;
     @HotSpotVMFlag(name = "UsePopCountInstruction") @Stable public boolean usePopCountInstruction;
-    @HotSpotVMFlag(name = "UseCountLeadingZerosInstruction", optional = true) @Stable public boolean useCountLeadingZerosInstruction;
+    @HotSpotVMFlag(name = "UseCountLeadingZerosInstruction", archs = {"amd64"}) @Stable public boolean useCountLeadingZerosInstruction;
     @HotSpotVMFlag(name = "UseAESIntrinsics") @Stable public boolean useAESIntrinsics;
     @HotSpotVMFlag(name = "UseCRC32Intrinsics") @Stable public boolean useCRC32Intrinsics;
     @HotSpotVMFlag(name = "UseG1GC") @Stable public boolean useG1GC;
