@@ -329,7 +329,17 @@ public class StampTool {
             long downMask = SignExtendNode.signExtend(inputStamp.downMask(), inputBits) & defaultMask;
             long upMask = SignExtendNode.signExtend(inputStamp.upMask(), inputBits) & defaultMask;
 
-            return new IntegerStamp(resultBits, inputStamp.isUnsigned(), inputStamp.lowerBound(), inputStamp.upperBound(), downMask, upMask);
+            long lowerBound;
+            long upperBound;
+            if (inputStamp.isUnsigned()) {
+                lowerBound = SignExtendNode.signExtend(inputStamp.lowerBound(), inputBits) & defaultMask;
+                upperBound = SignExtendNode.signExtend(inputStamp.upperBound(), inputBits) & defaultMask;
+            } else {
+                lowerBound = inputStamp.lowerBound();
+                upperBound = inputStamp.upperBound();
+            }
+
+            return new IntegerStamp(resultBits, inputStamp.isUnsigned(), lowerBound, upperBound, downMask, upMask);
         } else {
             return input.illegal();
         }
@@ -343,23 +353,15 @@ public class StampTool {
 
             long downMask = ZeroExtendNode.zeroExtend(inputStamp.downMask(), inputBits);
             long upMask = ZeroExtendNode.zeroExtend(inputStamp.upMask(), inputBits);
-            long lowerBound;
-            long upperBound;
-            if (inputStamp.lowerBound() < 0) {
-                if (inputStamp.upperBound() >= 0) {
-                    // signed range including 0 and -1
-                    // after sign extension, the whole range from 0 to MAX_INT is possible
-                    return stampForMask(resultBits, downMask, upMask);
-                } else {
-                    // negative range
-                    upperBound = ZeroExtendNode.zeroExtend(inputStamp.lowerBound(), inputBits);
-                    lowerBound = ZeroExtendNode.zeroExtend(inputStamp.upperBound(), inputBits);
-                }
-            } else {
-                // positive range
-                lowerBound = ZeroExtendNode.zeroExtend(inputStamp.lowerBound(), inputBits);
-                upperBound = ZeroExtendNode.zeroExtend(inputStamp.upperBound(), inputBits);
+
+            if (inputStamp.lowerBound() < 0 && inputStamp.upperBound() >= 0) {
+                // signed range including 0 and -1
+                // after sign extension, the whole range from 0 to MAX_INT is possible
+                return stampForMask(resultBits, downMask, upMask);
             }
+
+            long lowerBound = ZeroExtendNode.zeroExtend(inputStamp.lowerBound(), inputBits);
+            long upperBound = ZeroExtendNode.zeroExtend(inputStamp.upperBound(), inputBits);
 
             return new IntegerStamp(resultBits, inputStamp.isUnsigned(), lowerBound, upperBound, downMask, upMask);
         } else {
