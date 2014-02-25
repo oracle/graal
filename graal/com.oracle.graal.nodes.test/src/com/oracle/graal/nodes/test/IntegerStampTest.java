@@ -260,4 +260,68 @@ public class IntegerStampTest {
     public void testAnd() {
         assertEquals(new IntegerStamp(32, false, Integer.MIN_VALUE, 0x40000000L, 0, 0xc0000000L), StampTool.and(StampFactory.forKind(Kind.Int), StampFactory.forConstant(Constant.forInt(0xc0000000))));
     }
+
+    private static void testSignExtendShort(long lower, long upper) {
+        Stamp shortStamp = StampFactory.forInteger(16, false, lower, upper);
+        Stamp intStamp = StampTool.signExtend(shortStamp, 32);
+        assertEquals(StampFactory.forInteger(32, false, lower, upper), intStamp);
+    }
+
+    @Test
+    public void testSignExtend() {
+        testSignExtendShort(5, 7);
+        testSignExtendShort(0, 42);
+        testSignExtendShort(-42, -1);
+        testSignExtendShort(-42, 0);
+        testSignExtendShort(-1, 1);
+        testSignExtendShort(Short.MIN_VALUE, Short.MAX_VALUE);
+    }
+
+    private static void testZeroExtendShort(long lower, long upper, long newLower, long newUpper) {
+        Stamp shortStamp = StampFactory.forInteger(16, false, lower, upper);
+        Stamp intStamp = StampTool.zeroExtend(shortStamp, 32);
+        assertEquals(StampFactory.forInteger(32, false, newLower, newUpper), intStamp);
+    }
+
+    @Test
+    public void testZeroExtend() {
+        testZeroExtendShort(5, 7, 5, 7);
+        testZeroExtendShort(0, 42, 0, 42);
+        testZeroExtendShort(-42, -1, 0xFFFF - 41, 0xFFFF);
+        testZeroExtendShort(-42, 0, 0, 0xFFFF);
+        testZeroExtendShort(-1, 1, 0, 0xFFFF);
+        testZeroExtendShort(Short.MIN_VALUE, Short.MAX_VALUE, 0, 0xFFFF);
+    }
+
+    private static void testSignExtendChar(long lower, long upper, long newLower, long newUpper) {
+        Stamp charStamp = StampFactory.forInteger(16, true, lower, upper);
+        Stamp uintStamp = StampTool.signExtend(charStamp, 32);
+        assertEquals(StampFactory.forInteger(32, true, newLower, newUpper), uintStamp);
+    }
+
+    @Test
+    public void testSignExtendUnsigned() {
+        testSignExtendChar(5, 7, 5, 7);
+        testSignExtendChar(0, 42, 0, 42);
+        testSignExtendChar(5, 0xF000, 5, 0xFFFFF000L);
+        testSignExtendChar(0, 0xF000, 0, 0xFFFFF000L);
+        testSignExtendChar(0xF000, Character.MAX_VALUE, 0xFFFFF000L, 0xFFFFFFFFL);
+        testSignExtendChar(Character.MIN_VALUE, Character.MAX_VALUE, 0, 0xFFFFFFFFL);
+    }
+
+    private static void testZeroExtendChar(long lower, long upper) {
+        Stamp charStamp = StampFactory.forInteger(16, true, lower, upper);
+        Stamp uintStamp = StampTool.zeroExtend(charStamp, 32);
+        assertEquals(StampFactory.forInteger(32, true, lower, upper), uintStamp);
+    }
+
+    @Test
+    public void testZeroExtendUnsigned() {
+        testZeroExtendChar(5, 7);
+        testZeroExtendChar(0, 42);
+        testZeroExtendChar(5, 0xF000);
+        testZeroExtendChar(0, 0xF000);
+        testZeroExtendChar(0xF000, Character.MAX_VALUE);
+        testZeroExtendChar(Character.MIN_VALUE, Character.MAX_VALUE);
+    }
 }
