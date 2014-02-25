@@ -52,6 +52,8 @@ import com.oracle.graal.phases.tiers.*;
 
 public class CompilationTask implements Runnable, Comparable {
 
+    private static final DebugMetric BAILOUTS = Debug.metric("Bailouts");
+
     public static final ThreadLocal<Boolean> withinEnqueue = new ThreadLocal<Boolean>() {
 
         @Override
@@ -254,7 +256,7 @@ public class CompilationTask implements Runnable, Comparable {
             }
             stats.finish(method);
         } catch (BailoutException bailout) {
-            Debug.metric("Bailouts").increment();
+            BAILOUTS.increment();
             if (ExitVMOnBailout.getValue()) {
                 TTY.cachedOut.println(MetaUtil.format("Bailout in %H.%n(%p)", method));
                 bailout.printStackTrace(TTY.cachedOut);

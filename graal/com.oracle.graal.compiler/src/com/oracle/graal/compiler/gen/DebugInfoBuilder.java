@@ -165,6 +165,11 @@ public class DebugInfoBuilder {
         return toValue(state.lockAt(i));
     }
 
+    private static final DebugMetric STATE_VIRTUAL_OBJECTS = Debug.metric("StateVirtualObjects");
+    private static final DebugMetric STATE_ILLEGALS = Debug.metric("StateIllegals");
+    private static final DebugMetric STATE_VARIABLES = Debug.metric("StateVariables");
+    private static final DebugMetric STATE_CONSTANTS = Debug.metric("StateConstants");
+
     protected Value toValue(ValueNode value) {
         if (value instanceof VirtualObjectNode) {
             VirtualObjectNode obj = (VirtualObjectNode) value;
@@ -182,22 +187,22 @@ public class DebugInfoBuilder {
                     vobject = VirtualObject.get(obj.type(), null, virtualObjects.size());
                     virtualObjects.put(obj, vobject);
                 }
-                Debug.metric("StateVirtualObjects").increment();
+                STATE_VIRTUAL_OBJECTS.increment();
                 return vobject;
             }
         } else if (value instanceof ConstantNode) {
-            Debug.metric("StateConstants").increment();
+            STATE_CONSTANTS.increment();
             return ((ConstantNode) value).getValue();
 
         } else if (value != null) {
-            Debug.metric("StateVariables").increment();
+            STATE_VARIABLES.increment();
             Value operand = nodeOperands.get(value);
             assert operand != null && (operand instanceof Variable || operand instanceof Constant) : operand + " for " + value;
             return operand;
 
         } else {
             // return a dummy value because real value not needed
-            Debug.metric("StateIllegals").increment();
+            STATE_ILLEGALS.increment();
             return Value.ILLEGAL;
         }
     }
