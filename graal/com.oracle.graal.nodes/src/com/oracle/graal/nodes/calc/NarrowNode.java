@@ -71,19 +71,29 @@ public class NarrowNode extends IntegerConvertNode implements Simplifiable {
         }
 
         if (getInput() instanceof NarrowNode) {
+            // zzzzzzzz yyyyxxxx -(narrow)-> yyyyxxxx -(narrow)-> xxxx
+            // ==> zzzzzzzz yyyyxxxx -(narrow)-> xxxx
             NarrowNode other = (NarrowNode) getInput();
             return graph().unique(new NarrowNode(other.getInput(), getResultBits()));
         } else if (getInput() instanceof IntegerConvertNode) {
             // SignExtendNode or ZeroExtendNode
             IntegerConvertNode other = (IntegerConvertNode) getInput();
             if (getResultBits() == other.getInputBits()) {
+                // xxxx -(extend)-> yyyy xxxx -(narrow)-> xxxx
+                // ==> no-op
                 return other.getInput();
             } else if (getResultBits() < other.getInputBits()) {
+                // yyyyxxxx -(extend)-> zzzzzzzz yyyyxxxx -(narrow)-> xxxx
+                // ==> yyyyxxxx -(narrow)-> xxxx
                 return graph().unique(new NarrowNode(other.getInput(), getResultBits()));
             } else {
                 if (other instanceof SignExtendNode) {
+                    // sxxx -(sign-extend)-> ssssssss sssssxxx -(narrow)-> sssssxxx
+                    // ==> sxxx -(sign-extend)-> sssssxxx
                     return graph().unique(new SignExtendNode(other.getInput(), getResultBits()));
                 } else if (other instanceof ZeroExtendNode) {
+                    // xxxx -(zero-extend)-> 00000000 00000xxx -(narrow)-> 0000xxxx
+                    // ==> xxxx -(zero-extend)-> 0000xxxx
                     return graph().unique(new ZeroExtendNode(other.getInput(), getResultBits()));
                 }
             }

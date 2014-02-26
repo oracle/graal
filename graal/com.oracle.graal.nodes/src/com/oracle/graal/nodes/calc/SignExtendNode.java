@@ -73,11 +73,15 @@ public class SignExtendNode extends IntegerConvertNode implements Canonicalizabl
         }
 
         if (getInput() instanceof SignExtendNode) {
+            // sxxx -(sign-extend)-> ssss sxxx -(sign-extend)-> ssssssss sssssxxx
+            // ==> sxxx -(sign-extend)-> ssssssss sssssxxx
             SignExtendNode other = (SignExtendNode) getInput();
             return graph().unique(new SignExtendNode(other.getInput(), getResultBits()));
         } else if (getInput() instanceof ZeroExtendNode) {
             ZeroExtendNode other = (ZeroExtendNode) getInput();
             if (other.getResultBits() > other.getInputBits()) {
+                // sxxx -(zero-extend)-> 0000 sxxx -(sign-extend)-> 00000000 0000sxxx
+                // ==> sxxx -(zero-extend)-> 00000000 0000sxxx
                 return graph().unique(new ZeroExtendNode(other.getInput(), getResultBits()));
             }
         }
@@ -85,6 +89,8 @@ public class SignExtendNode extends IntegerConvertNode implements Canonicalizabl
         if (getInput().stamp() instanceof IntegerStamp) {
             IntegerStamp inputStamp = (IntegerStamp) getInput().stamp();
             if ((inputStamp.upMask() & (1L << (getInputBits() - 1))) == 0L) {
+                // 0xxx -(sign-extend)-> 0000 0xxx
+                // ==> 0xxx -(zero-extend)-> 0000 0xxx
                 return graph().unique(new ZeroExtendNode(getInput(), getResultBits()));
             }
         }

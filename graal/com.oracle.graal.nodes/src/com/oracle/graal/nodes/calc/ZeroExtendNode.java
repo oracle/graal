@@ -69,6 +69,8 @@ public class ZeroExtendNode extends IntegerConvertNode implements Canonicalizabl
         }
 
         if (getInput() instanceof ZeroExtendNode) {
+            // xxxx -(zero-extend)-> 0000 xxxx -(zero-extend)-> 00000000 0000xxxx
+            // ==> xxxx -(zero-extend)-> 00000000 0000xxxx
             ZeroExtendNode other = (ZeroExtendNode) getInput();
             return graph().unique(new ZeroExtendNode(other.getInput(), getResultBits()));
         }
