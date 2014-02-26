@@ -24,6 +24,7 @@ package com.oracle.truffle.api.dsl.test;
 
 import static org.junit.Assert.*;
 
+import java.lang.reflect.*;
 import java.util.*;
 
 import com.oracle.truffle.api.*;
@@ -61,7 +62,17 @@ class TestHelper {
     }
 
     static <E extends ValueNode> E createGenericNode(NodeFactory<E> factory, Object... constants) {
-        return factory.createNodeGeneric(createNode(factory, constants));
+        Method createGenericMethod;
+        try {
+            createGenericMethod = factory.getClass().getMethod("createGeneric", factory.getNodeClass());
+        } catch (NoSuchMethodException e) {
+            throw new RuntimeException(e);
+        }
+        try {
+            return factory.getNodeClass().cast(createGenericMethod.invoke(null, createNode(factory, constants)));
+        } catch (IllegalAccessException | InvocationTargetException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     static <E extends ValueNode> TestRootNode<E> createRoot(NodeFactory<E> factory, Object... constants) {

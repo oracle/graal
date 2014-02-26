@@ -539,7 +539,6 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
                 TypeMirror nodeFactory = Utils.getDeclaredType(Utils.fromTypeMirror(getContext().getType(NodeFactory.class)), node.getNodeType());
                 clazz.getImplements().add(nodeFactory);
                 clazz.add(createCreateNodeMethod(node));
-                clazz.add(createCreateNodeGenericMethod(node));
                 clazz.add(createGetNodeClassMethod(node));
                 clazz.add(createGetNodeSignaturesMethod());
                 clazz.add(createGetChildrenSignatureMethod(node));
@@ -706,22 +705,6 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
             builder.doubleQuote("Invalid create signature.");
             builder.end().end();
             builder.end(); // else block
-            return method;
-        }
-
-        private CodeExecutableElement createCreateNodeGenericMethod(NodeData node) {
-            CodeExecutableElement method = new CodeExecutableElement(modifiers(PUBLIC), node.getNodeType(), "createNodeGeneric");
-            CodeVariableElement nodeParam = new CodeVariableElement(node.getNodeType(), THIS_NODE_LOCAL_VAR_NAME);
-            method.addParameter(nodeParam);
-
-            CodeTreeBuilder builder = method.createBuilder();
-            if (!node.needsRewrites(getContext())) {
-                builder.startThrow().startNew(getContext().getType(UnsupportedOperationException.class)).doubleQuote("No specialized version.").end().end();
-            } else {
-                builder.startReturn().startCall("createGeneric");
-                builder.string(THIS_NODE_LOCAL_VAR_NAME);
-                builder.end().end();
-            }
             return method;
         }
 
