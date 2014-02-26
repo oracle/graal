@@ -76,7 +76,8 @@ public final class ReadNode extends FloatableAccessNode implements LIRLowerable,
         }
         if (tool.canonicalizeReads()) {
             if (metaAccess != null && object != null && object.isConstant()) {
-                if (location.getLocationIdentity() == LocationIdentity.FINAL_LOCATION && location instanceof ConstantLocationNode) {
+                if ((location.getLocationIdentity() == LocationIdentity.FINAL_LOCATION || location.getLocationIdentity() == LocationIdentity.ARRAY_LENGTH_LOCATION) &
+                                location instanceof ConstantLocationNode) {
                     long displacement = ((ConstantLocationNode) location).getDisplacement();
                     Kind kind = location.getValueKind();
                     if (object.kind() == Kind.Object) {
