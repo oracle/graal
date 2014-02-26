@@ -369,16 +369,6 @@ public class StampTool {
         }
     }
 
-    public static Stamp intToLong(IntegerStamp intStamp) {
-        long downMask = intStamp.downMask();
-        long upMask = intStamp.upMask();
-        if (!intStamp.isUnsigned()) {
-            downMask = SignExtendNode.signExtend(downMask, intStamp.getBits());
-            upMask = SignExtendNode.signExtend(upMask, intStamp.getBits());
-        }
-        return new IntegerStamp(64, intStamp.isUnsigned(), intStamp.lowerBound(), intStamp.upperBound(), downMask, upMask);
-    }
-
     public static Stamp narrowingConversion(Stamp input, int resultBits) {
         if (input instanceof IntegerStamp) {
             IntegerStamp inputStamp = (IntegerStamp) input;
