@@ -38,7 +38,6 @@ public class StampFactory {
     private static final Stamp dependencyStamp = new GenericStamp(GenericStampType.Dependency);
     private static final Stamp extensionStamp = new GenericStamp(GenericStampType.Extension);
     private static final Stamp conditionStamp = new GenericStamp(GenericStampType.Condition);
-    private static final Stamp voidStamp = new GenericStamp(GenericStampType.Void);
     private static final Stamp nodeIntrinsicStamp = new ObjectStamp(null, false, false, false);
     private static final Stamp positiveInt = forInteger(Kind.Int, 0, Integer.MAX_VALUE, 0, Integer.MAX_VALUE);
 
@@ -73,7 +72,7 @@ public class StampFactory {
         setFloatCache(Kind.Double);
 
         setCache(Kind.Object, objectStamp);
-        setCache(Kind.Void, voidStamp);
+        setCache(Kind.Void, VoidStamp.getInstance());
         for (Kind k : Kind.values()) {
             illegalStampCache[k.ordinal()] = new IllegalStamp(k);
         }
@@ -87,8 +86,12 @@ public class StampFactory {
         return stampCache[kind.ordinal()];
     }
 
+    /**
+     * Return the stamp for the {@code void} type. This will return a singleton instance than can be
+     * compared using {@code ==}.
+     */
     public static Stamp forVoid() {
-        return voidStamp;
+        return VoidStamp.getInstance();
     }
 
     /**

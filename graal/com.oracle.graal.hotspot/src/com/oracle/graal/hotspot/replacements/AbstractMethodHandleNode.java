@@ -22,31 +22,18 @@
  */
 package com.oracle.graal.hotspot.replacements;
 
-import java.lang.reflect.Modifier;
-import java.util.Arrays;
+import java.lang.reflect.*;
+import java.util.*;
 
-import com.oracle.graal.api.meta.Constant;
-import com.oracle.graal.api.meta.JavaType;
-import com.oracle.graal.api.meta.ResolvedJavaField;
-import com.oracle.graal.api.meta.ResolvedJavaMethod;
-import com.oracle.graal.api.meta.ResolvedJavaType;
-import com.oracle.graal.graph.GraalInternalError;
-import com.oracle.graal.graph.NodeInputList;
+import com.oracle.graal.api.meta.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
-import com.oracle.graal.hotspot.meta.HotSpotResolvedJavaMethod;
-import com.oracle.graal.hotspot.meta.HotSpotResolvedObjectType;
-import com.oracle.graal.hotspot.meta.HotSpotSignature;
-import com.oracle.graal.nodes.CallTargetNode;
-import com.oracle.graal.nodes.Invoke;
-import com.oracle.graal.nodes.InvokeNode;
-import com.oracle.graal.nodes.PiNode;
-import com.oracle.graal.nodes.ValueNode;
-import com.oracle.graal.nodes.java.MethodCallTargetNode;
+import com.oracle.graal.hotspot.meta.*;
+import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
-import com.oracle.graal.nodes.java.SelfReplacingMethodCallTargetNode;
 import com.oracle.graal.nodes.type.*;
-import com.oracle.graal.nodes.type.GenericStamp.*;
-import com.oracle.graal.replacements.nodes.MacroNode;
+import com.oracle.graal.replacements.nodes.*;
 
 /**
  * Common base class for method handle invoke nodes.
@@ -282,7 +269,7 @@ public abstract class AbstractMethodHandleNode extends MacroNode implements Cano
         // invoker's stamp would be wrong because it's a less concrete type
         // (usually java.lang.Object).
         InvokeNode invoke;
-        if (stamp() instanceof GenericStamp && ((GenericStamp) stamp()).type() == GenericStampType.Void) {
+        if (stamp() == StampFactory.forVoid()) {
             invoke = new InvokeNode(callTarget, getBci(), stamp());
         } else {
             invoke = new InvokeNode(callTarget, getBci());
