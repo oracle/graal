@@ -47,7 +47,6 @@ import com.oracle.graal.lir.hsail.HSAILControlFlow.CondMoveOp;
 import com.oracle.graal.lir.hsail.HSAILControlFlow.FloatCondMoveOp;
 import com.oracle.graal.lir.hsail.HSAILControlFlow.ReturnOp;
 import com.oracle.graal.lir.hsail.HSAILControlFlow.StrategySwitchOp;
-import com.oracle.graal.lir.hsail.HSAILMove.LeaOp;
 import com.oracle.graal.lir.hsail.HSAILMove.MembarOp;
 import com.oracle.graal.lir.hsail.HSAILMove.MoveFromRegOp;
 import com.oracle.graal.lir.hsail.HSAILMove.MoveToRegOp;

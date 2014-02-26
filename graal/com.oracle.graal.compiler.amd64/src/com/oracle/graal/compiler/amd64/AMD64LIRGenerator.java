@@ -57,14 +57,11 @@ import com.oracle.graal.lir.amd64.AMD64ControlFlow.FloatCondMoveOp;
 import com.oracle.graal.lir.amd64.AMD64ControlFlow.ReturnOp;
 import com.oracle.graal.lir.amd64.AMD64ControlFlow.StrategySwitchOp;
 import com.oracle.graal.lir.amd64.AMD64ControlFlow.TableSwitchOp;
-import com.oracle.graal.lir.amd64.AMD64Move.LeaOp;
 import com.oracle.graal.lir.amd64.AMD64Move.MembarOp;
-import com.oracle.graal.lir.amd64.AMD64Move.MoveFromRegOp;
-import com.oracle.graal.lir.amd64.AMD64Move.MoveToRegOp;
 import com.oracle.graal.lir.amd64.AMD64Move.StackLeaOp;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
-import com.oracle.graal.nodes.calc.FloatConvertNode.*;
+import com.oracle.graal.nodes.calc.FloatConvertNode.FloatConvert;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.phases.util.*;
 
