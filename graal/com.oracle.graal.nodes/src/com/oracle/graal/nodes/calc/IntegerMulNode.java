@@ -28,24 +28,25 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.type.*;
 
 @NodeInfo(shortName = "*")
 public class IntegerMulNode extends IntegerArithmeticNode implements Canonicalizable {
 
-    public IntegerMulNode(Kind kind, ValueNode x, ValueNode y) {
-        super(kind, x, y);
+    public IntegerMulNode(Stamp stamp, ValueNode x, ValueNode y) {
+        super(stamp, x, y);
     }
 
     @Override
     public Constant evalConst(Constant... inputs) {
         assert inputs.length == 2;
-        return Constant.forIntegerKind(kind(), inputs[0].asLong() * inputs[1].asLong(), null);
+        return Constant.forPrimitiveInt(PrimitiveStamp.getBits(stamp()), inputs[0].asLong() * inputs[1].asLong());
     }
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
         if (x().isConstant() && !y().isConstant()) {
-            return graph().unique(new IntegerMulNode(kind(), y(), x()));
+            return graph().unique(new IntegerMulNode(stamp(), y(), x()));
         }
         if (x().isConstant()) {
             return ConstantNode.forPrimitive(evalConst(x().asConstant(), y().asConstant()), graph());
@@ -55,11 +56,11 @@ public class IntegerMulNode extends IntegerArithmeticNode implements Canonicaliz
                 return x();
             }
             if (c == 0) {
-                return ConstantNode.defaultForKind(kind(), graph());
+                return ConstantNode.forIntegerStamp(stamp(), 0, graph());
             }
             long abs = Math.abs(c);
             if (abs > 0 && CodeUtil.isPowerOf2(abs)) {
-                LeftShiftNode shift = graph().unique(new LeftShiftNode(kind(), x(), ConstantNode.forInt(CodeUtil.log2(abs), graph())));
+                LeftShiftNode shift = graph().unique(new LeftShiftNode(stamp().unrestricted(), x(), ConstantNode.forInt(CodeUtil.log2(abs), graph())));
                 if (c < 0) {
                     return graph().unique(new NegateNode(shift));
                 } else {

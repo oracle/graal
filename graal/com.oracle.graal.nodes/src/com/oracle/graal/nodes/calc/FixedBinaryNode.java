@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.nodes.calc;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.type.*;
 
@@ -39,8 +38,8 @@ public abstract class FixedBinaryNode extends DeoptimizingFixedWithNextNode {
         return y;
     }
 
-    public FixedBinaryNode(Kind kind, ValueNode x, ValueNode y) {
-        super(StampFactory.forKind(kind));
+    public FixedBinaryNode(Stamp stamp, ValueNode x, ValueNode y) {
+        super(stamp);
         this.x = x;
         this.y = y;
     }

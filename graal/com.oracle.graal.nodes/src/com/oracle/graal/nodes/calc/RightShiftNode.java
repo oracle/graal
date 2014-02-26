@@ -32,8 +32,8 @@ import com.oracle.graal.nodes.type.*;
 @NodeInfo(shortName = ">>")
 public final class RightShiftNode extends ShiftNode implements Canonicalizable {
 
-    public RightShiftNode(Kind kind, ValueNode x, ValueNode y) {
-        super(kind, x, y);
+    public RightShiftNode(Stamp stamp, ValueNode x, ValueNode y) {
+        super(stamp, x, y);
     }
 
     @Override
@@ -50,7 +50,7 @@ public final class RightShiftNode extends ShiftNode implements Canonicalizable {
     @Override
     public Node canonical(CanonicalizerTool tool) {
         if (x().stamp() instanceof IntegerStamp && ((IntegerStamp) x().stamp()).isPositive()) {
-            return graph().unique(new UnsignedRightShiftNode(kind(), x(), y()));
+            return graph().unique(new UnsignedRightShiftNode(stamp(), x(), y()));
         }
         if (x().isConstant() && y().isConstant()) {
             return ConstantNode.forPrimitive(evalConst(x().asConstant(), y().asConstant()), graph());
@@ -90,14 +90,14 @@ public final class RightShiftNode extends ShiftNode implements Canonicalizable {
                              * full shift for this kind
                              */
                             assert total >= mask;
-                            return graph().unique(new RightShiftNode(kind(), other.x(), ConstantNode.forInt(mask, graph())));
+                            return graph().unique(new RightShiftNode(stamp(), other.x(), ConstantNode.forInt(mask, graph())));
                         }
-                        return graph().unique(new RightShiftNode(kind(), other.x(), ConstantNode.forInt(total, graph())));
+                        return graph().unique(new RightShiftNode(stamp(), other.x(), ConstantNode.forInt(total, graph())));
                     }
                 }
             }
             if (originalAmout != amount) {
-                return graph().unique(new RightShiftNode(kind(), x(), ConstantNode.forInt(amount, graph())));
+                return graph().unique(new RightShiftNode(stamp(), x(), ConstantNode.forInt(amount, graph())));
             }
         }
         return this;

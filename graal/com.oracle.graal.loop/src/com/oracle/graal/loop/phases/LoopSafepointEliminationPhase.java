@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.loop.phases;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.loop.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.cfg.*;
@@ -38,7 +37,7 @@ public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
         if (context.getOptimisticOptimizations().useLoopLimitChecks()) {
             loops.detectedCountedLoops();
             for (LoopEx loop : loops.countedLoops()) {
-                if (loop.lirLoop().children.isEmpty() && loop.counted().getKind() == Kind.Int) {
+                if (loop.lirLoop().children.isEmpty() && loop.counted().getStamp().getBits() <= 32) {
                     boolean hasSafepoint = false;
                     for (LoopEndNode loopEnd : loop.loopBegin().loopEnds()) {
                         hasSafepoint |= loopEnd.canSafepoint();

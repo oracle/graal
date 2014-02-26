@@ -27,20 +27,22 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.type.*;
 
 @NodeInfo(shortName = "+")
 public final class FloatAddNode extends FloatArithmeticNode implements Canonicalizable {
 
-    public FloatAddNode(Kind kind, ValueNode x, ValueNode y, boolean isStrictFP) {
-        super(kind, x, y, isStrictFP);
+    public FloatAddNode(Stamp stamp, ValueNode x, ValueNode y, boolean isStrictFP) {
+        super(stamp, x, y, isStrictFP);
     }
 
     public Constant evalConst(Constant... inputs) {
         assert inputs.length == 2;
-        if (kind() == Kind.Float) {
+        assert inputs[0].getKind() == inputs[1].getKind();
+        if (inputs[0].getKind() == Kind.Float) {
             return Constant.forFloat(inputs[0].asFloat() + inputs[1].asFloat());
         } else {
-            assert kind() == Kind.Double;
+            assert inputs[0].getKind() == Kind.Double;
             return Constant.forDouble(inputs[0].asDouble() + inputs[1].asDouble());
         }
     }
@@ -48,22 +50,14 @@ public final class FloatAddNode extends FloatArithmeticNode implements Canonical
     @Override
     public Node canonical(CanonicalizerTool tool) {
         if (x().isConstant() && !y().isConstant()) {
-            return graph().unique(new FloatAddNode(kind(), y(), x(), isStrictFP()));
+            return graph().unique(new FloatAddNode(stamp(), y(), x(), isStrictFP()));
         }
         if (x().isConstant()) {
             return ConstantNode.forPrimitive(evalConst(x().asConstant(), y().asConstant()), graph());
         } else if (y().isConstant()) {
-            if (kind() == Kind.Float) {
-                float c = y().asConstant().asFloat();
-                if (c == 0.0f) {
-                    return x();
-                }
-            } else {
-                assert kind() == Kind.Double;
-                double c = y().asConstant().asDouble();
-                if (c == 0.0) {
-                    return x();
-                }
+            Constant c = y().asConstant();
+            if ((c.getKind() == Kind.Float && c.asFloat() == 0.0f) || (c.getKind() == Kind.Double && c.asDouble() == 0.0)) {
+                return x();
             }
         }
         return this;

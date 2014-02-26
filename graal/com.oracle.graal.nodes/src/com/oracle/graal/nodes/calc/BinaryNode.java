@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.nodes.calc;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.nodes.*;
@@ -47,12 +46,12 @@ public abstract class BinaryNode extends FloatingNode {
     /**
      * Creates a new BinaryNode instance.
      * 
-     * @param kind the result type of this instruction
+     * @param stamp the result type of this instruction
      * @param x the first input instruction
      * @param y the second input instruction
      */
-    public BinaryNode(Kind kind, ValueNode x, ValueNode y) {
-        super(StampFactory.forKind(kind));
+    public BinaryNode(Stamp stamp, ValueNode x, ValueNode y) {
+        super(stamp);
         this.x = x;
         this.y = y;
     }
@@ -84,53 +83,38 @@ public abstract class BinaryNode extends FloatingNode {
     }
 
     public static BinaryNode add(StructuredGraph graph, ValueNode x, ValueNode y) {
-        assert x.kind() == y.kind();
-        switch (x.kind()) {
-            case Byte:
-            case Char:
-            case Short:
-            case Int:
-            case Long:
-                return IntegerArithmeticNode.add(graph, x, y);
-            case Float:
-            case Double:
-                return graph.unique(new FloatAddNode(x.kind(), x, y, false));
-            default:
-                throw GraalInternalError.shouldNotReachHere();
+        assert x.stamp().isCompatible(y.stamp());
+        Stamp stamp = x.stamp();
+        if (stamp instanceof IntegerStamp) {
+            return IntegerArithmeticNode.add(graph, x, y);
+        } else if (stamp instanceof FloatStamp) {
+            return graph.unique(new FloatAddNode(stamp, x, y, false));
+        } else {
+            throw GraalInternalError.shouldNotReachHere();
         }
     }
 
     public static BinaryNode sub(StructuredGraph graph, ValueNode x, ValueNode y) {
-        assert x.kind() == y.kind();
-        switch (x.kind()) {
-            case Byte:
-            case Char:
-            case Short:
-            case Int:
-            case Long:
-                return IntegerArithmeticNode.sub(graph, x, y);
-            case Float:
-            case Double:
-                return graph.unique(new FloatSubNode(x.kind(), x, y, false));
-            default:
-                throw GraalInternalError.shouldNotReachHere();
+        assert x.stamp().isCompatible(y.stamp());
+        Stamp stamp = x.stamp();
+        if (stamp instanceof IntegerStamp) {
+            return IntegerArithmeticNode.sub(graph, x, y);
+        } else if (stamp instanceof FloatStamp) {
+            return graph.unique(new FloatSubNode(stamp, x, y, false));
+        } else {
+            throw GraalInternalError.shouldNotReachHere();
         }
     }
 
     public static BinaryNode mul(StructuredGraph graph, ValueNode x, ValueNode y) {
-        assert x.kind() == y.kind();
-        switch (x.kind()) {
-            case Byte:
-            case Char:
-            case Short:
-            case Int:
-            case Long:
-                return IntegerArithmeticNode.mul(graph, x, y);
-            case Float:
-            case Double:
-                return graph.unique(new FloatMulNode(x.kind(), x, y, false));
-            default:
-                throw GraalInternalError.shouldNotReachHere();
+        assert x.stamp().isCompatible(y.stamp());
+        Stamp stamp = x.stamp();
+        if (stamp instanceof IntegerStamp) {
+            return IntegerArithmeticNode.mul(graph, x, y);
+        } else if (stamp instanceof FloatStamp) {
+            return graph.unique(new FloatMulNode(stamp, x, y, false));
+        } else {
+            throw GraalInternalError.shouldNotReachHere();
         }
     }
 

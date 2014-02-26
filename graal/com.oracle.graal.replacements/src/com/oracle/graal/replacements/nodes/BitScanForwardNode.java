@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -37,18 +37,18 @@ public class BitScanForwardNode extends FloatingNode implements LIRGenLowerable,
     @Input private ValueNode value;
 
     public BitScanForwardNode(ValueNode value) {
-        super(StampFactory.forInteger(Kind.Int, 0, value.kind().getBitCount()));
+        super(StampFactory.forInteger(Kind.Int, 0, ((PrimitiveStamp) value.stamp()).getBits()));
         this.value = value;
     }
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
         if (value.isConstant()) {
-            long v = value.asConstant().asLong();
-            if (value.kind().getStackKind() == Kind.Int) {
-                return ConstantNode.forInt(Integer.numberOfTrailingZeros((int) v), graph());
-            } else if (value.kind() == Kind.Long) {
-                return ConstantNode.forInt(Long.numberOfTrailingZeros(v), graph());
+            Constant c = value.asConstant();
+            if (c.getKind() == Kind.Int) {
+                return ConstantNode.forInt(Integer.numberOfTrailingZeros(c.asInt()), graph());
+            } else if (c.getKind() == Kind.Long) {
+                return ConstantNode.forInt(Long.numberOfTrailingZeros(c.asLong()), graph());
             }
         }
         return this;

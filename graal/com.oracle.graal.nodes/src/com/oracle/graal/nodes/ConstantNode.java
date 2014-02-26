@@ -329,6 +329,13 @@ public final class ConstantNode extends FloatingNode implements LIRLowerable {
         }
     }
 
+    /**
+     * Returns a node for a constant double that's compatible to a given stamp.
+     */
+    public static ConstantNode forFloatingStamp(Stamp stamp, double value, StructuredGraph graph) {
+        return forFloatingKind(stamp.getStackKind(), value, graph);
+    }
+
     public static ConstantNode defaultForKind(Kind kind, StructuredGraph graph) {
         switch (kind) {
             case Boolean:

@@ -37,18 +37,18 @@ public class BitCountNode extends FloatingNode implements LIRGenLowerable, Canon
     @Input private ValueNode value;
 
     public BitCountNode(ValueNode value) {
-        super(StampFactory.forInteger(Kind.Int, 0, value.kind().getBitCount()));
+        super(StampFactory.forInteger(Kind.Int, 0, ((PrimitiveStamp) value.stamp()).getBits()));
         this.value = value;
     }
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
         if (value.isConstant()) {
-            long v = value.asConstant().asLong();
-            if (value.kind().getStackKind() == Kind.Int) {
-                return ConstantNode.forInt(Integer.bitCount((int) v), graph());
-            } else if (value.kind() == Kind.Long) {
-                return ConstantNode.forInt(Long.bitCount(v), graph());
+            Constant c = value.asConstant();
+            if (c.getKind() == Kind.Int) {
+                return ConstantNode.forInt(Integer.bitCount(c.asInt()), graph());
+            } else if (c.getKind() == Kind.Long) {
+                return ConstantNode.forInt(Long.bitCount(c.asLong()), graph());
             }
         }
         return this;

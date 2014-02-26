@@ -64,7 +64,7 @@ public class CompareAndSwapNode extends AbstractMemoryCheckpoint implements Lowe
 
     public CompareAndSwapNode(ValueNode object, int displacement, ValueNode offset, ValueNode expected, ValueNode newValue) {
         super(StampFactory.forKind(Kind.Boolean.getStackKind()));
-        assert expected.kind() == newValue.kind();
+        assert expected.stamp().isCompatible(newValue.stamp());
         this.object = object;
         this.offset = offset;
         this.expected = expected;

@@ -25,6 +25,7 @@ package com.oracle.graal.nodes.calc;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.type.*;
 
 /**
  * Returns -1, 0, or 1 if either x < y, x == y, or x > y. If the comparison is undecided (one of the
@@ -43,7 +44,7 @@ public final class NormalizeCompareNode extends BinaryNode implements Lowerable 
      *            less, false when greater.
      */
     public NormalizeCompareNode(ValueNode x, ValueNode y, boolean isUnorderedLess) {
-        super(Kind.Int, x, y);
+        super(StampFactory.forKind(Kind.Int), x, y);
         this.isUnorderedLess = isUnorderedLess;
     }
 
@@ -51,7 +52,7 @@ public final class NormalizeCompareNode extends BinaryNode implements Lowerable 
     public void lower(LoweringTool tool) {
         LogicNode equalComp;
         LogicNode lessComp;
-        if (x().kind() == Kind.Double || x().kind() == Kind.Float) {
+        if (x().stamp() instanceof FloatStamp) {
             equalComp = graph().unique(new FloatEqualsNode(x(), y()));
             lessComp = graph().unique(new FloatLessThanNode(x(), y(), isUnorderedLess));
         } else {

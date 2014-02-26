@@ -202,7 +202,7 @@ public class WordTypeRewriterPhase extends Phase {
 
             case NOT:
                 assert arguments.size() == 1;
-                replace(invoke, graph.unique(new XorNode(wordKind, arguments.get(0), ConstantNode.forIntegerKind(wordKind, -1, graph))));
+                replace(invoke, graph.unique(new XorNode(StampFactory.forKind(wordKind), arguments.get(0), ConstantNode.forIntegerKind(wordKind, -1, graph))));
                 break;
 
             case READ: {
@@ -320,8 +320,8 @@ public class WordTypeRewriterPhase extends Phase {
      */
     private static ValueNode createBinaryNodeInstance(Class<? extends ValueNode> nodeClass, Kind kind, ValueNode left, ValueNode right) {
         try {
-            Constructor<? extends ValueNode> constructor = nodeClass.getConstructor(Kind.class, ValueNode.class, ValueNode.class);
-            return constructor.newInstance(kind, left, right);
+            Constructor<? extends ValueNode> constructor = nodeClass.getConstructor(Stamp.class, ValueNode.class, ValueNode.class);
+            return constructor.newInstance(StampFactory.forKind(kind), left, right);
         } catch (Throwable ex) {
             throw new GraalInternalError(ex).addContext(nodeClass.getName());
         }
