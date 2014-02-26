@@ -542,7 +542,7 @@ public class HotSpotLoweringProvider implements LoweringProvider {
     private void lowerDeferredForeignCallNode(DeferredForeignCallNode deferred) {
         StructuredGraph graph = deferred.graph();
         if (graph.getGuardsStage() == StructuredGraph.GuardsStage.FLOATING_GUARDS) {
-            ForeignCallNode foreignCallNode = graph.add(new ForeignCallNode(foreignCalls, deferred.getDescriptor(), deferred.getArguments()));
+            ForeignCallNode foreignCallNode = graph.add(new ForeignCallNode(foreignCalls, deferred.getDescriptor(), deferred.stamp(), deferred.getArguments()));
             graph.replaceFixedWithFixed(deferred, foreignCallNode);
         }
     }
