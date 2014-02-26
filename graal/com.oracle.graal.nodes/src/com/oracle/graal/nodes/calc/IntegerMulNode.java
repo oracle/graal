@@ -31,7 +31,7 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
 @NodeInfo(shortName = "*")
-public class IntegerMulNode extends IntegerArithmeticNode implements Canonicalizable {
+public class IntegerMulNode extends IntegerArithmeticNode implements Canonicalizable, NarrowableArithmeticNode {
 
     public IntegerMulNode(Stamp stamp, ValueNode x, ValueNode y) {
         super(stamp, x, y);

@@ -30,7 +30,7 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
 @NodeInfo(shortName = "+")
-public class IntegerAddNode extends IntegerArithmeticNode implements Canonicalizable {
+public class IntegerAddNode extends IntegerArithmeticNode implements Canonicalizable, NarrowableArithmeticNode {
 
     public IntegerAddNode(Stamp stamp, ValueNode x, ValueNode y) {
         super(stamp, x, y);

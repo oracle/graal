@@ -32,7 +32,7 @@ import com.oracle.graal.nodes.type.*;
 /**
  * Binary negation of long or integer values.
  */
-public final class NotNode extends FloatingNode implements Canonicalizable, ArithmeticLIRLowerable {
+public final class NotNode extends FloatingNode implements Canonicalizable, ArithmeticLIRLowerable, NarrowableArithmeticNode {
 
     @Input private ValueNode x;
 

@@ -32,7 +32,7 @@ import com.oracle.graal.nodes.type.*;
 /**
  * The {@code NarrowNode} converts an integer to a narrower integer.
  */
-public class NarrowNode extends IntegerConvertNode {
+public class NarrowNode extends IntegerConvertNode implements Simplifiable {
 
     public NarrowNode(ValueNode input, int resultBits) {
         super(StampTool.narrowingConversion(input.stamp(), resultBits), input, resultBits);
@@ -64,8 +64,12 @@ public class NarrowNode extends IntegerConvertNode {
         return false;
     }
 
-    @Override
-    public Node canonical(CanonicalizerTool tool) {
+    private ValueNode tryCanonicalize() {
+        ValueNode ret = canonicalConvert();
+        if (ret != null) {
+            return ret;
+        }
+
         if (getInput() instanceof NarrowNode) {
             NarrowNode other = (NarrowNode) getInput();
             return graph().unique(new NarrowNode(other.getInput(), getResultBits()));
@@ -85,7 +89,35 @@ public class NarrowNode extends IntegerConvertNode {
             }
         }
 
-        return super.canonical(tool);
+        return null;
+    }
+
+    private boolean tryNarrow(SimplifierTool tool, Stamp stamp, ValueNode node) {
+        boolean canNarrow = node instanceof NarrowableArithmeticNode && node.usages().count() == 1;
+
+        if (canNarrow) {
+            for (Node inputNode : node.inputs().snapshot()) {
+                ValueNode input = (ValueNode) inputNode;
+                if (!tryNarrow(tool, stamp, input)) {
+                    ValueNode narrow = graph().unique(new NarrowNode(input, getResultBits()));
+                    node.replaceFirstInput(input, narrow);
+                    tool.addToWorkList(narrow);
+                }
+            }
+            node.setStamp(stamp);
+        }
+
+        return canNarrow;
+    }
+
+    @Override
+    public void simplify(SimplifierTool tool) {
+        ValueNode ret = tryCanonicalize();
+        if (ret != null) {
+            graph().replaceFloating(this, ret);
+        } else if (tryNarrow(tool, stamp().unrestricted(), getInput())) {
+            graph().replaceFloating(this, getInput());
+        }
     }
 
     @Override

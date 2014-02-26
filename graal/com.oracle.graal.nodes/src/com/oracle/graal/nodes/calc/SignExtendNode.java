@@ -32,7 +32,7 @@ import com.oracle.graal.nodes.type.*;
 /**
  * The {@code SignExtendNode} converts an integer to a wider integer using sign extension.
  */
-public class SignExtendNode extends IntegerConvertNode {
+public class SignExtendNode extends IntegerConvertNode implements Canonicalizable {
 
     public SignExtendNode(ValueNode input, int resultBits) {
         super(StampTool.signExtend(input.stamp(), resultBits), input, resultBits);
@@ -67,6 +67,11 @@ public class SignExtendNode extends IntegerConvertNode {
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
+        ValueNode ret = canonicalConvert();
+        if (ret != null) {
+            return ret;
+        }
+
         if (getInput() instanceof SignExtendNode) {
             SignExtendNode other = (SignExtendNode) getInput();
             return graph().unique(new SignExtendNode(other.getInput(), getResultBits()));
@@ -84,7 +89,7 @@ public class SignExtendNode extends IntegerConvertNode {
             }
         }
 
-        return super.canonical(tool);
+        return this;
     }
 
     @Override

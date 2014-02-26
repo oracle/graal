@@ -30,7 +30,7 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
 @NodeInfo(shortName = "&")
-public final class AndNode extends BitLogicNode implements Canonicalizable {
+public final class AndNode extends BitLogicNode implements Canonicalizable, NarrowableArithmeticNode {
 
     public AndNode(Stamp stamp, ValueNode x, ValueNode y) {
         super(stamp, x, y);
