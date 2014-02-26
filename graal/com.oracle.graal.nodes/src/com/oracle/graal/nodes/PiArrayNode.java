@@ -30,7 +30,7 @@ import com.oracle.graal.nodes.type.*;
 
 /**
  * A {@link PiNode} that also provides an array length in addition to a more refined stamp. A usage
- * that reads the array length, such as an {@link ArrayLengthNode}, can be canonicalized base on
+ * that reads the array length, such as an {@link ArrayLengthNode}, can be canonicalized based on
  * this information.
  */
 public final class PiArrayNode extends PiNode implements ArrayLengthProvider {

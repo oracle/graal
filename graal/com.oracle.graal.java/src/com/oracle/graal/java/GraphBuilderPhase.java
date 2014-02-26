@@ -1049,6 +1049,8 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             }
         }
 
+        private static final DebugMetric EXPLICIT_EXCEPTIONS = Debug.metric("ExplicitExceptions");
+
         protected void emitExplicitExceptions(ValueNode receiver, ValueNode outOfBoundsIndex) {
             assert receiver != null;
             if (graphBuilderConfig.omitAllExceptionEdges() || (optimisticOpts.useExceptionProbabilityForOperations() && profilingInfo.getExceptionSeen(bci()) == TriState.FALSE)) {
@@ -1060,7 +1062,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 ValueNode length = append(new ArrayLengthNode(receiver));
                 emitBoundsCheck(outOfBoundsIndex, length);
             }
-            Debug.metric("ExplicitExceptions").increment();
+            EXPLICIT_EXCEPTIONS.increment();
         }
 
         private void genPutField(JavaField field) {

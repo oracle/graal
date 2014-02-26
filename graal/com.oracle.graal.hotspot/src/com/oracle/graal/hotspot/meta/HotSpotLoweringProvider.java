@@ -104,7 +104,7 @@ public class HotSpotLoweringProvider implements LoweringProvider {
         if (n instanceof ArrayLengthNode) {
             ArrayLengthNode arrayLengthNode = (ArrayLengthNode) n;
             ValueNode array = arrayLengthNode.array();
-            ReadNode arrayLengthRead = graph.add(new ReadNode(array, ConstantLocationNode.create(FINAL_LOCATION, Kind.Int, config.arrayLengthOffset, graph), StampFactory.positiveInt(),
+            ReadNode arrayLengthRead = graph.add(new ReadNode(array, ConstantLocationNode.create(ARRAY_LENGTH_LOCATION, Kind.Int, config.arrayLengthOffset, graph), StampFactory.positiveInt(),
                             BarrierType.NONE, false));
             arrayLengthRead.setGuard(createNullCheck(array, arrayLengthNode, tool));
             graph.replaceFixedWithFixed(arrayLengthNode, arrayLengthRead);

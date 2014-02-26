@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.nodes.virtual;
 
+import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
@@ -30,7 +31,7 @@ import com.oracle.graal.nodes.type.*;
  * Selects one object from a {@link CommitAllocationNode}. The object is identified by its
  * {@link VirtualObjectNode}.
  */
-public class AllocatedObjectNode extends FloatingNode implements Virtualizable {
+public class AllocatedObjectNode extends FloatingNode implements Virtualizable, ArrayLengthProvider {
 
     @Input private VirtualObjectNode virtualObject;
     @Input private CommitAllocationNode commit;
@@ -56,5 +57,12 @@ public class AllocatedObjectNode extends FloatingNode implements Virtualizable {
     @Override
     public void virtualize(VirtualizerTool tool) {
         tool.replaceWithVirtual(getVirtualObject());
+    }
+
+    public ValueNode length() {
+        if (virtualObject instanceof ArrayLengthProvider) {
+            return ((ArrayLengthProvider) virtualObject).length();
+        }
+        return null;
     }
 }

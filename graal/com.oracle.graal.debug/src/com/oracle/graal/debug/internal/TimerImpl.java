@@ -41,7 +41,7 @@ public final class TimerImpl extends DebugValue implements DebugTimer {
     /**
      * Records the most recent active timer.
      */
-    private static ThreadLocal<AbstractTimer> currentTimer = new ThreadLocal<>();
+    private static final ThreadLocal<AbstractTimer> currentTimer = new ThreadLocal<>();
 
     private final DebugValue flat;
 

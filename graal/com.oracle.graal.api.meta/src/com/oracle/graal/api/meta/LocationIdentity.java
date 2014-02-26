@@ -41,4 +41,8 @@ public interface LocationIdentity {
      */
     LocationIdentity FINAL_LOCATION = new NamedLocationIdentity("FINAL_LOCATION");
 
+    /**
+     * Denotes the location of the length field of a Java array.
+     */
+    LocationIdentity ARRAY_LENGTH_LOCATION = new NamedLocationIdentity("[].length");
 }
