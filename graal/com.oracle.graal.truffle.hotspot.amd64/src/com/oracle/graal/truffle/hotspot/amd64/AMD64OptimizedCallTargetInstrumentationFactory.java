@@ -41,7 +41,7 @@ import com.oracle.graal.truffle.hotspot.*;
 @ServiceProvider(OptimizedCallTargetInstrumentationFactory.class)
 public class AMD64OptimizedCallTargetInstrumentationFactory implements OptimizedCallTargetInstrumentationFactory {
 
-    public CompilationResultBuilder createBuilder(CodeCacheProvider codeCache, ForeignCallsProvider foreignCalls, FrameMap frameMap, AbstractAssembler asm, FrameContext frameContext,
+    public CompilationResultBuilder createBuilder(CodeCacheProvider codeCache, ForeignCallsProvider foreignCalls, FrameMap frameMap, Assembler asm, FrameContext frameContext,
                     CompilationResult compilationResult) {
         return new OptimizedCallTargetInstrumentation(codeCache, foreignCalls, frameMap, asm, frameContext, compilationResult) {
             @Override

@@ -54,7 +54,7 @@ public class CompilationResultBuilder {
         }
     }
 
-    public final AbstractAssembler asm;
+    public final Assembler asm;
     public final CompilationResult compilationResult;
     public final TargetDescription target;
     public final CodeCacheProvider codeCache;
@@ -78,7 +78,7 @@ public class CompilationResultBuilder {
 
     private List<ExceptionInfo> exceptionInfoList;
 
-    public CompilationResultBuilder(CodeCacheProvider codeCache, ForeignCallsProvider foreignCalls, FrameMap frameMap, AbstractAssembler asm, FrameContext frameContext,
+    public CompilationResultBuilder(CodeCacheProvider codeCache, ForeignCallsProvider foreignCalls, FrameMap frameMap, Assembler asm, FrameContext frameContext,
                     CompilationResult compilationResult) {
         this.target = codeCache.getTarget();
         this.codeCache = codeCache;

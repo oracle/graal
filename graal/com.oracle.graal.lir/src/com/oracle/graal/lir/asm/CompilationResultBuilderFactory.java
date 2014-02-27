@@ -34,7 +34,7 @@ public interface CompilationResultBuilderFactory {
     /**
      * Creates a new {@link CompilationResultBuilder}.
      */
-    CompilationResultBuilder createBuilder(CodeCacheProvider codeCache, ForeignCallsProvider foreignCalls, FrameMap frameMap, AbstractAssembler asm, FrameContext frameContext,
+    CompilationResultBuilder createBuilder(CodeCacheProvider codeCache, ForeignCallsProvider foreignCalls, FrameMap frameMap, Assembler asm, FrameContext frameContext,
                     CompilationResult compilationResult);
 
     /**
@@ -42,7 +42,7 @@ public interface CompilationResultBuilderFactory {
      */
     CompilationResultBuilderFactory Default = new CompilationResultBuilderFactory() {
 
-        public CompilationResultBuilder createBuilder(CodeCacheProvider codeCache, ForeignCallsProvider foreignCalls, FrameMap frameMap, AbstractAssembler asm, FrameContext frameContext,
+        public CompilationResultBuilder createBuilder(CodeCacheProvider codeCache, ForeignCallsProvider foreignCalls, FrameMap frameMap, Assembler asm, FrameContext frameContext,
                         CompilationResult compilationResult) {
             return new CompilationResultBuilder(codeCache, foreignCalls, frameMap, asm, frameContext, compilationResult);
         }

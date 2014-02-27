@@ -210,14 +210,14 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
     }
 
     @Override
-    protected AbstractAssembler createAssembler(FrameMap frameMap) {
+    protected Assembler createAssembler(FrameMap frameMap) {
         return new HSAILAssembler(getTarget());
     }
 
     @Override
     public CompilationResultBuilder newCompilationResultBuilder(LIRGenerator lirGen, CompilationResult compilationResult, CompilationResultBuilderFactory factory) {
         FrameMap frameMap = lirGen.frameMap;
-        AbstractAssembler masm = createAssembler(frameMap);
+        Assembler masm = createAssembler(frameMap);
         HotSpotFrameContext frameContext = new HotSpotFrameContext();
         CompilationResultBuilder crb = factory.createBuilder(getCodeCache(), getForeignCalls(), frameMap, masm, frameContext, compilationResult);
         crb.setFrameSize(frameMap.frameSize());
@@ -228,7 +228,7 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
     public void emitCode(CompilationResultBuilder crb, LIRGenerator lirGen, ResolvedJavaMethod method) {
         assert method != null : lirGen.getGraph() + " is not associated with a method";
         // Emit the prologue.
-        AbstractAssembler asm = crb.asm;
+        Assembler asm = crb.asm;
         asm.emitString0("version 0:95: $full : $large;");
         asm.emitString("");
 

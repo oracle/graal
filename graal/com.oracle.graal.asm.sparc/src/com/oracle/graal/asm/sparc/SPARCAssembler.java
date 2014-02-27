@@ -33,7 +33,7 @@ import com.oracle.graal.sparc.*;
 /**
  * This class implements an assembler that can encode most SPARC instructions.
  */
-public abstract class SPARCAssembler extends AbstractAssembler {
+public abstract class SPARCAssembler extends Assembler {
 
     /**
      * Constructs an assembler for the SPARC architecture.

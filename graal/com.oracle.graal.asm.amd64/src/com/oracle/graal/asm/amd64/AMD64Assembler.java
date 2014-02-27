@@ -34,7 +34,7 @@ import com.oracle.graal.asm.*;
 /**
  * This class implements an assembler that can encode most X86 instructions.
  */
-public class AMD64Assembler extends AbstractAssembler {
+public class AMD64Assembler extends Assembler {
 
     private static final int MinEncodingNeedsRex = 8;
 

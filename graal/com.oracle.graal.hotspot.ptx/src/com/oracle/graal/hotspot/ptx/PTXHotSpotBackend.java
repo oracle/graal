@@ -261,7 +261,7 @@ public class PTXHotSpotBackend extends HotSpotBackend {
 
         LIRInstruction op;
 
-        void emitDeclarations(AbstractAssembler asm) {
+        void emitDeclarations(Assembler asm) {
             for (Integer i : unsigned8) {
                 asm.emitString(".reg .u8 %r" + i.intValue() + ";");
             }
@@ -360,7 +360,7 @@ public class PTXHotSpotBackend extends HotSpotBackend {
         // - has no incoming arguments passed on the stack
         // - has no instructions with debug info
         FrameMap frameMap = lirGen.frameMap;
-        AbstractAssembler masm = createAssembler(frameMap);
+        Assembler masm = createAssembler(frameMap);
         PTXFrameContext frameContext = new PTXFrameContext();
         CompilationResultBuilder crb = factory.createBuilder(getCodeCache(), getForeignCalls(), frameMap, masm, frameContext, compilationResult);
         crb.setFrameSize(0);
@@ -368,7 +368,7 @@ public class PTXHotSpotBackend extends HotSpotBackend {
     }
 
     @Override
-    protected AbstractAssembler createAssembler(FrameMap frameMap) {
+    protected Assembler createAssembler(FrameMap frameMap) {
         return new PTXMacroAssembler(getTarget(), frameMap.registerConfig);
     }
 
@@ -384,7 +384,7 @@ public class PTXHotSpotBackend extends HotSpotBackend {
         // facilitate seemless PTX code generation subsequently.
         assert codeCacheOwner != null : lirGen.getGraph() + " is not associated with a method";
         final String name = codeCacheOwner.getName();
-        AbstractAssembler asm = crb.asm;
+        Assembler asm = crb.asm;
 
         // Emit initial boiler-plate directives.
         asm.emitString(".version 3.0");
@@ -436,7 +436,7 @@ public class PTXHotSpotBackend extends HotSpotBackend {
             }
         }
 
-        AbstractAssembler asm = crb.asm;
+        Assembler asm = crb.asm;
         registerAnalysis.emitDeclarations(asm);
 
         // emit predicate register declaration
@@ -449,7 +449,7 @@ public class PTXHotSpotBackend extends HotSpotBackend {
     @Override
     public void emitCode(CompilationResultBuilder crb, LIRGenerator lirGen, ResolvedJavaMethod codeCacheOwner) {
         assert codeCacheOwner != null : lirGen.getGraph() + " is not associated with a method";
-        AbstractAssembler asm = crb.asm;
+        Assembler asm = crb.asm;
 
         // Emit the prologue
         emitKernelEntry(crb, lirGen, codeCacheOwner);

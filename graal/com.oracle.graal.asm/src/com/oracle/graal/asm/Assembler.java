@@ -30,7 +30,7 @@ import com.oracle.graal.api.code.*;
 /**
  * The platform-independent base class for the assembler.
  */
-public abstract class AbstractAssembler {
+public abstract class Assembler {
 
     public final TargetDescription target;
 
@@ -39,7 +39,7 @@ public abstract class AbstractAssembler {
      */
     private final Buffer codeBuffer;
 
-    public AbstractAssembler(TargetDescription target) {
+    public Assembler(TargetDescription target) {
         this.target = target;
         if (target.arch.getByteOrder() == ByteOrder.BIG_ENDIAN) {
             this.codeBuffer = new Buffer.BigEndian();
