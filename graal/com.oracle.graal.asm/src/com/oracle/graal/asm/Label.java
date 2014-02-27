@@ -34,8 +34,7 @@ public final class Label {
 
     /**
      * References to instructions that jump to this unresolved label. These instructions need to be
-     * patched when the label is bound using the {@link #patchInstructions(Assembler)}
-     * method.
+     * patched when the label is bound using the {@link #patchInstructions(Assembler)} method.
      */
     private ArrayList<Integer> patchPositions = null;
 
