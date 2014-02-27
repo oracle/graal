@@ -98,9 +98,9 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend {
                         disp -= frameSize;
                     }
                     crb.blockComment("[stack overflow check]");
-                    int pos = asm.codeBuffer.position();
+                    int pos = asm.position();
                     asm.movq(new AMD64Address(rsp, -disp), AMD64.rax);
-                    assert i > 0 || !isVerifiedEntryPoint || asm.codeBuffer.position() - pos >= PATCHED_VERIFIED_ENTRY_POINT_INSTRUCTION_SIZE;
+                    assert i > 0 || !isVerifiedEntryPoint || asm.position() - pos >= PATCHED_VERIFIED_ENTRY_POINT_INSTRUCTION_SIZE;
                 }
             }
         }
@@ -141,14 +141,14 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend {
                     asm.nop(PATCHED_VERIFIED_ENTRY_POINT_INSTRUCTION_SIZE);
                 }
             } else {
-                int verifiedEntryPointOffset = asm.codeBuffer.position();
+                int verifiedEntryPointOffset = asm.position();
                 if (!isStub && pagesToBang > 0) {
                     emitStackOverflowCheck(crb, pagesToBang, false, true);
-                    assert asm.codeBuffer.position() - verifiedEntryPointOffset >= PATCHED_VERIFIED_ENTRY_POINT_INSTRUCTION_SIZE;
+                    assert asm.position() - verifiedEntryPointOffset >= PATCHED_VERIFIED_ENTRY_POINT_INSTRUCTION_SIZE;
                 }
-                if (!isStub && asm.codeBuffer.position() == verifiedEntryPointOffset) {
+                if (!isStub && asm.position() == verifiedEntryPointOffset) {
                     asm.subqWide(rsp, frameSize);
-                    assert asm.codeBuffer.position() - verifiedEntryPointOffset >= PATCHED_VERIFIED_ENTRY_POINT_INSTRUCTION_SIZE;
+                    assert asm.position() - verifiedEntryPointOffset >= PATCHED_VERIFIED_ENTRY_POINT_INSTRUCTION_SIZE;
                 } else {
                     asm.decrementq(rsp, frameSize);
                 }
@@ -174,7 +174,7 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend {
                 CalleeSaveLayout csl = crb.frameMap.registerConfig.getCalleeSaveLayout();
 
                 if (csl != null && csl.size != 0) {
-                    crb.compilationResult.setRegisterRestoreEpilogueOffset(asm.codeBuffer.position());
+                    crb.compilationResult.setRegisterRestoreEpilogueOffset(asm.position());
                     // saved all registers, restore all registers
                     int frameToCSA = crb.frameMap.offsetToCalleeSaveArea();
                     asm.restore(csl, frameToCSA);

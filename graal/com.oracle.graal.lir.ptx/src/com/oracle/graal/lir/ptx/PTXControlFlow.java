@@ -266,8 +266,6 @@ public class PTXControlFlow {
 
         @Override
         public void emitCode(CompilationResultBuilder crb, PTXMacroAssembler masm) {
-            Buffer buf = masm.codeBuffer;
-
             // Compare index against jump table bounds
 
             int highKey = lowKey + targets.length - 1;
@@ -285,7 +283,7 @@ public class PTXControlFlow {
             }
 
             // address of jump table
-            int tablePos = buf.position();
+            int tablePos = masm.position();
 
             JumpTable jt = new JumpTable(tablePos, lowKey, highKey, 4);
             String name = "jumptable" + jt.position;

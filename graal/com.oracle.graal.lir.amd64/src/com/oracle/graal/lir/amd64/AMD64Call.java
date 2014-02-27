@@ -155,7 +155,7 @@ public class AMD64Call {
         if (align) {
             emitAlignmentForDirectCall(crb, masm);
         }
-        int before = masm.codeBuffer.position();
+        int before = masm.position();
         if (scratch != null) {
             // offset might not fit a 32-bit immediate, generate an
             // indirect call with a 64-bit immediate
@@ -164,7 +164,7 @@ public class AMD64Call {
         } else {
             masm.call();
         }
-        int after = masm.codeBuffer.position();
+        int after = masm.position();
         crb.recordDirectCall(before, after, callTarget, info);
         crb.recordExceptionHandlers(after, info);
         masm.ensureUniquePC();
@@ -172,7 +172,7 @@ public class AMD64Call {
 
     protected static void emitAlignmentForDirectCall(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
         // make sure that the displacement word of the call ends up word aligned
-        int offset = masm.codeBuffer.position();
+        int offset = masm.position();
         offset += crb.target.arch.getMachineCodeCallDisplacementOffset();
         int modulus = crb.target.wordSize;
         if (offset % modulus != 0) {
@@ -181,25 +181,25 @@ public class AMD64Call {
     }
 
     public static void directJmp(CompilationResultBuilder crb, AMD64MacroAssembler masm, InvokeTarget target) {
-        int before = masm.codeBuffer.position();
+        int before = masm.position();
         masm.jmp(0, true);
-        int after = masm.codeBuffer.position();
+        int after = masm.position();
         crb.recordDirectCall(before, after, target, null);
         masm.ensureUniquePC();
     }
 
     public static void directConditionalJmp(CompilationResultBuilder crb, AMD64MacroAssembler masm, InvokeTarget target, ConditionFlag cond) {
-        int before = masm.codeBuffer.position();
+        int before = masm.position();
         masm.jcc(cond, 0, true);
-        int after = masm.codeBuffer.position();
+        int after = masm.position();
         crb.recordDirectCall(before, after, target, null);
         masm.ensureUniquePC();
     }
 
     public static void indirectCall(CompilationResultBuilder crb, AMD64MacroAssembler masm, Register dst, InvokeTarget callTarget, LIRFrameState info) {
-        int before = masm.codeBuffer.position();
+        int before = masm.position();
         masm.call(dst);
-        int after = masm.codeBuffer.position();
+        int after = masm.position();
         crb.recordIndirectCall(before, after, callTarget, info);
         crb.recordExceptionHandlers(after, info);
         masm.ensureUniquePC();

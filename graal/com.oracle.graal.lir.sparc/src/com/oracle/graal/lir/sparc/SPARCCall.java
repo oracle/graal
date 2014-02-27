@@ -147,7 +147,7 @@ public class SPARCCall {
         if (align) {
             // We don't need alignment on SPARC.
         }
-        int before = masm.codeBuffer.position();
+        int before = masm.position();
         if (scratch != null) {
             // offset might not fit a 30-bit displacement, generate an
             // indirect call with a 64-bit immediate
@@ -156,7 +156,7 @@ public class SPARCCall {
         } else {
             new Call(0).emit(masm);
         }
-        int after = masm.codeBuffer.position();
+        int after = masm.position();
         crb.recordDirectCall(before, after, callTarget, info);
         crb.recordExceptionHandlers(after, info);
         new Nop().emit(masm);  // delay slot
@@ -164,19 +164,19 @@ public class SPARCCall {
     }
 
     public static void indirectJmp(CompilationResultBuilder crb, SPARCMacroAssembler masm, Register dst, InvokeTarget target) {
-        int before = masm.codeBuffer.position();
+        int before = masm.position();
         new Sethix(0L, dst, true).emit(masm);
         new Jmp(new SPARCAddress(dst, 0)).emit(masm);
-        int after = masm.codeBuffer.position();
+        int after = masm.position();
         crb.recordIndirectCall(before, after, target, null);
         new Nop().emit(masm);  // delay slot
         masm.ensureUniquePC();
     }
 
     public static void indirectCall(CompilationResultBuilder crb, SPARCMacroAssembler masm, Register dst, InvokeTarget callTarget, LIRFrameState info) {
-        int before = masm.codeBuffer.position();
+        int before = masm.position();
         new Jmpl(dst, 0, o7).emit(masm);
-        int after = masm.codeBuffer.position();
+        int after = masm.position();
         crb.recordIndirectCall(before, after, callTarget, info);
         crb.recordExceptionHandlers(after, info);
         new Nop().emit(masm);  // delay slot

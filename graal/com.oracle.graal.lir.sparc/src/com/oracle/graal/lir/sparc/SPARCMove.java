@@ -110,7 +110,7 @@ public class SPARCMove {
         @Override
         public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
             if (state != null) {
-                crb.recordImplicitException(masm.codeBuffer.position(), state);
+                crb.recordImplicitException(masm.position(), state);
             }
             emitMemAccess(masm);
         }
@@ -215,7 +215,7 @@ public class SPARCMove {
 
         @Override
         public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
-            crb.recordImplicitException(masm.codeBuffer.position(), state);
+            crb.recordImplicitException(masm.position(), state);
             new Ldx(new SPARCAddress(asRegister(input), 0), r0).emit(masm);
         }
 

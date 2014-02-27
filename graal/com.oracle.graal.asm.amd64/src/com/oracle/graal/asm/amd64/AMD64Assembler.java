@@ -746,7 +746,7 @@ public class AMD64Assembler extends AbstractAssembler {
     public void jcc(ConditionFlag cc, int jumpTarget, boolean forceDisp32) {
         int shortSize = 2;
         int longSize = 6;
-        long disp = jumpTarget - codeBuffer.position();
+        long disp = jumpTarget - position();
         if (!forceDisp32 && isByte(disp - shortSize)) {
             // 0111 tttn #8-bit disp
             emitByte(0x70 | cc.getValue());
@@ -769,7 +769,7 @@ public class AMD64Assembler extends AbstractAssembler {
             // is the same however, seems to be rather unlikely case.
             // Note: use jccb() if label to be bound is very close to get
             // an 8-bit displacement
-            l.addPatchAt(codeBuffer.position());
+            l.addPatchAt(position());
             emitByte(0x0F);
             emitByte(0x80 | cc.getValue());
             emitInt(0);
@@ -781,13 +781,13 @@ public class AMD64Assembler extends AbstractAssembler {
         if (l.isBound()) {
             int shortSize = 2;
             int entry = l.position();
-            assert isByte(entry - (codeBuffer.position() + shortSize)) : "Dispacement too large for a short jmp";
-            long disp = entry - codeBuffer.position();
+            assert isByte(entry - (position() + shortSize)) : "Dispacement too large for a short jmp";
+            long disp = entry - position();
             // 0111 tttn #8-bit disp
             emitByte(0x70 | cc.getValue());
             emitByte((int) ((disp - shortSize) & 0xFF));
         } else {
-            l.addPatchAt(codeBuffer.position());
+            l.addPatchAt(position());
             emitByte(0x70 | cc.getValue());
             emitByte(0);
         }
@@ -796,7 +796,7 @@ public class AMD64Assembler extends AbstractAssembler {
     public final void jmp(int jumpTarget, boolean forceDisp32) {
         int shortSize = 2;
         int longSize = 5;
-        long disp = jumpTarget - codeBuffer.position();
+        long disp = jumpTarget - position();
         if (!forceDisp32 && isByte(disp - shortSize)) {
             emitByte(0xEB);
             emitByte((int) ((disp - shortSize) & 0xFF));
@@ -816,7 +816,7 @@ public class AMD64Assembler extends AbstractAssembler {
             // the forward jump will not run beyond 256 bytes, use jmpb to
             // force an 8-bit displacement.
 
-            l.addPatchAt(codeBuffer.position());
+            l.addPatchAt(position());
             emitByte(0xE9);
             emitInt(0);
         }
@@ -832,13 +832,13 @@ public class AMD64Assembler extends AbstractAssembler {
         if (l.isBound()) {
             int shortSize = 2;
             int entry = l.position();
-            assert isByte((entry - codeBuffer.position()) + shortSize) : "Dispacement too large for a short jmp";
-            long offs = entry - codeBuffer.position();
+            assert isByte((entry - position()) + shortSize) : "Dispacement too large for a short jmp";
+            long offs = entry - position();
             emitByte(0xEB);
             emitByte((int) ((offs - shortSize) & 0xFF));
         } else {
 
-            l.addPatchAt(codeBuffer.position());
+            l.addPatchAt(position());
             emitByte(0xEB);
             emitByte(0);
         }
@@ -2446,21 +2446,21 @@ public class AMD64Assembler extends AbstractAssembler {
 
     @Override
     protected final void patchJumpTarget(int branch, int branchTarget) {
-        int op = codeBuffer.getByte(branch);
+        int op = getByte(branch);
         assert op == 0xE8 // call
                         ||
                         op == 0x00 // jump table entry
                         || op == 0xE9 // jmp
                         || op == 0xEB // short jmp
                         || (op & 0xF0) == 0x70 // short jcc
-                        || op == 0x0F && (codeBuffer.getByte(branch + 1) & 0xF0) == 0x80 // jcc
+                        || op == 0x0F && (getByte(branch + 1) & 0xF0) == 0x80 // jcc
         : "Invalid opcode at patch point branch=" + branch + ", branchTarget=" + branchTarget + ", op=" + op;
 
         if (op == 0x00) {
-            int offsetToJumpTableBase = codeBuffer.getShort(branch + 1);
+            int offsetToJumpTableBase = getShort(branch + 1);
             int jumpTableBase = branch - offsetToJumpTableBase;
             int imm32 = branchTarget - jumpTableBase;
-            codeBuffer.emitInt(imm32, branch);
+            emitInt(imm32, branch);
         } else if (op == 0xEB || (op & 0xF0) == 0x70) {
 
             // short offset operators (jmp and jcc)
@@ -2472,7 +2472,7 @@ public class AMD64Assembler extends AbstractAssembler {
             if (!NumUtil.isByte(imm8)) {
                 throw new InternalError("branch displacement out of range: " + imm8);
             }
-            codeBuffer.emitByte(imm8, branch + 1);
+            emitByte(imm8, branch + 1);
 
         } else {
 
@@ -2482,7 +2482,7 @@ public class AMD64Assembler extends AbstractAssembler {
             }
 
             int imm32 = branchTarget - (branch + 4 + off);
-            codeBuffer.emitInt(imm32, branch + off);
+            emitInt(imm32, branch + off);
         }
     }
 
@@ -2492,8 +2492,8 @@ public class AMD64Assembler extends AbstractAssembler {
 
     @Override
     public void align(int modulus) {
-        if (codeBuffer.position() % modulus != 0) {
-            nop(modulus - (codeBuffer.position() % modulus));
+        if (position() % modulus != 0) {
+            nop(modulus - (position() % modulus));
         }
     }
 

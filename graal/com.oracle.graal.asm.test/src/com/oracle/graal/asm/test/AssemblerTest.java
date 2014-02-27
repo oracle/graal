@@ -29,7 +29,6 @@ import org.junit.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.runtime.*;
-import com.oracle.graal.asm.*;
 import com.oracle.graal.phases.util.*;
 import com.oracle.graal.runtime.*;
 import com.oracle.graal.test.*;
@@ -40,8 +39,7 @@ public abstract class AssemblerTest extends GraalTest {
     protected final CodeCacheProvider codeCache;
 
     public interface CodeGenTest {
-
-        Buffer generateCode(CompilationResult compResult, TargetDescription target, RegisterConfig registerConfig, CallingConvention cc);
+        byte[] generateCode(CompilationResult compResult, TargetDescription target, RegisterConfig registerConfig, CallingConvention cc);
     }
 
     public AssemblerTest() {
@@ -60,8 +58,8 @@ public abstract class AssemblerTest extends GraalTest {
         CallingConvention cc = CodeUtil.getCallingConvention(codeCache, CallingConvention.Type.JavaCallee, method, false);
 
         CompilationResult compResult = new CompilationResult();
-        Buffer codeBuffer = test.generateCode(compResult, codeCache.getTarget(), registerConfig, cc);
-        compResult.setTargetCode(codeBuffer.close(true), codeBuffer.position());
+        byte[] targetCode = test.generateCode(compResult, codeCache.getTarget(), registerConfig, cc);
+        compResult.setTargetCode(targetCode, targetCode.length);
 
         InstalledCode code = codeCache.addMethod(method, compResult, null);
 

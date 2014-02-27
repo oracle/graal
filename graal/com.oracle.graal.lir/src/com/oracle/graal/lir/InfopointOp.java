@@ -42,6 +42,6 @@ public class InfopointOp extends LIRInstruction {
 
     @Override
     public void emitCode(CompilationResultBuilder crb) {
-        crb.recordInfopoint(crb.asm.codeBuffer.position(), state, reason);
+        crb.recordInfopoint(crb.asm.position(), state, reason);
     }
 }

@@ -554,7 +554,7 @@ public enum AMD64Arithmetic {
                 case IDIV:
                 case IREM:
                     masm.cdql();
-                    exceptionOffset = masm.codeBuffer.position();
+                    exceptionOffset = masm.position();
                     masm.idivl(asRegister(src));
                     break;
 
@@ -562,7 +562,7 @@ public enum AMD64Arithmetic {
                 case LDIV:
                 case LREM:
                     masm.cdqq();
-                    exceptionOffset = masm.codeBuffer.position();
+                    exceptionOffset = masm.position();
                     masm.idivq(asRegister(src));
                     break;
 
@@ -570,7 +570,7 @@ public enum AMD64Arithmetic {
                 case IUREM:
                     // Must zero the high 64-bit word (in RDX) of the dividend
                     masm.xorq(AMD64.rdx, AMD64.rdx);
-                    exceptionOffset = masm.codeBuffer.position();
+                    exceptionOffset = masm.position();
                     masm.divl(asRegister(src));
                     break;
 
@@ -578,7 +578,7 @@ public enum AMD64Arithmetic {
                 case LUREM:
                     // Must zero the high 64-bit word (in RDX) of the dividend
                     masm.xorq(AMD64.rdx, AMD64.rdx);
-                    exceptionOffset = masm.codeBuffer.position();
+                    exceptionOffset = masm.position();
                     masm.divq(asRegister(src));
                     break;
                 default:
