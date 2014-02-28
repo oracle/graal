@@ -23,6 +23,7 @@
 package com.oracle.graal.nodes.calc;
 
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
@@ -31,6 +32,14 @@ import com.oracle.graal.nodes.type.*;
 
 @NodeInfo(shortName = "|%|")
 public class UnsignedRemNode extends FixedBinaryNode implements Canonicalizable, Lowerable, LIRLowerable {
+
+    /**
+     * Used by {@code NodeIntrinsic} in {@code UnsignedMathSubstitutions}.
+     */
+    @SuppressWarnings("unused")
+    private UnsignedRemNode(Kind kind, ValueNode x, ValueNode y) {
+        this(StampFactory.forKind(kind), x, y);
+    }
 
     public UnsignedRemNode(Stamp stamp, ValueNode x, ValueNode y) {
         super(stamp, x, y);
