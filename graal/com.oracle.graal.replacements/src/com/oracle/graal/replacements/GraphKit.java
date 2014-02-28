@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.stubs;
+package com.oracle.graal.replacements;
 
 import java.lang.reflect.*;
 
@@ -31,11 +31,10 @@ import com.oracle.graal.java.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.java.*;
-import com.oracle.graal.nodes.java.MethodCallTargetNode.*;
+import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.util.*;
-import com.oracle.graal.replacements.*;
-import com.oracle.graal.replacements.ReplacementsImpl.*;
+import com.oracle.graal.replacements.ReplacementsImpl.FrameStateProcessing;
 import com.oracle.graal.word.phases.*;
 
 /**
@@ -64,14 +63,14 @@ public class GraphKit {
      * 
      * @return a node similar to {@code node} if one exists, otherwise {@code node}
      */
-    protected <T extends FloatingNode> T unique(T node) {
+    public <T extends FloatingNode> T unique(T node) {
         return graph.unique(node);
     }
 
     /**
      * Appends a fixed node to the graph.
      */
-    protected <T extends FixedNode> T append(T node) {
+    public <T extends FixedNode> T append(T node) {
         T result = graph.add(node);
         assert lastFixedNode != null;
         assert result.predecessor() == null;
