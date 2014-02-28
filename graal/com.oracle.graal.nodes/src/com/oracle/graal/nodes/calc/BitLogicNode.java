@@ -44,16 +44,16 @@ public abstract class BitLogicNode extends BinaryNode implements ArithmeticLIRLo
 
     public static BitLogicNode and(StructuredGraph graph, ValueNode v1, ValueNode v2) {
         assert v1.stamp().isCompatible(v2.stamp());
-        return graph.unique(new AndNode(v1.stamp(), v1, v2));
+        return graph.unique(new AndNode(StampTool.and(v1.stamp(), v2.stamp()), v1, v2));
     }
 
     public static BitLogicNode or(StructuredGraph graph, ValueNode v1, ValueNode v2) {
         assert v1.stamp().isCompatible(v2.stamp());
-        return graph.unique(new OrNode(v1.stamp(), v1, v2));
+        return graph.unique(new OrNode(StampTool.or(v1.stamp(), v2.stamp()), v1, v2));
     }
 
     public static BitLogicNode xor(StructuredGraph graph, ValueNode v1, ValueNode v2) {
         assert v1.stamp().isCompatible(v2.stamp());
-        return graph.unique(new XorNode(v1.stamp(), v1, v2));
+        return graph.unique(new XorNode(StampTool.xor(v1.stamp(), v2.stamp()), v1, v2));
     }
 }
