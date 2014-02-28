@@ -164,9 +164,9 @@ public class PTXLIRGenerator extends LIRGenerator {
             }
             Warp warpAnnotation = parameterIndex >= 0 ? MetaUtil.getParameterAnnotation(Warp.class, parameterIndex, graph.method()) : null;
             if (warpAnnotation != null) {
-                setResult(param, emitWarpParam(paramValue.getKind(), warpAnnotation));
+                setResult(param, emitWarpParam(paramValue.getKind().getStackKind(), warpAnnotation));
             } else {
-                setResult(param, emitLoadParam(paramValue.getKind(), paramValue, null));
+                setResult(param, emitLoadParam(paramValue.getKind().getStackKind(), paramValue, null));
             }
         }
     }
