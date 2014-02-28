@@ -122,7 +122,7 @@ public class AMD64Move {
         @Override
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
             if (state != null) {
-                crb.recordImplicitException(masm.codeBuffer.position(), state);
+                crb.recordImplicitException(masm.position(), state);
             }
             emitMemAccess(crb, masm);
         }
@@ -329,7 +329,7 @@ public class AMD64Move {
 
         @Override
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-            crb.recordImplicitException(masm.codeBuffer.position(), state);
+            crb.recordImplicitException(masm.position(), state);
             masm.nullCheck(asRegister(input));
         }
 

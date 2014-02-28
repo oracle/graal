@@ -30,10 +30,10 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
 @NodeInfo(shortName = "-")
-public class IntegerSubNode extends IntegerArithmeticNode implements Canonicalizable {
+public class IntegerSubNode extends IntegerArithmeticNode implements Canonicalizable, NarrowableArithmeticNode {
 
-    public IntegerSubNode(Kind kind, ValueNode x, ValueNode y) {
-        super(kind, x, y);
+    public IntegerSubNode(Stamp stamp, ValueNode x, ValueNode y) {
+        super(stamp, x, y);
     }
 
     @Override
@@ -44,13 +44,13 @@ public class IntegerSubNode extends IntegerArithmeticNode implements Canonicaliz
     @Override
     public Constant evalConst(Constant... inputs) {
         assert inputs.length == 2;
-        return Constant.forIntegerKind(kind(), inputs[0].asLong() - inputs[1].asLong(), null);
+        return Constant.forPrimitiveInt(PrimitiveStamp.getBits(stamp()), inputs[0].asLong() - inputs[1].asLong());
     }
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
         if (x() == y()) {
-            return ConstantNode.forIntegerKind(kind(), 0, graph());
+            return ConstantNode.forIntegerStamp(stamp(), 0, graph());
         }
         if (x() instanceof IntegerAddNode) {
             IntegerAddNode x = (IntegerAddNode) x();
@@ -98,12 +98,7 @@ public class IntegerSubNode extends IntegerArithmeticNode implements Canonicaliz
                 return reassociated;
             }
             if (c < 0) {
-                if (kind() == Kind.Int) {
-                    return IntegerArithmeticNode.add(graph(), x(), ConstantNode.forInt((int) -c, graph()));
-                } else {
-                    assert kind() == Kind.Long;
-                    return IntegerArithmeticNode.add(graph(), x(), ConstantNode.forLong(-c, graph()));
-                }
+                return IntegerArithmeticNode.add(graph(), x(), ConstantNode.forIntegerStamp(stamp(), -c, graph()));
             }
         } else if (x().isConstant()) {
             long c = x().asConstant().asLong();

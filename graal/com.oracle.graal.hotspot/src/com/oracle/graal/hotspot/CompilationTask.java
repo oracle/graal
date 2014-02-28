@@ -30,6 +30,7 @@ import static com.oracle.graal.nodes.StructuredGraph.*;
 import static com.oracle.graal.phases.GraalOptions.*;
 import static com.oracle.graal.phases.common.InliningUtil.*;
 
+import java.io.*;
 import java.lang.reflect.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.*;
@@ -52,15 +53,36 @@ import com.oracle.graal.phases.tiers.*;
 
 public class CompilationTask implements Runnable, Comparable {
 
+    // Keep static finals in a group with withinEnqueue as the last one. CompilationTask can be
+    // called from within it's own clinit so it needs to be careful about accessing state. Once
+    // withinEnqueue is non-null we assume that CompilationTask is fully initialized.
+    private static final AtomicLong uniqueTaskIds = new AtomicLong();
+
     private static final DebugMetric BAILOUTS = Debug.metric("Bailouts");
 
-    public static final ThreadLocal<Boolean> withinEnqueue = new ThreadLocal<Boolean>() {
+    private static final ThreadLocal<Boolean> withinEnqueue = new ThreadLocal<Boolean>() {
 
         @Override
         protected Boolean initialValue() {
             return Boolean.valueOf(Thread.currentThread() instanceof CompilerThread);
         }
     };
+
+    public static final boolean isWithinEnqueue() {
+        // It's possible this can be called before the <clinit> has completed so check for null
+        return withinEnqueue == null || withinEnqueue.get();
+    }
+
+    public static class BeginEnqueue implements Closeable {
+        public BeginEnqueue() {
+            assert !withinEnqueue.get();
+            withinEnqueue.set(Boolean.TRUE);
+        }
+
+        public void close() {
+            withinEnqueue.set(Boolean.FALSE);
+        }
+    }
 
     private enum CompilationStatus {
         Queued, Running, Finished
@@ -73,8 +95,6 @@ public class CompilationTask implements Runnable, Comparable {
     private final AtomicReference<CompilationStatus> status;
 
     private StructuredGraph graph;
-
-    private static final AtomicLong uniqueTaskIds = new AtomicLong();
 
     /**
      * A long representing the sequence number of this task. Used for sorting the compile queue.

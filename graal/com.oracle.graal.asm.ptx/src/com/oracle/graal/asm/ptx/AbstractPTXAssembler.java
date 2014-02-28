@@ -28,7 +28,7 @@ import com.oracle.graal.asm.*;
 /**
  * The platform-dependent base class for the PTX assembler.
  */
-public abstract class AbstractPTXAssembler extends AbstractAssembler {
+public abstract class AbstractPTXAssembler extends Assembler {
 
     public AbstractPTXAssembler(TargetDescription target) {
         super(target);

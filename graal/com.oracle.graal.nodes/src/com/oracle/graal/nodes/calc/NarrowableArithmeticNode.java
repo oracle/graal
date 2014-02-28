@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,28 +20,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir;
-
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.lir.asm.*;
+package com.oracle.graal.nodes.calc;
 
 /**
- * Emits an infopoint (only mark the position).
+ * Marker interface for nodes where it is valid to apply a {@link NarrowNode} to its inputs and do a
+ * narrow operation instead of doing the wide operation and applying the {@link NarrowNode} to the
+ * result.
  */
-@Opcode("INFOPOINT")
-public class InfopointOp extends LIRInstruction {
-
-    @State protected LIRFrameState state;
-
-    private final InfopointReason reason;
-
-    public InfopointOp(LIRFrameState state, InfopointReason reason) {
-        this.state = state;
-        this.reason = reason;
-    }
-
-    @Override
-    public void emitCode(CompilationResultBuilder crb) {
-        crb.recordInfopoint(crb.asm.position(), state, reason);
-    }
+public interface NarrowableArithmeticNode {
 }

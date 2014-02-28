@@ -27,20 +27,22 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.type.*;
 
 @NodeInfo(shortName = "%")
 public final class FloatRemNode extends FloatArithmeticNode implements Canonicalizable {
 
-    public FloatRemNode(Kind kind, ValueNode x, ValueNode y, boolean isStrictFP) {
-        super(kind, x, y, isStrictFP);
+    public FloatRemNode(Stamp stamp, ValueNode x, ValueNode y, boolean isStrictFP) {
+        super(stamp, x, y, isStrictFP);
     }
 
     public Constant evalConst(Constant... inputs) {
         assert inputs.length == 2;
-        if (kind() == Kind.Float) {
+        assert inputs[0].getKind() == inputs[1].getKind();
+        if (inputs[0].getKind() == Kind.Float) {
             return Constant.forFloat(inputs[0].asFloat() % inputs[1].asFloat());
         } else {
-            assert kind() == Kind.Double;
+            assert inputs[0].getKind() == Kind.Double;
             return Constant.forDouble(inputs[0].asDouble() % inputs[1].asDouble());
         }
     }

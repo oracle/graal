@@ -49,8 +49,8 @@ public final class ConditionalNode extends BinaryNode implements Canonicalizable
     }
 
     public ConditionalNode(LogicNode condition, ValueNode trueValue, ValueNode falseValue) {
-        super(trueValue.kind(), trueValue, falseValue);
-        assert trueValue.kind() == falseValue.kind();
+        super(trueValue.stamp().meet(falseValue.stamp()), trueValue, falseValue);
+        assert trueValue.stamp().isCompatible(falseValue.stamp());
         this.condition = condition;
     }
 

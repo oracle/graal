@@ -54,7 +54,7 @@ public class CompilationResultBuilder {
         }
     }
 
-    public final AbstractAssembler asm;
+    public final Assembler asm;
     public final CompilationResult compilationResult;
     public final TargetDescription target;
     public final CodeCacheProvider codeCache;
@@ -78,8 +78,7 @@ public class CompilationResultBuilder {
 
     private List<ExceptionInfo> exceptionInfoList;
 
-    public CompilationResultBuilder(CodeCacheProvider codeCache, ForeignCallsProvider foreignCalls, FrameMap frameMap, AbstractAssembler asm, FrameContext frameContext,
-                    CompilationResult compilationResult) {
+    public CompilationResultBuilder(CodeCacheProvider codeCache, ForeignCallsProvider foreignCalls, FrameMap frameMap, Assembler asm, FrameContext frameContext, CompilationResult compilationResult) {
         this.target = codeCache.getTarget();
         this.codeCache = codeCache;
         this.foreignCalls = foreignCalls;
@@ -97,15 +96,15 @@ public class CompilationResultBuilder {
     private static final CompilationResult.Mark[] NO_REFS = {};
 
     public CompilationResult.Mark recordMark(Object id) {
-        return compilationResult.recordMark(asm.codeBuffer.position(), id, NO_REFS);
+        return compilationResult.recordMark(asm.position(), id, NO_REFS);
     }
 
     public CompilationResult.Mark recordMark(Object id, CompilationResult.Mark... references) {
-        return compilationResult.recordMark(asm.codeBuffer.position(), id, references);
+        return compilationResult.recordMark(asm.position(), id, references);
     }
 
     public void blockComment(String s) {
-        compilationResult.addAnnotation(new CompilationResult.CodeComment(asm.codeBuffer.position(), s));
+        compilationResult.addAnnotation(new CompilationResult.CodeComment(asm.position(), s));
     }
 
     /**
@@ -114,7 +113,7 @@ public class CompilationResultBuilder {
      * the compilation result.
      */
     public void finish() {
-        compilationResult.setTargetCode(asm.codeBuffer.close(false), asm.codeBuffer.position());
+        compilationResult.setTargetCode(asm.close(false), asm.position());
 
         // Record exception handlers if they exist
         if (exceptionInfoList != null) {
@@ -159,7 +158,7 @@ public class CompilationResultBuilder {
 
     public void recordInlineDataInCode(Constant data) {
         assert data != null;
-        int pos = asm.codeBuffer.position();
+        int pos = asm.position();
         Debug.log("Inline data in code: pos = %d, data = %s", pos, data);
         compilationResult.recordInlineData(pos, data);
     }
@@ -171,7 +170,7 @@ public class CompilationResultBuilder {
 
     public AbstractAddress recordDataReferenceInCode(Data data) {
         assert data != null;
-        int pos = asm.codeBuffer.position();
+        int pos = asm.position();
         Debug.log("Data reference in code: pos = %d, data = %s", pos, data);
         compilationResult.recordDataReference(pos, data);
         return asm.getPlaceholder();

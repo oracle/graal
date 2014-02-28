@@ -598,35 +598,35 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             switch (opcode) {
                 case IADD:
                 case LADD:
-                    v = new IntegerAddNode(result, x, y);
+                    v = new IntegerAddNode(StampFactory.forKind(result), x, y);
                     break;
                 case FADD:
                 case DADD:
-                    v = new FloatAddNode(result, x, y, isStrictFP);
+                    v = new FloatAddNode(StampFactory.forKind(result), x, y, isStrictFP);
                     break;
                 case ISUB:
                 case LSUB:
-                    v = new IntegerSubNode(result, x, y);
+                    v = new IntegerSubNode(StampFactory.forKind(result), x, y);
                     break;
                 case FSUB:
                 case DSUB:
-                    v = new FloatSubNode(result, x, y, isStrictFP);
+                    v = new FloatSubNode(StampFactory.forKind(result), x, y, isStrictFP);
                     break;
                 case IMUL:
                 case LMUL:
-                    v = new IntegerMulNode(result, x, y);
+                    v = new IntegerMulNode(StampFactory.forKind(result), x, y);
                     break;
                 case FMUL:
                 case DMUL:
-                    v = new FloatMulNode(result, x, y, isStrictFP);
+                    v = new FloatMulNode(StampFactory.forKind(result), x, y, isStrictFP);
                     break;
                 case FDIV:
                 case DDIV:
-                    v = new FloatDivNode(result, x, y, isStrictFP);
+                    v = new FloatDivNode(StampFactory.forKind(result), x, y, isStrictFP);
                     break;
                 case FREM:
                 case DREM:
-                    v = new FloatRemNode(result, x, y, isStrictFP);
+                    v = new FloatRemNode(StampFactory.forKind(result), x, y, isStrictFP);
                     break;
                 default:
                     throw new GraalInternalError("should not reach");
@@ -641,11 +641,11 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             switch (opcode) {
                 case IDIV:
                 case LDIV:
-                    v = new IntegerDivNode(result, x, y);
+                    v = new IntegerDivNode(StampFactory.forKind(result), x, y);
                     break;
                 case IREM:
                 case LREM:
-                    v = new IntegerRemNode(result, x, y);
+                    v = new IntegerRemNode(StampFactory.forKind(result), x, y);
                     break;
                 default:
                     throw new GraalInternalError("should not reach");
@@ -664,15 +664,15 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             switch (opcode) {
                 case ISHL:
                 case LSHL:
-                    v = new LeftShiftNode(kind, x, s);
+                    v = new LeftShiftNode(StampFactory.forKind(kind), x, s);
                     break;
                 case ISHR:
                 case LSHR:
-                    v = new RightShiftNode(kind, x, s);
+                    v = new RightShiftNode(StampFactory.forKind(kind), x, s);
                     break;
                 case IUSHR:
                 case LUSHR:
-                    v = new UnsignedRightShiftNode(kind, x, s);
+                    v = new UnsignedRightShiftNode(StampFactory.forKind(kind), x, s);
                     break;
                 default:
                     throw new GraalInternalError("should not reach");
@@ -683,19 +683,20 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
         private void genLogicOp(Kind kind, int opcode) {
             ValueNode y = frameState.pop(kind);
             ValueNode x = frameState.pop(kind);
+            Stamp stamp = StampFactory.forKind(kind);
             BitLogicNode v;
             switch (opcode) {
                 case IAND:
                 case LAND:
-                    v = new AndNode(kind, x, y);
+                    v = new AndNode(stamp, x, y);
                     break;
                 case IOR:
                 case LOR:
-                    v = new OrNode(kind, x, y);
+                    v = new OrNode(stamp, x, y);
                     break;
                 case IXOR:
                 case LXOR:
-                    v = new XorNode(kind, x, y);
+                    v = new XorNode(stamp, x, y);
                     break;
                 default:
                     throw new GraalInternalError("should not reach");
@@ -740,7 +741,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             int delta = stream().readIncrement();
             ValueNode x = frameState.loadLocal(index);
             ValueNode y = appendConstant(Constant.forInt(delta));
-            frameState.storeLocal(index, append(new IntegerAddNode(Kind.Int, x, y)));
+            frameState.storeLocal(index, append(new IntegerAddNode(StampFactory.forKind(Kind.Int), x, y)));
         }
 
         private void genGoto() {

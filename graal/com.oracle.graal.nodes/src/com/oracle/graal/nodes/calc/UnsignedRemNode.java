@@ -33,8 +33,16 @@ import com.oracle.graal.nodes.type.*;
 @NodeInfo(shortName = "|%|")
 public class UnsignedRemNode extends FixedBinaryNode implements Canonicalizable, Lowerable, LIRLowerable {
 
-    public UnsignedRemNode(Kind kind, ValueNode x, ValueNode y) {
-        super(kind, x, y);
+    /**
+     * Used by {@code NodeIntrinsic} in {@code UnsignedMathSubstitutions}.
+     */
+    @SuppressWarnings("unused")
+    private UnsignedRemNode(Kind kind, ValueNode x, ValueNode y) {
+        this(StampFactory.forKind(kind), x, y);
+    }
+
+    public UnsignedRemNode(Stamp stamp, ValueNode x, ValueNode y) {
+        super(stamp, x, y);
     }
 
     @Override
@@ -44,18 +52,13 @@ public class UnsignedRemNode extends FixedBinaryNode implements Canonicalizable,
             if (yConst == 0) {
                 return this; // this will trap, cannot canonicalize
             }
-            if (kind() == Kind.Int) {
-                return ConstantNode.forInt(UnsignedMath.remainder(x().asConstant().asInt(), (int) yConst), graph());
-            } else {
-                assert kind() == Kind.Long;
-                return ConstantNode.forLong(UnsignedMath.remainder(x().asConstant().asLong(), yConst), graph());
-            }
+            return ConstantNode.forIntegerStamp(stamp(), UnsignedMath.remainder(x().asConstant().asLong(), yConst), graph());
         } else if (y().isConstant()) {
             long c = y().asConstant().asLong();
             if (c == 1) {
-                return ConstantNode.forIntegerKind(kind(), 0, graph());
+                return ConstantNode.forIntegerStamp(stamp(), 0, graph());
             } else if (CodeUtil.isPowerOf2(c)) {
-                return graph().unique(new AndNode(kind(), x(), ConstantNode.forIntegerKind(kind(), c - 1, graph())));
+                return graph().unique(new AndNode(stamp(), x(), ConstantNode.forIntegerStamp(stamp(), c - 1, graph())));
             }
         }
         return this;

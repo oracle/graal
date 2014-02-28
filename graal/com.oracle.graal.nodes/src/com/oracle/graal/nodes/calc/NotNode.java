@@ -32,7 +32,7 @@ import com.oracle.graal.nodes.type.*;
 /**
  * Binary negation of long or integer values.
  */
-public final class NotNode extends FloatingNode implements Canonicalizable, ArithmeticLIRLowerable {
+public final class NotNode extends FloatingNode implements Canonicalizable, ArithmeticLIRLowerable, NarrowableArithmeticNode {
 
     @Input private ValueNode x;
 
@@ -48,7 +48,7 @@ public final class NotNode extends FloatingNode implements Canonicalizable, Arit
     @Override
     public Constant evalConst(Constant... inputs) {
         assert inputs.length == 1;
-        return Constant.forIntegerKind(kind(), ~inputs[0].asLong(), null);
+        return Constant.forPrimitiveInt(PrimitiveStamp.getBits(stamp()), ~inputs[0].asLong());
     }
 
     /**
@@ -58,7 +58,6 @@ public final class NotNode extends FloatingNode implements Canonicalizable, Arit
      */
     public NotNode(ValueNode x) {
         super(StampTool.not(x.stamp()));
-        assert x.kind() == Kind.Int || x.kind() == Kind.Long;
         this.x = x;
     }
 

@@ -111,7 +111,7 @@ public class AMD64HotSpotFrameOmissionTest extends GraalCompilerTest {
         AMD64Assembler asm = new AMD64Assembler(target, registerConfig);
 
         gen.generateCode(asm);
-        byte[] expectedCode = asm.codeBuffer.close(true);
+        byte[] expectedCode = asm.close(true);
 
         // Only compare up to expectedCode.length bytes to ignore
         // padding instructions adding during code installation

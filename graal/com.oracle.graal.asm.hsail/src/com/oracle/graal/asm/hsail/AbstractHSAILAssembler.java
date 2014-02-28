@@ -28,7 +28,7 @@ import com.oracle.graal.asm.*;
 /**
  * The platform-dependent base class for the HSAIL assembler.
  */
-public abstract class AbstractHSAILAssembler extends AbstractAssembler {
+public abstract class AbstractHSAILAssembler extends Assembler {
 
     public AbstractHSAILAssembler(TargetDescription target) {
         super(target);

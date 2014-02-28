@@ -41,7 +41,7 @@ import com.oracle.graal.truffle.hotspot.*;
 @ServiceProvider(OptimizedCallTargetInstrumentationFactory.class)
 public class AMD64OptimizedCallTargetInstrumentationFactory implements OptimizedCallTargetInstrumentationFactory {
 
-    public CompilationResultBuilder createBuilder(CodeCacheProvider codeCache, ForeignCallsProvider foreignCalls, FrameMap frameMap, AbstractAssembler asm, FrameContext frameContext,
+    public CompilationResultBuilder createBuilder(CodeCacheProvider codeCache, ForeignCallsProvider foreignCalls, FrameMap frameMap, Assembler asm, FrameContext frameContext,
                     CompilationResult compilationResult) {
         return new OptimizedCallTargetInstrumentation(codeCache, foreignCalls, frameMap, asm, frameContext, compilationResult) {
             @Override
@@ -51,14 +51,14 @@ public class AMD64OptimizedCallTargetInstrumentationFactory implements Optimized
                 Register thisRegister = codeCache.getRegisterConfig().getCallingConventionRegisters(Type.JavaCall, Kind.Object)[0];
                 Register spillRegister = AMD64.r10; // TODO(mg): fix me
                 AMD64Address nMethodAddress = new AMD64Address(thisRegister, getFieldOffset("installedCode", OptimizedCallTarget.class));
-                int verifiedEntryPoint = asm.codeBuffer.position();
+                int verifiedEntryPoint = asm.position();
                 if (config.useCompressedOops) {
                     asm.movl(spillRegister, nMethodAddress);
-                    asm.nop(AMD64HotSpotBackend.PATCHED_VERIFIED_ENTRY_POINT_INSTRUCTION_SIZE - (asm.codeBuffer.position() - verifiedEntryPoint));
+                    asm.nop(AMD64HotSpotBackend.PATCHED_VERIFIED_ENTRY_POINT_INSTRUCTION_SIZE - (asm.position() - verifiedEntryPoint));
                     AMD64HotSpotMove.decodePointer(asm, spillRegister, registers.getHeapBaseRegister(), config.getOopEncoding());
                 } else {
                     asm.movq(spillRegister, nMethodAddress);
-                    asm.nop(AMD64HotSpotBackend.PATCHED_VERIFIED_ENTRY_POINT_INSTRUCTION_SIZE - (asm.codeBuffer.position() - verifiedEntryPoint));
+                    asm.nop(AMD64HotSpotBackend.PATCHED_VERIFIED_ENTRY_POINT_INSTRUCTION_SIZE - (asm.position() - verifiedEntryPoint));
                 }
                 Label doProlog = new Label();
 

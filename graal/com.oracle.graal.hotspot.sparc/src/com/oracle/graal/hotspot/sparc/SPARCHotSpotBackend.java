@@ -147,7 +147,7 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
     }
 
     @Override
-    protected AbstractAssembler createAssembler(FrameMap frameMap) {
+    protected Assembler createAssembler(FrameMap frameMap) {
         return new SPARCMacroAssembler(getTarget(), frameMap.registerConfig);
     }
 
@@ -158,7 +158,7 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
         assert gen.deoptimizationRescueSlot == null || frameMap.frameNeedsAllocating() : "method that can deoptimize must have a frame";
 
         Stub stub = gen.getStub();
-        AbstractAssembler masm = createAssembler(frameMap);
+        Assembler masm = createAssembler(frameMap);
         // On SPARC we always use stack frames.
         HotSpotFrameContext frameContext = new HotSpotFrameContext(stub != null);
         CompilationResultBuilder crb = factory.createBuilder(getProviders().getCodeCache(), getProviders().getForeignCalls(), frameMap, masm, frameContext, compilationResult);

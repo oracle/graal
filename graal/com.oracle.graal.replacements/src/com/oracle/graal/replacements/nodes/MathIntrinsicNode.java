@@ -48,8 +48,8 @@ public class MathIntrinsicNode extends FloatingNode implements Canonicalizable, 
     }
 
     public MathIntrinsicNode(ValueNode x, Operation op) {
-        super(StampFactory.forKind(x.kind()));
-        assert x.kind() == Kind.Double;
+        super(StampFactory.forKind(Kind.Double));
+        assert x.stamp() instanceof FloatStamp && PrimitiveStamp.getBits(x.stamp()) == 64;
         this.x = x;
         this.operation = op;
     }

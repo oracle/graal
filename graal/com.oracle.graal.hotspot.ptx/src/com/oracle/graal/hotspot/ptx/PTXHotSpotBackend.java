@@ -261,24 +261,24 @@ public class PTXHotSpotBackend extends HotSpotBackend {
 
         LIRInstruction op;
 
-        void emitDeclarations(Buffer codeBuffer) {
+        void emitDeclarations(Assembler asm) {
             for (Integer i : unsigned8) {
-                codeBuffer.emitString(".reg .u8 %r" + i.intValue() + ";");
+                asm.emitString(".reg .u8 %r" + i.intValue() + ";");
             }
             for (Integer i : signed32) {
-                codeBuffer.emitString(".reg .s32 %r" + i.intValue() + ";");
+                asm.emitString(".reg .s32 %r" + i.intValue() + ";");
             }
             for (Integer i : signed64) {
-                codeBuffer.emitString(".reg .s64 %r" + i.intValue() + ";");
+                asm.emitString(".reg .s64 %r" + i.intValue() + ";");
             }
             for (Integer i : unsigned64) {
-                codeBuffer.emitString(".reg .u64 %r" + i.intValue() + ";");
+                asm.emitString(".reg .u64 %r" + i.intValue() + ";");
             }
             for (Integer i : float32) {
-                codeBuffer.emitString(".reg .f32 %r" + i.intValue() + ";");
+                asm.emitString(".reg .f32 %r" + i.intValue() + ";");
             }
             for (Integer i : float64) {
-                codeBuffer.emitString(".reg .f64 %r" + i.intValue() + ";");
+                asm.emitString(".reg .f64 %r" + i.intValue() + ";");
             }
         }
 
@@ -360,7 +360,7 @@ public class PTXHotSpotBackend extends HotSpotBackend {
         // - has no incoming arguments passed on the stack
         // - has no instructions with debug info
         FrameMap frameMap = lirGen.frameMap;
-        AbstractAssembler masm = createAssembler(frameMap);
+        Assembler masm = createAssembler(frameMap);
         PTXFrameContext frameContext = new PTXFrameContext();
         CompilationResultBuilder crb = factory.createBuilder(getCodeCache(), getForeignCalls(), frameMap, masm, frameContext, compilationResult);
         crb.setFrameSize(0);
@@ -368,7 +368,7 @@ public class PTXHotSpotBackend extends HotSpotBackend {
     }
 
     @Override
-    protected AbstractAssembler createAssembler(FrameMap frameMap) {
+    protected Assembler createAssembler(FrameMap frameMap) {
         return new PTXMacroAssembler(getTarget(), frameMap.registerConfig);
     }
 
@@ -384,13 +384,13 @@ public class PTXHotSpotBackend extends HotSpotBackend {
         // facilitate seemless PTX code generation subsequently.
         assert codeCacheOwner != null : lirGen.getGraph() + " is not associated with a method";
         final String name = codeCacheOwner.getName();
-        Buffer codeBuffer = crb.asm.codeBuffer;
+        Assembler asm = crb.asm;
 
         // Emit initial boiler-plate directives.
-        codeBuffer.emitString(".version 3.0");
-        codeBuffer.emitString(".target sm_30");
-        codeBuffer.emitString0(".entry " + name + " (");
-        codeBuffer.emitString("");
+        asm.emitString(".version 3.0");
+        asm.emitString(".target sm_30");
+        asm.emitString0(".entry " + name + " (");
+        asm.emitString("");
 
         // Get the start block
         Block startBlock = lirGen.lir.cfg.getStartBlock();
@@ -413,8 +413,8 @@ public class PTXHotSpotBackend extends HotSpotBackend {
         }
 
         // Start emiting body of the PTX kernel.
-        codeBuffer.emitString0(") {");
-        codeBuffer.emitString("");
+        asm.emitString0(") {");
+        asm.emitString("");
     }
 
     // Emit .reg space declarations
@@ -422,7 +422,6 @@ public class PTXHotSpotBackend extends HotSpotBackend {
 
         assert codeCacheOwner != null : lirGen.getGraph() + " is not associated with a method";
 
-        Buffer codeBuffer = crb.asm.codeBuffer;
         RegisterAnalysis registerAnalysis = new RegisterAnalysis();
 
         for (Block b : lirGen.lir.codeEmittingOrder()) {
@@ -437,19 +436,21 @@ public class PTXHotSpotBackend extends HotSpotBackend {
             }
         }
 
-        registerAnalysis.emitDeclarations(codeBuffer);
+        Assembler asm = crb.asm;
+        registerAnalysis.emitDeclarations(asm);
 
         // emit predicate register declaration
         int maxPredRegNum = ((PTXLIRGenerator) lirGen).getNextPredRegNumber();
         if (maxPredRegNum > 0) {
-            codeBuffer.emitString(".reg .pred %p<" + maxPredRegNum + ">;");
+            asm.emitString(".reg .pred %p<" + maxPredRegNum + ">;");
         }
     }
 
     @Override
     public void emitCode(CompilationResultBuilder crb, LIRGenerator lirGen, ResolvedJavaMethod codeCacheOwner) {
         assert codeCacheOwner != null : lirGen.getGraph() + " is not associated with a method";
-        Buffer codeBuffer = crb.asm.codeBuffer;
+        Assembler asm = crb.asm;
+
         // Emit the prologue
         emitKernelEntry(crb, lirGen, codeCacheOwner);
 
@@ -460,8 +461,7 @@ public class PTXHotSpotBackend extends HotSpotBackend {
             e.printStackTrace();
             // TODO : Better error handling needs to be done once
             // all types of parameters are handled.
-            codeBuffer.setPosition(0);
-            codeBuffer.close(false);
+            asm.close(false);
             return;
         }
         // Emit code for the LIR
@@ -471,14 +471,13 @@ public class PTXHotSpotBackend extends HotSpotBackend {
             e.printStackTrace();
             // TODO : Better error handling needs to be done once
             // all types of parameters are handled.
-            codeBuffer.setPosition(0);
-            codeBuffer.close(false);
+            asm.close(false);
             return;
         }
 
         // Emit the epilogue
-        codeBuffer.emitString0("}");
-        codeBuffer.emitString("");
+        asm.emitString0("}");
+        asm.emitString("");
     }
 
     /**

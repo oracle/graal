@@ -33,8 +33,16 @@ import com.oracle.graal.nodes.type.*;
 @NodeInfo(shortName = "|/|")
 public class UnsignedDivNode extends FixedBinaryNode implements Canonicalizable, Lowerable, LIRLowerable {
 
-    public UnsignedDivNode(Kind kind, ValueNode x, ValueNode y) {
-        super(kind, x, y);
+    /**
+     * Used by {@code NodeIntrinsic} in {@code UnsignedMathSubstitutions}.
+     */
+    @SuppressWarnings("unused")
+    private UnsignedDivNode(Kind kind, ValueNode x, ValueNode y) {
+        this(StampFactory.forKind(kind), x, y);
+    }
+
+    public UnsignedDivNode(Stamp stamp, ValueNode x, ValueNode y) {
+        super(stamp, x, y);
     }
 
     @Override
@@ -44,19 +52,14 @@ public class UnsignedDivNode extends FixedBinaryNode implements Canonicalizable,
             if (yConst == 0) {
                 return this; // this will trap, cannot canonicalize
             }
-            if (kind() == Kind.Int) {
-                return ConstantNode.forInt(UnsignedMath.divide(x().asConstant().asInt(), (int) yConst), graph());
-            } else {
-                assert kind() == Kind.Long;
-                return ConstantNode.forLong(UnsignedMath.divide(x().asConstant().asLong(), yConst), graph());
-            }
+            return ConstantNode.forIntegerStamp(stamp(), UnsignedMath.divide(x().asConstant().asLong(), yConst), graph());
         } else if (y().isConstant()) {
             long c = y().asConstant().asLong();
             if (c == 1) {
                 return x();
             }
             if (CodeUtil.isPowerOf2(c)) {
-                return graph().unique(new UnsignedRightShiftNode(kind(), x(), ConstantNode.forInt(CodeUtil.log2(c), graph())));
+                return graph().unique(new UnsignedRightShiftNode(stamp(), x(), ConstantNode.forInt(CodeUtil.log2(c), graph())));
             }
         }
         return this;

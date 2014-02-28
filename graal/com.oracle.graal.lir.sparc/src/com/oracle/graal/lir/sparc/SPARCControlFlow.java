@@ -234,7 +234,6 @@ public class SPARCControlFlow {
             Register value = asIntReg(index);
             Register scratchReg = asLongReg(scratch);
 
-            Buffer buf = masm.codeBuffer;
             // Compare index against jump table bounds
             int highKey = lowKey + targets.length - 1;
             if (lowKey != 0) {
@@ -258,7 +257,7 @@ public class SPARCControlFlow {
             new Nop().emit(masm);  // delay slot
 
             // address of jump table
-            int tablePos = buf.position();
+            int tablePos = masm.position();
 
             JumpTable jt = new JumpTable(tablePos, lowKey, highKey, 4);
             crb.compilationResult.addAnnotation(jt);

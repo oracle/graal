@@ -248,14 +248,10 @@ public class VMToCompilerImpl implements VMToCompiler {
             // Compile until the queue is empty.
             int z = 0;
             while (true) {
-                try {
-                    assert !CompilationTask.withinEnqueue.get();
-                    CompilationTask.withinEnqueue.set(Boolean.TRUE);
+                try (CompilationTask.BeginEnqueue beginEnqueue = new CompilationTask.BeginEnqueue()) {
                     if (compileQueue.getCompletedTaskCount() >= Math.max(3, compileQueue.getTaskCount())) {
                         break;
                     }
-                } finally {
-                    CompilationTask.withinEnqueue.set(Boolean.FALSE);
                 }
 
                 Thread.sleep(100);
@@ -325,9 +321,7 @@ public class VMToCompilerImpl implements VMToCompiler {
     }
 
     public void shutdownCompiler() throws Exception {
-        try {
-            assert !CompilationTask.withinEnqueue.get();
-            CompilationTask.withinEnqueue.set(Boolean.TRUE);
+        try (CompilationTask.BeginEnqueue beginEnqueue = new CompilationTask.BeginEnqueue()) {
             // We have to use a privileged action here because shutting down the compiler might be
             // called from user code which very likely contains unprivileged frames.
             AccessController.doPrivileged(new PrivilegedExceptionAction<Void>() {
@@ -336,8 +330,6 @@ public class VMToCompilerImpl implements VMToCompiler {
                     return null;
                 }
             });
-        } finally {
-            CompilationTask.withinEnqueue.set(Boolean.FALSE);
         }
 
         printDebugValues(ResetDebugValuesAfterBootstrap.getValue() ? "application" : null, false);
@@ -537,7 +529,7 @@ public class VMToCompilerImpl implements VMToCompiler {
             return;
         }
 
-        if (CompilationTask.withinEnqueue.get()) {
+        if (CompilationTask.isWithinEnqueue()) {
             // This is required to avoid deadlocking a compiler thread. The issue is that a
             // java.util.concurrent.BlockingQueue is used to implement the compilation worker
             // queues. If a compiler thread triggers a compilation, then it may be blocked trying
@@ -547,8 +539,7 @@ public class VMToCompilerImpl implements VMToCompiler {
 
         // Don't allow blocking compiles from CompilerThreads
         boolean block = blocking && !(Thread.currentThread() instanceof CompilerThread);
-        CompilationTask.withinEnqueue.set(Boolean.TRUE);
-        try {
+        try (CompilationTask.BeginEnqueue beginEnqueue = new CompilationTask.BeginEnqueue()) {
             if (method.tryToQueueForCompilation()) {
                 assert method.isQueuedForCompilation();
 
@@ -565,8 +556,6 @@ public class VMToCompilerImpl implements VMToCompiler {
                     // The compile queue was already shut down.
                 }
             }
-        } finally {
-            CompilationTask.withinEnqueue.set(Boolean.FALSE);
         }
     }
 

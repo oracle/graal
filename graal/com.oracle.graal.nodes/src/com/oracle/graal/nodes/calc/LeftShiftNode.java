@@ -32,8 +32,8 @@ import com.oracle.graal.nodes.type.*;
 @NodeInfo(shortName = "<<")
 public final class LeftShiftNode extends ShiftNode implements Canonicalizable {
 
-    public LeftShiftNode(Kind kind, ValueNode x, ValueNode y) {
-        super(kind, x, y);
+    public LeftShiftNode(Stamp stamp, ValueNode x, ValueNode y) {
+        super(stamp, x, y);
     }
 
     @Override
@@ -79,19 +79,19 @@ public final class LeftShiftNode extends ShiftNode implements Canonicalizable {
                         if (total != (total & mask)) {
                             return ConstantNode.forIntegerKind(kind(), 0, graph());
                         }
-                        return graph().unique(new LeftShiftNode(kind(), other.x(), ConstantNode.forInt(total, graph())));
+                        return graph().unique(new LeftShiftNode(stamp(), other.x(), ConstantNode.forInt(total, graph())));
                     } else if ((other instanceof RightShiftNode || other instanceof UnsignedRightShiftNode) && otherAmount == amount) {
                         if (kind() == Kind.Long) {
-                            return graph().unique(new AndNode(kind(), other.x(), ConstantNode.forLong(-1L << amount, graph())));
+                            return graph().unique(new AndNode(stamp(), other.x(), ConstantNode.forLong(-1L << amount, graph())));
                         } else {
                             assert kind() == Kind.Int;
-                            return graph().unique(new AndNode(kind(), other.x(), ConstantNode.forInt(-1 << amount, graph())));
+                            return graph().unique(new AndNode(stamp(), other.x(), ConstantNode.forInt(-1 << amount, graph())));
                         }
                     }
                 }
             }
             if (originalAmout != amount) {
-                return graph().unique(new LeftShiftNode(kind(), x(), ConstantNode.forInt(amount, graph())));
+                return graph().unique(new LeftShiftNode(stamp(), x(), ConstantNode.forInt(amount, graph())));
             }
         }
         return this;

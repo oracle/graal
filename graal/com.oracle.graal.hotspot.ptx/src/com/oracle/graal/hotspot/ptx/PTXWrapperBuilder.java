@@ -40,7 +40,6 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.*;
-import com.oracle.graal.hotspot.stubs.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.lir.ptx.*;
 import com.oracle.graal.nodes.*;
@@ -238,7 +237,7 @@ public class PTXWrapperBuilder extends GraphKit {
             int javaParameterOffset = javaParameterOffsetsInKernelParametersBuffer[javaParametersIndex];
             LocationNode location = ConstantLocationNode.create(FINAL_LOCATION, javaParameter.kind(), javaParameterOffset, getGraph());
             append(new WriteNode(buf, javaParameter, location, BarrierType.NONE, false, false));
-            updateDimArg(method, providers, sig, sigIndex++, args, javaParameter);
+            updateDimArg(method, sig, sigIndex++, args, javaParameter);
         }
         if (returnKind != Kind.Void) {
             LocationNode location = ConstantLocationNode.create(FINAL_LOCATION, wordKind, bufSize - wordSize, getGraph());
@@ -325,7 +324,7 @@ public class PTXWrapperBuilder extends GraphKit {
      * Updates the {@code dimX}, {@code dimY} or {@code dimZ} argument passed to the kernel if
      * {@code javaParameter} is annotated with {@link ParallelOver}.
      */
-    private void updateDimArg(ResolvedJavaMethod method, HotSpotProviders providers, Signature sig, int sigIndex, Map<LaunchArg, ValueNode> launchArgs, ParameterNode javaParameter) {
+    private void updateDimArg(ResolvedJavaMethod method, Signature sig, int sigIndex, Map<LaunchArg, ValueNode> launchArgs, ParameterNode javaParameter) {
         if (sigIndex >= 0) {
             ParallelOver parallelOver = getParameterAnnotation(ParallelOver.class, sigIndex, method);
             if (parallelOver != null && sig.getParameterType(sigIndex, method.getDeclaringClass()).equals(providers.getMetaAccess().lookupJavaType(int[].class))) {

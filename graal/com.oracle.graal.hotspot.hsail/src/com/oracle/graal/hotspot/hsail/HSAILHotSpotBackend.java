@@ -58,7 +58,6 @@ import com.oracle.graal.phases.tiers.*;
 public class HSAILHotSpotBackend extends HotSpotBackend {
 
     private Map<String, String> paramTypeMap = new HashMap<>();
-    private Buffer codeBuffer;
     private final boolean deviceInitialized;
 
     public HSAILHotSpotBackend(HotSpotGraalRuntime runtime, HotSpotProviders providers) {
@@ -193,14 +192,6 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
         return new HSAILHotSpotLIRGenerator(graph, getProviders(), getRuntime().getConfig(), frameMap, cc, lir);
     }
 
-    public String getPartialCodeString() {
-        if (codeBuffer == null) {
-            return "";
-        }
-        byte[] data = codeBuffer.copyData(0, codeBuffer.position());
-        return (data == null ? "" : new String(data));
-    }
-
     class HotSpotFrameContext implements FrameContext {
 
         public boolean hasFrame() {
@@ -219,14 +210,14 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
     }
 
     @Override
-    protected AbstractAssembler createAssembler(FrameMap frameMap) {
+    protected Assembler createAssembler(FrameMap frameMap) {
         return new HSAILAssembler(getTarget());
     }
 
     @Override
     public CompilationResultBuilder newCompilationResultBuilder(LIRGenerator lirGen, CompilationResult compilationResult, CompilationResultBuilderFactory factory) {
         FrameMap frameMap = lirGen.frameMap;
-        AbstractAssembler masm = createAssembler(frameMap);
+        Assembler masm = createAssembler(frameMap);
         HotSpotFrameContext frameContext = new HotSpotFrameContext();
         CompilationResultBuilder crb = factory.createBuilder(getCodeCache(), getForeignCalls(), frameMap, masm, frameContext, compilationResult);
         crb.setFrameSize(frameMap.frameSize());
@@ -237,9 +228,9 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
     public void emitCode(CompilationResultBuilder crb, LIRGenerator lirGen, ResolvedJavaMethod method) {
         assert method != null : lirGen.getGraph() + " is not associated with a method";
         // Emit the prologue.
-        codeBuffer = crb.asm.codeBuffer;
-        codeBuffer.emitString0("version 0:95: $full : $large;");
-        codeBuffer.emitString("");
+        Assembler asm = crb.asm;
+        asm.emitString0("version 0:95: $full : $large;");
+        asm.emitString("");
 
         Signature signature = method.getSignature();
         int sigParamCount = signature.getParameterCount(false);
@@ -284,10 +275,10 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
             }
         }
 
-        codeBuffer.emitString0("// " + (isStatic ? "static" : "instance") + " method " + method);
-        codeBuffer.emitString("");
-        codeBuffer.emitString0("kernel &run (");
-        codeBuffer.emitString("");
+        asm.emitString0("// " + (isStatic ? "static" : "instance") + " method " + method);
+        asm.emitString("");
+        asm.emitString0("kernel &run (");
+        asm.emitString("");
 
         FrameMap frameMap = crb.frameMap;
         RegisterConfig regConfig = frameMap.registerConfig;
@@ -322,9 +313,9 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
             if (i != totalParamCount - 1) {
                 str += ",";
             }
-            codeBuffer.emitString(str);
+            asm.emitString(str);
         }
-        codeBuffer.emitString(") {");
+        asm.emitString(") {");
 
         /*
          * End of parameters start of prolog code. Emit the load instructions for loading of the
@@ -332,7 +323,7 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
          * loaded up front but will be loaded as needed.
          */
         for (int i = 0; i < nonConstantParamCount; i++) {
-            codeBuffer.emitString("ld_kernarg_" + paramHsailSizes[i] + "  " + HSAIL.mapRegister(cc.getArgument(i)) + ", [" + paramNames[i] + "];");
+            asm.emitString("ld_kernarg_" + paramHsailSizes[i] + "  " + HSAIL.mapRegister(cc.getArgument(i)) + ", [" + paramNames[i] + "];");
         }
 
         /*
@@ -340,16 +331,16 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
          * the register as if it were the last of the nonConstant parameters.
          */
         String workItemReg = "$s" + Integer.toString(asRegister(cc.getArgument(nonConstantParamCount)).encoding());
-        codeBuffer.emitString("workitemabsid_u32 " + workItemReg + ", 0;");
+        asm.emitString("workitemabsid_u32 " + workItemReg + ", 0;");
 
         /*
          * Note the logic used for this spillseg size is to leave space and then go back and patch
          * in the correct size once we have generated all the instructions. This should probably be
          * done in a more robust way by implementing something like codeBuffer.insertString.
          */
-        int spillsegDeclarationPosition = codeBuffer.position() + 1;
+        int spillsegDeclarationPosition = asm.position() + 1;
         String spillsegTemplate = "align 4 spill_u8 %spillseg[123456];";
-        codeBuffer.emitString(spillsegTemplate);
+        asm.emitString(spillsegTemplate);
         // Emit object array load prologue here.
         if (isObjectLambda) {
             boolean useCompressedOops = getRuntime().getConfig().useCompressedOops;
@@ -359,37 +350,37 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
             // so tempReg can be the next higher $d register
             String tmpReg = "$d" + (asRegister(cc.getArgument(nonConstantParamCount - 1)).encoding() + 1);
             // Convert gid to long.
-            codeBuffer.emitString("cvt_u64_s32 " + tmpReg + ", " + workItemReg + "; // Convert gid to long");
+            asm.emitString("cvt_u64_s32 " + tmpReg + ", " + workItemReg + "; // Convert gid to long");
             // Adjust index for sizeof ref. Where to pull this size from?
-            codeBuffer.emitString("mul_u64 " + tmpReg + ", " + tmpReg + ", " + (useCompressedOops ? 4 : 8) + "; // Adjust index for sizeof ref");
+            asm.emitString("mul_u64 " + tmpReg + ", " + tmpReg + ", " + (useCompressedOops ? 4 : 8) + "; // Adjust index for sizeof ref");
             // Adjust for actual data start.
-            codeBuffer.emitString("add_u64 " + tmpReg + ", " + tmpReg + ", " + arrayElementsOffset + "; // Adjust for actual elements data start");
+            asm.emitString("add_u64 " + tmpReg + ", " + tmpReg + ", " + arrayElementsOffset + "; // Adjust for actual elements data start");
             // Add to array ref ptr.
-            codeBuffer.emitString("add_u64 " + tmpReg + ", " + tmpReg + ", " + iterationObjArgReg + "; // Add to array ref ptr");
+            asm.emitString("add_u64 " + tmpReg + ", " + tmpReg + ", " + iterationObjArgReg + "; // Add to array ref ptr");
             // Load the object into the parameter reg.
             if (useCompressedOops) {
 
                 // Load u32 into the d 64 reg since it will become an object address
-                codeBuffer.emitString("ld_global_u32 " + tmpReg + ", " + "[" + tmpReg + "]" + "; // Load compressed ptr from array");
+                asm.emitString("ld_global_u32 " + tmpReg + ", " + "[" + tmpReg + "]" + "; // Load compressed ptr from array");
 
                 long narrowOopBase = getRuntime().getConfig().narrowOopBase;
                 long narrowOopShift = getRuntime().getConfig().narrowOopShift;
 
                 if (narrowOopBase == 0 && narrowOopShift == 0) {
                     // No more calculation to do, mov to target register
-                    codeBuffer.emitString("mov_b64 " + iterationObjArgReg + ", " + tmpReg + "; // no shift or base addition");
+                    asm.emitString("mov_b64 " + iterationObjArgReg + ", " + tmpReg + "; // no shift or base addition");
                 } else {
                     if (narrowOopBase == 0) {
-                        codeBuffer.emitString("shl_u64 " + iterationObjArgReg + ", " + tmpReg + ", " + narrowOopShift + "; // do narrowOopShift");
+                        asm.emitString("shl_u64 " + iterationObjArgReg + ", " + tmpReg + ", " + narrowOopShift + "; // do narrowOopShift");
                     } else if (narrowOopShift == 0) {
-                        codeBuffer.emitString("add_u64 " + iterationObjArgReg + ", " + tmpReg + ", " + narrowOopBase + "; // add narrowOopBase");
+                        asm.emitString("add_u64 " + iterationObjArgReg + ", " + tmpReg + ", " + narrowOopBase + "; // add narrowOopBase");
                     } else {
-                        codeBuffer.emitString("mad_u64 " + iterationObjArgReg + ", " + tmpReg + ", " + (1 << narrowOopShift) + ", " + narrowOopBase + "; // shift and add narrowOopBase");
+                        asm.emitString("mad_u64 " + iterationObjArgReg + ", " + tmpReg + ", " + (1 << narrowOopShift) + ", " + narrowOopBase + "; // shift and add narrowOopBase");
                     }
                 }
 
             } else {
-                codeBuffer.emitString("ld_global_u64 " + iterationObjArgReg + ", " + "[" + tmpReg + "]" + "; // Load from array element into parameter reg");
+                asm.emitString("ld_global_u64 " + iterationObjArgReg + ", " + "[" + tmpReg + "]" + "; // Load from array element into parameter reg");
             }
         }
         // Prologue done, Emit code for the LIR.
@@ -405,9 +396,10 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
         } else {
             spillsegStringFinal = spillsegTemplate.replace("123456", String.format("%6d", maxStackSize));
         }
-        codeBuffer.emitString(spillsegStringFinal, spillsegDeclarationPosition);
+        asm.emitString(spillsegStringFinal, spillsegDeclarationPosition);
+
         // Emit the epilogue.
-        codeBuffer.emitString0("};");
-        codeBuffer.emitString("");
+        asm.emitString0("};");
+        asm.emitString("");
     }
 }

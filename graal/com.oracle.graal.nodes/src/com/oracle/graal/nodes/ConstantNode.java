@@ -151,6 +151,16 @@ public final class ConstantNode extends FloatingNode implements LIRLowerable {
         }
     }
 
+    public static ConstantNode forConstant(Stamp stamp, Constant constant, MetaAccessProvider metaAccess, StructuredGraph graph) {
+        if (stamp instanceof PrimitiveStamp) {
+            return forPrimitive(stamp, constant, graph);
+        } else {
+            ConstantNode ret = forConstant(constant, metaAccess, graph);
+            assert ret.stamp().isCompatible(stamp);
+            return ret;
+        }
+    }
+
     /**
      * Returns a node for a Java primitive.
      */
@@ -317,6 +327,13 @@ public final class ConstantNode extends FloatingNode implements LIRLowerable {
             default:
                 throw GraalInternalError.shouldNotReachHere("unknown kind " + kind);
         }
+    }
+
+    /**
+     * Returns a node for a constant double that's compatible to a given stamp.
+     */
+    public static ConstantNode forFloatingStamp(Stamp stamp, double value, StructuredGraph graph) {
+        return forFloatingKind(stamp.getStackKind(), value, graph);
     }
 
     public static ConstantNode defaultForKind(Kind kind, StructuredGraph graph) {

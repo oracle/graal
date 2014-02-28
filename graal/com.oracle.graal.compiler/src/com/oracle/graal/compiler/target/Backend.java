@@ -70,7 +70,7 @@ public abstract class Backend {
     /**
      * Creates the assembler used to emit the machine code.
      */
-    protected abstract AbstractAssembler createAssembler(FrameMap frameMap);
+    protected abstract Assembler createAssembler(FrameMap frameMap);
 
     /**
      * Creates the object used to fill in the details of a given compilation result.

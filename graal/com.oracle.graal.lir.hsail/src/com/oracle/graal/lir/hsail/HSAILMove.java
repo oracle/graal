@@ -146,7 +146,7 @@ public class HSAILMove {
         @Override
         public void emitCode(CompilationResultBuilder crb, HSAILAssembler masm) {
             if (state != null) {
-                // crb.recordImplicitException(masm.codeBuffer.position(), state);
+                // crb.recordImplicitException(masm.position(), state);
                 throw new InternalError("NYI");
             }
             emitMemAccess(masm);
@@ -305,7 +305,7 @@ public class HSAILMove {
             encodePointer(masm, scratch, base, shift, alignment, testForNull);
             if (state != null) {
                 throw new InternalError("NYI");
-                // crb.recordImplicitException(masm.codeBuffer.position(), state);
+                // crb.recordImplicitException(masm.position(), state);
             }
             masm.emitStore(scratch, address.toAddress(), "u32");
         }

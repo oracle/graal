@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,20 +26,12 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.spi.*;
 
-public final class GenericStamp extends Stamp {
+/**
+ * Singleton stamp representing the value of type {@code void}.
+ */
+public final class VoidStamp extends Stamp {
 
-    public enum GenericStampType {
-        Dependency, Extension, Condition
-    }
-
-    private final GenericStampType type;
-
-    protected GenericStamp(GenericStampType type) {
-        this.type = type;
-    }
-
-    public GenericStampType type() {
-        return type;
+    private VoidStamp() {
     }
 
     @Override
@@ -49,27 +41,27 @@ public final class GenericStamp extends Stamp {
 
     @Override
     public Kind getStackKind() {
-        return Kind.Illegal;
+        return Kind.Void;
     }
 
     @Override
     public PlatformKind getPlatformKind(LIRTypeTool tool) {
-        throw GraalInternalError.shouldNotReachHere(type + " stamp has no value");
+        throw GraalInternalError.shouldNotReachHere("void stamp has no value");
     }
 
     @Override
     public ResolvedJavaType javaType(MetaAccessProvider metaAccess) {
-        throw GraalInternalError.shouldNotReachHere(type + " stamp has not Java type");
+        return metaAccess.lookupJavaType(Void.TYPE);
     }
 
     @Override
     public String toString() {
-        return type.toString();
+        return "void";
     }
 
     @Override
     public boolean alwaysDistinct(Stamp other) {
-        return false;
+        return this != other;
     }
 
     @Override
@@ -77,10 +69,10 @@ public final class GenericStamp extends Stamp {
         if (other instanceof IllegalStamp) {
             return other.join(this);
         }
-        if (!(other instanceof GenericStamp) || ((GenericStamp) other).type != type) {
-            return StampFactory.illegal(Kind.Illegal);
+        if (this == other) {
+            return this;
         }
-        return this;
+        return StampFactory.illegal(Kind.Illegal);
     }
 
     @Override
@@ -88,40 +80,20 @@ public final class GenericStamp extends Stamp {
         if (other instanceof IllegalStamp) {
             return other.join(this);
         }
-        if (!(other instanceof GenericStamp) || ((GenericStamp) other).type != type) {
-            return StampFactory.illegal(Kind.Illegal);
+        if (this == other) {
+            return this;
         }
-        return this;
+        return StampFactory.illegal(Kind.Illegal);
     }
 
     @Override
     public boolean isCompatible(Stamp stamp) {
-        if (this == stamp) {
-            return true;
-        }
-        if (stamp instanceof GenericStamp) {
-            GenericStamp other = (GenericStamp) stamp;
-            return type == other.type;
-        }
-        return false;
+        return this == stamp;
     }
 
-    @Override
-    public int hashCode() {
-        return 31 + ((type == null) ? 0 : type.hashCode());
-    }
+    private static VoidStamp instance = new VoidStamp();
 
-    @Override
-    public boolean equals(Object obj) {
-        if (this == obj) {
-            return true;
-        }
-        if (obj == null || getClass() != obj.getClass()) {
-            return false;
-        }
-        if (type != ((GenericStamp) obj).type) {
-            return false;
-        }
-        return true;
+    static VoidStamp getInstance() {
+        return instance;
     }
 }

@@ -252,7 +252,7 @@ public class PTXMove {
 
         @Override
         public void emitCode(CompilationResultBuilder crb, PTXMacroAssembler masm) {
-            crb.recordImplicitException(masm.codeBuffer.position(), state);
+            crb.recordImplicitException(masm.position(), state);
             masm.nullCheck(asRegister(input));
         }
 

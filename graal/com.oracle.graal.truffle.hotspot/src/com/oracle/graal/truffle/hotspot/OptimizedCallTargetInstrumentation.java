@@ -43,7 +43,7 @@ import com.oracle.truffle.api.frame.*;
  */
 public abstract class OptimizedCallTargetInstrumentation extends CompilationResultBuilder {
 
-    public OptimizedCallTargetInstrumentation(CodeCacheProvider codeCache, ForeignCallsProvider foreignCalls, FrameMap frameMap, AbstractAssembler asm, FrameContext frameContext,
+    public OptimizedCallTargetInstrumentation(CodeCacheProvider codeCache, ForeignCallsProvider foreignCalls, FrameMap frameMap, Assembler asm, FrameContext frameContext,
                     CompilationResult compilationResult) {
         super(codeCache, foreignCalls, frameMap, asm, frameContext, compilationResult);
     }

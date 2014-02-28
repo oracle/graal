@@ -30,14 +30,17 @@ import com.oracle.graal.api.code.*;
 /**
  * The platform-independent base class for the assembler.
  */
-public abstract class AbstractAssembler {
+public abstract class Assembler {
 
     public final TargetDescription target;
-    public final Buffer codeBuffer;
 
-    public AbstractAssembler(TargetDescription target) {
+    /**
+     * Backing code buffer.
+     */
+    private final Buffer codeBuffer;
+
+    public Assembler(TargetDescription target) {
         this.target = target;
-
         if (target.arch.getByteOrder() == ByteOrder.BIG_ENDIAN) {
             this.codeBuffer = new Buffer.BigEndian();
         } else {
@@ -45,9 +48,93 @@ public abstract class AbstractAssembler {
         }
     }
 
+    /**
+     * Returns the current position of the underlying code buffer.
+     * 
+     * @return current position in code buffer
+     */
+    public int position() {
+        return codeBuffer.position();
+    }
+
+    public final void emitByte(int x) {
+        codeBuffer.emitByte(x);
+    }
+
+    public final void emitShort(int x) {
+        codeBuffer.emitShort(x);
+    }
+
+    public final void emitInt(int x) {
+        codeBuffer.emitInt(x);
+    }
+
+    public final void emitLong(long x) {
+        codeBuffer.emitLong(x);
+    }
+
+    public final void emitByte(int b, int pos) {
+        codeBuffer.emitByte(b, pos);
+    }
+
+    public final void emitShort(int b, int pos) {
+        codeBuffer.emitShort(b, pos);
+    }
+
+    public final void emitInt(int b, int pos) {
+        codeBuffer.emitInt(b, pos);
+    }
+
+    public final void emitLong(long b, int pos) {
+        codeBuffer.emitLong(b, pos);
+    }
+
+    public final int getByte(int pos) {
+        return codeBuffer.getByte(pos);
+    }
+
+    public final int getShort(int pos) {
+        return codeBuffer.getShort(pos);
+    }
+
+    public final int getInt(int pos) {
+        return codeBuffer.getInt(pos);
+    }
+
+    private static final String NEWLINE = System.getProperty("line.separator");
+
+    /**
+     * Some GPU architectures have a text based encoding.
+     */
+    public final void emitString(String x) {
+        emitString0("\t");  // XXX REMOVE ME pretty-printing
+        emitString0(x);
+        emitString0(NEWLINE);
+    }
+
+    // XXX for pretty-printing
+    public final void emitString0(String x) {
+        codeBuffer.emitBytes(x.getBytes(), 0, x.length());
+    }
+
+    public void emitString(String s, int pos) {
+        codeBuffer.emitBytes(s.getBytes(), pos);
+    }
+
+    /**
+     * Closes this assembler. No extra data can be written to this assembler after this call.
+     * 
+     * @param trimmedCopy if {@code true}, then a copy of the underlying byte array up to (but not
+     *            including) {@code position()} is returned
+     * @return the data in this buffer or a trimmed copy if {@code trimmedCopy} is {@code true}
+     */
+    public byte[] close(boolean trimmedCopy) {
+        return codeBuffer.close(trimmedCopy);
+    }
+
     public void bind(Label l) {
         assert !l.isBound() : "can bind label only once";
-        l.bind(codeBuffer.position());
+        l.bind(position());
         l.patchInstructions(this);
     }
 
@@ -84,34 +171,6 @@ public abstract class AbstractAssembler {
             nameMap.put(l, name);
         }
         return name;
-    }
-
-    protected final void emitByte(int x) {
-        codeBuffer.emitByte(x);
-    }
-
-    protected final void emitShort(int x) {
-        codeBuffer.emitShort(x);
-    }
-
-    protected final void emitInt(int x) {
-        codeBuffer.emitInt(x);
-    }
-
-    protected final void emitLong(long x) {
-        codeBuffer.emitLong(x);
-    }
-
-    /**
-     * Some GPU architectures have a text based encoding.
-     */
-    protected final void emitString(String x) {
-        codeBuffer.emitString(x);
-    }
-
-    // XXX for pretty-printing
-    protected final void emitString0(String x) {
-        codeBuffer.emitString0(x);
     }
 
     /**

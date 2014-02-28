@@ -133,12 +133,12 @@ public class AMD64HotSpotMove {
                     encodeKlassPointer(masm, asRegister(scratch), heapBaseReg, encoding);
                 }
                 if (state != null) {
-                    crb.recordImplicitException(masm.codeBuffer.position(), state);
+                    crb.recordImplicitException(masm.position(), state);
                 }
                 masm.movl(address.toAddress(), asRegister(scratch));
             }
             if (state != null) {
-                crb.recordImplicitException(masm.codeBuffer.position(), state);
+                crb.recordImplicitException(masm.position(), state);
             }
             masm.movl(address.toAddress(), asRegister(scratch));
         }

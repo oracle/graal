@@ -32,8 +32,8 @@ import com.oracle.graal.nodes.type.*;
 @NodeInfo(shortName = ">>>")
 public final class UnsignedRightShiftNode extends ShiftNode implements Canonicalizable {
 
-    public UnsignedRightShiftNode(Kind kind, ValueNode x, ValueNode y) {
-        super(kind, x, y);
+    public UnsignedRightShiftNode(Stamp stamp, ValueNode x, ValueNode y) {
+        super(stamp, x, y);
     }
 
     @Override
@@ -79,19 +79,19 @@ public final class UnsignedRightShiftNode extends ShiftNode implements Canonical
                         if (total != (total & mask)) {
                             return ConstantNode.forIntegerKind(kind(), 0, graph());
                         }
-                        return graph().unique(new UnsignedRightShiftNode(kind(), other.x(), ConstantNode.forInt(total, graph())));
+                        return graph().unique(new UnsignedRightShiftNode(stamp(), other.x(), ConstantNode.forInt(total, graph())));
                     } else if (other instanceof LeftShiftNode && otherAmount == amount) {
                         if (kind() == Kind.Long) {
-                            return graph().unique(new AndNode(kind(), other.x(), ConstantNode.forLong(-1L >>> amount, graph())));
+                            return graph().unique(new AndNode(stamp(), other.x(), ConstantNode.forLong(-1L >>> amount, graph())));
                         } else {
                             assert kind() == Kind.Int;
-                            return graph().unique(new AndNode(kind(), other.x(), ConstantNode.forInt(-1 >>> amount, graph())));
+                            return graph().unique(new AndNode(stamp(), other.x(), ConstantNode.forInt(-1 >>> amount, graph())));
                         }
                     }
                 }
             }
             if (originalAmout != amount) {
-                return graph().unique(new UnsignedRightShiftNode(kind(), x(), ConstantNode.forInt(amount, graph())));
+                return graph().unique(new UnsignedRightShiftNode(stamp(), x(), ConstantNode.forInt(amount, graph())));
             }
         }
         return this;

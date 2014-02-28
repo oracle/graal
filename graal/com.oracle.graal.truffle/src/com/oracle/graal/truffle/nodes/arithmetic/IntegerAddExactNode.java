@@ -38,8 +38,8 @@ import com.oracle.truffle.api.*;
 public class IntegerAddExactNode extends IntegerAddNode implements Canonicalizable, IntegerExactArithmeticNode {
 
     public IntegerAddExactNode(ValueNode x, ValueNode y) {
-        super(x.kind(), x, y);
-        assert x.kind() == y.kind() && (x.kind() == Kind.Int || x.kind() == Kind.Long);
+        super(x.stamp().unrestricted(), x, y);
+        assert x.stamp().isCompatible(y.stamp()) && x.stamp() instanceof IntegerStamp;
     }
 
     @Override
@@ -54,12 +54,15 @@ public class IntegerAddExactNode extends IntegerAddNode implements Canonicalizab
             return graph().unique(new IntegerAddExactNode(y(), x()));
         }
         if (x().isConstant()) {
+            Constant xConst = x().asConstant();
+            Constant yConst = y().asConstant();
+            assert xConst.getKind() == yConst.getKind();
             try {
-                if (kind() == Kind.Int) {
-                    return ConstantNode.forInt(ExactMath.addExact(x().asConstant().asInt(), y().asConstant().asInt()), graph());
+                if (xConst.getKind() == Kind.Int) {
+                    return ConstantNode.forInt(ExactMath.addExact(xConst.asInt(), yConst.asInt()), graph());
                 } else {
-                    assert kind() == Kind.Long;
-                    return ConstantNode.forLong(ExactMath.addExact(x().asConstant().asLong(), y().asConstant().asLong()), graph());
+                    assert xConst.getKind() == Kind.Long;
+                    return ConstantNode.forLong(ExactMath.addExact(xConst.asLong(), yConst.asLong()), graph());
                 }
             } catch (ArithmeticException ex) {
                 // The operation will result in an overflow exception, so do not canonicalize.

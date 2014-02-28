@@ -81,7 +81,7 @@ public class AMD64HotSpotSafepointOp extends AMD64LIRInstruction {
             // This move will be patched to load the safepoint page from a data segment
             // co-located with the immutable code.
             asm.movq(scratch, (AMD64Address) crb.recordDataReferenceInCode(pollingPageAddress, alignment));
-            final int pos = asm.codeBuffer.position();
+            final int pos = asm.position();
             crb.recordMark(atReturn ? MARK_POLL_RETURN_FAR : MARK_POLL_FAR);
             if (state != null) {
                 crb.recordInfopoint(pos, state, InfopointReason.SAFEPOINT);
@@ -90,14 +90,14 @@ public class AMD64HotSpotSafepointOp extends AMD64LIRInstruction {
         } else if (isPollingPageFar(config)) {
             asm.movq(scratch, config.safepointPollingAddress);
             crb.recordMark(atReturn ? MARK_POLL_RETURN_FAR : MARK_POLL_FAR);
-            final int pos = asm.codeBuffer.position();
+            final int pos = asm.position();
             if (state != null) {
                 crb.recordInfopoint(pos, state, InfopointReason.SAFEPOINT);
             }
             asm.testl(rax, new AMD64Address(scratch));
         } else {
             crb.recordMark(atReturn ? MARK_POLL_RETURN_NEAR : MARK_POLL_NEAR);
-            final int pos = asm.codeBuffer.position();
+            final int pos = asm.position();
             if (state != null) {
                 crb.recordInfopoint(pos, state, InfopointReason.SAFEPOINT);
             }

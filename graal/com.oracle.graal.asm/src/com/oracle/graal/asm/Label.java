@@ -34,8 +34,7 @@ public final class Label {
 
     /**
      * References to instructions that jump to this unresolved label. These instructions need to be
-     * patched when the label is bound using the {@link #patchInstructions(AbstractAssembler)}
-     * method.
+     * patched when the label is bound using the {@link #patchInstructions(Assembler)} method.
      */
     private ArrayList<Integer> patchPositions = null;
 
@@ -82,7 +81,7 @@ public final class Label {
         patchPositions.add(branchLocation);
     }
 
-    protected void patchInstructions(AbstractAssembler masm) {
+    protected void patchInstructions(Assembler masm) {
         assert isBound() : "Label should be bound";
         if (patchPositions != null) {
             int target = position;

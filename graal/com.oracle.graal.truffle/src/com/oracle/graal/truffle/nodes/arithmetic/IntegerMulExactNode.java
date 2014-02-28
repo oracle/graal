@@ -28,6 +28,7 @@ import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.type.*;
 import com.oracle.truffle.api.*;
 
 /**
@@ -37,8 +38,8 @@ import com.oracle.truffle.api.*;
 public class IntegerMulExactNode extends IntegerMulNode implements Canonicalizable, IntegerExactArithmeticNode {
 
     public IntegerMulExactNode(ValueNode x, ValueNode y) {
-        super(x.kind(), x, y);
-        assert x.kind() == y.kind() && (x.kind() == Kind.Int || x.kind() == Kind.Long);
+        super(x.stamp().unrestricted(), x, y);
+        assert x.stamp().isCompatible(y.stamp()) && x.stamp() instanceof IntegerStamp;
     }
 
     @Override
@@ -47,12 +48,15 @@ public class IntegerMulExactNode extends IntegerMulNode implements Canonicalizab
             return graph().unique(new IntegerMulExactNode(y(), x()));
         }
         if (x().isConstant()) {
+            Constant xConst = x().asConstant();
+            Constant yConst = y().asConstant();
+            assert xConst.getKind() == yConst.getKind();
             try {
-                if (kind() == Kind.Int) {
-                    return ConstantNode.forInt(ExactMath.multiplyExact(x().asConstant().asInt(), y().asConstant().asInt()), graph());
+                if (xConst.getKind() == Kind.Int) {
+                    return ConstantNode.forInt(ExactMath.multiplyExact(xConst.asInt(), yConst.asInt()), graph());
                 } else {
-                    assert kind() == Kind.Long;
-                    return ConstantNode.forLong(ExactMath.multiplyExact(x().asConstant().asLong(), y().asConstant().asLong()), graph());
+                    assert xConst.getKind() == Kind.Long;
+                    return ConstantNode.forLong(ExactMath.multiplyExact(xConst.asLong(), yConst.asLong()), graph());
                 }
             } catch (ArithmeticException ex) {
                 // The operation will result in an overflow exception, so do not canonicalize.
@@ -63,7 +67,7 @@ public class IntegerMulExactNode extends IntegerMulNode implements Canonicalizab
                 return x();
             }
             if (c == 0) {
-                return ConstantNode.defaultForKind(kind(), graph());
+                return ConstantNode.forIntegerStamp(stamp(), 0, graph());
             }
         }
         return this;

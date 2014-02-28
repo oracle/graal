@@ -22,29 +22,27 @@
  */
 package com.oracle.graal.nodes.calc;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.type.*;
 
 public abstract class IntegerArithmeticNode extends BinaryNode implements ArithmeticLIRLowerable {
 
-    public IntegerArithmeticNode(Kind kind, ValueNode x, ValueNode y) {
-        super(kind, x, y);
-        assert kind.isNumericInteger();
+    public IntegerArithmeticNode(Stamp stamp, ValueNode x, ValueNode y) {
+        super(stamp, x, y);
+        assert stamp instanceof IntegerStamp;
     }
 
     public static IntegerAddNode add(StructuredGraph graph, ValueNode v1, ValueNode v2) {
-        assert v1.kind() == v2.kind();
-        return graph.unique(new IntegerAddNode(v1.kind(), v1, v2));
+        return graph.unique(new IntegerAddNode(StampTool.add(v1.stamp(), v2.stamp()), v1, v2));
     }
 
     public static IntegerMulNode mul(StructuredGraph graph, ValueNode v1, ValueNode v2) {
-        assert v1.kind() == v2.kind();
-        return graph.unique(new IntegerMulNode(v1.kind(), v1, v2));
+        assert v1.stamp().isCompatible(v2.stamp());
+        return graph.unique(new IntegerMulNode(v1.stamp().unrestricted(), v1, v2));
     }
 
     public static IntegerSubNode sub(StructuredGraph graph, ValueNode v1, ValueNode v2) {
-        assert v1.kind() == v2.kind();
-        return graph.unique(new IntegerSubNode(v1.kind(), v1, v2));
+        return graph.unique(new IntegerSubNode(StampTool.sub(v1.stamp(), v2.stamp()), v1, v2));
     }
 }

@@ -32,7 +32,7 @@ import com.oracle.graal.nodes.type.*;
 /**
  * The {@code ZeroExtendNode} converts an integer to a wider integer using zero extension.
  */
-public class ZeroExtendNode extends IntegerConvertNode {
+public class ZeroExtendNode extends IntegerConvertNode implements Canonicalizable {
 
     public ZeroExtendNode(ValueNode input, int resultBits) {
         super(StampTool.zeroExtend(input.stamp(), resultBits), input, resultBits);
@@ -63,12 +63,19 @@ public class ZeroExtendNode extends IntegerConvertNode {
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
+        ValueNode ret = canonicalConvert();
+        if (ret != null) {
+            return ret;
+        }
+
         if (getInput() instanceof ZeroExtendNode) {
+            // xxxx -(zero-extend)-> 0000 xxxx -(zero-extend)-> 00000000 0000xxxx
+            // ==> xxxx -(zero-extend)-> 00000000 0000xxxx
             ZeroExtendNode other = (ZeroExtendNode) getInput();
             return graph().unique(new ZeroExtendNode(other.getInput(), getResultBits()));
         }
 
-        return super.canonical(tool);
+        return this;
     }
 
     @Override
