@@ -67,8 +67,8 @@ public class AMD64HotSpotForeignCallsProvider extends HotSpotHostForeignCallsPro
         // replace a non-existing method anyway.
         try {
             // These stubs do callee saving
-            registerForeignCall(ENCRYPT_BLOCK, config.aescryptEncryptBlockStub, NativeCall, PRESERVES_REGISTERS, LEAF_NOFP, NOT_REEXECUTABLE, ANY_LOCATION);
-            registerForeignCall(DECRYPT_BLOCK, config.aescryptDecryptBlockStub, NativeCall, PRESERVES_REGISTERS, LEAF_NOFP, NOT_REEXECUTABLE, ANY_LOCATION);
+            registerForeignCall(ENCRYPT_BLOCK, config.aescryptEncryptBlockStub, NativeCall, PRESERVES_REGISTERS, LEAF_NOFP, NOT_REEXECUTABLE, NamedLocationIdentity.getArrayLocation(Kind.Byte));
+            registerForeignCall(DECRYPT_BLOCK, config.aescryptDecryptBlockStub, NativeCall, PRESERVES_REGISTERS, LEAF_NOFP, NOT_REEXECUTABLE, NamedLocationIdentity.getArrayLocation(Kind.Byte));
         } catch (GraalInternalError e) {
             if (!(e.getCause() instanceof ClassNotFoundException)) {
                 throw e;
@@ -76,8 +76,8 @@ public class AMD64HotSpotForeignCallsProvider extends HotSpotHostForeignCallsPro
         }
         try {
             // These stubs do callee saving
-            registerForeignCall(ENCRYPT, config.cipherBlockChainingEncryptAESCryptStub, NativeCall, PRESERVES_REGISTERS, LEAF_NOFP, NOT_REEXECUTABLE, ANY_LOCATION);
-            registerForeignCall(DECRYPT, config.cipherBlockChainingDecryptAESCryptStub, NativeCall, PRESERVES_REGISTERS, LEAF_NOFP, NOT_REEXECUTABLE, ANY_LOCATION);
+            registerForeignCall(ENCRYPT, config.cipherBlockChainingEncryptAESCryptStub, NativeCall, PRESERVES_REGISTERS, LEAF_NOFP, NOT_REEXECUTABLE, NamedLocationIdentity.getArrayLocation(Kind.Byte));
+            registerForeignCall(DECRYPT, config.cipherBlockChainingDecryptAESCryptStub, NativeCall, PRESERVES_REGISTERS, LEAF_NOFP, NOT_REEXECUTABLE, NamedLocationIdentity.getArrayLocation(Kind.Byte));
         } catch (GraalInternalError e) {
             if (!(e.getCause() instanceof ClassNotFoundException)) {
                 throw e;
