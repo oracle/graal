@@ -49,7 +49,7 @@ public class HotSpotResolvedJavaField extends CompilerObject implements Resolved
     private static final long serialVersionUID = 7692985878836955683L;
     private final HotSpotResolvedObjectType holder;
     private final String name;
-    private final JavaType type;
+    private JavaType type;
     private final int offset;
     private Constant constant;
 
@@ -289,6 +289,13 @@ public class HotSpotResolvedJavaField extends CompilerObject implements Resolved
 
     @Override
     public JavaType getType() {
+        if (!(type instanceof ResolvedJavaType)) {
+            // Don't allow unresolved types to hang around forever
+            ResolvedJavaType resolved = type.resolve(holder);
+            if (resolved != null) {
+                type = resolved;
+            }
+        }
         return type;
     }
 
