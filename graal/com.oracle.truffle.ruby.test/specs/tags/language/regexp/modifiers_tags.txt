@@ -1,9 +1,0 @@
-fails:Regexps with modifers supports /m (multiline)
-fails:Regexps with modifers supports /x (extended syntax)
-fails:Regexps with modifers supports /o (once)
-fails:Regexps with modifers invokes substitutions for /o only once
-fails:Regexps with modifers supports (?imx-imx) (inline modifiers)
-fails:Regexps with modifers supports (?imx-imx:expr) (scoped inline modifiers)
-fails:Regexps with modifers supports . with /m
-fails:Regexps with modifers supports ASII/Unicode modifiers
-fails:Regexps with modifers raises SyntaxError for ASII/Unicode modifiers

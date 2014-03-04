@@ -1,2 +1,0 @@
-fails:The -e command line option with -n and a Fixnum range mimics an awk conditional by comparing an inclusive-end range with $.
-fails:The -e command line option with -n and a Fixnum range mimics a sed conditional by comparing an exclusive-end range with $.

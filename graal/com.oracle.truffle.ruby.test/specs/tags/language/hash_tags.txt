@@ -1,1 +1,0 @@
-fails:Hash literal freezes string keys on initialization

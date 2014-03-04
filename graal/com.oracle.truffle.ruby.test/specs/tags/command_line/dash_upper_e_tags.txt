@@ -1,1 +1,0 @@
-fails:ruby -E raises a RuntimeError if used with -U

@@ -1,3 +1,0 @@
-fails:The -d command line option sets $DEBUG to true
-fails:The -d command line option sets $VERBOSE to true
-fails:The -d command line option sets $-d to true

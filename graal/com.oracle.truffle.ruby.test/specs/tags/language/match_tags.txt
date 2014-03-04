@@ -1,2 +1,0 @@
-fails:The !~ operator evaluates as a call to !~
-fails:The =~ operator calls the =~ method

@@ -1,6 +1,0 @@
-fails:The for expression iterates over an Hash passing each key-value pair to the block
-fails:The for expression allows a class variable as an iterator name
-fails:The for expression yields only as many values as there are arguments
-fails:The for expression executes code in containing variable scope
-fails:The for expression executes code in containing variable scope with 'do'
-fails:The for expression returns expr
