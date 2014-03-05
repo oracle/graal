@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -424,13 +424,91 @@ public abstract class GraalCompilerTest extends GraalTest {
         ResolvedJavaMethod javaMethod = getMetaAccess().lookupJavaMethod(method);
         checkArgs(javaMethod, executeArgs);
 
-        InstalledCode compiledMethod = getCode(javaMethod, parse(method));
+        InstalledCode compiledMethod = null;
+        if (UseLIRBuilder.getValue()) {
+            compiledMethod = getCodeBaseline(javaMethod, method);
+        } else {
+            compiledMethod = getCode(javaMethod, parse(method));
+        }
         try {
             return new Result(compiledMethod.executeVarargs(executeArgs), null);
         } catch (Throwable e) {
             return new Result(null, e);
         } finally {
             after();
+        }
+    }
+
+    protected InstalledCode getCodeBaseline(ResolvedJavaMethod javaMethod, Method method) {
+        return getCodeBaseline(javaMethod, method, false);
+    }
+
+    protected InstalledCode getCodeBaseline(ResolvedJavaMethod javaMethod, Method method, boolean forceCompile) {
+        assert method.getAnnotation(Test.class) == null : "shouldn't parse method with @Test annotation: " + method;
+
+        try (Scope bds = Debug.scope("Baseline")) {
+            Debug.log("getCodeBaseline()");
+        } catch (Throwable e) {
+            throw Debug.handle(e);
+        }
+
+        if (!forceCompile) {
+            InstalledCode cached = cache.get(javaMethod);
+            if (cached != null) {
+                if (cached.isValid()) {
+                    return cached;
+                }
+            }
+        }
+
+        final int id = compilationId.incrementAndGet();
+
+        InstalledCode installedCode = null;
+        try (Scope ds = Debug.scope("Compiling", new DebugDumpScope(String.valueOf(id), true))) {
+            final boolean printCompilation = PrintCompilation.getValue() && !TTY.isSuppressed();
+
+            if (printCompilation) {
+                TTY.println(String.format("@%-6d Graal %-70s %-45s %-50s ...", id, javaMethod.getDeclaringClass().getName(), javaMethod.getName(), javaMethod.getSignature()));
+            }
+            long start = System.currentTimeMillis();
+
+            CompilationResult compResult = compileBaseline(javaMethod);
+
+            if (printCompilation) {
+                TTY.println(String.format("@%-6d Graal %-70s %-45s %-50s | %4dms %5dB", id, "", "", "", System.currentTimeMillis() - start, compResult.getTargetCodeSize()));
+            }
+
+            try (Scope s = Debug.scope("CodeInstall", getCodeCache(), javaMethod)) {
+                installedCode = addMethod(javaMethod, compResult);
+                if (installedCode == null) {
+                    throw new GraalInternalError("Could not install code for " + MetaUtil.format("%H.%n(%p)", javaMethod));
+                }
+            } catch (Throwable e) {
+                throw Debug.handle(e);
+            }
+        } catch (Throwable e) {
+            throw Debug.handle(e);
+        }
+
+        if (!forceCompile) {
+            cache.put(javaMethod, installedCode);
+        }
+        return installedCode;
+    }
+
+    protected CompilationResult compileBaseline(ResolvedJavaMethod javaMethod) {
+        try (Scope bds = Debug.scope("compileBaseline")) {
+            StructuredGraph graph = new StructuredGraph(javaMethod);
+            PhaseSuite<HighTierContext> graphBuilderSuite = getCustomGraphBuilderSuite(GraphBuilderConfiguration.getDefault());
+            graphBuilderSuite.apply(graph, new HighTierContext(providers, null, null, graphBuilderSuite, OptimisticOptimizations.ALL));
+
+            Debug.dump(graph, "after bytecode parsing");
+
+            CallingConvention cc = getCallingConvention(getCodeCache(), Type.JavaCallee, graph.method(), false);
+            return compileGraph(graph, cc, javaMethod, getProviders(), getBackend(), getCodeCache().getTarget(), null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL,
+                            getProfilingInfo(graph), getSpeculationLog(), getSuites(), true, new CompilationResult(), CompilationResultBuilderFactory.Default);
+        } catch (Throwable e) {
+            throw Debug.handle(e);
         }
     }
 

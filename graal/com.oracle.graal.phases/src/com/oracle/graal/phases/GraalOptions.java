@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,6 +30,8 @@ import com.oracle.graal.options.*;
 // @formatter:off
 public final class GraalOptions {
 
+    @Option(help = "Enable direct LIR generation")
+    public static final OptionValue<Boolean> UseLIRBuilder = new OptionValue<>(false);
     @Option(help = "Enable use of compiler intrinsics")
     public static final OptionValue<Boolean> Intrinsify = new OptionValue<>(true);
     @Option(help = "Enable inlining of monomorphic calls")
