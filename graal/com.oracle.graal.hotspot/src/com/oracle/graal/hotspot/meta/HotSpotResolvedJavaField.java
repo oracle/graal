@@ -119,17 +119,22 @@ public class HotSpotResolvedJavaField extends CompilerObject implements Resolved
         return false;
     }
 
+    /**
+     * Separate out the static initialization to eliminate cycles between clinit and other locks
+     * that could lead to deadlock. Static code that doesn't call back into type or field machinery
+     * is probably ok but anything else should be made lazy.
+     */
     static class Embeddable {
 
-        // Return true if it's ok to embed the value of a field.
+        /**
+         * @return Return true if it's ok to embed the value of {@code field}.
+         */
         public static boolean test(HotSpotResolvedJavaField field) {
             return !ImmutableCode.getValue() || !fields.contains(field);
         }
 
         private static final List<ResolvedJavaField> fields = new ArrayList<>();
         static {
-            // Make this initialization lazy so that we don't create cycles between clinit and other
-            // locks that could lead to deadlock.
             try {
                 MetaAccessProvider metaAccess = runtime().getHostProviders().getMetaAccess();
                 fields.add(metaAccess.lookupJavaField(Boolean.class.getDeclaredField("TRUE")));
