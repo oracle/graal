@@ -479,6 +479,7 @@ public final class NodeUtil {
         while (parent != null) {
             if (parent instanceof RootNode) {
                 RootNode root = (RootNode) parent;
+                @SuppressWarnings("deprecation")
                 Node next = root.getParentInlinedCall();
                 if (next != null) {
                     parent = next;
