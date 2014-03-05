@@ -33,7 +33,7 @@ import com.oracle.graal.replacements.nodes.*;
 /**
  * {@link MacroNode Macro node} for {@link Class#cast(Object)}.
  * 
- * @see ClassSubstitutions#isInstance(Class, Object)
+ * @see ClassSubstitutions#cast(Class, Object)
  */
 public class ClassCastNode extends MacroNode implements Canonicalizable {
 
