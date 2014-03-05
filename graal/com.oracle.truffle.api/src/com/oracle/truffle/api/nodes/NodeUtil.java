@@ -452,6 +452,10 @@ public final class NodeUtil {
         return null;
     }
 
+    /**
+     * @deprecated will be removed, exposed Truffle runtime specific functionality.
+     */
+    @Deprecated
     public static List<CallTarget> findOutermostCallTargets(Node node) {
         RootNode root = node.getRootNode();
         if (root == null) {
@@ -459,19 +463,16 @@ public final class NodeUtil {
         }
         List<CallTarget> roots = new ArrayList<>();
         roots.add(root.getCallTarget());
-        for (CallNode callNode : root.getParentInlinedCalls()) {
-            roots.addAll(findOutermostCallTargets(callNode));
+        for (CallNode callNode : root.getCachedCallNodes()) {
+            if (callNode.isInlined()) {
+                roots.addAll(findOutermostCallTargets(callNode));
+            }
         }
         return roots;
     }
 
     /**
-     * Returns the outermost not inlined {@link RootNode} which is a parent of this node.
-     * 
-     * @see RootNode#getParentInlinedCalls()
-     * @param node to search
-     * @return the outermost {@link RootNode}
-     * @deprecated use {@link #findOutermostCallTargets(Node)}
+     * @deprecated will be removed, exposed Truffle runtime specific functionality.
      */
     @Deprecated
     public static RootNode findOutermostRootNode(Node node) {
@@ -617,7 +618,7 @@ public final class NodeUtil {
     }
 
     public static int countNodes(Node root, Class<?> clazz, Kind nodeKind, boolean countInlinedCallNodes) {
-        NodeCountVisitor nodeCount = new NodeCountVisitor(root, clazz, nodeKind, countInlinedCallNodes);
+        NodeCountVisitor nodeCount = new NodeCountVisitor(clazz, nodeKind, countInlinedCallNodes);
         root.accept(nodeCount);
         return nodeCount.nodeCount;
     }
@@ -628,14 +629,12 @@ public final class NodeUtil {
 
     private static final class NodeCountVisitor implements NodeVisitor {
 
-        private Node root;
         private final boolean inspectInlinedCalls;
         int nodeCount;
         private final Kind kind;
         private final Class<?> clazz;
 
-        private NodeCountVisitor(Node root, Class<?> clazz, Kind kind, boolean inspectInlinedCalls) {
-            this.root = root;
+        private NodeCountVisitor(Class<?> clazz, Kind kind, boolean inspectInlinedCalls) {
             this.clazz = clazz;
             this.kind = kind;
             this.inspectInlinedCalls = inspectInlinedCalls;
@@ -643,10 +642,6 @@ public final class NodeUtil {
 
         @Override
         public boolean visit(Node node) {
-            if (node instanceof RootNode && node != root) {
-                return false;
-            }
-
             if ((clazz == null || clazz.isInstance(node)) && (kind == null || isKind(node))) {
                 nodeCount++;
             }
@@ -654,7 +649,10 @@ public final class NodeUtil {
             if (inspectInlinedCalls && node instanceof CallNode) {
                 CallNode call = (CallNode) node;
                 if (call.isInlined()) {
-                    call.getInlinedRoot().getChildren().iterator().next().accept(this);
+                    Node target = ((RootCallTarget) call.getCurrentCallTarget()).getRootNode();
+                    if (target != null) {
+                        target.accept(this);
+                    }
                 }
             }
 
@@ -673,8 +671,9 @@ public final class NodeUtil {
 
             public boolean visit(Node node) {
                 if (node instanceof CallNode) {
-                    RootNode inlinedRoot = ((CallNode) node).getInlinedRoot();
-                    if (inlinedRoot != null) {
+                    CallNode callNode = ((CallNode) node);
+                    RootNode inlinedRoot = callNode.getCurrentRootNode();
+                    if (inlinedRoot != null && callNode.isInlined()) {
                         depth++;
                         printRootNode(stream, depth * 2, inlinedRoot);
                         inlinedRoot.accept(this);

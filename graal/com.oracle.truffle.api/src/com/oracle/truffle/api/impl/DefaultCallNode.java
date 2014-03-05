@@ -64,11 +64,6 @@ public class DefaultCallNode extends CallNode {
     }
 
     @Override
-    public RootNode getInlinedRoot() {
-        return null;
-    }
-
-    @Override
     public boolean isInlined() {
         return false;
     }

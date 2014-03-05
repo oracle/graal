@@ -254,8 +254,9 @@ public abstract class Node implements Cloneable {
     }
 
     private void reportReplace(Node oldNode, Node newNode, String reason) {
-        Collection<CallTarget> targets = NodeUtil.findOutermostCallTargets(this);
-        for (CallTarget target : targets) {
+        RootNode rootNode = getRootNode();
+        if (rootNode != null) {
+            CallTarget target = rootNode.getCallTarget();
             if (target instanceof ReplaceObserver) {
                 ((ReplaceObserver) target).nodeReplaced(oldNode, newNode, reason);
             }

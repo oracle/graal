@@ -27,7 +27,6 @@ package com.oracle.truffle.api.nodes;
 import java.util.*;
 
 import com.oracle.truffle.api.*;
-import com.oracle.truffle.api.CompilerDirectives.*;
 import com.oracle.truffle.api.frame.*;
 
 /**
@@ -41,10 +40,9 @@ public abstract class RootNode extends Node {
     private final FrameDescriptor frameDescriptor;
 
     /*
-     * Internal field to keep reference to the inlined call node. The inlined parent should not be
-     * the same as the Node parent to keep the same tree hierarchy if inlined vs not inlined.
+     * Internal set to keep back-references to the call-sites.
      */
-    @CompilationFinal private List<CallNode> parentInlinedCalls = new ArrayList<>();
+    private final Set<CallNode> cachedCallNodes = Collections.newSetFromMap(new WeakHashMap<CallNode, Boolean>());
 
     protected RootNode() {
         this(null, null);
@@ -103,11 +101,8 @@ public abstract class RootNode extends Node {
      * heuristics can use the loop count to guide compilation and inlining.
      */
     public void reportLoopCount(int count) {
-        List<CallTarget> callTargets = NodeUtil.findOutermostCallTargets(this);
-        for (CallTarget target : callTargets) {
-            if (target instanceof LoopCountReceiver) {
-                ((LoopCountReceiver) target).reportLoopCount(count);
-            }
+        if (getCallTarget() instanceof LoopCountReceiver) {
+            ((LoopCountReceiver) getCallTarget()).reportLoopCount(count);
         }
     }
 
@@ -127,24 +122,37 @@ public abstract class RootNode extends Node {
         return frameDescriptor;
     }
 
-    public void setCallTarget(CallTarget callTarget) {
+    public final void setCallTarget(CallTarget callTarget) {
         this.callTarget = callTarget;
     }
 
     /* Internal API. Do not use. */
-    void addParentInlinedCall(CallNode inlinedParent) {
-        this.parentInlinedCalls.add(inlinedParent);
+    void addCachedCallNode(CallNode callSite) {
+        this.cachedCallNodes.add(callSite);
     }
 
-    public final List<CallNode> getParentInlinedCalls() {
-        return Collections.unmodifiableList(parentInlinedCalls);
+    /* Internal API. Do not use. */
+    void removeCachedCallNode(CallNode callSite) {
+        this.cachedCallNodes.remove(callSite);
     }
 
     /**
-     * @deprecated use {@link #getParentInlinedCalls()} instead.
+     * Returns a {@link Set} of {@link CallNode} nodes which are created to invoke this RootNode.
+     * This method does not make any guarantees to contain all the {@link CallNode} nodes that are
+     * invoking this method. Due to its weak nature the elements returned by this method may change
+     * with each consecutive call.
+     * 
+     * @return a set of {@link CallNode} nodes
+     */
+    public final Set<CallNode> getCachedCallNodes() {
+        return Collections.unmodifiableSet(cachedCallNodes);
+    }
+
+    /**
+     * @deprecated use {@link #getCachedCallNodes()} instead.
      */
     @Deprecated
     public final CallNode getParentInlinedCall() {
-        return parentInlinedCalls.isEmpty() ? null : parentInlinedCalls.get(0);
+        return cachedCallNodes.isEmpty() ? null : cachedCallNodes.iterator().next();
     }
 }

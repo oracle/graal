@@ -344,8 +344,9 @@ public class GraphPrintVisitor {
         NodeClass nodeClass = NodeClass.get(node.getClass());
 
         if (node instanceof CallNode) {
-            RootNode inlinedRoot = ((CallNode) node).getInlinedRoot();
-            if (inlinedRoot != null) {
+            CallNode callNode = ((CallNode) node);
+            RootNode inlinedRoot = callNode.getCurrentRootNode();
+            if (inlinedRoot != null && callNode.isInlined()) {
                 nodes.put("inlinedRoot", inlinedRoot);
             }
         }

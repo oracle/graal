@@ -31,7 +31,7 @@ import com.oracle.truffle.api.frame.*;
  * This node represents a call to a static {@link CallTarget}. This node should be used whenever a
  * {@link CallTarget} is considered constant at a certain location in the tree. This enables the
  * Truffle runtime to perform inlining or other optimizations for this call-site. This class is
- * intended to be implemented by truffle runtime implementors and not by guest languague
+ * intended to be implemented by truffle runtime implementors and not by guest language
  * implementors.
  * 
  * @see #create(CallTarget) to create a CallNode instance.
@@ -45,13 +45,6 @@ public abstract class CallNode extends Node {
     }
 
     /**
-     * @return the constant {@link CallTarget} that is associated with this {@link CallNode}.
-     */
-    public CallTarget getCallTarget() {
-        return callTarget;
-    }
-
-    /**
      * Calls this constant target passing a caller frame and arguments.
      * 
      * @param caller the caller frame
@@ -59,6 +52,17 @@ public abstract class CallNode extends Node {
      * @return the return result of the call
      */
     public abstract Object call(PackedFrame caller, Arguments arguments);
+
+    /**
+     * Returns the originally supplied {@link CallTarget} when this call node was created. Please
+     * note that the returned {@link CallTarget} is not necessarily the {@link CallTarget} that is
+     * called. For that use {@link #getCurrentCallTarget()} instead.
+     * 
+     * @return the {@link CallTarget} provided.
+     */
+    public CallTarget getCallTarget() {
+        return callTarget;
+    }
 
     public abstract boolean isInlinable();
 
@@ -73,9 +77,78 @@ public abstract class CallNode extends Node {
 
     public abstract boolean split();
 
+    public final boolean isSplit() {
+        return getSplitCallTarget() != null;
+    }
+
     public abstract CallTarget getSplitCallTarget();
 
-    public abstract RootNode getInlinedRoot();
+    /**
+     * Returns the used call target when {@link #call(PackedFrame, Arguments)} is invoked. If the
+     * {@link CallNode} was split this method returns the {@link CallTarget} returned by
+     * {@link #getSplitCallTarget()}. If not split this method returns the original supplied
+     * {@link CallTarget}.
+     * 
+     * @return the used {@link CallTarget} when node is called
+     */
+    public CallTarget getCurrentCallTarget() {
+        CallTarget split = getSplitCallTarget();
+        if (split != null) {
+            return split;
+        } else {
+            return getCallTarget();
+        }
+    }
+
+    @Override
+    protected void onReplace(Node newNode, String reason) {
+        super.onReplace(newNode, reason);
+
+        /*
+         * Old call nodes are removed in the old target root node.
+         */
+        CallNode oldCall = this;
+        RootNode oldRoot = getCurrentRootNode();
+        if (oldRoot != null) {
+            oldRoot.removeCachedCallNode(oldCall);
+        }
+
+        /*
+         * New call nodes are registered in the new target root node.
+         */
+        CallNode newCall = (CallNode) newNode;
+        RootNode newRoot = newCall.getCurrentRootNode();
+        if (newRoot != null) {
+            newRoot.addCachedCallNode(newCall);
+        }
+    }
+
+    /**
+     * Returns the {@link RootNode} associated with {@link CallTarget} returned by
+     * {@link #getCurrentCallTarget()}.
+     * 
+     * @see #getCurrentCallTarget()
+     * @return the root node of the used call target
+     */
+    public final RootNode getCurrentRootNode() {
+        CallTarget target = getCurrentCallTarget();
+        if (target instanceof RootCallTarget) {
+            return ((RootCallTarget) target).getRootNode();
+        }
+        return null;
+    }
+
+    /**
+     * @deprecated instead use {@link #getCurrentRootNode()} and check for {@link #isInlined()} for
+     *             true.
+     */
+    @Deprecated
+    public RootNode getInlinedRoot() {
+        if (!isInlined()) {
+            return null;
+        }
+        return getCurrentRootNode();
+    }
 
     /**
      * Creates a new {@link CallNode} using a {@link CallTarget}.
@@ -87,10 +160,6 @@ public abstract class CallNode extends Node {
     @Deprecated
     public static CallNode create(CallTarget target) {
         return Truffle.getRuntime().createCallNode(target);
-    }
-
-    protected final void installParentInlinedCall() {
-        getInlinedRoot().addParentInlinedCall(this);
     }
 
 }
