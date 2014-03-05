@@ -42,11 +42,6 @@ abstract class OptimizedCallNode extends DefaultCallNode {
     }
 
     @Override
-    public final boolean isInlinable() {
-        return true;
-    }
-
-    @Override
     public final boolean isSplittable() {
         return getCallTarget().getRootNode().isSplittable();
     }
