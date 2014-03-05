@@ -171,10 +171,9 @@ public class TruffleCompilerImpl implements TruffleCompiler {
         }
 
         if (TraceTruffleCompilation.getValue()) {
-            int nodeCountTruffle = NodeUtil.countNodes(compilable.getRootNode(), null, true);
             byte[] code = compiledMethod.getCode();
             Map<String, Object> properties = new LinkedHashMap<>();
-            properties.put("ASTSize", nodeCountTruffle);
+            OptimizedCallTarget.addASTSizeProperty(compilable.getRootNode(), properties);
             properties.put("Time", String.format("%5.0f(%4.0f+%-4.0f)ms", //
                             (timeCompilationFinished - timeCompilationStarted) / 1e6, //
                             (timePartialEvaluationFinished - timeCompilationStarted) / 1e6, //
