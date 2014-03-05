@@ -35,7 +35,6 @@ import java.util.Map.Entry;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
-import com.oracle.graal.compiler.alloc.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
@@ -43,7 +42,6 @@ import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.BlockEndOp;
 import com.oracle.graal.lir.StandardOp.JumpOp;
 import com.oracle.graal.lir.StandardOp.LabelOp;
-import com.oracle.graal.lir.StandardOp.MoveOp;
 import com.oracle.graal.lir.StandardOp.NoOp;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.PhiNode.PhiType;
@@ -183,40 +181,6 @@ public abstract class LIRGenerator implements LIRGeneratorTool, LIRTypeTool {
         this.debugInfoBuilder = createDebugInfoBuilder(nodeOperands);
         this.traceLevel = Options.TraceLIRGeneratorLevel.getValue();
         this.printIRWithLIR = Options.PrintIRWithLIR.getValue();
-    }
-
-    /**
-     * Returns a value for a interval definition, which can be used for re-materialization.
-     * 
-     * @param op An instruction which defines a value
-     * @param operand The destination operand of the instruction
-     * @param interval The interval for this defined value.
-     * @return Returns the value which is moved to the instruction and which can be reused at all
-     *         reload-locations in case the interval of this instruction is spilled. Currently this
-     *         can only be a {@link Constant}.
-     */
-    public Constant getMaterializedValue(LIRInstruction op, Value operand, Interval interval) {
-        if (op instanceof MoveOp) {
-            MoveOp move = (MoveOp) op;
-            if (move.getInput() instanceof Constant) {
-                /*
-                 * Check if the interval has any uses which would accept an stack location (priority
-                 * == ShouldHaveRegister). Rematerialization of such intervals can result in a
-                 * degradation, because rematerialization always inserts a constant load, even if
-                 * the value is not needed in a register.
-                 */
-                Interval.UsePosList usePosList = interval.usePosList();
-                int numUsePos = usePosList.size();
-                for (int useIdx = 0; useIdx < numUsePos; useIdx++) {
-                    Interval.RegisterPriority priority = usePosList.registerPriority(useIdx);
-                    if (priority == Interval.RegisterPriority.ShouldHaveRegister) {
-                        return null;
-                    }
-                }
-                return (Constant) move.getInput();
-            }
-        }
-        return null;
     }
 
     /**

@@ -45,6 +45,7 @@ import com.oracle.graal.lir.LIRInstruction.OperandMode;
 import com.oracle.graal.lir.LIRInstruction.StateProcedure;
 import com.oracle.graal.lir.LIRInstruction.ValueProcedure;
 import com.oracle.graal.lir.StandardOp.MoveOp;
+import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.phases.util.*;
 
@@ -58,7 +59,6 @@ public final class LinearScan {
 
     final TargetDescription target;
     final LIR ir;
-    final LIRGenerator gen;
     final FrameMap frameMap;
     final RegisterAttributes[] registerAttributes;
     final Register[] registers;
@@ -158,10 +158,9 @@ public final class LinearScan {
      */
     private final int firstVariableNumber;
 
-    public LinearScan(TargetDescription target, LIR ir, LIRGenerator gen, FrameMap frameMap) {
+    public LinearScan(TargetDescription target, LIR ir, FrameMap frameMap) {
         this.target = target;
         this.ir = ir;
-        this.gen = gen;
         this.frameMap = frameMap;
         this.sortedBlocks = ir.linearScanOrder();
         this.registerAttributes = frameMap.registerConfig.getAttributesMap();
@@ -881,21 +880,54 @@ public final class LinearScan {
         indent.outdent();
     }
 
+    private static LIRGenerator getLIRGeneratorFromDebugContext() {
+        if (Debug.isEnabled()) {
+            LIRGenerator lirGen = Debug.contextLookup(LIRGenerator.class);
+            assert lirGen != null;
+            return lirGen;
+        }
+        return null;
+    }
+
+    private static ValueNode getValueForOperandFromDebugContext(Value value) {
+        LIRGenerator gen = getLIRGeneratorFromDebugContext();
+        if (gen != null) {
+            return gen.valueForOperand(value);
+        }
+        return null;
+    }
+
+    private static StructuredGraph getGraphFromDebugContext() {
+        LIRGenerator gen = getLIRGeneratorFromDebugContext();
+        if (gen != null) {
+            return gen.getGraph();
+        }
+        return null;
+    }
+
+    private static ResolvedJavaMethod getMethodFromDebugContext() {
+        StructuredGraph graph = getGraphFromDebugContext();
+        if (graph != null) {
+            return graph.method();
+        }
+        return null;
+    }
+
     private void reportFailure(int numBlocks) {
-        Indent indent = Debug.logAndIndent("report failure, graph: %s", gen.getGraph());
+        Indent indent = Debug.logAndIndent("report failure, graph: %s", getGraphFromDebugContext());
 
         BitSet startBlockLiveIn = blockData.get(ir.cfg.getStartBlock()).liveIn;
         try (Indent indent2 = Debug.logAndIndent("Error: liveIn set of first block must be empty (when this fails, variables are used before they are defined):")) {
             for (int operandNum = startBlockLiveIn.nextSetBit(0); operandNum >= 0; operandNum = startBlockLiveIn.nextSetBit(operandNum + 1)) {
                 Value operand = operandFor(operandNum);
-                Debug.log("var %d; operand=%s; node=%s", operandNum, operand, gen.valueForOperand(operand));
+                Debug.log("var %d; operand=%s; node=%s", operandNum, operand, getValueForOperandFromDebugContext(operand));
             }
         }
 
         // print some additional information to simplify debugging
         for (int operandNum = startBlockLiveIn.nextSetBit(0); operandNum >= 0; operandNum = startBlockLiveIn.nextSetBit(operandNum + 1)) {
             Value operand = operandFor(operandNum);
-            final Indent indent2 = Debug.logAndIndent("---- Detailed information for var %d; operand=%s; node=%s ----", operandNum, operand, gen.valueForOperand(operand));
+            final Indent indent2 = Debug.logAndIndent("---- Detailed information for var %d; operand=%s; node=%s ----", operandNum, operand, getValueForOperandFromDebugContext(operand));
 
             Deque<Block> definedIn = new ArrayDeque<>();
             HashSet<Block> usedIn = new HashSet<>();
@@ -1036,7 +1068,7 @@ public final class LinearScan {
             // detection of method-parameters and roundfp-results
             interval.setSpillState(SpillState.StartInMemory);
         }
-        interval.addMaterializationValue(gen.getMaterializedValue(op, operand, interval));
+        interval.addMaterializationValue(LinearScan.getMaterializedValue(op, operand, interval));
 
         Debug.log("add def: %s defPos %d (%s)", interval, defPos, registerPriority.name());
     }
@@ -1839,7 +1871,7 @@ public final class LinearScan {
         /*
          * This is the point to enable debug logging for the whole register allocation.
          */
-        Indent indent = Debug.logAndIndent("LinearScan allocate %s", gen.getGraph().method());
+        Indent indent = Debug.logAndIndent("LinearScan allocate %s", getMethodFromDebugContext());
 
         try (Scope s = Debug.scope("LifetimeAnalysis")) {
             numberInstructions();
@@ -2092,5 +2124,39 @@ public final class LinearScan {
                 }
             }
         }
+    }
+
+    /**
+     * Returns a value for a interval definition, which can be used for re-materialization.
+     * 
+     * @param op An instruction which defines a value
+     * @param operand The destination operand of the instruction
+     * @param interval The interval for this defined value.
+     * @return Returns the value which is moved to the instruction and which can be reused at all
+     *         reload-locations in case the interval of this instruction is spilled. Currently this
+     *         can only be a {@link Constant}.
+     */
+    public static Constant getMaterializedValue(LIRInstruction op, Value operand, Interval interval) {
+        if (op instanceof MoveOp) {
+            MoveOp move = (MoveOp) op;
+            if (move.getInput() instanceof Constant) {
+                /*
+                 * Check if the interval has any uses which would accept an stack location (priority
+                 * == ShouldHaveRegister). Rematerialization of such intervals can result in a
+                 * degradation, because rematerialization always inserts a constant load, even if
+                 * the value is not needed in a register.
+                 */
+                Interval.UsePosList usePosList = interval.usePosList();
+                int numUsePos = usePosList.size();
+                for (int useIdx = 0; useIdx < numUsePos; useIdx++) {
+                    Interval.RegisterPriority priority = usePosList.registerPriority(useIdx);
+                    if (priority == Interval.RegisterPriority.ShouldHaveRegister) {
+                        return null;
+                    }
+                }
+                return (Constant) move.getInput();
+            }
+        }
+        return null;
     }
 }
