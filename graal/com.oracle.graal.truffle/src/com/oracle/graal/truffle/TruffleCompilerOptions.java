@@ -66,7 +66,7 @@ public class TruffleCompilerOptions {
     @Option(help = "Enable call target splitting")
     public static final OptionValue<Boolean> TruffleSplittingEnabled = new OptionValue<>(true);
     @Option(help = "Disable call target splitting if tree size exceeds this limit")
-    public static final OptionValue<Integer> TruffleSplittingMaxCalleeSize = new OptionValue<>(50);
+    public static final OptionValue<Integer> TruffleSplittingMaxCalleeSize = new OptionValue<>(100);
     @Option(help = "Number of most recently used methods in truffle cache")
     public static final OptionValue<Integer> TruffleMaxCompilationCacheSize = new OptionValue<>(512);
     @Option(help = "Enable asynchronous truffle compilation in background thread")

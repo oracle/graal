@@ -213,7 +213,7 @@ public final class OptimizedCallTarget extends DefaultCallTarget implements Loop
             public boolean visit(Node node) {
                 if (node instanceof OptimizedCallNode) {
                     OptimizedCallNode call = ((OptimizedCallNode) node);
-                    if (call.isInlinable() && !call.isInlined() && !visitedCallSites.contains(call)) {
+                    if (!call.isInlined() && !visitedCallSites.contains(call)) {
                         queue.add(call.createInliningProfile(target));
                         visitedCallSites.add(call);
                     }

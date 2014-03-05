@@ -52,12 +52,12 @@ public class OptimizedCallNodeProfile implements TruffleInliningProfile {
         this.targetShallowNodeCount = NodeUtil.countNodes(inlineRoot, null, false);
         this.targetDeepNodeCount = NodeUtil.countNodes(inlineRoot, null, true);
         this.compilationRoots = findCompilationRoots(callNode);
-        this.averageFrequency = calculateFrequency(compilationRoots);
+        this.averageFrequency = calculateFrequency();
         this.score = calculateScore();
     }
 
-    private double calculateFrequency(@SuppressWarnings("unused") List<OptimizedCallTarget> compilationRoots2) {
-        return calculateSimpleFrequency();
+    private double calculateFrequency() {
+        return calculateAdvancedFrequency();
     }
 
     public OptimizedCallNode getCallNode() {
@@ -141,6 +141,50 @@ public class OptimizedCallNodeProfile implements TruffleInliningProfile {
             return true;
         }
 
+    }
+
+    double calculateAdvancedFrequency() {
+        // get the call hierarchy from call target to the call node
+        final ArrayDeque<OptimizedCallNode> callStack = new ArrayDeque<>();
+        callTarget.getRootNode().accept(new NodeVisitor() {
+            private boolean found = false;
+
+            public boolean visit(Node node) {
+                if (node == callNode) {
+                    // found our call
+                    callStack.push((OptimizedCallNode) node);
+                    found = true;
+                    return false;
+                }
+
+                if (node instanceof OptimizedCallNode) {
+                    OptimizedCallNode c = ((OptimizedCallNode) node);
+                    if (c.isInlined()) {
+                        if (!found) {
+                            callStack.push(c);
+                        }
+                        c.getCurrentRootNode().accept(this);
+                        if (!found) {
+                            callStack.pop();
+                        }
+                    }
+                }
+                return !found;
+            }
+        });
+
+        int parentCallCount = callTarget.getCompilationProfile().getCallCount();
+        double frequency = 1.0d;
+        for (OptimizedCallNode c : callStack) {
+            int childCallCount = c.getCallCount();
+            frequency *= childCallCount / (double) parentCallCount;
+            if (c.isInlined() || c.isSplit()) {
+                parentCallCount = childCallCount;
+            } else {
+                parentCallCount = c.getCurrentCallTarget().getCompilationProfile().getCallCount();
+            }
+        }
+        return frequency;
     }
 
     double calculateSimpleFrequency() {

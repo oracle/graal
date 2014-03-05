@@ -61,7 +61,6 @@ abstract class OptimizedCallNode extends DefaultCallNode {
 
     @SuppressWarnings("unused")
     public void nodeReplaced(Node oldNode, Node newNode, String reason) {
-
     }
 
     @Override
@@ -88,38 +87,28 @@ abstract class OptimizedCallNode extends DefaultCallNode {
 
     private static final class DefaultOptimizedCallNode extends OptimizedCallNode {
 
-        private boolean splitTried;
+        private boolean trySplit = true;
 
         DefaultOptimizedCallNode(OptimizedCallTarget target) {
             super(target);
+            registerCallTarget(this);
         }
 
         @Override
         public Object call(PackedFrame caller, Arguments arguments) {
             if (CompilerDirectives.inInterpreter()) {
                 callCount++;
-                if (!splitTried) {
+                if (trySplit && callCount > 1) {
+                    trySplit = false;
                     return trySplit(caller, arguments);
                 }
             }
             return callTarget.call(caller, arguments);
         }
 
-        @Override
-        public void nodeReplaced(Node oldNode, Node newNode, String reason) {
-
-        }
-
         private Object trySplit(PackedFrame caller, Arguments arguments) {
-            int effectiveCallCount = callCount;
-            // we try splitting for the first two invocations
-            if (effectiveCallCount <= 3) {
-                if (isSplittable() && shouldSplit()) {
-                    return splitImpl(true).call(caller, arguments);
-                }
-                if (effectiveCallCount == 3) {
-                    splitTried = true;
-                }
+            if (shouldSplit()) {
+                return splitImpl(true).call(caller, arguments);
             }
             return callTarget.call(caller, arguments);
         }
@@ -128,20 +117,35 @@ abstract class OptimizedCallNode extends DefaultCallNode {
             if (!TruffleCompilerOptions.TruffleSplittingEnabled.getValue()) {
                 return false;
             }
-
-            int nodeCount = NodeUtil.countNodes(getCallTarget().getRootNode(), null, false);
-
-            // max one child call and callCount > 2 and kind of small number of nodes
-            if (callCount > 2 && isMaxSingleCall()) {
-                if (nodeCount <= 100) {
-                    return true;
-                }
+            if (!isSplittable()) {
+                return false;
             }
-
+            int nodeCount = NodeUtil.countNodes(getCallTarget().getRootNode(), null, false);
             if (nodeCount > TruffleCompilerOptions.TruffleSplittingMaxCalleeSize.getValue()) {
                 return false;
             }
-            return countPolymorphic() > 1 || countGeneric() > 0;
+
+// // is the only call target -> do not split
+// if (getCallTarget().getRootNode().getCachedCallNodes().size() == 1 &&
+// getCallTarget().getRootNode().getCachedCallNodes().contains(this)) {
+// return false;
+// }
+
+            // max one child call and callCount > 2 and kind of small number of nodes
+            if (isMaxSingleCall()) {
+                return true;
+            }
+            return countPolymorphic() >= 1 || countGeneric() > 0;
+        }
+
+        @Override
+        public void nodeReplaced(Node oldNode, Node newNode, String reason) {
+            trySplit = true;
+        }
+
+        @Override
+        protected void notifyCallNodeAdded() {
+            trySplit = true;
         }
 
         private boolean isMaxSingleCall() {
@@ -159,11 +163,11 @@ abstract class OptimizedCallNode extends DefaultCallNode {
         }
 
         private int countPolymorphic() {
-            return NodeUtil.countNodes(getCallTarget().getRootNode(), null, Kind.POLYMORPHIC, true);
+            return NodeUtil.countNodes(getCallTarget().getRootNode(), null, Kind.POLYMORPHIC, false);
         }
 
         private int countGeneric() {
-            return NodeUtil.countNodes(getCallTarget().getRootNode(), null, Kind.GENERIC, true);
+            return NodeUtil.countNodes(getCallTarget().getRootNode(), null, Kind.GENERIC, false);
         }
 
         @Override
