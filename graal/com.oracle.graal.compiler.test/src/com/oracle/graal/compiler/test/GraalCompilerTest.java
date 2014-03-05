@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -39,12 +39,14 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.CallingConvention.Type;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.runtime.*;
+import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Node.Verbosity;
 import com.oracle.graal.java.*;
+import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.cfg.*;
@@ -424,13 +426,117 @@ public abstract class GraalCompilerTest extends GraalTest {
         ResolvedJavaMethod javaMethod = getMetaAccess().lookupJavaMethod(method);
         checkArgs(javaMethod, executeArgs);
 
-        InstalledCode compiledMethod = getCode(javaMethod, parse(method));
+        InstalledCode compiledMethod = null;
+        if (UseLIRBuilder.getValue()) {
+            compiledMethod = getCodeBaseline(javaMethod, method);
+        } else {
+            compiledMethod = getCode(javaMethod, parse(method));
+        }
         try {
             return new Result(compiledMethod.executeVarargs(executeArgs), null);
         } catch (Throwable e) {
             return new Result(null, e);
         } finally {
             after();
+        }
+    }
+
+    protected InstalledCode getCodeBaseline(ResolvedJavaMethod javaMethod, Method method) {
+        return getCodeBaseline(javaMethod, method, false);
+    }
+
+    protected InstalledCode getCodeBaseline(ResolvedJavaMethod javaMethod, Method method, boolean forceCompile) {
+        assert method.getAnnotation(Test.class) == null : "shouldn't parse method with @Test annotation: " + method;
+
+        try (Scope bds = Debug.scope("Baseline")) {
+            Debug.log("getCodeBaseline()");
+        } catch (Throwable e) {
+            throw Debug.handle(e);
+        }
+
+        if (!forceCompile) {
+            InstalledCode cached = cache.get(javaMethod);
+            if (cached != null) {
+                if (cached.isValid()) {
+                    return cached;
+                }
+            }
+        }
+
+        final int id = compilationId.incrementAndGet();
+
+        InstalledCode installedCode = null;
+        try (Scope ds = Debug.scope("Compiling", new DebugDumpScope(String.valueOf(id), true))) {
+            final boolean printCompilation = PrintCompilation.getValue() && !TTY.isSuppressed();
+
+            if (printCompilation) {
+                TTY.println(String.format("@%-6d Graal %-70s %-45s %-50s ...", id, javaMethod.getDeclaringClass().getName(), javaMethod.getName(), javaMethod.getSignature()));
+            }
+            long start = System.currentTimeMillis();
+
+            CompilationResult compResult = compileBaseline(javaMethod);
+
+            if (printCompilation) {
+                TTY.println(String.format("@%-6d Graal %-70s %-45s %-50s | %4dms %5dB", id, "", "", "", System.currentTimeMillis() - start, compResult.getTargetCodeSize()));
+            }
+
+            try (Scope s = Debug.scope("CodeInstall", getCodeCache(), javaMethod)) {
+                installedCode = addMethod(javaMethod, compResult);
+                if (installedCode == null) {
+                    throw new GraalInternalError("Could not install code for " + MetaUtil.format("%H.%n(%p)", javaMethod));
+                }
+            } catch (Throwable e) {
+                throw Debug.handle(e);
+            }
+        } catch (Throwable e) {
+            throw Debug.handle(e);
+        }
+
+        if (!forceCompile) {
+            cache.put(javaMethod, installedCode);
+        }
+        return installedCode;
+    }
+
+    private CompilationResult compileBaseline(ResolvedJavaMethod javaMethod) {
+        try (Scope bds = Debug.scope("compileBaseline")) {
+            Assumptions assumptions = new Assumptions(OptAssumptions.getValue());
+            LIRGenerator lirGen = compileBytecodeToLIR(javaMethod, assumptions, getCustomLIRBuilderSuite(GraphBuilderConfiguration.getDefault()), getProviders(), getCodeCache().getTarget(),
+                            getBackend(), getCallingConvention(getCodeCache(), Type.JavaCallee, javaMethod, false), getSpeculationLog(), getSuites());
+
+            CompilationResult compilationResult = new CompilationResult();
+            try (Scope s = Debug.scope("CodeGen", lirGen)) {
+                // there will be no more GraphIds so we can pass an empty array...
+                // ...they are not use (yet?) anyway
+                emitCode(getBackend(), new long[0], assumptions, lirGen, compilationResult, javaMethod, CompilationResultBuilderFactory.Default);
+            } catch (Throwable e) {
+                throw Debug.handle(e);
+            }
+            return compilationResult;
+        } catch (Throwable e) {
+            throw Debug.handle(e);
+        }
+    }
+
+    private static LIRGenerator compileBytecodeToLIR(ResolvedJavaMethod javaMethod, Assumptions assumptions, PhaseSuite<HighTierContext> graphBuilderSuite, Providers providers,
+                    TargetDescription target, Backend backend, CallingConvention cc, SpeculationLog speculationLog, Suites suites) {
+        StructuredGraph graph = new StructuredGraph(javaMethod);
+        graphBuilderSuite.apply(graph, new HighTierContext(providers, null, null, graphBuilderSuite, OptimisticOptimizations.ALL));
+
+        Debug.dump(graph, "after bytecode parsing");
+
+        assert !graph.isFrozen();
+        LIR lir = null;
+        try (Scope s = Debug.scope("FrontEnd")) {
+            // graphBuilderSuite was getDefaultGraphBuilderSuite()
+            lir = emitHIR(providers, target, graph, assumptions, null, graphBuilderSuite, OptimisticOptimizations.ALL, getProfilingInfo(graph), speculationLog, suites);
+        } catch (Throwable e) {
+            throw Debug.handle(e);
+        }
+        try (Scope s = Debug.scope("BackEnd", lir)) {
+            return emitLIR(backend, target, lir, graph, cc);
+        } catch (Throwable e) {
+            throw Debug.handle(e);
         }
     }
 
@@ -648,6 +754,14 @@ public abstract class GraalCompilerTest extends GraalTest {
         ListIterator<BasePhase<? super HighTierContext>> iterator = suite.findPhase(GraphBuilderPhase.class);
         iterator.remove();
         iterator.add(new GraphBuilderPhase(gbConf));
+        return suite;
+    }
+
+    protected PhaseSuite<HighTierContext> getCustomLIRBuilderSuite(GraphBuilderConfiguration gbConf) {
+        PhaseSuite<HighTierContext> suite = getDefaultGraphBuilderSuite().copy();
+        ListIterator<BasePhase<? super HighTierContext>> iterator = suite.findPhase(GraphBuilderPhase.class);
+        iterator.remove();
+        iterator.add(new LIRBuilderPhase(gbConf));
         return suite;
     }
 
