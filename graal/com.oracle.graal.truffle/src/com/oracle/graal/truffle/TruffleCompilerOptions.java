@@ -102,6 +102,8 @@ public class TruffleCompilerOptions {
     @Option(help = "")
     public static final OptionValue<Boolean> TraceTruffleInliningDetails = new OptionValue<>(false);
     @Option(help = "")
+    public static final OptionValue<Boolean> TraceTruffleSplitting = new OptionValue<>(false);
+    @Option(help = "")
     public static final OptionValue<Boolean> TruffleCallTargetProfiling = new StableOptionValue<>(false);
     // @formatter:on
 }

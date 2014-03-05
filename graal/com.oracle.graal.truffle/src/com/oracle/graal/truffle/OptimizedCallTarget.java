@@ -423,10 +423,13 @@ public final class OptimizedCallTarget extends DefaultCallTarget implements Loop
         }
     }
 
+    private static int splitCount = 0;
+
     static void logSplit(OptimizedCallNode callNode, OptimizedCallTarget target, OptimizedCallTarget newTarget) {
-        if (TraceTruffleInliningDetails.getValue() || TraceTruffleInlining.getValue()) {
+        if (TraceTruffleSplitting.getValue()) {
             Map<String, Object> properties = new LinkedHashMap<>();
             addASTSizeProperty(target.getRootNode(), properties);
+            properties.put("Split#", ++splitCount);
             properties.put("Source", callNode.getEncapsulatingSourceSection());
             log(0, "split", newTarget.toString(), properties);
         }
