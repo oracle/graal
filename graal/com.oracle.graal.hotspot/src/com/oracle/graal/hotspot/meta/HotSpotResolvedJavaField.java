@@ -119,42 +119,47 @@ public class HotSpotResolvedJavaField extends CompilerObject implements Resolved
         return false;
     }
 
-    private static final List<ResolvedJavaField> notEmbeddable = new ArrayList<>();
+    static class Embeddable {
 
-    private static void addResolvedToSet(Field field) {
-        MetaAccessProvider metaAccess = runtime().getHostProviders().getMetaAccess();
-        notEmbeddable.add(metaAccess.lookupJavaField(field));
-    }
+        // Return true if it's ok to embed the value of a field.
+        public static boolean test(HotSpotResolvedJavaField field) {
+            return !ImmutableCode.getValue() || !fields.contains(field);
+        }
 
-    static {
-        try {
-            addResolvedToSet(Boolean.class.getDeclaredField("TRUE"));
-            addResolvedToSet(Boolean.class.getDeclaredField("FALSE"));
+        private static final List<ResolvedJavaField> fields = new ArrayList<>();
+        static {
+            // Make this initialization lazy so that we don't create cycles between clinit and other
+            // locks that could lead to deadlock.
+            try {
+                MetaAccessProvider metaAccess = runtime().getHostProviders().getMetaAccess();
+                fields.add(metaAccess.lookupJavaField(Boolean.class.getDeclaredField("TRUE")));
+                fields.add(metaAccess.lookupJavaField(Boolean.class.getDeclaredField("FALSE")));
 
-            Class<?> characterCacheClass = Character.class.getDeclaredClasses()[0];
-            assert "java.lang.Character$CharacterCache".equals(characterCacheClass.getName());
-            addResolvedToSet(characterCacheClass.getDeclaredField("cache"));
+                Class<?> characterCacheClass = Character.class.getDeclaredClasses()[0];
+                assert "java.lang.Character$CharacterCache".equals(characterCacheClass.getName());
+                fields.add(metaAccess.lookupJavaField(characterCacheClass.getDeclaredField("cache")));
 
-            Class<?> byteCacheClass = Byte.class.getDeclaredClasses()[0];
-            assert "java.lang.Byte$ByteCache".equals(byteCacheClass.getName());
-            addResolvedToSet(byteCacheClass.getDeclaredField("cache"));
+                Class<?> byteCacheClass = Byte.class.getDeclaredClasses()[0];
+                assert "java.lang.Byte$ByteCache".equals(byteCacheClass.getName());
+                fields.add(metaAccess.lookupJavaField(byteCacheClass.getDeclaredField("cache")));
 
-            Class<?> shortCacheClass = Short.class.getDeclaredClasses()[0];
-            assert "java.lang.Short$ShortCache".equals(shortCacheClass.getName());
-            addResolvedToSet(shortCacheClass.getDeclaredField("cache"));
+                Class<?> shortCacheClass = Short.class.getDeclaredClasses()[0];
+                assert "java.lang.Short$ShortCache".equals(shortCacheClass.getName());
+                fields.add(metaAccess.lookupJavaField(shortCacheClass.getDeclaredField("cache")));
 
-            Class<?> integerCacheClass = Integer.class.getDeclaredClasses()[0];
-            assert "java.lang.Integer$IntegerCache".equals(integerCacheClass.getName());
-            addResolvedToSet(integerCacheClass.getDeclaredField("cache"));
+                Class<?> integerCacheClass = Integer.class.getDeclaredClasses()[0];
+                assert "java.lang.Integer$IntegerCache".equals(integerCacheClass.getName());
+                fields.add(metaAccess.lookupJavaField(integerCacheClass.getDeclaredField("cache")));
 
-            Class<?> longCacheClass = Long.class.getDeclaredClasses()[0];
-            assert "java.lang.Long$LongCache".equals(longCacheClass.getName());
-            addResolvedToSet(longCacheClass.getDeclaredField("cache"));
+                Class<?> longCacheClass = Long.class.getDeclaredClasses()[0];
+                assert "java.lang.Long$LongCache".equals(longCacheClass.getName());
+                fields.add(metaAccess.lookupJavaField(longCacheClass.getDeclaredField("cache")));
 
-            addResolvedToSet(Throwable.class.getDeclaredField("UNASSIGNED_STACK"));
-            addResolvedToSet(Throwable.class.getDeclaredField("SUPPRESSED_SENTINEL"));
-        } catch (SecurityException | NoSuchFieldException e) {
-            throw new GraalInternalError(e);
+                fields.add(metaAccess.lookupJavaField(Throwable.class.getDeclaredField("UNASSIGNED_STACK")));
+                fields.add(metaAccess.lookupJavaField(Throwable.class.getDeclaredField("SUPPRESSED_SENTINEL")));
+            } catch (SecurityException | NoSuchFieldException e) {
+                throw new GraalInternalError(e);
+            }
         }
     }
 
@@ -162,10 +167,7 @@ public class HotSpotResolvedJavaField extends CompilerObject implements Resolved
      * in AOT mode, some fields should never be embedded even for snippets/replacements.
      */
     private boolean isEmbeddable() {
-        if (ImmutableCode.getValue() && notEmbeddable.contains(this)) {
-            return false;
-        }
-        return true;
+        return Embeddable.test(this);
     }
 
     private static final String SystemClassName = "Ljava/lang/System;";
