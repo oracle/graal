@@ -111,13 +111,13 @@ public abstract class CallNode extends Node {
             oldRoot.removeCachedCallNode(oldCall);
         }
 
-        /*
-         * New call nodes are registered in the new target root node.
-         */
-        CallNode newCall = (CallNode) newNode;
-        RootNode newRoot = newCall.getCurrentRootNode();
+        registerCallTarget((CallNode) newNode);
+    }
+
+    protected final void registerCallTarget(CallNode newNode) {
+        RootNode newRoot = newNode.getCurrentRootNode();
         if (newRoot != null) {
-            newRoot.addCachedCallNode(newCall);
+            newRoot.addCachedCallNode(newNode);
         }
     }
 
