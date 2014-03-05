@@ -39,12 +39,14 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.CallingConvention.Type;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.runtime.*;
+import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Node.Verbosity;
 import com.oracle.graal.java.*;
+import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.cfg.*;
@@ -496,17 +498,42 @@ public abstract class GraalCompilerTest extends GraalTest {
         return installedCode;
     }
 
-    protected CompilationResult compileBaseline(ResolvedJavaMethod javaMethod) {
+    private CompilationResult compileBaseline(ResolvedJavaMethod javaMethod) {
         try (Scope bds = Debug.scope("compileBaseline")) {
-            StructuredGraph graph = new StructuredGraph(javaMethod);
-            PhaseSuite<HighTierContext> graphBuilderSuite = getCustomLIRBuilderSuite(GraphBuilderConfiguration.getDefault());
-            graphBuilderSuite.apply(graph, new HighTierContext(providers, null, null, graphBuilderSuite, OptimisticOptimizations.ALL));
+            Assumptions assumptions = new Assumptions(OptAssumptions.getValue());
+            LIRGenerator lirGen = compileBytecodeToLIR(javaMethod, assumptions);
+            CompilationResult compilationResult = new CompilationResult();
+            try (Scope s = Debug.scope("CodeGen", lirGen)) {
+                // there will be no more GraphIds so we can pass an empty array...
+                // ...they are not use (yet?) anyway
+                emitCode(getBackend(), new long[0], assumptions, lirGen, compilationResult, javaMethod, CompilationResultBuilderFactory.Default);
+            } catch (Throwable e) {
+                throw Debug.handle(e);
+            }
+            return compilationResult;
+        } catch (Throwable e) {
+            throw Debug.handle(e);
+        }
+    }
 
-            Debug.dump(graph, "after bytecode parsing");
+    private LIRGenerator compileBytecodeToLIR(ResolvedJavaMethod javaMethod, Assumptions assumptions) {
+        StructuredGraph graph = new StructuredGraph(javaMethod);
+        PhaseSuite<HighTierContext> graphBuilderSuite = getCustomLIRBuilderSuite(GraphBuilderConfiguration.getDefault());
+        graphBuilderSuite.apply(graph, new HighTierContext(providers, null, null, graphBuilderSuite, OptimisticOptimizations.ALL));
 
-            CallingConvention cc = getCallingConvention(getCodeCache(), Type.JavaCallee, graph.method(), false);
-            return compileGraph(graph, cc, javaMethod, getProviders(), getBackend(), getCodeCache().getTarget(), null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL,
-                            getProfilingInfo(graph), getSpeculationLog(), getSuites(), true, new CompilationResult(), CompilationResultBuilderFactory.Default);
+        Debug.dump(graph, "after bytecode parsing");
+
+        CallingConvention cc = getCallingConvention(getCodeCache(), Type.JavaCallee, graph.method(), false);
+        TargetDescription target = getCodeCache().getTarget();
+        assert !graph.isFrozen();
+        LIR lir = null;
+        try (Scope s = Debug.scope("FrontEnd")) {
+            lir = emitHIR(getProviders(), target, graph, assumptions, null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL, getProfilingInfo(graph), getSpeculationLog(), getSuites());
+        } catch (Throwable e) {
+            throw Debug.handle(e);
+        }
+        try (Scope s = Debug.scope("BackEnd", lir)) {
+            return emitLIR(getBackend(), target, lir, graph, cc);
         } catch (Throwable e) {
             throw Debug.handle(e);
         }
