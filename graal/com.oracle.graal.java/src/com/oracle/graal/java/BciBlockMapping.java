@@ -172,7 +172,7 @@ public final class BciBlockMapping {
      * 
      * @param method the compiler interface method containing the code
      */
-    public BciBlockMapping(ResolvedJavaMethod method) {
+    private BciBlockMapping(ResolvedJavaMethod method) {
         this.method = method;
         exceptionHandlers = method.getExceptionHandlers();
         stream = new BytecodeStream(method.getCode());
@@ -877,6 +877,16 @@ public final class BciBlockMapping {
             }
             stream.next();
         }
+    }
+
+    public static BciBlockMapping create(ResolvedJavaMethod method) {
+        BciBlockMapping map = new BciBlockMapping(method);
+        map.build();
+        if (Debug.isDumpEnabled()) {
+            Debug.dump(map, MetaUtil.format("After block building %f %R %H.%n(%P)", method));
+        }
+
+        return map;
     }
 
     private static void loadTwo(Block block, int local) {

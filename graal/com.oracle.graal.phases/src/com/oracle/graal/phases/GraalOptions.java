@@ -30,8 +30,8 @@ import com.oracle.graal.options.*;
 // @formatter:off
 public final class GraalOptions {
 
-    @Option(help = "Enable direct LIR generation")
-    public static final OptionValue<Boolean> UseLIRBuilder = new OptionValue<>(false);
+    @Option(help = "Use baseline compiler configuration")
+    public static final OptionValue<Boolean> UseBaselineCompiler = new OptionValue<>(false);
     @Option(help = "Enable use of compiler intrinsics")
     public static final OptionValue<Boolean> Intrinsify = new OptionValue<>(true);
     @Option(help = "Enable inlining of monomorphic calls")

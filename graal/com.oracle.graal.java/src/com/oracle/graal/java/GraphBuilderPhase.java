@@ -214,16 +214,6 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             return getName() + " " + MetaUtil.format("%H.%n(%p):%r", method);
         }
 
-        private BciBlockMapping createBlockMap() {
-            BciBlockMapping map = new BciBlockMapping(method);
-            map.build();
-            if (Debug.isDumpEnabled()) {
-                Debug.dump(map, MetaUtil.format("After block building %f %R %H.%n(%P)", method));
-            }
-
-            return map;
-        }
-
         protected void build() {
             if (PrintProfilingInformation.getValue()) {
                 TTY.println("Profiling info for " + MetaUtil.format("%H.%n(%p)", method));
@@ -233,7 +223,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             Indent indent = Debug.logAndIndent("build graph for %s", method);
 
             // compute the block map, setup exception handlers and get the entrypoint(s)
-            BciBlockMapping blockMap = createBlockMap();
+            BciBlockMapping blockMap = BciBlockMapping.create(method);
             loopHeaders = blockMap.loopHeaders;
 
             lastInstr = currentGraph.start();
@@ -303,11 +293,11 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             return unwindBlock;
         }
 
-        public BytecodeStream stream() {
+        protected BytecodeStream stream() {
             return stream;
         }
 
-        public int bci() {
+        protected int bci() {
             return stream.currentBCI();
         }
 
@@ -325,14 +315,6 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 value = frameState.pop(kind);
             }
             frameState.storeLocal(index, value);
-        }
-
-        public static boolean covers(ExceptionHandler handler, int bci) {
-            return handler.getStartBCI() <= bci && bci < handler.getEndBCI();
-        }
-
-        public static boolean isCatchAll(ExceptionHandler handler) {
-            return handler.catchTypeCPI() == 0;
         }
 
         /**
