@@ -501,7 +501,9 @@ public abstract class GraalCompilerTest extends GraalTest {
     private CompilationResult compileBaseline(ResolvedJavaMethod javaMethod) {
         try (Scope bds = Debug.scope("compileBaseline")) {
             Assumptions assumptions = new Assumptions(OptAssumptions.getValue());
-            LIRGenerator lirGen = compileBytecodeToLIR(javaMethod, assumptions);
+            LIRGenerator lirGen = compileBytecodeToLIR(javaMethod, assumptions, getCustomLIRBuilderSuite(GraphBuilderConfiguration.getDefault()), getProviders(), getCodeCache().getTarget(),
+                            getBackend(), getCallingConvention(getCodeCache(), Type.JavaCallee, javaMethod, false), getSpeculationLog(), getSuites());
+
             CompilationResult compilationResult = new CompilationResult();
             try (Scope s = Debug.scope("CodeGen", lirGen)) {
                 // there will be no more GraphIds so we can pass an empty array...
@@ -516,24 +518,23 @@ public abstract class GraalCompilerTest extends GraalTest {
         }
     }
 
-    private LIRGenerator compileBytecodeToLIR(ResolvedJavaMethod javaMethod, Assumptions assumptions) {
+    private static LIRGenerator compileBytecodeToLIR(ResolvedJavaMethod javaMethod, Assumptions assumptions, PhaseSuite<HighTierContext> graphBuilderSuite, Providers providers,
+                    TargetDescription target, Backend backend, CallingConvention cc, SpeculationLog speculationLog, Suites suites) {
         StructuredGraph graph = new StructuredGraph(javaMethod);
-        PhaseSuite<HighTierContext> graphBuilderSuite = getCustomLIRBuilderSuite(GraphBuilderConfiguration.getDefault());
         graphBuilderSuite.apply(graph, new HighTierContext(providers, null, null, graphBuilderSuite, OptimisticOptimizations.ALL));
 
         Debug.dump(graph, "after bytecode parsing");
 
-        CallingConvention cc = getCallingConvention(getCodeCache(), Type.JavaCallee, graph.method(), false);
-        TargetDescription target = getCodeCache().getTarget();
         assert !graph.isFrozen();
         LIR lir = null;
         try (Scope s = Debug.scope("FrontEnd")) {
-            lir = emitHIR(getProviders(), target, graph, assumptions, null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL, getProfilingInfo(graph), getSpeculationLog(), getSuites());
+            // graphBuilderSuite was getDefaultGraphBuilderSuite()
+            lir = emitHIR(providers, target, graph, assumptions, null, graphBuilderSuite, OptimisticOptimizations.ALL, getProfilingInfo(graph), speculationLog, suites);
         } catch (Throwable e) {
             throw Debug.handle(e);
         }
         try (Scope s = Debug.scope("BackEnd", lir)) {
-            return emitLIR(getBackend(), target, lir, graph, cc);
+            return emitLIR(backend, target, lir, graph, cc);
         } catch (Throwable e) {
             throw Debug.handle(e);
         }
