@@ -47,6 +47,28 @@ public class HotSpotConstantPool extends CompilerObject implements ConstantPool 
     }
 
     /**
+     * Converts a raw index from the bytecodes to a constant pool index by adding a
+     * {@link HotSpotVMConfig#constantPoolCpCacheIndexTag constant}.
+     * 
+     * @param rawIndex index from the bytecode
+     * @param opcode bytecode to convert the index for
+     * @return constant pool index
+     */
+    private static int toConstantPoolIndex(int rawIndex, int opcode) {
+        int index;
+        if (opcode == Bytecodes.INVOKEDYNAMIC) {
+            index = rawIndex;
+            // See: ConstantPool::is_invokedynamic_index
+            assert index < 0 : "not an invokedynamic constant pool index " + index;
+        } else {
+            assert opcode == Bytecodes.GETFIELD || opcode == Bytecodes.PUTFIELD || opcode == Bytecodes.GETSTATIC || opcode == Bytecodes.PUTSTATIC || opcode == Bytecodes.INVOKEINTERFACE ||
+                            opcode == Bytecodes.INVOKEVIRTUAL || opcode == Bytecodes.INVOKESPECIAL || opcode == Bytecodes.INVOKESTATIC : "unexpected invoke opcode " + Bytecodes.nameOf(opcode);
+            index = rawIndex + runtime().getConfig().constantPoolCpCacheIndexTag;
+        }
+        return index;
+    }
+
+    /**
      * Returns the constant pool tag at index {@code index}.
      * 
      * @param index constant pool index
@@ -254,12 +276,14 @@ public class HotSpotConstantPool extends CompilerObject implements ConstantPool 
     @Override
     public Object lookupAppendix(int cpi, int opcode) {
         assert Bytecodes.isInvoke(opcode);
-        return runtime().getCompilerToVM().lookupAppendixInPool(metaspaceConstantPool, cpi, (byte) opcode);
+        final int index = toConstantPoolIndex(cpi, opcode);
+        return runtime().getCompilerToVM().lookupAppendixInPool(metaspaceConstantPool, index);
     }
 
     @Override
     public JavaMethod lookupMethod(int cpi, int opcode) {
-        return runtime().getCompilerToVM().lookupMethodInPool(metaspaceConstantPool, cpi, (byte) opcode);
+        final int index = toConstantPoolIndex(cpi, opcode);
+        return runtime().getCompilerToVM().lookupMethodInPool(metaspaceConstantPool, index, (byte) opcode);
     }
 
     @Override
@@ -269,11 +293,19 @@ public class HotSpotConstantPool extends CompilerObject implements ConstantPool 
 
     @Override
     public JavaField lookupField(int cpi, int opcode) {
-        return runtime().getCompilerToVM().lookupFieldInPool(metaspaceConstantPool, cpi, (byte) opcode);
+        final int index = toConstantPoolIndex(cpi, opcode);
+        return runtime().getCompilerToVM().lookupFieldInPool(metaspaceConstantPool, index, (byte) opcode);
     }
 
     @Override
     public void loadReferencedType(int cpi, int opcode) {
-        runtime().getCompilerToVM().lookupReferencedTypeInPool(metaspaceConstantPool, cpi, (byte) opcode);
+        int index;
+        if (opcode != Bytecodes.CHECKCAST && opcode != Bytecodes.INSTANCEOF && opcode != Bytecodes.NEW && opcode != Bytecodes.ANEWARRAY && opcode != Bytecodes.MULTIANEWARRAY &&
+                        opcode != Bytecodes.LDC && opcode != Bytecodes.LDC_W && opcode != Bytecodes.LDC2_W) {
+            index = toConstantPoolIndex(cpi, opcode);
+        } else {
+            index = cpi;
+        }
+        runtime().getCompilerToVM().lookupReferencedTypeInPool(metaspaceConstantPool, index, (byte) opcode);
     }
 }
