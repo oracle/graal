@@ -125,11 +125,11 @@ abstract class OptimizedCallNode extends DefaultCallNode {
                 return false;
             }
 
-// // is the only call target -> do not split
-// if (getCallTarget().getRootNode().getCachedCallNodes().size() == 1 &&
-// getCallTarget().getRootNode().getCachedCallNodes().contains(this)) {
-// return false;
-// }
+            // // is the only call target -> do not split
+            // if (getCallTarget().getRootNode().getCachedCallNodes().size() == 1 &&
+            // getCallTarget().getRootNode().getCachedCallNodes().contains(this)) {
+            // return false;
+            // }
 
             // max one child call and callCount > 2 and kind of small number of nodes
             if (isMaxSingleCall()) {
