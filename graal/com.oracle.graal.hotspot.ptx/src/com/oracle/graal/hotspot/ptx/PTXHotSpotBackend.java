@@ -37,7 +37,6 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
 import com.oracle.graal.asm.ptx.*;
 import com.oracle.graal.compiler.gen.*;
-import com.oracle.graal.compiler.ptx.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.graph.*;
@@ -377,12 +376,12 @@ public class PTXHotSpotBackend extends HotSpotBackend {
         return new PTXHotSpotLIRGenerator(graph, getProviders(), getRuntime().getConfig(), frameMap, cc, lir);
     }
 
-    private static void emitKernelEntry(CompilationResultBuilder crb, LIRGenerator lirGen, ResolvedJavaMethod codeCacheOwner) {
+    private static void emitKernelEntry(CompilationResultBuilder crb, LIR lir, ResolvedJavaMethod codeCacheOwner) {
         // Emit PTX kernel entry text based on PTXParameterOp
         // instructions in the start block. Remove the instructions
         // once kernel entry text and directives are emitted to
         // facilitate seemless PTX code generation subsequently.
-        assert codeCacheOwner != null : lirGen.getGraph() + " is not associated with a method";
+        assert codeCacheOwner != null : lir + " is not associated with a method";
         final String name = codeCacheOwner.getName();
         Assembler asm = crb.asm;
 
@@ -393,14 +392,14 @@ public class PTXHotSpotBackend extends HotSpotBackend {
         asm.emitString("");
 
         // Get the start block
-        Block startBlock = lirGen.lir.cfg.getStartBlock();
+        Block startBlock = lir.cfg.getStartBlock();
         // Keep a list of ParameterOp instructions to delete from the
         // list of instructions in the block.
         ArrayList<LIRInstruction> deleteOps = new ArrayList<>();
 
         // Emit .param arguments to kernel entry based on ParameterOp
         // instruction.
-        for (LIRInstruction op : lirGen.lir.lir(startBlock)) {
+        for (LIRInstruction op : lir.lir(startBlock)) {
             if (op instanceof PTXParameterOp) {
                 op.emitCode(crb);
                 deleteOps.add(op);
@@ -409,7 +408,7 @@ public class PTXHotSpotBackend extends HotSpotBackend {
 
         // Delete ParameterOp instructions.
         for (LIRInstruction op : deleteOps) {
-            lirGen.lir.lir(startBlock).remove(op);
+            lir.lir(startBlock).remove(op);
         }
 
         // Start emiting body of the PTX kernel.
@@ -418,14 +417,14 @@ public class PTXHotSpotBackend extends HotSpotBackend {
     }
 
     // Emit .reg space declarations
-    private static void emitRegisterDecl(CompilationResultBuilder crb, LIRGenerator lirGen, ResolvedJavaMethod codeCacheOwner) {
+    private static void emitRegisterDecl(CompilationResultBuilder crb, LIR lir, ResolvedJavaMethod codeCacheOwner) {
 
-        assert codeCacheOwner != null : lirGen.getGraph() + " is not associated with a method";
+        assert codeCacheOwner != null : lir + " is not associated with a method";
 
         RegisterAnalysis registerAnalysis = new RegisterAnalysis();
 
-        for (Block b : lirGen.lir.codeEmittingOrder()) {
-            for (LIRInstruction op : lirGen.lir.lir(b)) {
+        for (Block b : lir.codeEmittingOrder()) {
+            for (LIRInstruction op : lir.lir(b)) {
                 if (op instanceof LabelOp) {
                     // Don't consider this as a definition
                 } else {
@@ -440,23 +439,23 @@ public class PTXHotSpotBackend extends HotSpotBackend {
         registerAnalysis.emitDeclarations(asm);
 
         // emit predicate register declaration
-        int maxPredRegNum = ((PTXLIRGenerator) lirGen).getNextPredRegNumber();
+        int maxPredRegNum = lir.numVariables();
         if (maxPredRegNum > 0) {
             asm.emitString(".reg .pred %p<" + maxPredRegNum + ">;");
         }
     }
 
     @Override
-    public void emitCode(CompilationResultBuilder crb, LIRGenerator lirGen, ResolvedJavaMethod codeCacheOwner) {
-        assert codeCacheOwner != null : lirGen.getGraph() + " is not associated with a method";
+    public void emitCode(CompilationResultBuilder crb, LIR lir, ResolvedJavaMethod codeCacheOwner) {
+        assert codeCacheOwner != null : lir + " is not associated with a method";
         Assembler asm = crb.asm;
 
         // Emit the prologue
-        emitKernelEntry(crb, lirGen, codeCacheOwner);
+        emitKernelEntry(crb, lir, codeCacheOwner);
 
         // Emit register declarations
         try {
-            emitRegisterDecl(crb, lirGen, codeCacheOwner);
+            emitRegisterDecl(crb, lir, codeCacheOwner);
         } catch (GraalInternalError e) {
             e.printStackTrace();
             // TODO : Better error handling needs to be done once
@@ -466,7 +465,7 @@ public class PTXHotSpotBackend extends HotSpotBackend {
         }
         // Emit code for the LIR
         try {
-            crb.emit(lirGen.lir);
+            crb.emit(lir);
         } catch (GraalInternalError e) {
             e.printStackTrace();
             // TODO : Better error handling needs to be done once

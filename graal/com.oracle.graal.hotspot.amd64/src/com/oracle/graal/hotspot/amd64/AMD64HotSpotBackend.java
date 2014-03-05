@@ -224,7 +224,7 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend {
     }
 
     @Override
-    public void emitCode(CompilationResultBuilder crb, LIRGenerator lirGen, ResolvedJavaMethod installedCodeOwner) {
+    public void emitCode(CompilationResultBuilder crb, LIR lir, ResolvedJavaMethod installedCodeOwner) {
         AMD64MacroAssembler asm = (AMD64MacroAssembler) crb.asm;
         FrameMap frameMap = crb.frameMap;
         RegisterConfig regConfig = frameMap.registerConfig;
@@ -235,10 +235,10 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend {
         emitCodePrefix(installedCodeOwner, crb, asm, regConfig, config, verifiedEntry);
 
         // Emit code for the LIR
-        emitCodeBody(installedCodeOwner, crb, lirGen);
+        emitCodeBody(installedCodeOwner, crb, lir);
 
         // Emit the suffix
-        emitCodeSuffix(installedCodeOwner, crb, lirGen, asm, frameMap);
+        emitCodeSuffix(installedCodeOwner, crb, asm, frameMap);
     }
 
     /**
@@ -281,14 +281,14 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend {
      * 
      * @param installedCodeOwner see {@link Backend#emitCode}
      */
-    public void emitCodeBody(ResolvedJavaMethod installedCodeOwner, CompilationResultBuilder crb, LIRGenerator lirGen) {
-        crb.emit(lirGen.lir);
+    public void emitCodeBody(ResolvedJavaMethod installedCodeOwner, CompilationResultBuilder crb, LIR lir) {
+        crb.emit(lir);
     }
 
     /**
      * @param installedCodeOwner see {@link Backend#emitCode}
      */
-    public void emitCodeSuffix(ResolvedJavaMethod installedCodeOwner, CompilationResultBuilder crb, LIRGenerator lirGen, AMD64MacroAssembler asm, FrameMap frameMap) {
+    public void emitCodeSuffix(ResolvedJavaMethod installedCodeOwner, CompilationResultBuilder crb, AMD64MacroAssembler asm, FrameMap frameMap) {
         HotSpotProviders providers = getProviders();
         HotSpotFrameContext frameContext = (HotSpotFrameContext) crb.frameContext;
         if (!frameContext.isStub) {
@@ -303,7 +303,7 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend {
 
             if (frameContext.omitFrame) {
                 // Cannot access slots in caller's frame if my frame is omitted
-                assert !frameMap.accessesCallerFrame() : lirGen.getGraph();
+                assert !frameMap.accessesCallerFrame();
             }
         }
     }

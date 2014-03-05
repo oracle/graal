@@ -225,8 +225,8 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
     }
 
     @Override
-    public void emitCode(CompilationResultBuilder crb, LIRGenerator lirGen, ResolvedJavaMethod method) {
-        assert method != null : lirGen.getGraph() + " is not associated with a method";
+    public void emitCode(CompilationResultBuilder crb, LIR lir, ResolvedJavaMethod method) {
+        assert method != null : lir + " is not associated with a method";
         // Emit the prologue.
         Assembler asm = crb.asm;
         asm.emitString0("version 0:95: $full : $large;");
@@ -384,7 +384,7 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
             }
         }
         // Prologue done, Emit code for the LIR.
-        crb.emit(lirGen.lir);
+        crb.emit(lir);
         // Now that code is emitted go back and figure out what the upper Bound stack size was.
         long maxStackSize = ((HSAILAssembler) crb.asm).upperBoundStackSize();
         String spillsegStringFinal;
