@@ -547,7 +547,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
                     throw new GraalInternalError(e);
                 }
                 if (c == null) {
-                    type = runtime().getVMToCompiler().createUnresolvedJavaType(signature);
+                    type = HotSpotUnresolvedJavaType.create(signature);
                 } else {
                     type = HotSpotResolvedObjectType.fromClass(c);
                 }

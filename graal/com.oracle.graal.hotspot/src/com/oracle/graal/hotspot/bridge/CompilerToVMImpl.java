@@ -24,7 +24,6 @@
 package com.oracle.graal.hotspot.bridge;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 
@@ -65,16 +64,16 @@ public class CompilerToVMImpl implements CompilerToVM {
     public native Object lookupConstantInPool(long metaspaceConstantPool, int cpi);
 
     @Override
-    public native JavaMethod lookupMethodInPool(long metaspaceConstantPool, int cpi, byte opcode);
+    public native long lookupMethodInPool(long metaspaceConstantPool, int cpi, byte opcode, long[] unresolvedInfo);
 
     @Override
-    public native JavaType lookupTypeInPool(long metaspaceConstantPool, int cpi);
+    public native long lookupTypeInPool(long metaspaceConstantPool, int cpi, long[] unresolvedTypeName);
 
     @Override
-    public native JavaField lookupFieldInPool(long metaspaceConstantPool, int cpi, byte opcode);
+    public native boolean lookupFieldInPool(long metaspaceConstantPool, int cpi, byte opcode, long[] info);
 
     @Override
-    public native void lookupReferencedTypeInPool(long metaspaceConstantPool, int cpi, byte opcode);
+    public native void loadReferencedTypeInPool(long metaspaceConstantPool, int cpi, byte opcode);
 
     @Override
     public native Object lookupAppendixInPool(long metaspaceConstantPool, int cpi);
