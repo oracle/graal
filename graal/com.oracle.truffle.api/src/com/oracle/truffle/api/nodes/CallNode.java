@@ -64,8 +64,6 @@ public abstract class CallNode extends Node {
         return callTarget;
     }
 
-    public abstract boolean isInlinable();
-
     /**
      * @return true if this {@link CallNode} was already inlined.
      */
@@ -139,6 +137,14 @@ public abstract class CallNode extends Node {
     }
 
     /**
+     * @deprecated always returns <code>true</code> now.
+     */
+    @Deprecated
+    public final boolean isInlinable() {
+        return true;
+    }
+
+    /**
      * @deprecated instead use {@link #getCurrentRootNode()} and check for {@link #isInlined()} for
      *             true.
      */
@@ -151,10 +157,6 @@ public abstract class CallNode extends Node {
     }
 
     /**
-     * Creates a new {@link CallNode} using a {@link CallTarget}.
-     * 
-     * @param target the {@link CallTarget} to call
-     * @return a call node that calls the provided target
      * @deprecated use {@link TruffleRuntime#createCallNode(CallTarget)} instead
      */
     @Deprecated
