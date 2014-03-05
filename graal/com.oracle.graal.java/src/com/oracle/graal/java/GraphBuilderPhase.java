@@ -68,8 +68,8 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
     public static final class RuntimeCalls {
 
-        public static final ForeignCallDescriptor CREATE_NULL_POINTER_EXCEPTION = new ForeignCallDescriptor("createNullPointerException", Object.class);
-        public static final ForeignCallDescriptor CREATE_OUT_OF_BOUNDS_EXCEPTION = new ForeignCallDescriptor("createOutOfBoundsException", Object.class, int.class);
+        public static final ForeignCallDescriptor CREATE_NULL_POINTER_EXCEPTION = new ForeignCallDescriptor("createNullPointerException", NullPointerException.class);
+        public static final ForeignCallDescriptor CREATE_OUT_OF_BOUNDS_EXCEPTION = new ForeignCallDescriptor("createOutOfBoundsException", IndexOutOfBoundsException.class, int.class);
     }
 
     /**
@@ -1020,6 +1020,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 trueSucc.setNext(handleException(exception, bci()));
             } else {
                 DeferredForeignCallNode call = currentGraph.add(new DeferredForeignCallNode(CREATE_NULL_POINTER_EXCEPTION));
+                call.setStamp(StampFactory.exactNonNull(metaAccess.lookupJavaType(CREATE_NULL_POINTER_EXCEPTION.getResultType())));
                 call.setStateAfter(frameState.create(bci()));
                 trueSucc.setNext(call);
                 call.setNext(handleException(call, bci()));
@@ -1044,6 +1045,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 falseSucc.setNext(handleException(exception, bci()));
             } else {
                 DeferredForeignCallNode call = currentGraph.add(new DeferredForeignCallNode(CREATE_OUT_OF_BOUNDS_EXCEPTION, index));
+                call.setStamp(StampFactory.exactNonNull(metaAccess.lookupJavaType(CREATE_OUT_OF_BOUNDS_EXCEPTION.getResultType())));
                 call.setStateAfter(frameState.create(bci()));
                 falseSucc.setNext(call);
                 call.setNext(handleException(call, bci()));

@@ -63,6 +63,27 @@ public class UnsafeAccess {
     }
 
     /**
+     * Reads a {@code '\0'} terminated C string from native memory and converts it to a
+     * {@link String}.
+     * 
+     * @return a Java string
+     */
+    public static String readCString(long address) {
+        if (address == 0) {
+            return null;
+        }
+        StringBuffer sb = new StringBuffer();
+        for (int i = 0;; i++) {
+            char c = (char) unsafe.getByte(address + i);
+            if (c == 0) {
+                break;
+            }
+            sb.append(c);
+        }
+        return sb.toString();
+    }
+
+    /**
      * Writes the contents of a {@link String} to a native memory buffer as a {@code '\0'}
      * terminated C string. The caller is responsible for ensuring the buffer is at least
      * {@code s.length() + 1} bytes long. The caller is also responsible for releasing the buffer

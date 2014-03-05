@@ -77,7 +77,7 @@ public class CompilerToVMImpl implements CompilerToVM {
     public native void lookupReferencedTypeInPool(long metaspaceConstantPool, int cpi, byte opcode);
 
     @Override
-    public native Object lookupAppendixInPool(long metaspaceConstantPool, int cpi, byte opcode);
+    public native Object lookupAppendixInPool(long metaspaceConstantPool, int cpi);
 
     @Override
     public native void initializeConfiguration(HotSpotVMConfig config);

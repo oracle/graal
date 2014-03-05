@@ -33,6 +33,7 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.hotspot.nodes.*;
+import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.word.*;
 
@@ -44,7 +45,7 @@ public class ThreadSubstitutions {
 
     @MethodSubstitution
     public static Thread currentThread() {
-        return (Thread) CurrentJavaThreadNode.get().readObject(threadObjectOffset(), LocationIdentity.FINAL_LOCATION);
+        return PiNode.piCastExactNonNull(CurrentJavaThreadNode.get().readObject(threadObjectOffset(), LocationIdentity.FINAL_LOCATION), Thread.class);
     }
 
     @MethodSubstitution(isStatic = false)

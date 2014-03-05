@@ -126,7 +126,7 @@ public interface CompilerToVM {
 
     void lookupReferencedTypeInPool(long metaspaceConstantPool, int cpi, byte opcode);
 
-    Object lookupAppendixInPool(long metaspaceConstantPool, int cpi, byte opcode);
+    Object lookupAppendixInPool(long metaspaceConstantPool, int cpi);
 
     public enum CodeInstallResult {
         OK("ok"), DEPENDENCIES_FAILED("dependencies failed"), CACHE_FULL("code cache is full"), CODE_TOO_LARGE("code is too large");
