@@ -953,10 +953,30 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
             if (node.getGenericSpecialization() != null && node.getGenericSpecialization().isReachable()) {
                 clazz.add(createGenericExecute(node, rootGroup));
             }
+
+            clazz.add(createGetKind(node, null, Kind.SPECIALIZED));
         }
 
         protected boolean needsInvokeCopyConstructorMethod() {
             return getModel().getNode().isPolymorphic();
+        }
+
+        protected CodeExecutableElement createGetKind(NodeData node, SpecializationData specialization, Kind kind) {
+            CodeExecutableElement method = new CodeExecutableElement(modifiers(PUBLIC), context.getTruffleTypes().getNodeInfoKind(), "getKind");
+
+            TypeMirror nodeInfoKind = context.getTruffleTypes().getNodeInfoKind();
+
+            CodeTreeBuilder builder = method.createBuilder();
+            if (node.isPolymorphic() && specialization == null) {
+                // assume next0 exists
+                builder.startIf().string("next0 != null && next0.getKind() == ").staticReference(nodeInfoKind, "SPECIALIZED").end();
+                builder.startBlock();
+                builder.startReturn().staticReference(nodeInfoKind, "POLYMORPHIC").end();
+                builder.end();
+            }
+
+            builder.startReturn().staticReference(nodeInfoKind, kind.name()).end();
+            return method;
         }
 
         protected CodeExecutableElement createInvokeCopyConstructor(TypeMirror baseType, SpecializationData specialization) {
@@ -2503,7 +2523,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
             }
 
             createCachedExecuteMethods(specialization);
-
+            clazz.add(createGetKind(specialization.getNode(), specialization, Kind.SPECIALIZED));
         }
 
         private ExecutableElement createUpdateType(ActualParameter parameter) {
@@ -2586,6 +2606,12 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
             }
             if (needsInvokeCopyConstructorMethod()) {
                 clazz.add(createInvokeCopyConstructor(nodeGen.asType(), specialization));
+            }
+
+            if (specialization.isGeneric()) {
+                clazz.add(createGetKind(specialization.getNode(), specialization, Kind.GENERIC));
+            } else if (specialization.isUninitialized()) {
+                clazz.add(createGetKind(specialization.getNode(), specialization, Kind.UNINITIALIZED));
             }
         }
 
