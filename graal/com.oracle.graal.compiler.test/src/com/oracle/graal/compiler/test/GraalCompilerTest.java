@@ -499,7 +499,7 @@ public abstract class GraalCompilerTest extends GraalTest {
     protected CompilationResult compileBaseline(ResolvedJavaMethod javaMethod) {
         try (Scope bds = Debug.scope("compileBaseline")) {
             StructuredGraph graph = new StructuredGraph(javaMethod);
-            PhaseSuite<HighTierContext> graphBuilderSuite = getCustomGraphBuilderSuite(GraphBuilderConfiguration.getDefault());
+            PhaseSuite<HighTierContext> graphBuilderSuite = getCustomLIRBuilderSuite(GraphBuilderConfiguration.getDefault());
             graphBuilderSuite.apply(graph, new HighTierContext(providers, null, null, graphBuilderSuite, OptimisticOptimizations.ALL));
 
             Debug.dump(graph, "after bytecode parsing");
@@ -726,6 +726,14 @@ public abstract class GraalCompilerTest extends GraalTest {
         ListIterator<BasePhase<? super HighTierContext>> iterator = suite.findPhase(GraphBuilderPhase.class);
         iterator.remove();
         iterator.add(new GraphBuilderPhase(gbConf));
+        return suite;
+    }
+
+    protected PhaseSuite<HighTierContext> getCustomLIRBuilderSuite(GraphBuilderConfiguration gbConf) {
+        PhaseSuite<HighTierContext> suite = getDefaultGraphBuilderSuite().copy();
+        ListIterator<BasePhase<? super HighTierContext>> iterator = suite.findPhase(GraphBuilderPhase.class);
+        iterator.remove();
+        iterator.add(new LIRBuilderPhase(gbConf));
         return suite;
     }
 
