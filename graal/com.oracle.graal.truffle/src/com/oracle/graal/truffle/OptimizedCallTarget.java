@@ -188,7 +188,7 @@ public final class OptimizedCallTarget extends DefaultCallTarget implements Loop
         PriorityQueue<TruffleInliningProfile> queue = new PriorityQueue<>();
 
         // Used to avoid running in cycles or inline nodes in Truffle trees
-        // which do not suffice the tree property twice.
+        // which do not suffice the tree property.
         Set<CallNode> visitedCallNodes = new HashSet<>();
 
         queueCallSitesForInlining(this, getRootNode(), visitedCallNodes, queue);
@@ -310,6 +310,9 @@ public final class OptimizedCallTarget extends DefaultCallTarget implements Loop
                     ((ReplaceObserver) target).nodeReplaced(oldNode, newNode, reason);
                 }
             }
+            if (callNode instanceof OptimizedCallNode) {
+                ((OptimizedCallNode) callNode).nodeReplaced(oldNode, newNode, reason);
+            }
         }
     }
 
@@ -420,6 +423,28 @@ public final class OptimizedCallTarget extends DefaultCallTarget implements Loop
     static void logOptimizingDone(OptimizedCallTarget target, Map<String, Object> properties) {
         if (TraceTruffleCompilationDetails.getValue() || TraceTruffleCompilation.getValue()) {
             log(0, "opt done", target.toString(), properties);
+        }
+        if (TraceTruffleCompilationPolymorphism.getValue()) {
+
+            target.getRootNode().accept(new NodeVisitor() {
+                public boolean visit(Node node) {
+                    Kind kind = node.getKind();
+                    if (kind == Kind.POLYMORPHIC || kind == Kind.GENERIC) {
+                        Map<String, Object> props = new LinkedHashMap<>();
+                        props.put("simpleName", node.getClass().getSimpleName());
+                        String msg = kind == Kind.GENERIC ? "generic" : "polymorphic";
+                        log(0, msg, node.toString(), props);
+                    }
+                    if (node instanceof CallNode) {
+                        CallNode callNode = (CallNode) node;
+                        if (callNode.isInlined()) {
+                            callNode.getCurrentRootNode().accept(this);
+                        }
+                    }
+                    return true;
+                }
+            });
+
         }
     }
 
