@@ -72,6 +72,10 @@ public final class OptimizedCallTarget extends DefaultCallTarget implements Loop
         }
     }
 
+    public OptimizedCallTarget getSplitSource() {
+        return splitSource;
+    }
+
     public void setSplitSource(OptimizedCallTarget splitSource) {
         this.splitSource = splitSource;
     }
@@ -193,7 +197,7 @@ public final class OptimizedCallTarget extends DefaultCallTarget implements Loop
             if (callSite.isInliningAllowed()) {
                 OptimizedCallNode callNode = callSite.getCallNode();
                 logInlined(this, callSite);
-                RootNode inlinedRoot = callNode.inlineImpl().getInlinedRoot();
+                RootNode inlinedRoot = callNode.inlineImpl().getCurrentRootNode();
                 assert inlinedRoot != null;
                 queueCallSitesForInlining(this, inlinedRoot, visitedCallNodes, queue);
             } else {
@@ -212,8 +216,10 @@ public final class OptimizedCallTarget extends DefaultCallTarget implements Loop
                     if (call.isInlinable() && !call.isInlined() && !visitedCallSites.contains(call)) {
                         queue.add(call.createInliningProfile(target));
                         visitedCallSites.add(call);
-                    } else if (call.getInlinedRoot() != null) {
-                        call.getInlinedRoot().accept(this);
+                    }
+                    RootNode root = call.getCurrentRootNode();
+                    if (root != null && call.isInlined()) {
+                        root.accept(this);
                     }
                 }
                 return true;
@@ -282,12 +288,29 @@ public final class OptimizedCallTarget extends DefaultCallTarget implements Loop
     @Override
     public void reportLoopCount(int count) {
         compilationProfile.reportLoopCount(count);
+
+        // delegate to inlined call sites
+        for (CallNode callNode : getRootNode().getCachedCallNodes()) {
+            if (callNode.isInlined()) {
+                callNode.getRootNode().reportLoopCount(count);
+            }
+        }
     }
 
     @Override
     public void nodeReplaced(Node oldNode, Node newNode, String reason) {
         compilationProfile.reportNodeReplaced();
         invalidate(oldNode, newNode, reason);
+
+        // delegate to inlined call sites
+        for (CallNode callNode : getRootNode().getCachedCallNodes()) {
+            if (callNode.isInlined()) {
+                CallTarget target = callNode.getRootNode().getCallTarget();
+                if (target instanceof ReplaceObserver) {
+                    ((ReplaceObserver) target).nodeReplaced(oldNode, newNode, reason);
+                }
+            }
+        }
     }
 
     public SpeculationLog getSpeculationLog() {
@@ -304,25 +327,28 @@ public final class OptimizedCallTarget extends DefaultCallTarget implements Loop
 
     private static void logInliningFailed(TruffleInliningProfile callSite) {
         if (TraceTruffleInliningDetails.getValue()) {
-            log(2, "inline failed", callSite.getCallNode().getExecutedCallTarget().toString(), callSite.getDebugProperties());
+            log(2, "inline failed", callSite.getCallNode().getCurrentCallTarget().toString(), callSite.getDebugProperties());
         }
     }
 
-    private static void logInlined(final OptimizedCallTarget target, TruffleInliningProfile callSite) {
+    private static void logInlined(@SuppressWarnings("unused") final OptimizedCallTarget target, TruffleInliningProfile callSite) {
         if (TraceTruffleInliningDetails.getValue() || TraceTruffleInlining.getValue()) {
-            log(2, "inline success", callSite.getCallNode().getExecutedCallTarget().toString(), callSite.getDebugProperties());
+            log(2, "inline success", callSite.getCallNode().getCurrentCallTarget().toString(), callSite.getDebugProperties());
 
             if (TraceTruffleInliningDetails.getValue()) {
-                RootNode root = callSite.getCallNode().getExecutedCallTarget().getRootNode();
+                RootNode root = callSite.getCallNode().getCurrentCallTarget().getRootNode();
                 root.accept(new NodeVisitor() {
                     int depth = 1;
 
                     public boolean visit(Node node) {
                         if (node instanceof OptimizedCallNode) {
                             OptimizedCallNode callNode = ((OptimizedCallNode) node);
-                            log(2 + (depth * 2), "inline success", callNode.getExecutedCallTarget().toString(), callNode.createInliningProfile(target).getDebugProperties());
-                            RootNode inlinedRoot = callNode.getInlinedRoot();
-                            if (inlinedRoot != null) {
+                            RootNode inlinedRoot = callNode.getCurrentRootNode();
+
+                            if (inlinedRoot != null && callNode.isInlined()) {
+                                Map<String, Object> properties = new LinkedHashMap<>();
+                                addASTSizeProperty(callNode.getCurrentRootNode(), properties);
+                                log(2 + (depth * 2), "inline success", callNode.getCurrentCallTarget().toString(), properties);
                                 depth++;
                                 inlinedRoot.accept(this);
                                 depth--;
@@ -487,7 +513,10 @@ public final class OptimizedCallTarget extends DefaultCallTarget implements Loop
         for (CallNode callNode : callers) {
             if (callNode.isInlined()) {
                 count++;
-                count += countInlinedNodes(callNode.getInlinedRoot());
+                RootNode root = callNode.getCurrentRootNode();
+                if (root != null) {
+                    count += countInlinedNodes(root);
+                }
             }
         }
         return count;
