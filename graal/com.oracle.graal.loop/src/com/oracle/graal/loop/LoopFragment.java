@@ -302,6 +302,24 @@ public abstract class LoopFragment {
                 exitState = exitState.duplicateWithVirtualState();
                 earlyExit.setStateAfter(exitState);
                 merge.setStateAfter(state);
+                /*
+                 * Using the old exit's state as the merge's state is necessary because some of the
+                 * VirtualState nodes contained in the old exit's state may be shared by other
+                 * dominated VirtualStates. Those dominated virtual states need to see the
+                 * proxy->phi update that are applied below.
+                 * 
+                 * We now update the original fragment's nodes accordingly:
+                 */
+                state.applyToVirtual(new VirtualClosure() {
+                    public void apply(VirtualState node) {
+                        original.nodes.clear(node);
+                    }
+                });
+                exitState.applyToVirtual(new VirtualClosure() {
+                    public void apply(VirtualState node) {
+                        original.nodes.mark(node);
+                    }
+                });
             }
 
             for (Node anchored : earlyExit.anchored().snapshot()) {
