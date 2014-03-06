@@ -95,8 +95,14 @@ public class HotSpotUnresolvedJavaType extends HotSpotJavaType {
     }
 
     @Override
-    public boolean equals(Object o) {
-        HotSpotUnresolvedJavaType that = (HotSpotUnresolvedJavaType) o;
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null || !(obj instanceof HotSpotUnresolvedJavaType)) {
+            return false;
+        }
+        HotSpotUnresolvedJavaType that = (HotSpotUnresolvedJavaType) obj;
         return this.simpleName.equals(that.simpleName) && this.dimensions == that.dimensions;
     }
 

@@ -48,4 +48,21 @@ public final class HotSpotMethodUnresolved extends HotSpotMethod {
     public JavaType getDeclaringClass() {
         return holder;
     }
+
+    @Override
+    public int hashCode() {
+        return super.hashCode();
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null || !(obj instanceof HotSpotMethodUnresolved)) {
+            return false;
+        }
+        HotSpotMethodUnresolved that = (HotSpotMethodUnresolved) obj;
+        return this.name.equals(that.name) && this.signature.equals(that.signature) && this.holder.equals(that.holder);
+    }
 }

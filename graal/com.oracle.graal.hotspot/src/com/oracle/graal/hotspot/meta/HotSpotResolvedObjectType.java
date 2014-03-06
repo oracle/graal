@@ -114,7 +114,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
     /**
      * Gets the metaspace Klass for this type.
      */
-    public long metaspaceKlass() {
+    private long metaspaceKlass() {
         return HotSpotGraalRuntime.unsafeReadWord(javaClass, runtime().getConfig().klassOffset);
     }
 

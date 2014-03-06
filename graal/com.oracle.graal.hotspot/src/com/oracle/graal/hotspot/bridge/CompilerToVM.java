@@ -116,56 +116,52 @@ public interface CompilerToVM {
      */
     long lookupType(String name, Class<?> accessingClass, boolean eagerResolve);
 
+    long lookupKlassByName(String name, Class<?> accessingClass);
+
     Object lookupConstantInPool(long metaspaceConstantPool, int cpi);
 
-    /**
-     * Looks up a method entry in a constant pool. If the method is resolved, then
-     * {@code unresolvedInfo} is unmodified. Otherwise, it contains these values:
-     * 
-     * <pre>
-     *     [(Symbol*) name,
-     *      (Symbol*) signature,
-     *      (Symbol*) holderName, // only non-zero if holder == 0
-     *      (Klass*)  holder]
-     * </pre>
-     * 
-     * @param metaspaceConstantPool
-     * @param unresolvedInfo an array in which the details for an unresolved method are returned
-     * @return a metaspace Method for a resolved method entry otherwise 0 in which case the values
-     *         returned in {@code unresolvedInfo} should be consulted
-     */
-    long lookupMethodInPool(long metaspaceConstantPool, int cpi, byte opcode, long[] unresolvedInfo);
+    int lookupNameAndTypeRefIndexInPool(long metaspaceConstantPool, int cpi);
+
+    long lookupNameRefInPool(long metaspaceConstantPool, int cpi);
+
+    long lookupSignatureRefInPool(long metaspaceConstantPool, int cpi);
+
+    int lookupKlassRefIndexInPool(long metaspaceConstantPool, int cpi);
 
     /**
      * Looks up a class entry in a constant pool.
      * 
-     * @param metaspaceConstantPool
-     * @param unresolvedTypeName a 1 element array in which the name of the class is returned if
-     *            this method returns 0
-     * @return a metaspace Klass for a resolved method entry otherwise 0 in which case the value
-     *         returned in {@code unresolvedTypeName} should be consulted
+     * @param metaspaceConstantPool metaspace constant pool pointer
+     * @param cpi constant pool index
+     * @return a metaspace Klass for a resolved method entry, a metaspace Symbol otherwise (with
+     *         tagging)
      */
-    long lookupTypeInPool(long metaspaceConstantPool, int cpi, long[] unresolvedTypeName);
+    long lookupKlassInPool(long metaspaceConstantPool, int cpi);
+
+    /**
+     * Looks up a method entry in a constant pool.
+     * 
+     * @param metaspaceConstantPool metaspace constant pool pointer
+     * @param cpi constant pool index
+     * @return a metaspace Method for a resolved method entry, 0 otherwise
+     */
+    long lookupMethodInPool(long metaspaceConstantPool, int cpi, byte opcode);
 
     /**
      * Looks up a field entry in a constant pool and attempts to resolve it. The values returned in
      * {@code info} are:
      * 
      * <pre>
-     *     [(Symbol*) name,
-     *      (Symbol*) typeName,   // only non-zero if type == 0
-     *      (Klass*)  type,
-     *      (Symbol*) holderName, // only non-zero if holder == 0
-     *      (Klass*)  holder,
-     *      (int)     flags,      // only valid if field is resolved
-     *      (int)     offset]     // only valid if field is resolved
+     *     [(int) flags,   // only valid if field is resolved
+     *      (int) offset]  // only valid if field is resolved
      * </pre>
      * 
-     * @param metaspaceConstantPool
+     * @param metaspaceConstantPool metaspace constant pool pointer
+     * @param cpi constant pool index
      * @param info an array in which the details of the field are returned
      * @return true if the field is resolved
      */
-    boolean lookupFieldInPool(long metaspaceConstantPool, int cpi, byte opcode, long[] info);
+    long resolveField(long metaspaceConstantPool, int cpi, byte opcode, long[] info);
 
     void loadReferencedTypeInPool(long metaspaceConstantPool, int cpi, byte opcode);
 

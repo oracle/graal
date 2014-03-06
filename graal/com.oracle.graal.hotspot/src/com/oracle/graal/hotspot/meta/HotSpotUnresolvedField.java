@@ -57,6 +57,23 @@ public class HotSpotUnresolvedField implements JavaField {
         return holder;
     }
 
+    @Override
+    public int hashCode() {
+        return super.hashCode();
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null || !(obj instanceof HotSpotUnresolvedField)) {
+            return false;
+        }
+        HotSpotUnresolvedField that = (HotSpotUnresolvedField) obj;
+        return this.holder.equals(that.holder) && this.name.equals(that.name) && this.type.equals(that.type);
+    }
+
     /**
      * Converts this compiler interface field to a string.
      */

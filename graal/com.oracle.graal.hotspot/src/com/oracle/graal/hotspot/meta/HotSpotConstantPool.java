@@ -25,6 +25,8 @@ package com.oracle.graal.hotspot.meta;
 import static com.oracle.graal.graph.UnsafeAccess.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 
+import java.lang.invoke.*;
+
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.bytecode.*;
 import com.oracle.graal.graph.*;
@@ -44,6 +46,16 @@ public class HotSpotConstantPool extends CompilerObject implements ConstantPool 
 
     public HotSpotConstantPool(long metaspaceConstantPool) {
         this.metaspaceConstantPool = metaspaceConstantPool;
+    }
+
+    /**
+     * Gets the holder for this constant pool as {@link HotSpotResolvedObjectType}.
+     * 
+     * @return holder for this constant pool
+     */
+    private HotSpotResolvedJavaType getHolder() {
+        final long metaspaceKlass = unsafe.getAddress(metaspaceConstantPool + runtime().getConfig().constantPoolHolderOffset);
+        return (HotSpotResolvedObjectType) HotSpotResolvedObjectType.fromMetaspaceKlass(metaspaceKlass);
     }
 
     /**
@@ -69,10 +81,10 @@ public class HotSpotConstantPool extends CompilerObject implements ConstantPool 
     }
 
     /**
-     * Returns the constant pool tag at index {@code index}.
+     * Gets the constant pool tag at index {@code index}.
      * 
      * @param index constant pool index
-     * @return constant pool tag at index
+     * @return constant pool tag
      */
     private int getTagAt(int index) {
         assertBounds(index);
@@ -82,10 +94,10 @@ public class HotSpotConstantPool extends CompilerObject implements ConstantPool 
     }
 
     /**
-     * Returns the constant pool entry at index {@code index}.
+     * Gets the constant pool entry at index {@code index}.
      * 
      * @param index constant pool index
-     * @return constant pool entry at index
+     * @return constant pool entry
      */
     private long getEntryAt(int index) {
         assertBounds(index);
@@ -94,7 +106,7 @@ public class HotSpotConstantPool extends CompilerObject implements ConstantPool 
     }
 
     /**
-     * Returns the integer constant pool entry at index {@code index}.
+     * Gets the integer constant pool entry at index {@code index}.
      * 
      * @param index constant pool index
      * @return integer constant pool entry at index
@@ -106,10 +118,10 @@ public class HotSpotConstantPool extends CompilerObject implements ConstantPool 
     }
 
     /**
-     * Returns the long constant pool entry at index {@code index}.
+     * Gets the long constant pool entry at index {@code index}.
      * 
      * @param index constant pool index
-     * @return long constant pool entry at index
+     * @return long constant pool entry
      */
     private long getLongAt(int index) {
         HotSpotVMConfig config = runtime().getConfig();
@@ -118,10 +130,10 @@ public class HotSpotConstantPool extends CompilerObject implements ConstantPool 
     }
 
     /**
-     * Returns the float constant pool entry at index {@code index}.
+     * Gets the float constant pool entry at index {@code index}.
      * 
      * @param index constant pool index
-     * @return float constant pool entry at index
+     * @return float constant pool entry
      */
     private float getFloatAt(int index) {
         HotSpotVMConfig config = runtime().getConfig();
@@ -130,15 +142,100 @@ public class HotSpotConstantPool extends CompilerObject implements ConstantPool 
     }
 
     /**
-     * Returns the double constant pool entry at index {@code index}.
+     * Gets the double constant pool entry at index {@code index}.
      * 
      * @param index constant pool index
-     * @return float constant pool entry at index
+     * @return float constant pool entry
      */
     private double getDoubleAt(int index) {
         HotSpotVMConfig config = runtime().getConfig();
         assertTag(index, config.jvmConstantDouble);
         return unsafe.getDouble(metaspaceConstantPool + config.constantPoolSize + index * runtime().getTarget().wordSize);
+    }
+
+    /**
+     * Gets the {@code JVM_CONSTANT_NameAndType} constant pool entry at index {@code index}.
+     * 
+     * @param index constant pool index
+     * @return {@code JVM_CONSTANT_NameAndType} constant pool entry
+     */
+    private int getNameAndTypeAt(int index) {
+        HotSpotVMConfig config = runtime().getConfig();
+        assertTag(index, config.jvmConstantNameAndType);
+        return unsafe.getInt(metaspaceConstantPool + config.constantPoolSize + index * runtime().getTarget().wordSize);
+    }
+
+    /**
+     * Gets the {@code JVM_CONSTANT_NameAndType} reference index constant pool entry at index
+     * {@code index}.
+     * 
+     * @param index constant pool index
+     * @return {@code JVM_CONSTANT_NameAndType} reference constant pool entry
+     */
+    private int getNameAndTypeRefIndexAt(int index) {
+        return runtime().getCompilerToVM().lookupNameAndTypeRefIndexInPool(metaspaceConstantPool, index);
+    }
+
+    /**
+     * Gets the name of a {@code JVM_CONSTANT_NameAndType} constant pool entry at index
+     * {@code index}.
+     * 
+     * @param index constant pool index
+     * @return name as {@link String}
+     */
+    private String getNameRefAt(int index) {
+        final long name = runtime().getCompilerToVM().lookupNameRefInPool(metaspaceConstantPool, index);
+        HotSpotSymbol symbol = new HotSpotSymbol(name);
+        return symbol.asString();
+    }
+
+    /**
+     * Gets the name reference index of a {@code JVM_CONSTANT_NameAndType} constant pool entry at
+     * index {@code index}.
+     * 
+     * @param index constant pool index
+     * @return name reference index
+     */
+    private int getNameRefIndexAt(int index) {
+        final int refIndex = getNameAndTypeAt(index);
+        // name ref index is in the low 16-bits.
+        return refIndex & 0xFFFF;
+    }
+
+    /**
+     * Gets the signature of a {@code JVM_CONSTANT_NameAndType} constant pool entry at index
+     * {@code index}.
+     * 
+     * @param index constant pool index
+     * @return signature as {@link String}
+     */
+    private String getSignatureRefAt(int index) {
+        final long name = runtime().getCompilerToVM().lookupSignatureRefInPool(metaspaceConstantPool, index);
+        HotSpotSymbol symbol = new HotSpotSymbol(name);
+        return symbol.asString();
+    }
+
+    /**
+     * Gets the signature reference index of a {@code JVM_CONSTANT_NameAndType} constant pool entry
+     * at index {@code index}.
+     * 
+     * @param index constant pool index
+     * @return signature reference index
+     */
+    private int getSignatureRefIndexAt(int index) {
+        final int refIndex = getNameAndTypeAt(index);
+        // signature ref index is in the high 16-bits.
+        return refIndex >>> 16;
+    }
+
+    /**
+     * Gets the klass reference index constant pool entry at index {@code index}.
+     * 
+     * @param index constant pool index
+     * @return klass reference index
+     */
+    private int getKlassRefIndexAt(int index) {
+        return runtime().getCompilerToVM().lookupKlassRefIndexInPool(metaspaceConstantPool, index);
     }
 
     /**
@@ -281,63 +378,92 @@ public class HotSpotConstantPool extends CompilerObject implements ConstantPool 
     }
 
     /**
-     * Gets a {@link JavaType} corresponding a given metaspace Klass or to a given name if the
-     * former is null.
+     * Gets a {@link JavaType} corresponding a given metaspace Klass or a metaspace Symbol depending
+     * on the {@link HotSpotVMConfig#compilerToVMKlassTag tag}.
      * 
-     * @param metaspaceSymbol a type name
-     * @param metaspaceKlass a resolved type (if non-zero)
-     * @param mayBePrimitive specifies if the requested type may be primitive
+     * @param metaspacePointer either a metaspace Klass or a metaspace Symbol
      */
-    private static JavaType getType(long metaspaceSymbol, long metaspaceKlass, boolean mayBePrimitive) {
-        if (metaspaceKlass == 0L) {
+    private static JavaType getJavaType(final long metaspacePointer) {
+        HotSpotVMConfig config = runtime().getConfig();
+        if ((metaspacePointer & config.compilerToVMSymbolTag) != 0) {
+            final long metaspaceSymbol = metaspacePointer & ~config.compilerToVMSymbolTag;
             String name = new HotSpotSymbol(metaspaceSymbol).asString();
-            if (mayBePrimitive && name.length() == 1) {
-                Kind kind = Kind.fromPrimitiveOrVoidTypeChar(name.charAt(0));
-                return HotSpotResolvedPrimitiveType.fromClass(kind.toJavaClass());
-            }
             return HotSpotUnresolvedJavaType.create(name);
         } else {
-            return HotSpotResolvedObjectType.fromMetaspaceKlass(metaspaceKlass);
+            assert (metaspacePointer & config.compilerToVMKlassTag) == 0;
+            return HotSpotResolvedObjectType.fromMetaspaceKlass(metaspacePointer);
         }
     }
 
     @Override
     public JavaMethod lookupMethod(int cpi, int opcode) {
         final int index = toConstantPoolIndex(cpi, opcode);
-        // {name, signature, unresolved_holder_name, resolved_holder}
-        long[] unresolvedInfo = new long[4];
-        long metaspaceMethod = runtime().getCompilerToVM().lookupMethodInPool(metaspaceConstantPool, index, (byte) opcode, unresolvedInfo);
+        final long metaspaceMethod = runtime().getCompilerToVM().lookupMethodInPool(metaspaceConstantPool, index, (byte) opcode);
         if (metaspaceMethod != 0L) {
             return HotSpotResolvedJavaMethod.fromMetaspace(metaspaceMethod);
         } else {
-            String name = new HotSpotSymbol(unresolvedInfo[0]).asString();
-            String signature = new HotSpotSymbol(unresolvedInfo[1]).asString();
-            JavaType holder = getType(unresolvedInfo[2], unresolvedInfo[3], false);
-            return new HotSpotMethodUnresolved(name, signature, holder);
+            // Get the method's name and signature.
+            String name = getNameRefAt(index);
+            String signature = getSignatureRefAt(index);
+            if (opcode == Bytecodes.INVOKEDYNAMIC) {
+                JavaType holder = HotSpotResolvedJavaType.fromClass(MethodHandle.class);
+                return new HotSpotMethodUnresolved(name, signature, holder);
+            } else {
+                final int klassIndex = getKlassRefIndexAt(index);
+                final long metaspacePointer = runtime().getCompilerToVM().lookupKlassInPool(metaspaceConstantPool, klassIndex);
+                JavaType holder = getJavaType(metaspacePointer);
+                return new HotSpotMethodUnresolved(name, signature, holder);
+            }
         }
     }
 
     @Override
     public JavaType lookupType(int cpi, int opcode) {
-        long[] unresolvedTypeName = {0};
-        long metaspaceKlass = runtime().getCompilerToVM().lookupTypeInPool(metaspaceConstantPool, cpi, unresolvedTypeName);
-        return getType(unresolvedTypeName[0], metaspaceKlass, false);
+        final long metaspacePointer = runtime().getCompilerToVM().lookupKlassInPool(metaspaceConstantPool, cpi);
+        return getJavaType(metaspacePointer);
     }
 
     @Override
     public JavaField lookupField(int cpi, int opcode) {
         final int index = toConstantPoolIndex(cpi, opcode);
-        long[] info = new long[7];
-        boolean resolved = runtime().getCompilerToVM().lookupFieldInPool(metaspaceConstantPool, index, (byte) opcode, info);
-        String name = new HotSpotSymbol(info[0]).asString();
-        JavaType type = getType(info[1], info[2], true);
-        JavaType holder = getType(info[3], info[4], false);
-        int flags = (int) info[5];
-        int offset = (int) info[6];
-        if (resolved) {
-            HotSpotResolvedObjectType resolvedHolder = (HotSpotResolvedObjectType) holder;
-            HotSpotResolvedJavaField f = resolvedHolder.createField(name, type, offset, flags);
-            return f;
+        final int nameAndTypeIndex = getNameAndTypeRefIndexAt(index);
+        final int nameIndex = getNameRefIndexAt(nameAndTypeIndex);
+        String name = lookupUtf8(nameIndex);
+        final int typeIndex = getSignatureRefIndexAt(nameAndTypeIndex);
+        String typeName = lookupUtf8(typeIndex);
+
+        Kind kind = Kind.fromTypeString(typeName);
+        JavaType type;
+        if (kind.isPrimitive()) {
+            type = HotSpotResolvedPrimitiveType.fromKind(kind);
+        } else {
+            final long metaspaceKlass = runtime().getCompilerToVM().lookupKlassByName(typeName, getHolder().mirror());
+            if (metaspaceKlass == 0L) {
+                type = HotSpotUnresolvedJavaType.create(typeName);
+            } else {
+                type = HotSpotResolvedObjectType.fromMetaspaceKlass(metaspaceKlass);
+            }
+        }
+
+        final int holderIndex = getKlassRefIndexAt(index);
+        JavaType holder = lookupType(holderIndex, opcode);
+
+        if (holder instanceof HotSpotResolvedObjectType) {
+            long[] info = new long[2];
+            long metaspaceKlass;
+            try {
+                metaspaceKlass = runtime().getCompilerToVM().resolveField(metaspaceConstantPool, index, (byte) opcode, info);
+            } catch (Throwable t) {
+                /*
+                 * If there was an exception resolving the field we give up and return an unresolved
+                 * field.
+                 */
+                return new HotSpotUnresolvedField(holder, name, type);
+            }
+            HotSpotResolvedObjectType resolvedHolder = (HotSpotResolvedObjectType) HotSpotResolvedObjectType.fromMetaspaceKlass(metaspaceKlass);
+            final int flags = (int) info[0];
+            final long offset = info[1];
+            return resolvedHolder.createField(name, type, offset, flags);
         } else {
             return new HotSpotUnresolvedField(holder, name, type);
         }
@@ -346,11 +472,19 @@ public class HotSpotConstantPool extends CompilerObject implements ConstantPool 
     @Override
     public void loadReferencedType(int cpi, int opcode) {
         int index;
-        if (opcode != Bytecodes.CHECKCAST && opcode != Bytecodes.INSTANCEOF && opcode != Bytecodes.NEW && opcode != Bytecodes.ANEWARRAY && opcode != Bytecodes.MULTIANEWARRAY &&
-                        opcode != Bytecodes.LDC && opcode != Bytecodes.LDC_W && opcode != Bytecodes.LDC2_W) {
-            index = toConstantPoolIndex(cpi, opcode);
-        } else {
-            index = cpi;
+        switch (opcode) {
+            case Bytecodes.CHECKCAST:
+            case Bytecodes.INSTANCEOF:
+            case Bytecodes.NEW:
+            case Bytecodes.ANEWARRAY:
+            case Bytecodes.MULTIANEWARRAY:
+            case Bytecodes.LDC:
+            case Bytecodes.LDC_W:
+            case Bytecodes.LDC2_W:
+                index = cpi;
+                break;
+            default:
+                index = toConstantPoolIndex(cpi, opcode);
         }
         runtime().getCompilerToVM().loadReferencedTypeInPool(metaspaceConstantPool, index, (byte) opcode);
     }

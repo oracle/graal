@@ -61,16 +61,31 @@ public class CompilerToVMImpl implements CompilerToVM {
     public native long lookupType(String name, Class<?> accessingClass, boolean eagerResolve);
 
     @Override
+    public native long lookupKlassByName(String name, Class<?> accessingClass);
+
+    @Override
     public native Object lookupConstantInPool(long metaspaceConstantPool, int cpi);
 
     @Override
-    public native long lookupMethodInPool(long metaspaceConstantPool, int cpi, byte opcode, long[] unresolvedInfo);
+    public native int lookupNameAndTypeRefIndexInPool(long metaspaceConstantPool, int cpi);
 
     @Override
-    public native long lookupTypeInPool(long metaspaceConstantPool, int cpi, long[] unresolvedTypeName);
+    public native long lookupNameRefInPool(long metaspaceConstantPool, int cpi);
 
     @Override
-    public native boolean lookupFieldInPool(long metaspaceConstantPool, int cpi, byte opcode, long[] info);
+    public native long lookupSignatureRefInPool(long metaspaceConstantPool, int cpi);
+
+    @Override
+    public native int lookupKlassRefIndexInPool(long metaspaceConstantPool, int cpi);
+
+    @Override
+    public native long lookupKlassInPool(long metaspaceConstantPool, int cpi);
+
+    @Override
+    public native long lookupMethodInPool(long metaspaceConstantPool, int cpi, byte opcode);
+
+    @Override
+    public native long resolveField(long metaspaceConstantPool, int cpi, byte opcode, long[] info);
 
     @Override
     public native void loadReferencedTypeInPool(long metaspaceConstantPool, int cpi, byte opcode);
