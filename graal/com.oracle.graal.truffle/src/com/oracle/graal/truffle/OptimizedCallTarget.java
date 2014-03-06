@@ -467,20 +467,18 @@ public final class OptimizedCallTarget extends DefaultCallTarget implements Loop
         properties.put("ASTSize", value);
     }
 
-    static synchronized void log(int indent, String msg, String details, Map<String, Object> properties) {
-        OUT.printf("[truffle] %-16s ", msg);
-        for (int i = 0; i < indent; i++) {
-            OUT.print(" ");
-        }
-        OUT.printf("%-" + (60 - indent) + "s", details);
+    static void log(int indent, String msg, String details, Map<String, Object> properties) {
+        StringBuilder sb = new StringBuilder();
+        sb.append(String.format("[truffle] %-16s ", msg));
+        sb.append(String.format("%" + indent + "s" + "%-" + (60 - indent) + "s", "", details));
         if (properties != null) {
             for (String property : properties.keySet()) {
                 Object value = properties.get(property);
                 if (value == null) {
                     continue;
                 }
-                OUT.print("|");
-                OUT.print(property);
+                sb.append('|');
+                sb.append(property);
 
                 StringBuilder propertyBuilder = new StringBuilder();
                 if (value instanceof Integer) {
@@ -492,10 +490,10 @@ public final class OptimizedCallTarget extends DefaultCallTarget implements Loop
                 }
 
                 int length = Math.max(1, 20 - property.length());
-                OUT.printf(" %" + length + "s ", propertyBuilder.toString());
+                sb.append(String.format(" %" + length + "s ", propertyBuilder.toString()));
             }
         }
-        OUT.println();
+        OUT.println(sb.toString());
     }
 
     private static void printProfiling() {
