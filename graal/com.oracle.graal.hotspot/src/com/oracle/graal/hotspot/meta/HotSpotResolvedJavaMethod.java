@@ -141,7 +141,7 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
     }
 
     @Override
-    public ResolvedJavaType getDeclaringClass() {
+    public HotSpotResolvedObjectType getDeclaringClass() {
         return holder;
     }
 

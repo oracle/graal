@@ -92,7 +92,7 @@ public class ReflectionGetCallerClassNode extends MacroNode implements Canonical
                 default:
                     if (!method.ignoredBySecurityStackWalk()) {
                         // We have reached the desired frame; return the holder class.
-                        HotSpotResolvedObjectType callerClass = (HotSpotResolvedObjectType) method.getDeclaringClass();
+                        HotSpotResolvedObjectType callerClass = method.getDeclaringClass();
                         return ConstantNode.forObject(callerClass.mirror(), metaAccess, graph());
                     }
                     break;
