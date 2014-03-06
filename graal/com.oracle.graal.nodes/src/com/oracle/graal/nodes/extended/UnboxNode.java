@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -58,7 +58,11 @@ public class UnboxNode extends FloatingNode implements Virtualizable, Lowerable,
     public void virtualize(VirtualizerTool tool) {
         State state = tool.getObjectState(value);
         if (state != null && state.getState() == EscapeState.Virtual) {
-            tool.replaceWithValue(state.getEntry(0));
+            ResolvedJavaType objectType = state.getVirtualObject().type();
+            ResolvedJavaType expectedType = tool.getMetaAccessProvider().lookupJavaType(boxingKind.toBoxedJavaClass());
+            if (objectType == expectedType) {
+                tool.replaceWithValue(state.getEntry(0));
+            }
         }
     }
 
@@ -90,7 +94,10 @@ public class UnboxNode extends FloatingNode implements Virtualizable, Lowerable,
                 }
             }
         } else if (value instanceof BoxNode) {
-            return ((BoxNode) value).getValue();
+            BoxNode box = (BoxNode) value;
+            if (boxingKind == box.getBoxingKind()) {
+                return box.getValue();
+            }
         }
         if (usages().isEmpty()) {
             return null;
