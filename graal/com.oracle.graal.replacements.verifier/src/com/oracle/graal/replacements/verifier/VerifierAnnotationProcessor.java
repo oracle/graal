@@ -72,6 +72,7 @@ public class VerifierAnnotationProcessor extends AbstractProcessor {
             verifiers = new ArrayList<>();
             verifiers.add(new ClassSubstitutionVerifier(this.processingEnv));
             verifiers.add(new MethodSubstitutionVerifier(this.processingEnv));
+            verifiers.add(new NodeIntrinsicVerifier(this.processingEnv));
         }
         return verifiers;
     }
