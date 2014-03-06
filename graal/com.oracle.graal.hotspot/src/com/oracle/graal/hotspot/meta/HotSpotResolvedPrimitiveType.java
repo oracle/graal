@@ -36,8 +36,6 @@ public final class HotSpotResolvedPrimitiveType extends HotSpotResolvedJavaType 
 
     private static final long serialVersionUID = -6208552348908071473L;
     private final Kind kind;
-    private final Class<?> javaMirror;
-    private final Class javaArrayMirror;
 
     /**
      * Gets the Graal mirror for a {@link Kind}.
@@ -62,9 +60,7 @@ public final class HotSpotResolvedPrimitiveType extends HotSpotResolvedJavaType 
     public HotSpotResolvedPrimitiveType(Kind kind) {
         super(String.valueOf(Character.toUpperCase(kind.getTypeChar())));
         this.kind = kind;
-        this.javaMirror = kind.toJavaClass();
-        this.javaArrayMirror = kind == Kind.Void ? null : Array.newInstance(javaMirror, 0).getClass();
-        assert javaMirror.isPrimitive() : javaMirror + " not a primitive type";
+        assert mirror().isPrimitive() : mirror() + " not a primitive type";
     }
 
     @Override
@@ -74,6 +70,7 @@ public final class HotSpotResolvedPrimitiveType extends HotSpotResolvedJavaType 
 
     @Override
     public ResolvedJavaType getArrayClass() {
+        Class javaArrayMirror = kind == Kind.Void ? null : Array.newInstance(mirror(), 0).getClass();
         return HotSpotResolvedObjectType.fromClass(javaArrayMirror);
     }
 
@@ -89,7 +86,6 @@ public final class HotSpotResolvedPrimitiveType extends HotSpotResolvedJavaType 
 
     @Override
     public ResolvedJavaType getSuperclass() {
-        assert javaMirror.getSuperclass() == null;
         return null;
     }
 
@@ -190,7 +186,7 @@ public final class HotSpotResolvedPrimitiveType extends HotSpotResolvedJavaType 
 
     @Override
     public <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
-        return javaMirror.getAnnotation(annotationClass);
+        return null;
     }
 
     @Override
@@ -214,7 +210,7 @@ public final class HotSpotResolvedPrimitiveType extends HotSpotResolvedJavaType 
 
     @Override
     public Class<?> mirror() {
-        return javaMirror;
+        return kind.toJavaClass();
     }
 
     @Override
@@ -254,6 +250,6 @@ public final class HotSpotResolvedPrimitiveType extends HotSpotResolvedJavaType 
 
     @Override
     public Constant newArray(int length) {
-        return Constant.forObject(Array.newInstance(javaMirror, length));
+        return Constant.forObject(Array.newInstance(mirror(), length));
     }
 }
