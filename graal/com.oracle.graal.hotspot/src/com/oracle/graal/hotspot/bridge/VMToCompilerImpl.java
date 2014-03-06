@@ -104,6 +104,13 @@ public class VMToCompilerImpl implements VMToCompiler {
             }
         }
 
+        public long getTaskCount() {
+            try (CompilationTask.BeginEnqueue beginEnqueue = new CompilationTask.BeginEnqueue()) {
+                // Don't allow new enqueues while reading the state of queue.
+                return executor.getTaskCount();
+            }
+        }
+
         public void execute(CompilationTask task) {
             // The caller is expected to have set the within enqueue state.
             assert CompilationTask.isWithinEnqueue();
@@ -117,6 +124,11 @@ public class VMToCompilerImpl implements VMToCompiler {
                 // Wait 2 seconds to flush out all graph dumps that may be of interest
                 executor.awaitTermination(2, TimeUnit.SECONDS);
             }
+        }
+
+        @Override
+        public String toString() {
+            return executor.toString();
         }
     }
 
@@ -282,7 +294,7 @@ public class VMToCompilerImpl implements VMToCompiler {
             // Compile until the queue is empty.
             int z = 0;
             while (true) {
-                if (compileQueue.getCompletedTaskCount() >= Math.max(3, compileQueue.getCompletedTaskCount())) {
+                if (compileQueue.getCompletedTaskCount() >= Math.max(3, compileQueue.getTaskCount())) {
                     break;
                 }
 
