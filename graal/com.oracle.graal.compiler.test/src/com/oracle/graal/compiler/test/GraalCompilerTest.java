@@ -499,7 +499,7 @@ public abstract class GraalCompilerTest extends GraalTest {
 
     private CompilationResult compileBaseline(ResolvedJavaMethod javaMethod) {
         try (Scope bds = Debug.scope("compileBaseline")) {
-            BaslineCompiler baselineCompiler = new BaslineCompiler(GraphBuilderConfiguration.getDefault(), providers.getMetaAccess());
+            BaselineCompiler baselineCompiler = new BaselineCompiler(GraphBuilderConfiguration.getDefault(), providers.getMetaAccess());
             baselineCompiler.generate(javaMethod, -1);
             return null;
         } catch (Throwable e) {

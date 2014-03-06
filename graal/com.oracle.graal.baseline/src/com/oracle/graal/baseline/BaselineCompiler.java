@@ -59,9 +59,9 @@ import com.oracle.graal.phases.tiers.*;
  * The {@code GraphBuilder} class parses the bytecode of a method and builds the IR graph.
  */
 @SuppressWarnings("all")
-public class BaslineCompiler {
+public class BaselineCompiler {
 
-    public BaslineCompiler(GraphBuilderConfiguration graphBuilderConfig, MetaAccessProvider metaAccess) {
+    public BaselineCompiler(GraphBuilderConfiguration graphBuilderConfig, MetaAccessProvider metaAccess) {
         this.graphBuilderConfig = graphBuilderConfig;
         this.metaAccess = metaAccess;
     }
