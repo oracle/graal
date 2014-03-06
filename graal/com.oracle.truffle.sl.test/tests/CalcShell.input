@@ -1,0 +1,15 @@
+i
+80
+c
+return cur + i;
+r
+c
+if (i <= 2) { return 1; } else { return prev + cur; }
+r
+i
+100
+r
+c
+if (i == 0) { return 1; } else { return cur * i; }
+r
+x

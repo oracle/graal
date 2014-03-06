@@ -1,2 +1,0 @@
-fails:Regexps with escape characters support \x (hex characters)
-fails:Regexps with escape characters support \c (control characters)

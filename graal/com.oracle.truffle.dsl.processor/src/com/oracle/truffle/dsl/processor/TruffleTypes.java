@@ -43,8 +43,8 @@ public final class TruffleTypes {
 
     public static final String OPTION_DETAILED_REWRITE_REASONS = "DetailedRewriteReasons";
 
-    private final TypeMirror node;
-    private final TypeMirror nodeArray;
+    private final DeclaredType node;
+    private final ArrayType nodeArray;
     private final TypeMirror unexpectedValueException;
     private final TypeMirror frame;
     private final TypeMirror assumption;
@@ -131,11 +131,11 @@ public final class TruffleTypes {
         return compilerDirectives;
     }
 
-    public TypeMirror getNode() {
+    public DeclaredType getNode() {
         return node;
     }
 
-    public TypeMirror getNodeArray() {
+    public ArrayType getNodeArray() {
         return nodeArray;
     }
 

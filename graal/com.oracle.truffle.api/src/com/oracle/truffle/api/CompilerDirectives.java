@@ -242,7 +242,7 @@ public final class CompilerDirectives {
     }
 
     /**
-     * Unsafe access to a int value within an object. The condition parameter gives a hint to the
+     * Unsafe access to an int value within an object. The condition parameter gives a hint to the
      * compiler under which circumstances this access can be moved to an earlier location in the
      * program. The location identity gives a hint to the compiler for improved global value
      * numbering.
@@ -314,8 +314,8 @@ public final class CompilerDirectives {
     }
 
     /**
-     * Unsafe access to a Object value within an object. The condition parameter gives a hint to the
-     * compiler under which circumstances this access can be moved to an earlier location in the
+     * Unsafe access to an Object value within an object. The condition parameter gives a hint to
+     * the compiler under which circumstances this access can be moved to an earlier location in the
      * program. The location identity gives a hint to the compiler for improved global value
      * numbering.
      * 
@@ -374,7 +374,7 @@ public final class CompilerDirectives {
     }
 
     /**
-     * Write a int value within an object. The location identity gives a hint to the compiler for
+     * Write an int value within an object. The location identity gives a hint to the compiler for
      * improved global value numbering.
      * 
      * @param receiver the object that is written to
@@ -430,8 +430,8 @@ public final class CompilerDirectives {
     }
 
     /**
-     * Write a Object value within an object. The location identity gives a hint to the compiler for
-     * improved global value numbering.
+     * Write an Object value within an object. The location identity gives a hint to the compiler
+     * for improved global value numbering.
      * 
      * @param receiver the object that is written to
      * @param offset the offset at which to write to the object in bytes
@@ -441,6 +441,150 @@ public final class CompilerDirectives {
      */
     public static void unsafePutObject(Object receiver, long offset, Object value, Object locationIdentity) {
         UNSAFE.putObject(receiver, offset, value);
+    }
+
+    /**
+     * Unsafe access to a final boolean value within an object. The condition parameter gives a hint
+     * to the compiler under which circumstances this access can be moved to an earlier location in
+     * the program. The location identity gives a hint to the compiler for improved global value
+     * numbering.
+     * 
+     * @param receiver the object that is accessed
+     * @param offset the offset at which to access the object in bytes
+     * @param condition the condition that makes this access safe also at an earlier location in the
+     *            program
+     * @param locationIdentity the location identity token that can be used for improved global
+     *            value numbering or null
+     * @return the accessed value
+     */
+    public static boolean unsafeGetFinalBoolean(Object receiver, long offset, boolean condition, Object locationIdentity) {
+        return UNSAFE.getBoolean(receiver, offset);
+    }
+
+    /**
+     * Unsafe access to a final byte value within an object. The condition parameter gives a hint to
+     * the compiler under which circumstances this access can be moved to an earlier location in the
+     * program. The location identity gives a hint to the compiler for improved global value
+     * numbering.
+     * 
+     * @param receiver the object that is accessed
+     * @param offset the offset at which to access the object in bytes
+     * @param condition the condition that makes this access safe also at an earlier location in the
+     *            program
+     * @param locationIdentity the location identity token that can be used for improved global
+     *            value numbering or null
+     * @return the accessed value
+     */
+    public static byte unsafeGetFinalByte(Object receiver, long offset, boolean condition, Object locationIdentity) {
+        return UNSAFE.getByte(receiver, offset);
+    }
+
+    /**
+     * Unsafe access to a final short value within an object. The condition parameter gives a hint
+     * to the compiler under which circumstances this access can be moved to an earlier location in
+     * the program. The location identity gives a hint to the compiler for improved global value
+     * numbering.
+     * 
+     * @param receiver the object that is accessed
+     * @param offset the offset at which to access the object in bytes
+     * @param condition the condition that makes this access safe also at an earlier location in the
+     *            program
+     * @param locationIdentity the location identity token that can be used for improved global
+     *            value numbering or null
+     * @return the accessed value
+     */
+    public static short unsafeGetFinalShort(Object receiver, long offset, boolean condition, Object locationIdentity) {
+        return UNSAFE.getShort(receiver, offset);
+    }
+
+    /**
+     * Unsafe access to a final int value within an object. The condition parameter gives a hint to
+     * the compiler under which circumstances this access can be moved to an earlier location in the
+     * program. The location identity gives a hint to the compiler for improved global value
+     * numbering.
+     * 
+     * @param receiver the object that is accessed
+     * @param offset the offset at which to access the object in bytes
+     * @param condition the condition that makes this access safe also at an earlier location in the
+     *            program
+     * @param locationIdentity the location identity token that can be used for improved global
+     *            value numbering or null
+     * @return the accessed value
+     */
+    public static int unsafeGetFinalInt(Object receiver, long offset, boolean condition, Object locationIdentity) {
+        return UNSAFE.getInt(receiver, offset);
+    }
+
+    /**
+     * Unsafe access to a final long value within an object. The condition parameter gives a hint to
+     * the compiler under which circumstances this access can be moved to an earlier location in the
+     * program. The location identity gives a hint to the compiler for improved global value
+     * numbering.
+     * 
+     * @param receiver the object that is accessed
+     * @param offset the offset at which to access the object in bytes
+     * @param condition the condition that makes this access safe also at an earlier location in the
+     *            program
+     * @param locationIdentity the location identity token that can be used for improved global
+     *            value numbering or null
+     * @return the accessed value
+     */
+    public static long unsafeGetFinalLong(Object receiver, long offset, boolean condition, Object locationIdentity) {
+        return UNSAFE.getLong(receiver, offset);
+    }
+
+    /**
+     * Unsafe access to a final float value within an object. The condition parameter gives a hint
+     * to the compiler under which circumstances this access can be moved to an earlier location in
+     * the program. The location identity gives a hint to the compiler for improved global value
+     * numbering.
+     * 
+     * @param receiver the object that is accessed
+     * @param offset the offset at which to access the object in bytes
+     * @param condition the condition that makes this access safe also at an earlier location in the
+     *            program
+     * @param locationIdentity the location identity token that can be used for improved global
+     *            value numbering or null
+     * @return the accessed value
+     */
+    public static float unsafeGetFinalFloat(Object receiver, long offset, boolean condition, Object locationIdentity) {
+        return UNSAFE.getFloat(receiver, offset);
+    }
+
+    /**
+     * Unsafe access to a final double value within an object. The condition parameter gives a hint
+     * to the compiler under which circumstances this access can be moved to an earlier location in
+     * the program. The location identity gives a hint to the compiler for improved global value
+     * numbering.
+     * 
+     * @param receiver the object that is accessed
+     * @param offset the offset at which to access the object in bytes
+     * @param condition the condition that makes this access safe also at an earlier location in the
+     *            program
+     * @param locationIdentity the location identity token that can be used for improved global
+     *            value numbering or null
+     * @return the accessed value
+     */
+    public static double unsafeGetFinalDouble(Object receiver, long offset, boolean condition, Object locationIdentity) {
+        return UNSAFE.getDouble(receiver, offset);
+    }
+
+    /**
+     * Unsafe access to a final Object value within an object. The condition parameter gives a hint
+     * to the compiler under which circumstances this access can be moved to an earlier location in
+     * the program. The location identity gives a hint to the compiler for improved global value
+     * numbering.
+     * 
+     * @param receiver the object that is accessed
+     * @param offset the offset at which to access the object in bytes
+     * @param condition the condition that makes this access safe also at an earlier location in the
+     *            program
+     * @param locationIdentity the location identity token that can be used for improved global
+     *            value numbering or null
+     * @return the accessed value
+     */
+    public static Object unsafeGetFinalObject(Object receiver, long offset, boolean condition, Object locationIdentity) {
+        return UNSAFE.getObject(receiver, offset);
     }
 
     /**

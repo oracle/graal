@@ -1,4 +1,0 @@
-fails:Regexps with back-references saves match data in the $~ pseudo-global variable
-fails:Regexps with back-references saves captures in numbered $[1-9] variables
-fails:Regexps with back-references will not clobber capture variables across threads
-fails:Regexps with back-references resets nested <n> backreference before match of outer subexpression

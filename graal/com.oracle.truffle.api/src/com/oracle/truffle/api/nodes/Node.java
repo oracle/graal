@@ -82,6 +82,14 @@ public abstract class Node implements Cloneable {
         this.sourceSection = section;
     }
 
+    public Kind getKind() {
+        NodeInfo info = getClass().getAnnotation(NodeInfo.class);
+        if (info != null) {
+            return info.kind();
+        }
+        return Kind.SPECIALIZED;
+    }
+
     /**
      * Clears any previously assigned guest language source code from this node.
      */
@@ -172,7 +180,7 @@ public abstract class Node implements Cloneable {
      * @return the new node
      */
     public final <T extends Node> T replace(T newNode, String reason) {
-        CompilerDirectives.transferToInterpreter();
+        CompilerDirectives.transferToInterpreterAndInvalidate();
         if (this.getParent() == null) {
             throw new IllegalStateException("This node cannot be replaced, because it does not yet have a parent.");
         }
@@ -185,7 +193,7 @@ public abstract class Node implements Cloneable {
         if (!NodeUtil.replaceChild(this.parent, this, newNode)) {
             fixupTree();
         }
-        reportReplace();
+        reportReplace(this, newNode, reason);
         return newNode;
     }
 
@@ -245,11 +253,12 @@ public abstract class Node implements Cloneable {
         return false;
     }
 
-    private void reportReplace() {
+    private void reportReplace(Node oldNode, Node newNode, String reason) {
         RootNode rootNode = getRootNode();
         if (rootNode != null) {
-            if (rootNode.getCallTarget() instanceof ReplaceObserver) {
-                ((ReplaceObserver) rootNode.getCallTarget()).nodeReplaced();
+            CallTarget target = rootNode.getCallTarget();
+            if (target instanceof ReplaceObserver) {
+                ((ReplaceObserver) target).nodeReplaced(oldNode, newNode, reason);
             }
         }
     }
@@ -395,7 +404,7 @@ public abstract class Node implements Cloneable {
      * 
      * @return the {@link RootNode} or {@code null} if there is none.
      */
-    protected final RootNode getRootNode() {
+    public final RootNode getRootNode() {
         Node rootNode = this;
         while (rootNode.getParent() != null) {
             assert !(rootNode instanceof RootNode) : "root node must not have a parent";

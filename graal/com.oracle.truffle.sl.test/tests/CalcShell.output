@@ -1,0 +1,35 @@
+available commands:
+x: exit
+c: define the calculation function with the parameters prev, cur, and i
+   prev and cur start with 0; i is the loop variable from 0 to n
+     example: 'return cur + i;' computes the sum of 1 to n
+     example: 'if (i == 0) { return 1; } else { return cur * i; }' computes the factorial of i
+     example: 'if (i <= 2) { return 1; } else { return prev + cur; }' computes the nth Fibonacci number
+i: define the number of iterations, i.e, the number n in the examples above
+r: Run the calculation loop often, and print the first and last result
+t: Run the calculation loop a couple of time, and print timing information for each run
+h: Print this help message
+
+cmd>
+n>
+cmd>
+function>
+cmd>
+** first: 3240
+** last:  3240
+cmd>
+function>
+cmd>
+** first: 23416728348467685
+** last:  23416728348467685
+cmd>
+n>
+cmd>
+** first: 354224848179261915075
+** last:  354224848179261915075
+cmd>
+function>
+cmd>
+** first: 93326215443944152681699238856266700490715968264381621468592963895217599993229915608941463976156518286253697920827223758251185210916864000000000000000000000000
+** last:  93326215443944152681699238856266700490715968264381621468592963895217599993229915608941463976156518286253697920827223758251185210916864000000000000000000000000
+cmd>

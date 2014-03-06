@@ -24,6 +24,10 @@
  */
 package com.oracle.truffle.api;
 
+/**
+ * Accepts the execution count of a loop that is a child of this node. The optimization heuristics
+ * can use the loop count to guide compilation and inlining.
+ */
 public interface LoopCountReceiver {
 
     void reportLoopCount(int count);

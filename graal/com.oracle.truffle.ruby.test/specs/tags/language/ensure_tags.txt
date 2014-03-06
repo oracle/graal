@@ -1,2 +1,0 @@
-fails:An ensure block inside a begin block is executed when an exception is raised in it's corresponding begin block
-fails:An ensure block inside a method is executed when an exception is raised in the method

@@ -48,7 +48,9 @@ public interface TruffleRuntime {
      *            represents the entry point
      * @return the new call target object
      */
-    CallTarget createCallTarget(RootNode rootNode);
+    RootCallTarget createCallTarget(RootNode rootNode);
+
+    CallNode createCallNode(CallTarget target);
 
     /**
      * Creates a new assumption object that can be checked and invalidated.

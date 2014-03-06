@@ -24,7 +24,12 @@
  */
 package com.oracle.truffle.api;
 
+import com.oracle.truffle.api.nodes.*;
+
+/**
+ * An observer that is notified whenever a child node is replaced.
+ */
 public interface ReplaceObserver {
 
-    void nodeReplaced();
+    void nodeReplaced(Node oldNode, Node newNode, String reason);
 }

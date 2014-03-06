@@ -24,6 +24,8 @@
  */
 package com.oracle.truffle.api.nodes;
 
+import java.util.*;
+
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.frame.*;
 
@@ -36,6 +38,11 @@ public abstract class RootNode extends Node {
 
     private CallTarget callTarget;
     private final FrameDescriptor frameDescriptor;
+
+    /*
+     * Internal set to keep back-references to the call-sites.
+     */
+    private final Set<CallNode> cachedCallNodes = Collections.newSetFromMap(new WeakHashMap<CallNode, Boolean>());
 
     protected RootNode() {
         this(null, null);
@@ -55,6 +62,51 @@ public abstract class RootNode extends Node {
     }
 
     /**
+     * @deprecated Not required anymore. Do not use.
+     */
+    @Deprecated
+    public RootNode inline() {
+        if (!isInlinable()) {
+            throw new UnsupportedOperationException("Inlining is not enabled.");
+        }
+        return split();
+    }
+
+    /**
+     * @deprecated Not required anymore. Do not use.
+     */
+    @Deprecated
+    public int getInlineNodeCount() {
+        return 0;
+    }
+
+    /**
+     * @deprecated Not required anymore. Do not use.
+     */
+    @Deprecated
+    public boolean isInlinable() {
+        return true;
+    }
+
+    public RootNode split() {
+        return NodeUtil.cloneNode(this);
+    }
+
+    public boolean isSplittable() {
+        return false;
+    }
+
+    /**
+     * Reports the execution count of a loop that is a child of this node. The optimization
+     * heuristics can use the loop count to guide compilation and inlining.
+     */
+    public void reportLoopCount(int count) {
+        if (getCallTarget() instanceof LoopCountReceiver) {
+            ((LoopCountReceiver) getCallTarget()).reportLoopCount(count);
+        }
+    }
+
+    /**
      * Executes this function using the specified frame and returns the result value.
      * 
      * @param frame the frame of the currently executing guest language method
@@ -66,11 +118,47 @@ public abstract class RootNode extends Node {
         return callTarget;
     }
 
-    public FrameDescriptor getFrameDescriptor() {
+    public final FrameDescriptor getFrameDescriptor() {
         return frameDescriptor;
     }
 
-    public void setCallTarget(CallTarget callTarget) {
+    public final void setCallTarget(CallTarget callTarget) {
         this.callTarget = callTarget;
+    }
+
+    /* Internal API. Do not use. */
+    void addCachedCallNode(CallNode callSite) {
+        if (cachedCallNodes.add(callSite)) {
+            for (CallNode callNode : cachedCallNodes) {
+                if (callSite != callNode) {
+                    callNode.notifyCallNodeAdded();
+                }
+            }
+        }
+    }
+
+    /* Internal API. Do not use. */
+    void removeCachedCallNode(CallNode callSite) {
+        this.cachedCallNodes.remove(callSite);
+    }
+
+    /**
+     * Returns a {@link Set} of {@link CallNode} nodes which are created to invoke this RootNode.
+     * This method does not make any guarantees to contain all the {@link CallNode} nodes that are
+     * invoking this method. Due to its weak nature the elements returned by this method may change
+     * with each consecutive call.
+     * 
+     * @return a set of {@link CallNode} nodes
+     */
+    public final Set<CallNode> getCachedCallNodes() {
+        return Collections.unmodifiableSet(cachedCallNodes);
+    }
+
+    /**
+     * @deprecated use {@link #getCachedCallNodes()} instead.
+     */
+    @Deprecated
+    public final CallNode getParentInlinedCall() {
+        return cachedCallNodes.isEmpty() ? null : cachedCallNodes.iterator().next();
     }
 }

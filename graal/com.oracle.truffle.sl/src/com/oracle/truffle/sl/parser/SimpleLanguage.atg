@@ -1,3 +1,32 @@
+/*
+ * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
+ */
+
+/*
+ * This is the grammar of SL that is used to automatically generate the Parser.java and Scanner.java
+ * files. You can download the parser generator Coco/R from http://ssw.jku.at/coco/. Then run
+ * "java -jar Coco.jar SimpleLanguage.atg"
+ */
+
 COMPILER SimpleLanguage
 
 CHARACTERS
@@ -24,6 +53,7 @@ IGNORE cr + lf + tab
 
 PRODUCTIONS
 
+
 SimpleLanguage
 =
 Function 
@@ -32,32 +62,48 @@ Function
 }
 .
 
+
 Function
 =
-"function"                                      (. factory.startFunction(); .)
-identifier                                      (. String name = t.val; 
-                                                   List<String> parameterNames = new ArrayList<>(); .)
-["(" [identifier                                (. parameterNames.add(t.val); .)
-] {"," identifier                               (. parameterNames.add(t.val); .)
-} ")"]
-Block<out StatementNode body>                   (. factory.createFunction(body, name, parameterNames.toArray(new String[parameterNames.size()])); .)
+"function"                                      
+identifier                                      (. factory.startFunction(t); .)
+"("
+[
+    identifier                                  (. factory.addFormalParameter(t); .)
+    {
+        "," 
+        identifier                              (. factory.addFormalParameter(t); .)
+    }    
+]
+")"
+Block<out SLStatementNode body, false>          (. factory.finishFunction(body); .)
 .
 
-Block<out StatementNode result>
-=                                               (. List<StatementNode> statements = new ArrayList<>(); .)
+
+
+Block<out SLStatementNode result, boolean inLoop>
+=                                               (. factory.startBlock();
+                                                   List<SLStatementNode> body = new ArrayList<>(); .)
 "{" 
 {
-    Statement<out StatementNode statement>      (. statements.add(statement); .)
+    Statement<out SLStatementNode s, inLoop>    (. body.add(s); .)
 }
-"}"                                             (. result = factory.createBlock(statements); .)
+"}"                                             (. result = factory.finishBlock(body); .)
 .
 
-Statement<out StatementNode result>
+
+Statement<out SLStatementNode result, boolean inLoop>
 =                                               (. result = null; .)
 (
     WhileStatement<out result>
+|
+    "break"                                     (. if (inLoop) { result = factory.createBreak(t); } else { SemErr("break used outside of loop"); } .)
+    ";"
+|
+    "continue"                                  (. if (inLoop) { result = factory.createContinue(t); } else { SemErr("continue used outside of loop"); } .)
+    ";"
 |   
-    IfStatement<out result>
+    IfStatement<out result, inLoop>
 |
     ReturnStatement<out result>
 |
@@ -65,109 +111,121 @@ Statement<out StatementNode result>
 )
 .
 
-IfStatement<out StatementNode result>
-=
-"if" "(" Expression<out ConditionNode condition> ")"  (. StatementNode thenNode = null; StatementNode elseNode = null; .)
-Block<out thenNode>                             
-["else" Block<out elseNode>]                    (. result = factory.createIf(condition, thenNode, elseNode); .)
-.
 
-WhileStatement<out StatementNode result>
+WhileStatement<out SLStatementNode result>
 =
 "while"
-"("
-Expression<out ConditionNode condition>
+"("                                             (. Token whileToken = t; .)
+Expression<out SLExpressionNode condition>
 ")" 
-Block<out StatementNode body>                   (. result = factory.createWhile(condition, body); .)
+Block<out SLStatementNode body, true>           (. result = factory.createWhile(whileToken, condition, body); .)
 .
 
 
-ReturnStatement<out StatementNode result>
+IfStatement<out SLStatementNode result, boolean inLoop>
 =
-"return"
-Expression<out TypedNode value> ";"             (. result = factory.createReturn(value); .)
-.
-
-Expression<out TypedNode result>
-=
-ValueExpression<out result>
+"if" 
+"("                                             (. Token ifToken = t; .)
+Expression<out SLExpressionNode condition> 
+")"
+Block<out SLStatementNode thenPart, inLoop>     (. SLStatementNode elsePart = null; .)                             
 [
-    ("<" | ">" | "<=" | ">=" | "==" | "!=" )    (.  String op = t.val; .)
-    ValueExpression<out TypedNode right>        (.  result = factory.createBinary(op, result, right); .)
+    "else" 
+    Block<out elsePart, inLoop>
+]                                               (. result = factory.createIf(ifToken, condition, thenPart, elsePart); .)
+.
+
+
+ReturnStatement<out SLStatementNode result>
+=
+"return"                                        (. Token returnToken = t;
+                                                   SLExpressionNode value = null; .)
+[
+    Expression<out value>
+]                                               (. result = factory.createReturn(returnToken, value); .)
+";"
+.
+
+
+Expression<out SLExpressionNode result>
+=
+LogicTerm<out result>
+{
+    "||"                                        (. Token op = t; .)
+    LogicTerm<out SLExpressionNode right>       (. result = factory.createBinary(op, result, right); .)
+}
+.
+
+
+LogicTerm<out SLExpressionNode result>
+=
+LogicFactor<out result>
+{
+    "&&"                                        (. Token op = t; .)
+    LogicFactor<out SLExpressionNode right>     (. result = factory.createBinary(op, result, right); .)
+}
+.
+
+
+LogicFactor<out SLExpressionNode result>
+=
+Arithmetic<out result>
+[
+    ("<" | "<=" | ">" | ">=" | "==" | "!=" )    (. Token op = t; .)
+    Arithmetic<out SLExpressionNode right>      (.  result = factory.createBinary(op, result, right); .)
 ]
 .
 
-ValueExpression<out TypedNode result>
+
+Arithmetic<out SLExpressionNode result>
 =
 Term<out result>
 {
-    ("+" | "-")                                 (. String op = t.val; .)
-    Term<out TypedNode right>                   (. result = factory.createBinary(op, result, right); .)
+    ("+" | "-")                                 (. Token op = t; .)
+    Term<out SLExpressionNode right>            (. result = factory.createBinary(op, result, right); .)
 }
 .
 
-Term<out TypedNode result>
+
+Term<out SLExpressionNode result>
 =
 Factor<out result>
 {
-    ("*" | "/")                                 (. String op = t.val; .)
-    Factor<out TypedNode right>                 (. result = factory.createBinary(op, result, right); .)
+    ("*" | "/")                                 (. Token op = t; .)
+    Factor<out SLExpressionNode right>          (. result = factory.createBinary(op, result, right); .)
 }
 .
 
-Factor<out TypedNode result>
+
+Factor<out SLExpressionNode result>
 =                                               (. result = null; .)
 (
-    VariableRefOrCall<out result>
+    identifier                                  (. Token nameToken = t; .)
+    (
+        "("                                     (. List<SLExpressionNode> parameters = new ArrayList<>();
+                                                   SLExpressionNode parameter; .)
+        [
+            Expression<out parameter>           (. parameters.add(parameter); .)
+            {
+                "," 
+                Expression<out parameter>       (. parameters.add(parameter); .)
+            }                                               
+        ]                                       (. result = factory.createCall(nameToken, parameters); .) 
+        ")"
+    |
+        "=" 
+        Expression<out SLExpressionNode value>  (. result = factory.createAssignment(nameToken, value); .)
+    |
+                                                (. result = factory.createRead(nameToken); .)
+    )
 |
-    StringLiteral<out result>
+    stringLiteral                               (. result = factory.createStringLiteral(t); .)
 |
-    NumericLiteral<out result>
-|
-    Ternary<out result>
+    numericLiteral                              (. result = factory.createNumericLiteral(t); .)
 |
     "(" Expression<out result> ")"
 ) 
 .
 
-Ternary<out TypedNode result>                   (. TypedNode condition, thenPart, elsePart; .)
-=
-"#" Expression<out condition> "?" Expression<out thenPart> ":" Expression<out elsePart>
-                                                (. result = factory.createTernary(condition, thenPart, elsePart); .)
-.
-
-VariableRefOrCall<out TypedNode result> 
-=
-VariableRef<out result>                  
-[
-  (Parameters<out TypedNode[] parameters>)      (. result = factory.createCall(result, parameters); .)
-| ("=" Expression<out TypedNode assignment>)    (. result = factory.createAssignment(result, assignment); .)
-]
-.
-
-Parameters<out TypedNode[] result> 
-=      
-"("                                         (. List<TypedNode> parameters = new ArrayList<>(); .)
-[Expression<out TypedNode e1>                   (. parameters.add(e1); .)
-{"," Expression<out TypedNode e2>               (. parameters.add(e2); .)
-}                                               
-]                                           (. result = parameters.toArray(new TypedNode[parameters.size()]); .) 
-")"
-.
-
-VariableRef<out TypedNode result>
-=
-identifier                                      (. result = factory.createLocal(t.val); .)
-.
-
-StringLiteral<out TypedNode result>
-=
-stringLiteral                                   (. result = factory.createStringLiteral(t.val.substring(1, t.val.length() - 1)); .)
-.
-
-NumericLiteral<out TypedNode result>
-=
-numericLiteral                                  (. result = factory.createNumericLiteral(t.val); .)
-.
 
 END SimpleLanguage.

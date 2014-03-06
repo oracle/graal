@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,11 +22,34 @@
  */
 package com.oracle.truffle.sl.runtime;
 
+/**
+ * The SL type for a {@code null} (i.e., undefined) value. In Truffle, it is generally discouraged
+ * to use the Java {@code null} value to represent the guest language {@code null} value. It is not
+ * possible to specialize on Java {@code null} (since you cannot ask it for the Java class), and
+ * there is always the danger of a spurious {@link NullPointerException}. Representing the guest
+ * language {@code null} as a singleton, as in {@link #SINGLETON this class}, is the recommended
+ * practice.
+ * */
 public final class SLNull {
 
-    public static final SLNull INSTANCE = new SLNull();
+    /**
+     * The canonical value to represent {@code null} in SL.
+     */
+    public static final SLNull SINGLETON = new SLNull();
 
+    /**
+     * Disallow instantiation from outside to ensure that the {@link #SINGLETON} is the only
+     * instance.
+     */
     private SLNull() {
     }
 
+    /**
+     * This method is, e.g., called when using the {@code null} value in a string concatenation. So
+     * changing it has an effect on SL programs.
+     */
+    @Override
+    public String toString() {
+        return "null";
+    }
 }
