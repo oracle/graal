@@ -84,7 +84,41 @@ public class VMToCompilerImpl implements VMToCompiler {
 
     private final HotSpotGraalRuntime runtime;
 
-    private ThreadPoolExecutor compileQueue;
+    private Queue compileQueue;
+
+    /**
+     * Wrap access to the thread pool to ensure that {@link CompilationTask#isWithinEnqueue} state
+     * is in the proper state.
+     */
+    static class Queue {
+        private ThreadPoolExecutor executor;
+
+        Queue(CompilerThreadFactory factory) {
+            executor = new ThreadPoolExecutor(Threads.getValue(), Threads.getValue(), 0L, TimeUnit.MILLISECONDS, new PriorityBlockingQueue<Runnable>(), factory);
+        }
+
+        public long getCompletedTaskCount() {
+            try (CompilationTask.BeginEnqueue beginEnqueue = new CompilationTask.BeginEnqueue()) {
+                // Don't allow new enqueues while reading the state of queue.
+                return executor.getCompletedTaskCount();
+            }
+        }
+
+        public void execute(CompilationTask task) {
+            // The caller is expected to have set the within enqueue state.
+            assert CompilationTask.isWithinEnqueue();
+            executor.execute(task);
+        }
+
+        public void shutdown() throws InterruptedException {
+            assert CompilationTask.isWithinEnqueue();
+            executor.shutdown();
+            if (Debug.isEnabled() && Dump.getValue() != null) {
+                // Wait 2 seconds to flush out all graph dumps that may be of interest
+                executor.awaitTermination(2, TimeUnit.SECONDS);
+            }
+        }
+    }
 
     private volatile boolean bootstrapRunning;
 
@@ -154,7 +188,7 @@ public class VMToCompilerImpl implements VMToCompiler {
                 return Debug.isEnabled() ? DebugEnvironment.initialize(log) : null;
             }
         });
-        compileQueue = new ThreadPoolExecutor(Threads.getValue(), Threads.getValue(), 0L, TimeUnit.MILLISECONDS, new PriorityBlockingQueue<Runnable>(), factory);
+        compileQueue = new Queue(factory);
 
         // Create queue status printing thread.
         if (PrintQueue.getValue()) {
@@ -248,10 +282,8 @@ public class VMToCompilerImpl implements VMToCompiler {
             // Compile until the queue is empty.
             int z = 0;
             while (true) {
-                try (CompilationTask.BeginEnqueue beginEnqueue = new CompilationTask.BeginEnqueue()) {
-                    if (compileQueue.getCompletedTaskCount() >= Math.max(3, compileQueue.getTaskCount())) {
-                        break;
-                    }
+                if (compileQueue.getCompletedTaskCount() >= Math.max(3, compileQueue.getCompletedTaskCount())) {
+                    break;
                 }
 
                 Thread.sleep(100);
@@ -310,23 +342,15 @@ public class VMToCompilerImpl implements VMToCompiler {
         compileMethod((HotSpotResolvedJavaMethod) javaMethod, StructuredGraph.INVOCATION_ENTRY_BCI, false);
     }
 
-    private static void shutdownCompileQueue(ThreadPoolExecutor queue) throws InterruptedException {
-        if (queue != null) {
-            queue.shutdown();
-            if (Debug.isEnabled() && Dump.getValue() != null) {
-                // Wait 2 seconds to flush out all graph dumps that may be of interest
-                queue.awaitTermination(2, TimeUnit.SECONDS);
-            }
-        }
-    }
-
     public void shutdownCompiler() throws Exception {
         try (CompilationTask.BeginEnqueue beginEnqueue = new CompilationTask.BeginEnqueue()) {
             // We have to use a privileged action here because shutting down the compiler might be
             // called from user code which very likely contains unprivileged frames.
             AccessController.doPrivileged(new PrivilegedExceptionAction<Void>() {
                 public Void run() throws Exception {
-                    shutdownCompileQueue(compileQueue);
+                    if (compileQueue != null) {
+                        compileQueue.shutdown();
+                    }
                     return null;
                 }
             });
