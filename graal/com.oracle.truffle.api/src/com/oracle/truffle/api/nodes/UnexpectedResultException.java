@@ -41,7 +41,6 @@ public final class UnexpectedResultException extends SlowPathException {
      * @param result the alternative result
      */
     public UnexpectedResultException(Object result) {
-        assert !(result instanceof Throwable);
         this.result = result;
     }
 

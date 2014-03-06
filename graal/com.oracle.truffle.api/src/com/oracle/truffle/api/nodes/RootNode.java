@@ -128,13 +128,7 @@ public abstract class RootNode extends Node {
 
     /* Internal API. Do not use. */
     void addCachedCallNode(CallNode callSite) {
-        if (cachedCallNodes.add(callSite)) {
-            for (CallNode callNode : cachedCallNodes) {
-                if (callSite != callNode) {
-                    callNode.notifyCallNodeAdded();
-                }
-            }
-        }
+        this.cachedCallNodes.add(callSite);
     }
 
     /* Internal API. Do not use. */
