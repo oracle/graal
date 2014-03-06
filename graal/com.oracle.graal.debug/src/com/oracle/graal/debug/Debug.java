@@ -204,6 +204,20 @@ public class Debug {
         }
     }
 
+    public static Scope forceLog() {
+        return Debug.sandbox("forceLog", new DelegatingDebugConfig(DebugScope.getConfig()) {
+            @Override
+            public boolean isLogEnabled() {
+                return true;
+            }
+
+            @Override
+            public boolean isLogEnabledForMethod() {
+                return true;
+            }
+        });
+    }
+
     /**
      * Handles an exception in the context of the debug scope just exited. The just exited scope
      * must have the current scope as its parent which will be the case if the try-with-resource

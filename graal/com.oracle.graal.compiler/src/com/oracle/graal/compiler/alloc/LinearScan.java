@@ -914,76 +914,78 @@ public final class LinearScan {
     }
 
     private void reportFailure(int numBlocks) {
-        Indent indent = Debug.logAndIndent("report failure, graph: %s", getGraphFromDebugContext());
+        try (Scope s = Debug.forceLog()) {
+            Indent indent = Debug.logAndIndent("report failure, graph: %s", getGraphFromDebugContext());
 
-        BitSet startBlockLiveIn = blockData.get(ir.cfg.getStartBlock()).liveIn;
-        try (Indent indent2 = Debug.logAndIndent("Error: liveIn set of first block must be empty (when this fails, variables are used before they are defined):")) {
+            BitSet startBlockLiveIn = blockData.get(ir.cfg.getStartBlock()).liveIn;
+            try (Indent indent2 = Debug.logAndIndent("Error: liveIn set of first block must be empty (when this fails, variables are used before they are defined):")) {
+                for (int operandNum = startBlockLiveIn.nextSetBit(0); operandNum >= 0; operandNum = startBlockLiveIn.nextSetBit(operandNum + 1)) {
+                    Value operand = operandFor(operandNum);
+                    Debug.log("var %d; operand=%s; node=%s", operandNum, operand, getValueForOperandFromDebugContext(operand));
+                }
+            }
+
+            // print some additional information to simplify debugging
             for (int operandNum = startBlockLiveIn.nextSetBit(0); operandNum >= 0; operandNum = startBlockLiveIn.nextSetBit(operandNum + 1)) {
                 Value operand = operandFor(operandNum);
-                Debug.log("var %d; operand=%s; node=%s", operandNum, operand, getValueForOperandFromDebugContext(operand));
-            }
-        }
+                final Indent indent2 = Debug.logAndIndent("---- Detailed information for var %d; operand=%s; node=%s ----", operandNum, operand, getValueForOperandFromDebugContext(operand));
 
-        // print some additional information to simplify debugging
-        for (int operandNum = startBlockLiveIn.nextSetBit(0); operandNum >= 0; operandNum = startBlockLiveIn.nextSetBit(operandNum + 1)) {
-            Value operand = operandFor(operandNum);
-            final Indent indent2 = Debug.logAndIndent("---- Detailed information for var %d; operand=%s; node=%s ----", operandNum, operand, getValueForOperandFromDebugContext(operand));
+                Deque<Block> definedIn = new ArrayDeque<>();
+                HashSet<Block> usedIn = new HashSet<>();
+                for (Block block : sortedBlocks) {
+                    if (blockData.get(block).liveGen.get(operandNum)) {
+                        usedIn.add(block);
+                        try (Indent indent3 = Debug.logAndIndent("used in block B%d", block.getId())) {
+                            for (LIRInstruction ins : ir.lir(block)) {
+                                try (Indent indent4 = Debug.logAndIndent("%d: %s", ins.id(), ins)) {
+                                    ins.forEachState(new ValueProcedure() {
 
-            Deque<Block> definedIn = new ArrayDeque<>();
-            HashSet<Block> usedIn = new HashSet<>();
-            for (Block block : sortedBlocks) {
-                if (blockData.get(block).liveGen.get(operandNum)) {
-                    usedIn.add(block);
-                    try (Indent indent3 = Debug.logAndIndent("used in block B%d", block.getId())) {
-                        for (LIRInstruction ins : ir.lir(block)) {
-                            try (Indent indent4 = Debug.logAndIndent("%d: %s", ins.id(), ins)) {
-                                ins.forEachState(new ValueProcedure() {
-
-                                    @Override
-                                    public Value doValue(Value liveStateOperand) {
-                                        Debug.log("operand=%s", liveStateOperand);
-                                        return liveStateOperand;
-                                    }
-                                });
+                                        @Override
+                                        public Value doValue(Value liveStateOperand) {
+                                            Debug.log("operand=%s", liveStateOperand);
+                                            return liveStateOperand;
+                                        }
+                                    });
+                                }
+                            }
+                        }
+                    }
+                    if (blockData.get(block).liveKill.get(operandNum)) {
+                        definedIn.add(block);
+                        try (Indent indent3 = Debug.logAndIndent("defined in block B%d", block.getId())) {
+                            for (LIRInstruction ins : ir.lir(block)) {
+                                Debug.log("%d: %s", ins.id(), ins);
                             }
                         }
                     }
                 }
-                if (blockData.get(block).liveKill.get(operandNum)) {
-                    definedIn.add(block);
-                    try (Indent indent3 = Debug.logAndIndent("defined in block B%d", block.getId())) {
-                        for (LIRInstruction ins : ir.lir(block)) {
-                            Debug.log("%d: %s", ins.id(), ins);
+
+                int[] hitCount = new int[numBlocks];
+
+                while (!definedIn.isEmpty()) {
+                    Block block = definedIn.removeFirst();
+                    usedIn.remove(block);
+                    for (Block successor : block.getSuccessors()) {
+                        if (successor.isLoopHeader()) {
+                            if (!block.isLoopEnd()) {
+                                definedIn.add(successor);
+                            }
+                        } else {
+                            if (++hitCount[successor.getId()] == successor.getPredecessorCount()) {
+                                definedIn.add(successor);
+                            }
                         }
                     }
                 }
-            }
-
-            int[] hitCount = new int[numBlocks];
-
-            while (!definedIn.isEmpty()) {
-                Block block = definedIn.removeFirst();
-                usedIn.remove(block);
-                for (Block successor : block.getSuccessors()) {
-                    if (successor.isLoopHeader()) {
-                        if (!block.isLoopEnd()) {
-                            definedIn.add(successor);
-                        }
-                    } else {
-                        if (++hitCount[successor.getId()] == successor.getPredecessorCount()) {
-                            definedIn.add(successor);
-                        }
+                try (Indent indent3 = Debug.logAndIndent("**** offending usages are in: ")) {
+                    for (Block block : usedIn) {
+                        Debug.log("B%d", block.getId());
                     }
                 }
+                indent2.outdent();
             }
-            try (Indent indent3 = Debug.logAndIndent("**** offending usages are in: ")) {
-                for (Block block : usedIn) {
-                    Debug.log("B%d", block.getId());
-                }
-            }
-            indent2.outdent();
+            indent.outdent();
         }
-        indent.outdent();
     }
 
     private void verifyLiveness() {

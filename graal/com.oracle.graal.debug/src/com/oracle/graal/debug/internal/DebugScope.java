@@ -228,17 +228,16 @@ public final class DebugScope implements Debug.Scope {
      * @param name the name of the new scope
      * @param sandboxConfig the configuration to use for a new top level scope, or null if the new
      *            scope should be a child scope
-     * @param context objects to be appended to the debug context
+     * @param newContextObjects objects to be appended to the debug context
      * @return the new scope which will be exited when its {@link #close()} method is called
      */
-    @SuppressWarnings("hiding")
-    public DebugScope scope(String name, DebugConfig sandboxConfig, Object... context) {
+    public DebugScope scope(String name, DebugConfig sandboxConfig, Object... newContextObjects) {
         DebugScope newScope = null;
         if (sandboxConfig != null) {
-            newScope = new DebugScope(name, name, this, true, context);
+            newScope = new DebugScope(name, name, this, true, newContextObjects);
             configTL.set(sandboxConfig);
         } else {
-            newScope = this.createChild(name, context);
+            newScope = this.createChild(name, newContextObjects);
         }
         instanceTL.set(newScope);
         newScope.updateFlags();
