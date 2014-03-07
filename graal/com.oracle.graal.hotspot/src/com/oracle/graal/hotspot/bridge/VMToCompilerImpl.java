@@ -39,6 +39,7 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.internal.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
+import com.oracle.graal.hotspot.CompilationTask.Enqueueing;
 import com.oracle.graal.hotspot.CompileTheWorld.Config;
 import com.oracle.graal.hotspot.debug.*;
 import com.oracle.graal.hotspot.meta.*;
@@ -98,14 +99,14 @@ public class VMToCompilerImpl implements VMToCompiler {
         }
 
         public long getCompletedTaskCount() {
-            try (CompilationTask.BeginEnqueue beginEnqueue = new CompilationTask.BeginEnqueue()) {
+            try (Enqueueing enqueueing = new Enqueueing()) {
                 // Don't allow new enqueues while reading the state of queue.
                 return executor.getCompletedTaskCount();
             }
         }
 
         public long getTaskCount() {
-            try (CompilationTask.BeginEnqueue beginEnqueue = new CompilationTask.BeginEnqueue()) {
+            try (Enqueueing enqueueing = new Enqueueing()) {
                 // Don't allow new enqueues while reading the state of queue.
                 return executor.getTaskCount();
             }
@@ -355,7 +356,7 @@ public class VMToCompilerImpl implements VMToCompiler {
     }
 
     public void shutdownCompiler() throws Exception {
-        try (CompilationTask.BeginEnqueue beginEnqueue = new CompilationTask.BeginEnqueue()) {
+        try (Enqueueing enqueueing = new Enqueueing()) {
             // We have to use a privileged action here because shutting down the compiler might be
             // called from user code which very likely contains unprivileged frames.
             AccessController.doPrivileged(new PrivilegedExceptionAction<Void>() {
@@ -575,7 +576,7 @@ public class VMToCompilerImpl implements VMToCompiler {
 
         // Don't allow blocking compiles from CompilerThreads
         boolean block = blocking && !(Thread.currentThread() instanceof CompilerThread);
-        try (CompilationTask.BeginEnqueue beginEnqueue = new CompilationTask.BeginEnqueue()) {
+        try (Enqueueing enqueueing = new Enqueueing()) {
             if (method.tryToQueueForCompilation()) {
                 assert method.isQueuedForCompilation();
 

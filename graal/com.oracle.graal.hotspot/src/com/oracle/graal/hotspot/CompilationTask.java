@@ -73,8 +73,8 @@ public class CompilationTask implements Runnable, Comparable {
         return withinEnqueue == null || withinEnqueue.get();
     }
 
-    public static class BeginEnqueue implements Closeable {
-        public BeginEnqueue() {
+    public static class Enqueueing implements Closeable {
+        public Enqueueing() {
             assert !withinEnqueue.get();
             withinEnqueue.set(Boolean.TRUE);
         }
