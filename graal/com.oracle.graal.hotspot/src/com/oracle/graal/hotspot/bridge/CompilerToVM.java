@@ -43,6 +43,8 @@ public interface CompilerToVM {
      */
     byte[] initializeBytecode(long metaspaceMethod, byte[] code);
 
+    int exceptionTableLength(long metaspaceMethod);
+
     long exceptionTableStart(long metaspaceMethod);
 
     /**
