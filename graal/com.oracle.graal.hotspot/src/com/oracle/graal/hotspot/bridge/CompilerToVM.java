@@ -320,4 +320,13 @@ public interface CompilerToVM {
      * @return a comma separated list of names
      */
     String getGPUs();
+
+    /**
+     * 
+     * @param metaspaceMethod the method to check
+     * @param entryBCI
+     * @param level the compilation level
+     * @return true if the {@code metaspaceMethod} has code for {@code level}
+     */
+    boolean hasCompiledCodeForOSR(long metaspaceMethod, int entryBCI, int level);
 }

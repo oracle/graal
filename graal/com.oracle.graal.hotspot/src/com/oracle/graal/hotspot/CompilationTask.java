@@ -212,11 +212,19 @@ public class CompilationTask implements Runnable, Comparable {
         long previousCompilationTime = CompilationTime.getCurrentValue();
         HotSpotInstalledCode installedCode = null;
         try (TimerCloseable a = CompilationTime.start()) {
-            if (!tryToChangeStatus(CompilationStatus.Queued, CompilationStatus.Running) || method.hasCompiledCode()) {
+            if (!tryToChangeStatus(CompilationStatus.Queued, CompilationStatus.Running)) {
+                return;
+            }
+            boolean isOSR = entryBCI != StructuredGraph.INVOCATION_ENTRY_BCI;
+
+            // If there is already compiled code for this method on our level we simply return.
+            // Graal compiles are always at the highest compile level, even in non-tiered mode so we
+            // only need to check for that value.
+            if (method.hasCodeAtLevel(entryBCI, config.compilationLevelFullOptimization)) {
                 return;
             }
 
-            CompilationStatistics stats = CompilationStatistics.create(method, entryBCI != StructuredGraph.INVOCATION_ENTRY_BCI);
+            CompilationStatistics stats = CompilationStatistics.create(method, isOSR);
             final boolean printCompilation = PrintCompilation.getValue() && !TTY.isSuppressed();
             if (printCompilation) {
                 TTY.println(getMethodDescription() + "...");

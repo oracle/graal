@@ -38,6 +38,7 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.debug.*;
+import com.oracle.graal.nodes.*;
 
 /**
  * Implementation of {@link JavaMethod} for resolved HotSpot methods.
@@ -346,8 +347,36 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
         return runtime().getCompilerToVM().getCompiledCodeSize(metaspaceMethod);
     }
 
+    /**
+     * Gets the value of {@code Method::_code}.
+     * 
+     * @return the value of {@code Method::_code}
+     */
+    private long getCompiledCode() {
+        HotSpotVMConfig config = runtime().getConfig();
+        return unsafe.getAddress(metaspaceMethod + config.methodCodeOffset);
+    }
+
+    /**
+     * Returns whether this method has compiled code.
+     * 
+     * @return true if this method has compiled code, false otherwise
+     */
     public boolean hasCompiledCode() {
-        return getCompiledCodeSize() > 0;
+        return getCompiledCode() != 0L;
+    }
+
+    /**
+     * Gets the compilation level of the currently installed code for this method.
+     * 
+     * @return compilation level
+     */
+    public boolean hasCompiledCodeAtLevel(int level) {
+        long compiledCode = getCompiledCode();
+        if (compiledCode != 0) {
+            return unsafe.getInt(compiledCode + runtime().getConfig().nmethodCompLevelOffset) == level;
+        }
+        return false;
     }
 
     private static final String TraceMethodDataFilter = System.getProperty("graal.traceMethodDataFilter");
@@ -680,5 +709,12 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
 
     private long getAccessFlagsAddress() {
         return metaspaceMethod + runtime().getConfig().methodAccessFlagsOffset;
+    }
+
+    public boolean hasCodeAtLevel(int entryBCI, int level) {
+        if (entryBCI == StructuredGraph.INVOCATION_ENTRY_BCI) {
+            return hasCompiledCodeAtLevel(level);
+        }
+        return runtime().getCompilerToVM().hasCompiledCodeForOSR(metaspaceMethod, entryBCI, level);
     }
 }
