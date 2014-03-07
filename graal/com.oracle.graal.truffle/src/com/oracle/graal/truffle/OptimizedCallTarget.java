@@ -470,7 +470,10 @@ public final class OptimizedCallTarget extends DefaultCallTarget implements Loop
     static void log(int indent, String msg, String details, Map<String, Object> properties) {
         StringBuilder sb = new StringBuilder();
         sb.append(String.format("[truffle] %-16s ", msg));
-        sb.append(String.format("%" + indent + "s" + "%-" + (60 - indent) + "s", "", details));
+        for (int i = 0; i < indent; i++) {
+            sb.append(' ');
+        }
+        sb.append(String.format("%-" + (60 - indent) + "s", details));
         if (properties != null) {
             for (String property : properties.keySet()) {
                 Object value = properties.get(property);
