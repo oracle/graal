@@ -28,7 +28,6 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Graph.DuplicationReplacement;
 import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.VirtualState.NodeClosure;
 import com.oracle.graal.nodes.VirtualState.VirtualClosure;
 import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.java.*;
@@ -349,17 +348,6 @@ public abstract class LoopFragment {
                     replaceWith = phi;
                 } else {
                     replaceWith = vpn.value();
-                }
-                if (state != null) {
-                    state.applyToNonVirtual(new NodeClosure<ValueNode>() {
-
-                        @Override
-                        public void apply(Node from, ValueNode node) {
-                            if (node == vpn) {
-                                from.replaceFirstInput(vpn, replaceWith);
-                            }
-                        }
-                    });
                 }
                 for (Node usage : vpn.usages().snapshot()) {
                     if (!merge.isPhiAtMerge(usage)) {
