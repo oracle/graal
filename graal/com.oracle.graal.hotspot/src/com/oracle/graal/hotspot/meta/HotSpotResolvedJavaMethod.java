@@ -483,7 +483,7 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
 
     @Override
     public LineNumberTable getLineNumberTable() {
-        long[] values = runtime().getCompilerToVM().getLineNumberTable(this);
+        long[] values = runtime().getCompilerToVM().getLineNumberTable(metaspaceMethod);
         if (values == null) {
             return null;
         }
@@ -515,8 +515,8 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
         }
 
         HotSpotVMConfig config = runtime().getConfig();
-        long localVariableTableElement = runtime().getCompilerToVM().getLocalVariableTableStart(this);
-        final int localVariableTableLength = runtime().getCompilerToVM().getLocalVariableTableLength(this);
+        long localVariableTableElement = runtime().getCompilerToVM().getLocalVariableTableStart(metaspaceMethod);
+        final int localVariableTableLength = runtime().getCompilerToVM().getLocalVariableTableLength(metaspaceMethod);
         Local[] locals = new Local[localVariableTableLength];
 
         for (int i = 0; i < localVariableTableLength; i++) {
@@ -628,6 +628,16 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
         } catch (IllegalAccessException | InvocationTargetException | InstantiationException ex) {
             throw new IllegalArgumentException(ex);
         }
+    }
+
+    /**
+     * Allocates a compile id for this method by asking the VM for one.
+     * 
+     * @param entryBCI entry bci
+     * @return compile id
+     */
+    public int allocateCompileId(int entryBCI) {
+        return runtime().getCompilerToVM().allocateCompileId(metaspaceMethod, entryBCI);
     }
 
     public boolean tryToQueueForCompilation() {

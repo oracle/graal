@@ -107,7 +107,7 @@ public class CompilationTask implements Runnable, Comparable {
         this.backend = backend;
         this.method = method;
         this.entryBCI = entryBCI;
-        this.id = backend.getRuntime().getCompilerToVM().allocateCompileId(method, entryBCI);
+        this.id = method.allocateCompileId(entryBCI);
         this.blocking = blocking;
         this.taskId = uniqueTaskIds.incrementAndGet();
         this.status = new AtomicReference<>(CompilationStatus.Queued);

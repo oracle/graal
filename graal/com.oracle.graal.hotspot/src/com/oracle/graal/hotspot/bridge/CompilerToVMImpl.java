@@ -97,16 +97,16 @@ public class CompilerToVMImpl implements CompilerToVM {
     public native void initializeConfiguration(HotSpotVMConfig config);
 
     @Override
-    public native long resolveMethod(HotSpotResolvedObjectType klass, String name, String signature);
+    public native long resolveMethod(long metaspaceKlass, String name, String signature);
 
     @Override
-    public native boolean hasFinalizableSubclass(HotSpotResolvedObjectType klass);
+    public native boolean hasFinalizableSubclass(long metaspaceKlass);
 
     @Override
     public native void initializeMethod(long metaspaceMethod, HotSpotResolvedJavaMethod method);
 
     @Override
-    public native long getClassInitializer(HotSpotResolvedObjectType klass);
+    public native long getClassInitializer(long metaspaceKlass);
 
     @Override
     public native int getCompiledCodeSize(long metaspaceMethod);
@@ -128,13 +128,13 @@ public class CompilerToVMImpl implements CompilerToVM {
     public native long[] getDeoptedLeafGraphIds();
 
     @Override
-    public native long[] getLineNumberTable(HotSpotResolvedJavaMethod method);
+    public native long[] getLineNumberTable(long metaspaceMethod);
 
     @Override
-    public native long getLocalVariableTableStart(HotSpotResolvedJavaMethod method);
+    public native long getLocalVariableTableStart(long metaspaceMethod);
 
     @Override
-    public native int getLocalVariableTableLength(HotSpotResolvedJavaMethod method);
+    public native int getLocalVariableTableLength(long metaspaceMethod);
 
     @Override
     public native String getFileName(HotSpotResolvedJavaType method);
@@ -179,7 +179,7 @@ public class CompilerToVMImpl implements CompilerToVM {
 
     public native boolean isMature(long method);
 
-    public native int allocateCompileId(HotSpotResolvedJavaMethod method, int entryBCI);
+    public native int allocateCompileId(long metaspaceMethod, int entryBCI);
 
     public native String getGPUs();
 

@@ -241,11 +241,11 @@ public interface CompilerToVM {
 
     void initializeConfiguration(HotSpotVMConfig config);
 
-    long resolveMethod(HotSpotResolvedObjectType klass, String name, String signature);
+    long resolveMethod(long metaspaceKlass, String name, String signature);
 
-    long getClassInitializer(HotSpotResolvedObjectType klass);
+    long getClassInitializer(long metaspaceKlass);
 
-    boolean hasFinalizableSubclass(HotSpotResolvedObjectType klass);
+    boolean hasFinalizableSubclass(long metaspaceKlass);
 
     /**
      * Gets the compiled code size for a method.
@@ -277,11 +277,11 @@ public interface CompilerToVM {
 
     long[] getDeoptedLeafGraphIds();
 
-    long[] getLineNumberTable(HotSpotResolvedJavaMethod method);
+    long[] getLineNumberTable(long metaspaceMethod);
 
-    long getLocalVariableTableStart(HotSpotResolvedJavaMethod method);
+    long getLocalVariableTableStart(long metaspaceMethod);
 
-    int getLocalVariableTableLength(HotSpotResolvedJavaMethod method);
+    int getLocalVariableTableLength(long metaspaceMethod);
 
     String getFileName(HotSpotResolvedJavaType method);
 
@@ -310,7 +310,7 @@ public interface CompilerToVM {
     /**
      * Generate a unique id to identify the result of the compile.
      */
-    int allocateCompileId(HotSpotResolvedJavaMethod method, int entryBCI);
+    int allocateCompileId(long metaspaceMethod, int entryBCI);
 
     /**
      * Gets the names of the supported GPU architectures.

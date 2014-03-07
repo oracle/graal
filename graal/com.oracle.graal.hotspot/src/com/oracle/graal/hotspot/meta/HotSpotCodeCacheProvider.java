@@ -170,7 +170,7 @@ public abstract class HotSpotCodeCacheProvider implements CodeCacheProvider {
 
     public HotSpotInstalledCode installMethod(HotSpotResolvedJavaMethod method, CompilationResult compResult) {
         if (compResult.getId() == -1) {
-            compResult.setId(runtime.getCompilerToVM().allocateCompileId(method, compResult.getEntryBCI()));
+            compResult.setId(method.allocateCompileId(compResult.getEntryBCI()));
         }
         HotSpotInstalledCode installedCode = new HotSpotNmethod(method, compResult.getName(), true);
         runtime.getCompilerToVM().installCode(new HotSpotCompiledNmethod(target.arch, method, compResult), installedCode, method.getSpeculationLog());
@@ -181,7 +181,7 @@ public abstract class HotSpotCodeCacheProvider implements CodeCacheProvider {
     public InstalledCode addMethod(ResolvedJavaMethod method, CompilationResult compResult, SpeculationLog log) {
         HotSpotResolvedJavaMethod hotspotMethod = (HotSpotResolvedJavaMethod) method;
         if (compResult.getId() == -1) {
-            compResult.setId(runtime.getCompilerToVM().allocateCompileId(hotspotMethod, compResult.getEntryBCI()));
+            compResult.setId(hotspotMethod.allocateCompileId(compResult.getEntryBCI()));
         }
         HotSpotInstalledCode code = new HotSpotNmethod(hotspotMethod, compResult.getName(), false);
         CodeInstallResult result = runtime.getCompilerToVM().installCode(new HotSpotCompiledNmethod(target.arch, hotspotMethod, compResult), code, log);
@@ -200,7 +200,7 @@ public abstract class HotSpotCodeCacheProvider implements CodeCacheProvider {
     public HotSpotNmethod addExternalMethod(ResolvedJavaMethod method, CompilationResult compResult) {
         HotSpotResolvedJavaMethod javaMethod = (HotSpotResolvedJavaMethod) method;
         if (compResult.getId() == -1) {
-            compResult.setId(runtime.getCompilerToVM().allocateCompileId(javaMethod, compResult.getEntryBCI()));
+            compResult.setId(javaMethod.allocateCompileId(compResult.getEntryBCI()));
         }
         HotSpotNmethod code = new HotSpotNmethod(javaMethod, compResult.getName(), false, true);
         HotSpotCompiledNmethod compiled = new HotSpotCompiledNmethod(target.arch, javaMethod, compResult);
