@@ -377,7 +377,7 @@ public interface Pointer extends Unsigned, PointerBase {
      * @param locationIdentity the identity of the write (see {@link LocationNode})
      * @param val the value to be written to memory
      */
-    void initializeWord(WordBase offset, WordBase val, LocationIdentity locationIdentity);
+    void initializeLong(WordBase offset, long val, LocationIdentity locationIdentity);
 
     /**
      * Writes the memory at address {@code (this + offset)}. Both the base address and offset are in
@@ -481,7 +481,7 @@ public interface Pointer extends Unsigned, PointerBase {
      * @param locationIdentity the identity of the write (see {@link LocationNode})
      * @param val the value to be written to memory
      */
-    void initializeWord(int offset, WordBase val, LocationIdentity locationIdentity);
+    void initializeLong(int offset, long val, LocationIdentity locationIdentity);
 
     /**
      * Writes the memory at address {@code (this + offset)}. Both the base address and offset are in

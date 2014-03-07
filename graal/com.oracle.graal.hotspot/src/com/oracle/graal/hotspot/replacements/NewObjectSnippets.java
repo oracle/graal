@@ -139,7 +139,7 @@ public class NewObjectSnippets implements Snippets {
         if (useTLAB() && probability(FAST_PATH_PROBABILITY, newTop.belowOrEqual(end))) {
             writeTlabTop(thread, newTop);
             emitPrefetchAllocate(newTop, false);
-            result = formatObject(hub, size, top, prototypeMarkWord, fillContents, constantSize);
+            result = formatObject(hub, size, top, prototypeMarkWord, fillContents, constantSize, false);
         } else {
             new_stub.inc();
             result = NewInstanceStubCall.call(hub);
@@ -176,16 +176,16 @@ public class NewObjectSnippets implements Snippets {
 
     @Snippet
     public static Object allocateArray(Word hub, int length, Word prototypeMarkWord, @ConstantParameter int headerSize, @ConstantParameter int log2ElementSize,
-                    @ConstantParameter boolean fillContents, @ConstantParameter Register threadRegister, @ConstantParameter String typeContext) {
+                    @ConstantParameter boolean fillContents, @ConstantParameter Register threadRegister, @ConstantParameter boolean maybeUnroll, @ConstantParameter String typeContext) {
         if (!belowThan(length, MAX_ARRAY_FAST_PATH_ALLOCATION_LENGTH)) {
             // This handles both negative array sizes and very large array sizes
             DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.RuntimeConstraint);
         }
-        return allocateArrayImpl(hub, length, prototypeMarkWord, headerSize, log2ElementSize, fillContents, threadRegister, typeContext);
+        return allocateArrayImpl(hub, length, prototypeMarkWord, headerSize, log2ElementSize, fillContents, threadRegister, maybeUnroll, typeContext);
     }
 
     private static Object allocateArrayImpl(Word hub, int length, Word prototypeMarkWord, int headerSize, int log2ElementSize, boolean fillContents, @ConstantParameter Register threadRegister,
-                    String typeContext) {
+                    @ConstantParameter boolean maybeUnroll, String typeContext) {
         Object result;
         int alignment = wordSize();
         int allocationSize = computeArrayAllocationSize(length, alignment, headerSize, log2ElementSize);
@@ -197,7 +197,7 @@ public class NewObjectSnippets implements Snippets {
             writeTlabTop(thread, newTop);
             emitPrefetchAllocate(newTop, true);
             newarray_loopInit.inc();
-            result = formatArray(hub, allocationSize, length, headerSize, top, prototypeMarkWord, fillContents);
+            result = formatArray(hub, allocationSize, length, headerSize, top, prototypeMarkWord, fillContents, maybeUnroll);
         } else {
             newarray_stub.inc();
             result = NewArrayStubCall.call(hub, length);
@@ -244,7 +244,7 @@ public class NewObjectSnippets implements Snippets {
         int log2ElementSize = (layoutHelper >> layoutHelperLog2ElementSizeShift()) & layoutHelperLog2ElementSizeMask();
         Word prototypeMarkWord = hub.readWord(prototypeMarkWordOffset(), PROTOTYPE_MARK_WORD_LOCATION);
 
-        return allocateArrayImpl(hub, length, prototypeMarkWord, headerSize, log2ElementSize, fillContents, threadRegister, "dynamic type");
+        return allocateArrayImpl(hub, length, prototypeMarkWord, headerSize, log2ElementSize, fillContents, threadRegister, false, "dynamic type");
     }
 
     /**
@@ -277,27 +277,73 @@ public class NewObjectSnippets implements Snippets {
     }
 
     /**
-     * Maximum size of an object whose body is initialized by a sequence of zero-stores to its
-     * fields. Larger objects have their bodies initialized in a loop.
+     * Maximum number of long stores to emit when zeroing an object with a constant size Larger
+     * objects have their bodies initialized in a loop.
      */
-    private static final int MAX_UNROLLED_OBJECT_ZEROING_SIZE = 10 * wordSize();
+    private static final int MAX_UNROLLED_OBJECT_ZEROING_STORES = 8;
 
     /**
-     * Formats some allocated memory with an object header zeroes out the rest.
+     * Zero uninitialized memory in a newly allocated object, unrolling as necessary and ensuring
+     * that stores are aligned.
+     * 
+     * @param size number of bytes to zero
+     * @param memory beginning of object which is being zeroed
+     * @param constantSize is @ size} known to be constant in the snippet
+     * @param startOffset offset to begin zeroing. May not be word aligned.
+     * @param manualUnroll maximally unroll zeroing
      */
-    private static Object formatObject(Word hub, int size, Word memory, Word compileTimePrototypeMarkWord, boolean fillContents, boolean constantSize) {
-        Word prototypeMarkWord = useBiasedLocking() ? hub.readWord(prototypeMarkWordOffset(), PROTOTYPE_MARK_WORD_LOCATION) : compileTimePrototypeMarkWord;
-        initializeObjectHeader(memory, prototypeMarkWord, hub);
-        if (fillContents) {
-            if (constantSize && size <= MAX_UNROLLED_OBJECT_ZEROING_SIZE) {
+    private static void zeroMemory(int size, Word memory, boolean constantSize, int startOffset, boolean manualUnroll, boolean noAsserts) {
+        assert noAsserts || size % 8 == 0 : "unaligned object size";
+        int offset = startOffset;
+        if (offset % 8 != 0) {
+            memory.writeInt(offset, 0, INIT_LOCATION);
+            offset += 4;
+        }
+        assert noAsserts || offset % 8 == 0 : "unaligned";
+        if (manualUnroll && ((size - offset) / 8) <= MAX_UNROLLED_OBJECT_ZEROING_STORES) {
+            assert noAsserts || !constantSize : "size shouldn't be constant at instantiation time";
+            // This case handles arrays of constant length. Instead of having a snippet variant for
+            // each length, generate a chain of stores of maximum length. Once it's inlined the
+            // break statement will trim excess stores.
+            new_seqInit.inc();
+            explodeLoop();
+            for (int i = 0; i < MAX_UNROLLED_OBJECT_ZEROING_STORES; i++, offset += 8) {
+                if (offset == size) {
+                    break;
+                }
+                memory.initializeLong(offset, 0, INIT_LOCATION);
+            }
+        } else {
+            // Use Word instead of int to avoid extension to long in generated code
+            Word off = Word.signed(offset);
+            if (constantSize && ((size - offset) / 8) <= MAX_UNROLLED_OBJECT_ZEROING_STORES) {
                 new_seqInit.inc();
                 explodeLoop();
             } else {
                 new_loopInit.inc();
             }
-            for (int offset = instanceHeaderSize(); offset < size; offset += wordSize()) {
-                memory.initializeWord(offset, Word.zero(), INIT_LOCATION);
+            for (; off.rawValue() < size; off = off.add(8)) {
+                memory.initializeLong(off, 0, INIT_LOCATION);
             }
+        }
+    }
+
+    /**
+     * Formats some allocated memory with an object header and zeroes out the rest. Disables asserts
+     * since they can't be compiled in stubs.
+     */
+    public static Object formatObjectForStub(Word hub, int size, Word memory, Word compileTimePrototypeMarkWord) {
+        return formatObject(hub, size, memory, compileTimePrototypeMarkWord, true, false, true);
+    }
+
+    /**
+     * Formats some allocated memory with an object header and zeroes out the rest.
+     */
+    private static Object formatObject(Word hub, int size, Word memory, Word compileTimePrototypeMarkWord, boolean fillContents, boolean constantSize, boolean noAsserts) {
+        Word prototypeMarkWord = useBiasedLocking() ? hub.readWord(prototypeMarkWordOffset(), PROTOTYPE_MARK_WORD_LOCATION) : compileTimePrototypeMarkWord;
+        initializeObjectHeader(memory, prototypeMarkWord, hub);
+        if (fillContents) {
+            zeroMemory(size, memory, constantSize, instanceHeaderSize(), false, noAsserts);
         }
         return memory.toObject();
     }
@@ -305,7 +351,7 @@ public class NewObjectSnippets implements Snippets {
     /**
      * Formats some allocated memory with an object header and zeroes out the rest.
      */
-    public static Object formatArray(Word hub, int allocationSize, int length, int headerSize, Word memory, Word prototypeMarkWord, boolean fillContents) {
+    public static Object formatArray(Word hub, int allocationSize, int length, int headerSize, Word memory, Word prototypeMarkWord, boolean fillContents, boolean maybeUnroll) {
         memory.writeInt(arrayLengthOffset(), length, INIT_LOCATION);
         /*
          * store hub last as the concurrent garbage collectors assume length is valid if hub field
@@ -313,9 +359,7 @@ public class NewObjectSnippets implements Snippets {
          */
         initializeObjectHeader(memory, prototypeMarkWord, hub);
         if (fillContents) {
-            for (int offset = headerSize; offset < allocationSize; offset += wordSize()) {
-                memory.initializeWord(offset, Word.zero(), INIT_LOCATION);
-            }
+            zeroMemory(allocationSize, memory, false, headerSize, maybeUnroll, true);
         }
         return memory.toObject();
     }
@@ -377,6 +421,7 @@ public class NewObjectSnippets implements Snippets {
             args.addConst("log2ElementSize", log2ElementSize);
             args.addConst("fillContents", newArrayNode.fillContents());
             args.addConst("threadRegister", registers.getThreadRegister());
+            args.addConst("maybeUnroll", newArrayNode.length().isConstant());
             args.addConst("typeContext", ProfileAllocations.getValue() ? toJavaName(arrayType, false) : "");
 
             SnippetTemplate template = template(args);

@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.hotspot.stubs;
 
-import static com.oracle.graal.api.meta.LocationIdentity.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 import static com.oracle.graal.hotspot.nodes.DirectCompareAndSwapNode.*;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
@@ -111,10 +110,7 @@ public class NewInstanceStub extends SnippetStub {
                 Word memory = refillAllocate(thread, intArrayHub, sizeInBytes, logging());
                 if (memory.notEqual(0)) {
                     Word prototypeMarkWord = hub.readWord(prototypeMarkWordOffset(), PROTOTYPE_MARK_WORD_LOCATION);
-                    initializeObjectHeader(memory, prototypeMarkWord, hub);
-                    for (int offset = instanceHeaderSize(); offset < sizeInBytes; offset += wordSize()) {
-                        memory.writeWord(offset, Word.zero(), ANY_LOCATION);
-                    }
+                    NewObjectSnippets.formatObjectForStub(hub, sizeInBytes, memory, prototypeMarkWord);
                     return verifyObject(memory.toObject());
                 }
             }
@@ -192,7 +188,7 @@ public class NewInstanceStub extends SnippetStub {
                 // an int
                 int tlabFreeSpaceInInts = (int) tlabFreeSpaceInBytes >>> 2;
                 int length = ((alignmentReserveInBytes - headerSize) >>> 2) + tlabFreeSpaceInInts;
-                NewObjectSnippets.formatArray(intArrayHub, -1, length, headerSize, top, intArrayMarkWord, false);
+                NewObjectSnippets.formatArray(intArrayHub, -1, length, headerSize, top, intArrayMarkWord, false, false);
 
                 long allocated = thread.readLong(threadAllocatedBytesOffset(), TLAB_THREAD_ALLOCATED_BYTES_LOCATION);
                 allocated = allocated + top.subtract(readTlabStart(thread)).rawValue();
