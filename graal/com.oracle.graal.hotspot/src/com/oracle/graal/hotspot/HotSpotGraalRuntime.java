@@ -318,13 +318,13 @@ public final class HotSpotGraalRuntime implements GraalRuntime, RuntimeProvider 
      * 
      * @param name a well formed Java type in {@linkplain JavaType#getName() internal} format
      * @param accessingType the context of resolution (may be null)
-     * @param eagerResolve force resolution to a {@link ResolvedJavaType}. If true, this method will
+     * @param resolve force resolution to a {@link ResolvedJavaType}. If true, this method will
      *            either return a {@link ResolvedJavaType} or throw an exception
      * @return a Java type for {@code name} which is guaranteed to be of type
-     *         {@link ResolvedJavaType} if {@code eagerResolve == true}
-     * @throws LinkageError if {@code eagerResolve == true} and the resolution failed
+     *         {@link ResolvedJavaType} if {@code resolve == true}
+     * @throws LinkageError if {@code resolve == true} and the resolution failed
      */
-    public JavaType lookupType(String name, HotSpotResolvedObjectType accessingType, boolean eagerResolve) {
+    public JavaType lookupType(String name, HotSpotResolvedObjectType accessingType, boolean resolve) {
         // If the name represents a primitive type we can short-circuit the lookup.
         if (name.length() == 1) {
             Kind kind = Kind.fromPrimitiveOrVoidTypeChar(name.charAt(0));
@@ -338,7 +338,7 @@ public final class HotSpotGraalRuntime implements GraalRuntime, RuntimeProvider 
         }
 
         // Resolve the type in the VM.
-        final long metaspaceKlass = compilerToVm.lookupType(name, accessingClass, eagerResolve);
+        final long metaspaceKlass = compilerToVm.lookupType(name, accessingClass, resolve);
         if (metaspaceKlass == 0) {
             return HotSpotUnresolvedJavaType.create(name);
         }

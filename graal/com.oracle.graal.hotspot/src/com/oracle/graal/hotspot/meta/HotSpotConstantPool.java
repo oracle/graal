@@ -53,7 +53,7 @@ public class HotSpotConstantPool extends CompilerObject implements ConstantPool 
      * 
      * @return holder for this constant pool
      */
-    private HotSpotResolvedJavaType getHolder() {
+    private HotSpotResolvedObjectType getHolder() {
         final long metaspaceKlass = unsafe.getAddress(metaspaceConstantPool + runtime().getConfig().constantPoolHolderOffset);
         return (HotSpotResolvedObjectType) HotSpotResolvedObjectType.fromMetaspaceKlass(metaspaceKlass);
     }
@@ -431,19 +431,7 @@ public class HotSpotConstantPool extends CompilerObject implements ConstantPool 
         String name = lookupUtf8(nameIndex);
         final int typeIndex = getSignatureRefIndexAt(nameAndTypeIndex);
         String typeName = lookupUtf8(typeIndex);
-
-        Kind kind = Kind.fromTypeString(typeName);
-        JavaType type;
-        if (kind.isPrimitive()) {
-            type = HotSpotResolvedPrimitiveType.fromKind(kind);
-        } else {
-            final long metaspaceKlass = runtime().getCompilerToVM().lookupKlassByName(typeName, getHolder().mirror());
-            if (metaspaceKlass == 0L) {
-                type = HotSpotUnresolvedJavaType.create(typeName);
-            } else {
-                type = HotSpotResolvedObjectType.fromMetaspaceKlass(metaspaceKlass);
-            }
-        }
+        JavaType type = runtime().lookupType(typeName, getHolder(), false);
 
         final int holderIndex = getKlassRefIndexAt(index);
         JavaType holder = lookupType(holderIndex, opcode);

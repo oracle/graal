@@ -64,9 +64,6 @@ public class CompilerToVMImpl implements CompilerToVM {
     public native long lookupType(String name, Class<?> accessingClass, boolean eagerResolve);
 
     @Override
-    public native long lookupKlassByName(String name, Class<?> accessingClass);
-
-    @Override
     public native Object lookupConstantInPool(long metaspaceConstantPool, int cpi);
 
     @Override
