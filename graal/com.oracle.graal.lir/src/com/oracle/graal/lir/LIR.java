@@ -24,6 +24,7 @@ package com.oracle.graal.lir;
 
 import java.util.*;
 
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.lir.LIRInstruction.StateProcedure;
 import com.oracle.graal.lir.StandardOp.BlockEndOp;
 import com.oracle.graal.nodes.*;
@@ -57,7 +58,14 @@ public class LIR {
 
     private int numVariables;
 
+    public SpillMoveFactory spillMoveFactory;
+
     public final BlockMap<List<LIRInstruction>> lirInstructions;
+
+    public interface SpillMoveFactory {
+
+        LIRInstruction createMove(AllocatableValue result, Value input);
+    }
 
     private boolean hasArgInCallerFrame;
 
