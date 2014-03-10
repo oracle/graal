@@ -23,6 +23,7 @@
 package com.oracle.graal.nodes.calc;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
@@ -30,7 +31,7 @@ import com.oracle.graal.nodes.type.*;
 /**
  * An {@code IntegerConvert} converts an integer to an integer of different width.
  */
-public abstract class IntegerConvertNode extends ConvertNode implements ArithmeticLIRLowerable {
+public abstract class IntegerConvertNode extends ConvertNode implements ArithmeticLIRLowerable, Canonicalizable {
 
     private final int resultBits;
 

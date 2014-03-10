@@ -32,7 +32,7 @@ import com.oracle.graal.nodes.type.*;
 /**
  * The {@code NarrowNode} converts an integer to a narrower integer.
  */
-public class NarrowNode extends IntegerConvertNode implements Simplifiable {
+public class NarrowNode extends IntegerConvertNode {
 
     public NarrowNode(ValueNode input, int resultBits) {
         super(StampTool.narrowingConversion(input.stamp(), resultBits), input, resultBits);
@@ -64,7 +64,8 @@ public class NarrowNode extends IntegerConvertNode implements Simplifiable {
         return false;
     }
 
-    private ValueNode tryCanonicalize() {
+    @Override
+    public Node canonical(CanonicalizerTool tool) {
         ValueNode ret = canonicalConvert();
         if (ret != null) {
             return ret;
@@ -99,35 +100,7 @@ public class NarrowNode extends IntegerConvertNode implements Simplifiable {
             }
         }
 
-        return null;
-    }
-
-    private boolean tryNarrow(SimplifierTool tool, Stamp stamp, ValueNode node) {
-        boolean canNarrow = node instanceof NarrowableArithmeticNode && node.usages().count() == 1;
-
-        if (canNarrow) {
-            for (Node inputNode : node.inputs().snapshot()) {
-                ValueNode input = (ValueNode) inputNode;
-                if (!tryNarrow(tool, stamp, input)) {
-                    ValueNode narrow = graph().unique(new NarrowNode(input, getResultBits()));
-                    node.replaceFirstInput(input, narrow);
-                    tool.addToWorkList(narrow);
-                }
-            }
-            node.setStamp(stamp);
-        }
-
-        return canNarrow;
-    }
-
-    @Override
-    public void simplify(SimplifierTool tool) {
-        ValueNode ret = tryCanonicalize();
-        if (ret != null) {
-            graph().replaceFloating(this, ret);
-        } else if (tryNarrow(tool, stamp().unrestricted(), getInput())) {
-            graph().replaceFloating(this, getInput());
-        }
+        return this;
     }
 
     @Override
