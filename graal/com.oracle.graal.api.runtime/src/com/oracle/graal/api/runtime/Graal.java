@@ -22,13 +22,26 @@
  */
 package com.oracle.graal.api.runtime;
 
+import java.lang.reflect.*;
+
+import sun.reflect.*;
+
 public class Graal {
 
     private static GraalRuntime runtime;
 
     private static native GraalRuntime initializeRuntime();
 
+    public static final java.security.Permission ACCESS_PERMISSION = new ReflectPermission("allowGraalAccess");
+
     public static GraalRuntime getRuntime() {
+        Class cc = Reflection.getCallerClass();
+        if (cc.getClassLoader() != null) {
+            SecurityManager sm = System.getSecurityManager();
+            if (sm != null) {
+                sm.checkPermission(ACCESS_PERMISSION);
+            }
+        }
         return runtime;
     }
 
@@ -41,6 +54,13 @@ public class Graal {
     }
 
     public static <T> T getRequiredCapability(Class<T> clazz) {
+        Class cc = Reflection.getCallerClass();
+        if (cc.getClassLoader() != null) {
+            SecurityManager sm = System.getSecurityManager();
+            if (sm != null) {
+                sm.checkPermission(ACCESS_PERMISSION);
+            }
+        }
         T t = getRuntime().getCapability(clazz);
         if (t == null) {
             String javaHome = System.getProperty("java.home");

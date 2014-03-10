@@ -30,6 +30,7 @@ import java.lang.reflect.*;
 import java.util.*;
 
 import sun.misc.*;
+import sun.reflect.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
@@ -59,8 +60,19 @@ public final class HotSpotGraalRuntime implements GraalRuntime, RuntimeProvider 
      * Gets the singleton {@link HotSpotGraalRuntime} object.
      */
     public static HotSpotGraalRuntime runtime() {
+        Class cc = Reflection.getCallerClass();
+        if (cc != null && cc.getClassLoader() != null) {
+            SecurityManager sm = System.getSecurityManager();
+            if (sm != null) {
+                sm.checkPermission(Graal.ACCESS_PERMISSION);
+            }
+        }
         assert instance != null;
         return instance;
+    }
+
+    static {
+        Reflection.registerFieldsToFilter(HotSpotGraalRuntime.class, new String[]{"instance"});
     }
 
     /**
