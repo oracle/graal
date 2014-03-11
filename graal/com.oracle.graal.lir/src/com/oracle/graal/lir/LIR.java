@@ -27,7 +27,6 @@ import java.util.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.lir.LIRInstruction.StateProcedure;
 import com.oracle.graal.lir.StandardOp.BlockEndOp;
-import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.cfg.*;
 
 /**
@@ -37,12 +36,6 @@ import com.oracle.graal.nodes.cfg.*;
 public class LIR {
 
     public final ControlFlowGraph cfg;
-
-    /**
-     * The nodes for the blocks. TODO: This should go away, we want all nodes connected with a
-     * next-pointer.
-     */
-    private final BlockMap<List<ScheduledNode>> blockToNodesMap;
 
     /**
      * The linear-scan ordered list of blocks.
@@ -72,19 +65,11 @@ public class LIR {
     /**
      * Creates a new LIR instance for the specified compilation.
      */
-    public LIR(ControlFlowGraph cfg, BlockMap<List<ScheduledNode>> blockToNodesMap, List<Block> linearScanOrder, List<Block> codeEmittingOrder) {
+    public LIR(ControlFlowGraph cfg, List<Block> linearScanOrder, List<Block> codeEmittingOrder) {
         this.cfg = cfg;
-        this.blockToNodesMap = blockToNodesMap;
         this.codeEmittingOrder = codeEmittingOrder;
         this.linearScanOrder = linearScanOrder;
         this.lirInstructions = new BlockMap<>(cfg);
-    }
-
-    /**
-     * Gets the nodes in a given block.
-     */
-    public List<ScheduledNode> nodesFor(Block block) {
-        return blockToNodesMap.get(block);
     }
 
     /**
