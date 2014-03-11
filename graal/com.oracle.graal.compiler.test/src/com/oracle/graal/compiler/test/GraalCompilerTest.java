@@ -663,7 +663,7 @@ public abstract class GraalCompilerTest extends GraalTest {
     protected CompilationResult compile(ResolvedJavaMethod method, final StructuredGraph graph) {
         CallingConvention cc = getCallingConvention(getCodeCache(), Type.JavaCallee, graph.method(), false);
         return compileGraph(graph, null, cc, method, getProviders(), getBackend(), getCodeCache().getTarget(), null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL,
-                        getProfilingInfo(graph), getSpeculationLog(), getSuites(), true, new CompilationResult(), CompilationResultBuilderFactory.Default);
+                        getProfilingInfo(graph), getSpeculationLog(), getSuites(), new CompilationResult(), CompilationResultBuilderFactory.Default);
     }
 
     protected SpeculationLog getSpeculationLog() {

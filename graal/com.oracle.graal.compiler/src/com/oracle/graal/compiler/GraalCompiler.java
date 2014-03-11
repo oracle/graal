@@ -131,15 +131,13 @@ public class GraalCompiler {
      * @param installedCodeOwner the method the compiled code will be
      *            {@linkplain InstalledCode#getMethod() associated} with once installed. This
      *            argument can be null.
-     * @param withScope specifies if a {@link DebugScope} with the name {@code "GraalCompiler"}
-     *            should be used for the compilation
      * @return the result of the compilation
      */
     public static <T extends CompilationResult> T compileGraph(StructuredGraph graph, Object stub, CallingConvention cc, ResolvedJavaMethod installedCodeOwner, Providers providers, Backend backend,
                     TargetDescription target, GraphCache cache, PhaseSuite<HighTierContext> graphBuilderSuite, OptimisticOptimizations optimisticOpts, ProfilingInfo profilingInfo,
-                    SpeculationLog speculationLog, Suites suites, boolean withScope, T compilationResult, CompilationResultBuilderFactory factory) {
+                    SpeculationLog speculationLog, Suites suites, T compilationResult, CompilationResultBuilderFactory factory) {
         assert !graph.isFrozen();
-        try (Scope s0 = withScope ? Debug.scope("GraalCompiler", graph, providers.getCodeCache()) : null) {
+        try (Scope s0 = Debug.scope("GraalCompiler", graph, providers.getCodeCache())) {
             Assumptions assumptions = new Assumptions(OptAssumptions.getValue());
             SchedulePhase schedule = null;
             try (Scope s = Debug.scope("FrontEnd"); TimerCloseable a = FrontEnd.start()) {

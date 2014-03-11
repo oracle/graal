@@ -133,7 +133,7 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
         CallingConvention cc = getCallingConvention(providers.getCodeCache(), Type.JavaCallee, graph.method(), false);
         Suites suites = providers.getSuites().getDefaultSuites();
         ExternalCompilationResult hsailCode = compileGraph(graph, null, cc, method, providers, this, this.getTarget(), null, graphBuilderSuite, OptimisticOptimizations.NONE, getProfilingInfo(graph),
-                        null, suites, true, new ExternalCompilationResult(), CompilationResultBuilderFactory.Default);
+                        null, suites, new ExternalCompilationResult(), CompilationResultBuilderFactory.Default);
 
         if (makeBinary) {
             if (!deviceInitialized) {

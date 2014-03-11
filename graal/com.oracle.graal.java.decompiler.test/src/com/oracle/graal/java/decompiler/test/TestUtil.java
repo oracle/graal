@@ -50,6 +50,6 @@ public class TestUtil {
         PhaseSuite<HighTierContext> graphBuilderSuite = suitesProvider.getDefaultGraphBuilderSuite();
         CallingConvention cc = getCallingConvention(providers.getCodeCache(), Type.JavaCallee, graph.method(), false);
         compileGraph(graph, null, cc, method, providers, backend, providers.getCodeCache().getTarget(), null, graphBuilderSuite, OptimisticOptimizations.ALL, getProfilingInfo(graph), null, suites,
-                        true, new CompilationResult(), CompilationResultBuilderFactory.Default);
+                        new CompilationResult(), CompilationResultBuilderFactory.Default);
     }
 }
