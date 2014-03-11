@@ -34,6 +34,7 @@ public class Graal {
 
     public static final java.security.Permission ACCESS_PERMISSION = new ReflectPermission("allowGraalAccess");
 
+    @CallerSensitive
     public static GraalRuntime getRuntime() {
         Class cc = Reflection.getCallerClass();
         if (cc.getClassLoader() != null) {
@@ -53,6 +54,7 @@ public class Graal {
         }
     }
 
+    @CallerSensitive
     public static <T> T getRequiredCapability(Class<T> clazz) {
         Class cc = Reflection.getCallerClass();
         if (cc.getClassLoader() != null) {

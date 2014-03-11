@@ -59,6 +59,7 @@ public final class HotSpotGraalRuntime implements GraalRuntime, RuntimeProvider 
     /**
      * Gets the singleton {@link HotSpotGraalRuntime} object.
      */
+    @CallerSensitive
     public static HotSpotGraalRuntime runtime() {
         Class cc = Reflection.getCallerClass();
         if (cc != null && cc.getClassLoader() != null) {
