@@ -263,7 +263,7 @@ public class CompilationTask implements Runnable, Comparable {
                 Suites suites = getSuites(providers);
                 ProfilingInfo profilingInfo = getProfilingInfo();
                 OptimisticOptimizations optimisticOpts = getOptimisticOpts(profilingInfo);
-                result = compileGraph(graph, cc, method, providers, backend, backend.getTarget(), graphCache, getGraphBuilderSuite(providers), optimisticOpts, profilingInfo,
+                result = compileGraph(graph, null, cc, method, providers, backend, backend.getTarget(), graphCache, getGraphBuilderSuite(providers), optimisticOpts, profilingInfo,
                                 method.getSpeculationLog(), suites, true, new CompilationResult(), CompilationResultBuilderFactory.Default);
                 result.setId(getId());
                 result.setEntryBCI(entryBCI);

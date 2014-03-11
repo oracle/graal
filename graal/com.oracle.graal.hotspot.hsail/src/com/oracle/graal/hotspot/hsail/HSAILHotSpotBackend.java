@@ -132,8 +132,8 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
         graphBuilderSuite.appendPhase(new NonNullParametersPhase());
         CallingConvention cc = getCallingConvention(providers.getCodeCache(), Type.JavaCallee, graph.method(), false);
         Suites suites = providers.getSuites().getDefaultSuites();
-        ExternalCompilationResult hsailCode = compileGraph(graph, cc, method, providers, this, this.getTarget(), null, graphBuilderSuite, OptimisticOptimizations.NONE, getProfilingInfo(graph), null,
-                        suites, true, new ExternalCompilationResult(), CompilationResultBuilderFactory.Default);
+        ExternalCompilationResult hsailCode = compileGraph(graph, null, cc, method, providers, this, this.getTarget(), null, graphBuilderSuite, OptimisticOptimizations.NONE, getProfilingInfo(graph),
+                        null, suites, true, new ExternalCompilationResult(), CompilationResultBuilderFactory.Default);
 
         if (makeBinary) {
             if (!deviceInitialized) {
@@ -188,7 +188,7 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
     }
 
     @Override
-    public LIRGenerator newLIRGenerator(StructuredGraph graph, FrameMap frameMap, CallingConvention cc, LIR lir) {
+    public LIRGenerator newLIRGenerator(StructuredGraph graph, Object stub, FrameMap frameMap, CallingConvention cc, LIR lir) {
         return new HSAILHotSpotLIRGenerator(graph, getProviders(), getRuntime().getConfig(), frameMap, cc, lir);
     }
 

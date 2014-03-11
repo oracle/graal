@@ -72,7 +72,6 @@ public abstract class LIRGenerator implements LIRGeneratorTool, LIRTypeTool {
     public final NodeMap<Value> nodeOperands;
     public final LIR lir;
 
-    protected final StructuredGraph graph;
     private final Providers providers;
     protected final CallingConvention cc;
 
@@ -172,7 +171,6 @@ public abstract class LIRGenerator implements LIRGeneratorTool, LIRTypeTool {
     public abstract boolean canStoreConstant(Constant c, boolean isCompressed);
 
     public LIRGenerator(StructuredGraph graph, Providers providers, FrameMap frameMap, CallingConvention cc, LIR lir) {
-        this.graph = graph;
         this.providers = providers;
         this.frameMap = frameMap;
         this.cc = cc;
@@ -218,10 +216,6 @@ public abstract class LIRGenerator implements LIRGeneratorTool, LIRTypeTool {
     @Override
     public ForeignCallsProvider getForeignCalls() {
         return providers.getForeignCalls();
-    }
-
-    public StructuredGraph getGraph() {
-        return graph;
     }
 
     /**
@@ -415,7 +409,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool, LIRTypeTool {
         lir.lir(currentBlock).add(op);
     }
 
-    public void doBlock(Block block) {
+    public void doBlock(Block block, StructuredGraph graph, BlockMap<List<ScheduledNode>> blockMap) {
         if (printIRWithLIR) {
             TTY.print(block.toString());
         }
@@ -434,12 +428,12 @@ public abstract class LIRGenerator implements LIRGeneratorTool, LIRTypeTool {
 
         if (block == lir.cfg.getStartBlock()) {
             assert block.getPredecessorCount() == 0;
-            emitPrologue();
+            emitPrologue(graph);
         } else {
             assert block.getPredecessorCount() > 0;
         }
 
-        List<ScheduledNode> nodes = lir.nodesFor(block);
+        List<ScheduledNode> nodes = blockMap.get(block);
         for (int i = 0; i < nodes.size(); i++) {
             Node instr = nodes.get(i);
             if (traceLevel >= 3) {
@@ -528,7 +522,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool, LIRTypeTool {
         }
     }
 
-    protected void emitPrologue() {
+    protected void emitPrologue(StructuredGraph graph) {
         CallingConvention incomingArguments = cc;
 
         Value[] params = new Value[incomingArguments.getArgumentCount()];

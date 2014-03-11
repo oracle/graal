@@ -145,7 +145,7 @@ public abstract class Stub {
                 CodeCacheProvider codeCache = providers.getCodeCache();
                 // The stub itself needs the incoming calling convention.
                 CallingConvention incomingCc = linkage.getIncomingCallingConvention();
-                final CompilationResult compResult = compileGraph(graph, incomingCc, getInstalledCodeOwner(), providers, backend, codeCache.getTarget(), null,
+                final CompilationResult compResult = compileGraph(graph, Stub.this, incomingCc, getInstalledCodeOwner(), providers, backend, codeCache.getTarget(), null,
                                 providers.getSuites().getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL, getProfilingInfo(graph), null, providers.getSuites().getDefaultSuites(), true,
                                 new CompilationResult(), CompilationResultBuilderFactory.Default);
 

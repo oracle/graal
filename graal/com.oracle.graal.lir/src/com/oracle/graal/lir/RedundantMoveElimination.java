@@ -38,9 +38,9 @@ import com.oracle.graal.nodes.cfg.*;
  */
 public final class RedundantMoveElimination {
 
-    public static void optimize(LIR lir, FrameMap frameMap, ResolvedJavaMethod method) {
+    public static void optimize(LIR lir, FrameMap frameMap) {
         RedundantMoveElimination redundantMoveElimination = new RedundantMoveElimination();
-        redundantMoveElimination.doOptimize(lir, frameMap, method);
+        redundantMoveElimination.doOptimize(lir, frameMap);
     }
 
     /**
@@ -100,9 +100,9 @@ public final class RedundantMoveElimination {
     /**
      * The main method doing the elimination of redundant moves.
      */
-    private void doOptimize(LIR lir, FrameMap frameMap, ResolvedJavaMethod method) {
+    private void doOptimize(LIR lir, FrameMap frameMap) {
 
-        try (Indent indent = Debug.logAndIndent("eliminate redundant moves in %s", method)) {
+        try (Indent indent = Debug.logAndIndent("eliminate redundant moves")) {
 
             callerSaveRegs = frameMap.registerConfig.getCallerSaveRegisters();
 
