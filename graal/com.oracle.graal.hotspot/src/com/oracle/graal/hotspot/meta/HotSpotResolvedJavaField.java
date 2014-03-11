@@ -51,12 +51,7 @@ public class HotSpotResolvedJavaField extends CompilerObject implements Resolved
     private final String name;
     private JavaType type;
     private final int offset;
-    private Constant constant;
 
-    /**
-     * The {@linkplain HotSpotResolvedObjectType#getReflectionFieldModifiers() reflection} modifiers
-     * for this field plus the {@link #FIELD_INTERNAL_FLAG} if it applies.
-     */
     /**
      * This value contains all flags as stored in the VM including internal ones.
      */
@@ -189,14 +184,12 @@ public class HotSpotResolvedJavaField extends CompilerObject implements Resolved
 
         if (receiver == null) {
             assert isStatic(modifiers);
-            if (constant == null) {
+            if (Modifier.isFinal(getModifiers())) {
                 if (holder.isInitialized() && !holder.getName().equals(SystemClassName) && isEmbeddable()) {
-                    if (Modifier.isFinal(getModifiers())) {
-                        constant = readValue(receiver);
-                    }
+                    return readValue(receiver);
+
                 }
             }
-            return constant;
         } else {
             /*
              * for non-static final fields, we must assume that they are only initialized if they
