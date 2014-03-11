@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,36 +20,39 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes.util;
-
-import java.util.*;
+package com.oracle.graal.nodes.cfg;
 
 import com.oracle.graal.nodes.*;
 
-public class NodesToDoubles {
+public interface AbstractBlock<T extends AbstractBlock> {
 
-    private final IdentityHashMap<FixedNode, Double> nodeProbabilities;
+    int getId();
 
-    public NodesToDoubles(int numberOfNodes) {
-        this.nodeProbabilities = new IdentityHashMap<>(numberOfNodes);
-    }
+    AbstractBeginNode getBeginNode();
 
-    public void put(FixedNode n, double value) {
-        assert value >= 0.0 : value;
-        nodeProbabilities.put(n, value);
-    }
+    Loop getLoop();
 
-    public boolean contains(FixedNode n) {
-        return nodeProbabilities.containsKey(n);
-    }
+    int getLoopDepth();
 
-    public double get(FixedNode n) {
-        Double value = nodeProbabilities.get(n);
-        assert value != null;
-        return value;
-    }
+    boolean isLoopHeader();
 
-    public int getCount() {
-        return nodeProbabilities.size();
-    }
+    boolean isLoopEnd();
+
+    boolean isExceptionEntry();
+
+    Iterable<T> getPredecessors();
+
+    int getPredecessorCount();
+
+    Iterable<T> getSuccessors();
+
+    int getSuccessorCount();
+
+    int getLinearScanNumber();
+
+    void setLinearScanNumber(int linearScanNumber);
+
+    boolean isAligned();
+
+    void setAlign(boolean align);
 }

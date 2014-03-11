@@ -27,7 +27,7 @@ import java.util.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 
-public final class Block {
+public final class Block implements AbstractBlock<Block> {
 
     protected final AbstractBeginNode beginNode;
 
