@@ -341,7 +341,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool, LIRTypeTool {
     }
 
     public LabelRef getLIRBlock(FixedNode b) {
-        Block result = lir.cfg.blockFor(b);
+        Block result = lir.getControlFlowGraph().blockFor(b);
         int suxIndex = currentBlock.getSuccessors().indexOf(result);
         assert suxIndex != -1 : "Block not in successor list of current block";
 
@@ -426,7 +426,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool, LIRTypeTool {
             TTY.println("BEGIN Generating LIR for block B" + block.getId());
         }
 
-        if (block == lir.cfg.getStartBlock()) {
+        if (block == lir.getControlFlowGraph().getStartBlock()) {
             assert block.getPredecessorCount() == 0;
             emitPrologue(graph);
         } else {

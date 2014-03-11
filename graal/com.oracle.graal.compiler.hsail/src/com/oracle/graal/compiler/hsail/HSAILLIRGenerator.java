@@ -78,7 +78,7 @@ public abstract class HSAILLIRGenerator extends LIRGenerator {
 
     public HSAILLIRGenerator(StructuredGraph graph, Providers providers, FrameMap frameMap, CallingConvention cc, LIR lir) {
         super(graph, providers, frameMap, cc, lir);
-        lir.spillMoveFactory = new HSAILSpillMoveFactory();
+        lir.setSpillMoveFactory(new HSAILSpillMoveFactory());
     }
 
     @Override

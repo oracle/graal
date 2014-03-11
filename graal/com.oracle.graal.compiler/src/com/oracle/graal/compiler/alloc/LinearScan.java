@@ -168,7 +168,7 @@ public final class LinearScan {
         this.registers = target.arch.getRegisters();
         this.firstVariableNumber = registers.length;
         this.variables = new ArrayList<>(ir.numVariables() * 3 / 2);
-        this.blockData = new BlockMap<>(ir.cfg);
+        this.blockData = new BlockMap<>(ir.getControlFlowGraph());
     }
 
     public int getFirstLirInstructionId(Block block) {
@@ -335,7 +335,7 @@ public final class LinearScan {
     }
 
     int numLoops() {
-        return ir.cfg.getLoops().length;
+        return ir.getControlFlowGraph().getLoops().length;
     }
 
     boolean isIntervalInLoop(int interval, int loop) {
@@ -562,7 +562,7 @@ public final class LinearScan {
                             assert isRegister(fromLocation) : "from operand must be a register but is: " + fromLocation + " toLocation=" + toLocation + " spillState=" + interval.spillState();
                             assert isStackSlot(toLocation) : "to operand must be a stack slot";
 
-                            insertionBuffer.append(j + 1, ir.spillMoveFactory.createMove(toLocation, fromLocation));
+                            insertionBuffer.append(j + 1, ir.getSpillMoveFactory().createMove(toLocation, fromLocation));
 
                             Debug.log("inserting move after definition of interval %d to stack slot %s at opId %d", interval.operandNumber, interval.spillSlot(), opId);
                         }
@@ -785,7 +785,7 @@ public final class LinearScan {
         // this is checked by these assertions to be sure about it.
         // the entry block may have incoming
         // values in registers, which is ok.
-        if (isRegister(operand) && block != ir.cfg.getStartBlock()) {
+        if (isRegister(operand) && block != ir.getControlFlowGraph().getStartBlock()) {
             if (isProcessed(operand)) {
                 assert liveKill.get(operandNumber(operand)) : "using fixed register that is not defined in this block";
             }
@@ -869,7 +869,7 @@ public final class LinearScan {
         }
 
         // check that the liveIn set of the first block is empty
-        Block startBlock = ir.cfg.getStartBlock();
+        Block startBlock = ir.getControlFlowGraph().getStartBlock();
         if (blockData.get(startBlock).liveIn.cardinality() != 0) {
             if (DetailedAsserts.getValue()) {
                 reportFailure(numBlocks);
@@ -901,7 +901,7 @@ public final class LinearScan {
         try (Scope s = Debug.forceLog()) {
             Indent indent = Debug.logAndIndent("report failure");
 
-            BitSet startBlockLiveIn = blockData.get(ir.cfg.getStartBlock()).liveIn;
+            BitSet startBlockLiveIn = blockData.get(ir.getControlFlowGraph().getStartBlock()).liveIn;
             try (Indent indent2 = Debug.logAndIndent("Error: liveIn set of first block must be empty (when this fails, variables are used before they are defined):")) {
                 for (int operandNum = startBlockLiveIn.nextSetBit(0); operandNum >= 0; operandNum = startBlockLiveIn.nextSetBit(operandNum + 1)) {
                     Value operand = operandFor(operandNum);

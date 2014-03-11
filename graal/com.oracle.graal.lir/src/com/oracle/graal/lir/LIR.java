@@ -35,7 +35,7 @@ import com.oracle.graal.nodes.cfg.*;
  */
 public class LIR {
 
-    public final ControlFlowGraph cfg;
+    private final ControlFlowGraph cfg;
 
     /**
      * The linear-scan ordered list of blocks.
@@ -51,9 +51,9 @@ public class LIR {
 
     private int numVariables;
 
-    public SpillMoveFactory spillMoveFactory;
+    private SpillMoveFactory spillMoveFactory;
 
-    public final BlockMap<List<LIRInstruction>> lirInstructions;
+    private final BlockMap<List<LIRInstruction>> lirInstructions;
 
     public interface SpillMoveFactory {
 
@@ -72,6 +72,10 @@ public class LIR {
         this.lirInstructions = new BlockMap<>(cfg);
     }
 
+    public ControlFlowGraph getControlFlowGraph() {
+        return cfg;
+    }
+
     /**
      * Determines if any instruction in the LIR has debug info associated with it.
      */
@@ -84,6 +88,10 @@ public class LIR {
             }
         }
         return false;
+    }
+
+    public SpillMoveFactory getSpillMoveFactory() {
+        return spillMoveFactory;
     }
 
     public List<LIRInstruction> lir(Block block) {
@@ -198,5 +206,9 @@ public class LIR {
             }
         }
         return true;
+    }
+
+    public void setSpillMoveFactory(SpillMoveFactory spillMoveFactory) {
+        this.spillMoveFactory = spillMoveFactory;
     }
 }

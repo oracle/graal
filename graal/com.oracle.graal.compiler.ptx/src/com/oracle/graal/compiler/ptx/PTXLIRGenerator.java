@@ -91,7 +91,7 @@ public class PTXLIRGenerator extends LIRGenerator {
 
     public PTXLIRGenerator(StructuredGraph graph, Providers providers, FrameMap frameMap, CallingConvention cc, LIR lir) {
         super(graph, providers, frameMap, cc, lir);
-        lir.spillMoveFactory = new PTXSpillMoveFactory();
+        lir.setSpillMoveFactory(new PTXSpillMoveFactory());
         int callVariables = cc.getArgumentCount() + (cc.getReturn().equals(Value.ILLEGAL) ? 0 : 1);
         lir.setFirstVariableNumber(callVariables);
         nextPredRegNum = 0;
