@@ -73,7 +73,7 @@ public final class HotSpotGraalRuntime implements GraalRuntime, RuntimeProvider 
     }
 
     static {
-        Reflection.registerFieldsToFilter(HotSpotGraalRuntime.class, new String[]{"instance"});
+        Reflection.registerFieldsToFilter(HotSpotGraalRuntime.class, "instance");
     }
 
     /**
