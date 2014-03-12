@@ -23,37 +23,29 @@
 package com.oracle.graal.baseline;
 
 import static com.oracle.graal.api.code.TypeCheckHints.*;
-import static com.oracle.graal.api.meta.DeoptimizationAction.*;
-import static com.oracle.graal.api.meta.DeoptimizationReason.*;
 import static com.oracle.graal.bytecode.Bytecodes.*;
 import static com.oracle.graal.phases.GraalOptions.*;
 import static java.lang.reflect.Modifier.*;
 
-import java.lang.reflect.*;
-import java.util.*;
-
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.meta.ProfilingInfo.TriState;
 import com.oracle.graal.api.meta.ResolvedJavaType.Representation;
 import com.oracle.graal.bytecode.*;
+import com.oracle.graal.compiler.*;
+import com.oracle.graal.compiler.gen.*;
+import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.java.BciBlockMapping.Block;
 import com.oracle.graal.java.BciBlockMapping.ExceptionDispatchBlock;
-import com.oracle.graal.java.GraphBuilderPhase.*;
 import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.calc.FloatConvertNode.FloatConvert;
-import com.oracle.graal.nodes.extended.*;
-import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
-import com.oracle.graal.nodes.type.*;
-import com.oracle.graal.nodes.util.*;
-import com.oracle.graal.phases.*;
-import com.oracle.graal.phases.tiers.*;
+import com.oracle.graal.nodes.java.*;
 
 /**
  * The {@code GraphBuilder} class parses the bytecode of a method and builds the IR graph.
@@ -90,7 +82,8 @@ public class BaselineCompiler {
         return method;
     }
 
-    public LIR generate(ResolvedJavaMethod method, int entryBCI) {
+    public CompilationResult generate(ResolvedJavaMethod method, int entryBCI, Backend backend, CompilationResult compilationResult, ResolvedJavaMethod installedCodeOwner,
+                    CompilationResultBuilderFactory factory) {
         this.method = method;
         this.entryBCI = entryBCI;
         profilingInfo = method.getProfilingInfo();
@@ -100,12 +93,21 @@ public class BaselineCompiler {
         unwindBlock = null;
         methodSynchronizedObject = null;
         TTY.Filter filter = new TTY.Filter(PrintFilter.getValue(), method);
+
+        // build blocks
         try {
             build();
         } finally {
             filter.remove();
         }
-        return null;
+        // emitLIR
+        LIRBlock b = new LIRBlock();
+        LIRGenerator lirGen = null;
+        // emitCode
+        Assumptions assumptions = new Assumptions(OptAssumptions.getValue());
+        GraalCompiler.emitCode(backend, new long[0], assumptions, lirGen, compilationResult, installedCodeOwner, factory);
+
+        return compilationResult;
     }
 
     protected void build() {
@@ -131,9 +133,9 @@ public class BaselineCompiler {
             throw GraalInternalError.unimplemented("Handle start block as loop header");
         }
 
-        for (Block block : blockMap.blocks) {
-            processBlock(block);
-        }
+        /*
+         * for (Block block : blockMap.blocks) { processBlock(block); }
+         */
 
         indent.outdent();
     }
