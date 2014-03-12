@@ -280,7 +280,7 @@ public class GraalCompiler {
 
             try (Scope s = Debug.scope("ControlFlowOptimizations")) {
                 EdgeMoveOptimizer.optimize(lir);
-                ControlFlowOptimizer.optimize(lir);
+                ControlFlowOptimizer.optimize(lir, codeEmittingOrder);
                 if (lirGen.canEliminateRedundantMoves()) {
                     RedundantMoveElimination.optimize(lir, frameMap);
                 }

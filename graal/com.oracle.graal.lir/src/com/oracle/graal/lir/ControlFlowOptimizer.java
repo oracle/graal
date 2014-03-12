@@ -37,9 +37,8 @@ public final class ControlFlowOptimizer {
     /**
      * Performs control flow optimizations on the given LIR graph.
      */
-    public static void optimize(LIR lir) {
-        List<? extends AbstractBlock<?>> blocks = lir.codeEmittingOrder();
-        ControlFlowOptimizer.deleteEmptyBlocks(lir, blocks);
+    public static <T extends AbstractBlock<T>> void optimize(LIR lir, List<T> codeEmittingOrder) {
+        ControlFlowOptimizer.deleteEmptyBlocks(lir, codeEmittingOrder);
     }
 
     private ControlFlowOptimizer() {
@@ -80,15 +79,15 @@ public final class ControlFlowOptimizer {
         }
     }
 
-    private static void deleteEmptyBlocks(LIR lir, List<? extends AbstractBlock<?>> blocks) {
+    private static <T extends AbstractBlock<T>> void deleteEmptyBlocks(LIR lir, List<T> blocks) {
         assert verifyBlocks(lir, blocks);
-        Iterator<? extends AbstractBlock<?>> iterator = blocks.iterator();
+        Iterator<T> iterator = blocks.iterator();
         while (iterator.hasNext()) {
-            AbstractBlock<?> block = iterator.next();
+            T block = iterator.next();
             if (canDeleteBlock(lir, block)) {
                 // adjust successor and predecessor lists
-                AbstractBlock<?> other = block.getSuccessors().iterator().next();
-                for (AbstractBlock<?> pred : block.getPredecessors()) {
+                T other = block.getSuccessors().iterator().next();
+                for (AbstractBlock<T> pred : block.getPredecessors()) {
                     Collections.replaceAll(pred.getSuccessors(), block, other);
                 }
                 for (int i = 0; i < other.getPredecessorCount(); i++) {

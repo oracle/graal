@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.nodes.cfg;
 
+import java.util.*;
+
 import com.oracle.graal.nodes.*;
 
 public interface AbstractBlock<T extends AbstractBlock<?>> {
@@ -40,11 +42,11 @@ public interface AbstractBlock<T extends AbstractBlock<?>> {
 
     boolean isExceptionEntry();
 
-    Iterable<T> getPredecessors();
+    List<T> getPredecessors();
 
     int getPredecessorCount();
 
-    Iterable<T> getSuccessors();
+    List<T> getSuccessors();
 
     int getSuccessorCount();
 
