@@ -135,9 +135,9 @@ public final class LinearScan {
     LIRInstruction[] opIdToInstructionMap;
 
     /**
-     * Map from an instruction {@linkplain LIRInstruction#id id} to the {@linkplain Block block}
-     * containing the instruction. Entries should be retrieved with {@link #blockForId(int)} as the
-     * id is not simply an index into this array.
+     * Map from an instruction {@linkplain LIRInstruction#id id} to the {@linkplain AbstractBlock
+     * block} containing the instruction. Entries should be retrieved with {@link #blockForId(int)}
+     * as the id is not simply an index into this array.
      */
     AbstractBlock<?>[] opIdToBlockMap;
 
@@ -629,7 +629,7 @@ public final class LinearScan {
 
         // initialize with correct length
         opIdToInstructionMap = new LIRInstruction[numInstructions];
-        opIdToBlockMap = new Block[numInstructions];
+        opIdToBlockMap = new AbstractBlock<?>[numInstructions];
 
         int opId = 0;
         int index = 0;
@@ -869,7 +869,7 @@ public final class LinearScan {
         }
 
         // check that the liveIn set of the first block is empty
-        Block startBlock = ir.getControlFlowGraph().getStartBlock();
+        AbstractBlock<?> startBlock = ir.getControlFlowGraph().getStartBlock();
         if (blockData.get(startBlock).liveIn.cardinality() != 0) {
             if (DetailedAsserts.getValue()) {
                 reportFailure(numBlocks);
