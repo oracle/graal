@@ -35,7 +35,7 @@ import com.oracle.graal.nodes.cfg.*;
  */
 public class LIR {
 
-    private final ControlFlowGraph cfg;
+    private final AbstractControlFlowGraph<?> cfg;
 
     /**
      * The linear-scan ordered list of blocks.
@@ -65,14 +65,14 @@ public class LIR {
     /**
      * Creates a new LIR instance for the specified compilation.
      */
-    public LIR(ControlFlowGraph cfg, List<? extends AbstractBlock<?>> linearScanOrder, List<? extends AbstractBlock<?>> codeEmittingOrder) {
+    public LIR(AbstractControlFlowGraph<?> cfg, List<? extends AbstractBlock<?>> linearScanOrder, List<? extends AbstractBlock<?>> codeEmittingOrder) {
         this.cfg = cfg;
         this.codeEmittingOrder = codeEmittingOrder;
         this.linearScanOrder = linearScanOrder;
         this.lirInstructions = new BlockMap<>(cfg);
     }
 
-    public ControlFlowGraph getControlFlowGraph() {
+    public AbstractControlFlowGraph<?> getControlFlowGraph() {
         return cfg;
     }
 
