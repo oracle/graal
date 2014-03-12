@@ -52,6 +52,9 @@ public class ReadEliminationBlockState extends EffectsBlockState<ReadElimination
 
         @Override
         public boolean equals(Object obj) {
+            if (!(obj instanceof CacheEntry<?>)) {
+                return false;
+            }
             CacheEntry<?> other = (CacheEntry<?>) obj;
             return identity == other.identity && object == other.object;
         }

@@ -698,9 +698,6 @@ public class PTXAssembler extends AbstractPTXAssembler {
     @Override
     public void jmp(Label l) {
         String str = nameOf(l);
-        if (l.equals("?")) {
-            Thread.dumpStack();
-        }
         bra(str);
     }
 

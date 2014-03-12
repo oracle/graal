@@ -168,10 +168,10 @@ public class TruffleExpansionLogger {
                 if (e.getLineNumber() >= 0) {
                     return String.format("(%s:%d)", e.getFileName(), e.getLineNumber());
                 } else {
-                    return String.format("(%s)", e.getFileName(), e.getLineNumber());
+                    return String.format("(%s)", e.getFileName());
                 }
             } else {
-                return String.format("(Unknown Source)", e.getFileName(), e.getLineNumber());
+                return String.format("(Unknown Source)");
             }
         }
     }

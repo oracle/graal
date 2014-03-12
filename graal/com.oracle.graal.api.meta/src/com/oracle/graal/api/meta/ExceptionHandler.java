@@ -97,6 +97,9 @@ public final class ExceptionHandler {
 
     @Override
     public boolean equals(Object obj) {
+        if (!(obj instanceof ExceptionHandler)) {
+            return false;
+        }
         ExceptionHandler that = (ExceptionHandler) obj;
         if (this.startBCI != that.startBCI || this.endBCI != that.endBCI || this.handlerBCI != that.handlerBCI || this.catchTypeCPI != that.catchTypeCPI) {
             return false;

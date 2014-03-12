@@ -87,7 +87,7 @@ public final class VirtualObject extends Value {
                         }
                     } else {
                         ResolvedJavaField[] fields = vo.type.getInstanceFields(true);
-                        assert fields.length == vo.values.length : vo.type + ", fields=" + Arrays.toString(fields) + ", values=" + vo.values;
+                        assert fields.length == vo.values.length : vo.type + ", fields=" + Arrays.toString(fields) + ", values=" + Arrays.toString(vo.values);
                         for (int i = 0; i < vo.values.length; i++) {
                             if (i != 0) {
                                 buf.append(',');

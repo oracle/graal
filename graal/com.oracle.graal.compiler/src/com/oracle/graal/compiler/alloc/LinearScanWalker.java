@@ -413,8 +413,8 @@ final class LinearScanWalker extends IntervalWalker {
 
             Debug.log("splitting at position %d", optimalSplitPos);
 
-            assert allocator.isBlockBegin(optimalSplitPos) || (optimalSplitPos % 2 == 1) : "split pos must be odd when not on block boundary";
-            assert !allocator.isBlockBegin(optimalSplitPos) || (optimalSplitPos % 2 == 0) : "split pos must be even on block boundary";
+            assert allocator.isBlockBegin(optimalSplitPos) || ((optimalSplitPos & 1) == 1) : "split pos must be odd when not on block boundary";
+            assert !allocator.isBlockBegin(optimalSplitPos) || ((optimalSplitPos & 1) == 0) : "split pos must be even on block boundary";
 
             Interval splitPart = interval.split(optimalSplitPos, allocator);
 
@@ -493,8 +493,8 @@ final class LinearScanWalker extends IntervalWalker {
             }
 
             try (Indent indent2 = Debug.logAndIndent("splitting at position %d", optimalSplitPos)) {
-                assert allocator.isBlockBegin(optimalSplitPos) || (optimalSplitPos % 2 == 1) : "split pos must be odd when not on block boundary";
-                assert !allocator.isBlockBegin(optimalSplitPos) || (optimalSplitPos % 2 == 0) : "split pos must be even on block boundary";
+                assert allocator.isBlockBegin(optimalSplitPos) || ((optimalSplitPos & 1) == 1) : "split pos must be odd when not on block boundary";
+                assert !allocator.isBlockBegin(optimalSplitPos) || ((optimalSplitPos & 1) == 0) : "split pos must be even on block boundary";
 
                 Interval spilledPart = interval.split(optimalSplitPos, allocator);
                 allocator.assignSpillSlot(spilledPart);

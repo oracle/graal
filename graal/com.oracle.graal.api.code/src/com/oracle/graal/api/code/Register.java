@@ -22,16 +22,12 @@
  */
 package com.oracle.graal.api.code;
 
-import java.io.*;
-
 import com.oracle.graal.api.meta.*;
 
 /**
  * Represents a target machine register.
  */
-public final class Register implements Comparable<Register>, Serializable {
-
-    private static final long serialVersionUID = -7213269157816016300L;
+public final class Register implements Comparable<Register> {
 
     public static final RegisterCategory SPECIAL = new RegisterCategory("SPECIAL");
 

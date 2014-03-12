@@ -535,18 +535,22 @@ public abstract class Node implements Cloneable, Formattable {
     }
 
     private void maybeNotifyChanged(Node usage) {
-        assert graph == null || !graph.isFrozen();
-        NodeChangedListener listener = graph.inputChangedListener;
-        if (listener != null) {
-            listener.nodeChanged(usage);
+        if (graph != null) {
+            assert !graph.isFrozen();
+            NodeChangedListener listener = graph.inputChangedListener;
+            if (listener != null) {
+                listener.nodeChanged(usage);
+            }
         }
     }
 
     private void maybeNotifyZeroInputs(Node oldInput) {
-        assert graph == null || !graph.isFrozen();
-        NodeChangedListener listener = graph.usagesDroppedToZeroListener;
-        if (listener != null) {
-            listener.nodeChanged(oldInput);
+        if (graph != null) {
+            assert !graph.isFrozen();
+            NodeChangedListener listener = graph.usagesDroppedToZeroListener;
+            if (listener != null) {
+                listener.nodeChanged(oldInput);
+            }
         }
     }
 

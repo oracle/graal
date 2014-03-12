@@ -60,7 +60,18 @@ public class HotSpotVMConfig extends CompilerObject {
     }
 
     HotSpotVMConfig(CompilerToVM compilerToVm) {
+        /** These fields are set in {@link CompilerToVM#initializeConfiguration}. */
+        gHotSpotVMStructs = 0;
+        gHotSpotVMTypes = 0;
+        gHotSpotVMIntConstants = 0;
+        gHotSpotVMLongConstants = 0;
+
         compilerToVm.initializeConfiguration(this);
+
+        assert gHotSpotVMStructs != 0;
+        assert gHotSpotVMTypes != 0;
+        assert gHotSpotVMIntConstants != 0;
+        assert gHotSpotVMLongConstants != 0;
 
         // Fill the VM fields hash map.
         HashMap<String, VMFields.Field> vmFields = new HashMap<>();

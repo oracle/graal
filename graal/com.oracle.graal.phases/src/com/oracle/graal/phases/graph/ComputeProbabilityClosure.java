@@ -169,7 +169,7 @@ public class ComputeProbabilityClosure {
 
         public final NodeMap<Set<LoopInfo>> requires;
 
-        private double loopFrequency = -1;
+        private double loopFrequency = -1.0;
         public boolean ended = false;
 
         public LoopInfo(LoopBeginNode loopBegin) {
@@ -178,7 +178,8 @@ public class ComputeProbabilityClosure {
         }
 
         public double loopFrequency(NodesToDoubles nodeProbabilities) {
-            if (loopFrequency == -1 && ended) {
+            // loopFrequency is initialized with -1.0
+            if (loopFrequency < 0.0 && ended) {
                 double backEdgeProb = 0.0;
                 for (LoopEndNode le : loopBegin.loopEnds()) {
                     double factor = 1;
@@ -219,7 +220,7 @@ public class ComputeProbabilityClosure {
         return r;
     }
 
-    private class Probability extends MergeableState<Probability> {
+    private class Probability extends MergeableState<Probability> implements Cloneable {
 
         public double probability;
         public Set<LoopInfo> loops;
@@ -330,7 +331,7 @@ public class ComputeProbabilityClosure {
         }
     }
 
-    private class LoopCount extends MergeableState<LoopCount> {
+    private class LoopCount extends MergeableState<LoopCount> implements Cloneable {
 
         public double count;
 
