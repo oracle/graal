@@ -160,7 +160,7 @@ public class CFGPrinterObserver implements DebugDumpHandler {
             // No need to print the HIR nodes again if this is not the first
             // time dumping the same LIR since the HIR will not have changed.
             boolean printNodes = previousObject != object;
-            cfgPrinter.printCFG(message, (List<Block>) cfgPrinter.lir.codeEmittingOrder(), printNodes);
+            cfgPrinter.printCFG(message, cfgPrinter.lir.codeEmittingOrder(), printNodes);
 
         } else if (object instanceof StructuredGraph) {
             if (cfgPrinter.cfg == null) {

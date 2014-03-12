@@ -127,10 +127,11 @@ class CFGPrinter extends CompilationPrinter {
      * @param label A label describing the compilation phase that produced the control flow graph.
      * @param blocks The list of blocks to be printed.
      */
-    public void printCFG(String label, List<Block> blocks, boolean printNodes) {
+    public void printCFG(String label, List<? extends AbstractBlock<?>> blocks, boolean printNodes) {
         if (lir == null) {
             latestScheduling = new NodeMap<>(cfg.getNodeToBlock());
-            for (Block block : blocks) {
+            for (AbstractBlock<?> abstractBlock : blocks) {
+                Block block = (Block) abstractBlock;
                 Node cur = block.getBeginNode();
                 while (true) {
                     assert inFixedSchedule(cur) && latestScheduling.get(cur) == block;
@@ -148,7 +149,8 @@ class CFGPrinter extends CompilationPrinter {
 
         begin("cfg");
         out.print("name \"").print(label).println('"');
-        for (Block block : blocks) {
+        for (AbstractBlock<?> abstractBlock : blocks) {
+            Block block = (Block) abstractBlock;
             printBlock(block, printNodes);
         }
         end("cfg");
@@ -239,6 +241,10 @@ class CFGPrinter extends CompilationPrinter {
     }
 
     private void printNodes(Block block) {
+        if (latestScheduling == null) {
+            // TODO: this should go away as soon as the Block/AbstractBlock transit is finished.
+            return;
+        }
         begin("IR");
         out.println("HIR");
         out.disableIndentation();
