@@ -118,7 +118,9 @@ public interface CompilerToVM {
      */
     long lookupType(String name, Class<?> accessingClass, boolean resolve);
 
-    Object lookupConstantInPool(long metaspaceConstantPool, int cpi);
+    Object resolveConstantInPool(long metaspaceConstantPool, int cpi);
+
+    Object resolvePossiblyCachedConstantInPool(long metaspaceConstantPool, int cpi);
 
     int lookupNameAndTypeRefIndexInPool(long metaspaceConstantPool, int cpi);
 
