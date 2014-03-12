@@ -584,7 +584,6 @@ public class VMToCompilerImpl implements VMToCompiler {
                 CompilationTask task = new CompilationTask(backend, method, entryBCI, block);
 
                 try {
-                    method.setCurrentTask(task);
                     compileQueue.execute(task);
                     if (block) {
                         task.block();

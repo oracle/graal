@@ -62,7 +62,6 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
     private Map<Object, Object> compilerStorage;
     private HotSpotMethodData methodData;
     private byte[] code;
-    private CompilationTask currentTask;
     private SpeculationLog speculationLog;
 
     /**
@@ -612,14 +611,6 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
     private int getVtableIndex() {
         HotSpotVMConfig config = runtime().getConfig();
         return unsafe.getInt(metaspaceMethod + config.methodVtableIndexOffset);
-    }
-
-    public void setCurrentTask(CompilationTask task) {
-        currentTask = task;
-    }
-
-    public CompilationTask currentTask() {
-        return currentTask;
     }
 
     public SpeculationLog getSpeculationLog() {

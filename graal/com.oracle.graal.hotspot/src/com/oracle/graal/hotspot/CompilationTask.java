@@ -133,9 +133,6 @@ public class CompilationTask implements Runnable, Comparable {
         try {
             runCompilation(true);
         } finally {
-            if (method.currentTask() == this) {
-                method.setCurrentTask(null);
-            }
             withinEnqueue.set(Boolean.TRUE);
             status.set(CompilationStatus.Finished);
             synchronized (this) {
