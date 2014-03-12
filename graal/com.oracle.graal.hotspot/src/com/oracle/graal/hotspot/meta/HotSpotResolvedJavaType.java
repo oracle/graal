@@ -44,4 +44,19 @@ public abstract class HotSpotResolvedJavaType extends HotSpotJavaType implements
     }
 
     public abstract Class<?> mirror();
+
+    @Override
+    public final boolean equals(Object obj) {
+        if (!(obj instanceof HotSpotResolvedJavaType)) {
+            return false;
+        }
+        HotSpotResolvedJavaType that = (HotSpotResolvedJavaType) obj;
+        return this.mirror().equals(that.mirror());
+    }
+
+    @Override
+    public final int hashCode() {
+        return getName().hashCode();
+    }
+
 }

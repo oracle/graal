@@ -54,7 +54,7 @@ public class PEReadEliminationBlockState extends PartialEscapeBlockState<PEReadE
                 return false;
             }
             ReadCacheEntry other = (ReadCacheEntry) obj;
-            return identity == other.identity && object == other.object;
+            return identity.equals(other.identity) && object == other.object;
         }
 
         @Override
@@ -136,7 +136,7 @@ public class PEReadEliminationBlockState extends PartialEscapeBlockState<PEReadE
         Iterator<Map.Entry<ReadCacheEntry, ValueNode>> iter = readCache.entrySet().iterator();
         while (iter.hasNext()) {
             Map.Entry<ReadCacheEntry, ValueNode> entry = iter.next();
-            if (entry.getKey().identity == identity) {
+            if (entry.getKey().identity.equals(identity)) {
                 iter.remove();
             }
         }

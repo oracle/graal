@@ -579,7 +579,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                     for (int i = 0; i < objStates.length; i++) {
                         ObjectState obj = objStates[i];
                         boolean hasIdentity = obj.virtual.hasIdentity() && mergedVirtualObjects.contains(obj.virtual);
-                        if (hasIdentity || firstObj.virtual.type() != obj.virtual.type() || firstObj.virtual.entryCount() != obj.virtual.entryCount() || !firstObj.locksEqual(obj)) {
+                        if (hasIdentity || !firstObj.virtual.type().equals(obj.virtual.type()) || firstObj.virtual.entryCount() != obj.virtual.entryCount() || !firstObj.locksEqual(obj)) {
                             compatible = false;
                             break;
                         }

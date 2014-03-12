@@ -1434,7 +1434,7 @@ public class InliningUtil {
                     } else {
                         // only handle the outermost frame states
                         if (frameState.outerFrameState() == null) {
-                            assert frameState.bci == FrameState.INVALID_FRAMESTATE_BCI || frameState.method() == inlineGraph.method();
+                            assert frameState.bci == FrameState.INVALID_FRAMESTATE_BCI || frameState.method().equals(inlineGraph.method());
                             if (outerFrameState == null) {
                                 outerFrameState = stateAfter.duplicateModified(invoke.bci(), stateAfter.rethrowException(), invokeNode.kind());
                                 outerFrameState.setDuringCall(true);
@@ -1545,7 +1545,7 @@ public class InliningUtil {
 
     public static FixedWithNextNode inlineMacroNode(Invoke invoke, ResolvedJavaMethod concrete, Class<? extends FixedWithNextNode> macroNodeClass) throws GraalInternalError {
         StructuredGraph graph = invoke.asNode().graph();
-        if (((MethodCallTargetNode) invoke.callTarget()).targetMethod() != concrete) {
+        if (!concrete.equals(((MethodCallTargetNode) invoke.callTarget()).targetMethod())) {
             assert ((MethodCallTargetNode) invoke.callTarget()).invokeKind() != InvokeKind.Static;
             InliningUtil.replaceInvokeCallTarget(invoke, graph, InvokeKind.Special, concrete);
         }

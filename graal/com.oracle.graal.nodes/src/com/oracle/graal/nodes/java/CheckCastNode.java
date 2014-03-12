@@ -165,7 +165,7 @@ public final class CheckCastNode extends FixedWithNextNode implements Canonicali
         }
         if (tool.assumptions() != null && tool.assumptions().useOptimisticAssumptions()) {
             ResolvedJavaType exactType = type.findUniqueConcreteSubtype();
-            if (exactType != null && exactType != type) {
+            if (exactType != null && !exactType.equals(type)) {
                 // Propagate more precise type information to usages of the checkcast.
                 tool.assumptions().recordConcreteSubtype(type, exactType);
                 return graph().add(new CheckCastNode(exactType, object, profile, forStoreCheck));

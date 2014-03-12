@@ -119,14 +119,14 @@ public class ObjectStamp extends Stamp {
             meetAlwaysNull = other.alwaysNull;
         } else {
             meetType = meetTypes(type(), other.type());
-            meetExactType = meetType == type && meetType == other.type && exactType && other.exactType;
+            meetExactType = Objects.equals(meetType, type) && Objects.equals(meetType, other.type) && exactType && other.exactType;
             meetNonNull = nonNull && other.nonNull;
             meetAlwaysNull = false;
         }
 
-        if (meetType == type && meetExactType == exactType && meetNonNull == nonNull && meetAlwaysNull == alwaysNull) {
+        if (Objects.equals(meetType, type) && meetExactType == exactType && meetNonNull == nonNull && meetAlwaysNull == alwaysNull) {
             return this;
-        } else if (meetType == other.type && meetExactType == other.exactType && meetNonNull == other.nonNull && meetAlwaysNull == other.alwaysNull) {
+        } else if (Objects.equals(meetType, other.type) && meetExactType == other.exactType && meetNonNull == other.nonNull && meetAlwaysNull == other.alwaysNull) {
             return other;
         } else {
             return new ObjectStamp(meetType, meetExactType, meetNonNull, meetAlwaysNull);
@@ -186,7 +186,7 @@ public class ObjectStamp extends Stamp {
         boolean joinAlwaysNull = alwaysNull || other.alwaysNull;
         boolean joinNonNull = nonNull || other.nonNull;
         boolean joinExactType = exactType || other.exactType;
-        if (type == other.type) {
+        if (Objects.equals(type, other.type)) {
             joinType = type;
         } else if (type == null && other.type == null) {
             joinType = null;
@@ -230,9 +230,9 @@ public class ObjectStamp extends Stamp {
         } else if (joinExactType && !isConcreteType(joinType)) {
             return StampFactory.illegal(Kind.Object);
         }
-        if (joinType == type && joinExactType == exactType && joinNonNull == nonNull && joinAlwaysNull == alwaysNull) {
+        if (Objects.equals(joinType, type) && joinExactType == exactType && joinNonNull == nonNull && joinAlwaysNull == alwaysNull) {
             return this;
-        } else if (joinType == other.type && joinExactType == other.exactType && joinNonNull == other.nonNull && joinAlwaysNull == other.alwaysNull) {
+        } else if (Objects.equals(joinType, other.type) && joinExactType == other.exactType && joinNonNull == other.nonNull && joinAlwaysNull == other.alwaysNull) {
             return other;
         } else {
             return new ObjectStamp(joinType, joinExactType, joinNonNull, joinAlwaysNull);
@@ -244,7 +244,7 @@ public class ObjectStamp extends Stamp {
     }
 
     private static ResolvedJavaType meetTypes(ResolvedJavaType a, ResolvedJavaType b) {
-        if (a == b) {
+        if (Objects.equals(a, b)) {
             return a;
         } else if (a == null || b == null) {
             return null;

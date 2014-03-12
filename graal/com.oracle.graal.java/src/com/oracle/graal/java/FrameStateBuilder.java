@@ -146,7 +146,7 @@ public class FrameStateBuilder {
     }
 
     public boolean isCompatibleWith(FrameStateBuilder other) {
-        assert method == other.method && graph == other.graph && localsSize() == other.localsSize() : "Can only compare frame states of the same method";
+        assert method.equals(other.method) && graph == other.graph && localsSize() == other.localsSize() : "Can only compare frame states of the same method";
         assert lockedObjects.length == monitorIds.length && other.lockedObjects.length == other.monitorIds.length : "mismatch between lockedObjects and monitorIds";
 
         if (stackSize() != other.stackSize()) {

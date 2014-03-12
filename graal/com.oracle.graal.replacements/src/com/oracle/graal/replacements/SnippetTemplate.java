@@ -340,7 +340,7 @@ public class SnippetTemplate {
                 return false;
             }
             CacheKey other = (CacheKey) obj;
-            if (method != other.method) {
+            if (!method.equals(other.method)) {
                 return false;
             }
             if (guardsStage != other.guardsStage || loweringStage != other.loweringStage) {

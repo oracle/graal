@@ -128,6 +128,20 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
         return unsafe.getAddress(metaspaceMethod + runtime().getConfig().methodConstMethodOffset);
     }
 
+    @Override
+    public boolean equals(Object obj) {
+        if (obj instanceof HotSpotResolvedJavaMethod) {
+            HotSpotResolvedJavaMethod that = (HotSpotResolvedJavaMethod) obj;
+            return that.metaspaceMethod == metaspaceMethod;
+        }
+        return false;
+    }
+
+    @Override
+    public int hashCode() {
+        return (int) metaspaceMethod;
+    }
+
     /**
      * Returns this method's constant method flags ({@code ConstMethod::_flags}).
      * 
