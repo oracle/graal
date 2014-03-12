@@ -79,7 +79,7 @@ public final class RedundantMoveElimination {
         int entryValueNum;
     }
 
-    Map<Block, BlockData> blockData = new HashMap<>();
+    Map<AbstractBlock<?>, BlockData> blockData = new HashMap<>();
 
     Register[] callerSaveRegs;
 
@@ -134,7 +134,7 @@ public final class RedundantMoveElimination {
 
     private void initBlockData(LIR lir) {
 
-        List<Block> blocks = lir.linearScanOrder();
+        List<? extends AbstractBlock<?>> blocks = lir.linearScanOrder();
         numRegs = 0;
 
         int maxStackLocations = COMPLEXITY_LIMIT / blocks.size();
@@ -143,7 +143,7 @@ public final class RedundantMoveElimination {
          * Search for relevant locations which can be optimized. These are register or stack slots
          * which occur as destinations of move instructions.
          */
-        for (Block block : blocks) {
+        for (AbstractBlock<?> block : blocks) {
             List<LIRInstruction> instructions = lir.lir(block);
             for (LIRInstruction op : instructions) {
                 if (isEligibleMove(op)) {
@@ -168,7 +168,7 @@ public final class RedundantMoveElimination {
          */
         int numLocations = numRegs + stackIndices.size();
         Debug.log("num locations = %d (regs = %d, stack = %d)", numLocations, numRegs, stackIndices.size());
-        for (Block block : blocks) {
+        for (AbstractBlock<?> block : blocks) {
             BlockData data = new BlockData(numLocations);
             blockData.put(block, data);
         }
@@ -183,7 +183,7 @@ public final class RedundantMoveElimination {
 
         Indent indent = Debug.logAndIndent("solve data flow");
 
-        List<Block> blocks = lir.linearScanOrder();
+        List<? extends AbstractBlock<?>> blocks = lir.linearScanOrder();
 
         int numIter = 0;
 
@@ -197,7 +197,7 @@ public final class RedundantMoveElimination {
             changed = false;
             Indent indent2 = indent.logAndIndent("new iteration");
 
-            for (Block block : blocks) {
+            for (AbstractBlock<?> block : blocks) {
 
                 BlockData data = blockData.get(block);
                 /*
@@ -226,7 +226,7 @@ public final class RedundantMoveElimination {
                     /*
                      * Merge the states of predecessor blocks
                      */
-                    for (Block predecessor : block.getPredecessors()) {
+                    for (AbstractBlock<?> predecessor : block.getPredecessors()) {
                         BlockData predData = blockData.get(predecessor);
                         newState |= mergeState(data.entryState, predData.exitState, valueNum);
                     }
@@ -281,9 +281,9 @@ public final class RedundantMoveElimination {
 
         Indent indent = Debug.logAndIndent("eliminate moves");
 
-        List<Block> blocks = lir.linearScanOrder();
+        List<? extends AbstractBlock<?>> blocks = lir.linearScanOrder();
 
-        for (Block block : blocks) {
+        for (AbstractBlock<?> block : blocks) {
 
             Indent indent2 = indent.logAndIndent("eliminate moves in block %d", block.getId());
 

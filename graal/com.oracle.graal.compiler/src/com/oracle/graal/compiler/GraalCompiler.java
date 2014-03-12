@@ -239,11 +239,13 @@ public class GraalCompiler {
         assert startBlock.getPredecessorCount() == 0;
 
         LIR lir = null;
+        List<Block> codeEmittingOrder = null;
+        List<Block> linearScanOrder = null;
         try (Scope ds = Debug.scope("MidEnd")) {
             try (Scope s = Debug.scope("ComputeLinearScanOrder")) {
                 NodesToDoubles nodeProbabilities = new ComputeProbabilityClosure(graph).apply();
-                List<Block> codeEmittingOrder = ComputeBlockOrder.computeCodeEmittingOrder(blocks.length, startBlock, nodeProbabilities);
-                List<Block> linearScanOrder = ComputeBlockOrder.computeLinearScanOrder(blocks.length, startBlock, nodeProbabilities);
+                codeEmittingOrder = ComputeBlockOrder.computeCodeEmittingOrder(blocks.length, startBlock, nodeProbabilities);
+                linearScanOrder = ComputeBlockOrder.computeLinearScanOrder(blocks.length, startBlock, nodeProbabilities);
 
                 lir = new LIR(schedule.getCFG(), linearScanOrder, codeEmittingOrder);
                 Debug.dump(lir, "After linear scan order");
@@ -258,7 +260,7 @@ public class GraalCompiler {
             LIRGenerator lirGen = backend.newLIRGenerator(graph, stub, frameMap, cc, lir);
 
             try (Scope s = Debug.scope("LIRGen", lirGen)) {
-                for (Block b : lir.linearScanOrder()) {
+                for (Block b : linearScanOrder) {
                     emitBlock(lirGen, b, graph, schedule.getBlockToNodesMap());
                 }
                 lirGen.beforeRegisterAllocation();

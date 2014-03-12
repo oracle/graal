@@ -40,12 +40,12 @@ public class LIR {
     /**
      * The linear-scan ordered list of blocks.
      */
-    private final List<Block> linearScanOrder;
+    private final List<? extends AbstractBlock<?>> linearScanOrder;
 
     /**
      * The order in which the code is emitted.
      */
-    private final List<Block> codeEmittingOrder;
+    private final List<? extends AbstractBlock<?>> codeEmittingOrder;
 
     private int firstVariableNumber;
 
@@ -65,7 +65,7 @@ public class LIR {
     /**
      * Creates a new LIR instance for the specified compilation.
      */
-    public LIR(ControlFlowGraph cfg, List<Block> linearScanOrder, List<Block> codeEmittingOrder) {
+    public LIR(ControlFlowGraph cfg, List<? extends AbstractBlock<?>> linearScanOrder, List<? extends AbstractBlock<?>> codeEmittingOrder) {
         this.cfg = cfg;
         this.codeEmittingOrder = codeEmittingOrder;
         this.linearScanOrder = linearScanOrder;
@@ -80,7 +80,7 @@ public class LIR {
      * Determines if any instruction in the LIR has debug info associated with it.
      */
     public boolean hasDebugInfo() {
-        for (Block b : linearScanOrder()) {
+        for (AbstractBlock<?> b : linearScanOrder()) {
             for (LIRInstruction op : lir(b)) {
                 if (op.hasState()) {
                     return true;
@@ -108,11 +108,11 @@ public class LIR {
      * 
      * @return the blocks in linear scan order
      */
-    public List<Block> linearScanOrder() {
+    public List<? extends AbstractBlock<?>> linearScanOrder() {
         return linearScanOrder;
     }
 
-    public List<Block> codeEmittingOrder() {
+    public List<? extends AbstractBlock<?>> codeEmittingOrder() {
         return codeEmittingOrder;
     }
 
@@ -169,7 +169,7 @@ public class LIR {
      */
     public static final int MAX_EXCEPTION_EDGE_OP_DISTANCE_FROM_END = 3;
 
-    public static boolean verifyBlock(LIR lir, Block block) {
+    public static boolean verifyBlock(LIR lir, AbstractBlock<?> block) {
         List<LIRInstruction> ops = lir.lir(block);
         if (ops.size() == 0) {
             return false;
@@ -193,12 +193,12 @@ public class LIR {
         return true;
     }
 
-    public static boolean verifyBlocks(LIR lir, List<Block> blocks) {
-        for (Block block : blocks) {
-            for (Block sux : block.getSuccessors()) {
+    public static boolean verifyBlocks(LIR lir, List<? extends AbstractBlock<?>> blocks) {
+        for (AbstractBlock<?> block : blocks) {
+            for (AbstractBlock<?> sux : block.getSuccessors()) {
                 assert blocks.contains(sux) : "missing successor from: " + block + "to: " + sux;
             }
-            for (Block pred : block.getPredecessors()) {
+            for (AbstractBlock<?> pred : block.getPredecessors()) {
                 assert blocks.contains(pred) : "missing predecessor from: " + block + "to: " + pred;
             }
             if (!verifyBlock(lir, block)) {

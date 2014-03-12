@@ -423,7 +423,7 @@ public class PTXHotSpotBackend extends HotSpotBackend {
 
         RegisterAnalysis registerAnalysis = new RegisterAnalysis();
 
-        for (Block b : lir.codeEmittingOrder()) {
+        for (AbstractBlock<?> b : lir.codeEmittingOrder()) {
             for (LIRInstruction op : lir.lir(b)) {
                 if (op instanceof LabelOp) {
                     // Don't consider this as a definition
