@@ -61,10 +61,10 @@ public final class HotSpotGraalRuntime implements GraalRuntime, RuntimeProvider 
      */
     @CallerSensitive
     public static HotSpotGraalRuntime runtime() {
-        Class cc = Reflection.getCallerClass();
-        if (cc != null && cc.getClassLoader() != null) {
-            SecurityManager sm = System.getSecurityManager();
-            if (sm != null) {
+        SecurityManager sm = System.getSecurityManager();
+        if (sm != null) {
+            Class cc = Reflection.getCallerClass();
+            if (cc != null && cc.getClassLoader() != null) {
                 sm.checkPermission(Graal.ACCESS_PERMISSION);
             }
         }
@@ -73,7 +73,7 @@ public final class HotSpotGraalRuntime implements GraalRuntime, RuntimeProvider 
     }
 
     static {
-        Reflection.registerFieldsToFilter(HotSpotGraalRuntime.class, new String[]{"instance"});
+        Reflection.registerFieldsToFilter(HotSpotGraalRuntime.class, "instance");
     }
 
     /**
