@@ -825,7 +825,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
              * calls). Also, interfaces are initialized only under special circumstances, so that
              * this assertion would often fail for interface calls.
              */
-            assert !graphBuilderConfig.unresolvedIsError() || (result instanceof ResolvedJavaMethod && (opcode != INVOKESTATIC || ((ResolvedJavaMethod) result).getDeclaringClass().isInitialized()));
+            assert !graphBuilderConfig.unresolvedIsError() || (result instanceof ResolvedJavaMethod && (opcode != INVOKESTATIC || ((ResolvedJavaMethod) result).getDeclaringClass().isInitialized())) : result;
             return result;
         }
 
@@ -839,7 +839,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
         private Object lookupConstant(int cpi, int opcode) {
             eagerResolvingForSnippets(cpi, opcode);
             Object result = constantPool.lookupConstant(cpi);
-            assert !graphBuilderConfig.eagerResolving() || !(result instanceof JavaType) || (result instanceof ResolvedJavaType);
+            assert !graphBuilderConfig.eagerResolving() || !(result instanceof JavaType) || (result instanceof ResolvedJavaType) : result;
             return result;
         }
 
