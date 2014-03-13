@@ -27,6 +27,9 @@ import static com.oracle.graal.bytecode.Bytecodes.*;
 import static com.oracle.graal.phases.GraalOptions.*;
 import static java.lang.reflect.Modifier.*;
 
+import java.util.*;
+
+import com.oracle.graal.alloc.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.meta.ResolvedJavaType.Representation;
@@ -44,6 +47,7 @@ import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.calc.FloatConvertNode.FloatConvert;
+import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.java.*;
 
@@ -101,8 +105,29 @@ public class BaselineCompiler {
             filter.remove();
         }
         // emitLIR
-        LIRBlock b = new LIRBlock();
-        LIRGenerator lirGen = null;
+        LIRBlock b = new LIRBlock(0);
+        LIRBlock[] blocks = new LIRBlock[1];
+        blocks[0] = b;
+
+        AbstractControlFlowGraph<?> cfg = new LIRControlFlowGraph(blocks, null);
+        BlocksToDoubles blockProbabilities = new BlocksToDoubles(blocks.length);
+        blockProbabilities.put(b, 1);
+
+        List<? extends AbstractBlock<?>> linearScanOrder = ComputeBlockOrder.computeLinearScanOrder(blocks.length, b, blockProbabilities);
+        List<? extends AbstractBlock<?>> codeEmittingOrder = ComputeBlockOrder.computeCodeEmittingOrder(blocks.length, b, blockProbabilities);
+        LIR lir = new LIR(cfg, linearScanOrder, codeEmittingOrder);
+        CallingConvention cc = CodeUtil.getCallingConvention(backend.getProviders().getCodeCache(), CallingConvention.Type.JavaCallee, method, false);
+        LIRGenerator lirGen = backend.newLIRGenerator(null, null, backend.newFrameMap(), cc, lir);
+
+        // add instruction
+        lirGen.emitAdd(Constant.forLong(42), Constant.forLong(73));
+
+        List<LIRInstruction> lirList = null;
+        lir.setLir(b, lirList);
+
+        // register allocation
+        lirGen.getFrameMap().finish();
+
         // emitCode
         Assumptions assumptions = new Assumptions(OptAssumptions.getValue());
         GraalCompiler.emitCode(backend, new long[0], assumptions, lirGen, compilationResult, installedCodeOwner, factory);
