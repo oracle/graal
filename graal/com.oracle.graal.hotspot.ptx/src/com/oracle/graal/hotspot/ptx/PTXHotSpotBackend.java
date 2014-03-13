@@ -41,7 +41,6 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.HotSpotReplacementsImpl.GraphProducer;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
@@ -163,30 +162,6 @@ public class PTXHotSpotBackend extends HotSpotBackend {
      */
     public boolean isDeviceInitialized() {
         return deviceInitialized;
-    }
-
-    @Override
-    public GraphProducer getGraphProducer() {
-        if (!deviceInitialized) {
-            // GPU could not be initialized so offload is disabled
-            return null;
-        }
-        return new GraphProducer() {
-
-            public StructuredGraph getGraphFor(ResolvedJavaMethod method) {
-                if (canOffloadToGPU(method)) {
-                    ExternalCompilationResult ptxCode = PTXHotSpotBackend.this.compileKernel(method, true);
-                    HotSpotNmethod installedPTXCode = PTXHotSpotBackend.this.installKernel(method, ptxCode);
-                    return new PTXWrapperBuilder(method, installedPTXCode, getRuntime().getHostBackend().getProviders()).getGraph();
-                }
-                return null;
-            }
-
-            private boolean canOffloadToGPU(ResolvedJavaMethod method) {
-                HotSpotVMConfig config = getRuntime().getConfig();
-                return config.gpuOffload && method.getName().contains("lambda$") && method.isSynthetic();
-            }
-        };
     }
 
     /**
