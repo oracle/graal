@@ -130,6 +130,8 @@ public interface CompilerToVM {
 
     int lookupKlassRefIndexInPool(long metaspaceConstantPool, int cpi);
 
+    long constantPoolKlassAt(long metaspaceConstantPool, int cpi);
+
     /**
      * Looks up a class entry in a constant pool.
      * 
@@ -165,7 +167,7 @@ public interface CompilerToVM {
      */
     long resolveField(long metaspaceConstantPool, int cpi, byte opcode, long[] info);
 
-    void loadReferencedTypeInPool(long metaspaceConstantPool, int cpi, byte opcode);
+    int constantPoolRemapInstructionOperandFromCache(long metaspaceConstantPool, int cpi);
 
     Object lookupAppendixInPool(long metaspaceConstantPool, int cpi);
 
