@@ -98,7 +98,7 @@ public class LIR {
         return lirInstructions.get(block);
     }
 
-    public void setLir(Block block, List<LIRInstruction> list) {
+    public void setLir(AbstractBlock<?> block, List<LIRInstruction> list) {
         assert lir(block) == null : "lir instruction list should only be initialized once";
         lirInstructions.put(block, list);
     }
