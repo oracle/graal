@@ -37,6 +37,7 @@ import com.oracle.graal.debug.internal.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.*;
+import com.oracle.graal.phases.VerifyPhase.VerificationError;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.phases.util.*;
 import com.oracle.graal.phases.verify.*;
@@ -115,10 +116,12 @@ public class CheckGraalInvariants {
                             try (DebugConfigScope s = Debug.setConfig(noInterceptConfig)) {
                                 graphBuilderSuite.apply(graph, context);
                                 checkGraph(context, graph);
-                            } catch (AssertionError e) {
+                            } catch (VerificationError e) {
                                 errors.add(e.getMessage());
                             } catch (LinkageError e) {
                                 // suppress linkages errors resulting from eager resolution
+                            } catch (Throwable e) {
+                                throw new AssertionError("Error while checking " + methodName, e);
                             }
 
                         }
