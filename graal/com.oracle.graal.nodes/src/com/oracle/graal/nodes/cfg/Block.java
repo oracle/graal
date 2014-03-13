@@ -27,34 +27,18 @@ import java.util.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 
-public final class Block implements AbstractBlock<Block> {
+public final class Block extends AbstractBlockBase<Block> {
 
     protected final AbstractBeginNode beginNode;
-
-    protected int id;
 
     protected FixedNode endNode;
     protected Loop loop;
 
-    protected List<Block> predecessors;
-    protected List<Block> successors;
-
-    protected Block dominator;
     protected List<Block> dominated;
     protected Block postdominator;
 
-    private boolean align;
-    private int linearScanNumber;
-
     protected Block(AbstractBeginNode node) {
         this.beginNode = node;
-
-        this.id = ControlFlowGraph.BLOCK_ID_INITIAL;
-        this.linearScanNumber = -1;
-    }
-
-    public int getId() {
-        return id;
     }
 
     public AbstractBeginNode getBeginNode() {
@@ -89,20 +73,8 @@ public final class Block implements AbstractBlock<Block> {
         return predecessors.get(0);
     }
 
-    public List<Block> getPredecessors() {
-        return predecessors;
-    }
-
     public Block getFirstSuccessor() {
         return successors.get(0);
-    }
-
-    public List<Block> getSuccessors() {
-        return successors;
-    }
-
-    public Block getDominator() {
-        return dominator;
     }
 
     public Block getEarliestPostDominated() {
@@ -187,14 +159,6 @@ public final class Block implements AbstractBlock<Block> {
         return "B" + id;
     }
 
-    public int getPredecessorCount() {
-        return getPredecessors().size();
-    }
-
-    public int getSuccessorCount() {
-        return getSuccessors().size();
-    }
-
     public boolean dominates(Block block) {
         return block.isDominatedBy(this);
     }
@@ -209,19 +173,4 @@ public final class Block implements AbstractBlock<Block> {
         return dominator.isDominatedBy(block);
     }
 
-    public int getLinearScanNumber() {
-        return linearScanNumber;
-    }
-
-    public void setLinearScanNumber(int linearScanNumber) {
-        this.linearScanNumber = linearScanNumber;
-    }
-
-    public boolean isAligned() {
-        return align;
-    }
-
-    public void setAlign(boolean align) {
-        this.align = align;
-    }
 }
