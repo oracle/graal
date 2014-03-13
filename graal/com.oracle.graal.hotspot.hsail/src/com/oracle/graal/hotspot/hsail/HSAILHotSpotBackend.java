@@ -216,7 +216,7 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
 
     @Override
     public CompilationResultBuilder newCompilationResultBuilder(LIRGenerator lirGen, CompilationResult compilationResult, CompilationResultBuilderFactory factory) {
-        FrameMap frameMap = lirGen.frameMap;
+        FrameMap frameMap = lirGen.getFrameMap();
         Assembler masm = createAssembler(frameMap);
         HotSpotFrameContext frameContext = new HotSpotFrameContext();
         CompilationResultBuilder crb = factory.createBuilder(getCodeCache(), getForeignCalls(), frameMap, masm, frameContext, compilationResult);

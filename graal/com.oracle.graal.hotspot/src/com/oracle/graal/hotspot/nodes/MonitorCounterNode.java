@@ -43,7 +43,7 @@ public final class MonitorCounterNode extends FloatingNode implements LIRGenLowe
     @Override
     public void generate(LIRGenerator gen) {
         assert graph().getNodes().filter(MonitorCounterNode.class).count() == 1 : "monitor counters not canonicalized to single instance";
-        StackSlot counter = gen.frameMap().allocateStackSlots(1, new BitSet(0), null);
+        StackSlot counter = gen.getFrameMap().allocateStackSlots(1, new BitSet(0), null);
         Value result = gen.emitAddress(counter);
         gen.setResult(this, result);
     }

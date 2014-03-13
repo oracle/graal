@@ -930,7 +930,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
             sig[i] = node.arguments().get(i).stamp().javaType(getMetaAccess());
         }
 
-        Value[] parameters = visitInvokeArguments(frameMap.registerConfig.getCallingConvention(CallingConvention.Type.JavaCall, null, sig, target(), false), node.arguments());
+        Value[] parameters = visitInvokeArguments(getFrameMap().registerConfig.getCallingConvention(CallingConvention.Type.JavaCall, null, sig, target(), false), node.arguments());
         append(new SPARCBreakpointOp(parameters));
     }
 

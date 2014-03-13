@@ -71,10 +71,9 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
      */
     StackSlot deoptimizationRescueSlot;
 
-    @SuppressWarnings("hiding")
     @Override
     protected DebugInfoBuilder createDebugInfoBuilder(NodeMap<Value> nodeOperands) {
-        HotSpotLockStack lockStack = new HotSpotLockStack(frameMap, Kind.Long);
+        HotSpotLockStack lockStack = new HotSpotLockStack(getFrameMap(), Kind.Long);
         return new HotSpotDebugInfoBuilder(nodeOperands, lockStack);
     }
 

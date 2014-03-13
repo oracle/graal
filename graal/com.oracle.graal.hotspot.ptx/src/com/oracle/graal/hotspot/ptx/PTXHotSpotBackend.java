@@ -358,7 +358,7 @@ public class PTXHotSpotBackend extends HotSpotBackend {
         // - has no callee-saved registers
         // - has no incoming arguments passed on the stack
         // - has no instructions with debug info
-        FrameMap frameMap = lirGen.frameMap;
+        FrameMap frameMap = lirGen.getFrameMap();
         Assembler masm = createAssembler(frameMap);
         PTXFrameContext frameContext = new PTXFrameContext();
         CompilationResultBuilder crb = factory.createBuilder(getCodeCache(), getForeignCalls(), frameMap, masm, frameContext, compilationResult);

@@ -68,9 +68,9 @@ public abstract class LIRGenerator implements LIRGeneratorTool, LIRTypeTool {
         // @formatter:on
     }
 
-    public final FrameMap frameMap;
-    public final NodeMap<Value> nodeOperands;
-    public final LIR lir;
+    private final FrameMap frameMap;
+    private final NodeMap<Value> nodeOperands;
+    private final LIR lir;
 
     private final Providers providers;
     protected final CallingConvention cc;
@@ -857,7 +857,15 @@ public abstract class LIRGenerator implements LIRGeneratorTool, LIRTypeTool {
 
     protected abstract void emitTableSwitch(int lowKey, LabelRef defaultTarget, LabelRef[] targets, Value key);
 
-    public FrameMap frameMap() {
+    public final LIR getLIR() {
+        return lir;
+    }
+
+    public final NodeMap<Value> getNodeOperands() {
+        return nodeOperands;
+    }
+
+    public final FrameMap getFrameMap() {
         return frameMap;
     }
 

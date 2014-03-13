@@ -51,7 +51,7 @@ public final class DimensionsNode extends FixedWithNextNode implements LIRGenLow
         int size = rank * 4;
         int wordSize = gen.target().wordSize;
         int slots = roundUp(size, wordSize) / wordSize;
-        StackSlot array = gen.frameMap().allocateStackSlots(slots, new BitSet(0), null);
+        StackSlot array = gen.getFrameMap().allocateStackSlots(slots, new BitSet(0), null);
         Value result = gen.emitAddress(array);
         gen.setResult(this, result);
     }

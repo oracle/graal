@@ -121,6 +121,6 @@ public class AllocatorTest extends GraalCompilerTest {
 
         CallingConvention cc = getCallingConvention(getCodeCache(), Type.JavaCallee, graph.method(), false);
         LIRGenerator lirGen = GraalCompiler.emitLIR(getBackend(), getBackend().getTarget(), schedule, graph, null, cc);
-        return new RegisterStats(lirGen.lir);
+        return new RegisterStats(lirGen.getLIR());
     }
 }

@@ -106,7 +106,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
 
         public SaveRbp(NoOp placeholder) {
             this.placeholder = placeholder;
-            this.reservedSlot = frameMap.allocateSpillSlot(Kind.Long);
+            this.reservedSlot = getFrameMap().allocateSpillSlot(Kind.Long);
             assert reservedSlot.getRawOffset() == -16 : reservedSlot.getRawOffset();
         }
 
@@ -120,11 +120,11 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
             if (useStack) {
                 dst = reservedSlot;
             } else {
-                frameMap.freeSpillSlot(reservedSlot);
+                getFrameMap().freeSpillSlot(reservedSlot);
                 dst = newVariable(Kind.Long);
             }
 
-            placeholder.replace(lir, new MoveFromRegOp(dst, rbp.asValue(Kind.Long)));
+            placeholder.replace(getLIR(), new MoveFromRegOp(dst, rbp.asValue(Kind.Long)));
             return dst;
         }
     }
@@ -144,10 +144,9 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         }
     }
 
-    @SuppressWarnings("hiding")
     @Override
     protected DebugInfoBuilder createDebugInfoBuilder(NodeMap<Value> nodeOperands) {
-        HotSpotLockStack lockStack = new HotSpotLockStack(frameMap, Kind.Long);
+        HotSpotLockStack lockStack = new HotSpotLockStack(getFrameMap(), Kind.Long);
         return new HotSpotDebugInfoBuilder(nodeOperands, lockStack);
     }
 
@@ -166,8 +165,8 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
             params[i] = toStackKind(incomingArguments.getArgument(i));
             if (isStackSlot(params[i])) {
                 StackSlot slot = ValueUtil.asStackSlot(params[i]);
-                if (slot.isInCallerFrame() && !lir.hasArgInCallerFrame()) {
-                    lir.setHasArgInCallerFrame();
+                if (slot.isInCallerFrame() && !getLIR().hasArgInCallerFrame()) {
+                    getLIR().setHasArgInCallerFrame();
                 }
             }
         }
@@ -175,7 +174,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
 
         emitIncomingValues(params);
 
-        saveRbp = new SaveRbp(new NoOp(currentBlock, lir.lir(currentBlock).size()));
+        saveRbp = new SaveRbp(new NoOp(currentBlock, getLIR().lir(currentBlock).size()));
         append(saveRbp.placeholder);
 
         for (ParameterNode param : graph.getNodes(ParameterNode.class)) {
@@ -248,12 +247,12 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         if (destroysRegisters) {
             if (getStub() != null) {
                 if (getStub().preservesRegisters()) {
-                    Register[] savedRegisters = frameMap.registerConfig.getAllocatableRegisters();
+                    Register[] savedRegisters = getFrameMap().registerConfig.getAllocatableRegisters();
                     savedRegisterLocations = new StackSlot[savedRegisters.length];
                     for (int i = 0; i < savedRegisters.length; i++) {
                         PlatformKind kind = target().arch.getLargestStorableKind(savedRegisters[i].getRegisterCategory());
                         assert kind != Kind.Illegal;
-                        StackSlot spillSlot = frameMap.allocateSpillSlot(kind);
+                        StackSlot spillSlot = getFrameMap().allocateSpillSlot(kind);
                         savedRegisterLocations[i] = spillSlot;
                     }
                     save = emitSaveRegisters(savedRegisters, savedRegisterLocations);
@@ -296,7 +295,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     }
 
     protected boolean zapRegisters() {
-        Register[] zappedRegisters = frameMap.registerConfig.getAllocatableRegisters();
+        Register[] zappedRegisters = getFrameMap().registerConfig.getAllocatableRegisters();
         Constant[] zapValues = new Constant[zappedRegisters.length];
         for (int i = 0; i < zappedRegisters.length; i++) {
             PlatformKind kind = target().arch.getLargestStorableKind(zappedRegisters[i].getRegisterCategory());
@@ -350,7 +349,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     @Override
     public void emitCCall(long address, CallingConvention nativeCallingConvention, Value[] args, int numberOfFloatingPointArguments) {
         Value[] argLocations = new Value[args.length];
-        frameMap.callsMethod(nativeCallingConvention);
+        getFrameMap().callsMethod(nativeCallingConvention);
         // TODO(mg): in case a native function uses floating point varargs, the ABI requires that
         // RAX contains the length of the varargs
         AllocatableValue numberOfFloatingPointArgumentsRegister = AMD64.rax.asValue();
@@ -449,10 +448,10 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     @Override
     public void beforeRegisterAllocation() {
         super.beforeRegisterAllocation();
-        boolean hasDebugInfo = lir.hasDebugInfo();
+        boolean hasDebugInfo = getLIR().hasDebugInfo();
         AllocatableValue savedRbp = saveRbp.finalize(hasDebugInfo);
         if (hasDebugInfo) {
-            deoptimizationRescueSlot = frameMap.allocateSpillSlot(Kind.Long);
+            deoptimizationRescueSlot = getFrameMap().allocateSpillSlot(Kind.Long);
         }
 
         for (AMD64HotSpotEpilogueOp op : epilogueOps) {

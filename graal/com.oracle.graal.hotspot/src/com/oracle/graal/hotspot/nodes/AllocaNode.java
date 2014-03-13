@@ -58,7 +58,7 @@ public final class AllocaNode extends FixedWithNextNode implements LIRGenLowerab
 
     @Override
     public void generate(LIRGenerator gen) {
-        StackSlot array = gen.frameMap().allocateStackSlots(slots, objects, null);
+        StackSlot array = gen.getFrameMap().allocateStackSlots(slots, objects, null);
         Value result = gen.emitAddress(array);
         gen.setResult(this, result);
     }

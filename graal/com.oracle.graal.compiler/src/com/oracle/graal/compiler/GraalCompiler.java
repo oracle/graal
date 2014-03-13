@@ -222,7 +222,7 @@ public class GraalCompiler {
     }
 
     private static void emitBlock(LIRGenerator lirGen, Block b, StructuredGraph graph, BlockMap<List<ScheduledNode>> blockMap) {
-        if (lirGen.lir.lir(b) == null) {
+        if (lirGen.getLIR().lir(b) == null) {
             for (Block pred : b.getPredecessors()) {
                 if (!b.isLoopHeader() || !pred.isLoopEnd()) {
                     emitBlock(lirGen, pred, graph, blockMap);
@@ -299,7 +299,7 @@ public class GraalCompiler {
     public static void emitCode(Backend backend, long[] leafGraphIds, Assumptions assumptions, LIRGenerator lirGen, CompilationResult compilationResult, ResolvedJavaMethod installedCodeOwner,
                     CompilationResultBuilderFactory factory) {
         CompilationResultBuilder crb = backend.newCompilationResultBuilder(lirGen, compilationResult, factory);
-        backend.emitCode(crb, lirGen.lir, installedCodeOwner);
+        backend.emitCode(crb, lirGen.getLIR(), installedCodeOwner);
         crb.finish();
         if (!assumptions.isEmpty()) {
             compilationResult.setAssumptions(assumptions);
