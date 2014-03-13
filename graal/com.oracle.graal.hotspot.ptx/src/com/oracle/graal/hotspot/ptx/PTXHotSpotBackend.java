@@ -392,7 +392,7 @@ public class PTXHotSpotBackend extends HotSpotBackend {
         asm.emitString("");
 
         // Get the start block
-        Block startBlock = lir.getControlFlowGraph().getStartBlock();
+        AbstractBlock<?> startBlock = lir.getControlFlowGraph().getStartBlock();
         // Keep a list of ParameterOp instructions to delete from the
         // list of instructions in the block.
         ArrayList<LIRInstruction> deleteOps = new ArrayList<>();

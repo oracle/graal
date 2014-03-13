@@ -22,6 +22,12 @@
  */
 package com.oracle.graal.hotspot.sparc;
 
+import static com.oracle.graal.api.code.CallingConvention.Type.*;
+import static com.oracle.graal.api.code.ValueUtil.*;
+import static com.oracle.graal.phases.GraalOptions.*;
+import static com.oracle.graal.sparc.SPARC.*;
+import static java.lang.reflect.Modifier.*;
+
 import java.util.*;
 
 import sun.misc.*;
@@ -30,25 +36,26 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
 import com.oracle.graal.asm.sparc.*;
-import com.oracle.graal.asm.sparc.SPARCAssembler.*;
-import com.oracle.graal.compiler.gen.LIRGenerator;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Bpne;
+import com.oracle.graal.asm.sparc.SPARCAssembler.CC;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Ldx;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Save;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Stx;
+import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Cmp;
+import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Nop;
+import com.oracle.graal.asm.sparc.SPARCMacroAssembler.RestoreWindow;
+import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Setx;
+import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.bridge.*;
 import com.oracle.graal.hotspot.meta.*;
-import com.oracle.graal.hotspot.stubs.Stub;
+import com.oracle.graal.hotspot.stubs.*;
 import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.StandardOp.*;
+import com.oracle.graal.lir.StandardOp.SaveRegistersOp;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.sparc.*;
 import com.oracle.graal.nodes.*;
-
-import static com.oracle.graal.sparc.SPARC.*;
-import static com.oracle.graal.asm.sparc.SPARCMacroAssembler.*;
-import static com.oracle.graal.api.code.CallingConvention.Type.*;
-import static com.oracle.graal.api.code.ValueUtil.*;
-import static com.oracle.graal.phases.GraalOptions.*;
-import static java.lang.reflect.Modifier.*;
 
 /**
  * HotSpot SPARC specific backend.

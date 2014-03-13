@@ -28,5 +28,5 @@ public interface AbstractControlFlowGraph<T extends AbstractBlock<T>> {
 
     Loop[] getLoops();
 
-    Block getStartBlock();
+    T getStartBlock();
 }
