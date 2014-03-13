@@ -318,14 +318,9 @@ public class InliningUtil {
         }
 
         protected static void inline(Invoke invoke, ResolvedJavaMethod concrete, Inlineable inlineable, Assumptions assumptions, boolean receiverNullCheck) {
-            StructuredGraph graph = invoke.asNode().graph();
             if (inlineable instanceof InlineableGraph) {
                 StructuredGraph calleeGraph = ((InlineableGraph) inlineable).getGraph();
                 InliningUtil.inline(invoke, calleeGraph, receiverNullCheck);
-
-                graph.getLeafGraphIds().add(calleeGraph.graphId());
-                // we might at some point cache already-inlined graphs, so add recursively:
-                graph.getLeafGraphIds().addAll(calleeGraph.getLeafGraphIds());
             } else {
                 assert inlineable instanceof InlineableMacroNode;
 

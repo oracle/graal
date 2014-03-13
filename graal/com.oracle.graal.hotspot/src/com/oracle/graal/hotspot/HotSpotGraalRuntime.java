@@ -41,7 +41,6 @@ import com.oracle.graal.hotspot.bridge.*;
 import com.oracle.graal.hotspot.logging.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.options.*;
-import com.oracle.graal.phases.*;
 import com.oracle.graal.runtime.*;
 
 //JaCoCo Exclude
@@ -196,8 +195,6 @@ public final class HotSpotGraalRuntime implements GraalRuntime, RuntimeProvider 
     protected/* final */CompilerToVM compilerToVm;
     protected/* final */VMToCompiler vmToCompiler;
 
-    private volatile HotSpotGraphCache cache;
-
     protected final HotSpotVMConfig config;
     private final HotSpotBackend hostBackend;
 
@@ -254,10 +251,6 @@ public final class HotSpotGraalRuntime implements GraalRuntime, RuntimeProvider 
             }
             registerBackend(factory.createBackend(this, hostBackend));
         }
-
-        if (GraalOptions.CacheGraphs.getValue()) {
-            cache = new HotSpotGraphCache(compilerToVm);
-        }
     }
 
     private HotSpotBackend registerBackend(HotSpotBackend backend) {
@@ -312,10 +305,6 @@ public final class HotSpotGraalRuntime implements GraalRuntime, RuntimeProvider 
 
     public TargetDescription getTarget() {
         return hostBackend.getTarget();
-    }
-
-    public HotSpotGraphCache getGraphCache() {
-        return cache;
     }
 
     public CompilerToVM getCompilerToVM() {

@@ -3,7 +3,8 @@
 ## `tip`
 ### Graal
 * New methods for querying memory usage of individual objects and object graphs in Graal API (MetaAccessProvider#getMemorySize, MetaUtil#getMemorySizeRecursive).
-* ...
+* New (tested) invariant that equality comparisons for JavaType/JavaMethod/JavaField values use .equals() instead of '=='.
+* Made graph caching compilation-local.
 
 ### Truffle
 * ...

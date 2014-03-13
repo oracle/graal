@@ -275,8 +275,6 @@ public interface CompilerToVM {
 
     Object executeCompiledMethodVarargs(Object[] args, HotSpotInstalledCode hotspotInstalledCode) throws InvalidInstalledCodeException;
 
-    long[] getDeoptedLeafGraphIds();
-
     long[] getLineNumberTable(long metaspaceMethod);
 
     long getLocalVariableTableStart(long metaspaceMethod);

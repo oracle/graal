@@ -125,9 +125,6 @@ public class CompilerToVMImpl implements CompilerToVM {
     public native Object executeCompiledMethodVarargs(Object[] args, HotSpotInstalledCode hotspotInstalledCode);
 
     @Override
-    public native long[] getDeoptedLeafGraphIds();
-
-    @Override
     public native long[] getLineNumberTable(long metaspaceMethod);
 
     @Override

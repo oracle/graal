@@ -281,7 +281,7 @@ public class InliningPhase extends AbstractInliningPhase {
     }
 
     private static StructuredGraph getCachedGraph(ResolvedJavaMethod method, HighTierContext context) {
-        if (CacheGraphs.getValue() && context.getGraphCache() != null) {
+        if (context.getGraphCache() != null) {
             StructuredGraph cachedGraph = context.getGraphCache().get(method);
             if (cachedGraph != null) {
                 return cachedGraph;
@@ -304,8 +304,8 @@ public class InliningPhase extends AbstractInliningPhase {
             canonicalizer.apply(newGraph, context);
         }
 
-        if (CacheGraphs.getValue() && context.getGraphCache() != null) {
-            context.getGraphCache().put(newGraph.copy(), hasMatureProfilingInfo);
+        if (hasMatureProfilingInfo && context.getGraphCache() != null) {
+            context.getGraphCache().put(newGraph.method(), newGraph.copy());
         }
         return newGraph;
     }

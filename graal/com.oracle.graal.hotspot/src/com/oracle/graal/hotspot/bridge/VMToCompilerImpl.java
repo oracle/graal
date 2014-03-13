@@ -330,9 +330,6 @@ public class VMToCompilerImpl implements VMToCompiler {
             TTY.println(" in %d ms (compiled %d methods)", System.currentTimeMillis() - startTime, compileQueue.getCompletedTaskCount());
         }
 
-        if (runtime.getGraphCache() != null) {
-            runtime.getGraphCache().clear();
-        }
         System.gc();
         phaseTransition("bootstrap2");
     }

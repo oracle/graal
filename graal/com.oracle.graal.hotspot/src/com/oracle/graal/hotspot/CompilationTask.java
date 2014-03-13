@@ -32,6 +32,7 @@ import static com.oracle.graal.phases.common.InliningUtil.*;
 
 import java.io.*;
 import java.lang.reflect.*;
+import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.*;
 
@@ -234,9 +235,9 @@ public class CompilationTask implements Runnable, Comparable {
             TTY.Filter filter = new TTY.Filter(PrintFilter.getValue(), method);
             long start = System.currentTimeMillis();
             try (Scope s = Debug.scope("Compiling", new DebugDumpScope(String.valueOf(id), true))) {
-                GraphCache graphCache = backend.getRuntime().getGraphCache();
-                if (graphCache != null) {
-                    graphCache.removeStaleGraphs();
+                Map<ResolvedJavaMethod, StructuredGraph> graphCache = null;
+                if (GraalOptions.CacheGraphs.getValue()) {
+                    graphCache = new HashMap<>();
                 }
 
                 HotSpotProviders providers = backend.getProviders();

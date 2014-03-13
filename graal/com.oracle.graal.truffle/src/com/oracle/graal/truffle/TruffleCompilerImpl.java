@@ -102,7 +102,7 @@ public class TruffleCompilerImpl implements TruffleCompiler {
 
         this.config = GraphBuilderConfiguration.getDefault();
         this.config.setSkippedExceptionTypes(skippedExceptionTypes);
-        this.partialEvaluator = new PartialEvaluator(runtime, providers, truffleCache, config);
+        this.partialEvaluator = new PartialEvaluator(providers, truffleCache, config);
 
         if (Debug.isEnabled()) {
             DebugEnvironment.initialize(System.out);
@@ -136,10 +136,6 @@ public class TruffleCompilerImpl implements TruffleCompiler {
 
     private InstalledCode compileMethodImpl(final OptimizedCallTarget compilable) {
         final StructuredGraph graph;
-        GraphCache graphCache = runtime.getGraphCache();
-        if (graphCache != null) {
-            graphCache.removeStaleGraphs();
-        }
 
         if (TraceTruffleCompilation.getValue()) {
             OptimizedCallTarget.logOptimizingStart(compilable);
