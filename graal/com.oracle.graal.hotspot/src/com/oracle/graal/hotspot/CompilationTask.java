@@ -51,8 +51,6 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.tiers.*;
 
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
-
 public class CompilationTask implements Runnable, Comparable {
 
     // Keep static finals in a group with withinEnqueue as the last one. CompilationTask can be
@@ -127,7 +125,6 @@ public class CompilationTask implements Runnable, Comparable {
         return entryBCI;
     }
 
-    @SuppressFBWarnings(value = "NN_NAKED_NOTIFY")
     public void run() {
         withinEnqueue.set(Boolean.FALSE);
         try {

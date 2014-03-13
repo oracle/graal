@@ -45,8 +45,6 @@ import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.options.*;
 import com.oracle.graal.replacements.nodes.*;
 
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
-
 /**
  * This class contains infrastructure to maintain counters based on {@link DynamicCounterNode}s. The
  * infrastructure is enabled by specifying either the GenericDynamicCounters or
@@ -107,7 +105,6 @@ public class BenchmarkCounters {
     public static long[] delta;
     public static final ArrayList<AtomicLong> staticCounters = new ArrayList<>();
 
-    @SuppressFBWarnings(value = "AT_OPERATION_SEQUENCE_ON_CONCURRENT_ABSTRACTION", justification = "concurrent abstraction calls are in synchronized block")
     public static int getIndex(DynamicCounterNode counter) {
         if (!enabled) {
             throw new GraalInternalError("counter nodes shouldn't exist when counters are not enabled: " + counter.getGroup() + ", " + counter.getName());
