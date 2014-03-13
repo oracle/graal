@@ -241,7 +241,7 @@ public class PartialEvaluator {
     }
 
     private boolean isFrame(ValueNode receiver) {
-        return receiver instanceof NewFrameNode || ObjectStamp.typeOrNull(receiver.stamp()) == frameType;
+        return receiver instanceof NewFrameNode || Objects.equals(ObjectStamp.typeOrNull(receiver.stamp()), frameType);
     }
 
     private StructuredGraph parseGraph(final ResolvedJavaMethod targetMethod, final NodeInputList<ValueNode> arguments, final Assumptions assumptions, final PhaseContext phaseContext) {
