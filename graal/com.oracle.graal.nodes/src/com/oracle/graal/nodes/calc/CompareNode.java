@@ -54,7 +54,7 @@ public abstract class CompareNode extends LogicNode implements Canonicalizable, 
      * @param y the instruction that produces the second input to this instruction
      */
     public CompareNode(ValueNode x, ValueNode y) {
-        assert (x == null && y == null) || x.kind() == y.kind();
+        assert x != null && y != null && x.kind() == y.kind();
         this.x = x;
         this.y = y;
     }

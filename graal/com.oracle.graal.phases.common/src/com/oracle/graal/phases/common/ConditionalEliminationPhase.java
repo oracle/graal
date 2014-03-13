@@ -66,7 +66,7 @@ public class ConditionalEliminationPhase extends Phase {
         new ConditionalElimination(graph.start(), new State()).apply();
     }
 
-    public static class State extends MergeableState<State> {
+    public static class State extends MergeableState<State> implements Cloneable {
 
         private IdentityHashMap<ValueNode, ResolvedJavaType> knownTypes;
         private HashSet<ValueNode> knownNonNull;

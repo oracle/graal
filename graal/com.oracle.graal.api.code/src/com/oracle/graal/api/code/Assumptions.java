@@ -197,8 +197,8 @@ public final class Assumptions implements Serializable, Iterable<Assumptions.Ass
 
         @Override
         public boolean equals(Object obj) {
-            if (obj instanceof ConcreteMethod) {
-                ConcreteMethod other = (ConcreteMethod) obj;
+            if (obj instanceof MethodContents) {
+                MethodContents other = (MethodContents) obj;
                 return other.method == method;
             }
             return false;
@@ -387,7 +387,7 @@ public final class Assumptions implements Serializable, Iterable<Assumptions.Ass
             }
         }
 
-        out.printf("%d assumptions:\n", nonNullList.size());
+        out.printf("%d assumptions:%n", nonNullList.size());
         for (Assumption a : nonNullList) {
             out.println(a.toString());
         }

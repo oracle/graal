@@ -34,6 +34,8 @@ import com.oracle.graal.hotspot.bridge.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+
 /**
  * This class implements the graph caching system for the HotSpot platform.
  * 
@@ -115,6 +117,7 @@ public class HotSpotGraphCache implements GraphCache {
     }
 
     @Override
+    @SuppressFBWarnings(value = "VO_VOLATILE_INCREMENT", justification = "counters are only used for statistics")
     public StructuredGraph get(ResolvedJavaMethod method) {
         StructuredGraph result = (StructuredGraph) method.getCompilerStorage().get(this);
 
@@ -129,6 +132,7 @@ public class HotSpotGraphCache implements GraphCache {
     }
 
     @Override
+    @SuppressFBWarnings(value = "VO_VOLATILE_INCREMENT", justification = "counters are only used for statistics")
     public boolean put(StructuredGraph graph, boolean hasMatureProfilingInfo) {
         assert graph.method() != null;
         if (hasMatureProfilingInfo) {
@@ -160,6 +164,7 @@ public class HotSpotGraphCache implements GraphCache {
         }
     }
 
+    @SuppressFBWarnings(value = "VO_VOLATILE_INCREMENT", justification = "counters are only used for statistics")
     public void removeGraphs(long[] deoptedGraphs) {
         for (long graphId : deoptedGraphs) {
             WeakReference<ResolvedJavaMethod> ref = cachedGraphIds.get(graphId);

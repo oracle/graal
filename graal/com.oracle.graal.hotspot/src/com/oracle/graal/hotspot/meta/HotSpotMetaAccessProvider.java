@@ -120,8 +120,7 @@ public class HotSpotMetaAccessProvider implements MetaAccessProvider {
             HotSpotResolvedObjectType resolved = (HotSpotResolvedObjectType) holder;
             return resolved.createField(name, type, offset, modifiers);
         } else {
-            // TODO this cast will not succeed
-            return (ResolvedJavaField) new HotSpotUnresolvedField(holder, name, type);
+            throw GraalInternalError.shouldNotReachHere("unresolved field " + reflectionField);
         }
     }
 

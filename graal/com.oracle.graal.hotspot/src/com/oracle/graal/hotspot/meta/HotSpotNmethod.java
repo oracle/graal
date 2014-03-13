@@ -84,7 +84,7 @@ public final class HotSpotNmethod extends HotSpotInstalledCode {
 
     @Override
     public String toString() {
-        return String.format("InstalledNmethod[method=%s, codeBlob=0x%x, isDefault=%b, name=]", method, getCodeBlob(), isDefault, name);
+        return String.format("InstalledNmethod[method=%s, codeBlob=0x%x, isDefault=%b, name=%s]", method, getCodeBlob(), isDefault, name);
     }
 
     @Override

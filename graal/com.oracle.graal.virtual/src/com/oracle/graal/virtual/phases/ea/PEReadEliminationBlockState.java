@@ -50,6 +50,9 @@ public class PEReadEliminationBlockState extends PartialEscapeBlockState<PEReadE
 
         @Override
         public boolean equals(Object obj) {
+            if (!(obj instanceof ReadCacheEntry)) {
+                return false;
+            }
             ReadCacheEntry other = (ReadCacheEntry) obj;
             return identity == other.identity && object == other.object;
         }

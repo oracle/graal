@@ -43,7 +43,7 @@ public abstract class AbstractJavaProfile<T extends AbstractProfiledItem<U>, U> 
 
     public AbstractJavaProfile(double notRecordedProbability, T[] pitems) {
         this.pitems = pitems;
-        assert notRecordedProbability != Double.NaN;
+        assert !Double.isNaN(notRecordedProbability);
         this.notRecordedProbability = notRecordedProbability;
         assert isSorted();
     }
@@ -124,28 +124,26 @@ public abstract class AbstractJavaProfile<T extends AbstractProfiledItem<U>, U> 
     }
 
     @Override
-    public boolean equals(Object other) {
-        if (other == this) {
+    public boolean equals(Object obj) {
+        if (obj == this) {
             return true;
         }
-        if (getClass() == other.getClass()) {
-            AbstractJavaProfile javaTypeProfile = (AbstractJavaProfile) other;
-            if (javaTypeProfile.notRecordedProbability != notRecordedProbability) {
-                return false;
-            }
-            if (javaTypeProfile.pitems.length != pitems.length) {
-                return false;
-            }
-
-            for (int i = 0; i < pitems.length; ++i) {
-                if (!pitems[i].equals(javaTypeProfile.pitems[i])) {
-                    return false;
-                }
-            }
-
-            return true;
+        if (!(obj instanceof AbstractJavaProfile)) {
+            return false;
         }
-        return false;
+        AbstractJavaProfile that = (AbstractJavaProfile) obj;
+        if (that.notRecordedProbability != notRecordedProbability) {
+            return false;
+        }
+        if (that.pitems.length != pitems.length) {
+            return false;
+        }
+        for (int i = 0; i < pitems.length; ++i) {
+            if (!pitems[i].equals(that.pitems[i])) {
+                return false;
+            }
+        }
+        return true;
     }
 
     @Override

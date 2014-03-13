@@ -87,8 +87,8 @@ public abstract class Value implements Serializable {
     @Override
     public boolean equals(Object obj) {
         if (obj instanceof Value) {
-            Value other = (Value) obj;
-            return kind.equals(other.kind) && platformKind.equals(platformKind);
+            Value that = (Value) obj;
+            return kind.equals(that.kind) && platformKind.equals(that.platformKind);
         }
         return false;
     }

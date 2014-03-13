@@ -184,7 +184,7 @@ public class PTXHotSpotBackend extends HotSpotBackend {
 
             private boolean canOffloadToGPU(ResolvedJavaMethod method) {
                 HotSpotVMConfig config = getRuntime().getConfig();
-                return config.gpuOffload && method.getName().contains("lambda$") & method.isSynthetic();
+                return config.gpuOffload && method.getName().contains("lambda$") && method.isSynthetic();
             }
         };
     }

@@ -37,7 +37,7 @@ import com.oracle.graal.phases.graph.*;
  */
 public class ValueAnchorCleanupPhase extends Phase {
 
-    private static class State extends MergeableState<State> {
+    private static class State extends MergeableState<State> implements Cloneable {
 
         private final HashSet<Node> anchoredValues;
 
