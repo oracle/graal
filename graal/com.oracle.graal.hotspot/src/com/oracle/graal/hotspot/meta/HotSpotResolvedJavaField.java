@@ -72,11 +72,11 @@ public class HotSpotResolvedJavaField extends CompilerObject implements Resolved
         if (this == obj) {
             return true;
         }
-        if (obj == null || !(obj instanceof HotSpotUnresolvedField)) {
-            return false;
+        if (obj instanceof HotSpotResolvedJavaField) {
+            HotSpotResolvedJavaField that = (HotSpotResolvedJavaField) obj;
+            return this.holder.equals(that.holder) && this.name.equals(that.name) && this.type.equals(that.type);
         }
-        HotSpotResolvedJavaField that = (HotSpotResolvedJavaField) obj;
-        return this.holder.equals(that.holder) && this.name.equals(that.name) && this.type.equals(that.type);
+        return false;
     }
 
     @Override
