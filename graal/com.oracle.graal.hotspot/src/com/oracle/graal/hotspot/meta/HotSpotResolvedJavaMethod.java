@@ -353,14 +353,6 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
         return signature;
     }
 
-    public int getCompiledCodeSize() {
-        HotSpotInstalledCode installedCode = runtime().getCompilerToVM().getInstalledCode(metaspaceMethod);
-        if (installedCode != null) {
-            return (int) installedCode.getCodeSize();
-        }
-        return 0;
-    }
-
     /**
      * Gets the value of {@code Method::_code}.
      * 

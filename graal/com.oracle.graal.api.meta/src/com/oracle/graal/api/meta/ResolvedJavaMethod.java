@@ -53,13 +53,6 @@ public interface ResolvedJavaMethod extends JavaMethod, InvokeTarget {
     int getCodeSize();
 
     /**
-     * Returns the size of the compiled machine code of this method.
-     * 
-     * @return the size of the compiled machine code in bytes, or 0 if no compiled code exists.
-     */
-    int getCompiledCodeSize();
-
-    /**
      * Returns the {@link ResolvedJavaType} object representing the class or interface that declares
      * this method.
      */
