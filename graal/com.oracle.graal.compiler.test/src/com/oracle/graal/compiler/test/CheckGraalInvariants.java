@@ -120,6 +120,9 @@ public class CheckGraalInvariants {
                                 errors.add(e.getMessage());
                             } catch (LinkageError e) {
                                 // suppress linkages errors resulting from eager resolution
+                            } catch (BailoutException e) {
+                                // Graal bail outs on certain patterns in Java bytecode (e.g.,
+                                // unbalanced monitors introduced by jacoco).
                             } catch (Throwable e) {
                                 StringWriter sw = new StringWriter();
                                 e.printStackTrace(new PrintWriter(sw));
