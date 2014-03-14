@@ -71,8 +71,6 @@ public class StructuredGraph extends Graph {
 
     private static final AtomicLong uniqueGraphIds = new AtomicLong();
 
-    private final Set<Long> leafGraphIds = new HashSet<>(4);
-
     private StartNode start;
     private final ResolvedJavaMethod method;
     private final long graphId;
@@ -160,14 +158,6 @@ public class StructuredGraph extends Graph {
 
     public void setStart(StartNode start) {
         this.start = start;
-    }
-
-    /**
-     * @return the {@link Set} that contains the {@link #graphId()} of all graphs that were
-     *         incorporated into this one (e.g. by inlining).
-     */
-    public Set<Long> getLeafGraphIds() {
-        return leafGraphIds;
     }
 
     @Override

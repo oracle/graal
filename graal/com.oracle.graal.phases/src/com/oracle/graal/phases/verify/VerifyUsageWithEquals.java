@@ -62,18 +62,13 @@ public class VerifyUsageWithEquals extends VerifyPhase<PhaseContext> {
         return isAssignableType(x, metaAccess) && !isNullConstant(y);
     }
 
-    private static boolean isEqualsMethod(StructuredGraph graph) {
-        Signature signature = graph.method().getSignature();
-        return graph.method().getName().equals("equals") && signature.getParameterCount(false) == 1 && signature.getParameterKind(0).equals(Kind.Object);
-    }
-
     @Override
     protected boolean verify(StructuredGraph graph, PhaseContext context) {
         for (ObjectEqualsNode cn : graph.getNodes().filter(ObjectEqualsNode.class)) {
-            if (!isEqualsMethod(graph)) {
-                // bail out if we compare an object of type klass with == or != (except null checks)
-                assert !(checkUsage(cn.x(), cn.y(), context.getMetaAccess()) && checkUsage(cn.y(), cn.x(), context.getMetaAccess())) : "Verification of " + klass.getName() +
-                                " usage failed: Comparing " + cn.x() + " and " + cn.y() + " in " + graph.method() + " must use .equals() for object equality, not '==' or '!='";
+            // bail out if we compare an object of type klass with == or != (except null checks)
+            if (checkUsage(cn.x(), cn.y(), context.getMetaAccess()) && checkUsage(cn.y(), cn.x(), context.getMetaAccess())) {
+                throw new VerificationError("Verification of " + klass.getName() + " usage failed: Comparing " + cn.x() + " and " + cn.y() + " in " + graph.method() +
+                                " must use .equals() for object equality, not '==' or '!='");
             }
         }
         return true;

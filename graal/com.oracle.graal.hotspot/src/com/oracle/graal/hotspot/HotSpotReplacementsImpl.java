@@ -80,41 +80,6 @@ public class HotSpotReplacementsImpl extends ReplacementsImpl {
         return super.registerMethodSubstitution(originalMethod, substituteMethod);
     }
 
-    /**
-     * A producer of graphs for methods.
-     */
-    public interface GraphProducer {
-
-        /**
-         * @returns a graph for {@code method} or null
-         */
-        StructuredGraph getGraphFor(ResolvedJavaMethod method);
-    }
-
-    /**
-     * Registers the graph producers that will take precedence over the registered method
-     * substitutions when {@link #getMethodSubstitution(ResolvedJavaMethod)} is called.
-     */
-    public void registerGraphProducers(GraphProducer[] producers) {
-        assert this.graphProducers == UNINITIALIZED : "graph producers must be registered at most once";
-        this.graphProducers = producers.clone();
-    }
-
-    private static GraphProducer[] UNINITIALIZED = {};
-
-    private GraphProducer[] graphProducers = UNINITIALIZED;
-
-    @Override
-    public StructuredGraph getMethodSubstitution(ResolvedJavaMethod original) {
-        for (GraphProducer gp : graphProducers) {
-            StructuredGraph graph = gp.getGraphFor(original);
-            if (graph != null) {
-                return graph;
-            }
-        }
-        return super.getMethodSubstitution(original);
-    }
-
     @Override
     public Class<? extends FixedWithNextNode> getMacroSubstitution(ResolvedJavaMethod method) {
         HotSpotResolvedJavaMethod hsMethod = (HotSpotResolvedJavaMethod) method;

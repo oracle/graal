@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.nodes;
 
+import java.util.*;
+
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
@@ -102,7 +104,7 @@ public final class TypeProfileProxyNode extends FloatingNode implements Canonica
                 Debug.log("Profile useless, there is enough static type information available.");
                 return object;
             }
-            if (type == lastCheckedType) {
+            if (Objects.equals(type, lastCheckedType)) {
                 // We have already incorporate the knowledge about this type => abort.
                 return this;
             }

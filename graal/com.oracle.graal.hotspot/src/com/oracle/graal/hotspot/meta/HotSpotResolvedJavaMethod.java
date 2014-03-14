@@ -62,7 +62,6 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
     private Map<Object, Object> compilerStorage;
     private HotSpotMethodData methodData;
     private byte[] code;
-    private CompilationTask currentTask;
     private SpeculationLog speculationLog;
 
     /**
@@ -126,6 +125,20 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
     private long getConstMethod() {
         assert metaspaceMethod != 0;
         return unsafe.getAddress(metaspaceMethod + runtime().getConfig().methodConstMethodOffset);
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (obj instanceof HotSpotResolvedJavaMethod) {
+            HotSpotResolvedJavaMethod that = (HotSpotResolvedJavaMethod) obj;
+            return that.metaspaceMethod == metaspaceMethod;
+        }
+        return false;
+    }
+
+    @Override
+    public int hashCode() {
+        return (int) metaspaceMethod;
     }
 
     /**
@@ -598,14 +611,6 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
     private int getVtableIndex() {
         HotSpotVMConfig config = runtime().getConfig();
         return unsafe.getInt(metaspaceMethod + config.methodVtableIndexOffset);
-    }
-
-    public void setCurrentTask(CompilationTask task) {
-        currentTask = task;
-    }
-
-    public CompilationTask currentTask() {
-        return currentTask;
     }
 
     public SpeculationLog getSpeculationLog() {

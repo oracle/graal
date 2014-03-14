@@ -32,6 +32,8 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.Node.Verbosity;
+import com.oracle.graal.java.BciBlockMapping.Block;
+import com.oracle.graal.java.BciBlockMapping.LocalLiveness;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.java.*;
@@ -139,7 +141,7 @@ public class HIRFrameStateBuilder extends AbstractFrameStateBuilder<ValueNode> {
     }
 
     public boolean isCompatibleWith(HIRFrameStateBuilder other) {
-        assert method == other.method && graph == other.graph && localsSize() == other.localsSize() : "Can only compare frame states of the same method";
+        assert method.equals(other.method) && graph == other.graph && localsSize() == other.localsSize() : "Can only compare frame states of the same method";
         assert lockedObjects.length == monitorIds.length && other.lockedObjects.length == other.monitorIds.length : "mismatch between lockedObjects and monitorIds";
 
         if (stackSize() != other.stackSize()) {
@@ -308,13 +310,21 @@ public class HIRFrameStateBuilder extends AbstractFrameStateBuilder<ValueNode> {
         }
     }
 
-    public void clearNonLiveLocals(BitSet liveness) {
+    public void clearNonLiveLocals(Block block, LocalLiveness liveness, boolean liveIn) {
         if (liveness == null) {
             return;
         }
-        for (int i = 0; i < locals.length; i++) {
-            if (!liveness.get(i)) {
-                locals[i] = null;
+        if (liveIn) {
+            for (int i = 0; i < locals.length; i++) {
+                if (!liveness.localIsLiveIn(block, i)) {
+                    locals[i] = null;
+                }
+            }
+        } else {
+            for (int i = 0; i < locals.length; i++) {
+                if (!liveness.localIsLiveOut(block, i)) {
+                    locals[i] = null;
+                }
             }
         }
     }

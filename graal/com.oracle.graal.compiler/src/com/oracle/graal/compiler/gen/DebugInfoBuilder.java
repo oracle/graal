@@ -45,8 +45,8 @@ public class DebugInfoBuilder {
         this.nodeOperands = nodeOperands;
     }
 
-    protected HashMap<VirtualObjectNode, VirtualObject> virtualObjects = new HashMap<>();
-    protected IdentityHashMap<VirtualObjectNode, EscapeObjectState> objectStates = new IdentityHashMap<>();
+    protected final HashMap<VirtualObjectNode, VirtualObject> virtualObjects = new HashMap<>();
+    protected final IdentityHashMap<VirtualObjectNode, EscapeObjectState> objectStates = new IdentityHashMap<>();
 
     public LIRFrameState build(FrameState topState, LabelRef exceptionEdge) {
         assert virtualObjects.size() == 0;

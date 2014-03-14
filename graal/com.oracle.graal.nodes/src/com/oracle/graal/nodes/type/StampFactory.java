@@ -240,7 +240,7 @@ public class StampFactory {
         assert type.getKind() == Kind.Object;
         ResolvedJavaType exact = type.asExactType();
         if (exact != null) {
-            assert !exactType || type == exact;
+            assert !exactType || type.equals(exact);
             return new ObjectStamp(exact, true, nonNull, false);
         } else {
             return new ObjectStamp(type, exactType, nonNull, false);

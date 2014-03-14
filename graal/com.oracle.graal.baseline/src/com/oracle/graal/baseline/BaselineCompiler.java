@@ -130,7 +130,7 @@ public class BaselineCompiler {
 
         // emitCode
         Assumptions assumptions = new Assumptions(OptAssumptions.getValue());
-        GraalCompiler.emitCode(backend, new long[0], assumptions, lirGen, compilationResult, installedCodeOwner, factory);
+        GraalCompiler.emitCode(backend, assumptions, lirGen, compilationResult, installedCodeOwner, factory);
 
         return compilationResult;
     }
