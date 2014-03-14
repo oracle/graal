@@ -876,10 +876,11 @@ public class SnippetTemplate {
 
         @Override
         public void replace(ValueNode oldNode, ValueNode newNode, MemoryMapNode mmap) {
-            if (mmap != null && newNode != null) {
+            if (mmap != null) {
                 for (Node usage : oldNode.usages().snapshot()) {
                     LocationIdentity identity = getLocationIdentity(usage);
-                    if (identity != null && identity != LocationIdentity.FINAL_LOCATION) {
+                    boolean usageReplaced = false;
+                    if (identity != null && identity != FINAL_LOCATION) {
                         // lastLocationAccess points into the snippet graph. find a proper
                         // MemoryCheckPoint inside the snippet graph
                         MemoryNode lastAccess = mmap.getLastLocationAccess(identity);
@@ -888,17 +889,26 @@ public class SnippetTemplate {
                         if (usage instanceof MemoryAccess) {
                             MemoryAccess access = (MemoryAccess) usage;
                             if (access.getLastLocationAccess() == oldNode) {
-                                assert newNode.graph().isAfterFloatingReadPhase();
+                                assert oldNode.graph().isAfterFloatingReadPhase();
                                 access.setLastLocationAccess(lastAccess);
+                                usageReplaced = true;
                             }
                         } else {
                             assert usage instanceof MemoryProxy || usage instanceof MemoryPhiNode;
                             usage.replaceFirstInput(oldNode, lastAccess.asNode());
+                            usageReplaced = true;
                         }
+                    }
+                    if (!usageReplaced) {
+                        assert newNode != null : "this branch is only valid if we have a newNode for replacement";
                     }
                 }
             }
-            oldNode.replaceAtUsages(newNode);
+            if (newNode == null) {
+                assert oldNode.usages().isEmpty();
+            } else {
+                oldNode.replaceAtUsages(newNode);
+            }
         }
     };
 
@@ -1036,7 +1046,7 @@ public class SnippetTemplate {
                 returnValue = returnDuplicate.result();
                 MemoryMapNode mmap = new DuplicateMapper(duplicates, replaceeGraph.start());
                 if (returnValue == null && replacee.usages().isNotEmpty() && replacee instanceof MemoryCheckpoint) {
-                    replacer.replace(replacee, (ValueNode) returnDuplicate.predecessor(), mmap);
+                    replacer.replace(replacee, null, mmap);
                 } else {
                     assert returnValue != null || replacee.usages().isEmpty();
                     replacer.replace(replacee, returnValue, mmap);
