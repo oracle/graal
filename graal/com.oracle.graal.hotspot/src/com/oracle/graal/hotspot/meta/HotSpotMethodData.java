@@ -825,4 +825,12 @@ public final class HotSpotMethodData extends CompilerObject {
             super(runtime().getConfig().dataLayoutArgInfoDataTag, ARG_INFO_DATA_SIZE);
         }
     }
+
+    public void setCompiledGraphSize(int nodeCount) {
+        unsafe.putInt(metaspaceMethodData + config.methodDataGraalNodeCountOffset, nodeCount);
+    }
+
+    public int getCompiledGraphSize() {
+        return unsafe.getInt(metaspaceMethodData + config.methodDataGraalNodeCountOffset);
+    }
 }

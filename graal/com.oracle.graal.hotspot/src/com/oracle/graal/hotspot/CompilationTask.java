@@ -279,6 +279,10 @@ public class CompilationTask implements Runnable, Comparable {
 
             try (TimerCloseable b = CodeInstallationTime.start()) {
                 installedCode = installMethod(result);
+                if (!isOSR) {
+                    ProfilingInfo profile = method.getProfilingInfo();
+                    profile.setCompilerIRSize(StructuredGraph.class, graph.getNodeCount());
+                }
             }
             stats.finish(method);
         } catch (BailoutException bailout) {

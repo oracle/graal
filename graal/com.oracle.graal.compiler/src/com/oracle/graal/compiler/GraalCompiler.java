@@ -198,11 +198,6 @@ public class GraalCompiler {
         suites.getLowTier().apply(graph, lowTierContext);
         graph.maybeCompress();
 
-        // we do not want to store statistics about OSR compilations because it may prevent inlining
-        if (!graph.isOSR()) {
-            InliningPhase.storeStatisticsAfterLowTier(graph);
-        }
-
         SchedulePhase schedule = new SchedulePhase();
         schedule.apply(graph);
         Debug.dump(schedule, "final schedule");

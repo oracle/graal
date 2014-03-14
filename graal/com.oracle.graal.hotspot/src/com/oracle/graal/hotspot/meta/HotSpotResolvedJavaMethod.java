@@ -28,8 +28,6 @@ import static com.oracle.graal.phases.GraalOptions.*;
 
 import java.lang.annotation.*;
 import java.lang.reflect.*;
-import java.util.*;
-import java.util.concurrent.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
@@ -59,7 +57,6 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
     private boolean forceInline;
     private boolean dontInline;
     private boolean ignoredBySecurityStackWalk;
-    private Map<Object, Object> compilerStorage;
     private HotSpotMethodData methodData;
     private byte[] code;
     private SpeculationLog speculationLog;
@@ -430,14 +427,6 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
     @Override
     public void reprofile() {
         runtime().getCompilerToVM().reprofile(metaspaceMethod);
-    }
-
-    @Override
-    public Map<Object, Object> getCompilerStorage() {
-        if (compilerStorage == null) {
-            compilerStorage = new ConcurrentHashMap<>();
-        }
-        return compilerStorage;
     }
 
     @Override

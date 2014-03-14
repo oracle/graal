@@ -24,7 +24,6 @@ package com.oracle.graal.api.meta;
 
 import java.lang.annotation.*;
 import java.lang.reflect.*;
-import java.util.*;
 
 /**
  * Represents a resolved Java method. Methods, like fields and types, are resolved through
@@ -142,12 +141,6 @@ public interface ResolvedJavaMethod extends JavaMethod, InvokeTarget {
      * Invalidates the profiling information and restarts profiling upon the next invocation.
      */
     void reprofile();
-
-    /**
-     * Returns a map that the compiler can use to store objects that should survive the current
-     * compilation.
-     */
-    Map<Object, Object> getCompilerStorage();
 
     /**
      * Returns the constant pool of this method.
