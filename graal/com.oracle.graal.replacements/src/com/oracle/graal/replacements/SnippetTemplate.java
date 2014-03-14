@@ -1012,12 +1012,6 @@ public class SnippetTemplate {
             // Re-wire the control flow graph around the replacee
             FixedNode firstCFGNodeDuplicate = (FixedNode) duplicates.get(firstCFGNode);
             replacee.replaceAtPredecessor(firstCFGNodeDuplicate);
-            FixedNode next = null;
-            if (replacee instanceof FixedWithNextNode) {
-                FixedWithNextNode fwn = (FixedWithNextNode) replacee;
-                next = fwn.next();
-                fwn.setNext(null);
-            }
 
             if (replacee instanceof StateSplit) {
                 for (StateSplit sideEffectNode : sideEffectNodes) {
@@ -1052,6 +1046,12 @@ public class SnippetTemplate {
                     replacer.replace(replacee, returnValue, mmap);
                 }
                 if (returnDuplicate.isAlive()) {
+                    FixedNode next = null;
+                    if (replacee instanceof FixedWithNextNode) {
+                        FixedWithNextNode fwn = (FixedWithNextNode) replacee;
+                        next = fwn.next();
+                        fwn.setNext(null);
+                    }
                     returnDuplicate.clearInputs();
                     returnDuplicate.replaceAndDelete(next);
                 }
