@@ -42,6 +42,7 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.java.BciBlockMapping.Block;
 import com.oracle.graal.java.BciBlockMapping.ExceptionDispatchBlock;
+import com.oracle.graal.java.BciBlockMapping.LocalLiveness;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.calc.FloatConvertNode.FloatConvert;
@@ -159,6 +160,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
         }
 
         private Block[] loopHeaders;
+        private LocalLiveness liveness;
 
         /**
          * Gets the current frame state being processed by this builder.
@@ -225,6 +227,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             // compute the block map, setup exception handlers and get the entrypoint(s)
             BciBlockMapping blockMap = BciBlockMapping.create(method);
             loopHeaders = blockMap.loopHeaders;
+            liveness = blockMap.liveness;
 
             lastInstr = currentGraph.start();
             if (isSynchronized(method.getModifiers())) {
@@ -233,7 +236,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 methodSynchronizedObject = synchronizedObject(frameState, method);
                 lastInstr = genMonitorEnter(methodSynchronizedObject);
             }
-            frameState.clearNonLiveLocals(blockMap.startBlock.localsLiveIn);
+            frameState.clearNonLiveLocals(blockMap.startBlock, liveness, true);
             ((StateSplit) lastInstr).setStateAfter(frameState.create(0));
 
             if (graphBuilderConfig.eagerInfopointMode()) {
@@ -1228,7 +1231,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 createInvoke(callTarget, resultType);
             } else {
                 assert bci() == currentBlock.endBci;
-                frameState.clearNonLiveLocals(currentBlock.localsLiveOut);
+                frameState.clearNonLiveLocals(currentBlock, liveness, false);
 
                 InvokeWithExceptionNode invoke = createInvokeWithException(callTarget, resultType);
 
@@ -1544,7 +1547,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 Target target = checkLoopExit(block.firstInstruction, block, state);
                 FixedNode result = target.fixed;
                 block.entryState = target.state == state ? state.copy() : target.state;
-                block.entryState.clearNonLiveLocals(block.localsLiveIn);
+                block.entryState.clearNonLiveLocals(block, liveness, true);
 
                 Debug.log("createTarget %s: first visit, result: %s", block, block.firstInstruction);
                 return result;
@@ -1823,7 +1826,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 bci = stream.currentBCI();
 
                 if (bci > block.endBci) {
-                    frameState.clearNonLiveLocals(currentBlock.localsLiveOut);
+                    frameState.clearNonLiveLocals(currentBlock, liveness, false);
                 }
                 if (lastInstr instanceof StateSplit) {
                     if (lastInstr.getClass() == AbstractBeginNode.class) {

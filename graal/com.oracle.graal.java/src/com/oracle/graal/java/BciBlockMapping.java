@@ -99,11 +99,6 @@ public final class BciBlockMapping {
         public Block retSuccessor;
         public boolean endsWithRet = false;
 
-        public BitSet localsLiveIn;
-        public BitSet localsLiveOut;
-        private BitSet localsLiveGen;
-        private BitSet localsLiveKill;
-
         public Block exceptionDispatchBlock() {
             if (successors.size() > 0 && successors.get(successors.size() - 1) instanceof ExceptionDispatchBlock) {
                 return successors.get(successors.size() - 1);
@@ -167,6 +162,8 @@ public final class BciBlockMapping {
     private Block[] blockMap;
     public Block[] loopHeaders;
 
+    public LocalLiveness liveness;
+
     /**
      * Creates a new BlockMap instance from bytecode of the given method .
      * 
@@ -212,7 +209,8 @@ public final class BciBlockMapping {
         }
         if (OptLivenessAnalysis.getValue()) {
             try (Scope s = Debug.scope("LivenessAnalysis")) {
-                computeLiveness();
+                liveness = method.getMaxLocals() <= 64 ? new SmallLocalLiveness() : new LargeLocalLiveness();
+                liveness.computeLiveness();
             } catch (Throwable e) {
                 throw Debug.handle(e);
             }
@@ -729,153 +727,225 @@ public final class BciBlockMapping {
         return loops;
     }
 
-    private void computeLiveness() {
-        for (Block block : blocks) {
-            computeLocalLiveness(block);
-        }
+    /**
+     * Encapsulates the liveness calculation, so that subclasses for locals <= 64 and locals > 64
+     * can be implemented.
+     */
+    public abstract class LocalLiveness {
 
-        boolean changed;
-        int iteration = 0;
-        do {
-            Debug.log("Iteration %d", iteration);
-            changed = false;
-            for (int i = blocks.size() - 1; i >= 0; i--) {
-                Block block = blocks.get(i);
-                Debug.log("  start B%d  [%d, %d]  in: %s  out: %s  gen: %s  kill: %s", block.blockID, block.startBci, block.endBci, block.localsLiveIn, block.localsLiveOut, block.localsLiveGen,
-                                block.localsLiveKill);
+        private void computeLiveness() {
+            for (Block block : blocks) {
+                computeLocalLiveness(block);
+            }
 
-                boolean blockChanged = (iteration == 0);
-                if (block.successors.size() > 0) {
-                    int oldCardinality = block.localsLiveOut.cardinality();
-                    for (Block sux : block.successors) {
-                        Debug.log("    Successor B%d: %s", sux.blockID, sux.localsLiveIn);
-                        block.localsLiveOut.or(sux.localsLiveIn);
+            boolean changed;
+            int iteration = 0;
+            do {
+                Debug.log("Iteration %d", iteration);
+                changed = false;
+                for (int i = blocks.size() - 1; i >= 0; i--) {
+                    Block block = blocks.get(i);
+                    int blockID = block.blockID;
+                    // log statements in IFs because debugLiveX creates a new String
+                    if (Debug.isLogEnabled()) {
+                        Debug.log("  start B%d  [%d, %d]  in: %s  out: %s  gen: %s  kill: %s", block.blockID, block.startBci, block.endBci, debugLiveIn(blockID), debugLiveOut(blockID),
+                                        debugLiveGen(blockID), debugLiveKill(blockID));
                     }
-                    blockChanged |= (oldCardinality != block.localsLiveOut.cardinality());
+
+                    boolean blockChanged = (iteration == 0);
+                    if (block.successors.size() > 0) {
+                        int oldCardinality = liveOutCardinality(blockID);
+                        for (Block sux : block.successors) {
+                            if (Debug.isLogEnabled()) {
+                                Debug.log("    Successor B%d: %s", sux.blockID, debugLiveIn(sux.blockID));
+                            }
+                            propagateLiveness(blockID, sux.blockID);
+                        }
+                        blockChanged |= (oldCardinality != liveOutCardinality(blockID));
+                    }
+
+                    if (blockChanged) {
+                        updateLiveness(blockID);
+                        if (Debug.isLogEnabled()) {
+                            Debug.log("  end   B%d  [%d, %d]  in: %s  out: %s  gen: %s  kill: %s", block.blockID, block.startBci, block.endBci, debugLiveIn(blockID), debugLiveOut(blockID),
+                                            debugLiveGen(blockID), debugLiveKill(blockID));
+                        }
+                    }
+                    changed |= blockChanged;
                 }
-
-                if (blockChanged) {
-                    block.localsLiveIn.clear();
-                    block.localsLiveIn.or(block.localsLiveOut);
-                    block.localsLiveIn.andNot(block.localsLiveKill);
-                    block.localsLiveIn.or(block.localsLiveGen);
-                    Debug.log("  end   B%d  [%d, %d]  in: %s  out: %s  gen: %s  kill: %s", block.blockID, block.startBci, block.endBci, block.localsLiveIn, block.localsLiveOut, block.localsLiveGen,
-                                    block.localsLiveKill);
-                }
-                changed |= blockChanged;
-            }
-            iteration++;
-        } while (changed);
-    }
-
-    private void computeLocalLiveness(Block block) {
-        block.localsLiveIn = new BitSet(method.getMaxLocals());
-        block.localsLiveOut = new BitSet(method.getMaxLocals());
-        block.localsLiveGen = new BitSet(method.getMaxLocals());
-        block.localsLiveKill = new BitSet(method.getMaxLocals());
-
-        if (block.startBci < 0 || block.endBci < 0) {
-            return;
+                iteration++;
+            } while (changed);
         }
 
-        stream.setBCI(block.startBci);
-        while (stream.currentBCI() <= block.endBci) {
-            switch (stream.currentBC()) {
-                case LLOAD:
-                case DLOAD:
-                    loadTwo(block, stream.readLocalIndex());
-                    break;
-                case LLOAD_0:
-                case DLOAD_0:
-                    loadTwo(block, 0);
-                    break;
-                case LLOAD_1:
-                case DLOAD_1:
-                    loadTwo(block, 1);
-                    break;
-                case LLOAD_2:
-                case DLOAD_2:
-                    loadTwo(block, 2);
-                    break;
-                case LLOAD_3:
-                case DLOAD_3:
-                    loadTwo(block, 3);
-                    break;
-                case ILOAD:
-                case IINC:
-                case FLOAD:
-                case ALOAD:
-                case RET:
-                    loadOne(block, stream.readLocalIndex());
-                    break;
-                case ILOAD_0:
-                case FLOAD_0:
-                case ALOAD_0:
-                    loadOne(block, 0);
-                    break;
-                case ILOAD_1:
-                case FLOAD_1:
-                case ALOAD_1:
-                    loadOne(block, 1);
-                    break;
-                case ILOAD_2:
-                case FLOAD_2:
-                case ALOAD_2:
-                    loadOne(block, 2);
-                    break;
-                case ILOAD_3:
-                case FLOAD_3:
-                case ALOAD_3:
-                    loadOne(block, 3);
-                    break;
+        /**
+         * Returns whether the local is live at the beginning of the given block.
+         */
+        public abstract boolean localIsLiveIn(Block block, int local);
 
-                case LSTORE:
-                case DSTORE:
-                    storeTwo(block, stream.readLocalIndex());
-                    break;
-                case LSTORE_0:
-                case DSTORE_0:
-                    storeTwo(block, 0);
-                    break;
-                case LSTORE_1:
-                case DSTORE_1:
-                    storeTwo(block, 1);
-                    break;
-                case LSTORE_2:
-                case DSTORE_2:
-                    storeTwo(block, 2);
-                    break;
-                case LSTORE_3:
-                case DSTORE_3:
-                    storeTwo(block, 3);
-                    break;
-                case ISTORE:
-                case FSTORE:
-                case ASTORE:
-                    storeOne(block, stream.readLocalIndex());
-                    break;
-                case ISTORE_0:
-                case FSTORE_0:
-                case ASTORE_0:
-                    storeOne(block, 0);
-                    break;
-                case ISTORE_1:
-                case FSTORE_1:
-                case ASTORE_1:
-                    storeOne(block, 1);
-                    break;
-                case ISTORE_2:
-                case FSTORE_2:
-                case ASTORE_2:
-                    storeOne(block, 2);
-                    break;
-                case ISTORE_3:
-                case FSTORE_3:
-                case ASTORE_3:
-                    storeOne(block, 3);
-                    break;
+        /**
+         * Returns whether the local is live at the end of the given block.
+         */
+        public abstract boolean localIsLiveOut(Block block, int local);
+
+        /**
+         * Returns a string representation of the liveIn values of the given block.
+         */
+        protected abstract String debugLiveIn(int blockID);
+
+        /**
+         * Returns a string representation of the liveOut values of the given block.
+         */
+        protected abstract String debugLiveOut(int blockID);
+
+        /**
+         * Returns a string representation of the liveGen values of the given block.
+         */
+        protected abstract String debugLiveGen(int blockID);
+
+        /**
+         * Returns a string representation of the liveKill values of the given block.
+         */
+        protected abstract String debugLiveKill(int blockID);
+
+        /**
+         * Returns the number of live locals at the end of the given block.
+         */
+        protected abstract int liveOutCardinality(int blockID);
+
+        /**
+         * Adds all locals the are in the liveIn of the successor to the liveOut of the block.
+         */
+        protected abstract void propagateLiveness(int blockID, int successorID);
+
+        /**
+         * Calculates a new liveIn for the given block from liveOut, liveKill and liveGen.
+         */
+        protected abstract void updateLiveness(int blockID);
+
+        /**
+         * Adds the local to liveGen if it wasn't already killed in this block.
+         */
+        protected abstract void loadOne(int blockID, int local);
+
+        /**
+         * Add this local to liveKill if it wasn't already generated in this block.
+         */
+        protected abstract void storeOne(int blockID, int local);
+
+        private void computeLocalLiveness(Block block) {
+            if (block.startBci < 0 || block.endBci < 0) {
+                return;
             }
-            stream.next();
+            int blockID = block.blockID;
+            stream.setBCI(block.startBci);
+            while (stream.currentBCI() <= block.endBci) {
+                switch (stream.currentBC()) {
+                    case LLOAD:
+                    case DLOAD:
+                        loadTwo(blockID, stream.readLocalIndex());
+                        break;
+                    case LLOAD_0:
+                    case DLOAD_0:
+                        loadTwo(blockID, 0);
+                        break;
+                    case LLOAD_1:
+                    case DLOAD_1:
+                        loadTwo(blockID, 1);
+                        break;
+                    case LLOAD_2:
+                    case DLOAD_2:
+                        loadTwo(blockID, 2);
+                        break;
+                    case LLOAD_3:
+                    case DLOAD_3:
+                        loadTwo(blockID, 3);
+                        break;
+                    case ILOAD:
+                    case IINC:
+                    case FLOAD:
+                    case ALOAD:
+                    case RET:
+                        loadOne(blockID, stream.readLocalIndex());
+                        break;
+                    case ILOAD_0:
+                    case FLOAD_0:
+                    case ALOAD_0:
+                        loadOne(blockID, 0);
+                        break;
+                    case ILOAD_1:
+                    case FLOAD_1:
+                    case ALOAD_1:
+                        loadOne(blockID, 1);
+                        break;
+                    case ILOAD_2:
+                    case FLOAD_2:
+                    case ALOAD_2:
+                        loadOne(blockID, 2);
+                        break;
+                    case ILOAD_3:
+                    case FLOAD_3:
+                    case ALOAD_3:
+                        loadOne(blockID, 3);
+                        break;
+
+                    case LSTORE:
+                    case DSTORE:
+                        storeTwo(blockID, stream.readLocalIndex());
+                        break;
+                    case LSTORE_0:
+                    case DSTORE_0:
+                        storeTwo(blockID, 0);
+                        break;
+                    case LSTORE_1:
+                    case DSTORE_1:
+                        storeTwo(blockID, 1);
+                        break;
+                    case LSTORE_2:
+                    case DSTORE_2:
+                        storeTwo(blockID, 2);
+                        break;
+                    case LSTORE_3:
+                    case DSTORE_3:
+                        storeTwo(blockID, 3);
+                        break;
+                    case ISTORE:
+                    case FSTORE:
+                    case ASTORE:
+                        storeOne(blockID, stream.readLocalIndex());
+                        break;
+                    case ISTORE_0:
+                    case FSTORE_0:
+                    case ASTORE_0:
+                        storeOne(blockID, 0);
+                        break;
+                    case ISTORE_1:
+                    case FSTORE_1:
+                    case ASTORE_1:
+                        storeOne(blockID, 1);
+                        break;
+                    case ISTORE_2:
+                    case FSTORE_2:
+                    case ASTORE_2:
+                        storeOne(blockID, 2);
+                        break;
+                    case ISTORE_3:
+                    case FSTORE_3:
+                    case ASTORE_3:
+                        storeOne(blockID, 3);
+                        break;
+                }
+                stream.next();
+            }
+        }
+
+        private void loadTwo(int blockID, int local) {
+            loadOne(blockID, local);
+            loadOne(blockID, local + 1);
+        }
+
+        private void storeTwo(int blockID, int local) {
+            storeOne(blockID, local);
+            storeOne(blockID, local + 1);
         }
     }
 
@@ -889,25 +959,182 @@ public final class BciBlockMapping {
         return map;
     }
 
-    private static void loadTwo(Block block, int local) {
-        loadOne(block, local);
-        loadOne(block, local + 1);
-    }
+    public final class SmallLocalLiveness extends LocalLiveness {
+        /*
+         * local n is represented by the bit accessible as (1 << n)
+         */
 
-    private static void loadOne(Block block, int local) {
-        if (!block.localsLiveKill.get(local)) {
-            block.localsLiveGen.set(local);
+        private final long[] localsLiveIn;
+        private final long[] localsLiveOut;
+        private final long[] localsLiveGen;
+        private final long[] localsLiveKill;
+
+        public SmallLocalLiveness() {
+            localsLiveIn = new long[blocks.size()];
+            localsLiveOut = new long[blocks.size()];
+            localsLiveGen = new long[blocks.size()];
+            localsLiveKill = new long[blocks.size()];
+        }
+
+        private String debugString(long value) {
+            StringBuilder str = new StringBuilder("{");
+            long current = value;
+            for (int i = 0; i < method.getMaxLocals(); i++) {
+                if ((current & 1L) == 1L) {
+                    if (str.length() > 1) {
+                        str.append(", ");
+                    }
+                    str.append(i);
+                }
+                current >>= 1;
+            }
+            return str.append('}').toString();
+        }
+
+        @Override
+        protected String debugLiveIn(int blockID) {
+            return debugString(localsLiveIn[blockID]);
+        }
+
+        @Override
+        protected String debugLiveOut(int blockID) {
+            return debugString(localsLiveOut[blockID]);
+        }
+
+        @Override
+        protected String debugLiveGen(int blockID) {
+            return debugString(localsLiveGen[blockID]);
+        }
+
+        @Override
+        protected String debugLiveKill(int blockID) {
+            return debugString(localsLiveKill[blockID]);
+        }
+
+        @Override
+        protected int liveOutCardinality(int blockID) {
+            return Long.bitCount(localsLiveOut[blockID]);
+        }
+
+        @Override
+        protected void propagateLiveness(int blockID, int successorID) {
+            localsLiveOut[blockID] |= localsLiveIn[successorID];
+        }
+
+        @Override
+        protected void updateLiveness(int blockID) {
+            localsLiveIn[blockID] = (localsLiveOut[blockID] & ~localsLiveKill[blockID]) | localsLiveGen[blockID];
+        }
+
+        @Override
+        protected void loadOne(int blockID, int local) {
+            long bit = 1L << local;
+            if ((localsLiveKill[blockID] & bit) == 0L) {
+                localsLiveGen[blockID] |= bit;
+            }
+        }
+
+        @Override
+        protected void storeOne(int blockID, int local) {
+            long bit = 1L << local;
+            if ((localsLiveGen[blockID] & bit) == 0L) {
+                localsLiveKill[blockID] |= bit;
+            }
+        }
+
+        @Override
+        public boolean localIsLiveIn(Block block, int local) {
+            int blockID = block.blockID;
+            return blockID >= Integer.MAX_VALUE ? false : (localsLiveIn[blockID] & (1L << local)) != 0L;
+        }
+
+        @Override
+        public boolean localIsLiveOut(Block block, int local) {
+            int blockID = block.blockID;
+            return blockID >= Integer.MAX_VALUE ? false : (localsLiveOut[blockID] & (1L << local)) != 0L;
         }
     }
 
-    private static void storeTwo(Block block, int local) {
-        storeOne(block, local);
-        storeOne(block, local + 1);
-    }
+    public final class LargeLocalLiveness extends LocalLiveness {
+        private BitSet[] localsLiveIn;
+        private BitSet[] localsLiveOut;
+        private BitSet[] localsLiveGen;
+        private BitSet[] localsLiveKill;
 
-    private static void storeOne(Block block, int local) {
-        if (!block.localsLiveGen.get(local)) {
-            block.localsLiveKill.set(local);
+        public LargeLocalLiveness() {
+            localsLiveIn = new BitSet[blocks.size()];
+            localsLiveOut = new BitSet[blocks.size()];
+            localsLiveGen = new BitSet[blocks.size()];
+            localsLiveKill = new BitSet[blocks.size()];
+            for (int i = 0; i < blocks.size(); i++) {
+                localsLiveIn[i] = new BitSet(method.getMaxLocals());
+                localsLiveOut[i] = new BitSet(method.getMaxLocals());
+                localsLiveGen[i] = new BitSet(method.getMaxLocals());
+                localsLiveKill[i] = new BitSet(method.getMaxLocals());
+            }
+        }
+
+        @Override
+        protected String debugLiveIn(int blockID) {
+            return localsLiveIn[blockID].toString();
+        }
+
+        @Override
+        protected String debugLiveOut(int blockID) {
+            return localsLiveOut[blockID].toString();
+        }
+
+        @Override
+        protected String debugLiveGen(int blockID) {
+            return localsLiveGen[blockID].toString();
+        }
+
+        @Override
+        protected String debugLiveKill(int blockID) {
+            return localsLiveKill[blockID].toString();
+        }
+
+        @Override
+        protected int liveOutCardinality(int blockID) {
+            return localsLiveOut[blockID].cardinality();
+        }
+
+        @Override
+        protected void propagateLiveness(int blockID, int successorID) {
+            localsLiveOut[blockID].or(localsLiveIn[successorID]);
+        }
+
+        @Override
+        protected void updateLiveness(int blockID) {
+            BitSet liveIn = localsLiveIn[blockID];
+            liveIn.clear();
+            liveIn.or(localsLiveOut[blockID]);
+            liveIn.andNot(localsLiveKill[blockID]);
+            liveIn.or(localsLiveGen[blockID]);
+        }
+
+        @Override
+        protected void loadOne(int blockID, int local) {
+            if (!localsLiveKill[blockID].get(local)) {
+                localsLiveGen[blockID].set(local);
+            }
+        }
+
+        @Override
+        protected void storeOne(int blockID, int local) {
+            if (!localsLiveGen[blockID].get(local)) {
+                localsLiveKill[blockID].set(local);
+            }
+        }
+
+        @Override
+        public boolean localIsLiveIn(Block block, int local) {
+            return block.blockID >= Integer.MAX_VALUE ? true : localsLiveIn[block.blockID].get(local);
+        }
+
+        @Override
+        public boolean localIsLiveOut(Block block, int local) {
+            return block.blockID >= Integer.MAX_VALUE ? true : localsLiveOut[block.blockID].get(local);
         }
     }
 }
