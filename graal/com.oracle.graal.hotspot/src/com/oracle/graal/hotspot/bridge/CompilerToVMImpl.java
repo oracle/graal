@@ -111,7 +111,7 @@ public class CompilerToVMImpl implements CompilerToVM {
     public native long getClassInitializer(long metaspaceKlass);
 
     @Override
-    public native int getCompiledCodeSize(long metaspaceMethod);
+    public native HotSpotInstalledCode getInstalledCode(long metaspaceMethod);
 
     @Override
     public native long getMaxCallTargetOffset(long address);
