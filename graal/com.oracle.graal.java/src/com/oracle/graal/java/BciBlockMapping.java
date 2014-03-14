@@ -83,7 +83,7 @@ public final class BciBlockMapping {
         public int blockID;
 
         public FixedWithNextNode firstInstruction;
-        public FrameStateBuilder entryState;
+        public HIRFrameStateBuilder entryState;
 
         public ArrayList<Block> successors = new ArrayList<>(2);
         public long exits;

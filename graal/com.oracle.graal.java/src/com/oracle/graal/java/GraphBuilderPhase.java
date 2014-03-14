@@ -116,7 +116,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
         private BytecodeStream stream;           // the bytecode stream
 
-        protected FrameStateBuilder frameState;          // the current execution state
+        protected HIRFrameStateBuilder frameState;          // the current execution state
         private Block currentBlock;
 
         private ValueNode methodSynchronizedObject;
@@ -163,7 +163,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
         /**
          * Gets the current frame state being processed by this builder.
          */
-        protected FrameStateBuilder getCurrentFrameState() {
+        protected HIRFrameStateBuilder getCurrentFrameState() {
             return frameState;
         }
 
@@ -200,7 +200,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             unwindBlock = null;
             methodSynchronizedObject = null;
             this.currentGraph = graph;
-            this.frameState = new FrameStateBuilder(method, graph, graphBuilderConfig.eagerResolving());
+            this.frameState = new HIRFrameStateBuilder(method, graph, graphBuilderConfig.eagerResolving());
             TTY.Filter filter = new TTY.Filter(PrintFilter.getValue(), method);
             try {
                 build();
@@ -435,7 +435,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 dispatchBlock = unwindBlock(bci);
             }
 
-            FrameStateBuilder dispatchState = frameState.copy();
+            HIRFrameStateBuilder dispatchState = frameState.copy();
             dispatchState.clearStack();
 
             DispatchBeginNode dispatchBegin;
@@ -1455,15 +1455,15 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
         private static class Target {
 
             FixedNode fixed;
-            FrameStateBuilder state;
+            HIRFrameStateBuilder state;
 
-            public Target(FixedNode fixed, FrameStateBuilder state) {
+            public Target(FixedNode fixed, HIRFrameStateBuilder state) {
                 this.fixed = fixed;
                 this.state = state;
             }
         }
 
-        private Target checkLoopExit(FixedNode target, Block targetBlock, FrameStateBuilder state) {
+        private Target checkLoopExit(FixedNode target, Block targetBlock, HIRFrameStateBuilder state) {
             if (currentBlock != null) {
                 long exits = currentBlock.loops & ~targetBlock.loops;
                 if (exits != 0) {
@@ -1493,7 +1493,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     if (targetBlock instanceof ExceptionDispatchBlock) {
                         bci = ((ExceptionDispatchBlock) targetBlock).deoptBci;
                     }
-                    FrameStateBuilder newState = state.copy();
+                    HIRFrameStateBuilder newState = state.copy();
                     for (Block loop : exitLoops) {
                         LoopBeginNode loopBegin = (LoopBeginNode) loop.firstInstruction;
                         LoopExitNode loopExit = currentGraph.add(new LoopExitNode(loopBegin));
@@ -1516,7 +1516,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             return new Target(target, state);
         }
 
-        private FixedNode createTarget(double probability, Block block, FrameStateBuilder stateAfter) {
+        private FixedNode createTarget(double probability, Block block, HIRFrameStateBuilder stateAfter) {
             assert probability >= 0 && probability <= 1.01 : probability;
             if (isNeverExecutedCode(probability)) {
                 return currentGraph.add(new DeoptimizeNode(InvalidateReprofile, UnreachedCode));
@@ -1530,7 +1530,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             return probability == 0 && optimisticOpts.removeNeverExecutedCode() && entryBCI == StructuredGraph.INVOCATION_ENTRY_BCI;
         }
 
-        private FixedNode createTarget(Block block, FrameStateBuilder state) {
+        private FixedNode createTarget(Block block, HIRFrameStateBuilder state) {
             assert block != null && state != null;
             assert !block.isExceptionEntry || state.stackSize() == 1;
 
@@ -1610,7 +1610,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
          * Returns a block begin node with the specified state. If the specified probability is 0,
          * the block deoptimizes immediately.
          */
-        private AbstractBeginNode createBlockTarget(double probability, Block block, FrameStateBuilder stateAfter) {
+        private AbstractBeginNode createBlockTarget(double probability, Block block, HIRFrameStateBuilder stateAfter) {
             FixedNode target = createTarget(probability, block, stateAfter);
             AbstractBeginNode begin = AbstractBeginNode.begin(target);
 
@@ -1619,7 +1619,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             return begin;
         }
 
-        private ValueNode synchronizedObject(FrameStateBuilder state, ResolvedJavaMethod target) {
+        private ValueNode synchronizedObject(HIRFrameStateBuilder state, ResolvedJavaMethod target) {
             if (isStatic(target.getModifiers())) {
                 return appendConstant(target.getDeclaringClass().getEncoding(Representation.JavaClass));
             } else {

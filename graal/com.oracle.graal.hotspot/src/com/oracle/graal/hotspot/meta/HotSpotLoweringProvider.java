@@ -520,7 +520,7 @@ public class HotSpotLoweringProvider implements LoweringProvider {
             // mirroring the calculations in c1_GraphBuilder.cpp (setup_osr_entry_block)
             int localsOffset = (graph.method().getMaxLocals() - 1) * 8;
             for (OSRLocalNode osrLocal : graph.getNodes(OSRLocalNode.class)) {
-                int size = FrameStateBuilder.stackSlots(osrLocal.kind());
+                int size = HIRFrameStateBuilder.stackSlots(osrLocal.kind());
                 int offset = localsOffset - (osrLocal.index() + size - 1) * 8;
                 IndexedLocationNode location = IndexedLocationNode.create(ANY_LOCATION, osrLocal.kind(), offset, ConstantNode.forLong(0, graph), graph, 1);
                 ReadNode load = graph.add(new ReadNode(buffer, location, osrLocal.stamp(), BarrierType.NONE, false));

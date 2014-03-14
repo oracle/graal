@@ -106,7 +106,7 @@ public class GraphKit {
      * @param name the name of the invoked method
      * @param args the arguments to the invocation
      */
-    public InvokeNode createInvoke(Class<?> declaringClass, String name, InvokeKind invokeKind, FrameStateBuilder frameStateBuilder, int bci, ValueNode... args) {
+    public InvokeNode createInvoke(Class<?> declaringClass, String name, InvokeKind invokeKind, HIRFrameStateBuilder frameStateBuilder, int bci, ValueNode... args) {
         boolean isStatic = invokeKind == InvokeKind.Static;
         ResolvedJavaMethod method = null;
         for (Method m : declaringClass.getDeclaredMethods()) {
@@ -123,7 +123,7 @@ public class GraphKit {
      * Creates and appends an {@link InvokeNode} for a call to a given method with a given set of
      * arguments.
      */
-    public InvokeNode createInvoke(ResolvedJavaMethod method, InvokeKind invokeKind, FrameStateBuilder frameStateBuilder, int bci, ValueNode... args) {
+    public InvokeNode createInvoke(ResolvedJavaMethod method, InvokeKind invokeKind, HIRFrameStateBuilder frameStateBuilder, int bci, ValueNode... args) {
         assert Modifier.isStatic(method.getModifiers()) == (invokeKind == InvokeKind.Static);
         Signature signature = method.getSignature();
         JavaType returnType = signature.getReturnType(null);
