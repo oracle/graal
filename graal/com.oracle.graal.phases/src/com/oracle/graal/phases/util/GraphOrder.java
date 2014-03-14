@@ -26,7 +26,12 @@ import java.util.*;
 
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.VirtualState.NodeClosure;
+import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.phases.graph.*;
+import com.oracle.graal.phases.graph.ReentrantBlockIterator.*;
+import com.oracle.graal.phases.schedule.*;
+import com.oracle.graal.phases.schedule.SchedulePhase.*;
 
 public final class GraphOrder {
 
@@ -34,9 +39,9 @@ public final class GraphOrder {
     }
 
     /**
-     * Asserts that there are no (invalid) cycles in the given graph. First, an ordered list of all
-     * nodes in the graph (a total ordering) is created. A second run over this list checks whether
-     * inputs are scheduled before their usages.
+     * Quick (and imprecise) assertion that there are no (invalid) cycles in the given graph. First,
+     * an ordered list of all nodes in the graph (a total ordering) is created. A second run over
+     * this list checks whether inputs are scheduled before their usages.
      * 
      * @param graph the graph to be checked.
      * @throws AssertionError if a cycle was detected.
@@ -62,7 +67,6 @@ public final class GraphOrder {
             }
             visited.mark(node);
         }
-
         return true;
     }
 
@@ -80,34 +84,161 @@ public final class GraphOrder {
     }
 
     private static void visitForward(ArrayList<Node> nodes, NodeBitMap visited, Node node, boolean floatingOnly) {
-        if (node != null && !visited.isMarked(node)) {
-            assert !floatingOnly || !(node instanceof FixedNode) : "unexpected reference to fixed node: " + node + " (this indicates an unexpected cycle)";
-            visited.mark(node);
-            FrameState stateAfter = null;
-            if (node instanceof StateSplit) {
-                stateAfter = ((StateSplit) node).stateAfter();
-            }
-            for (Node input : node.inputs()) {
-                if (input != stateAfter) {
-                    visitForward(nodes, visited, input, true);
+        try {
+            assert node.isAlive() : node + " not alive";
+            if (node != null && !visited.isMarked(node)) {
+                if (floatingOnly && node instanceof FixedNode) {
+                    throw new GraalInternalError("unexpected reference to fixed node: %s (this indicates an unexpected cycle)", node);
+                }
+                visited.mark(node);
+                FrameState stateAfter = null;
+                if (node instanceof StateSplit) {
+                    stateAfter = ((StateSplit) node).stateAfter();
+                }
+                for (Node input : node.inputs()) {
+                    if (input != stateAfter) {
+                        visitForward(nodes, visited, input, true);
+                    }
+                }
+                if (node instanceof EndNode) {
+                    EndNode end = (EndNode) node;
+                    for (PhiNode phi : end.merge().phis()) {
+                        visitForward(nodes, visited, phi.valueAt(end), true);
+                    }
+                }
+                nodes.add(node);
+                if (node instanceof MergeNode) {
+                    for (PhiNode phi : ((MergeNode) node).phis()) {
+                        visited.mark(phi);
+                        nodes.add(phi);
+                    }
+                }
+                if (stateAfter != null) {
+                    visitForward(nodes, visited, stateAfter, true);
                 }
             }
-            if (node instanceof EndNode) {
-                EndNode end = (EndNode) node;
-                for (PhiNode phi : end.merge().phis()) {
-                    visitForward(nodes, visited, phi.valueAt(end), true);
-                }
-            }
-            nodes.add(node);
-            if (node instanceof MergeNode) {
-                for (PhiNode phi : ((MergeNode) node).phis()) {
-                    visited.mark(phi);
-                    nodes.add(phi);
-                }
-            }
-            if (stateAfter != null) {
-                visitForward(nodes, visited, stateAfter, true);
-            }
+        } catch (GraalInternalError e) {
+            e.addContext(node);
+            throw e;
         }
+    }
+
+    /**
+     * This method schedules the graph and makes sure that, for every node, all inputs are available
+     * at the position where it is scheduled. This is a very expensive assertion.
+     * 
+     * Also, this phase assumes ProxyNodes to exist at LoopExitNodes, so that it cannot be run after
+     * phases that remove loop proxies or move proxies to BeginNodes.
+     */
+    public static boolean assertSchedulableGraph(final StructuredGraph graph) {
+        try {
+            final SchedulePhase schedule = new SchedulePhase(SchedulingStrategy.LATEST_OUT_OF_LOOPS, MemoryScheduling.NONE);
+            final IdentityHashMap<LoopBeginNode, NodeBitMap> loopEntryStates = new IdentityHashMap<>();
+            schedule.apply(graph, false);
+
+            BlockIteratorClosure<NodeBitMap> closure = new BlockIteratorClosure<NodeBitMap>() {
+
+                @Override
+                protected List<NodeBitMap> processLoop(Loop loop, NodeBitMap initialState) {
+                    return ReentrantBlockIterator.processLoop(this, loop, initialState).exitStates;
+                }
+
+                @Override
+                protected NodeBitMap processBlock(final Block block, final NodeBitMap currentState) {
+                    final List<ScheduledNode> list = schedule.getBlockToNodesMap().get(block);
+
+                    /*
+                     * A stateAfter is not valid directly after its associated state split, but
+                     * right before the next fixed node. Therefore a pending stateAfter is kept that
+                     * will be checked at the correct position.
+                     */
+                    FrameState pendingStateAfter = null;
+                    for (final ScheduledNode node : list) {
+                        FrameState stateAfter = node instanceof StateSplit ? ((StateSplit) node).stateAfter() : null;
+
+                        if (pendingStateAfter != null && node instanceof FixedNode) {
+                            pendingStateAfter.applyToNonVirtual(new NodeClosure<Node>() {
+                                public void apply(Node usage, Node nonVirtualNode) {
+                                    assert currentState.isMarked(nonVirtualNode) : nonVirtualNode + " not available at virtualstate " + usage + " before " + node + " in block " + block + " \n" + list;
+                                }
+                            });
+                            pendingStateAfter = null;
+                        }
+
+                        if (node instanceof MergeNode) {
+                            // phis aren't scheduled, so they need to be added explicitly
+                            currentState.markAll(((MergeNode) node).phis());
+                            if (node instanceof LoopBeginNode) {
+                                // remember the state at the loop entry, it's restored at exits
+                                loopEntryStates.put((LoopBeginNode) node, currentState.copy());
+                            }
+                        } else if (node instanceof ProxyNode) {
+                            for (Node input : node.inputs()) {
+                                if (input != ((ProxyNode) node).proxyPoint()) {
+                                    assert currentState.isMarked(input) : input + " not available at " + node + " in block " + block + "\n" + list;
+                                }
+                            }
+                        } else if (node instanceof LoopExitNode) {
+                            // the contents of the loop are only accessible via proxies at the exit
+                            currentState.clearAll();
+                            currentState.markAll(loopEntryStates.get(((LoopExitNode) node).loopBegin()));
+                            // Loop proxies aren't scheduled, so they need to be added explicitly
+                            currentState.markAll(((LoopExitNode) node).proxies());
+                        } else {
+                            for (Node input : node.inputs()) {
+                                if (input != stateAfter) {
+                                    assert currentState.isMarked(input) : input + " not available at " + node + " in block " + block + "\n" + list;
+                                }
+                            }
+                        }
+                        if (node instanceof AbstractEndNode) {
+                            MergeNode merge = ((AbstractEndNode) node).merge();
+                            for (PhiNode phi : merge.phis()) {
+                                assert currentState.isMarked(phi.valueAt((AbstractEndNode) node)) : phi.valueAt((AbstractEndNode) node) + " not available at phi " + phi + " / end " + node +
+                                                " in block " + block;
+                            }
+                        }
+                        if (stateAfter != null) {
+                            assert pendingStateAfter == null;
+                            pendingStateAfter = stateAfter;
+                        }
+                        currentState.mark(node);
+                    }
+                    if (pendingStateAfter != null) {
+                        pendingStateAfter.applyToNonVirtual(new NodeClosure<Node>() {
+                            public void apply(Node usage, Node nonVirtualNode) {
+                                assert currentState.isMarked(nonVirtualNode) : nonVirtualNode + " not available at virtualstate " + usage + " at end of block " + block + " \n" + list;
+                            }
+                        });
+                    }
+                    return currentState;
+                }
+
+                @Override
+                protected NodeBitMap merge(Block merge, List<NodeBitMap> states) {
+                    NodeBitMap result = states.get(0);
+                    for (int i = 1; i < states.size(); i++) {
+                        result.intersect(states.get(i));
+                    }
+                    return result;
+                }
+
+                @Override
+                protected NodeBitMap getInitialState() {
+                    return graph.createNodeBitMap();
+                }
+
+                @Override
+                protected NodeBitMap cloneState(NodeBitMap oldState) {
+                    return oldState.copy();
+                }
+            };
+
+            ReentrantBlockIterator.apply(closure, schedule.getCFG().getStartBlock());
+
+        } catch (Throwable t) {
+            throw new AssertionError("unschedulable graph", t);
+        }
+        return true;
     }
 }
