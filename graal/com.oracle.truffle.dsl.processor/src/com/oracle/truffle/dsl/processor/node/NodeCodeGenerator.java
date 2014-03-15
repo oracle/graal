@@ -223,7 +223,6 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
                         }
                     }
                     ActualParameter sourceParameter = sourceMethod.findParameter(parameter.getLocalName());
-                    assert parameter != null;
 
                     if (castedValues && sourceParameter != null) {
                         builder.string(valueName(sourceParameter, parameter));
