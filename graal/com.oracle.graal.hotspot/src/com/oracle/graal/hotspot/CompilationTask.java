@@ -347,9 +347,10 @@ public class CompilationTask implements Runnable, Comparable {
         } else {
             compLevelChar = ' ';
         }
+        boolean hasExceptionHandlers = method.getExceptionHandlers().length > 0;
         TTY.println(String.format("%s%7d %4d %c%c%c%c%c%c      %s %s(%d bytes)", compilerName, (System.currentTimeMillis() - TIMESTAMP_START), id, isOSR ? '%' : ' ',
-                        Modifier.isSynchronized(mod) ? 's' : ' ', ' ', ' ', Modifier.isNative(mod) ? 'n' : ' ', compLevelChar, MetaUtil.format("%H::%n(%p)", method), isOSR ? "@ " + entryBCI + " "
-                                        : "", method.getCodeSize()));
+                        Modifier.isSynchronized(mod) ? 's' : ' ', hasExceptionHandlers ? '!' : ' ', blocking ? 'b' : ' ', Modifier.isNative(mod) ? 'n' : ' ', compLevelChar,
+                        MetaUtil.format("%H::%n(%p)", method), isOSR ? "@ " + entryBCI + " " : "", method.getCodeSize()));
     }
 
     private HotSpotInstalledCode installMethod(final CompilationResult compResult) {
