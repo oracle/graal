@@ -235,6 +235,9 @@ public final class HotSpotGraalRuntime implements GraalRuntime, RuntimeProvider 
         if (HotSpotPrintInlining.getValue() == false) {
             HotSpotPrintInlining.setValue(config.printInlining);
         }
+        if (HotSpotCIPrintCompilerName.getValue() == false) {
+            HotSpotCIPrintCompilerName.setValue(config.printCompilerName);
+        }
 
         if (Boolean.valueOf(System.getProperty("graal.printconfig"))) {
             printConfig(config);

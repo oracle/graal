@@ -709,6 +709,7 @@ public class HotSpotVMConfig extends CompilerObject {
     @HotSpotVMFlag(name = "DontCompileHugeMethods") @Stable public boolean dontCompileHugeMethods;
     @HotSpotVMFlag(name = "HugeMethodLimit") @Stable public int hugeMethodLimit;
     @HotSpotVMFlag(name = "PrintCompilation") @Stable public boolean printCompilation;
+    @HotSpotVMFlag(name = "CIPrintCompilerName") @Stable public boolean printCompilerName;
     @HotSpotVMFlag(name = "PrintInlining") @Stable public boolean printInlining;
     @HotSpotVMFlag(name = "GraalUseFastLocking") @Stable public boolean useFastLocking;
     @HotSpotVMFlag(name = "ForceUnreachable") @Stable public boolean forceUnreachable;

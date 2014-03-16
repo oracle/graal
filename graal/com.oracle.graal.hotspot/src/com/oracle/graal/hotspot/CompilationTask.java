@@ -54,6 +54,8 @@ import com.oracle.graal.phases.tiers.*;
 
 public class CompilationTask implements Runnable, Comparable {
 
+    private static final long TIMESTAMP_START = System.currentTimeMillis();
+
     // Keep static finals in a group with withinEnqueue as the last one. CompilationTask can be
     // called from within it's own clinit so it needs to be careful about accessing state. Once
     // withinEnqueue is non-null we assume that CompilationTask is fully initialized.
@@ -330,8 +332,12 @@ public class CompilationTask implements Runnable, Comparable {
     private void printCompilation() {
         final boolean isOSR = entryBCI != StructuredGraph.INVOCATION_ENTRY_BCI;
         final int mod = method.getModifiers();
-        TTY.println(String.format("%7d %4d %c%c%c%c%c       %s %s(%d bytes)", 0, id, isOSR ? '%' : ' ', Modifier.isSynchronized(mod) ? 's' : ' ', ' ', ' ', Modifier.isNative(mod) ? 'n' : ' ',
-                        MetaUtil.format("%H::%n(%p)", method), isOSR ? "@ " + entryBCI + " " : "", method.getCodeSize()));
+        String compilerName = "";
+        if (HotSpotCIPrintCompilerName.getValue()) {
+            compilerName = "Graal:";
+        }
+        TTY.println(String.format("%s%7d %4d %c%c%c%c%c       %s %s(%d bytes)", compilerName, (System.currentTimeMillis() - TIMESTAMP_START), id, isOSR ? '%' : ' ', Modifier.isSynchronized(mod) ? 's'
+                        : ' ', ' ', ' ', Modifier.isNative(mod) ? 'n' : ' ', MetaUtil.format("%H::%n(%p)", method), isOSR ? "@ " + entryBCI + " " : "", method.getCodeSize()));
     }
 
     private HotSpotInstalledCode installMethod(final CompilationResult compResult) {
