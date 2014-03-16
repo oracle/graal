@@ -336,8 +336,20 @@ public class CompilationTask implements Runnable, Comparable {
         if (HotSpotCIPrintCompilerName.getValue()) {
             compilerName = "Graal:";
         }
-        TTY.println(String.format("%s%7d %4d %c%c%c%c%c       %s %s(%d bytes)", compilerName, (System.currentTimeMillis() - TIMESTAMP_START), id, isOSR ? '%' : ' ', Modifier.isSynchronized(mod) ? 's'
-                        : ' ', ' ', ' ', Modifier.isNative(mod) ? 'n' : ' ', MetaUtil.format("%H::%n(%p)", method), isOSR ? "@ " + entryBCI + " " : "", method.getCodeSize()));
+        HotSpotVMConfig config = backend.getRuntime().getConfig();
+        int compLevel = config.compilationLevelFullOptimization;
+        char compLevelChar;
+        if (config.tieredCompilation) {
+            compLevelChar = '-';
+            if (compLevel != -1) {
+                compLevelChar = (char) ('0' + compLevel);
+            }
+        } else {
+            compLevelChar = ' ';
+        }
+        TTY.println(String.format("%s%7d %4d %c%c%c%c%c%c      %s %s(%d bytes)", compilerName, (System.currentTimeMillis() - TIMESTAMP_START), id, isOSR ? '%' : ' ',
+                        Modifier.isSynchronized(mod) ? 's' : ' ', ' ', ' ', Modifier.isNative(mod) ? 'n' : ' ', compLevelChar, MetaUtil.format("%H::%n(%p)", method), isOSR ? "@ " + entryBCI + " "
+                                        : "", method.getCodeSize()));
     }
 
     private HotSpotInstalledCode installMethod(final CompilationResult compResult) {
