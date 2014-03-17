@@ -123,7 +123,7 @@ public class HSAILRegisterConfig implements RegisterConfig {
 
             if (locations[i] == null) {
                 locations[i] = StackSlot.get(kind.getStackKind(), currentStackOffset, !type.out);
-                currentStackOffset += Math.max(target.arch.getSizeInBytes(kind), target.wordSize);
+                currentStackOffset += Math.max(target.getSizeInBytes(kind), target.wordSize);
             }
         }
 

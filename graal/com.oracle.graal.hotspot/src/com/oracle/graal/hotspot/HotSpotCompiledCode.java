@@ -77,12 +77,12 @@ public abstract class HotSpotCompiledCode extends CompilerObject {
         }
 
         @Override
-        public int getSize(Architecture arch) {
+        public int getSize(TargetDescription target) {
             return 0;
         }
 
         @Override
-        public void emit(Architecture arch, ByteBuffer buffer) {
+        public void emit(TargetDescription target, ByteBuffer buffer) {
         }
     }
 
@@ -106,7 +106,7 @@ public abstract class HotSpotCompiledCode extends CompilerObject {
          */
         public final HotSpotData[] patches;
 
-        public DataSection(Architecture arch, Site[] sites) {
+        public DataSection(TargetDescription target, Site[] sites) {
             int size = 0;
             int patchCount = 0;
             List<DataPatch> externalDataList = new ArrayList<>();
@@ -118,7 +118,7 @@ public abstract class HotSpotCompiledCode extends CompilerObject {
                     if (dataPatch.externalData != null) {
                         Data d = dataPatch.externalData;
                         size = NumUtil.roundUp(size, d.getAlignment());
-                        size += d.getSize(arch);
+                        size += d.getSize(target);
                         externalDataList.add(dataPatch);
                         if (dataPatch.getConstant() != null && dataPatch.getConstant().getKind() == Kind.Object) {
                             patchCount++;
@@ -150,8 +150,8 @@ public abstract class HotSpotCompiledCode extends CompilerObject {
                 }
                 dataPatch.externalData = hsData;
 
-                index += d.getSize(arch);
-                d.emit(arch, buffer);
+                index += d.getSize(target);
+                d.emit(target, buffer);
             }
 
             this.sectionAlignment = alignment;
@@ -169,10 +169,10 @@ public abstract class HotSpotCompiledCode extends CompilerObject {
         }
     }
 
-    public HotSpotCompiledCode(Architecture arch, CompilationResult compResult) {
+    public HotSpotCompiledCode(TargetDescription target, CompilationResult compResult) {
         this.comp = compResult;
         sites = getSortedSites(compResult);
-        dataSection = new DataSection(arch, sites);
+        dataSection = new DataSection(target, sites);
         if (compResult.getExceptionHandlers().isEmpty()) {
             exceptionHandlers = null;
         } else {

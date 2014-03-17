@@ -170,7 +170,7 @@ public abstract class FrameMap {
             // Without this, frameNeedsAllocating() would never return true.
             int total = 0;
             for (StackSlot s : freedSlots) {
-                total += target.arch.getSizeInBytes(s.getKind());
+                total += target.getSizeInBytes(s.getKind());
             }
             if (total == spillSize - initialSpillSize) {
                 // reset spill area size
@@ -256,7 +256,7 @@ public abstract class FrameMap {
      * @return the size in bytes
      */
     protected int spillSlotSize(PlatformKind kind) {
-        return target.arch.getSizeInBytes(kind);
+        return target.getSizeInBytes(kind);
     }
 
     /**

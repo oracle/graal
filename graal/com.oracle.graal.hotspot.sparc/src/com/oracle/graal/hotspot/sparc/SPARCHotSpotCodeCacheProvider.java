@@ -34,6 +34,6 @@ public class SPARCHotSpotCodeCacheProvider extends HotSpotCodeCacheProvider {
 
     @Override
     protected RegisterConfig createRegisterConfig() {
-        return new SPARCHotSpotRegisterConfig(getTarget().arch, runtime.getConfig());
+        return new SPARCHotSpotRegisterConfig(getTarget(), runtime.getConfig());
     }
 }

@@ -153,7 +153,7 @@ public abstract class Stub {
                 try (Scope s = Debug.scope("CodeInstall")) {
                     Stub stub = Stub.this;
                     HotSpotRuntimeStub installedCode = new HotSpotRuntimeStub(stub);
-                    HotSpotCompiledCode hsCompResult = new HotSpotCompiledRuntimeStub(backend.getTarget().arch, stub, compResult);
+                    HotSpotCompiledCode hsCompResult = new HotSpotCompiledRuntimeStub(backend.getTarget(), stub, compResult);
 
                     CodeInstallResult result = runtime().getCompilerToVM().installCode(hsCompResult, installedCode, null);
                     if (result != CodeInstallResult.OK) {

@@ -173,7 +173,7 @@ public abstract class HotSpotCodeCacheProvider implements CodeCacheProvider {
             compResult.setId(method.allocateCompileId(compResult.getEntryBCI()));
         }
         HotSpotInstalledCode installedCode = new HotSpotNmethod(method, compResult.getName(), true);
-        runtime.getCompilerToVM().installCode(new HotSpotCompiledNmethod(target.arch, method, compResult), installedCode, method.getSpeculationLog());
+        runtime.getCompilerToVM().installCode(new HotSpotCompiledNmethod(target, method, compResult), installedCode, method.getSpeculationLog());
         return logOrDump(installedCode, compResult);
     }
 
@@ -184,7 +184,7 @@ public abstract class HotSpotCodeCacheProvider implements CodeCacheProvider {
             compResult.setId(hotspotMethod.allocateCompileId(compResult.getEntryBCI()));
         }
         HotSpotInstalledCode code = new HotSpotNmethod(hotspotMethod, compResult.getName(), false);
-        CodeInstallResult result = runtime.getCompilerToVM().installCode(new HotSpotCompiledNmethod(target.arch, hotspotMethod, compResult), code, log);
+        CodeInstallResult result = runtime.getCompilerToVM().installCode(new HotSpotCompiledNmethod(target, hotspotMethod, compResult), code, log);
         if (result != CodeInstallResult.OK) {
             return null;
         }
@@ -203,7 +203,7 @@ public abstract class HotSpotCodeCacheProvider implements CodeCacheProvider {
             compResult.setId(javaMethod.allocateCompileId(compResult.getEntryBCI()));
         }
         HotSpotNmethod code = new HotSpotNmethod(javaMethod, compResult.getName(), false, true);
-        HotSpotCompiledNmethod compiled = new HotSpotCompiledNmethod(target.arch, javaMethod, compResult);
+        HotSpotCompiledNmethod compiled = new HotSpotCompiledNmethod(target, javaMethod, compResult);
         CompilerToVM vm = runtime.getCompilerToVM();
         CodeInstallResult result = vm.installCode(compiled, code, null);
         if (result != CodeInstallResult.OK) {

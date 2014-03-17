@@ -152,9 +152,9 @@ public class CompilationResult implements Serializable {
             return alignment;
         }
 
-        public abstract int getSize(Architecture arch);
+        public abstract int getSize(TargetDescription target);
 
-        public abstract void emit(Architecture arch, ByteBuffer buffer);
+        public abstract void emit(TargetDescription target, ByteBuffer buffer);
     }
 
     public static final class ConstantData extends Data {
@@ -167,48 +167,48 @@ public class CompilationResult implements Serializable {
         }
 
         @Override
-        public int getSize(Architecture arch) {
-            return arch.getSizeInBytes(constant.getPlatformKind());
+        public int getSize(TargetDescription target) {
+            return target.getSizeInBytes(constant.getPlatformKind());
         }
 
         @Override
-        public void emit(Architecture arch, ByteBuffer buffer) {
+        public void emit(TargetDescription target, ByteBuffer buffer) {
             switch (constant.getKind()) {
                 case Boolean:
-                    assert getSize(arch) == 1;
+                    assert getSize(target) == 1;
                     buffer.put(constant.asBoolean() ? (byte) 1 : (byte) 0);
                     break;
                 case Byte:
-                    assert getSize(arch) == 1;
+                    assert getSize(target) == 1;
                     buffer.put((byte) constant.asInt());
                     break;
                 case Char:
-                    assert getSize(arch) == 2;
+                    assert getSize(target) == 2;
                     buffer.putChar((char) constant.asInt());
                     break;
                 case Short:
-                    assert getSize(arch) == 2;
+                    assert getSize(target) == 2;
                     buffer.putShort((short) constant.asInt());
                     break;
                 case Int:
-                    assert getSize(arch) == 4;
+                    assert getSize(target) == 4;
                     buffer.putInt(constant.asInt());
                     break;
                 case Long:
-                    assert getSize(arch) == 8;
+                    assert getSize(target) == 8;
                     buffer.putLong(constant.asLong());
                     break;
                 case Float:
-                    assert getSize(arch) == 4;
+                    assert getSize(target) == 4;
                     buffer.putFloat(constant.asFloat());
                     break;
                 case Double:
-                    assert getSize(arch) == 8;
+                    assert getSize(target) == 8;
                     buffer.putDouble(constant.asDouble());
                     break;
                 case Object:
                     // placeholder for oop value
-                    for (int i = 0; i < getSize(arch); i++) {
+                    for (int i = 0; i < getSize(target); i++) {
                         buffer.put((byte) 0);
                     }
                     break;
@@ -231,12 +231,12 @@ public class CompilationResult implements Serializable {
         }
 
         @Override
-        public int getSize(Architecture arch) {
+        public int getSize(TargetDescription target) {
             return data.length;
         }
 
         @Override
-        public void emit(Architecture arch, ByteBuffer buffer) {
+        public void emit(TargetDescription target, ByteBuffer buffer) {
             buffer.put(data);
         }
 
