@@ -154,63 +154,61 @@ public class CompilationResult implements Serializable {
 
         public abstract int getSize(TargetDescription target);
 
+        public abstract Kind getKind();
+
         public abstract void emit(TargetDescription target, ByteBuffer buffer);
     }
 
-    public static final class ConstantData extends Data {
+    /**
+     * Represents a Java primitive value used in a {@link DataPatch}. This implementation uses
+     * {@link Kind#getByteCount()} bytes to encode each value.
+     */
+    public static final class PrimitiveData extends Data {
 
         public final Constant constant;
 
-        public ConstantData(Constant constant, int alignment) {
+        public PrimitiveData(Constant constant, int alignment) {
             super(alignment);
+            assert constant.getKind().isPrimitive();
             this.constant = constant;
         }
 
         @Override
         public int getSize(TargetDescription target) {
-            return target.getSizeInBytes(constant.getPlatformKind());
+            return constant.getKind().getByteCount();
+        }
+
+        @Override
+        public Kind getKind() {
+            return constant.getKind();
         }
 
         @Override
         public void emit(TargetDescription target, ByteBuffer buffer) {
             switch (constant.getKind()) {
                 case Boolean:
-                    assert getSize(target) == 1;
                     buffer.put(constant.asBoolean() ? (byte) 1 : (byte) 0);
                     break;
                 case Byte:
-                    assert getSize(target) == 1;
                     buffer.put((byte) constant.asInt());
                     break;
                 case Char:
-                    assert getSize(target) == 2;
                     buffer.putChar((char) constant.asInt());
                     break;
                 case Short:
-                    assert getSize(target) == 2;
                     buffer.putShort((short) constant.asInt());
                     break;
                 case Int:
-                    assert getSize(target) == 4;
                     buffer.putInt(constant.asInt());
                     break;
                 case Long:
-                    assert getSize(target) == 8;
                     buffer.putLong(constant.asLong());
                     break;
                 case Float:
-                    assert getSize(target) == 4;
                     buffer.putFloat(constant.asFloat());
                     break;
                 case Double:
-                    assert getSize(target) == 8;
                     buffer.putDouble(constant.asDouble());
-                    break;
-                case Object:
-                    // placeholder for oop value
-                    for (int i = 0; i < getSize(target); i++) {
-                        buffer.put((byte) 0);
-                    }
                     break;
             }
         }
@@ -218,6 +216,24 @@ public class CompilationResult implements Serializable {
         @Override
         public String toString() {
             return constant.toString();
+        }
+
+        @Override
+        public int hashCode() {
+            return constant.hashCode();
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) {
+                return true;
+            }
+            if (obj instanceof PrimitiveData) {
+                PrimitiveData other = (PrimitiveData) obj;
+                return constant.equals(other.constant);
+            } else {
+                return false;
+            }
         }
     }
 
@@ -236,6 +252,11 @@ public class CompilationResult implements Serializable {
         }
 
         @Override
+        public Kind getKind() {
+            return Kind.Illegal;
+        }
+
+        @Override
         public void emit(TargetDescription target, ByteBuffer buffer) {
             buffer.put(data);
         }
@@ -250,6 +271,24 @@ public class CompilationResult implements Serializable {
             }
             return ret.toString();
         }
+
+        @Override
+        public int hashCode() {
+            return Arrays.hashCode(data);
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) {
+                return true;
+            }
+            if (obj instanceof RawData) {
+                RawData other = (RawData) obj;
+                return Arrays.equals(data, other.data);
+            } else {
+                return false;
+            }
+        }
     }
 
     /**
@@ -260,53 +299,18 @@ public class CompilationResult implements Serializable {
     public static final class DataPatch extends Site {
 
         private static final long serialVersionUID = 5771730331604867476L;
-        public Data externalData;
-        public Constant inlineData;
+        public Data data;
+        public boolean inline;
 
-        DataPatch(int pcOffset, Data externalData) {
-            this(pcOffset, externalData, null);
-        }
-
-        DataPatch(int pcOffset, Constant inlineData) {
-            this(pcOffset, null, inlineData);
-        }
-
-        private DataPatch(int pcOffset, Data externalData, Constant inlineData) {
+        public DataPatch(int pcOffset, Data data, boolean inline) {
             super(pcOffset);
-            assert (externalData == null) != (inlineData == null) : "data patch can not be both external and inlined";
-            this.externalData = externalData;
-            this.inlineData = inlineData;
-        }
-
-        public Constant getConstant() {
-            if (inlineData != null) {
-                return inlineData;
-            } else if (externalData instanceof ConstantData) {
-                return ((ConstantData) externalData).constant;
-            } else {
-                return null;
-            }
-        }
-
-        public int getAlignment() {
-            if (externalData instanceof ConstantData) {
-                return ((ConstantData) externalData).getAlignment();
-            } else {
-                return 0;
-            }
-        }
-
-        public String getDataString() {
-            if (inlineData != null) {
-                return inlineData.toString();
-            } else {
-                return externalData.toString();
-            }
+            this.data = data;
+            this.inline = inline;
         }
 
         @Override
         public String toString() {
-            return String.format("%d[<data patch referring to data %s>]", pcOffset, getDataString());
+            return String.format("%d[<data patch referring to %s data %s>]", pcOffset, inline ? "inline" : "external", data.toString());
         }
     }
 
@@ -538,18 +542,18 @@ public class CompilationResult implements Serializable {
      */
     public void recordDataReference(int codePos, Data data) {
         assert codePos >= 0 && data != null;
-        dataReferences.add(new DataPatch(codePos, data));
+        dataReferences.add(new DataPatch(codePos, data, false));
     }
 
     /**
      * Records a reference to an inlined constant in the code section (e.g. to load a constant oop).
      * 
      * @param codePos the position in the code where the inlined constant occurs
-     * @param constant the constant that is referenced
+     * @param data the data that is referenced
      */
-    public void recordInlineData(int codePos, Constant constant) {
-        assert codePos >= 0 && constant != null;
-        dataReferences.add(new DataPatch(codePos, constant));
+    public void recordInlineData(int codePos, Data data) {
+        assert codePos >= 0 && data != null;
+        dataReferences.add(new DataPatch(codePos, data, true));
     }
 
     /**
