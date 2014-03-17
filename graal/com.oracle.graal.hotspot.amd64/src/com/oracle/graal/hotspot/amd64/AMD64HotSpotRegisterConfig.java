@@ -33,6 +33,7 @@ import com.oracle.graal.api.code.CallingConvention.Type;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
+import com.oracle.graal.hotspot.nodes.type.*;
 
 public class AMD64HotSpotRegisterConfig implements RegisterConfig {
 
@@ -61,9 +62,16 @@ public class AMD64HotSpotRegisterConfig implements RegisterConfig {
             return categorized.get(kind);
         }
 
+        PlatformKind primitiveKind;
+        if (kind == NarrowOopStamp.NarrowOop) {
+            primitiveKind = Kind.Int;
+        } else {
+            primitiveKind = kind;
+        }
+
         ArrayList<Register> list = new ArrayList<>();
         for (Register reg : getAllocatableRegisters()) {
-            if (architecture.canStoreValue(reg.getRegisterCategory(), kind)) {
+            if (architecture.canStoreValue(reg.getRegisterCategory(), primitiveKind)) {
                 list.add(reg);
             }
         }
