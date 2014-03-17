@@ -198,8 +198,6 @@ public abstract class Architecture {
                 return 8;
             case Object:
                 return wordSize;
-            case NarrowOop:
-                return wordSize / 2;
             default:
                 return 0;
         }

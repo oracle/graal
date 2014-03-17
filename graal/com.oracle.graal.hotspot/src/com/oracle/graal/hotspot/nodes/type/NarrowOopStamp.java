@@ -67,7 +67,7 @@ public class NarrowOopStamp extends ObjectStamp {
 
     @Override
     public Kind getStackKind() {
-        return Kind.NarrowOop;
+        return Kind.Object;
     }
 
     @Override

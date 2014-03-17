@@ -150,7 +150,6 @@ public class HSAILRegisterConfig implements RegisterConfig {
             case Short:
             case Byte:
             case Float:
-            case NarrowOop:
                 return regBitness32.clone();
             case Long:
             case Double:
