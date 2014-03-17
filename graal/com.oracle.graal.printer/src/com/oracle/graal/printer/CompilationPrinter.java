@@ -134,16 +134,17 @@ public class CompilationPrinter implements Closeable {
      */
     protected String debugInfoToString(BytecodePosition codePos, ReferenceMap refMap, RegisterSaveLayout calleeSaveInfo, Architecture arch) {
         StringBuilder sb = new StringBuilder();
+        RefMapFormatter formatter = new CodeUtil.NumberedRefMapFormatter();
 
         if (refMap != null && refMap.hasRegisterRefMap()) {
             sb.append("reg-ref-map:");
-            refMap.appendRegisterMap(sb, arch != null ? new ArchitectureRegFormatter(arch) : null);
+            refMap.appendRegisterMap(sb, arch != null ? new ArchitectureRegFormatter(arch) : formatter);
             sb.append("\n");
         }
 
         if (refMap != null && refMap.hasFrameRefMap()) {
             sb.append("frame-ref-map:");
-            refMap.appendFrameMap(sb, null);
+            refMap.appendFrameMap(sb, formatter);
             sb.append("\n");
         }
 

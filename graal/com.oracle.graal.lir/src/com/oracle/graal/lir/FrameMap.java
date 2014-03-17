@@ -347,8 +347,8 @@ public abstract class FrameMap {
         }
     }
 
-    public ReferenceMap initReferenceMap(boolean canHaveRegisters) {
-        ReferenceMap refMap = new ReferenceMap(canHaveRegisters ? target.arch.getRegisterReferenceMapBitCount() : 0, frameSize() / target.wordSize);
+    public ReferenceMap initReferenceMap(boolean hasRegisters) {
+        ReferenceMap refMap = target.createReferenceMap(hasRegisters, frameSize() / target.wordSize);
         for (StackSlot slot : objectStackSlots) {
             setReference(slot, refMap);
         }
@@ -364,22 +364,14 @@ public abstract class FrameMap {
      * @param refMap A reference map, as created by {@link #initReferenceMap(boolean)}.
      */
     public void setReference(Value location, ReferenceMap refMap) {
-        Kind kind = location.getKind();
-        if (kind == Kind.Object || kind == Kind.NarrowOop) {
-            if (isRegister(location)) {
-                refMap.setRegister(asRegister(location).number, kind == Kind.NarrowOop);
-            } else if (isStackSlot(location)) {
-                if (kind == Kind.NarrowOop) {
-                    int offset = offsetForStackSlot(asStackSlot(location));
-                    assert offset % target.wordSize == 0 || offset % target.wordSize == target.wordSize / 2;
-                    refMap.setStackSlot(offset / target.wordSize, offset % target.wordSize == 0, offset % target.wordSize != 0);
-                } else {
-                    int index = indexForStackSlot(asStackSlot(location));
-                    refMap.setStackSlot(index, false, false);
-                }
-            } else {
-                assert isConstant(location);
-            }
+        PlatformKind kind = location.getPlatformKind();
+        if (isRegister(location)) {
+            refMap.setRegister(asRegister(location).number, kind);
+        } else if (isStackSlot(location)) {
+            int offset = offsetForStackSlot(asStackSlot(location));
+            refMap.setStackSlot(offset, kind);
+        } else {
+            assert isConstant(location);
         }
     }
 }

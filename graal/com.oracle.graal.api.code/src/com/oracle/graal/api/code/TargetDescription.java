@@ -28,7 +28,7 @@ import com.oracle.graal.api.meta.*;
  * Represents the target machine for a compiler, including the CPU architecture, the size of
  * pointers and references, alignment of stacks, caches, etc.
  */
-public class TargetDescription {
+public abstract class TargetDescription {
 
     public final Architecture arch;
 
@@ -85,4 +85,6 @@ public class TargetDescription {
     public int getSizeInBytes(PlatformKind kind) {
         return arch.getSizeInBytes(kind);
     }
+
+    public abstract ReferenceMap createReferenceMap(boolean hasRegisters, int stackSlotCount);
 }
