@@ -40,7 +40,7 @@ public final class NullCheckOptimizer {
 
     private static void foldNullChecks(LIR ir, List<? extends AbstractBlock<?>> blocks, int implicitNullCheckLimit) {
         for (AbstractBlock<?> block : blocks) {
-            List<LIRInstruction> list = ir.lir(block);
+            List<LIRInstruction> list = ir.getLIRforBlock(block);
 
             if (!list.isEmpty()) {
 

@@ -144,7 +144,7 @@ public final class RedundantMoveElimination {
          * which occur as destinations of move instructions.
          */
         for (AbstractBlock<?> block : blocks) {
-            List<LIRInstruction> instructions = lir.lir(block);
+            List<LIRInstruction> instructions = lir.getLIRforBlock(block);
             for (LIRInstruction op : instructions) {
                 if (isEligibleMove(op)) {
                     Value dest = ((MoveOp) op).getResult();
@@ -244,7 +244,7 @@ public final class RedundantMoveElimination {
                      */
                     int[] iterState = data.exitState;
                     copyState(iterState, data.entryState);
-                    List<LIRInstruction> instructions = lir.lir(block);
+                    List<LIRInstruction> instructions = lir.getLIRforBlock(block);
 
                     for (LIRInstruction op : instructions) {
                         valueNum = updateState(iterState, op, valueNum);
@@ -287,7 +287,7 @@ public final class RedundantMoveElimination {
 
             Indent indent2 = indent.logAndIndent("eliminate moves in block %d", block.getId());
 
-            List<LIRInstruction> instructions = lir.lir(block);
+            List<LIRInstruction> instructions = lir.getLIRforBlock(block);
             BlockData data = blockData.get(block);
             boolean hasDead = false;
 

@@ -73,7 +73,7 @@ public final class LabelRef {
     }
 
     public Label label() {
-        return ((StandardOp.LabelOp) lir.lir(getTargetBlock()).get(0)).getLabel();
+        return ((StandardOp.LabelOp) lir.getLIRforBlock(getTargetBlock()).get(0)).getLabel();
     }
 
     @Override

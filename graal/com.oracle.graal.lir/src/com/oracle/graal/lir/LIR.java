@@ -81,7 +81,7 @@ public class LIR {
      */
     public boolean hasDebugInfo() {
         for (AbstractBlock<?> b : linearScanOrder()) {
-            for (LIRInstruction op : lir(b)) {
+            for (LIRInstruction op : getLIRforBlock(b)) {
                 if (op.hasState()) {
                     return true;
                 }
@@ -94,12 +94,12 @@ public class LIR {
         return spillMoveFactory;
     }
 
-    public List<LIRInstruction> lir(AbstractBlock<?> block) {
+    public List<LIRInstruction> getLIRforBlock(AbstractBlock<?> block) {
         return lirInstructions.get(block);
     }
 
-    public void setLir(AbstractBlock<?> block, List<LIRInstruction> list) {
-        assert lir(block) == null : "lir instruction list should only be initialized once";
+    public void setLIRforBlock(AbstractBlock<?> block, List<LIRInstruction> list) {
+        assert getLIRforBlock(block) == null : "lir instruction list should only be initialized once";
         lirInstructions.put(block, list);
     }
 
@@ -170,7 +170,7 @@ public class LIR {
     public static final int MAX_EXCEPTION_EDGE_OP_DISTANCE_FROM_END = 3;
 
     public static boolean verifyBlock(LIR lir, AbstractBlock<?> block) {
-        List<LIRInstruction> ops = lir.lir(block);
+        List<LIRInstruction> ops = lir.getLIRforBlock(block);
         if (ops.size() == 0) {
             return false;
         }

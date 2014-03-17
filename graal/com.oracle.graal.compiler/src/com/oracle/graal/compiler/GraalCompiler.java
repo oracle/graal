@@ -211,7 +211,7 @@ public class GraalCompiler {
     }
 
     private static void emitBlock(LIRGenerator lirGen, Block b, StructuredGraph graph, BlockMap<List<ScheduledNode>> blockMap) {
-        if (lirGen.getLIR().lir(b) == null) {
+        if (lirGen.getLIR().getLIRforBlock(b) == null) {
             for (Block pred : b.getPredecessors()) {
                 if (!b.isLoopHeader() || !pred.isLoopEnd()) {
                     emitBlock(lirGen, pred, graph, blockMap);

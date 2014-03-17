@@ -123,7 +123,7 @@ public class BaselineCompiler {
         lirGen.emitAdd(Constant.forLong(42), Constant.forLong(73));
 
         List<LIRInstruction> lirList = null;
-        lir.setLir(b, lirList);
+        lir.setLIRforBlock(b, lirList);
 
         // register allocation
         lirGen.getFrameMap().finish();

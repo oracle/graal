@@ -172,13 +172,13 @@ public final class LinearScan {
     }
 
     public int getFirstLirInstructionId(AbstractBlock<?> block) {
-        int result = ir.lir(block).get(0).id();
+        int result = ir.getLIRforBlock(block).get(0).id();
         assert result >= 0;
         return result;
     }
 
     public int getLastLirInstructionId(AbstractBlock<?> block) {
-        List<LIRInstruction> instructions = ir.lir(block);
+        List<LIRInstruction> instructions = ir.getLIRforBlock(block);
         int result = instructions.get(instructions.size() - 1).id();
         assert result >= 0;
         return result;
@@ -517,7 +517,7 @@ public final class LinearScan {
 
         LIRInsertionBuffer insertionBuffer = new LIRInsertionBuffer();
         for (AbstractBlock<?> block : sortedBlocks) {
-            List<LIRInstruction> instructions = ir.lir(block);
+            List<LIRInstruction> instructions = ir.getLIRforBlock(block);
             int numInst = instructions.size();
 
             // iterate all instructions of the block. skip the first because it is always a label
@@ -624,7 +624,7 @@ public final class LinearScan {
         // Assign IDs to LIR nodes and build a mapping, lirOps, from ID to LIRInstruction node.
         int numInstructions = 0;
         for (AbstractBlock<?> block : sortedBlocks) {
-            numInstructions += ir.lir(block).size();
+            numInstructions += ir.getLIRforBlock(block).size();
         }
 
         // initialize with correct length
@@ -636,7 +636,7 @@ public final class LinearScan {
         for (AbstractBlock<?> block : sortedBlocks) {
             blockData.put(block, new BlockData());
 
-            List<LIRInstruction> instructions = ir.lir(block);
+            List<LIRInstruction> instructions = ir.getLIRforBlock(block);
 
             int numInst = instructions.size();
             for (int j = 0; j < numInst; j++) {
@@ -681,7 +681,7 @@ public final class LinearScan {
             final BitSet liveGen = new BitSet(liveSize);
             final BitSet liveKill = new BitSet(liveSize);
 
-            List<LIRInstruction> instructions = ir.lir(block);
+            List<LIRInstruction> instructions = ir.getLIRforBlock(block);
             int numInst = instructions.size();
 
             // iterate all instructions of the block
@@ -920,7 +920,7 @@ public final class LinearScan {
                     if (blockData.get(block).liveGen.get(operandNum)) {
                         usedIn.add(block);
                         try (Indent indent3 = Debug.logAndIndent("used in block B%d", block.getId())) {
-                            for (LIRInstruction ins : ir.lir(block)) {
+                            for (LIRInstruction ins : ir.getLIRforBlock(block)) {
                                 try (Indent indent4 = Debug.logAndIndent("%d: %s", ins.id(), ins)) {
                                     ins.forEachState(new ValueProcedure() {
 
@@ -937,7 +937,7 @@ public final class LinearScan {
                     if (blockData.get(block).liveKill.get(operandNum)) {
                         definedIn.add(block);
                         try (Indent indent3 = Debug.logAndIndent("defined in block B%d", block.getId())) {
-                            for (LIRInstruction ins : ir.lir(block)) {
+                            for (LIRInstruction ins : ir.getLIRforBlock(block)) {
                                 Debug.log("%d: %s", ins.id(), ins);
                             }
                         }
@@ -1161,7 +1161,7 @@ public final class LinearScan {
             AbstractBlock<?> block = blockAt(i);
             Indent indent2 = Debug.logAndIndent("handle block %d", block.getId());
 
-            List<LIRInstruction> instructions = ir.lir(block);
+            List<LIRInstruction> instructions = ir.getLIRforBlock(block);
             final int blockFrom = getFirstLirInstructionId(block);
             int blockTo = getLastLirInstructionId(block);
 
@@ -1510,7 +1510,7 @@ public final class LinearScan {
         if (fromBlock.getSuccessorCount() <= 1) {
             Debug.log("inserting moves at end of fromBlock B%d", fromBlock.getId());
 
-            List<LIRInstruction> instructions = ir.lir(fromBlock);
+            List<LIRInstruction> instructions = ir.getLIRforBlock(fromBlock);
             LIRInstruction instr = instructions.get(instructions.size() - 1);
             if (instr instanceof StandardOp.JumpOp) {
                 // insert moves before branch
@@ -1523,7 +1523,7 @@ public final class LinearScan {
             Debug.log("inserting moves at beginning of toBlock B%d", toBlock.getId());
 
             if (DetailedAsserts.getValue()) {
-                assert ir.lir(fromBlock).get(0) instanceof StandardOp.LabelOp : "block does not start with a label";
+                assert ir.getLIRforBlock(fromBlock).get(0) instanceof StandardOp.LabelOp : "block does not start with a label";
 
                 // because the number of predecessor edges matches the number of
                 // successor edges, blocks which are reached by switch statements
@@ -1534,7 +1534,7 @@ public final class LinearScan {
                 }
             }
 
-            moveResolver.setInsertPosition(ir.lir(toBlock), 1);
+            moveResolver.setInsertPosition(ir.getLIRforBlock(toBlock), 1);
         }
     }
 
@@ -1554,7 +1554,7 @@ public final class LinearScan {
 
             // check if block has only one predecessor and only one successor
             if (block.getPredecessorCount() == 1 && block.getSuccessorCount() == 1) {
-                List<LIRInstruction> instructions = ir.lir(block);
+                List<LIRInstruction> instructions = ir.getLIRforBlock(block);
                 assert instructions.get(0) instanceof StandardOp.LabelOp : "block must start with label";
                 assert instructions.get(instructions.size() - 1) instanceof StandardOp.JumpOp : "block with successor must end with unconditional jump";
 
@@ -1636,7 +1636,7 @@ public final class LinearScan {
                     // before the branch instruction. So the split child information for this branch
                     // would
                     // be incorrect.
-                    LIRInstruction instr = ir.lir(block).get(ir.lir(block).size() - 1);
+                    LIRInstruction instr = ir.getLIRforBlock(block).get(ir.getLIRforBlock(block).size() - 1);
                     if (instr instanceof StandardOp.JumpOp) {
                         if (blockData.get(block).liveOut.get(operandNumber(operand))) {
                             assert false : "can't get split child for the last branch of a block because the information would be incorrect (moves are inserted before the branch in resolveDataFlow)";
@@ -1752,7 +1752,7 @@ public final class LinearScan {
                     // are not
                     // considered in the live ranges of intervals)
                     // Solution: use the first opId of the branch target block instead.
-                    final LIRInstruction instr = ir.lir(block).get(ir.lir(block).size() - 1);
+                    final LIRInstruction instr = ir.getLIRforBlock(block).get(ir.getLIRforBlock(block).size() - 1);
                     if (instr instanceof StandardOp.JumpOp) {
                         if (blockData.get(block).liveOut.get(operandNumber(operand))) {
                             tempOpId = getFirstLirInstructionId(block.getSuccessors().iterator().next());
@@ -1846,7 +1846,7 @@ public final class LinearScan {
         try (Indent indent = Debug.logAndIndent("assign locations")) {
             for (AbstractBlock<?> block : sortedBlocks) {
                 try (Indent indent2 = Debug.logAndIndent("assign locations in block B%d", block.getId())) {
-                    assignLocations(ir.lir(block), iw);
+                    assignLocations(ir.getLIRforBlock(block), iw);
                 }
             }
         }
@@ -2060,7 +2060,7 @@ public final class LinearScan {
             IntervalWalker iw = new IntervalWalker(this, fixedIntervals, otherIntervals);
 
             for (AbstractBlock<?> block : sortedBlocks) {
-                List<LIRInstruction> instructions = ir.lir(block);
+                List<LIRInstruction> instructions = ir.getLIRforBlock(block);
 
                 for (int j = 0; j < instructions.size(); j++) {
                     LIRInstruction op = instructions.get(j);

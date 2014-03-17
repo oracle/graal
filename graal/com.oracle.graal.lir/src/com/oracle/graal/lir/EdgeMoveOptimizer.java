@@ -120,8 +120,8 @@ public final class EdgeMoveOptimizer {
         // setup a list with the LIR instructions of all predecessors
         for (AbstractBlock<?> pred : block.getPredecessors()) {
             assert pred != null;
-            assert ir.lir(pred) != null;
-            List<LIRInstruction> predInstructions = ir.lir(pred);
+            assert ir.getLIRforBlock(pred) != null;
+            List<LIRInstruction> predInstructions = ir.getLIRforBlock(pred);
 
             if (pred.getSuccessorCount() != 1) {
                 // this can happen with switch-statements where multiple edges are between
@@ -158,7 +158,7 @@ public final class EdgeMoveOptimizer {
             }
 
             // insert the instruction at the beginning of the current block
-            ir.lir(block).add(1, op);
+            ir.getLIRforBlock(block).add(1, op);
 
             // delete the instruction at the end of all predecessors
             for (int i = 0; i < numPreds; i++) {
@@ -178,7 +178,7 @@ public final class EdgeMoveOptimizer {
         edgeInstructionSeqences.clear();
         int numSux = block.getSuccessorCount();
 
-        List<LIRInstruction> instructions = ir.lir(block);
+        List<LIRInstruction> instructions = ir.getLIRforBlock(block);
 
         assert numSux == 2 : "method should not be called otherwise";
 
@@ -204,7 +204,7 @@ public final class EdgeMoveOptimizer {
 
         // setup a list with the lir-instructions of all successors
         for (AbstractBlock<?> sux : block.getSuccessors()) {
-            List<LIRInstruction> suxInstructions = ir.lir(sux);
+            List<LIRInstruction> suxInstructions = ir.getLIRforBlock(sux);
 
             assert suxInstructions.get(0) instanceof StandardOp.LabelOp : "block must start with label";
 
@@ -238,7 +238,7 @@ public final class EdgeMoveOptimizer {
             }
 
             // insert instruction at end of current block
-            ir.lir(block).add(insertIdx, op);
+            ir.getLIRforBlock(block).add(insertIdx, op);
             insertIdx++;
 
             // delete the instructions at the beginning of all successors

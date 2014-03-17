@@ -195,7 +195,7 @@ public class StandardOp {
         }
 
         public void replace(LIR lir, LIRInstruction replacement) {
-            lir.lir(block).set(index, replacement);
+            lir.getLIRforBlock(block).set(index, replacement);
         }
 
         @Override

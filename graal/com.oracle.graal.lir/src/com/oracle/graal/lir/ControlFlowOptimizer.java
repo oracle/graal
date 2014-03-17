@@ -58,12 +58,12 @@ public final class ControlFlowOptimizer {
             return false;
         }
 
-        List<LIRInstruction> instructions = lir.lir(block);
+        List<LIRInstruction> instructions = lir.getLIRforBlock(block);
 
         assert instructions.size() >= 2 : "block must have label and branch";
         assert instructions.get(0) instanceof StandardOp.LabelOp : "first instruction must always be a label";
         assert instructions.get(instructions.size() - 1) instanceof StandardOp.JumpOp : "last instruction must always be a branch";
-        assert ((StandardOp.JumpOp) instructions.get(instructions.size() - 1)).destination().label() == ((StandardOp.LabelOp) lir.lir(block.getSuccessors().iterator().next()).get(0)).getLabel() : "branch target must be the successor";
+        assert ((StandardOp.JumpOp) instructions.get(instructions.size() - 1)).destination().label() == ((StandardOp.LabelOp) lir.getLIRforBlock(block.getSuccessors().iterator().next()).get(0)).getLabel() : "branch target must be the successor";
 
         // Block must have exactly one successor.
         return instructions.size() == 2 && !instructions.get(instructions.size() - 1).hasState() && !block.isExceptionEntry();
@@ -72,7 +72,7 @@ public final class ControlFlowOptimizer {
     private static void alignBlock(LIR lir, AbstractBlock<?> block) {
         if (!block.isAligned()) {
             block.setAlign(true);
-            List<LIRInstruction> instructions = lir.lir(block);
+            List<LIRInstruction> instructions = lir.getLIRforBlock(block);
             assert instructions.get(0) instanceof StandardOp.LabelOp : "first instruction must always be a label";
             StandardOp.LabelOp label = (StandardOp.LabelOp) instructions.get(0);
             instructions.set(0, new StandardOp.LabelOp(label.getLabel(), true));

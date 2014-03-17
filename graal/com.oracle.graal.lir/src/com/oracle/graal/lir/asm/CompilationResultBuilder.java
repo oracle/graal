@@ -325,7 +325,7 @@ public class CompilationResultBuilder {
             blockComment(String.format("block B%d %s", block.getId(), block.getLoop()));
         }
 
-        for (LIRInstruction op : lir.lir(block)) {
+        for (LIRInstruction op : lir.getLIRforBlock(block)) {
             if (Debug.isDumpEnabled()) {
                 blockComment(String.format("%d %s", op.id(), op));
             }

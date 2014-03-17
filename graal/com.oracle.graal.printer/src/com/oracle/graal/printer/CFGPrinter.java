@@ -423,7 +423,7 @@ class CFGPrinter extends CompilationPrinter {
         if (lir == null) {
             return;
         }
-        List<LIRInstruction> lirInstructions = lir.lir(block);
+        List<LIRInstruction> lirInstructions = lir.getLIRforBlock(block);
         if (lirInstructions == null) {
             return;
         }

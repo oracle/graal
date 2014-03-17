@@ -129,14 +129,14 @@ public final class LIRVerifier {
                 curVariablesLive.or(liveOutFor(block.getDominator()));
             }
 
-            assert lir.lir(block).get(0) instanceof StandardOp.LabelOp : "block must start with label";
+            assert lir.getLIRforBlock(block).get(0) instanceof StandardOp.LabelOp : "block must start with label";
 
             if (block.getSuccessorCount() > 0) {
-                LIRInstruction last = lir.lir(block).get(lir.lir(block).size() - 1);
+                LIRInstruction last = lir.getLIRforBlock(block).get(lir.getLIRforBlock(block).size() - 1);
                 assert last instanceof StandardOp.JumpOp : "block with successor must end with unconditional jump";
             }
 
-            for (LIRInstruction op : lir.lir(block)) {
+            for (LIRInstruction op : lir.getLIRforBlock(block)) {
                 curInstruction = op;
 
                 op.forEachInput(useProc);

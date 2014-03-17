@@ -374,7 +374,7 @@ public class PTXHotSpotBackend extends HotSpotBackend {
 
         // Emit .param arguments to kernel entry based on ParameterOp
         // instruction.
-        for (LIRInstruction op : lir.lir(startBlock)) {
+        for (LIRInstruction op : lir.getLIRforBlock(startBlock)) {
             if (op instanceof PTXParameterOp) {
                 op.emitCode(crb);
                 deleteOps.add(op);
@@ -383,7 +383,7 @@ public class PTXHotSpotBackend extends HotSpotBackend {
 
         // Delete ParameterOp instructions.
         for (LIRInstruction op : deleteOps) {
-            lir.lir(startBlock).remove(op);
+            lir.getLIRforBlock(startBlock).remove(op);
         }
 
         // Start emiting body of the PTX kernel.
@@ -399,7 +399,7 @@ public class PTXHotSpotBackend extends HotSpotBackend {
         RegisterAnalysis registerAnalysis = new RegisterAnalysis();
 
         for (AbstractBlock<?> b : lir.codeEmittingOrder()) {
-            for (LIRInstruction op : lir.lir(b)) {
+            for (LIRInstruction op : lir.getLIRforBlock(b)) {
                 if (op instanceof LabelOp) {
                     // Don't consider this as a definition
                 } else {

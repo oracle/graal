@@ -174,7 +174,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
 
         emitIncomingValues(params);
 
-        saveRbp = new SaveRbp(new NoOp(currentBlock, getLIR().lir(currentBlock).size()));
+        saveRbp = new SaveRbp(new NoOp(currentBlock, getLIR().getLIRforBlock(currentBlock).size()));
         append(saveRbp.placeholder);
 
         for (ParameterNode param : graph.getNodes(ParameterNode.class)) {
