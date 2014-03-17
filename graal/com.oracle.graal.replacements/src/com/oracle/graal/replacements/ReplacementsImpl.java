@@ -452,7 +452,7 @@ public class ReplacementsImpl implements Replacements {
 
                 for (MethodCallTargetNode callTarget : graph.getNodes(MethodCallTargetNode.class)) {
                     ResolvedJavaMethod callee = callTarget.targetMethod();
-                    if (callee == recursiveEntry) {
+                    if (callee.equals(recursiveEntry)) {
                         if (isInlinableSnippet(substitutedMethod)) {
                             final StructuredGraph originalGraph = buildInitialGraph(substitutedMethod);
                             InliningUtil.inline(callTarget.invoke(), originalGraph, true);

@@ -77,7 +77,7 @@ public class VirtualInstanceNode extends VirtualObjectNode {
     public int fieldIndex(ResolvedJavaField field) {
         // on average fields.length == ~6, so a linear search is fast enough
         for (int i = 0; i < fields.length; i++) {
-            if (fields[i] == field) {
+            if (fields[i].equals(field)) {
                 return i;
             }
         }

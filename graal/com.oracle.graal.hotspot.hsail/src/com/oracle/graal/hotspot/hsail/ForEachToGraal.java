@@ -82,13 +82,13 @@ public class ForEachToGraal implements CompileAndDispatch {
         NodeIterable<MethodCallTargetNode> calls = graph.getNodes(MethodCallTargetNode.class);
         assert calls.count() == 1;
         ResolvedJavaMethod lambdaMethod = calls.first().targetMethod();
-        assert lambdaMethod.getName().startsWith("lambda$");
         Debug.log("target ... " + lambdaMethod);
 
         if (lambdaMethod == null) {
             Debug.log("Did not find call in accept()");
             return null;
         }
+        assert lambdaMethod.getName().startsWith("lambda$");
 
         ExternalCompilationResult hsailCode = backend.compileKernel(lambdaMethod, true);
         return backend.installKernel(lambdaMethod, hsailCode);

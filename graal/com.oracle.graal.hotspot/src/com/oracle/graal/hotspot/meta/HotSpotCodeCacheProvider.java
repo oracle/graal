@@ -29,14 +29,17 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.CodeUtil.DefaultRefMapFormatter;
 import com.oracle.graal.api.code.CodeUtil.RefMapFormatter;
 import com.oracle.graal.api.code.CompilationResult.Call;
+import com.oracle.graal.api.code.CompilationResult.Data;
 import com.oracle.graal.api.code.CompilationResult.DataPatch;
 import com.oracle.graal.api.code.CompilationResult.Infopoint;
 import com.oracle.graal.api.code.CompilationResult.Mark;
+import com.oracle.graal.api.code.CompilationResult.PrimitiveData;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.bridge.*;
 import com.oracle.graal.hotspot.bridge.CompilerToVM.CodeInstallResult;
+import com.oracle.graal.hotspot.data.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.printer.*;
 
@@ -82,7 +85,7 @@ public abstract class HotSpotCodeCacheProvider implements CodeCacheProvider {
                 }
             }
             for (DataPatch site : compResult.getDataReferences()) {
-                hcf.addOperandComment(site.pcOffset, "{" + site.getDataString() + "}");
+                hcf.addOperandComment(site.pcOffset, "{" + site.data.toString() + "}");
             }
             for (Mark mark : compResult.getMarks()) {
                 hcf.addComment(mark.pcOffset, getMarkName(mark));
@@ -173,7 +176,7 @@ public abstract class HotSpotCodeCacheProvider implements CodeCacheProvider {
             compResult.setId(method.allocateCompileId(compResult.getEntryBCI()));
         }
         HotSpotInstalledCode installedCode = new HotSpotNmethod(method, compResult.getName(), true);
-        runtime.getCompilerToVM().installCode(new HotSpotCompiledNmethod(target.arch, method, compResult), installedCode, method.getSpeculationLog());
+        runtime.getCompilerToVM().installCode(new HotSpotCompiledNmethod(target, method, compResult), installedCode, method.getSpeculationLog());
         return logOrDump(installedCode, compResult);
     }
 
@@ -184,7 +187,7 @@ public abstract class HotSpotCodeCacheProvider implements CodeCacheProvider {
             compResult.setId(hotspotMethod.allocateCompileId(compResult.getEntryBCI()));
         }
         HotSpotInstalledCode code = new HotSpotNmethod(hotspotMethod, compResult.getName(), false);
-        CodeInstallResult result = runtime.getCompilerToVM().installCode(new HotSpotCompiledNmethod(target.arch, hotspotMethod, compResult), code, log);
+        CodeInstallResult result = runtime.getCompilerToVM().installCode(new HotSpotCompiledNmethod(target, hotspotMethod, compResult), code, log);
         if (result != CodeInstallResult.OK) {
             return null;
         }
@@ -203,7 +206,7 @@ public abstract class HotSpotCodeCacheProvider implements CodeCacheProvider {
             compResult.setId(javaMethod.allocateCompileId(compResult.getEntryBCI()));
         }
         HotSpotNmethod code = new HotSpotNmethod(javaMethod, compResult.getName(), false, true);
-        HotSpotCompiledNmethod compiled = new HotSpotCompiledNmethod(target.arch, javaMethod, compResult);
+        HotSpotCompiledNmethod compiled = new HotSpotCompiledNmethod(target, javaMethod, compResult);
         CompilerToVM vm = runtime.getCompilerToVM();
         CodeInstallResult result = vm.installCode(compiled, code, null);
         if (result != CodeInstallResult.OK) {
@@ -214,6 +217,16 @@ public abstract class HotSpotCodeCacheProvider implements CodeCacheProvider {
 
     public boolean needsDataPatch(Constant constant) {
         return constant.getPrimitiveAnnotation() != null;
+    }
+
+    public Data createDataItem(Constant constant, int alignment) {
+        if (constant.getPrimitiveAnnotation() != null) {
+            return new MetaspaceData(alignment, constant.asLong(), constant.getPrimitiveAnnotation(), false);
+        } else if (constant.getKind().isObject()) {
+            return new OopData(alignment, constant.asObject(), false);
+        } else {
+            return new PrimitiveData(constant, alignment);
+        }
     }
 
     @Override

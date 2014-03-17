@@ -68,6 +68,23 @@ public class HotSpotResolvedJavaField extends CompilerObject implements Resolved
     }
 
     @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj instanceof HotSpotResolvedJavaField) {
+            HotSpotResolvedJavaField that = (HotSpotResolvedJavaField) obj;
+            return this.holder.equals(that.holder) && this.name.equals(that.name) && this.type.equals(that.type);
+        }
+        return false;
+    }
+
+    @Override
+    public int hashCode() {
+        return name.hashCode();
+    }
+
+    @Override
     public int getModifiers() {
         return modifiers & getReflectionFieldModifiers();
     }

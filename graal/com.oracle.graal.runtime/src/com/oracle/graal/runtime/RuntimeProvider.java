@@ -24,11 +24,9 @@ package com.oracle.graal.runtime;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.compiler.target.*;
-import com.oracle.graal.nodes.spi.*;
 
 /**
- * A runtime supporting a host backend as well, zero or more additional backends and an optional
- * {@linkplain GraphCache graph cache}.
+ * A runtime supporting a host backend as well, zero or more additional backends.
  */
 public interface RuntimeProvider {
 
@@ -43,9 +41,4 @@ public interface RuntimeProvider {
      * @param arch a specific architecture class
      */
     <T extends Architecture> Backend getBackend(Class<T> arch);
-
-    /**
-     * Gets the graph cache (if any) maintained by this runtime.
-     */
-    GraphCache getGraphCache();
 }

@@ -28,7 +28,7 @@ import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.impl.*;
 import com.oracle.truffle.api.nodes.*;
-import com.oracle.truffle.api.nodes.NodeInfo.Kind;
+import com.oracle.truffle.api.nodes.NodeUtil.NodeFilter;
 
 /**
  * Call target that is optimized by Graal upon surpassing a specific invocation threshold.
@@ -85,6 +85,11 @@ abstract class OptimizedCallNode extends DefaultCallNode {
         return new DefaultOptimizedCallNode(target);
     }
 
+    @Override
+    public boolean isInlinable() {
+        return true;
+    }
+
     private static final class DefaultOptimizedCallNode extends OptimizedCallNode {
 
         private boolean trySplit = true;
@@ -135,16 +140,11 @@ abstract class OptimizedCallNode extends DefaultCallNode {
             if (isMaxSingleCall()) {
                 return true;
             }
-            return countPolymorphic() >= 1 || countGeneric() > 0;
+            return countPolymorphic() >= 1;
         }
 
         @Override
         public void nodeReplaced(Node oldNode, Node newNode, String reason) {
-            trySplit = true;
-        }
-
-        @Override
-        protected void notifyCallNodeAdded() {
             trySplit = true;
         }
 
@@ -163,11 +163,12 @@ abstract class OptimizedCallNode extends DefaultCallNode {
         }
 
         private int countPolymorphic() {
-            return NodeUtil.countNodes(getCallTarget().getRootNode(), null, Kind.POLYMORPHIC, false);
-        }
-
-        private int countGeneric() {
-            return NodeUtil.countNodes(getCallTarget().getRootNode(), null, Kind.GENERIC, false);
+            return NodeUtil.countNodes(getCallTarget().getRootNode(), new NodeFilter() {
+                public boolean isFiltered(Node node) {
+                    NodeCost cost = node.getCost();
+                    return cost == NodeCost.POLYMORPHIC || cost == NodeCost.MEGAMORPHIC;
+                }
+            });
         }
 
         @Override

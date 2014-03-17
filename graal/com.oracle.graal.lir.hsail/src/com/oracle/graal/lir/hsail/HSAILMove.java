@@ -237,13 +237,6 @@ public class HSAILMove {
                         throw GraalInternalError.shouldNotReachHere("Cannot store 64-bit constants to object ref");
                     }
                     break;
-                case NarrowOop:
-                    if (input.isNull()) {
-                        masm.emitStoreImmediate(kind, 0L, address.toAddress());
-                    } else {
-                        throw GraalInternalError.shouldNotReachHere("Cannot store 64-bit constants to object ref");
-                    }
-                    break;
                 default:
                     throw GraalInternalError.shouldNotReachHere();
             }

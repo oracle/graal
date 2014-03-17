@@ -146,14 +146,14 @@ public abstract class Stub {
                 // The stub itself needs the incoming calling convention.
                 CallingConvention incomingCc = linkage.getIncomingCallingConvention();
                 final CompilationResult compResult = compileGraph(graph, Stub.this, incomingCc, getInstalledCodeOwner(), providers, backend, codeCache.getTarget(), null,
-                                providers.getSuites().getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL, getProfilingInfo(graph), null, providers.getSuites().getDefaultSuites(), new CompilationResult(),
-                                CompilationResultBuilderFactory.Default);
+                                providers.getSuites().getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL, getProfilingInfo(graph), null, providers.getSuites().getDefaultSuites(),
+                                new CompilationResult(), CompilationResultBuilderFactory.Default);
 
                 assert destroyedRegisters != null;
                 try (Scope s = Debug.scope("CodeInstall")) {
                     Stub stub = Stub.this;
                     HotSpotRuntimeStub installedCode = new HotSpotRuntimeStub(stub);
-                    HotSpotCompiledCode hsCompResult = new HotSpotCompiledRuntimeStub(backend.getTarget().arch, stub, compResult);
+                    HotSpotCompiledCode hsCompResult = new HotSpotCompiledRuntimeStub(backend.getTarget(), stub, compResult);
 
                     CodeInstallResult result = runtime().getCompilerToVM().installCode(hsCompResult, installedCode, null);
                     if (result != CodeInstallResult.OK) {

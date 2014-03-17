@@ -486,7 +486,7 @@ public class TailDuplicationPhase extends BasePhase<PhaseContext> {
                             // introduce a new phi
                             PhiNode newPhi = bottomPhis.get(node);
                             if (newPhi == null) {
-                                newPhi = graph.addWithoutUnique(new PhiNode(node.kind(), newBottomMerge));
+                                newPhi = graph.addWithoutUnique(new PhiNode(node.stamp().unrestricted(), newBottomMerge));
                                 bottomPhis.put(node, newPhi);
                                 newPhi.addInput(node);
                             }

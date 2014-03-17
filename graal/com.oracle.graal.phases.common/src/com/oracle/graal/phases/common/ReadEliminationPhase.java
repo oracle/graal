@@ -87,7 +87,7 @@ public class ReadEliminationPhase extends Phase {
         }
         if (lastLocationAccess instanceof PhiNode) {
             PhiNode phi = (PhiNode) lastLocationAccess;
-            PhiNode newPhi = phi.graph().addWithoutUnique(new PhiNode(n.kind(), phi.merge()));
+            PhiNode newPhi = phi.graph().addWithoutUnique(new PhiNode(n.stamp().unrestricted(), phi.merge()));
             nodeMap.set(phi, newPhi);
             for (ValueNode value : phi.values()) {
                 newPhi.addInput(getValue(n, (MemoryNode) value, nodeMap));

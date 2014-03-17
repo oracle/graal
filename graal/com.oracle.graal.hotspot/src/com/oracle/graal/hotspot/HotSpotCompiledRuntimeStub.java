@@ -26,7 +26,7 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.CompilationResult.Call;
 import com.oracle.graal.api.code.CompilationResult.DataPatch;
 import com.oracle.graal.api.code.CompilationResult.Infopoint;
-import com.oracle.graal.api.meta.*;
+import com.oracle.graal.hotspot.data.*;
 import com.oracle.graal.hotspot.stubs.*;
 
 /**
@@ -38,8 +38,8 @@ public final class HotSpotCompiledRuntimeStub extends HotSpotCompiledCode {
 
     public final String stubName;
 
-    public HotSpotCompiledRuntimeStub(Architecture arch, Stub stub, CompilationResult compResult) {
-        super(arch, compResult);
+    public HotSpotCompiledRuntimeStub(TargetDescription target, Stub stub, CompilationResult compResult) {
+        super(target, compResult);
         assert checkStubInvariants(compResult);
         this.stubName = stub.toString();
     }
@@ -50,11 +50,7 @@ public final class HotSpotCompiledRuntimeStub extends HotSpotCompiledCode {
     private boolean checkStubInvariants(CompilationResult compResult) {
         assert compResult.getExceptionHandlers().isEmpty();
         for (DataPatch data : compResult.getDataReferences()) {
-            Constant constant = data.getConstant();
-            if (constant != null) {
-                assert constant.getKind() != Kind.Object : this + " cannot have embedded object constant: " + constant;
-                assert constant.getPrimitiveAnnotation() == null : this + " cannot have embedded metadata: " + constant;
-            }
+            assert !(data.data instanceof PatchedData) : this + " cannot have embedded object or metadata constant: " + data.data;
         }
         for (Infopoint infopoint : compResult.getInfopoints()) {
             assert infopoint instanceof Call : this + " cannot have non-call infopoint: " + infopoint;

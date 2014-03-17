@@ -250,20 +250,24 @@ class CFGPrinter extends CompilationPrinter {
             }
         }
 
-        Node cur = block.getBeginNode();
-        while (true) {
-            printNode(cur, false);
+        // Currently no node printing for lir
+        if (lir == null) {
+            Node cur = block.getBeginNode();
+            while (true) {
+                printNode(cur, false);
 
-            if (cur == block.getEndNode()) {
-                for (Map.Entry<Node, Block> entry : latestScheduling.entries()) {
-                    if (entry.getValue() == block && !inFixedSchedule(entry.getKey()) && !printedNodes.isMarked(entry.getKey())) {
-                        printNode(entry.getKey(), true);
+                if (cur == block.getEndNode()) {
+                    for (Map.Entry<Node, Block> entry : latestScheduling.entries()) {
+                        if (entry.getValue() == block && !inFixedSchedule(entry.getKey()) && !printedNodes.isMarked(entry.getKey())) {
+                            printNode(entry.getKey(), true);
+                        }
                     }
+                    break;
                 }
-                break;
+                assert cur.successors().count() == 1;
+                cur = cur.successors().first();
             }
-            assert cur.successors().count() == 1;
-            cur = cur.successors().first();
+
         }
 
         out.enableIndentation();

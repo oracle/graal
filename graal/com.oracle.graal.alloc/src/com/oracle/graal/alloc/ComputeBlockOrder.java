@@ -113,9 +113,8 @@ public final class ComputeBlockOrder {
     /**
      * Initializes the priority queue used for the work list of blocks and adds the start block.
      */
-    @SuppressWarnings("unchecked")
     private static <T extends AbstractBlock<T>> PriorityQueue<T> initializeWorklist(T startBlock, BitSet visitedBlocks, NodesToDoubles nodeProbabilities) {
-        PriorityQueue<T> result = new PriorityQueue<>(INITIAL_WORKLIST_CAPACITY, new BlockOrderComparator(nodeProbabilities));
+        PriorityQueue<T> result = new PriorityQueue<>(INITIAL_WORKLIST_CAPACITY, new BlockOrderComparator<T>(nodeProbabilities));
         result.add(startBlock);
         visitedBlocks.set(startBlock.getId());
         return result;
@@ -233,14 +232,14 @@ public final class ComputeBlockOrder {
      * Skip the loop header block if the loop consists of more than one block and it has only a
      * single loop end block.
      */
-    private static boolean skipLoopHeader(AbstractBlock block) {
+    private static boolean skipLoopHeader(AbstractBlock<?> block) {
         return (block.isLoopHeader() && !block.isLoopEnd() && block.getLoop().loopBegin().loopEnds().count() == 1);
     }
 
     /**
      * Checks that the ordering contains the expected number of blocks.
      */
-    private static boolean checkOrder(List<? extends AbstractBlock> order, int expectedBlockCount) {
+    private static boolean checkOrder(List<? extends AbstractBlock<?>> order, int expectedBlockCount) {
         assert order.size() == expectedBlockCount : String.format("Number of blocks in ordering (%d) does not match expected block count (%d)", order.size(), expectedBlockCount);
         return true;
     }

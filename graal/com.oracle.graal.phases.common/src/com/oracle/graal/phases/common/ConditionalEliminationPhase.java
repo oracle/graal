@@ -66,7 +66,7 @@ public class ConditionalEliminationPhase extends Phase {
         new ConditionalElimination(graph.start(), new State()).apply();
     }
 
-    public static class State extends MergeableState<State> {
+    public static class State extends MergeableState<State> implements Cloneable {
 
         private IdentityHashMap<ValueNode, ResolvedJavaType> knownTypes;
         private HashSet<ValueNode> knownNonNull;
@@ -253,7 +253,7 @@ public class ConditionalEliminationPhase extends Phase {
             ResolvedJavaType knownType = getNodeType(original);
             ResolvedJavaType newType = tighten(type, knownType);
 
-            if (newType != knownType) {
+            if (!newType.equals(knownType)) {
                 knownTypes.put(original, newType);
                 metricTypeRegistered.increment();
             }
@@ -271,7 +271,7 @@ public class ConditionalEliminationPhase extends Phase {
     public static ResolvedJavaType widen(ResolvedJavaType a, ResolvedJavaType b) {
         if (a == null || b == null) {
             return null;
-        } else if (a == b) {
+        } else if (a.equals(b)) {
             return a;
         } else {
             return a.findLeastCommonAncestor(b);
@@ -283,7 +283,7 @@ public class ConditionalEliminationPhase extends Phase {
             return b;
         } else if (b == null) {
             return a;
-        } else if (a == b) {
+        } else if (a.equals(b)) {
             return a;
         } else if (a.isAssignableFrom(b)) {
             return b;
@@ -623,7 +623,7 @@ public class ConditionalEliminationPhase extends Phase {
                     ValueNode receiver = callTarget.receiver();
                     if (receiver != null && (callTarget.invokeKind() == InvokeKind.Interface || callTarget.invokeKind() == InvokeKind.Virtual)) {
                         ResolvedJavaType type = state.getNodeType(receiver);
-                        if (type != ObjectStamp.typeOrNull(receiver)) {
+                        if (!Objects.equals(type, ObjectStamp.typeOrNull(receiver))) {
                             ResolvedJavaMethod method = type.resolveMethod(callTarget.targetMethod());
                             if (method != null) {
                                 if (Modifier.isFinal(method.getModifiers()) || Modifier.isFinal(type.getModifiers())) {
@@ -645,7 +645,7 @@ public class ConditionalEliminationPhase extends Phase {
             for (Node n : value.usages()) {
                 if (n instanceof InstanceOfNode) {
                     InstanceOfNode instanceOfNode = (InstanceOfNode) n;
-                    if (instanceOfNode.type() == type && state.trueConditions.containsKey(instanceOfNode)) {
+                    if (instanceOfNode.type().equals(type) && state.trueConditions.containsKey(instanceOfNode)) {
                         ValueNode v = state.trueConditions.get(instanceOfNode);
                         if (v instanceof GuardingNode) {
                             return (GuardingNode) v;

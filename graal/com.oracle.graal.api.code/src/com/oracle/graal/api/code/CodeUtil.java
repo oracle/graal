@@ -281,6 +281,17 @@ public class CodeUtil {
         }
     }
 
+    public static class NumberedRefMapFormatter implements RefMapFormatter {
+
+        public String formatStackSlot(int frameRefMapIndex) {
+            return "s" + frameRefMapIndex;
+        }
+
+        public String formatRegister(int regRefMapIndex) {
+            return "r" + regRefMapIndex;
+        }
+    }
+
     /**
      * Appends a formatted debug info to a {@link StringBuilder}.
      * 
@@ -288,7 +299,11 @@ public class CodeUtil {
      * @param info the debug info to format and append to {@code sb}
      * @return the value of {@code sb}
      */
-    public static StringBuilder append(StringBuilder sb, DebugInfo info, RefMapFormatter formatter) {
+    public static StringBuilder append(StringBuilder sb, DebugInfo info, RefMapFormatter formatterArg) {
+        RefMapFormatter formatter = formatterArg;
+        if (formatter == null) {
+            formatter = new NumberedRefMapFormatter();
+        }
         String nl = NEW_LINE;
         ReferenceMap refMap = info.getReferenceMap();
         if (refMap != null && refMap.hasRegisterRefMap()) {

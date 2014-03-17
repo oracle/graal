@@ -3,10 +3,20 @@
 ## `tip`
 ### Graal
 * New methods for querying memory usage of individual objects and object graphs in Graal API (MetaAccessProvider#getMemorySize, MetaUtil#getMemorySizeRecursive).
-* ...
+* New (tested) invariant that equality comparisons for JavaType/JavaMethod/JavaField values use .equals() instead of '=='.
+* Made graph caching compilation-local.
 
 ### Truffle
-* ...
+* New API TruffleRuntime#createCallNode to create call nodes and to give the runtime system control over its implementation.
+* New API RootNode#getCachedCallNodes to get a weak set of CallNodes that have registered to call the RootNode.
+* New API to split the AST of a call-site context sensitively. CallNode#split, CallNode#isSplittable, CallNode#getSplitCallTarget, CallNode#getCurrentCallTarget, RootNode#isSplittable, RootNode#split.
+* New API to inline a call-site into the call-graph. CallNode#isInlinable, CallNode#inline, CallNode#isInlined.
+* New API for the runtime environment to register CallTargets as caller to the RootNode. CallNode#registerCallTarget.
+* Improved API for counting nodes in Truffle ASTS. NodeUtil#countNodes can be used with a NodeFilter filter Nodes.
+* New API to declare the cost of a Node for use in runtime environment specific heuristics. See NodeCost, Node#getCost() and NodeInfo#cost().
+* Removed old API for NodeInfo#Kind and NodeInfo#kind(). As a replacement the new Node cost API can be used.
+
+
 
 ## Version 0.1
 5-Feb-2014, [Repository Revision](http://hg.openjdk.java.net/graal/graal/rev/b124e22eb772)

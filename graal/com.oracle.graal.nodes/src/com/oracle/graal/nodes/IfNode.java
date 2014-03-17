@@ -222,7 +222,8 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                 }
             } else if (b instanceof InstanceOfNode) {
                 InstanceOfNode instanceOfB = (InstanceOfNode) b;
-                if (instanceOfA.object() == instanceOfB.object() && !instanceOfA.type().isAssignableFrom(instanceOfB.type()) && !instanceOfB.type().isAssignableFrom(instanceOfA.type())) {
+                if (instanceOfA.object() == instanceOfB.object() && !instanceOfA.type().isInterface() && !instanceOfB.type().isInterface() &&
+                                !instanceOfA.type().isAssignableFrom(instanceOfB.type()) && !instanceOfB.type().isAssignableFrom(instanceOfA.type())) {
                     // Two instanceof on the same value with mutually exclusive types.
                     JavaTypeProfile profileA = instanceOfA.profile();
                     JavaTypeProfile profileB = instanceOfB.profile();

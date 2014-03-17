@@ -68,7 +68,7 @@ public class DecompilerIfSimplify {
                         // TODO(mg)
                         // thenBlocks and elseBlocks can be both empty --> causes an AssertionError
                         DecompilerIfBlock ifBlock = new DecompilerIfBlock(block.getBlock(), decompiler, thenBlocks, elseBlocks, infoStream);
-                        if (thenBlocks.contains(block.getBlock()) || elseBlocks.contains(block.getBlock())) {
+                        if (thenBlocks.contains(block) || elseBlocks.contains(block)) {
                             throw new AssertionError();
                         }
                         blocks.add(ifBlock);

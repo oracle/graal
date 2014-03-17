@@ -26,12 +26,10 @@ import static com.oracle.graal.phases.GraalOptions.*;
 
 import java.util.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
-import com.oracle.graal.hotspot.HotSpotReplacementsImpl.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.nodes.spi.*;
 
@@ -60,8 +58,6 @@ public abstract class HotSpotHostBackend extends HotSpotBackend implements HostB
         lowerer.initialize(providers, config);
         HotSpotReplacementsImpl replacements = (HotSpotReplacementsImpl) providers.getReplacements();
 
-        replacements.registerGraphProducers(getNonHostGraphProducers());
-
         // Install intrinsics.
         if (Intrinsify.getValue()) {
             try (Scope s = Debug.scope("RegisterReplacements", new DebugDumpScope("RegisterReplacements"))) {
@@ -80,27 +76,5 @@ public abstract class HotSpotHostBackend extends HotSpotBackend implements HostB
             }
         }
 
-    }
-
-    /**
-     * Gets the {@link GraphProducer}s from the non-host backends. These allow a GPU backend (for
-     * example) to offload compilation and execution of certain methods to a GPU.
-     * <p>
-     * Note that is is a very rough initial attempt at providing a hook for a GPU backend to
-     * intercept a compilation (or method inlining) for the purpose of routing execution to the GPU.
-     * Expect it to be extensively refined as experimentation with GPU offload proceeds.
-     */
-    protected GraphProducer[] getNonHostGraphProducers() {
-        List<GraphProducer> list = new ArrayList<>();
-        for (Map.Entry<Class<? extends Architecture>, HotSpotBackend> e : getRuntime().getBackends().entrySet()) {
-            HotSpotBackend value = e.getValue();
-            if (value != this) {
-                GraphProducer gp = value.getGraphProducer();
-                if (gp != null) {
-                    list.add(gp);
-                }
-            }
-        }
-        return list.toArray(new GraphProducer[list.size()]);
     }
 }

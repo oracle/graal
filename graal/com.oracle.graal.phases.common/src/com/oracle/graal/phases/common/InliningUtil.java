@@ -318,14 +318,9 @@ public class InliningUtil {
         }
 
         protected static void inline(Invoke invoke, ResolvedJavaMethod concrete, Inlineable inlineable, Assumptions assumptions, boolean receiverNullCheck) {
-            StructuredGraph graph = invoke.asNode().graph();
             if (inlineable instanceof InlineableGraph) {
                 StructuredGraph calleeGraph = ((InlineableGraph) inlineable).getGraph();
                 InliningUtil.inline(invoke, calleeGraph, receiverNullCheck);
-
-                graph.getLeafGraphIds().add(calleeGraph.graphId());
-                // we might at some point cache already-inlined graphs, so add recursively:
-                graph.getLeafGraphIds().addAll(calleeGraph.getLeafGraphIds());
             } else {
                 assert inlineable instanceof InlineableMacroNode;
 
@@ -630,7 +625,7 @@ public class InliningUtil {
 
             PhiNode returnValuePhi = null;
             if (invoke.asNode().kind() != Kind.Void) {
-                returnValuePhi = graph.addWithoutUnique(new PhiNode(invoke.asNode().kind(), returnMerge));
+                returnValuePhi = graph.addWithoutUnique(new PhiNode(invoke.asNode().stamp().unrestricted(), returnMerge));
             }
 
             MergeNode exceptionMerge = null;
@@ -643,7 +638,7 @@ public class InliningUtil {
 
                 FixedNode exceptionSux = exceptionEdge.next();
                 graph.addBeforeFixed(exceptionSux, exceptionMerge);
-                exceptionObjectPhi = graph.addWithoutUnique(new PhiNode(Kind.Object, exceptionMerge));
+                exceptionObjectPhi = graph.addWithoutUnique(new PhiNode(StampFactory.forKind(Kind.Object), exceptionMerge));
                 exceptionMerge.setStateAfter(exceptionEdge.stateAfter().duplicateModified(invoke.stateAfter().bci, true, Kind.Object, exceptionObjectPhi));
             }
 
@@ -1434,7 +1429,7 @@ public class InliningUtil {
                     } else {
                         // only handle the outermost frame states
                         if (frameState.outerFrameState() == null) {
-                            assert frameState.bci == FrameState.INVALID_FRAMESTATE_BCI || frameState.method() == inlineGraph.method();
+                            assert frameState.bci == FrameState.INVALID_FRAMESTATE_BCI || frameState.method().equals(inlineGraph.method());
                             if (outerFrameState == null) {
                                 outerFrameState = stateAfter.duplicateModified(invoke.bci(), stateAfter.rethrowException(), invokeNode.kind());
                                 outerFrameState.setDuringCall(true);
@@ -1491,7 +1486,7 @@ public class InliningUtil {
 
             if (returnNode.result() != null) {
                 if (returnValuePhi == null) {
-                    returnValuePhi = merge.graph().addWithoutUnique(new PhiNode(returnNode.result().kind(), merge));
+                    returnValuePhi = merge.graph().addWithoutUnique(new PhiNode(returnNode.result().stamp().unrestricted(), merge));
                 }
                 returnValuePhi.addInput(returnNode.result());
             }
@@ -1545,7 +1540,7 @@ public class InliningUtil {
 
     public static FixedWithNextNode inlineMacroNode(Invoke invoke, ResolvedJavaMethod concrete, Class<? extends FixedWithNextNode> macroNodeClass) throws GraalInternalError {
         StructuredGraph graph = invoke.asNode().graph();
-        if (((MethodCallTargetNode) invoke.callTarget()).targetMethod() != concrete) {
+        if (!concrete.equals(((MethodCallTargetNode) invoke.callTarget()).targetMethod())) {
             assert ((MethodCallTargetNode) invoke.callTarget()).invokeKind() != InvokeKind.Static;
             InliningUtil.replaceInvokeCallTarget(invoke, graph, InvokeKind.Special, concrete);
         }

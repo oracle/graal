@@ -170,7 +170,7 @@ public class LoopFragmentInside extends LoopFragment {
         PhiNode ret;
         switch (phi.type()) {
             case Value:
-                ret = new PhiNode(phi.kind(), merge);
+                ret = new PhiNode(phi.stamp(), merge);
                 break;
             case Guard:
                 ret = new PhiNode(PhiType.Guard, merge);

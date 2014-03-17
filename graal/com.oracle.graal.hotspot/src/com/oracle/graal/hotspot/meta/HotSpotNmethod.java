@@ -43,7 +43,12 @@ public final class HotSpotNmethod extends HotSpotInstalledCode {
 
     private static final long serialVersionUID = -1784683588947054103L;
 
+    /**
+     * This (indirect) Method* reference is safe since class redefinition preserves all methods
+     * associated with nmethods in the code cache.
+     */
     private final HotSpotResolvedJavaMethod method;
+
     private final boolean isDefault;
     private final boolean isExternal;
     private final String name;
@@ -84,7 +89,7 @@ public final class HotSpotNmethod extends HotSpotInstalledCode {
 
     @Override
     public String toString() {
-        return String.format("InstalledNmethod[method=%s, codeBlob=0x%x, isDefault=%b, name=]", method, getCodeBlob(), isDefault, name);
+        return String.format("InstalledNmethod[method=%s, codeBlob=0x%x, isDefault=%b, name=%s]", method, getCodeBlob(), isDefault, name);
     }
 
     @Override

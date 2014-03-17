@@ -23,6 +23,7 @@
 package com.oracle.graal.compiler.alloc;
 
 import static com.oracle.graal.api.code.ValueUtil.*;
+
 import java.util.*;
 
 import com.oracle.graal.api.code.*;
@@ -39,7 +40,7 @@ import com.oracle.graal.phases.util.*;
 final class RegisterVerifier {
 
     LinearScan allocator;
-    List<Block> workList; // all blocks that must be processed
+    List<AbstractBlock<?>> workList; // all blocks that must be processed
     ArrayMap<Interval[]> savedStates; // saved information of previous check
 
     // simplified access to methods of LinearScan
@@ -53,15 +54,15 @@ final class RegisterVerifier {
     }
 
     // accessors
-    Interval[] stateForBlock(Block block) {
+    Interval[] stateForBlock(AbstractBlock<?> block) {
         return savedStates.get(block.getId());
     }
 
-    void setStateForBlock(Block block, Interval[] savedState) {
+    void setStateForBlock(AbstractBlock<?> block, Interval[] savedState) {
         savedStates.put(block.getId(), savedState);
     }
 
-    void addToWorkList(Block block) {
+    void addToWorkList(AbstractBlock<?> block) {
         if (!workList.contains(block)) {
             workList.add(block);
         }
@@ -74,7 +75,7 @@ final class RegisterVerifier {
 
     }
 
-    void verify(Block start) {
+    void verify(AbstractBlock<?> start) {
         // setup input registers (method arguments) for first block
         Interval[] inputState = new Interval[stateSize()];
         setStateForBlock(start, inputState);
@@ -82,14 +83,14 @@ final class RegisterVerifier {
 
         // main loop for verification
         do {
-            Block block = workList.get(0);
+            AbstractBlock<?> block = workList.get(0);
             workList.remove(0);
 
             processBlock(block);
         } while (!workList.isEmpty());
     }
 
-    private void processBlock(Block block) {
+    private void processBlock(AbstractBlock<?> block) {
         try (Indent indent = Debug.logAndIndent("processBlock B%d", block.getId())) {
             // must copy state because it is modified
             Interval[] inputState = copy(stateForBlock(block));
@@ -108,13 +109,13 @@ final class RegisterVerifier {
             processOperations(allocator.ir.lir(block), inputState);
 
             // iterate all successors
-            for (Block succ : block.getSuccessors()) {
+            for (AbstractBlock<?> succ : block.getSuccessors()) {
                 processSuccessor(succ, inputState);
             }
         }
     }
 
-    private void processSuccessor(Block block, Interval[] inputState) {
+    private void processSuccessor(AbstractBlock<?> block, Interval[] inputState) {
         Interval[] savedState = stateForBlock(block);
 
         if (savedState != null) {

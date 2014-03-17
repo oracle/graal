@@ -168,7 +168,7 @@ public class HSAIL extends Architecture {
         Kind kind = arg.getKind();
         if (kind == Kind.Double || kind == Kind.Long) {
             regPrefix = "$d";
-        } else if (kind == Kind.Int || kind == Kind.Float || kind == Kind.NarrowOop) {
+        } else if (kind == Kind.Int || kind == Kind.Float) {
             regPrefix = "$s";
         } else {
             regPrefix = "$d";
@@ -193,7 +193,6 @@ public class HSAIL extends Architecture {
                 case Int:
                 case Long:
                 case Object:
-                case NarrowOop:
                     return true;
             }
         } else if (category == FPU) {

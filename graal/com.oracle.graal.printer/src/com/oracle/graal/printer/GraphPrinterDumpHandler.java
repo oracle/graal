@@ -86,7 +86,7 @@ public class GraphPrinterDumpHandler implements DebugDumpHandler {
     // This field must be lazily initialized as this class may be loaded in a version
     // VM startup phase at which not all required features (such as system properties)
     // are online.
-    private static SimpleDateFormat sdf;
+    private static volatile SimpleDateFormat sdf;
 
     private void initializeFilePrinter() {
         String ext;
@@ -98,7 +98,13 @@ public class GraphPrinterDumpHandler implements DebugDumpHandler {
         if (sdf == null) {
             sdf = new SimpleDateFormat("YYYY-MM-dd-HHmm");
         }
-        String prefix = "Graphs-" + Thread.currentThread().getName() + "-" + sdf.format(new Date());
+
+        // DateFormats are inherently unsafe for multi-threaded use. Use a synchronized block.
+        String prefix;
+        synchronized (sdf) {
+            prefix = "Graphs-" + Thread.currentThread().getName() + "-" + sdf.format(new Date());
+        }
+
         String num = "";
         File file;
         int i = 0;
@@ -196,7 +202,7 @@ public class GraphPrinterDumpHandler implements DebugDumpHandler {
         for (Object o : Debug.context()) {
             JavaMethod method = asJavaMethod(o);
             if (method != null) {
-                if (lastMethodOrGraph == null || asJavaMethod(lastMethodOrGraph) != method) {
+                if (lastMethodOrGraph == null || !asJavaMethod(lastMethodOrGraph).equals(method)) {
                     result.add(MetaUtil.format("%H::%n(%p)", method));
                 } else {
                     // This prevents multiple adjacent method context objects for the same method

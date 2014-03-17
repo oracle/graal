@@ -247,6 +247,7 @@ public final class TruffleCache {
     private boolean shouldInline(final MethodCallTargetNode methodCallTargetNode) {
         return (methodCallTargetNode.invokeKind() == InvokeKind.Special || methodCallTargetNode.invokeKind() == InvokeKind.Static) &&
                         !Modifier.isNative(methodCallTargetNode.targetMethod().getModifiers()) && methodCallTargetNode.targetMethod().getAnnotation(ExplodeLoop.class) == null &&
-                        methodCallTargetNode.targetMethod().getAnnotation(CompilerDirectives.SlowPath.class) == null && methodCallTargetNode.targetMethod().getDeclaringClass() != stringBuilderClass;
+                        methodCallTargetNode.targetMethod().getAnnotation(CompilerDirectives.SlowPath.class) == null &&
+                        !methodCallTargetNode.targetMethod().getDeclaringClass().equals(stringBuilderClass);
     }
 }

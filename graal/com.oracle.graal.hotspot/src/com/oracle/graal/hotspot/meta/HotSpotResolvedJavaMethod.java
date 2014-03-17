@@ -28,8 +28,6 @@ import static com.oracle.graal.phases.GraalOptions.*;
 
 import java.lang.annotation.*;
 import java.lang.reflect.*;
-import java.util.*;
-import java.util.concurrent.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
@@ -59,10 +57,8 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
     private boolean forceInline;
     private boolean dontInline;
     private boolean ignoredBySecurityStackWalk;
-    private Map<Object, Object> compilerStorage;
     private HotSpotMethodData methodData;
     private byte[] code;
-    private CompilationTask currentTask;
     private SpeculationLog speculationLog;
 
     /**
@@ -126,6 +122,20 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
     private long getConstMethod() {
         assert metaspaceMethod != 0;
         return unsafe.getAddress(metaspaceMethod + runtime().getConfig().methodConstMethodOffset);
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (obj instanceof HotSpotResolvedJavaMethod) {
+            HotSpotResolvedJavaMethod that = (HotSpotResolvedJavaMethod) obj;
+            return that.metaspaceMethod == metaspaceMethod;
+        }
+        return false;
+    }
+
+    @Override
+    public int hashCode() {
+        return (int) metaspaceMethod;
     }
 
     /**
@@ -343,10 +353,6 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
         return signature;
     }
 
-    public int getCompiledCodeSize() {
-        return runtime().getCompilerToVM().getCompiledCodeSize(metaspaceMethod);
-    }
-
     /**
      * Gets the value of {@code Method::_code}.
      * 
@@ -417,14 +423,6 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
     @Override
     public void reprofile() {
         runtime().getCompilerToVM().reprofile(metaspaceMethod);
-    }
-
-    @Override
-    public Map<Object, Object> getCompilerStorage() {
-        if (compilerStorage == null) {
-            compilerStorage = new ConcurrentHashMap<>();
-        }
-        return compilerStorage;
     }
 
     @Override
@@ -598,14 +596,6 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
     private int getVtableIndex() {
         HotSpotVMConfig config = runtime().getConfig();
         return unsafe.getInt(metaspaceMethod + config.methodVtableIndexOffset);
-    }
-
-    public void setCurrentTask(CompilationTask task) {
-        currentTask = task;
-    }
-
-    public CompilationTask currentTask() {
-        return currentTask;
     }
 
     public SpeculationLog getSpeculationLog() {

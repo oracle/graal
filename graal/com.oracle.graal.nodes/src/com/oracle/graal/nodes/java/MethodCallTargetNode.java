@@ -165,7 +165,7 @@ public class MethodCallTargetNode extends CallTargetNode implements IterableNode
 
     public static MethodCallTargetNode find(StructuredGraph graph, ResolvedJavaMethod method) {
         for (MethodCallTargetNode target : graph.getNodes(MethodCallTargetNode.class)) {
-            if (target.targetMethod == method) {
+            if (target.targetMethod.equals(method)) {
                 return target;
             }
         }

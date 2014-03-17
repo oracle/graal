@@ -101,7 +101,7 @@ public class OnStackReplacementPhase extends Phase {
                  */
                 proxy.replaceAndDelete(graph.unique(new OSRLocalNode(i, proxy.stamp().unrestricted())));
             } else {
-                assert value instanceof OSRLocalNode;
+                assert value == null || value instanceof OSRLocalNode;
             }
         }
 

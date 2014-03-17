@@ -141,7 +141,7 @@ public class BytecodeDisassembler implements BytecodeDisassemblerProvider {
                             desc = constant.toString();
                         }
                         if (!multiline) {
-                            desc.replaceAll("\\n", "");
+                            desc = desc.replaceAll("\\n", "");
                         }
                         buf.append(String.format("#%-10d // %s", cpi, desc));
                         break;

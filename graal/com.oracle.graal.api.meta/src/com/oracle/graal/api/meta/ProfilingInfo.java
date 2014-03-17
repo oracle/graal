@@ -114,6 +114,25 @@ public interface ProfilingInfo {
     int getDeoptimizationCount(DeoptimizationReason reason);
 
     /**
+     * Records the size of the compiler intermediate representation (IR) associated with this
+     * method.
+     * 
+     * @param irType the IR type for which the size is being recorded
+     * @param irSize the IR size to be recorded. The unit depends on the IR.
+     * @return whether recording this information for {@code irType} is supported
+     */
+    boolean setCompilerIRSize(Class<?> irType, int irSize);
+
+    /**
+     * Gets the size of the compiler intermediate representation (IR) associated with this method
+     * last recorded by {@link #setCompilerIRSize(Class, int)}.
+     * 
+     * @param irType the IR type for which the size is being requested
+     * @return the requested IR size or -1 if it is unavailable for {@code irType}
+     */
+    int getCompilerIRSize(Class<?> irType);
+
+    /**
      * Returns true if the profiling information can be assumed as sufficiently accurate.
      * 
      * @return true if the profiling information was recorded often enough mature enough, false
@@ -124,6 +143,5 @@ public interface ProfilingInfo {
     /**
      * Force data to be treated as mature if possible.
      */
-
     void setMature();
 }

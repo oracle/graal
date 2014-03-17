@@ -1,0 +1,41 @@
+<FindBugsFilter>
+
+  <Match>
+    <Class name="com.oracle.graal.hotspot.CompilationTask" />
+    <Method name="run" />
+    <Bug pattern="NN_NAKED_NOTIFY" />
+  </Match>
+
+  <!-- justification = "concurrent abstraction calls are in synchronized block" -->
+  <Match>
+    <Class name="com.oracle.graal.hotspot.debug.BenchmarkCounters" />
+    <Method name="getIndex" />
+    <Bug pattern="AT_OPERATION_SEQUENCE_ON_CONCURRENT_ABSTRACTION" />
+  </Match>
+
+  <!-- justification = "counters are only used for statistics" -->
+  <Match>
+    <Class name="com.oracle.graal.hotspot.meta.HotSpotGraphCache" />
+    <Or>
+      <Method name="get" />
+      <Method name="put" />
+      <Method name="removeGraphs" />
+    </Or>
+    <Bug pattern="VO_VOLATILE_INCREMENT" />
+  </Match>
+
+  <!-- justification = "reference equality on the receiver is what we want" -->
+  <Match>
+    <Class name="com.oracle.graal.replacements.StringSubstitutions" />
+    <Method name="equals" />
+    <Bug pattern="ES_COMPARING_PARAMETER_STRING_WITH_EQ" />
+  </Match>
+
+  <!-- justification = "reference equality to test whether string is interned" -->
+  <Match>
+    <Class name="com.oracle.graal.hotspot.phases.AheadOfTimeVerificationPhase" />
+    <Method name="isInternedString" />
+    <Bug pattern="ES_COMPARING_STRINGS_WITH_EQ" />
+  </Match>
+
+</FindBugsFilter>

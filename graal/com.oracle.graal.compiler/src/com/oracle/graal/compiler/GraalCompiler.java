@@ -30,9 +30,9 @@ import java.util.*;
 
 import com.oracle.graal.alloc.*;
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.CompilationResult.*;
+import com.oracle.graal.api.code.CompilationResult.DataPatch;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.meta.ProfilingInfo.*;
+import com.oracle.graal.api.meta.ProfilingInfo.TriState;
 import com.oracle.graal.compiler.alloc.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.target.*;
@@ -43,7 +43,6 @@ import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.cfg.*;
-import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.options.*;
 import com.oracle.graal.phases.*;
@@ -134,8 +133,8 @@ public class GraalCompiler {
      * @return the result of the compilation
      */
     public static <T extends CompilationResult> T compileGraph(StructuredGraph graph, Object stub, CallingConvention cc, ResolvedJavaMethod installedCodeOwner, Providers providers, Backend backend,
-                    TargetDescription target, GraphCache cache, PhaseSuite<HighTierContext> graphBuilderSuite, OptimisticOptimizations optimisticOpts, ProfilingInfo profilingInfo,
-                    SpeculationLog speculationLog, Suites suites, T compilationResult, CompilationResultBuilderFactory factory) {
+                    TargetDescription target, Map<ResolvedJavaMethod, StructuredGraph> cache, PhaseSuite<HighTierContext> graphBuilderSuite, OptimisticOptimizations optimisticOpts,
+                    ProfilingInfo profilingInfo, SpeculationLog speculationLog, Suites suites, T compilationResult, CompilationResultBuilderFactory factory) {
         assert !graph.isFrozen();
         try (Scope s0 = Debug.scope("GraalCompiler", graph, providers.getCodeCache())) {
             Assumptions assumptions = new Assumptions(OptAssumptions.getValue());
@@ -149,7 +148,7 @@ public class GraalCompiler {
                 LIRGenerator lirGen = null;
                 lirGen = emitLIR(backend, target, schedule, graph, stub, cc);
                 try (Scope s = Debug.scope("CodeGen", lirGen)) {
-                    emitCode(backend, getLeafGraphIdArray(graph), assumptions, lirGen, compilationResult, installedCodeOwner, factory);
+                    emitCode(backend, assumptions, lirGen, compilationResult, installedCodeOwner, factory);
                 } catch (Throwable e) {
                     throw Debug.handle(e);
                 }
@@ -170,21 +169,11 @@ public class GraalCompiler {
         }
     }
 
-    private static long[] getLeafGraphIdArray(StructuredGraph graph) {
-        long[] leafGraphIdArray = new long[graph.getLeafGraphIds().size() + 1];
-        int i = 0;
-        leafGraphIdArray[i++] = graph.graphId();
-        for (long id : graph.getLeafGraphIds()) {
-            leafGraphIdArray[i++] = id;
-        }
-        return leafGraphIdArray;
-    }
-
     /**
      * Builds the graph, optimizes it.
      */
-    public static SchedulePhase emitHIR(Providers providers, TargetDescription target, StructuredGraph graph, Assumptions assumptions, GraphCache cache, PhaseSuite<HighTierContext> graphBuilderSuite,
-                    OptimisticOptimizations optimisticOpts, ProfilingInfo profilingInfo, SpeculationLog speculationLog, Suites suites) {
+    public static SchedulePhase emitHIR(Providers providers, TargetDescription target, StructuredGraph graph, Assumptions assumptions, Map<ResolvedJavaMethod, StructuredGraph> cache,
+                    PhaseSuite<HighTierContext> graphBuilderSuite, OptimisticOptimizations optimisticOpts, ProfilingInfo profilingInfo, SpeculationLog speculationLog, Suites suites) {
 
         if (speculationLog != null) {
             speculationLog.collectFailedSpeculations();
@@ -208,11 +197,6 @@ public class GraalCompiler {
         LowTierContext lowTierContext = new LowTierContext(providers, assumptions, target);
         suites.getLowTier().apply(graph, lowTierContext);
         graph.maybeCompress();
-
-        // we do not want to store statistics about OSR compilations because it may prevent inlining
-        if (!graph.isOSR()) {
-            InliningPhase.storeStatisticsAfterLowTier(graph);
-        }
 
         SchedulePhase schedule = new SchedulePhase();
         schedule.apply(graph);
@@ -295,7 +279,7 @@ public class GraalCompiler {
         }
     }
 
-    public static void emitCode(Backend backend, long[] leafGraphIds, Assumptions assumptions, LIRGenerator lirGen, CompilationResult compilationResult, ResolvedJavaMethod installedCodeOwner,
+    public static void emitCode(Backend backend, Assumptions assumptions, LIRGenerator lirGen, CompilationResult compilationResult, ResolvedJavaMethod installedCodeOwner,
                     CompilationResultBuilderFactory factory) {
         CompilationResultBuilder crb = backend.newCompilationResultBuilder(lirGen, compilationResult, factory);
         backend.emitCode(crb, lirGen.lir, installedCodeOwner);
@@ -303,7 +287,6 @@ public class GraalCompiler {
         if (!assumptions.isEmpty()) {
             compilationResult.setAssumptions(assumptions);
         }
-        compilationResult.setLeafGraphIds(leafGraphIds);
 
         if (Debug.isMeterEnabled()) {
             List<DataPatch> ldp = compilationResult.getDataReferences();
@@ -311,14 +294,9 @@ public class GraalCompiler {
             for (int i = 0; i < dms.length; i++) {
                 dms[i] = Debug.metric("DataPatches-" + Kind.values()[i].toString());
             }
-            DebugMetric dmRaw = Debug.metric("DataPatches-raw");
 
             for (DataPatch dp : ldp) {
-                if (dp.getConstant() != null) {
-                    dms[dp.getConstant().getKind().ordinal()].add(1);
-                } else {
-                    dmRaw.add(1);
-                }
+                dms[dp.data.getKind().ordinal()].add(1);
             }
 
             Debug.metric("CompilationResults").increment();

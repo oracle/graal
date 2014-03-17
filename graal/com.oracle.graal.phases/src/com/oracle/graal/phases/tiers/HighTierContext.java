@@ -22,8 +22,11 @@
  */
 package com.oracle.graal.phases.tiers;
 
+import java.util.*;
+
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.util.*;
@@ -32,18 +35,19 @@ public class HighTierContext extends PhaseContext {
 
     private final PhaseSuite<HighTierContext> graphBuilderSuite;
 
-    private final GraphCache cache;
+    private final Map<ResolvedJavaMethod, StructuredGraph> cache;
     private final OptimisticOptimizations optimisticOpts;
 
     public HighTierContext(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, LoweringProvider lowerer, Replacements replacements, Assumptions assumptions,
-                    GraphCache cache, PhaseSuite<HighTierContext> graphBuilderSuite, OptimisticOptimizations optimisticOpts) {
+                    Map<ResolvedJavaMethod, StructuredGraph> cache, PhaseSuite<HighTierContext> graphBuilderSuite, OptimisticOptimizations optimisticOpts) {
         super(metaAccess, constantReflection, lowerer, replacements, assumptions);
         this.cache = cache;
         this.graphBuilderSuite = graphBuilderSuite;
         this.optimisticOpts = optimisticOpts;
     }
 
-    public HighTierContext(Providers providers, Assumptions assumptions, GraphCache cache, PhaseSuite<HighTierContext> graphBuilderSuite, OptimisticOptimizations optimisticOpts) {
+    public HighTierContext(Providers providers, Assumptions assumptions, Map<ResolvedJavaMethod, StructuredGraph> cache, PhaseSuite<HighTierContext> graphBuilderSuite,
+                    OptimisticOptimizations optimisticOpts) {
         this(providers.getMetaAccess(), providers.getConstantReflection(), providers.getLowerer(), providers.getReplacements(), assumptions, cache, graphBuilderSuite, optimisticOpts);
     }
 
@@ -51,7 +55,7 @@ public class HighTierContext extends PhaseContext {
         return graphBuilderSuite;
     }
 
-    public GraphCache getGraphCache() {
+    public Map<ResolvedJavaMethod, StructuredGraph> getGraphCache() {
         return cache;
     }
 

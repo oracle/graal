@@ -25,6 +25,7 @@ package com.oracle.graal.java.decompiler;
 import java.io.*;
 import java.util.*;
 
+import com.oracle.graal.graph.*;
 import com.oracle.graal.java.decompiler.block.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.cfg.*;
@@ -55,9 +56,9 @@ public class Decompiler {
                 schedule = new SchedulePhase();
                 schedule.apply(graph);
             } catch (Throwable t) {
+                throw new GraalInternalError(t);
             }
         }
-
         cfg = schedule.getCFG();
     }
 
