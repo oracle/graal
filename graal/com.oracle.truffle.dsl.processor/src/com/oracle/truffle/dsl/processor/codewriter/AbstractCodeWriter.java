@@ -267,11 +267,9 @@ public abstract class AbstractCodeWriter extends CodeElementScanner<Void, Void> 
         if (parent.getKind() == ElementKind.ENUM && f.getModifiers().contains(Modifier.STATIC)) {
             write(f.getSimpleName());
             if (init != null) {
-                if (init != null) {
-                    write("(");
-                    init.acceptCodeElementScanner(this, p);
-                    write(")");
-                }
+                write("(");
+                init.acceptCodeElementScanner(this, p);
+                write(")");
             }
         } else {
             Element enclosing = f.getEnclosingElement();

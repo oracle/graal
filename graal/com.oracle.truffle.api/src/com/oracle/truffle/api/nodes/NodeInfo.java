@@ -40,10 +40,13 @@ public @interface NodeInfo {
      */
     String shortName() default "";
 
-    Kind kind() default Kind.SPECIALIZED;
-
-    public enum Kind {
-        UNINITIALIZED, SPECIALIZED, POLYMORPHIC, GENERIC
-    }
+    /**
+     * Provides a rough estimate for the cost of the annotated {@link Node}. This estimate can be
+     * used by runtime systems or guest languages to implement heuristics based on Truffle ASTs.
+     * 
+     * @see Node#getCost()
+     * @see NodeCost
+     */
+    NodeCost cost() default NodeCost.MONOMORPHIC;
 
 }

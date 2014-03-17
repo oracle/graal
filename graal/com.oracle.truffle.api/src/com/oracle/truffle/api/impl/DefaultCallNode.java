@@ -64,6 +64,11 @@ public class DefaultCallNode extends CallNode {
     }
 
     @Override
+    public boolean isInlinable() {
+        return false;
+    }
+
+    @Override
     public String toString() {
         return getParent() != null ? getParent().toString() : super.toString();
     }

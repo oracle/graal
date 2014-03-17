@@ -36,7 +36,7 @@ import com.oracle.truffle.api.frame.*;
  */
 public abstract class RootNode extends Node {
 
-    private CallTarget callTarget;
+    private RootCallTarget callTarget;
     private final FrameDescriptor frameDescriptor;
 
     /*
@@ -62,36 +62,24 @@ public abstract class RootNode extends Node {
     }
 
     /**
-     * @deprecated Not required anymore. Do not use.
+     * Creates a split {@link RootNode} based on the current {@link RootNode}. This method should
+     * return an AST that was never executed and must not be shared with other {@link RootNode} or
+     * {@link CallTarget} instances. This method is intended to be overridden by a subclass.
+     * 
+     * @return the split {@link RootNode}
      */
-    @Deprecated
-    public RootNode inline() {
-        if (!isInlinable()) {
-            throw new UnsupportedOperationException("Inlining is not enabled.");
-        }
-        return split();
-    }
-
-    /**
-     * @deprecated Not required anymore. Do not use.
-     */
-    @Deprecated
-    public int getInlineNodeCount() {
-        return 0;
-    }
-
-    /**
-     * @deprecated Not required anymore. Do not use.
-     */
-    @Deprecated
-    public boolean isInlinable() {
-        return true;
-    }
-
     public RootNode split() {
-        return NodeUtil.cloneNode(this);
+        throw new UnsupportedOperationException();
     }
 
+    /**
+     * Returns <code>true</code> if this {@link RootNode} can be split. A {@link RootNode} can be
+     * split inside of a {@link CallTarget} that is invoked using a {@link CallNode}. If this method
+     * returns <code>true</code> a proper implementation of {@link #split()} must also be provided.
+     * This method is intended to be overridden by a subclass.
+     * 
+     * @return <code>true</code> if splittable else <code>false</code>.
+     */
     public boolean isSplittable() {
         return false;
     }
@@ -100,7 +88,7 @@ public abstract class RootNode extends Node {
      * Reports the execution count of a loop that is a child of this node. The optimization
      * heuristics can use the loop count to guide compilation and inlining.
      */
-    public void reportLoopCount(int count) {
+    public final void reportLoopCount(int count) {
         if (getCallTarget() instanceof LoopCountReceiver) {
             ((LoopCountReceiver) getCallTarget()).reportLoopCount(count);
         }
@@ -114,7 +102,7 @@ public abstract class RootNode extends Node {
      */
     public abstract Object execute(VirtualFrame frame);
 
-    public CallTarget getCallTarget() {
+    public final RootCallTarget getCallTarget() {
         return callTarget;
     }
 
@@ -122,17 +110,17 @@ public abstract class RootNode extends Node {
         return frameDescriptor;
     }
 
-    public final void setCallTarget(CallTarget callTarget) {
+    public final void setCallTarget(RootCallTarget callTarget) {
         this.callTarget = callTarget;
     }
 
     /* Internal API. Do not use. */
-    void addCachedCallNode(CallNode callSite) {
+    final void addCachedCallNode(CallNode callSite) {
         this.cachedCallNodes.add(callSite);
     }
 
     /* Internal API. Do not use. */
-    void removeCachedCallNode(CallNode callSite) {
+    final void removeCachedCallNode(CallNode callSite) {
         this.cachedCallNodes.remove(callSite);
     }
 
@@ -148,11 +136,4 @@ public abstract class RootNode extends Node {
         return Collections.unmodifiableSet(cachedCallNodes);
     }
 
-    /**
-     * @deprecated use {@link #getCachedCallNodes()} instead.
-     */
-    @Deprecated
-    public final CallNode getParentInlinedCall() {
-        return cachedCallNodes.isEmpty() ? null : cachedCallNodes.iterator().next();
-    }
 }

@@ -33,7 +33,6 @@ import com.oracle.truffle.api.dsl.test.PolymorphicTestFactory.Node1Factory;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.TestRootNode;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
 import com.oracle.truffle.api.nodes.*;
-import com.oracle.truffle.api.nodes.NodeInfo.Kind;
 
 public class PolymorphicTest {
 
@@ -55,7 +54,7 @@ public class PolymorphicTest {
         assertEquals("(boolean,boolean)", executeWith(node, false, false));
         assertEquals("(int,boolean)", executeWith(node, 42, false));
         assertEquals("(boolean,int)", executeWith(node, false, 42));
-        assertEquals(Kind.SPECIALIZED, node.getNode().getClass().getAnnotation(NodeInfo.class).kind());
+        assertEquals(NodeCost.MONOMORPHIC, node.getNode().getCost());
         assertParent(node.getNode(), node.getNode().getLeft());
         assertParent(node.getNode(), node.getNode().getRight());
     }
@@ -65,7 +64,7 @@ public class PolymorphicTest {
         TestRootNode<Node1> node = TestHelper.createRoot(Node1Factory.getInstance());
         assertEquals("(int,boolean)", executeWith(node, 42, false));
         assertEquals("(int,int)", executeWith(node, 42, 42));
-        assertEquals(Kind.POLYMORPHIC, node.getNode().getClass().getAnnotation(NodeInfo.class).kind());
+        assertEquals(NodeCost.NONE, node.getNode().getCost());
         assertParent(node.getNode(), node.getNode().getLeft());
         assertParent(node.getNode(), node.getNode().getRight());
     }
@@ -76,7 +75,7 @@ public class PolymorphicTest {
         assertEquals("(int,boolean)", executeWith(node, 42, false));
         assertEquals("(boolean,boolean)", executeWith(node, true, false));
         assertEquals("(int,int)", executeWith(node, 42, 42));
-        assertEquals(Kind.POLYMORPHIC, node.getNode().getClass().getAnnotation(NodeInfo.class).kind());
+        assertEquals(NodeCost.NONE, node.getNode().getCost());
         assertParent(node.getNode(), node.getNode().getLeft());
         assertParent(node.getNode(), node.getNode().getRight());
     }
@@ -88,7 +87,7 @@ public class PolymorphicTest {
         assertEquals("(int,boolean)", executeWith(node, 42, false));
         assertEquals("(boolean,boolean)", executeWith(node, true, false));
         assertEquals("(int,int)", executeWith(node, 42, 42));
-        assertEquals(Kind.GENERIC, node.getNode().getClass().getAnnotation(NodeInfo.class).kind());
+        assertEquals(NodeCost.MEGAMORPHIC, node.getNode().getCost());
         assertParent(node.getNode(), node.getNode().getLeft());
         assertParent(node.getNode(), node.getNode().getRight());
     }
@@ -97,7 +96,7 @@ public class PolymorphicTest {
     public void testGenericInitial() {
         TestRootNode<Node1> node = TestHelper.createRoot(Node1Factory.getInstance());
         assertEquals("(generic,generic)", executeWith(node, "1", "1"));
-        assertEquals(Kind.GENERIC, node.getNode().getClass().getAnnotation(NodeInfo.class).kind());
+        assertEquals(NodeCost.MEGAMORPHIC, node.getNode().getCost());
         assertParent(node.getNode(), node.getNode().getLeft());
         assertParent(node.getNode(), node.getNode().getRight());
     }
@@ -108,7 +107,7 @@ public class PolymorphicTest {
         assertEquals("(boolean,int)", executeWith(node, false, 42));
         assertEquals("(boolean,boolean)", executeWith(node, false, false));
         assertEquals("(generic,generic)", executeWith(node, "", ""));
-        assertEquals(Kind.GENERIC, node.getNode().getClass().getAnnotation(NodeInfo.class).kind());
+        assertEquals(NodeCost.MEGAMORPHIC, node.getNode().getCost());
         /* Assertions for bug GRAAL-425 */
         assertParent(node.getNode(), node.getNode().getLeft());
         assertParent(node.getNode(), node.getNode().getRight());

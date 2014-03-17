@@ -29,7 +29,6 @@ import java.lang.annotation.*;
 import java.util.*;
 
 import com.oracle.truffle.api.*;
-import com.oracle.truffle.api.nodes.NodeInfo.Kind;
 
 /**
  * Abstract base class for all Truffle nodes.
@@ -82,12 +81,20 @@ public abstract class Node implements Cloneable {
         this.sourceSection = section;
     }
 
-    public Kind getKind() {
+    /**
+     * Returns a rough estimate for the cost of this {@link Node}. This estimate can be used by
+     * runtime systems or guest languages to implement heuristics based on Truffle ASTs. This method
+     * is intended to be overridden by subclasses. The default implementation returns the value of
+     * {@link NodeInfo#cost()} of the {@link NodeInfo} annotation declared at the subclass. If no
+     * {@link NodeInfo} annotation is declared the method returns {@link NodeCost#MONOMORPHIC} as a
+     * default value.
+     */
+    public NodeCost getCost() {
         NodeInfo info = getClass().getAnnotation(NodeInfo.class);
         if (info != null) {
-            return info.kind();
+            return info.cost();
         }
-        return Kind.SPECIALIZED;
+        return NodeCost.MONOMORPHIC;
     }
 
     /**
@@ -277,61 +284,54 @@ public abstract class Node implements Cloneable {
     }
 
     private void traceRewrite(Node newNode, String reason) {
-        Class<? extends Node> from = getClass();
-        Class<? extends Node> to = newNode.getClass();
 
-        if (TruffleOptions.TraceRewritesFilterFromKind != null) {
-            if (filterByKind(from, TruffleOptions.TraceRewritesFilterFromKind)) {
+        if (TruffleOptions.TraceRewritesFilterFromCost != null) {
+            if (filterByKind(this, TruffleOptions.TraceRewritesFilterFromCost)) {
                 return;
             }
         }
 
-        if (TruffleOptions.TraceRewritesFilterToKind != null) {
-            if (filterByKind(to, TruffleOptions.TraceRewritesFilterToKind)) {
+        if (TruffleOptions.TraceRewritesFilterToCost != null) {
+            if (filterByKind(newNode, TruffleOptions.TraceRewritesFilterToCost)) {
                 return;
             }
         }
 
         String filter = TruffleOptions.TraceRewritesFilterClass;
+        Class<? extends Node> from = getClass();
+        Class<? extends Node> to = newNode.getClass();
         if (filter != null && (filterByContainsClassName(from, filter) || filterByContainsClassName(to, filter))) {
             return;
         }
 
         PrintStream out = System.out;
-        out.printf("[truffle]   rewrite %-50s |From %-40s |To %-40s |Reason %s.%n", this.toString(), formatNodeInfo(from), formatNodeInfo(to), reason);
+        out.printf("[truffle]   rewrite %-50s |From %-40s |To %-40s |Reason %s.%n", this.toString(), formatNodeInfo(this), formatNodeInfo(newNode), reason);
     }
 
-    private static String formatNodeInfo(Class<? extends Node> clazz) {
-        NodeInfo nodeInfo = clazz.getAnnotation(NodeInfo.class);
-        String kind = "?";
-        if (nodeInfo != null) {
-            switch (nodeInfo.kind()) {
-                case GENERIC:
-                    kind = "G";
-                    break;
-                case SPECIALIZED:
-                    kind = "S";
-                    break;
-                case UNINITIALIZED:
-                    kind = "U";
-                    break;
-                case POLYMORPHIC:
-                    kind = "P";
-                    break;
-                default:
-                    kind = "?";
-                    break;
-            }
+    private static String formatNodeInfo(Node node) {
+        String cost = "?";
+        switch (node.getCost()) {
+            case NONE:
+                cost = "G";
+                break;
+            case MONOMORPHIC:
+                cost = "M";
+                break;
+            case POLYMORPHIC:
+                cost = "P";
+                break;
+            case MEGAMORPHIC:
+                cost = "G";
+                break;
+            default:
+                cost = "?";
+                break;
         }
-        return kind + " " + clazz.getSimpleName();
+        return cost + " " + node.getClass().getSimpleName();
     }
 
-    private static boolean filterByKind(Class<?> clazz, Kind kind) {
-        NodeInfo info = clazz.getAnnotation(NodeInfo.class);
-        if (info != null) {
-            return info.kind() != kind;
-        }
-        return true;
+    private static boolean filterByKind(Node node, NodeCost cost) {
+        return node.getCost() == cost;
     }
 
     private static boolean filterByContainsClassName(Class<? extends Node> from, String filter) {
