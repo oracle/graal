@@ -67,7 +67,7 @@ import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
 /**
  * LIR generator specialized for AMD64 HotSpot.
  */
-public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSpotLIRGenerator {
+public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSpotLIRGenerator, AMD64HotSpotLIRGenerationResult {
 
     private final HotSpotVMConfig config;
 
@@ -90,7 +90,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
      * deoptimization. The return address slot in the callee is overwritten with the address of a
      * deoptimization stub.
      */
-    StackSlot deoptimizationRescueSlot;
+    private StackSlot deoptimizationRescueSlot;
 
     /**
      * Utility for emitting the instruction to save RBP.
@@ -214,7 +214,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
      * Map from debug infos that need to be updated with callee save information to the operations
      * that provide the information.
      */
-    Map<LIRFrameState, SaveRegistersOp> calleeSaveInfo = new HashMap<>();
+    private Map<LIRFrameState, SaveRegistersOp> calleeSaveInfo = new HashMap<>();
 
     private LIRFrameState currentRuntimeCallInfo;
 
@@ -234,7 +234,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         append(new AMD64RestoreRegistersOp(save.getSlots().clone(), save));
     }
 
-    Stub getStub() {
+    public Stub getStub() {
         return (Stub) stub;
     }
 
@@ -596,4 +596,13 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         AMD64AddressValue addr = emitAddress(operand(address), 0, loadNonConst(operand(distance)), 1);
         append(new AMD64PrefetchOp(addr, config.allocatePrefetchInstr));
     }
+
+    public StackSlot getDeoptimizationRescueSlot() {
+        return deoptimizationRescueSlot;
+    }
+
+    public Map<LIRFrameState, SaveRegistersOp> getCalleeSaveInfo() {
+        return calleeSaveInfo;
+    }
+
 }

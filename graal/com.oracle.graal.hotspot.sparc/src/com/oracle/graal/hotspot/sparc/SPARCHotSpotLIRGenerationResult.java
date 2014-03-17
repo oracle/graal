@@ -20,14 +20,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.gen;
+package com.oracle.graal.hotspot.sparc;
 
-import com.oracle.graal.lir.*;
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.compiler.gen.*;
+import com.oracle.graal.hotspot.stubs.*;
 
-public interface LIRGenerationResult {
-    FrameMap getFrameMap();
+public interface SPARCHotSpotLIRGenerationResult extends LIRGenerationResult {
 
-    LIR getLIR();
+    StackSlot getDeoptimizationRescueSlot();
 
-    boolean hasForeignCall();
+    Stub getStub();
+
 }

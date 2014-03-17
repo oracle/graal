@@ -20,14 +20,22 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.gen;
+package com.oracle.graal.hotspot.amd64;
 
+import java.util.*;
+
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.compiler.gen.*;
+import com.oracle.graal.hotspot.stubs.*;
 import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.StandardOp.SaveRegistersOp;
 
-public interface LIRGenerationResult {
-    FrameMap getFrameMap();
+public interface AMD64HotSpotLIRGenerationResult extends LIRGenerationResult {
 
-    LIR getLIR();
+    StackSlot getDeoptimizationRescueSlot();
 
-    boolean hasForeignCall();
+    Stub getStub();
+
+    Map<LIRFrameState, SaveRegistersOp> getCalleeSaveInfo();
+
 }
