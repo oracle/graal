@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.nodes;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.calc.*;
@@ -53,15 +52,11 @@ public class PhiNode extends FloatingNode implements Canonicalizable, GuardingNo
     private final PhiType type;
 
     /**
-     * Create a value phi ({@link PhiType#Value}) with the specified kind.
+     * Create a value phi ({@link PhiType#Value}) with the specified stamp.
      * 
-     * @param kind the kind of the value
+     * @param stamp the stamp of the value
      * @param merge the merge that the new phi belongs to
      */
-    public PhiNode(Kind kind, MergeNode merge) {
-        this(StampFactory.forKind(kind), merge);
-    }
-
     public PhiNode(Stamp stamp, MergeNode merge) {
         super(stamp);
         assert stamp != StampFactory.forVoid();
@@ -186,7 +181,7 @@ public class PhiNode extends FloatingNode implements Canonicalizable, GuardingNo
 
     public void addInput(ValueNode x) {
         assert !(x instanceof PhiNode) || ((PhiNode) x).merge() instanceof LoopBeginNode || ((PhiNode) x).merge() != this.merge();
-        assert x.kind() == kind() || type != PhiType.Value;
+        assert x.stamp().isCompatible(stamp()) || type != PhiType.Value;
         values.add(x);
     }
 

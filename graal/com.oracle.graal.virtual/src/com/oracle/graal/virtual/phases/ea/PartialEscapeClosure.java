@@ -35,6 +35,7 @@ import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.spi.Virtualizable.EscapeState;
+import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.virtual.*;
 import com.oracle.graal.phases.schedule.*;
 import com.oracle.graal.phases.util.*;
@@ -284,10 +285,10 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
             super(mergeBlock);
         }
 
-        protected <T> PhiNode getCachedPhi(T virtual, Kind kind) {
+        protected <T> PhiNode getCachedPhi(T virtual, Stamp stamp) {
             PhiNode result = materializedPhis.get(virtual);
             if (result == null) {
-                result = new PhiNode(kind, merge);
+                result = new PhiNode(stamp, merge);
                 materializedPhis.put(virtual, result);
             }
             return result;
@@ -363,7 +364,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                         if (uniqueMaterializedValue != null) {
                             newState.addObject(object, new ObjectState(object, uniqueMaterializedValue, EscapeState.Materialized, null));
                         } else {
-                            PhiNode materializedValuePhi = getCachedPhi(object, Kind.Object);
+                            PhiNode materializedValuePhi = getCachedPhi(object, StampFactory.forKind(Kind.Object));
                             mergeEffects.addFloatingNode(materializedValuePhi, "materializedPhi");
                             for (int i = 0; i < objStates.length; i++) {
                                 ObjectState obj = objStates[i];
@@ -458,7 +459,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                     for (int i = 1; i < objStates.length; i++) {
                         ValueNode[] fields = objStates[i].getEntries();
                         if (phis[valueIndex] == null && values[valueIndex] != fields[valueIndex]) {
-                            phis[valueIndex] = new PhiNode(values[valueIndex].kind(), merge);
+                            phis[valueIndex] = new PhiNode(values[valueIndex].stamp().unrestricted(), merge);
                         }
                     }
                     if (twoSlotKinds != null && twoSlotKinds[valueIndex] != null) {
@@ -487,7 +488,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                 return materialized;
             } else {
                 // not compatible: materialize in all predecessors
-                PhiNode materializedValuePhi = getCachedPhi(object, Kind.Object);
+                PhiNode materializedValuePhi = getCachedPhi(object, StampFactory.forKind(Kind.Object));
                 for (int i = 0; i < blockStates.size(); i++) {
                     ObjectState obj = objStates[i];
                     Block predecessor = mergeBlock.getPredecessors().get(i);
