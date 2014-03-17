@@ -40,21 +40,13 @@ public @interface NodeInfo {
      */
     String shortName() default "";
 
-    NodeCost cost() default NodeCost.MONOMORPHIC;
-
     /**
-     * @deprecated use {@link NodeInfo#cost()} instead.
-     */
-    @Deprecated
-    Kind kind() default Kind.SPECIALIZED;
-
-    /**
+     * Provides a rough estimate for the cost of the annotated {@link Node}. This estimate can be
+     * used by runtime systems or guest languages to implement heuristics based on Truffle ASTs.
      * 
-     * @deprecated use {@link NodeCost} instead.
+     * @see Node#getCost()
+     * @see NodeCost
      */
-    @Deprecated
-    public enum Kind {
-        UNINITIALIZED, SPECIALIZED, POLYMORPHIC, GENERIC
-    }
+    NodeCost cost() default NodeCost.MONOMORPHIC;
 
 }

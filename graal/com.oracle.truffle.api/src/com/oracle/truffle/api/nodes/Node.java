@@ -81,6 +81,14 @@ public abstract class Node implements Cloneable {
         this.sourceSection = section;
     }
 
+    /**
+     * Returns a rough estimate for the cost of this {@link Node}. This estimate can be used by
+     * runtime systems or guest languages to implement heuristics based on Truffle ASTs. This method
+     * is intended to be overridden by subclasses. The default implementation returns the value of
+     * {@link NodeInfo#cost()} of the {@link NodeInfo} annotation declared at the subclass. If no
+     * {@link NodeInfo} annotation is declared the method returns {@link NodeCost#MONOMORPHIC} as a
+     * default value.
+     */
     public NodeCost getCost() {
         NodeInfo info = getClass().getAnnotation(NodeInfo.class);
         if (info != null) {
