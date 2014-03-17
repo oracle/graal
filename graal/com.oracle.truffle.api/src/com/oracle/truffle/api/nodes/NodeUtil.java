@@ -34,7 +34,6 @@ import sun.misc.*;
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.nodes.Node.Child;
 import com.oracle.truffle.api.nodes.Node.Children;
-import com.oracle.truffle.api.nodes.NodeInfo.Kind;
 
 /**
  * Utility class that manages the special access methods for node instances.
@@ -617,7 +616,7 @@ public final class NodeUtil {
         return countNodes(root, null, null, false);
     }
 
-    public static int countNodes(Node root, Class<?> clazz, Kind nodeKind, boolean countInlinedCallNodes) {
+    public static int countNodes(Node root, Class<?> clazz, NodeCost nodeKind, boolean countInlinedCallNodes) {
         NodeCountVisitor nodeCount = new NodeCountVisitor(clazz, nodeKind, countInlinedCallNodes);
         root.accept(nodeCount);
         return nodeCount.nodeCount;
@@ -631,18 +630,18 @@ public final class NodeUtil {
 
         private final boolean inspectInlinedCalls;
         int nodeCount;
-        private final Kind kind;
+        private final NodeCost cost;
         private final Class<?> clazz;
 
-        private NodeCountVisitor(Class<?> clazz, Kind kind, boolean inspectInlinedCalls) {
+        private NodeCountVisitor(Class<?> clazz, NodeCost cost, boolean inspectInlinedCalls) {
             this.clazz = clazz;
-            this.kind = kind;
+            this.cost = cost;
             this.inspectInlinedCalls = inspectInlinedCalls;
         }
 
         @Override
         public boolean visit(Node node) {
-            if ((clazz == null || clazz.isInstance(node)) && (kind == null || isKind(node))) {
+            if ((clazz == null || clazz.isInstance(node)) && (cost == null || isKind(node))) {
                 nodeCount++;
             }
 
@@ -660,7 +659,7 @@ public final class NodeUtil {
         }
 
         private boolean isKind(Node n) {
-            return kind == n.getKind();
+            return cost == n.getCost();
         }
     }
 

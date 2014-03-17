@@ -52,7 +52,7 @@ public final class TruffleTypes {
     private final DeclaredType childAnnotation;
     private final DeclaredType childrenAnnotation;
     private final DeclaredType nodeInfoAnnotation;
-    private final DeclaredType nodeInfoKind;
+    private final DeclaredType nodeCost;
     private final TypeMirror compilerDirectives;
     private final TypeMirror compilerAsserts;
     private final DeclaredType slowPath;
@@ -75,7 +75,7 @@ public final class TruffleTypes {
         assumption = getRequired(context, Assumption.class);
         invalidAssumption = getRequired(context, InvalidAssumptionException.class);
         nodeInfoAnnotation = getRequired(context, NodeInfo.class);
-        nodeInfoKind = getRequired(context, NodeInfo.Kind.class);
+        nodeCost = getRequired(context, NodeCost.class);
         slowPath = getRequired(context, SlowPath.class);
         sourceSection = getRequired(context, SourceSection.class);
         truffleOptions = getRequired(context, TruffleOptions.class);
@@ -107,8 +107,8 @@ public final class TruffleTypes {
         return false;
     }
 
-    public DeclaredType getNodeInfoKind() {
-        return nodeInfoKind;
+    public DeclaredType getNodeCost() {
+        return nodeCost;
     }
 
     private DeclaredType getRequired(ProcessorContext context, Class clazz) {

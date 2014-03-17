@@ -25,7 +25,6 @@
 package com.oracle.truffle.api;
 
 import com.oracle.truffle.api.nodes.*;
-import com.oracle.truffle.api.nodes.NodeInfo.Kind;
 
 /**
  * Class containing general Truffle options.
@@ -56,29 +55,29 @@ public class TruffleOptions {
     public static String TraceRewritesFilterClass = System.getProperty("truffle.TraceRewritesFilterClass");
 
     /**
-     * Filters rewrites which does not contain the {@link Kind} in its source {@link NodeInfo}. If
-     * no {@link NodeInfo} is defined the element is filtered if the filter value is set.
+     * Filters rewrites which does not contain the {@link NodeCost} in its source {@link NodeInfo}.
+     * If no {@link NodeInfo} is defined the element is filtered if the filter value is set.
      * <p>
      * Can be set with
-     * {@code -Dtruffle.TraceRewritesFilterFromKind=UNINITIALIZED|SPECIALIZED|POLYMORPHIC|GENERIC}.
+     * {@code -Dtruffle.TraceRewritesFilterFromCost=NONE|MONOMORPHIC|POLYMORPHIC|MEGAMORPHIC}.
      */
-    public static NodeInfo.Kind TraceRewritesFilterFromKind = parseNodeInfoKind(System.getProperty("truffle.TraceRewritesFilterFromKind"));
+    public static NodeCost TraceRewritesFilterFromCost = parseNodeInfoKind(System.getProperty("truffle.TraceRewritesFilterFromCost"));
 
     /**
-     * Filters rewrites which does not contain the {@link Kind} in its target {@link NodeInfo}. If
-     * no {@link NodeInfo} is defined the element is filtered if the filter value is set.
+     * Filters rewrites which does not contain the {@link NodeCost} in its target {@link NodeInfo}.
+     * If no {@link NodeInfo} is defined the element is filtered if the filter value is set.
      * <p>
      * Can be set with
      * {@code -Dtruffle.TraceRewritesFilterToKind=UNINITIALIZED|SPECIALIZED|POLYMORPHIC|GENERIC}.
      */
-    public static NodeInfo.Kind TraceRewritesFilterToKind = parseNodeInfoKind(System.getProperty("truffle.TraceRewritesFilterToKind"));
+    public static NodeCost TraceRewritesFilterToCost = parseNodeInfoKind(System.getProperty("truffle.TraceRewritesFilterToCost"));
 
-    private static NodeInfo.Kind parseNodeInfoKind(String kind) {
+    private static NodeCost parseNodeInfoKind(String kind) {
         if (kind == null) {
             return null;
         }
 
-        return NodeInfo.Kind.valueOf(kind);
+        return NodeCost.valueOf(kind);
     }
 
 }

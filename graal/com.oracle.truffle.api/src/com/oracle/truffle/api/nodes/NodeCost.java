@@ -24,37 +24,8 @@
  */
 package com.oracle.truffle.api.nodes;
 
-import java.lang.annotation.*;
+public enum NodeCost {
 
-/**
- * Annotation for providing additional information on nodes.
- */
-@Retention(RetentionPolicy.RUNTIME)
-@Target(ElementType.TYPE)
-public @interface NodeInfo {
-
-    /**
-     * Short name representing the node that can be used for debugging.
-     * 
-     * @return the short name
-     */
-    String shortName() default "";
-
-    NodeCost cost() default NodeCost.MONOMORPHIC;
-
-    /**
-     * @deprecated use {@link NodeInfo#cost()} instead.
-     */
-    @Deprecated
-    Kind kind() default Kind.SPECIALIZED;
-
-    /**
-     * 
-     * @deprecated use {@link NodeCost} instead.
-     */
-    @Deprecated
-    public enum Kind {
-        UNINITIALIZED, SPECIALIZED, POLYMORPHIC, GENERIC
-    }
+    NONE, UNINITIALIZED, MONOMORPHIC, POLYMORPHIC, MEGAMORPHIC;
 
 }
