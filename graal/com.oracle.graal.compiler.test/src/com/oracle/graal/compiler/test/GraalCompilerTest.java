@@ -630,7 +630,7 @@ public abstract class GraalCompilerTest extends GraalTest {
         final int id = compilationId.incrementAndGet();
 
         InstalledCode installedCode = null;
-        try (Scope ds = Debug.scope("Compiling", new DebugDumpScope(String.valueOf(id), true))) {
+        try (AllocationScope c = new AllocationScope(method); Scope ds = Debug.scope("Compiling", new DebugDumpScope(String.valueOf(id), true))) {
             final boolean printCompilation = PrintCompilation.getValue() && !TTY.isSuppressed();
             if (printCompilation) {
                 TTY.println(String.format("@%-6d Graal %-70s %-45s %-50s ...", id, method.getDeclaringClass().getName(), method.getName(), method.getSignature()));

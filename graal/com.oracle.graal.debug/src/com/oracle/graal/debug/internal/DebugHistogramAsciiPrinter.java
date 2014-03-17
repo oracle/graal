@@ -60,9 +60,12 @@ public class DebugHistogramAsciiPrinter implements Printer {
     }
 
     public void print(DebugHistogram histogram) {
-        List<CountedValue> list = histogram.getValues();
+        print(histogram.getValues(), histogram.getName());
+    }
+
+    public void print(List<CountedValue> list, String name) {
         if (list.isEmpty()) {
-            os.printf("%s is empty.%n", histogram.getName());
+            os.printf("%s is empty.%n", name);
             return;
         }
 
@@ -73,7 +76,7 @@ public class DebugHistogramAsciiPrinter implements Printer {
         }
 
         // Print header.
-        os.printf("%s has %d unique elements and %d total elements:%n", histogram.getName(), list.size(), total);
+        os.printf("%s has %d unique elements and %d total elements:%n", name, list.size(), total);
 
         int max = list.get(0).getCount();
         final int lineSize = nameSize + NumberSize + barSize + 10;
