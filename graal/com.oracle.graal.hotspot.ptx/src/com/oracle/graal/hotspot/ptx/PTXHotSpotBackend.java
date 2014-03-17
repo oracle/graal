@@ -327,7 +327,7 @@ public class PTXHotSpotBackend extends HotSpotBackend {
     }
 
     @Override
-    public CompilationResultBuilder newCompilationResultBuilder(LIRGenerator lirGen, CompilationResult compilationResult, CompilationResultBuilderFactory factory) {
+    public CompilationResultBuilder newCompilationResultBuilder(LIRGenerationResult lirGen, CompilationResult compilationResult, CompilationResultBuilderFactory factory) {
         // Omit the frame of the method:
         // - has no spill slots or other slots allocated during register allocation
         // - has no callee-saved registers

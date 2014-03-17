@@ -57,7 +57,7 @@ import com.oracle.graal.phases.util.*;
 /**
  * This class traverses the HIR instructions and generates LIR instructions from them.
  */
-public abstract class LIRGenerator implements LIRGeneratorTool, LIRTypeTool {
+public abstract class LIRGenerator implements LIRGeneratorTool, LIRTypeTool, LIRGenerationResult {
 
     public static class Options {
         // @formatter:off
