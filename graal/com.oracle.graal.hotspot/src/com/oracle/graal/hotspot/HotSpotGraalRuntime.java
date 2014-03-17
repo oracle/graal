@@ -30,6 +30,7 @@ import java.lang.reflect.*;
 import java.util.*;
 
 import sun.misc.*;
+import sun.reflect.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
@@ -40,7 +41,6 @@ import com.oracle.graal.hotspot.bridge.*;
 import com.oracle.graal.hotspot.logging.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.options.*;
-import com.oracle.graal.phases.*;
 import com.oracle.graal.runtime.*;
 
 //JaCoCo Exclude
@@ -58,9 +58,21 @@ public final class HotSpotGraalRuntime implements GraalRuntime, RuntimeProvider 
     /**
      * Gets the singleton {@link HotSpotGraalRuntime} object.
      */
+    @CallerSensitive
     public static HotSpotGraalRuntime runtime() {
+        SecurityManager sm = System.getSecurityManager();
+        if (sm != null) {
+            Class cc = Reflection.getCallerClass();
+            if (cc != null && cc.getClassLoader() != null) {
+                sm.checkPermission(Graal.ACCESS_PERMISSION);
+            }
+        }
         assert instance != null;
         return instance;
+    }
+
+    static {
+        Reflection.registerFieldsToFilter(HotSpotGraalRuntime.class, "instance");
     }
 
     /**
@@ -183,8 +195,6 @@ public final class HotSpotGraalRuntime implements GraalRuntime, RuntimeProvider 
     protected/* final */CompilerToVM compilerToVm;
     protected/* final */VMToCompiler vmToCompiler;
 
-    private volatile HotSpotGraphCache cache;
-
     protected final HotSpotVMConfig config;
     private final HotSpotBackend hostBackend;
 
@@ -225,6 +235,9 @@ public final class HotSpotGraalRuntime implements GraalRuntime, RuntimeProvider 
         if (HotSpotPrintInlining.getValue() == false) {
             HotSpotPrintInlining.setValue(config.printInlining);
         }
+        if (HotSpotCIPrintCompilerName.getValue() == false) {
+            HotSpotCIPrintCompilerName.setValue(config.printCompilerName);
+        }
 
         if (Boolean.valueOf(System.getProperty("graal.printconfig"))) {
             printConfig(config);
@@ -240,10 +253,6 @@ public final class HotSpotGraalRuntime implements GraalRuntime, RuntimeProvider 
                 throw new GraalInternalError("No backend available for specified GPU architecture \"%s\"", arch);
             }
             registerBackend(factory.createBackend(this, hostBackend));
-        }
-
-        if (GraalOptions.CacheGraphs.getValue()) {
-            cache = new HotSpotGraphCache(compilerToVm);
         }
     }
 
@@ -301,10 +310,6 @@ public final class HotSpotGraalRuntime implements GraalRuntime, RuntimeProvider 
         return hostBackend.getTarget();
     }
 
-    public HotSpotGraphCache getGraphCache() {
-        return cache;
-    }
-
     public CompilerToVM getCompilerToVM() {
         return compilerToVm;
     }
@@ -318,13 +323,13 @@ public final class HotSpotGraalRuntime implements GraalRuntime, RuntimeProvider 
      * 
      * @param name a well formed Java type in {@linkplain JavaType#getName() internal} format
      * @param accessingType the context of resolution (may be null)
-     * @param eagerResolve force resolution to a {@link ResolvedJavaType}. If true, this method will
+     * @param resolve force resolution to a {@link ResolvedJavaType}. If true, this method will
      *            either return a {@link ResolvedJavaType} or throw an exception
      * @return a Java type for {@code name} which is guaranteed to be of type
-     *         {@link ResolvedJavaType} if {@code eagerResolve == true}
-     * @throws LinkageError if {@code eagerResolve == true} and the resolution failed
+     *         {@link ResolvedJavaType} if {@code resolve == true}
+     * @throws LinkageError if {@code resolve == true} and the resolution failed
      */
-    public JavaType lookupType(String name, HotSpotResolvedObjectType accessingType, boolean eagerResolve) {
+    public JavaType lookupType(String name, HotSpotResolvedObjectType accessingType, boolean resolve) {
         // If the name represents a primitive type we can short-circuit the lookup.
         if (name.length() == 1) {
             Kind kind = Kind.fromPrimitiveOrVoidTypeChar(name.charAt(0));
@@ -338,7 +343,7 @@ public final class HotSpotGraalRuntime implements GraalRuntime, RuntimeProvider 
         }
 
         // Resolve the type in the VM.
-        final long metaspaceKlass = compilerToVm.lookupType(name, accessingClass, eagerResolve);
+        final long metaspaceKlass = compilerToVm.lookupType(name, accessingClass, resolve);
         if (metaspaceKlass == 0) {
             return HotSpotUnresolvedJavaType.create(name);
         }

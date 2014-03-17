@@ -24,9 +24,9 @@ package com.oracle.graal.lir;
 
 import java.util.*;
 
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.lir.LIRInstruction.StateProcedure;
 import com.oracle.graal.lir.StandardOp.BlockEndOp;
-import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.cfg.*;
 
 /**
@@ -35,13 +35,7 @@ import com.oracle.graal.nodes.cfg.*;
  */
 public class LIR {
 
-    public final ControlFlowGraph cfg;
-
-    /**
-     * The nodes for the blocks. TODO: This should go away, we want all nodes connected with a
-     * next-pointer.
-     */
-    private final BlockMap<List<ScheduledNode>> blockToNodesMap;
+    private final ControlFlowGraph cfg;
 
     /**
      * The linear-scan ordered list of blocks.
@@ -57,26 +51,29 @@ public class LIR {
 
     private int numVariables;
 
-    public final BlockMap<List<LIRInstruction>> lirInstructions;
+    private SpillMoveFactory spillMoveFactory;
+
+    private final BlockMap<List<LIRInstruction>> lirInstructions;
+
+    public interface SpillMoveFactory {
+
+        LIRInstruction createMove(AllocatableValue result, Value input);
+    }
 
     private boolean hasArgInCallerFrame;
 
     /**
      * Creates a new LIR instance for the specified compilation.
      */
-    public LIR(ControlFlowGraph cfg, BlockMap<List<ScheduledNode>> blockToNodesMap, List<Block> linearScanOrder, List<Block> codeEmittingOrder) {
+    public LIR(ControlFlowGraph cfg, List<Block> linearScanOrder, List<Block> codeEmittingOrder) {
         this.cfg = cfg;
-        this.blockToNodesMap = blockToNodesMap;
         this.codeEmittingOrder = codeEmittingOrder;
         this.linearScanOrder = linearScanOrder;
         this.lirInstructions = new BlockMap<>(cfg);
     }
 
-    /**
-     * Gets the nodes in a given block.
-     */
-    public List<ScheduledNode> nodesFor(Block block) {
-        return blockToNodesMap.get(block);
+    public ControlFlowGraph getControlFlowGraph() {
+        return cfg;
     }
 
     /**
@@ -93,7 +90,11 @@ public class LIR {
         return false;
     }
 
-    public List<LIRInstruction> lir(Block block) {
+    public SpillMoveFactory getSpillMoveFactory() {
+        return spillMoveFactory;
+    }
+
+    public List<LIRInstruction> lir(AbstractBlock<?> block) {
         return lirInstructions.get(block);
     }
 
@@ -205,5 +206,9 @@ public class LIR {
             }
         }
         return true;
+    }
+
+    public void setSpillMoveFactory(SpillMoveFactory spillMoveFactory) {
+        this.spillMoveFactory = spillMoveFactory;
     }
 }

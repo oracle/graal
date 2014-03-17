@@ -90,8 +90,12 @@ public final class NodeIntrinsicVerifier extends AbstractVerifier {
         }
 
         if (isNodeType(nodeClass)) {
-            TypeMirror[] constructorSignature = constructorSignature(intrinsicMethod);
-            findConstructor(nodeClass, constructorSignature, intrinsicMethod, annotation);
+            if (nodeClass.getModifiers().contains(Modifier.ABSTRACT)) {
+                env.getMessager().printMessage(Kind.ERROR, String.format("Cannot make @NodeIntrinsic for abstract node class %s.", nodeClass.getSimpleName()), element, annotation);
+            } else {
+                TypeMirror[] constructorSignature = constructorSignature(intrinsicMethod);
+                findConstructor(nodeClass, constructorSignature, intrinsicMethod, annotation);
+            }
         } else {
             env.getMessager().printMessage(Kind.ERROR, String.format("The class %s is not a Node subclass.", nodeClass.getSimpleName()), element, annotation);
         }

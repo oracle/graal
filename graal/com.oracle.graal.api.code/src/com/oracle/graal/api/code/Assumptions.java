@@ -64,7 +64,7 @@ public final class Assumptions implements Serializable, Iterable<Assumptions.Ass
         public boolean equals(Object obj) {
             if (obj instanceof NoFinalizableSubclass) {
                 NoFinalizableSubclass other = (NoFinalizableSubclass) obj;
-                return other.receiverType == receiverType;
+                return other.receiverType.equals(receiverType);
             }
             return false;
         }
@@ -112,7 +112,7 @@ public final class Assumptions implements Serializable, Iterable<Assumptions.Ass
         public boolean equals(Object obj) {
             if (obj instanceof ConcreteSubtype) {
                 ConcreteSubtype other = (ConcreteSubtype) obj;
-                return other.context == context && other.subtype == subtype;
+                return other.context.equals(context) && other.subtype.equals(subtype);
             }
             return false;
         }
@@ -166,7 +166,7 @@ public final class Assumptions implements Serializable, Iterable<Assumptions.Ass
         public boolean equals(Object obj) {
             if (obj instanceof ConcreteMethod) {
                 ConcreteMethod other = (ConcreteMethod) obj;
-                return other.method == method && other.context == context && other.impl == impl;
+                return other.method.equals(method) && other.context.equals(context) && other.impl.equals(impl);
             }
             return false;
         }
@@ -197,9 +197,9 @@ public final class Assumptions implements Serializable, Iterable<Assumptions.Ass
 
         @Override
         public boolean equals(Object obj) {
-            if (obj instanceof ConcreteMethod) {
-                ConcreteMethod other = (ConcreteMethod) obj;
-                return other.method == method;
+            if (obj instanceof MethodContents) {
+                MethodContents other = (MethodContents) obj;
+                return other.method.equals(method);
             }
             return false;
         }
@@ -387,7 +387,7 @@ public final class Assumptions implements Serializable, Iterable<Assumptions.Ass
             }
         }
 
-        out.printf("%d assumptions:\n", nonNullList.size());
+        out.printf("%d assumptions:%n", nonNullList.size());
         for (Assumption a : nonNullList) {
             out.println(a.toString());
         }

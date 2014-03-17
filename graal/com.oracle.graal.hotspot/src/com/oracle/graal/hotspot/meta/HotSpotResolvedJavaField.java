@@ -51,12 +51,7 @@ public class HotSpotResolvedJavaField extends CompilerObject implements Resolved
     private final String name;
     private JavaType type;
     private final int offset;
-    private Constant constant;
 
-    /**
-     * The {@linkplain HotSpotResolvedObjectType#getReflectionFieldModifiers() reflection} modifiers
-     * for this field plus the {@link #FIELD_INTERNAL_FLAG} if it applies.
-     */
     /**
      * This value contains all flags as stored in the VM including internal ones.
      */
@@ -70,6 +65,23 @@ public class HotSpotResolvedJavaField extends CompilerObject implements Resolved
         assert offset == (int) offset : "offset larger than int";
         this.offset = (int) offset;
         this.modifiers = modifiers;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj instanceof HotSpotResolvedJavaField) {
+            HotSpotResolvedJavaField that = (HotSpotResolvedJavaField) obj;
+            return this.holder.equals(that.holder) && this.name.equals(that.name) && this.type.equals(that.type);
+        }
+        return false;
+    }
+
+    @Override
+    public int hashCode() {
+        return name.hashCode();
     }
 
     @Override
@@ -189,14 +201,12 @@ public class HotSpotResolvedJavaField extends CompilerObject implements Resolved
 
         if (receiver == null) {
             assert isStatic(modifiers);
-            if (constant == null) {
+            if (Modifier.isFinal(getModifiers())) {
                 if (holder.isInitialized() && !holder.getName().equals(SystemClassName) && isEmbeddable()) {
-                    if (Modifier.isFinal(getModifiers())) {
-                        constant = readValue(receiver);
-                    }
+                    return readValue(receiver);
+
                 }
             }
-            return constant;
         } else {
             /*
              * for non-static final fields, we must assume that they are only initialized if they

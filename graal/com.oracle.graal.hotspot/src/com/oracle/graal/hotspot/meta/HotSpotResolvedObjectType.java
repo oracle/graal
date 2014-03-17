@@ -593,7 +593,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
         }
         if (!includeSuperclasses) {
             int myFieldsStart = 0;
-            while (myFieldsStart < instanceFields.length && instanceFields[myFieldsStart].getDeclaringClass() != this) {
+            while (myFieldsStart < instanceFields.length && !instanceFields[myFieldsStart].getDeclaringClass().equals(this)) {
                 myFieldsStart++;
             }
             if (myFieldsStart == 0) {
@@ -760,20 +760,6 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
      */
     public void setNodeClass(NodeClass nodeClass) {
         this.nodeClass = nodeClass;
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        if (!(obj instanceof HotSpotResolvedObjectType)) {
-            return false;
-        }
-        HotSpotResolvedObjectType that = (HotSpotResolvedObjectType) obj;
-        return this.mirror() == that.mirror();
-    }
-
-    @Override
-    public int hashCode() {
-        return super.hashCode();
     }
 
     @Override

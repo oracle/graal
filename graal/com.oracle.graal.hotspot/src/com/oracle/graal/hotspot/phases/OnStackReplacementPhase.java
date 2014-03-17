@@ -30,7 +30,6 @@ import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.loop.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
-import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
@@ -94,13 +93,15 @@ public class OnStackReplacementPhase extends Phase {
 
         for (int i = 0; i < osrState.localsSize(); i++) {
             ValueNode value = osrState.localAt(i);
-            if (value != null) {
+            if (value instanceof ProxyNode) {
                 ProxyNode proxy = (ProxyNode) value;
                 /*
-                 * we need to drop the stamp and go back to the kind since the types we see during
-                 * OSR may be too precise (if a branch was not parsed for example).
+                 * we need to drop the stamp since the types we see during OSR may be too precise
+                 * (if a branch was not parsed for example).
                  */
-                proxy.replaceAndDelete(graph.unique(new OSRLocalNode(i, StampFactory.forKind(proxy.kind()))));
+                proxy.replaceAndDelete(graph.unique(new OSRLocalNode(i, proxy.stamp().unrestricted())));
+            } else {
+                assert value == null || value instanceof OSRLocalNode;
             }
         }
 

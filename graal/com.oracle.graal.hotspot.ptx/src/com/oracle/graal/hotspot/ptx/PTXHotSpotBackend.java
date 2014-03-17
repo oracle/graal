@@ -41,7 +41,6 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.HotSpotReplacementsImpl.GraphProducer;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
@@ -165,30 +164,6 @@ public class PTXHotSpotBackend extends HotSpotBackend {
         return deviceInitialized;
     }
 
-    @Override
-    public GraphProducer getGraphProducer() {
-        if (!deviceInitialized) {
-            // GPU could not be initialized so offload is disabled
-            return null;
-        }
-        return new GraphProducer() {
-
-            public StructuredGraph getGraphFor(ResolvedJavaMethod method) {
-                if (canOffloadToGPU(method)) {
-                    ExternalCompilationResult ptxCode = PTXHotSpotBackend.this.compileKernel(method, true);
-                    HotSpotNmethod installedPTXCode = PTXHotSpotBackend.this.installKernel(method, ptxCode);
-                    return new PTXWrapperBuilder(method, installedPTXCode, getRuntime().getHostBackend().getProviders()).getGraph();
-                }
-                return null;
-            }
-
-            private boolean canOffloadToGPU(ResolvedJavaMethod method) {
-                HotSpotVMConfig config = getRuntime().getConfig();
-                return config.gpuOffload && method.getName().contains("lambda$") & method.isSynthetic();
-            }
-        };
-    }
-
     /**
      * Compiles a given method to PTX code.
      * 
@@ -204,8 +179,8 @@ public class PTXHotSpotBackend extends HotSpotBackend {
         PhaseSuite<HighTierContext> graphBuilderSuite = providers.getSuites().getDefaultGraphBuilderSuite();
         graphBuilderSuite.appendPhase(new NonNullParametersPhase());
         Suites suites = providers.getSuites().getDefaultSuites();
-        ExternalCompilationResult ptxCode = compileGraph(graph, cc, method, providers, this, this.getTarget(), null, graphBuilderSuite, OptimisticOptimizations.NONE, getProfilingInfo(graph), null,
-                        suites, true, new ExternalCompilationResult(), CompilationResultBuilderFactory.Default);
+        ExternalCompilationResult ptxCode = compileGraph(graph, null, cc, method, providers, this, this.getTarget(), null, graphBuilderSuite, OptimisticOptimizations.NONE, getProfilingInfo(graph),
+                        null, suites, new ExternalCompilationResult(), CompilationResultBuilderFactory.Default);
         if (makeBinary) {
             try (Scope ds = Debug.scope("GeneratingKernelBinary")) {
                 assert ptxCode.getTargetCode() != null;
@@ -372,7 +347,7 @@ public class PTXHotSpotBackend extends HotSpotBackend {
     }
 
     @Override
-    public LIRGenerator newLIRGenerator(StructuredGraph graph, FrameMap frameMap, CallingConvention cc, LIR lir) {
+    public LIRGenerator newLIRGenerator(StructuredGraph graph, Object stub, FrameMap frameMap, CallingConvention cc, LIR lir) {
         return new PTXHotSpotLIRGenerator(graph, getProviders(), getRuntime().getConfig(), frameMap, cc, lir);
     }
 
@@ -392,7 +367,7 @@ public class PTXHotSpotBackend extends HotSpotBackend {
         asm.emitString("");
 
         // Get the start block
-        Block startBlock = lir.cfg.getStartBlock();
+        Block startBlock = lir.getControlFlowGraph().getStartBlock();
         // Keep a list of ParameterOp instructions to delete from the
         // list of instructions in the block.
         ArrayList<LIRInstruction> deleteOps = new ArrayList<>();

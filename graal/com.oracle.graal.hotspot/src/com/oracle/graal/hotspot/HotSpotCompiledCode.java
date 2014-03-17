@@ -22,21 +22,17 @@
  */
 package com.oracle.graal.hotspot;
 
-import java.nio.*;
 import java.util.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.CompilationResult.CodeAnnotation;
 import com.oracle.graal.api.code.CompilationResult.CodeComment;
-import com.oracle.graal.api.code.CompilationResult.Data;
-import com.oracle.graal.api.code.CompilationResult.DataPatch;
 import com.oracle.graal.api.code.CompilationResult.ExceptionHandler;
 import com.oracle.graal.api.code.CompilationResult.Infopoint;
 import com.oracle.graal.api.code.CompilationResult.JumpTable;
 import com.oracle.graal.api.code.CompilationResult.Mark;
 import com.oracle.graal.api.code.CompilationResult.Site;
-import com.oracle.graal.api.meta.*;
-import com.oracle.graal.asm.*;
+import com.oracle.graal.hotspot.data.*;
 
 /**
  * A {@link CompilationResult} with additional HotSpot-specific information required for installing
@@ -53,111 +49,6 @@ public abstract class HotSpotCompiledCode extends CompilerObject {
 
     public final DataSection dataSection;
 
-    /**
-     * Represents a reference to the data section. Before the code is installed, all {@link Data}
-     * items referenced by a {@link DataPatch} are put into the data section of the method, and
-     * replaced by {@link HotSpotData}.
-     */
-    public static final class HotSpotData extends Data {
-
-        /**
-         * The offset of the data item in the data section.
-         */
-        public int offset;
-
-        /**
-         * If the data item is an oop that needs to be patched by the runtime, this field contains
-         * the reference to the object.
-         */
-        public Constant constant;
-
-        public HotSpotData(int offset) {
-            super(0);
-            this.offset = offset;
-        }
-
-        @Override
-        public int getSize(Architecture arch) {
-            return 0;
-        }
-
-        @Override
-        public void emit(Architecture arch, ByteBuffer buffer) {
-        }
-    }
-
-    /**
-     * Represents the data section of a method.
-     */
-    public static final class DataSection {
-
-        /**
-         * The minimum alignment required for this data section.
-         */
-        public final int sectionAlignment;
-
-        /**
-         * The raw data contained in the data section.
-         */
-        public final byte[] data;
-
-        /**
-         * A list of locations where oop pointers need to be patched by the runtime.
-         */
-        public final HotSpotData[] patches;
-
-        public DataSection(Architecture arch, Site[] sites) {
-            int size = 0;
-            int patchCount = 0;
-            List<DataPatch> externalDataList = new ArrayList<>();
-
-            // find all external data items and determine total size of data section
-            for (Site site : sites) {
-                if (site instanceof DataPatch) {
-                    DataPatch dataPatch = (DataPatch) site;
-                    if (dataPatch.externalData != null) {
-                        Data d = dataPatch.externalData;
-                        size = NumUtil.roundUp(size, d.getAlignment());
-                        size += d.getSize(arch);
-                        externalDataList.add(dataPatch);
-                        if (dataPatch.getConstant() != null && dataPatch.getConstant().getKind() == Kind.Object) {
-                            patchCount++;
-                        }
-                    }
-                }
-            }
-
-            data = new byte[size];
-            patches = new HotSpotData[patchCount];
-            ByteBuffer buffer = ByteBuffer.wrap(data).order(ByteOrder.nativeOrder());
-            int index = 0;
-            int patchIndex = 0;
-            int alignment = 0;
-
-            // build data section
-            for (DataPatch dataPatch : externalDataList) {
-                Data d = dataPatch.externalData;
-
-                alignment = Math.max(alignment, d.getAlignment());
-                index = NumUtil.roundUp(index, d.getAlignment());
-                buffer.position(index);
-
-                HotSpotData hsData = new HotSpotData(index);
-                if (dataPatch.getConstant() != null && dataPatch.getConstant().getKind() == Kind.Object) {
-                    // record patch location for oop pointers
-                    hsData.constant = dataPatch.getConstant();
-                    patches[patchIndex++] = hsData;
-                }
-                dataPatch.externalData = hsData;
-
-                index += d.getSize(arch);
-                d.emit(arch, buffer);
-            }
-
-            this.sectionAlignment = alignment;
-        }
-    }
-
     public static class Comment {
 
         public final String text;
@@ -169,10 +60,10 @@ public abstract class HotSpotCompiledCode extends CompilerObject {
         }
     }
 
-    public HotSpotCompiledCode(Architecture arch, CompilationResult compResult) {
+    public HotSpotCompiledCode(TargetDescription target, CompilationResult compResult) {
         this.comp = compResult;
         sites = getSortedSites(compResult);
-        dataSection = new DataSection(arch, sites);
+        dataSection = new DataSection(target, sites);
         if (compResult.getExceptionHandlers().isEmpty()) {
             exceptionHandlers = null;
         } else {

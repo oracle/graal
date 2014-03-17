@@ -102,7 +102,7 @@ public class TruffleCompilerImpl implements TruffleCompiler {
 
         this.config = GraphBuilderConfiguration.getDefault();
         this.config.setSkippedExceptionTypes(skippedExceptionTypes);
-        this.partialEvaluator = new PartialEvaluator(runtime, providers, truffleCache, config);
+        this.partialEvaluator = new PartialEvaluator(providers, truffleCache, config);
 
         if (Debug.isEnabled()) {
             DebugEnvironment.initialize(System.out);
@@ -136,10 +136,6 @@ public class TruffleCompilerImpl implements TruffleCompiler {
 
     private InstalledCode compileMethodImpl(final OptimizedCallTarget compilable) {
         final StructuredGraph graph;
-        GraphCache graphCache = runtime.getGraphCache();
-        if (graphCache != null) {
-            graphCache.removeStaleGraphs();
-        }
 
         if (TraceTruffleCompilation.getValue()) {
             OptimizedCallTarget.logOptimizingStart(compilable);
@@ -203,8 +199,8 @@ public class TruffleCompilerImpl implements TruffleCompiler {
             CodeCacheProvider codeCache = providers.getCodeCache();
             CallingConvention cc = getCallingConvention(codeCache, Type.JavaCallee, graph.method(), false);
             CompilationResult compilationResult = new CompilationResult(name);
-            result = compileGraph(graph, cc, graph.method(), providers, backend, codeCache.getTarget(), null, createGraphBuilderSuite(), Optimizations, getProfilingInfo(graph), speculationLog,
-                            suites, false, compilationResult, CompilationResultBuilderFactory.Default);
+            result = compileGraph(graph, null, cc, graph.method(), providers, backend, codeCache.getTarget(), null, createGraphBuilderSuite(), Optimizations, getProfilingInfo(graph), speculationLog,
+                            suites, compilationResult, CompilationResultBuilderFactory.Default);
         } catch (Throwable e) {
             throw Debug.handle(e);
         }

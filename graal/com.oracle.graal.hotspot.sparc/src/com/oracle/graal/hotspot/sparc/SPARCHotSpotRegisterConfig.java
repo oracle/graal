@@ -130,10 +130,10 @@ public class SPARCHotSpotRegisterConfig implements RegisterConfig {
         return registers;
     }
 
-    public SPARCHotSpotRegisterConfig(Architecture architecture, HotSpotVMConfig config) {
-        this.architecture = architecture;
+    public SPARCHotSpotRegisterConfig(TargetDescription target, HotSpotVMConfig config) {
+        this.architecture = target.arch;
 
-        csl = new CalleeSaveLayout(architecture, -1, -1, architecture.getWordSize(), calleeSaveRegisters);
+        csl = new CalleeSaveLayout(target, -1, -1, target.arch.getWordSize(), calleeSaveRegisters);
         allocatable = initAllocatable(config.useCompressedOops);
         attributesMap = RegisterAttributes.createMap(this, SPARC.allRegisters);
     }
@@ -203,7 +203,7 @@ public class SPARCHotSpotRegisterConfig implements RegisterConfig {
 
             if (locations[i] == null) {
                 locations[i] = StackSlot.get(kind.getStackKind(), currentStackOffset, !type.out);
-                currentStackOffset += Math.max(target.arch.getSizeInBytes(kind), target.wordSize);
+                currentStackOffset += Math.max(target.getSizeInBytes(kind), target.wordSize);
             }
         }
 

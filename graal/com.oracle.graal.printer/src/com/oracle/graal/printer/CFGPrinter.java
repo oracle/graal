@@ -250,11 +250,8 @@ class CFGPrinter extends CompilationPrinter {
             }
         }
 
-        if (lir != null) {
-            for (Node node : lir.nodesFor(block)) {
-                printNode(node, false);
-            }
-        } else {
+        // Currently no node printing for lir
+        if (lir == null) {
             Node cur = block.getBeginNode();
             while (true) {
                 printNode(cur, false);

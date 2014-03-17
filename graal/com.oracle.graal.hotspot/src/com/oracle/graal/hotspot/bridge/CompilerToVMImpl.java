@@ -63,11 +63,9 @@ public class CompilerToVMImpl implements CompilerToVM {
     @Override
     public native long lookupType(String name, Class<?> accessingClass, boolean eagerResolve);
 
-    @Override
-    public native long lookupKlassByName(String name, Class<?> accessingClass);
+    public native Object resolveConstantInPool(long metaspaceConstantPool, int cpi);
 
-    @Override
-    public native Object lookupConstantInPool(long metaspaceConstantPool, int cpi);
+    public native Object resolvePossiblyCachedConstantInPool(long metaspaceConstantPool, int cpi);
 
     @Override
     public native int lookupNameAndTypeRefIndexInPool(long metaspaceConstantPool, int cpi);
@@ -81,6 +79,8 @@ public class CompilerToVMImpl implements CompilerToVM {
     @Override
     public native int lookupKlassRefIndexInPool(long metaspaceConstantPool, int cpi);
 
+    public native long constantPoolKlassAt(long metaspaceConstantPool, int cpi);
+
     @Override
     public native long lookupKlassInPool(long metaspaceConstantPool, int cpi);
 
@@ -90,8 +90,7 @@ public class CompilerToVMImpl implements CompilerToVM {
     @Override
     public native long resolveField(long metaspaceConstantPool, int cpi, byte opcode, long[] info);
 
-    @Override
-    public native void loadReferencedTypeInPool(long metaspaceConstantPool, int cpi, byte opcode);
+    public native int constantPoolRemapInstructionOperandFromCache(long metaspaceConstantPool, int cpi);
 
     @Override
     public native Object lookupAppendixInPool(long metaspaceConstantPool, int cpi);
@@ -112,9 +111,6 @@ public class CompilerToVMImpl implements CompilerToVM {
     public native long getClassInitializer(long metaspaceKlass);
 
     @Override
-    public native int getCompiledCodeSize(long metaspaceMethod);
-
-    @Override
     public native long getMaxCallTargetOffset(long address);
 
     // The HotSpot disassembler seems not to be thread safe so it's better to synchronize its usage
@@ -126,9 +122,6 @@ public class CompilerToVMImpl implements CompilerToVM {
 
     @Override
     public native Object executeCompiledMethodVarargs(Object[] args, HotSpotInstalledCode hotspotInstalledCode);
-
-    @Override
-    public native long[] getDeoptedLeafGraphIds();
 
     @Override
     public native long[] getLineNumberTable(long metaspaceMethod);

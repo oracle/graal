@@ -60,7 +60,18 @@ public class HotSpotVMConfig extends CompilerObject {
     }
 
     HotSpotVMConfig(CompilerToVM compilerToVm) {
+        /** These fields are set in {@link CompilerToVM#initializeConfiguration}. */
+        gHotSpotVMStructs = 0;
+        gHotSpotVMTypes = 0;
+        gHotSpotVMIntConstants = 0;
+        gHotSpotVMLongConstants = 0;
+
         compilerToVm.initializeConfiguration(this);
+
+        assert gHotSpotVMStructs != 0;
+        assert gHotSpotVMTypes != 0;
+        assert gHotSpotVMIntConstants != 0;
+        assert gHotSpotVMLongConstants != 0;
 
         // Fill the VM fields hash map.
         HashMap<String, VMFields.Field> vmFields = new HashMap<>();
@@ -698,10 +709,12 @@ public class HotSpotVMConfig extends CompilerObject {
     @HotSpotVMFlag(name = "DontCompileHugeMethods") @Stable public boolean dontCompileHugeMethods;
     @HotSpotVMFlag(name = "HugeMethodLimit") @Stable public int hugeMethodLimit;
     @HotSpotVMFlag(name = "PrintCompilation") @Stable public boolean printCompilation;
+    @HotSpotVMFlag(name = "CIPrintCompilerName") @Stable public boolean printCompilerName;
     @HotSpotVMFlag(name = "PrintInlining") @Stable public boolean printInlining;
     @HotSpotVMFlag(name = "GraalUseFastLocking") @Stable public boolean useFastLocking;
     @HotSpotVMFlag(name = "ForceUnreachable") @Stable public boolean forceUnreachable;
     @HotSpotVMFlag(name = "GPUOffload") @Stable public boolean gpuOffload;
+    @HotSpotVMFlag(name = "TieredCompilation") @Stable public boolean tieredCompilation;
 
     @HotSpotVMFlag(name = "UseTLAB") @Stable public boolean useTLAB;
     @HotSpotVMFlag(name = "UseBiasedLocking") @Stable public boolean useBiasedLocking;
@@ -1178,6 +1191,7 @@ public class HotSpotVMConfig extends CompilerObject {
     @HotSpotVMField(name = "MethodData::_data_size", type = "int", get = HotSpotVMField.Type.OFFSET) @Stable public int methodDataDataSize;
     @HotSpotVMField(name = "MethodData::_data[0]", type = "intptr_t", get = HotSpotVMField.Type.OFFSET) @Stable public int methodDataOopDataOffset;
     @HotSpotVMField(name = "MethodData::_trap_hist._array[0]", type = "u1", get = HotSpotVMField.Type.OFFSET) @Stable public int methodDataOopTrapHistoryOffset;
+    @HotSpotVMField(name = "MethodData::_graal_node_count", type = "int", get = HotSpotVMField.Type.OFFSET) @Stable public int methodDataGraalNodeCountOffset;
 
     @HotSpotVMField(name = "nmethod::_verified_entry_point", type = "address", get = HotSpotVMField.Type.OFFSET) @Stable public int nmethodEntryOffset;
     @HotSpotVMField(name = "nmethod::_comp_level", type = "int", get = HotSpotVMField.Type.OFFSET) @Stable public int nmethodCompLevelOffset;

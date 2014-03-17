@@ -22,12 +22,9 @@
  */
 package com.oracle.graal.lir.hsail;
 
-import static com.oracle.graal.api.code.ValueUtil.*;
-
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.hsail.HSAILMove.*;
 
 /**
  * HSAIL specific frame map.
@@ -71,16 +68,5 @@ public final class HSAILFrameMap extends FrameMap {
     @Override
     protected StackSlot allocateNewSpillSlot(PlatformKind kind, int additionalOffset) {
         return StackSlot.get(kind, -spillSize + additionalOffset, true);
-    }
-
-    @Override
-    public LIRInstruction createSpillMove(AllocatableValue dst, Value src) {
-        if (src instanceof HSAILAddressValue) {
-            return new LeaOp(dst, (HSAILAddressValue) src);
-        } else if (isRegister(src) || isStackSlot(dst)) {
-            return new MoveFromRegOp(dst, src);
-        } else {
-            return new MoveToRegOp(dst, src);
-        }
     }
 }

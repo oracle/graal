@@ -100,7 +100,7 @@ public class VerifyOptionsPhase extends Phase {
             }
         } else if (boxingTypes.contains(holder)) {
             return method.getName().equals("valueOf");
-        } else if (method.getDeclaringClass() == metaAccess.lookupJavaType(Class.class)) {
+        } else if (method.getDeclaringClass().equals(metaAccess.lookupJavaType(Class.class))) {
             return method.getName().equals("desiredAssertionStatus");
         } else if (method.getDeclaringClass().equals(declaringClass)) {
             return (method.getName().equals("$jacocoInit"));
@@ -113,7 +113,7 @@ public class VerifyOptionsPhase extends Phase {
         for (ValueNode node : graph.getNodes().filter(ValueNode.class)) {
             if (node instanceof StoreFieldNode) {
                 ResolvedJavaField field = ((StoreFieldNode) node).field();
-                verify(field.getDeclaringClass() == declaringClass, node, "store to field " + format("%H.%n", field));
+                verify(field.getDeclaringClass().equals(declaringClass), node, "store to field " + format("%H.%n", field));
                 verify(isStatic(field.getModifiers()), node, "store to field " + format("%H.%n", field));
                 if (optionValueType.isAssignableFrom((ResolvedJavaType) field.getType())) {
                     verify(isFinal(field.getModifiers()), node, "option field " + format("%H.%n", field) + " not final");

@@ -25,6 +25,7 @@ package com.oracle.graal.hotspot.meta;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.hotspot.*;
+import com.oracle.graal.nodes.*;
 
 public final class HotSpotProfilingInfo extends CompilerObject implements ProfilingInfo {
 
@@ -204,5 +205,22 @@ public final class HotSpotProfilingInfo extends CompilerObject implements Profil
     @Override
     public void setMature() {
         isMature = true;
+    }
+
+    @Override
+    public boolean setCompilerIRSize(Class<?> irType, int size) {
+        if (irType == StructuredGraph.class) {
+            methodData.setCompiledGraphSize(size);
+            return true;
+        }
+        return false;
+    }
+
+    @Override
+    public int getCompilerIRSize(Class<?> irType) {
+        if (irType == StructuredGraph.class) {
+            return methodData.getCompiledGraphSize();
+        }
+        return -1;
     }
 }

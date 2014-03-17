@@ -146,7 +146,6 @@ public class AMD64 extends Architecture {
                 case Short:
                 case Int:
                 case Long:
-                case NarrowOop:
                 case Object:
                     return true;
             }

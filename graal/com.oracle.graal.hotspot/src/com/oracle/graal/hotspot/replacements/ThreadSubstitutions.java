@@ -45,7 +45,7 @@ public class ThreadSubstitutions {
 
     @MethodSubstitution
     public static Thread currentThread() {
-        return PiNode.piCastExactNonNull(CurrentJavaThreadNode.get().readObject(threadObjectOffset(), LocationIdentity.FINAL_LOCATION), Thread.class);
+        return PiNode.piCastNonNull(CurrentJavaThreadNode.get().readObject(threadObjectOffset(), LocationIdentity.FINAL_LOCATION), Thread.class);
     }
 
     @MethodSubstitution(isStatic = false)

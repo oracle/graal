@@ -162,7 +162,7 @@ public class HSAILHotSpotLIRGenerator extends HSAILLIRGenerator {
             if (canStoreConstant(c, isCompressed)) {
                 if (isCompressed) {
                     if ((c.getKind() == Kind.Object) && c.isNull()) {
-                        append(new StoreConstantOp(Kind.NarrowOop, storeAddress, c, state));
+                        append(new StoreConstantOp(Kind.Int, storeAddress, Constant.forInt(0), state));
                     } else {
                         throw GraalInternalError.shouldNotReachHere("can't handle: " + access);
                     }

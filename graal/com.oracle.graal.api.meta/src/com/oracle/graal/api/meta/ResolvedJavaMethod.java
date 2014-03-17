@@ -24,7 +24,6 @@ package com.oracle.graal.api.meta;
 
 import java.lang.annotation.*;
 import java.lang.reflect.*;
-import java.util.*;
 
 /**
  * Represents a resolved Java method. Methods, like fields and types, are resolved through
@@ -52,13 +51,6 @@ public interface ResolvedJavaMethod extends JavaMethod, InvokeTarget {
      * @return the size of the bytecode in bytes, or 0 if no bytecode is available
      */
     int getCodeSize();
-
-    /**
-     * Returns the size of the compiled machine code of this method.
-     * 
-     * @return the size of the compiled machine code in bytes, or 0 if no compiled code exists.
-     */
-    int getCompiledCodeSize();
 
     /**
      * Returns the {@link ResolvedJavaType} object representing the class or interface that declares
@@ -144,12 +136,6 @@ public interface ResolvedJavaMethod extends JavaMethod, InvokeTarget {
     void reprofile();
 
     /**
-     * Returns a map that the compiler can use to store objects that should survive the current
-     * compilation.
-     */
-    Map<Object, Object> getCompilerStorage();
-
-    /**
      * Returns the constant pool of this method.
      */
     ConstantPool getConstantPool();
@@ -185,6 +171,9 @@ public interface ResolvedJavaMethod extends JavaMethod, InvokeTarget {
      */
     boolean canBeInlined();
 
+    /**
+     * Returns {@code true} if the inlining of this method should be forced.
+     */
     boolean shouldBeInlined();
 
     /**

@@ -71,10 +71,13 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
 
     private final HotSpotVMConfig config;
 
-    protected AMD64HotSpotLIRGenerator(StructuredGraph graph, HotSpotProviders providers, HotSpotVMConfig config, FrameMap frameMap, CallingConvention cc, LIR lir) {
+    private final Object stub;
+
+    protected AMD64HotSpotLIRGenerator(StructuredGraph graph, Object stub, HotSpotProviders providers, HotSpotVMConfig config, FrameMap frameMap, CallingConvention cc, LIR lir) {
         super(graph, providers, frameMap, cc, lir);
         assert config.basicLockSize == 8;
         this.config = config;
+        this.stub = stub;
     }
 
     @Override
@@ -154,7 +157,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     }
 
     @Override
-    protected void emitPrologue() {
+    protected void emitPrologue(StructuredGraph graph) {
 
         CallingConvention incomingArguments = cc;
 
@@ -205,7 +208,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     @Override
     protected boolean needOnlyOopMaps() {
         // Stubs only need oop maps
-        return graph.start() instanceof StubStartNode;
+        return stub != null;
     }
 
     /**
@@ -233,22 +236,18 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     }
 
     Stub getStub() {
-        if (graph.start() instanceof StubStartNode) {
-            return ((StubStartNode) graph.start()).getStub();
-        }
-        return null;
+        return (Stub) stub;
     }
 
     @Override
     public Variable emitForeignCall(ForeignCallLinkage linkage, DeoptimizingNode info, Value... args) {
-        Stub stub = getStub();
         boolean destroysRegisters = linkage.destroysRegisters();
 
         AMD64SaveRegistersOp save = null;
         StackSlot[] savedRegisterLocations = null;
         if (destroysRegisters) {
-            if (stub != null) {
-                if (stub.preservesRegisters()) {
+            if (getStub() != null) {
+                if (getStub().preservesRegisters()) {
                     Register[] savedRegisters = frameMap.registerConfig.getAllocatableRegisters();
                     savedRegisterLocations = new StackSlot[savedRegisters.length];
                     for (int i = 0; i < savedRegisters.length; i++) {
@@ -275,8 +274,8 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         }
 
         if (destroysRegisters) {
-            if (stub != null) {
-                if (stub.preservesRegisters()) {
+            if (getStub() != null) {
+                if (getStub().preservesRegisters()) {
                     assert !calleeSaveInfo.containsKey(currentRuntimeCallInfo);
                     calleeSaveInfo.put(currentRuntimeCallInfo, save);
 
@@ -474,8 +473,6 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     protected static Constant compress(Constant c, CompressEncoding encoding) {
         if (c.getKind() == Kind.Long) {
             return Constant.forIntegerKind(Kind.Int, (int) (((c.asLong() - encoding.base) >> encoding.shift) & 0xffffffffL), c.getPrimitiveAnnotation());
-        } else if (c.getKind() == Kind.Object) {
-            return Constant.forNarrowOop(c.asObject());
         } else {
             throw GraalInternalError.shouldNotReachHere();
         }
@@ -524,8 +521,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
             if (canStoreConstant(c, isCompressed)) {
                 if (isCompressed) {
                     if (c.getKind() == Kind.Object) {
-                        Constant value = c.isNull() ? c : compress(c, config.getOopEncoding());
-                        append(new StoreCompressedConstantOp(kind, storeAddress, value, state));
+                        append(new StoreCompressedConstantOp(kind, storeAddress, c, state));
                     } else if (c.getKind() == Kind.Long) {
                         // It's always a good idea to directly store compressed constants since they
                         // have to be materialized as 64 bits encoded otherwise.

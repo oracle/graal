@@ -172,7 +172,7 @@ public class OptionProcessor extends AbstractProcessor {
                 String declaringClass = option.declaringClass;
                 Name fieldName = option.field.getSimpleName();
                 String comma = i == info.options.size() - 1 ? "" : ",";
-                out.printf("            new %s(\"%s\", %s.class, \"%s\", %s.class, \"%s\", %s)%s\n", desc, name, type, help, declaringClass, fieldName, optionValue, comma);
+                out.printf("            new %s(\"%s\", %s.class, \"%s\", %s.class, \"%s\", %s)%s%n", desc, name, type, help, declaringClass, fieldName, optionValue, comma);
                 i++;
             }
             out.println("        );");
@@ -264,7 +264,7 @@ public class OptionProcessor extends AbstractProcessor {
 
     private static Element topDeclaringType(Element element) {
         Element enclosing = element.getEnclosingElement();
-        if (element == null || enclosing.getKind() == ElementKind.PACKAGE) {
+        if (enclosing == null || enclosing.getKind() == ElementKind.PACKAGE) {
             assert element.getKind() == ElementKind.CLASS || element.getKind() == ElementKind.INTERFACE;
             return element;
         }

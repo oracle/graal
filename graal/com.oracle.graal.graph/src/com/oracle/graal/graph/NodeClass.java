@@ -970,8 +970,8 @@ public final class NodeClass extends FieldIntrospection {
         int index = startIndex;
         while (index < inputOffsets.length) {
             NodeList<Node> list = getNodeList(node, inputOffsets[index]);
-            putNodeList(node, inputOffsets[index], updateInputListCopy(list, node, duplicationReplacement));
             assert list != null : clazz;
+            putNodeList(node, inputOffsets[index], updateInputListCopy(list, node, duplicationReplacement));
             index++;
         }
     }
@@ -980,8 +980,8 @@ public final class NodeClass extends FieldIntrospection {
         int index = startIndex;
         while (index < successorOffsets.length) {
             NodeList<Node> list = getNodeList(node, successorOffsets[index]);
-            putNodeList(node, successorOffsets[index], updateSuccListCopy(list, node, duplicationReplacement));
             assert list != null : clazz;
+            putNodeList(node, successorOffsets[index], updateSuccListCopy(list, node, duplicationReplacement));
             index++;
         }
     }

@@ -60,7 +60,7 @@ public class UnboxNode extends FloatingNode implements Virtualizable, Lowerable,
         if (state != null && state.getState() == EscapeState.Virtual) {
             ResolvedJavaType objectType = state.getVirtualObject().type();
             ResolvedJavaType expectedType = tool.getMetaAccessProvider().lookupJavaType(boxingKind.toBoxedJavaClass());
-            if (objectType == expectedType) {
+            if (objectType.equals(expectedType)) {
                 tool.replaceWithValue(state.getEntry(0));
             }
         }

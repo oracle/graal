@@ -28,7 +28,6 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Graph.DuplicationReplacement;
 import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.VirtualState.NodeClosure;
 import com.oracle.graal.nodes.VirtualState.VirtualClosure;
 import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.java.*;
@@ -302,6 +301,24 @@ public abstract class LoopFragment {
                 exitState = exitState.duplicateWithVirtualState();
                 earlyExit.setStateAfter(exitState);
                 merge.setStateAfter(state);
+                /*
+                 * Using the old exit's state as the merge's state is necessary because some of the
+                 * VirtualState nodes contained in the old exit's state may be shared by other
+                 * dominated VirtualStates. Those dominated virtual states need to see the
+                 * proxy->phi update that are applied below.
+                 * 
+                 * We now update the original fragment's nodes accordingly:
+                 */
+                state.applyToVirtual(new VirtualClosure() {
+                    public void apply(VirtualState node) {
+                        original.nodes.clear(node);
+                    }
+                });
+                exitState.applyToVirtual(new VirtualClosure() {
+                    public void apply(VirtualState node) {
+                        original.nodes.mark(node);
+                    }
+                });
             }
 
             for (Node anchored : earlyExit.anchored().snapshot()) {
@@ -315,7 +332,7 @@ public abstract class LoopFragment {
                     PhiNode phi;
                     switch (vpn.type()) {
                         case Value:
-                            phi = graph.addWithoutUnique(new PhiNode(vpn.kind(), merge));
+                            phi = graph.addWithoutUnique(new PhiNode(vpn.stamp(), merge));
                             break;
                         case Guard:
                             phi = graph.addWithoutUnique(new PhiNode(vpn.type(), merge));
@@ -331,17 +348,6 @@ public abstract class LoopFragment {
                     replaceWith = phi;
                 } else {
                     replaceWith = vpn.value();
-                }
-                if (state != null) {
-                    state.applyToNonVirtual(new NodeClosure<ValueNode>() {
-
-                        @Override
-                        public void apply(Node from, ValueNode node) {
-                            if (node == vpn) {
-                                from.replaceFirstInput(vpn, replaceWith);
-                            }
-                        }
-                    });
                 }
                 for (Node usage : vpn.usages().snapshot()) {
                     if (!merge.isPhiAtMerge(usage)) {

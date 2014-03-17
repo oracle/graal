@@ -92,10 +92,6 @@ public final class GraalOptions {
     // graph caching
     @Option(help = "")
     public static final OptionValue<Boolean> CacheGraphs = new OptionValue<>(true);
-    @Option(help = "")
-    public static final OptionValue<Integer> GraphCacheSize = new OptionValue<>(1000);
-    @Option(help = "")
-    public static final OptionValue<Boolean> PrintGraphCache = new OptionValue<>(false);
 
     //loop transform settings TODO (gd) tune
     @Option(help = "")
@@ -180,6 +176,8 @@ public final class GraalOptions {
     // HotSpot command line options
     @Option(help = "")
     public static final OptionValue<Boolean> HotSpotPrintCompilation = new OptionValue<>(false);
+    @Option(help = "")
+    public static final OptionValue<Boolean> HotSpotCIPrintCompilerName = new OptionValue<>(false);
     @Option(help = "")
     public static final OptionValue<Boolean> HotSpotPrintInlining = new OptionValue<>(false);
 

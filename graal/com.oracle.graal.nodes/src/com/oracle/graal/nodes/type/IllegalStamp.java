@@ -85,8 +85,9 @@ public final class IllegalStamp extends PrimitiveStamp {
         if (stamp instanceof IllegalStamp) {
             IllegalStamp other = (IllegalStamp) stamp;
             return kind == other.kind;
+        } else {
+            return stamp.isCompatible(this);
         }
-        return false;
     }
 
     @Override

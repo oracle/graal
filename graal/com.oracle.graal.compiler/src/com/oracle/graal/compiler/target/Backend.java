@@ -65,7 +65,7 @@ public abstract class Backend {
 
     public abstract FrameMap newFrameMap();
 
-    public abstract LIRGenerator newLIRGenerator(StructuredGraph graph, FrameMap frameMap, CallingConvention cc, LIR lir);
+    public abstract LIRGenerator newLIRGenerator(StructuredGraph graph, Object stub, FrameMap frameMap, CallingConvention cc, LIR lir);
 
     /**
      * Creates the assembler used to emit the machine code.

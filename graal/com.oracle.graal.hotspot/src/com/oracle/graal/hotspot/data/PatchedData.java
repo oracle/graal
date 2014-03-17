@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,28 +20,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.java.decompiler.test;
+package com.oracle.graal.hotspot.data;
 
-import java.lang.reflect.*;
+import com.oracle.graal.api.code.CompilationResult.Data;
 
-import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.runtime.*;
-import com.oracle.graal.java.decompiler.test.example.*;
-import com.oracle.graal.printer.*;
-import com.oracle.graal.runtime.*;
+/**
+ * Represents a data item that needs to be patched.
+ */
+public abstract class PatchedData extends Data {
 
-public class Test {
-
-    /**
-     * @param args
-     * @throws SecurityException
-     * @throws NoSuchMethodException
-     */
-    public static void main(String[] args) throws NoSuchMethodException, SecurityException {
-        DebugEnvironment.initialize(System.out);
-        MetaAccessProvider metaAccess = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend().getProviders().getMetaAccess();
-        Method method = Example.class.getDeclaredMethod("loop7", new Class[]{int.class, int.class});
-        final ResolvedJavaMethod javaMethod = metaAccess.lookupJavaMethod(method);
-        TestUtil.compileMethod(javaMethod);
+    protected PatchedData(int alignment) {
+        super(alignment);
     }
 }

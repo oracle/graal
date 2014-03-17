@@ -22,13 +22,27 @@
  */
 package com.oracle.graal.api.runtime;
 
+import java.lang.reflect.*;
+
+import sun.reflect.*;
+
 public class Graal {
 
     private static GraalRuntime runtime;
 
     private static native GraalRuntime initializeRuntime();
 
+    public static final java.security.Permission ACCESS_PERMISSION = new ReflectPermission("allowGraalAccess");
+
+    @CallerSensitive
     public static GraalRuntime getRuntime() {
+        SecurityManager sm = System.getSecurityManager();
+        if (sm != null) {
+            Class cc = Reflection.getCallerClass();
+            if (cc.getClassLoader() != null) {
+                sm.checkPermission(ACCESS_PERMISSION);
+            }
+        }
         return runtime;
     }
 
@@ -38,9 +52,19 @@ public class Graal {
         } catch (UnsatisfiedLinkError e) {
             runtime = new InvalidGraalRuntime();
         }
+
+        Reflection.registerFieldsToFilter(Graal.class, "runtime");
     }
 
+    @CallerSensitive
     public static <T> T getRequiredCapability(Class<T> clazz) {
+        SecurityManager sm = System.getSecurityManager();
+        if (sm != null) {
+            Class cc = Reflection.getCallerClass();
+            if (cc.getClassLoader() != null) {
+                sm.checkPermission(ACCESS_PERMISSION);
+            }
+        }
         T t = getRuntime().getCapability(clazz);
         if (t == null) {
             String javaHome = System.getProperty("java.home");

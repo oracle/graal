@@ -499,7 +499,7 @@ public abstract class GraalCompilerTest extends GraalTest {
 
     private CompilationResult compileBaseline(ResolvedJavaMethod javaMethod) {
         try (Scope bds = Debug.scope("compileBaseline")) {
-            BaslineCompiler baselineCompiler = new BaslineCompiler(GraphBuilderConfiguration.getDefault(), providers.getMetaAccess());
+            BaselineCompiler baselineCompiler = new BaselineCompiler(GraphBuilderConfiguration.getDefault(), providers.getMetaAccess());
             baselineCompiler.generate(javaMethod, -1);
             return null;
         } catch (Throwable e) {
@@ -661,8 +661,8 @@ public abstract class GraalCompilerTest extends GraalTest {
 
     protected CompilationResult compile(ResolvedJavaMethod method, final StructuredGraph graph) {
         CallingConvention cc = getCallingConvention(getCodeCache(), Type.JavaCallee, graph.method(), false);
-        return compileGraph(graph, cc, method, getProviders(), getBackend(), getCodeCache().getTarget(), null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL, getProfilingInfo(graph),
-                        getSpeculationLog(), getSuites(), true, new CompilationResult(), CompilationResultBuilderFactory.Default);
+        return compileGraph(graph, null, cc, method, getProviders(), getBackend(), getCodeCache().getTarget(), null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL,
+                        getProfilingInfo(graph), getSpeculationLog(), getSuites(), new CompilationResult(), CompilationResultBuilderFactory.Default);
     }
 
     protected SpeculationLog getSpeculationLog() {
