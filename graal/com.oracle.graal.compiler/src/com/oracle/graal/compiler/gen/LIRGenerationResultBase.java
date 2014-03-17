@@ -24,8 +24,15 @@ package com.oracle.graal.compiler.gen;
 
 import com.oracle.graal.lir.*;
 
-public interface LIRGenerationResult {
-    FrameMap getFrameMap();
+public abstract class LIRGenerationResultBase implements LIRGenerationResult {
+    private final LIR lir;
 
-    LIR getLIR();
+    public LIRGenerationResultBase(LIR lir) {
+        this.lir = lir;
+    }
+
+    public LIR getLIR() {
+        return lir;
+    }
+
 }

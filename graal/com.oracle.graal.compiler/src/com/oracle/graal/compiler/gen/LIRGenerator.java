@@ -57,7 +57,7 @@ import com.oracle.graal.phases.util.*;
 /**
  * This class traverses the HIR instructions and generates LIR instructions from them.
  */
-public abstract class LIRGenerator implements LIRGeneratorTool, LIRTypeTool, LIRGenerationResult {
+public abstract class LIRGenerator extends LIRGenerationResultBase implements LIRGeneratorTool, LIRTypeTool, LIRGenerationResult {
 
     public static class Options {
         // @formatter:off
@@ -70,7 +70,6 @@ public abstract class LIRGenerator implements LIRGeneratorTool, LIRTypeTool, LIR
 
     private final FrameMap frameMap;
     private final NodeMap<Value> nodeOperands;
-    private final LIR lir;
 
     private final Providers providers;
     protected final CallingConvention cc;
@@ -171,11 +170,11 @@ public abstract class LIRGenerator implements LIRGeneratorTool, LIRTypeTool, LIR
     public abstract boolean canStoreConstant(Constant c, boolean isCompressed);
 
     public LIRGenerator(StructuredGraph graph, Providers providers, FrameMap frameMap, CallingConvention cc, LIR lir) {
+        super(lir);
         this.providers = providers;
         this.frameMap = frameMap;
         this.cc = cc;
         this.nodeOperands = graph.createNodeMap();
-        this.lir = lir;
         this.debugInfoBuilder = createDebugInfoBuilder(nodeOperands);
         this.traceLevel = Options.TraceLIRGeneratorLevel.getValue();
         this.printIRWithLIR = Options.PrintIRWithLIR.getValue();
@@ -256,17 +255,17 @@ public abstract class LIRGenerator implements LIRGeneratorTool, LIRTypeTool, LIR
                     }
                     LoadConstant load = constantLoads.get(value);
                     if (load == null) {
-                        int index = lir.lir(currentBlock).size();
+                        int index = getLIR().lir(currentBlock).size();
                         loadedValue = emitMove(value);
-                        LIRInstruction op = lir.lir(currentBlock).get(index);
+                        LIRInstruction op = getLIR().lir(currentBlock).get(index);
                         constantLoads.put(value, new LoadConstant(loadedValue, currentBlock, index, op));
                     } else {
                         Block dominator = ControlFlowGraph.commonDominator(load.block, currentBlock);
                         loadedValue = load.variable;
                         if (dominator != load.block) {
-                            load.unpin(lir);
+                            load.unpin(getLIR());
                         } else {
-                            assert load.block != currentBlock || load.index < lir.lir(currentBlock).size();
+                            assert load.block != currentBlock || load.index < getLIR().lir(currentBlock).size();
                         }
                         load.block = dominator;
                     }
@@ -296,7 +295,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool, LIRTypeTool, LIR
      */
     @Override
     public Variable newVariable(PlatformKind platformKind) {
-        return new Variable(platformKind, lir.nextVariable());
+        return new Variable(platformKind, getLIR().nextVariable());
     }
 
     @Override
@@ -341,12 +340,12 @@ public abstract class LIRGenerator implements LIRGeneratorTool, LIRTypeTool, LIR
     }
 
     public LabelRef getLIRBlock(FixedNode b) {
-        assert lir.getControlFlowGraph() instanceof ControlFlowGraph;
-        Block result = ((ControlFlowGraph) lir.getControlFlowGraph()).blockFor(b);
+        assert getLIR().getControlFlowGraph() instanceof ControlFlowGraph;
+        Block result = ((ControlFlowGraph) getLIR().getControlFlowGraph()).blockFor(b);
         int suxIndex = currentBlock.getSuccessors().indexOf(result);
         assert suxIndex != -1 : "Block not in successor list of current block";
 
-        return LabelRef.forSuccessor(lir, currentBlock, suxIndex);
+        return LabelRef.forSuccessor(getLIR(), currentBlock, suxIndex);
     }
 
     /**
@@ -407,7 +406,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool, LIRTypeTool, LIR
             TTY.println();
         }
         assert LIRVerifier.verify(op);
-        lir.lir(currentBlock).add(op);
+        getLIR().lir(currentBlock).add(op);
     }
 
     public void doBlock(Block block, StructuredGraph graph, BlockMap<List<ScheduledNode>> blockMap) {
@@ -418,8 +417,8 @@ public abstract class LIRGenerator implements LIRGeneratorTool, LIRTypeTool, LIR
         currentBlock = block;
 
         // set up the list of LIR instructions
-        assert lir.lir(block) == null : "LIR list already computed for this block";
-        lir.setLir(block, new ArrayList<LIRInstruction>());
+        assert getLIR().lir(block) == null : "LIR list already computed for this block";
+        getLIR().setLir(block, new ArrayList<LIRInstruction>());
 
         append(new LabelOp(new Label(block.getId()), block.isAligned()));
 
@@ -427,7 +426,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool, LIRTypeTool, LIR
             TTY.println("BEGIN Generating LIR for block B" + block.getId());
         }
 
-        if (block == lir.getControlFlowGraph().getStartBlock()) {
+        if (block == getLIR().getControlFlowGraph().getStartBlock()) {
             assert block.getPredecessorCount() == 0;
             emitPrologue(graph);
         } else {
@@ -474,7 +473,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool, LIRTypeTool, LIR
             emitJump(getLIRBlock((FixedNode) successors.first()));
         }
 
-        assert verifyBlock(lir, block);
+        assert verifyBlock(getLIR(), block);
 
         if (traceLevel >= 1) {
             TTY.println("END Generating LIR for block B" + block.getId());
@@ -490,7 +489,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool, LIRTypeTool, LIR
     protected abstract boolean peephole(ValueNode valueNode);
 
     private boolean hasBlockEnd(Block block) {
-        List<LIRInstruction> ops = lir.lir(block);
+        List<LIRInstruction> ops = getLIR().lir(block);
         if (ops.size() == 0) {
             return false;
         }
@@ -531,8 +530,8 @@ public abstract class LIRGenerator implements LIRGeneratorTool, LIRTypeTool, LIR
             params[i] = toStackKind(incomingArguments.getArgument(i));
             if (ValueUtil.isStackSlot(params[i])) {
                 StackSlot slot = ValueUtil.asStackSlot(params[i]);
-                if (slot.isInCallerFrame() && !lir.hasArgInCallerFrame()) {
-                    lir.setHasArgInCallerFrame();
+                if (slot.isInCallerFrame() && !getLIR().hasArgInCallerFrame()) {
+                    getLIR().setHasArgInCallerFrame();
                 }
             }
         }
@@ -547,7 +546,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool, LIRTypeTool, LIR
     }
 
     public void emitIncomingValues(Value[] params) {
-        ((LabelOp) lir.lir(currentBlock).get(0)).setIncomingValues(params);
+        ((LabelOp) getLIR().lir(currentBlock).get(0)).setIncomingValues(params);
     }
 
     @Override
@@ -857,10 +856,6 @@ public abstract class LIRGenerator implements LIRGeneratorTool, LIRTypeTool, LIR
 
     protected abstract void emitTableSwitch(int lowKey, LabelRef defaultTarget, LabelRef[] targets, Value key);
 
-    public final LIR getLIR() {
-        return lir;
-    }
-
     public final NodeMap<Value> getNodeOperands() {
         return nodeOperands;
     }
@@ -892,13 +887,13 @@ public abstract class LIRGenerator implements LIRGeneratorTool, LIRTypeTool, LIR
                         outOfLoopDominator = outOfLoopDominator.getDominator();
                     }
                     if (outOfLoopDominator != lc.block) {
-                        lc.unpin(lir);
+                        lc.unpin(getLIR());
                         lc.block = outOfLoopDominator;
                     }
                 }
 
                 if (lc.index != -1) {
-                    assert lir.lir(lc.block).get(lc.index) == lc.op;
+                    assert getLIR().lir(lc.block).get(lc.index) == lc.op;
                     iter.remove();
                 }
             }
@@ -919,7 +914,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool, LIRTypeTool, LIR
                 }
                 int groupSize = groupEnd - groupBegin;
 
-                List<LIRInstruction> ops = lir.lir(block);
+                List<LIRInstruction> ops = getLIR().lir(block);
                 int lastIndex = ops.size() - 1;
                 assert ops.get(lastIndex) instanceof BlockEndOp;
                 int insertionIndex = lastIndex;
