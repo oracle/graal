@@ -140,32 +140,4 @@ public abstract class CallNode extends Node {
         return null;
     }
 
-    /**
-     * @deprecated always returns <code>true</code> now.
-     */
-    @Deprecated
-    public boolean isInlinable() {
-        return true;
-    }
-
-    /**
-     * @deprecated instead use {@link #getCurrentRootNode()} and check for {@link #isInlined()} for
-     *             true.
-     */
-    @Deprecated
-    public RootNode getInlinedRoot() {
-        if (!isInlined()) {
-            return null;
-        }
-        return getCurrentRootNode();
-    }
-
-    /**
-     * @deprecated use {@link TruffleRuntime#createCallNode(CallTarget)} instead
-     */
-    @Deprecated
-    public static CallNode create(CallTarget target) {
-        return Truffle.getRuntime().createCallNode(target);
-    }
-
 }
