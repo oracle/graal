@@ -28,7 +28,7 @@ import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.impl.*;
 import com.oracle.truffle.api.nodes.*;
-import com.oracle.truffle.api.nodes.NodeUtil.NodeFilter;
+import com.oracle.truffle.api.nodes.NodeUtil.NodeCountFilter;
 
 /**
  * Call target that is optimized by Graal upon surpassing a specific invocation threshold.
@@ -163,8 +163,8 @@ abstract class OptimizedCallNode extends DefaultCallNode {
         }
 
         private int countPolymorphic() {
-            return NodeUtil.countNodes(getCallTarget().getRootNode(), new NodeFilter() {
-                public boolean isFiltered(Node node) {
+            return NodeUtil.countNodes(getCallTarget().getRootNode(), new NodeCountFilter() {
+                public boolean isCounted(Node node) {
                     NodeCost cost = node.getCost();
                     return cost == NodeCost.POLYMORPHIC || cost == NodeCost.MEGAMORPHIC;
                 }
