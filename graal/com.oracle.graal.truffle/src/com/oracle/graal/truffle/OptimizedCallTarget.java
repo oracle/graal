@@ -34,7 +34,6 @@ import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.impl.*;
 import com.oracle.truffle.api.nodes.*;
-import com.oracle.truffle.api.nodes.NodeInfo.Kind;
 
 /**
  * Call target that is optimized by Graal upon surpassing a specific invocation threshold.
@@ -428,11 +427,11 @@ public final class OptimizedCallTarget extends DefaultCallTarget implements Loop
 
             target.getRootNode().accept(new NodeVisitor() {
                 public boolean visit(Node node) {
-                    Kind kind = node.getKind();
-                    if (kind == Kind.POLYMORPHIC || kind == Kind.GENERIC) {
+                    NodeCost kind = node.getCost();
+                    if (kind == NodeCost.POLYMORPHIC || kind == NodeCost.MEGAMORPHIC) {
                         Map<String, Object> props = new LinkedHashMap<>();
                         props.put("simpleName", node.getClass().getSimpleName());
-                        String msg = kind == Kind.GENERIC ? "generic" : "polymorphic";
+                        String msg = kind == NodeCost.MEGAMORPHIC ? "megamorphic" : "polymorphic";
                         log(0, msg, node.toString(), props);
                     }
                     if (node instanceof CallNode) {
@@ -462,7 +461,7 @@ public final class OptimizedCallTarget extends DefaultCallTarget implements Loop
 
     static void addASTSizeProperty(RootNode target, Map<String, Object> properties) {
         String value = String.format("%4d (%d/%d)", NodeUtil.countNodes(target.getRootNode(), null, true), //
-                        NodeUtil.countNodes(target.getRootNode(), null, Kind.POLYMORPHIC, true), NodeUtil.countNodes(target.getRootNode(), null, Kind.GENERIC, true)); //
+                        NodeUtil.countNodes(target.getRootNode(), null, NodeCost.POLYMORPHIC, true), NodeUtil.countNodes(target.getRootNode(), null, NodeCost.MEGAMORPHIC, true)); //
 
         properties.put("ASTSize", value);
     }
