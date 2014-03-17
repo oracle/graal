@@ -26,7 +26,6 @@ package com.oracle.truffle.api.debug;
 
 import com.oracle.truffle.api.nodes.*;
 
-// TODO (mlvdv) does this need to extend ControlFlowException?  It was originally part of the Ruby Shell.
 /**
  * Controls breaking out of an execution context, such as a shell or eval.
  */
