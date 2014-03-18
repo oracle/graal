@@ -36,7 +36,7 @@ import com.oracle.graal.nodes.type.*;
  * Reserves a block of memory in the stack frame of a method. The block is reserved in the frame for
  * the entire execution of the associated method.
  */
-public final class AllocaNode extends FixedWithNextNode implements LIRGenLowerable {
+public final class AllocaNode extends FixedWithNextNode implements LIRGenResLowerable {
 
     /**
      * The number of slots in block.
@@ -57,8 +57,8 @@ public final class AllocaNode extends FixedWithNextNode implements LIRGenLowerab
     }
 
     @Override
-    public void generate(LIRGenerator gen) {
-        StackSlot array = gen.getFrameMap().allocateStackSlots(slots, objects, null);
+    public void generate(LIRGenerator gen, LIRGenerationResult res) {
+        StackSlot array = res.getFrameMap().allocateStackSlots(slots, objects, null);
         Value result = gen.emitAddress(array);
         gen.setResult(this, result);
     }
