@@ -162,7 +162,7 @@ public class PEReadEliminationClosure extends PartialEscapeClosure<PEReadElimina
                     }
                 }
                 if (phi) {
-                    PhiNode phiNode = getCachedPhi(entry, value.kind());
+                    PhiNode phiNode = getCachedPhi(entry, value.getKind());
                     mergeEffects.addFloatingNode(phiNode, "mergeReadCache");
                     for (int i = 0; i < states.size(); i++) {
                         afterMergeEffects.addPhiInput(phiNode, states.get(i).getReadCache(key.object, key.identity, PEReadEliminationClosure.this));
@@ -173,7 +173,7 @@ public class PEReadEliminationClosure extends PartialEscapeClosure<PEReadElimina
                 }
             }
             for (PhiNode phi : merge.phis()) {
-                if (phi.kind() == Kind.Object) {
+                if (phi.getKind() == Kind.Object) {
                     for (Map.Entry<ReadCacheEntry, ValueNode> entry : states.get(0).readCache.entrySet()) {
                         if (entry.getKey().object == phi.valueAt(0)) {
                             mergeReadCachePhi(phi, entry.getKey().identity, states);
@@ -194,7 +194,7 @@ public class PEReadEliminationClosure extends PartialEscapeClosure<PEReadElimina
                 values[i] = value;
             }
 
-            PhiNode phiNode = getCachedPhi(new ReadCacheEntry(identity, phi), values[0].kind());
+            PhiNode phiNode = getCachedPhi(new ReadCacheEntry(identity, phi), values[0].getKind());
             mergeEffects.addFloatingNode(phiNode, "mergeReadCachePhi");
             for (int i = 0; i < values.length; i++) {
                 afterMergeEffects.addPhiInput(phiNode, values[i]);

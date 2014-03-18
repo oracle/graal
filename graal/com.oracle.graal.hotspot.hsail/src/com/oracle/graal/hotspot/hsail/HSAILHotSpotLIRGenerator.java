@@ -98,8 +98,8 @@ public class HSAILHotSpotLIRGenerator extends HSAILLIRGenerator {
      */
     @Override
     public void visitCompareAndSwap(LoweredCompareAndSwapNode node, Value address) {
-        Kind kind = node.getNewValue().kind();
-        assert kind == node.getExpectedValue().kind();
+        Kind kind = node.getNewValue().getKind();
+        assert kind == node.getExpectedValue().getKind();
         Variable expected = load(operand(node.getExpectedValue()));
         Variable newValue = load(operand(node.getNewValue()));
         HSAILAddressValue addressValue = asAddressValue(address);
@@ -117,7 +117,7 @@ public class HSAILHotSpotLIRGenerator extends HSAILLIRGenerator {
         } else {
             append(new CompareAndSwapOp(casResult, addressValue, expected, newValue));
         }
-        Variable nodeResult = newVariable(node.kind());
+        Variable nodeResult = newVariable(node.getKind());
         append(new CondMoveOp(mapKindToCompareOp(kind), casResult, expected, nodeResult, Condition.EQ, Constant.INT_1, Constant.INT_0));
         setResult(node, nodeResult);
     }

@@ -235,7 +235,7 @@ public class PTXWrapperBuilder extends GraphKit {
         for (javaParametersIndex = 0; javaParametersIndex < javaParameters.length; javaParametersIndex++) {
             ParameterNode javaParameter = javaParameters[javaParametersIndex];
             int javaParameterOffset = javaParameterOffsetsInKernelParametersBuffer[javaParametersIndex];
-            LocationNode location = ConstantLocationNode.create(FINAL_LOCATION, javaParameter.kind(), javaParameterOffset, getGraph());
+            LocationNode location = ConstantLocationNode.create(FINAL_LOCATION, javaParameter.getKind(), javaParameterOffset, getGraph());
             append(new WriteNode(buf, javaParameter, location, BarrierType.NONE, false, false));
             updateDimArg(method, sig, sigIndex++, args, javaParameter);
         }

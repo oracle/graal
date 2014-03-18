@@ -79,7 +79,7 @@ public abstract class ValueNode extends ScheduledNode implements StampProvider {
         return false;
     }
 
-    public final Kind kind() {
+    public final Kind getKind() {
         return stamp().getStackKind();
     }
 

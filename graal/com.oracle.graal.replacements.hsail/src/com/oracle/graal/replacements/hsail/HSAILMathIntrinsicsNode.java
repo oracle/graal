@@ -77,7 +77,7 @@ public class HSAILMathIntrinsicsNode extends FloatingNode implements Canonicaliz
      * @param op the math operation
      */
     public HSAILMathIntrinsicsNode(ValueNode x, HSAILArithmetic op) {
-        super(StampFactory.forKind(x.kind()));
+        super(StampFactory.forKind(x.getKind()));
         this.param = x;
         this.operation = op;
     }

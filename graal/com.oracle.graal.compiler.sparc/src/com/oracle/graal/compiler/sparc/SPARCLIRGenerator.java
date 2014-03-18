@@ -941,7 +941,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
 
     @Override
     public void emitNullCheck(ValueNode v, DeoptimizingNode deopting) {
-        assert v.kind() == Kind.Object;
+        assert v.getKind() == Kind.Object;
         append(new NullCheckOp(load(operand(v)), state(deopting)));
     }
 

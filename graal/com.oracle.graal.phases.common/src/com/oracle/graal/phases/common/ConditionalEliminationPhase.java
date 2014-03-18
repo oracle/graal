@@ -159,7 +159,7 @@ public class ConditionalEliminationPhase extends Phase {
             // this piece of code handles phis
             if (!(merge instanceof LoopBeginNode)) {
                 for (PhiNode phi : merge.phis()) {
-                    if (phi.type() == PhiType.Value && phi.kind() == Kind.Object) {
+                    if (phi.type() == PhiType.Value && phi.getKind() == Kind.Object) {
                         ValueNode firstValue = phi.valueAt(0);
                         ResolvedJavaType type = getNodeType(firstValue);
                         boolean nonNull = knownNonNull.contains(firstValue);

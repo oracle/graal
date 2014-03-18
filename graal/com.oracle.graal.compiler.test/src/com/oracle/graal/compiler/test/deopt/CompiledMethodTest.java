@@ -59,7 +59,7 @@ public class CompiledMethodTest extends GraalCompilerTest {
         new DeadCodeEliminationPhase().apply(graph);
 
         for (ConstantNode node : ConstantNode.getConstantNodes(graph)) {
-            if (node.kind() == Kind.Object && " ".equals(node.getValue().asObject())) {
+            if (node.getKind() == Kind.Object && " ".equals(node.getValue().asObject())) {
                 node.replace(graph, ConstantNode.forObject("-", getMetaAccess(), graph));
             }
         }

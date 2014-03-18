@@ -107,7 +107,7 @@ public class ForeignCallNode extends AbstractMemoryCheckpoint implements LIRLowe
         } else if (stateAfter() != null && canDeoptimize()) {
             FrameState stateDuring = stateAfter();
             if ((stateDuring.stackSize() > 0 && stateDuring.stackAt(stateDuring.stackSize() - 1) == this) || (stateDuring.stackSize() > 1 && stateDuring.stackAt(stateDuring.stackSize() - 2) == this)) {
-                stateDuring = stateDuring.duplicateModified(stateDuring.bci, stateDuring.rethrowException(), this.kind());
+                stateDuring = stateDuring.duplicateModified(stateDuring.bci, stateDuring.rethrowException(), this.getKind());
             }
             setDeoptimizationState(stateDuring);
             return stateDuring;

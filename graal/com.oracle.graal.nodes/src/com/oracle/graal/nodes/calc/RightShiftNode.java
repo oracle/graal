@@ -39,10 +39,10 @@ public final class RightShiftNode extends ShiftNode implements Canonicalizable {
     @Override
     public Constant evalConst(Constant... inputs) {
         assert inputs.length == 2;
-        if (kind() == Kind.Int) {
+        if (getKind() == Kind.Int) {
             return Constant.forInt(inputs[0].asInt() >> inputs[1].asInt());
         } else {
-            assert kind() == Kind.Long;
+            assert getKind() == Kind.Long;
             return Constant.forLong(inputs[0].asLong() >> inputs[1].asLong());
         }
     }
@@ -58,10 +58,10 @@ public final class RightShiftNode extends ShiftNode implements Canonicalizable {
             int amount = y().asConstant().asInt();
             int originalAmout = amount;
             int mask;
-            if (kind() == Kind.Int) {
+            if (getKind() == Kind.Int) {
                 mask = 0x1f;
             } else {
-                assert kind() == Kind.Long;
+                assert getKind() == Kind.Long;
                 mask = 0x3f;
             }
             amount &= mask;
@@ -79,10 +79,10 @@ public final class RightShiftNode extends ShiftNode implements Canonicalizable {
                             IntegerStamp istamp = (IntegerStamp) other.x().stamp();
 
                             if (istamp.isPositive()) {
-                                return ConstantNode.forIntegerKind(kind(), 0, graph());
+                                return ConstantNode.forIntegerKind(getKind(), 0, graph());
                             }
                             if (istamp.isStrictlyNegative()) {
-                                return ConstantNode.forIntegerKind(kind(), -1L, graph());
+                                return ConstantNode.forIntegerKind(getKind(), -1L, graph());
                             }
 
                             /*

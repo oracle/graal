@@ -313,7 +313,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             if (kind == Kind.Object) {
                 value = frameState.xpop();
                 // astore and astore_<n> may be used to store a returnAddress (jsr)
-                assert value.kind() == Kind.Object || value.kind() == Kind.Int;
+                assert value.getKind() == Kind.Object || value.getKind() == Kind.Int;
             } else {
                 value = frameState.pop(kind);
             }
@@ -767,15 +767,15 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             ValueNode b = mirror ? x : y;
 
             CompareNode condition;
-            assert !a.kind().isNumericFloat();
+            assert !a.getKind().isNumericFloat();
             if (cond == Condition.EQ || cond == Condition.NE) {
-                if (a.kind() == Kind.Object) {
+                if (a.getKind() == Kind.Object) {
                     condition = new ObjectEqualsNode(a, b);
                 } else {
                     condition = new IntegerEqualsNode(a, b);
                 }
             } else {
-                assert a.kind() != Kind.Object && !cond.isUnsigned();
+                assert a.getKind() != Kind.Object && !cond.isUnsigned();
                 condition = new IntegerLessThanNode(a, b);
             }
             condition = currentGraph.unique(condition);
@@ -1696,7 +1696,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             if (Modifier.isSynchronized(method.getModifiers())) {
                 MonitorExitNode monitorExit = genMonitorExit(methodSynchronizedObject, returnValue);
                 if (returnValue != null) {
-                    frameState.push(returnValue.kind(), returnValue);
+                    frameState.push(returnValue.getKind(), returnValue);
                 }
                 monitorExit.setStateAfter(frameState.create(bci));
                 assert !frameState.rethrowException();
@@ -1857,11 +1857,11 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 Debug.log(String.format("|   state [nr locals = %d, stack depth = %d, method = %s]", frameState.localsSize(), frameState.stackSize(), method));
                 for (int i = 0; i < frameState.localsSize(); ++i) {
                     ValueNode value = frameState.localAt(i);
-                    Debug.log(String.format("|   local[%d] = %-8s : %s", i, value == null ? "bogus" : value.kind().getJavaName(), value));
+                    Debug.log(String.format("|   local[%d] = %-8s : %s", i, value == null ? "bogus" : value.getKind().getJavaName(), value));
                 }
                 for (int i = 0; i < frameState.stackSize(); ++i) {
                     ValueNode value = frameState.stackAt(i);
-                    Debug.log(String.format("|   stack[%d] = %-8s : %s", i, value == null ? "bogus" : value.kind().getJavaName(), value));
+                    Debug.log(String.format("|   stack[%d] = %-8s : %s", i, value == null ? "bogus" : value.getKind().getJavaName(), value));
                 }
             }
         }
