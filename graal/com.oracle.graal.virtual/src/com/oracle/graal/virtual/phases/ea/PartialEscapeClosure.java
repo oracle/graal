@@ -335,6 +335,13 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
             ObjectState[] objStates = new ObjectState[states.size()];
             boolean materialized;
             do {
+                Iterator<Map.Entry<VirtualObjectNode, ObjectState>> iter = newState.objectStates.entrySet().iterator();
+                while (iter.hasNext()) {
+                    Map.Entry<VirtualObjectNode, ObjectState> entry = iter.next();
+                    if (!virtualObjTemp.contains(entry.getValue())) {
+                        iter.remove();
+                    }
+                }
                 mergeEffects.clear();
                 afterMergeEffects.clear();
                 materialized = false;
