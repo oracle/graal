@@ -202,7 +202,7 @@ public class GraphPrinterDumpHandler implements DebugDumpHandler {
         for (Object o : Debug.context()) {
             JavaMethod method = asJavaMethod(o);
             if (method != null) {
-                if (lastMethodOrGraph == null || !asJavaMethod(lastMethodOrGraph).equals(method)) {
+                if (lastMethodOrGraph == null || asJavaMethod(lastMethodOrGraph) == null || !asJavaMethod(lastMethodOrGraph).equals(method)) {
                     result.add(MetaUtil.format("%H::%n(%p)", method));
                 } else {
                     // This prevents multiple adjacent method context objects for the same method
