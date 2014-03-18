@@ -60,7 +60,7 @@ abstract class OptimizedCallNode extends DefaultCallNode {
     }
 
     @SuppressWarnings("unused")
-    public void nodeReplaced(Node oldNode, Node newNode, String reason) {
+    public void nodeReplaced(Node oldNode, Node newNode, CharSequence reason) {
     }
 
     @Override
@@ -144,7 +144,7 @@ abstract class OptimizedCallNode extends DefaultCallNode {
         }
 
         @Override
-        public void nodeReplaced(Node oldNode, Node newNode, String reason) {
+        public void nodeReplaced(Node oldNode, Node newNode, CharSequence reason) {
             trySplit = true;
         }
 
