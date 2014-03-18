@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.truffle;
 
+import java.util.*;
 import java.util.concurrent.atomic.*;
 
 import com.oracle.truffle.api.*;
@@ -136,6 +137,16 @@ abstract class OptimizedCallNode extends DefaultCallNode {
             // return false;
             // }
 
+            // disable recursive splitting for now
+            OptimizedCallTarget splitTarget = getCallTarget();
+            List<OptimizedCallTarget> compilationRoots = OptimizedCallNodeProfile.findCompilationRoots(this);
+            for (OptimizedCallTarget compilationRoot : compilationRoots) {
+                if (compilationRoot == splitTarget || compilationRoot.getSplitSource() == splitTarget) {
+                    // recursive call found
+                    return false;
+                }
+            }
+
             // max one child call and callCount > 2 and kind of small number of nodes
             if (isMaxSingleCall()) {
                 return true;
@@ -166,7 +177,8 @@ abstract class OptimizedCallNode extends DefaultCallNode {
             return NodeUtil.countNodes(getCallTarget().getRootNode(), new NodeCountFilter() {
                 public boolean isCounted(Node node) {
                     NodeCost cost = node.getCost();
-                    return cost == NodeCost.POLYMORPHIC || cost == NodeCost.MEGAMORPHIC;
+                    boolean polymorphic = cost == NodeCost.POLYMORPHIC || cost == NodeCost.MEGAMORPHIC;
+                    return polymorphic;
                 }
             });
         }

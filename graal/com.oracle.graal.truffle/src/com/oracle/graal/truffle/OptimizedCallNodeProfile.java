@@ -191,7 +191,7 @@ public class OptimizedCallNodeProfile implements TruffleInliningProfile {
         return callNode.getCallCount() / (double) callTarget.getCompilationProfile().getCallCount();
     }
 
-    private static List<OptimizedCallTarget> findCompilationRoots(Node call) {
+    static List<OptimizedCallTarget> findCompilationRoots(Node call) {
         RootNode root = call.getRootNode();
         if (root == null) {
             return Collections.emptyList();
