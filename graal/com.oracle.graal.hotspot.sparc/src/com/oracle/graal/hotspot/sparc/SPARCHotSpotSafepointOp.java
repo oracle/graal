@@ -23,13 +23,13 @@
 package com.oracle.graal.hotspot.sparc;
 
 import static com.oracle.graal.asm.sparc.SPARCMacroAssembler.*;
-import static com.oracle.graal.hotspot.bridge.Marks.*;
 import static com.oracle.graal.sparc.SPARC.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.sparc.*;
 import com.oracle.graal.hotspot.*;
+import com.oracle.graal.hotspot.meta.HotSpotCodeCacheProvider.MarkId;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.sparc.*;
 import com.oracle.graal.lir.asm.*;
@@ -61,7 +61,7 @@ public class SPARCHotSpotSafepointOp extends SPARCLIRInstruction {
     public static void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm, HotSpotVMConfig config, boolean atReturn, LIRFrameState state, Register scratch) {
         final int pos = masm.position();
         new Setx(config.safepointPollingAddress, scratch).emit(masm);
-        crb.recordMark(atReturn ? MARK_POLL_RETURN_FAR : MARK_POLL_FAR);
+        MarkId.recordMark(crb, atReturn ? MarkId.POLL_RETURN_FAR : MarkId.POLL_FAR);
         if (state != null) {
             crb.recordInfopoint(pos, state, InfopointReason.SAFEPOINT);
         }

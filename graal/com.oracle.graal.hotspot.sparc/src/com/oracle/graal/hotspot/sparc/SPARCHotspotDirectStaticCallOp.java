@@ -28,7 +28,7 @@ import static com.oracle.graal.asm.sparc.SPARCMacroAssembler.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.sparc.*;
 import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.bridge.*;
+import com.oracle.graal.hotspot.meta.HotSpotCodeCacheProvider.MarkId;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.sparc.SPARCCall.DirectCallOp;
@@ -42,7 +42,6 @@ import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
 @Opcode("CALL_DIRECT")
 final class SPARCHotspotDirectStaticCallOp extends DirectCallOp {
 
-    private static final long nonOopBits = HotSpotGraalRuntime.runtime().getConfig().nonOopBits;
     private final Constant metaspaceMethod;
     private final InvokeKind invokeKind;
 
@@ -58,9 +57,9 @@ final class SPARCHotspotDirectStaticCallOp extends DirectCallOp {
         // The mark for an invocation that uses an inline cache must be placed at the
         // instruction that loads the Klass from the inline cache.
         SPARCMove.move(crb, masm, g5.asValue(Kind.Long), metaspaceMethod);
-        crb.recordMark(invokeKind == InvokeKind.Static ? Marks.MARK_INVOKESTATIC : Marks.MARK_INVOKESPECIAL);
+        MarkId.recordMark(crb, invokeKind == InvokeKind.Static ? MarkId.INVOKESTATIC : MarkId.INVOKESPECIAL);
         // SPARCMove.move(crb, masm, g3.asValue(Kind.Long), Constant.LONG_0);
-        new Setx(nonOopBits, g3, true).emit(masm);
+        new Setx(HotSpotGraalRuntime.runtime().getConfig().nonOopBits, g3, true).emit(masm);
         super.emitCode(crb, masm);
     }
 }
