@@ -458,6 +458,7 @@ public abstract class Node implements Cloneable, Formattable {
      * newInput: removes this node from oldInput's usages and adds this node to newInput's usages.
      */
     protected void updateUsages(Node oldInput, Node newInput) {
+        assert isAlive() && (newInput == null || newInput.isAlive()) : "adding " + newInput + " to " + this + " instead of " + oldInput;
         if (oldInput != newInput) {
             if (oldInput != null) {
                 if (oldInput.recordsUsages()) {
@@ -482,6 +483,7 @@ public abstract class Node implements Cloneable, Formattable {
      * this node to newSuccessor's predecessors.
      */
     protected void updatePredecessor(Node oldSuccessor, Node newSuccessor) {
+        assert isAlive() && (newSuccessor == null || newSuccessor.isAlive()) : "adding " + newSuccessor + " to " + this + " instead of " + oldSuccessor;
         assert graph == null || !graph.isFrozen();
         if (oldSuccessor != newSuccessor) {
             if (oldSuccessor != null) {
