@@ -30,12 +30,41 @@ import com.oracle.graal.hotspot.stubs.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.SaveRegistersOp;
 
-public interface AMD64HotSpotLIRGenerationResult extends LIRGenerationResult {
+public class AMD64HotSpotLIRGenerationResult extends LIRGenerationResultBase {
 
-    StackSlot getDeoptimizationRescueSlot();
+    /**
+     * The slot reserved for storing the original return address when a frame is marked for
+     * deoptimization. The return address slot in the callee is overwritten with the address of a
+     * deoptimization stub.
+     */
+    private StackSlot deoptimizationRescueSlot;
+    private final Object stub;
 
-    Stub getStub();
+    /**
+     * Map from debug infos that need to be updated with callee save information to the operations
+     * that provide the information.
+     */
+    private Map<LIRFrameState, SaveRegistersOp> calleeSaveInfo = new HashMap<>();
 
-    Map<LIRFrameState, SaveRegistersOp> getCalleeSaveInfo();
+    public AMD64HotSpotLIRGenerationResult(LIR lir, FrameMap frameMap, Object stub) {
+        super(lir, frameMap);
+        this.stub = stub;
+    }
+
+    StackSlot getDeoptimizationRescueSlot() {
+        return deoptimizationRescueSlot;
+    }
+
+    public final void setDeoptimizationRescueSlot(StackSlot deoptimizationRescueSlot) {
+        this.deoptimizationRescueSlot = deoptimizationRescueSlot;
+    }
+
+    Stub getStub() {
+        return (Stub) stub;
+    }
+
+    Map<LIRFrameState, SaveRegistersOp> getCalleeSaveInfo() {
+        return calleeSaveInfo;
+    }
 
 }

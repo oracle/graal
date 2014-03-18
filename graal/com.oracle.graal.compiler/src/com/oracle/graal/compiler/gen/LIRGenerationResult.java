@@ -30,4 +30,6 @@ public interface LIRGenerationResult {
     LIR getLIR();
 
     boolean hasForeignCall();
+
+    void setForeignCall(boolean b);
 }

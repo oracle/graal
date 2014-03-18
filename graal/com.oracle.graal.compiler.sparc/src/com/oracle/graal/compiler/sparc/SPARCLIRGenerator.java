@@ -78,9 +78,9 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
         }
     }
 
-    public SPARCLIRGenerator(StructuredGraph graph, Providers providers, FrameMap frameMap, CallingConvention cc, LIR lir) {
-        super(graph, providers, frameMap, cc, lir);
-        lir.setSpillMoveFactory(new SPARCSpillMoveFactory());
+    public SPARCLIRGenerator(StructuredGraph graph, Providers providers, CallingConvention cc, LIRGenerationResult lirGenRes) {
+        super(graph, providers, cc, lirGenRes);
+        lirGenRes.getLIR().setSpillMoveFactory(new SPARCSpillMoveFactory());
     }
 
     @Override
@@ -930,7 +930,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
             sig[i] = node.arguments().get(i).stamp().javaType(getMetaAccess());
         }
 
-        Value[] parameters = visitInvokeArguments(getFrameMap().registerConfig.getCallingConvention(CallingConvention.Type.JavaCall, null, sig, target(), false), node.arguments());
+        Value[] parameters = visitInvokeArguments(res.getFrameMap().registerConfig.getCallingConvention(CallingConvention.Type.JavaCall, null, sig, target(), false), node.arguments());
         append(new SPARCBreakpointOp(parameters));
     }
 

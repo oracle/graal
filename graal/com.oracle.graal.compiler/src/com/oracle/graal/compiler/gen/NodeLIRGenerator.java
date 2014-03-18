@@ -22,38 +22,30 @@
  */
 package com.oracle.graal.compiler.gen;
 
-import com.oracle.graal.lir.*;
+import java.util.*;
 
-public class LIRGenerationResultBase implements LIRGenerationResult {
-    private final LIR lir;
-    private final FrameMap frameMap;
-    /**
-     * Records whether the code being generated makes at least one foreign call.
-     */
-    private boolean hasForeignCall;
+import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.cfg.*;
 
-    public LIRGenerationResultBase(LIR lir, FrameMap frameMap) {
-        this.lir = lir;
-        this.frameMap = frameMap;
+public class NodeLIRGenerator {
+
+    public LIRGenerationResult generate(StructuredGraph graph, LIRGenerationResult lirRes, LIRGenerator lirGen, List<Block> linearScanOrder, BlockMap<List<ScheduledNode>> blockMap) {
+
+        for (Block b : linearScanOrder) {
+            emitBlock(lirRes, lirGen, b, graph, blockMap);
+        }
+        return null;
     }
 
-    public LIR getLIR() {
-        return lir;
-    }
+    private static void emitBlock(LIRGenerationResult lirRes, LIRGenerator lirGen, Block b, StructuredGraph graph, BlockMap<List<ScheduledNode>> blockMap) {
+        if (lirRes.getLIR().getLIRforBlock(b) == null) {
+            for (Block pred : b.getPredecessors()) {
+                if (!b.isLoopHeader() || !pred.isLoopEnd()) {
+                    emitBlock(lirRes, lirGen, pred, graph, blockMap);
+                }
+            }
+            lirGen.doBlock(b, graph, blockMap);
+        }
 
-    /**
-     * Determines whether the code being generated makes at least one foreign call.
-     */
-    public boolean hasForeignCall() {
-        return hasForeignCall;
     }
-
-    public final void setForeignCall(boolean hasForeignCall) {
-        this.hasForeignCall = hasForeignCall;
-    }
-
-    public final FrameMap getFrameMap() {
-        return frameMap;
-    }
-
 }

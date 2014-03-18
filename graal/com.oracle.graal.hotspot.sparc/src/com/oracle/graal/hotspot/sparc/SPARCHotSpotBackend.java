@@ -79,8 +79,8 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
     }
 
     @Override
-    public LIRGenerator newLIRGenerator(StructuredGraph graph, Object stub, FrameMap frameMap, CallingConvention cc, LIR lir) {
-        return new SPARCHotSpotLIRGenerator(graph, stub, getProviders(), getRuntime().getConfig(), frameMap, cc, lir);
+    public LIRGenerator newLIRGenerator(StructuredGraph graph, CallingConvention cc, LIRGenerationResult lirGenRes) {
+        return new SPARCHotSpotLIRGenerator(graph, getProviders(), getRuntime().getConfig(), cc, lirGenRes);
     }
 
     /**
@@ -159,8 +159,8 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
     }
 
     @Override
-    public CompilationResultBuilder newCompilationResultBuilder(LIRGenerationResult lirGen, CompilationResult compilationResult, CompilationResultBuilderFactory factory) {
-        SPARCHotSpotLIRGenerationResult gen = (SPARCHotSpotLIRGenerationResult) lirGen;
+    public CompilationResultBuilder newCompilationResultBuilder(LIRGenerationResult lirGenRes, CompilationResult compilationResult, CompilationResultBuilderFactory factory) {
+        SPARCHotSpotLIRGenerationResult gen = (SPARCHotSpotLIRGenerationResult) lirGenRes;
         FrameMap frameMap = gen.getFrameMap();
         assert gen.getDeoptimizationRescueSlot() == null || frameMap.frameNeedsAllocating() : "method that can deoptimize must have a frame";
 
@@ -183,6 +183,11 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
         }
 
         return crb;
+    }
+
+    @Override
+    public LIRGenerationResult newLIRGenerationResult(LIR lir, FrameMap frameMap, Object stub) {
+        return new LIRGenerationResultBase(lir, frameMap);
     }
 
     @Override
@@ -240,4 +245,5 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
     public NativeFunctionInterface getNativeFunctionInterface() {
         throw GraalInternalError.unimplemented("No NativeFunctionInterface of SPARC");
     }
+
 }

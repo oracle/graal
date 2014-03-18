@@ -72,8 +72,13 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend {
     }
 
     @Override
-    public LIRGenerator newLIRGenerator(StructuredGraph graph, Object stub, FrameMap frameMap, CallingConvention cc, LIR lir) {
-        return new AMD64HotSpotLIRGenerator(graph, stub, getProviders(), getRuntime().getConfig(), frameMap, cc, lir);
+    public LIRGenerator newLIRGenerator(StructuredGraph graph, CallingConvention cc, LIRGenerationResult lirGenRes) {
+        return new AMD64HotSpotLIRGenerator(graph, getProviders(), getRuntime().getConfig(), cc, lirGenRes);
+    }
+
+    @Override
+    public LIRGenerationResult newLIRGenerationResult(LIR lir, FrameMap frameMap, Object stub) {
+        return new AMD64HotSpotLIRGenerationResult(lir, frameMap, stub);
     }
 
     /**
@@ -192,14 +197,14 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend {
     }
 
     @Override
-    public CompilationResultBuilder newCompilationResultBuilder(LIRGenerationResult lirGen, CompilationResult compilationResult, CompilationResultBuilderFactory factory) {
+    public CompilationResultBuilder newCompilationResultBuilder(LIRGenerationResult lirGenRen, CompilationResult compilationResult, CompilationResultBuilderFactory factory) {
         // Omit the frame if the method:
         // - has no spill slots or other slots allocated during register allocation
         // - has no callee-saved registers
         // - has no incoming arguments passed on the stack
         // - has no deoptimization points
         // - makes no foreign calls (which require an aligned stack)
-        AMD64HotSpotLIRGenerationResult gen = (AMD64HotSpotLIRGenerationResult) lirGen;
+        AMD64HotSpotLIRGenerationResult gen = (AMD64HotSpotLIRGenerationResult) lirGenRen;
         FrameMap frameMap = gen.getFrameMap();
         LIR lir = gen.getLIR();
         assert gen.getDeoptimizationRescueSlot() == null || frameMap.frameNeedsAllocating() : "method that can deoptimize must have a frame";

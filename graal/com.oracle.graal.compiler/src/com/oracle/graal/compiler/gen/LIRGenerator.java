@@ -57,7 +57,7 @@ import com.oracle.graal.phases.util.*;
 /**
  * This class traverses the HIR instructions and generates LIR instructions from them.
  */
-public abstract class LIRGenerator extends LIRGenerationResultBase implements LIRGeneratorTool, LIRTypeTool, LIRGenerationResult {
+public abstract class LIRGenerator implements LIRGeneratorTool, LIRTypeTool {
 
     public static class Options {
         // @formatter:off
@@ -68,7 +68,6 @@ public abstract class LIRGenerator extends LIRGenerationResultBase implements LI
         // @formatter:on
     }
 
-    private final FrameMap frameMap;
     private final Providers providers;
     private final CallingConvention cc;
 
@@ -153,10 +152,7 @@ public abstract class LIRGenerator extends LIRGenerationResultBase implements LI
     private ValueNode currentInstruction;
     private ValueNode lastInstructionPrinted; // Debugging only
 
-    /**
-     * Records whether the code being generated makes at least one foreign call.
-     */
-    private boolean hasForeignCall;
+    protected LIRGenerationResult res;
 
     /**
      * Checks whether the supplied constant can be used without loading it into a register for store
@@ -168,10 +164,9 @@ public abstract class LIRGenerator extends LIRGenerationResultBase implements LI
      */
     public abstract boolean canStoreConstant(Constant c, boolean isCompressed);
 
-    public LIRGenerator(StructuredGraph graph, Providers providers, FrameMap frameMap, CallingConvention cc, LIR lir) {
-        super(lir);
+    public LIRGenerator(StructuredGraph graph, Providers providers, CallingConvention cc, LIRGenerationResult res) {
+        this.res = res;
         this.providers = providers;
-        this.frameMap = frameMap;
         this.cc = cc;
         this.nodeOperands = graph.createNodeMap();
         this.debugInfoBuilder = createDebugInfoBuilder(nodeOperands);
@@ -217,13 +212,6 @@ public abstract class LIRGenerator extends LIRGenerationResultBase implements LI
     }
 
     /**
-     * Determines whether the code being generated makes at least one foreign call.
-     */
-    public boolean hasForeignCall() {
-        return hasForeignCall;
-    }
-
-    /**
      * Returns the operand that has been previously initialized by
      * {@link #setResult(ValueNode, Value)} with the result of an instruction.
      * 
@@ -254,17 +242,17 @@ public abstract class LIRGenerator extends LIRGenerationResultBase implements LI
                     }
                     LoadConstant load = constantLoads.get(value);
                     if (load == null) {
-                        int index = getLIR().getLIRforBlock(currentBlock).size();
+                        int index = res.getLIR().getLIRforBlock(currentBlock).size();
                         loadedValue = emitMove(value);
-                        LIRInstruction op = getLIR().getLIRforBlock(currentBlock).get(index);
+                        LIRInstruction op = res.getLIR().getLIRforBlock(currentBlock).get(index);
                         constantLoads.put(value, new LoadConstant(loadedValue, currentBlock, index, op));
                     } else {
                         Block dominator = ControlFlowGraph.commonDominator(load.block, currentBlock);
                         loadedValue = load.variable;
                         if (dominator != load.block) {
-                            load.unpin(getLIR());
+                            load.unpin(res.getLIR());
                         } else {
-                            assert load.block != currentBlock || load.index < getLIR().getLIRforBlock(currentBlock).size();
+                            assert load.block != currentBlock || load.index < res.getLIR().getLIRforBlock(currentBlock).size();
                         }
                         load.block = dominator;
                     }
@@ -294,12 +282,12 @@ public abstract class LIRGenerator extends LIRGenerationResultBase implements LI
      */
     @Override
     public Variable newVariable(PlatformKind platformKind) {
-        return new Variable(platformKind, getLIR().nextVariable());
+        return new Variable(platformKind, res.getLIR().nextVariable());
     }
 
     @Override
     public RegisterAttributes attributes(Register register) {
-        return frameMap.registerConfig.getAttributesMap()[register.number];
+        return res.getFrameMap().registerConfig.getAttributesMap()[register.number];
     }
 
     @Override
@@ -339,12 +327,12 @@ public abstract class LIRGenerator extends LIRGenerationResultBase implements LI
     }
 
     public LabelRef getLIRBlock(FixedNode b) {
-        assert getLIR().getControlFlowGraph() instanceof ControlFlowGraph;
-        Block result = ((ControlFlowGraph) getLIR().getControlFlowGraph()).blockFor(b);
+        assert res.getLIR().getControlFlowGraph() instanceof ControlFlowGraph;
+        Block result = ((ControlFlowGraph) res.getLIR().getControlFlowGraph()).blockFor(b);
         int suxIndex = currentBlock.getSuccessors().indexOf(result);
         assert suxIndex != -1 : "Block not in successor list of current block";
 
-        return LabelRef.forSuccessor(getLIR(), currentBlock, suxIndex);
+        return LabelRef.forSuccessor(res.getLIR(), currentBlock, suxIndex);
     }
 
     /**
@@ -391,7 +379,7 @@ public abstract class LIRGenerator extends LIRGenerationResultBase implements LI
         if (kind == Kind.Void) {
             return ILLEGAL;
         }
-        return frameMap.registerConfig.getReturnRegister(kind).asValue(kind);
+        return res.getFrameMap().registerConfig.getReturnRegister(kind).asValue(kind);
     }
 
     public void append(LIRInstruction op) {
@@ -405,7 +393,7 @@ public abstract class LIRGenerator extends LIRGenerationResultBase implements LI
             TTY.println();
         }
         assert LIRVerifier.verify(op);
-        getLIR().getLIRforBlock(currentBlock).add(op);
+        res.getLIR().getLIRforBlock(currentBlock).add(op);
     }
 
     public void doBlock(Block block, StructuredGraph graph, BlockMap<List<ScheduledNode>> blockMap) {
@@ -416,8 +404,8 @@ public abstract class LIRGenerator extends LIRGenerationResultBase implements LI
         currentBlock = block;
 
         // set up the list of LIR instructions
-        assert getLIR().getLIRforBlock(block) == null : "LIR list already computed for this block";
-        getLIR().setLIRforBlock(block, new ArrayList<LIRInstruction>());
+        assert res.getLIR().getLIRforBlock(block) == null : "LIR list already computed for this block";
+        res.getLIR().setLIRforBlock(block, new ArrayList<LIRInstruction>());
 
         append(new LabelOp(new Label(block.getId()), block.isAligned()));
 
@@ -425,7 +413,7 @@ public abstract class LIRGenerator extends LIRGenerationResultBase implements LI
             TTY.println("BEGIN Generating LIR for block B" + block.getId());
         }
 
-        if (block == getLIR().getControlFlowGraph().getStartBlock()) {
+        if (block == res.getLIR().getControlFlowGraph().getStartBlock()) {
             assert block.getPredecessorCount() == 0;
             emitPrologue(graph);
         } else {
@@ -472,7 +460,7 @@ public abstract class LIRGenerator extends LIRGenerationResultBase implements LI
             emitJump(getLIRBlock((FixedNode) successors.first()));
         }
 
-        assert verifyBlock(getLIR(), block);
+        assert verifyBlock(res.getLIR(), block);
 
         if (traceLevel >= 1) {
             TTY.println("END Generating LIR for block B" + block.getId());
@@ -488,7 +476,7 @@ public abstract class LIRGenerator extends LIRGenerationResultBase implements LI
     protected abstract boolean peephole(ValueNode valueNode);
 
     private boolean hasBlockEnd(Block block) {
-        List<LIRInstruction> ops = getLIR().getLIRforBlock(block);
+        List<LIRInstruction> ops = res.getLIR().getLIRforBlock(block);
         if (ops.size() == 0) {
             return false;
         }
@@ -529,8 +517,8 @@ public abstract class LIRGenerator extends LIRGenerationResultBase implements LI
             params[i] = toStackKind(incomingArguments.getArgument(i));
             if (ValueUtil.isStackSlot(params[i])) {
                 StackSlot slot = ValueUtil.asStackSlot(params[i]);
-                if (slot.isInCallerFrame() && !getLIR().hasArgInCallerFrame()) {
-                    getLIR().setHasArgInCallerFrame();
+                if (slot.isInCallerFrame() && !res.getLIR().hasArgInCallerFrame()) {
+                    res.getLIR().setHasArgInCallerFrame();
                 }
             }
         }
@@ -545,7 +533,7 @@ public abstract class LIRGenerator extends LIRGenerationResultBase implements LI
     }
 
     public void emitIncomingValues(Value[] params) {
-        ((LabelOp) getLIR().getLIRforBlock(currentBlock).get(0)).setIncomingValues(params);
+        ((LabelOp) res.getLIR().getLIRforBlock(currentBlock).get(0)).setIncomingValues(params);
     }
 
     @Override
@@ -684,8 +672,8 @@ public abstract class LIRGenerator extends LIRGenerationResultBase implements LI
     @Override
     public void emitInvoke(Invoke x) {
         LoweredCallTargetNode callTarget = (LoweredCallTargetNode) x.callTarget();
-        CallingConvention invokeCc = frameMap.registerConfig.getCallingConvention(callTarget.callType(), x.asNode().stamp().javaType(getMetaAccess()), callTarget.signature(), target(), false);
-        frameMap.callsMethod(invokeCc);
+        CallingConvention invokeCc = res.getFrameMap().registerConfig.getCallingConvention(callTarget.callType(), x.asNode().stamp().javaType(getMetaAccess()), callTarget.signature(), target(), false);
+        res.getFrameMap().callsMethod(invokeCc);
 
         Value[] parameters = visitInvokeArguments(invokeCc, callTarget.arguments());
 
@@ -765,7 +753,7 @@ public abstract class LIRGenerator extends LIRGenerationResultBase implements LI
 
         // move the arguments into the correct location
         CallingConvention linkageCc = linkage.getOutgoingCallingConvention();
-        frameMap.callsMethod(linkageCc);
+        res.getFrameMap().callsMethod(linkageCc);
         assert linkageCc.getArgumentCount() == args.length : "argument count mismatch";
         Value[] argLocations = new Value[args.length];
         for (int i = 0; i < args.length; i++) {
@@ -774,7 +762,7 @@ public abstract class LIRGenerator extends LIRGenerationResultBase implements LI
             emitMove(loc, arg);
             argLocations[i] = loc;
         }
-        this.hasForeignCall = true;
+        res.setForeignCall(true);
         emitForeignCall(linkage, linkageCc.getReturn(), argLocations, linkage.getTemporaries(), state);
 
         if (isLegal(linkageCc.getReturn())) {
@@ -859,10 +847,6 @@ public abstract class LIRGenerator extends LIRGenerationResultBase implements LI
         return nodeOperands;
     }
 
-    public final FrameMap getFrameMap() {
-        return frameMap;
-    }
-
     public CallingConvention getCallingConvention() {
         return cc;
     }
@@ -894,13 +878,13 @@ public abstract class LIRGenerator extends LIRGenerationResultBase implements LI
                         outOfLoopDominator = outOfLoopDominator.getDominator();
                     }
                     if (outOfLoopDominator != lc.block) {
-                        lc.unpin(getLIR());
+                        lc.unpin(res.getLIR());
                         lc.block = outOfLoopDominator;
                     }
                 }
 
                 if (lc.index != -1) {
-                    assert getLIR().getLIRforBlock(lc.block).get(lc.index) == lc.op;
+                    assert res.getLIR().getLIRforBlock(lc.block).get(lc.index) == lc.op;
                     iter.remove();
                 }
             }
@@ -921,7 +905,7 @@ public abstract class LIRGenerator extends LIRGenerationResultBase implements LI
                 }
                 int groupSize = groupEnd - groupBegin;
 
-                List<LIRInstruction> ops = getLIR().getLIRforBlock(block);
+                List<LIRInstruction> ops = res.getLIR().getLIRforBlock(block);
                 int lastIndex = ops.size() - 1;
                 assert ops.get(lastIndex) instanceof BlockEndOp;
                 int insertionIndex = lastIndex;
@@ -1020,4 +1004,9 @@ public abstract class LIRGenerator extends LIRGenerationResultBase implements LI
     public abstract void emitByteSwap(Variable result, Value operand);
 
     public abstract void emitArrayEquals(Kind kind, Variable result, Value array1, Value array2, Value length);
+
+    @Deprecated
+    public FrameMap getFrameMap() {
+        return res.getFrameMap();
+    }
 }

@@ -26,9 +26,12 @@ package com.oracle.graal.hotspot.hsail;
 import sun.misc.*;
 
 import com.oracle.graal.api.code.*;
+
 import static com.oracle.graal.api.code.ValueUtil.asConstant;
 import static com.oracle.graal.api.code.ValueUtil.isConstant;
+
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.hsail.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.lir.*;
@@ -49,8 +52,8 @@ public class HSAILHotSpotLIRGenerator extends HSAILLIRGenerator {
 
     private final HotSpotVMConfig config;
 
-    public HSAILHotSpotLIRGenerator(StructuredGraph graph, Providers providers, HotSpotVMConfig config, FrameMap frameMap, CallingConvention cc, LIR lir) {
-        super(graph, providers, frameMap, cc, lir);
+    public HSAILHotSpotLIRGenerator(StructuredGraph graph, Providers providers, HotSpotVMConfig config, CallingConvention cc, LIRGenerationResult lirGenRes) {
+        super(graph, providers, cc, lirGenRes);
         this.config = config;
     }
 

@@ -23,29 +23,23 @@
 
 package com.oracle.graal.hotspot.ptx;
 
-import com.oracle.graal.api.code.CallingConvention;
-import com.oracle.graal.api.code.StackSlot;
-import com.oracle.graal.api.meta.DeoptimizationAction;
-import com.oracle.graal.api.meta.DeoptimizationReason;
-import com.oracle.graal.api.meta.Value;
-import com.oracle.graal.compiler.ptx.PTXLIRGenerator;
-import com.oracle.graal.graph.GraalInternalError;
-import com.oracle.graal.hotspot.HotSpotLIRGenerator;
-import com.oracle.graal.hotspot.HotSpotVMConfig;
-import com.oracle.graal.hotspot.meta.HotSpotProviders;
-import com.oracle.graal.hotspot.nodes.DirectCompareAndSwapNode;
-import com.oracle.graal.lir.FrameMap;
-import com.oracle.graal.lir.LIR;
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.gen.*;
+import com.oracle.graal.compiler.ptx.*;
+import com.oracle.graal.graph.*;
+import com.oracle.graal.hotspot.*;
+import com.oracle.graal.hotspot.meta.*;
+import com.oracle.graal.hotspot.nodes.*;
+import com.oracle.graal.nodes.*;
 
 /**
  * LIR generator specialized for PTX HotSpot.
  */
 public class PTXHotSpotLIRGenerator extends PTXLIRGenerator implements HotSpotLIRGenerator {
 
-    protected PTXHotSpotLIRGenerator(StructuredGraph graph, HotSpotProviders providers, HotSpotVMConfig config, FrameMap frameMap, CallingConvention cc, LIR lir) {
-        super(graph, providers, frameMap, cc, lir);
+    protected PTXHotSpotLIRGenerator(StructuredGraph graph, HotSpotProviders providers, HotSpotVMConfig config, CallingConvention cc, LIRGenerationResult lirGenRes) {
+        super(graph, providers, cc, lirGenRes);
         assert config.basicLockSize == 8;
     }
 

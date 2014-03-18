@@ -48,15 +48,13 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
 
-public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSpotLIRGenerator, SPARCHotSpotLIRGenerationResult {
+public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSpotLIRGenerator {
 
     private final HotSpotVMConfig config;
-    private final Object stub;
 
-    public SPARCHotSpotLIRGenerator(StructuredGraph graph, Object stub, HotSpotProviders providers, HotSpotVMConfig config, FrameMap frameMap, CallingConvention cc, LIR lir) {
-        super(graph, providers, frameMap, cc, lir);
+    public SPARCHotSpotLIRGenerator(StructuredGraph graph, HotSpotProviders providers, HotSpotVMConfig config, CallingConvention cc, LIRGenerationResult lirGenRes) {
+        super(graph, providers, cc, lirGenRes);
         this.config = config;
-        this.stub = stub;
     }
 
     @Override
@@ -73,7 +71,7 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
 
     @Override
     protected DebugInfoBuilder createDebugInfoBuilder(NodeMap<Value> nodeOperands) {
-        HotSpotLockStack lockStack = new HotSpotLockStack(getFrameMap(), Kind.Long);
+        HotSpotLockStack lockStack = new HotSpotLockStack(res.getFrameMap(), Kind.Long);
         return new HotSpotDebugInfoBuilder(nodeOperands, lockStack);
     }
 
@@ -85,11 +83,11 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
     @Override
     protected boolean needOnlyOopMaps() {
         // Stubs only need oop maps
-        return stub != null;
+        return getStub() != null;
     }
 
     public Stub getStub() {
-        return (Stub) stub;
+        return ((SPARCHotSpotLIRGenerationResult) res).getStub();
     }
 
     @Override

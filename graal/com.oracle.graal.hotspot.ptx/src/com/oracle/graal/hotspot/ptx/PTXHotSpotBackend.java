@@ -327,13 +327,13 @@ public class PTXHotSpotBackend extends HotSpotBackend {
     }
 
     @Override
-    public CompilationResultBuilder newCompilationResultBuilder(LIRGenerationResult lirGen, CompilationResult compilationResult, CompilationResultBuilderFactory factory) {
+    public CompilationResultBuilder newCompilationResultBuilder(LIRGenerationResult lirGenRes, CompilationResult compilationResult, CompilationResultBuilderFactory factory) {
         // Omit the frame of the method:
         // - has no spill slots or other slots allocated during register allocation
         // - has no callee-saved registers
         // - has no incoming arguments passed on the stack
         // - has no instructions with debug info
-        FrameMap frameMap = lirGen.getFrameMap();
+        FrameMap frameMap = lirGenRes.getFrameMap();
         Assembler masm = createAssembler(frameMap);
         PTXFrameContext frameContext = new PTXFrameContext();
         CompilationResultBuilder crb = factory.createBuilder(getCodeCache(), getForeignCalls(), frameMap, masm, frameContext, compilationResult);
@@ -342,13 +342,18 @@ public class PTXHotSpotBackend extends HotSpotBackend {
     }
 
     @Override
+    public LIRGenerationResult newLIRGenerationResult(LIR lir, FrameMap frameMap, Object stub) {
+        return new LIRGenerationResultBase(lir, frameMap);
+    }
+
+    @Override
     protected Assembler createAssembler(FrameMap frameMap) {
         return new PTXMacroAssembler(getTarget(), frameMap.registerConfig);
     }
 
     @Override
-    public LIRGenerator newLIRGenerator(StructuredGraph graph, Object stub, FrameMap frameMap, CallingConvention cc, LIR lir) {
-        return new PTXHotSpotLIRGenerator(graph, getProviders(), getRuntime().getConfig(), frameMap, cc, lir);
+    public LIRGenerator newLIRGenerator(StructuredGraph graph, CallingConvention cc, LIRGenerationResult lirGenRes) {
+        return new PTXHotSpotLIRGenerator(graph, getProviders(), getRuntime().getConfig(), cc, lirGenRes);
     }
 
     private static void emitKernelEntry(CompilationResultBuilder crb, LIR lir, ResolvedJavaMethod codeCacheOwner) {
