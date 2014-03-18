@@ -118,7 +118,9 @@ public interface CompilerToVM {
      */
     long lookupType(String name, Class<?> accessingClass, boolean resolve);
 
-    Object lookupConstantInPool(long metaspaceConstantPool, int cpi);
+    Object resolveConstantInPool(long metaspaceConstantPool, int cpi);
+
+    Object resolvePossiblyCachedConstantInPool(long metaspaceConstantPool, int cpi);
 
     int lookupNameAndTypeRefIndexInPool(long metaspaceConstantPool, int cpi);
 
@@ -127,6 +129,8 @@ public interface CompilerToVM {
     long lookupSignatureRefInPool(long metaspaceConstantPool, int cpi);
 
     int lookupKlassRefIndexInPool(long metaspaceConstantPool, int cpi);
+
+    long constantPoolKlassAt(long metaspaceConstantPool, int cpi);
 
     /**
      * Looks up a class entry in a constant pool.
@@ -163,7 +167,7 @@ public interface CompilerToVM {
      */
     long resolveField(long metaspaceConstantPool, int cpi, byte opcode, long[] info);
 
-    void loadReferencedTypeInPool(long metaspaceConstantPool, int cpi, byte opcode);
+    int constantPoolRemapInstructionOperandFromCache(long metaspaceConstantPool, int cpi);
 
     Object lookupAppendixInPool(long metaspaceConstantPool, int cpi);
 
@@ -246,14 +250,6 @@ public interface CompilerToVM {
     long getClassInitializer(long metaspaceKlass);
 
     boolean hasFinalizableSubclass(long metaspaceKlass);
-
-    /**
-     * Gets the compiled code size for a method.
-     * 
-     * @param metaspaceMethod the metaspace Method object to query
-     * @return the compiled code size the method
-     */
-    int getCompiledCodeSize(long metaspaceMethod);
 
     /**
      * Gets the metaspace Method object corresponding to a given {@link Class} object and slot

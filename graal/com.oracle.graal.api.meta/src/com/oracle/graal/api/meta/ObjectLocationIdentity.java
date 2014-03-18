@@ -25,7 +25,7 @@ package com.oracle.graal.api.meta;
 import java.util.*;
 
 /**
- * A {@link LocationIdentity} warpping an object.
+ * A {@link LocationIdentity} wrapping an object.
  */
 public final class ObjectLocationIdentity implements LocationIdentity {
 

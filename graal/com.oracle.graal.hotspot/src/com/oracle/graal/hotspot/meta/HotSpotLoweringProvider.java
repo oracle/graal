@@ -700,9 +700,9 @@ public class HotSpotLoweringProvider implements LoweringProvider {
 
     public int getScalingFactor(Kind kind) {
         if (useCompressedOops() && kind == Kind.Object) {
-            return this.runtime.getTarget().arch.getSizeInBytes(Kind.Int);
+            return this.runtime.getTarget().getSizeInBytes(Kind.Int);
         } else {
-            return this.runtime.getTarget().arch.getSizeInBytes(kind);
+            return this.runtime.getTarget().getSizeInBytes(kind);
         }
     }
 

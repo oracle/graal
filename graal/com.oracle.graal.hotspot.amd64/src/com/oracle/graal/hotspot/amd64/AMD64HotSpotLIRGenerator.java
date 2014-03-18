@@ -473,8 +473,6 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     protected static Constant compress(Constant c, CompressEncoding encoding) {
         if (c.getKind() == Kind.Long) {
             return Constant.forIntegerKind(Kind.Int, (int) (((c.asLong() - encoding.base) >> encoding.shift) & 0xffffffffL), c.getPrimitiveAnnotation());
-        } else if (c.getKind() == Kind.Object) {
-            return Constant.forNarrowOop(c.asObject());
         } else {
             throw GraalInternalError.shouldNotReachHere();
         }
@@ -523,8 +521,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
             if (canStoreConstant(c, isCompressed)) {
                 if (isCompressed) {
                     if (c.getKind() == Kind.Object) {
-                        Constant value = c.isNull() ? c : compress(c, config.getOopEncoding());
-                        append(new StoreCompressedConstantOp(kind, storeAddress, value, state));
+                        append(new StoreCompressedConstantOp(kind, storeAddress, c, state));
                     } else if (c.getKind() == Kind.Long) {
                         // It's always a good idea to directly store compressed constants since they
                         // have to be materialized as 64 bits encoded otherwise.

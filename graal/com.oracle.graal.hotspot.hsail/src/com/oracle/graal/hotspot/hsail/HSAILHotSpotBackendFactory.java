@@ -62,7 +62,7 @@ public class HSAILHotSpotBackendFactory implements HotSpotBackendFactory {
         final int stackFrameAlignment = 8;
         final int implicitNullCheckLimit = 0;
         final boolean inlineObjects = true;
-        return new TargetDescription(new HSAIL(), true, stackFrameAlignment, implicitNullCheckLimit, inlineObjects);
+        return new HotSpotTargetDescription(new HSAIL(), true, stackFrameAlignment, implicitNullCheckLimit, inlineObjects, Kind.Int);
     }
 
     public String getArchitecture() {

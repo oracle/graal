@@ -360,9 +360,9 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public void emitNullCheck(ValueNode v, DeoptimizingNode deoping) {
-        assert v.stamp() instanceof ObjectStamp;
-        append(new AMD64Move.NullCheckOp(load(operand(v)), state(deoping)));
+    public void emitNullCheck(ValueNode v, DeoptimizingNode deopt) {
+        assert v.kind() == Kind.Object : v + " - " + v.stamp() + " @ " + deopt;
+        append(new AMD64Move.NullCheckOp(load(operand(v)), state(deopt)));
     }
 
     @Override

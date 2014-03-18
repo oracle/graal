@@ -31,13 +31,12 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.type.*;
 
 /**
  * Compares two arrays with the same length.
  */
-public class ArrayEqualsNode extends FloatingNode implements LIRGenLowerable, Canonicalizable {
+public class ArrayEqualsNode extends FixedWithNextNode implements LIRGenLowerable, Canonicalizable {
 
     /** {@link Kind} of the arrays to compare. */
     private final Kind kind;

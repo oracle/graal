@@ -26,7 +26,7 @@ import com.oracle.graal.amd64.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.amd64.*;
 import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.bridge.*;
+import com.oracle.graal.hotspot.meta.HotSpotCodeCacheProvider.MarkId;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.amd64.*;
 import com.oracle.graal.lir.amd64.AMD64Call.DirectCallOp;
@@ -55,7 +55,7 @@ final class AMD64HotspotDirectStaticCallOp extends DirectCallOp {
         // The mark for an invocation that uses an inline cache must be placed at the
         // instruction that loads the Klass from the inline cache.
         AMD64Move.move(crb, masm, AMD64.rbx.asValue(Kind.Long), metaspaceMethod);
-        crb.recordMark(invokeKind == InvokeKind.Static ? Marks.MARK_INVOKESTATIC : Marks.MARK_INVOKESPECIAL);
+        MarkId.recordMark(crb, invokeKind == InvokeKind.Static ? MarkId.INVOKESTATIC : MarkId.INVOKESPECIAL);
         // This must be emitted exactly like this to ensure it's patchable
         masm.movq(AMD64.rax, HotSpotGraalRuntime.runtime().getConfig().nonOopBits);
         super.emitCode(crb, masm);

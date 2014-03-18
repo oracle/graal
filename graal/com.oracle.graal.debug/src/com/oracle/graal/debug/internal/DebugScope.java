@@ -231,13 +231,13 @@ public final class DebugScope implements Debug.Scope {
      * @param newContextObjects objects to be appended to the debug context
      * @return the new scope which will be exited when its {@link #close()} method is called
      */
-    public DebugScope scope(String name, DebugConfig sandboxConfig, Object... newContextObjects) {
+    public DebugScope scope(CharSequence name, DebugConfig sandboxConfig, Object... newContextObjects) {
         DebugScope newScope = null;
         if (sandboxConfig != null) {
-            newScope = new DebugScope(name, name, this, true, newContextObjects);
+            newScope = new DebugScope(name.toString(), name.toString(), this, true, newContextObjects);
             configTL.set(sandboxConfig);
         } else {
-            newScope = this.createChild(name, newContextObjects);
+            newScope = this.createChild(name.toString(), newContextObjects);
         }
         instanceTL.set(newScope);
         newScope.updateFlags();

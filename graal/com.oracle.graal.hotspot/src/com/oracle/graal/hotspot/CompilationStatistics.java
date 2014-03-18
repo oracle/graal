@@ -102,10 +102,10 @@ public final class CompilationStatistics {
         }
     }
 
-    public void finish(HotSpotResolvedJavaMethod method) {
+    public void finish(HotSpotResolvedJavaMethod method, HotSpotInstalledCode code) {
         if (ENABLED) {
             duration = System.nanoTime() - startTime;
-            codeSize = method.getCompiledCodeSize();
+            codeSize = (int) code.getCodeSize();
             memoryUsed = getThreadAllocatedBytes() - threadAllocatedBytesStart;
             if (current.get().getLast() != this) {
                 throw new RuntimeException("mismatch in finish()");

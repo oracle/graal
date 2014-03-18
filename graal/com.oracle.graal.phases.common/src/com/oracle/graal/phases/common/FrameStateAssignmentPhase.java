@@ -59,8 +59,9 @@ public class FrameStateAssignmentPhase extends Phase {
 
             if (node instanceof StateSplit) {
                 StateSplit stateSplit = (StateSplit) node;
-                if (stateSplit.stateAfter() != null) {
-                    FrameState newState = stateSplit.stateAfter();
+                FrameState stateAfter = stateSplit.stateAfter();
+                if (stateAfter != null) {
+                    FrameState newState = stateAfter;
                     stateSplit.setStateAfter(null);
                     return newState;
                 }

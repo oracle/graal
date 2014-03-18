@@ -91,14 +91,6 @@ public class InliningPhase extends AbstractInliningPhase {
         return inliningCount;
     }
 
-    public static void storeStatisticsAfterLowTier(StructuredGraph graph) {
-        ResolvedJavaMethod method = graph.method();
-        if (method != null) {
-            CompiledMethodInfo info = compiledMethodInfo(graph.method());
-            info.setLowLevelNodeCount(graph.getNodeCount());
-        }
-    }
-
     @Override
     protected void run(final StructuredGraph graph, final HighTierContext context) {
         final InliningData data = new InliningData(graph, context.getAssumptions());
@@ -310,15 +302,6 @@ public class InliningPhase extends AbstractInliningPhase {
         return newGraph;
     }
 
-    private static synchronized CompiledMethodInfo compiledMethodInfo(ResolvedJavaMethod m) {
-        CompiledMethodInfo info = (CompiledMethodInfo) m.getCompilerStorage().get(CompiledMethodInfo.class);
-        if (info == null) {
-            info = new CompiledMethodInfo();
-            m.getCompilerStorage().put(CompiledMethodInfo.class, info);
-        }
-        return info;
-    }
-
     private abstract static class AbstractInliningPolicy implements InliningPolicy {
 
         protected final Map<Invoke, Double> hints;
@@ -371,7 +354,12 @@ public class InliningPhase extends AbstractInliningPhase {
         protected static int previousLowLevelGraphSize(InlineInfo info) {
             int size = 0;
             for (int i = 0; i < info.numberOfMethods(); i++) {
-                size += compiledMethodInfo(info.methodAt(i)).lowLevelNodeCount();
+                ResolvedJavaMethod m = info.methodAt(i);
+                ProfilingInfo profile = m.getProfilingInfo();
+                int compiledGraphSize = profile.getCompilerIRSize(StructuredGraph.class);
+                if (compiledGraphSize > 0) {
+                    size += compiledGraphSize;
+                }
             }
             return size;
         }
@@ -863,22 +851,5 @@ public class InliningPhase extends AbstractInliningPhase {
         public String toString() {
             return (graph != null ? MetaUtil.format("%H.%n(%p)", method()) : "<null method>") + remainingInvokes;
         }
-    }
-
-    private static class CompiledMethodInfo {
-
-        private int lowLevelNodes;
-
-        public CompiledMethodInfo() {
-        }
-
-        public int lowLevelNodeCount() {
-            return lowLevelNodes;
-        }
-
-        public void setLowLevelNodeCount(int lowLevelNodes) {
-            this.lowLevelNodes = lowLevelNodes;
-        }
-
     }
 }

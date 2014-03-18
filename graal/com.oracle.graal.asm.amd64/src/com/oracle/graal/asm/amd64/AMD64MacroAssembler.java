@@ -261,7 +261,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
     private AMD64Address trigPrologue(Register value) {
         assert value.getRegisterCategory() == AMD64.XMM;
         AMD64Address tmp = new AMD64Address(AMD64.rsp);
-        subq(AMD64.rsp, target.arch.getSizeInBytes(Kind.Double));
+        subq(AMD64.rsp, target.getSizeInBytes(Kind.Double));
         movdbl(tmp, value);
         fldd(tmp);
         return tmp;
@@ -271,7 +271,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
         assert dest.getRegisterCategory() == AMD64.XMM;
         fstpd(tmp);
         movdbl(dest, tmp);
-        addq(AMD64.rsp, target.arch.getSizeInBytes(Kind.Double));
+        addq(AMD64.rsp, target.getSizeInBytes(Kind.Double));
     }
 
     /**
