@@ -44,7 +44,10 @@ public abstract class BasePhase<C> {
         @Override
         public String createString() {
             String s = BasePhase.this.getClass().getSimpleName();
-            return s.substring(0, s.length() - "Phase".length());
+            if (s.endsWith("Phase")) {
+                return s.substring(0, s.length() - "Phase".length());
+            }
+            return s;
         }
     }
 
