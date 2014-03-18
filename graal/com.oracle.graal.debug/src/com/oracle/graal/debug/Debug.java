@@ -167,7 +167,7 @@ public class Debug {
      * @return the scope entered by this method which will be exited when its {@link Scope#close()}
      *         method is called
      */
-    public static Scope scope(String name, Object... context) {
+    public static Scope scope(CharSequence name, Object... context) {
         if (ENABLED) {
             return DebugScope.getInstance().scope(name, null, context);
         } else {
@@ -195,7 +195,7 @@ public class Debug {
      * @return the scope entered by this method which will be exited when its {@link Scope#close()}
      *         method is called
      */
-    public static Scope sandbox(String name, DebugConfig config, Object... context) {
+    public static Scope sandbox(CharSequence name, DebugConfig config, Object... context) {
         if (ENABLED) {
             DebugConfig sandboxConfig = config == null ? silentConfig() : config;
             return DebugScope.getInstance().scope(name, sandboxConfig, context);
@@ -379,11 +379,11 @@ public class Debug {
      * <p>
      * A disabled metric has virtually no overhead.
      */
-    public static DebugMetric metric(String name) {
-        if (enabledMetrics != null && enabledMetrics.contains(name)) {
-            return new MetricImpl(name, false);
+    public static DebugMetric metric(CharSequence name) {
+        if (enabledMetrics != null && enabledMetrics.contains(name.toString())) {
+            return new MetricImpl(name.toString(), false);
         } else if (ENABLED) {
-            return new MetricImpl(name, true);
+            return new MetricImpl(name.toString(), true);
         } else {
             return VOID_METRIC;
         }
@@ -495,12 +495,12 @@ public class Debug {
     };
 
     /**
-     * @see #timer(String)
+     * @see #timer(CharSequence)
      */
     public static final String ENABLE_TIMER_PROPERTY_NAME_PREFIX = "graal.debug.timer.";
 
     /**
-     * @see #metric(String)
+     * @see #metric(CharSequence)
      */
     public static final String ENABLE_METRIC_PROPERTY_NAME_PREFIX = "graal.debug.metric.";
 
@@ -532,11 +532,11 @@ public class Debug {
      * <p>
      * A disabled timer has virtually no overhead.
      */
-    public static DebugTimer timer(String name) {
-        if (enabledTimers != null && enabledTimers.contains(name)) {
-            return new TimerImpl(name, false);
+    public static DebugTimer timer(CharSequence name) {
+        if (enabledTimers != null && enabledTimers.contains(name.toString())) {
+            return new TimerImpl(name.toString(), false);
         } else if (ENABLED) {
-            return new TimerImpl(name, true);
+            return new TimerImpl(name.toString(), true);
         } else {
             return VOID_TIMER;
         }
