@@ -36,6 +36,7 @@ import com.oracle.graal.java.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.cfg.*;
+import com.oracle.graal.phases.schedule.*;
 
 /**
  * Observes compilation events and uses {@link CFGPrinter} to produce a control flow graph for the
@@ -162,6 +163,8 @@ public class CFGPrinterObserver implements DebugDumpHandler {
             boolean printNodes = previousObject != object;
             cfgPrinter.printCFG(message, cfgPrinter.lir.codeEmittingOrder(), printNodes);
 
+        } else if (object instanceof SchedulePhase) {
+            cfgPrinter.printSchedule(message, (SchedulePhase) object);
         } else if (object instanceof StructuredGraph) {
             if (cfgPrinter.cfg == null) {
                 StructuredGraph graph = (StructuredGraph) object;

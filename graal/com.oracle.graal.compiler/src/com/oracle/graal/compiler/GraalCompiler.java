@@ -200,7 +200,7 @@ public class GraalCompiler {
 
         SchedulePhase schedule = new SchedulePhase();
         schedule.apply(graph);
-        Debug.dump(schedule, "final schedule");
+        Debug.dump(schedule, "Final HIR schedule");
         return schedule;
 
     }
