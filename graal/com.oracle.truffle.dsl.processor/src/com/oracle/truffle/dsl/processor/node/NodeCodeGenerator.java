@@ -971,7 +971,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
             CodeTreeBuilder builder = method.createBuilder();
             if (node.isPolymorphic() && specialization == null) {
                 // assume next0 exists
-                builder.startIf().string("next0 != null && next0.getCost() == ").staticReference(nodeInfoKind, "MONOMORPHIC").end();
+                builder.startIf().string("next0 != null && next0.getCost() != ").staticReference(nodeInfoKind, "UNINITIALIZED").end();
                 builder.startBlock();
                 builder.startReturn().staticReference(nodeInfoKind, "POLYMORPHIC").end();
                 builder.end();
