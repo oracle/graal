@@ -214,19 +214,23 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
                 if (method.getModifiers().contains(STATIC)) {
                     builder.type(targetClass.asType());
                 } else {
-                    ActualParameter parameter = null;
+                    ActualParameter firstParameter = null;
                     for (ActualParameter searchParameter : targetMethod.getParameters()) {
                         if (searchParameter.getSpecification().isSignature()) {
-                            parameter = searchParameter;
+                            firstParameter = searchParameter;
                             break;
                         }
                     }
-                    ActualParameter sourceParameter = sourceMethod.findParameter(parameter.getLocalName());
+                    if (firstParameter == null) {
+                        throw new AssertionError();
+                    }
+
+                    ActualParameter sourceParameter = sourceMethod.findParameter(firstParameter.getLocalName());
 
                     if (castedValues && sourceParameter != null) {
-                        builder.string(valueName(sourceParameter, parameter));
+                        builder.string(valueName(sourceParameter, firstParameter));
                     } else {
-                        builder.string(valueName(parameter));
+                        builder.string(valueName(firstParameter));
                     }
                 }
             }
@@ -2631,6 +2635,9 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
                 }
 
                 CodeExecutableElement superConstructor = createSuperConstructor(clazz, constructor);
+                if (superConstructor == null) {
+                    continue;
+                }
                 CodeTree body = superConstructor.getBodyTree();
                 CodeTreeBuilder builder = superConstructor.createBuilder();
                 builder.tree(body);
