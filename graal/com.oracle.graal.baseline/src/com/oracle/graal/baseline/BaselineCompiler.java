@@ -117,7 +117,8 @@ public class BaselineCompiler {
         List<? extends AbstractBlock<?>> codeEmittingOrder = ComputeBlockOrder.computeCodeEmittingOrder(blocks.length, b, blockProbabilities);
         LIR lir = new LIR(cfg, linearScanOrder, codeEmittingOrder);
         CallingConvention cc = CodeUtil.getCallingConvention(backend.getProviders().getCodeCache(), CallingConvention.Type.JavaCallee, method, false);
-        LIRGenerator lirGen = backend.newLIRGenerator(null, null, backend.newFrameMap(), cc, lir);
+        LIRGenerationResult lirGenRes = backend.newLIRGenerationResult(lir, backend.newFrameMap(), null);
+        LIRGenerator lirGen = backend.newLIRGenerator(null, cc, lirGenRes);
 
         // add instruction
         lirGen.emitAdd(Constant.forLong(42), Constant.forLong(73));
@@ -126,11 +127,11 @@ public class BaselineCompiler {
         lir.setLIRforBlock(b, lirList);
 
         // register allocation
-        lirGen.getFrameMap().finish();
+        lirGenRes.getFrameMap().finish();
 
         // emitCode
         Assumptions assumptions = new Assumptions(OptAssumptions.getValue());
-        GraalCompiler.emitCode(backend, assumptions, lirGen, compilationResult, installedCodeOwner, factory);
+        GraalCompiler.emitCode(backend, assumptions, lirGenRes, compilationResult, installedCodeOwner, factory);
 
         return compilationResult;
     }
