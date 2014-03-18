@@ -329,4 +329,25 @@ public class ArraysSubstitutionsTest extends MethodSubstitutionTest {
         return Arrays.equals(a, b);
     }
 
+    @Test
+    public void testEqualsNodeGVN() {
+        test("testEqualsNodeGVNSnippet", true);
+    }
+
+    public static int[] intArrayCompare = new int[]{1, 2, 3, 4, 5, 6, 7, 8, 9};
+    public static int[] intArray;
+
+    public static boolean testEqualsNodeGVNSnippet(boolean b) {
+        int[] newIntArray = new int[]{0, 2, 3, 4, 5, 6, 7, 8, 9};
+        intArray = newIntArray;
+
+        if (b) {
+            newIntArray[0] = 1;
+            return Arrays.equals(newIntArray, intArrayCompare);
+        } else {
+            newIntArray[0] = 1;
+            return Arrays.equals(newIntArray, intArrayCompare);
+        }
+    }
+
 }
