@@ -137,7 +137,7 @@ public class PTXLIRGenerator extends LIRGenerator {
     @Override
     public void emitPrologue(StructuredGraph graph) {
         // Need to emit .param directives based on incoming arguments and return value
-        CallingConvention incomingArguments = cc;
+        CallingConvention incomingArguments = getCallingConvention();
         Object returnObject = incomingArguments.getReturn();
         AllocatableValue[] params = incomingArguments.getArguments();
         int argCount = incomingArguments.getArgumentCount();

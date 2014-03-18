@@ -69,12 +69,11 @@ public abstract class LIRGenerator extends LIRGenerationResultBase implements LI
     }
 
     private final FrameMap frameMap;
-    private final NodeMap<Value> nodeOperands;
-
     private final Providers providers;
-    protected final CallingConvention cc;
+    private final CallingConvention cc;
 
-    protected final DebugInfoBuilder debugInfoBuilder;
+    private final NodeMap<Value> nodeOperands;
+    private final DebugInfoBuilder debugInfoBuilder;
 
     protected Block currentBlock;
     private final int traceLevel;
@@ -378,7 +377,7 @@ public abstract class LIRGenerator extends LIRGenerationResultBase implements LI
             return new LIRFrameState(null, null, null);
         }
         assert state != null;
-        return debugInfoBuilder.build(state, exceptionEdge);
+        return getDebugInfoBuilder().build(state, exceptionEdge);
     }
 
     /**
@@ -523,7 +522,7 @@ public abstract class LIRGenerator extends LIRGenerationResultBase implements LI
     }
 
     protected void emitPrologue(StructuredGraph graph) {
-        CallingConvention incomingArguments = cc;
+        CallingConvention incomingArguments = getCallingConvention();
 
         Value[] params = new Value[incomingArguments.getArgumentCount()];
         for (int i = 0; i < params.length; i++) {
@@ -862,6 +861,14 @@ public abstract class LIRGenerator extends LIRGenerationResultBase implements LI
 
     public final FrameMap getFrameMap() {
         return frameMap;
+    }
+
+    public CallingConvention getCallingConvention() {
+        return cc;
+    }
+
+    public DebugInfoBuilder getDebugInfoBuilder() {
+        return debugInfoBuilder;
     }
 
     @Override
