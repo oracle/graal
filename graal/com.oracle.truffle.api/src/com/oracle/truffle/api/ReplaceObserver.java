@@ -31,5 +31,5 @@ import com.oracle.truffle.api.nodes.*;
  */
 public interface ReplaceObserver {
 
-    void nodeReplaced(Node oldNode, Node newNode, String reason);
+    void nodeReplaced(Node oldNode, Node newNode, CharSequence reason);
 }

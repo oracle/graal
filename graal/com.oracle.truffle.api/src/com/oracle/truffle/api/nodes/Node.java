@@ -186,7 +186,7 @@ public abstract class Node implements Cloneable {
      * @param reason a description of the reason for the replacement
      * @return the new node
      */
-    public final <T extends Node> T replace(T newNode, String reason) {
+    public final <T extends Node> T replace(T newNode, CharSequence reason) {
         CompilerDirectives.transferToInterpreterAndInvalidate();
         if (this.getParent() == null) {
             throw new IllegalStateException("This node cannot be replaced, because it does not yet have a parent.");
@@ -260,7 +260,7 @@ public abstract class Node implements Cloneable {
         return false;
     }
 
-    private void reportReplace(Node oldNode, Node newNode, String reason) {
+    private void reportReplace(Node oldNode, Node newNode, CharSequence reason) {
         RootNode rootNode = getRootNode();
         if (rootNode != null) {
             CallTarget target = rootNode.getCallTarget();
@@ -277,13 +277,13 @@ public abstract class Node implements Cloneable {
      * @param newNode the replacement node
      * @param reason the reason the replace supplied
      */
-    protected void onReplace(Node newNode, String reason) {
+    protected void onReplace(Node newNode, CharSequence reason) {
         if (TruffleOptions.TraceRewrites) {
             traceRewrite(newNode, reason);
         }
     }
 
-    private void traceRewrite(Node newNode, String reason) {
+    private void traceRewrite(Node newNode, CharSequence reason) {
 
         if (TruffleOptions.TraceRewritesFilterFromCost != null) {
             if (filterByKind(this, TruffleOptions.TraceRewritesFilterFromCost)) {
