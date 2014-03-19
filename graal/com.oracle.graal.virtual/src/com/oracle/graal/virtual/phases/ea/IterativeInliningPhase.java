@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.virtual.phases.ea;
 
+import static com.oracle.graal.debug.Debug.*;
 import static com.oracle.graal.phases.GraalOptions.*;
 
 import java.util.*;
@@ -54,7 +55,7 @@ public class IterativeInliningPhase extends AbstractInliningPhase {
 
     private void runIterations(final StructuredGraph graph, final boolean simple, final HighTierContext context) {
         for (int iteration = 0; iteration < EscapeAnalysisIterations.getValue(); iteration++) {
-            try (Scope s = Debug.scope("iteration " + iteration)) {
+            try (Scope s = Debug.scope(isEnabled() ? "iteration " + iteration : null)) {
                 boolean progress = false;
                 PartialEscapePhase ea = new PartialEscapePhase(false, canonicalizer);
                 boolean eaResult = ea.runAnalysis(graph, context);

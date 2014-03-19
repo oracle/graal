@@ -163,6 +163,16 @@ public class Debug {
      * }
      * </pre>
      * 
+     * The {@code name} argument is subject to the following type based conversion before having
+     * {@link Object#toString()} called on it:
+     * 
+     * <pre>
+     *     Type          | Conversion
+     * ------------------+-----------------
+     *  java.lang.Class  | arg.getSimpleName()
+     *                   |
+     * </pre>
+     * 
      * @param name the name of the new scope
      * @param context objects to be appended to the {@linkplain #context() current} debug context
      * @return the scope entered by this method which will be exited when its {@link Scope#close()}

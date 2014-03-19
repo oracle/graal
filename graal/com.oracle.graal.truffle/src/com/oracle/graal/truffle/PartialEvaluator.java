@@ -100,7 +100,7 @@ public class PartialEvaluator {
 
         final StructuredGraph graph = new StructuredGraph(executeHelperMethod);
 
-        try (Scope s = Debug.scope("createGraph", graph)) {
+        try (Scope s = Debug.scope("CreateGraph", graph)) {
             new GraphBuilderPhase.Instance(providers.getMetaAccess(), config, TruffleCompilerImpl.Optimizations).apply(graph);
 
             // Replace thisNode with constant.

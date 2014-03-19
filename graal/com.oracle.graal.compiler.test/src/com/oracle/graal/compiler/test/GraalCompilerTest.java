@@ -130,7 +130,7 @@ public abstract class GraalCompilerTest extends GraalTest {
     @Before
     public void beforeTest() {
         assert debugScope == null;
-        debugScope = Debug.scope(getClass().getSimpleName());
+        debugScope = Debug.scope(getClass());
     }
 
     @After
@@ -498,7 +498,7 @@ public abstract class GraalCompilerTest extends GraalTest {
     }
 
     private CompilationResult compileBaseline(ResolvedJavaMethod javaMethod) {
-        try (Scope bds = Debug.scope("compileBaseline")) {
+        try (Scope bds = Debug.scope("CompileBaseline")) {
             BaselineCompiler baselineCompiler = new BaselineCompiler(GraphBuilderConfiguration.getDefault(), providers.getMetaAccess());
             baselineCompiler.generate(javaMethod, -1);
             return null;

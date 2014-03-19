@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.virtual.phases.ea;
 
+import static com.oracle.graal.debug.Debug.*;
+
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.graph.*;
@@ -59,8 +61,7 @@ public abstract class EffectsPhase<PhaseContextT extends PhaseContext> extends B
     public boolean runAnalysis(final StructuredGraph graph, final PhaseContextT context) {
         boolean changed = false;
         for (int iteration = 0; iteration < maxIterations; iteration++) {
-
-            try (Scope s = Debug.scope("iteration " + iteration)) {
+            try (Scope s = Debug.scope(isEnabled() ? "iteration " + iteration : null)) {
                 SchedulePhase schedule = new SchedulePhase();
                 schedule.apply(graph, false);
                 Closure<?> closure = createEffectsClosure(context, schedule);
