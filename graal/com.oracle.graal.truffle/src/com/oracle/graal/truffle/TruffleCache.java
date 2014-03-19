@@ -117,7 +117,7 @@ public final class TruffleCache {
 
         lastUsed.put(key, counter++);
         cache.put(key, markerGraph);
-        try (Scope s = Debug.scope("TruffleCache", new Object[]{providers.getMetaAccess(), method})) {
+        try (Scope s = Debug.scope("TruffleCache", providers.getMetaAccess(), method)) {
 
             final StructuredGraph graph = new StructuredGraph(method);
             final PhaseContext phaseContext = new PhaseContext(providers, new Assumptions(false));

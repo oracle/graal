@@ -130,7 +130,7 @@ public class Debug {
 
     /**
      * Gets a string composed of the names in the current nesting of debug
-     * {@linkplain #scope(String, Object...) scopes} separated by {@code '.'}.
+     * {@linkplain #scope(Object) scopes} separated by {@code '.'}.
      */
     public static String currentScope() {
         if (ENABLED) {
@@ -141,7 +141,7 @@ public class Debug {
     }
 
     /**
-     * Represents a debug scope entered by {@link Debug#scope(String, Object...)} or
+     * Represents a debug scope entered by {@link Debug#scope(Object)} or
      * {@link Debug#sandbox(String, DebugConfig, Object...)}. Leaving the scope is achieved via
      * {@link #close()}.
      */
@@ -174,13 +174,56 @@ public class Debug {
      * </pre>
      * 
      * @param name the name of the new scope
-     * @param context objects to be appended to the {@linkplain #context() current} debug context
      * @return the scope entered by this method which will be exited when its {@link Scope#close()}
      *         method is called
      */
-    public static Scope scope(Object name, Object... context) {
+    public static Scope scope(Object name) {
+        if (ENABLED) {
+            return DebugScope.getInstance().scope(convertFormatArg(name).toString(), null);
+        } else {
+            return null;
+        }
+    }
+
+    /**
+     * @see #scope(Object)
+     * @param context an object to be appended to the {@linkplain #context() current} debug context
+     */
+    public static Scope scope(Object name, Object context) {
         if (ENABLED) {
             return DebugScope.getInstance().scope(convertFormatArg(name).toString(), null, context);
+        } else {
+            return null;
+        }
+    }
+
+    /**
+     * @see #scope(Object)
+     * @param context1 first object to be appended to the {@linkplain #context() current} debug
+     *            context
+     * @param context2 second object to be appended to the {@linkplain #context() current} debug
+     *            context
+     */
+    public static Scope scope(Object name, Object context1, Object context2) {
+        if (ENABLED) {
+            return DebugScope.getInstance().scope(convertFormatArg(name).toString(), null, context1, context2);
+        } else {
+            return null;
+        }
+    }
+
+    /**
+     * @see #scope(Object)
+     * @param context1 first object to be appended to the {@linkplain #context() current} debug
+     *            context
+     * @param context2 second object to be appended to the {@linkplain #context() current} debug
+     *            context
+     * @param context3 third object to be appended to the {@linkplain #context() current} debug
+     *            context
+     */
+    public static Scope scope(Object name, Object context1, Object context2, Object context3) {
+        if (ENABLED) {
+            return DebugScope.getInstance().scope(convertFormatArg(name).toString(), null, context1, context2, context3);
         } else {
             return null;
         }
@@ -232,10 +275,10 @@ public class Debug {
     /**
      * Handles an exception in the context of the debug scope just exited. The just exited scope
      * must have the current scope as its parent which will be the case if the try-with-resource
-     * pattern recommended by {@link #scope(String, Object...)} and
+     * pattern recommended by {@link #scope(Object)} and
      * {@link #sandbox(String, DebugConfig, Object...)} is used
      * 
-     * @see #scope(String, Object...)
+     * @see #scope(Object)
      * @see #sandbox(String, DebugConfig, Object...)
      */
     public static RuntimeException handle(Throwable exception) {
