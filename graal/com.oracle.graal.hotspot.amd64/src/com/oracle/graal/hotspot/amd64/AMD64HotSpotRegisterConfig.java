@@ -48,6 +48,8 @@ public class AMD64HotSpotRegisterConfig implements RegisterConfig {
      */
     private final Register[] callerSaved;
 
+    private final boolean allAllocatableAreCallerSaved;
+
     private final HashMap<PlatformKind, Register[]> categorized = new HashMap<>();
 
     private final RegisterAttributes[] attributesMap;
@@ -152,12 +154,18 @@ public class AMD64HotSpotRegisterConfig implements RegisterConfig {
         callerSaved = callerSaveSet.toArray(new Register[callerSaveSet.size()]);
         assert callerSaved.length == allocatable.length || RegisterPressure.getValue() != null;
 
+        allAllocatableAreCallerSaved = true;
         attributesMap = RegisterAttributes.createMap(this, AMD64.allRegisters);
     }
 
     @Override
     public Register[] getCallerSaveRegisters() {
         return callerSaved;
+    }
+
+    @Override
+    public boolean areAllAllocatableRegistersCallerSaved() {
+        return allAllocatableAreCallerSaved;
     }
 
     @Override

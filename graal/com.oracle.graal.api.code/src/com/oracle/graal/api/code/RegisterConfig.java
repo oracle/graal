@@ -102,4 +102,10 @@ public interface RegisterConfig {
      * @return the register playing the role specified by {@code id}
      */
     Register getRegisterForRole(int id);
+
+    /**
+     * Determines if all {@link #getAllocatableRegisters() allocatable} registers are
+     * {@link #getCallerSaveRegisters() caller saved}.
+     */
+    boolean areAllAllocatableRegistersCallerSaved();
 }
