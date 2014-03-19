@@ -453,7 +453,9 @@ public abstract class LIRGenerator implements LIRGeneratorTool, LIRTypeTool, LIR
         }
 
         // add instruction
-        emitAdd(Constant.forLong(42), Constant.forLong(73));
+        Value add = emitAdd(Constant.forLong(42), Constant.forLong(73));
+        emitReturn(add);
+
         doBlockEnd(block);
     }
 
