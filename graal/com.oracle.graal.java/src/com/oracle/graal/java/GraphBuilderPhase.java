@@ -118,6 +118,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
         private BytecodeStream stream;           // the bytecode stream
 
         protected HIRFrameStateBuilder frameState;          // the current execution state
+        private BytecodeParseHelper<ValueNode> parseHelper;
         private Block currentBlock;
 
         private ValueNode methodSynchronizedObject;
@@ -203,6 +204,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             methodSynchronizedObject = null;
             this.currentGraph = graph;
             this.frameState = new HIRFrameStateBuilder(method, graph, graphBuilderConfig.eagerResolving());
+            this.parseHelper = new BytecodeParseHelper<>(frameState);
             TTY.Filter filter = new TTY.Filter(PrintFilter.getValue(), method);
             try {
                 build();
@@ -302,10 +304,6 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
         protected int bci() {
             return stream.currentBCI();
-        }
-
-        private void loadLocal(int index, Kind kind) {
-            frameState.push(kind, frameState.loadLocal(index));
         }
 
         private void storeLocal(Kind kind, int index) {
@@ -572,7 +570,6 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 default:
                     throw GraalInternalError.shouldNotReachHere();
             }
-
         }
 
         private void genArithmeticOp(Kind result, int opcode) {
@@ -1640,6 +1637,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
             lastInstr = block.firstInstruction;
             frameState = block.entryState;
+            parseHelper.setCurrentFrameState(frameState);
             currentBlock = block;
 
             frameState.cleanupDeletedPhis();
@@ -1893,31 +1891,31 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             case LDC            : // fall through
             case LDC_W          : // fall through
             case LDC2_W         : genLoadConstant(stream.readCPI(), opcode); break;
-            case ILOAD          : loadLocal(stream.readLocalIndex(), Kind.Int); break;
-            case LLOAD          : loadLocal(stream.readLocalIndex(), Kind.Long); break;
-            case FLOAD          : loadLocal(stream.readLocalIndex(), Kind.Float); break;
-            case DLOAD          : loadLocal(stream.readLocalIndex(), Kind.Double); break;
-            case ALOAD          : loadLocal(stream.readLocalIndex(), Kind.Object); break;
+            case ILOAD          : parseHelper.loadLocal(stream.readLocalIndex(), Kind.Int); break;
+            case LLOAD          : parseHelper.loadLocal(stream.readLocalIndex(), Kind.Long); break;
+            case FLOAD          : parseHelper.loadLocal(stream.readLocalIndex(), Kind.Float); break;
+            case DLOAD          : parseHelper.loadLocal(stream.readLocalIndex(), Kind.Double); break;
+            case ALOAD          : parseHelper.loadLocal(stream.readLocalIndex(), Kind.Object); break;
             case ILOAD_0        : // fall through
             case ILOAD_1        : // fall through
             case ILOAD_2        : // fall through
-            case ILOAD_3        : loadLocal(opcode - ILOAD_0, Kind.Int); break;
+            case ILOAD_3        : parseHelper.loadLocal(opcode - ILOAD_0, Kind.Int); break;
             case LLOAD_0        : // fall through
             case LLOAD_1        : // fall through
             case LLOAD_2        : // fall through
-            case LLOAD_3        : loadLocal(opcode - LLOAD_0, Kind.Long); break;
+            case LLOAD_3        : parseHelper.loadLocal(opcode - LLOAD_0, Kind.Long); break;
             case FLOAD_0        : // fall through
             case FLOAD_1        : // fall through
             case FLOAD_2        : // fall through
-            case FLOAD_3        : loadLocal(opcode - FLOAD_0, Kind.Float); break;
+            case FLOAD_3        : parseHelper.loadLocal(opcode - FLOAD_0, Kind.Float); break;
             case DLOAD_0        : // fall through
             case DLOAD_1        : // fall through
             case DLOAD_2        : // fall through
-            case DLOAD_3        : loadLocal(opcode - DLOAD_0, Kind.Double); break;
+            case DLOAD_3        : parseHelper.loadLocal(opcode - DLOAD_0, Kind.Double); break;
             case ALOAD_0        : // fall through
             case ALOAD_1        : // fall through
             case ALOAD_2        : // fall through
-            case ALOAD_3        : loadLocal(opcode - ALOAD_0, Kind.Object); break;
+            case ALOAD_3        : parseHelper.loadLocal(opcode - ALOAD_0, Kind.Object); break;
             case IALOAD         : genLoadIndexed(Kind.Int   ); break;
             case LALOAD         : genLoadIndexed(Kind.Long  ); break;
             case FALOAD         : genLoadIndexed(Kind.Float ); break;
