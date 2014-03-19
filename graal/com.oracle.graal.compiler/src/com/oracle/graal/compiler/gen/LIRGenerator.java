@@ -57,7 +57,7 @@ import com.oracle.graal.phases.util.*;
 /**
  * This class traverses the HIR instructions and generates LIR instructions from them.
  */
-public abstract class LIRGenerator implements LIRGeneratorTool, LIRTypeTool {
+public abstract class LIRGenerator implements LIRGeneratorTool, LIRTypeTool, LIRGeneratorCommon, NodeBasedLIRGenerator {
 
     public static class Options {
         // @formatter:off
@@ -164,12 +164,21 @@ public abstract class LIRGenerator implements LIRGeneratorTool, LIRTypeTool {
      */
     public abstract boolean canStoreConstant(Constant c, boolean isCompressed);
 
+    public LIRGenerator(Providers providers, CallingConvention cc, LIRGenerationResult res) {
+        this(null, providers, cc, res);
+    }
+
     public LIRGenerator(StructuredGraph graph, Providers providers, CallingConvention cc, LIRGenerationResult res) {
         this.res = res;
         this.providers = providers;
         this.cc = cc;
-        this.nodeOperands = graph.createNodeMap();
-        this.debugInfoBuilder = createDebugInfoBuilder(nodeOperands);
+        if (graph != null) {
+            this.nodeOperands = graph.createNodeMap();
+            this.debugInfoBuilder = createDebugInfoBuilder(nodeOperands);
+        } else {
+            this.nodeOperands = null;
+            this.debugInfoBuilder = null;
+        }
         this.traceLevel = Options.TraceLIRGeneratorLevel.getValue();
         this.printIRWithLIR = Options.PrintIRWithLIR.getValue();
     }
@@ -266,7 +275,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool, LIRTypeTool {
     }
 
     public ValueNode valueForOperand(Value value) {
-        for (Entry<Node, Value> entry : nodeOperands.entries()) {
+        for (Entry<Node, Value> entry : getNodeOperands().entries()) {
             if (entry.getValue().equals(value)) {
                 return (ValueNode) entry.getKey();
             }
@@ -846,6 +855,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool, LIRTypeTool {
     protected abstract void emitTableSwitch(int lowKey, LabelRef defaultTarget, LabelRef[] targets, Value key);
 
     public final NodeMap<Value> getNodeOperands() {
+        assert nodeOperands != null;
         return nodeOperands;
     }
 
@@ -854,6 +864,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool, LIRTypeTool {
     }
 
     public DebugInfoBuilder getDebugInfoBuilder() {
+        assert debugInfoBuilder != null;
         return debugInfoBuilder;
     }
 
