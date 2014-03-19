@@ -748,7 +748,7 @@ public final class BciBlockMapping {
                     int blockID = block.blockID;
                     // log statements in IFs because debugLiveX creates a new String
                     if (Debug.isLogEnabled()) {
-                        Debug.log("  start B%d  [%d, %d]  in: %s  out: %s  gen: %s  kill: %s", block.blockID, block.startBci, block.endBci, debugLiveIn(blockID), debugLiveOut(blockID),
+                        Debug.logv("  start B%d  [%d, %d]  in: %s  out: %s  gen: %s  kill: %s", block.blockID, block.startBci, block.endBci, debugLiveIn(blockID), debugLiveOut(blockID),
                                         debugLiveGen(blockID), debugLiveKill(blockID));
                     }
 
@@ -767,7 +767,7 @@ public final class BciBlockMapping {
                     if (blockChanged) {
                         updateLiveness(blockID);
                         if (Debug.isLogEnabled()) {
-                            Debug.log("  end   B%d  [%d, %d]  in: %s  out: %s  gen: %s  kill: %s", block.blockID, block.startBci, block.endBci, debugLiveIn(blockID), debugLiveOut(blockID),
+                            Debug.logv("  end   B%d  [%d, %d]  in: %s  out: %s  gen: %s  kill: %s", block.blockID, block.startBci, block.endBci, debugLiveIn(blockID), debugLiveOut(blockID),
                                             debugLiveGen(blockID), debugLiveKill(blockID));
                         }
                     }

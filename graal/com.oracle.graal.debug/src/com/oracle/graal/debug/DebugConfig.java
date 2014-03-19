@@ -28,10 +28,7 @@ import java.util.*;
 public interface DebugConfig {
 
     /**
-     * Determines if logging is enabled in the {@linkplain Debug#currentScope() current debug scope}
-     * .
-     * 
-     * @see Debug#log(String, Object...)
+     * Determines if logging is on in the {@linkplain Debug#currentScope() current debug scope} .
      */
     boolean isLogEnabled();
 

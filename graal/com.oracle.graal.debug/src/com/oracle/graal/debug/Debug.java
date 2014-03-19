@@ -296,17 +296,76 @@ public class Debug {
     }
 
     /**
-     * Prints an indented message to the current debug scopes's logging stream if logging is enabled
-     * in the scope.
+     * Prints a message to the current debug scope's logging stream if logging is enabled.
      * 
-     * @param msg The format string of the log message
-     * @param args The arguments referenced by the log message string
-     * @see Indent#log
+     * @param msg the message to log
      */
-    public static void log(String msg, Object... args) {
+    public static void log(String msg) {
         if (ENABLED) {
-            DebugScope.getInstance().log(msg, args);
+            DebugScope.getInstance().log(msg);
         }
+    }
+
+    /**
+     * Prints a message to the current debug scope's logging stream if logging is enabled.
+     * 
+     * @param format a format string
+     * @param arg the argument referenced by the format specifiers in {@code format}
+     */
+    public static void log(String format, Object arg) {
+        if (ENABLED) {
+            DebugScope.getInstance().log(format, arg);
+        }
+    }
+
+    /**
+     * @see #log(String, Object)
+     */
+    public static void log(String format, Object arg1, Object arg2) {
+        if (ENABLED) {
+            DebugScope.getInstance().log(format, arg1, arg2);
+        }
+    }
+
+    /**
+     * @see #log(String, Object)
+     */
+    public static void log(String format, Object arg1, Object arg2, Object arg3) {
+        if (ENABLED) {
+            DebugScope.getInstance().log(format, arg1, arg2, arg3);
+        }
+    }
+
+    /**
+     * @see #log(String, Object)
+     */
+    public static void log(String format, Object arg1, Object arg2, Object arg3, Object arg4) {
+        if (ENABLED) {
+            DebugScope.getInstance().log(format, arg1, arg2, arg3, arg4);
+        }
+    }
+
+    /**
+     * @see #log(String, Object)
+     */
+    public static void log(String format, Object arg1, Object arg2, Object arg3, Object arg4, Object arg5) {
+        if (ENABLED) {
+            DebugScope.getInstance().log(format, arg1, arg2, arg3, arg4, arg5);
+        }
+    }
+
+    /**
+     * Prints a message to the current debug scope's logging stream. This method must only be called
+     * if debugging is {@linkplain Debug#isEnabled() enabled}.
+     * 
+     * @param format a format string
+     * @param args the arguments referenced by the format specifiers in {@code format}
+     */
+    public static void logv(String format, Object... args) {
+        if (!ENABLED) {
+            throw new InternalError("Use of Debug.logv() must be guarded by a test of Debug.isEnabled()");
+        }
+        DebugScope.getInstance().log(format, args);
     }
 
     /**
