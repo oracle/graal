@@ -168,7 +168,7 @@ public class HSAILRegisterConfig implements RegisterConfig {
 
     @Override
     public boolean areAllAllocatableRegistersCallerSaved() {
-        throw GraalInternalError.unimplemented();
+        return false;
     }
 
     @Override
