@@ -29,8 +29,12 @@ import org.junit.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.phases.*;
+import com.oracle.graal.phases.common.*;
+import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.replacements.nodes.*;
+import com.oracle.graal.virtual.phases.ea.*;
 
 /**
  * Tests {@link ArraysSubstitutions}.
@@ -350,4 +354,90 @@ public class ArraysSubstitutionsTest extends MethodSubstitutionTest {
         }
     }
 
+    @Test
+    public void testConstants() {
+        test("testConstantsSnippet");
+    }
+
+    public static final int[] constantArray1 = new int[]{1, 2, 3, 4, 5, 6, 7, 8, 9};
+    public static final int[] constantArray2 = new int[]{1, 2, 3, 4, 5, 6, 7, 8, 9};
+
+    public static boolean testConstantsSnippet() {
+        constantArray2[0] = 10;
+        try {
+            return Arrays.equals(constantArray1, constantArray2);
+        } finally {
+            constantArray2[0] = 1;
+        }
+    }
+
+    @Test
+    public void testCanonicalLength() {
+        StructuredGraph graph = parse("testCanonicalLengthSnippet");
+        Assumptions assumptions = new Assumptions(false);
+        HighTierContext context = new HighTierContext(getProviders(), assumptions, null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL);
+        new InliningPhase(new CanonicalizerPhase(true)).apply(graph, context);
+        new CanonicalizerPhase(true).apply(graph, new PhaseContext(getProviders(), assumptions));
+
+        Assert.assertTrue(graph.getNodes(ReturnNode.class).first().result().asConstant().asLong() == 0);
+    }
+
+    public static final int[] constantArray3 = new int[]{1, 2, 3};
+
+    public static boolean testCanonicalLengthSnippet() {
+        return Arrays.equals(constantArray1, constantArray3);
+    }
+
+    @Test
+    public void testCanonicalEqual() {
+        StructuredGraph graph = parse("testCanonicalEqualSnippet");
+        Assumptions assumptions = new Assumptions(false);
+        HighTierContext context = new HighTierContext(getProviders(), assumptions, null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL);
+        new InliningPhase(new CanonicalizerPhase(true)).apply(graph, context);
+        new CanonicalizerPhase(true).apply(graph, new PhaseContext(getProviders(), assumptions));
+
+        Assert.assertTrue(graph.getNodes(ReturnNode.class).first().result().asConstant().asLong() == 1);
+    }
+
+    public static boolean testCanonicalEqualSnippet() {
+        return Arrays.equals(constantArray1, constantArray1);
+    }
+
+    @Test
+    public void testVirtualEqual() {
+        StructuredGraph graph = parse("testVirtualEqualSnippet");
+        Assumptions assumptions = new Assumptions(false);
+        HighTierContext context = new HighTierContext(getProviders(), assumptions, null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL);
+        new InliningPhase(new CanonicalizerPhase(true)).apply(graph, context);
+        new CanonicalizerPhase(true).apply(graph, new PhaseContext(getProviders(), assumptions));
+        new PartialEscapePhase(false, new CanonicalizerPhase(false)).apply(graph, context);
+        new CanonicalizerPhase(true).apply(graph, new PhaseContext(getProviders(), assumptions));
+
+        Assert.assertTrue(graph.getNodes(ReturnNode.class).first().result().asConstant().asLong() == 1);
+    }
+
+    public static boolean testVirtualEqualSnippet() {
+        int[] array1 = new int[]{1, 2, 3, 4};
+        int[] array2 = new int[]{1, 2, 3, 4};
+        return Arrays.equals(array1, array2);
+    }
+
+    @Test
+    public void testVirtualNotEqual() {
+        StructuredGraph graph = parse("testVirtualNotEqualSnippet");
+        Assumptions assumptions = new Assumptions(false);
+        HighTierContext context = new HighTierContext(getProviders(), assumptions, null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL);
+        new InliningPhase(new CanonicalizerPhase(true)).apply(graph, context);
+        new CanonicalizerPhase(true).apply(graph, new PhaseContext(getProviders(), assumptions));
+        new PartialEscapePhase(false, new CanonicalizerPhase(false)).apply(graph, context);
+        new CanonicalizerPhase(true).apply(graph, new PhaseContext(getProviders(), assumptions));
+
+        Assert.assertTrue(graph.getNodes(ReturnNode.class).first().result().asConstant().asLong() == 0);
+    }
+
+    public static boolean testVirtualNotEqualSnippet(int x) {
+        int[] array1 = new int[]{1, 2, 100, x};
+        int[] array2 = new int[]{1, 2, 3, 4};
+        return Arrays.equals(array1, array2);
+    }
 }
