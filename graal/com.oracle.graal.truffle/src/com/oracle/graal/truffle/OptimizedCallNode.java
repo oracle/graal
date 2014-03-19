@@ -23,7 +23,6 @@
 package com.oracle.graal.truffle;
 
 import java.util.*;
-import java.util.concurrent.atomic.*;
 
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.frame.*;
@@ -126,16 +125,10 @@ abstract class OptimizedCallNode extends DefaultCallNode {
             if (!isSplittable()) {
                 return false;
             }
-            int nodeCount = NodeUtil.countNodes(getCallTarget().getRootNode(), null, false);
+            int nodeCount = NodeUtil.countNodes(getCallTarget().getRootNode(), OptimizedCallNodeProfile.COUNT_FILTER, false);
             if (nodeCount > TruffleCompilerOptions.TruffleSplittingMaxCalleeSize.getValue()) {
                 return false;
             }
-
-            // // is the only call target -> do not split
-            // if (getCallTarget().getRootNode().getCachedCallNodes().size() == 1 &&
-            // getCallTarget().getRootNode().getCachedCallNodes().contains(this)) {
-            // return false;
-            // }
 
             // disable recursive splitting for now
             OptimizedCallTarget splitTarget = getCallTarget();
@@ -160,17 +153,11 @@ abstract class OptimizedCallNode extends DefaultCallNode {
         }
 
         private boolean isMaxSingleCall() {
-            final AtomicInteger count = new AtomicInteger(0);
-            getCurrentCallTarget().getRootNode().accept(new NodeVisitor() {
-
-                public boolean visit(Node node) {
-                    if (node instanceof CallNode) {
-                        return count.incrementAndGet() > 1;
-                    }
-                    return true;
+            return NodeUtil.countNodes(getCurrentCallTarget().getRootNode(), new NodeCountFilter() {
+                public boolean isCounted(Node node) {
+                    return node instanceof CallNode;
                 }
-            });
-            return count.get() <= 1;
+            }) <= 1;
         }
 
         private int countPolymorphic() {

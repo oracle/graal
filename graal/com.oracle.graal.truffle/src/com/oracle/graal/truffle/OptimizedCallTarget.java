@@ -473,7 +473,7 @@ public final class OptimizedCallTarget extends DefaultCallTarget implements Loop
             }
         }, true);
 
-        String value = String.format("%4d (%d/%d)", NodeUtil.countNodes(target.getRootNode(), null, true), //
+        String value = String.format("%4d (%d/%d)", NodeUtil.countNodes(target.getRootNode(), OptimizedCallNodeProfile.COUNT_FILTER, true), //
                         polymorphicCount, megamorphicCount); //
 
         properties.put("ASTSize", value);
@@ -533,8 +533,8 @@ public final class OptimizedCallTarget extends DefaultCallTarget implements Loop
                 continue;
             }
 
-            int nodeCount = NodeUtil.countNodes(callTarget.getRootNode(), null, true);
-            int inlinedCallSiteCount = countInlinedNodes(callTarget.getRootNode());
+            int nodeCount = NodeUtil.countNodes(callTarget.getRootNode(), OptimizedCallNodeProfile.COUNT_FILTER, false);
+            int inlinedCallSiteCount = NodeUtil.countNodes(callTarget.getRootNode(), OptimizedCallNodeProfile.COUNT_FILTER, true);
             String comment = callTarget.installedCode == null ? " int" : "";
             comment += callTarget.compilationEnabled ? "" : " fail";
             OUT.printf("%-50s | %10d | %15d | %10d | %3d%s\n", callTarget.getRootNode(), callTarget.callCount, inlinedCallSiteCount, nodeCount,
@@ -546,21 +546,6 @@ public final class OptimizedCallTarget extends DefaultCallTarget implements Loop
             totalInvalidationCount += callTarget.getCompilationProfile().getInvalidationCount();
         }
         OUT.printf("%-50s | %10d | %15d | %10d | %3d\n", "Total", totalCallCount, totalInlinedCallSiteCount, totalNodeCount, totalInvalidationCount);
-    }
-
-    private static int countInlinedNodes(Node rootNode) {
-        List<CallNode> callers = NodeUtil.findAllNodeInstances(rootNode, CallNode.class);
-        int count = 0;
-        for (CallNode callNode : callers) {
-            if (callNode.isInlined()) {
-                count++;
-                RootNode root = callNode.getCurrentRootNode();
-                if (root != null) {
-                    count += countInlinedNodes(root);
-                }
-            }
-        }
-        return count;
     }
 
     private static void registerCallTarget(OptimizedCallTarget callTarget) {
