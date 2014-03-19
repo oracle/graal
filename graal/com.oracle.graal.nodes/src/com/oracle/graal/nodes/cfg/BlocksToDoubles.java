@@ -52,7 +52,7 @@ public class BlocksToDoubles {
 
     public static BlocksToDoubles createFromNodeProbability(NodesToDoubles nodeProbabilities, ControlFlowGraph cfg) {
         BlocksToDoubles blockProbabilities = new BlocksToDoubles(cfg.getBlocks().length);
-        for (AbstractBlock<?> block : cfg.getBlocks()) {
+        for (Block block : cfg.getBlocks()) {
             blockProbabilities.put(block, nodeProbabilities.get(block.getBeginNode()));
         }
         assert verify(nodeProbabilities, cfg, blockProbabilities) : "Probabilities differ for nodes in the same block.";
