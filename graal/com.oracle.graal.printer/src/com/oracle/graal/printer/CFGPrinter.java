@@ -145,18 +145,15 @@ class CFGPrinter extends CompilationPrinter {
                 }
             }
         }
-        printedNodes = new NodeBitMap(cfg.graph);
 
         begin("cfg");
         out.print("name \"").print(label).println('"');
-        for (AbstractBlock<?> abstractBlock : blocks) {
-            Block block = (Block) abstractBlock;
+        for (AbstractBlock<?> block : blocks) {
             printBlock(block, printNodes);
         }
         end("cfg");
 
         latestScheduling = null;
-        printedNodes = null;
     }
 
     private void scheduleInputs(Node node, Block nodeBlock) {
@@ -187,7 +184,7 @@ class CFGPrinter extends CompilationPrinter {
         }
     }
 
-    private void printBlock(Block block, boolean printNodes) {
+    private void printBlock(AbstractBlock<?> block, boolean printNodes) {
         begin("block");
 
         out.print("name \"").print(blockToString(block)).println('"');
@@ -195,13 +192,13 @@ class CFGPrinter extends CompilationPrinter {
         out.println("to_bci -1");
 
         out.print("predecessors ");
-        for (Block pred : block.getPredecessors()) {
+        for (AbstractBlock<?> pred : block.getPredecessors()) {
             out.print("\"").print(blockToString(pred)).print("\" ");
         }
         out.println();
 
         out.print("successors ");
-        for (Block succ : block.getSuccessors()) {
+        for (AbstractBlock<?> succ : block.getSuccessors()) {
             if (!succ.isExceptionEntry()) {
                 out.print("\"").print(blockToString(succ)).print("\" ");
             }
@@ -209,7 +206,7 @@ class CFGPrinter extends CompilationPrinter {
         out.println();
 
         out.print("xhandlers");
-        for (Block succ : block.getSuccessors()) {
+        for (AbstractBlock<?> succ : block.getSuccessors()) {
             if (succ.isExceptionEntry()) {
                 out.print("\"").print(blockToString(succ)).print("\" ");
             }
@@ -234,7 +231,10 @@ class CFGPrinter extends CompilationPrinter {
         }
 
         if (printNodes) {
-            printNodes(block);
+            printedNodes = new NodeBitMap(cfg.graph);
+            assert block instanceof Block;
+            printNodes((Block) block);
+            printedNodes = null;
         }
         printLIR(block);
         end("block");
@@ -419,7 +419,7 @@ class CFGPrinter extends CompilationPrinter {
      * 
      * @param block the block to print
      */
-    private void printLIR(Block block) {
+    private void printLIR(AbstractBlock<?> block) {
         if (lir == null) {
             return;
         }
@@ -481,13 +481,13 @@ class CFGPrinter extends CompilationPrinter {
         return prefix + node.toString(Verbosity.Id);
     }
 
-    private String blockToString(Block block) {
-        if (lir == null) {
+    private String blockToString(AbstractBlock<?> block) {
+        if (lir == null && block instanceof Block) {
             // During all the front-end phases, the block schedule is built only for the debug
             // output.
             // Therefore, the block numbers would be different for every CFG printed -> use the id
             // of the first instruction.
-            return "B" + block.getBeginNode().toString(Verbosity.Id);
+            return "B" + ((Block) block).getBeginNode().toString(Verbosity.Id);
         } else {
             // LIR instructions contain references to blocks and these blocks are printed as the
             // blockID -> use the blockID.

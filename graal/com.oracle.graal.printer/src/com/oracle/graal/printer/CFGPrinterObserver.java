@@ -140,8 +140,7 @@ public class CFGPrinterObserver implements DebugDumpHandler {
         if (cfgPrinter.lirGenerator != null) {
             cfgPrinter.target = cfgPrinter.lirGenerator.target();
         }
-        if (cfgPrinter.lir != null) {
-            assert cfgPrinter.lir.getControlFlowGraph() instanceof ControlFlowGraph;
+        if (cfgPrinter.lir != null && cfgPrinter.lir.getControlFlowGraph() instanceof ControlFlowGraph) {
             cfgPrinter.cfg = (ControlFlowGraph) cfgPrinter.lir.getControlFlowGraph();
         }
 
@@ -160,7 +159,7 @@ public class CFGPrinterObserver implements DebugDumpHandler {
         } else if (object instanceof LIR) {
             // No need to print the HIR nodes again if this is not the first
             // time dumping the same LIR since the HIR will not have changed.
-            boolean printNodes = previousObject != object;
+            boolean printNodes = previousObject != object && cfgPrinter.cfg != null;
             cfgPrinter.printCFG(message, cfgPrinter.lir.codeEmittingOrder(), printNodes);
 
         } else if (object instanceof StructuredGraph) {
