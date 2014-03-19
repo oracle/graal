@@ -100,7 +100,7 @@ public class TypeSystemTest {
 
         public TestRootNode(E node) {
             super(null);
-            this.node = adoptChild(node);
+            this.node = node;
         }
 
         @Override

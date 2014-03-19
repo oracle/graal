@@ -931,7 +931,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
                     CodeExecutableElement setter = new CodeExecutableElement(modifiers(PROTECTED), context.getType(void.class), "setNext0");
                     setter.getParameters().add(new CodeVariableElement(clazz.asType(), "next0"));
                     CodeTreeBuilder builder = setter.createBuilder();
-                    builder.statement("this.next0 = adoptChild(next0)");
+                    builder.statement("this.next0 = insert(next0)");
                     clazz.add(setter);
 
                     CodeExecutableElement genericCachedExecute = createCachedExecute(node, node.getPolymorphicSpecialization());
@@ -1210,7 +1210,6 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
                 String fieldName = var.getSimpleName().toString();
 
                 CodeTree init = createStaticCast(builder, child, fieldName);
-                init = createAdoptChild(builder, var.asType(), init);
 
                 builder.string("this.").string(fieldName).string(" = ").tree(init);
                 builder.end();
@@ -1227,18 +1226,6 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
                 }
             }
             return CodeTreeBuilder.singleString(fieldName);
-        }
-
-        private CodeTree createAdoptChild(CodeTreeBuilder parent, TypeMirror type, CodeTree value) {
-            CodeTreeBuilder builder = new CodeTreeBuilder(parent);
-            if (Utils.isAssignable(getContext(), type, getContext().getTruffleTypes().getNode())) {
-                builder.string("adoptChild(").tree(value).string(")");
-            } else if (Utils.isAssignable(getContext(), type, getContext().getTruffleTypes().getNodeArray())) {
-                builder.string("adoptChildren(").tree(value).string(")");
-            } else {
-                builder.tree(value);
-            }
-            return builder.getRoot();
         }
 
         private CodeExecutableElement createCopyConstructor(CodeTypeElement type, ExecutableElement superConstructor, ExecutableElement sourceSectionConstructor) {
@@ -1261,7 +1248,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
                 if (Utils.isAssignable(getContext(), varType, getContext().getTruffleTypes().getNodeArray())) {
                     copyAccess += ".clone()";
                 }
-                CodeTree init = createAdoptChild(builder, varType, CodeTreeBuilder.singleString(copyAccess));
+                CodeTree init = CodeTreeBuilder.singleString(copyAccess);
                 builder.startStatement().string("this.").string(varName).string(" = ").tree(init).end();
             }
 
@@ -2644,7 +2631,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
 
                 if (node.isPolymorphic()) {
                     if (specialization.isSpecialized() || specialization.isPolymorphic()) {
-                        builder.statement("this.next0 = adoptChild(copy.next0)");
+                        builder.statement("this.next0 = copy.next0");
                     }
                 }
                 if (superConstructor != null) {

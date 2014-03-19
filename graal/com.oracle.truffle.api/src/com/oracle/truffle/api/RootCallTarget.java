@@ -37,6 +37,7 @@ public abstract class RootCallTarget extends CallTarget {
     public RootCallTarget(RootNode function) {
         this.rootNode = function;
         this.rootNode.setCallTarget(this);
+        this.rootNode.adoptChildren();
     }
 
     @Override

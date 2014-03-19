@@ -61,7 +61,7 @@ public class ArgumentsTest {
         Assert.assertEquals(42, result);
     }
 
-    class TestArguments extends Arguments {
+    private static class TestArguments extends Arguments {
 
         final int[] values;
 
@@ -70,13 +70,13 @@ public class ArgumentsTest {
         }
     }
 
-    class TestRootNode extends RootNode {
+    private static class TestRootNode extends RootNode {
 
-        @Children private TestArgumentNode[] children;
+        @Children private final TestArgumentNode[] children;
 
         TestRootNode(TestArgumentNode[] children) {
             super(null);
-            this.children = adoptChildren(children);
+            this.children = children;
         }
 
         @Override
@@ -89,7 +89,7 @@ public class ArgumentsTest {
         }
     }
 
-    class TestArgumentNode extends Node {
+    private static class TestArgumentNode extends Node {
 
         private final int index;
 

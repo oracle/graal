@@ -133,11 +133,36 @@ public abstract class Node implements Cloneable {
      * @param newChildren the array of new children whose parent should be updated
      * @return the array of new children
      */
-    protected final <T extends Node> T[] adoptChildren(T[] newChildren) {
-        if (newChildren != null) {
-            for (T n : newChildren) {
-                adoptChild(n);
-            }
+    @SuppressWarnings("static-method")
+    @Deprecated
+    protected final <T extends Node> T[] adoptChildren(final T[] newChildren) {
+        return newChildren;
+    }
+
+    /**
+     * Method that updates the link to the parent in the specified new child node to this node.
+     * 
+     * @param newChild the new child whose parent should be updated
+     * @return the new child
+     */
+    @SuppressWarnings("static-method")
+    @Deprecated
+    protected final <T extends Node> T adoptChild(final T newChild) {
+        return newChild;
+    }
+
+    /**
+     * Method that updates the link to the parent in the array of specified new child nodes to this
+     * node.
+     * 
+     * @param newChildren the array of new children whose parent should be updated
+     * @return the array of new children
+     */
+    protected final <T extends Node> T[] insert(final T[] newChildren) {
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        assert newChildren != null;
+        for (Node newChild : newChildren) {
+            adoptHelper(newChild);
         }
         return newChildren;
     }
@@ -148,14 +173,52 @@ public abstract class Node implements Cloneable {
      * @param newChild the new child whose parent should be updated
      * @return the new child
      */
-    protected final <T extends Node> T adoptChild(T newChild) {
-        if (newChild != null) {
-            if (newChild == this) {
-                throw new IllegalStateException("The parent of a node can never be the node itself.");
-            }
-            ((Node) newChild).parent = this;
-        }
+    protected final <T extends Node> T insert(final T newChild) {
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        assert newChild != null;
+        adoptHelper(newChild);
         return newChild;
+    }
+
+    public final void adoptChildren() {
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        adoptHelper();
+    }
+
+    private void adoptHelper(final Node newChild) {
+        assert newChild != null;
+        if (newChild == this) {
+            throw new IllegalStateException("The parent of a node can never be the node itself.");
+        }
+        newChild.parent = this;
+        newChild.adoptHelper();
+    }
+
+    private void adoptHelper() {
+        Iterable<Node> children = this.getChildren();
+        for (Node child : children) {
+            if (child != null && child.getParent() != this) {
+                this.adoptHelper(child);
+            }
+        }
+    }
+
+    private void adoptUnadoptedHelper(final Node newChild) {
+        assert newChild != null;
+        if (newChild == this) {
+            throw new IllegalStateException("The parent of a node can never be the node itself.");
+        }
+        newChild.parent = this;
+        newChild.adoptUnadoptedHelper();
+    }
+
+    private void adoptUnadoptedHelper() {
+        Iterable<Node> children = this.getChildren();
+        for (Node child : children) {
+            if (child != null && child.getParent() == null) {
+                this.adoptUnadoptedHelper(child);
+            }
+        }
     }
 
     /**
@@ -186,51 +249,10 @@ public abstract class Node implements Cloneable {
      * @param reason a description of the reason for the replacement
      * @return the new node
      */
-    public final <T extends Node> T replace(T newNode, CharSequence reason) {
+    public final <T extends Node> T replace(final T newNode, final CharSequence reason) {
         CompilerDirectives.transferToInterpreterAndInvalidate();
-        if (this.getParent() == null) {
-            throw new IllegalStateException("This node cannot be replaced, because it does not yet have a parent.");
-        }
-        if (sourceSection != null && newNode.getSourceSection() == null) {
-            // Pass on the source section to the new node.
-            newNode.assignSourceSection(sourceSection);
-        }
-        onReplace(newNode, reason);
-        ((Node) newNode).parent = this.parent;
-        if (!NodeUtil.replaceChild(this.parent, this, newNode)) {
-            fixupTree();
-        }
-        reportReplace(this, newNode, reason);
+        replaceHelper(newNode, reason);
         return newNode;
-    }
-
-    /**
-     * Rewrite has failed; the tree is likely inconsistent, so fix any stale parent references.
-     * 
-     * This is a rather expensive operation but rare to occur.
-     */
-    private void fixupTree() {
-        Node rootNode = getRootNode();
-        if (rootNode == null) {
-            throw new UnsupportedOperationException("Tree does not have a root node.");
-        }
-        int fixCount = rootNode.fixupChildren();
-        assert fixCount != 0 : "sanity check failed: missing @Child[ren] or adoptChild?";
-        // if nothing had to be fixed, rewrite failed due to node not being a proper child.
-    }
-
-    private int fixupChildren() {
-        int fixCount = 0;
-        for (Node child : getChildren()) {
-            if (child != null) {
-                if (child.parent != this) {
-                    child.parent = this;
-                    fixCount++;
-                }
-                fixCount += child.fixupChildren();
-            }
-        }
-        return fixCount;
     }
 
     /**
@@ -242,6 +264,27 @@ public abstract class Node implements Cloneable {
      */
     public final <T extends Node> T replace(T newNode) {
         return replace(newNode, "");
+    }
+
+    private void replaceHelper(Node newNode, CharSequence reason) {
+        CompilerAsserts.neverPartOfCompilation();
+        if (this.getParent() == null) {
+            throw new IllegalStateException("This node cannot be replaced, because it does not yet have a parent.");
+        }
+        if (sourceSection != null && newNode.getSourceSection() == null) {
+            // Pass on the source section to the new node.
+            newNode.assignSourceSection(sourceSection);
+        }
+        // (aw) need to set parent *before* replace, so that (unsynchronized) getRootNode()
+        // will always find the root node
+        newNode.parent = this.parent;
+        if (NodeUtil.replaceChild(this.parent, this, newNode)) {
+            this.parent.adoptHelper(newNode);
+        } else {
+            this.parent.adoptUnadoptedHelper(newNode);
+        }
+        reportReplace(this, newNode, reason);
+        onReplace(newNode, reason);
     }
 
     /**

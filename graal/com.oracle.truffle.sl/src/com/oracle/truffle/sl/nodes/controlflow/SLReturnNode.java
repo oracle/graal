@@ -40,7 +40,7 @@ public final class SLReturnNode extends SLStatementNode {
     @Child private SLExpressionNode valueNode;
 
     public SLReturnNode(SLExpressionNode valueNode) {
-        this.valueNode = adoptChild(valueNode);
+        this.valueNode = valueNode;
     }
 
     @Override

@@ -55,13 +55,13 @@ public class ChildrenNodesTest {
         TestChildNode firstChild = new TestChildNode();
         TestChildNode secondChild = new TestChildNode();
         TestRootNode rootNode = new TestRootNode(new TestChildNode[]{firstChild, secondChild});
+        CallTarget target = runtime.createCallTarget(rootNode);
         Assert.assertEquals(rootNode, firstChild.getParent());
         Assert.assertEquals(rootNode, secondChild.getParent());
         Iterator<Node> iterator = rootNode.getChildren().iterator();
         Assert.assertEquals(firstChild, iterator.next());
         Assert.assertEquals(secondChild, iterator.next());
         Assert.assertFalse(iterator.hasNext());
-        CallTarget target = runtime.createCallTarget(rootNode);
         Object result = target.call();
         Assert.assertEquals(42, result);
     }
@@ -72,7 +72,7 @@ public class ChildrenNodesTest {
 
         public TestRootNode(TestChildNode[] children) {
             super(null);
-            this.children = adoptChildren(children);
+            this.children = children;
         }
 
         @Override

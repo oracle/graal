@@ -84,7 +84,7 @@ final class TestNodes {
         @Child Node child;
 
         public NodeWithOneChild(Node child) {
-            this.child = adoptChild(child);
+            this.child = child;
         }
 
     }
@@ -95,8 +95,8 @@ final class TestNodes {
         @Child Node child2;
 
         public NodeWithTwoChilds(Node child1, Node child2) {
-            this.child1 = adoptChild(child1);
-            this.child2 = adoptChild(child2);
+            this.child1 = child1;
+            this.child2 = child2;
         }
 
     }
@@ -108,9 +108,9 @@ final class TestNodes {
         @Child Node child3;
 
         public NodeWithThreeChilds(Node child1, Node child2, Node child3) {
-            this.child1 = adoptChild(child1);
-            this.child2 = adoptChild(child2);
-            this.child3 = adoptChild(child3);
+            this.child1 = child1;
+            this.child2 = child2;
+            this.child3 = child3;
         }
 
     }
@@ -120,7 +120,7 @@ final class TestNodes {
         @Children private final Node[] childNodes;
 
         NodeWithArray(Node[] children) {
-            this.childNodes = adoptChildren(children);
+            this.childNodes = children;
         }
 
         Node[] getChildNodes() {
@@ -134,8 +134,8 @@ final class TestNodes {
         @Children private final Node[] childNodes2;
 
         NodeWithTwoArray(Node[] childs1, Node[] childs2) {
-            this.childNodes1 = adoptChildren(childs1);
-            this.childNodes2 = adoptChildren(childs2);
+            this.childNodes1 = childs1;
+            this.childNodes2 = childs2;
         }
 
         Node[] getChildNodes1() {

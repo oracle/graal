@@ -55,8 +55,8 @@ public final class SLWhileNode extends SLStatementNode {
          * It is a Truffle requirement to call adoptChild(), which performs all the necessary steps
          * to add the new child to the node tree.
          */
-        this.conditionNode = adoptChild(conditionNode);
-        this.bodyNode = adoptChild(bodyNode);
+        this.conditionNode = conditionNode;
+        this.bodyNode = bodyNode;
     }
 
     @Override

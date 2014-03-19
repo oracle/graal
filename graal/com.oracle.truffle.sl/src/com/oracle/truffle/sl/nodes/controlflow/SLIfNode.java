@@ -57,9 +57,9 @@ public final class SLIfNode extends SLStatementNode {
          * It is a Truffle requirement to call adoptChild(), which performs all the necessary steps
          * to add the new child to the node tree.
          */
-        this.conditionNode = adoptChild(conditionNode);
-        this.thenPartNode = adoptChild(thenPartNode);
-        this.elsePartNode = adoptChild(elsePartNode);
+        this.conditionNode = conditionNode;
+        this.thenPartNode = thenPartNode;
+        this.elsePartNode = elsePartNode;
     }
 
     @Override

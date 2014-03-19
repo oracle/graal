@@ -48,9 +48,9 @@ public final class SLInvokeNode extends SLExpressionNode {
     @Child protected SLAbstractDispatchNode dispatchNode;
 
     private SLInvokeNode(SLExpressionNode functionNode, SLExpressionNode[] argumentNodes, SLAbstractDispatchNode dispatchNode) {
-        this.functionNode = adoptChild(functionNode);
-        this.argumentNodes = adoptChildren(argumentNodes);
-        this.dispatchNode = adoptChild(dispatchNode);
+        this.functionNode = functionNode;
+        this.argumentNodes = argumentNodes;
+        this.dispatchNode = dispatchNode;
     }
 
     @Override

@@ -45,7 +45,7 @@ public final class SLBlockNode extends SLStatementNode {
          * It is a Truffle requirement to call adoptChildren(), which performs all the necessary
          * steps to add the new children to the node tree.
          */
-        this.bodyNodes = adoptChildren(bodyNodes);
+        this.bodyNodes = bodyNodes;
     }
 
     /**

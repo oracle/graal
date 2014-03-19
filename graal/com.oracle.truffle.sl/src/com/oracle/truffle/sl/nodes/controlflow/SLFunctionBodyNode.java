@@ -54,7 +54,7 @@ public final class SLFunctionBodyNode extends SLExpressionNode {
          * It is a Truffle requirement to call adoptChild(), which performs all the necessary steps
          * to add the new child to the node tree.
          */
-        this.bodyNode = adoptChild(bodyNode);
+        this.bodyNode = bodyNode;
     }
 
     @Override

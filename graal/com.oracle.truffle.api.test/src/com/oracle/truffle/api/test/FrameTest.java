@@ -88,8 +88,8 @@ public class FrameTest {
 
         public TestRootNode(FrameDescriptor descriptor, TestChildNode left, TestChildNode right) {
             super(null, descriptor);
-            this.left = adoptChild(left);
-            this.right = adoptChild(right);
+            this.left = left;
+            this.right = right;
         }
 
         @Override

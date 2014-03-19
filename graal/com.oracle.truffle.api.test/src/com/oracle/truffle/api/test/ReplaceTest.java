@@ -59,13 +59,13 @@ public class ReplaceTest {
         UnresolvedNode leftChild = new UnresolvedNode("20");
         UnresolvedNode rightChild = new UnresolvedNode("22");
         TestRootNode rootNode = new TestRootNode(new ValueNode[]{leftChild, rightChild});
+        CallTarget target = runtime.createCallTarget(rootNode);
         assertEquals(rootNode, leftChild.getParent());
         assertEquals(rootNode, rightChild.getParent());
         Iterator<Node> iterator = rootNode.getChildren().iterator();
         Assert.assertEquals(leftChild, iterator.next());
         Assert.assertEquals(rightChild, iterator.next());
         Assert.assertFalse(iterator.hasNext());
-        CallTarget target = runtime.createCallTarget(rootNode);
         Object result = target.call();
         assertEquals(42, result);
         assertEquals(42, target.call());
@@ -85,7 +85,7 @@ public class ReplaceTest {
 
         public TestRootNode(ValueNode[] children) {
             super(null);
-            this.children = adoptChildren(children);
+            this.children = children;
         }
 
         @Override

@@ -61,13 +61,13 @@ public class ChildNodeTest {
         TestChildNode leftChild = new TestChildNode();
         TestChildNode rightChild = new TestChildNode();
         TestRootNode rootNode = new TestRootNode(leftChild, rightChild);
+        CallTarget target = runtime.createCallTarget(rootNode);
         Assert.assertEquals(rootNode, leftChild.getParent());
         Assert.assertEquals(rootNode, rightChild.getParent());
         Iterator<Node> iterator = rootNode.getChildren().iterator();
         Assert.assertEquals(leftChild, iterator.next());
         Assert.assertEquals(rightChild, iterator.next());
         Assert.assertFalse(iterator.hasNext());
-        CallTarget target = runtime.createCallTarget(rootNode);
         Object result = target.call();
         Assert.assertEquals(42, result);
     }
@@ -79,8 +79,8 @@ public class ChildNodeTest {
 
         public TestRootNode(TestChildNode left, TestChildNode right) {
             super(null);
-            this.left = adoptChild(left);
-            this.right = adoptChild(right);
+            this.left = left;
+            this.right = right;
         }
 
         @Override

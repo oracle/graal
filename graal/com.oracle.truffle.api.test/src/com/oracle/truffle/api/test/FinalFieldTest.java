@@ -60,13 +60,13 @@ public class FinalFieldTest {
         Assert.assertEquals(42, result);
     }
 
-    class TestRootNode extends RootNode {
+    private static class TestRootNode extends RootNode {
 
-        @Children TestChildNode[] children;
+        @Children private final TestChildNode[] children;
 
         public TestRootNode(TestChildNode[] children) {
             super(null);
-            this.children = adoptChildren(children);
+            this.children = children;
         }
 
         @Override
@@ -79,7 +79,7 @@ public class FinalFieldTest {
         }
     }
 
-    class TestChildNode extends Node {
+    private static class TestChildNode extends Node {
 
         private final int value;
 

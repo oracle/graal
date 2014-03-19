@@ -64,8 +64,8 @@ public class FrameSlotTypeSpecializationTest {
 
         public TestRootNode(FrameDescriptor descriptor, TestChildNode left, TestChildNode right) {
             super(null, descriptor);
-            this.left = adoptChild(left);
-            this.right = adoptChild(right);
+            this.left = left;
+            this.right = right;
         }
 
         @Override
@@ -108,7 +108,7 @@ public class FrameSlotTypeSpecializationTest {
 
         IntAssignLocal(FrameSlot slot, TestChildNode value) {
             super(slot);
-            this.value = adoptChild(value);
+            this.value = value;
         }
 
         @Override
@@ -130,7 +130,7 @@ public class FrameSlotTypeSpecializationTest {
 
         ObjectAssignLocal(FrameSlot slot, TestChildNode value) {
             super(slot);
-            this.value = adoptChild(value);
+            this.value = value;
         }
 
         @Override

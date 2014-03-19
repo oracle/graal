@@ -53,9 +53,9 @@ final class SLDirectDispatchNode extends SLAbstractDispatchNode {
 
     protected SLDirectDispatchNode(SLAbstractDispatchNode next, SLFunction cachedFunction) {
         this.cachedFunction = cachedFunction;
-        this.callCachedTargetNode = adoptChild(Truffle.getRuntime().createCallNode(cachedFunction.getCallTarget()));
+        this.callCachedTargetNode = Truffle.getRuntime().createCallNode(cachedFunction.getCallTarget());
         this.cachedTargetStable = cachedFunction.getCallTargetStable();
-        this.nextNode = adoptChild(next);
+        this.nextNode = next;
     }
 
     /**
