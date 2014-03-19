@@ -35,9 +35,11 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.meta.ResolvedJavaType.Representation;
 import com.oracle.graal.bytecode.*;
 import com.oracle.graal.compiler.*;
+import com.oracle.graal.compiler.alloc.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.debug.*;
+import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.java.BciBlockMapping.Block;
@@ -116,18 +118,33 @@ public class BaselineCompiler {
         List<? extends AbstractBlock<?>> linearScanOrder = ComputeBlockOrder.computeLinearScanOrder(blocks.length, b, blockProbabilities);
         List<? extends AbstractBlock<?>> codeEmittingOrder = ComputeBlockOrder.computeCodeEmittingOrder(blocks.length, b, blockProbabilities);
         LIR lir = new LIR(cfg, linearScanOrder, codeEmittingOrder);
-        CallingConvention cc = CodeUtil.getCallingConvention(backend.getProviders().getCodeCache(), CallingConvention.Type.JavaCallee, method, false);
-        LIRGenerationResult lirGenRes = backend.newLIRGenerationResult(lir, backend.newFrameMap(), null);
-        LIRGenerator lirGen = backend.newLIRGenerator(null, cc, lirGenRes);
+        LIRGenerationResult lirGenRes = null;
+        try (Scope ds = Debug.scope("BackEnd", lir)) {
+            FrameMap frameMap = backend.newFrameMap();
+            TargetDescription target = backend.getTarget();
+            CallingConvention cc = CodeUtil.getCallingConvention(backend.getProviders().getCodeCache(), CallingConvention.Type.JavaCallee, method, false);
+            lirGenRes = backend.newLIRGenerationResult(lir, frameMap, null);
+            LIRGenerator lirGen = backend.newLIRGenerator(null, cc, lirGenRes);
 
-        // add instruction
-        lirGen.emitAdd(Constant.forLong(42), Constant.forLong(73));
+            try (Scope s = Debug.scope("LIRGen", lirGen)) {
+                lirGen.doBlock(b);
+                // lirGen.beforeRegisterAllocation();
 
-        List<LIRInstruction> lirList = null;
-        lir.setLIRforBlock(b, lirList);
+                Debug.dump(lir, "After LIR generation");
+            } catch (Throwable e) {
+                throw Debug.handle(e);
+            }
 
-        // register allocation
-        lirGenRes.getFrameMap().finish();
+            try (Scope s = Debug.scope("Allocator", lirGen)) {
+                if (backend.shouldAllocateRegisters()) {
+                    new LinearScan(target, lir, frameMap).allocate();
+                }
+            } catch (Throwable e) {
+                throw Debug.handle(e);
+            }
+        } catch (Throwable e) {
+            throw Debug.handle(e);
+        }
 
         // emitCode
         Assumptions assumptions = new Assumptions(OptAssumptions.getValue());
