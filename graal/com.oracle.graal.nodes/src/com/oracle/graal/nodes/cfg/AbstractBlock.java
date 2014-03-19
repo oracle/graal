@@ -24,8 +24,6 @@ package com.oracle.graal.nodes.cfg;
 
 import java.util.*;
 
-import com.oracle.graal.nodes.*;
-
 public interface AbstractBlock<T extends AbstractBlock<?>> {
 
     int getId();
