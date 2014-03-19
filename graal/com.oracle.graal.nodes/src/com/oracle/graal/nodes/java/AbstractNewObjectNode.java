@@ -73,7 +73,7 @@ public class AbstractNewObjectNode extends DeoptimizingFixedWithNextNode impleme
                 return;
             }
         }
-        for (Node usage : usages().snapshot()) {
+        for (Node usage : usages().distinct().snapshot()) {
             List<Node> snapshot = usage.inputs().snapshot();
             graph().removeFixed((FixedWithNextNode) usage);
             for (Node input : snapshot) {

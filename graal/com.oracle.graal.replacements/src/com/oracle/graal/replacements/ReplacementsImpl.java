@@ -99,7 +99,7 @@ public class ReplacementsImpl implements Replacements {
                 FrameStateProcessing frameStateProcessing = method.getAnnotation(Snippet.class).removeAllFrameStates() ? FrameStateProcessing.Removal
                                 : FrameStateProcessing.CollapseFrameForSingleSideEffect;
                 StructuredGraph newGraph = makeGraph(method, recursiveEntry, recursiveEntry, inliningPolicy(method), frameStateProcessing);
-                Debug.metric(new MethodDebugValueName("SnippetNodeCount", method)).add(newGraph.getNodeCount());
+                Debug.metric("SnippetNodeCount[%#s]", method).add(newGraph.getNodeCount());
                 if (!UseSnippetGraphCache) {
                     return newGraph;
                 }

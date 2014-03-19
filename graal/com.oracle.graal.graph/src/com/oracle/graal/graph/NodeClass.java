@@ -234,7 +234,7 @@ public final class NodeClass extends FieldIntrospection {
         }
 
         isLeafNode = (this.inputOffsets.length == 0 && this.successorOffsets.length == 0);
-        nodeIterableCount = Debug.metric("NodeIterable_" + shortName);
+        nodeIterableCount = Debug.metric("NodeIterable_%s", shortName);
     }
 
     @Override

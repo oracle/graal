@@ -289,9 +289,10 @@ public class GraalCompiler {
 
         if (Debug.isMeterEnabled()) {
             List<DataPatch> ldp = compilationResult.getDataReferences();
-            DebugMetric[] dms = new DebugMetric[Kind.values().length];
+            Kind[] kindValues = Kind.values();
+            DebugMetric[] dms = new DebugMetric[kindValues.length];
             for (int i = 0; i < dms.length; i++) {
-                dms[i] = Debug.metric("DataPatches-" + Kind.values()[i].toString());
+                dms[i] = Debug.metric("DataPatches-%s", kindValues[i]);
             }
 
             for (DataPatch dp : ldp) {
