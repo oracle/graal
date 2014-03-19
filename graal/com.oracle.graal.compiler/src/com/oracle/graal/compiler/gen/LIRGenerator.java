@@ -74,7 +74,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool, LIRTypeTool, LIR
     private final NodeMap<Value> nodeOperands;
     private final DebugInfoBuilder debugInfoBuilder;
 
-    protected Block currentBlock;
+    protected AbstractBlock<?> currentBlock;
     private final int traceLevel;
     private final boolean printIRWithLIR;
 
@@ -250,13 +250,14 @@ public abstract class LIRGenerator implements LIRGeneratorTool, LIRTypeTool, LIR
                         constantLoads = new HashMap<>();
                     }
                     LoadConstant load = constantLoads.get(value);
+                    assert currentBlock instanceof Block;
                     if (load == null) {
                         int index = res.getLIR().getLIRforBlock(currentBlock).size();
                         loadedValue = emitMove(value);
                         LIRInstruction op = res.getLIR().getLIRforBlock(currentBlock).get(index);
-                        constantLoads.put(value, new LoadConstant(loadedValue, currentBlock, index, op));
+                        constantLoads.put(value, new LoadConstant(loadedValue, (Block) currentBlock, index, op));
                     } else {
-                        Block dominator = ControlFlowGraph.commonDominator(load.block, currentBlock);
+                        Block dominator = ControlFlowGraph.commonDominator(load.block, (Block) currentBlock);
                         loadedValue = load.variable;
                         if (dominator != load.block) {
                             load.unpin(res.getLIR());
@@ -341,7 +342,8 @@ public abstract class LIRGenerator implements LIRGeneratorTool, LIRTypeTool, LIR
         int suxIndex = currentBlock.getSuccessors().indexOf(result);
         assert suxIndex != -1 : "Block not in successor list of current block";
 
-        return LabelRef.forSuccessor(res.getLIR(), currentBlock, suxIndex);
+        assert currentBlock instanceof Block;
+        return LabelRef.forSuccessor(res.getLIR(), (Block) currentBlock, suxIndex);
     }
 
     /**
