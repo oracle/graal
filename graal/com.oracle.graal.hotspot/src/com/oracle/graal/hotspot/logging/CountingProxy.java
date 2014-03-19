@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.hotspot.logging;
 
+import java.io.*;
 import java.lang.reflect.*;
 import java.util.*;
 import java.util.concurrent.*;
@@ -94,16 +95,15 @@ public class CountingProxy<T> implements InvocationHandler {
         }
     }
 
-    // CheckStyle: stop system..print check
     protected void print() {
         long sum = 0;
+        PrintStream out = System.out;
         for (Map.Entry<Method, AtomicLong> entry : calls.entrySet()) {
             Method method = entry.getKey();
             long count = entry.getValue().get();
             sum += count;
-            System.out.println(delegate.getClass().getSimpleName() + "." + method.getName() + ": " + count);
+            out.println(delegate.getClass().getSimpleName() + "." + method.getName() + ": " + count);
         }
-        System.out.println(delegate.getClass().getSimpleName() + " calls: " + sum);
+        out.println(delegate.getClass().getSimpleName() + " calls: " + sum);
     }
-    // CheckStyle: resume system..print check
 }

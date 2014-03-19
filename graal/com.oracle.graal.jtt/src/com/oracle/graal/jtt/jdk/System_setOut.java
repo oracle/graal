@@ -46,18 +46,17 @@ public class System_setOut extends JTTTest {
         return sum;
     }
 
-    // CheckStyle: stop system..print check
     private static void doPrint(int n) {
+        PrintStream out = System.out;
         for (int i = 0; i < n; i++) {
-            System.out.print('x');
+            out.print('x');
         }
     }
 
     public static void main(String[] args) throws Exception {
-        System.out.println(test(10000));
+        PrintStream out = System.out;
+        out.println(test(10000));
     }
-
-    // CheckStyle: resume system..print check
 
     @LongTest
     public void run0() throws Throwable {
