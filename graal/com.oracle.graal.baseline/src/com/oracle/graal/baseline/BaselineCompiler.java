@@ -106,19 +106,24 @@ public class BaselineCompiler {
         } finally {
             filter.remove();
         }
-        // emitLIR
+        // begin fake cfg
         LIRBlock b = new LIRBlock(0);
         LIRBlock[] blocks = new LIRBlock[1];
         blocks[0] = b;
 
-        AbstractControlFlowGraph<?> cfg = new LIRControlFlowGraph(blocks, null);
+        AbstractControlFlowGraph<?> cfg = new LIRControlFlowGraph(blocks, new Loop[0]);
+
         BlocksToDoubles blockProbabilities = new BlocksToDoubles(blocks.length);
         blockProbabilities.put(b, 1);
+        // end fake cfg
 
+        // emitLIR
         List<? extends AbstractBlock<?>> linearScanOrder = ComputeBlockOrder.computeLinearScanOrder(blocks.length, b, blockProbabilities);
         List<? extends AbstractBlock<?>> codeEmittingOrder = ComputeBlockOrder.computeCodeEmittingOrder(blocks.length, b, blockProbabilities);
         LIR lir = new LIR(cfg, linearScanOrder, codeEmittingOrder);
+
         LIRGenerationResult lirGenRes = null;
+
         try (Scope ds = Debug.scope("BackEnd", lir)) {
             FrameMap frameMap = backend.newFrameMap();
             TargetDescription target = backend.getTarget();
@@ -127,7 +132,9 @@ public class BaselineCompiler {
             LIRGenerator lirGen = backend.newLIRGenerator(null, cc, lirGenRes);
 
             try (Scope s = Debug.scope("LIRGen", lirGen)) {
-                lirGen.doBlock(b);
+                for (AbstractBlock<?> block : linearScanOrder) {
+                    lirGen.doBlock(block, method);
+                }
                 // lirGen.beforeRegisterAllocation();
 
                 Debug.dump(lir, "After LIR generation");

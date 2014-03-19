@@ -4,7 +4,6 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.nodes.calc.*;
-import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.type.*;
 
 public interface LIRGeneratorCommon {
@@ -50,8 +49,6 @@ public interface LIRGeneratorCommon {
     Variable load(Value value);
 
     Value loadNonConst(Value value);
-
-    void doBlock(AbstractBlock<?> block);
 
     /**
      * Gets the ABI specific operand used to return a value of a given kind from a method.

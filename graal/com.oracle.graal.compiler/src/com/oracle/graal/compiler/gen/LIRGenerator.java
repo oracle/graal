@@ -29,6 +29,7 @@ import static com.oracle.graal.lir.LIRValueUtil.*;
 import static com.oracle.graal.nodes.ConstantNode.*;
 import static com.oracle.graal.phases.GraalOptions.*;
 
+import java.lang.reflect.*;
 import java.util.*;
 import java.util.Map.Entry;
 
@@ -57,7 +58,7 @@ import com.oracle.graal.phases.util.*;
 /**
  * This class traverses the HIR instructions and generates LIR instructions from them.
  */
-public abstract class LIRGenerator implements LIRGeneratorTool, LIRTypeTool, LIRGeneratorCommon, NodeBasedLIRGenerator {
+public abstract class LIRGenerator implements LIRGeneratorTool, LIRTypeTool, LIRGeneratorCommon, NodeBasedLIRGenerator, BaselineLIRGenerator {
 
     public static class Options {
         // @formatter:off
@@ -441,8 +442,16 @@ public abstract class LIRGenerator implements LIRGeneratorTool, LIRTypeTool, LIR
     /**
      * For Baseline compilation
      */
-    public void doBlock(AbstractBlock<?> block) {
+    public void doBlock(AbstractBlock<?> block, ResolvedJavaMethod method) {
         doBlockStart(block);
+
+        if (block == res.getLIR().getControlFlowGraph().getStartBlock()) {
+            assert block.getPredecessorCount() == 0;
+            emitPrologue(method);
+        } else {
+            assert block.getPredecessorCount() > 0;
+        }
+
         // add instruction
         emitAdd(Constant.forLong(42), Constant.forLong(73));
         doBlockEnd(block);
@@ -560,6 +569,33 @@ public abstract class LIRGenerator implements LIRGeneratorTool, LIRTypeTool, LIR
             Value paramValue = params[param.index()];
             assert paramValue.getKind() == param.getKind().getStackKind();
             setResult(param, emitMove(paramValue));
+        }
+    }
+
+    protected void emitPrologue(ResolvedJavaMethod method) {
+        CallingConvention incomingArguments = getCallingConvention();
+
+        Value[] params = new Value[incomingArguments.getArgumentCount()];
+        for (int i = 0; i < params.length; i++) {
+            params[i] = toStackKind(incomingArguments.getArgument(i));
+            if (ValueUtil.isStackSlot(params[i])) {
+                StackSlot slot = ValueUtil.asStackSlot(params[i]);
+                if (slot.isInCallerFrame() && !res.getLIR().hasArgInCallerFrame()) {
+                    res.getLIR().setHasArgInCallerFrame();
+                }
+            }
+        }
+
+        emitIncomingValues(params);
+
+        Signature sig = method.getSignature();
+        boolean isStatic = Modifier.isStatic(method.getModifiers());
+
+        for (int i = 0; i < sig.getParameterCount(!isStatic); i++) {
+            Value paramValue = params[i];
+            assert paramValue.getKind() == sig.getParameterKind(i).getStackKind();
+            // TODO setResult(param, emitMove(paramValue));
+            emitMove(paramValue);
         }
     }
 
