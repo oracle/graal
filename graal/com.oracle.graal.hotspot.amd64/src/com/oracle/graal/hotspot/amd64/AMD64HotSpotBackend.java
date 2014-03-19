@@ -41,8 +41,8 @@ import com.oracle.graal.asm.amd64.AMD64Assembler.ConditionFlag;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.bridge.*;
 import com.oracle.graal.hotspot.meta.*;
+import com.oracle.graal.hotspot.meta.HotSpotCodeCacheProvider.MarkId;
 import com.oracle.graal.hotspot.nfi.*;
 import com.oracle.graal.hotspot.stubs.*;
 import com.oracle.graal.lir.*;
@@ -249,7 +249,7 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend {
     public void emitCodePrefix(ResolvedJavaMethod installedCodeOwner, CompilationResultBuilder crb, AMD64MacroAssembler asm, RegisterConfig regConfig, HotSpotVMConfig config, Label verifiedEntry) {
         HotSpotProviders providers = getProviders();
         if (installedCodeOwner != null && !isStatic(installedCodeOwner.getModifiers())) {
-            crb.recordMark(Marks.MARK_UNVERIFIED_ENTRY);
+            MarkId.recordMark(crb, MarkId.UNVERIFIED_ENTRY);
             CallingConvention cc = regConfig.getCallingConvention(JavaCallee, null, new JavaType[]{providers.getMetaAccess().lookupJavaType(Object.class)}, getTarget(), false);
             Register inlineCacheKlass = rax; // see definition of IC_Klass in
                                              // c1_LIRAssembler_x86.cpp
@@ -271,9 +271,9 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend {
         }
 
         asm.align(config.codeEntryAlignment);
-        crb.recordMark(Marks.MARK_OSR_ENTRY);
+        MarkId.recordMark(crb, MarkId.OSR_ENTRY);
         asm.bind(verifiedEntry);
-        crb.recordMark(Marks.MARK_VERIFIED_ENTRY);
+        MarkId.recordMark(crb, MarkId.VERIFIED_ENTRY);
     }
 
     /**
@@ -293,9 +293,9 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend {
         HotSpotFrameContext frameContext = (HotSpotFrameContext) crb.frameContext;
         if (!frameContext.isStub) {
             HotSpotForeignCallsProvider foreignCalls = providers.getForeignCalls();
-            crb.recordMark(Marks.MARK_EXCEPTION_HANDLER_ENTRY);
+            MarkId.recordMark(crb, MarkId.EXCEPTION_HANDLER_ENTRY);
             AMD64Call.directCall(crb, asm, foreignCalls.lookupForeignCall(EXCEPTION_HANDLER), null, false, null);
-            crb.recordMark(Marks.MARK_DEOPT_HANDLER_ENTRY);
+            MarkId.recordMark(crb, MarkId.DEOPT_HANDLER_ENTRY);
             AMD64Call.directCall(crb, asm, foreignCalls.lookupForeignCall(DEOPT_HANDLER), null, false, null);
         } else {
             // No need to emit the stubs for entries back into the method since

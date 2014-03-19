@@ -335,8 +335,6 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
             ObjectState[] objStates = new ObjectState[states.size()];
             boolean materialized;
             do {
-                mergeEffects.clear();
-                afterMergeEffects.clear();
                 materialized = false;
                 for (VirtualObjectNode object : virtualObjTemp) {
                     for (int i = 0; i < objStates.length; i++) {
@@ -381,6 +379,11 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                     if (usages.isMarked(phi) && phi.type() == PhiType.Value) {
                         materialized |= processPhi(phi, states, virtualObjTemp);
                     }
+                }
+                if (materialized) {
+                    newState.objectStates.clear();
+                    mergeEffects.clear();
+                    afterMergeEffects.clear();
                 }
             } while (materialized);
         }

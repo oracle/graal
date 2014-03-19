@@ -34,7 +34,7 @@ import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.impl.*;
 import com.oracle.truffle.api.nodes.*;
-import com.oracle.truffle.api.nodes.NodeUtil.NodeFilter;
+import com.oracle.truffle.api.nodes.NodeUtil.NodeCountFilter;
 
 /**
  * Call target that is optimized by Graal upon surpassing a specific invocation threshold.
@@ -136,7 +136,7 @@ public final class OptimizedCallTarget extends DefaultCallTarget implements Loop
         return call(caller, args);
     }
 
-    private void invalidate(Node oldNode, Node newNode, String reason) {
+    private void invalidate(Node oldNode, Node newNode, CharSequence reason) {
         InstalledCode m = this.installedCode;
         if (m != null) {
             CompilerAsserts.neverPartOfCompilation();
@@ -147,7 +147,7 @@ public final class OptimizedCallTarget extends DefaultCallTarget implements Loop
         cancelInstalledTask(oldNode, newNode, reason);
     }
 
-    private void cancelInstalledTask(Node oldNode, Node newNode, String reason) {
+    private void cancelInstalledTask(Node oldNode, Node newNode, CharSequence reason) {
         Future<InstalledCode> task = this.installedCodeTask;
         if (task != null) {
             task.cancel(true);
@@ -298,7 +298,7 @@ public final class OptimizedCallTarget extends DefaultCallTarget implements Loop
     }
 
     @Override
-    public void nodeReplaced(Node oldNode, Node newNode, String reason) {
+    public void nodeReplaced(Node oldNode, Node newNode, CharSequence reason) {
         compilationProfile.reportNodeReplaced();
         invalidate(oldNode, newNode, reason);
 
@@ -382,7 +382,7 @@ public final class OptimizedCallTarget extends DefaultCallTarget implements Loop
         }
     }
 
-    private static void logOptimizingUnqueued(OptimizedCallTarget target, Node oldNode, Node newNode, String reason) {
+    private static void logOptimizingUnqueued(OptimizedCallTarget target, Node oldNode, Node newNode, CharSequence reason) {
         if (TraceTruffleCompilationDetails.getValue()) {
             Map<String, Object> properties = new LinkedHashMap<>();
             addReplaceProperties(properties, oldNode, newNode);
@@ -405,7 +405,7 @@ public final class OptimizedCallTarget extends DefaultCallTarget implements Loop
         }
     }
 
-    private static void logOptimizedInvalidated(OptimizedCallTarget target, Node oldNode, Node newNode, String reason) {
+    private static void logOptimizedInvalidated(OptimizedCallTarget target, Node oldNode, Node newNode, CharSequence reason) {
         if (TraceTruffleCompilation.getValue()) {
             Map<String, Object> properties = new LinkedHashMap<>();
             addReplaceProperties(properties, oldNode, newNode);
@@ -414,7 +414,7 @@ public final class OptimizedCallTarget extends DefaultCallTarget implements Loop
         }
     }
 
-    private static void logOptimizingFailed(OptimizedCallTarget callSite, String reason) {
+    private static void logOptimizingFailed(OptimizedCallTarget callSite, CharSequence reason) {
         Map<String, Object> properties = new LinkedHashMap<>();
         properties.put("Reason", reason);
         log(0, "opt fail", callSite.toString(), properties);
@@ -461,14 +461,14 @@ public final class OptimizedCallTarget extends DefaultCallTarget implements Loop
     }
 
     static void addASTSizeProperty(RootNode target, Map<String, Object> properties) {
-        int polymorphicCount = NodeUtil.countNodes(target.getRootNode(), new NodeFilter() {
-            public boolean isFiltered(Node node) {
+        int polymorphicCount = NodeUtil.countNodes(target.getRootNode(), new NodeCountFilter() {
+            public boolean isCounted(Node node) {
                 return node.getCost() == NodeCost.POLYMORPHIC;
             }
         }, true);
 
-        int megamorphicCount = NodeUtil.countNodes(target.getRootNode(), new NodeFilter() {
-            public boolean isFiltered(Node node) {
+        int megamorphicCount = NodeUtil.countNodes(target.getRootNode(), new NodeCountFilter() {
+            public boolean isCounted(Node node) {
                 return node.getCost() == NodeCost.MEGAMORPHIC;
             }
         }, true);

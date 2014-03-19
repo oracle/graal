@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,27 +20,26 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.bridge;
+package com.oracle.graal.phases.util;
+
+import com.oracle.graal.api.meta.*;
+import com.oracle.graal.phases.*;
 
 /**
- * Constants used to mark special positions in code being installed into the code cache by Graal C++
- * code. These constants need to be kept in sync with those of the same name defined in
- * graalCodeInstaller.hpp.
+ * Lazily computed debug value name composed of a prefix and a {@linkplain JavaMethod#getName()
+ * method name}.
  */
-public interface Marks {
+public class MethodDebugValueName extends LazyName {
+    final String prefix;
+    final JavaMethod method;
 
-    int MARK_VERIFIED_ENTRY = 1;
-    int MARK_UNVERIFIED_ENTRY = 2;
-    int MARK_OSR_ENTRY = 3;
-    int MARK_EXCEPTION_HANDLER_ENTRY = 4;
-    int MARK_DEOPT_HANDLER_ENTRY = 5;
-    int MARK_INVOKEINTERFACE = 6;
-    int MARK_INVOKEVIRTUAL = 7;
-    int MARK_INVOKESTATIC = 8;
-    int MARK_INVOKESPECIAL = 9;
-    int MARK_INLINE_INVOKE = 10;
-    int MARK_POLL_NEAR = 11;
-    int MARK_POLL_RETURN_NEAR = 12;
-    int MARK_POLL_FAR = 13;
-    int MARK_POLL_RETURN_FAR = 14;
+    public MethodDebugValueName(String prefix, JavaMethod method) {
+        this.prefix = prefix;
+        this.method = method;
+    }
+
+    @Override
+    public String createString() {
+        return prefix + "[" + method.getName() + "]";
+    }
 }

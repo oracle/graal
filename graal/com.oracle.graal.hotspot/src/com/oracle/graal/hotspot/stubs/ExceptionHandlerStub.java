@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,16 +31,16 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.bridge.*;
 import com.oracle.graal.hotspot.meta.*;
+import com.oracle.graal.hotspot.meta.HotSpotCodeCacheProvider.MarkId;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.replacements.Snippet.*;
 import com.oracle.graal.word.*;
 
 /**
- * Stub called by the {@linkplain Marks#MARK_EXCEPTION_HANDLER_ENTRY exception handler entry point}
- * in a compiled method. This entry point is used when returning to a method to handle an exception
+ * Stub called by the {@linkplain MarkId#EXCEPTION_HANDLER_ENTRY exception handler entry point} in a
+ * compiled method. This entry point is used when returning to a method to handle an exception
  * thrown by a callee. It is not used for routing implicit exceptions. Therefore, it does not need
  * to save any registers as HotSpot uses a caller save convention.
  * <p>

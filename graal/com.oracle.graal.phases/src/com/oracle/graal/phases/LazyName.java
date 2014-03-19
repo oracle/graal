@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,37 +20,41 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.api.meta;
+package com.oracle.graal.phases;
 
-import java.util.*;
+import com.oracle.graal.debug.*;
 
 /**
- * A {@link LocationIdentity} wrapping an object.
+ * A name whose {@link String} value is computed only when it is needed. This is useful in
+ * combination with debugging facilities such as {@link Debug#scope(CharSequence, Object...)} where
+ * the {@link String} value of a name is only needed if debugging is enabled.
  */
-public final class ObjectLocationIdentity implements LocationIdentity {
+public abstract class LazyName implements CharSequence {
 
-    private static IdentityHashMap<Object, LocationIdentity> map = new IdentityHashMap<>();
+    private String value;
 
-    private Object object;
-
-    public static LocationIdentity create(Object object) {
-        synchronized (map) {
-            if (map.containsKey(object)) {
-                return map.get(object);
-            } else {
-                ObjectLocationIdentity locationIdentity = new ObjectLocationIdentity(object);
-                map.put(object, locationIdentity);
-                return locationIdentity;
-            }
-        }
+    public int length() {
+        return toString().length();
     }
 
-    private ObjectLocationIdentity(Object object) {
-        this.object = object;
+    public char charAt(int index) {
+        return toString().charAt(index);
+    }
+
+    public CharSequence subSequence(int start, int end) {
+        return toString().subSequence(start, end);
     }
 
     @Override
-    public String toString() {
-        return "Identity(" + object + ")";
+    public final String toString() {
+        if (value == null) {
+            value = createString();
+        }
+        return value;
     }
+
+    /**
+     * Creates the {@link String} value of this name.
+     */
+    protected abstract String createString();
 }

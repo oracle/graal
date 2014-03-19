@@ -99,7 +99,7 @@ public class ReplacementsImpl implements Replacements {
                 FrameStateProcessing frameStateProcessing = method.getAnnotation(Snippet.class).removeAllFrameStates() ? FrameStateProcessing.Removal
                                 : FrameStateProcessing.CollapseFrameForSingleSideEffect;
                 StructuredGraph newGraph = makeGraph(method, recursiveEntry, recursiveEntry, inliningPolicy(method), frameStateProcessing);
-                Debug.metric("SnippetNodeCount[" + method.getName() + "]").add(newGraph.getNodeCount());
+                Debug.metric(new MethodDebugValueName("SnippetNodeCount", method)).add(newGraph.getNodeCount());
                 if (!UseSnippetGraphCache) {
                     return newGraph;
                 }
@@ -201,8 +201,8 @@ public class ReplacementsImpl implements Replacements {
                     }
                 }
             }
-            // We don't have per method guards for macro substitutions but at least respect the
-            // defaultGuard if there is one.
+            // We don't have per method guards for macro substitutions but at
+            // least respect the defaultGuard if there is one.
             if (macroSubstitution != null && (defaultGuard == null || defaultGuard.execute())) {
                 String originalName = originalName(substituteMethod, macroSubstitution.value());
                 JavaSignature originalSignature = originalSignature(substituteMethod, macroSubstitution.signature(), macroSubstitution.isStatic());

@@ -78,7 +78,9 @@ public abstract class EffectsPhase<PhaseContextT extends PhaseContext> extends B
                 graph.stopTrackingInputChange();
                 graph.stopTrackingUsagesDroppedZero();
 
-                Debug.dump(graph, "after " + getName() + " iteration");
+                if (Debug.isDumpEnabled()) {
+                    Debug.dump(graph, "after " + getName() + " iteration");
+                }
 
                 new DeadCodeEliminationPhase().apply(graph);
 

@@ -1422,6 +1422,22 @@ public class HotSpotVMConfig extends CompilerObject {
     @HotSpotVMConstant(name = "CompilerToVM::KLASS_TAG") @Stable public int compilerToVMKlassTag;
     @HotSpotVMConstant(name = "CompilerToVM::SYMBOL_TAG") @Stable public int compilerToVMSymbolTag;
 
+    @HotSpotVMConstant(name = "CodeInstaller::VERIFIED_ENTRY") @Stable public int codeInstallerMarkIdVerifiedEntry;
+    @HotSpotVMConstant(name = "CodeInstaller::UNVERIFIED_ENTRY") @Stable public int codeInstallerMarkIdUnverifiedEntry;
+    @HotSpotVMConstant(name = "CodeInstaller::OSR_ENTRY") @Stable public int codeInstallerMarkIdOsrEntry;
+    @HotSpotVMConstant(name = "CodeInstaller::EXCEPTION_HANDLER_ENTRY") @Stable public int codeInstallerMarkIdExceptionHandlerEntry;
+    @HotSpotVMConstant(name = "CodeInstaller::DEOPT_HANDLER_ENTRY") @Stable public int codeInstallerMarkIdDeoptHandlerEntry;
+    @HotSpotVMConstant(name = "CodeInstaller::INVOKEINTERFACE") @Stable public int codeInstallerMarkIdInvokeinterface;
+    @HotSpotVMConstant(name = "CodeInstaller::INVOKEVIRTUAL") @Stable public int codeInstallerMarkIdInvokevirtual;
+    @HotSpotVMConstant(name = "CodeInstaller::INVOKESTATIC") @Stable public int codeInstallerMarkIdInvokestatic;
+    @HotSpotVMConstant(name = "CodeInstaller::INVOKESPECIAL") @Stable public int codeInstallerMarkIdInvokespecial;
+    @HotSpotVMConstant(name = "CodeInstaller::INLINE_INVOKE") @Stable public int codeInstallerMarkIdInlineInvoke;
+    @HotSpotVMConstant(name = "CodeInstaller::POLL_NEAR") @Stable public int codeInstallerMarkIdPollNear;
+    @HotSpotVMConstant(name = "CodeInstaller::POLL_RETURN_NEAR") @Stable public int codeInstallerMarkIdPollReturnNear;
+    @HotSpotVMConstant(name = "CodeInstaller::POLL_FAR") @Stable public int codeInstallerMarkIdPollFar;
+    @HotSpotVMConstant(name = "CodeInstaller::POLL_RETURN_FAR") @Stable public int codeInstallerMarkIdPollReturnFar;
+    @HotSpotVMConstant(name = "CodeInstaller::INVOKE_INVALID") @Stable public int codeInstallerMarkIdInvokeInvalid;
+
     public boolean check() {
         for (Field f : getClass().getDeclaredFields()) {
             int modifiers = f.getModifiers();
