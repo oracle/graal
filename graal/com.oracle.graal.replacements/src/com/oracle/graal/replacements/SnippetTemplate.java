@@ -24,6 +24,8 @@ package com.oracle.graal.replacements;
 
 import static com.oracle.graal.api.meta.LocationIdentity.*;
 import static com.oracle.graal.api.meta.MetaUtil.*;
+import static com.oracle.graal.debug.Debug.*;
+import static java.util.FormattableFlags.*;
 
 import java.io.*;
 import java.lang.reflect.*;
@@ -97,8 +99,8 @@ public class SnippetTemplate {
 
         protected SnippetInfo(ResolvedJavaMethod method) {
             this.method = method;
-            instantiationCounter = Debug.metric(new MethodDebugValueName("SnippetInstantiationCount", method));
-            instantiationTimer = Debug.timer(new MethodDebugValueName("SnippetInstantiationTime", method));
+            instantiationCounter = Debug.metric("SnippetInstantiationCount[%#s]", method);
+            instantiationTimer = Debug.timer("SnippetInstantiationTime[%#s]", method);
             assert Modifier.isStatic(method.getModifiers()) : "snippet method must be static: " + MetaUtil.format("%H.%n", method);
             int count = method.getSignature().getParameterCount(false);
             constantParameters = new boolean[count];
@@ -176,7 +178,7 @@ public class SnippetTemplate {
      * {@link SnippetTemplate#instantiate instantiated}
      * </ul>
      */
-    public static class Arguments {
+    public static class Arguments implements Formattable {
 
         protected final SnippetInfo info;
         protected final CacheKey cacheKey;
@@ -242,6 +244,30 @@ public class SnippetTemplate {
             }
             result.append(">");
             return result.toString();
+        }
+
+        public void formatTo(Formatter formatter, int flags, int width, int precision) {
+            if ((flags & ALTERNATE) == 0) {
+                formatter.format(applyFormattingFlagsAndWidth(toString(), flags, width));
+            } else {
+                StringBuilder sb = new StringBuilder();
+                sb.append(info.method.getName()).append('(');
+                String sep = "";
+                for (int i = 0; i < info.getParameterCount(); i++) {
+                    if (info.isConstantParameter(i)) {
+                        sb.append(sep);
+                        if (info.names[i] != null) {
+                            sb.append(info.names[i]);
+                        } else {
+                            sb.append(i);
+                        }
+                        sb.append('=').append(values[i]);
+                        sep = ", ";
+                    }
+                }
+                sb.append(")");
+                formatter.format(applyFormattingFlagsAndWidth(sb.toString(), flags & ~ALTERNATE, width));
+            }
         }
     }
 
@@ -440,38 +466,13 @@ public class SnippetTemplate {
         return false;
     }
 
-    private static String debugValueName(String category, Arguments args) {
-        if (Debug.isEnabled()) {
-            StringBuilder result = new StringBuilder(category).append('[');
-            SnippetInfo info = args.info;
-            result.append(info.method.getName()).append('(');
-            String sep = "";
-            for (int i = 0; i < info.getParameterCount(); i++) {
-                if (info.isConstantParameter(i)) {
-                    result.append(sep);
-                    if (info.names[i] != null) {
-                        result.append(info.names[i]);
-                    } else {
-                        result.append(i);
-                    }
-                    result.append('=').append(args.values[i]);
-                    sep = ", ";
-                }
-            }
-            result.append(")]");
-            return result.toString();
-
-        }
-        return null;
-    }
-
     /**
      * Creates a snippet template.
      */
     protected SnippetTemplate(final Providers providers, Arguments args) {
         StructuredGraph snippetGraph = providers.getReplacements().getSnippet(args.info.method);
-        instantiationTimer = Debug.timer(debugValueName("SnippetTemplateInstantiationTime", args));
-        instantiationCounter = Debug.metric(debugValueName("SnippetTemplateInstantiationCount", args));
+        instantiationTimer = Debug.timer("SnippetTemplateInstantiationTime[%#s]", args);
+        instantiationCounter = Debug.metric("SnippetTemplateInstantiationCount[%#s]", args);
 
         ResolvedJavaMethod method = snippetGraph.method();
         Signature signature = method.getSignature();
@@ -665,7 +666,7 @@ public class SnippetTemplate {
             }
         }
 
-        Debug.metric(debugValueName("SnippetTemplateNodeCount", args)).add(nodes.size());
+        Debug.metric("SnippetTemplateNodeCount[%#s]", args).add(nodes.size());
         args.info.notifyNewTemplate();
         Debug.dump(snippet, "SnippetTemplate final state");
     }

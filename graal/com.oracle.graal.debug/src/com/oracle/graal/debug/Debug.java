@@ -23,6 +23,7 @@
 package com.oracle.graal.debug;
 
 import static com.oracle.graal.debug.Debug.Initialization.*;
+import static java.util.FormattableFlags.*;
 
 import java.io.*;
 import java.util.*;
@@ -167,9 +168,9 @@ public class Debug {
      * @return the scope entered by this method which will be exited when its {@link Scope#close()}
      *         method is called
      */
-    public static Scope scope(CharSequence name, Object... context) {
+    public static Scope scope(Object name, Object... context) {
         if (ENABLED) {
-            return DebugScope.getInstance().scope(name, null, context);
+            return DebugScope.getInstance().scope(convertFormatArg(name).toString(), null, context);
         } else {
             return null;
         }
@@ -380,13 +381,86 @@ public class Debug {
      * A disabled metric has virtually no overhead.
      */
     public static DebugMetric metric(CharSequence name) {
-        if (enabledMetrics != null && enabledMetrics.contains(name.toString())) {
-            return new MetricImpl(name.toString(), false);
-        } else if (ENABLED) {
-            return new MetricImpl(name.toString(), true);
-        } else {
+        if (enabledMetrics == null && !ENABLED) {
             return VOID_METRIC;
         }
+        return createMetric("%s", name, null);
+    }
+
+    public static String applyFormattingFlagsAndWidth(String s, int flags, int width) {
+        if (flags == 0 && width < 0) {
+            return s;
+        }
+        StringBuilder sb = new StringBuilder(s);
+
+        // apply width and justification
+        int len = sb.length();
+        if (len < width) {
+            for (int i = 0; i < width - len; i++) {
+                if ((flags & LEFT_JUSTIFY) == LEFT_JUSTIFY) {
+                    sb.append(' ');
+                } else {
+                    sb.insert(0, ' ');
+                }
+            }
+        }
+
+        String res = sb.toString();
+        if ((flags & UPPERCASE) == UPPERCASE) {
+            res = res.toUpperCase();
+        }
+        return res;
+    }
+
+    /**
+     * Creates a debug metric. Invoking this method is equivalent to:
+     * 
+     * <pre>
+     * Debug.metric(format, arg, null)
+     * </pre>
+     * 
+     * except that the string formatting only happens if metering is enabled.
+     * 
+     * @see #metric(String, Object, Object)
+     */
+    public static DebugMetric metric(String format, Object arg) {
+        if (enabledMetrics == null && !ENABLED) {
+            return VOID_METRIC;
+        }
+        return createMetric(format, arg, null);
+    }
+
+    /**
+     * Creates a debug metric. Invoking this method is equivalent to:
+     * 
+     * <pre>
+     * Debug.metric(String.format(format, arg1, arg2))
+     * </pre>
+     * 
+     * except that the string formatting only happens if metering is enabled. In addition, each
+     * argument is subject to the following type based conversion before being passed as an argument
+     * to {@link String#format(String, Object...)}:
+     * 
+     * <pre>
+     *     Type          | Conversion
+     * ------------------+-----------------
+     *  java.lang.Class  | arg.getSimpleName()
+     *                   |
+     * </pre>
+     * 
+     * @see #metric(CharSequence)
+     */
+    public static DebugMetric metric(String format, Object arg1, Object arg2) {
+        if (enabledMetrics == null && !ENABLED) {
+            return VOID_METRIC;
+        }
+        return createMetric(format, arg1, arg2);
+    }
+
+    private static DebugMetric createMetric(String format, Object arg1, Object arg2) {
+        String name = formatDebugName(format, arg1, arg2);
+        boolean conditional = enabledMetrics != null && enabledMetrics.contains(name);
+        return new MetricImpl(name, conditional);
     }
 
     /**
@@ -533,13 +607,72 @@ public class Debug {
      * A disabled timer has virtually no overhead.
      */
     public static DebugTimer timer(CharSequence name) {
-        if (enabledTimers != null && enabledTimers.contains(name.toString())) {
-            return new TimerImpl(name.toString(), false);
-        } else if (ENABLED) {
-            return new TimerImpl(name.toString(), true);
-        } else {
+        if (enabledTimers == null && !ENABLED) {
             return VOID_TIMER;
         }
+        return createTimer("%s", name, null);
+    }
+
+    /**
+     * Creates a debug timer. Invoking this method is equivalent to:
+     * 
+     * <pre>
+     * Debug.timer(format, arg, null)
+     * </pre>
+     * 
+     * except that the string formatting only happens if timing is enabled.
+     * 
+     * @see #timer(String, Object, Object)
+     */
+    public static DebugTimer timer(String format, Object arg) {
+        if (enabledTimers == null && !ENABLED) {
+            return VOID_TIMER;
+        }
+        return createTimer(format, arg, null);
+    }
+
+    /**
+     * Creates a debug timer. Invoking this method is equivalent to:
+     * 
+     * <pre>
+     * Debug.timer(String.format(format, arg1, arg2))
+     * </pre>
+     * 
+     * except that the string formatting only happens if timing is enabled. In addition, each
+     * argument is subject to the following type based conversion before being passed as an argument
+     * to {@link String#format(String, Object...)}:
+     * 
+     * <pre>
+     *     Type          | Conversion
+     * ------------------+-----------------
+     *  java.lang.Class  | arg.getSimpleName()
+     *                   |
+     * </pre>
+     * 
+     * @see #timer(CharSequence)
+     */
+    public static DebugTimer timer(String format, Object arg1, Object arg2) {
+        if (enabledTimers == null && !ENABLED) {
+            return VOID_TIMER;
+        }
+        return createTimer(format, arg1, arg2);
+    }
+
+    public static Object convertFormatArg(Object arg) {
+        if (arg instanceof Class) {
+            return ((Class) arg).getSimpleName();
+        }
+        return arg;
+    }
+
+    private static String formatDebugName(String format, Object arg1, Object arg2) {
+        return String.format(format, convertFormatArg(arg1), convertFormatArg(arg2));
+    }
+
+    private static DebugTimer createTimer(String format, Object arg1, Object arg2) {
+        String name = formatDebugName(format, arg1, arg2);
+        boolean conditional = enabledTimers != null && enabledTimers.contains(name);
+        return new TimerImpl(name, conditional);
     }
 
     private static final DebugTimer VOID_TIMER = new DebugTimer() {
