@@ -135,7 +135,7 @@ public class BaselineCompiler {
                 for (AbstractBlock<?> block : linearScanOrder) {
                     lirGen.doBlock(block, method);
                 }
-                // lirGen.beforeRegisterAllocation();
+                lirGen.beforeRegisterAllocation();
 
                 Debug.dump(lir, "After LIR generation");
             } catch (Throwable e) {

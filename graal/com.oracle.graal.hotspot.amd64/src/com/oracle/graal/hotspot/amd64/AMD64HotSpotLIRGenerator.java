@@ -59,7 +59,6 @@ import com.oracle.graal.lir.amd64.AMD64Move.StoreConstantOp;
 import com.oracle.graal.lir.amd64.AMD64Move.StoreOp;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
-import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
@@ -164,14 +163,46 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
 
         emitIncomingValues(params);
 
-        assert currentBlock instanceof Block;
-        saveRbp = new SaveRbp(new NoOp((Block) currentBlock, res.getLIR().getLIRforBlock(currentBlock).size()));
+        saveRbp = new SaveRbp(new NoOp(currentBlock, res.getLIR().getLIRforBlock(currentBlock).size()));
         append(saveRbp.placeholder);
 
         for (ParameterNode param : graph.getNodes(ParameterNode.class)) {
             Value paramValue = params[param.index()];
             assert paramValue.getKind() == param.getKind().getStackKind();
             setResult(param, emitMove(paramValue));
+        }
+    }
+
+    @Override
+    protected void emitPrologue(ResolvedJavaMethod method) {
+
+        CallingConvention incomingArguments = getCallingConvention();
+
+        Value[] params = new Value[incomingArguments.getArgumentCount() + 1];
+        for (int i = 0; i < params.length - 1; i++) {
+            params[i] = toStackKind(incomingArguments.getArgument(i));
+            if (isStackSlot(params[i])) {
+                StackSlot slot = ValueUtil.asStackSlot(params[i]);
+                if (slot.isInCallerFrame() && !res.getLIR().hasArgInCallerFrame()) {
+                    res.getLIR().setHasArgInCallerFrame();
+                }
+            }
+        }
+        params[params.length - 1] = rbp.asValue(Kind.Long);
+
+        emitIncomingValues(params);
+
+        saveRbp = new SaveRbp(new NoOp(currentBlock, res.getLIR().getLIRforBlock(currentBlock).size()));
+        append(saveRbp.placeholder);
+
+        Signature sig = method.getSignature();
+        boolean isStatic = Modifier.isStatic(method.getModifiers());
+
+        for (int i = 0; i < sig.getParameterCount(!isStatic); i++) {
+            Value paramValue = params[i];
+            assert paramValue.getKind() == sig.getParameterKind(i).getStackKind();
+            // TODO setResult(param, emitMove(paramValue));
+            emitMove(paramValue);
         }
     }
 

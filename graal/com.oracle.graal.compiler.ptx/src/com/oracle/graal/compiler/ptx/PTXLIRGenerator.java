@@ -171,6 +171,49 @@ public class PTXLIRGenerator extends LIRGenerator {
         }
     }
 
+    @Override
+    public void emitPrologue(ResolvedJavaMethod method) {
+        // Need to emit .param directives based on incoming arguments and return value
+        CallingConvention incomingArguments = getCallingConvention();
+        Object returnObject = incomingArguments.getReturn();
+        AllocatableValue[] params = incomingArguments.getArguments();
+        int argCount = incomingArguments.getArgumentCount();
+
+        if (returnObject.equals(Value.ILLEGAL)) {
+            params = incomingArguments.getArguments();
+            append(new PTXParameterOp(params, false));
+        } else {
+            argCount = incomingArguments.getArgumentCount();
+            params = new Variable[argCount + 1];
+            for (int i = 0; i < argCount; i++) {
+                params[i] = incomingArguments.getArgument(i);
+            }
+            params[argCount] = (Variable) returnObject;
+            append(new PTXParameterOp(params, true));
+        }
+
+        Signature sig = method.getSignature();
+        boolean isStatic = Modifier.isStatic(method.getModifiers());
+
+        for (int i = 0; i < sig.getParameterCount(!isStatic); i++) {
+            Value paramValue = params[i];
+            int parameterIndex = i;
+            if (!isStatic) {
+                parameterIndex--;
+            }
+            Warp warpAnnotation = parameterIndex >= 0 ? MetaUtil.getParameterAnnotation(Warp.class, parameterIndex, method) : null;
+            if (warpAnnotation != null) {
+                // setResult(param, emitWarpParam(paramValue.getKind().getStackKind(),
+                // warpAnnotation));
+                emitWarpParam(paramValue.getKind().getStackKind(), warpAnnotation);
+            } else {
+                // setResult(param, emitLoadParam(paramValue.getKind().getStackKind(), paramValue,
+                // null));
+                emitLoadParam(paramValue.getKind().getStackKind(), paramValue, null);
+            }
+        }
+    }
+
     public Variable emitWarpParam(Kind kind, Warp annotation) {
         Variable result = newVariable(kind);
         Variable tid = newVariable(Kind.Char);
