@@ -30,7 +30,7 @@ public class BlockTestNode extends AbstractTestNode {
     @Children private final AbstractTestNode[] statements;
 
     public BlockTestNode(AbstractTestNode[] statements) {
-        this.statements = adoptChildren(statements);
+        this.statements = statements;
     }
 
     @ExplodeLoop
