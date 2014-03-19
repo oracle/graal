@@ -93,11 +93,11 @@ class VirtualizerToolImpl implements VirtualizerTool {
             ObjectState valueState = closure.getObjectState(state, value);
             if (valueState == null) {
                 newValue = getReplacedValue(value);
-                assert unsafe || obj.getEntry(index) == null || obj.getEntry(index).kind() == newValue.kind() || (isObjectEntry(obj.getEntry(index)) && isObjectEntry(newValue));
+                assert unsafe || obj.getEntry(index) == null || obj.getEntry(index).getKind() == newValue.getKind() || (isObjectEntry(obj.getEntry(index)) && isObjectEntry(newValue));
             } else {
                 if (valueState.getState() != EscapeState.Virtual) {
                     newValue = valueState.getMaterializedValue();
-                    assert newValue.kind() == Kind.Object;
+                    assert newValue.getKind() == Kind.Object;
                 } else {
                     newValue = valueState.getVirtualObject();
                 }
@@ -108,7 +108,7 @@ class VirtualizerToolImpl implements VirtualizerTool {
     }
 
     private static boolean isObjectEntry(ValueNode value) {
-        return value.kind() == Kind.Object || value instanceof VirtualObjectNode;
+        return value.getKind() == Kind.Object || value instanceof VirtualObjectNode;
     }
 
     @Override

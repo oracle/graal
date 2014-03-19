@@ -186,7 +186,7 @@ public class PhiNode extends FloatingNode implements Canonicalizable, GuardingNo
 
     public void addInput(ValueNode x) {
         assert !(x instanceof PhiNode) || ((PhiNode) x).merge() instanceof LoopBeginNode || ((PhiNode) x).merge() != this.merge();
-        assert x.kind() == kind() || type != PhiType.Value;
+        assert x.getKind() == getKind() || type != PhiType.Value;
         values.add(x);
     }
 

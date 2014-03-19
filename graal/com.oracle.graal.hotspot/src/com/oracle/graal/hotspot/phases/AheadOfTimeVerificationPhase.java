@@ -51,7 +51,7 @@ public class AheadOfTimeVerificationPhase extends VerifyPhase<PhaseContext> {
     }
 
     private static boolean isObject(ConstantNode node) {
-        return node.kind() == Kind.Object;
+        return node.getKind() == Kind.Object;
     }
 
     private static boolean isNullReference(ConstantNode node) {

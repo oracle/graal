@@ -157,7 +157,7 @@ public class InvokeWithExceptionNode extends ControlSplitNode implements Invoke,
 
     public FrameState stateDuring() {
         FrameState tempStateAfter = stateAfter();
-        FrameState stateDuring = tempStateAfter.duplicateModified(bci(), tempStateAfter.rethrowException(), kind());
+        FrameState stateDuring = tempStateAfter.duplicateModified(bci(), tempStateAfter.rethrowException(), getKind());
         stateDuring.setDuringCall(true);
         return stateDuring;
     }
@@ -177,7 +177,7 @@ public class InvokeWithExceptionNode extends ControlSplitNode implements Invoke,
 
     @Override
     public void intrinsify(Node node) {
-        assert !(node instanceof ValueNode) || (((ValueNode) node).kind() == Kind.Void) == (kind() == Kind.Void);
+        assert !(node instanceof ValueNode) || (((ValueNode) node).getKind() == Kind.Void) == (getKind() == Kind.Void);
         CallTargetNode call = callTarget;
         FrameState state = stateAfter();
         killExceptionEdge();
@@ -186,7 +186,7 @@ public class InvokeWithExceptionNode extends ControlSplitNode implements Invoke,
             stateSplit.setStateAfter(state);
         }
         if (node == null) {
-            assert kind() == Kind.Void && usages().isEmpty();
+            assert getKind() == Kind.Void && usages().isEmpty();
             graph().removeSplit(this, next());
         } else if (node instanceof ControlSinkNode) {
             this.replaceAtPredecessor(node);

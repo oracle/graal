@@ -229,7 +229,7 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
                     }
                 }
                 if (phi) {
-                    PhiNode phiNode = getCachedPhi(entry, value.kind());
+                    PhiNode phiNode = getCachedPhi(entry, value.getKind());
                     mergeEffects.addFloatingNode(phiNode, "mergeReadCache");
                     for (int i = 0; i < states.size(); i++) {
                         afterMergeEffects.addPhiInput(phiNode, states.get(i).getCacheEntry(key));
@@ -240,7 +240,7 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
                 }
             }
             for (PhiNode phi : merge.phis()) {
-                if (phi.kind() == Kind.Object) {
+                if (phi.getKind() == Kind.Object) {
                     for (Map.Entry<CacheEntry<?>, ValueNode> entry : states.get(0).readCache.entrySet()) {
                         if (entry.getKey().object == phi.valueAt(0)) {
                             mergeReadCachePhi(phi, entry.getKey(), states);
@@ -262,7 +262,7 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
             }
 
             CacheEntry<?> newIdentifier = identifier.duplicateWithObject(phi);
-            PhiNode phiNode = getCachedPhi(newIdentifier, values[0].kind());
+            PhiNode phiNode = getCachedPhi(newIdentifier, values[0].getKind());
             mergeEffects.addFloatingNode(phiNode, "mergeReadCachePhi");
             for (int i = 0; i < values.length; i++) {
                 afterMergeEffects.addPhiInput(phiNode, values[i]);

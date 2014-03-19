@@ -79,12 +79,12 @@ public class NativeCallStubGraphBuilder {
 
             // box result
             BoxNode boxedResult;
-            if (callNode.kind() != Kind.Void) {
-                if (callNode.kind() == Kind.Object) {
+            if (callNode.getKind() != Kind.Void) {
+                if (callNode.getKind() == Kind.Object) {
                     throw new IllegalArgumentException("Return type not supported: " + returnType.getName());
                 }
-                ResolvedJavaType type = providers.getMetaAccess().lookupJavaType(callNode.kind().toBoxedJavaClass());
-                boxedResult = g.unique(new BoxNode(callNode, type, callNode.kind()));
+                ResolvedJavaType type = providers.getMetaAccess().lookupJavaType(callNode.getKind().toBoxedJavaClass());
+                boxedResult = g.unique(new BoxNode(callNode, type, callNode.getKind()));
             } else {
                 boxedResult = g.unique(new BoxNode(ConstantNode.forLong(0, g), providers.getMetaAccess().lookupJavaType(Long.class), Kind.Long));
             }

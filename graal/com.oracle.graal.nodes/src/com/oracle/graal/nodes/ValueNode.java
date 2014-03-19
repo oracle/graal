@@ -31,7 +31,7 @@ import com.oracle.graal.nodes.type.*;
  * This class represents a value within the graph, including local variables, phis, and all other
  * instructions.
  */
-public abstract class ValueNode extends ScheduledNode implements StampProvider {
+public abstract class ValueNode extends ScheduledNode implements StampProvider, KindInterface {
 
     /**
      * The kind of this value. This is {@link Kind#Void} for instructions that produce no value.
@@ -79,7 +79,7 @@ public abstract class ValueNode extends ScheduledNode implements StampProvider {
         return false;
     }
 
-    public final Kind kind() {
+    public final Kind getKind() {
         return stamp().getStackKind();
     }
 

@@ -58,8 +58,8 @@ public class DirectObjectStoreNode extends FixedWithNextNode implements Lowerabl
 
     @Override
     public void lower(LoweringTool tool) {
-        IndexedLocationNode location = IndexedLocationNode.create(locationIdentity, value.kind(), displacement, offset, graph(), 1);
-        WriteNode write = graph().add(new WriteNode(object, value, location, BarrierType.NONE, value.kind() == Kind.Object));
+        IndexedLocationNode location = IndexedLocationNode.create(locationIdentity, value.getKind(), displacement, offset, graph(), 1);
+        WriteNode write = graph().add(new WriteNode(object, value, location, BarrierType.NONE, value.getKind() == Kind.Object));
         graph().replaceFixedWithFixed(this, write);
     }
 }

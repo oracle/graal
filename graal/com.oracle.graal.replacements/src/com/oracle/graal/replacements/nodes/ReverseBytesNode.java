@@ -37,8 +37,8 @@ public class ReverseBytesNode extends FloatingNode implements LIRGenLowerable, C
     @Input private ValueNode value;
 
     public ReverseBytesNode(ValueNode value) {
-        super(StampFactory.forKind(value.kind()));
-        assert kind().isNumericInteger();
+        super(StampFactory.forKind(value.getKind()));
+        assert getKind().isNumericInteger();
         this.value = value;
     }
 
@@ -46,9 +46,9 @@ public class ReverseBytesNode extends FloatingNode implements LIRGenLowerable, C
     public Node canonical(CanonicalizerTool tool) {
         if (value.isConstant()) {
             long v = value.asConstant().asLong();
-            if (kind().getStackKind() == Kind.Int) {
+            if (getKind().getStackKind() == Kind.Int) {
                 return ConstantNode.forInt(Integer.reverseBytes((int) v), graph());
-            } else if (kind() == Kind.Long) {
+            } else if (getKind() == Kind.Long) {
                 return ConstantNode.forLong(Long.reverseBytes(v), graph());
             }
         }
@@ -67,7 +67,7 @@ public class ReverseBytesNode extends FloatingNode implements LIRGenLowerable, C
 
     @Override
     public void generate(LIRGenerator gen) {
-        Variable result = gen.newVariable(value.kind());
+        Variable result = gen.newVariable(value.getKind());
         gen.emitByteSwap(result, gen.operand(value));
         gen.setResult(this, result);
     }

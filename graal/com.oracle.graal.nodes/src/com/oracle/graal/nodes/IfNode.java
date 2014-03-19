@@ -356,10 +356,10 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                         boolean inverted = trueEnd == merge.forwardEndAt(1);
                         ValueNode trueValue = singlePhi.valueAt(inverted ? 1 : 0);
                         ValueNode falseValue = singlePhi.valueAt(inverted ? 0 : 1);
-                        if (trueValue.kind() != falseValue.kind()) {
+                        if (trueValue.getKind() != falseValue.getKind()) {
                             return false;
                         }
-                        if (trueValue.kind() != Kind.Int && trueValue.kind() != Kind.Long) {
+                        if (trueValue.getKind() != Kind.Int && trueValue.getKind() != Kind.Long) {
                             return false;
                         }
                         ConditionalNode conditional = canonicalizeConditionalCascade(trueValue, falseValue);
@@ -379,10 +379,10 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
             ValueNode falseValue = falseEnd.result();
             ConditionalNode conditional = null;
             if (trueValue != null) {
-                if (trueValue.kind() != falseValue.kind()) {
+                if (trueValue.getKind() != falseValue.getKind()) {
                     return false;
                 }
-                if (trueValue.kind() != Kind.Int && trueValue.kind() != Kind.Long) {
+                if (trueValue.getKind() != Kind.Int && trueValue.getKind() != Kind.Long) {
                     return false;
                 }
                 conditional = canonicalizeConditionalCascade(trueValue, falseValue);

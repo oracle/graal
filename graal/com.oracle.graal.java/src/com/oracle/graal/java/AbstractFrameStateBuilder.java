@@ -3,22 +3,17 @@ package com.oracle.graal.java;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
 
-public abstract class AbstractFrameStateBuilder<T> {
+public abstract class AbstractFrameStateBuilder<T extends KindInterface> {
 
     protected final ResolvedJavaMethod method;
-    protected final StructuredGraph graph;
     protected int stackSize;
 
-    public AbstractFrameStateBuilder(ResolvedJavaMethod method, StructuredGraph graph) {
-        assert graph != null;
+    public AbstractFrameStateBuilder(ResolvedJavaMethod method) {
         this.method = method;
-        this.graph = graph;
     }
 
     protected AbstractFrameStateBuilder(AbstractFrameStateBuilder other) {
-        assert other.graph != null;
         this.method = other.method;
-        this.graph = other.graph;
     }
 
     /**
@@ -61,9 +56,8 @@ public abstract class AbstractFrameStateBuilder<T> {
     public abstract T loadLocal(int i);
 
     /**
-     * Stores a given local variable at the specified index. If the value occupies
-     * {@linkplain HIRFrameStateBuilder#isTwoSlot(Kind) two slots}, then the next local variable index
-     * is also overwritten.
+     * Stores a given local variable at the specified index. If the value occupies two slots, then
+     * the next local variable index is also overwritten.
      * 
      * @param i the index at which to store
      * @param x the instruction which produces the value for the local
@@ -192,11 +186,20 @@ public abstract class AbstractFrameStateBuilder<T> {
      */
     public abstract T peek(int argumentNumber);
 
+    public static int stackSlots(Kind kind) {
+        return isTwoSlot(kind) ? 2 : 1;
+    }
+
     /**
      * Clears all values on this stack.
      */
     public void clearStack() {
         stackSize = 0;
+    }
+
+    protected static boolean isTwoSlot(Kind kind) {
+        assert kind != Kind.Void && kind != Kind.Illegal;
+        return kind == Kind.Long || kind == Kind.Double;
     }
 
 }

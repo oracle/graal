@@ -49,6 +49,7 @@ public class HIRFrameStateBuilder extends AbstractFrameStateBuilder<ValueNode> {
     private final ValueNode[] stack;
     private ValueNode[] lockedObjects;
     private MonitorIdNode[] monitorIds;
+    private final StructuredGraph graph;
 
     /**
      * @see BytecodeFrame#rethrowException
@@ -56,13 +57,16 @@ public class HIRFrameStateBuilder extends AbstractFrameStateBuilder<ValueNode> {
     private boolean rethrowException;
 
     public HIRFrameStateBuilder(ResolvedJavaMethod method, StructuredGraph graph, boolean eagerResolve) {
-        super(method, graph);
+        super(method);
+
+        assert graph != null;
 
         this.locals = new ValueNode[method.getMaxLocals()];
         // we always need at least one stack slot (for exceptions)
         this.stack = new ValueNode[Math.max(1, method.getMaxStackSize())];
         this.lockedObjects = EMPTY_ARRAY;
         this.monitorIds = EMPTY_MONITOR_ARRAY;
+        this.graph = graph;
 
         int javaIndex = 0;
         int index = 0;
@@ -97,6 +101,8 @@ public class HIRFrameStateBuilder extends AbstractFrameStateBuilder<ValueNode> {
 
     private HIRFrameStateBuilder(HIRFrameStateBuilder other) {
         super(other);
+        assert other.graph != null;
+        graph = other.graph;
         locals = other.locals.clone();
         stack = other.stack.clone();
         lockedObjects = other.lockedObjects == EMPTY_ARRAY ? EMPTY_ARRAY : other.lockedObjects.clone();
@@ -150,7 +156,7 @@ public class HIRFrameStateBuilder extends AbstractFrameStateBuilder<ValueNode> {
         for (int i = 0; i < stackSize(); i++) {
             ValueNode x = stackAt(i);
             ValueNode y = other.stackAt(i);
-            if (x != y && (x == null || x.isDeleted() || y == null || y.isDeleted() || x.kind() != y.kind())) {
+            if (x != y && (x == null || x.isDeleted() || y == null || y.isDeleted() || x.getKind() != y.getKind())) {
                 return false;
             }
         }
@@ -185,7 +191,7 @@ public class HIRFrameStateBuilder extends AbstractFrameStateBuilder<ValueNode> {
             return null;
 
         } else if (block.isPhiAtMerge(currentValue)) {
-            if (otherValue == null || otherValue.isDeleted() || currentValue.kind() != otherValue.kind()) {
+            if (otherValue == null || otherValue.isDeleted() || currentValue.getKind() != otherValue.getKind()) {
                 propagateDelete((PhiNode) currentValue);
                 return null;
             }
@@ -194,11 +200,11 @@ public class HIRFrameStateBuilder extends AbstractFrameStateBuilder<ValueNode> {
 
         } else if (currentValue != otherValue) {
             assert !(block instanceof LoopBeginNode) : "Phi functions for loop headers are create eagerly for all locals and stack slots";
-            if (otherValue == null || otherValue.isDeleted() || currentValue.kind() != otherValue.kind()) {
+            if (otherValue == null || otherValue.isDeleted() || currentValue.getKind() != otherValue.getKind()) {
                 return null;
             }
 
-            PhiNode phi = graph.addWithoutUnique(new PhiNode(currentValue.kind(), block));
+            PhiNode phi = graph.addWithoutUnique(new PhiNode(currentValue.getKind(), block));
             for (int i = 0; i < block.phiPredecessorCount(); i++) {
                 phi.addInput(currentValue);
             }
@@ -296,7 +302,7 @@ public class HIRFrameStateBuilder extends AbstractFrameStateBuilder<ValueNode> {
         }
         assert !block.isPhiAtMerge(value) : "phi function for this block already created";
 
-        PhiNode phi = graph.addWithoutUnique(new PhiNode(value.kind(), block));
+        PhiNode phi = graph.addWithoutUnique(new PhiNode(value.getKind(), block));
         phi.addInput(value);
         return phi;
     }
@@ -364,7 +370,7 @@ public class HIRFrameStateBuilder extends AbstractFrameStateBuilder<ValueNode> {
      * @param object the object whose monitor will be locked.
      */
     public void pushLock(ValueNode object, MonitorIdNode monitorId) {
-        assert object.isAlive() && object.kind() == Kind.Object : "unexpected value: " + object;
+        assert object.isAlive() && object.getKind() == Kind.Object : "unexpected value: " + object;
         lockedObjects = Arrays.copyOf(lockedObjects, lockedObjects.length + 1);
         monitorIds = Arrays.copyOf(monitorIds, monitorIds.length + 1);
         lockedObjects[lockedObjects.length - 1] = object;
@@ -402,22 +408,22 @@ public class HIRFrameStateBuilder extends AbstractFrameStateBuilder<ValueNode> {
     public ValueNode loadLocal(int i) {
         ValueNode x = locals[i];
         assert !x.isDeleted();
-        assert !isTwoSlot(x.kind()) || locals[i + 1] == null;
-        assert i == 0 || locals[i - 1] == null || !isTwoSlot(locals[i - 1].kind());
+        assert !isTwoSlot(x.getKind()) || locals[i + 1] == null;
+        assert i == 0 || locals[i - 1] == null || !isTwoSlot(locals[i - 1].getKind());
         return x;
     }
 
     @Override
     public void storeLocal(int i, ValueNode x) {
-        assert x == null || x.isAlive() && x.kind() != Kind.Void && x.kind() != Kind.Illegal : "unexpected value: " + x;
+        assert x == null || x.isAlive() && x.getKind() != Kind.Void && x.getKind() != Kind.Illegal : "unexpected value: " + x;
         locals[i] = x;
-        if (x != null && isTwoSlot(x.kind())) {
+        if (x != null && isTwoSlot(x.getKind())) {
             // if this is a double word, then kill i+1
             locals[i + 1] = null;
         }
         if (x != null && i > 0) {
             ValueNode p = locals[i - 1];
-            if (p != null && isTwoSlot(p.kind())) {
+            if (p != null && isTwoSlot(p.getKind())) {
                 // if there was a double word at i - 1, then kill it
                 locals[i - 1] = null;
             }
@@ -426,13 +432,13 @@ public class HIRFrameStateBuilder extends AbstractFrameStateBuilder<ValueNode> {
 
     @Override
     public void storeStack(int i, ValueNode x) {
-        assert x == null || x.isAlive() && (stack[i] == null || x.kind() == stack[i].kind()) : "Method does not handle changes from one-slot to two-slot values or non-alive values";
+        assert x == null || x.isAlive() && (stack[i] == null || x.getKind() == stack[i].getKind()) : "Method does not handle changes from one-slot to two-slot values or non-alive values";
         stack[i] = x;
     }
 
     @Override
     public void push(Kind kind, ValueNode x) {
-        assert x.isAlive() && x.kind() != Kind.Void && x.kind() != Kind.Illegal;
+        assert x.isAlive() && x.getKind() != Kind.Void && x.getKind() != Kind.Illegal;
         xpush(assertKind(kind, x));
         if (isTwoSlot(kind)) {
             xpush(null);
@@ -441,7 +447,7 @@ public class HIRFrameStateBuilder extends AbstractFrameStateBuilder<ValueNode> {
 
     @Override
     public void xpush(ValueNode x) {
-        assert x == null || (x.isAlive() && x.kind() != Kind.Void && x.kind() != Kind.Illegal);
+        assert x == null || (x.isAlive() && x.getKind() != Kind.Void && x.getKind() != Kind.Illegal);
         stack[stackSize++] = x;
     }
 
@@ -532,7 +538,7 @@ public class HIRFrameStateBuilder extends AbstractFrameStateBuilder<ValueNode> {
             ValueNode element = stack[base + stackindex];
             assert element != null;
             r[argIndex++] = element;
-            stackindex += stackSlots(element.kind());
+            stackindex += stackSlots(element.getKind());
         }
         stackSize = base;
         return r;
@@ -544,20 +550,11 @@ public class HIRFrameStateBuilder extends AbstractFrameStateBuilder<ValueNode> {
         for (int i = 0; i < argumentNumber; i++) {
             if (stackAt(idx) == null) {
                 idx--;
-                assert isTwoSlot(stackAt(idx).kind());
+                assert isTwoSlot(stackAt(idx).getKind());
             }
             idx--;
         }
         return stackAt(idx);
-    }
-
-    public static int stackSlots(Kind kind) {
-        return isTwoSlot(kind) ? 2 : 1;
-    }
-
-    public static boolean isTwoSlot(Kind kind) {
-        assert kind != Kind.Void && kind != Kind.Illegal;
-        return kind == Kind.Long || kind == Kind.Double;
     }
 
     public boolean contains(ValueNode value) {

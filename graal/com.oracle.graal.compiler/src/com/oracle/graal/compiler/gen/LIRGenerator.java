@@ -305,7 +305,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool, LIRTypeTool, LIR
         assert (!isRegister(operand) || !attributes(asRegister(operand)).isAllocatable());
         assert nodeOperands == null || nodeOperands.get(x) == null : "operand cannot be set twice";
         assert operand != null && isLegal(operand) : "operand must be legal";
-        assert operand.getKind().getStackKind() == x.kind() || x.kind() == Kind.Illegal : operand.getKind().getStackKind() + " must match " + x.kind();
+        assert operand.getKind().getStackKind() == x.getKind() || x.getKind() == Kind.Illegal : operand.getKind().getStackKind() + " must match " + x.getKind();
         assert !(x instanceof VirtualObjectNode);
         nodeOperands.set(x, operand);
         return operand;
@@ -558,7 +558,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool, LIRTypeTool, LIR
 
         for (ParameterNode param : graph.getNodes(ParameterNode.class)) {
             Value paramValue = params[param.index()];
-            assert paramValue.getKind() == param.kind().getStackKind();
+            assert paramValue.getKind() == param.getKind().getStackKind();
             setResult(param, emitMove(paramValue));
         }
     }
@@ -571,7 +571,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool, LIRTypeTool, LIR
     public void visitReturn(ReturnNode x) {
         AllocatableValue operand = ILLEGAL;
         if (x.result() != null) {
-            operand = resultOperandFor(x.result().kind());
+            operand = resultOperandFor(x.result().getKind());
             emitMove(operand, operand(x.result()));
         }
         emitReturn(operand);
@@ -612,7 +612,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool, LIRTypeTool, LIR
     }
 
     protected PlatformKind getPhiKind(PhiNode phi) {
-        return phi.kind();
+        return phi.getKind();
     }
 
     private Value operandForPhi(PhiNode phi) {

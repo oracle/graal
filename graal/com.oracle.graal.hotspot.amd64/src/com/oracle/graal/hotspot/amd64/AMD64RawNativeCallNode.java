@@ -55,7 +55,7 @@ public class AMD64RawNativeCallNode extends FixedWithNextNode implements LIRGenL
         ResolvedJavaType returnType = stamp().javaType(gen.getMetaAccess());
         CallingConvention cc = generator.getCodeCache().getRegisterConfig().getCallingConvention(Type.NativeCall, returnType, parameterTypes, generator.target(), false);
         gen.emitCCall(functionPointer.asLong(), cc, parameter, countFloatingTypeArguments(args));
-        if (this.kind() != Kind.Void) {
+        if (this.getKind() != Kind.Void) {
             generator.setResult(this, gen.emitMove(cc.getReturn()));
         }
     }
@@ -63,7 +63,7 @@ public class AMD64RawNativeCallNode extends FixedWithNextNode implements LIRGenL
     private static int countFloatingTypeArguments(NodeInputList<ValueNode> args) {
         int count = 0;
         for (ValueNode n : args) {
-            if (n.kind() == Kind.Double || n.kind() == Kind.Float) {
+            if (n.getKind() == Kind.Double || n.getKind() == Kind.Float) {
                 count++;
             }
         }

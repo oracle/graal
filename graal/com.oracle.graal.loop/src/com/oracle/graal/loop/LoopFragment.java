@@ -332,7 +332,7 @@ public abstract class LoopFragment {
                     PhiNode phi;
                     switch (vpn.type()) {
                         case Value:
-                            phi = graph.addWithoutUnique(new PhiNode(vpn.kind(), merge));
+                            phi = graph.addWithoutUnique(new PhiNode(vpn.getKind(), merge));
                             break;
                         case Guard:
                             phi = graph.addWithoutUnique(new PhiNode(vpn.type(), merge));
