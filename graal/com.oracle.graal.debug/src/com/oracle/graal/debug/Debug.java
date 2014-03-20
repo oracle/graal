@@ -356,7 +356,9 @@ public class Debug {
 
     /**
      * Prints a message to the current debug scope's logging stream. This method must only be called
-     * if debugging is {@linkplain Debug#isEnabled() enabled}.
+     * if debugging is {@linkplain Debug#isEnabled() enabled} as it incurs allocation at the call
+     * site. If possible, call one of the other {@code log()} methods in this class that take a
+     * fixed number of parameters.
      * 
      * @param format a format string
      * @param args the arguments referenced by the format specifiers in {@code format}
