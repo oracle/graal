@@ -42,7 +42,7 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.java.*;
-import com.oracle.graal.java.BciBlockMapping.Block;
+import com.oracle.graal.java.BciBlockMapping.BciBlock;
 import com.oracle.graal.java.BciBlockMapping.ExceptionDispatchBlock;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
@@ -71,13 +71,18 @@ public class BaselineCompiler {
     private ProfilingInfo profilingInfo;
     private BytecodeStream stream;           // the bytecode stream
 
-    private Block currentBlock;
+    private Backend backend;
+    private LIRGenerator lirGen;
+    private LIRFrameStateBuilder frameState;
+    private LIRGenerationResult lirGenRes;
+
+    private BciBlock currentBlock;
 
     private ValueNode methodSynchronizedObject;
     private ExceptionDispatchBlock unwindBlock;
 
     private final GraphBuilderConfiguration graphBuilderConfig;
-    private Block[] loopHeaders;
+    private BciBlock[] loopHeaders;
 
     /**
      * Meters the number of actual bytecodes parsed.
@@ -92,6 +97,7 @@ public class BaselineCompiler {
                     CompilationResultBuilderFactory factory) {
         this.method = method;
         this.entryBCI = entryBCI;
+        this.backend = backend;
         profilingInfo = method.getProfilingInfo();
         assert method.getCode() != null : "method must contain bytecodes: " + method;
         this.stream = new BytecodeStream(method.getCode());
@@ -100,57 +106,13 @@ public class BaselineCompiler {
         methodSynchronizedObject = null;
         TTY.Filter filter = new TTY.Filter(PrintFilter.getValue(), method);
 
-        // build blocks
+        frameState = new LIRFrameStateBuilder(method);
+
+        // build blocks and LIR instructions
         try {
             build();
         } finally {
             filter.remove();
-        }
-        // begin fake cfg
-        LIRBlock b = new LIRBlock(0);
-        LIRBlock[] blocks = new LIRBlock[1];
-        blocks[0] = b;
-
-        AbstractControlFlowGraph<?> cfg = new LIRControlFlowGraph(blocks, new Loop[0]);
-
-        BlocksToDoubles blockProbabilities = new BlocksToDoubles(blocks.length);
-        blockProbabilities.put(b, 1);
-        // end fake cfg
-
-        // emitLIR
-        List<? extends AbstractBlock<?>> linearScanOrder = ComputeBlockOrder.computeLinearScanOrder(blocks.length, b, blockProbabilities);
-        List<? extends AbstractBlock<?>> codeEmittingOrder = ComputeBlockOrder.computeCodeEmittingOrder(blocks.length, b, blockProbabilities);
-        LIR lir = new LIR(cfg, linearScanOrder, codeEmittingOrder);
-
-        LIRGenerationResult lirGenRes = null;
-
-        try (Scope ds = Debug.scope("BackEnd", lir)) {
-            FrameMap frameMap = backend.newFrameMap();
-            TargetDescription target = backend.getTarget();
-            CallingConvention cc = CodeUtil.getCallingConvention(backend.getProviders().getCodeCache(), CallingConvention.Type.JavaCallee, method, false);
-            lirGenRes = backend.newLIRGenerationResult(lir, frameMap, null);
-            LIRGenerator lirGen = backend.newLIRGenerator(null, cc, lirGenRes);
-
-            try (Scope s = Debug.scope("LIRGen", lirGen)) {
-                for (AbstractBlock<?> block : linearScanOrder) {
-                    lirGen.doBlock(block, method);
-                }
-                lirGen.beforeRegisterAllocation();
-
-                Debug.dump(lir, "After LIR generation");
-            } catch (Throwable e) {
-                throw Debug.handle(e);
-            }
-
-            try (Scope s = Debug.scope("Allocator", lirGen)) {
-                if (backend.shouldAllocateRegisters()) {
-                    new LinearScan(target, lir, frameMap).allocate();
-                }
-            } catch (Throwable e) {
-                throw Debug.handle(e);
-            }
-        } catch (Throwable e) {
-            throw Debug.handle(e);
         }
 
         // emitCode
@@ -166,7 +128,7 @@ public class BaselineCompiler {
             TTY.println(MetaUtil.indent(MetaUtil.profileToString(profilingInfo, method, CodeUtil.NEW_LINE), "  "));
         }
 
-        Indent indent = Debug.logAndIndent("build graph for %s", method);
+        // Indent indent = Debug.logAndIndent("build graph for %s", method);
 
         // compute the block map, setup exception handlers and get the entrypoint(s)
         BciBlockMapping blockMap = BciBlockMapping.create(method);
@@ -183,11 +145,59 @@ public class BaselineCompiler {
             throw GraalInternalError.unimplemented("Handle start block as loop header");
         }
 
-        /*
-         * for (Block block : blockMap.blocks) { processBlock(block); }
-         */
+        // create the control flow graph
+        LIRControlFlowGraph cfg = new LIRControlFlowGraph(blockMap.blocks.toArray(new BciBlock[0]), new Loop[0]);
 
-        indent.outdent();
+        BlocksToDoubles blockProbabilities = new BlocksToDoubles(blockMap.blocks.size());
+        for (BciBlock b : blockMap.blocks) {
+            blockProbabilities.put(b, 1);
+        }
+
+        // create the LIR
+        List<? extends AbstractBlock<?>> linearScanOrder = ComputeBlockOrder.computeLinearScanOrder(blockMap.blocks.size(), blockMap.startBlock, blockProbabilities);
+        List<? extends AbstractBlock<?>> codeEmittingOrder = ComputeBlockOrder.computeCodeEmittingOrder(blockMap.blocks.size(), blockMap.startBlock, blockProbabilities);
+        LIR lir = new LIR(cfg, linearScanOrder, codeEmittingOrder);
+
+        FrameMap frameMap = backend.newFrameMap();
+        TargetDescription target = backend.getTarget();
+        CallingConvention cc = CodeUtil.getCallingConvention(backend.getProviders().getCodeCache(), CallingConvention.Type.JavaCallee, method, false);
+        this.lirGenRes = backend.newLIRGenerationResult(lir, frameMap, null);
+        this.lirGen = backend.newLIRGenerator(null, cc, lirGenRes);
+
+        try (Scope ds = Debug.scope("BackEnd", lir)) {
+            try (Scope s = Debug.scope("LIRGen", lirGen)) {
+
+                lirGen.emitPrologue(method);
+
+                // possibly add all the arguments to slots in the local variable array
+
+                for (BciBlock block : blockMap.blocks) {
+
+                    lirGen.doBlockStart(block);
+
+                    processBlock(block);
+
+                    lirGen.doBlockEnd(block);
+                }
+                // indent.outdent();
+
+                lirGen.beforeRegisterAllocation();
+                Debug.dump(lir, "After LIR generation");
+            } catch (Throwable e) {
+                throw Debug.handle(e);
+            }
+
+            try (Scope s = Debug.scope("Allocator", lirGen)) {
+
+                if (backend.shouldAllocateRegisters()) {
+                    new LinearScan(target, lir, frameMap).allocate();
+                }
+            } catch (Throwable e) {
+                throw Debug.handle(e);
+            }
+        } catch (Throwable e) {
+            throw Debug.handle(e);
+        }
     }
 
     public BytecodeStream stream() {
@@ -302,7 +312,10 @@ public class BaselineCompiler {
     }
 
     private void genArithmeticOp(Kind result, int opcode) {
-        throw GraalInternalError.unimplemented();
+        Value a = frameState.ipop();
+        Value b = frameState.ipop();
+        Value r = lirGen.emitAdd(a, b);
+        frameState.ipush(r);
     }
 
     private void genIntegerDivOp(Kind result, int opcode) {
@@ -486,7 +499,7 @@ public class BaselineCompiler {
         throw GraalInternalError.unimplemented();
     }
 
-    private void processBlock(Block block) {
+    private void processBlock(BciBlock block) {
         Indent indent = Debug.logAndIndent("Parsing block %s  firstInstruction: %s  loopHeader: %b", block, block.firstInstruction, block.isLoopHeader);
         currentBlock = block;
         iterateBytecodesForBlock(block);
@@ -497,7 +510,7 @@ public class BaselineCompiler {
         throw GraalInternalError.unimplemented();
     }
 
-    private void iterateBytecodesForBlock(Block block) {
+    private void iterateBytecodesForBlock(BciBlock block) {
 
         int endBCI = stream.endBCI();
 

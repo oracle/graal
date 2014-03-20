@@ -73,7 +73,7 @@ class CFGPrinter extends CompilationPrinter {
     public void printCFG(String label, BciBlockMapping blockMap) {
         begin("cfg");
         out.print("name \"").print(label).println('"');
-        for (BciBlockMapping.Block block : blockMap.blocks) {
+        for (BciBlockMapping.BciBlock block : blockMap.blocks) {
             begin("block");
             printBlock(block);
             end("block");
@@ -81,7 +81,7 @@ class CFGPrinter extends CompilationPrinter {
         end("cfg");
     }
 
-    private void printBlock(BciBlockMapping.Block block) {
+    private void printBlock(BciBlockMapping.BciBlock block) {
         out.print("name \"B").print(block.startBci).println('"');
         out.print("from_bci ").println(block.startBci);
         out.print("to_bci ").println(block.endBci);
@@ -89,7 +89,7 @@ class CFGPrinter extends CompilationPrinter {
         out.println("predecessors ");
 
         out.print("successors ");
-        for (BciBlockMapping.Block succ : block.successors) {
+        for (BciBlockMapping.BciBlock succ : block.successors) {
             if (!succ.isExceptionEntry) {
                 out.print("\"B").print(succ.startBci).print("\" ");
             }
@@ -97,7 +97,7 @@ class CFGPrinter extends CompilationPrinter {
         out.println();
 
         out.print("xhandlers");
-        for (BciBlockMapping.Block succ : block.successors) {
+        for (BciBlockMapping.BciBlock succ : block.successors) {
             if (succ.isExceptionEntry) {
                 out.print("\"B").print(succ.startBci).print("\" ");
             }

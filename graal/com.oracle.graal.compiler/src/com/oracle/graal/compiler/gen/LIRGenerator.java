@@ -408,7 +408,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool, LIRTypeTool, LIR
         res.getLIR().getLIRforBlock(currentBlock).add(op);
     }
 
-    private final void doBlockStart(AbstractBlock<?> block) {
+    public final void doBlockStart(AbstractBlock<?> block) {
         if (printIRWithLIR) {
             TTY.print(block.toString());
         }
@@ -426,7 +426,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool, LIRTypeTool, LIR
         }
     }
 
-    private final void doBlockEnd(AbstractBlock<?> block) {
+    public final void doBlockEnd(AbstractBlock<?> block) {
 
         if (traceLevel >= 1) {
             TTY.println("END Generating LIR for block B" + block.getId());
@@ -442,22 +442,18 @@ public abstract class LIRGenerator implements LIRGeneratorTool, LIRTypeTool, LIR
     /**
      * For Baseline compilation
      */
-    public void doBlock(AbstractBlock<?> block, ResolvedJavaMethod method) {
-        doBlockStart(block);
-
-        if (block == res.getLIR().getControlFlowGraph().getStartBlock()) {
-            assert block.getPredecessorCount() == 0;
-            emitPrologue(method);
-        } else {
-            assert block.getPredecessorCount() > 0;
-        }
-
-        // add instruction
-        Value add = emitAdd(Constant.forLong(42), Constant.forLong(73));
-        emitReturn(add);
-
-        doBlockEnd(block);
-    }
+    /*
+     * public void doBlock(AbstractBlock<?> block, ResolvedJavaMethod method) { doBlockStart(block);
+     * 
+     * if (block == res.getLIR().getControlFlowGraph().getStartBlock()) { assert
+     * block.getPredecessorCount() == 0; emitPrologue(method); } else { assert
+     * block.getPredecessorCount() > 0; }
+     * 
+     * // add instruction Value add = emitAdd(Constant.forLong(42), Constant.forLong(73));
+     * emitReturn(add);
+     * 
+     * doBlockEnd(block); }
+     */
 
     public void doBlock(Block block, StructuredGraph graph, BlockMap<List<ScheduledNode>> blockMap) {
         doBlockStart(block);
@@ -574,7 +570,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool, LIRTypeTool, LIR
         }
     }
 
-    protected void emitPrologue(ResolvedJavaMethod method) {
+    public void emitPrologue(ResolvedJavaMethod method) {
         CallingConvention incomingArguments = getCallingConvention();
 
         Value[] params = new Value[incomingArguments.getArgumentCount()];
@@ -592,13 +588,15 @@ public abstract class LIRGenerator implements LIRGeneratorTool, LIRTypeTool, LIR
 
         Signature sig = method.getSignature();
         boolean isStatic = Modifier.isStatic(method.getModifiers());
-
+        Value[] arguments = new Value[sig.getParameterCount(!isStatic)];
         for (int i = 0; i < sig.getParameterCount(!isStatic); i++) {
             Value paramValue = params[i];
             assert paramValue.getKind() == sig.getParameterKind(i).getStackKind();
             // TODO setResult(param, emitMove(paramValue));
-            emitMove(paramValue);
+            arguments[i] = emitMove(paramValue);
         }
+
+        // return arguments;
     }
 
     public void emitIncomingValues(Value[] params) {

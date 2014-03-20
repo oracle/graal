@@ -1,4 +1,4 @@
-package com.oracle.graal.nodes;
+package com.oracle.graal.api.meta;
 
 import com.oracle.graal.api.meta.*;
 

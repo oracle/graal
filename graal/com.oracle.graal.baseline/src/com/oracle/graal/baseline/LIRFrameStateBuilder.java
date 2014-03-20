@@ -4,18 +4,18 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.lir.*;
 
-public class LIRFrameStateBuilder extends AbstractFrameStateBuilder<Variable> {
+public class LIRFrameStateBuilder extends AbstractFrameStateBuilder<Value> {
 
-    private final Variable[] locals;
-    private final Variable[] stack;
-    private Variable[] lockedObjects;
+    private final Value[] locals;
+    private final Value[] stack;
+    private Value[] lockedObjects;
 
     public LIRFrameStateBuilder(ResolvedJavaMethod method) {
         super(method);
 
-        this.locals = new Variable[method.getMaxLocals()];
+        this.locals = new Value[method.getMaxLocals()];
         // we always need at least one stack slot (for exceptions)
-        this.stack = new Variable[Math.max(1, method.getMaxStackSize())];
+        this.stack = new Value[Math.max(1, method.getMaxStackSize())];
     }
 
     protected LIRFrameStateBuilder(LIRFrameStateBuilder other) {
@@ -32,25 +32,25 @@ public class LIRFrameStateBuilder extends AbstractFrameStateBuilder<Variable> {
     }
 
     @Override
-    public Variable localAt(int i) {
+    public Value localAt(int i) {
         return locals[i];
     }
 
     @Override
-    public Variable stackAt(int i) {
+    public Value stackAt(int i) {
         return stack[i];
     }
 
     @Override
-    public Variable loadLocal(int i) {
-        Variable x = locals[i];
+    public Value loadLocal(int i) {
+        Value x = locals[i];
         assert !isTwoSlot(x.getKind()) || locals[i + 1] == null;
         assert i == 0 || locals[i - 1] == null || !isTwoSlot(locals[i - 1].getKind());
         return x;
     }
 
     @Override
-    public void storeLocal(int i, Variable x) {
+    public void storeLocal(int i, Value x) {
         assert x == null || x.getKind() != Kind.Void && x.getKind() != Kind.Illegal : "unexpected value: " + x;
         locals[i] = x;
         if (x != null && isTwoSlot(x.getKind())) {
@@ -58,7 +58,7 @@ public class LIRFrameStateBuilder extends AbstractFrameStateBuilder<Variable> {
             locals[i + 1] = null;
         }
         if (x != null && i > 0) {
-            Variable p = locals[i - 1];
+            Value p = locals[i - 1];
             if (p != null && isTwoSlot(p.getKind())) {
                 // if there was a double word at i - 1, then kill it
                 locals[i - 1] = null;
@@ -67,13 +67,13 @@ public class LIRFrameStateBuilder extends AbstractFrameStateBuilder<Variable> {
     }
 
     @Override
-    public void storeStack(int i, Variable x) {
+    public void storeStack(int i, Value x) {
         assert x == null || (stack[i] == null || x.getKind() == stack[i].getKind()) : "Method does not handle changes from one-slot to two-slot values or non-alive values";
         stack[i] = x;
     }
 
     @Override
-    public void push(Kind kind, Variable x) {
+    public void push(Kind kind, Value x) {
         assert x.getKind() != Kind.Void && x.getKind() != Kind.Illegal;
         xpush(assertKind(kind, x));
         if (isTwoSlot(kind)) {
@@ -82,46 +82,46 @@ public class LIRFrameStateBuilder extends AbstractFrameStateBuilder<Variable> {
     }
 
     @Override
-    public void xpush(Variable x) {
+    public void xpush(Value x) {
         assert x == null || (x.getKind() != Kind.Void && x.getKind() != Kind.Illegal);
         stack[stackSize++] = x;
     }
 
     @Override
-    public void ipush(Variable x) {
+    public void ipush(Value x) {
         xpush(assertInt(x));
     }
 
     @Override
-    public void fpush(Variable x) {
+    public void fpush(Value x) {
         xpush(assertFloat(x));
     }
 
     @Override
-    public void apush(Variable x) {
+    public void apush(Value x) {
         xpush(assertObject(x));
     }
 
     @Override
-    public void lpush(Variable x) {
+    public void lpush(Value x) {
         xpush(assertLong(x));
     }
 
     @Override
-    public void dpush(Variable x) {
+    public void dpush(Value x) {
         xpush(assertDouble(x));
 
     }
 
     @Override
-    public void pushReturn(Kind kind, Variable x) {
+    public void pushReturn(Kind kind, Value x) {
         if (kind != Kind.Void) {
             push(kind.getStackKind(), x);
         }
     }
 
     @Override
-    public Variable pop(Kind kind) {
+    public Value pop(Kind kind) {
         assert kind != Kind.Void;
         if (isTwoSlot(kind)) {
             xpop();
@@ -130,46 +130,46 @@ public class LIRFrameStateBuilder extends AbstractFrameStateBuilder<Variable> {
     }
 
     @Override
-    public Variable xpop() {
-        Variable result = stack[--stackSize];
+    public Value xpop() {
+        Value result = stack[--stackSize];
         return result;
     }
 
     @Override
-    public Variable ipop() {
+    public Value ipop() {
         return assertInt(xpop());
     }
 
     @Override
-    public Variable fpop() {
+    public Value fpop() {
         return assertFloat(xpop());
     }
 
     @Override
-    public Variable apop() {
+    public Value apop() {
         return assertObject(xpop());
     }
 
     @Override
-    public Variable lpop() {
+    public Value lpop() {
         assertHigh(xpop());
         return assertLong(xpop());
     }
 
     @Override
-    public Variable dpop() {
+    public Value dpop() {
         assertHigh(xpop());
         return assertDouble(xpop());
     }
 
     @Override
-    public Variable[] popArguments(int slotSize, int argSize) {
+    public Value[] popArguments(int slotSize, int argSize) {
         int base = stackSize - slotSize;
-        Variable[] r = new Variable[argSize];
+        Value[] r = new Value[argSize];
         int argIndex = 0;
         int stackindex = 0;
         while (stackindex < slotSize) {
-            Variable element = stack[base + stackindex];
+            Value element = stack[base + stackindex];
             assert element != null;
             r[argIndex++] = element;
             stackindex += stackSlots(element.getKind());
@@ -179,7 +179,7 @@ public class LIRFrameStateBuilder extends AbstractFrameStateBuilder<Variable> {
     }
 
     @Override
-    public Variable peek(int argumentNumber) {
+    public Value peek(int argumentNumber) {
         int idx = stackSize() - 1;
         for (int i = 0; i < argumentNumber; i++) {
             if (stackAt(idx) == null) {
@@ -191,37 +191,37 @@ public class LIRFrameStateBuilder extends AbstractFrameStateBuilder<Variable> {
         return stackAt(idx);
     }
 
-    private static Variable assertKind(Kind kind, Variable x) {
+    private static Value assertKind(Kind kind, Value x) {
         assert x != null && x.getKind() == kind : "kind=" + kind + ", value=" + x + ((x == null) ? "" : ", value.kind=" + x.getKind());
         return x;
     }
 
-    private static Variable assertLong(Variable x) {
+    private static Value assertLong(Value x) {
         assert x != null && (x.getKind() == Kind.Long);
         return x;
     }
 
-    private static Variable assertInt(Variable x) {
+    private static Value assertInt(Value x) {
         assert x != null && (x.getKind() == Kind.Int);
         return x;
     }
 
-    private static Variable assertFloat(Variable x) {
+    private static Value assertFloat(Value x) {
         assert x != null && (x.getKind() == Kind.Float);
         return x;
     }
 
-    private static Variable assertObject(Variable x) {
+    private static Value assertObject(Value x) {
         assert x != null && (x.getKind() == Kind.Object);
         return x;
     }
 
-    private static Variable assertDouble(Variable x) {
+    private static Value assertDouble(Value x) {
         assert x != null && (x.getKind() == Kind.Double);
         return x;
     }
 
-    private static void assertHigh(Variable x) {
+    private static void assertHigh(Value x) {
         assert x == null;
     }
 }

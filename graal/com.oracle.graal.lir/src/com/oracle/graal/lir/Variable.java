@@ -30,7 +30,7 @@ import com.oracle.graal.nodes.*;
  * Represents a value that is yet to be bound to a machine location (such as a {@link RegisterValue}
  * or {@link StackSlot}) by a register allocator.
  */
-public final class Variable extends AllocatableValue implements KindInterface {
+public final class Variable extends AllocatableValue {
 
     private static final long serialVersionUID = 4507578431686109809L;
 
