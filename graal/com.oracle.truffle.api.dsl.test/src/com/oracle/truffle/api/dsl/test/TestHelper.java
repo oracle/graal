@@ -76,11 +76,15 @@ class TestHelper {
     }
 
     static <E extends ValueNode> TestRootNode<E> createRoot(NodeFactory<E> factory, Object... constants) {
-        return new TestRootNode<>(createNode(factory, constants));
+        TestRootNode<E> rootNode = new TestRootNode<>(createNode(factory, constants));
+        rootNode.adoptChildren();
+        return rootNode;
     }
 
     static <E extends ValueNode> TestRootNode<E> createGenericRoot(NodeFactory<E> factory, Object... constants) {
-        return new TestRootNode<>(createGenericNode(factory, constants));
+        TestRootNode<E> rootNode = new TestRootNode<>(createGenericNode(factory, constants));
+        rootNode.adoptChildren();
+        return rootNode;
     }
 
     static CallTarget createCallTarget(ValueNode node) {
