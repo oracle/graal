@@ -141,7 +141,7 @@ public class LoopEx {
             BinaryNode result = BinaryNode.reassociate(binary, invariant);
             if (result != binary) {
                 if (Debug.isLogEnabled()) {
-                    Debug.log(MetaUtil.format("%H::%n", Debug.contextLookup(ResolvedJavaMethod.class)) + " : Reassociated %s into %s", binary, result);
+                    Debug.log("%s : Reassociated %s into %s", MetaUtil.format("%H::%n", Debug.contextLookup(ResolvedJavaMethod.class)), binary, result);
                 }
                 graph.replaceFloating(binary, result);
             }

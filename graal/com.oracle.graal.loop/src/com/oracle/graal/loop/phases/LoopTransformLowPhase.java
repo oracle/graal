@@ -84,6 +84,6 @@ public class LoopTransformLowPhase extends Phase {
             }
         }
         sb.append("]");
-        Debug.log(sb.toString());
+        Debug.log("%s", sb);
     }
 }
