@@ -254,12 +254,12 @@ public final class FrameState extends VirtualState implements IterableNodeType {
                 copy.remove(copy.size() - 1);
             }
             ValueNode lastSlot = copy.get(copy.size() - 1);
-            assert lastSlot.kind().getStackKind() == popKind.getStackKind();
+            assert lastSlot.getKind().getStackKind() == popKind.getStackKind();
             copy.remove(copy.size() - 1);
         }
         for (ValueNode node : pushedValues) {
             copy.add(node);
-            if (node.kind() == Kind.Long || node.kind() == Kind.Double) {
+            if (node.getKind() == Kind.Long || node.getKind() == Kind.Double) {
                 copy.add(null);
             }
         }
@@ -404,7 +404,7 @@ public final class FrameState extends VirtualState implements IterableNodeType {
         assertTrue(values.size() - localsSize - stackSize == monitorIds.size(), "mismatch in number of locks");
         for (ValueNode value : values) {
             assertTrue(value == null || !value.isDeleted(), "frame state must not contain deleted nodes");
-            assertTrue(value == null || value instanceof VirtualObjectNode || (value.kind() != Kind.Void), "unexpected value: %s", value);
+            assertTrue(value == null || value instanceof VirtualObjectNode || (value.getKind() != Kind.Void), "unexpected value: %s", value);
         }
         return super.verify();
     }

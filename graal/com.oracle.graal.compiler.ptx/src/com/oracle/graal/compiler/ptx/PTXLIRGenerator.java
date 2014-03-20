@@ -926,7 +926,7 @@ public class PTXLIRGenerator extends LIRGenerator {
 
     @Override
     public void emitNullCheck(ValueNode v, DeoptimizingNode deopting) {
-        assert v.kind() == Kind.Object;
+        assert v.getKind() == Kind.Object;
         append(new PTXMove.NullCheckOp(load(operand(v)), state(deopting)));
     }
 
@@ -983,7 +983,7 @@ public class PTXLIRGenerator extends LIRGenerator {
     public void visitReturn(ReturnNode x) {
         AllocatableValue operand = Value.ILLEGAL;
         if (x.result() != null) {
-            operand = resultOperandFor(x.result().kind());
+            operand = resultOperandFor(x.result().getKind());
             // Load the global memory address from return parameter
             Variable loadVar = emitLoadReturnAddress(operand.getKind(), operand, null);
             // Store result in global memory whose location is loadVar

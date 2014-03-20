@@ -361,7 +361,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
 
     @Override
     public void emitNullCheck(ValueNode v, DeoptimizingNode deopt) {
-        assert v.kind() == Kind.Object : v + " - " + v.stamp() + " @ " + deopt;
+        assert v.getKind() == Kind.Object : v + " - " + v.stamp() + " @ " + deopt;
         append(new AMD64Move.NullCheckOp(load(operand(v)), state(deopt)));
     }
 

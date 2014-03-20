@@ -76,7 +76,7 @@ public final class ReadRegisterNode extends FixedWithNextNode implements LIRGenL
 
     @Override
     public void generate(LIRGenerator generator) {
-        Value result = register.asValue(kind());
+        Value result = register.asValue(getKind());
         if (incoming) {
             generator.emitIncomingValues(new Value[]{result});
         }

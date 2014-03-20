@@ -259,9 +259,9 @@ public class HotSpotLoweringProvider implements LoweringProvider {
         StructuredGraph graph = loadField.graph();
         HotSpotResolvedJavaField field = (HotSpotResolvedJavaField) loadField.field();
         ValueNode object = loadField.isStatic() ? ConstantNode.forObject(field.getDeclaringClass().mirror(), metaAccess, graph) : loadField.object();
-        assert loadField.kind() != Kind.Illegal;
+        assert loadField.getKind() != Kind.Illegal;
         BarrierType barrierType = getFieldLoadBarrierType(field);
-        ReadNode memoryRead = graph.add(new ReadNode(object, createFieldLocation(graph, field, false), loadField.stamp(), barrierType, (loadField.kind() == Kind.Object)));
+        ReadNode memoryRead = graph.add(new ReadNode(object, createFieldLocation(graph, field, false), loadField.stamp(), barrierType, (loadField.getKind() == Kind.Object)));
         graph.replaceFixedWithFixed(loadField, memoryRead);
         memoryRead.setGuard(createNullCheck(object, memoryRead, tool));
 
@@ -296,9 +296,9 @@ public class HotSpotLoweringProvider implements LoweringProvider {
     private static void lowerCompareAndSwapNode(CompareAndSwapNode cas) {
         // Separate out GC barrier semantics
         StructuredGraph graph = cas.graph();
-        LocationNode location = IndexedLocationNode.create(cas.getLocationIdentity(), cas.expected().kind(), cas.displacement(), cas.offset(), graph, 1);
+        LocationNode location = IndexedLocationNode.create(cas.getLocationIdentity(), cas.expected().getKind(), cas.displacement(), cas.offset(), graph, 1);
         LoweredCompareAndSwapNode atomicNode = graph.add(new LoweredCompareAndSwapNode(cas.object(), location, cas.expected(), cas.newValue(), getCompareAndSwapBarrier(cas),
-                        cas.expected().kind() == Kind.Object));
+                        cas.expected().getKind() == Kind.Object));
         atomicNode.setStateAfter(cas.stateAfter());
         graph.replaceFixedWithFixed(cas, atomicNode);
     }
@@ -372,7 +372,7 @@ public class HotSpotLoweringProvider implements LoweringProvider {
             graph.replaceFixedWithFixed(load, valueAnchorNode);
             graph.addAfterFixed(valueAnchorNode, memoryRead);
         } else if (graph.getGuardsStage().ordinal() > StructuredGraph.GuardsStage.FLOATING_GUARDS.ordinal()) {
-            assert load.kind() != Kind.Illegal;
+            assert load.getKind() != Kind.Illegal;
             boolean compressible = (!load.object().isNullConstant() && load.accessKind() == Kind.Object);
             if (addReadBarrier(load)) {
                 unsafeLoadSnippets.lower(load, tool);
@@ -392,7 +392,7 @@ public class HotSpotLoweringProvider implements LoweringProvider {
         LocationNode location = createLocation(store);
         ValueNode object = store.object();
         BarrierType barrierType = getUnsafeStoreBarrierType(store);
-        WriteNode write = graph.add(new WriteNode(object, store.value(), location, barrierType, store.value().kind() == Kind.Object));
+        WriteNode write = graph.add(new WriteNode(object, store.value(), location, barrierType, store.value().getKind() == Kind.Object));
         write.setStateAfter(store.stateAfter());
         graph.replaceFixedWithFixed(store, write);
     }
@@ -401,7 +401,7 @@ public class HotSpotLoweringProvider implements LoweringProvider {
         StructuredGraph graph = loadHub.graph();
         if (graph.getGuardsStage().ordinal() >= StructuredGraph.GuardsStage.FIXED_DEOPTS.ordinal()) {
             Kind wordKind = runtime.getTarget().wordKind;
-            assert loadHub.kind() == wordKind;
+            assert loadHub.getKind() == wordKind;
             ValueNode object = loadHub.object();
             GuardingNode guard = loadHub.getGuard();
             FloatingReadNode hub = createReadHub(graph, wordKind, object, guard);
@@ -447,7 +447,7 @@ public class HotSpotLoweringProvider implements LoweringProvider {
                         omittedValues.set(valuePos);
                     } else if (!(value.isConstant() && value.asConstant().isDefaultForKind())) {
                         // Constant.illegal is always the defaultForKind, so it is skipped
-                        Kind valueKind = value.kind();
+                        Kind valueKind = value.getKind();
                         Kind entryKind = virtual.entryKind(i);
 
                         // Truffle requires some leniency in terms of what can be put where:
@@ -483,7 +483,7 @@ public class HotSpotLoweringProvider implements LoweringProvider {
                         assert value instanceof VirtualObjectNode;
                         ValueNode allocValue = allocations[commit.getVirtualObjects().indexOf(value)];
                         if (!(allocValue.isConstant() && allocValue.asConstant().isDefaultForKind())) {
-                            assert virtual.entryKind(i) == Kind.Object && allocValue.kind() == Kind.Object;
+                            assert virtual.entryKind(i) == Kind.Object && allocValue.getKind() == Kind.Object;
                             WriteNode write;
                             if (virtual instanceof VirtualInstanceNode) {
                                 VirtualInstanceNode virtualInstance = (VirtualInstanceNode) virtual;
@@ -520,9 +520,9 @@ public class HotSpotLoweringProvider implements LoweringProvider {
             // mirroring the calculations in c1_GraphBuilder.cpp (setup_osr_entry_block)
             int localsOffset = (graph.method().getMaxLocals() - 1) * 8;
             for (OSRLocalNode osrLocal : graph.getNodes(OSRLocalNode.class)) {
-                int size = FrameStateBuilder.stackSlots(osrLocal.kind());
+                int size = FrameStateBuilder.stackSlots(osrLocal.getKind());
                 int offset = localsOffset - (osrLocal.index() + size - 1) * 8;
-                IndexedLocationNode location = IndexedLocationNode.create(ANY_LOCATION, osrLocal.kind(), offset, ConstantNode.forLong(0, graph), graph, 1);
+                IndexedLocationNode location = IndexedLocationNode.create(ANY_LOCATION, osrLocal.getKind(), offset, ConstantNode.forLong(0, graph), graph, 1);
                 ReadNode load = graph.add(new ReadNode(buffer, location, osrLocal.stamp(), BarrierType.NONE, false));
                 osrLocal.replaceAndDelete(load);
                 graph.addBeforeFixed(migrationEnd, load);
@@ -606,7 +606,7 @@ public class HotSpotLoweringProvider implements LoweringProvider {
     }
 
     private static boolean addReadBarrier(UnsafeLoadNode load) {
-        if (useG1GC() && load.graph().getGuardsStage() == StructuredGraph.GuardsStage.FIXED_DEOPTS && load.object().kind() == Kind.Object && load.accessKind() == Kind.Object &&
+        if (useG1GC() && load.graph().getGuardsStage() == StructuredGraph.GuardsStage.FIXED_DEOPTS && load.object().getKind() == Kind.Object && load.accessKind() == Kind.Object &&
                         !ObjectStamp.isObjectAlwaysNull(load.object())) {
             ResolvedJavaType type = ObjectStamp.typeOrNull(load.object());
             if (type != null && !type.isArray()) {
@@ -669,7 +669,7 @@ public class HotSpotLoweringProvider implements LoweringProvider {
 
     private static BarrierType getUnsafeStoreBarrierType(UnsafeStoreNode store) {
         BarrierType barrierType = BarrierType.NONE;
-        if (store.value().kind() == Kind.Object) {
+        if (store.value().getKind() == Kind.Object) {
             ResolvedJavaType type = ObjectStamp.typeOrNull(store.object());
             if (type != null && !type.isArray()) {
                 barrierType = BarrierType.IMPRECISE;
@@ -682,7 +682,7 @@ public class HotSpotLoweringProvider implements LoweringProvider {
 
     private static BarrierType getCompareAndSwapBarrier(CompareAndSwapNode cas) {
         BarrierType barrierType = BarrierType.NONE;
-        if (cas.expected().kind() == Kind.Object) {
+        if (cas.expected().getKind() == Kind.Object) {
             ResolvedJavaType type = ObjectStamp.typeOrNull(cas.object());
             if (type != null && !type.isArray()) {
                 barrierType = BarrierType.IMPRECISE;

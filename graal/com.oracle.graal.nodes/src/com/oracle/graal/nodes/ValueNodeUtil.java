@@ -32,7 +32,7 @@ import com.oracle.graal.nodes.extended.*;
 public class ValueNodeUtil {
 
     public static ValueNode assertKind(Kind kind, ValueNode x) {
-        assert x != null && x.kind() == kind : "kind=" + kind + ", value=" + x + ((x == null) ? "" : ", value.kind=" + x.kind());
+        assert x != null && x.getKind() == kind : "kind=" + kind + ", value=" + x + ((x == null) ? "" : ", value.kind=" + x.getKind());
         return x;
     }
 
@@ -45,27 +45,27 @@ public class ValueNodeUtil {
     }
 
     public static ValueNode assertLong(ValueNode x) {
-        assert x != null && (x.kind() == Kind.Long);
+        assert x != null && (x.getKind() == Kind.Long);
         return x;
     }
 
     public static ValueNode assertInt(ValueNode x) {
-        assert x != null && (x.kind() == Kind.Int);
+        assert x != null && (x.getKind() == Kind.Int);
         return x;
     }
 
     public static ValueNode assertFloat(ValueNode x) {
-        assert x != null && (x.kind() == Kind.Float);
+        assert x != null && (x.getKind() == Kind.Float);
         return x;
     }
 
     public static ValueNode assertObject(ValueNode x) {
-        assert x != null && (x.kind() == Kind.Object);
+        assert x != null && (x.getKind() == Kind.Object);
         return x;
     }
 
     public static ValueNode assertDouble(ValueNode x) {
-        assert x != null && (x.kind() == Kind.Double);
+        assert x != null && (x.getKind() == Kind.Double);
         return x;
     }
 
@@ -87,14 +87,14 @@ public class ValueNodeUtil {
     /**
      * Converts a given instruction to a value string. The representation of an node as a value is
      * formed by concatenating the {@linkplain com.oracle.graal.api.meta.Kind#getTypeChar character}
-     * denoting its {@linkplain ValueNode#kind kind} and its id. For example, {@code "i13"}.
+     * denoting its {@linkplain ValueNode#getKind kind} and its id. For example, {@code "i13"}.
      * 
      * @param value the instruction to convert to a value string. If {@code value == null}, then "-"
      *            is returned.
      * @return the instruction representation as a string
      */
     public static String valueString(ValueNode value) {
-        return (value == null) ? "-" : ("" + value.kind().getTypeChar() + value.toString(Verbosity.Id));
+        return (value == null) ? "-" : ("" + value.getKind().getTypeChar() + value.toString(Verbosity.Id));
     }
 
     public static ValueNode asNode(MemoryNode node) {

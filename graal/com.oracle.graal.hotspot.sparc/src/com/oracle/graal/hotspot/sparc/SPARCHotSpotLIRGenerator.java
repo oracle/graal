@@ -125,8 +125,8 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
 
     @Override
     public void visitDirectCompareAndSwap(DirectCompareAndSwapNode x) {
-        Kind kind = x.newValue().kind();
-        assert kind == x.expectedValue().kind();
+        Kind kind = x.newValue().getKind();
+        assert kind == x.expectedValue().getKind();
 
         Variable address = load(operand(x.object()));
         Value offset = operand(x.offset());
@@ -146,7 +146,7 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
 
         append(new CompareAndSwapOp(address, cmpValue, newValue));
 
-        Variable result = newVariable(x.kind());
+        Variable result = newVariable(x.getKind());
         emitMove(result, newValue);
         setResult(x, result);
     }

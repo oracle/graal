@@ -411,7 +411,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                 ValueNode[] entries = objStates[i].getEntries();
                 int valueIndex = 0;
                 while (valueIndex < values.length) {
-                    Kind otherKind = entries[valueIndex].kind();
+                    Kind otherKind = entries[valueIndex].getKind();
                     Kind entryKind = object.entryKind(valueIndex);
                     if (entryKind == Kind.Int && (otherKind == Kind.Long || otherKind == Kind.Double)) {
                         if (twoSlotKinds == null) {
@@ -437,7 +437,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                         assert valueIndex < object.entryCount() - 1 && object.entryKind(valueIndex) == Kind.Int && object.entryKind(valueIndex + 1) == Kind.Int;
                         for (int i = 0; i < objStates.length; i++) {
                             ValueNode value = objStates[i].getEntry(valueIndex);
-                            Kind valueKind = value.kind();
+                            Kind valueKind = value.getKind();
                             if (valueKind != twoSlotKinds[valueIndex]) {
                                 ValueNode nextValue = objStates[i].getEntry(valueIndex + 1);
                                 if (value.isConstant() && value.asConstant().equals(Constant.INT_0) && nextValue.isConstant() && nextValue.asConstant().equals(Constant.INT_0)) {

@@ -99,7 +99,7 @@ public class GuardingPiNode extends FixedWithNextNode implements Lowerable, Virt
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        if (stamp() == StampFactory.illegal(object.kind())) {
+        if (stamp() == StampFactory.illegal(object.getKind())) {
             // The guard always fails
             return graph().add(new DeoptimizeNode(action, reason));
         }

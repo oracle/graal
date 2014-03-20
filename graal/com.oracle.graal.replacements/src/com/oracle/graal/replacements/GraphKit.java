@@ -132,12 +132,12 @@ public class GraphKit {
         InvokeNode invoke = append(new InvokeNode(callTarget, bci));
 
         if (frameStateBuilder != null) {
-            if (invoke.kind() != Kind.Void) {
-                frameStateBuilder.push(invoke.kind(), invoke);
+            if (invoke.getKind() != Kind.Void) {
+                frameStateBuilder.push(invoke.getKind(), invoke);
             }
             invoke.setStateAfter(frameStateBuilder.create(0));
-            if (invoke.kind() != Kind.Void) {
-                frameStateBuilder.pop(invoke.kind());
+            if (invoke.getKind() != Kind.Void) {
+                frameStateBuilder.pop(invoke.getKind());
             }
         }
         return invoke;

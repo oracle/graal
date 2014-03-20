@@ -778,7 +778,7 @@ public class SnippetTemplate {
                 if (argument instanceof ValueNode) {
                     replacements.put((ParameterNode) parameter, (ValueNode) argument);
                 } else {
-                    Kind kind = ((ParameterNode) parameter).kind();
+                    Kind kind = ((ParameterNode) parameter).getKind();
                     assert argument != null || kind == Kind.Object : this + " cannot accept null for non-object parameter named " + args.info.names[i];
                     Constant constant = forBoxed(argument, kind);
                     replacements.put((ParameterNode) parameter, ConstantNode.forConstant(constant, metaAccess, replaceeGraph));
@@ -805,7 +805,7 @@ public class SnippetTemplate {
                     if (value instanceof ValueNode) {
                         replacements.put(param, (ValueNode) value);
                     } else {
-                        Constant constant = forBoxed(value, param.kind());
+                        Constant constant = forBoxed(value, param.getKind());
                         ConstantNode element = ConstantNode.forConstant(constant, metaAccess, replaceeGraph);
                         replacements.put(param, element);
                     }
@@ -1172,10 +1172,10 @@ public class SnippetTemplate {
                 buf.append("<constant> ").append(name);
             } else if (value instanceof ParameterNode) {
                 ParameterNode param = (ParameterNode) value;
-                buf.append(param.kind().getJavaName()).append(' ').append(name);
+                buf.append(param.getKind().getJavaName()).append(' ').append(name);
             } else {
                 ParameterNode[] params = (ParameterNode[]) value;
-                String kind = params.length == 0 ? "?" : params[0].kind().getJavaName();
+                String kind = params.length == 0 ? "?" : params[0].getKind().getJavaName();
                 buf.append(kind).append('[').append(params.length).append("] ").append(name);
             }
         }

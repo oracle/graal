@@ -44,10 +44,10 @@ public final class UnsignedRightShiftNode extends ShiftNode implements Canonical
     @Override
     public Constant evalConst(Constant... inputs) {
         assert inputs.length == 2;
-        if (kind() == Kind.Int) {
+        if (getKind() == Kind.Int) {
             return Constant.forInt(inputs[0].asInt() >>> inputs[1].asInt());
         } else {
-            assert kind() == Kind.Long;
+            assert getKind() == Kind.Long;
             return Constant.forLong(inputs[0].asLong() >>> inputs[1].asLong());
         }
     }
@@ -60,10 +60,10 @@ public final class UnsignedRightShiftNode extends ShiftNode implements Canonical
             int amount = y().asConstant().asInt();
             int originalAmout = amount;
             int mask;
-            if (kind() == Kind.Int) {
+            if (getKind() == Kind.Int) {
                 mask = 0x1f;
             } else {
-                assert kind() == Kind.Long;
+                assert getKind() == Kind.Long;
                 mask = 0x3f;
             }
             amount &= mask;
@@ -77,14 +77,14 @@ public final class UnsignedRightShiftNode extends ShiftNode implements Canonical
                     if (other instanceof UnsignedRightShiftNode) {
                         int total = amount + otherAmount;
                         if (total != (total & mask)) {
-                            return ConstantNode.forIntegerKind(kind(), 0, graph());
+                            return ConstantNode.forIntegerKind(getKind(), 0, graph());
                         }
                         return graph().unique(new UnsignedRightShiftNode(stamp(), other.x(), ConstantNode.forInt(total, graph())));
                     } else if (other instanceof LeftShiftNode && otherAmount == amount) {
-                        if (kind() == Kind.Long) {
+                        if (getKind() == Kind.Long) {
                             return graph().unique(new AndNode(stamp(), other.x(), ConstantNode.forLong(-1L >>> amount, graph())));
                         } else {
-                            assert kind() == Kind.Int;
+                            assert getKind() == Kind.Int;
                             return graph().unique(new AndNode(stamp(), other.x(), ConstantNode.forInt(-1 >>> amount, graph())));
                         }
                     }

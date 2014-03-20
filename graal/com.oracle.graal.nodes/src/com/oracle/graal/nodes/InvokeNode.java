@@ -138,14 +138,14 @@ public final class InvokeNode extends AbstractMemoryCheckpoint implements Invoke
         if (stateAfter == null) {
             return null;
         }
-        FrameState stateDuring = stateAfter.duplicateModified(bci(), stateAfter.rethrowException(), kind());
+        FrameState stateDuring = stateAfter.duplicateModified(bci(), stateAfter.rethrowException(), getKind());
         stateDuring.setDuringCall(true);
         return stateDuring;
     }
 
     @Override
     public void intrinsify(Node node) {
-        assert !(node instanceof ValueNode) || (((ValueNode) node).kind() == Kind.Void) == (kind() == Kind.Void);
+        assert !(node instanceof ValueNode) || (((ValueNode) node).getKind() == Kind.Void) == (getKind() == Kind.Void);
         CallTargetNode call = callTarget;
         FrameState stateAfter = stateAfter();
         if (node instanceof StateSplit) {

@@ -89,7 +89,7 @@ public class DebugInfoBuilder {
                                 if (!currentField.fieldValues().get(i).isConstant() || currentField.fieldValues().get(i).asConstant().getKind() != Kind.Illegal) {
                                     values[pos++] = toValue(currentField.fieldValues().get(i));
                                 } else {
-                                    assert currentField.fieldValues().get(i - 1).kind() == Kind.Double || currentField.fieldValues().get(i - 1).kind() == Kind.Long : vobj + " " + i + " " +
+                                    assert currentField.fieldValues().get(i - 1).getKind() == Kind.Double || currentField.fieldValues().get(i - 1).getKind() == Kind.Long : vobj + " " + i + " " +
                                                     currentField.fieldValues().get(i - 1);
                                 }
                             }

@@ -40,8 +40,8 @@ public final class ObjectEqualsNode extends CompareNode implements Virtualizable
      */
     public ObjectEqualsNode(ValueNode x, ValueNode y) {
         super(x, y);
-        assert x.kind() == Kind.Object;
-        assert y.kind() == Kind.Object;
+        assert x.getKind() == Kind.Object;
+        assert y.getKind() == Kind.Object;
     }
 
     @Override
