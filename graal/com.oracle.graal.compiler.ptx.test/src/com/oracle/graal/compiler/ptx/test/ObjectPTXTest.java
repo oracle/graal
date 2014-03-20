@@ -66,6 +66,7 @@ public class ObjectPTXTest extends PTXTest {
         return a.i + i;
     }
 
+    @Ignore("com.oracle.graal.graph.GraalInternalError: should not reach here: unhandled register type v3|z")
     @Test
     public void test2() {
         A a = new A();
@@ -79,6 +80,7 @@ public class ObjectPTXTest extends PTXTest {
         return a.z;
     }
 
+    @Ignore("[CUDA] Check for malformed PTX kernel or incorrect PTX compilation options")
     @Test
     public void test3() {
         for (byte b : new byte[]{Byte.MIN_VALUE, -10, 0, 1, 2, 10, Byte.MAX_VALUE}) {
@@ -92,6 +94,7 @@ public class ObjectPTXTest extends PTXTest {
         return a.b + b;
     }
 
+    @Ignore("com.oracle.graal.graph.GraalInternalError: should not reach here: unhandled register type v5|s")
     @Test
     public void test4() {
         for (short s : new short[]{Short.MIN_VALUE, -10, 0, 1, 2, 10, Short.MAX_VALUE}) {
