@@ -15,6 +15,12 @@
 * Improved API for counting nodes in Truffle ASTS. NodeUtil#countNodes can be used with a NodeFilter filter Nodes.
 * New API to declare the cost of a Node for use in runtime environment specific heuristics. See NodeCost, Node#getCost() and NodeInfo#cost().
 * Removed old API for NodeInfo#Kind and NodeInfo#kind(). As a replacement the new Node cost API can be used.
+* Changed Node#replace reason parameter type to CharSequence (to allow for lazy string building)
+* Deprecated Node#adoptChild and Node#adoptChild, no longer needed in node constructor
+* New Node#insert method for inserting new nodes into the tree (formerly adoptChild)
+* New Node#adoptChildren() helper method that adopts all (direct and indirect) children of a node
+* New API Node#atomic for atomic tree operations
+* Made Node#replace thread-safe
 
 
 
