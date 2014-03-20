@@ -9,6 +9,7 @@
 * New (tested) invariant that equality comparisons for `JavaType`/`JavaMethod`/`JavaField` values use `.equals()` instead of `==`.
 * Made graph caching compilation-local.
 * Added AllocSpy tool for analyzing allocation in Graal using the [Java Allocation Instrumenter](https://code.google.com/p/java-allocation-instrumenter/).
+* Initial support for memory arithmetic operations on x86
 
 ### Truffle
 * New API `TruffleRuntime#createCallNode` to create call nodes and to give the runtime system control over its implementation.

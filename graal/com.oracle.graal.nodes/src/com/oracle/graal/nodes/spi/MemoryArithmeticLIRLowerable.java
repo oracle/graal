@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,28 +20,23 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes.calc;
+package com.oracle.graal.nodes.spi;
 
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
+import com.oracle.graal.nodes.extended.*;
 
-public abstract class FloatArithmeticNode extends BinaryNode implements ArithmeticLIRLowerable, MemoryArithmeticLIRLowerable {
-
-    private final boolean isStrictFP;
-
-    public FloatArithmeticNode(Stamp stamp, ValueNode x, ValueNode y, boolean isStrictFP) {
-        super(stamp, x, y);
-        assert stamp instanceof FloatStamp;
-        this.isStrictFP = isStrictFP;
-    }
+/**
+ * Marks nodes which may be lowered in combination with a memory operation.
+ */
+public interface MemoryArithmeticLIRLowerable {
 
     /**
-     * Checks whether this instruction has strict fp semantics.
+     * Attempt to generate a memory form of a node operation. On platforms that support it this will
+     * be called when the merging is safe.
      * 
-     * @return {@code true} if this instruction has strict fp semantics
+     * @param gen
+     * @param access the memory input which can potentially merge into this operation.
+     * @return null if it's not possible to emit a memory form of this operation. A non-null value
+     *         will be set as the operand of this node.
      */
-    public boolean isStrictFP() {
-        return isStrictFP;
-    }
+    boolean generate(MemoryArithmeticLIRLowerer gen, Access access);
 }

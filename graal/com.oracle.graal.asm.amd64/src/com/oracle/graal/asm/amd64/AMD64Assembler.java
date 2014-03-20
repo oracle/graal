@@ -1669,6 +1669,13 @@ public class AMD64Assembler extends Assembler {
         emitInt(imm32);
     }
 
+    public final void testl(AMD64Address dst, int imm32) {
+        prefixq(dst);
+        emitByte(0xF7);
+        emitOperandHelper(0, dst);
+        emitInt(imm32);
+    }
+
     public final void testl(Register dst, Register src) {
         prefixAndEncode(dst.encoding, src.encoding);
         emitArith(0x85, 0xC0, dst, src);
@@ -2064,6 +2071,13 @@ public class AMD64Assembler extends Assembler {
         emitOperandHelper(dst, src);
     }
 
+    public final void cmpq(AMD64Address dst, int imm32) {
+        prefixq(dst);
+        emitByte(0x81);
+        emitOperandHelper(7, dst);
+        emitInt(imm32);
+    }
+
     public final void cmpq(Register dst, int imm32) {
         prefixqAndEncode(dst.encoding);
         emitArith(0x81, 0xF8, dst, imm32);
@@ -2408,6 +2422,13 @@ public class AMD64Assembler extends Assembler {
         prefixq(src, dst);
         emitByte(0x85);
         emitOperandHelper(dst, src);
+    }
+
+    public final void testq(AMD64Address dst, int imm32) {
+        prefixq(dst);
+        emitByte(0xF7);
+        emitOperandHelper(0, dst);
+        emitInt(imm32);
     }
 
     public final void xorq(Register dst, int imm32) {

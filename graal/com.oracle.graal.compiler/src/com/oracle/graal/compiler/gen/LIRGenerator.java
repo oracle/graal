@@ -37,6 +37,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.debug.*;
+import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.BlockEndOp;
@@ -227,18 +228,30 @@ public abstract class LIRGenerator implements LIRGeneratorTool, LIRTypeTool {
 
     /**
      * Returns the operand that has been previously initialized by
-     * {@link #setResult(ValueNode, Value)} with the result of an instruction.
+     * {@link #setResult(ValueNode, Value)} with the result of an instruction. It's a code
+     * generation error to ask for the operand of ValueNode that doesn't have one yet.
      * 
      * @param node A node that produces a result value.
      */
     @Override
     public Value operand(ValueNode node) {
+        Value operand = getOperand(node);
+        assert operand != null : String.format("missing operand for %1s", node);
+        return operand;
+    }
+
+    @Override
+    public boolean hasOperand(ValueNode node) {
+        return getOperand(node) != null;
+    }
+
+    private Value getOperand(ValueNode node) {
         if (nodeOperands == null) {
             return null;
         }
         Value operand = nodeOperands.get(node);
         if (operand == null) {
-            return getConstantOperand(node);
+            operand = getConstantOperand(node);
         }
         return operand;
     }
@@ -434,23 +447,31 @@ public abstract class LIRGenerator implements LIRGeneratorTool, LIRTypeTool {
         }
 
         List<ScheduledNode> nodes = blockMap.get(block);
+        int instructionsFolded = 0;
         for (int i = 0; i < nodes.size(); i++) {
             Node instr = nodes.get(i);
             if (traceLevel >= 3) {
                 TTY.println("LIRGen for " + instr);
             }
+            if (instructionsFolded > 0) {
+                instructionsFolded--;
+                continue;
+            }
             if (!ConstantNodeRecordsUsages && instr instanceof ConstantNode) {
                 // Loading of constants is done lazily by operand()
             } else if (instr instanceof ValueNode) {
                 ValueNode valueNode = (ValueNode) instr;
-                if (operand(valueNode) == null) {
+                if (!hasOperand(valueNode)) {
                     if (!peephole(valueNode)) {
-                        try {
-                            doRoot((ValueNode) instr);
-                        } catch (GraalInternalError e) {
-                            throw e.addContext(instr);
-                        } catch (Throwable e) {
-                            throw new GraalInternalError(e).addContext(instr);
+                        instructionsFolded = maybeFoldMemory(nodes, i, valueNode);
+                        if (instructionsFolded == 0) {
+                            try {
+                                doRoot((ValueNode) instr);
+                            } catch (GraalInternalError e) {
+                                throw e.addContext(instr);
+                            } catch (Throwable e) {
+                                throw new GraalInternalError(e).addContext(instr);
+                            }
                         }
                     }
                 } else {
@@ -486,6 +507,138 @@ public abstract class LIRGenerator implements LIRGeneratorTool, LIRTypeTool {
         }
     }
 
+    private static final DebugMetric MemoryFoldSuccess = Debug.metric("MemoryFoldSuccess");
+    private static final DebugMetric MemoryFoldFailed = Debug.metric("MemoryFoldFailed");
+    private static final DebugMetric MemoryFoldFailedNonAdjacent = Debug.metric("MemoryFoldedFailedNonAdjacent");
+    private static final DebugMetric MemoryFoldFailedDifferentBlock = Debug.metric("MemoryFoldedFailedDifferentBlock");
+
+    /**
+     * Subclass can provide helper to fold memory operations into other operations.
+     */
+    protected MemoryArithmeticLIRLowerer getMemoryLowerer() {
+        return null;
+    }
+
+    /**
+     * Try to find a sequence of Nodes which can be passed to the backend to look for optimized
+     * instruction sequences using memory. Currently this basically is a read with a single
+     * arithmetic user followed by an possible if use. This should generalized to more generic
+     * pattern matching so that it can be more flexibly used.
+     */
+    private int maybeFoldMemory(List<ScheduledNode> nodes, int i, ValueNode access) {
+        MemoryArithmeticLIRLowerer lowerer = getMemoryLowerer();
+        if (lowerer != null && OptFoldMemory.getValue() && (access instanceof ReadNode || access instanceof FloatingReadNode) && access.usages().count() == 1 && i + 1 < nodes.size()) {
+            try (Scope s = Debug.scope("MaybeFoldMemory", access)) {
+                // This is all bit hacky since it's happening on the linearized schedule. This needs
+                // to be revisited at some point.
+
+                // Find a memory lowerable usage of this operation
+                if (access.usages().first() instanceof MemoryArithmeticLIRLowerable) {
+                    ValueNode operation = (ValueNode) access.usages().first();
+                    if (!nodes.contains(operation)) {
+                        Debug.log("node %1s in different block from %1s", access, operation);
+                        MemoryFoldFailedDifferentBlock.increment();
+                        return 0;
+                    }
+                    ValueNode firstOperation = operation;
+                    if (operation instanceof LogicNode) {
+                        if (operation.usages().count() == 1 && operation.usages().first() instanceof IfNode) {
+                            ValueNode ifNode = (ValueNode) operation.usages().first();
+                            if (!nodes.contains(ifNode)) {
+                                MemoryFoldFailedDifferentBlock.increment();
+                                Debug.log("if node %1s in different block from %1s", ifNode, operation);
+                                try (Indent indent = Debug.logAndIndent("checking operations")) {
+                                    int start = nodes.indexOf(access);
+                                    int end = nodes.indexOf(operation);
+                                    for (int i1 = Math.min(start, end); i1 <= Math.max(start, end); i1++) {
+                                        indent.log("%d: (%d) %1s", i1, nodes.get(i1).usages().count(), nodes.get(i1));
+                                    }
+                                }
+                                return 0;
+                            } else {
+                                operation = ifNode;
+                            }
+                        }
+                    }
+                    if (Debug.isLogEnabled()) {
+                        synchronized ("lock") {  // Hack to ensure the output is grouped.
+                            try (Indent indent = Debug.logAndIndent("checking operations")) {
+                                int start = nodes.indexOf(access);
+                                int end = nodes.indexOf(operation);
+                                for (int i1 = Math.min(start, end); i1 <= Math.max(start, end); i1++) {
+                                    indent.log("%d: (%d) %1s", i1, nodes.get(i1).usages().count(), nodes.get(i1));
+                                }
+                            }
+                        }
+                    }
+                    // Possible lowerable operation in the same block. Check out the dependencies.
+                    int opIndex = nodes.indexOf(operation);
+                    int current = i + 1;
+                    ArrayList<ValueNode> deferred = null;
+                    while (current < opIndex) {
+                        ScheduledNode node = nodes.get(current);
+                        if (node != firstOperation) {
+                            if (node instanceof LocationNode || node instanceof VirtualObjectNode) {
+                                // nothing to do
+                            } else if (node instanceof ConstantNode) {
+                                if (deferred == null) {
+                                    deferred = new ArrayList<>(2);
+                                }
+                                // These nodes are collected and the backend is expended to
+                                // evaluate them before generating the lowered form. This
+                                // basically works around unfriendly scheduling of values which
+                                // are defined in a block but not used there.
+                                deferred.add((ValueNode) node);
+                            } else {
+                                Debug.log("unexpected node %1s", node);
+                                // Unexpected inline node
+                                break;
+                            }
+                        }
+                        current++;
+                    }
+
+                    if (current == opIndex) {
+                        if (lowerer.memoryPeephole((Access) access, (MemoryArithmeticLIRLowerable) operation, deferred)) {
+                            MemoryFoldSuccess.increment();
+                            // if this operation had multiple access inputs, then previous attempts
+                            // would be marked as failures which is wrong. Try to adjust the
+                            // counters to account for this.
+                            for (Node input : operation.inputs()) {
+                                if (input == access) {
+                                    continue;
+                                }
+                                if (input instanceof Access && nodes.contains(input)) {
+                                    MemoryFoldFailedNonAdjacent.add(-1);
+                                }
+                            }
+                            if (deferred != null) {
+                                // Ensure deferred nodes were evaluated
+                                for (ValueNode node : deferred) {
+                                    assert hasOperand(node);
+                                }
+                            }
+                            return opIndex - i;
+                        } else {
+                            // This isn't true failure, it just means there wasn't match for the
+                            // pattern. Usually that means it's just not supported by the backend.
+                            MemoryFoldFailed.increment();
+                            return 0;
+                        }
+                    } else {
+                        MemoryFoldFailedNonAdjacent.increment();
+                    }
+                } else {
+                    // memory usage which isn't considered lowerable. Mostly these are
+                    // uninteresting but it might be worth looking at to ensure that interesting
+                    // nodes are being properly handled.
+                    // Debug.log("usage isn't lowerable %1s", access.usages().first());
+                }
+            }
+        }
+        return 0;
+    }
+
     protected abstract boolean peephole(ValueNode valueNode);
 
     private boolean hasBlockEnd(Block block) {
@@ -504,7 +657,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool, LIRTypeTool {
 
         Debug.log("Visiting %s", instr);
         emitNode(instr);
-        Debug.log("Operand for %s = %s", instr, operand(instr));
+        Debug.log("Operand for %s = %s", instr, getOperand(instr));
     }
 
     protected void emitNode(ValueNode node) {
@@ -599,7 +752,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool, LIRTypeTool {
 
     private Value operandForPhi(PhiNode phi) {
         assert phi.type() == PhiType.Value : "wrong phi type: " + phi;
-        Value result = operand(phi);
+        Value result = getOperand(phi);
         if (result == null) {
             // allocate a variable for this phi
             Variable newOperand = newVariable(getPhiKind(phi));

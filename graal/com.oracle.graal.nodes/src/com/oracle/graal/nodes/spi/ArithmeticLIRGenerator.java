@@ -35,6 +35,8 @@ public interface ArithmeticLIRGenerator {
 
     Value operand(ValueNode object);
 
+    boolean hasOperand(ValueNode object);
+
     Value setResult(ValueNode x, Value operand);
 
     PlatformKind getPlatformKind(Stamp stamp);

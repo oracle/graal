@@ -271,6 +271,8 @@ public final class GraalOptions {
     public static final OptionValue<Boolean> OptDevirtualizeInvokesOptimistically = new OptionValue<>(true);
     @Option(help = "")
     public static final OptionValue<Boolean> OptPushThroughPi = new OptionValue<>(true);
+    @Option(help = "Allow backend to emit arithmetic and compares directly against memory.")
+    public static final OptionValue<Boolean> OptFoldMemory = new OptionValue<>(true);
 
 
     /**

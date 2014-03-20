@@ -26,6 +26,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
@@ -77,10 +78,19 @@ public final class FloatAddNode extends FloatArithmeticNode implements Canonical
 
     public static boolean livesLonger(ValueNode after, ValueNode value, ArithmeticLIRGenerator gen) {
         for (Node usage : value.usages()) {
-            if (usage != after && usage instanceof ValueNode && gen.operand(((ValueNode) usage)) != null) {
+            if (usage != after && usage instanceof ValueNode && gen.hasOperand(((ValueNode) usage))) {
                 return true;
             }
         }
         return false;
+    }
+
+    @Override
+    public boolean generate(MemoryArithmeticLIRLowerer gen, Access access) {
+        Value result = gen.emitAddMemory(x(), y(), access);
+        if (result != null) {
+            gen.setResult(this, result);
+        }
+        return result != null;
     }
 }

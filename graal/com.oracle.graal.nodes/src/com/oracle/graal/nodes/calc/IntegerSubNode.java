@@ -26,6 +26,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
@@ -97,7 +98,9 @@ public class IntegerSubNode extends IntegerArithmeticNode implements Canonicaliz
             if (reassociated != this) {
                 return reassociated;
             }
-            if (c < 0) {
+            if (c < 0 || ((IntegerStamp) StampFactory.forKind(y().getKind())).contains(-c)) {
+                // Adding a negative is more friendly to the backend since adds are
+                // commutative, so prefer add when it fits.
                 return IntegerArithmeticNode.add(graph(), x(), ConstantNode.forIntegerStamp(stamp(), -c, graph()));
             }
         } else if (x().isConstant()) {
@@ -116,5 +119,14 @@ public class IntegerSubNode extends IntegerArithmeticNode implements Canonicaliz
     @Override
     public void generate(ArithmeticLIRGenerator gen) {
         gen.setResult(this, gen.emitSub(gen.operand(x()), gen.operand(y())));
+    }
+
+    @Override
+    public boolean generate(MemoryArithmeticLIRLowerer gen, Access access) {
+        Value result = gen.emitSubMemory(x(), y(), access);
+        if (result != null) {
+            gen.setResult(this, result);
+        }
+        return result != null;
     }
 }

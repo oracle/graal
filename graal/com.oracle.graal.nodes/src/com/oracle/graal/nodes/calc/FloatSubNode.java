@@ -26,6 +26,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
@@ -77,5 +78,14 @@ public final class FloatSubNode extends FloatArithmeticNode implements Canonical
     @Override
     public void generate(ArithmeticLIRGenerator gen) {
         gen.setResult(this, gen.emitSub(gen.operand(x()), gen.operand(y())));
+    }
+
+    @Override
+    public boolean generate(MemoryArithmeticLIRLowerer gen, Access access) {
+        Value result = gen.emitSubMemory(x(), y(), access);
+        if (result != null) {
+            gen.setResult(this, result);
+        }
+        return result != null;
     }
 }
