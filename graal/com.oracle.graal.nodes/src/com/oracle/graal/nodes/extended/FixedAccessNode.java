@@ -43,6 +43,11 @@ public abstract class FixedAccessNode extends DeoptimizingFixedWithNextNode impl
         return object;
     }
 
+    protected void setObject(ValueNode x) {
+        updateUsages(object, x);
+        object = x;
+    }
+
     public LocationNode location() {
         return (LocationNode) location;
     }
