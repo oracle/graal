@@ -27,6 +27,7 @@ package com.oracle.truffle.api.nodes;
 import java.io.*;
 import java.lang.annotation.*;
 import java.util.*;
+import java.util.concurrent.*;
 
 import com.oracle.truffle.api.*;
 
@@ -251,7 +252,11 @@ public abstract class Node implements Cloneable {
      */
     public final <T extends Node> T replace(final T newNode, final CharSequence reason) {
         CompilerDirectives.transferToInterpreterAndInvalidate();
-        replaceHelper(newNode, reason);
+        atomic(new Runnable() {
+            public void run() {
+                replaceHelper(newNode, reason);
+            }
+        });
         return newNode;
     }
 
@@ -477,5 +482,33 @@ public abstract class Node implements Cloneable {
         }
         sb.append("@").append(Integer.toHexString(hashCode()));
         return sb.toString();
+    }
+
+    public final void atomic(Runnable closure) {
+        RootNode rootNode = getRootNode();
+        if (rootNode != null) {
+            synchronized (rootNode) {
+                closure.run();
+            }
+        } else {
+            closure.run();
+        }
+    }
+
+    public final <T> T atomic(Callable<T> closure) {
+        try {
+            RootNode rootNode = getRootNode();
+            if (rootNode != null) {
+                synchronized (rootNode) {
+                    return closure.call();
+                }
+            } else {
+                return closure.call();
+            }
+        } catch (RuntimeException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 }
