@@ -326,7 +326,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
      * variant2 $condition != null
      * $type $name = $value;
      * </pre>
-     *
+     * 
      * .
      */
     private static CodeTree createLazyAssignment(CodeTreeBuilder parent, String name, TypeMirror type, CodeTree condition, CodeTree value) {
