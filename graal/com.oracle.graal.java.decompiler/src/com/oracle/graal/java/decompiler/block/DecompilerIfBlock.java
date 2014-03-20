@@ -158,7 +158,20 @@ public class DecompilerIfBlock extends DecompilerBlock {
 
     @Override
     public boolean contains(Block b) {
-        return b == block || thenBranch.contains(b) || elseBranch.contains(b);
+        if (b == block) {
+            return true;
+        }
+        for (DecompilerBlock i : thenBranch) {
+            if (i.block == b) {
+                return true;
+            }
+        }
+        for (DecompilerBlock i : elseBranch) {
+            if (i.block == b) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Override

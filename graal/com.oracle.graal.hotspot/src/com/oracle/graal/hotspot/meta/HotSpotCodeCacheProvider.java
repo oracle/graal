@@ -29,15 +29,20 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.CodeUtil.DefaultRefMapFormatter;
 import com.oracle.graal.api.code.CodeUtil.RefMapFormatter;
 import com.oracle.graal.api.code.CompilationResult.Call;
+import com.oracle.graal.api.code.CompilationResult.Data;
 import com.oracle.graal.api.code.CompilationResult.DataPatch;
 import com.oracle.graal.api.code.CompilationResult.Infopoint;
 import com.oracle.graal.api.code.CompilationResult.Mark;
+import com.oracle.graal.api.code.CompilationResult.PrimitiveData;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.bridge.*;
 import com.oracle.graal.hotspot.bridge.CompilerToVM.CodeInstallResult;
+import com.oracle.graal.hotspot.data.*;
 import com.oracle.graal.java.*;
+import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.printer.*;
 
 /**
@@ -56,6 +61,54 @@ public abstract class HotSpotCodeCacheProvider implements CodeCacheProvider {
     }
 
     protected abstract RegisterConfig createRegisterConfig();
+
+    /**
+     * Constants used to mark special positions in code being installed into the code cache by Graal
+     * C++ code.
+     */
+    public enum MarkId {
+        VERIFIED_ENTRY(config().codeInstallerMarkIdVerifiedEntry),
+        UNVERIFIED_ENTRY(config().codeInstallerMarkIdUnverifiedEntry),
+        OSR_ENTRY(config().codeInstallerMarkIdOsrEntry),
+        EXCEPTION_HANDLER_ENTRY(config().codeInstallerMarkIdExceptionHandlerEntry),
+        DEOPT_HANDLER_ENTRY(config().codeInstallerMarkIdDeoptHandlerEntry),
+        INVOKEINTERFACE(config().codeInstallerMarkIdInvokeinterface),
+        INVOKEVIRTUAL(config().codeInstallerMarkIdInvokevirtual),
+        INVOKESTATIC(config().codeInstallerMarkIdInvokestatic),
+        INVOKESPECIAL(config().codeInstallerMarkIdInvokespecial),
+        INLINE_INVOKE(config().codeInstallerMarkIdInlineInvoke),
+        POLL_NEAR(config().codeInstallerMarkIdPollNear),
+        POLL_RETURN_NEAR(config().codeInstallerMarkIdPollReturnNear),
+        POLL_FAR(config().codeInstallerMarkIdPollFar),
+        POLL_RETURN_FAR(config().codeInstallerMarkIdPollReturnFar);
+
+        private final int value;
+
+        private MarkId(int value) {
+            this.value = value;
+        }
+
+        private static HotSpotVMConfig config() {
+            return HotSpotGraalRuntime.runtime().getConfig();
+        }
+
+        public static MarkId getEnum(int value) {
+            for (MarkId e : values()) {
+                if (e.value == value) {
+                    return e;
+                }
+            }
+            throw GraalInternalError.shouldNotReachHere("unknown enum value " + value);
+        }
+
+        /**
+         * Helper method to {@link CompilationResultBuilder#recordMark(Object) record a mark} with a
+         * {@link CompilationResultBuilder}.
+         */
+        public static void recordMark(CompilationResultBuilder crb, MarkId mark) {
+            crb.recordMark(mark.value);
+        }
+    }
 
     @Override
     public String disassemble(CompilationResult compResult, InstalledCode installedCode) {
@@ -82,10 +135,10 @@ public abstract class HotSpotCodeCacheProvider implements CodeCacheProvider {
                 }
             }
             for (DataPatch site : compResult.getDataReferences()) {
-                hcf.addOperandComment(site.pcOffset, "{" + site.getDataString() + "}");
+                hcf.addOperandComment(site.pcOffset, "{" + site.data.toString() + "}");
             }
             for (Mark mark : compResult.getMarks()) {
-                hcf.addComment(mark.pcOffset, getMarkName(mark));
+                hcf.addComment(mark.pcOffset, MarkId.getEnum((int) mark.id).toString());
             }
         }
         return hcf.toEmbeddedString();
@@ -109,25 +162,6 @@ public abstract class HotSpotCodeCacheProvider implements CodeCacheProvider {
             }
         }
         return String.valueOf(call.target);
-    }
-
-    /**
-     * Decodes a mark to a mnemonic if possible.
-     */
-    private static String getMarkName(Mark mark) {
-        Field[] fields = Marks.class.getDeclaredFields();
-        for (Field f : fields) {
-            if (Modifier.isStatic(f.getModifiers()) && f.getName().startsWith("MARK_")) {
-                f.setAccessible(true);
-                try {
-                    if (f.get(null).equals(mark.id)) {
-                        return f.getName();
-                    }
-                } catch (Exception e) {
-                }
-            }
-        }
-        return "MARK:" + mark.id;
     }
 
     private static void addExceptionHandlersComment(CompilationResult compResult, HexCodeFile hcf) {
@@ -173,7 +207,7 @@ public abstract class HotSpotCodeCacheProvider implements CodeCacheProvider {
             compResult.setId(method.allocateCompileId(compResult.getEntryBCI()));
         }
         HotSpotInstalledCode installedCode = new HotSpotNmethod(method, compResult.getName(), true);
-        runtime.getCompilerToVM().installCode(new HotSpotCompiledNmethod(target.arch, method, compResult), installedCode, method.getSpeculationLog());
+        runtime.getCompilerToVM().installCode(new HotSpotCompiledNmethod(target, method, compResult), installedCode, method.getSpeculationLog());
         return logOrDump(installedCode, compResult);
     }
 
@@ -184,7 +218,7 @@ public abstract class HotSpotCodeCacheProvider implements CodeCacheProvider {
             compResult.setId(hotspotMethod.allocateCompileId(compResult.getEntryBCI()));
         }
         HotSpotInstalledCode code = new HotSpotNmethod(hotspotMethod, compResult.getName(), false);
-        CodeInstallResult result = runtime.getCompilerToVM().installCode(new HotSpotCompiledNmethod(target.arch, hotspotMethod, compResult), code, log);
+        CodeInstallResult result = runtime.getCompilerToVM().installCode(new HotSpotCompiledNmethod(target, hotspotMethod, compResult), code, log);
         if (result != CodeInstallResult.OK) {
             return null;
         }
@@ -203,7 +237,7 @@ public abstract class HotSpotCodeCacheProvider implements CodeCacheProvider {
             compResult.setId(javaMethod.allocateCompileId(compResult.getEntryBCI()));
         }
         HotSpotNmethod code = new HotSpotNmethod(javaMethod, compResult.getName(), false, true);
-        HotSpotCompiledNmethod compiled = new HotSpotCompiledNmethod(target.arch, javaMethod, compResult);
+        HotSpotCompiledNmethod compiled = new HotSpotCompiledNmethod(target, javaMethod, compResult);
         CompilerToVM vm = runtime.getCompilerToVM();
         CodeInstallResult result = vm.installCode(compiled, code, null);
         if (result != CodeInstallResult.OK) {
@@ -214,6 +248,16 @@ public abstract class HotSpotCodeCacheProvider implements CodeCacheProvider {
 
     public boolean needsDataPatch(Constant constant) {
         return constant.getPrimitiveAnnotation() != null;
+    }
+
+    public Data createDataItem(Constant constant, int alignment) {
+        if (constant.getPrimitiveAnnotation() != null) {
+            return new MetaspaceData(alignment, constant.asLong(), constant.getPrimitiveAnnotation(), false);
+        } else if (constant.getKind().isObject()) {
+            return new OopData(alignment, constant.asObject(), false);
+        } else {
+            return new PrimitiveData(constant, alignment);
+        }
     }
 
     @Override

@@ -72,6 +72,10 @@ public interface DebugHistogram {
             count++;
         }
 
+        public void add(int n) {
+            count += n;
+        }
+
         public int getCount() {
             return count;
         }

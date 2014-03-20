@@ -99,4 +99,12 @@ public final class DefaultProfilingInfo implements ProfilingInfo {
     public void setMature() {
         // Do nothing
     }
+
+    public boolean setCompilerIRSize(Class<?> irType, int nodeCount) {
+        return false;
+    }
+
+    public int getCompilerIRSize(Class<?> irType) {
+        return -1;
+    }
 }

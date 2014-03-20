@@ -700,9 +700,9 @@ public class HotSpotLoweringProvider implements LoweringProvider {
 
     public int getScalingFactor(Kind kind) {
         if (useCompressedOops() && kind == Kind.Object) {
-            return this.runtime.getTarget().arch.getSizeInBytes(Kind.Int);
+            return this.runtime.getTarget().getSizeInBytes(Kind.Int);
         } else {
-            return this.runtime.getTarget().arch.getSizeInBytes(kind);
+            return this.runtime.getTarget().getSizeInBytes(kind);
         }
     }
 
@@ -757,7 +757,7 @@ public class HotSpotLoweringProvider implements LoweringProvider {
         ValueNode arrayLength = readArrayLength(n.graph(), array, tool.getConstantReflection());
         if (arrayLength == null) {
             Stamp stamp = StampFactory.positiveInt();
-            ReadNode readArrayLength = g.add(new ReadNode(array, ConstantLocationNode.create(FINAL_LOCATION, Kind.Int, runtime.getConfig().arrayLengthOffset, g), stamp, BarrierType.NONE, false));
+            ReadNode readArrayLength = g.add(new ReadNode(array, ConstantLocationNode.create(ARRAY_LENGTH_LOCATION, Kind.Int, runtime.getConfig().arrayLengthOffset, g), stamp, BarrierType.NONE, false));
             g.addBeforeFixed(n, readArrayLength);
             readArrayLength.setGuard(createNullCheck(array, readArrayLength, tool));
             arrayLength = readArrayLength;

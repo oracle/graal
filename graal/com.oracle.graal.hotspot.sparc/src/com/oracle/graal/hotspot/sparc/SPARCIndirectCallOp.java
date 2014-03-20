@@ -29,7 +29,7 @@ import static com.oracle.graal.sparc.SPARC.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.sparc.*;
-import com.oracle.graal.hotspot.bridge.*;
+import com.oracle.graal.hotspot.meta.HotSpotCodeCacheProvider.MarkId;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.sparc.*;
 import com.oracle.graal.lir.sparc.SPARCCall.IndirectCallOp;
@@ -58,7 +58,7 @@ final class SPARCIndirectCallOp extends IndirectCallOp {
 
     @Override
     public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
-        crb.recordMark(Marks.MARK_INLINE_INVOKE);
+        MarkId.recordMark(crb, MarkId.INLINE_INVOKE);
         Register callReg = asRegister(targetAddress);
         assert !callReg.equals(METHOD);
         SPARCCall.indirectCall(crb, masm, callReg, callTarget, state);

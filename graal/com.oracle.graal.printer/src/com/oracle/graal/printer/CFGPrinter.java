@@ -41,6 +41,7 @@ import com.oracle.graal.lir.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.cfg.*;
+import com.oracle.graal.phases.schedule.*;
 
 /**
  * Utility for printing Graal IR at various compilation phases.
@@ -51,6 +52,7 @@ class CFGPrinter extends CompilationPrinter {
     protected LIR lir;
     protected LIRGenerator lirGenerator;
     protected ControlFlowGraph cfg;
+    protected SchedulePhase schedule;
 
     /**
      * Creates a control flow graph printer.
@@ -118,7 +120,7 @@ class CFGPrinter extends CompilationPrinter {
     private NodeBitMap printedNodes;
 
     private boolean inFixedSchedule(Node node) {
-        return lir != null || node.isDeleted() || cfg.getNodeToBlock().get(node) != null;
+        return lir != null || schedule != null || node.isDeleted() || cfg.getNodeToBlock().get(node) != null;
     }
 
     /**
@@ -185,6 +187,20 @@ class CFGPrinter extends CompilationPrinter {
     }
 
     private void printBlock(AbstractBlock<?> block, boolean printNodes) {
+        printBlockProlog(block);
+        if (printNodes) {
+            assert block instanceof Block;
+            printNodes((Block) block);
+        }
+        printBlockEpilog(block);
+    }
+
+    private void printBlockEpilog(AbstractBlock<?> block) {
+        printLIR(block);
+        end("block");
+    }
+
+    private void printBlockProlog(AbstractBlock<?> block) {
         begin("block");
 
         out.print("name \"").print(blockToString(block)).println('"');
@@ -229,18 +245,10 @@ class CFGPrinter extends CompilationPrinter {
             out.print("loop_index ").println(block.getLoop().index);
             out.print("loop_depth ").println(block.getLoop().depth);
         }
-
-        if (printNodes) {
-            printedNodes = new NodeBitMap(cfg.graph);
-            assert block instanceof Block;
-            printNodes((Block) block);
-            printedNodes = null;
-        }
-        printLIR(block);
-        end("block");
     }
 
     private void printNodes(Block block) {
+        printedNodes = new NodeBitMap(cfg.graph);
         begin("IR");
         out.println("HIR");
         out.disableIndentation();
@@ -274,6 +282,7 @@ class CFGPrinter extends CompilationPrinter {
 
         out.enableIndentation();
         end("IR");
+        printedNodes = null;
     }
 
     private void printNode(Node node, boolean unscheduled) {
@@ -289,7 +298,7 @@ class CFGPrinter extends CompilationPrinter {
         }
 
         if (unscheduled) {
-            assert lir == null : "unscheduled nodes can only be present before LIR generation";
+            assert lir == null && schedule == null : "unscheduled nodes can only be present before LIR generation";
             out.print("f ").print(HOVER_START).print("u").print(HOVER_SEP).print("unscheduled").print(HOVER_END).println(COLUMN_END);
         } else if (node instanceof FixedWithNextNode) {
             out.print("f ").print(HOVER_START).print("#").print(HOVER_SEP).print("fixed with next").print(HOVER_END).println(COLUMN_END);
@@ -466,7 +475,7 @@ class CFGPrinter extends CompilationPrinter {
             return "-";
         }
         String prefix;
-        if (node instanceof AbstractBeginNode && lir == null) {
+        if (node instanceof AbstractBeginNode && (lir == null && schedule == null)) {
             prefix = "B";
         } else if (node instanceof ValueNode) {
             ValueNode value = (ValueNode) node;
@@ -482,7 +491,7 @@ class CFGPrinter extends CompilationPrinter {
     }
 
     private String blockToString(AbstractBlock<?> block) {
-        if (lir == null && block instanceof Block) {
+        if (lir == null && schedule == null && block instanceof Block) {
             // During all the front-end phases, the block schedule is built only for the debug
             // output.
             // Therefore, the block numbers would be different for every CFG printed -> use the id
@@ -540,5 +549,47 @@ class CFGPrinter extends CompilationPrinter {
 
         out.printf(" \"%s\"", interval.spillState());
         out.println();
+    }
+
+    public void printSchedule(String message, SchedulePhase theSchedule) {
+        schedule = theSchedule;
+        cfg = schedule.getCFG();
+        printedNodes = new NodeBitMap(cfg.graph);
+
+        begin("cfg");
+        out.print("name \"").print(message).println('"');
+        for (Block b : schedule.getCFG().getBlocks()) {
+            if (schedule.nodesFor(b) != null) {
+                printScheduledBlock(b, schedule.nodesFor(b));
+            }
+        }
+        end("cfg");
+
+        schedule = null;
+        cfg = null;
+        printedNodes = null;
+    }
+
+    private void printScheduledBlock(Block block, List<ScheduledNode> nodesFor) {
+        printBlockProlog(block);
+        begin("IR");
+        out.println("HIR");
+        out.disableIndentation();
+
+        if (block.getBeginNode() instanceof MergeNode) {
+            // Currently phi functions are not in the schedule, so print them separately here.
+            for (ValueNode phi : ((MergeNode) block.getBeginNode()).phis()) {
+                printNode(phi, false);
+            }
+        }
+
+        for (Node n : nodesFor) {
+            printNode(n, false);
+        }
+
+        out.enableIndentation();
+        end("IR");
+
+        printBlockEpilog(block);
     }
 }

@@ -27,7 +27,6 @@ import java.util.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.target.*;
-import com.oracle.graal.hotspot.bridge.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.stubs.*;
 import com.oracle.graal.lir.*;
@@ -51,7 +50,8 @@ public abstract class HotSpotBackend extends Backend {
 
     /**
      * Descriptor for {@link ExceptionHandlerStub}. This stub is called by the
-     * {@linkplain Marks#MARK_EXCEPTION_HANDLER_ENTRY exception handler} in a compiled method.
+     * {@linkplain HotSpotVMConfig#codeInstallerMarkIdExceptionHandlerEntry exception handler} in a
+     * compiled method.
      */
     public static final ForeignCallDescriptor EXCEPTION_HANDLER = new ForeignCallDescriptor("exceptionHandler", void.class, Object.class, Word.class);
 

@@ -93,6 +93,10 @@ public class ReinterpretNode extends FloatingNode implements Canonicalizable, Ar
         if (stamp().isCompatible(value.stamp())) {
             return value;
         }
+        if (value instanceof ReinterpretNode) {
+            ReinterpretNode reinterpret = (ReinterpretNode) value;
+            return value.graph().unique(new ReinterpretNode(stamp(), reinterpret.value()));
+        }
         return this;
     }
 

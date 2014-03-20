@@ -62,7 +62,7 @@ public class ControlFlowExceptionPartialEvaluationTest extends PartialEvaluation
         @Child private AbstractTestNode child;
 
         public CatchControlFlowExceptionTestNode(AbstractTestNode child) {
-            this.child = adoptChild(child);
+            this.child = child;
         }
 
         @Override
@@ -80,7 +80,7 @@ public class ControlFlowExceptionPartialEvaluationTest extends PartialEvaluation
         @Child private AbstractTestNode child;
 
         public CatchSlowPathAndControlFlowExceptionTestNode(AbstractTestNode child) {
-            this.child = adoptChild(child);
+            this.child = child;
         }
 
         @Override

@@ -33,6 +33,7 @@ import com.oracle.graal.api.code.CallingConvention.Type;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
+import com.oracle.graal.hotspot.nodes.type.*;
 
 public class AMD64HotSpotRegisterConfig implements RegisterConfig {
 
@@ -46,6 +47,8 @@ public class AMD64HotSpotRegisterConfig implements RegisterConfig {
      * registers.
      */
     private final Register[] callerSaved;
+
+    private final boolean allAllocatableAreCallerSaved;
 
     private final HashMap<PlatformKind, Register[]> categorized = new HashMap<>();
 
@@ -61,9 +64,16 @@ public class AMD64HotSpotRegisterConfig implements RegisterConfig {
             return categorized.get(kind);
         }
 
+        PlatformKind primitiveKind;
+        if (kind == NarrowOopStamp.NarrowOop) {
+            primitiveKind = Kind.Int;
+        } else {
+            primitiveKind = kind;
+        }
+
         ArrayList<Register> list = new ArrayList<>();
         for (Register reg : getAllocatableRegisters()) {
-            if (architecture.canStoreValue(reg.getRegisterCategory(), kind)) {
+            if (architecture.canStoreValue(reg.getRegisterCategory(), primitiveKind)) {
                 list.add(reg);
             }
         }
@@ -144,12 +154,18 @@ public class AMD64HotSpotRegisterConfig implements RegisterConfig {
         callerSaved = callerSaveSet.toArray(new Register[callerSaveSet.size()]);
         assert callerSaved.length == allocatable.length || RegisterPressure.getValue() != null;
 
+        allAllocatableAreCallerSaved = true;
         attributesMap = RegisterAttributes.createMap(this, AMD64.allRegisters);
     }
 
     @Override
     public Register[] getCallerSaveRegisters() {
         return callerSaved;
+    }
+
+    @Override
+    public boolean areAllAllocatableRegistersCallerSaved() {
+        return allAllocatableAreCallerSaved;
     }
 
     @Override
@@ -211,7 +227,7 @@ public class AMD64HotSpotRegisterConfig implements RegisterConfig {
 
             if (locations[i] == null) {
                 locations[i] = StackSlot.get(kind.getStackKind(), currentStackOffset, !type.out);
-                currentStackOffset += Math.max(target.arch.getSizeInBytes(kind), target.wordSize);
+                currentStackOffset += Math.max(target.getSizeInBytes(kind), target.wordSize);
             }
         }
 

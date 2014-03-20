@@ -198,14 +198,9 @@ public class GraalCompiler {
         suites.getLowTier().apply(graph, lowTierContext);
         graph.maybeCompress();
 
-        // we do not want to store statistics about OSR compilations because it may prevent inlining
-        if (!graph.isOSR()) {
-            InliningPhase.storeStatisticsAfterLowTier(graph);
-        }
-
         SchedulePhase schedule = new SchedulePhase();
         schedule.apply(graph);
-        Debug.dump(schedule, "final schedule");
+        Debug.dump(schedule, "Final HIR schedule");
         return schedule;
 
     }
@@ -298,18 +293,14 @@ public class GraalCompiler {
 
         if (Debug.isMeterEnabled()) {
             List<DataPatch> ldp = compilationResult.getDataReferences();
-            DebugMetric[] dms = new DebugMetric[Kind.values().length];
+            Kind[] kindValues = Kind.values();
+            DebugMetric[] dms = new DebugMetric[kindValues.length];
             for (int i = 0; i < dms.length; i++) {
-                dms[i] = Debug.metric("DataPatches-" + Kind.values()[i].toString());
+                dms[i] = Debug.metric("DataPatches-%s", kindValues[i]);
             }
-            DebugMetric dmRaw = Debug.metric("DataPatches-raw");
 
             for (DataPatch dp : ldp) {
-                if (dp.getConstant() != null) {
-                    dms[dp.getConstant().getKind().ordinal()].add(1);
-                } else {
-                    dmRaw.add(1);
-                }
+                dms[dp.data.getKind().ordinal()].add(1);
             }
 
             Debug.metric("CompilationResults").increment();

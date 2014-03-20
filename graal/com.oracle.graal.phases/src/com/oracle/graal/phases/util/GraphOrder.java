@@ -85,7 +85,7 @@ public final class GraphOrder {
 
     private static void visitForward(ArrayList<Node> nodes, NodeBitMap visited, Node node, boolean floatingOnly) {
         try {
-            assert node.isAlive() : node + " not alive";
+            assert node == null || node.isAlive() : node + " not alive";
             if (node != null && !visited.isMarked(node)) {
                 if (floatingOnly && node instanceof FixedNode) {
                     throw new GraalInternalError("unexpected reference to fixed node: %s (this indicates an unexpected cycle)", node);

@@ -28,10 +28,7 @@ import java.util.*;
 public interface DebugConfig {
 
     /**
-     * Determines if logging is enabled in the {@linkplain Debug#currentScope() current debug scope}
-     * .
-     * 
-     * @see Debug#log(String, Object...)
+     * Determines if logging is on in the {@linkplain Debug#currentScope() current debug scope} .
      */
     boolean isLogEnabled();
 
@@ -45,7 +42,7 @@ public interface DebugConfig {
      * Determines if metering is enabled in the {@linkplain Debug#currentScope() current debug
      * scope}.
      * 
-     * @see Debug#metric(String)
+     * @see Debug#metric(CharSequence)
      */
     boolean isMeterEnabled();
 
@@ -76,7 +73,7 @@ public interface DebugConfig {
     void removeFromContext(Object o);
 
     /**
-     * @see Debug#timer(String)
+     * @see Debug#timer(CharSequence)
      */
     boolean isTimeEnabled();
 

@@ -204,7 +204,7 @@ public class HIRFrameStateBuilder extends AbstractFrameStateBuilder<ValueNode> {
                 return null;
             }
 
-            PhiNode phi = graph.addWithoutUnique(new PhiNode(currentValue.getKind(), block));
+            PhiNode phi = graph.addWithoutUnique(new PhiNode(currentValue.stamp().unrestricted(), block));
             for (int i = 0; i < block.phiPredecessorCount(); i++) {
                 phi.addInput(currentValue);
             }
@@ -302,7 +302,7 @@ public class HIRFrameStateBuilder extends AbstractFrameStateBuilder<ValueNode> {
         }
         assert !block.isPhiAtMerge(value) : "phi function for this block already created";
 
-        PhiNode phi = graph.addWithoutUnique(new PhiNode(value.getKind(), block));
+        PhiNode phi = graph.addWithoutUnique(new PhiNode(value.stamp().unrestricted(), block));
         phi.addInput(value);
         return phi;
     }

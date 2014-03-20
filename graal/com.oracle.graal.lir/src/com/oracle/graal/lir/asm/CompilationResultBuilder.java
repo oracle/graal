@@ -27,7 +27,6 @@ import static com.oracle.graal.api.code.ValueUtil.*;
 import java.util.*;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.CompilationResult.ConstantData;
 import com.oracle.graal.api.code.CompilationResult.Data;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
@@ -157,6 +156,10 @@ public class CompilationResultBuilder {
     }
 
     public void recordInlineDataInCode(Constant data) {
+        recordInlineDataInCode(codeCache.createDataItem(data, 0));
+    }
+
+    public void recordInlineDataInCode(Data data) {
         assert data != null;
         int pos = asm.position();
         Debug.log("Inline data in code: pos = %d, data = %s", pos, data);
@@ -165,7 +168,7 @@ public class CompilationResultBuilder {
 
     public AbstractAddress recordDataReferenceInCode(Constant data, int alignment) {
         assert data != null;
-        return recordDataReferenceInCode(new ConstantData(data, alignment));
+        return recordDataReferenceInCode(codeCache.createDataItem(data, alignment));
     }
 
     public AbstractAddress recordDataReferenceInCode(Data data) {

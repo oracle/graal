@@ -130,7 +130,7 @@ public abstract class GraalCompilerTest extends GraalTest {
     @Before
     public void beforeTest() {
         assert debugScope == null;
-        debugScope = Debug.scope(getClass().getSimpleName());
+        debugScope = Debug.scope(getClass());
     }
 
     @After
@@ -498,7 +498,7 @@ public abstract class GraalCompilerTest extends GraalTest {
     }
 
     private CompilationResult compileBaseline(ResolvedJavaMethod javaMethod) {
-        try (Scope bds = Debug.scope("compileBaseline", javaMethod, providers.getCodeCache())) {
+        try (Scope bds = Debug.scope("CompileBaseline", javaMethod, providers.getCodeCache())) {
             BaselineCompiler baselineCompiler = new BaselineCompiler(GraphBuilderConfiguration.getDefault(), providers.getMetaAccess());
             return baselineCompiler.generate(javaMethod, -1, getBackend(), new CompilationResult(), javaMethod, CompilationResultBuilderFactory.Default);
         } catch (Throwable e) {
@@ -629,7 +629,7 @@ public abstract class GraalCompilerTest extends GraalTest {
         final int id = compilationId.incrementAndGet();
 
         InstalledCode installedCode = null;
-        try (Scope ds = Debug.scope("Compiling", new DebugDumpScope(String.valueOf(id), true))) {
+        try (AllocSpy spy = AllocSpy.open(method); Scope ds = Debug.scope("Compiling", new DebugDumpScope(String.valueOf(id), true))) {
             final boolean printCompilation = PrintCompilation.getValue() && !TTY.isSuppressed();
             if (printCompilation) {
                 TTY.println(String.format("@%-6d Graal %-70s %-45s %-50s ...", id, method.getDeclaringClass().getName(), method.getName(), method.getSignature()));

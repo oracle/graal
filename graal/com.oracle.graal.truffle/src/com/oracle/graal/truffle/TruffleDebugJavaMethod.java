@@ -30,7 +30,7 @@ import com.oracle.truffle.api.*;
 
 /**
  * Enables a Truffle compilable to masquerade as a {@link JavaMethod} for use as a context value in
- * {@linkplain Debug#scope(String, Object...) debug scopes}.
+ * {@linkplain Debug#scope(Object) debug scopes}.
  */
 public class TruffleDebugJavaMethod implements JavaMethod {
     private final RootCallTarget compilable;

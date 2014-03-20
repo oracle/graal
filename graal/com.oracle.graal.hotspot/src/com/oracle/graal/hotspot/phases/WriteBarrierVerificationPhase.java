@@ -73,11 +73,11 @@ public class WriteBarrierVerificationPhase extends Phase {
             Node currentNode = iterator.next();
             assert !isSafepoint(currentNode) : "Write barrier must be present " + write;
             if (useG1GC()) {
-                if (!(currentNode instanceof G1PostWriteBarrier) || ((currentNode instanceof G1PostWriteBarrier) && !validateBarrier((FixedAccessNode) write, (WriteBarrier) currentNode))) {
+                if (!(currentNode instanceof G1PostWriteBarrier) || (!validateBarrier((FixedAccessNode) write, (WriteBarrier) currentNode))) {
                     expandFrontier(frontier, currentNode);
                 }
             } else {
-                if (!(currentNode instanceof SerialWriteBarrier) || ((currentNode instanceof SerialWriteBarrier) && !validateBarrier((FixedAccessNode) write, (WriteBarrier) currentNode)) ||
+                if (!(currentNode instanceof SerialWriteBarrier) || (!validateBarrier((FixedAccessNode) write, (WriteBarrier) currentNode)) ||
                                 ((currentNode instanceof SerialWriteBarrier) && !validateBarrier((FixedAccessNode) write, (WriteBarrier) currentNode))) {
                     expandFrontier(frontier, currentNode);
                 }

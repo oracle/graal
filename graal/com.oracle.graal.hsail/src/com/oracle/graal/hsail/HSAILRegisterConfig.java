@@ -24,7 +24,6 @@
 package com.oracle.graal.hsail;
 
 import com.oracle.graal.api.code.*;
-
 import com.oracle.graal.api.code.CallingConvention.Type;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
@@ -123,7 +122,7 @@ public class HSAILRegisterConfig implements RegisterConfig {
 
             if (locations[i] == null) {
                 locations[i] = StackSlot.get(kind.getStackKind(), currentStackOffset, !type.out);
-                currentStackOffset += Math.max(target.arch.getSizeInBytes(kind), target.wordSize);
+                currentStackOffset += Math.max(target.getSizeInBytes(kind), target.wordSize);
             }
         }
 
@@ -150,7 +149,6 @@ public class HSAILRegisterConfig implements RegisterConfig {
             case Short:
             case Byte:
             case Float:
-            case NarrowOop:
                 return regBitness32.clone();
             case Long:
             case Double:
@@ -166,6 +164,11 @@ public class HSAILRegisterConfig implements RegisterConfig {
     public Register[] getCallerSaveRegisters() {
         // TODO Auto-generated method stub
         return new Register[0];
+    }
+
+    @Override
+    public boolean areAllAllocatableRegistersCallerSaved() {
+        return false;
     }
 
     @Override

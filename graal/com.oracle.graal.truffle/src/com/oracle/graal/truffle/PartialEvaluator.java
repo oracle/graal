@@ -100,7 +100,7 @@ public class PartialEvaluator {
 
         final StructuredGraph graph = new StructuredGraph(executeHelperMethod);
 
-        try (Scope s = Debug.scope("createGraph", graph)) {
+        try (Scope s = Debug.scope("CreateGraph", graph)) {
             new GraphBuilderPhase.Instance(providers.getMetaAccess(), config, TruffleCompilerImpl.Optimizations).apply(graph);
 
             // Replace thisNode with constant.
@@ -250,7 +250,7 @@ public class PartialEvaluator {
         StructuredGraph graph = truffleCache.lookup(targetMethod, arguments, assumptions, canonicalizer);
 
         if (targetMethod.getAnnotation(ExplodeLoop.class) != null) {
-            assert graph.hasLoops();
+            assert graph.hasLoops() : graph + " does not contain a loop";
             final StructuredGraph graphCopy = graph.copy();
             final List<Node> modifiedNodes = new ArrayList<>();
             for (ParameterNode param : graphCopy.getNodes(ParameterNode.class)) {

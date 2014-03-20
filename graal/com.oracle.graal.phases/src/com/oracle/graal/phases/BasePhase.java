@@ -36,7 +36,7 @@ import com.oracle.graal.nodes.*;
  */
 public abstract class BasePhase<C> {
 
-    private final String name;
+    private CharSequence name;
 
     private final DebugTimer phaseTimer;
     private final DebugMetric phaseMetric;
@@ -49,25 +49,18 @@ public abstract class BasePhase<C> {
     }
 
     protected BasePhase() {
-        String nm = this.getClass().getSimpleName();
-        if (nm.endsWith("Phase")) {
-            name = nm.substring(0, nm.length() - "Phase".length());
-        } else {
-            name = nm;
-        }
-        assert checkName(name);
-        phaseTimer = Debug.timer("PhaseTime_" + name);
-        phaseMetric = Debug.metric("PhaseCount_" + name);
+        phaseTimer = Debug.timer("PhaseTime_%s", getClass());
+        phaseMetric = Debug.metric("PhaseCount_%s", getClass());
     }
 
     protected BasePhase(String name) {
         assert checkName(name);
         this.name = name;
-        phaseTimer = Debug.timer("PhaseTime_" + name);
-        phaseMetric = Debug.metric("PhaseCount_" + name);
+        phaseTimer = Debug.timer("PhaseTime_%s", getClass());
+        phaseMetric = Debug.metric("PhaseCount_%s", getClass());
     }
 
-    protected String getDetailedName() {
+    protected CharSequence getDetailedName() {
         return getName();
     }
 
@@ -76,7 +69,7 @@ public abstract class BasePhase<C> {
     }
 
     public final void apply(final StructuredGraph graph, final C context, final boolean dumpGraph) {
-        try (TimerCloseable a = phaseTimer.start(); Scope s = Debug.scope(name, this)) {
+        try (TimerCloseable a = phaseTimer.start(); Scope s = Debug.scope(getClass(), this)) {
             BasePhase.this.run(graph, context);
             phaseMetric.increment();
             if (dumpGraph) {
@@ -88,7 +81,14 @@ public abstract class BasePhase<C> {
         }
     }
 
-    public final String getName() {
+    public final CharSequence getName() {
+        if (name == null) {
+            String s = BasePhase.this.getClass().getSimpleName();
+            if (s.endsWith("Phase")) {
+                s = s.substring(0, s.length() - "Phase".length());
+            }
+            name = s;
+        }
         return name;
     }
 

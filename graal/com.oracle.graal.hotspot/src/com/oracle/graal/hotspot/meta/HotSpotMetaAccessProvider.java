@@ -299,7 +299,7 @@ public class HotSpotMetaAccessProvider implements MetaAccessProvider {
                     ResolvedJavaType elementType = lookupJavaType.getComponentType();
                     Kind elementKind = elementType.getKind();
                     final int headerSize = HotSpotGraalRuntime.getArrayBaseOffset(elementKind);
-                    int sizeOfElement = HotSpotGraalRuntime.runtime().getTarget().arch.getSizeInBytes(elementKind);
+                    int sizeOfElement = HotSpotGraalRuntime.runtime().getTarget().getSizeInBytes(elementKind);
                     int alignment = HotSpotGraalRuntime.runtime().getTarget().wordSize;
                     int log2ElementSize = CodeUtil.log2(sizeOfElement);
                     return NewObjectSnippets.computeArrayAllocationSize(length, alignment, headerSize, log2ElementSize);

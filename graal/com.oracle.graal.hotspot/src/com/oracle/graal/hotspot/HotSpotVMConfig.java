@@ -709,10 +709,12 @@ public class HotSpotVMConfig extends CompilerObject {
     @HotSpotVMFlag(name = "DontCompileHugeMethods") @Stable public boolean dontCompileHugeMethods;
     @HotSpotVMFlag(name = "HugeMethodLimit") @Stable public int hugeMethodLimit;
     @HotSpotVMFlag(name = "PrintCompilation") @Stable public boolean printCompilation;
+    @HotSpotVMFlag(name = "CIPrintCompilerName") @Stable public boolean printCompilerName;
     @HotSpotVMFlag(name = "PrintInlining") @Stable public boolean printInlining;
     @HotSpotVMFlag(name = "GraalUseFastLocking") @Stable public boolean useFastLocking;
     @HotSpotVMFlag(name = "ForceUnreachable") @Stable public boolean forceUnreachable;
     @HotSpotVMFlag(name = "GPUOffload") @Stable public boolean gpuOffload;
+    @HotSpotVMFlag(name = "TieredCompilation") @Stable public boolean tieredCompilation;
 
     @HotSpotVMFlag(name = "UseTLAB") @Stable public boolean useTLAB;
     @HotSpotVMFlag(name = "UseBiasedLocking") @Stable public boolean useBiasedLocking;
@@ -1189,6 +1191,7 @@ public class HotSpotVMConfig extends CompilerObject {
     @HotSpotVMField(name = "MethodData::_data_size", type = "int", get = HotSpotVMField.Type.OFFSET) @Stable public int methodDataDataSize;
     @HotSpotVMField(name = "MethodData::_data[0]", type = "intptr_t", get = HotSpotVMField.Type.OFFSET) @Stable public int methodDataOopDataOffset;
     @HotSpotVMField(name = "MethodData::_trap_hist._array[0]", type = "u1", get = HotSpotVMField.Type.OFFSET) @Stable public int methodDataOopTrapHistoryOffset;
+    @HotSpotVMField(name = "MethodData::_graal_node_count", type = "int", get = HotSpotVMField.Type.OFFSET) @Stable public int methodDataGraalNodeCountOffset;
 
     @HotSpotVMField(name = "nmethod::_verified_entry_point", type = "address", get = HotSpotVMField.Type.OFFSET) @Stable public int nmethodEntryOffset;
     @HotSpotVMField(name = "nmethod::_comp_level", type = "int", get = HotSpotVMField.Type.OFFSET) @Stable public int nmethodCompLevelOffset;
@@ -1418,6 +1421,22 @@ public class HotSpotVMConfig extends CompilerObject {
 
     @HotSpotVMConstant(name = "CompilerToVM::KLASS_TAG") @Stable public int compilerToVMKlassTag;
     @HotSpotVMConstant(name = "CompilerToVM::SYMBOL_TAG") @Stable public int compilerToVMSymbolTag;
+
+    @HotSpotVMConstant(name = "CodeInstaller::VERIFIED_ENTRY") @Stable public int codeInstallerMarkIdVerifiedEntry;
+    @HotSpotVMConstant(name = "CodeInstaller::UNVERIFIED_ENTRY") @Stable public int codeInstallerMarkIdUnverifiedEntry;
+    @HotSpotVMConstant(name = "CodeInstaller::OSR_ENTRY") @Stable public int codeInstallerMarkIdOsrEntry;
+    @HotSpotVMConstant(name = "CodeInstaller::EXCEPTION_HANDLER_ENTRY") @Stable public int codeInstallerMarkIdExceptionHandlerEntry;
+    @HotSpotVMConstant(name = "CodeInstaller::DEOPT_HANDLER_ENTRY") @Stable public int codeInstallerMarkIdDeoptHandlerEntry;
+    @HotSpotVMConstant(name = "CodeInstaller::INVOKEINTERFACE") @Stable public int codeInstallerMarkIdInvokeinterface;
+    @HotSpotVMConstant(name = "CodeInstaller::INVOKEVIRTUAL") @Stable public int codeInstallerMarkIdInvokevirtual;
+    @HotSpotVMConstant(name = "CodeInstaller::INVOKESTATIC") @Stable public int codeInstallerMarkIdInvokestatic;
+    @HotSpotVMConstant(name = "CodeInstaller::INVOKESPECIAL") @Stable public int codeInstallerMarkIdInvokespecial;
+    @HotSpotVMConstant(name = "CodeInstaller::INLINE_INVOKE") @Stable public int codeInstallerMarkIdInlineInvoke;
+    @HotSpotVMConstant(name = "CodeInstaller::POLL_NEAR") @Stable public int codeInstallerMarkIdPollNear;
+    @HotSpotVMConstant(name = "CodeInstaller::POLL_RETURN_NEAR") @Stable public int codeInstallerMarkIdPollReturnNear;
+    @HotSpotVMConstant(name = "CodeInstaller::POLL_FAR") @Stable public int codeInstallerMarkIdPollFar;
+    @HotSpotVMConstant(name = "CodeInstaller::POLL_RETURN_FAR") @Stable public int codeInstallerMarkIdPollReturnFar;
+    @HotSpotVMConstant(name = "CodeInstaller::INVOKE_INVALID") @Stable public int codeInstallerMarkIdInvokeInvalid;
 
     public boolean check() {
         for (Field f : getClass().getDeclaredFields()) {
