@@ -64,7 +64,7 @@ public class PolymorphicTest {
         TestRootNode<Node1> node = TestHelper.createRoot(Node1Factory.getInstance());
         assertEquals("(int,boolean)", executeWith(node, 42, false));
         assertEquals("(int,int)", executeWith(node, 42, 42));
-        assertEquals(NodeCost.NONE, node.getNode().getCost());
+        assertEquals(NodeCost.POLYMORPHIC, node.getNode().getCost());
         assertParent(node.getNode(), node.getNode().getLeft());
         assertParent(node.getNode(), node.getNode().getRight());
     }
@@ -75,7 +75,7 @@ public class PolymorphicTest {
         assertEquals("(int,boolean)", executeWith(node, 42, false));
         assertEquals("(boolean,boolean)", executeWith(node, true, false));
         assertEquals("(int,int)", executeWith(node, 42, 42));
-        assertEquals(NodeCost.NONE, node.getNode().getCost());
+        assertEquals(NodeCost.POLYMORPHIC, node.getNode().getCost());
         assertParent(node.getNode(), node.getNode().getLeft());
         assertParent(node.getNode(), node.getNode().getRight());
     }

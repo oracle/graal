@@ -42,7 +42,7 @@ public class PolymorphicTest2 {
         assertEquals(21, executeWith(node, false, false));
         assertEquals(42, executeWith(node, 21, 21));
         assertEquals("(boolean,int)", executeWith(node, false, 42));
-        assertEquals(NodeCost.NONE, node.getNode().getCost());
+        assertEquals(NodeCost.POLYMORPHIC, node.getNode().getCost());
     }
 
     @SuppressWarnings("unused")
