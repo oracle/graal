@@ -58,7 +58,7 @@ public class VerifyDebugUsage extends VerifyPhase<PhaseContext> {
                                     if (holder.equals("Ljava/lang/StringBuilder;") || holder.equals("Ljava/lang/StringBuffer;")) {
                                         StackTraceElement e = graph.method().asStackTraceElement(invoke.bci());
                                         throw new VerificationError(String.format("%s: parameter %d of call to %s appears to be a String concatenation expression.%n"
-                                                        + "    Use one of the multi-parameter Debug.log() methods of Debug.logv() instead.", e, argIdx, format("%H.%n(%p)", callee)));
+                                                        + "    Use one of the multi-parameter Debug.log() methods or Debug.logv() instead.", e, argIdx, format("%H.%n(%p)", callee)));
                                     }
                                 }
                             }
