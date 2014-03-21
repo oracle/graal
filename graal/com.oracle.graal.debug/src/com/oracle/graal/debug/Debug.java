@@ -371,6 +371,17 @@ public class Debug {
     }
 
     /**
+     * This override exists the catch cases when log is called with one argument from a method which
+     * is vararg. It will bind to this method instead of the single arg variant and produce a
+     * deprecation warning instead of silently wrapping the Object[] inside of another Object[].
+     */
+    @Deprecated
+    public static void log(String format, Object[] args) {
+        assert false : "shouldn't use this";
+        logv(format, args);
+    }
+
+    /**
      * The same as {@link #log}, but without line termination and without indentation.
      */
     public static void printf(String msg, Object... args) {
