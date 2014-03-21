@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -53,10 +53,6 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
     private final HotSpotResolvedObjectType holder;
     private final HotSpotConstantPool constantPool;
     private final HotSpotSignature signature;
-    private boolean callerSensitive;
-    private boolean forceInline;
-    private boolean dontInline;
-    private boolean ignoredBySecurityStackWalk;
     private HotSpotMethodData methodData;
     private byte[] code;
     private SpeculationLog speculationLog;
@@ -109,8 +105,6 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
 
         final int signatureIndex = unsafe.getChar(constMethod + config.constMethodSignatureIndexOffset);
         this.signature = (HotSpotSignature) constantPool.lookupSignature(signatureIndex);
-
-        runtime().getCompilerToVM().initializeMethod(metaspaceMethod, this);
     }
 
     /**
@@ -139,11 +133,20 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
     }
 
     /**
+     * Returns this method's flags ({@code Method::_flags}).
+     * 
+     * @return flags of this method
+     */
+    private int getFlags() {
+        return unsafe.getByte(metaspaceMethod + runtime().getConfig().methodFlagsOffset);
+    }
+
+    /**
      * Returns this method's constant method flags ({@code ConstMethod::_flags}).
      * 
      * @return flags of this method's ConstMethod
      */
-    private long getConstMethodFlags() {
+    private int getConstMethodFlags() {
         return unsafe.getChar(getConstMethod() + runtime().getConfig().constMethodFlagsOffset);
     }
 
@@ -169,8 +172,7 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
      * modifiers as well as the HotSpot internal modifiers.
      */
     public int getAllModifiers() {
-        HotSpotVMConfig config = runtime().getConfig();
-        return unsafe.getInt(metaspaceMethod + config.methodAccessFlagsOffset);
+        return unsafe.getInt(metaspaceMethod + runtime().getConfig().methodAccessFlagsOffset);
     }
 
     @Override
@@ -245,19 +247,36 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
     }
 
     /**
-     * Returns true if this method has a CallerSensitive annotation.
+     * Returns true if this method has a {@code CallerSensitive} annotation.
      * 
      * @return true if CallerSensitive annotation present, false otherwise
      */
     public boolean isCallerSensitive() {
-        return callerSensitive;
+        return (getFlags() & runtime().getConfig().methodFlagsCallerSensitive) != 0;
+    }
+
+    /**
+     * Returns true if this method has a {@code ForceInline} annotation.
+     * 
+     * @return true if ForceInline annotation present, false otherwise
+     */
+    public boolean isForceInline() {
+        return (getFlags() & runtime().getConfig().methodFlagsForceInline) != 0;
+    }
+
+    /**
+     * Returns true if this method has a {@code DontInline} annotation.
+     * 
+     * @return true if DontInline annotation present, false otherwise
+     */
+    public boolean isDontInline() {
+        return (getFlags() & runtime().getConfig().methodFlagsDontInline) != 0;
     }
 
     /**
      * Manually adds a DontInline annotation to this method.
      */
     public void setNotInlineable() {
-        dontInline = true;
         runtime().getCompilerToVM().doNotInlineOrCompile(metaspaceMethod);
     }
 
@@ -268,7 +287,7 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
      * @return true if special method ignored by security stack walks, false otherwise
      */
     public boolean ignoredBySecurityStackWalk() {
-        return ignoredBySecurityStackWalk;
+        return runtime().getCompilerToVM().methodIsIgnoredBySecurityStackWalk(metaspaceMethod);
     }
 
     public boolean hasBalancedMonitors() {
@@ -502,7 +521,7 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
 
     @Override
     public boolean canBeInlined() {
-        if (dontInline) {
+        if (isDontInline()) {
             return false;
         }
         return runtime().getCompilerToVM().canInlineMethod(metaspaceMethod);
@@ -510,7 +529,7 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
 
     @Override
     public boolean shouldBeInlined() {
-        if (forceInline) {
+        if (isForceInline()) {
             return true;
         }
         return runtime().getCompilerToVM().shouldInlineMethod(metaspaceMethod);

@@ -104,8 +104,7 @@ public class CompilerToVMImpl implements CompilerToVM {
     @Override
     public native boolean hasFinalizableSubclass(long metaspaceKlass);
 
-    @Override
-    public native void initializeMethod(long metaspaceMethod, HotSpotResolvedJavaMethod method);
+    public native boolean methodIsIgnoredBySecurityStackWalk(long metaspaceMethod);
 
     @Override
     public native long getClassInitializer(long metaspaceKlass);
