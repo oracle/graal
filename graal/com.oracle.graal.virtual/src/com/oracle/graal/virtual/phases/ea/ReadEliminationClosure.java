@@ -94,6 +94,9 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
                 ReadCacheEntry identifier = new ReadCacheEntry(object, read.location());
                 ValueNode cachedValue = state.getCacheEntry(identifier);
                 if (cachedValue != null) {
+                    if (read.getGuard() != null && !(read.getGuard() instanceof FixedNode)) {
+                        effects.addFixedNodeBefore(new ValueAnchorNode((ValueNode) read.getGuard()), read);
+                    }
                     effects.replaceAtUsages(read, cachedValue);
                     addScalarAlias(read, cachedValue);
                     deleted = true;
