@@ -87,6 +87,7 @@ public final class BciBlockMapping {
         public HIRFrameStateBuilder entryState;
 
         public ArrayList<BciBlock> successors = new ArrayList<>(2);
+        public ArrayList<BciBlock> predecessors = new ArrayList<>(2); // only used in the baseline
         public long exits;
 
         private boolean visited;
@@ -170,23 +171,19 @@ public final class BciBlockMapping {
         }
 
         public List<BciBlock> getPredecessors() {
-            // TODO Auto-generated method stub
-            return null;
+            return predecessors;
         }
 
         public int getPredecessorCount() {
-            // TODO Auto-generated method stub
-            return 0;
+            return predecessors.size();
         }
 
         public List<BciBlock> getSuccessors() {
-            // TODO Auto-generated method stub
-            return null;
+            return successors;
         }
 
         public int getSuccessorCount() {
-            // TODO Auto-generated method stub
-            return 0;
+            return successors.size();
         }
 
         public int getLinearScanNumber() {
@@ -729,9 +726,9 @@ public final class BciBlockMapping {
     }
 
     /**
-     * Depth-first traversal of the control flow graph. The flag {@linkplain BciBlock#visited} is used
-     * to visit every block only once. The flag {@linkplain BciBlock#active} is used to detect cycles
-     * (backward edges).
+     * Depth-first traversal of the control flow graph. The flag {@linkplain BciBlock#visited} is
+     * used to visit every block only once. The flag {@linkplain BciBlock#active} is used to detect
+     * cycles (backward edges).
      */
     private long computeBlockOrder(BciBlock block) {
         if (block.visited) {

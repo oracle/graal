@@ -134,6 +134,15 @@ public class BaselineCompiler {
         BciBlockMapping blockMap = BciBlockMapping.create(method);
         loopHeaders = blockMap.loopHeaders;
 
+        // add predecessors
+        for (BciBlock block : blockMap.blocks) {
+            for (BciBlock successor : block.successors) {
+                successor.predecessors.add(block);
+            }
+        }
+
+        // calculate loops
+
         if (isSynchronized(method.getModifiers())) {
             throw GraalInternalError.unimplemented("Handle synchronized methods");
         }
@@ -144,6 +153,8 @@ public class BaselineCompiler {
         if (blockMap.startBlock.isLoopHeader) {
             throw GraalInternalError.unimplemented("Handle start block as loop header");
         }
+
+        // add loops ? how do we add looks when we haven't parsed the bytecode?
 
         // create the control flow graph
         LIRControlFlowGraph cfg = new LIRControlFlowGraph(blockMap.blocks.toArray(new BciBlock[0]), new Loop[0]);
