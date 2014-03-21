@@ -1179,7 +1179,9 @@ public final class Interval {
         String to = "?";
         if (first != null && first != Range.EndMarker) {
             from = String.valueOf(from());
-            to = String.valueOf(to());
+            // to() may cache a computed value, modifying the current object, which is a bad idea
+            // for a printing function. Compute it directly instead.
+            to = String.valueOf(calcTo());
         }
         String locationString = this.location == null ? "" : "@" + this.location;
         return operandNumber + ":" + operand + (isRegister(operand) ? "" : locationString) + "[" + from + "," + to + "]";

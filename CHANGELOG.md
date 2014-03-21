@@ -2,12 +2,14 @@
 
 ## `tip`
 ### Graal
-* Use HotSpot stubs for certain array copy operations
+* Use HotSpot stubs for certain array copy operations.
 * New methods for querying memory usage of individual objects and object graphs in Graal API (`MetaAccessProvider#getMemorySize`, `MetaUtil#getMemorySizeRecursive`).
 * Added tiered configuration (C1 + Graal).
 * Initial security model for Graal [GRAAL-22](https://bugs.openjdk.java.net/browse/GRAAL-22).
 * New (tested) invariant that equality comparisons for `JavaType`/`JavaMethod`/`JavaField` values use `.equals()` instead of `==`.
 * Made graph caching compilation-local.
+* Added AllocSpy tool for analyzing allocation in Graal using the [Java Allocation Instrumenter](https://code.google.com/p/java-allocation-instrumenter/).
+* Initial support for memory arithmetic operations on x86
 
 ### Truffle
 * New API `TruffleRuntime#createCallNode` to create call nodes and to give the runtime system control over its implementation.

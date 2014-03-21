@@ -273,10 +273,10 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
 // @formatter:on
         private boolean performReplacement(final Node node, Node canonical) {
             if (canonical == node) {
-                Debug.log("Canonicalizer: work on %s", node);
+                Debug.log("Canonicalizer: work on %1s", node);
                 return false;
             } else {
-                Debug.log("Canonicalizer: replacing %s with %s", node, canonical);
+                Debug.log("Canonicalizer: replacing %1s with %1s", node, canonical);
                 METRIC_CANONICALIZED_NODES.increment();
                 StructuredGraph graph = (StructuredGraph) node.graph();
                 if (node instanceof FloatingNode) {

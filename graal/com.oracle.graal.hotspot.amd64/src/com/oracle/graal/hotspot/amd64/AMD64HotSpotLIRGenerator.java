@@ -78,6 +78,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         assert config.basicLockSize == 8;
         this.config = config;
         this.stub = stub;
+        memoryPeephole = new AMD64HotSpotMemoryPeephole(this);
     }
 
     @Override

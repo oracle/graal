@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,36 +20,35 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes.calc;
+package com.oracle.graal.compiler.test;
 
-import com.oracle.graal.api.meta.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
+import java.io.*;
+import java.util.*;
 
-/**
- * The {@code ShiftOp} class represents shift operations.
- */
-public abstract class ShiftNode extends BinaryNode implements ArithmeticLIRLowerable {
+import org.junit.*;
 
-    /**
-     * Creates a new shift operation.
-     * 
-     * @param x the first input value
-     * @param s the second input value
-     */
-    public ShiftNode(Stamp stamp, ValueNode x, ValueNode s) {
-        super(stamp, x, s);
+public class IfReorderTest extends GraalCompilerTest {
+
+    private static Object fieldA = Integer.class;
+    private static Object fieldB = Double.class;
+
+    @Test
+    public void test1() {
+        test("test1Snippet", new ArrayList<>());
     }
 
-    public int getShiftAmountMask() {
-        int mask;
-        if (getKind() == Kind.Int) {
-            mask = 0x1f;
-        } else {
-            assert getKind() == Kind.Long;
-            mask = 0x3f;
+    public static Object test1Snippet(Object o) {
+        /*
+         * Serializable and List are not mutually exclusive, so these two IFs should never be
+         * reordered.
+         */
+        if (branchProbability(0.1, o instanceof Serializable)) {
+            return fieldA;
         }
-        return mask;
+        if (branchProbability(0.9, o instanceof List)) {
+            return fieldB;
+        }
+        return null;
     }
+
 }

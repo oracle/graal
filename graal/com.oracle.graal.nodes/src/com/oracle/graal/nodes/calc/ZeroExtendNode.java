@@ -26,6 +26,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
@@ -86,5 +87,14 @@ public class ZeroExtendNode extends IntegerConvertNode {
     @Override
     public void generate(ArithmeticLIRGenerator gen) {
         gen.setResult(this, gen.emitZeroExtend(gen.operand(getInput()), getInputBits(), getResultBits()));
+    }
+
+    @Override
+    public boolean generate(MemoryArithmeticLIRLowerer gen, Access access) {
+        Value result = gen.emitZeroExtendMemory(getInputBits(), getResultBits(), access);
+        if (result != null) {
+            gen.setResult(this, result);
+        }
+        return result != null;
     }
 }

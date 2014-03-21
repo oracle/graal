@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2007, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,36 +20,37 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes.calc;
-
-import com.oracle.graal.api.meta.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
-
-/**
- * The {@code ShiftOp} class represents shift operations.
+/*
  */
-public abstract class ShiftNode extends BinaryNode implements ArithmeticLIRLowerable {
+package com.oracle.graal.jtt.except;
 
-    /**
-     * Creates a new shift operation.
-     * 
-     * @param x the first input value
-     * @param s the second input value
-     */
-    public ShiftNode(Stamp stamp, ValueNode x, ValueNode s) {
-        super(stamp, x, s);
+import com.oracle.graal.jtt.*;
+
+import org.junit.*;
+
+public class BC_getfield1 extends JTTTest {
+
+    private int field = 13;
+
+    public static void test(BC_getfield1 arg) {
+        @SuppressWarnings("unused")
+        int i = arg.field;
     }
 
-    public int getShiftAmountMask() {
-        int mask;
-        if (getKind() == Kind.Int) {
-            mask = 0x1f;
-        } else {
-            assert getKind() == Kind.Long;
-            mask = 0x3f;
-        }
-        return mask;
+    @Test
+    public void run0() throws Throwable {
+        runTest("test", (Object) null);
     }
+
+    @Test
+    public void run1() throws Throwable {
+        // tests that the null check isn't removed along with the read
+        runTest(EMPTY, true, true, "test", (Object) null);
+    }
+
+    @Test
+    public void run2() throws Throwable {
+        runTest("test", new BC_getfield1());
+    }
+
 }

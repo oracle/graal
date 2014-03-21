@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,36 +20,23 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes.calc;
+package com.oracle.graal.nodes.spi;
 
-import com.oracle.graal.api.meta.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
+import com.oracle.graal.nodes.extended.*;
 
 /**
- * The {@code ShiftOp} class represents shift operations.
+ * Marks nodes which may be lowered in combination with a memory operation.
  */
-public abstract class ShiftNode extends BinaryNode implements ArithmeticLIRLowerable {
+public interface MemoryArithmeticLIRLowerable {
 
     /**
-     * Creates a new shift operation.
+     * Attempt to generate a memory form of a node operation. On platforms that support it this will
+     * be called when the merging is safe.
      * 
-     * @param x the first input value
-     * @param s the second input value
+     * @param gen
+     * @param access the memory input which can potentially merge into this operation.
+     * @return null if it's not possible to emit a memory form of this operation. A non-null value
+     *         will be set as the operand of this node.
      */
-    public ShiftNode(Stamp stamp, ValueNode x, ValueNode s) {
-        super(stamp, x, s);
-    }
-
-    public int getShiftAmountMask() {
-        int mask;
-        if (getKind() == Kind.Int) {
-            mask = 0x1f;
-        } else {
-            assert getKind() == Kind.Long;
-            mask = 0x3f;
-        }
-        return mask;
-    }
+    boolean generate(MemoryArithmeticLIRLowerer gen, Access access);
 }
