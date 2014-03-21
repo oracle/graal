@@ -197,6 +197,12 @@ public class FloatConvertNode extends ConvertNode implements Canonicalizable, Lo
     }
 
     public boolean generate(MemoryArithmeticLIRLowerer gen, Access access) {
+        Kind kind = access.nullCheckLocation().getValueKind();
+        if (kind != kind.getStackKind()) {
+            // Doesn't work for subword operations
+            return false;
+        }
+
         Value result = gen.emitFloatConvertMemory(getOp(), access);
         if (result != null) {
             gen.setResult(this, result);
