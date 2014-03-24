@@ -21,7 +21,7 @@ import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
 import com.oracle.graal.phases.*;
 
-public abstract class BytecodeParseHelper<T extends KindInterface, B extends AbstractBlock<B>> {
+public abstract class BytecodeParseHelper<T extends KindInterface> {
 
     private AbstractFrameStateBuilder<T> frameState;
     private BytecodeStream stream;           // the bytecode stream
@@ -956,7 +956,7 @@ public abstract class BytecodeParseHelper<T extends KindInterface, B extends Abs
      */
     protected abstract T createBlockTarget(double probability, BciBlock bciBlock, AbstractFrameStateBuilder<T> stateAfter);
 
-    protected abstract void processBlock(AbstractBlock<B> block);
+    protected abstract void processBlock(BciBlock block);
 
 // private void connectLoopEndToBegin() {
 // for (LoopBeginNode begin : currentGraph.getNodes(LoopBeginNode.class)) {
@@ -1051,7 +1051,7 @@ public abstract class BytecodeParseHelper<T extends KindInterface, B extends Abs
 
     protected abstract void appendGoto(T target);
 
-    protected abstract void iterateBytecodesForBlock(B block);
+    protected abstract void iterateBytecodesForBlock(BciBlock block);
 
 // private void iterateBytecodesForBlock(BciBlock block) {
 // if (block.isLoopHeader) {
