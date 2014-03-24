@@ -17,7 +17,6 @@ import com.oracle.graal.java.BciBlockMapping.BciBlock;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.calc.FloatConvertNode.FloatConvert;
-import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
 import com.oracle.graal.phases.*;
 
@@ -62,7 +61,7 @@ public abstract class BytecodeParseHelper<T extends KindInterface> {
         frameState.push(kind, frameState.loadLocal(index));
     }
 
-    private void storeLocal(Kind kind, int index) {
+    public void storeLocal(Kind kind, int index) {
         T value;
         if (kind == Kind.Object) {
             value = frameState.xpop();
