@@ -448,7 +448,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool, LIRTypeTool, LIR
 
         if (block == res.getLIR().getControlFlowGraph().getStartBlock()) {
             assert block.getPredecessorCount() == 0;
-            emitPrologue(method);
+            emitPrologue(method, parser);
         } else {
             assert block.getPredecessorCount() > 0;
         }
@@ -572,7 +572,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool, LIRTypeTool, LIR
         }
     }
 
-    protected void emitPrologue(ResolvedJavaMethod method) {
+    protected <T extends AbstractBlock<T>> void emitPrologue(ResolvedJavaMethod method, BytecodeParser<T> parser) {
         CallingConvention incomingArguments = getCallingConvention();
 
         Value[] params = new Value[incomingArguments.getArgumentCount()];
@@ -590,12 +590,11 @@ public abstract class LIRGenerator implements LIRGeneratorTool, LIRTypeTool, LIR
 
         Signature sig = method.getSignature();
         boolean isStatic = Modifier.isStatic(method.getModifiers());
-        Value[] arguments = new Value[sig.getParameterCount(!isStatic)];
         for (int i = 0; i < sig.getParameterCount(!isStatic); i++) {
             Value paramValue = params[i];
             assert paramValue.getKind() == sig.getParameterKind(i).getStackKind();
             // TODO setResult(param, emitMove(paramValue));
-            arguments[i] = emitMove(paramValue);
+            parser.setParameter(i, emitMove(paramValue));
         }
 
         // return arguments;
@@ -611,6 +610,16 @@ public abstract class LIRGenerator implements LIRGeneratorTool, LIRTypeTool, LIR
         if (x.result() != null) {
             operand = resultOperandFor(x.result().getKind());
             emitMove(operand, operand(x.result()));
+        }
+        emitReturn(operand);
+    }
+
+    @Override
+    public void visitReturn(Value x) {
+        AllocatableValue operand = ILLEGAL;
+        if (x != null) {
+            operand = resultOperandFor(x.getKind());
+            emitMove(operand, x);
         }
         emitReturn(operand);
     }

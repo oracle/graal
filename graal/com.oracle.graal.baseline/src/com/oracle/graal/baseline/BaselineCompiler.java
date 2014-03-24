@@ -83,6 +83,7 @@ public class BaselineCompiler implements BytecodeParser<BciBlock> {
 
     private final GraphBuilderConfiguration graphBuilderConfig;
     private BciBlock[] loopHeaders;
+    private BytecodeParseHelper<Value> parserHelper;
 
     /**
      * Meters the number of actual bytecodes parsed.
@@ -107,6 +108,7 @@ public class BaselineCompiler implements BytecodeParser<BciBlock> {
         TTY.Filter filter = new TTY.Filter(PrintFilter.getValue(), method);
 
         frameState = new LIRFrameStateBuilder(method);
+        parserHelper = new BytecodeParseHelper<>(frameState);
 
         // build blocks and LIR instructions
         try {
@@ -212,11 +214,11 @@ public class BaselineCompiler implements BytecodeParser<BciBlock> {
     }
 
     private void loadLocal(int index, Kind kind) {
-        throw GraalInternalError.unimplemented();
+        parserHelper.loadLocal(index, kind);
     }
 
     private void storeLocal(Kind kind, int index) {
-        throw GraalInternalError.unimplemented();
+        parserHelper.storeLocal(kind, index);
     }
 
     /**
@@ -714,12 +716,12 @@ public class BaselineCompiler implements BytecodeParser<BciBlock> {
             case RET            : genRet(stream.readLocalIndex()); break;
             case TABLESWITCH    : genSwitch(new BytecodeTableSwitch(stream(), bci())); break;
             case LOOKUPSWITCH   : genSwitch(new BytecodeLookupSwitch(stream(), bci())); break;
-//            case IRETURN        : genReturn(frameState.ipop()); break;
-//            case LRETURN        : genReturn(frameState.lpop()); break;
-//            case FRETURN        : genReturn(frameState.fpop()); break;
-//            case DRETURN        : genReturn(frameState.dpop()); break;
-//            case ARETURN        : genReturn(frameState.apop()); break;
-//            case RETURN         : genReturn(null); break;
+            case IRETURN        : genReturn(frameState.ipop()); break;
+            case LRETURN        : genReturn(frameState.lpop()); break;
+            case FRETURN        : genReturn(frameState.fpop()); break;
+            case DRETURN        : genReturn(frameState.dpop()); break;
+            case ARETURN        : genReturn(frameState.apop()); break;
+            case RETURN         : genReturn(null); break;
             case GETSTATIC      : cpi = stream.readCPI(); genGetStatic(lookupField(cpi, opcode)); break;
             case PUTSTATIC      : cpi = stream.readCPI(); genPutStatic(lookupField(cpi, opcode)); break;
             case GETFIELD       : cpi = stream.readCPI(); genGetField(lookupField(cpi, opcode)); break;
@@ -774,5 +776,24 @@ public class BaselineCompiler implements BytecodeParser<BciBlock> {
 
     private void genArrayLength() {
         throw GraalInternalError.unimplemented();
+    }
+
+    private void genReturn(Value x) {
+        // frameState.setRethrowException(false);
+        frameState.clearStack();
+// if (graphBuilderConfig.eagerInfopointMode()) {
+// append(new InfopointNode(InfopointReason.METHOD_END, frameState.create(bci())));
+// }
+
+// synchronizedEpilogue(FrameState.AFTER_BCI, x);
+// if (frameState.lockDepth() != 0) {
+// throw new BailoutException("unbalanced monitors");
+// }
+
+        lirGen.visitReturn(x);
+    }
+
+    public void setParameter(int i, Variable emitMove) {
+        frameState.storeLocal(i, emitMove);
     }
 }

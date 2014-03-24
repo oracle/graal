@@ -63,6 +63,7 @@ import com.oracle.graal.lir.ptx.PTXMove.MoveToRegOp;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.calc.FloatConvertNode.FloatConvert;
+import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.type.*;
@@ -172,7 +173,7 @@ public class PTXLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    protected void emitPrologue(ResolvedJavaMethod method) {
+    protected <T extends AbstractBlock<T>> void emitPrologue(ResolvedJavaMethod method, BytecodeParser<T> parser) {
         // Need to emit .param directives based on incoming arguments and return value
         CallingConvention incomingArguments = getCallingConvention();
         Object returnObject = incomingArguments.getReturn();
@@ -205,11 +206,11 @@ public class PTXLIRGenerator extends LIRGenerator {
             if (warpAnnotation != null) {
                 // setResult(param, emitWarpParam(paramValue.getKind().getStackKind(),
                 // warpAnnotation));
-                emitWarpParam(paramValue.getKind().getStackKind(), warpAnnotation);
+                parser.setParameter(i, emitWarpParam(paramValue.getKind().getStackKind(), warpAnnotation));
             } else {
                 // setResult(param, emitLoadParam(paramValue.getKind().getStackKind(), paramValue,
                 // null));
-                emitLoadParam(paramValue.getKind().getStackKind(), paramValue, null);
+                parser.setParameter(i, emitLoadParam(paramValue.getKind().getStackKind(), paramValue, null));
             }
         }
     }

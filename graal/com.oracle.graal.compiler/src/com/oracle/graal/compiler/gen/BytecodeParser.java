@@ -22,8 +22,11 @@
  */
 package com.oracle.graal.compiler.gen;
 
+import com.oracle.graal.lir.*;
 import com.oracle.graal.nodes.cfg.*;
 
 public interface BytecodeParser<T extends AbstractBlock<T>> {
     void processBlock(T block);
+
+    void setParameter(int i, Variable emitMove);
 }

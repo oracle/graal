@@ -22,5 +22,9 @@
  */
 package com.oracle.graal.compiler.gen;
 
+import com.oracle.graal.api.meta.*;
+
 public interface BaselineLIRGenerator {
+
+    void visitReturn(Value x);
 }
