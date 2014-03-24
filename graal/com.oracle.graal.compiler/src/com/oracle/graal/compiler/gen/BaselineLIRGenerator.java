@@ -22,8 +22,5 @@
  */
 package com.oracle.graal.compiler.gen;
 
-import com.oracle.graal.api.meta.*;
-import com.oracle.graal.nodes.cfg.*;
-
 public interface BaselineLIRGenerator {
 }

@@ -2,7 +2,6 @@ package com.oracle.graal.baseline;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.java.*;
-import com.oracle.graal.lir.*;
 
 public class LIRFrameStateBuilder extends AbstractFrameStateBuilder<Value> {
 
