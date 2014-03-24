@@ -1,9 +1,9 @@
 package com.oracle.graal.java;
 
+import static com.oracle.graal.api.code.TypeCheckHints.*;
 import static com.oracle.graal.bytecode.Bytecodes.*;
 import static java.lang.reflect.Modifier.*;
 
-import java.lang.reflect.*;
 import java.util.*;
 
 import com.oracle.graal.api.code.*;
@@ -14,30 +14,32 @@ import com.oracle.graal.bytecode.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.java.BciBlockMapping.BciBlock;
-import com.oracle.graal.java.BciBlockMapping.ExceptionDispatchBlock;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.calc.FloatConvertNode.FloatConvert;
 import com.oracle.graal.nodes.cfg.*;
-import com.oracle.graal.nodes.extended.*;
-import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
-import com.oracle.graal.nodes.type.*;
-import com.oracle.graal.nodes.util.*;
+import com.oracle.graal.phases.*;
 
-public abstract class BytecodeParseHelper<T extends KindInterface> {
+public abstract class BytecodeParseHelper<T extends KindInterface, B extends AbstractBlock<B>> {
 
     private AbstractFrameStateBuilder<T> frameState;
     private BytecodeStream stream;           // the bytecode stream
     private GraphBuilderConfiguration graphBuilderConfig;
     private ResolvedJavaType method;
-    private AbstractBlock<?> currentBlock;
+    private BciBlock currentBlock;
+    private ProfilingInfo profilingInfo;
+    private OptimisticOptimizations optimisticOpts;
+    private ConstantPool constantPool;
+    private final MetaAccessProvider metaAccess;
+    private int entryBCI;
 
-    public BytecodeParseHelper() {
-    }
-
-    public BytecodeParseHelper(AbstractFrameStateBuilder<T> frameState) {
+    public BytecodeParseHelper(MetaAccessProvider metaAccess, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts, AbstractFrameStateBuilder<T> frameState) {
         this.frameState = frameState;
+        this.graphBuilderConfig = graphBuilderConfig;
+        this.optimisticOpts = optimisticOpts;
+        this.metaAccess = metaAccess;
+        assert metaAccess != null;
     }
 
     public void setCurrentFrameState(AbstractFrameStateBuilder<T> frameState) {
@@ -50,6 +52,10 @@ public abstract class BytecodeParseHelper<T extends KindInterface> {
 
     private BytecodeStream getStream() {
         return stream;
+    }
+
+    protected int bci() {
+        return stream.currentBCI();
     }
 
     public void loadLocal(int index, Kind kind) {
@@ -100,7 +106,7 @@ public abstract class BytecodeParseHelper<T extends KindInterface> {
      * @param type the type being instantiated
      * @param dims the dimensions for the multi-array
      */
-    protected abstract void handleUnresolvedNewMultiArray(JavaType type, T[] dims);
+    protected abstract void handleUnresolvedNewMultiArray(JavaType type, List<T> dims);
 
     /**
      * @param field the unresolved field
@@ -443,15 +449,27 @@ public abstract class BytecodeParseHelper<T extends KindInterface> {
     }
 
     private void genGoto() {
-        appendGoto(createTarget(currentBlock.getSuccessor(0), frameState));
-        assert currentBlock.numNormalSuccessors() == 1;
+        appendGoto(createTarget(currentBlock.getSuccessors().get(0), frameState));
+        // assert currentBlock.numNormalSuccessors() == 1;
+        assert currentBlock.getSuccessors().size() == 1;
     }
 
+    protected abstract T genObjectEquals(T x, T y);
+
+    protected abstract T genIntegerEquals(T x, T y);
+
+    protected abstract T genIntegerLessThan(T x, T y);
+
+    protected abstract T genUnique(T x);
+
+    protected abstract T genIf(T condition, T falseSuccessor, T trueSuccessor, double d);
+
     private void ifNode(T x, Condition cond, T y) {
-        assert !x.isDeleted() && !y.isDeleted();
-        assert currentBlock.numNormalSuccessors() == 2;
-        BciBlock trueBlock = currentBlock.getSuccessor(0);
-        BciBlock falseBlock = currentBlock.getSuccessor(1);
+        // assert !x.isDeleted() && !y.isDeleted();
+        // assert currentBlock.numNormalSuccessors() == 2;
+        assert currentBlock.getSuccessors().size() == 2;
+        BciBlock trueBlock = currentBlock.getSuccessors().get(0);
+        BciBlock falseBlock = currentBlock.getSuccessors().get(1);
         if (trueBlock == falseBlock) {
             appendGoto(createTarget(trueBlock, frameState));
             return;
@@ -479,24 +497,24 @@ public abstract class BytecodeParseHelper<T extends KindInterface> {
         T a = mirror ? y : x;
         T b = mirror ? x : y;
 
-        CompareNode condition;
+        T condition;
         assert !a.getKind().isNumericFloat();
         if (cond == Condition.EQ || cond == Condition.NE) {
             if (a.getKind() == Kind.Object) {
-                condition = new ObjectEqualsNode(a, b);
+                condition = genObjectEquals(a, b);
             } else {
-                condition = new IntegerEqualsNode(a, b);
+                condition = genIntegerEquals(a, b);
             }
         } else {
             assert a.getKind() != Kind.Object && !cond.isUnsigned();
-            condition = new IntegerLessThanNode(a, b);
+            condition = genIntegerLessThan(a, b);
         }
-        condition = currentGraph.unique(condition);
+        condition = genUnique(condition);
 
-        AbstractBeginNode trueSuccessor = createBlockTarget(probability, trueBlock, frameState);
-        AbstractBeginNode falseSuccessor = createBlockTarget(1 - probability, falseBlock, frameState);
+        T trueSuccessor = createBlockTarget(probability, trueBlock, frameState);
+        T falseSuccessor = createBlockTarget(1 - probability, falseBlock, frameState);
 
-        IfNode ifNode = negate ? new IfNode(condition, falseSuccessor, trueSuccessor, 1 - probability) : new IfNode(condition, trueSuccessor, falseSuccessor, probability);
+        T ifNode = negate ? genIf(condition, falseSuccessor, trueSuccessor, 1 - probability) : genIf(condition, trueSuccessor, falseSuccessor, probability);
         append(ifNode);
     }
 
@@ -515,15 +533,11 @@ public abstract class BytecodeParseHelper<T extends KindInterface> {
     private void genIfSame(Kind kind, Condition cond) {
         T y = frameState.pop(kind);
         T x = frameState.pop(kind);
-        assert !x.isDeleted() && !y.isDeleted();
+        // assert !x.isDeleted() && !y.isDeleted();
         ifNode(x, cond, y);
     }
 
-    private void genThrow() {
-        T exception = frameState.apop();
-        append(new FixedGuardNode(currentGraph.unique(new IsNullNode(exception)), NullCheckException, InvalidateReprofile, true));
-        lastInstr.setNext(handleException(exception, bci()));
-    }
+    protected abstract void genThrow();
 
     private JavaType lookupType(int cpi, int bytecode) {
         eagerResolvingForSnippets(cpi, bytecode);
@@ -573,18 +587,24 @@ public abstract class BytecodeParseHelper<T extends KindInterface> {
         }
     }
 
+    protected abstract T genCheckCast(ResolvedJavaType type, T object, JavaTypeProfile profileForTypeCheck, boolean b);
+
     private void genCheckCast() {
         int cpi = getStream().readCPI();
         JavaType type = lookupType(cpi, CHECKCAST);
         T object = frameState.apop();
         if (type instanceof ResolvedJavaType) {
             JavaTypeProfile profileForTypeCheck = getProfileForTypeCheck((ResolvedJavaType) type);
-            CheckCastNode checkCastNode = append(new CheckCastNode((ResolvedJavaType) type, object, profileForTypeCheck, false));
+            T checkCastNode = append(genCheckCast((ResolvedJavaType) type, object, profileForTypeCheck, false));
             frameState.apush(checkCastNode);
         } else {
             handleUnresolvedCheckCast(type, object);
         }
     }
+
+    protected abstract T genInstanceOf(ResolvedJavaType type, T object, JavaTypeProfile profileForTypeCheck);
+
+    protected abstract T genConditional(T x);
 
     private void genInstanceOf() {
         int cpi = getStream().readCPI();
@@ -592,12 +612,14 @@ public abstract class BytecodeParseHelper<T extends KindInterface> {
         T object = frameState.apop();
         if (type instanceof ResolvedJavaType) {
             ResolvedJavaType resolvedType = (ResolvedJavaType) type;
-            InstanceOfNode instanceOfNode = new InstanceOfNode((ResolvedJavaType) type, object, getProfileForTypeCheck(resolvedType));
-            frameState.ipush(append(new ConditionalNode(currentGraph.unique(instanceOfNode))));
+            T instanceOfNode = genInstanceOf((ResolvedJavaType) type, object, getProfileForTypeCheck(resolvedType));
+            frameState.ipush(append(genConditional(genUnique(instanceOfNode))));
         } else {
             handleUnresolvedInstanceOf(type, object);
         }
     }
+
+    protected abstract T createNewInstance(ResolvedJavaType type, boolean fillContents);
 
     void genNewInstance(int cpi) {
         JavaType type = lookupType(cpi, NEW);
@@ -606,10 +628,6 @@ public abstract class BytecodeParseHelper<T extends KindInterface> {
         } else {
             handleUnresolvedNewInstance(type);
         }
-    }
-
-    protected NewInstanceNode createNewInstance(ResolvedJavaType type, boolean fillContents) {
-        return new NewInstanceNode(type, fillContents);
     }
 
     /**
@@ -661,16 +679,14 @@ public abstract class BytecodeParseHelper<T extends KindInterface> {
 
     }
 
-    protected NewArrayNode createNewArray(ResolvedJavaType elementType, T length, boolean fillContents) {
-        return new NewArrayNode(elementType, length, fillContents);
-    }
+    protected abstract T createNewArray(ResolvedJavaType elementType, T length, boolean fillContents);
 
     private void genNewMultiArray(int cpi) {
         JavaType type = lookupType(cpi, MULTIANEWARRAY);
         int rank = getStream().readUByte(bci() + 3);
-        T[] dims = new T[rank];
+        List<T> dims = new ArrayList<>(rank);
         for (int i = rank - 1; i >= 0; i--) {
-            dims[i] = frameState.ipop();
+            dims.set(i, frameState.ipop());
         }
         if (type instanceof ResolvedJavaType) {
             frameState.apush(append(createNewMultiArray((ResolvedJavaType) type, dims)));
@@ -679,9 +695,9 @@ public abstract class BytecodeParseHelper<T extends KindInterface> {
         }
     }
 
-    protected NewMultiArrayNode createNewMultiArray(ResolvedJavaType type, T[] dimensions) {
-        return new NewMultiArrayNode(type, dimensions);
-    }
+    protected abstract T createNewMultiArray(ResolvedJavaType type, List<T> dims);
+
+    protected abstract T genLoadField(T receiver, ResolvedJavaField field);
 
     private void genGetField(JavaField field) {
         emitExplicitExceptions(frameState.peek(0), null);
@@ -689,43 +705,24 @@ public abstract class BytecodeParseHelper<T extends KindInterface> {
         Kind kind = field.getKind();
         T receiver = frameState.apop();
         if ((field instanceof ResolvedJavaField) && ((ResolvedJavaField) field).getDeclaringClass().isInitialized()) {
-            appendOptimizedLoadField(kind, new LoadFieldNode(receiver, (ResolvedJavaField) field));
+            appendOptimizedLoadField(kind, genLoadField(receiver, (ResolvedJavaField) field));
         } else {
             handleUnresolvedLoadField(field, receiver);
         }
     }
 
-    public static class ExceptionInfo {
+// public static class ExceptionInfo {
+//
+// public final FixedWithNextNode exceptionEdge;
+// public final T exception;
+//
+// public ExceptionInfo(FixedWithNextNode exceptionEdge, T exception) {
+// this.exceptionEdge = exceptionEdge;
+// this.exception = exception;
+// }
+// }
 
-        public final FixedWithNextNode exceptionEdge;
-        public final T exception;
-
-        public ExceptionInfo(FixedWithNextNode exceptionEdge, T exception) {
-            this.exceptionEdge = exceptionEdge;
-            this.exception = exception;
-        }
-    }
-
-    private void emitNullCheck(T receiver) {
-        if (ObjectStamp.isObjectNonNull(receiver.stamp())) {
-            return;
-        }
-        BlockPlaceholderNode trueSucc = currentGraph.add(new BlockPlaceholderNode(this));
-        BlockPlaceholderNode falseSucc = currentGraph.add(new BlockPlaceholderNode(this));
-        append(new IfNode(currentGraph.unique(new IsNullNode(receiver)), trueSucc, falseSucc, 0.01));
-        lastInstr = falseSucc;
-
-        if (OmitHotExceptionStacktrace.getValue()) {
-            T exception = ConstantNode.forObject(cachedNullPointerException, metaAccess, currentGraph);
-            trueSucc.setNext(handleException(exception, bci()));
-        } else {
-            DeferredForeignCallNode call = currentGraph.add(new DeferredForeignCallNode(CREATE_NULL_POINTER_EXCEPTION));
-            call.setStamp(StampFactory.exactNonNull(metaAccess.lookupJavaType(CREATE_NULL_POINTER_EXCEPTION.getResultType())));
-            call.setStateAfter(frameState.create(bci()));
-            trueSucc.setNext(call);
-            call.setNext(handleException(call, bci()));
-        }
-    }
+    protected abstract void emitNullCheck(T receiver);
 
     private static final ArrayIndexOutOfBoundsException cachedArrayIndexOutOfBoundsException = new ArrayIndexOutOfBoundsException();
     private static final NullPointerException cachedNullPointerException = new NullPointerException();
@@ -734,25 +731,11 @@ public abstract class BytecodeParseHelper<T extends KindInterface> {
         cachedNullPointerException.setStackTrace(new StackTraceElement[0]);
     }
 
-    private void emitBoundsCheck(T index, T length) {
-        BlockPlaceholderNode trueSucc = currentGraph.add(new BlockPlaceholderNode(this));
-        BlockPlaceholderNode falseSucc = currentGraph.add(new BlockPlaceholderNode(this));
-        append(new IfNode(currentGraph.unique(new IntegerBelowThanNode(index, length)), trueSucc, falseSucc, 0.99));
-        lastInstr = trueSucc;
-
-        if (OmitHotExceptionStacktrace.getValue()) {
-            T exception = ConstantNode.forObject(cachedArrayIndexOutOfBoundsException, metaAccess, currentGraph);
-            falseSucc.setNext(handleException(exception, bci()));
-        } else {
-            DeferredForeignCallNode call = currentGraph.add(new DeferredForeignCallNode(CREATE_OUT_OF_BOUNDS_EXCEPTION, index));
-            call.setStamp(StampFactory.exactNonNull(metaAccess.lookupJavaType(CREATE_OUT_OF_BOUNDS_EXCEPTION.getResultType())));
-            call.setStateAfter(frameState.create(bci()));
-            falseSucc.setNext(call);
-            call.setNext(handleException(call, bci()));
-        }
-    }
+    protected abstract void emitBoundsCheck(T index, T length);
 
     private static final DebugMetric EXPLICIT_EXCEPTIONS = Debug.metric("ExplicitExceptions");
+
+    protected abstract T genArrayLength(T x);
 
     protected void emitExplicitExceptions(T receiver, T outOfBoundsIndex) {
         assert receiver != null;
@@ -762,11 +745,13 @@ public abstract class BytecodeParseHelper<T extends KindInterface> {
 
         emitNullCheck(receiver);
         if (outOfBoundsIndex != null) {
-            T length = append(new ArrayLengthNode(receiver));
+            T length = append(genArrayLength(receiver));
             emitBoundsCheck(outOfBoundsIndex, length);
         }
         EXPLICIT_EXCEPTIONS.increment();
     }
+
+    protected abstract T genStoreField(T receiver, ResolvedJavaField field, T value);
 
     private void genPutField(JavaField field) {
         emitExplicitExceptions(frameState.peek(1), null);
@@ -774,7 +759,7 @@ public abstract class BytecodeParseHelper<T extends KindInterface> {
         T value = frameState.pop(field.getKind().getStackKind());
         T receiver = frameState.apop();
         if (field instanceof ResolvedJavaField && ((ResolvedJavaField) field).getDeclaringClass().isInitialized()) {
-            appendOptimizedStoreField(new StoreFieldNode(receiver, (ResolvedJavaField) field, value));
+            appendOptimizedStoreField(genStoreField(receiver, (ResolvedJavaField) field, value));
         } else {
             handleUnresolvedStoreField(field, value, receiver);
         }
@@ -783,7 +768,7 @@ public abstract class BytecodeParseHelper<T extends KindInterface> {
     private void genGetStatic(JavaField field) {
         Kind kind = field.getKind();
         if (field instanceof ResolvedJavaField && ((ResolvedJavaType) field.getDeclaringClass()).isInitialized()) {
-            appendOptimizedLoadField(kind, new LoadFieldNode(null, (ResolvedJavaField) field));
+            appendOptimizedLoadField(kind, genLoadField(null, (ResolvedJavaField) field));
         } else {
             handleUnresolvedLoadField(field, null);
         }
@@ -792,241 +777,66 @@ public abstract class BytecodeParseHelper<T extends KindInterface> {
     private void genPutStatic(JavaField field) {
         T value = frameState.pop(field.getKind().getStackKind());
         if (field instanceof ResolvedJavaField && ((ResolvedJavaType) field.getDeclaringClass()).isInitialized()) {
-            appendOptimizedStoreField(new StoreFieldNode(null, (ResolvedJavaField) field, value));
+            appendOptimizedStoreField(genStoreField(null, (ResolvedJavaField) field, value));
         } else {
             handleUnresolvedStoreField(field, value, null);
         }
     }
 
-    private void appendOptimizedStoreField(StoreFieldNode store) {
+    protected void appendOptimizedStoreField(T store) {
         append(store);
     }
 
-    private void appendOptimizedLoadField(Kind kind, LoadFieldNode load) {
+    protected void appendOptimizedLoadField(Kind kind, T load) {
         // append the load to the instruction
         T optimized = append(load);
         frameState.push(kind.getStackKind(), optimized);
     }
 
-    private void genInvokeStatic(JavaMethod target) {
-        if (target instanceof ResolvedJavaMethod) {
-            ResolvedJavaMethod resolvedTarget = (ResolvedJavaMethod) target;
-            ResolvedJavaType holder = resolvedTarget.getDeclaringClass();
-            if (!holder.isInitialized() && ResolveClassBeforeStaticInvoke.getValue()) {
-                handleUnresolvedInvoke(target, InvokeKind.Static);
-            } else {
-                T[] args = frameState.popArguments(resolvedTarget.getSignature().getParameterSlots(false), resolvedTarget.getSignature().getParameterCount(false));
-                appendInvoke(InvokeKind.Static, resolvedTarget, args);
-            }
-        } else {
-            handleUnresolvedInvoke(target, InvokeKind.Static);
-        }
-    }
+    protected abstract void genInvokeStatic(JavaMethod target);
 
-    private void genInvokeInterface(JavaMethod target) {
-        if (target instanceof ResolvedJavaMethod) {
-            T[] args = frameState.popArguments(target.getSignature().getParameterSlots(true), target.getSignature().getParameterCount(true));
-            genInvokeIndirect(InvokeKind.Interface, (ResolvedJavaMethod) target, args);
-        } else {
-            handleUnresolvedInvoke(target, InvokeKind.Interface);
-        }
-    }
+    protected abstract void genInvokeInterface(JavaMethod target);
 
-    private void genInvokeDynamic(JavaMethod target) {
-        if (target instanceof ResolvedJavaMethod) {
-            Object appendix = constantPool.lookupAppendix(stream.readCPI4(), Bytecodes.INVOKEDYNAMIC);
-            if (appendix != null) {
-                frameState.apush(ConstantNode.forObject(appendix, metaAccess, currentGraph));
-            }
-            T[] args = frameState.popArguments(target.getSignature().getParameterSlots(false), target.getSignature().getParameterCount(false));
-            appendInvoke(InvokeKind.Static, (ResolvedJavaMethod) target, args);
-        } else {
-            handleUnresolvedInvoke(target, InvokeKind.Static);
-        }
-    }
+    protected abstract void genInvokeDynamic(JavaMethod target);
 
-    private void genInvokeVirtual(JavaMethod target) {
-        if (target instanceof ResolvedJavaMethod) {
-            /*
-             * Special handling for runtimes that rewrite an invocation of MethodHandle.invoke(...)
-             * or MethodHandle.invokeExact(...) to a static adapter. HotSpot does this - see
-             * https://wikis.oracle.com/display/HotSpotInternals/Method+handles +and+invokedynamic
-             */
-            boolean hasReceiver = !isStatic(((ResolvedJavaMethod) target).getModifiers());
-            Object appendix = constantPool.lookupAppendix(stream.readCPI(), Bytecodes.INVOKEVIRTUAL);
-            if (appendix != null) {
-                frameState.apush(ConstantNode.forObject(appendix, metaAccess, currentGraph));
-            }
-            T[] args = frameState.popArguments(target.getSignature().getParameterSlots(hasReceiver), target.getSignature().getParameterCount(hasReceiver));
-            if (hasReceiver) {
-                genInvokeIndirect(InvokeKind.Virtual, (ResolvedJavaMethod) target, args);
-            } else {
-                appendInvoke(InvokeKind.Static, (ResolvedJavaMethod) target, args);
-            }
-        } else {
-            handleUnresolvedInvoke(target, InvokeKind.Virtual);
-        }
+    protected abstract void genInvokeVirtual(JavaMethod target);
 
-    }
+    protected abstract void genInvokeSpecial(JavaMethod target);
 
-    private void genInvokeSpecial(JavaMethod target) {
-        if (target instanceof ResolvedJavaMethod) {
-            assert target != null;
-            assert target.getSignature() != null;
-            T[] args = frameState.popArguments(target.getSignature().getParameterSlots(true), target.getSignature().getParameterCount(true));
-            invokeDirect((ResolvedJavaMethod) target, args);
-        } else {
-            handleUnresolvedInvoke(target, InvokeKind.Special);
-        }
-    }
+    protected abstract void genInvokeIndirect(InvokeKind invokeKind, ResolvedJavaMethod target, T[] args);
 
-    private void genInvokeIndirect(InvokeKind invokeKind, ResolvedJavaMethod target, T[] args) {
-        T receiver = args[0];
-        // attempt to devirtualize the call
-        ResolvedJavaType klass = target.getDeclaringClass();
+//
+// protected MethodCallTargetNode createMethodCallTarget(InvokeKind invokeKind, ResolvedJavaMethod
+// targetMethod, T[] args, JavaType returnType) {
+// return new MethodCallTargetNode(invokeKind, targetMethod, args, returnType);
+// }
+//
+// protected InvokeNode createInvoke(CallTargetNode callTarget, Kind resultType) {
+// InvokeNode invoke = append(new InvokeNode(callTarget, bci()));
+// frameState.pushReturn(resultType, invoke);
+// return invoke;
+// }
+//
+// protected InvokeWithExceptionNode createInvokeWithException(CallTargetNode callTarget, Kind
+// resultType) {
+// DispatchBeginNode exceptionEdge = handleException(null, bci());
+// InvokeWithExceptionNode invoke = append(new InvokeWithExceptionNode(callTarget, exceptionEdge,
+// bci()));
+// frameState.pushReturn(resultType, invoke);
+// BciBlock nextBlock = currentBlock.getSuccessor(0);
+// invoke.setStateAfter(frameState.create(nextBlock.startBci));
+// return invoke;
+// }
 
-        // 0. check for trivial cases
-        if (target.canBeStaticallyBound()) {
-            // check for trivial cases (e.g. final methods, nonvirtual methods)
-            invokeDirect(target, args);
-            return;
-        }
-        // 1. check if the exact type of the receiver can be determined
-        ResolvedJavaType exact = klass.asExactType();
-        if (exact == null && receiver.stamp() instanceof ObjectStamp) {
-            ObjectStamp receiverStamp = (ObjectStamp) receiver.stamp();
-            if (receiverStamp.isExactType()) {
-                exact = receiverStamp.type();
-            }
-        }
-        if (exact != null) {
-            // either the holder class is exact, or the receiver object has an exact type
-            ResolvedJavaMethod exactMethod = exact.resolveMethod(target);
-            if (exactMethod != null) {
-                invokeDirect(exactMethod, args);
-                return;
-            }
-        }
-        // devirtualization failed, produce an actual invokevirtual
-        appendInvoke(invokeKind, target, args);
-    }
+    protected abstract void genReturn(T x);
 
-    private void invokeDirect(ResolvedJavaMethod target, T[] args) {
-        appendInvoke(InvokeKind.Special, target, args);
-    }
+    protected abstract T genMonitorEnter(T x);
 
-    private void appendInvoke(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, T[] args) {
-        Kind resultType = targetMethod.getSignature().getReturnKind();
-        if (DeoptALot.getValue()) {
-            append(new DeoptimizeNode(DeoptimizationAction.None, RuntimeConstraint));
-            frameState.pushReturn(resultType, ConstantNode.defaultForKind(resultType, currentGraph));
-            return;
-        }
+    protected abstract T genMonitorExit(T x, T returnValue);
 
-        JavaType returnType = targetMethod.getSignature().getReturnType(method.getDeclaringClass());
-        if (graphBuilderConfig.eagerResolving()) {
-            returnType = returnType.resolve(targetMethod.getDeclaringClass());
-        }
-        if (invokeKind != InvokeKind.Static) {
-            emitExplicitExceptions(args[0], null);
-            if (invokeKind != InvokeKind.Special && this.optimisticOpts.useTypeCheckHints()) {
-                JavaTypeProfile profile = profilingInfo.getTypeProfile(bci());
-                args[0] = TypeProfileProxyNode.create(args[0], profile);
-            }
-        }
-        MethodCallTargetNode callTarget = currentGraph.add(createMethodCallTarget(invokeKind, targetMethod, args, returnType));
+    protected abstract void genJsr(int dest);
 
-        // be conservative if information was not recorded (could result in endless recompiles
-        // otherwise)
-        if (graphBuilderConfig.omitAllExceptionEdges() || (optimisticOpts.useExceptionProbability() && profilingInfo.getExceptionSeen(bci()) == TriState.FALSE)) {
-            createInvoke(callTarget, resultType);
-        } else {
-            assert bci() == currentBlock.endBci;
-            frameState.clearNonLiveLocals(currentBlock, liveness, false);
-
-            InvokeWithExceptionNode invoke = createInvokeWithException(callTarget, resultType);
-
-            BciBlock nextBlock = currentBlock.getSuccessor(0);
-            invoke.setNext(createTarget(nextBlock, frameState));
-        }
-    }
-
-    protected MethodCallTargetNode createMethodCallTarget(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, T[] args, JavaType returnType) {
-        return new MethodCallTargetNode(invokeKind, targetMethod, args, returnType);
-    }
-
-    protected InvokeNode createInvoke(CallTargetNode callTarget, Kind resultType) {
-        InvokeNode invoke = append(new InvokeNode(callTarget, bci()));
-        frameState.pushReturn(resultType, invoke);
-        return invoke;
-    }
-
-    protected InvokeWithExceptionNode createInvokeWithException(CallTargetNode callTarget, Kind resultType) {
-        DispatchBeginNode exceptionEdge = handleException(null, bci());
-        InvokeWithExceptionNode invoke = append(new InvokeWithExceptionNode(callTarget, exceptionEdge, bci()));
-        frameState.pushReturn(resultType, invoke);
-        BciBlock nextBlock = currentBlock.getSuccessor(0);
-        invoke.setStateAfter(frameState.create(nextBlock.startBci));
-        return invoke;
-    }
-
-    private void genReturn(T x) {
-        frameState.setRethrowException(false);
-        frameState.clearStack();
-        if (graphBuilderConfig.eagerInfopointMode()) {
-            append(new InfopointNode(InfopointReason.METHOD_END, frameState.create(bci())));
-        }
-
-        synchronizedEpilogue(FrameState.AFTER_BCI, x);
-        if (frameState.lockDepth() != 0) {
-            throw new BailoutException("unbalanced monitors");
-        }
-
-        append(new ReturnNode(x));
-    }
-
-    private MonitorEnterNode genMonitorEnter(T x) {
-        MonitorIdNode monitorId = currentGraph.add(new MonitorIdNode(frameState.lockDepth()));
-        MonitorEnterNode monitorEnter = append(new MonitorEnterNode(x, monitorId));
-        frameState.pushLock(x, monitorId);
-        return monitorEnter;
-    }
-
-    private MonitorExitNode genMonitorExit(T x, T returnValue) {
-        MonitorIdNode monitorId = frameState.peekMonitorId();
-        T lockedObject = frameState.popLock();
-        if (GraphUtil.originalValue(lockedObject) != GraphUtil.originalValue(x)) {
-            throw new BailoutException("unbalanced monitors: mismatch at monitorexit, %s != %s", GraphUtil.originalValue(x), GraphUtil.originalValue(lockedObject));
-        }
-        MonitorExitNode monitorExit = append(new MonitorExitNode(x, monitorId, returnValue));
-        return monitorExit;
-    }
-
-    private void genJsr(int dest) {
-        BciBlock successor = currentBlock.jsrSuccessor;
-        assert successor.startBci == dest : successor.startBci + " != " + dest + " @" + bci();
-        JsrScope scope = currentBlock.jsrScope;
-        if (!successor.jsrScope.pop().equals(scope)) {
-            throw new JsrNotSupportedBailout("unstructured control flow (internal limitation)");
-        }
-        if (successor.jsrScope.nextReturnAddress() != stream().nextBCI()) {
-            throw new JsrNotSupportedBailout("unstructured control flow (internal limitation)");
-        }
-        frameState.push(Kind.Int, ConstantNode.forInt(stream().nextBCI(), currentGraph));
-        appendGoto(createTarget(successor, frameState));
-    }
-
-    private void genRet(int localIndex) {
-        BciBlock successor = currentBlock.retSuccessor;
-        T local = frameState.loadLocal(localIndex);
-        JsrScope scope = currentBlock.jsrScope;
-        int retAddress = scope.nextReturnAddress();
-        append(new FixedGuardNode(currentGraph.unique(new IntegerEqualsNode(local, ConstantNode.forInt(retAddress, currentGraph))), JavaSubroutineMismatch, InvalidateReprofile));
-        if (!successor.jsrScope.equals(scope.pop())) {
-            throw new JsrNotSupportedBailout("unstructured control flow (ret leaves more than one scope)");
-        }
-        appendGoto(createTarget(successor, frameState));
-    }
+    protected abstract void genRet(int localIndex);
 
     private double[] switchProbability(int numberOfCases, int bci) {
         double[] prob = profilingInfo.getSwitchProbabilities(bci);
@@ -1074,9 +884,9 @@ public abstract class BytecodeParseHelper<T extends KindInterface> {
 
         Map<Integer, SuccessorInfo> bciToBlockSuccessorIndex = new HashMap<>();
         for (int i = 0; i < currentBlock.getSuccessorCount(); i++) {
-            assert !bciToBlockSuccessorIndex.containsKey(currentBlock.getSuccessor(i).startBci);
-            if (!bciToBlockSuccessorIndex.containsKey(currentBlock.getSuccessor(i).startBci)) {
-                bciToBlockSuccessorIndex.put(currentBlock.getSuccessor(i).startBci, new SuccessorInfo(i));
+            assert !bciToBlockSuccessorIndex.containsKey(currentBlock.getSuccessors().get(i).startBci);
+            if (!bciToBlockSuccessorIndex.containsKey(currentBlock.getSuccessors().get(i).startBci)) {
+                bciToBlockSuccessorIndex.put(currentBlock.getSuccessors().get(i).startBci, new SuccessorInfo(i));
             }
         }
 
@@ -1101,19 +911,23 @@ public abstract class BytecodeParseHelper<T extends KindInterface> {
                 SuccessorInfo info = bciToBlockSuccessorIndex.get(targetBci);
                 if (info.actualIndex < 0) {
                     info.actualIndex = nextSuccessorIndex++;
-                    actualSuccessors.add(currentBlock.getSuccessor(info.blockIndex));
+                    actualSuccessors.add(currentBlock.getSuccessors().get(info.blockIndex));
                 }
                 keySuccessors[i] = info.actualIndex;
             }
         }
 
         double[] successorProbabilities = successorProbabilites(actualSuccessors.size(), keySuccessors, keyProbabilities);
-        IntegerSwitchNode switchNode = append(new IntegerSwitchNode(value, actualSuccessors.size(), keys, keyProbabilities, keySuccessors));
+        T switchNode = append(genIntegerSwitch(value, actualSuccessors.size(), keys, keyProbabilities, keySuccessors));
         for (int i = 0; i < actualSuccessors.size(); i++) {
-            switchNode.setBlockSuccessor(i, createBlockTarget(successorProbabilities[i], actualSuccessors.get(i), frameState));
+            setBlockSuccessor(switchNode, i, createBlockTarget(successorProbabilities[i], actualSuccessors.get(i), frameState));
         }
 
     }
+
+    protected abstract void setBlockSuccessor(T switchNode, int i, T createBlockTarget);
+
+    protected abstract T genIntegerSwitch(T value, int size, int[] keys, double[] keyProbabilities, int[] keySuccessors);
 
     private static class SuccessorInfo {
 
@@ -1130,399 +944,206 @@ public abstract class BytecodeParseHelper<T extends KindInterface> {
 
     protected abstract T append(T v);
 
-    private static class Target {
-
-        FixedNode fixed;
-        HIRFrameStateBuilder state;
-
-        public Target(FixedNode fixed, HIRFrameStateBuilder state) {
-            this.fixed = fixed;
-            this.state = state;
-        }
-    }
-
-    private Target checkLoopExit(FixedNode target, BciBlock targetBlock, HIRFrameStateBuilder state) {
-        if (currentBlock != null) {
-            long exits = currentBlock.loops & ~targetBlock.loops;
-            if (exits != 0) {
-                LoopExitNode firstLoopExit = null;
-                LoopExitNode lastLoopExit = null;
-
-                int pos = 0;
-                ArrayList<BciBlock> exitLoops = new ArrayList<>(Long.bitCount(exits));
-                do {
-                    long lMask = 1L << pos;
-                    if ((exits & lMask) != 0) {
-                        exitLoops.add(loopHeaders[pos]);
-                        exits &= ~lMask;
-                    }
-                    pos++;
-                } while (exits != 0);
-
-                Collections.sort(exitLoops, new Comparator<BciBlock>() {
-
-                    @Override
-                    public int compare(BciBlock o1, BciBlock o2) {
-                        return Long.bitCount(o2.loops) - Long.bitCount(o1.loops);
-                    }
-                });
-
-                int bci = targetBlock.startBci;
-                if (targetBlock instanceof ExceptionDispatchBlock) {
-                    bci = ((ExceptionDispatchBlock) targetBlock).deoptBci;
-                }
-                HIRFrameStateBuilder newState = state.copy();
-                for (BciBlock loop : exitLoops) {
-                    LoopBeginNode loopBegin = (LoopBeginNode) loop.firstInstruction;
-                    LoopExitNode loopExit = currentGraph.add(new LoopExitNode(loopBegin));
-                    if (lastLoopExit != null) {
-                        lastLoopExit.setNext(loopExit);
-                    }
-                    if (firstLoopExit == null) {
-                        firstLoopExit = loopExit;
-                    }
-                    lastLoopExit = loopExit;
-                    Debug.log("Target %s (%s) Exits %s, scanning framestates...", targetBlock, target, loop);
-                    newState.insertLoopProxies(loopExit, loop.entryState);
-                    loopExit.setStateAfter(newState.create(bci));
-                }
-
-                lastLoopExit.setNext(target);
-                return new Target(firstLoopExit, newState);
-            }
-        }
-        return new Target(target, state);
-    }
-
-    private FixedNode createTarget(double probability, BciBlock block, HIRFrameStateBuilder stateAfter) {
-        assert probability >= 0 && probability <= 1.01 : probability;
-        if (isNeverExecutedCode(probability)) {
-            return currentGraph.add(new DeoptimizeNode(InvalidateReprofile, UnreachedCode));
-        } else {
-            assert block != null;
-            return createTarget(block, stateAfter);
-        }
-    }
-
     private boolean isNeverExecutedCode(double probability) {
         return probability == 0 && optimisticOpts.removeNeverExecutedCode() && entryBCI == StructuredGraph.INVOCATION_ENTRY_BCI;
     }
 
-    private abstract T createTarget(BciBlock block, HIRFrameStateBuilder state) {
-        assert block != null && state != null;
-        assert !block.isExceptionEntry || state.stackSize() == 1;
-
-        if (block.firstInstruction == null) {
-            /*
-             * This is the first time we see this block as a branch target. Create and return a
-             * placeholder that later can be replaced with a MergeNode when we see this block again.
-             */
-            block.firstInstruction = currentGraph.add(new BlockPlaceholderNode(this));
-            Target target = checkLoopExit(block.firstInstruction, block, state);
-            FixedNode result = target.fixed;
-            block.entryState = target.state == state ? state.copy() : target.state;
-            block.entryState.clearNonLiveLocals(block, liveness, true);
-
-            Debug.log("createTarget %s: first visit, result: %s", block, block.firstInstruction);
-            return result;
-        }
-
-        // We already saw this block before, so we have to merge states.
-        if (!block.entryState.isCompatibleWith(state)) {
-            throw new BailoutException("stacks do not match; bytecodes would not verify");
-        }
-
-        if (block.firstInstruction instanceof LoopBeginNode) {
-            assert block.isLoopHeader && currentBlock.getId() >= block.getId() : "must be backward branch";
-            /*
-             * Backward loop edge. We need to create a special LoopEndNode and merge with the loop
-             * begin node created before.
-             */
-            LoopBeginNode loopBegin = (LoopBeginNode) block.firstInstruction;
-            Target target = checkLoopExit(currentGraph.add(new LoopEndNode(loopBegin)), block, state);
-            FixedNode result = target.fixed;
-            block.entryState.merge(loopBegin, target.state);
-
-            Debug.log("createTarget %s: merging backward branch to loop header %s, result: %s", block, loopBegin, result);
-            return result;
-        }
-        assert currentBlock == null || currentBlock.getId() < block.getId() : "must not be backward branch";
-        assert block.firstInstruction.next() == null : "bytecodes already parsed for block";
-
-        if (block.firstInstruction instanceof BlockPlaceholderNode) {
-            /*
-             * This is the second time we see this block. Create the actual MergeNode and the End
-             * Node for the already existing edge. For simplicity, we leave the placeholder in the
-             * graph and just append the new nodes after the placeholder.
-             */
-            BlockPlaceholderNode placeholder = (BlockPlaceholderNode) block.firstInstruction;
-
-            // The EndNode for the already existing edge.
-            AbstractEndNode end = currentGraph.add(new EndNode());
-            // The MergeNode that replaces the placeholder.
-            MergeNode mergeNode = currentGraph.add(new MergeNode());
-            FixedNode next = placeholder.next();
-
-            placeholder.setNext(end);
-            mergeNode.addForwardEnd(end);
-            mergeNode.setNext(next);
-
-            block.firstInstruction = mergeNode;
-        }
-
-        MergeNode mergeNode = (MergeNode) block.firstInstruction;
-
-        // The EndNode for the newly merged edge.
-        AbstractEndNode newEnd = currentGraph.add(new EndNode());
-        Target target = checkLoopExit(newEnd, block, state);
-        FixedNode result = target.fixed;
-        block.entryState.merge(mergeNode, target.state);
-        mergeNode.addForwardEnd(newEnd);
-
-        Debug.log("createTarget %s: merging state, result: %s", block, result);
-        return result;
-    }
+    protected abstract T createTarget(BciBlock trueBlock, AbstractFrameStateBuilder<T> state);
 
     /**
      * Returns a block begin node with the specified state. If the specified probability is 0, the
      * block deoptimizes immediately.
      */
-    private AbstractBeginNode createBlockTarget(double probability, BciBlock block, HIRFrameStateBuilder stateAfter) {
-        FixedNode target = createTarget(probability, block, stateAfter);
-        AbstractBeginNode begin = AbstractBeginNode.begin(target);
+    protected abstract T createBlockTarget(double probability, BciBlock bciBlock, AbstractFrameStateBuilder<T> stateAfter);
 
-        assert !(target instanceof DeoptimizeNode && begin.stateAfter() != null) : "We are not allowed to set the stateAfter of the begin node, because we have to deoptimize "
-                        + "to a bci _before_ the actual if, so that the interpreter can update the profiling information.";
-        return begin;
-    }
+    protected abstract void processBlock(AbstractBlock<B> block);
 
-    private T synchronizedObject(HIRFrameStateBuilder state, ResolvedJavaMethod target) {
-        if (isStatic(target.getModifiers())) {
-            return appendConstant(target.getDeclaringClass().getEncoding(Representation.JavaClass));
-        } else {
-            return state.loadLocal(0);
-        }
-    }
+// private void connectLoopEndToBegin() {
+// for (LoopBeginNode begin : currentGraph.getNodes(LoopBeginNode.class)) {
+// if (begin.loopEnds().isEmpty()) {
+//                // @formatter:off
+//                // Remove loop header without loop ends.
+//                // This can happen with degenerated loops like this one:
+//                // for (;;) {
+//                //     try {
+//                //         break;
+//                //     } catch (UnresolvedException iioe) {
+//                //     }
+//                // }
+//                // @formatter:on
+// assert begin.forwardEndCount() == 1;
+// currentGraph.reduceDegenerateLoopBegin(begin);
+// } else {
+// GraphUtil.normalizeLoopBegin(begin);
+// }
+// }
+// }
 
-    private void processBlock(BciBlock block) {
-        // Ignore blocks that have no predecessors by the time their bytecodes are parsed
-        if (block == null || block.firstInstruction == null) {
-            Debug.log("Ignoring block %s", block);
-            return;
-        }
-        Indent indent = Debug.logAndIndent("Parsing block %s  firstInstruction: %s  loopHeader: %b", block, block.firstInstruction, block.isLoopHeader);
+// private void createUnwind() {
+// assert frameState.stackSize() == 1 : frameState;
+// T exception = frameState.apop();
+// append(new FixedGuardNode(currentGraph.unique(new IsNullNode(exception)), NullCheckException,
+// InvalidateReprofile, true));
+// synchronizedEpilogue(FrameState.AFTER_EXCEPTION_BCI, null);
+// append(new UnwindNode(exception));
+// }
+//
+// private void synchronizedEpilogue(int bci, T returnValue) {
+// if (Modifier.isSynchronized(method.getModifiers())) {
+// MonitorExitNode monitorExit = genMonitorExit(methodSynchronizedObject, returnValue);
+// if (returnValue != null) {
+// frameState.push(returnValue.getKind(), returnValue);
+// }
+// monitorExit.setStateAfter(frameState.create(bci));
+// assert !frameState.rethrowException();
+// }
+// }
+//
+// private void createExceptionDispatch(ExceptionDispatchBlock block) {
+// assert frameState.stackSize() == 1 : frameState;
+// if (block.handler.isCatchAll()) {
+// assert block.getSuccessorCount() == 1;
+// appendGoto(createTarget(block.getSuccessor(0), frameState));
+// return;
+// }
+//
+// JavaType catchType = block.handler.getCatchType();
+// if (graphBuilderConfig.eagerResolving()) {
+// catchType = lookupType(block.handler.catchTypeCPI(), INSTANCEOF);
+// }
+// boolean initialized = (catchType instanceof ResolvedJavaType);
+// if (initialized && graphBuilderConfig.getSkippedExceptionTypes() != null) {
+// ResolvedJavaType resolvedCatchType = (ResolvedJavaType) catchType;
+// for (ResolvedJavaType skippedType : graphBuilderConfig.getSkippedExceptionTypes()) {
+// if (skippedType.isAssignableFrom(resolvedCatchType)) {
+// BciBlock nextBlock = block.getSuccessorCount() == 1 ? unwindBlock(block.deoptBci) :
+// block.getSuccessor(1);
+// T exception = frameState.stackAt(0);
+// FixedNode trueSuccessor = currentGraph.add(new DeoptimizeNode(InvalidateReprofile,
+// UnreachedCode));
+// FixedNode nextDispatch = createTarget(nextBlock, frameState);
+// append(new IfNode(currentGraph.unique(new InstanceOfNode((ResolvedJavaType) catchType, exception,
+// null)), trueSuccessor, nextDispatch, 0));
+// return;
+// }
+// }
+// }
+//
+// if (initialized) {
+// BciBlock nextBlock = block.getSuccessorCount() == 1 ? unwindBlock(block.deoptBci) :
+// block.getSuccessor(1);
+// T exception = frameState.stackAt(0);
+// CheckCastNode checkCast = currentGraph.add(new CheckCastNode((ResolvedJavaType) catchType,
+// exception, null, false));
+// frameState.apop();
+// frameState.push(Kind.Object, checkCast);
+// FixedNode catchSuccessor = createTarget(block.getSuccessor(0), frameState);
+// frameState.apop();
+// frameState.push(Kind.Object, exception);
+// FixedNode nextDispatch = createTarget(nextBlock, frameState);
+// checkCast.setNext(catchSuccessor);
+// append(new IfNode(currentGraph.unique(new InstanceOfNode((ResolvedJavaType) catchType, exception,
+// null)), checkCast, nextDispatch, 0.5));
+// } else {
+// handleUnresolvedExceptionType(Representation.ObjectHub, catchType);
+// }
+// }
 
-        lastInstr = block.firstInstruction;
-        frameState = block.entryState;
-        parseHelper.setCurrentFrameState(frameState);
-        currentBlock = block;
+    protected abstract void appendGoto(T target);
 
-        frameState.cleanupDeletedPhis();
-        if (lastInstr instanceof MergeNode) {
-            int bci = block.startBci;
-            if (block instanceof ExceptionDispatchBlock) {
-                bci = ((ExceptionDispatchBlock) block).deoptBci;
-            }
-            ((MergeNode) lastInstr).setStateAfter(frameState.create(bci));
-        }
+    protected abstract void iterateBytecodesForBlock(B block);
 
-        if (block == unwindBlock) {
-            frameState.setRethrowException(false);
-            createUnwind();
-        } else if (block instanceof ExceptionDispatchBlock) {
-            createExceptionDispatch((ExceptionDispatchBlock) block);
-        } else {
-            frameState.setRethrowException(false);
-            iterateBytecodesForBlock(block);
-        }
-        indent.outdent();
-    }
-
-    private void connectLoopEndToBegin() {
-        for (LoopBeginNode begin : currentGraph.getNodes(LoopBeginNode.class)) {
-            if (begin.loopEnds().isEmpty()) {
-                // @formatter:off
-                // Remove loop header without loop ends.
-                // This can happen with degenerated loops like this one:
-                // for (;;) {
-                //     try {
-                //         break;
-                //     } catch (UnresolvedException iioe) {
-                //     }
-                // }
-                // @formatter:on
-                assert begin.forwardEndCount() == 1;
-                currentGraph.reduceDegenerateLoopBegin(begin);
-            } else {
-                GraphUtil.normalizeLoopBegin(begin);
-            }
-        }
-    }
-
-    private void createUnwind() {
-        assert frameState.stackSize() == 1 : frameState;
-        T exception = frameState.apop();
-        append(new FixedGuardNode(currentGraph.unique(new IsNullNode(exception)), NullCheckException, InvalidateReprofile, true));
-        synchronizedEpilogue(FrameState.AFTER_EXCEPTION_BCI, null);
-        append(new UnwindNode(exception));
-    }
-
-    private void synchronizedEpilogue(int bci, T returnValue) {
-        if (Modifier.isSynchronized(method.getModifiers())) {
-            MonitorExitNode monitorExit = genMonitorExit(methodSynchronizedObject, returnValue);
-            if (returnValue != null) {
-                frameState.push(returnValue.getKind(), returnValue);
-            }
-            monitorExit.setStateAfter(frameState.create(bci));
-            assert !frameState.rethrowException();
-        }
-    }
-
-    private void createExceptionDispatch(ExceptionDispatchBlock block) {
-        assert frameState.stackSize() == 1 : frameState;
-        if (block.handler.isCatchAll()) {
-            assert block.getSuccessorCount() == 1;
-            appendGoto(createTarget(block.getSuccessor(0), frameState));
-            return;
-        }
-
-        JavaType catchType = block.handler.getCatchType();
-        if (graphBuilderConfig.eagerResolving()) {
-            catchType = lookupType(block.handler.catchTypeCPI(), INSTANCEOF);
-        }
-        boolean initialized = (catchType instanceof ResolvedJavaType);
-        if (initialized && graphBuilderConfig.getSkippedExceptionTypes() != null) {
-            ResolvedJavaType resolvedCatchType = (ResolvedJavaType) catchType;
-            for (ResolvedJavaType skippedType : graphBuilderConfig.getSkippedExceptionTypes()) {
-                if (skippedType.isAssignableFrom(resolvedCatchType)) {
-                    BciBlock nextBlock = block.getSuccessorCount() == 1 ? unwindBlock(block.deoptBci) : block.getSuccessor(1);
-                    T exception = frameState.stackAt(0);
-                    FixedNode trueSuccessor = currentGraph.add(new DeoptimizeNode(InvalidateReprofile, UnreachedCode));
-                    FixedNode nextDispatch = createTarget(nextBlock, frameState);
-                    append(new IfNode(currentGraph.unique(new InstanceOfNode((ResolvedJavaType) catchType, exception, null)), trueSuccessor, nextDispatch, 0));
-                    return;
-                }
-            }
-        }
-
-        if (initialized) {
-            BciBlock nextBlock = block.getSuccessorCount() == 1 ? unwindBlock(block.deoptBci) : block.getSuccessor(1);
-            T exception = frameState.stackAt(0);
-            CheckCastNode checkCast = currentGraph.add(new CheckCastNode((ResolvedJavaType) catchType, exception, null, false));
-            frameState.apop();
-            frameState.push(Kind.Object, checkCast);
-            FixedNode catchSuccessor = createTarget(block.getSuccessor(0), frameState);
-            frameState.apop();
-            frameState.push(Kind.Object, exception);
-            FixedNode nextDispatch = createTarget(nextBlock, frameState);
-            checkCast.setNext(catchSuccessor);
-            append(new IfNode(currentGraph.unique(new InstanceOfNode((ResolvedJavaType) catchType, exception, null)), checkCast, nextDispatch, 0.5));
-        } else {
-            handleUnresolvedExceptionType(Representation.ObjectHub, catchType);
-        }
-    }
-
-    private void appendGoto(FixedNode target) {
-        if (lastInstr != null) {
-            lastInstr.setNext(target);
-        }
-    }
-
-    private static boolean isBlockEnd(Node n) {
-        return n instanceof ControlSplitNode || n instanceof ControlSinkNode;
-    }
-
-    private void iterateBytecodesForBlock(BciBlock block) {
-        if (block.isLoopHeader) {
-            // Create the loop header block, which later will merge the backward branches of the
-            // loop.
-            AbstractEndNode preLoopEnd = currentGraph.add(new EndNode());
-            LoopBeginNode loopBegin = currentGraph.add(new LoopBeginNode());
-            lastInstr.setNext(preLoopEnd);
-            // Add the single non-loop predecessor of the loop header.
-            loopBegin.addForwardEnd(preLoopEnd);
-            lastInstr = loopBegin;
-
-            // Create phi functions for all local variables and operand stack slots.
-            frameState.insertLoopPhis(loopBegin);
-            loopBegin.setStateAfter(frameState.create(block.startBci));
-
-            /*
-             * We have seen all forward branches. All subsequent backward branches will merge to the
-             * loop header. This ensures that the loop header has exactly one non-loop predecessor.
-             */
-            block.firstInstruction = loopBegin;
-            /*
-             * We need to preserve the frame state builder of the loop header so that we can merge
-             * values for phi functions, so make a copy of it.
-             */
-            block.entryState = frameState.copy();
-
-            Debug.log("  created loop header %s", loopBegin);
-        }
-        assert lastInstr.next() == null : "instructions already appended at block " + block;
-        Debug.log("  frameState: %s", frameState);
-
-        int endBCI = stream.endBCI();
-
-        stream.setBCI(block.startBci);
-        int bci = block.startBci;
-        BytecodesParsed.add(block.endBci - bci);
-
-        while (bci < endBCI) {
-            if (graphBuilderConfig.eagerInfopointMode() && lnt != null) {
-                currentLineNumber = lnt.getLineNumber(bci);
-                if (currentLineNumber != previousLineNumber) {
-                    append(new InfopointNode(InfopointReason.LINE_NUMBER, frameState.create(bci)));
-                    previousLineNumber = currentLineNumber;
-                }
-            }
-
-            // read the opcode
-            int opcode = stream.currentBC();
-            traceState();
-            traceInstruction(bci, opcode, bci == block.startBci);
-            if (bci == entryBCI) {
-                if (block.jsrScope != JsrScope.EMPTY_SCOPE) {
-                    throw new BailoutException("OSR into a JSR scope is not supported");
-                }
-                EntryMarkerNode x = append(new EntryMarkerNode());
-                frameState.insertProxies(x);
-                x.setStateAfter(frameState.create(bci));
-            }
-            parseHelper.processBytecode(bci, opcode);
-
-            if (lastInstr == null || isBlockEnd(lastInstr) || lastInstr.next() != null) {
-                break;
-            }
-
-            stream.next();
-            bci = stream.currentBCI();
-
-            if (bci > block.endBci) {
-                frameState.clearNonLiveLocals(currentBlock, liveness, false);
-            }
-            if (lastInstr instanceof StateSplit) {
-                if (lastInstr.getClass() == AbstractBeginNode.class) {
-                    // BeginNodes do not need a frame state
-                } else {
-                    StateSplit stateSplit = (StateSplit) lastInstr;
-                    if (stateSplit.stateAfter() == null) {
-                        stateSplit.setStateAfter(frameState.create(bci));
-                    }
-                }
-            }
-            if (bci < endBCI) {
-                if (bci > block.endBci) {
-                    assert !block.getSuccessor(0).isExceptionEntry;
-                    assert block.numNormalSuccessors() == 1;
-                    // we fell through to the next block, add a goto and break
-                    appendGoto(createTarget(block.getSuccessor(0), frameState));
-                    break;
-                }
-            }
-        }
-    }
+// private void iterateBytecodesForBlock(BciBlock block) {
+// if (block.isLoopHeader) {
+// // Create the loop header block, which later will merge the backward branches of the
+// // loop.
+// AbstractEndNode preLoopEnd = currentGraph.add(new EndNode());
+// LoopBeginNode loopBegin = currentGraph.add(new LoopBeginNode());
+// lastInstr.setNext(preLoopEnd);
+// // Add the single non-loop predecessor of the loop header.
+// loopBegin.addForwardEnd(preLoopEnd);
+// lastInstr = loopBegin;
+//
+// // Create phi functions for all local variables and operand stack slots.
+// frameState.insertLoopPhis(loopBegin);
+// loopBegin.setStateAfter(frameState.create(block.startBci));
+//
+// /*
+// * We have seen all forward branches. All subsequent backward branches will merge to the
+// * loop header. This ensures that the loop header has exactly one non-loop predecessor.
+// */
+// block.firstInstruction = loopBegin;
+// /*
+// * We need to preserve the frame state builder of the loop header so that we can merge
+// * values for phi functions, so make a copy of it.
+// */
+// block.entryState = frameState.copy();
+//
+// Debug.log("  created loop header %s", loopBegin);
+// }
+// assert lastInstr.next() == null : "instructions already appended at block " + block;
+// Debug.log("  frameState: %s", frameState);
+//
+// int endBCI = stream.endBCI();
+//
+// stream.setBCI(block.startBci);
+// int bci = block.startBci;
+// BytecodesParsed.add(block.endBci - bci);
+//
+// while (bci < endBCI) {
+// if (graphBuilderConfig.eagerInfopointMode() && lnt != null) {
+// currentLineNumber = lnt.getLineNumber(bci);
+// if (currentLineNumber != previousLineNumber) {
+// append(new InfopointNode(InfopointReason.LINE_NUMBER, frameState.create(bci)));
+// previousLineNumber = currentLineNumber;
+// }
+// }
+//
+// // read the opcode
+// int opcode = stream.currentBC();
+// traceState();
+// traceInstruction(bci, opcode, bci == block.startBci);
+// if (bci == entryBCI) {
+// if (block.jsrScope != JsrScope.EMPTY_SCOPE) {
+// throw new BailoutException("OSR into a JSR scope is not supported");
+// }
+// EntryMarkerNode x = append(new EntryMarkerNode());
+// frameState.insertProxies(x);
+// x.setStateAfter(frameState.create(bci));
+// }
+// parseHelper.processBytecode(bci, opcode);
+//
+// if (lastInstr == null || isBlockEnd(lastInstr) || lastInstr.next() != null) {
+// break;
+// }
+//
+// stream.next();
+// bci = stream.currentBCI();
+//
+// if (bci > block.endBci) {
+// frameState.clearNonLiveLocals(currentBlock, liveness, false);
+// }
+// if (lastInstr instanceof StateSplit) {
+// if (lastInstr.getClass() == AbstractBeginNode.class) {
+// // BeginNodes do not need a frame state
+// } else {
+// StateSplit stateSplit = (StateSplit) lastInstr;
+// if (stateSplit.stateAfter() == null) {
+// stateSplit.setStateAfter(frameState.create(bci));
+// }
+// }
+// }
+// if (bci < endBCI) {
+// if (bci > block.endBci) {
+// assert !block.getSuccessor(0).isExceptionEntry;
+// assert block.numNormalSuccessors() == 1;
+// // we fell through to the next block, add a goto and break
+// appendGoto(createTarget(block.getSuccessor(0), frameState));
+// break;
+// }
+// }
+// }
+// }
 
 // private final int traceLevel = Options.TraceBytecodeParserLevel.getValue();
 //
@@ -1720,7 +1341,7 @@ public abstract class BytecodeParseHelper<T extends KindInterface> {
         case JSR            : genJsr(stream.readBranchDest()); break;
         case RET            : genRet(stream.readLocalIndex()); break;
         case TABLESWITCH    : genSwitch(new BytecodeTableSwitch(getStream(), bci())); break;
-        case LOOKUPSWITCH   : genSwitch(new BytecodeLookupSwitch(stream(), bci())); break;
+        case LOOKUPSWITCH   : genSwitch(new BytecodeLookupSwitch(getStream(), bci())); break;
         case IRETURN        : genReturn(frameState.ipop()); break;
         case LRETURN        : genReturn(frameState.lpop()); break;
         case FRETURN        : genReturn(frameState.fpop()); break;
@@ -1757,5 +1378,9 @@ public abstract class BytecodeParseHelper<T extends KindInterface> {
     }
     // @formatter:on
         // Checkstyle: resume
+    }
+
+    private void genArrayLength() {
+        frameState.ipush(append(genArrayLength(frameState.apop())));
     }
 }
