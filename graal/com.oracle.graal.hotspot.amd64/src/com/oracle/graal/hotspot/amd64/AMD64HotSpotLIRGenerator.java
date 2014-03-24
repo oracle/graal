@@ -174,7 +174,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     }
 
     @Override
-    public void emitPrologue(ResolvedJavaMethod method) {
+    protected void emitPrologue(ResolvedJavaMethod method) {
 
         CallingConvention incomingArguments = getCallingConvention();
 

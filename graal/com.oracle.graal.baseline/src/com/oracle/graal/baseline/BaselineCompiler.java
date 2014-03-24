@@ -57,7 +57,7 @@ import com.oracle.graal.nodes.java.*;
  * The {@code GraphBuilder} class parses the bytecode of a method and builds the IR graph.
  */
 @SuppressWarnings("all")
-public class BaselineCompiler {
+public class BaselineCompiler implements BytecodeParser<BciBlock> {
 
     public BaselineCompiler(GraphBuilderConfiguration graphBuilderConfig, MetaAccessProvider metaAccess) {
         this.graphBuilderConfig = graphBuilderConfig;
@@ -176,17 +176,11 @@ public class BaselineCompiler {
         try (Scope ds = Debug.scope("BackEnd", lir)) {
             try (Scope s = Debug.scope("LIRGen", lirGen)) {
 
-                lirGen.emitPrologue(method);
-
                 // possibly add all the arguments to slots in the local variable array
 
                 for (BciBlock block : blockMap.blocks) {
 
-                    lirGen.doBlockStart(block);
-
-                    processBlock(block);
-
-                    lirGen.doBlockEnd(block);
+                    lirGen.doBlock(block, method, this);
                 }
                 // indent.outdent();
 
@@ -508,7 +502,7 @@ public class BaselineCompiler {
         throw GraalInternalError.unimplemented();
     }
 
-    private void processBlock(BciBlock block) {
+    public void processBlock(BciBlock block) {
         Indent indent = Debug.logAndIndent("Parsing block %s  firstInstruction: %s  loopHeader: %b", block, block.firstInstruction, block.isLoopHeader);
         currentBlock = block;
         iterateBytecodesForBlock(block);

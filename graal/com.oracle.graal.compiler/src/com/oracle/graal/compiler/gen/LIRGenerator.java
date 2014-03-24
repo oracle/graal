@@ -442,18 +442,20 @@ public abstract class LIRGenerator implements LIRGeneratorTool, LIRTypeTool, LIR
     /**
      * For Baseline compilation
      */
-    /*
-     * public void doBlock(AbstractBlock<?> block, ResolvedJavaMethod method) { doBlockStart(block);
-     * 
-     * if (block == res.getLIR().getControlFlowGraph().getStartBlock()) { assert
-     * block.getPredecessorCount() == 0; emitPrologue(method); } else { assert
-     * block.getPredecessorCount() > 0; }
-     * 
-     * // add instruction Value add = emitAdd(Constant.forLong(42), Constant.forLong(73));
-     * emitReturn(add);
-     * 
-     * doBlockEnd(block); }
-     */
+
+    public <T extends AbstractBlock<T>> void doBlock(T block, ResolvedJavaMethod method, BytecodeParser<T> parser) {
+        doBlockStart(block);
+
+        if (block == res.getLIR().getControlFlowGraph().getStartBlock()) {
+            assert block.getPredecessorCount() == 0;
+            emitPrologue(method);
+        } else {
+            assert block.getPredecessorCount() > 0;
+        }
+        parser.processBlock(block);
+
+        doBlockEnd(block);
+    }
 
     public void doBlock(Block block, StructuredGraph graph, BlockMap<List<ScheduledNode>> blockMap) {
         doBlockStart(block);
@@ -570,7 +572,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool, LIRTypeTool, LIR
         }
     }
 
-    public void emitPrologue(ResolvedJavaMethod method) {
+    protected void emitPrologue(ResolvedJavaMethod method) {
         CallingConvention incomingArguments = getCallingConvention();
 
         Value[] params = new Value[incomingArguments.getArgumentCount()];

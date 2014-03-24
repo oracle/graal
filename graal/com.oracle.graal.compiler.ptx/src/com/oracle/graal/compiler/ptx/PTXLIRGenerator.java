@@ -172,7 +172,7 @@ public class PTXLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public void emitPrologue(ResolvedJavaMethod method) {
+    protected void emitPrologue(ResolvedJavaMethod method) {
         // Need to emit .param directives based on incoming arguments and return value
         CallingConvention incomingArguments = getCallingConvention();
         Object returnObject = incomingArguments.getReturn();
