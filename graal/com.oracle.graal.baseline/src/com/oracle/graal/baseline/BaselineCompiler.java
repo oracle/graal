@@ -141,8 +141,6 @@ public class BaselineCompiler {
             }
         }
 
-        // calculate loops and dominators used for some steps..
-
         if (isSynchronized(method.getModifiers())) {
             throw GraalInternalError.unimplemented("Handle synchronized methods");
         }

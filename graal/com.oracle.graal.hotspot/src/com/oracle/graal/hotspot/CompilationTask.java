@@ -39,6 +39,7 @@ import java.util.concurrent.atomic.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.CallingConvention.Type;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.baseline.*;
 import com.oracle.graal.compiler.CompilerThreadFactory.CompilerThread;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
@@ -46,6 +47,7 @@ import com.oracle.graal.debug.internal.*;
 import com.oracle.graal.hotspot.bridge.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.phases.*;
+import com.oracle.graal.java.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
@@ -237,34 +239,41 @@ public class CompilationTask implements Runnable, Comparable {
             TTY.Filter filter = new TTY.Filter(PrintFilter.getValue(), method);
             long start = System.currentTimeMillis();
             try (Scope s = Debug.scope("Compiling", new DebugDumpScope(String.valueOf(id), true))) {
-                Map<ResolvedJavaMethod, StructuredGraph> graphCache = null;
-                if (GraalOptions.CacheGraphs.getValue()) {
-                    graphCache = new HashMap<>();
-                }
 
-                HotSpotProviders providers = backend.getProviders();
-                Replacements replacements = providers.getReplacements();
-                graph = replacements.getMethodSubstitution(method);
-                if (graph == null || entryBCI != INVOCATION_ENTRY_BCI) {
-                    graph = new StructuredGraph(method, entryBCI);
+                if (UseBaselineCompiler.getValue() == true) {
+                    HotSpotProviders providers = backend.getProviders();
+                    BaselineCompiler baselineCompiler = new BaselineCompiler(GraphBuilderConfiguration.getDefault(), providers.getMetaAccess());
+                    result = baselineCompiler.generate(method, -1, backend, new CompilationResult(), method, CompilationResultBuilderFactory.Default);
                 } else {
-                    // Compiling method substitution - must clone the graph
-                    graph = graph.copy();
+                    Map<ResolvedJavaMethod, StructuredGraph> graphCache = null;
+                    if (GraalOptions.CacheGraphs.getValue()) {
+                        graphCache = new HashMap<>();
+                    }
+
+                    HotSpotProviders providers = backend.getProviders();
+                    Replacements replacements = providers.getReplacements();
+                    graph = replacements.getMethodSubstitution(method);
+                    if (graph == null || entryBCI != INVOCATION_ENTRY_BCI) {
+                        graph = new StructuredGraph(method, entryBCI);
+                    } else {
+                        // Compiling method substitution - must clone the graph
+                        graph = graph.copy();
+                    }
+                    InlinedBytecodes.add(method.getCodeSize());
+                    CallingConvention cc = getCallingConvention(providers.getCodeCache(), Type.JavaCallee, graph.method(), false);
+                    if (graph.getEntryBCI() != StructuredGraph.INVOCATION_ENTRY_BCI) {
+                        // for OSR, only a pointer is passed to the method.
+                        JavaType[] parameterTypes = new JavaType[]{providers.getMetaAccess().lookupJavaType(long.class)};
+                        CallingConvention tmp = providers.getCodeCache().getRegisterConfig().getCallingConvention(JavaCallee, providers.getMetaAccess().lookupJavaType(void.class), parameterTypes,
+                                        backend.getTarget(), false);
+                        cc = new CallingConvention(cc.getStackSize(), cc.getReturn(), tmp.getArgument(0));
+                    }
+                    Suites suites = getSuites(providers);
+                    ProfilingInfo profilingInfo = getProfilingInfo();
+                    OptimisticOptimizations optimisticOpts = getOptimisticOpts(profilingInfo);
+                    result = compileGraph(graph, null, cc, method, providers, backend, backend.getTarget(), graphCache, getGraphBuilderSuite(providers), optimisticOpts, profilingInfo,
+                                    method.getSpeculationLog(), suites, new CompilationResult(), CompilationResultBuilderFactory.Default);
                 }
-                InlinedBytecodes.add(method.getCodeSize());
-                CallingConvention cc = getCallingConvention(providers.getCodeCache(), Type.JavaCallee, graph.method(), false);
-                if (graph.getEntryBCI() != StructuredGraph.INVOCATION_ENTRY_BCI) {
-                    // for OSR, only a pointer is passed to the method.
-                    JavaType[] parameterTypes = new JavaType[]{providers.getMetaAccess().lookupJavaType(long.class)};
-                    CallingConvention tmp = providers.getCodeCache().getRegisterConfig().getCallingConvention(JavaCallee, providers.getMetaAccess().lookupJavaType(void.class), parameterTypes,
-                                    backend.getTarget(), false);
-                    cc = new CallingConvention(cc.getStackSize(), cc.getReturn(), tmp.getArgument(0));
-                }
-                Suites suites = getSuites(providers);
-                ProfilingInfo profilingInfo = getProfilingInfo();
-                OptimisticOptimizations optimisticOpts = getOptimisticOpts(profilingInfo);
-                result = compileGraph(graph, null, cc, method, providers, backend, backend.getTarget(), graphCache, getGraphBuilderSuite(providers), optimisticOpts, profilingInfo,
-                                method.getSpeculationLog(), suites, new CompilationResult(), CompilationResultBuilderFactory.Default);
                 result.setId(getId());
                 result.setEntryBCI(entryBCI);
             } catch (Throwable e) {
@@ -287,6 +296,7 @@ public class CompilationTask implements Runnable, Comparable {
                 }
             }
             stats.finish(method, installedCode);
+
         } catch (BailoutException bailout) {
             BAILOUTS.increment();
             if (ExitVMOnBailout.getValue()) {
