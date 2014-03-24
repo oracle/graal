@@ -45,6 +45,10 @@ public abstract class AbstractBlockBase<T extends AbstractBlock<T>> implements A
         return id;
     }
 
+    public void setId(int id) {
+        this.id = id;
+    }
+
     public List<T> getPredecessors() {
         return predecessors;
     }

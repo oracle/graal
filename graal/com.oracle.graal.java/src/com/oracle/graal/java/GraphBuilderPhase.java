@@ -293,7 +293,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 unwindBlock.startBci = -1;
                 unwindBlock.endBci = -1;
                 unwindBlock.deoptBci = bci;
-                unwindBlock.blockID = Integer.MAX_VALUE;
+                unwindBlock.setId(Integer.MAX_VALUE);
             }
             return unwindBlock;
         }
@@ -1556,7 +1556,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             }
 
             if (block.firstInstruction instanceof LoopBeginNode) {
-                assert block.isLoopHeader && currentBlock.blockID >= block.blockID : "must be backward branch";
+                assert block.isLoopHeader && currentBlock.getId() >= block.getId() : "must be backward branch";
                 /*
                  * Backward loop edge. We need to create a special LoopEndNode and merge with the
                  * loop begin node created before.
@@ -1569,7 +1569,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 Debug.log("createTarget %s: merging backward branch to loop header %s, result: %s", block, loopBegin, result);
                 return result;
             }
-            assert currentBlock == null || currentBlock.blockID < block.blockID : "must not be backward branch";
+            assert currentBlock == null || currentBlock.getId() < block.getId() : "must not be backward branch";
             assert block.firstInstruction.next() == null : "bytecodes already parsed for block";
 
             if (block.firstInstruction instanceof BlockPlaceholderNode) {
