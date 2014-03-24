@@ -31,6 +31,9 @@ import static com.oracle.graal.api.code.ValueUtil.isConstant;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.hsail.*;
 import com.oracle.graal.hotspot.*;
+import com.oracle.graal.hotspot.HotSpotVMConfig.CompressEncoding;
+import com.oracle.graal.hotspot.meta.*;
+import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.hsail.*;
 import com.oracle.graal.lir.hsail.HSAILControlFlow.*;
@@ -45,13 +48,18 @@ import com.oracle.graal.graph.*;
 /**
  * The HotSpot specific portion of the HSAIL LIR generator.
  */
-public class HSAILHotSpotLIRGenerator extends HSAILLIRGenerator {
+public class HSAILHotSpotLIRGenerator extends HSAILLIRGenerator implements HotSpotLIRGenerator {
 
     private final HotSpotVMConfig config;
 
     public HSAILHotSpotLIRGenerator(StructuredGraph graph, Providers providers, HotSpotVMConfig config, FrameMap frameMap, CallingConvention cc, LIR lir) {
         super(graph, providers, frameMap, cc, lir);
         this.config = config;
+    }
+
+    @Override
+    public HotSpotProviders getProviders() {
+        return (HotSpotProviders) super.getProviders();
     }
 
     private int getLogMinObjectAlignment() {
@@ -85,6 +93,41 @@ public class HSAILHotSpotLIRGenerator extends HSAILLIRGenerator {
     @Override
     public boolean canStoreConstant(Constant c, boolean isCompressed) {
         return true;
+    }
+
+    @Override
+    public StackSlot getLockSlot(int lockDepth) {
+        throw GraalInternalError.shouldNotReachHere("NYI");
+    }
+
+    @Override
+    public void visitDirectCompareAndSwap(DirectCompareAndSwapNode x) {
+        throw GraalInternalError.shouldNotReachHere("NYI");
+    }
+
+    @Override
+    public void emitPrefetchAllocate(ValueNode address, ValueNode distance) {
+        throw GraalInternalError.shouldNotReachHere("NYI");
+    }
+
+    @Override
+    public void emitJumpToExceptionHandlerInCaller(ValueNode handlerInCallerPc, ValueNode exception, ValueNode exceptionPc) {
+        throw GraalInternalError.shouldNotReachHere("NYI");
+    }
+
+    @Override
+    public void emitPatchReturnAddress(ValueNode address) {
+        throw GraalInternalError.shouldNotReachHere("NYI");
+    }
+
+    @Override
+    public void emitDeoptimizeCaller(DeoptimizationAction action, DeoptimizationReason reason) {
+        throw GraalInternalError.shouldNotReachHere("NYI");
+    }
+
+    @Override
+    public void emitTailcall(Value[] args, Value address) {
+        throw GraalInternalError.shouldNotReachHere("NYI");
     }
 
     /**
@@ -163,6 +206,9 @@ public class HSAILHotSpotLIRGenerator extends HSAILLIRGenerator {
                 if (isCompressed) {
                     if ((c.getKind() == Kind.Object) && c.isNull()) {
                         append(new StoreConstantOp(Kind.Int, storeAddress, Constant.forInt(0), state));
+                    } else if (c.getKind() == Kind.Long) {
+                        Constant value = compress(c, config.getKlassEncoding());
+                        append(new StoreConstantOp(Kind.Int, storeAddress, value, state));
                     } else {
                         throw GraalInternalError.shouldNotReachHere("can't handle: " + access);
                     }
@@ -226,4 +272,14 @@ public class HSAILHotSpotLIRGenerator extends HSAILLIRGenerator {
         // this version of emitForeignCall not used for now
     }
 
+    /**
+     * @return a compressed version of the incoming constant lifted from AMD64HotSpotLIRGenerator
+     */
+    protected static Constant compress(Constant c, CompressEncoding encoding) {
+        if (c.getKind() == Kind.Long) {
+            return Constant.forIntegerKind(Kind.Int, (int) (((c.asLong() - encoding.base) >> encoding.shift) & 0xffffffffL), c.getPrimitiveAnnotation());
+        } else {
+            throw GraalInternalError.shouldNotReachHere();
+        }
+    }
 }
