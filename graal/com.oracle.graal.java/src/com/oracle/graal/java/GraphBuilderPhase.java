@@ -98,6 +98,168 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
     public static class Instance extends Phase {
 
+        private class BytecodeParseHelperValueNode extends BytecodeParseHelper<ValueNode> {
+
+            @Override
+            protected void handleUnresolvedLoadConstant(JavaType type) {
+                assert !graphBuilderConfig.eagerResolving();
+                append(new DeoptimizeNode(InvalidateRecompile, Unresolved));
+                frameState.push(Kind.Object, appendConstant(Constant.NULL_OBJECT));
+            }
+
+            @Override
+            protected void handleUnresolvedCheckCast(JavaType type, ValueNode object) {
+                assert !graphBuilderConfig.eagerResolving();
+                append(new FixedGuardNode(currentGraph.unique(new IsNullNode(object)), Unresolved, InvalidateRecompile));
+                frameState.apush(appendConstant(Constant.NULL_OBJECT));
+            }
+
+            @Override
+            protected void handleUnresolvedInstanceOf(JavaType type, ValueNode object) {
+                assert !graphBuilderConfig.eagerResolving();
+                BlockPlaceholderNode successor = currentGraph.add(new BlockPlaceholderNode(this));
+                DeoptimizeNode deopt = currentGraph.add(new DeoptimizeNode(InvalidateRecompile, Unresolved));
+                append(new IfNode(currentGraph.unique(new IsNullNode(object)), successor, deopt, 1));
+                lastInstr = successor;
+                frameState.ipush(appendConstant(Constant.INT_0));
+
+            }
+
+            @Override
+            protected void handleUnresolvedNewInstance(JavaType type) {
+                assert !graphBuilderConfig.eagerResolving();
+                append(new DeoptimizeNode(InvalidateRecompile, Unresolved));
+                frameState.apush(appendConstant(Constant.NULL_OBJECT));
+            }
+
+            @Override
+            protected void handleUnresolvedNewObjectArray(JavaType type, ValueNode length) {
+                assert !graphBuilderConfig.eagerResolving();
+                append(new DeoptimizeNode(InvalidateRecompile, Unresolved));
+                frameState.apush(appendConstant(Constant.NULL_OBJECT));
+            }
+
+            @Override
+            protected void handleUnresolvedNewMultiArray(JavaType type, ValueNode[] dims) {
+                assert !graphBuilderConfig.eagerResolving();
+                append(new DeoptimizeNode(InvalidateRecompile, Unresolved));
+                frameState.apush(appendConstant(Constant.NULL_OBJECT));
+
+            }
+
+            @Override
+            protected void handleUnresolvedLoadField(JavaField field, ValueNode receiver) {
+                assert !graphBuilderConfig.eagerResolving();
+                Kind kind = field.getKind();
+                append(new DeoptimizeNode(InvalidateRecompile, Unresolved));
+                frameState.push(kind.getStackKind(), appendConstant(Constant.defaultForKind(kind)));
+            }
+
+            @Override
+            protected void handleUnresolvedStoreField(JavaField field, ValueNode value, ValueNode receiver) {
+                assert !graphBuilderConfig.eagerResolving();
+                append(new DeoptimizeNode(InvalidateRecompile, Unresolved));
+            }
+
+            @Override
+            protected void handleUnresolvedExceptionType(Representation representation, JavaType type) {
+                assert !graphBuilderConfig.eagerResolving();
+                append(new DeoptimizeNode(InvalidateRecompile, Unresolved));
+            }
+
+            @Override
+            protected ValueNode genLoadIndexed(ValueNode index, ValueNode array, Kind kind) {
+                return new LoadIndexedNode(array, index, kind);
+            }
+
+            @Override
+            protected ValueNode genStoreIndexed(ValueNode array, ValueNode index, Kind kind, ValueNode value) {
+                return new StoreIndexedNode(array, index, kind, value);
+            }
+
+            @Override
+            protected ValueNode genIntegerAdd(Kind kind, ValueNode x, ValueNode y) {
+                return new IntegerAddNode(StampFactory.forKind(kind), x, y);
+            }
+
+            @Override
+            protected ValueNode genIntegerSub(Kind kind, ValueNode x, ValueNode y) {
+                return new IntegerSubNode(StampFactory.forKind(kind), x, y);
+            }
+
+            @Override
+            protected ValueNode genIntegerMul(Kind kind, ValueNode x, ValueNode y) {
+                return new IntegerMulNode(StampFactory.forKind(kind), x, y);
+            }
+
+            @Override
+            protected ValueNode genFloatAdd(Kind kind, ValueNode x, ValueNode y, boolean isStrictFP) {
+                return new FloatAddNode(StampFactory.forKind(kind), x, y, isStrictFP);
+            }
+
+            @Override
+            protected ValueNode genFloatSub(Kind kind, ValueNode x, ValueNode y, boolean isStrictFP) {
+                return new FloatSubNode(StampFactory.forKind(kind), x, y, isStrictFP);
+            }
+
+            @Override
+            protected ValueNode genFloatMul(Kind kind, ValueNode x, ValueNode y, boolean isStrictFP) {
+                return new FloatMulNode(StampFactory.forKind(kind), x, y, isStrictFP);
+            }
+
+            @Override
+            protected ValueNode genFloatDiv(Kind kind, ValueNode x, ValueNode y, boolean isStrictFP) {
+                return new FloatDivNode(StampFactory.forKind(kind), x, y, isStrictFP);
+            }
+
+            @Override
+            protected ValueNode genFloatRem(Kind kind, ValueNode x, ValueNode y, boolean isStrictFP) {
+                return new FloatRemNode(StampFactory.forKind(kind), x, y, isStrictFP);
+            }
+
+            @Override
+            protected ValueNode genIntegerDiv(Kind kind, ValueNode x, ValueNode y) {
+                return new IntegerDivNode(StampFactory.forKind(kind), x, y);
+            }
+
+            @Override
+            protected ValueNode genIntegerRem(Kind kind, ValueNode x, ValueNode y) {
+                return new IntegerRemNode(StampFactory.forKind(kind), x, y);
+            }
+
+            @Override
+            protected ValueNode genNegateOp(ValueNode x) {
+                return new NegateNode(x);
+            }
+
+            @Override
+            protected ValueNode genLeftShift(Kind kind, ValueNode x, ValueNode y) {
+                return new LeftShiftNode(StampFactory.forKind(kind), x, y);
+            }
+
+            @Override
+            protected ValueNode genRightShift(Kind kind, ValueNode x, ValueNode y) {
+                return new RightShiftNode(StampFactory.forKind(kind), x, y);
+            }
+
+            @Override
+            protected ValueNode genUnsignedRightShift(Kind kind, ValueNode x, ValueNode y) {
+                return new UnsignedRightShiftNode(StampFactory.forKind(kind), x, y);
+            }
+
+            @Override
+            protected ValueNode appendConstant(Constant constant) {
+                // TODO Auto-generated method stub
+                return null;
+            }
+
+            @Override
+            protected ValueNode append(ValueNode v) {
+
+            }
+
+        }
+
         private LineNumberTable lnt;
         private int previousLineNumber;
         private int currentLineNumber;
@@ -204,7 +366,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             methodSynchronizedObject = null;
             this.currentGraph = graph;
             this.frameState = new HIRFrameStateBuilder(method, graph, graphBuilderConfig.eagerResolving());
-            this.parseHelper = new BytecodeParseHelper<>(frameState);
+            this.parseHelper = new BytecodeParseHelper<ValueNode>(frameState);
             TTY.Filter filter = new TTY.Filter(PrintFilter.getValue(), method);
             try {
                 build();
@@ -1814,7 +1976,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     frameState.insertProxies(x);
                     x.setStateAfter(frameState.create(bci));
                 }
-                processBytecode(bci, opcode);
+                parseHelper.processBytecode(bci, opcode);
 
                 if (lastInstr == null || isBlockEnd(lastInstr) || lastInstr.next() != null) {
                     break;
