@@ -23,10 +23,11 @@ want one of these VM configurations:
    Compilation with Graal is only done by explicit requests to the
    Graal API. This is how Truffle uses Graal.
    
-2. The 'graal' configuration is a VM where all compilation is performed
-   by Graal and no other compilers are built into the VM binary. This
-   VM will bootstrap Graal itself at startup unless the -XX:-BootstrapGraal
-   VM option is given.   
+2. The 'graal' configuration is a VM where normal compilations are performed
+   by Graal. This VM will bootstrap Graal itself at startup unless the
+   -XX:-BootstrapGraal. Note that if tiered compilation is enabled, Graal
+   will be used at the last tier while C1 will be used for the first compiled
+   tiers.
 
 Unless you use the --vm option with the build command, you will be presented
 with a dialogue to choose one of the above VM configurations for the build
@@ -78,5 +79,3 @@ OpenJDK 64-Bit Client VM (build 25.0-b43-internal, mixed mode)
 
 These configurations aim to match as closely as possible the
 VM(s) included in the OpenJDK binaries one can download.
- No newline at end of file
-
