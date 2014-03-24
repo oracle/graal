@@ -89,7 +89,7 @@ class CFGPrinter extends CompilationPrinter {
         out.println("predecessors ");
 
         out.print("successors ");
-        for (BciBlockMapping.BciBlock succ : block.successors) {
+        for (BciBlockMapping.BciBlock succ : block.getSuccessors()) {
             if (!succ.isExceptionEntry) {
                 out.print("\"B").print(succ.startBci).print("\" ");
             }
@@ -97,7 +97,7 @@ class CFGPrinter extends CompilationPrinter {
         out.println();
 
         out.print("xhandlers");
-        for (BciBlockMapping.BciBlock succ : block.successors) {
+        for (BciBlockMapping.BciBlock succ : block.getSuccessors()) {
             if (succ.isExceptionEntry) {
                 out.print("\"B").print(succ.startBci).print("\" ");
             }

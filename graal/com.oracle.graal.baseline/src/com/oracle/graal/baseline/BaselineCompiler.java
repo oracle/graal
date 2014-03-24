@@ -136,12 +136,12 @@ public class BaselineCompiler {
 
         // add predecessors
         for (BciBlock block : blockMap.blocks) {
-            for (BciBlock successor : block.successors) {
-                successor.predecessors.add(block);
+            for (BciBlock successor : block.getSuccessors()) {
+                successor.getPredecessors().add(block);
             }
         }
 
-        // calculate loops
+        // calculate loops and dominators used for some steps..
 
         if (isSynchronized(method.getModifiers())) {
             throw GraalInternalError.unimplemented("Handle synchronized methods");

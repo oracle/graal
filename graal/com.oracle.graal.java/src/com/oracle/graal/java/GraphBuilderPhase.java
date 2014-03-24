@@ -727,15 +727,15 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
         }
 
         private void genGoto() {
-            appendGoto(createTarget(currentBlock.successors.get(0), frameState));
+            appendGoto(createTarget(currentBlock.getSuccessor(0), frameState));
             assert currentBlock.numNormalSuccessors() == 1;
         }
 
         private void ifNode(ValueNode x, Condition cond, ValueNode y) {
             assert !x.isDeleted() && !y.isDeleted();
             assert currentBlock.numNormalSuccessors() == 2;
-            BciBlock trueBlock = currentBlock.successors.get(0);
-            BciBlock falseBlock = currentBlock.successors.get(1);
+            BciBlock trueBlock = currentBlock.getSuccessor(0);
+            BciBlock falseBlock = currentBlock.getSuccessor(1);
             if (trueBlock == falseBlock) {
                 appendGoto(createTarget(trueBlock, frameState));
                 return;
@@ -1232,7 +1232,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
                 InvokeWithExceptionNode invoke = createInvokeWithException(callTarget, resultType);
 
-                BciBlock nextBlock = currentBlock.successors.get(0);
+                BciBlock nextBlock = currentBlock.getSuccessor(0);
                 invoke.setNext(createTarget(nextBlock, frameState));
             }
         }
@@ -1251,7 +1251,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             DispatchBeginNode exceptionEdge = handleException(null, bci());
             InvokeWithExceptionNode invoke = append(new InvokeWithExceptionNode(callTarget, exceptionEdge, bci()));
             frameState.pushReturn(resultType, invoke);
-            BciBlock nextBlock = currentBlock.successors.get(0);
+            BciBlock nextBlock = currentBlock.getSuccessor(0);
             invoke.setStateAfter(frameState.create(nextBlock.startBci));
             return invoke;
         }
@@ -1361,10 +1361,10 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             double[] keyProbabilities = switchProbability(nofCases + 1, bci);
 
             Map<Integer, SuccessorInfo> bciToBlockSuccessorIndex = new HashMap<>();
-            for (int i = 0; i < currentBlock.successors.size(); i++) {
-                assert !bciToBlockSuccessorIndex.containsKey(currentBlock.successors.get(i).startBci);
-                if (!bciToBlockSuccessorIndex.containsKey(currentBlock.successors.get(i).startBci)) {
-                    bciToBlockSuccessorIndex.put(currentBlock.successors.get(i).startBci, new SuccessorInfo(i));
+            for (int i = 0; i < currentBlock.getSuccessorCount(); i++) {
+                assert !bciToBlockSuccessorIndex.containsKey(currentBlock.getSuccessor(i).startBci);
+                if (!bciToBlockSuccessorIndex.containsKey(currentBlock.getSuccessor(i).startBci)) {
+                    bciToBlockSuccessorIndex.put(currentBlock.getSuccessor(i).startBci, new SuccessorInfo(i));
                 }
             }
 
@@ -1389,7 +1389,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     SuccessorInfo info = bciToBlockSuccessorIndex.get(targetBci);
                     if (info.actualIndex < 0) {
                         info.actualIndex = nextSuccessorIndex++;
-                        actualSuccessors.add(currentBlock.successors.get(info.blockIndex));
+                        actualSuccessors.add(currentBlock.getSuccessor(info.blockIndex));
                     }
                     keySuccessors[i] = info.actualIndex;
                 }
@@ -1704,8 +1704,8 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
         private void createExceptionDispatch(ExceptionDispatchBlock block) {
             assert frameState.stackSize() == 1 : frameState;
             if (block.handler.isCatchAll()) {
-                assert block.successors.size() == 1;
-                appendGoto(createTarget(block.successors.get(0), frameState));
+                assert block.getSuccessorCount() == 1;
+                appendGoto(createTarget(block.getSuccessor(0), frameState));
                 return;
             }
 
@@ -1718,7 +1718,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 ResolvedJavaType resolvedCatchType = (ResolvedJavaType) catchType;
                 for (ResolvedJavaType skippedType : graphBuilderConfig.getSkippedExceptionTypes()) {
                     if (skippedType.isAssignableFrom(resolvedCatchType)) {
-                        BciBlock nextBlock = block.successors.size() == 1 ? unwindBlock(block.deoptBci) : block.successors.get(1);
+                        BciBlock nextBlock = block.getSuccessorCount() == 1 ? unwindBlock(block.deoptBci) : block.getSuccessor(1);
                         ValueNode exception = frameState.stackAt(0);
                         FixedNode trueSuccessor = currentGraph.add(new DeoptimizeNode(InvalidateReprofile, UnreachedCode));
                         FixedNode nextDispatch = createTarget(nextBlock, frameState);
@@ -1729,12 +1729,12 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             }
 
             if (initialized) {
-                BciBlock nextBlock = block.successors.size() == 1 ? unwindBlock(block.deoptBci) : block.successors.get(1);
+                BciBlock nextBlock = block.getSuccessorCount() == 1 ? unwindBlock(block.deoptBci) : block.getSuccessor(1);
                 ValueNode exception = frameState.stackAt(0);
                 CheckCastNode checkCast = currentGraph.add(new CheckCastNode((ResolvedJavaType) catchType, exception, null, false));
                 frameState.apop();
                 frameState.push(Kind.Object, checkCast);
-                FixedNode catchSuccessor = createTarget(block.successors.get(0), frameState);
+                FixedNode catchSuccessor = createTarget(block.getSuccessor(0), frameState);
                 frameState.apop();
                 frameState.push(Kind.Object, exception);
                 FixedNode nextDispatch = createTarget(nextBlock, frameState);
@@ -1838,10 +1838,10 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 }
                 if (bci < endBCI) {
                     if (bci > block.endBci) {
-                        assert !block.successors.get(0).isExceptionEntry;
+                        assert !block.getSuccessor(0).isExceptionEntry;
                         assert block.numNormalSuccessors() == 1;
                         // we fell through to the next block, add a goto and break
-                        appendGoto(createTarget(block.successors.get(0), frameState));
+                        appendGoto(createTarget(block.getSuccessor(0), frameState));
                         break;
                     }
                 }
