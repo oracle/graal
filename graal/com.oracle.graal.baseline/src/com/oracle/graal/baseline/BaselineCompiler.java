@@ -110,7 +110,7 @@ public class BaselineCompiler implements BytecodeParser<BciBlock> {
 
         frameState = new LIRFrameStateBuilder(method);
         OptimisticOptimizations optimisticOpts = OptimisticOptimizations.NONE;
-        parserHelper = new BytecodeParser(metaAccess, graphBuilderConfig, optimisticOpts, frameState);
+        parserHelper = new BytecodeParser(metaAccess, graphBuilderConfig, optimisticOpts, frameState, stream, profilingInfo, constantPool);
 
         // build blocks and LIR instructions
         try {
@@ -276,8 +276,9 @@ public class BaselineCompiler implements BytecodeParser<BciBlock> {
 
     private class BytecodeParser extends BytecodeParseHelper<Value> {
 
-        public BytecodeParser(MetaAccessProvider metaAccess, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts, AbstractFrameStateBuilder<Value> frameState) {
-            super(metaAccess, graphBuilderConfig, optimisticOpts, frameState);
+        public BytecodeParser(MetaAccessProvider metaAccess, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts, AbstractFrameStateBuilder<Value> frameState,
+                        BytecodeStream stream, ProfilingInfo profilingInfo, ConstantPool constantPool) {
+            super(metaAccess, graphBuilderConfig, optimisticOpts, frameState, stream, profilingInfo, constantPool);
         }
 
         @Override

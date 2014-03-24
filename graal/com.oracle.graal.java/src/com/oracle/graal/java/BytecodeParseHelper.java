@@ -33,11 +33,16 @@ public abstract class BytecodeParseHelper<T extends KindInterface> {
     private final MetaAccessProvider metaAccess;
     private int entryBCI;
 
-    public BytecodeParseHelper(MetaAccessProvider metaAccess, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts, AbstractFrameStateBuilder<T> frameState) {
+    public BytecodeParseHelper(MetaAccessProvider metaAccess, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts, AbstractFrameStateBuilder<T> frameState,
+                    BytecodeStream stream, ProfilingInfo profilingInfo, ConstantPool constantPool) {
         this.frameState = frameState;
         this.graphBuilderConfig = graphBuilderConfig;
         this.optimisticOpts = optimisticOpts;
         this.metaAccess = metaAccess;
+        this.stream = stream;
+        this.profilingInfo = profilingInfo;
+        this.constantPool = constantPool;
+        this.entryBCI = stream.currentBCI();
         assert metaAccess != null;
     }
 
