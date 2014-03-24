@@ -53,38 +53,4 @@ public class CompilerThreadFactory implements ThreadFactory {
     public Thread newThread(Runnable r) {
         return new CompilerThread(r, threadNamePrefix, debugConfigAccess);
     }
-
-    /**
-     * A compiler thread is a daemon thread that runs at {@link Thread#MAX_PRIORITY} and executes in
-     * the context of a thread-local {@linkplain GraalDebugConfig debug configuration}.
-     */
-    public static class CompilerThread extends Thread {
-
-        private final DebugConfigAccess debugConfigAccess;
-
-        public CompilerThread(Runnable r, String namePrefix, DebugConfigAccess debugConfigAccess) {
-            super(r);
-            this.setName(namePrefix + "-" + this.getId());
-            this.setPriority(Thread.MAX_PRIORITY);
-            this.setDaemon(true);
-            this.debugConfigAccess = debugConfigAccess;
-        }
-
-        @Override
-        public void run() {
-            GraalDebugConfig debugConfig = debugConfigAccess.getDebugConfig();
-            try {
-                super.run();
-            } finally {
-                if (debugConfig != null) {
-                    for (DebugDumpHandler dumpHandler : debugConfig.dumpHandlers()) {
-                        try {
-                            dumpHandler.close();
-                        } catch (Throwable t) {
-                        }
-                    }
-                }
-            }
-        }
-    }
 }
