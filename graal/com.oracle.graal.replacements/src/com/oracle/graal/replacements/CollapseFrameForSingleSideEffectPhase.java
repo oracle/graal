@@ -175,7 +175,7 @@ public class CollapseFrameForSingleSideEffectPhase extends Phase {
             for (Node returnSideEffect : returnSideEffects) {
                 if (!unwindSideEffects.contains(returnSideEffect) && !maskedSideEffects.contains(returnSideEffect)) {
                     StateSplit split = (StateSplit) returnSideEffect;
-                    if (split.getState() != null) {
+                    if (split.stateAfter() != null) {
                         split.setStateAfter(graph.add(new FrameState(FrameState.AFTER_BCI)));
                     }
                 }
@@ -184,7 +184,7 @@ public class CollapseFrameForSingleSideEffectPhase extends Phase {
             for (Node unwindSideEffect : unwindSideEffects) {
                 if (!returnSideEffects.contains(unwindSideEffect) && !maskedSideEffects.contains(unwindSideEffect)) {
                     StateSplit split = (StateSplit) unwindSideEffect;
-                    if (split.getState() != null) {
+                    if (split.stateAfter() != null) {
                         split.setStateAfter(graph.add(new FrameState(FrameState.AFTER_EXCEPTION_BCI)));
                     }
                 }

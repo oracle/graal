@@ -68,9 +68,9 @@ public class WriteBarrierAdditionPhase extends Phase {
 
     protected static void addG1PreWriteBarrier(FixedAccessNode node, ValueNode object, ValueNode value, LocationNode location, boolean doLoad, boolean nullCheck, StructuredGraph graph) {
         G1PreWriteBarrier preBarrier = graph.add(new G1PreWriteBarrier(object, value, location, doLoad, nullCheck));
-        preBarrier.setDeoptimizationState(node.getDeoptimizationState());
+        preBarrier.setStateBefore(node.stateBefore());
         node.setNullCheck(false);
-        node.setDeoptimizationState(null);
+        node.setStateBefore(null);
         graph.addBeforeFixed(node, preBarrier);
     }
 

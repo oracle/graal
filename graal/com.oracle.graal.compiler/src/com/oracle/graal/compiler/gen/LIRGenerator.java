@@ -368,18 +368,29 @@ public abstract class LIRGenerator implements LIRGeneratorTool, LIRTypeTool {
         return false;
     }
 
+    private static FrameState getFrameState(DeoptimizingNode deopt) {
+        if (deopt instanceof DeoptimizingNode.DeoptBefore) {
+            return ((DeoptimizingNode.DeoptBefore) deopt).stateBefore();
+        } else if (deopt instanceof DeoptimizingNode.DeoptDuring) {
+            return ((DeoptimizingNode.DeoptDuring) deopt).stateDuring();
+        } else {
+            assert deopt instanceof DeoptimizingNode.DeoptAfter;
+            return ((DeoptimizingNode.DeoptAfter) deopt).stateAfter();
+        }
+    }
+
     public LIRFrameState state(DeoptimizingNode deopt) {
         if (!deopt.canDeoptimize()) {
             return null;
         }
-        return stateFor(deopt.getDeoptimizationState());
+        return stateFor(getFrameState(deopt));
     }
 
     public LIRFrameState stateWithExceptionEdge(DeoptimizingNode deopt, LabelRef exceptionEdge) {
         if (!deopt.canDeoptimize()) {
             return null;
         }
-        return stateForWithExceptionEdge(deopt.getDeoptimizationState(), exceptionEdge);
+        return stateForWithExceptionEdge(getFrameState(deopt), exceptionEdge);
     }
 
     public LIRFrameState stateFor(FrameState state) {
@@ -910,7 +921,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool, LIRTypeTool {
         LIRFrameState state = null;
         if (linkage.canDeoptimize()) {
             if (info != null) {
-                state = stateFor(info.getDeoptimizationState());
+                state = stateFor(getFrameState(info));
             } else {
                 assert needOnlyOopMaps();
                 state = new LIRFrameState(null, null, null);

@@ -52,10 +52,10 @@ public final class VMErrorNode extends DeoptimizingStubCall implements LIRGenLow
     @Override
     public void generate(LIRGenerator gen) {
         String whereString;
-        if (getState() != null) {
+        if (stateBefore() != null) {
             String nl = CodeUtil.NEW_LINE;
             StringBuilder sb = new StringBuilder("in compiled code associated with frame state:");
-            FrameState fs = getState();
+            FrameState fs = stateBefore();
             while (fs != null) {
                 MetaUtil.appendLocation(sb.append(nl).append("\t"), fs.method(), fs.bci);
                 fs = fs.outerFrameState();

@@ -35,7 +35,7 @@ import com.oracle.graal.nodes.type.*;
  * Node for a {@linkplain ForeignCallDescriptor foreign} call.
  */
 @NodeInfo(nameTemplate = "ForeignCall#{p#descriptor/s}")
-public class ForeignCallNode extends AbstractMemoryCheckpoint implements LIRLowerable, DeoptimizingNode, MemoryCheckpoint.Multi {
+public class ForeignCallNode extends AbstractMemoryCheckpoint implements LIRLowerable, DeoptimizingNode.DeoptDuring, MemoryCheckpoint.Multi {
 
     @Input private final NodeInputList<ValueNode> arguments;
     private final ForeignCallsProvider foreignCalls;
@@ -101,32 +101,25 @@ public class ForeignCallNode extends AbstractMemoryCheckpoint implements LIRLowe
     }
 
     @Override
-    public FrameState getDeoptimizationState() {
-        if (deoptState != null) {
-            return deoptState;
-        } else if (stateAfter() != null && canDeoptimize()) {
-            FrameState stateDuring = stateAfter();
-            if ((stateDuring.stackSize() > 0 && stateDuring.stackAt(stateDuring.stackSize() - 1) == this) || (stateDuring.stackSize() > 1 && stateDuring.stackAt(stateDuring.stackSize() - 2) == this)) {
-                stateDuring = stateDuring.duplicateModified(stateDuring.bci, stateDuring.rethrowException(), this.getKind());
-            }
-            setDeoptimizationState(stateDuring);
-            return stateDuring;
-        }
-        return null;
+    public FrameState stateDuring() {
+        return deoptState;
     }
 
     @Override
-    public void setDeoptimizationState(FrameState f) {
-        updateUsages(deoptState, f);
-        assert deoptState == null && canDeoptimize() : "shouldn't assign deoptState to " + this;
-        deoptState = f;
+    public void setStateDuring(FrameState stateDuring) {
+        updateUsages(deoptState, stateDuring);
+        deoptState = stateDuring;
     }
 
     @Override
-    public void setStateAfter(FrameState x) {
-        if (hasSideEffect()) {
-            super.setStateAfter(x);
+    public void computeStateDuring(FrameState stateAfter) {
+        FrameState stateDuring;
+        if ((stateAfter.stackSize() > 0 && stateAfter.stackAt(stateAfter.stackSize() - 1) == this) || (stateAfter.stackSize() > 1 && stateAfter.stackAt(stateAfter.stackSize() - 2) == this)) {
+            stateDuring = stateAfter.duplicateModified(stateAfter.bci, stateAfter.rethrowException(), this.getKind());
+        } else {
+            stateDuring = stateAfter;
         }
+        setStateDuring(stateDuring);
     }
 
     @Override
@@ -140,15 +133,5 @@ public class ForeignCallNode extends AbstractMemoryCheckpoint implements LIRLowe
     @Override
     public boolean canDeoptimize() {
         return foreignCalls.canDeoptimize(descriptor);
-    }
-
-    @Override
-    public FrameState getState() {
-        if (deoptState != null) {
-            assert stateAfter() == null;
-            return deoptState;
-        } else {
-            return super.getState();
-        }
     }
 }

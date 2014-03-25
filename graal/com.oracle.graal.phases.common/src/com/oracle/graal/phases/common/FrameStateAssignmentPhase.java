@@ -49,24 +49,41 @@ public class FrameStateAssignmentPhase extends Phase {
 
         @Override
         protected FrameState processNode(FixedNode node, FrameState currentState) {
-            if (node instanceof DeoptimizingNode) {
-                DeoptimizingNode deopt = (DeoptimizingNode) node;
-                if (deopt.canDeoptimize() && deopt.getDeoptimizationState() == null) {
+            if (node instanceof DeoptimizingNode.DeoptBefore) {
+                DeoptimizingNode.DeoptBefore deopt = (DeoptimizingNode.DeoptBefore) node;
+                if (deopt.canDeoptimize() && deopt.stateBefore() == null) {
                     GraalInternalError.guarantee(currentState != null, "no FrameState at DeoptimizingNode %s", deopt);
-                    deopt.setDeoptimizationState(currentState);
+                    deopt.setStateBefore(currentState);
                 }
             }
 
+            FrameState newState = currentState;
             if (node instanceof StateSplit) {
                 StateSplit stateSplit = (StateSplit) node;
                 FrameState stateAfter = stateSplit.stateAfter();
                 if (stateAfter != null) {
-                    FrameState newState = stateAfter;
+                    newState = stateAfter;
                     stateSplit.setStateAfter(null);
-                    return newState;
                 }
             }
-            return currentState;
+
+            if (node instanceof DeoptimizingNode.DeoptDuring) {
+                DeoptimizingNode.DeoptDuring deopt = (DeoptimizingNode.DeoptDuring) node;
+                if (deopt.canDeoptimize()) {
+                    GraalInternalError.guarantee(newState != null, "no FrameState at DeoptimizingNode %s", deopt);
+                    deopt.computeStateDuring(newState);
+                }
+            }
+
+            if (node instanceof DeoptimizingNode.DeoptAfter) {
+                DeoptimizingNode.DeoptAfter deopt = (DeoptimizingNode.DeoptAfter) node;
+                if (deopt.canDeoptimize() && deopt.stateAfter() == null) {
+                    GraalInternalError.guarantee(newState != null, "no FrameState at DeoptimizingNode %s", deopt);
+                    deopt.setStateAfter(newState);
+                }
+            }
+
+            return newState;
         }
 
         @Override
