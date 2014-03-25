@@ -22,18 +22,18 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
-import static com.oracle.graal.graph.UnsafeAccess.*;
+import java.util.*;
 
-import com.oracle.graal.nodes.*;
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.compiler.gen.*;
+import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.nodes.calc.*;
-import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.word.*;
 
 /**
- * Converts a compile-time constant Java string into a malloc'ed C string. The malloc'ed string is
- * never reclaimed so this should only be used for strings in permanent code such as compiled stubs.
+ * Converts a compile-time constant Java string into a C string installed with the generated code.
  */
-public final class CStringNode extends FloatingNode implements Lowerable {
+public final class CStringNode extends FloatingNode implements LIRGenLowerable {
 
     private final String string;
 
@@ -42,16 +42,18 @@ public final class CStringNode extends FloatingNode implements Lowerable {
         this.string = string;
     }
 
-    @Override
-    public void lower(LoweringTool tool) {
-        byte[] formatBytes = string.getBytes();
-        long cstring = unsafe.allocateMemory(formatBytes.length + 1);
-        for (int i = 0; i < formatBytes.length; i++) {
-            unsafe.putByte(cstring + i, formatBytes[i]);
-        }
-        unsafe.putByte(cstring + formatBytes.length, (byte) 0);
-        ConstantNode replacement = ConstantNode.forLong(cstring, graph());
-        graph().replaceFloating(this, replacement);
+    public void generate(LIRGenerator gen) {
+        gen.setResult(this, gen.emitMove(new RawDataValue(gen.target().wordKind, toCString(string))));
+    }
+
+    /**
+     * Converts a String to a null terminated byte array suitable for use as a C string value.
+     */
+    public static byte[] toCString(String value) {
+        byte[] bytes = value.getBytes();
+        byte[] nulTerminated = Arrays.copyOf(bytes, bytes.length + 1);
+        nulTerminated[bytes.length] = 0;
+        return nulTerminated;
     }
 
     @NodeIntrinsic(setStampFromReturnType = true)

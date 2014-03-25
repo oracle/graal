@@ -22,6 +22,9 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
+import static com.oracle.graal.api.meta.MetaUtil.*;
+import static com.oracle.graal.hotspot.nodes.CStringNode.*;
+
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.gen.*;
@@ -38,7 +41,7 @@ public final class VMErrorNode extends DeoptimizingStubCall implements LIRGenLow
 
     private final String format;
     @Input private ValueNode value;
-    public static final ForeignCallDescriptor VM_ERROR = new ForeignCallDescriptor("vm_error", void.class, Object.class, Object.class, long.class);
+    public static final ForeignCallDescriptor VM_ERROR = new ForeignCallDescriptor("vm_error", void.class, long.class, long.class, long.class);
 
     private VMErrorNode(String format, ValueNode value) {
         super(StampFactory.forVoid());
@@ -48,14 +51,22 @@ public final class VMErrorNode extends DeoptimizingStubCall implements LIRGenLow
 
     @Override
     public void generate(LIRGenerator gen) {
-        String whereString = "in compiled code for " + graph();
-
-        // As these strings will end up embedded as oops in the code, they
-        // must be interned or else they will cause the nmethod to be unloaded
-        // (nmethods are a) weak GC roots and b) unloaded if any of their
-        // embedded oops become unreachable).
-        Constant whereArg = Constant.forObject(whereString.intern());
-        Constant formatArg = Constant.forObject(format.intern());
+        String whereString;
+        if (getState() != null) {
+            String nl = CodeUtil.NEW_LINE;
+            StringBuilder sb = new StringBuilder("in compiled code associated with frame state:");
+            FrameState fs = getState();
+            while (fs != null) {
+                MetaUtil.appendLocation(sb.append(nl).append("\t"), fs.method(), fs.bci);
+                fs = fs.outerFrameState();
+            }
+            whereString = sb.toString();
+        } else {
+            ResolvedJavaMethod method = graph().method();
+            whereString = "in compiled code for " + (method == null ? graph().toString() : format("%H.%n(%p)", method));
+        }
+        Value whereArg = new RawDataValue(gen.target().wordKind, toCString(whereString));
+        Value formatArg = new RawDataValue(gen.target().wordKind, toCString(format));
 
         ForeignCallLinkage linkage = gen.getForeignCalls().lookupForeignCall(VMErrorNode.VM_ERROR);
         gen.emitForeignCall(linkage, null, whereArg, formatArg, gen.operand(value));
