@@ -88,7 +88,7 @@ public class MathIntrinsicNode extends FloatingNode implements Canonicalizable, 
 
     public Constant evalConst(Constant... inputs) {
         assert inputs.length == 1;
-        return Constant.forDouble(compute(inputs[0].asDouble(), operation()));
+        return Constant.forDouble(doCompute(inputs[0].asDouble(), operation()));
     }
 
     @Override
@@ -101,6 +101,10 @@ public class MathIntrinsicNode extends FloatingNode implements Canonicalizable, 
 
     @NodeIntrinsic
     public static double compute(double value, @ConstantNodeParameter Operation op) {
+        return doCompute(value, op);
+    }
+
+    private static double doCompute(double value, Operation op) throws GraalInternalError {
         switch (op) {
             case ABS:
                 return Math.abs(value);
