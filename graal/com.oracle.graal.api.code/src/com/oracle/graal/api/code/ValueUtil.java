@@ -90,6 +90,16 @@ public final class ValueUtil {
         return ((RegisterValue) value).getRegister();
     }
 
+    public static boolean isRawData(Value value) {
+        assert value != null;
+        return value instanceof RawDataValue;
+    }
+
+    public static RawDataValue asRawData(Value value) {
+        assert value != null;
+        return (RawDataValue) value;
+    }
+
     public static Register asIntReg(Value value) {
         if (value.getKind() != Kind.Int) {
             throw new InternalError("needed Int got: " + value.getKind());

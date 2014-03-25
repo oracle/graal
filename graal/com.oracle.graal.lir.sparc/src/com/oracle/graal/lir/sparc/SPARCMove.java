@@ -23,13 +23,33 @@
 package com.oracle.graal.lir.sparc;
 
 import static com.oracle.graal.api.code.ValueUtil.*;
-import static com.oracle.graal.asm.sparc.SPARCMacroAssembler.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 import static com.oracle.graal.sparc.SPARC.*;
 
+import com.oracle.graal.api.code.CompilationResult.RawData;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.sparc.*;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Add;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Lddf;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Ldf;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Ldsb;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Ldsh;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Ldsw;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Lduh;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Ldx;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Membar;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Rdpc;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Stb;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Sth;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Stw;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Stx;
+import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Cas;
+import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Casx;
+import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Clr;
+import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Mov;
+import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Setuw;
+import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Setx;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.ImplicitNullCheck;
@@ -367,6 +387,13 @@ public class SPARCMove {
         } else if (isConstant(input)) {
             if (isRegister(result)) {
                 const2reg(crb, masm, result, (Constant) input);
+            } else {
+                throw GraalInternalError.shouldNotReachHere();
+            }
+        } else if (isRawData(input)) {
+            if (isRegister(result)) {
+                RawData rawData = new RawData(asRawData(input).getData(), 16);
+                throw GraalInternalError.unimplemented("Emitting raw data: " + rawData);
             } else {
                 throw GraalInternalError.shouldNotReachHere();
             }

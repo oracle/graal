@@ -29,6 +29,7 @@ import static java.lang.Float.*;
 
 import com.oracle.graal.amd64.*;
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.code.CompilationResult.RawData;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
 import com.oracle.graal.asm.amd64.*;
@@ -373,6 +374,13 @@ public class AMD64Move {
                 const2reg(crb, masm, result, (Constant) input);
             } else if (isStackSlot(result)) {
                 const2stack(crb, masm, result, (Constant) input);
+            } else {
+                throw GraalInternalError.shouldNotReachHere();
+            }
+        } else if (isRawData(input)) {
+            if (isRegister(result)) {
+                RawData rawData = new RawData(asRawData(input).getData(), 16);
+                masm.leaq(asRegister(result), (AMD64Address) crb.recordDataReferenceInCode(rawData));
             } else {
                 throw GraalInternalError.shouldNotReachHere();
             }
