@@ -122,6 +122,20 @@ public final class NodeUtil {
                 return unsafe.getObject(node, offset);
             }
         }
+
+        @Override
+        public int hashCode() {
+            return kind.hashCode() | type.hashCode() | name.hashCode() | ((Long) offset).hashCode();
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (obj instanceof NodeField) {
+                NodeField other = (NodeField) obj;
+                return offset == other.offset && name.equals(other.name) && type.equals(other.type) && kind.equals(other.kind);
+            }
+            return false;
+        }
     }
 
     /**
@@ -197,6 +211,21 @@ public final class NodeUtil {
 
         public long[] getChildrenOffsets() {
             return childrenOffsets;
+        }
+
+        @Override
+        public int hashCode() {
+            return Arrays.hashCode(fields) ^ Arrays.hashCode(childOffsets) ^ Arrays.hashCode(childrenOffsets) ^ ((Long) parentOffset).hashCode();
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (obj instanceof NodeClass) {
+                NodeClass other = (NodeClass) obj;
+                return Arrays.equals(fields, other.fields) && Arrays.equals(childOffsets, other.childOffsets) && Arrays.equals(childrenOffsets, other.childrenOffsets) &&
+                                parentOffset == other.parentOffset;
+            }
+            return false;
         }
     }
 
