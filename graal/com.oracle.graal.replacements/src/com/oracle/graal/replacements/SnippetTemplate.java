@@ -99,8 +99,8 @@ public class SnippetTemplate {
 
         protected SnippetInfo(ResolvedJavaMethod method) {
             this.method = method;
-            instantiationCounter = Debug.metric("SnippetInstantiationCount[%#s]", method);
-            instantiationTimer = Debug.timer("SnippetInstantiationTime[%#s]", method);
+            instantiationCounter = Debug.metric("SnippetInstantiationCount[%s]", method);
+            instantiationTimer = Debug.timer("SnippetInstantiationTime[%s]", method);
             assert Modifier.isStatic(method.getModifiers()) : "snippet method must be static: " + MetaUtil.format("%H.%n", method);
             int count = method.getSignature().getParameterCount(false);
             constantParameters = new boolean[count];
