@@ -160,68 +160,79 @@ public class CompilationResult implements Serializable {
         public abstract void emit(TargetDescription target, ByteBuffer buffer);
     }
 
+    public abstract static class ConstantData extends Data {
+
+        private final Constant constant;
+
+        protected ConstantData(Constant constant, int alignment) {
+            super(alignment);
+            this.constant = constant;
+        }
+
+        public Constant getConstant() {
+            return constant;
+        }
+    }
+
     /**
      * Represents a Java primitive value used in a {@link DataPatch}. This implementation uses
      * {@link Kind#getByteCount()} bytes to encode each value.
      */
-    public static final class PrimitiveData extends Data {
-
-        public final Constant constant;
+    public static final class PrimitiveData extends ConstantData {
 
         public PrimitiveData(Constant constant, int alignment) {
-            super(alignment);
+            super(constant, alignment);
             assert constant.getKind().isPrimitive();
-            this.constant = constant;
         }
 
         @Override
         public int getSize(TargetDescription target) {
-            return constant.getKind().getByteCount();
+            return getConstant().getKind().getByteCount();
         }
 
         @Override
         public Kind getKind() {
-            return constant.getKind();
+            return getConstant().getKind();
         }
 
         @Override
         public void emit(TargetDescription target, ByteBuffer buffer) {
-            switch (constant.getKind()) {
+            switch (getConstant().getKind()) {
                 case Boolean:
-                    buffer.put(constant.asBoolean() ? (byte) 1 : (byte) 0);
+                    buffer.put(getConstant().asBoolean() ? (byte) 1 : (byte) 0);
                     break;
                 case Byte:
-                    buffer.put((byte) constant.asInt());
+                    buffer.put((byte) getConstant().asInt());
                     break;
                 case Char:
-                    buffer.putChar((char) constant.asInt());
+                    buffer.putChar((char) getConstant().asInt());
                     break;
                 case Short:
-                    buffer.putShort((short) constant.asInt());
+                    buffer.putShort((short) getConstant().asInt());
                     break;
                 case Int:
-                    buffer.putInt(constant.asInt());
+                    buffer.putInt(getConstant().asInt());
                     break;
                 case Long:
-                    buffer.putLong(constant.asLong());
+                    buffer.putLong(getConstant().asLong());
                     break;
                 case Float:
-                    buffer.putFloat(constant.asFloat());
+                    buffer.putFloat(getConstant().asFloat());
                     break;
                 case Double:
-                    buffer.putDouble(constant.asDouble());
+                    buffer.putDouble(getConstant().asDouble());
                     break;
             }
         }
 
         @Override
         public String toString() {
-            return constant.toString();
+            return getConstant().toString();
         }
 
         @Override
         public int hashCode() {
-            return constant.hashCode();
+            return getConstant().hashCode();
         }
 
         @Override
@@ -231,7 +242,7 @@ public class CompilationResult implements Serializable {
             }
             if (obj instanceof PrimitiveData) {
                 PrimitiveData other = (PrimitiveData) obj;
-                return constant.equals(other.constant);
+                return getConstant().equals(other.getConstant());
             } else {
                 return false;
             }
