@@ -115,6 +115,10 @@ public abstract class HSAILLIRGenerator extends LIRGenerator {
         }
     }
 
+    public void emitData(AllocatableValue dst, byte[] data) {
+        throw GraalInternalError.unimplemented();
+    }
+
     protected HSAILAddressValue asAddressValue(Value address) {
         if (address instanceof HSAILAddressValue) {
             return (HSAILAddressValue) address;

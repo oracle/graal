@@ -65,8 +65,8 @@ public final class VMErrorNode extends DeoptimizingStubCall implements LIRGenLow
             ResolvedJavaMethod method = graph().method();
             whereString = "in compiled code for " + (method == null ? graph().toString() : format("%H.%n(%p)", method));
         }
-        Value whereArg = new RawDataValue(gen.target().wordKind, toCString(whereString));
-        Value formatArg = new RawDataValue(gen.target().wordKind, toCString(format));
+        Value whereArg = emitCString(gen, whereString);
+        Value formatArg = emitCString(gen, format);
 
         ForeignCallLinkage linkage = gen.getForeignCalls().lookupForeignCall(VMErrorNode.VM_ERROR);
         gen.emitForeignCall(linkage, null, whereArg, formatArg, gen.operand(value));

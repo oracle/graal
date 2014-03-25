@@ -59,6 +59,14 @@ public interface LIRGeneratorTool extends ArithmeticLIRGenerator {
 
     void emitMove(AllocatableValue dst, Value src);
 
+    /**
+     * Emits an op that loads the address of some raw data.
+     * 
+     * @param dst the variable into which the address is loaded
+     * @param data the data to be installed with the generated code
+     */
+    void emitData(AllocatableValue dst, byte[] data);
+
     Value emitAddress(Value base, long displacement, Value index, int scale);
 
     Value emitAddress(StackSlot slot);

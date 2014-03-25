@@ -278,6 +278,23 @@ public class AMD64Move {
         }
     }
 
+    public static class LeaDataOp extends AMD64LIRInstruction {
+
+        @Def({REG}) protected AllocatableValue result;
+        private final byte[] data;
+
+        public LeaDataOp(AllocatableValue result, byte[] data) {
+            this.result = result;
+            this.data = data;
+        }
+
+        @Override
+        public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
+            RawData rawData = new RawData(data, 16);
+            masm.leaq(asRegister(result), (AMD64Address) crb.recordDataReferenceInCode(rawData));
+        }
+    }
+
     public static class StackLeaOp extends AMD64LIRInstruction {
 
         @Def({REG}) protected AllocatableValue result;
@@ -374,13 +391,6 @@ public class AMD64Move {
                 const2reg(crb, masm, result, (Constant) input);
             } else if (isStackSlot(result)) {
                 const2stack(crb, masm, result, (Constant) input);
-            } else {
-                throw GraalInternalError.shouldNotReachHere();
-            }
-        } else if (isRawData(input)) {
-            if (isRegister(result)) {
-                RawData rawData = new RawData(asRawData(input).getData(), 16);
-                masm.leaq(asRegister(result), (AMD64Address) crb.recordDataReferenceInCode(rawData));
             } else {
                 throw GraalInternalError.shouldNotReachHere();
             }
