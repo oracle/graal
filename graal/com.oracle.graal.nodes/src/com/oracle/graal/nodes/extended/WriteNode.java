@@ -46,16 +46,6 @@ public final class WriteNode extends FixedAccessNode implements StateSplit, LIRL
         return stateAfter;
     }
 
-    @Override
-    public FrameState getState() {
-        if (stateAfter != null) {
-            assert super.getState() == null;
-            return stateAfter;
-        } else {
-            return super.getState();
-        }
-    }
-
     public void setStateAfter(FrameState x) {
         assert x == null || x.isAlive() : "frame state must be in a graph";
         updateUsages(stateAfter, x);

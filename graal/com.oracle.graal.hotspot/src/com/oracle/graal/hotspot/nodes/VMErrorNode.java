@@ -52,10 +52,10 @@ public final class VMErrorNode extends DeoptimizingStubCall implements LIRGenLow
     @Override
     public void generate(LIRGenerator gen) {
         String whereString;
-        if (getState() != null) {
+        if (stateBefore() != null) {
             String nl = CodeUtil.NEW_LINE;
             StringBuilder sb = new StringBuilder("in compiled code associated with frame state:");
-            FrameState fs = getState();
+            FrameState fs = stateBefore();
             while (fs != null) {
                 MetaUtil.appendLocation(sb.append(nl).append("\t"), fs.method(), fs.bci);
                 fs = fs.outerFrameState();
@@ -65,8 +65,8 @@ public final class VMErrorNode extends DeoptimizingStubCall implements LIRGenLow
             ResolvedJavaMethod method = graph().method();
             whereString = "in compiled code for " + (method == null ? graph().toString() : format("%H.%n(%p)", method));
         }
-        Value whereArg = new RawDataValue(gen.target().wordKind, toCString(whereString));
-        Value formatArg = new RawDataValue(gen.target().wordKind, toCString(format));
+        Value whereArg = emitCString(gen, whereString);
+        Value formatArg = emitCString(gen, format);
 
         ForeignCallLinkage linkage = gen.getForeignCalls().lookupForeignCall(VMErrorNode.VM_ERROR);
         gen.emitForeignCall(linkage, null, whereArg, formatArg, gen.operand(value));

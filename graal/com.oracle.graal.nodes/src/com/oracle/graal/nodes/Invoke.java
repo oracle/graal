@@ -26,7 +26,7 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 
-public interface Invoke extends StateSplit, Lowerable, DeoptimizingNode, GuardedNode {
+public interface Invoke extends StateSplit, Lowerable, DeoptimizingNode.DeoptDuring, GuardedNode {
 
     FixedNode next();
 
@@ -37,10 +37,6 @@ public interface Invoke extends StateSplit, Lowerable, DeoptimizingNode, Guarded
     int bci();
 
     FixedNode asNode();
-
-    FrameState stateDuring();
-
-    FrameState stateAfter();
 
     Node predecessor();
 

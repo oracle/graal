@@ -966,14 +966,18 @@ public final class SchedulePhase extends Phase {
             return;
         }
 
-        FrameState state = null;
+        FrameState stateAfter = null;
+        if (i instanceof StateSplit) {
+            stateAfter = ((StateSplit) i).stateAfter();
+        }
+
         for (Node input : i.inputs()) {
             if (input instanceof FrameState) {
-                assert state == null;
-                state = (FrameState) input;
+                if (input != stateAfter) {
+                    addUnscheduledToLatestSorting(b, (FrameState) input, sortedInstructions, visited, reads, beforeLastLocation);
+                }
             } else {
                 addToLatestSorting(b, (ScheduledNode) input, sortedInstructions, visited, reads, beforeLastLocation);
-
             }
         }
 
@@ -991,7 +995,7 @@ public final class SchedulePhase extends Phase {
 
         addToLatestSorting(b, (ScheduledNode) i.predecessor(), sortedInstructions, visited, reads, beforeLastLocation);
         visited.mark(i);
-        addUnscheduledToLatestSorting(b, state, sortedInstructions, visited, reads, beforeLastLocation);
+        addUnscheduledToLatestSorting(b, stateAfter, sortedInstructions, visited, reads, beforeLastLocation);
 
         // Now predecessors and inputs are scheduled => we can add this node.
         if (!sortedInstructions.contains(i)) {

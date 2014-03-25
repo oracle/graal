@@ -26,7 +26,6 @@ import static com.oracle.graal.api.code.ValueUtil.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 import static com.oracle.graal.sparc.SPARC.*;
 
-import com.oracle.graal.api.code.CompilationResult.RawData;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.sparc.*;
@@ -387,13 +386,6 @@ public class SPARCMove {
         } else if (isConstant(input)) {
             if (isRegister(result)) {
                 const2reg(crb, masm, result, (Constant) input);
-            } else {
-                throw GraalInternalError.shouldNotReachHere();
-            }
-        } else if (isRawData(input)) {
-            if (isRegister(result)) {
-                RawData rawData = new RawData(asRawData(input).getData(), 16);
-                throw GraalInternalError.unimplemented("Emitting raw data: " + rawData);
             } else {
                 throw GraalInternalError.shouldNotReachHere();
             }

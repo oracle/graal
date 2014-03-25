@@ -66,7 +66,7 @@ public class DynamicDeoptimizeNode extends AbstractDeoptimizeNode implements LIR
             DeoptimizeNode newDeopt = graph().add(
                             new DeoptimizeNode(tool.getMetaAccess().decodeDeoptAction(constant), tool.getMetaAccess().decodeDeoptReason(constant), tool.getMetaAccess().decodeDebugId(constant),
                                             speculationConstant));
-            newDeopt.setDeoptimizationState(getDeoptimizationState());
+            newDeopt.setStateBefore(stateBefore());
             return newDeopt;
         }
         return this;

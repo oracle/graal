@@ -52,7 +52,7 @@ public final class FixedGuardNode extends AbstractFixedGuardNode implements Lowe
                 }
 
                 DeoptimizeNode deopt = graph().add(new DeoptimizeNode(getAction(), getReason()));
-                deopt.setDeoptimizationState(getDeoptimizationState());
+                deopt.setStateBefore(stateBefore());
                 setNext(deopt);
             }
             this.replaceAtUsages(null);

@@ -60,6 +60,7 @@ import com.oracle.graal.lir.amd64.AMD64ControlFlow.FloatCondMoveOp;
 import com.oracle.graal.lir.amd64.AMD64ControlFlow.ReturnOp;
 import com.oracle.graal.lir.amd64.AMD64ControlFlow.StrategySwitchOp;
 import com.oracle.graal.lir.amd64.AMD64ControlFlow.TableSwitchOp;
+import com.oracle.graal.lir.amd64.AMD64Move.LeaDataOp;
 import com.oracle.graal.lir.amd64.AMD64Move.LeaOp;
 import com.oracle.graal.lir.amd64.AMD64Move.ZeroExtendLoadOp;
 import com.oracle.graal.lir.amd64.AMD64Move.MembarOp;
@@ -156,6 +157,10 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     @Override
     public void emitMove(AllocatableValue dst, Value src) {
         append(createMove(dst, src));
+    }
+
+    public void emitData(AllocatableValue dst, byte[] data) {
+        append(new LeaDataOp(dst, data));
     }
 
     @Override

@@ -22,12 +22,11 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
-import java.util.*;
-
-import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.nodes.calc.*;
+import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.word.*;
 
 /**
@@ -43,17 +42,28 @@ public final class CStringNode extends FloatingNode implements LIRGenLowerable {
     }
 
     public void generate(LIRGenerator gen) {
-        gen.setResult(this, gen.emitMove(new RawDataValue(gen.target().wordKind, toCString(string))));
+        gen.setResult(this, emitCString(gen, string));
+    }
+
+    public static AllocatableValue emitCString(LIRGeneratorTool gen, String value) {
+        AllocatableValue dst = gen.newVariable(gen.target().wordKind);
+        gen.emitData(dst, toCString(value));
+        return dst;
     }
 
     /**
-     * Converts a String to a null terminated byte array suitable for use as a C string value.
+     * Converts a string to a null terminated byte array of ASCII characters.
+     * 
+     * @param s a String that must only contain ASCII characters
      */
-    public static byte[] toCString(String value) {
-        byte[] bytes = value.getBytes();
-        byte[] nulTerminated = Arrays.copyOf(bytes, bytes.length + 1);
-        nulTerminated[bytes.length] = 0;
-        return nulTerminated;
+    public static byte[] toCString(String s) {
+        byte[] bytes = new byte[s.length() + 1];
+        for (int i = 0; i < s.length(); i++) {
+            assert s.charAt(i) < 128 : "non-ascii string: " + s;
+            bytes[i] = (byte) s.charAt(i);
+        }
+        bytes[s.length()] = 0;
+        return bytes;
     }
 
     @NodeIntrinsic(setStampFromReturnType = true)
