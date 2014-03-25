@@ -70,9 +70,10 @@ public class NodeIntrinsificationPhase extends Phase {
 
     protected boolean tryIntrinsify(MethodCallTargetNode methodCallTargetNode, List<Node> cleanUpReturnList) {
         ResolvedJavaMethod target = methodCallTargetNode.targetMethod();
-        NodeIntrinsic intrinsic = target.getAnnotation(Node.NodeIntrinsic.class);
         ResolvedJavaType declaringClass = target.getDeclaringClass();
         StructuredGraph graph = methodCallTargetNode.graph();
+
+        NodeIntrinsic intrinsic = getIntrinsic(target);
         if (intrinsic != null) {
             assert target.getAnnotation(Fold.class) == null;
             assert Modifier.isStatic(target.getModifiers()) : "node intrinsic must be static: " + target;
@@ -126,6 +127,13 @@ public class NodeIntrinsificationPhase extends Phase {
             }
         }
         return true;
+    }
+
+    /**
+     * Permits a subclass to override the default definition of "intrinsic".
+     */
+    protected NodeIntrinsic getIntrinsic(ResolvedJavaMethod method) {
+        return method.getAnnotation(Node.NodeIntrinsic.class);
     }
 
     /**
