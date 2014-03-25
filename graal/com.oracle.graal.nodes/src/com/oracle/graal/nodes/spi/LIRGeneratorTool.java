@@ -29,7 +29,7 @@ import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 
-public interface LIRGeneratorTool extends ArithmeticLIRGenerator {
+public interface LIRGeneratorTool extends NodeMappableArithmeticLIRGenerator {
 
     TargetDescription target();
 

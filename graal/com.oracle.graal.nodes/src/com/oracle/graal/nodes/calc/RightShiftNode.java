@@ -104,7 +104,7 @@ public final class RightShiftNode extends ShiftNode implements Canonicalizable {
     }
 
     @Override
-    public void generate(ArithmeticLIRGenerator gen) {
+    public void generate(NodeMappableArithmeticLIRGenerator gen) {
         gen.setResult(this, gen.emitShr(gen.operand(x()), gen.operand(y())));
     }
 }

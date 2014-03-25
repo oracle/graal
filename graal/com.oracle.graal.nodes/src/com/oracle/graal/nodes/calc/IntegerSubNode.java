@@ -114,7 +114,7 @@ public class IntegerSubNode extends IntegerArithmeticNode implements Canonicaliz
     }
 
     @Override
-    public void generate(ArithmeticLIRGenerator gen) {
+    public void generate(NodeMappableArithmeticLIRGenerator gen) {
         gen.setResult(this, gen.emitSub(gen.operand(x()), gen.operand(y())));
     }
 }

@@ -33,7 +33,7 @@ import com.oracle.graal.lir.hsail.HSAILArithmetic;
 import com.oracle.graal.nodes.calc.FloatingNode;
 import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.ValueNode;
-import com.oracle.graal.nodes.spi.ArithmeticLIRGenerator;
+import com.oracle.graal.nodes.spi.NodeMappableArithmeticLIRGenerator;
 import com.oracle.graal.nodes.spi.ArithmeticLIRLowerable;
 import com.oracle.graal.nodes.type.StampFactory;
 
@@ -86,7 +86,7 @@ public class HSAILMathIntrinsicsNode extends FloatingNode implements Canonicaliz
      * Generates the LIR instructions for the math operation represented by this node.
      */
     @Override
-    public void generate(ArithmeticLIRGenerator gen) {
+    public void generate(NodeMappableArithmeticLIRGenerator gen) {
         Value input = gen.operand(getParameter());
         Value result;
         switch (operation()) {

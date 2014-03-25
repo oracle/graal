@@ -109,7 +109,7 @@ public class NarrowNode extends IntegerConvertNode {
     }
 
     @Override
-    public void generate(ArithmeticLIRGenerator gen) {
+    public void generate(NodeMappableArithmeticLIRGenerator gen) {
         gen.setResult(this, gen.emitNarrow(gen.operand(getInput()), getResultBits()));
     }
 }

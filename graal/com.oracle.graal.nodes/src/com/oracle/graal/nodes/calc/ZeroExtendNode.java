@@ -84,7 +84,7 @@ public class ZeroExtendNode extends IntegerConvertNode {
     }
 
     @Override
-    public void generate(ArithmeticLIRGenerator gen) {
+    public void generate(NodeMappableArithmeticLIRGenerator gen) {
         gen.setResult(this, gen.emitZeroExtend(gen.operand(getInput()), getInputBits(), getResultBits()));
     }
 }

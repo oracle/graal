@@ -28,15 +28,13 @@ import com.oracle.graal.nodes.calc.FloatConvertNode.FloatConvert;
 import com.oracle.graal.nodes.type.*;
 
 /**
- * This interface can be used to generate LIR for arithmetic operations (@see
- * ArithmeticLIRLowerable).
+ * This interface can be used to generate LIR for arithmetic operations.
  */
 public interface ArithmeticLIRGenerator {
 
-    Value operand(ValueNode object);
-
-    Value setResult(ValueNode x, Value operand);
-
+    /**
+     * TODO remove reference to {@link Stamp}.
+     */
     PlatformKind getPlatformKind(Stamp stamp);
 
     Value emitNegate(Value input);
@@ -47,12 +45,24 @@ public interface ArithmeticLIRGenerator {
 
     Value emitMul(Value a, Value b);
 
+    /**
+     * TODO remove {@link DeoptimizeNode}
+     */
     Value emitDiv(Value a, Value b, DeoptimizingNode deopting);
 
+    /**
+     * TODO remove {@link DeoptimizeNode}
+     */
     Value emitRem(Value a, Value b, DeoptimizingNode deopting);
 
+    /**
+     * TODO remove {@link DeoptimizeNode}
+     */
     Value emitUDiv(Value a, Value b, DeoptimizingNode deopting);
 
+    /**
+     * TODO remove {@link DeoptimizeNode}
+     */
     Value emitURem(Value a, Value b, DeoptimizingNode deopting);
 
     Value emitNot(Value input);

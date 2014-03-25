@@ -75,7 +75,7 @@ public final class FloatSubNode extends FloatArithmeticNode implements Canonical
     }
 
     @Override
-    public void generate(ArithmeticLIRGenerator gen) {
+    public void generate(NodeMappableArithmeticLIRGenerator gen) {
         gen.setResult(this, gen.emitSub(gen.operand(x()), gen.operand(y())));
     }
 }
