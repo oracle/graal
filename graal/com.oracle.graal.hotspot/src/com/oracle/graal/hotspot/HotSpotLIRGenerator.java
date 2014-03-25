@@ -32,7 +32,7 @@ import com.oracle.graal.nodes.spi.*;
 
 /**
  * This interface defines the contract a HotSpot backend LIR generator needs to fulfill in addition
- * to abstract methods from {@link LIRGenerator} and {@link LIRGeneratorTool}.
+ * to abstract methods from {@link LIRGenerator} and {@link NodeBasedLIRGeneratorTool}.
  */
 public interface HotSpotLIRGenerator {
 

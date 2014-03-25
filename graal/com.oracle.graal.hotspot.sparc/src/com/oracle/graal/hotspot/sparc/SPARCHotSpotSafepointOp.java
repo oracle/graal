@@ -46,7 +46,7 @@ public class SPARCHotSpotSafepointOp extends SPARCLIRInstruction {
 
     private final HotSpotVMConfig config;
 
-    public SPARCHotSpotSafepointOp(LIRFrameState state, HotSpotVMConfig config, LIRGeneratorTool tool) {
+    public SPARCHotSpotSafepointOp(LIRFrameState state, HotSpotVMConfig config, NodeBasedLIRGeneratorTool tool) {
         this.state = state;
         this.config = config;
         temp = tool.newVariable(tool.target().wordKind);

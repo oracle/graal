@@ -62,7 +62,7 @@ public class AMD64ArrayEqualsOp extends AMD64LIRInstruction {
     @Temp({REG}) protected Value vectorTemp1;
     @Temp({REG}) protected Value vectorTemp2;
 
-    public AMD64ArrayEqualsOp(LIRGeneratorTool tool, Kind kind, Value result, Value array1, Value array2, Value length) {
+    public AMD64ArrayEqualsOp(NodeBasedLIRGeneratorTool tool, Kind kind, Value result, Value array1, Value array2, Value length) {
         this.kind = kind;
 
         Class<?> arrayClass = Array.newInstance(kind.toJavaClass(), 0).getClass();

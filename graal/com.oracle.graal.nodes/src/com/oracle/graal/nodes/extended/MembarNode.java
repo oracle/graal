@@ -56,7 +56,7 @@ public class MembarNode extends FixedWithNextNode implements LIRLowerable, Memor
     }
 
     @Override
-    public void generate(LIRGeneratorTool generator) {
+    public void generate(NodeBasedLIRGeneratorTool generator) {
         generator.emitMembar(barriers);
     }
 

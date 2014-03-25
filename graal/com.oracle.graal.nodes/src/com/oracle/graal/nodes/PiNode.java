@@ -62,7 +62,7 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
     }
 
     @Override
-    public void generate(LIRGeneratorTool generator) {
+    public void generate(NodeBasedLIRGeneratorTool generator) {
         if (object.getKind() != Kind.Void && object.getKind() != Kind.Illegal) {
             generator.setResult(this, generator.operand(object));
         }

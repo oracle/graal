@@ -46,7 +46,7 @@ public class DirectReadNode extends FixedWithNextNode implements LIRLowerable {
     }
 
     @Override
-    public void generate(LIRGeneratorTool gen) {
+    public void generate(NodeBasedLIRGeneratorTool gen) {
         gen.setResult(this, gen.emitLoad(readKind, gen.operand(address), null));
     }
 

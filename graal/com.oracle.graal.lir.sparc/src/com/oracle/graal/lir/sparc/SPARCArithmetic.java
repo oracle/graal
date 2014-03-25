@@ -238,7 +238,7 @@ public enum SPARCArithmetic {
         @Def({REG}) protected Value scratch2;
         @State protected LIRFrameState state;
 
-        public RemOp(SPARCArithmetic opcode, Value result, Value x, Value y, LIRFrameState state, LIRGeneratorTool gen) {
+        public RemOp(SPARCArithmetic opcode, Value result, Value x, Value y, LIRFrameState state, NodeBasedLIRGeneratorTool gen) {
             this.opcode = opcode;
             this.result = result;
             this.x = x;

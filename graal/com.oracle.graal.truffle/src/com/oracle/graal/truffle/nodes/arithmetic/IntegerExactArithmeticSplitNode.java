@@ -77,7 +77,7 @@ public abstract class IntegerExactArithmeticSplitNode extends ControlSplitNode i
         generator.emitOverflowCheckBranch(generator.getLIRBlock(getOverflowSuccessor()), generator.getLIRBlock(getNext()), probability(getOverflowSuccessor()));
     }
 
-    protected abstract Value generateArithmetic(LIRGeneratorTool generator);
+    protected abstract Value generateArithmetic(NodeBasedLIRGeneratorTool generator);
 
     static void lower(LoweringTool tool, IntegerExactArithmeticNode node) {
         if (node.asNode().graph().getGuardsStage() == StructuredGraph.GuardsStage.FIXED_DEOPTS) {

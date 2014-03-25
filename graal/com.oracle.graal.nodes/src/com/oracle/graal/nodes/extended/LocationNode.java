@@ -56,9 +56,9 @@ public abstract class LocationNode extends FloatingNode implements LIRLowerable,
     public abstract LocationIdentity getLocationIdentity();
 
     @Override
-    public final void generate(LIRGeneratorTool generator) {
+    public final void generate(NodeBasedLIRGeneratorTool generator) {
         // nothing to do...
     }
 
-    public abstract Value generateAddress(LIRGeneratorTool gen, Value base);
+    public abstract Value generateAddress(NodeBasedLIRGeneratorTool gen, Value base);
 }

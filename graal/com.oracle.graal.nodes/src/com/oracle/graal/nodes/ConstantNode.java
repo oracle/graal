@@ -120,7 +120,7 @@ public final class ConstantNode extends FloatingNode implements LIRLowerable {
     }
 
     @Override
-    public void generate(LIRGeneratorTool gen) {
+    public void generate(NodeBasedLIRGeneratorTool gen) {
         assert ConstantNodeRecordsUsages : "LIR generator should generate constants per-usage";
         if (gen.canInlineConstant(value) || onlyUsedInVirtualState()) {
             gen.setResult(this, value);

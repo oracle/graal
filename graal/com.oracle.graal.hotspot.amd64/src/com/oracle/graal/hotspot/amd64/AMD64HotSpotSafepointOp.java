@@ -47,7 +47,7 @@ public class AMD64HotSpotSafepointOp extends AMD64LIRInstruction {
 
     private final HotSpotVMConfig config;
 
-    public AMD64HotSpotSafepointOp(LIRFrameState state, HotSpotVMConfig config, LIRGeneratorTool tool) {
+    public AMD64HotSpotSafepointOp(LIRFrameState state, HotSpotVMConfig config, NodeBasedLIRGeneratorTool tool) {
         this.state = state;
         this.config = config;
         if (isPollingPageFar(config) || ImmutableCode.getValue()) {

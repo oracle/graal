@@ -45,7 +45,7 @@ public class DeoptimizeCallerNode extends ControlSinkNode implements LIRLowerabl
     }
 
     @Override
-    public void generate(LIRGeneratorTool gen) {
+    public void generate(NodeBasedLIRGeneratorTool gen) {
         ((HotSpotLIRGenerator) gen).emitDeoptimizeCaller(action, reason);
     }
 

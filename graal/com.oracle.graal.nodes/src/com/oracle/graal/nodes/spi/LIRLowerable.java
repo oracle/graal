@@ -24,5 +24,5 @@ package com.oracle.graal.nodes.spi;
 
 public interface LIRLowerable {
 
-    void generate(LIRGeneratorTool generator);
+    void generate(NodeBasedLIRGeneratorTool generator);
 }

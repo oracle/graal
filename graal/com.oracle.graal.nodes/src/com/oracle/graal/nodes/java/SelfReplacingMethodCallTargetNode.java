@@ -29,7 +29,7 @@ import com.oracle.graal.api.meta.ResolvedJavaMethod;
 import com.oracle.graal.graph.GraalInternalError;
 import com.oracle.graal.graph.NodeInputList;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.spi.LIRGeneratorTool;
+import com.oracle.graal.nodes.spi.NodeBasedLIRGeneratorTool;
 import com.oracle.graal.nodes.spi.Lowerable;
 import com.oracle.graal.nodes.spi.LoweringTool;
 
@@ -78,7 +78,7 @@ public class SelfReplacingMethodCallTargetNode extends MethodCallTargetNode impl
     }
 
     @Override
-    public void generate(LIRGeneratorTool gen) {
+    public void generate(NodeBasedLIRGeneratorTool gen) {
         throw GraalInternalError.shouldNotReachHere("should have replaced itself");
     }
 }

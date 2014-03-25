@@ -89,7 +89,7 @@ public final class WriteNode extends FixedAccessNode implements StateSplit, LIRL
     }
 
     @Override
-    public void generate(LIRGeneratorTool gen) {
+    public void generate(NodeBasedLIRGeneratorTool gen) {
         Value address = location().generateAddress(gen, gen.operand(object()));
         // It's possible a constant was forced for other usages so inspect the value directly and
         // use a constant if it can be directly stored.
