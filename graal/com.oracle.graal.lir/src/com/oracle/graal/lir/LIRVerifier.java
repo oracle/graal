@@ -237,6 +237,7 @@ public final class LIRVerifier {
         if ((isVariable(value) && flags.contains(OperandFlag.REG)) ||
             (isRegister(value) && flags.contains(OperandFlag.REG)) ||
             (isStackSlot(value) && flags.contains(OperandFlag.STACK)) ||
+            (isRawData(value) && flags.contains(OperandFlag.CONST) && mode != OperandMode.DEF) ||
             (isConstant(value) && flags.contains(OperandFlag.CONST) && mode != OperandMode.DEF) ||
             (isIllegal(value) && flags.contains(OperandFlag.ILLEGAL))) {
             return value;
