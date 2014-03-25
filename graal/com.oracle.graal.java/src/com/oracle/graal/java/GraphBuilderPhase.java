@@ -1113,7 +1113,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
         private void genInvokeInterface(JavaMethod target) {
             if (target instanceof ResolvedJavaMethod) {
                 ValueNode[] args = frameState.popArguments(target.getSignature().getParameterSlots(true), target.getSignature().getParameterCount(true));
-                genInvokeIndirect(InvokeKind.Interface, (ResolvedJavaMethod) target, args);
+                appendInvoke(InvokeKind.Interface, (ResolvedJavaMethod) target, args);
             } else {
                 handleUnresolvedInvoke(target, InvokeKind.Interface);
             }
@@ -1148,7 +1148,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 }
                 ValueNode[] args = frameState.popArguments(target.getSignature().getParameterSlots(hasReceiver), target.getSignature().getParameterCount(hasReceiver));
                 if (hasReceiver) {
-                    genInvokeIndirect(InvokeKind.Virtual, (ResolvedJavaMethod) target, args);
+                    appendInvoke(InvokeKind.Virtual, (ResolvedJavaMethod) target, args);
                 } else {
                     appendInvoke(InvokeKind.Static, (ResolvedJavaMethod) target, args);
                 }
@@ -1163,45 +1163,10 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 assert target != null;
                 assert target.getSignature() != null;
                 ValueNode[] args = frameState.popArguments(target.getSignature().getParameterSlots(true), target.getSignature().getParameterCount(true));
-                invokeDirect((ResolvedJavaMethod) target, args);
+                appendInvoke(InvokeKind.Special, (ResolvedJavaMethod) target, args);
             } else {
                 handleUnresolvedInvoke(target, InvokeKind.Special);
             }
-        }
-
-        private void genInvokeIndirect(InvokeKind invokeKind, ResolvedJavaMethod target, ValueNode[] args) {
-            ValueNode receiver = args[0];
-            // attempt to devirtualize the call
-            ResolvedJavaType klass = target.getDeclaringClass();
-
-            // 0. check for trivial cases
-            if (target.canBeStaticallyBound()) {
-                // check for trivial cases (e.g. final methods, nonvirtual methods)
-                invokeDirect(target, args);
-                return;
-            }
-            // 1. check if the exact type of the receiver can be determined
-            ResolvedJavaType exact = klass.asExactType();
-            if (exact == null && receiver.stamp() instanceof ObjectStamp) {
-                ObjectStamp receiverStamp = (ObjectStamp) receiver.stamp();
-                if (receiverStamp.isExactType()) {
-                    exact = receiverStamp.type();
-                }
-            }
-            if (exact != null) {
-                // either the holder class is exact, or the receiver object has an exact type
-                ResolvedJavaMethod exactMethod = exact.resolveMethod(target);
-                if (exactMethod != null) {
-                    invokeDirect(exactMethod, args);
-                    return;
-                }
-            }
-            // devirtualization failed, produce an actual invokevirtual
-            appendInvoke(invokeKind, target, args);
-        }
-
-        private void invokeDirect(ResolvedJavaMethod target, ValueNode[] args) {
-            appendInvoke(InvokeKind.Special, target, args);
         }
 
         private void appendInvoke(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] args) {
