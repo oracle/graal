@@ -327,7 +327,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
             @Override
             protected ValueNode genUnique(ValueNode x) {
-                return currentGraph.unique((ValueNumberable) x);
+                return currentGraph.unique(x);
             }
 
             @Override

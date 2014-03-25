@@ -26,7 +26,7 @@ import java.util.*;
 
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.GraphEvent.NodeEvent;
-import com.oracle.graal.graph.Node.ValueNumberable;
+import com.oracle.graal.graph.Node.*;
 import com.oracle.graal.graph.iterators.*;
 
 /**
@@ -344,7 +344,8 @@ public class Graph {
      * 
      * @return a node similar to {@code node} if one exists, otherwise {@code node}
      */
-    public <T extends Node & ValueNumberable> T unique(T node) {
+    public <T extends Node> T unique(T node) {
+        assert node instanceof ValueNumberable;
         return uniqueHelper(node, true);
     }
 
