@@ -2,6 +2,14 @@
 
 ## `tip`
 ### Graal
+* ...
+### Truffle
+* ...
+
+## Version 0.2
+25-Mar-2014, [Repository Revision](http://hg.openjdk.java.net/graal/graal/rev/XXX)
+
+### Graal
 * Use HotSpot stubs for certain array copy operations.
 * New methods for querying memory usage of individual objects and object graphs in Graal API (`MetaAccessProvider#getMemorySize`, `MetaUtil#getMemorySizeRecursive`).
 * Added tiered configuration (C1 + Graal).
