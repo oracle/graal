@@ -197,4 +197,10 @@ public abstract class CompareNode extends LogicNode implements Canonicalizable, 
     public boolean generate(MemoryArithmeticLIRLowerer gen, Access access) {
         return false;
     }
+
+    @Override
+    public boolean verify() {
+        assertTrue(x.stamp().isCompatible(y.stamp()), "stamps not compatible: %s, %s", x.stamp(), y.stamp());
+        return super.verify();
+    }
 }
