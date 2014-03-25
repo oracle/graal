@@ -172,6 +172,38 @@ public class AMD64Move {
         }
     }
 
+    public static class ZeroExtendLoadOp extends MemOp {
+
+        @Def({REG}) protected AllocatableValue result;
+
+        public ZeroExtendLoadOp(Kind kind, AllocatableValue result, AMD64AddressValue address, LIRFrameState state) {
+            super(kind, address, state);
+            this.result = result;
+        }
+
+        @Override
+        public void emitMemAccess(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
+            switch (kind) {
+                case Boolean:
+                case Byte:
+                    masm.movzbl(asRegister(result), address.toAddress());
+                    break;
+                case Char:
+                case Short:
+                    masm.movzwl(asRegister(result), address.toAddress());
+                    break;
+                case Int:
+                    masm.movl(asRegister(result), address.toAddress());
+                    break;
+                case Long:
+                    masm.movq(asRegister(result), address.toAddress());
+                    break;
+                default:
+                    throw GraalInternalError.shouldNotReachHere();
+            }
+        }
+    }
+
     public static class StoreOp extends MemOp {
 
         @Use({REG}) protected AllocatableValue input;

@@ -61,7 +61,7 @@ import com.oracle.graal.lir.amd64.AMD64ControlFlow.ReturnOp;
 import com.oracle.graal.lir.amd64.AMD64ControlFlow.StrategySwitchOp;
 import com.oracle.graal.lir.amd64.AMD64ControlFlow.TableSwitchOp;
 import com.oracle.graal.lir.amd64.AMD64Move.LeaOp;
-import com.oracle.graal.lir.amd64.AMD64Move.LoadOp;
+import com.oracle.graal.lir.amd64.AMD64Move.ZeroExtendLoadOp;
 import com.oracle.graal.lir.amd64.AMD64Move.MembarOp;
 import com.oracle.graal.lir.amd64.AMD64Move.MoveFromRegOp;
 import com.oracle.graal.lir.amd64.AMD64Move.MoveToRegOp;
@@ -597,11 +597,10 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     protected Value emitZeroExtendMemory(Kind memoryKind, int resultBits, AMD64AddressValue address, LIRFrameState state) {
-        assert memoryKind.isUnsigned();
         // Issue a zero extending load of the proper bit size and set the result to
         // the proper kind.
         Variable result = newVariable(resultBits == 32 ? Kind.Int : Kind.Long);
-        append(new LoadOp(memoryKind, result, address, state));
+        append(new ZeroExtendLoadOp(memoryKind, result, address, state));
         return result;
     }
 
