@@ -7,7 +7,7 @@
 * ...
 
 ## Version 0.2
-25-Mar-2014, [Repository Revision](http://hg.openjdk.java.net/graal/graal/rev/XXX)
+25-Mar-2014, [Repository Revision](http://hg.openjdk.java.net/graal/graal/rev/graal-0.2)
 
 ### Graal
 * Use HotSpot stubs for certain array copy operations.
@@ -37,7 +37,7 @@
 
 
 ## Version 0.1
-5-Feb-2014, [Repository Revision](http://hg.openjdk.java.net/graal/graal/rev/b124e22eb772)
+5-Feb-2014, [Repository Revision](http://hg.openjdk.java.net/graal/graal/rev/graal-0.1)
 
 ### Graal
 
