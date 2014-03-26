@@ -45,9 +45,13 @@ import javax.tools.*;
  * }
  * </pre>
  */
-@SupportedSourceVersion(SourceVersion.RELEASE_7)
 @SupportedAnnotationTypes({"com.oracle.graal.options.Option"})
 public class OptionProcessor extends AbstractProcessor {
+
+    @Override
+    public SourceVersion getSupportedSourceVersion() {
+        return SourceVersion.latest();
+    }
 
     private final Set<Element> processed = new HashSet<>();
 

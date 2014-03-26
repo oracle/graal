@@ -63,7 +63,7 @@ public class InductionVariables {
     }
 
     private void findDerived(Collection<BasicInductionVariable> bivs) {
-        Queue<InductionVariable> scanQueue = new LinkedList<InductionVariable>(bivs);
+        Queue<InductionVariable> scanQueue = new LinkedList<>(bivs);
         while (!scanQueue.isEmpty()) {
             InductionVariable baseIv = scanQueue.remove();
             ValueNode baseIvNode = baseIv.valueNode();
