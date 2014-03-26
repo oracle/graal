@@ -53,6 +53,8 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.tiers.*;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+
 public class CompilationTask implements Runnable, Comparable {
 
     private static final long TIMESTAMP_START = System.currentTimeMillis();
@@ -135,6 +137,7 @@ public class CompilationTask implements Runnable, Comparable {
         return entryBCI;
     }
 
+    @SuppressFBWarnings(value = "NN_NAKED_NOTIFY")
     public void run() {
         withinEnqueue.set(Boolean.FALSE);
         try {
