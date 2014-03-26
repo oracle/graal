@@ -868,12 +868,12 @@ public abstract class HSAILLIRGenerator extends LIRGenerator {
      */
     @Override
     protected void emitStrategySwitch(SwitchStrategy strategy, Variable key, LabelRef[] keyTargets, LabelRef defaultTarget) {
-        if (key.getKind() == Kind.Int) {
+        if ((key.getKind() == Kind.Int) || (key.getKind() == Kind.Long)) {
             // Append the LIR instruction for generating compare and branch instructions.
             append(new StrategySwitchOp(strategy, keyTargets, defaultTarget, key));
         } else {
             // Throw an exception if the keys aren't ints.
-            throw GraalInternalError.unimplemented("Switch statements are only supported for keys of type int");
+            throw GraalInternalError.unimplemented("Switch statements are only supported for keys of type int or long, not " + key.getKind());
         }
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,48 +20,42 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.asm.hsail;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.asm.*;
+package com.oracle.graal.compiler.hsail.test;
+
+import org.junit.Test;
 
 /**
- * The platform-dependent base class for the HSAIL assembler.
+ * For globalsize 1000, deopt on almost all gids but then catch the exception in the run routine
+ * itself.
  */
-public abstract class AbstractHSAILAssembler extends Assembler {
-
-    public AbstractHSAILAssembler(TargetDescription target) {
-        super(target);
-    }
+public class BoundsCatchMost1000Test extends BoundsCatchManyBase {
 
     @Override
-    public final void bind(Label l) {
-        super.bind(l);
-        emitString0(nameOf(l) + ":\n");
+    int getGlobalSize() {
+        return 1000;
     }
 
+    boolean isMyDeoptGid(int gid) {
+        return (gid % 100 != 1);
+    }
+
+    // copied run routine here because otherwise polymorphic calls to isDeoptGid
     @Override
-    public void align(int modulus) {
-        // Nothing to do
+    public void run(int gid) {
+        int outval = getOutval(gid);
+        try {
+            int index = (isMyDeoptGid(gid) ? num + 1 : gid);
+            outArray[index] = outval;
+        } catch (ArrayIndexOutOfBoundsException e) {
+            // set up so we can detect if we go thru here twice
+            outArray[gid] += outval;
+            // note: cannot record the exceptiongid here for many deopts in parallel
+        }
     }
 
-    @Override
-    public void jmp(Label l) {
-        emitJumpToLabelName(nameOf(l));
-    }
-
-    public void emitJumpToLabelName(String labelName) {
-        emitString("brn " + labelName + ";");
-    }
-
-    @Override
-    protected void patchJumpTarget(int branch, int jumpTarget) {
-        // Nothing to do
-    }
-
-    @Override
-    protected String createLabelName(Label l, int id) {
-        int blockId = l.getBlockId();
-        return "@L" + (blockId == -1 ? id : blockId);
+    @Test
+    public void test() {
+        testGeneratedHsail();
     }
 }

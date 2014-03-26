@@ -20,20 +20,17 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.graal.asm.hsail;
-
-import java.lang.reflect.*;
-
-import com.oracle.graal.api.code.*;
 
 import static com.oracle.graal.api.code.MemoryBarriers.*;
 import static com.oracle.graal.api.code.ValueUtil.*;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.hsail.*;
 import com.oracle.graal.graph.GraalInternalError;
 import com.amd.okra.OkraUtil;
+import java.lang.reflect.Array;
 
 /**
  * This class contains routines to emit HSAIL assembly code.
@@ -161,6 +158,10 @@ public class HSAILAssembler extends AbstractHSAILAssembler {
 
     public final void emitLda(Value dest, HSAILAddress addr) {
         emitAddrOp("lda_global_u64", dest, addr);
+    }
+
+    public final void emitLoadKernelArg(Value dest, String kernArgName, String argTypeStr) {
+        emitString("ld_kernarg_" + argTypeStr + " " + HSAIL.mapRegister(dest) + ", [" + kernArgName + "];");
     }
 
     public final void emitStore(Kind kind, Value src, HSAILAddress addr) {
@@ -319,6 +320,12 @@ public class HSAILAssembler extends AbstractHSAILAssembler {
         emitString(prefix + destType + "_" + srcType + " " + HSAIL.mapRegister(dest) + ", " + HSAIL.mapRegister(src) + ";");
     }
 
+    public void emitConvert(Value dest, Value src, Kind destKind, Kind srcKind) {
+        String destType = getArgTypeFromKind(destKind);
+        String srcType = getArgTypeFromKind(srcKind);
+        emitConvert(dest, src, destType, srcType);
+    }
+
     /**
      * Emits a convert instruction that uses unsigned prefix, regardless of the type of dest and
      * src.
@@ -340,6 +347,7 @@ public class HSAILAssembler extends AbstractHSAILAssembler {
         } else {
             Constant consrc = asConstant(src);
             switch (src.getKind()) {
+                case Boolean:
                 case Int:
                     return Integer.toString(consrc.asInt());
                 case Float:
@@ -421,9 +429,13 @@ public class HSAILAssembler extends AbstractHSAILAssembler {
                 // Emit an instruction with two source operands.
                 emitString(String.format("%s %s, %s, %s;", instr, HSAIL.mapRegister(dest), mapRegOrConstToString(sources[0]), mapRegOrConstToString(sources[1])));
                 break;
-            default:
+            case 1:
                 // Emit an instruction with one source operand.
                 emitString(String.format("%s %s, %s;", instr, HSAIL.mapRegister(dest), mapRegOrConstToString(sources[0])));
+                break;
+            default:
+                // Emit an instruction with one source operand.
+                emitString(String.format("%s %s;", instr, HSAIL.mapRegister(dest)));
                 break;
         }
     }
@@ -523,9 +535,20 @@ public class HSAILAssembler extends AbstractHSAILAssembler {
      * @param newValue the new value that will be written to the memory location if the cmpValue
      *            comparison matches
      */
-    public void emitAtomicCas(AllocatableValue result, HSAILAddress address, AllocatableValue cmpValue, AllocatableValue newValue) {
-        emitString(String.format("atomic_cas_global_b%d   %s, %s, %s, %s;", getArgSize(cmpValue), HSAIL.mapRegister(result), mapAddress(address), HSAIL.mapRegister(cmpValue),
-                        HSAIL.mapRegister(newValue)));
+    public void emitAtomicCas(AllocatableValue result, HSAILAddress address, Value cmpValue, Value newValue) {
+        emitString(String.format("atomic_cas_global_b%d   %s, %s, %s, %s;", getArgSize(cmpValue), HSAIL.mapRegister(result), mapAddress(address), mapRegOrConstToString(cmpValue),
+                        mapRegOrConstToString(newValue)));
+    }
+
+    /**
+     * Emits an atomic_add_global instruction.
+     * 
+     * @param result result operand that gets the original contents of the memory location
+     * @param address the memory location
+     * @param deltaValue the amount to add
+     */
+    public void emitAtomicAdd(AllocatableValue result, HSAILAddress address, Value deltaValue) {
+        emitString(String.format("atomic_add_global_u%d   %s, %s, %s;", getArgSize(result), HSAIL.mapRegister(result), mapAddress(address), mapRegOrConstToString(deltaValue)));
     }
 
     /**
@@ -537,7 +560,52 @@ public class HSAILAssembler extends AbstractHSAILAssembler {
         emitString(comment);
     }
 
+    public String getDeoptInfoName() {
+        return "%_deoptInfo";
+    }
+
+    public String getDeoptLabelName() {
+        return "@L_Deopt";
+    }
+
+    public void emitWorkItemAbsId(Value dest) {
+        emitString(String.format("workitemabsid_u32 %s, 0;", HSAIL.mapRegister(dest)));
+    }
+
+    public void emitCuId(Value dest) {
+        emitString(String.format("cuid_u32 %s;", HSAIL.mapRegister(dest)));
+    }
+
+    public void emitLaneId(Value dest) {
+        emitString(String.format("laneid_u32 %s;", HSAIL.mapRegister(dest)));
+    }
+
+    public void emitWaveId(Value dest) {
+        emitString(String.format("waveid_u32 %s;", HSAIL.mapRegister(dest)));
+    }
+
+    public void emitMaxWaveId(Value dest) {
+        // emitString(String.format("maxwaveid_u32 %s;", HSAIL.mapRegister(dest)));
+        int hardCodedMaxWaveId = 36;
+        emitComment("// Hard-coded maxwaveid=" + hardCodedMaxWaveId + " until it works");
+        emitMov(dest, Constant.forInt(hardCodedMaxWaveId));
+    }
+
+    public void emitMultiplyByWavesize(Value dest) {
+        String regName = HSAIL.mapRegister(dest);
+        emitString(String.format("mul_u%d %s, %s, WAVESIZE;", getArgSize(dest), regName, regName));
+    }
+
+    public void emitGetWavesize(Value dest) {
+        String regName = HSAIL.mapRegister(dest);
+        emitString(String.format("mov_b%d %s, WAVESIZE;", getArgSize(dest), regName));
+    }
+
+    public void emitLoadAcquire(Value dest, HSAILAddress address) {
+        emitString(String.format("ld_global_acq_u%d %s, %s;", getArgSize(dest), HSAIL.mapRegister(dest), mapAddress(address)));
+    }
+
     public void emitStoreRelease(Value src, HSAILAddress address) {
-        emitAddrOp("st_global_rel_u" + getArgSize(src), src, address);
+        emitString(String.format("st_global_rel_u%d %s, %s;", getArgSize(src), HSAIL.mapRegister(src), mapAddress(address)));
     }
 }

@@ -33,6 +33,7 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.compiler.test.*;
+import com.oracle.graal.gpu.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.ptx.*;
 import com.oracle.graal.nodes.*;

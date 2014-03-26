@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,36 +20,35 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.ptx.test;
 
-import org.junit.*;
-
-import com.oracle.graal.api.meta.*;
-import com.oracle.graal.gpu.*;
-import com.oracle.graal.hotspot.meta.*;
-import com.oracle.graal.hotspot.ptx.*;
+package com.oracle.graal.compiler.hsail.test;
 
 /**
- * Tests that a {@linkplain PTXWrapperBuilder PTX kernel wrapper} deoptimizes if the kernel is
- * invalid.
+ * Base Class for tests that deopt on a single gid but then catch the exception in the run routine
+ * itself.
  */
-public class PTXMethodInvalidation1Test extends PTXTest {
+public abstract class BoundsCatchSingleBase extends BoundsCatchBase {
 
-    @Test
-    public void test() {
-        test("testSnippet", 100);
+    int getDeoptGid() {
+        return 512;
     }
 
-    @Override
-    protected HotSpotNmethod installKernel(ResolvedJavaMethod method, ExternalCompilationResult ptxCode) {
-        HotSpotNmethod ptxKernel = super.installKernel(method, ptxCode);
-        ptxKernel.invalidate();
-        return ptxKernel;
+    boolean isDeoptGid(int gid) {
+        return (gid == getDeoptGid());
     }
 
-    int f = 42;
+    @Result public int exceptionGid;
 
-    public int testSnippet(int delta) {
-        return f + delta;
+    public void run(int gid) {
+        int outval = getOutval(gid);
+        try {
+            int index = (isDeoptGid(gid) ? num + 1 : gid);
+            outArray[index] = outval;
+        } catch (ArrayIndexOutOfBoundsException e) {
+            // set up so we can detect if we go thru here twice
+            outArray[gid] -= outval;
+            exceptionGid = gid;
+        }
     }
+
 }

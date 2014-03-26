@@ -27,10 +27,79 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
+import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.nodes.java.*;
+import java.util.HashMap;
 
 public class HSAILHotSpotLoweringProvider extends HotSpotLoweringProvider {
+
+    abstract static class LoweringStrategy {
+        abstract void lower(Node n, LoweringTool tool);
+    }
+
+    static LoweringStrategy PassThruStrategy = new LoweringStrategy() {
+        @Override
+        void lower(Node n, LoweringTool tool) {
+            return;
+        }
+    };
+
+    static LoweringStrategy RejectStrategy = new LoweringStrategy() {
+        @Override
+        void lower(Node n, LoweringTool tool) {
+            throw new GraalInternalError("Node implementing Lowerable not handled in HSAIL Backend: " + n);
+        }
+    };
+
+    // strategy to replace an UnwindNode with a DeoptNode
+    static LoweringStrategy UnwindNodeStrategy = new LoweringStrategy() {
+        @Override
+        void lower(Node n, LoweringTool tool) {
+            StructuredGraph graph = (StructuredGraph) n.graph();
+            UnwindNode unwind = (UnwindNode) n;
+            ValueNode exception = unwind.exception();
+            if (exception instanceof ForeignCallNode) {
+                // build up action and reason
+                String callName = ((ForeignCallNode) exception).getDescriptor().getName();
+                DeoptimizationReason reason;
+                switch (callName) {
+                    case "createOutOfBoundsException":
+                        reason = DeoptimizationReason.BoundsCheckException;
+                        break;
+                    case "createNullPointerException":
+                        reason = DeoptimizationReason.NullCheckException;
+                        break;
+                    default:
+                        reason = DeoptimizationReason.None;
+                }
+                unwind.replaceAtPredecessor(graph.add(new DeoptimizeNode(DeoptimizationAction.InvalidateReprofile, reason)));
+                unwind.safeDelete();
+            } else {
+                // unwind whose exception is not an instance of ForeignCallNode
+                throw new GraalInternalError("UnwindNode seen without ForeignCallNode: " + exception);
+            }
+        }
+    };
+
+    private static HashMap<Class<?>, LoweringStrategy> strategyMap = new HashMap<>();
+    static {
+        strategyMap.put(ConvertNode.class, PassThruStrategy);
+        strategyMap.put(FloatConvertNode.class, PassThruStrategy);
+        strategyMap.put(NewInstanceNode.class, RejectStrategy);
+        strategyMap.put(NewArrayNode.class, RejectStrategy);
+        strategyMap.put(NewMultiArrayNode.class, RejectStrategy);
+        strategyMap.put(DynamicNewArrayNode.class, RejectStrategy);
+        strategyMap.put(MonitorEnterNode.class, RejectStrategy);
+        strategyMap.put(MonitorExitNode.class, RejectStrategy);
+        strategyMap.put(UnwindNode.class, UnwindNodeStrategy);
+    }
+
+    private static LoweringStrategy getStrategy(Node n) {
+        return strategyMap.get(n.getClass());
+    }
 
     public HSAILHotSpotLoweringProvider(HotSpotGraalRuntime runtime, MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls, HotSpotRegistersProvider registers) {
         super(runtime, metaAccess, foreignCalls, registers);
@@ -38,10 +107,12 @@ public class HSAILHotSpotLoweringProvider extends HotSpotLoweringProvider {
 
     @Override
     public void lower(Node n, LoweringTool tool) {
-        if (n instanceof ConvertNode) {
-            return;
-        } else {
+        LoweringStrategy strategy = getStrategy(n);
+        // if not in map, let superclass handle it
+        if (strategy == null) {
             super.lower(n, tool);
+        } else {
+            strategy.lower(n, tool);
         }
     }
 
