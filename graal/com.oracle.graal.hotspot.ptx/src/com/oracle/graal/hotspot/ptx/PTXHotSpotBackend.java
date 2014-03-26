@@ -352,8 +352,13 @@ public class PTXHotSpotBackend extends HotSpotBackend {
     }
 
     @Override
-    public LIRGenerator newLIRGenerator(StructuredGraph graph, CallingConvention cc, LIRGenerationResult lirGenRes) {
-        return new PTXHotSpotLIRGenerator(graph, getProviders(), getRuntime().getConfig(), cc, lirGenRes);
+    public LIRGenerator newLIRGenerator(CallingConvention cc, LIRGenerationResult lirGenRes) {
+        return new PTXHotSpotLIRGenerator(getProviders(), getRuntime().getConfig(), cc, lirGenRes);
+    }
+
+    @Override
+    public NodeLIRGenerator newNodeLIRGenerator(StructuredGraph graph, LIRGenerationResult lirGenRes, LIRGenerator lirGen) {
+        return new PTXHotSpotNodeLIRGenerator(graph, lirGenRes, lirGen);
     }
 
     private static void emitKernelEntry(CompilationResultBuilder crb, LIR lir, ResolvedJavaMethod codeCacheOwner) {

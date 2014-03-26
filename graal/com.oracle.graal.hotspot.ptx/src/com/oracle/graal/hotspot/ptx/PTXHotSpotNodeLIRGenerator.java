@@ -23,38 +23,36 @@
 
 package com.oracle.graal.hotspot.ptx;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.ptx.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.meta.*;
+import com.oracle.graal.hotspot.nodes.*;
+import com.oracle.graal.nodes.*;
 
 /**
  * LIR generator specialized for PTX HotSpot.
  */
-public class PTXHotSpotLIRGenerator extends PTXLIRGenerator implements HotSpotLIRGenerator {
+public class PTXHotSpotNodeLIRGenerator extends PTXNodeLIRGenerator implements HotSpotNodeLIRGenerator {
 
-    protected PTXHotSpotLIRGenerator(HotSpotProviders providers, HotSpotVMConfig config, CallingConvention cc, LIRGenerationResult lirGenRes) {
-        super(providers, cc, lirGenRes);
-        assert config.basicLockSize == 8;
+    protected PTXHotSpotNodeLIRGenerator(StructuredGraph graph, LIRGenerationResult lirGenRes, LIRGenerator lirGen) {
+        super(graph, lirGenRes, lirGen);
     }
 
-    public void emitTailcall(Value[] args, Value address) {
+    public void emitPrefetchAllocate(ValueNode address, ValueNode distance) {
+        // nop
+    }
+
+    public void emitPatchReturnAddress(ValueNode address) {
         throw GraalInternalError.unimplemented();
     }
 
-    public void emitDeoptimizeCaller(DeoptimizationAction action, DeoptimizationReason reason) {
+    public void emitJumpToExceptionHandlerInCaller(ValueNode handlerInCallerPc, ValueNode exception, ValueNode exceptionPc) {
         throw GraalInternalError.unimplemented();
     }
 
-    public StackSlot getLockSlot(int lockDepth) {
+    public void visitDirectCompareAndSwap(DirectCompareAndSwapNode x) {
         throw GraalInternalError.unimplemented();
     }
 
-    @Override
-    public HotSpotProviders getProviders() {
-        throw GraalInternalError.unimplemented();
-    }
 }
