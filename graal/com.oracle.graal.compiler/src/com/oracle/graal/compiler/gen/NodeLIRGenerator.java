@@ -54,7 +54,7 @@ import com.oracle.graal.nodes.virtual.*;
 /**
  * This class traverses the HIR instructions and generates LIR instructions from them.
  */
-public abstract class NodeLIRGenerator implements NodeMappableLIRGenerator, NodeLIRGeneratorTool {
+public abstract class NodeLIRGenerator implements NodeLIRGeneratorTool {
 
     public static class Options {
         // @formatter:off
@@ -225,18 +225,15 @@ public abstract class NodeLIRGenerator implements NodeMappableLIRGenerator, Node
         return res.getFrameMap().registerConfig.getReturnRegister(kind).asValue(kind);
     }
 
-    public void append(LIRInstruction op) {
+    final protected void append(LIRInstruction op) {
         if (printIRWithLIR && !TTY.isSuppressed()) {
             if (currentInstruction != null && lastInstructionPrinted != currentInstruction) {
                 lastInstructionPrinted = currentInstruction;
                 InstructionPrinter ip = new InstructionPrinter(TTY.out());
                 ip.printInstructionListing(currentInstruction);
             }
-            TTY.println(op.toStringWithIdPrefix());
-            TTY.println();
         }
-        assert LIRVerifier.verify(op);
-        res.getLIR().getLIRforBlock(gen.getCurrentBlock()).add(op);
+        gen.append(op);
     }
 
     public final void doBlockStart(AbstractBlock<?> block) {

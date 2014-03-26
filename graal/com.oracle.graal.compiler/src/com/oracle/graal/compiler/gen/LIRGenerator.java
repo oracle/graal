@@ -141,9 +141,6 @@ public abstract class LIRGenerator implements ArithmeticLIRGenerator, LIRGenerat
 
     Map<Constant, LoadConstant> constantLoads;
 
-    private ValueNode currentInstruction;
-    private ValueNode lastInstructionPrinted; // Debugging only
-
     protected LIRGenerationResult res;
 
     /**
@@ -303,13 +300,13 @@ public abstract class LIRGenerator implements ArithmeticLIRGenerator, LIRGenerat
         return res.getFrameMap().registerConfig.getReturnRegister(kind).asValue(kind);
     }
 
-    public void append(LIRInstruction op) {
+    protected void append(LIRInstruction op) {
         if (printIRWithLIR && !TTY.isSuppressed()) {
-            if (currentInstruction != null && lastInstructionPrinted != currentInstruction) {
-                lastInstructionPrinted = currentInstruction;
-                InstructionPrinter ip = new InstructionPrinter(TTY.out());
-                ip.printInstructionListing(currentInstruction);
-            }
+            // if (currentInstruction != null && lastInstructionPrinted != currentInstruction) {
+            // lastInstructionPrinted = currentInstruction;
+            // InstructionPrinter ip = new InstructionPrinter(TTY.out());
+            // ip.printInstructionListing(currentInstruction);
+            // }
             TTY.println(op.toStringWithIdPrefix());
             TTY.println();
         }
