@@ -188,13 +188,18 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
     }
 
     @Override
-    public LIRGenerator newLIRGenerator(StructuredGraph graph, CallingConvention cc, LIRGenerationResult lirGenRes) {
-        return new HSAILHotSpotLIRGenerator(graph, getProviders(), getRuntime().getConfig(), cc, lirGenRes);
+    public LIRGenerator newLIRGenerator(CallingConvention cc, LIRGenerationResult lirGenRes) {
+        return new HSAILHotSpotLIRGenerator(getProviders(), getRuntime().getConfig(), cc, lirGenRes);
     }
 
     @Override
     public LIRGenerationResult newLIRGenerationResult(LIR lir, FrameMap frameMap, Object stub) {
         return new LIRGenerationResultBase(lir, frameMap);
+    }
+
+    @Override
+    public NodeLIRGenerator newNodeLIRGenerator(StructuredGraph graph, LIRGenerationResult lirGenRes, LIRGenerator lirGen) {
+        return new HSAILHotSpotNodeLIRGenerator(graph, lirGenRes, lirGen);
     }
 
     class HotSpotFrameContext implements FrameContext {

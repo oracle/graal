@@ -23,61 +23,61 @@
 
 package com.oracle.graal.hotspot.hsail;
 
-import sun.misc.*;
+import static com.oracle.graal.api.code.ValueUtil.*;
 
 import com.oracle.graal.api.code.*;
-
-import static com.oracle.graal.api.code.ValueUtil.asConstant;
-import static com.oracle.graal.api.code.ValueUtil.isConstant;
-
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.hsail.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.hsail.*;
-import com.oracle.graal.lir.hsail.HSAILControlFlow.*;
-import com.oracle.graal.lir.hsail.HSAILMove.*;
-import com.oracle.graal.phases.util.*;
+import com.oracle.graal.lir.hsail.HSAILControlFlow.ForeignCall1ArgOp;
+import com.oracle.graal.lir.hsail.HSAILControlFlow.ForeignCall2ArgOp;
+import com.oracle.graal.lir.hsail.HSAILControlFlow.ForeignCallNoArgOp;
+import com.oracle.graal.lir.hsail.HSAILMove.LoadCompressedPointer;
+import com.oracle.graal.lir.hsail.HSAILMove.LoadOp;
+import com.oracle.graal.lir.hsail.HSAILMove.StoreCompressedPointer;
+import com.oracle.graal.lir.hsail.HSAILMove.StoreConstantOp;
+import com.oracle.graal.lir.hsail.HSAILMove.StoreOp;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
-import com.oracle.graal.nodes.java.*;
-import com.oracle.graal.graph.*;
+import com.oracle.graal.phases.util.*;
 
 /**
  * The HotSpot specific portion of the HSAIL LIR generator.
  */
 public class HSAILHotSpotLIRGenerator extends HSAILLIRGenerator {
 
-    private final HotSpotVMConfig config;
+    final HotSpotVMConfig config;
 
-    public HSAILHotSpotLIRGenerator(StructuredGraph graph, Providers providers, HotSpotVMConfig config, CallingConvention cc, LIRGenerationResult lirGenRes) {
-        super(graph, providers, cc, lirGenRes);
+    public HSAILHotSpotLIRGenerator(Providers providers, HotSpotVMConfig config, CallingConvention cc, LIRGenerationResult lirGenRes) {
+        super(providers, cc, lirGenRes);
         this.config = config;
     }
 
-    private int getLogMinObjectAlignment() {
+    int getLogMinObjectAlignment() {
         return config.logMinObjAlignment();
     }
 
-    private int getNarrowOopShift() {
+    int getNarrowOopShift() {
         return config.narrowOopShift;
     }
 
-    private long getNarrowOopBase() {
+    long getNarrowOopBase() {
         return config.narrowOopBase;
     }
 
-    private int getLogKlassAlignment() {
+    int getLogKlassAlignment() {
         return config.logKlassAlignment;
     }
 
-    private int getNarrowKlassShift() {
+    int getNarrowKlassShift() {
         return config.narrowKlassShift;
     }
 
-    private long getNarrowKlassBase() {
+    long getNarrowKlassBase() {
         return config.narrowKlassBase;
     }
 
@@ -88,41 +88,6 @@ public class HSAILHotSpotLIRGenerator extends HSAILLIRGenerator {
     @Override
     public boolean canStoreConstant(Constant c, boolean isCompressed) {
         return true;
-    }
-
-    /**
-     * Appends either a {@link CompareAndSwapOp} or a {@link CompareAndSwapCompressedOp} depending
-     * on whether the memory location of a given {@link LoweredCompareAndSwapNode} contains a
-     * compressed oop. For the {@link CompareAndSwapCompressedOp} case, allocates a number of
-     * scratch registers. The result {@link #operand(ValueNode) operand} for {@code node} complies
-     * with the API for {@link Unsafe#compareAndSwapInt(Object, long, int, int)}.
-     * 
-     * @param address the memory location targeted by the operation
-     */
-    @Override
-    public void visitCompareAndSwap(LoweredCompareAndSwapNode node, Value address) {
-        Kind kind = node.getNewValue().getKind();
-        assert kind == node.getExpectedValue().getKind();
-        Variable expected = load(operand(node.getExpectedValue()));
-        Variable newValue = load(operand(node.getNewValue()));
-        HSAILAddressValue addressValue = asAddressValue(address);
-        Variable casResult = newVariable(kind);
-        if (config.useCompressedOops && node.isCompressible()) {
-            // make 64-bit scratch variables for expected and new
-            Variable scratchExpected64 = newVariable(Kind.Long);
-            Variable scratchNewValue64 = newVariable(Kind.Long);
-            // make 32-bit scratch variables for expected and new and result
-            Variable scratchExpected32 = newVariable(Kind.Int);
-            Variable scratchNewValue32 = newVariable(Kind.Int);
-            Variable scratchCasResult32 = newVariable(Kind.Int);
-            append(new CompareAndSwapCompressedOp(casResult, addressValue, expected, newValue, scratchExpected64, scratchNewValue64, scratchExpected32, scratchNewValue32, scratchCasResult32,
-                            getNarrowOopBase(), getNarrowOopShift(), getLogMinObjectAlignment()));
-        } else {
-            append(new CompareAndSwapOp(casResult, addressValue, expected, newValue));
-        }
-        Variable nodeResult = newVariable(node.getKind());
-        append(new CondMoveOp(mapKindToCompareOp(kind), casResult, expected, nodeResult, Condition.EQ, Constant.INT_1, Constant.INT_0));
-        setResult(node, nodeResult);
     }
 
     /**

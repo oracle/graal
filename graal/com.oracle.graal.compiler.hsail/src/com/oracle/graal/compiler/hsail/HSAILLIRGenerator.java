@@ -32,7 +32,6 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
 import com.oracle.graal.compiler.gen.*;
-import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.JumpOp;
@@ -54,7 +53,6 @@ import com.oracle.graal.lir.hsail.HSAILMove.MoveToRegOp;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.calc.FloatConvertNode.FloatConvert;
-import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.phases.util.*;
 
 /**
@@ -76,8 +74,8 @@ public abstract class HSAILLIRGenerator extends LIRGenerator {
         }
     }
 
-    public HSAILLIRGenerator(StructuredGraph graph, Providers providers, CallingConvention cc, LIRGenerationResult lirGenRes) {
-        super(graph, providers, cc, lirGenRes);
+    public HSAILLIRGenerator(Providers providers, CallingConvention cc, LIRGenerationResult lirGenRes) {
+        super(providers, cc, lirGenRes);
         lirGenRes.getLIR().setSpillMoveFactory(new HSAILSpillMoveFactory());
     }
 
@@ -115,7 +113,7 @@ public abstract class HSAILLIRGenerator extends LIRGenerator {
         }
     }
 
-    protected HSAILAddressValue asAddressValue(Value address) {
+    public HSAILAddressValue asAddressValue(Value address) {
         if (address instanceof HSAILAddressValue) {
             return (HSAILAddressValue) address;
         } else {
@@ -173,7 +171,7 @@ public abstract class HSAILLIRGenerator extends LIRGenerator {
         append(new JumpOp(label));
     }
 
-    protected static HSAILCompare mapKindToCompareOp(Kind kind) {
+    public static HSAILCompare mapKindToCompareOp(Kind kind) {
         switch (kind) {
             case Int:
                 return ICMP;
@@ -409,12 +407,6 @@ public abstract class HSAILLIRGenerator extends LIRGenerator {
                 throw GraalInternalError.shouldNotReachHere();
         }
         return result;
-    }
-
-    @Override
-    protected boolean peephole(ValueNode valueNode) {
-        // No peephole optimizations for now.
-        return false;
     }
 
     @Override
@@ -697,16 +689,6 @@ public abstract class HSAILLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    protected void emitDirectCall(DirectCallTargetNode callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState callState) {
-        throw GraalInternalError.unimplemented();
-    }
-
-    @Override
-    protected void emitIndirectCall(IndirectCallTargetNode callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState callState) {
-        throw GraalInternalError.unimplemented();
-    }
-
-    @Override
     public void emitBitCount(Variable result, Value value) {
         if (value.getKind().getStackKind() == Kind.Int) {
             append(new HSAILBitManipulationOp(IPOPCNT, result, value));
@@ -819,7 +801,7 @@ public abstract class HSAILLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    protected void emitReturn(Value input) {
+    public void emitReturn(Value input) {
         append(new ReturnOp(input));
     }
 
@@ -879,30 +861,8 @@ public abstract class HSAILLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public void visitBreakpointNode(BreakpointNode node) {
-        throw GraalInternalError.unimplemented();
-    }
-
-    @Override
-    public void visitSafepointNode(SafepointNode i) {
-        Debug.log("visitSafePointNode unimplemented");
-    }
-
-    @Override
     public void emitUnwind(Value operand) {
         throw GraalInternalError.unimplemented();
     }
 
-    @Override
-    public void emitNullCheck(ValueNode v, DeoptimizingNode deopting) {
-        assert v.stamp() instanceof ObjectStamp;
-        Variable obj = newVariable(Kind.Object);
-        emitMove(obj, operand(v));
-        append(new HSAILMove.NullCheckOp(obj, state(deopting)));
-    }
-
-    @Override
-    public void visitInfopointNode(InfopointNode i) {
-        throw GraalInternalError.unimplemented();
-    }
 }

@@ -33,8 +33,7 @@ import com.oracle.graal.lir.hsail.HSAILArithmetic;
 import com.oracle.graal.nodes.calc.FloatingNode;
 import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.ValueNode;
-import com.oracle.graal.nodes.spi.NodeMappableArithmeticLIRGenerator;
-import com.oracle.graal.nodes.spi.ArithmeticLIRLowerable;
+import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.StampFactory;
 
 /**
@@ -86,24 +85,24 @@ public class HSAILMathIntrinsicsNode extends FloatingNode implements Canonicaliz
      * Generates the LIR instructions for the math operation represented by this node.
      */
     @Override
-    public void generate(NodeMappableArithmeticLIRGenerator gen) {
+    public void generate(NodeLIRGeneratorTool gen) {
         Value input = gen.operand(getParameter());
         Value result;
         switch (operation()) {
             case ABS:
-                result = gen.emitMathAbs(input);
+                result = gen.getLIRGeneratorTool().emitMathAbs(input);
                 break;
             case CEIL:
-                result = ((HSAILLIRGenerator) (gen)).emitMathCeil(input);
+                result = ((HSAILLIRGenerator) (gen.getLIRGeneratorTool())).emitMathCeil(input);
                 break;
             case FLOOR:
-                result = ((HSAILLIRGenerator) (gen)).emitMathFloor(input);
+                result = ((HSAILLIRGenerator) (gen.getLIRGeneratorTool())).emitMathFloor(input);
                 break;
             case RINT:
-                result = ((HSAILLIRGenerator) (gen)).emitMathRint(input);
+                result = ((HSAILLIRGenerator) (gen.getLIRGeneratorTool())).emitMathRint(input);
                 break;
             case SQRT:
-                result = gen.emitMathSqrt(input);
+                result = gen.getLIRGeneratorTool().emitMathSqrt(input);
                 break;
 
             default:
@@ -175,4 +174,5 @@ public class HSAILMathIntrinsicsNode extends FloatingNode implements Canonicaliz
      */
     @NodeIntrinsic
     public static native double compute(double value, @ConstantNodeParameter HSAILArithmetic op);
+
 }
