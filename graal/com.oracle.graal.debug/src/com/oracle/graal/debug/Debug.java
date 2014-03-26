@@ -456,6 +456,73 @@ public class Debug {
         return noLoggerInstance;
     }
 
+    /**
+     * A convenience function which combines enabling/disabling of logging and
+     * {@link #logAndIndent(String, Object...)}. Note: Use this method with care because it
+     * overrules the -G:Log option.
+     * 
+     * @param enabled Flag for enabling or disabling logging
+     * @param msg The format string of the log message
+     * @param args The arguments referenced by the log message string
+     * @return The new indentation level
+     * @see Indent#logAndIndent
+     */
+    public static Indent logAndIndent(boolean enabled, String msg, Object... args) {
+        if (ENABLED) {
+            Collection<DebugDumpHandler> dumpHandlers;
+            PrintStream output;
+            DebugConfig currentConfig = DebugScope.getConfig();
+            if (currentConfig != null) {
+                dumpHandlers = currentConfig.dumpHandlers();
+                output = currentConfig.output();
+            } else {
+                dumpHandlers = Collections.<DebugDumpHandler> emptyList();
+                output = System.out;
+            }
+            DebugConfigScope configScope = new DebugConfigScope(Debug.fixedConfig(enabled, Debug.isDumpEnabled(), false, false, dumpHandlers, output));
+            return new IndentWithEnable(Debug.logAndIndent(msg, args), configScope);
+        }
+        return noLoggerInstance;
+    }
+
+    private static class IndentWithEnable implements Indent {
+
+        Indent delegate;
+        DebugConfigScope configScope;
+
+        IndentWithEnable(Indent delegate, DebugConfigScope configScope) {
+            this.delegate = delegate;
+            this.configScope = configScope;
+        }
+
+        @Override
+        public void log(String msg, Object... args) {
+            delegate.log(msg, args);
+        }
+
+        @Override
+        public Indent indent() {
+            return delegate.indent();
+        }
+
+        @Override
+        public Indent logAndIndent(String msg, Object... args) {
+            return delegate.logAndIndent(msg, args);
+        }
+
+        @Override
+        public Indent outdent() {
+            configScope.close();
+            return delegate.outdent();
+        }
+
+        @Override
+        public void close() {
+            configScope.close();
+            delegate.close();
+        }
+    }
+
     public static Iterable<Object> context() {
         if (ENABLED) {
             return DebugScope.getInstance().getCurrentContext();
