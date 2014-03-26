@@ -60,10 +60,13 @@ public final class GraphOrder {
                         if (input instanceof FrameState && node instanceof StateSplit && input == ((StateSplit) node).stateAfter()) {
                             // nothing to do - after frame states are known, allowed cycles
                         } else {
-                            // TODO assertion does not hold for Substrate VM (in general for all
-// notDataflow inputs)
-                            // assert false : "unexpected cycle detected at input " + node + " -> "
-// + input;
+                            /*
+                             * TODO assertion does not hold for Substrate VM (in general for all
+                             * notDataflow inputs)
+                             * 
+                             * assert false : "unexpected cycle detected at input " + node + " -> "
+                             * + input;
+                             */
                         }
                     }
                 }
