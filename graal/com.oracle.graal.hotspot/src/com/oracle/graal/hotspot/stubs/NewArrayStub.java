@@ -83,7 +83,7 @@ public class NewArrayStub extends SnippetStub {
     /**
      * Re-attempts allocation after an initial TLAB allocation failed or was skipped (e.g., due to
      * -XX:-UseTLAB).
-     * 
+     *
      * @param hub the hub of the object to be allocated
      * @param length the length of the array
      * @param intArrayHub the hub for {@code int[].class}
@@ -110,7 +110,7 @@ public class NewArrayStub extends SnippetStub {
                 if (logging()) {
                     printf("newArray: allocated new array at %p\n", memory.rawValue());
                 }
-                return verifyObject(formatArray(hub, sizeInBytes, length, headerSize, memory, Word.unsigned(arrayPrototypeMarkWord()), true, false));
+                return verifyObject(formatArray(hub, sizeInBytes, length, headerSize, memory, Word.unsigned(arrayPrototypeMarkWord()), true, false, false));
             }
         }
         if (logging()) {
