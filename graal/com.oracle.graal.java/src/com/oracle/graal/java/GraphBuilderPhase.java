@@ -140,7 +140,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
          * the jump. When the block is seen the second time, a {@link MergeNode} is created to
          * correctly merge the now two different predecessor states.
          */
-        private static class BlockPlaceholderNode extends FixedWithNextNode {
+        protected static class BlockPlaceholderNode extends FixedWithNextNode {
 
             /*
              * Cannot be explicitly declared as a Node type since it is not an input; would cause
@@ -240,6 +240,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             }
             frameState.clearNonLiveLocals(blockMap.startBlock, liveness, true);
             ((StateSplit) lastInstr).setStateAfter(frameState.create(0));
+            finishPrepare(lastInstr);
 
             if (graphBuilderConfig.eagerInfopointMode()) {
                 InfopointNode ipn = currentGraph.add(new InfopointNode(InfopointReason.METHOD_START, frameState.create(0)));
@@ -287,6 +288,15 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             indent.outdent();
         }
 
+        /**
+         * A hook for derived classes to modify the graph start instruction or append new
+         * instructions to it.
+         * 
+         * @param startInstr The start instruction of the graph.
+         */
+        protected void finishPrepare(FixedWithNextNode startInstr) {
+        }
+
         private BciBlock unwindBlock(int bci) {
             if (unwindBlock == null) {
                 unwindBlock = new ExceptionDispatchBlock();
@@ -304,6 +314,10 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
         protected int bci() {
             return stream.currentBCI();
+        }
+
+        private void loadLocal(int index, Kind kind) {
+            frameState.push(kind, frameState.loadLocal(index));
         }
 
         private void storeLocal(Kind kind, int index) {
@@ -452,7 +466,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 dispatchState.setRethrowException(true);
             }
             FixedNode target = createTarget(dispatchBlock, dispatchState);
-            dispatchBegin.setNext(target);
+            finishInstruction(dispatchBegin, dispatchState).setNext(target);
             return dispatchBegin;
         }
 
@@ -1110,7 +1124,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
         private void genInvokeInterface(JavaMethod target) {
             if (target instanceof ResolvedJavaMethod) {
                 ValueNode[] args = frameState.popArguments(target.getSignature().getParameterSlots(true), target.getSignature().getParameterCount(true));
-                genInvokeIndirect(InvokeKind.Interface, (ResolvedJavaMethod) target, args);
+                appendInvoke(InvokeKind.Interface, (ResolvedJavaMethod) target, args);
             } else {
                 handleUnresolvedInvoke(target, InvokeKind.Interface);
             }
@@ -1145,7 +1159,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 }
                 ValueNode[] args = frameState.popArguments(target.getSignature().getParameterSlots(hasReceiver), target.getSignature().getParameterCount(hasReceiver));
                 if (hasReceiver) {
-                    genInvokeIndirect(InvokeKind.Virtual, (ResolvedJavaMethod) target, args);
+                    appendInvoke(InvokeKind.Virtual, (ResolvedJavaMethod) target, args);
                 } else {
                     appendInvoke(InvokeKind.Static, (ResolvedJavaMethod) target, args);
                 }
@@ -1160,45 +1174,10 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 assert target != null;
                 assert target.getSignature() != null;
                 ValueNode[] args = frameState.popArguments(target.getSignature().getParameterSlots(true), target.getSignature().getParameterCount(true));
-                invokeDirect((ResolvedJavaMethod) target, args);
+                appendInvoke(InvokeKind.Special, (ResolvedJavaMethod) target, args);
             } else {
                 handleUnresolvedInvoke(target, InvokeKind.Special);
             }
-        }
-
-        private void genInvokeIndirect(InvokeKind invokeKind, ResolvedJavaMethod target, ValueNode[] args) {
-            ValueNode receiver = args[0];
-            // attempt to devirtualize the call
-            ResolvedJavaType klass = target.getDeclaringClass();
-
-            // 0. check for trivial cases
-            if (target.canBeStaticallyBound()) {
-                // check for trivial cases (e.g. final methods, nonvirtual methods)
-                invokeDirect(target, args);
-                return;
-            }
-            // 1. check if the exact type of the receiver can be determined
-            ResolvedJavaType exact = klass.asExactType();
-            if (exact == null && receiver.stamp() instanceof ObjectStamp) {
-                ObjectStamp receiverStamp = (ObjectStamp) receiver.stamp();
-                if (receiverStamp.isExactType()) {
-                    exact = receiverStamp.type();
-                }
-            }
-            if (exact != null) {
-                // either the holder class is exact, or the receiver object has an exact type
-                ResolvedJavaMethod exactMethod = exact.resolveMethod(target);
-                if (exactMethod != null) {
-                    invokeDirect(exactMethod, args);
-                    return;
-                }
-            }
-            // devirtualization failed, produce an actual invokevirtual
-            appendInvoke(invokeKind, target, args);
-        }
-
-        private void invokeDirect(ResolvedJavaMethod target, ValueNode[] args) {
-            appendInvoke(InvokeKind.Special, target, args);
         }
 
         private void appendInvoke(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] args) {
@@ -1787,6 +1766,8 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             assert lastInstr.next() == null : "instructions already appended at block " + block;
             Debug.log("  frameState: %s", frameState);
 
+            lastInstr = finishInstruction(lastInstr, frameState);
+
             int endBCI = stream.endBCI();
 
             stream.setBCI(block.startBci);
@@ -1836,6 +1817,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                         }
                     }
                 }
+                lastInstr = finishInstruction(lastInstr, frameState);
                 if (bci < endBCI) {
                     if (bci > block.endBci) {
                         assert !block.getSuccessor(0).isExceptionEntry;
@@ -1846,6 +1828,17 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     }
                 }
             }
+        }
+
+        /**
+         * A hook for derived classes to modify the last instruction or add other instructions.
+         * 
+         * @param instr The last instruction (= fixed node) which was added.
+         * @param state The current frame state.
+         * @Returns Returns the (new) last instruction.
+         */
+        protected FixedWithNextNode finishInstruction(FixedWithNextNode instr, HIRFrameStateBuilder state) {
+            return instr;
         }
 
         private final int traceLevel = Options.TraceBytecodeParserLevel.getValue();
@@ -2096,7 +2089,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 if (!currentBlock.jsrScope.isEmpty()) {
                     sb.append(' ').append(currentBlock.jsrScope);
                 }
-                Debug.log(sb.toString());
+                Debug.log("%s", sb);
             }
         }
 

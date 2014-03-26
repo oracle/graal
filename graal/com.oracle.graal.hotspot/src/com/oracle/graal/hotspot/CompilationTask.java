@@ -31,6 +31,7 @@ import static com.oracle.graal.phases.GraalOptions.*;
 import static com.oracle.graal.phases.common.InliningUtil.*;
 
 import java.io.*;
+import java.lang.management.*;
 import java.lang.reflect.*;
 import java.util.*;
 import java.util.concurrent.*;
@@ -40,7 +41,7 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.CallingConvention.Type;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.baseline.*;
-import com.oracle.graal.compiler.CompilerThreadFactory.CompilerThread;
+import com.oracle.graal.compiler.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.debug.internal.*;
@@ -107,6 +108,12 @@ public class CompilationTask implements Runnable, Comparable {
     private long taskId;
 
     private boolean blocking;
+
+    /**
+     * A {@link com.sun.management.ThreadMXBean} to be able to query some information about the
+     * current compiler thread, e.g. total allocated bytes.
+     */
+    private final com.sun.management.ThreadMXBean threadMXBean = (com.sun.management.ThreadMXBean) ManagementFactory.getThreadMXBean();
 
     public CompilationTask(HotSpotBackend backend, HotSpotResolvedJavaMethod method, int entryBCI, boolean blocking) {
         this.backend = backend;
@@ -210,9 +217,11 @@ public class CompilationTask implements Runnable, Comparable {
          */
 
         HotSpotVMConfig config = backend.getRuntime().getConfig();
+        final long threadId = Thread.currentThread().getId();
         long previousInlinedBytecodes = InlinedBytecodes.getCurrentValue();
         long previousCompilationTime = CompilationTime.getCurrentValue();
         HotSpotInstalledCode installedCode = null;
+
         try (TimerCloseable a = CompilationTime.start()) {
             if (!tryToChangeStatus(CompilationStatus.Queued, CompilationStatus.Running)) {
                 return;
@@ -237,7 +246,9 @@ public class CompilationTask implements Runnable, Comparable {
 
             CompilationResult result = null;
             TTY.Filter filter = new TTY.Filter(PrintFilter.getValue(), method);
-            long start = System.currentTimeMillis();
+            final long start = System.currentTimeMillis();
+            final long allocatedBytesBefore = threadMXBean.getThreadAllocatedBytes(threadId);
+
             try (Scope s = Debug.scope("Compiling", new DebugDumpScope(String.valueOf(id), true))) {
 
                 if (UseBaselineCompiler.getValue() == true) {
@@ -281,10 +292,18 @@ public class CompilationTask implements Runnable, Comparable {
             } finally {
                 filter.remove();
                 final boolean printAfterCompilation = PrintAfterCompilation.getValue() && !TTY.isSuppressed();
-                if (printAfterCompilation) {
-                    TTY.println(getMethodDescription() + String.format(" | %4dms %5dB", System.currentTimeMillis() - start, (result != null ? result.getTargetCodeSize() : -1)));
-                } else if (printCompilation) {
-                    TTY.println(String.format("%-6d Graal %-70s %-45s %-50s | %4dms %5dB", id, "", "", "", System.currentTimeMillis() - start, (result != null ? result.getTargetCodeSize() : -1)));
+
+                if (printAfterCompilation || printCompilation) {
+                    final long stop = System.currentTimeMillis();
+                    final int targetCodeSize = result != null ? result.getTargetCodeSize() : -1;
+                    final long allocatedBytesAfter = threadMXBean.getThreadAllocatedBytes(threadId);
+                    final long allocatedBytes = (allocatedBytesAfter - allocatedBytesBefore) / 1024;
+
+                    if (printAfterCompilation) {
+                        TTY.println(getMethodDescription() + String.format(" | %4dms %5dB %5dkB", stop - start, targetCodeSize, allocatedBytes));
+                    } else if (printCompilation) {
+                        TTY.println(String.format("%-6d Graal %-70s %-45s %-50s | %4dms %5dB %5dkB", id, "", "", "", stop - start, targetCodeSize, allocatedBytes));
+                    }
                 }
             }
 
@@ -296,7 +315,6 @@ public class CompilationTask implements Runnable, Comparable {
                 }
             }
             stats.finish(method, installedCode);
-
         } catch (BailoutException bailout) {
             BAILOUTS.increment();
             if (ExitVMOnBailout.getValue()) {

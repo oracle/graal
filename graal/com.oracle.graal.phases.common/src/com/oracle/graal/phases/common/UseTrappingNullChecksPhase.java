@@ -76,7 +76,7 @@ public class UseTrappingNullChecksPhase extends BasePhase<LowTierContext> {
         AbstractBeginNode nonTrappingContinuation = ifNode.falseSuccessor();
         AbstractBeginNode trappingContinuation = ifNode.trueSuccessor();
         NullCheckNode trappingNullCheck = deopt.graph().add(new NullCheckNode(isNullNode.object()));
-        trappingNullCheck.setDeoptimizationState(deopt.getDeoptimizationState());
+        trappingNullCheck.setStateBefore(deopt.stateBefore());
         deopt.graph().replaceSplit(ifNode, trappingNullCheck, nonTrappingContinuation);
 
         GraphUtil.killCFG(trappingContinuation);

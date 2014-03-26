@@ -250,7 +250,7 @@ public class PTXWrapperBuilder extends GraphKit {
 
         ValueNode[] launchArgsArray = args.values().toArray(new ValueNode[args.size()]);
         ForeignCallNode result = append(new ForeignCallNode(providers.getForeignCalls(), CALL_KERNEL, launchArgsArray));
-        result.setDeoptimizationState(fs);
+        result.setStateAfter(fs);
 
         InvokeNode getObjectResult = null;
         ValueNode returnValue;

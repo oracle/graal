@@ -82,7 +82,7 @@ public class ForEachToGraal implements CompileAndDispatch {
         NodeIterable<MethodCallTargetNode> calls = graph.getNodes(MethodCallTargetNode.class);
         assert calls.count() == 1;
         ResolvedJavaMethod lambdaMethod = calls.first().targetMethod();
-        Debug.log("target ... " + lambdaMethod);
+        Debug.log("target ... %s", lambdaMethod);
 
         if (lambdaMethod == null) {
             Debug.log("Did not find call in accept()");
@@ -115,7 +115,7 @@ public class ForEachToGraal implements CompileAndDispatch {
                 getHSAILBackend().executeKernel(code, jobSize, args);
                 return true;
             } catch (InvalidInstalledCodeException iice) {
-                Debug.log("WARNING: Invalid installed code at exec time." + iice);
+                Debug.log("WARNING: Invalid installed code at exec time: %s", iice);
                 iice.printStackTrace();
                 return false;
             }

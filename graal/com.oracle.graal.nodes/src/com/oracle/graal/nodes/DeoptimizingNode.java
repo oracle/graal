@@ -35,14 +35,46 @@ public interface DeoptimizingNode extends NodeWithState {
     boolean canDeoptimize();
 
     /**
-     * Gets the deoptimization information associated with this node if any.
+     * Interface for nodes that need a {@link FrameState} for deoptimizing to a point before their
+     * execution.
      */
-    FrameState getDeoptimizationState();
+    public interface DeoptBefore extends DeoptimizingNode {
+
+        /**
+         * Sets the {@link FrameState} describing the program state before the execution of this
+         * node.
+         */
+        void setStateBefore(FrameState state);
+
+        FrameState stateBefore();
+    }
 
     /**
-     * Sets the deoptimization information associated with this node.
-     * 
-     * @param state the {@link FrameState} which represents the deoptimization information
+     * Interface for nodes that need a {@link FrameState} for deoptimizing to a point after their
+     * execution.
      */
-    void setDeoptimizationState(FrameState state);
+    public interface DeoptAfter extends DeoptimizingNode, StateSplit {
+    }
+
+    /**
+     * Interface for nodes that need a special {@link FrameState} for deoptimizing during their
+     * execution (e.g. {@link Invoke}).
+     */
+    public interface DeoptDuring extends DeoptimizingNode, StateSplit {
+
+        FrameState stateDuring();
+
+        /**
+         * Sets the {@link FrameState} describing the program state during the execution of this
+         * node.
+         */
+        void setStateDuring(FrameState state);
+
+        /**
+         * Compute the {@link FrameState} describing the program state during the execution of this
+         * node from an input {@link FrameState} describing the program state after finishing the
+         * execution of this node.
+         */
+        void computeStateDuring(FrameState stateAfter);
+    }
 }

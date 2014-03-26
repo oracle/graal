@@ -130,6 +130,11 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
     }
 
     @Override
+    public void emitData(AllocatableValue dst, byte[] data) {
+        throw GraalInternalError.unimplemented();
+    }
+
+    @Override
     public SPARCAddressValue emitAddress(Value base, long displacement, Value index, int scale) {
         AllocatableValue baseRegister;
         long finalDisp = displacement;

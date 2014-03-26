@@ -59,6 +59,7 @@ public class AMD64HotSpotNodeLIRGenerator extends AMD64NodeLIRGenerator implemen
 
     public AMD64HotSpotNodeLIRGenerator(StructuredGraph graph, LIRGenerationResult res, LIRGenerator gen) {
         super(graph, res, gen);
+        memoryPeephole = new AMD64HotSpotMemoryPeephole(this);
     }
 
     private AMD64HotSpotLIRGenerator getGen() {

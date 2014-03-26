@@ -31,11 +31,23 @@ import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.amd64.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
+import com.oracle.graal.nodes.spi.*;
 
 public abstract class AMD64NodeLIRGenerator extends NodeLIRGenerator {
 
     public AMD64NodeLIRGenerator(StructuredGraph graph, LIRGenerationResult res, LIRGenerator gen) {
         super(graph, res, gen);
+    }
+
+    protected MemoryArithmeticLIRLowerer memoryPeephole;
+
+    @Override
+    public MemoryArithmeticLIRLowerer getMemoryLowerer() {
+        if (memoryPeephole == null) {
+            // Use the generic one
+            memoryPeephole = new AMD64MemoryPeephole(this);
+        }
+        return memoryPeephole;
     }
 
     @Override
@@ -92,5 +104,10 @@ public abstract class AMD64NodeLIRGenerator extends NodeLIRGenerator {
     @Override
     public void visitInfopointNode(InfopointNode i) {
         append(new InfopointOp(stateFor(i.getState()), i.reason));
+    }
+
+    @Override
+    public AMD64LIRGenerator getLIRGenerator() {
+        return (AMD64LIRGenerator) gen;
     }
 }

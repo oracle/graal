@@ -40,6 +40,7 @@ import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.debug.internal.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.java.*;
+import com.oracle.graal.java.GraphBuilderPhase.Instance;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
@@ -233,7 +234,9 @@ public class ReplacementsImpl implements Replacements {
         } else {
             original = metaAccess.lookupJavaConstructor((Constructor) originalMember);
         }
-        Debug.log("substitution: " + MetaUtil.format("%H.%n(%p) %r", original) + " --> " + MetaUtil.format("%H.%n(%p) %r", substitute));
+        if (Debug.isLogEnabled()) {
+            Debug.log("substitution: %s --> %s", MetaUtil.format("%H.%n(%p) %r", original), MetaUtil.format("%H.%n(%p) %r", substitute));
+        }
 
         registeredMethodSubstitutions.put(original, substitute);
         return original;
@@ -340,7 +343,7 @@ public class ReplacementsImpl implements Replacements {
 
         public StructuredGraph makeGraph(final SnippetInliningPolicy policy) {
             try (Scope s = Debug.scope("BuildSnippetGraph", method)) {
-                StructuredGraph graph = parseGraph(method, policy);
+                StructuredGraph graph = parseGraph(method, policy, 0);
 
                 // Cannot have a finalized version of a graph in the cache
                 graph = graph.copy();
@@ -380,12 +383,14 @@ public class ReplacementsImpl implements Replacements {
             new DeadCodeEliminationPhase().apply(graph);
         }
 
-        private StructuredGraph parseGraph(final ResolvedJavaMethod methodToParse, final SnippetInliningPolicy policy) {
+        private static final int MAX_GRAPH_INLINING_DEPTH = 100; // more than enough
+
+        private StructuredGraph parseGraph(final ResolvedJavaMethod methodToParse, final SnippetInliningPolicy policy, int inliningDepth) {
             StructuredGraph graph = graphCache.get(methodToParse);
             if (graph == null) {
                 StructuredGraph newGraph = null;
                 try (Scope s = Debug.scope("ParseGraph", methodToParse)) {
-                    newGraph = buildGraph(methodToParse, policy == null ? inliningPolicy(methodToParse) : policy);
+                    newGraph = buildGraph(methodToParse, policy == null ? inliningPolicy(methodToParse) : policy, inliningDepth);
                 } catch (Throwable e) {
                     throw Debug.handle(e);
                 }
@@ -404,7 +409,7 @@ public class ReplacementsImpl implements Replacements {
             final StructuredGraph graph = new StructuredGraph(methodToParse);
             try (Scope s = Debug.scope("buildInitialGraph", graph)) {
                 MetaAccessProvider metaAccess = providers.getMetaAccess();
-                new GraphBuilderPhase.Instance(metaAccess, GraphBuilderConfiguration.getSnippetDefault(), OptimisticOptimizations.NONE).apply(graph);
+                createGraphBuilder(metaAccess, GraphBuilderConfiguration.getSnippetDefault(), OptimisticOptimizations.NONE).apply(graph);
                 new WordTypeVerificationPhase(metaAccess, target.wordKind).apply(graph);
                 new WordTypeRewriterPhase(metaAccess, target.wordKind).apply(graph);
 
@@ -415,6 +420,10 @@ public class ReplacementsImpl implements Replacements {
                 throw Debug.handle(e);
             }
             return graph;
+        }
+
+        protected Instance createGraphBuilder(MetaAccessProvider metaAccess, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts) {
+            return new GraphBuilderPhase.Instance(metaAccess, graphBuilderConfig, optimisticOpts);
         }
 
         protected Object beforeInline(@SuppressWarnings("unused") MethodCallTargetNode callTarget, @SuppressWarnings("unused") StructuredGraph callee) {
@@ -445,7 +454,8 @@ public class ReplacementsImpl implements Replacements {
             }
         }
 
-        private StructuredGraph buildGraph(final ResolvedJavaMethod methodToParse, final SnippetInliningPolicy policy) {
+        private StructuredGraph buildGraph(final ResolvedJavaMethod methodToParse, final SnippetInliningPolicy policy, int inliningDepth) {
+            assert inliningDepth < MAX_GRAPH_INLINING_DEPTH : "inlining limit exceeded";
             assert isInlinableSnippet(methodToParse) : methodToParse;
             final StructuredGraph graph = buildInitialGraph(methodToParse);
             try (Scope s = Debug.scope("buildGraph", graph)) {
@@ -477,7 +487,7 @@ public class ReplacementsImpl implements Replacements {
                                                         " while preparing replacement " + format("%H.%n(%p)", method) + ". Placing \"//JaCoCo Exclude\" anywhere in " +
                                                         methodToParse.getDeclaringClass().getSourceFileName() + " should fix this.");
                                     }
-                                    targetGraph = parseGraph(callee, policy);
+                                    targetGraph = parseGraph(callee, policy, inliningDepth + 1);
                                 }
                                 Object beforeInlineData = beforeInline(callTarget, targetGraph);
                                 InliningUtil.inline(callTarget.invoke(), targetGraph, true);

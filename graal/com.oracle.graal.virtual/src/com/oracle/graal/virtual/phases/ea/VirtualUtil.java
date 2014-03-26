@@ -109,8 +109,8 @@ public final class VirtualUtil {
     }
 
     public static void trace(String format, Object... obj) {
-        if (TraceEscapeAnalysis.getValue()) {
-            Debug.log(format, obj);
+        if (TraceEscapeAnalysis.getValue() && Debug.isLogEnabled()) {
+            Debug.logv(format, obj);
         }
     }
 

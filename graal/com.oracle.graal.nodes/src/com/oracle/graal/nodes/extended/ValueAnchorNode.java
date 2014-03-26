@@ -22,16 +22,17 @@
  */
 package com.oracle.graal.nodes.extended;
 
-import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
+import com.oracle.graal.nodes.util.*;
 
 /**
  * The ValueAnchor instruction keeps non-CFG (floating) nodes above a certain point in the graph.
  */
-public final class ValueAnchorNode extends FixedWithNextNode implements Canonicalizable, LIRLowerable, Virtualizable, GuardingNode {
+public final class ValueAnchorNode extends FixedWithNextNode implements LIRLowerable, Simplifiable, Virtualizable, GuardingNode {
 
     @Input private ValueNode anchored;
 
@@ -50,19 +51,40 @@ public final class ValueAnchorNode extends FixedWithNextNode implements Canonica
     }
 
     @Override
-    public Node canonical(CanonicalizerTool tool) {
-        if (anchored != null && !anchored.isConstant() && !(anchored instanceof FixedNode)) {
-            // Found entry that needs this anchor.
-            return this;
+    public void simplify(SimplifierTool tool) {
+        while (next() instanceof ValueAnchorNode) {
+            ValueAnchorNode nextAnchor = (ValueAnchorNode) next();
+            if (nextAnchor.anchored == anchored || nextAnchor.anchored == null) {
+                // two anchors for the same anchored -> coalesce
+                // nothing anchored on the next anchor -> coalesce
+                nextAnchor.replaceAtUsages(this);
+                GraphUtil.removeFixedWithUnusedInputs(nextAnchor);
+            } else {
+                break;
+            }
+        }
+        if (usages().isEmpty() && next() instanceof FixedAccessNode) {
+            FixedAccessNode next = (FixedAccessNode) next();
+            if (next.getGuard() == anchored) {
+                GraphUtil.removeFixedWithUnusedInputs(this);
+                return;
+            } else if (next.getGuard() == null && anchored instanceof GuardNode && ((GuardNode) anchored).condition() instanceof IsNullNode) {
+                // coalesce null check guards into subsequent read/write
+                next.setGuard((GuardingNode) anchored);
+                tool.addToWorkList(next());
+                return;
+            }
         }
 
-        if (usages().isNotEmpty()) {
-            // A not uses this anchor => anchor is necessary.
-            return this;
+        if (anchored != null && (anchored.isConstant() || anchored instanceof FixedNode)) {
+            // anchoring fixed nodes and constants is useless
+            removeAnchoredNode();
         }
 
-        // Anchor is not necessary any more => remove.
-        return null;
+        if (anchored == null && usages().isEmpty()) {
+            // anchor is not necessary any more => remove.
+            GraphUtil.removeFixedWithUnusedInputs(this);
+        }
     }
 
     @Override

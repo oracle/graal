@@ -133,17 +133,6 @@ public final class InvokeNode extends AbstractMemoryCheckpoint implements Invoke
     }
 
     @Override
-    public FrameState stateDuring() {
-        FrameState stateAfter = stateAfter();
-        if (stateAfter == null) {
-            return null;
-        }
-        FrameState stateDuring = stateAfter.duplicateModified(bci(), stateAfter.rethrowException(), getKind());
-        stateDuring.setDuringCall(true);
-        return stateDuring;
-    }
-
-    @Override
     public void intrinsify(Node node) {
         assert !(node instanceof ValueNode) || (((ValueNode) node).getKind() == Kind.Void) == (getKind() == Kind.Void);
         CallTargetNode call = callTarget;
@@ -174,18 +163,21 @@ public final class InvokeNode extends AbstractMemoryCheckpoint implements Invoke
     }
 
     @Override
-    public FrameState getDeoptimizationState() {
-        if (deoptState == null) {
-            FrameState stateDuring = stateDuring();
-            updateUsages(deoptState, stateDuring);
-            deoptState = stateDuring;
-        }
+    public FrameState stateDuring() {
         return deoptState;
     }
 
     @Override
-    public void setDeoptimizationState(FrameState f) {
-        throw new IllegalStateException("Cannot set deoptimization state " + f + " for invoke " + this);
+    public void setStateDuring(FrameState stateDuring) {
+        updateUsages(deoptState, stateDuring);
+        deoptState = stateDuring;
+    }
+
+    @Override
+    public void computeStateDuring(FrameState stateAfter) {
+        FrameState stateDuring = stateAfter.duplicateModified(bci(), stateAfter.rethrowException(), getKind());
+        stateDuring.setDuringCall(true);
+        setStateDuring(stateDuring);
     }
 
     @Override
@@ -197,15 +189,5 @@ public final class InvokeNode extends AbstractMemoryCheckpoint implements Invoke
     public void setGuard(GuardingNode guard) {
         updateUsages(this.guard == null ? null : this.guard.asNode(), guard == null ? null : guard.asNode());
         this.guard = guard;
-    }
-
-    @Override
-    public FrameState getState() {
-        if (deoptState != null) {
-            assert stateAfter() == null;
-            return deoptState;
-        } else {
-            return super.getState();
-        }
     }
 }

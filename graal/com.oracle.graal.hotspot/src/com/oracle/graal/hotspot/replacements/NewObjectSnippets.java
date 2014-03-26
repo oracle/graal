@@ -27,7 +27,6 @@ import static com.oracle.graal.api.meta.MetaUtil.*;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 import static com.oracle.graal.hotspot.replacements.NewObjectSnippets.Options.*;
 import static com.oracle.graal.nodes.PiArrayNode.*;
-import static com.oracle.graal.nodes.PiNode.*;
 import static com.oracle.graal.nodes.extended.BranchProbabilityNode.*;
 import static com.oracle.graal.phases.GraalOptions.*;
 import static com.oracle.graal.replacements.SnippetTemplate.*;
@@ -251,7 +250,7 @@ public class NewObjectSnippets implements Snippets {
      * Computes the size of the memory chunk allocated for an array. This size accounts for the
      * array header size, boy size and any padding after the last element to satisfy object
      * alignment requirements.
-     * 
+     *
      * @param length the number of elements in the array
      * @param alignment the object alignment requirement
      * @param headerSize the size of the array header
@@ -285,7 +284,7 @@ public class NewObjectSnippets implements Snippets {
     /**
      * Zero uninitialized memory in a newly allocated object, unrolling as necessary and ensuring
      * that stores are aligned.
-     * 
+     *
      * @param size number of bytes to zero
      * @param memory beginning of object which is being zeroed
      * @param constantSize is @ size} known to be constant in the snippet

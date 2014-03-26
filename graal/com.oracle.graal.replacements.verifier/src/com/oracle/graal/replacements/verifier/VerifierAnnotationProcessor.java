@@ -30,10 +30,14 @@ import javax.lang.model.*;
 import javax.lang.model.element.*;
 import javax.lang.model.type.*;
 
-@SupportedSourceVersion(SourceVersion.RELEASE_7)
 public class VerifierAnnotationProcessor extends AbstractProcessor {
 
     private List<AbstractVerifier> verifiers;
+
+    @Override
+    public SourceVersion getSupportedSourceVersion() {
+        return SourceVersion.latest();
+    }
 
     @Override
     public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {

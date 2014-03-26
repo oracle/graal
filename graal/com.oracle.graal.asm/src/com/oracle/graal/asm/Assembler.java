@@ -183,4 +183,9 @@ public abstract class Assembler {
      * Returns a target specific placeholder address that can be used for code patching.
      */
     public abstract AbstractAddress getPlaceholder();
+
+    /**
+     * Emits a NOP instruction to advance the current PC.
+     */
+    public abstract void ensureUniquePC();
 }

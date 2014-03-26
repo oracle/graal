@@ -31,6 +31,8 @@ import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.hsail.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
+import com.oracle.graal.hotspot.HotSpotVMConfig.CompressEncoding;
+import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.hsail.*;
 import com.oracle.graal.lir.hsail.HSAILControlFlow.ForeignCall1ArgOp;
@@ -55,6 +57,11 @@ public class HSAILHotSpotLIRGenerator extends HSAILLIRGenerator {
     public HSAILHotSpotLIRGenerator(Providers providers, HotSpotVMConfig config, CallingConvention cc, LIRGenerationResult lirGenRes) {
         super(providers, cc, lirGenRes);
         this.config = config;
+    }
+
+    @Override
+    public HotSpotProviders getProviders() {
+        return (HotSpotProviders) super.getProviders();
     }
 
     int getLogMinObjectAlignment() {
@@ -131,6 +138,9 @@ public class HSAILHotSpotLIRGenerator extends HSAILLIRGenerator {
                 if (isCompressed) {
                     if ((c.getKind() == Kind.Object) && c.isNull()) {
                         append(new StoreConstantOp(Kind.Int, storeAddress, Constant.forInt(0), state));
+                    } else if (c.getKind() == Kind.Long) {
+                        Constant value = compress(c, config.getKlassEncoding());
+                        append(new StoreConstantOp(Kind.Int, storeAddress, value, state));
                     } else {
                         throw GraalInternalError.shouldNotReachHere("can't handle: " + access);
                     }
@@ -194,4 +204,14 @@ public class HSAILHotSpotLIRGenerator extends HSAILLIRGenerator {
         // this version of emitForeignCall not used for now
     }
 
+    /**
+     * @return a compressed version of the incoming constant lifted from AMD64HotSpotLIRGenerator
+     */
+    protected static Constant compress(Constant c, CompressEncoding encoding) {
+        if (c.getKind() == Kind.Long) {
+            return Constant.forIntegerKind(Kind.Int, (int) (((c.asLong() - encoding.base) >> encoding.shift) & 0xffffffffL), c.getPrimitiveAnnotation());
+        } else {
+            throw GraalInternalError.shouldNotReachHere();
+        }
+    }
 }

@@ -67,4 +67,6 @@ public interface NodeLIRGeneratorTool extends NodeMappableLIRGenerator {
     void emitOverflowCheckBranch(AbstractBeginNode overflowSuccessor, AbstractBeginNode next, double probability);
 
     Value[] visitInvokeArguments(CallingConvention cc, Collection<ValueNode> arguments);
+
+    MemoryArithmeticLIRLowerer getMemoryLowerer();
 }

@@ -771,7 +771,7 @@ public class BaselineCompiler implements BytecodeParser<BciBlock> {
             if (!currentBlock.jsrScope.isEmpty()) {
                 sb.append(' ').append(currentBlock.jsrScope);
             }
-            Debug.log(sb.toString());
+            Debug.log("%s", sb);
         }
     }
 

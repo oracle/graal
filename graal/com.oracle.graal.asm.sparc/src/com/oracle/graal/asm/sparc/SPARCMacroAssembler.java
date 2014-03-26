@@ -74,6 +74,7 @@ public class SPARCMacroAssembler extends SPARCAssembler {
         return Placeholder;
     }
 
+    @Override
     public final void ensureUniquePC() {
         new Nop().emit(this);
     }

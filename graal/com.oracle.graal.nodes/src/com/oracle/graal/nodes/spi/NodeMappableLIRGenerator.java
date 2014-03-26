@@ -7,6 +7,8 @@ public interface NodeMappableLIRGenerator {
 
     Value operand(ValueNode object);
 
+    boolean hasOperand(ValueNode object);
+
     Value setResult(ValueNode x, Value operand);
 
 }

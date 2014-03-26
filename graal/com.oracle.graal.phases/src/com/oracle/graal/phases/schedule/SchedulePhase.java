@@ -59,7 +59,7 @@ public final class SchedulePhase extends Phase {
         /**
          * This constructor creates a {@link SchedulingError} with a message assembled via
          * {@link String#format(String, Object...)}.
-         * 
+         *
          * @param format a {@linkplain Formatter format} string
          * @param args parameters to {@link String#format(String, Object...)}
          */
@@ -164,9 +164,9 @@ public final class SchedulePhase extends Phase {
 
     /**
      * gather all kill locations by iterating trough the nodes assigned to a block.
-     * 
+     *
      * assumptions: {@link MemoryCheckpoint MemoryCheckPoints} are {@link FixedNode FixedNodes}.
-     * 
+     *
      * @param block block to analyze
      * @param excludeNode if null, compute normal set of kill locations. if != null, don't add kills
      *            until we reach excludeNode.
@@ -457,9 +457,9 @@ public final class SchedulePhase extends Phase {
      * this method tries to find the "optimal" schedule for a read, by pushing it down towards its
      * latest schedule starting by the earliest schedule. By doing this, it takes care of memory
      * dependencies using kill sets.
-     * 
+     *
      * In terms of domination relation, it looks like this:
-     * 
+     *
      * <pre>
      *    U      upperbound block, defined by last access location of the floating read
      *    &#9650;
@@ -469,9 +469,9 @@ public final class SchedulePhase extends Phase {
      *    &#9650;
      *    L      latest block
      * </pre>
-     * 
+     *
      * i.e. <code>upperbound `dom` earliest `dom` optimal `dom` latest</code>.
-     * 
+     *
      */
     private Block optimalBlock(FloatingReadNode n, SchedulingStrategy strategy) {
         assert memsched == MemoryScheduling.OPTIMAL;
@@ -540,7 +540,7 @@ public final class SchedulePhase extends Phase {
 
     /**
      * compute path in dominator tree from earliest schedule to latest schedule.
-     * 
+     *
      * @return the order of the stack is such as the first element is the earliest schedule.
      */
     private static Deque<Block> computePathInDominatorTree(Block earliestBlock, Block latestBlock) {
@@ -582,7 +582,7 @@ public final class SchedulePhase extends Phase {
     /**
      * Calculates the last block that the given node could be scheduled in, i.e., the common
      * dominator of all usages. To do so all usages are also assigned to blocks.
-     * 
+     *
      * @param strategy
      */
     private Block latestBlock(ScheduledNode node, SchedulingStrategy strategy) {
@@ -680,7 +680,7 @@ public final class SchedulePhase extends Phase {
      * Schedules a node out of loop based on its earliest schedule. Note that this movement is only
      * valid if it's done for <b>every</b> other node in the schedule, otherwise this movement is
      * not valid.
-     * 
+     *
      * @param n Node to schedule
      * @param latestBlock latest possible schedule for {@code n}
      * @param earliest earliest possible schedule for {@code n}
@@ -705,7 +705,7 @@ public final class SchedulePhase extends Phase {
     /**
      * Passes all blocks that a specific usage of a node is in to a given closure. This is more
      * complex than just taking the usage's block because of of PhiNodes and FrameStates.
-     * 
+     *
      * @param node the node that needs to be scheduled
      * @param usage the usage whose blocks need to be considered
      * @param closure the closure that will be called for each block
@@ -966,14 +966,18 @@ public final class SchedulePhase extends Phase {
             return;
         }
 
-        FrameState state = null;
+        FrameState stateAfter = null;
+        if (i instanceof StateSplit) {
+            stateAfter = ((StateSplit) i).stateAfter();
+        }
+
         for (Node input : i.inputs()) {
             if (input instanceof FrameState) {
-                assert state == null;
-                state = (FrameState) input;
+                if (input != stateAfter) {
+                    addUnscheduledToLatestSorting(b, (FrameState) input, sortedInstructions, visited, reads, beforeLastLocation);
+                }
             } else {
                 addToLatestSorting(b, (ScheduledNode) input, sortedInstructions, visited, reads, beforeLastLocation);
-
             }
         }
 
@@ -991,7 +995,7 @@ public final class SchedulePhase extends Phase {
 
         addToLatestSorting(b, (ScheduledNode) i.predecessor(), sortedInstructions, visited, reads, beforeLastLocation);
         visited.mark(i);
-        addUnscheduledToLatestSorting(b, state, sortedInstructions, visited, reads, beforeLastLocation);
+        addUnscheduledToLatestSorting(b, stateAfter, sortedInstructions, visited, reads, beforeLastLocation);
 
         // Now predecessors and inputs are scheduled => we can add this node.
         if (!sortedInstructions.contains(i)) {
@@ -1038,7 +1042,7 @@ public final class SchedulePhase extends Phase {
             }
 
             if (instruction instanceof AbstractBeginNode) {
-                ArrayList<ProxyNode> proxies = (instruction instanceof LoopExitNode) ? new ArrayList<ProxyNode>() : null;
+                ArrayList<ProxyNode> proxies = (instruction instanceof LoopExitNode) ? new ArrayList<>() : null;
                 for (ScheduledNode inBlock : blockToNodesMap.get(b)) {
                     if (!visited.isMarked(inBlock)) {
                         if (inBlock instanceof ProxyNode) {

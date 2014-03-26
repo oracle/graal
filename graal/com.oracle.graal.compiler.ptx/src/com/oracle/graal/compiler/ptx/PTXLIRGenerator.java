@@ -167,6 +167,11 @@ public class PTXLIRGenerator extends LIRGenerator {
     }
 
     @Override
+    public void emitData(AllocatableValue dst, byte[] data) {
+        throw GraalInternalError.unimplemented();
+    }
+
+    @Override
     public PTXAddressValue emitAddress(Value base, long displacement, Value index, int scale) {
         AllocatableValue baseRegister;
         long finalDisp = displacement;

@@ -78,7 +78,7 @@ abstract class OptimizedCallNode extends DefaultCallNode {
             throw new IllegalStateException("CallNode must be adopted before it is split.");
         }
 
-        return replace(new InlinedOptimizedCallNode(getCallTarget(), getSplitCallTarget(), getCurrentCallTarget().getRootNode(), callCount));
+        return replace(new InlinedOptimizedCallNode(getCallTarget(), getSplitCallTarget(), callCount));
     }
 
     public static OptimizedCallNode create(OptimizedCallTarget target) {
@@ -211,12 +211,10 @@ abstract class OptimizedCallNode extends DefaultCallNode {
 
     private static final class InlinedOptimizedCallNode extends OptimizedCallNode {
 
-        private final RootNode inlinedRoot;
         private final OptimizedCallTarget splittedTarget;
 
-        public InlinedOptimizedCallNode(OptimizedCallTarget target, OptimizedCallTarget splittedTarget, RootNode inlinedRoot, int callCount) {
+        public InlinedOptimizedCallNode(OptimizedCallTarget target, OptimizedCallTarget splittedTarget, int callCount) {
             super(target);
-            this.inlinedRoot = inlinedRoot;
             this.splittedTarget = splittedTarget;
             this.callCount = callCount;
         }
@@ -226,7 +224,7 @@ abstract class OptimizedCallNode extends DefaultCallNode {
             if (CompilerDirectives.inInterpreter()) {
                 callCount++;
             }
-            return inlinedRoot.execute(Truffle.getRuntime().createVirtualFrame(caller, arguments, inlinedRoot.getFrameDescriptor()));
+            return getCurrentCallTarget().callInlined(caller, arguments);
         }
 
         @Override

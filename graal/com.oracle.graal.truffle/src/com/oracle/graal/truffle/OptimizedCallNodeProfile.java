@@ -45,6 +45,7 @@ public class OptimizedCallNodeProfile implements TruffleInliningProfile {
     private final int targetShallowNodeCount;
     private final double averageFrequency;
     private final double score;
+    private final boolean leaf;
     private String reason;
 
     public OptimizedCallNodeProfile(OptimizedCallTarget target, OptimizedCallNode callNode) {
@@ -56,6 +57,22 @@ public class OptimizedCallNodeProfile implements TruffleInliningProfile {
         this.compilationRoots = findCompilationRoots(callNode);
         this.averageFrequency = calculateFrequency();
         this.score = calculateScore();
+        this.leaf = calculateLeaf();
+
+    }
+
+    private boolean calculateLeaf() {
+        return NodeUtil.countNodes(callNode.getCurrentRootNode(), new NodeCountFilter() {
+            public boolean isCounted(Node node) {
+                if (node instanceof CallNode) {
+                    CallNode childCall = (CallNode) node;
+                    if (!childCall.isInlined()) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+        }, true) <= 0;
     }
 
     private double calculateFrequency() {
@@ -71,7 +88,7 @@ public class OptimizedCallNodeProfile implements TruffleInliningProfile {
     }
 
     public double calculateScore() {
-        return averageFrequency / targetDeepNodeCount;
+        return averageFrequency / Math.max(1, targetDeepNodeCount);
     }
 
     public boolean isInliningAllowed() {
@@ -188,17 +205,13 @@ public class OptimizedCallNodeProfile implements TruffleInliningProfile {
         for (OptimizedCallNode c : callStack) {
             int childCallCount = c.getCallCount();
             frequency *= childCallCount / (double) parentCallCount;
-            if (c.isInlined() || c.isSplit()) {
-                parentCallCount = childCallCount;
-            } else {
-                parentCallCount = c.getCurrentCallTarget().getCompilationProfile().getCallCount();
-            }
+            parentCallCount = c.getCurrentCallTarget().getCompilationProfile().getCallCount();
         }
         return frequency;
     }
 
     double calculateSimpleFrequency() {
-        return callNode.getCallCount() / (double) callTarget.getCompilationProfile().getCallCount();
+        return callNode.getCallCount() / (double) ((OptimizedCallTarget) callNode.getRootNode().getCallTarget()).getCompilationProfile().getCallCount();
     }
 
     static List<OptimizedCallTarget> findCompilationRoots(Node call) {
@@ -218,7 +231,11 @@ public class OptimizedCallNodeProfile implements TruffleInliningProfile {
 
     public int compareTo(TruffleInliningProfile o) {
         if (o instanceof OptimizedCallNodeProfile) {
-            return Double.compare(((OptimizedCallNodeProfile) o).getScore(), getScore());
+            int cmp = Boolean.compare(((OptimizedCallNodeProfile) o).leaf, leaf);
+            if (cmp == 0) {
+                return Double.compare(((OptimizedCallNodeProfile) o).getScore(), getScore());
+            }
+            return cmp;
         }
         return 0;
     }
@@ -231,7 +248,7 @@ public class OptimizedCallNodeProfile implements TruffleInliningProfile {
         properties.put("inlinedTotalCount", calculateInlinedTotalNodeCount(getCallNode()));
         properties.put("score", score);
         properties.put("frequency", averageFrequency);
-        properties.put("callCount", callNode.getCallCount());
+        properties.put("leaf", leaf);
         properties.put("reason", reason);
         return properties;
     }

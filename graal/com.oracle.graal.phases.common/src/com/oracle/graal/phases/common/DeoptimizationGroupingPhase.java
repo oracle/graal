@@ -82,7 +82,7 @@ public class DeoptimizationGroupingPhase extends BasePhase<MidTierContext> {
                 }
             }
             if (obsoletes != null) {
-                ((DynamicDeoptimizeNode) ((MergeNode) target).next()).setDeoptimizationState(fs);
+                ((DynamicDeoptimizeNode) ((MergeNode) target).next()).setStateBefore(fs);
                 for (AbstractDeoptimizeNode obsolete : obsoletes) {
                     obsolete.safeDelete();
                 }

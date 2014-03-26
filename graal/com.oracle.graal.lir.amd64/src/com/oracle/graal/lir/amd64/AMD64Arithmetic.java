@@ -49,6 +49,7 @@ public enum AMD64Arithmetic {
     I2F, I2D,
     L2F, L2D,
     MOV_I2F, MOV_L2D, MOV_F2I, MOV_D2L,
+    MOV_B2UI, MOV_B2UL, // Zero extending byte loads
 
     /*
      * Converts a float/double to an int/long. The result of the conversion does not comply with Java semantics
@@ -102,6 +103,32 @@ public enum AMD64Arithmetic {
     }
 
     /**
+     * Unary operation with separate memory source and destination operand.
+     */
+    public static class Unary2MemoryOp extends AMD64LIRInstruction {
+
+        @Opcode private final AMD64Arithmetic opcode;
+        @Def({REG}) protected AllocatableValue result;
+        @Use({COMPOSITE}) protected AMD64AddressValue x;
+        @State protected LIRFrameState state;
+
+        public Unary2MemoryOp(AMD64Arithmetic opcode, AllocatableValue result, AMD64AddressValue x, LIRFrameState state) {
+            this.opcode = opcode;
+            this.result = result;
+            this.x = x;
+            this.state = state;
+        }
+
+        @Override
+        public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
+            if (state != null) {
+                crb.recordImplicitException(masm.position(), state);
+            }
+            emit(crb, masm, opcode, result, x, null);
+        }
+    }
+
+    /**
      * Binary operation with two operands. The first source operand is combined with the
      * destination. The second source operand may be a stack slot.
      */
@@ -130,6 +157,45 @@ public enum AMD64Arithmetic {
             super.verify();
             assert differentRegisters(result, y) || sameRegister(x, y);
             verifyKind(opcode, result, x, y);
+        }
+    }
+
+    /**
+     * Binary operation with two operands. The first source operand is combined with the
+     * destination. The second source operand may be a stack slot.
+     */
+    public static class BinaryMemory extends AMD64LIRInstruction {
+
+        @Opcode private final AMD64Arithmetic opcode;
+        @Def({REG, HINT}) protected AllocatableValue result;
+        @Use({REG}) protected AllocatableValue x;
+        protected final Kind kind;
+        @Alive({COMPOSITE}) protected AMD64AddressValue location;
+        @State protected LIRFrameState state;
+
+        public BinaryMemory(AMD64Arithmetic opcode, Kind kind, AllocatableValue result, AllocatableValue x, AMD64AddressValue location, LIRFrameState state) {
+            this.opcode = opcode;
+            this.result = result;
+            this.x = x;
+            this.location = location;
+            this.kind = kind;
+            this.state = state;
+        }
+
+        @Override
+        public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
+            AMD64Move.move(crb, masm, result, x);
+            if (state != null) {
+                crb.recordImplicitException(masm.position(), state);
+            }
+            emit(crb, masm, opcode, result, location, null);
+        }
+
+        @Override
+        public void verify() {
+            super.verify();
+            assert differentRegisters(result, location) || sameRegister(x, location);
+            // verifyKind(opcode, result, x, location);
         }
     }
 
@@ -688,7 +754,8 @@ public enum AMD64Arithmetic {
                 default:
                     throw GraalInternalError.shouldNotReachHere();
             }
-        } else {
+        } else if (isStackSlot(src)) {
+
             switch (opcode) {
                 case IADD:
                     masm.addl(asIntReg(dst), (AMD64Address) crb.asIntAddr(src));
@@ -814,6 +881,143 @@ public enum AMD64Arithmetic {
                     break;
                 case MOV_D2L:
                     masm.movq(asLongReg(dst), (AMD64Address) crb.asDoubleAddr(src));
+                    break;
+
+                default:
+                    throw GraalInternalError.shouldNotReachHere();
+            }
+        } else {
+            switch (opcode) {
+                case IADD:
+                    masm.addl(asIntReg(dst), ((AMD64AddressValue) src).toAddress());
+                    break;
+                case ISUB:
+                    masm.subl(asIntReg(dst), ((AMD64AddressValue) src).toAddress());
+                    break;
+                case IAND:
+                    masm.andl(asIntReg(dst), ((AMD64AddressValue) src).toAddress());
+                    break;
+                case IMUL:
+                    masm.imull(asIntReg(dst), ((AMD64AddressValue) src).toAddress());
+                    break;
+                case IOR:
+                    masm.orl(asIntReg(dst), ((AMD64AddressValue) src).toAddress());
+                    break;
+                case IXOR:
+                    masm.xorl(asIntReg(dst), ((AMD64AddressValue) src).toAddress());
+                    break;
+
+                case LADD:
+                    masm.addq(asLongReg(dst), ((AMD64AddressValue) src).toAddress());
+                    break;
+                case LSUB:
+                    masm.subq(asLongReg(dst), ((AMD64AddressValue) src).toAddress());
+                    break;
+                case LMUL:
+                    masm.imulq(asLongReg(dst), ((AMD64AddressValue) src).toAddress());
+                    break;
+                case LAND:
+                    masm.andq(asLongReg(dst), ((AMD64AddressValue) src).toAddress());
+                    break;
+                case LOR:
+                    masm.orq(asLongReg(dst), ((AMD64AddressValue) src).toAddress());
+                    break;
+                case LXOR:
+                    masm.xorq(asLongReg(dst), ((AMD64AddressValue) src).toAddress());
+                    break;
+
+                case FADD:
+                    masm.addss(asFloatReg(dst), ((AMD64AddressValue) src).toAddress());
+                    break;
+                case FSUB:
+                    masm.subss(asFloatReg(dst), ((AMD64AddressValue) src).toAddress());
+                    break;
+                case FMUL:
+                    masm.mulss(asFloatReg(dst), ((AMD64AddressValue) src).toAddress());
+                    break;
+                case FDIV:
+                    masm.divss(asFloatReg(dst), ((AMD64AddressValue) src).toAddress());
+                    break;
+
+                case DADD:
+                    masm.addsd(asDoubleReg(dst), ((AMD64AddressValue) src).toAddress());
+                    break;
+                case DSUB:
+                    masm.subsd(asDoubleReg(dst), ((AMD64AddressValue) src).toAddress());
+                    break;
+                case DMUL:
+                    masm.mulsd(asDoubleReg(dst), ((AMD64AddressValue) src).toAddress());
+                    break;
+                case DDIV:
+                    masm.divsd(asDoubleReg(dst), ((AMD64AddressValue) src).toAddress());
+                    break;
+
+                case SQRT:
+                    masm.sqrtsd(asDoubleReg(dst), ((AMD64AddressValue) src).toAddress());
+                    break;
+
+                case B2I:
+                    masm.movsbl(asIntReg(dst), ((AMD64AddressValue) src).toAddress());
+                    break;
+                case S2I:
+                    masm.movswl(asIntReg(dst), ((AMD64AddressValue) src).toAddress());
+                    break;
+                case B2L:
+                    masm.movsbq(asLongReg(dst), ((AMD64AddressValue) src).toAddress());
+                    break;
+                case S2L:
+                    masm.movswq(asLongReg(dst), ((AMD64AddressValue) src).toAddress());
+                    break;
+                case I2L:
+                    masm.movslq(asLongReg(dst), ((AMD64AddressValue) src).toAddress());
+                    break;
+                case F2D:
+                    masm.cvtss2sd(asDoubleReg(dst), ((AMD64AddressValue) src).toAddress());
+                    break;
+                case D2F:
+                    masm.cvtsd2ss(asFloatReg(dst), ((AMD64AddressValue) src).toAddress());
+                    break;
+                case I2F:
+                    masm.cvtsi2ssl(asFloatReg(dst), ((AMD64AddressValue) src).toAddress());
+                    break;
+                case I2D:
+                    masm.cvtsi2sdl(asDoubleReg(dst), ((AMD64AddressValue) src).toAddress());
+                    break;
+                case L2F:
+                    masm.cvtsi2ssq(asFloatReg(dst), ((AMD64AddressValue) src).toAddress());
+                    break;
+                case L2D:
+                    masm.cvtsi2sdq(asDoubleReg(dst), ((AMD64AddressValue) src).toAddress());
+                    break;
+                case F2I:
+                    masm.cvttss2sil(asIntReg(dst), ((AMD64AddressValue) src).toAddress());
+                    break;
+                case D2I:
+                    masm.cvttsd2sil(asIntReg(dst), ((AMD64AddressValue) src).toAddress());
+                    break;
+                case F2L:
+                    masm.cvttss2siq(asLongReg(dst), ((AMD64AddressValue) src).toAddress());
+                    break;
+                case D2L:
+                    masm.cvttsd2siq(asLongReg(dst), ((AMD64AddressValue) src).toAddress());
+                    break;
+                case MOV_I2F:
+                    masm.movss(asFloatReg(dst), ((AMD64AddressValue) src).toAddress());
+                    break;
+                case MOV_L2D:
+                    masm.movsd(asDoubleReg(dst), ((AMD64AddressValue) src).toAddress());
+                    break;
+                case MOV_F2I:
+                    masm.movl(asIntReg(dst), ((AMD64AddressValue) src).toAddress());
+                    break;
+                case MOV_D2L:
+                    masm.movq(asLongReg(dst), ((AMD64AddressValue) src).toAddress());
+                    break;
+                case MOV_B2UI:
+                    masm.movzbl(asIntReg(dst), ((AMD64AddressValue) src).toAddress());
+                    break;
+                case MOV_B2UL:
+                    masm.movzbl(asLongReg(dst), ((AMD64AddressValue) src).toAddress());
                     break;
 
                 default:

@@ -356,7 +356,9 @@ public class Debug {
 
     /**
      * Prints a message to the current debug scope's logging stream. This method must only be called
-     * if debugging is {@linkplain Debug#isEnabled() enabled}.
+     * if debugging is {@linkplain Debug#isEnabled() enabled} as it incurs allocation at the call
+     * site. If possible, call one of the other {@code log()} methods in this class that take a
+     * fixed number of parameters.
      * 
      * @param format a format string
      * @param args the arguments referenced by the format specifiers in {@code format}
@@ -366,6 +368,17 @@ public class Debug {
             throw new InternalError("Use of Debug.logv() must be guarded by a test of Debug.isEnabled()");
         }
         DebugScope.getInstance().log(format, args);
+    }
+
+    /**
+     * This override exists the catch cases when log is called with one argument from a method which
+     * is vararg. It will bind to this method instead of the single arg variant and produce a
+     * deprecation warning instead of silently wrapping the Object[] inside of another Object[].
+     */
+    @Deprecated
+    public static void log(String format, Object[] args) {
+        assert false : "shouldn't use this";
+        logv(format, args);
     }
 
     /**
@@ -441,6 +454,73 @@ public class Debug {
             return scope.pushIndentLogger();
         }
         return noLoggerInstance;
+    }
+
+    /**
+     * A convenience function which combines enabling/disabling of logging and
+     * {@link #logAndIndent(String, Object...)}. Note: Use this method with care because it
+     * overrules the -G:Log option.
+     * 
+     * @param enabled Flag for enabling or disabling logging
+     * @param msg The format string of the log message
+     * @param args The arguments referenced by the log message string
+     * @return The new indentation level
+     * @see Indent#logAndIndent
+     */
+    public static Indent logAndIndent(boolean enabled, String msg, Object... args) {
+        if (ENABLED) {
+            Collection<DebugDumpHandler> dumpHandlers;
+            PrintStream output;
+            DebugConfig currentConfig = DebugScope.getConfig();
+            if (currentConfig != null) {
+                dumpHandlers = currentConfig.dumpHandlers();
+                output = currentConfig.output();
+            } else {
+                dumpHandlers = Collections.<DebugDumpHandler> emptyList();
+                output = System.out;
+            }
+            DebugConfigScope configScope = new DebugConfigScope(Debug.fixedConfig(enabled, Debug.isDumpEnabled(), false, false, dumpHandlers, output));
+            return new IndentWithEnable(Debug.logAndIndent(msg, args), configScope);
+        }
+        return noLoggerInstance;
+    }
+
+    private static class IndentWithEnable implements Indent {
+
+        Indent delegate;
+        DebugConfigScope configScope;
+
+        IndentWithEnable(Indent delegate, DebugConfigScope configScope) {
+            this.delegate = delegate;
+            this.configScope = configScope;
+        }
+
+        @Override
+        public void log(String msg, Object... args) {
+            delegate.log(msg, args);
+        }
+
+        @Override
+        public Indent indent() {
+            return delegate.indent();
+        }
+
+        @Override
+        public Indent logAndIndent(String msg, Object... args) {
+            return delegate.logAndIndent(msg, args);
+        }
+
+        @Override
+        public Indent outdent() {
+            configScope.close();
+            return delegate.outdent();
+        }
+
+        @Override
+        public void close() {
+            configScope.close();
+            delegate.close();
+        }
     }
 
     public static Iterable<Object> context() {

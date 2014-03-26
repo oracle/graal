@@ -155,13 +155,6 @@ public class InvokeWithExceptionNode extends ControlSplitNode implements Invoke,
         return LocationIdentity.ANY_LOCATION;
     }
 
-    public FrameState stateDuring() {
-        FrameState tempStateAfter = stateAfter();
-        FrameState stateDuring = tempStateAfter.duplicateModified(bci(), tempStateAfter.rethrowException(), getKind());
-        stateDuring.setDuringCall(true);
-        return stateDuring;
-    }
-
     @Override
     public Map<Object, Object> getDebugProperties(Map<Object, Object> map) {
         Map<Object, Object> debugProperties = super.getDebugProperties(map);
@@ -219,18 +212,21 @@ public class InvokeWithExceptionNode extends ControlSplitNode implements Invoke,
     }
 
     @Override
-    public FrameState getDeoptimizationState() {
-        if (deoptState == null) {
-            FrameState stateDuring = stateDuring();
-            updateUsages(deoptState, stateDuring);
-            deoptState = stateDuring;
-        }
+    public FrameState stateDuring() {
         return deoptState;
     }
 
     @Override
-    public void setDeoptimizationState(FrameState f) {
-        throw new IllegalStateException();
+    public void setStateDuring(FrameState stateDuring) {
+        updateUsages(deoptState, stateDuring);
+        deoptState = stateDuring;
+    }
+
+    @Override
+    public void computeStateDuring(FrameState tempStateAfter) {
+        FrameState stateDuring = tempStateAfter.duplicateModified(bci(), tempStateAfter.rethrowException(), getKind());
+        stateDuring.setDuringCall(true);
+        setStateDuring(stateDuring);
     }
 
     @Override
@@ -242,16 +238,6 @@ public class InvokeWithExceptionNode extends ControlSplitNode implements Invoke,
     public void setGuard(GuardingNode guard) {
         updateUsages(this.guard == null ? null : this.guard.asNode(), guard == null ? null : guard.asNode());
         this.guard = guard;
-    }
-
-    @Override
-    public FrameState getState() {
-        if (deoptState != null) {
-            assert stateAfter() == null;
-            return deoptState;
-        } else {
-            return stateAfter();
-        }
     }
 
     public MemoryCheckpoint asMemoryCheckpoint() {

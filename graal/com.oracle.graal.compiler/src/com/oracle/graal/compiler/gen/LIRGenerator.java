@@ -145,7 +145,7 @@ public abstract class LIRGenerator implements ArithmeticLIRGenerator, LIRGenerat
 
     /**
      * set this before using the LIRGenerator
-     * 
+     *
      * TODO this should be removed
      */
     void setDebugInfoBuilder(DebugInfoBuilder builder) {
@@ -155,7 +155,7 @@ public abstract class LIRGenerator implements ArithmeticLIRGenerator, LIRGenerat
     /**
      * Checks whether the supplied constant can be used without loading it into a register for store
      * operations, i.e., on the right hand side of a memory access.
-     * 
+     *
      * @param c The constant to check.
      * @return True if the constant can be used directly, false if the constant needs to be in a
      *         register.
@@ -204,7 +204,7 @@ public abstract class LIRGenerator implements ArithmeticLIRGenerator, LIRGenerat
 
     /**
      * Creates a new {@linkplain Variable variable}.
-     * 
+     *
      * @param platformKind The kind of the new variable.
      * @return a new variable
      */
@@ -260,18 +260,29 @@ public abstract class LIRGenerator implements ArithmeticLIRGenerator, LIRGenerat
         return false;
     }
 
+    private static FrameState getFrameState(DeoptimizingNode deopt) {
+        if (deopt instanceof DeoptimizingNode.DeoptBefore) {
+            return ((DeoptimizingNode.DeoptBefore) deopt).stateBefore();
+        } else if (deopt instanceof DeoptimizingNode.DeoptDuring) {
+            return ((DeoptimizingNode.DeoptDuring) deopt).stateDuring();
+        } else {
+            assert deopt instanceof DeoptimizingNode.DeoptAfter;
+            return ((DeoptimizingNode.DeoptAfter) deopt).stateAfter();
+        }
+    }
+
     public LIRFrameState state(DeoptimizingNode deopt) {
         if (!deopt.canDeoptimize()) {
             return null;
         }
-        return stateFor(deopt.getDeoptimizationState());
+        return stateFor(getFrameState(deopt));
     }
 
     public LIRFrameState stateWithExceptionEdge(DeoptimizingNode deopt, LabelRef exceptionEdge) {
         if (!deopt.canDeoptimize()) {
             return null;
         }
-        return stateForWithExceptionEdge(deopt.getDeoptimizationState(), exceptionEdge);
+        return stateForWithExceptionEdge(getFrameState(deopt), exceptionEdge);
     }
 
     public LIRFrameState stateFor(FrameState state) {
@@ -288,7 +299,7 @@ public abstract class LIRGenerator implements ArithmeticLIRGenerator, LIRGenerat
 
     /**
      * Gets the ABI specific operand used to return a value of a given kind from a method.
-     * 
+     *
      * @param kind the kind of value being returned
      * @return the operand representing the ABI defined location used return a value of kind
      *         {@code kind}
@@ -300,7 +311,7 @@ public abstract class LIRGenerator implements ArithmeticLIRGenerator, LIRGenerat
         return res.getFrameMap().registerConfig.getReturnRegister(kind).asValue(kind);
     }
 
-    protected void append(LIRInstruction op) {
+    public void append(LIRInstruction op) {
         if (printIRWithLIR && !TTY.isSuppressed()) {
             // if (currentInstruction != null && lastInstructionPrinted != currentInstruction) {
             // lastInstructionPrinted = currentInstruction;
@@ -387,7 +398,7 @@ public abstract class LIRGenerator implements ArithmeticLIRGenerator, LIRGenerat
         LIRFrameState state = null;
         if (linkage.canDeoptimize()) {
             if (info != null) {
-                state = stateFor(info.getDeoptimizationState());
+                state = stateFor(getFrameState(info));
             } else {
                 assert needOnlyOopMaps();
                 state = new LIRFrameState(null, null, null);

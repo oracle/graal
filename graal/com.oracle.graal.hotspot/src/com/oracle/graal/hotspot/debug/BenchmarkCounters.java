@@ -23,7 +23,6 @@
 package com.oracle.graal.hotspot.debug;
 
 import java.io.*;
-import java.text.*;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.*;
@@ -36,8 +35,8 @@ import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.bridge.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.replacements.*;
+import com.oracle.graal.nodes.HeapAccess.BarrierType;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.HeapAccess.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.debug.*;
 import com.oracle.graal.nodes.extended.*;
@@ -83,6 +82,8 @@ public class BenchmarkCounters {
         //@formatter:off
         @Option(help = "Turn on the benchmark counters, and displays the results on VM shutdown")
         private static final OptionValue<Boolean> GenericDynamicCounters = new OptionValue<>(false);
+        @Option(help = "Turn on the benchmark counters, and displays the results every n milliseconds")
+        private static final OptionValue<Integer> TimedDynamicCounters = new OptionValue<>(-1);
 
         @Option(help = "Turn on the benchmark counters, and listen for specific patterns on System.out/System.err:%n" +
                        "Format: (err|out),start pattern,end pattern (~ matches multiple digits)%n" +
@@ -109,7 +110,8 @@ public class BenchmarkCounters {
         }
         String name = counter.getName();
         String group = counter.getGroup();
-        name = counter.isWithContext() ? name + " @ " + counter.graph().graphId() + ":" + MetaUtil.format("%h.%n", counter.graph().method()) + "#" + group : name + "#" + group;
+        name = counter.isWithContext() && counter.graph().method() != null ? name + " @ " + counter.graph().graphId() + ":" + MetaUtil.format("%h.%n", counter.graph().method()) + "#" + group : name +
+                        "#" + group;
         Integer index = indexes.get(name);
         if (index == null) {
             synchronized (BenchmarkCounters.class) {
@@ -129,15 +131,15 @@ public class BenchmarkCounters {
         return index;
     }
 
-    public static synchronized void dump(PrintStream out, double seconds, long[] counters) {
+    public static synchronized void dump(PrintStream out, double seconds, long[] counters, int maxRows) {
         if (!groups.isEmpty()) {
             out.println("====== dynamic counters (" + staticCounters.size() + " in total) ======");
             for (String group : new TreeSet<>(groups)) {
                 if (group != null) {
                     if (DUMP_STATIC) {
-                        dumpCounters(out, seconds, counters, true, group);
+                        dumpCounters(out, seconds, counters, true, group, maxRows);
                     }
-                    dumpCounters(out, seconds, counters, false, group);
+                    dumpCounters(out, seconds, counters, false, group, maxRows);
                 }
             }
             out.println("============================");
@@ -150,9 +152,10 @@ public class BenchmarkCounters {
         delta = counters;
     }
 
-    private static synchronized void dumpCounters(PrintStream out, double seconds, long[] counters, boolean staticCounter, String group) {
+    private static synchronized void dumpCounters(PrintStream out, double seconds, long[] counters, boolean staticCounter, String group, int maxRows) {
         TreeMap<Long, String> sorted = new TreeMap<>();
 
+        // collect the numbers
         long[] array;
         if (staticCounter) {
             array = new long[indexes.size()];
@@ -165,6 +168,7 @@ public class BenchmarkCounters {
                 array[i] -= delta[i];
             }
         }
+        // sort the counters by putting them into a sorted map
         long sum = 0;
         for (Map.Entry<String, Integer> entry : indexes.entrySet()) {
             int index = entry.getValue();
@@ -175,39 +179,49 @@ public class BenchmarkCounters {
         }
 
         if (sum > 0) {
-            NumberFormat format = NumberFormat.getInstance(Locale.US);
             long cutoff = sorted.size() < 10 ? 1 : Math.max(1, sum / 100);
+            int cnt = sorted.size();
+
+            // remove everything below cutoff and keep at most maxRows
+            Iterator<Map.Entry<Long, String>> iter = sorted.entrySet().iterator();
+            while (iter.hasNext()) {
+                Map.Entry<Long, String> entry = iter.next();
+                long counter = entry.getKey() / array.length;
+                if (counter < cutoff || cnt > maxRows) {
+                    iter.remove();
+                }
+                cnt--;
+            }
+
             if (staticCounter) {
                 out.println("=========== " + group + " (static counters):");
                 for (Map.Entry<Long, String> entry : sorted.entrySet()) {
                     long counter = entry.getKey() / array.length;
-                    if (counter >= cutoff) {
-                        out.println(format.format(counter) + " \t" + ((counter * 200 + 1) / sum / 2) + "% \t" + entry.getValue());
-                    }
+                    out.format(Locale.US, "%,19d %3d%%  %s\n", counter, percentage(counter, sum), entry.getValue());
                 }
-                out.println(sum + ": total");
+                out.format(Locale.US, "%,19d total\n", sum);
             } else {
                 if (group.startsWith("~")) {
                     out.println("=========== " + group + " (dynamic counters), time = " + seconds + " s:");
                     for (Map.Entry<Long, String> entry : sorted.entrySet()) {
                         long counter = entry.getKey() / array.length;
-                        if (counter >= cutoff) {
-                            out.println(format.format((long) (counter / seconds)) + "/s \t" + ((counter * 200 + 1) / sum / 2) + "% \t" + entry.getValue());
-                        }
+                        out.format(Locale.US, "%,19d/s %3d%%  %s\n", (long) (counter / seconds), percentage(counter, sum), entry.getValue());
                     }
-                    out.println(format.format((long) (sum / seconds)) + "/s: total");
+                    out.format(Locale.US, "%,19d/s total\n", (long) (sum / seconds));
                 } else {
                     out.println("=========== " + group + " (dynamic counters):");
                     for (Map.Entry<Long, String> entry : sorted.entrySet()) {
                         long counter = entry.getKey() / array.length;
-                        if (counter >= cutoff) {
-                            out.println(format.format(counter) + " \t" + ((counter * 200 + 1) / sum / 2) + "% \t" + entry.getValue());
-                        }
+                        out.format(Locale.US, "%,19d %3d%%  %s\n", counter, percentage(counter, sum), entry.getValue());
                     }
-                    out.println(format.format(sum) + ": total");
+                    out.format(Locale.US, "%,19d total\n", sum);
                 }
             }
         }
+    }
+
+    private static long percentage(long counter, long sum) {
+        return (counter * 200 + 1) / sum / 2;
     }
 
     public abstract static class CallbackOutputStream extends OutputStream {
@@ -282,7 +296,7 @@ public class BenchmarkCounters {
                     case 2:
                         if (waitingForEnd) {
                             waitingForEnd = false;
-                            BenchmarkCounters.dump(delegate, (System.nanoTime() - startTime) / 1000000000d, compilerToVM.collectCounters());
+                            BenchmarkCounters.dump(delegate, (System.nanoTime() - startTime) / 1000000000d, compilerToVM.collectCounters(), 100);
                         }
                         break;
                 }
@@ -309,20 +323,43 @@ public class BenchmarkCounters {
         if (Options.GenericDynamicCounters.getValue()) {
             enabled = true;
         }
-        if (Options.GenericDynamicCounters.getValue() || Options.BenchmarkDynamicCounters.getValue() != null) {
+        if (Options.TimedDynamicCounters.getValue() > 0) {
+            Thread thread = new Thread() {
+                long lastTime = System.nanoTime();
+                PrintStream out = System.out;
+
+                @Override
+                public void run() {
+                    while (true) {
+                        try {
+                            Thread.sleep(Options.TimedDynamicCounters.getValue());
+                        } catch (InterruptedException e) {
+                        }
+                        long time = System.nanoTime();
+                        dump(out, (time - lastTime) / 1000000000d, compilerToVM.collectCounters(), 10);
+                        lastTime = time;
+                    }
+                }
+            };
+            thread.setDaemon(true);
+            thread.setPriority(Thread.MAX_PRIORITY);
+            thread.start();
+            enabled = true;
+        }
+        if (enabled) {
             clear(compilerToVM.collectCounters());
         }
     }
 
     public static void shutdown(CompilerToVM compilerToVM, long compilerStartTime) {
         if (Options.GenericDynamicCounters.getValue()) {
-            dump(System.out, (System.nanoTime() - compilerStartTime) / 1000000000d, compilerToVM.collectCounters());
+            dump(System.out, (System.nanoTime() - compilerStartTime) / 1000000000d, compilerToVM.collectCounters(), 100);
         }
     }
 
     public static void lower(DynamicCounterNode counter, HotSpotRegistersProvider registers, HotSpotVMConfig config, Kind wordKind) {
         StructuredGraph graph = counter.graph();
-        if (excludedClassPrefix == null || !counter.graph().method().getDeclaringClass().getName().startsWith(excludedClassPrefix)) {
+        if (excludedClassPrefix == null || (counter.graph().method() != null && !counter.graph().method().getDeclaringClass().getName().startsWith(excludedClassPrefix))) {
 
             ReadRegisterNode thread = graph.add(new ReadRegisterNode(registers.getThreadRegister(), wordKind, true, false));
 

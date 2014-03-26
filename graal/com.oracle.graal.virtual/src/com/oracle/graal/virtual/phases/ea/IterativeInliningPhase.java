@@ -42,8 +42,8 @@ public class IterativeInliningPhase extends AbstractInliningPhase {
     }
 
     public static final void trace(String format, Object... obj) {
-        if (TraceEscapeAnalysis.getValue()) {
-            Debug.log(format, obj);
+        if (TraceEscapeAnalysis.getValue() && Debug.isLogEnabled()) {
+            Debug.logv(format, obj);
         }
     }
 

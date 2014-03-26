@@ -321,6 +321,7 @@ public class BoxingEliminationTest extends GraalCompilerTest {
         Assumptions assumptions = new Assumptions(false);
         HighTierContext context = new HighTierContext(getProviders(), assumptions, null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL);
         CanonicalizerPhase canonicalizer = new CanonicalizerPhase(true);
+        canonicalizer.apply(graph, context);
         new InliningPhase(new CanonicalizerPhase(true)).apply(graph, context);
         if (loopPeeling) {
             new LoopTransformHighPhase().apply(graph);

@@ -31,7 +31,6 @@ import com.oracle.graal.nodes.type.*;
  * This interface can be used to generate LIR for arithmetic operations.
  */
 public interface ArithmeticLIRGenerator {
-
     /**
      * TODO remove reference to {@link Stamp}.
      */

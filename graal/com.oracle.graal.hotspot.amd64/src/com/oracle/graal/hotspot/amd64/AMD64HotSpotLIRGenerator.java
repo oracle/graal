@@ -44,6 +44,7 @@ import com.oracle.graal.hotspot.stubs.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.NoOp;
 import com.oracle.graal.lir.amd64.*;
+import com.oracle.graal.lir.amd64.AMD64Move.LeaDataOp;
 import com.oracle.graal.lir.amd64.AMD64Move.LoadOp;
 import com.oracle.graal.lir.amd64.AMD64Move.MoveFromRegOp;
 import com.oracle.graal.lir.amd64.AMD64Move.StoreConstantOp;
@@ -150,6 +151,10 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     protected boolean needOnlyOopMaps() {
         // Stubs only need oop maps
         return ((AMD64HotSpotLIRGenerationResult) res).getStub() != null;
+    }
+
+    public void emitData(AllocatableValue dst, byte[] data) {
+        append(new LeaDataOp(dst, data));
     }
 
     private LIRFrameState currentRuntimeCallInfo;
