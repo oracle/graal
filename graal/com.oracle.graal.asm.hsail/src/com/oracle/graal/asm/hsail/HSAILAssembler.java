@@ -68,6 +68,11 @@ public class HSAILAssembler extends AbstractHSAILAssembler {
         return null;
     }
 
+    @Override
+    public final void ensureUniquePC() {
+        throw GraalInternalError.unimplemented();
+    }
+
     public final void undefined(String str) {
         emitString("undefined operation " + str);
     }

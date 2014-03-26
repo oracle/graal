@@ -1213,6 +1213,7 @@ public class AMD64Assembler extends Assembler {
         emitByte(0xD0 | encode);
     }
 
+    @Override
     public final void ensureUniquePC() {
         nop();
     }

@@ -696,6 +696,11 @@ public class PTXAssembler extends AbstractPTXAssembler {
     }
 
     @Override
+    public final void ensureUniquePC() {
+        throw GraalInternalError.unimplemented();
+    }
+
+    @Override
     public void jmp(Label l) {
         String str = nameOf(l);
         bra(str);
