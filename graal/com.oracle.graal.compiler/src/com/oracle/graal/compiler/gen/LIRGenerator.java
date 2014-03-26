@@ -607,4 +607,12 @@ public abstract class LIRGenerator implements ArithmeticLIRGenerator, LIRGenerat
     public abstract void emitByteSwap(Variable result, Value operand);
 
     public abstract void emitArrayEquals(Kind kind, Variable result, Value array1, Value array2, Value length);
+
+    public AbstractBlock<?> getCurrentBlock() {
+        return currentBlock;
+    }
+
+    void setCurrentBlock(AbstractBlock<?> block) {
+        currentBlock = block;
+    }
 }

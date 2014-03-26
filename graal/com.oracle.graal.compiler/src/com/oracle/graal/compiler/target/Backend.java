@@ -69,7 +69,7 @@ public abstract class Backend {
 
     public abstract LIRGenerationResult newLIRGenerationResult(LIR lir, FrameMap frameMap, Object stub);
 
-    public abstract NodeLIRGenerator newNodeLIRGenerator(StructuredGraph graph, CallingConvention cc, LIRGenerationResult lirGenRes, LIRGenerator lirGen);
+    public abstract NodeLIRGenerator newNodeLIRGenerator(StructuredGraph graph, LIRGenerationResult lirGenRes, LIRGenerator lirGen);
 
     /**
      * Creates the assembler used to emit the machine code.
@@ -91,4 +91,5 @@ public abstract class Backend {
      *            argument can be null.
      */
     public abstract void emitCode(CompilationResultBuilder crb, LIR lir, ResolvedJavaMethod installedCodeOwner);
+
 }

@@ -34,8 +34,8 @@ import com.oracle.graal.nodes.calc.*;
 
 public abstract class AMD64NodeLIRGenerator extends NodeLIRGenerator {
 
-    public AMD64NodeLIRGenerator(StructuredGraph graph, CallingConvention cc, LIRGenerationResult res, LIRGenerator gen) {
-        super(graph, cc, res, gen);
+    public AMD64NodeLIRGenerator(StructuredGraph graph, LIRGenerationResult res, LIRGenerator gen) {
+        super(graph, res, gen);
     }
 
     @Override

@@ -57,8 +57,8 @@ import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
  */
 public class AMD64HotSpotNodeLIRGenerator extends AMD64NodeLIRGenerator implements HotSpotNodeLIRGenerator {
 
-    public AMD64HotSpotNodeLIRGenerator(StructuredGraph graph, CallingConvention cc, LIRGenerationResult res, LIRGenerator gen) {
-        super(graph, cc, res, gen);
+    public AMD64HotSpotNodeLIRGenerator(StructuredGraph graph, LIRGenerationResult res, LIRGenerator gen) {
+        super(graph, res, gen);
     }
 
     private AMD64HotSpotLIRGenerator getGen() {
@@ -82,7 +82,7 @@ public class AMD64HotSpotNodeLIRGenerator extends AMD64NodeLIRGenerator implemen
     @Override
     protected void emitPrologue(StructuredGraph graph) {
 
-        CallingConvention incomingArguments = getCallingConvention();
+        CallingConvention incomingArguments = gen.getCallingConvention();
 
         Value[] params = new Value[incomingArguments.getArgumentCount() + 1];
         for (int i = 0; i < params.length - 1; i++) {
@@ -98,7 +98,7 @@ public class AMD64HotSpotNodeLIRGenerator extends AMD64NodeLIRGenerator implemen
 
         emitIncomingValues(params);
 
-        setSaveRbp(((AMD64HotSpotLIRGenerator) gen).new SaveRbp(new NoOp(currentBlock, res.getLIR().getLIRforBlock(currentBlock).size())));
+        setSaveRbp(((AMD64HotSpotLIRGenerator) gen).new SaveRbp(new NoOp(gen.getCurrentBlock(), res.getLIR().getLIRforBlock(gen.getCurrentBlock()).size())));
         append(getSaveRbp().placeholder);
 
         for (ParameterNode param : graph.getNodes(ParameterNode.class)) {

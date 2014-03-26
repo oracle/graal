@@ -65,12 +65,9 @@ public abstract class NodeLIRGenerator implements NodeMappableLIRGenerator, Node
         // @formatter:on
     }
 
-    private final CallingConvention cc;
-
     private final NodeMap<Value> nodeOperands;
     private final DebugInfoBuilder debugInfoBuilder;
 
-    protected AbstractBlock<?> currentBlock;
     private final int traceLevel;
     private final boolean printIRWithLIR;
 
@@ -81,9 +78,8 @@ public abstract class NodeLIRGenerator implements NodeMappableLIRGenerator, Node
 
     protected LIRGenerationResult res;
 
-    public NodeLIRGenerator(StructuredGraph graph, CallingConvention cc, LIRGenerationResult res, LIRGenerator gen) {
+    public NodeLIRGenerator(StructuredGraph graph, LIRGenerationResult res, LIRGenerator gen) {
         this.res = res;
-        this.cc = cc;
         this.nodeOperands = graph.createNodeMap();
         this.debugInfoBuilder = createDebugInfoBuilder(nodeOperands);
         this.gen = gen;
@@ -127,19 +123,19 @@ public abstract class NodeLIRGenerator implements NodeMappableLIRGenerator, Node
                         gen.constantLoads = new HashMap<>();
                     }
                     LoadConstant load = gen.constantLoads.get(value);
-                    assert currentBlock instanceof Block;
+                    assert gen.getCurrentBlock() instanceof Block;
                     if (load == null) {
-                        int index = res.getLIR().getLIRforBlock(currentBlock).size();
+                        int index = res.getLIR().getLIRforBlock(gen.getCurrentBlock()).size();
                         loadedValue = gen.emitMove(value);
-                        LIRInstruction op = res.getLIR().getLIRforBlock(currentBlock).get(index);
-                        gen.constantLoads.put(value, new LoadConstant(loadedValue, (Block) currentBlock, index, op));
+                        LIRInstruction op = res.getLIR().getLIRforBlock(gen.getCurrentBlock()).get(index);
+                        gen.constantLoads.put(value, new LoadConstant(loadedValue, (Block) gen.getCurrentBlock(), index, op));
                     } else {
-                        Block dominator = ControlFlowGraph.commonDominator(load.block, (Block) currentBlock);
+                        Block dominator = ControlFlowGraph.commonDominator(load.block, (Block) gen.getCurrentBlock());
                         loadedValue = load.variable;
                         if (dominator != load.block) {
                             load.unpin(res.getLIR());
                         } else {
-                            assert load.block != currentBlock || load.index < res.getLIR().getLIRforBlock(currentBlock).size();
+                            assert load.block != gen.getCurrentBlock() || load.index < res.getLIR().getLIRforBlock(gen.getCurrentBlock()).size();
                         }
                         load.block = dominator;
                     }
@@ -175,11 +171,11 @@ public abstract class NodeLIRGenerator implements NodeMappableLIRGenerator, Node
     public LabelRef getLIRBlock(FixedNode b) {
         assert res.getLIR().getControlFlowGraph() instanceof ControlFlowGraph;
         Block result = ((ControlFlowGraph) res.getLIR().getControlFlowGraph()).blockFor(b);
-        int suxIndex = currentBlock.getSuccessors().indexOf(result);
+        int suxIndex = gen.getCurrentBlock().getSuccessors().indexOf(result);
         assert suxIndex != -1 : "Block not in successor list of current block";
 
-        assert currentBlock instanceof Block;
-        return LabelRef.forSuccessor(res.getLIR(), (Block) currentBlock, suxIndex);
+        assert gen.getCurrentBlock() instanceof Block;
+        return LabelRef.forSuccessor(res.getLIR(), (Block) gen.getCurrentBlock(), suxIndex);
     }
 
     /**
@@ -240,7 +236,7 @@ public abstract class NodeLIRGenerator implements NodeMappableLIRGenerator, Node
             TTY.println();
         }
         assert LIRVerifier.verify(op);
-        res.getLIR().getLIRforBlock(currentBlock).add(op);
+        res.getLIR().getLIRforBlock(gen.getCurrentBlock()).add(op);
     }
 
     public final void doBlockStart(AbstractBlock<?> block) {
@@ -248,7 +244,7 @@ public abstract class NodeLIRGenerator implements NodeMappableLIRGenerator, Node
             TTY.print(block.toString());
         }
 
-        currentBlock = block;
+        gen.setCurrentBlock(block);
 
         // set up the list of LIR instructions
         assert res.getLIR().getLIRforBlock(block) == null : "LIR list already computed for this block";
@@ -267,7 +263,7 @@ public abstract class NodeLIRGenerator implements NodeMappableLIRGenerator, Node
             TTY.println("END Generating LIR for block B" + block.getId());
         }
 
-        currentBlock = null;
+        gen.setCurrentBlock(null);
 
         if (printIRWithLIR) {
             TTY.println();
@@ -385,7 +381,7 @@ public abstract class NodeLIRGenerator implements NodeMappableLIRGenerator, Node
     }
 
     protected void emitPrologue(StructuredGraph graph) {
-        CallingConvention incomingArguments = getCallingConvention();
+        CallingConvention incomingArguments = gen.getCallingConvention();
 
         Value[] params = new Value[incomingArguments.getArgumentCount()];
         for (int i = 0; i < params.length; i++) {
@@ -408,7 +404,7 @@ public abstract class NodeLIRGenerator implements NodeMappableLIRGenerator, Node
     }
 
     protected <T extends AbstractBlock<T>> void emitPrologue(ResolvedJavaMethod method, BytecodeParser<T> parser) {
-        CallingConvention incomingArguments = getCallingConvention();
+        CallingConvention incomingArguments = gen.getCallingConvention();
 
         Value[] params = new Value[incomingArguments.getArgumentCount()];
         for (int i = 0; i < params.length; i++) {
@@ -436,7 +432,7 @@ public abstract class NodeLIRGenerator implements NodeMappableLIRGenerator, Node
     }
 
     public void emitIncomingValues(Value[] params) {
-        ((LabelOp) res.getLIR().getLIRforBlock(currentBlock).get(0)).setIncomingValues(params);
+        ((LabelOp) res.getLIR().getLIRforBlock(gen.getCurrentBlock()).get(0)).setIncomingValues(params);
     }
 
     @Override
@@ -689,10 +685,6 @@ public abstract class NodeLIRGenerator implements NodeMappableLIRGenerator, Node
     public final NodeMap<Value> getNodeOperands() {
         assert nodeOperands != null;
         return nodeOperands;
-    }
-
-    public CallingConvention getCallingConvention() {
-        return cc;
     }
 
     public DebugInfoBuilder getDebugInfoBuilder() {
