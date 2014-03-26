@@ -56,12 +56,10 @@ import com.oracle.graal.lir.sparc.SPARCMove.LoadAddressOp;
 import com.oracle.graal.lir.sparc.SPARCMove.MembarOp;
 import com.oracle.graal.lir.sparc.SPARCMove.MoveFromRegOp;
 import com.oracle.graal.lir.sparc.SPARCMove.MoveToRegOp;
-import com.oracle.graal.lir.sparc.SPARCMove.NullCheckOp;
 import com.oracle.graal.lir.sparc.SPARCMove.StackLoadAddressOp;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.calc.FloatConvertNode.FloatConvert;
-import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.phases.util.*;
 
@@ -78,8 +76,8 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
         }
     }
 
-    public SPARCLIRGenerator(StructuredGraph graph, Providers providers, CallingConvention cc, LIRGenerationResult lirGenRes) {
-        super(graph, providers, cc, lirGenRes);
+    public SPARCLIRGenerator(Providers providers, CallingConvention cc, LIRGenerationResult lirGenRes) {
+        super(providers, cc, lirGenRes);
         lirGenRes.getLIR().setSpillMoveFactory(new SPARCSpillMoveFactory());
     }
 
@@ -215,13 +213,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    protected boolean peephole(ValueNode valueNode) {
-        // No peephole optimizations for now
-        return false;
-    }
-
-    @Override
-    protected void emitReturn(Value input) {
+    public void emitReturn(Value input) {
         append(new ReturnOp(input));
     }
 
@@ -918,35 +910,4 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
         append(new ReturnOp(Value.ILLEGAL));
     }
 
-    @Override
-    public void visitCompareAndSwap(LoweredCompareAndSwapNode i, Value address) {
-        throw new InternalError("NYI");
-    }
-
-    @Override
-    public void visitBreakpointNode(BreakpointNode node) {
-        JavaType[] sig = new JavaType[node.arguments().size()];
-        for (int i = 0; i < sig.length; i++) {
-            sig[i] = node.arguments().get(i).stamp().javaType(getMetaAccess());
-        }
-
-        Value[] parameters = visitInvokeArguments(res.getFrameMap().registerConfig.getCallingConvention(CallingConvention.Type.JavaCall, null, sig, target(), false), node.arguments());
-        append(new SPARCBreakpointOp(parameters));
-    }
-
-    @Override
-    public void emitUnwind(Value operand) {
-        throw new InternalError("NYI");
-    }
-
-    @Override
-    public void emitNullCheck(ValueNode v, DeoptimizingNode deopting) {
-        assert v.getKind() == Kind.Object;
-        append(new NullCheckOp(load(operand(v)), state(deopting)));
-    }
-
-    @Override
-    public void visitInfopointNode(InfopointNode i) {
-        throw new InternalError("NYI");
-    }
 }

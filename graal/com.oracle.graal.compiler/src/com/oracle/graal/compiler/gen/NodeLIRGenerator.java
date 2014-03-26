@@ -178,13 +178,6 @@ public abstract class NodeLIRGenerator implements NodeLIRGeneratorTool {
         return LabelRef.forSuccessor(res.getLIR(), (Block) gen.getCurrentBlock(), suxIndex);
     }
 
-    /**
-     * Determines if only oop maps are required for the code generated from the LIR.
-     */
-    protected boolean needOnlyOopMaps() {
-        return false;
-    }
-
     public LIRFrameState state(DeoptimizingNode deopt) {
         if (!deopt.canDeoptimize()) {
             return null;
@@ -204,7 +197,7 @@ public abstract class NodeLIRGenerator implements NodeLIRGeneratorTool {
     }
 
     public LIRFrameState stateForWithExceptionEdge(FrameState state, LabelRef exceptionEdge) {
-        if (needOnlyOopMaps()) {
+        if (gen.needOnlyOopMaps()) {
             return new LIRFrameState(null, null, null);
         }
         assert state != null;

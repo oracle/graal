@@ -79,8 +79,13 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
     }
 
     @Override
-    public LIRGenerator newLIRGenerator(StructuredGraph graph, CallingConvention cc, LIRGenerationResult lirGenRes) {
-        return new SPARCHotSpotLIRGenerator(graph, getProviders(), getRuntime().getConfig(), cc, lirGenRes);
+    public LIRGenerator newLIRGenerator(CallingConvention cc, LIRGenerationResult lirGenRes) {
+        return new SPARCHotSpotLIRGenerator(getProviders(), getRuntime().getConfig(), cc, lirGenRes);
+    }
+
+    @Override
+    public NodeLIRGenerator newNodeLIRGenerator(StructuredGraph graph, LIRGenerationResult lirGenRes, LIRGenerator lirGen) {
+        return new SPARCHotSpotNodeLIRGenerator(graph, lirGenRes, lirGen);
     }
 
     /**
@@ -245,4 +250,5 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
     public NativeFunctionInterface getNativeFunctionInterface() {
         throw GraalInternalError.unimplemented("No NativeFunctionInterface of SPARC");
     }
+
 }
