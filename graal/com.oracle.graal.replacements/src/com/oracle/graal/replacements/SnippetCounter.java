@@ -39,6 +39,7 @@ import com.oracle.graal.replacements.nodes.*;
  * snippet specific metrics.
  */
 public class SnippetCounter implements Comparable<SnippetCounter> {
+    private static final LocationIdentity SNIPPET_COUNTER_LOCATION = new NamedLocationIdentity("SnippetCounter");
 
     /**
      * A group of related counters.
@@ -134,9 +135,7 @@ public class SnippetCounter implements Comparable<SnippetCounter> {
      */
     public void inc() {
         if (group != null) {
-            // TODO: instead of ANY_LOCATION we should actually
-            // use the location for the field "value".
-            DirectObjectStoreNode.storeLong(this, countOffset(), 0, value + 1, LocationIdentity.ANY_LOCATION);
+            DirectObjectStoreNode.storeLong(this, countOffset(), 0, value + 1, SNIPPET_COUNTER_LOCATION);
         }
     }
 
