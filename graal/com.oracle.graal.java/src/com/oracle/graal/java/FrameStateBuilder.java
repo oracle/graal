@@ -386,6 +386,10 @@ public class FrameStateBuilder {
         return stack[i];
     }
 
+    public final ValueNode lockAt(int i) {
+        return lockedObjects[i];
+    }
+
     /**
      * Adds a locked monitor to this frame state.
      * 
@@ -468,6 +472,11 @@ public class FrameStateBuilder {
     public void storeStack(int i, ValueNode x) {
         assert x == null || x.isAlive() && (stack[i] == null || x.getKind() == stack[i].getKind()) : "Method does not handle changes from one-slot to two-slot values or non-alive values";
         stack[i] = x;
+    }
+
+    public void storeLock(int i, ValueNode x) {
+        assert x == null || x.isAlive() && (lockedObjects[i] == null || x.getKind() == lockedObjects[i].getKind()) : "unexpected lock value: " + x;
+        lockedObjects[i] = x;
     }
 
     /**

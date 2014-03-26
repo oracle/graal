@@ -602,7 +602,15 @@ public class CompilationResult implements Serializable {
         addInfopoint(new Infopoint(codePos, debugInfo, reason));
     }
 
-    private void addInfopoint(Infopoint infopoint) {
+    /**
+     * Records a custom infopoint in the code section.
+     * 
+     * Compiler implementations can use this method to record non-standard infopoints, which are not
+     * handled by the dedicated methods like {@link #recordCall}.
+     * 
+     * @param infopoint the infopoint to record, usually a derived class from {@link Infopoint}
+     */
+    public void addInfopoint(Infopoint infopoint) {
         // The infopoints list must always be sorted
         if (!infopoints.isEmpty() && infopoints.get(infopoints.size() - 1).pcOffset >= infopoint.pcOffset) {
             // This re-sorting should be very rare

@@ -139,7 +139,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
          * the jump. When the block is seen the second time, a {@link MergeNode} is created to
          * correctly merge the now two different predecessor states.
          */
-        private static class BlockPlaceholderNode extends FixedWithNextNode {
+        protected static class BlockPlaceholderNode extends FixedWithNextNode {
 
             /*
              * Cannot be explicitly declared as a Node type since it is not an input; would cause
@@ -238,6 +238,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             }
             frameState.clearNonLiveLocals(blockMap.startBlock, liveness, true);
             ((StateSplit) lastInstr).setStateAfter(frameState.create(0));
+            finishPrepare(lastInstr);
 
             if (graphBuilderConfig.eagerInfopointMode()) {
                 InfopointNode ipn = currentGraph.add(new InfopointNode(InfopointReason.METHOD_START, frameState.create(0)));
@@ -283,6 +284,15 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 }
             }
             indent.outdent();
+        }
+
+        /**
+         * A hook for derived classes to modify the graph start instruction or append new
+         * instructions to it.
+         * 
+         * @param startInstr The start instruction of the graph.
+         */
+        protected void finishPrepare(FixedWithNextNode startInstr) {
         }
 
         private Block unwindBlock(int bci) {
@@ -454,7 +464,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 dispatchState.setRethrowException(true);
             }
             FixedNode target = createTarget(dispatchBlock, dispatchState);
-            dispatchBegin.setNext(target);
+            finishInstruction(dispatchBegin, dispatchState).setNext(target);
             return dispatchBegin;
         }
 
@@ -1754,6 +1764,8 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             assert lastInstr.next() == null : "instructions already appended at block " + block;
             Debug.log("  frameState: %s", frameState);
 
+            lastInstr = finishInstruction(lastInstr, frameState);
+
             int endBCI = stream.endBCI();
 
             stream.setBCI(block.startBci);
@@ -1803,6 +1815,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                         }
                     }
                 }
+                lastInstr = finishInstruction(lastInstr, frameState);
                 if (bci < endBCI) {
                     if (bci > block.endBci) {
                         assert !block.successors.get(0).isExceptionEntry;
@@ -1813,6 +1826,17 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     }
                 }
             }
+        }
+
+        /**
+         * A hook for derived classes to modify the last instruction or add other instructions.
+         * 
+         * @param instr The last instruction (= fixed node) which was added.
+         * @param state The current frame state.
+         * @Returns Returns the (new) last instruction.
+         */
+        protected FixedWithNextNode finishInstruction(FixedWithNextNode instr, FrameStateBuilder state) {
+            return instr;
         }
 
         private final int traceLevel = Options.TraceBytecodeParserLevel.getValue();
