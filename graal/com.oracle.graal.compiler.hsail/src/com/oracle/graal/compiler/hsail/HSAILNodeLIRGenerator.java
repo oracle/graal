@@ -23,8 +23,6 @@
 
 package com.oracle.graal.compiler.hsail;
 
-import static com.oracle.graal.lir.hsail.HSAILBitManipulationOp.IntrinsicOpcode.*;
-
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.debug.*;
@@ -56,31 +54,6 @@ public abstract class HSAILNodeLIRGenerator extends NodeLIRGenerator {
 
     @Override
     protected void emitIndirectCall(IndirectCallTargetNode callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState callState) {
-        throw GraalInternalError.unimplemented();
-    }
-
-    @Override
-    public void emitBitCount(Variable result, Value value) {
-        if (value.getKind().getStackKind() == Kind.Int) {
-            append(new HSAILBitManipulationOp(IPOPCNT, result, value));
-        } else {
-            append(new HSAILBitManipulationOp(LPOPCNT, result, value));
-        }
-    }
-
-    @Override
-    public void emitBitScanForward(Variable result, Value value) {
-        throw GraalInternalError.unimplemented();
-    }
-
-    @Override
-    public void emitBitScanReverse(Variable result, Value value) {
-        throw GraalInternalError.unimplemented();
-    }
-
-    @Override
-    public void emitArrayEquals(Kind kind, Variable result, Value array1, Value array2, Value length) {
-        // TODO Auto-generated method stub
         throw GraalInternalError.unimplemented();
     }
 

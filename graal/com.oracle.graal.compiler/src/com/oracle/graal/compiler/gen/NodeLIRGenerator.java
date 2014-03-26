@@ -204,20 +204,6 @@ public abstract class NodeLIRGenerator implements NodeLIRGeneratorTool {
         return getDebugInfoBuilder().build(state, exceptionEdge);
     }
 
-    /**
-     * Gets the ABI specific operand used to return a value of a given kind from a method.
-     * 
-     * @param kind the kind of value being returned
-     * @return the operand representing the ABI defined location used return a value of kind
-     *         {@code kind}
-     */
-    public AllocatableValue resultOperandFor(Kind kind) {
-        if (kind == Kind.Void) {
-            return ILLEGAL;
-        }
-        return res.getFrameMap().registerConfig.getReturnRegister(kind).asValue(kind);
-    }
-
     final protected void append(LIRInstruction op) {
         if (printIRWithLIR && !TTY.isSuppressed()) {
             if (currentInstruction != null && lastInstructionPrinted != currentInstruction) {
@@ -429,7 +415,7 @@ public abstract class NodeLIRGenerator implements NodeLIRGeneratorTool {
     public void visitReturn(ReturnNode x) {
         AllocatableValue operand = ILLEGAL;
         if (x.result() != null) {
-            operand = resultOperandFor(x.result().getKind());
+            operand = gen.resultOperandFor(x.result().getKind());
             gen.emitMove(operand, operand(x.result()));
         }
         gen.emitReturn(operand);
@@ -686,23 +672,23 @@ public abstract class NodeLIRGenerator implements NodeLIRGeneratorTool {
         gen.emitOverflowCheckBranch(getLIRBlock(overflowSuccessor), getLIRBlock(next), probability);
     }
 
-    public void emitArrayEquals(Kind kind, Variable result, Value array1, Value array2, Value length) {
+    public final void emitArrayEquals(Kind kind, Variable result, Value array1, Value array2, Value length) {
         gen.emitArrayEquals(kind, result, array1, array2, length);
     }
 
-    public Variable newVariable(Kind i) {
+    public final Variable newVariable(Kind i) {
         return gen.newVariable(i);
     }
 
-    public void emitBitCount(Variable result, Value operand) {
+    public final void emitBitCount(Variable result, Value operand) {
         gen.emitBitCount(result, operand);
     }
 
-    public void emitBitScanForward(Variable result, Value operand) {
+    public final void emitBitScanForward(Variable result, Value operand) {
         gen.emitBitScanForward(result, operand);
     }
 
-    public void emitBitScanReverse(Variable result, Value operand) {
+    final void emitBitScanReverse(Variable result, Value operand) {
         gen.emitBitScanReverse(result, operand);
     }
 
