@@ -173,7 +173,7 @@ public class BaselineCompiler implements BytecodeParser<BciBlock> {
         TargetDescription target = backend.getTarget();
         CallingConvention cc = CodeUtil.getCallingConvention(backend.getProviders().getCodeCache(), CallingConvention.Type.JavaCallee, method, false);
         this.lirGenRes = backend.newLIRGenerationResult(lir, frameMap, null);
-        this.lirGen = backend.newLIRGenerator(null, cc, lirGenRes);
+        this.lirGen = backend.newLIRGenerator(cc, lirGenRes);
 
         try (Scope ds = Debug.scope("BackEnd", lir)) {
             try (Scope s = Debug.scope("LIRGen", lirGen)) {

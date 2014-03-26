@@ -87,8 +87,8 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         }
     }
 
-    public AMD64LIRGenerator(StructuredGraph graph, Providers providers, CallingConvention cc, LIRGenerationResult lirGenRes) {
-        super(graph, providers, cc, lirGenRes);
+    public AMD64LIRGenerator(Providers providers, CallingConvention cc, LIRGenerationResult lirGenRes) {
+        super(providers, cc, lirGenRes);
         lirGenRes.getLIR().setSpillMoveFactory(new AMD64SpillMoveFactory());
     }
 

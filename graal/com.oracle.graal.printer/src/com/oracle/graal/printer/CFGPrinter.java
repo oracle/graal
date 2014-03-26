@@ -50,7 +50,7 @@ class CFGPrinter extends CompilationPrinter {
 
     protected TargetDescription target;
     protected LIR lir;
-    protected LIRGenerator lirGenerator;
+    protected NodeLIRGenerator nodeLirGenerator;
     protected ControlFlowGraph cfg;
     protected SchedulePhase schedule;
 
@@ -309,8 +309,8 @@ class CFGPrinter extends CompilationPrinter {
         }
         out.print("tid ").print(nodeToString(node)).println(COLUMN_END);
 
-        if (lirGenerator != null) {
-            Value operand = lirGenerator.getNodeOperands().get(node);
+        if (nodeLirGenerator != null) {
+            Value operand = nodeLirGenerator.getNodeOperands().get(node);
             if (operand != null) {
                 out.print("result ").print(operand.toString()).println(COLUMN_END);
             }
@@ -414,8 +414,8 @@ class CFGPrinter extends CompilationPrinter {
 
     private String stateValueToString(ValueNode value) {
         String result = nodeToString(value);
-        if (lirGenerator != null && lirGenerator.getNodeOperands() != null && value != null) {
-            Value operand = lirGenerator.getNodeOperands().get(value);
+        if (nodeLirGenerator != null && nodeLirGenerator.getNodeOperands() != null && value != null) {
+            Value operand = nodeLirGenerator.getNodeOperands().get(value);
             if (operand != null) {
                 result += ": " + operand;
             }

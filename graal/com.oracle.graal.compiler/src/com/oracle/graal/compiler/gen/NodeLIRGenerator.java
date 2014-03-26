@@ -89,6 +89,7 @@ public abstract class NodeLIRGenerator implements NodeMappableLIRGenerator, Node
         this.gen = gen;
         this.traceLevel = LIRGenerator.Options.TraceLIRGeneratorLevel.getValue();
         this.printIRWithLIR = LIRGenerator.Options.PrintIRWithLIR.getValue();
+        gen.setDebugInfoBuilder(debugInfoBuilder);
     }
 
     @SuppressWarnings("hiding")

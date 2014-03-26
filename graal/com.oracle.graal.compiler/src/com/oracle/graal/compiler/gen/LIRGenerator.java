@@ -64,8 +64,7 @@ public abstract class LIRGenerator implements ArithmeticLIRGenerator, LIRGenerat
     private final Providers providers;
     private final CallingConvention cc;
 
-    private final NodeMap<Value> nodeOperands;
-    private final DebugInfoBuilder debugInfoBuilder;
+    private DebugInfoBuilder debugInfoBuilder;
 
     protected AbstractBlock<?> currentBlock;
     private final int traceLevel;
@@ -148,6 +147,15 @@ public abstract class LIRGenerator implements ArithmeticLIRGenerator, LIRGenerat
     protected LIRGenerationResult res;
 
     /**
+     * set this before using the LIRGenerator
+     * 
+     * TODO this should be removed
+     */
+    void setDebugInfoBuilder(DebugInfoBuilder builder) {
+        debugInfoBuilder = builder;
+    }
+
+    /**
      * Checks whether the supplied constant can be used without loading it into a register for store
      * operations, i.e., on the right hand side of a memory access.
      * 
@@ -158,20 +166,9 @@ public abstract class LIRGenerator implements ArithmeticLIRGenerator, LIRGenerat
     public abstract boolean canStoreConstant(Constant c, boolean isCompressed);
 
     public LIRGenerator(Providers providers, CallingConvention cc, LIRGenerationResult res) {
-        this(null, providers, cc, res);
-    }
-
-    public LIRGenerator(StructuredGraph graph, Providers providers, CallingConvention cc, LIRGenerationResult res) {
         this.res = res;
         this.providers = providers;
         this.cc = cc;
-        if (graph != null) {
-            this.nodeOperands = graph.createNodeMap();
-            this.debugInfoBuilder = createDebugInfoBuilder(nodeOperands);
-        } else {
-            this.nodeOperands = null;
-            this.debugInfoBuilder = null;
-        }
         this.traceLevel = Options.TraceLIRGeneratorLevel.getValue();
         this.printIRWithLIR = Options.PrintIRWithLIR.getValue();
     }
@@ -182,11 +179,6 @@ public abstract class LIRGenerator implements ArithmeticLIRGenerator, LIRGenerat
      */
     public boolean canEliminateRedundantMoves() {
         return true;
-    }
-
-    @SuppressWarnings("hiding")
-    protected DebugInfoBuilder createDebugInfoBuilder(NodeMap<Value> nodeOperands) {
-        return new DebugInfoBuilder(nodeOperands);
     }
 
     @Override
@@ -456,11 +448,6 @@ public abstract class LIRGenerator implements ArithmeticLIRGenerator, LIRGenerat
     protected abstract void emitStrategySwitch(SwitchStrategy strategy, Variable key, LabelRef[] keyTargets, LabelRef defaultTarget);
 
     protected abstract void emitTableSwitch(int lowKey, LabelRef defaultTarget, LabelRef[] targets, Value key);
-
-    public final NodeMap<Value> getNodeOperands() {
-        assert nodeOperands != null;
-        return nodeOperands;
-    }
 
     public CallingConvention getCallingConvention() {
         return cc;

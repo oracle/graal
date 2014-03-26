@@ -58,8 +58,8 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
 
     final HotSpotVMConfig config;
 
-    protected AMD64HotSpotLIRGenerator(StructuredGraph graph, HotSpotProviders providers, HotSpotVMConfig config, CallingConvention cc, LIRGenerationResult lirGenRes) {
-        super(graph, providers, cc, lirGenRes);
+    protected AMD64HotSpotLIRGenerator(HotSpotProviders providers, HotSpotVMConfig config, CallingConvention cc, LIRGenerationResult lirGenRes) {
+        super(providers, cc, lirGenRes);
         assert config.basicLockSize == 8;
         this.config = config;
     }
@@ -119,12 +119,6 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         if (op instanceof AMD64HotSpotEpilogueOp) {
             epilogueOps.add((AMD64HotSpotEpilogueOp) op);
         }
-    }
-
-    @Override
-    protected DebugInfoBuilder createDebugInfoBuilder(NodeMap<Value> nodeOperands) {
-        HotSpotLockStack lockStack = new HotSpotLockStack(res.getFrameMap(), Kind.Long);
-        return new HotSpotDebugInfoBuilder(nodeOperands, lockStack);
     }
 
     @Override

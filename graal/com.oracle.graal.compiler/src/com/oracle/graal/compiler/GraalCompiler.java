@@ -243,7 +243,7 @@ public class GraalCompiler {
         try (Scope ds = Debug.scope("BackEnd", lir)) {
             FrameMap frameMap = backend.newFrameMap();
             LIRGenerationResult lirGenRes = backend.newLIRGenerationResult(lir, frameMap, stub);
-            LIRGenerator lirGen = backend.newLIRGenerator(graph, cc, lirGenRes);
+            LIRGenerator lirGen = backend.newLIRGenerator(cc, lirGenRes);
             NodeLIRGenerator nodeLirGen = backend.newNodeLIRGenerator(graph, cc, lirGenRes, lirGen);
 
             try (Scope s = Debug.scope("LIRGen", lirGen)) {

@@ -65,7 +65,7 @@ public abstract class Backend {
 
     public abstract FrameMap newFrameMap();
 
-    public abstract LIRGenerator newLIRGenerator(StructuredGraph graph, CallingConvention cc, LIRGenerationResult lirGenRes);
+    public abstract LIRGenerator newLIRGenerator(CallingConvention cc, LIRGenerationResult lirGenRes);
 
     public abstract LIRGenerationResult newLIRGenerationResult(LIR lir, FrameMap frameMap, Object stub);
 

@@ -36,6 +36,7 @@ import com.oracle.graal.asm.amd64.AMD64Address.Scale;
 import com.oracle.graal.compiler.amd64.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.debug.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.amd64.AMD64HotSpotLIRGenerator.SaveRbp;
 import com.oracle.graal.hotspot.amd64.AMD64HotSpotMove.CompareAndSwapCompressedOp;
@@ -70,6 +71,12 @@ public class AMD64HotSpotNodeLIRGenerator extends AMD64NodeLIRGenerator implemen
 
     private void setSaveRbp(SaveRbp saveRbp) {
         getGen().saveRbp = saveRbp;
+    }
+
+    @Override
+    protected DebugInfoBuilder createDebugInfoBuilder(NodeMap<Value> nodeOperands) {
+        HotSpotLockStack lockStack = new HotSpotLockStack(res.getFrameMap(), Kind.Long);
+        return new HotSpotDebugInfoBuilder(nodeOperands, lockStack);
     }
 
     @Override
