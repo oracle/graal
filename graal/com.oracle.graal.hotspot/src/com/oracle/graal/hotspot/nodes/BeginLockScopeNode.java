@@ -59,7 +59,7 @@ public final class BeginLockScopeNode extends AbstractMemoryCheckpoint implement
     @Override
     public void generate(NodeLIRGenerator gen) {
         assert lockDepth != -1;
-        HotSpotLIRGenerator hsGen = (HotSpotLIRGenerator) gen;
+        HotSpotLIRGenerator hsGen = (HotSpotLIRGenerator) gen.getLIRGeneratorTool();
         StackSlot slot = hsGen.getLockSlot(lockDepth);
         Value result = gen.getLIRGeneratorTool().emitAddress(slot);
         gen.setResult(this, result);
