@@ -90,7 +90,7 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
 
     /**
      * Initializes the GPU device.
-     * 
+     *
      * @return whether or not initialization was successful
      */
     private static native boolean initialize();
@@ -141,7 +141,7 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
 
     /**
      * Compiles a given method to HSAIL code.
-     * 
+     *
      * @param makeBinary specifies whether a GPU binary should also be generated for the HSAIL code.
      *            If true, the returned value is guaranteed to have a non-zero
      *            {@linkplain ExternalCompilationResult#getEntryPoint() entry point}.
@@ -172,7 +172,7 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
             if (Debug.isLogEnabled()) {
                 // show infopoints
                 List<Infopoint> infoList = hsailCode.getInfopoints();
-                Debug.log(infoList.size() + " HSAIL infopoints");
+                Debug.log("%d HSAIL infopoints", infoList.size());
                 for (Infopoint info : infoList) {
                     Debug.log(info.toString());
                     Debug.log(info.debugInfo.frame().toString());
@@ -228,7 +228,7 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
      * Installs the {@linkplain ExternalCompilationResult#getEntryPoint() GPU binary} associated
      * with some given HSAIL code in the code cache and returns a {@link HotSpotNmethod} handle to
      * the installed code.
-     * 
+     *
      * @param hsailCode HSAIL compilation result for which a GPU binary has been generated
      * @return a handle to the binary as installed in the HotSpot code cache
      */
@@ -247,12 +247,12 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
             try (Scope ds = Debug.scope("GeneratingHostGraph")) {
                 HotSpotBackend hostBackend = getRuntime().getHostBackend();
                 JavaType[] parameterTypes = new JavaType[hostGraph.getNodes(ParameterNode.class).count()];
-                Debug.log("Param count :" + parameterTypes.length);
+                Debug.log("Param count: %d", parameterTypes.length);
                 for (int i = 0; i < parameterTypes.length; i++) {
                     ParameterNode parameter = hostGraph.getParameter(i);
-                    Debug.log("Param [" + i + "]=" + parameter);
+                    Debug.log("Param [%d]=%d", i, parameter);
                     parameterTypes[i] = parameter.stamp().javaType(hostBackend.getProviders().getMetaAccess());
-                    Debug.log(" " + parameterTypes[i]);
+                    Debug.log(" %s", parameterTypes[i]);
                 }
                 CallingConvention cc = hostBackend.getProviders().getCodeCache().getRegisterConfig().getCallingConvention(Type.JavaCallee, method.getSignature().getReturnType(null), parameterTypes,
                                 hostBackend.getTarget(), false);
@@ -482,7 +482,7 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
         /**
          * Compute the hsail size mappings up to but not including the last non-constant parameter
          * (which is the gid).
-         * 
+         *
          */
         String[] paramHsailSizes = new String[totalParamCount];
         for (int i = 0; i < totalParamCount; i++) {
