@@ -26,13 +26,11 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.hotspot.meta.*;
-import com.oracle.graal.hotspot.nodes.*;
-import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 
 /**
  * This interface defines the contract a HotSpot backend LIR generator needs to fulfill in addition
- * to abstract methods from {@link LIRGenerator} and {@link NodeBasedLIRGeneratorTool}.
+ * to abstract methods from {@link LIRGenerator} and {@link NodeLIRGeneratorTool}.
  */
 public interface HotSpotLIRGenerator {
 
@@ -45,14 +43,6 @@ public interface HotSpotLIRGenerator {
     void emitTailcall(Value[] args, Value address);
 
     void emitDeoptimizeCaller(DeoptimizationAction action, DeoptimizationReason reason);
-
-    void emitPatchReturnAddress(ValueNode address);
-
-    void emitJumpToExceptionHandlerInCaller(ValueNode handlerInCallerPc, ValueNode exception, ValueNode exceptionPc);
-
-    void emitPrefetchAllocate(ValueNode address, ValueNode distance);
-
-    void visitDirectCompareAndSwap(DirectCompareAndSwapNode x);
 
     /**
      * Gets a stack slot for a lock at a given lock nesting depth.

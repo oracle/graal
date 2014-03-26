@@ -205,14 +205,14 @@ public class GraalCompiler {
 
     }
 
-    private static void emitBlock(LIRGenerator lirGen, LIRGenerationResult lirGenRes, Block b, StructuredGraph graph, BlockMap<List<ScheduledNode>> blockMap) {
+    private static void emitBlock(NodeLIRGenerator nodeLirGen, LIRGenerationResult lirGenRes, Block b, StructuredGraph graph, BlockMap<List<ScheduledNode>> blockMap) {
         if (lirGenRes.getLIR().getLIRforBlock(b) == null) {
             for (Block pred : b.getPredecessors()) {
                 if (!b.isLoopHeader() || !pred.isLoopEnd()) {
-                    emitBlock(lirGen, lirGenRes, pred, graph, blockMap);
+                    emitBlock(nodeLirGen, lirGenRes, pred, graph, blockMap);
                 }
             }
-            lirGen.doBlock(b, graph, blockMap);
+            nodeLirGen.doBlock(b, graph, blockMap);
         }
     }
 
@@ -244,10 +244,11 @@ public class GraalCompiler {
             FrameMap frameMap = backend.newFrameMap();
             LIRGenerationResult lirGenRes = backend.newLIRGenerationResult(lir, frameMap, stub);
             LIRGenerator lirGen = backend.newLIRGenerator(graph, cc, lirGenRes);
+            NodeLIRGenerator nodeLirGen = backend.newNodeLIRGenerator(graph, cc, lirGenRes, lirGen);
 
             try (Scope s = Debug.scope("LIRGen", lirGen)) {
                 for (Block b : linearScanOrder) {
-                    emitBlock(lirGen, lirGenRes, b, graph, schedule.getBlockToNodesMap());
+                    emitBlock(nodeLirGen, lirGenRes, b, graph, schedule.getBlockToNodesMap());
                 }
                 lirGen.beforeRegisterAllocation();
 
@@ -256,7 +257,7 @@ public class GraalCompiler {
                 throw Debug.handle(e);
             }
 
-            try (Scope s = Debug.scope("Allocator", lirGen)) {
+            try (Scope s = Debug.scope("Allocator", nodeLirGen)) {
                 if (backend.shouldAllocateRegisters()) {
                     new LinearScan(target, lir, frameMap).allocate();
                 }

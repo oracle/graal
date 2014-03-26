@@ -182,7 +182,7 @@ public class BaselineCompiler implements BytecodeParser<BciBlock> {
 
                 for (BciBlock block : blockMap.blocks) {
 
-                    lirGen.doBlock(block, method, this);
+                    // lirGen.doBlock(block, method, this);
                 }
                 // indent.outdent();
 
@@ -192,7 +192,8 @@ public class BaselineCompiler implements BytecodeParser<BciBlock> {
                 throw Debug.handle(e);
             }
 
-            try (Scope s = Debug.scope("Allocator", lirGen)) {
+            // try (Scope s = Debug.scope("Allocator", nodeLirGen)) {
+            try (Scope s = Debug.scope("Allocator")) {
 
                 if (backend.shouldAllocateRegisters()) {
                     new LinearScan(target, lir, frameMap).allocate();
@@ -790,7 +791,8 @@ public class BaselineCompiler implements BytecodeParser<BciBlock> {
 // throw new BailoutException("unbalanced monitors");
 // }
 
-        lirGen.visitReturn(x);
+        // lirGen.visitReturn(x);
+        throw GraalInternalError.unimplemented();
     }
 
     public void setParameter(int i, Variable emitMove) {

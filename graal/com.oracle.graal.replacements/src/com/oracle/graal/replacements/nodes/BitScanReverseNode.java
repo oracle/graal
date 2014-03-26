@@ -79,7 +79,7 @@ public class BitScanReverseNode extends FloatingNode implements LIRGenLowerable,
     }
 
     @Override
-    public void generate(LIRGenerator gen) {
+    public void generate(NodeLIRGenerator gen) {
         Variable result = gen.newVariable(Kind.Int);
         gen.emitBitScanReverse(result, gen.operand(value));
         gen.setResult(this, result);

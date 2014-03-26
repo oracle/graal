@@ -44,19 +44,20 @@ public class AMD64RawNativeCallNode extends FixedWithNextNode implements LIRGenL
     }
 
     @Override
-    public void generate(LIRGenerator generator) {
-        AMD64LIRGenerator gen = (AMD64LIRGenerator) generator;
+    public void generate(NodeLIRGenerator generator) {
+        AMD64NodeLIRGenerator gen = (AMD64NodeLIRGenerator) generator;
         Value[] parameter = new Value[args.count()];
         JavaType[] parameterTypes = new JavaType[args.count()];
         for (int i = 0; i < args.count(); i++) {
             parameter[i] = generator.operand(args.get(i));
-            parameterTypes[i] = args.get(i).stamp().javaType(gen.getMetaAccess());
+            parameterTypes[i] = args.get(i).stamp().javaType(gen.getLIRGeneratorTool().getMetaAccess());
         }
-        ResolvedJavaType returnType = stamp().javaType(gen.getMetaAccess());
-        CallingConvention cc = generator.getCodeCache().getRegisterConfig().getCallingConvention(Type.NativeCall, returnType, parameterTypes, generator.target(), false);
-        gen.emitCCall(functionPointer.asLong(), cc, parameter, countFloatingTypeArguments(args));
+        ResolvedJavaType returnType = stamp().javaType(gen.getLIRGeneratorTool().getMetaAccess());
+        CallingConvention cc = generator.getLIRGeneratorTool().getCodeCache().getRegisterConfig().getCallingConvention(Type.NativeCall, returnType, parameterTypes,
+                        generator.getLIRGeneratorTool().target(), false);
+        ((AMD64LIRGenerator) gen.getLIRGeneratorTool()).emitCCall(functionPointer.asLong(), cc, parameter, countFloatingTypeArguments(args));
         if (this.getKind() != Kind.Void) {
-            generator.setResult(this, gen.emitMove(cc.getReturn()));
+            generator.setResult(this, gen.getLIRGeneratorTool().emitMove(cc.getReturn()));
         }
     }
 

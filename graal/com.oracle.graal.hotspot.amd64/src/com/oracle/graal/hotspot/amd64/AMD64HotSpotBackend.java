@@ -81,6 +81,11 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend {
         return new AMD64HotSpotLIRGenerationResult(lir, frameMap, stub);
     }
 
+    @Override
+    public NodeLIRGenerator newNodeLIRGenerator(StructuredGraph graph, CallingConvention cc, LIRGenerationResult lirGenRes, LIRGenerator lirGen) {
+        return new AMD64HotSpotNodeLIRGenerator(graph, cc, lirGenRes, lirGen);
+    }
+
     /**
      * Emits code to do stack overflow checking.
      * 
@@ -323,4 +328,5 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend {
         };
         return new HotSpotNativeFunctionInterface(getProviders(), factory, this, config.dllLoad, config.dllLookup, config.rtldDefault);
     }
+
 }

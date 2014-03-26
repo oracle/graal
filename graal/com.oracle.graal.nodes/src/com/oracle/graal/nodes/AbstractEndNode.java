@@ -35,7 +35,7 @@ public abstract class AbstractEndNode extends FixedNode implements IterableNodeT
     }
 
     @Override
-    public void generate(NodeBasedLIRGeneratorTool gen) {
+    public void generate(NodeLIRGeneratorTool gen) {
         gen.visitEndNode(this);
     }
 

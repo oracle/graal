@@ -57,7 +57,7 @@ public final class ReturnNode extends ControlSinkNode implements LIRLowerable, I
     }
 
     @Override
-    public void generate(NodeBasedLIRGeneratorTool gen) {
+    public void generate(NodeLIRGeneratorTool gen) {
         gen.visitReturn(this);
     }
 

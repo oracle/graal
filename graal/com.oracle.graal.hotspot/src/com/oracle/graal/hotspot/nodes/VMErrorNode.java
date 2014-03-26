@@ -24,9 +24,8 @@ package com.oracle.graal.hotspot.nodes;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.gen.*;
-import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.replacements.*;
 
@@ -34,7 +33,7 @@ import com.oracle.graal.replacements.*;
  * Causes the VM to exit with a description of the current Java location and an optional
  * {@linkplain Log#printf(String, long) formatted} error message specified.
  */
-public final class VMErrorNode extends DeoptimizingStubCall implements LIRGenLowerable {
+public final class VMErrorNode extends DeoptimizingStubCall implements LIRLowerable {
 
     private final String format;
     @Input private ValueNode value;
@@ -47,7 +46,7 @@ public final class VMErrorNode extends DeoptimizingStubCall implements LIRGenLow
     }
 
     @Override
-    public void generate(LIRGenerator gen) {
+    public void generate(NodeLIRGeneratorTool gen) {
         String whereString = "in compiled code for " + graph();
 
         // As these strings will end up embedded as oops in the code, they
@@ -57,8 +56,8 @@ public final class VMErrorNode extends DeoptimizingStubCall implements LIRGenLow
         Constant whereArg = Constant.forObject(whereString.intern());
         Constant formatArg = Constant.forObject(format.intern());
 
-        ForeignCallLinkage linkage = gen.getForeignCalls().lookupForeignCall(VMErrorNode.VM_ERROR);
-        gen.emitForeignCall(linkage, null, whereArg, formatArg, gen.operand(value));
+        ForeignCallLinkage linkage = gen.getLIRGeneratorTool().getForeignCalls().lookupForeignCall(VMErrorNode.VM_ERROR);
+        gen.getLIRGeneratorTool().emitForeignCall(linkage, null, whereArg, formatArg, gen.operand(value));
     }
 
     @NodeIntrinsic

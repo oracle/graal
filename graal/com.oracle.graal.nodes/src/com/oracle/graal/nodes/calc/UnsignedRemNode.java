@@ -70,8 +70,8 @@ public class UnsignedRemNode extends FixedBinaryNode implements Canonicalizable,
     }
 
     @Override
-    public void generate(NodeBasedLIRGeneratorTool gen) {
-        gen.setResult(this, gen.emitURem(gen.operand(x()), gen.operand(y()), this));
+    public void generate(NodeLIRGeneratorTool gen) {
+        gen.setResult(this, gen.getLIRGeneratorTool().emitURem(gen.operand(x()), gen.operand(y()), this));
     }
 
     @Override

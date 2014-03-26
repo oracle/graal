@@ -92,7 +92,7 @@ public final class TypeSwitchNode extends SwitchNode implements LIRLowerable, Si
     }
 
     @Override
-    public void generate(NodeBasedLIRGeneratorTool gen) {
+    public void generate(NodeLIRGeneratorTool gen) {
         gen.emitSwitch(this);
     }
 

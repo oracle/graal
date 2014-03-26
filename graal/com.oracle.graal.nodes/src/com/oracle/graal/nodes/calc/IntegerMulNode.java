@@ -74,7 +74,7 @@ public class IntegerMulNode extends IntegerArithmeticNode implements Canonicaliz
     }
 
     @Override
-    public void generate(NodeMappableArithmeticLIRGenerator gen) {
+    public void generate(NodeLIRGeneratorTool gen) {
         Value op1 = gen.operand(x());
         Value op2 = gen.operand(y());
         if (!y().isConstant() && !FloatAddNode.livesLonger(this, y(), gen)) {
@@ -82,6 +82,6 @@ public class IntegerMulNode extends IntegerArithmeticNode implements Canonicaliz
             op1 = op2;
             op2 = op;
         }
-        gen.setResult(this, gen.emitMul(op1, op2));
+        gen.setResult(this, gen.getLIRGeneratorTool().emitMul(op1, op2));
     }
 }

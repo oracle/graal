@@ -47,12 +47,12 @@ public class SPARCBitManipulationOp extends SPARCLIRInstruction {
     @Use({REG}) protected AllocatableValue input;
     @Def({REG}) protected Value scratch;
 
-    public SPARCBitManipulationOp(IntrinsicOpcode opcode, AllocatableValue result, AllocatableValue input, NodeBasedLIRGeneratorTool gen) {
+    public SPARCBitManipulationOp(IntrinsicOpcode opcode, AllocatableValue result, AllocatableValue input, NodeLIRGeneratorTool gen) {
         this.opcode = opcode;
         this.result = result;
         this.input = input;
         if (opcode == IntrinsicOpcode.IBSR || opcode == IntrinsicOpcode.LBSR) {
-            scratch = gen.newVariable(input.getKind());
+            scratch = gen.getLIRGeneratorTool().newVariable(input.getKind());
         }
     }
 

@@ -41,7 +41,7 @@ public final class ValueAnchorNode extends FixedWithNextNode implements Canonica
     }
 
     @Override
-    public void generate(NodeBasedLIRGeneratorTool gen) {
+    public void generate(NodeLIRGeneratorTool gen) {
         // Nothing to emit, since this node is used for structural purposes only.
     }
 

@@ -98,7 +98,7 @@ public final class UnsignedRightShiftNode extends ShiftNode implements Canonical
     }
 
     @Override
-    public void generate(NodeMappableArithmeticLIRGenerator gen) {
-        gen.setResult(this, gen.emitUShr(gen.operand(x()), gen.operand(y())));
+    public void generate(NodeLIRGeneratorTool gen) {
+        gen.setResult(this, gen.getLIRGeneratorTool().emitUShr(gen.operand(x()), gen.operand(y())));
     }
 }

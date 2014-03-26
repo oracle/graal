@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.nodes.spi;
 
+import java.util.*;
+
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
@@ -29,19 +31,9 @@ import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 
-public interface NodeLIRGeneratorTool {
-
-    Value emitLoad(Kind kind, Value address, Access access);
-
-    void emitStore(Kind kind, Value address, Value input, Access access);
-
-    void emitMembar(int barriers);
-
-    void emitDeoptimize(Value actionAndReason, Value failedSpeculation, DeoptimizingNode deopting);
+public interface NodeLIRGeneratorTool extends NodeMappableLIRGenerator {
 
     void emitNullCheck(ValueNode v, DeoptimizingNode deopting);
-
-    Value emitForeignCall(ForeignCallLinkage linkage, DeoptimizingNode info, Value... args);
 
     void emitIf(IfNode i);
 
@@ -69,4 +61,10 @@ public interface NodeLIRGeneratorTool {
     void visitBreakpointNode(BreakpointNode i);
 
     void visitInfopointNode(InfopointNode i);
+
+    LIRGeneratorTool getLIRGeneratorTool();
+
+    void emitOverflowCheckBranch(AbstractBeginNode overflowSuccessor, AbstractBeginNode next, double probability);
+
+    Value[] visitInvokeArguments(CallingConvention cc, Collection<ValueNode> arguments);
 }

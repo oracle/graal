@@ -51,7 +51,7 @@ public class AMD64FloatConvertNode extends FloatingNode implements ArithmeticLIR
         throw GraalInternalError.shouldNotReachHere();
     }
 
-    public void generate(NodeMappableArithmeticLIRGenerator gen) {
-        gen.setResult(this, gen.emitFloatConvert(op, gen.operand(value)));
+    public void generate(NodeLIRGeneratorTool gen) {
+        gen.setResult(this, gen.getLIRGeneratorTool().emitFloatConvert(op, gen.operand(value)));
     }
 }

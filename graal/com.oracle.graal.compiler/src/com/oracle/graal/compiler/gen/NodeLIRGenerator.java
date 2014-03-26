@@ -26,7 +26,6 @@ import static com.oracle.graal.api.code.ValueUtil.*;
 import static com.oracle.graal.api.meta.Value.*;
 import static com.oracle.graal.lir.LIR.*;
 import static com.oracle.graal.nodes.ConstantNode.*;
-import static com.oracle.graal.phases.GraalOptions.*;
 
 import java.lang.reflect.*;
 import java.util.*;
@@ -35,6 +34,7 @@ import java.util.Map.Entry;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
+import com.oracle.graal.compiler.gen.LIRGenerator.LoadConstant;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
@@ -42,7 +42,6 @@ import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.BlockEndOp;
 import com.oracle.graal.lir.StandardOp.JumpOp;
 import com.oracle.graal.lir.StandardOp.LabelOp;
-import com.oracle.graal.lir.StandardOp.NoOp;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.PhiNode.PhiType;
 import com.oracle.graal.nodes.calc.*;
@@ -55,7 +54,7 @@ import com.oracle.graal.nodes.virtual.*;
 /**
  * This class traverses the HIR instructions and generates LIR instructions from them.
  */
-public abstract class NodeLIRGenerator implements NodeMappableLIRGenerator, NodeLIRGeneratorTool, LIRTypeTool, BaselineLIRGenerator {
+public abstract class NodeLIRGenerator implements NodeMappableLIRGenerator, NodeLIRGeneratorTool {
 
     public static class Options {
         // @formatter:off
@@ -75,108 +74,18 @@ public abstract class NodeLIRGenerator implements NodeMappableLIRGenerator, Node
     private final int traceLevel;
     private final boolean printIRWithLIR;
 
-    private final LIRGenerator gen;
-
-    /**
-     * Handle for an operation that loads a constant into a variable. The operation starts in the
-     * first block where the constant is used but will eventually be
-     * {@linkplain NodeLIRGenerator#insertConstantLoads() moved} to a block dominating all usages of
-     * the constant.
-     */
-    public static class LoadConstant implements Comparable<LoadConstant> {
-        /**
-         * The index of {@link #op} within {@link #block}'s instruction list or -1 if {@code op} is
-         * to be moved to a dominator block.
-         */
-        int index;
-
-        /**
-         * The operation that loads the constant.
-         */
-        private final LIRInstruction op;
-
-        /**
-         * The block that does or will contain {@link #op}. This is initially the block where the
-         * first usage of the constant is seen during LIR generation.
-         */
-        private Block block;
-
-        /**
-         * The variable into which the constant is loaded.
-         */
-        private final Variable variable;
-
-        public LoadConstant(Variable variable, Block block, int index, LIRInstruction op) {
-            this.variable = variable;
-            this.block = block;
-            this.index = index;
-            this.op = op;
-        }
-
-        /**
-         * Sorts {@link LoadConstant} objects according to their enclosing blocks. This is used to
-         * group loads per block in {@link NodeLIRGenerator#insertConstantLoads()}.
-         */
-        public int compareTo(LoadConstant o) {
-            if (block.getId() < o.block.getId()) {
-                return -1;
-            }
-            if (block.getId() > o.block.getId()) {
-                return 1;
-            }
-            return 0;
-        }
-
-        @Override
-        public String toString() {
-            return block + "#" + op;
-        }
-
-        /**
-         * Removes the {@link #op} from its original location if it is still at that location.
-         */
-        public void unpin(LIR lir) {
-            if (index >= 0) {
-                // Replace the move with a filler op so that the operation
-                // list does not need to be adjusted.
-                List<LIRInstruction> instructions = lir.getLIRforBlock(block);
-                instructions.set(index, new NoOp(null, -1));
-                index = -1;
-            }
-        }
-    }
-
-    private Map<Constant, LoadConstant> constantLoads;
+    protected final LIRGenerator gen;
 
     private ValueNode currentInstruction;
     private ValueNode lastInstructionPrinted; // Debugging only
 
     protected LIRGenerationResult res;
 
-    /**
-     * Checks whether the supplied constant can be used without loading it into a register for store
-     * operations, i.e., on the right hand side of a memory access.
-     * 
-     * @param c The constant to check.
-     * @return True if the constant can be used directly, false if the constant needs to be in a
-     *         register.
-     */
-    public abstract boolean canStoreConstant(Constant c, boolean isCompressed);
-
-    public NodeLIRGenerator(CallingConvention cc, LIRGenerationResult res, LIRGenerator gen) {
-        this(null, cc, res, gen);
-    }
-
     public NodeLIRGenerator(StructuredGraph graph, CallingConvention cc, LIRGenerationResult res, LIRGenerator gen) {
         this.res = res;
         this.cc = cc;
-        if (graph != null) {
-            this.nodeOperands = graph.createNodeMap();
-            this.debugInfoBuilder = createDebugInfoBuilder(nodeOperands);
-        } else {
-            this.nodeOperands = null;
-            this.debugInfoBuilder = null;
-        }
+        this.nodeOperands = graph.createNodeMap();
+        this.debugInfoBuilder = createDebugInfoBuilder(nodeOperands);
         this.gen = gen;
         this.traceLevel = LIRGenerator.Options.TraceLIRGeneratorLevel.getValue();
         this.printIRWithLIR = LIRGenerator.Options.PrintIRWithLIR.getValue();
@@ -213,16 +122,16 @@ public abstract class NodeLIRGenerator implements NodeMappableLIRGenerator, Node
                     return setResult(node, value);
                 } else {
                     Variable loadedValue;
-                    if (constantLoads == null) {
-                        constantLoads = new HashMap<>();
+                    if (gen.constantLoads == null) {
+                        gen.constantLoads = new HashMap<>();
                     }
-                    LoadConstant load = constantLoads.get(value);
+                    LoadConstant load = gen.constantLoads.get(value);
                     assert currentBlock instanceof Block;
                     if (load == null) {
                         int index = res.getLIR().getLIRforBlock(currentBlock).size();
                         loadedValue = gen.emitMove(value);
                         LIRInstruction op = res.getLIR().getLIRforBlock(currentBlock).get(index);
-                        constantLoads.put(value, new LoadConstant(loadedValue, (Block) currentBlock, index, op));
+                        gen.constantLoads.put(value, new LoadConstant(loadedValue, (Block) currentBlock, index, op));
                     } else {
                         Block dominator = ControlFlowGraph.commonDominator(load.block, (Block) currentBlock);
                         loadedValue = load.variable;
@@ -429,7 +338,7 @@ public abstract class NodeLIRGenerator implements NodeMappableLIRGenerator, Node
                  */
                 throw new GraalInternalError("Block without BlockEndOp: " + block.getEndNode());
             }
-            emitJump(getLIRBlock((FixedNode) successors.first()));
+            gen.emitJump(getLIRBlock((FixedNode) successors.first()));
         }
 
         assert verifyBlock(res.getLIR(), block);
@@ -462,13 +371,13 @@ public abstract class NodeLIRGenerator implements NodeMappableLIRGenerator, Node
             Debug.log("This node has invalid type, we are emitting dead code(?): %s", node);
         }
         if (node instanceof LIRGenLowerable) {
-            ((LIRGenLowerable) node).generate(gen);
+            ((LIRGenLowerable) node).generate(this);
         } else if (node instanceof LIRGenResLowerable) {
-            ((LIRGenResLowerable) node).generate(gen, res);
+            ((LIRGenResLowerable) node).generate(this, res);
         } else if (node instanceof LIRLowerable) {
-            ((LIRLowerable) node).generate(gen);
+            ((LIRLowerable) node).generate(this);
         } else if (node instanceof ArithmeticLIRLowerable) {
-            ((ArithmeticLIRLowerable) node).generate(gen);
+            ((ArithmeticLIRLowerable) node).generate(this);
         } else {
             throw GraalInternalError.shouldNotReachHere("node is not LIRLowerable: " + node);
         }
@@ -536,20 +445,8 @@ public abstract class NodeLIRGenerator implements NodeMappableLIRGenerator, Node
             operand = resultOperandFor(x.result().getKind());
             gen.emitMove(operand, operand(x.result()));
         }
-        emitReturn(operand);
+        gen.emitReturn(operand);
     }
-
-    @Override
-    public void visitReturn(Value x) {
-        AllocatableValue operand = ILLEGAL;
-        if (x != null) {
-            operand = resultOperandFor(x.getKind());
-            gen.emitMove(operand, x);
-        }
-        emitReturn(operand);
-    }
-
-    protected abstract void emitReturn(Value input);
 
     @Override
     public void visitMerge(MergeNode x) {
@@ -620,20 +517,20 @@ public abstract class NodeLIRGenerator implements NodeMappableLIRGenerator, Node
     }
 
     private void emitNullCheckBranch(IsNullNode node, LabelRef trueSuccessor, LabelRef falseSuccessor, double trueSuccessorProbability) {
-        emitCompareBranch(operand(node.object()), Constant.NULL_OBJECT, Condition.EQ, false, trueSuccessor, falseSuccessor, trueSuccessorProbability);
+        gen.emitCompareBranch(operand(node.object()), Constant.NULL_OBJECT, Condition.EQ, false, trueSuccessor, falseSuccessor, trueSuccessorProbability);
     }
 
     public void emitCompareBranch(CompareNode compare, LabelRef trueSuccessor, LabelRef falseSuccessor, double trueSuccessorProbability) {
-        emitCompareBranch(operand(compare.x()), operand(compare.y()), compare.condition(), compare.unorderedIsTrue(), trueSuccessor, falseSuccessor, trueSuccessorProbability);
+        gen.emitCompareBranch(operand(compare.x()), operand(compare.y()), compare.condition(), compare.unorderedIsTrue(), trueSuccessor, falseSuccessor, trueSuccessorProbability);
     }
 
     public void emitIntegerTestBranch(IntegerTestNode test, LabelRef trueSuccessor, LabelRef falseSuccessor, double trueSuccessorProbability) {
-        emitIntegerTestBranch(operand(test.x()), operand(test.y()), trueSuccessor, falseSuccessor, trueSuccessorProbability);
+        gen.emitIntegerTestBranch(operand(test.x()), operand(test.y()), trueSuccessor, falseSuccessor, trueSuccessorProbability);
     }
 
     public void emitConstantBranch(boolean value, LabelRef trueSuccessorBlock, LabelRef falseSuccessorBlock) {
         LabelRef block = value ? trueSuccessorBlock : falseSuccessorBlock;
-        emitJump(block);
+        gen.emitJump(block);
     }
 
     @Override
@@ -646,31 +543,37 @@ public abstract class NodeLIRGenerator implements NodeMappableLIRGenerator, Node
     public Variable emitConditional(LogicNode node, Value trueValue, Value falseValue) {
         if (node instanceof IsNullNode) {
             IsNullNode isNullNode = (IsNullNode) node;
-            return emitConditionalMove(operand(isNullNode.object()), Constant.NULL_OBJECT, Condition.EQ, false, trueValue, falseValue);
+            return gen.emitConditionalMove(operand(isNullNode.object()), Constant.NULL_OBJECT, Condition.EQ, false, trueValue, falseValue);
         } else if (node instanceof CompareNode) {
             CompareNode compare = (CompareNode) node;
-            return emitConditionalMove(operand(compare.x()), operand(compare.y()), compare.condition(), compare.unorderedIsTrue(), trueValue, falseValue);
+            return gen.emitConditionalMove(operand(compare.x()), operand(compare.y()), compare.condition(), compare.unorderedIsTrue(), trueValue, falseValue);
         } else if (node instanceof LogicConstantNode) {
             return gen.emitMove(((LogicConstantNode) node).getValue() ? trueValue : falseValue);
         } else if (node instanceof IntegerTestNode) {
             IntegerTestNode test = (IntegerTestNode) node;
-            return emitIntegerTestMove(operand(test.x()), operand(test.y()), trueValue, falseValue);
+            return gen.emitIntegerTestMove(operand(test.x()), operand(test.y()), trueValue, falseValue);
         } else {
             throw GraalInternalError.unimplemented(node.toString());
         }
     }
 
-    public abstract void emitJump(LabelRef label);
-
-    public abstract void emitCompareBranch(Value left, Value right, Condition cond, boolean unorderedIsTrue, LabelRef trueDestination, LabelRef falseDestination, double trueDestinationProbability);
-
-    public abstract void emitOverflowCheckBranch(LabelRef overflow, LabelRef noOverflow, double overflowProbability);
-
-    public abstract void emitIntegerTestBranch(Value left, Value right, LabelRef trueDestination, LabelRef falseDestination, double trueSuccessorProbability);
-
-    public abstract Variable emitConditionalMove(Value leftVal, Value right, Condition cond, boolean unorderedIsTrue, Value trueValue, Value falseValue);
-
-    public abstract Variable emitIntegerTestMove(Value leftVal, Value right, Value trueValue, Value falseValue);
+// public abstract void emitJump(LabelRef label);
+//
+// public abstract void emitCompareBranch(Value left, Value right, Condition cond, boolean
+// unorderedIsTrue, LabelRef trueDestination, LabelRef falseDestination, double
+// trueDestinationProbability);
+//
+// public abstract void emitOverflowCheckBranch(LabelRef overflow, LabelRef noOverflow, double
+// overflowProbability);
+//
+// public abstract void emitIntegerTestBranch(Value left, Value right, LabelRef trueDestination,
+// LabelRef falseDestination, double trueSuccessorProbability);
+//
+// public abstract Variable emitConditionalMove(Value leftVal, Value right, Condition cond, boolean
+// unorderedIsTrue, Value trueValue, Value falseValue);
+//
+// public abstract Variable emitIntegerTestMove(Value leftVal, Value right, Value trueValue, Value
+// falseValue);
 
     @Override
     public void emitInvoke(Invoke x) {
@@ -701,15 +604,13 @@ public abstract class NodeLIRGenerator implements NodeMappableLIRGenerator, Node
         }
 
         if (x instanceof InvokeWithExceptionNode) {
-            emitJump(getLIRBlock(((InvokeWithExceptionNode) x).next()));
+            gen.emitJump(getLIRBlock(((InvokeWithExceptionNode) x).next()));
         }
     }
 
     protected abstract void emitDirectCall(DirectCallTargetNode callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState callState);
 
     protected abstract void emitIndirectCall(IndirectCallTargetNode callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState callState);
-
-    protected abstract void emitForeignCall(ForeignCallLinkage linkage, Value result, Value[] arguments, Value[] temps, LIRFrameState info);
 
     protected static AllocatableValue toStackKind(AllocatableValue value) {
         if (value.getKind().getStackKind() != value.getKind()) {
@@ -726,6 +627,7 @@ public abstract class NodeLIRGenerator implements NodeMappableLIRGenerator, Node
         return value;
     }
 
+    @Override
     public Value[] visitInvokeArguments(CallingConvention invokeCc, Collection<ValueNode> arguments) {
         // for each argument, load it into the correct location
         Value[] result = new Value[arguments.size()];
@@ -743,39 +645,6 @@ public abstract class NodeLIRGenerator implements NodeMappableLIRGenerator, Node
         return result;
     }
 
-    @Override
-    public Variable emitForeignCall(ForeignCallLinkage linkage, DeoptimizingNode info, Value... args) {
-        LIRFrameState state = null;
-        if (linkage.canDeoptimize()) {
-            if (info != null) {
-                state = stateFor(info.getDeoptimizationState());
-            } else {
-                assert needOnlyOopMaps();
-                state = new LIRFrameState(null, null, null);
-            }
-        }
-
-        // move the arguments into the correct location
-        CallingConvention linkageCc = linkage.getOutgoingCallingConvention();
-        res.getFrameMap().callsMethod(linkageCc);
-        assert linkageCc.getArgumentCount() == args.length : "argument count mismatch";
-        Value[] argLocations = new Value[args.length];
-        for (int i = 0; i < args.length; i++) {
-            Value arg = args[i];
-            AllocatableValue loc = linkageCc.getArgument(i);
-            gen.emitMove(loc, arg);
-            argLocations[i] = loc;
-        }
-        res.setForeignCall(true);
-        emitForeignCall(linkage, linkageCc.getReturn(), argLocations, linkage.getTemporaries(), state);
-
-        if (isLegal(linkageCc.getReturn())) {
-            return gen.emitMove(linkageCc.getReturn());
-        } else {
-            return null;
-        }
-    }
-
     /**
      * This method tries to create a switch implementation that is optimal for the given switch. It
      * will either generate a sequential if/then/else cascade, a set of range tests or a table
@@ -790,13 +659,13 @@ public abstract class NodeLIRGenerator implements NodeMappableLIRGenerator, Node
         LabelRef defaultTarget = getLIRBlock(x.defaultSuccessor());
         int keyCount = x.keyCount();
         if (keyCount == 0) {
-            emitJump(defaultTarget);
+            gen.emitJump(defaultTarget);
         } else {
             Variable value = gen.load(operand(x.value()));
             if (keyCount == 1) {
                 assert defaultTarget != null;
                 double probability = x.probability(x.keySuccessor(0));
-                emitCompareBranch(gen.load(operand(x.value())), x.keyAt(0), Condition.EQ, false, getLIRBlock(x.keySuccessor(0)), defaultTarget, probability);
+                gen.emitCompareBranch(gen.load(operand(x.value())), x.keyAt(0), Condition.EQ, false, getLIRBlock(x.keySuccessor(0)), defaultTarget, probability);
             } else {
                 LabelRef[] keyTargets = new LabelRef[keyCount];
                 Constant[] keyConstants = new Constant[keyCount];
@@ -808,44 +677,13 @@ public abstract class NodeLIRGenerator implements NodeMappableLIRGenerator, Node
                 }
                 if (value.getKind() != Kind.Int || !x.isSorted()) {
                     // hopefully only a few entries
-                    emitStrategySwitch(new SwitchStrategy.SequentialStrategy(keyProbabilities, keyConstants), value, keyTargets, defaultTarget);
+                    gen.emitStrategySwitch(new SwitchStrategy.SequentialStrategy(keyProbabilities, keyConstants), value, keyTargets, defaultTarget);
                 } else {
-                    emitStrategySwitch(keyConstants, keyProbabilities, keyTargets, defaultTarget, value);
+                    gen.emitStrategySwitch(keyConstants, keyProbabilities, keyTargets, defaultTarget, value);
                 }
             }
         }
     }
-
-    protected void emitStrategySwitch(Constant[] keyConstants, double[] keyProbabilities, LabelRef[] keyTargets, LabelRef defaultTarget, Variable value) {
-        int keyCount = keyConstants.length;
-        SwitchStrategy strategy = SwitchStrategy.getBestStrategy(keyProbabilities, keyConstants, keyTargets);
-        long valueRange = keyConstants[keyCount - 1].asLong() - keyConstants[0].asLong() + 1;
-        double tableSwitchDensity = keyCount / (double) valueRange;
-        /*
-         * This heuristic tries to find a compromise between the effort for the best switch strategy
-         * and the density of a tableswitch. If the effort for the strategy is at least 4, then a
-         * tableswitch is preferred if better than a certain value that starts at 0.5 and lowers
-         * gradually with additional effort.
-         */
-        if (strategy.getAverageEffort() < 4 || tableSwitchDensity < (1 / Math.sqrt(strategy.getAverageEffort()))) {
-            emitStrategySwitch(strategy, value, keyTargets, defaultTarget);
-        } else {
-            int minValue = keyConstants[0].asInt();
-            assert valueRange < Integer.MAX_VALUE;
-            LabelRef[] targets = new LabelRef[(int) valueRange];
-            for (int i = 0; i < valueRange; i++) {
-                targets[i] = defaultTarget;
-            }
-            for (int i = 0; i < keyCount; i++) {
-                targets[keyConstants[i].asInt() - minValue] = keyTargets[i];
-            }
-            emitTableSwitch(minValue, defaultTarget, targets, value);
-        }
-    }
-
-    protected abstract void emitStrategySwitch(SwitchStrategy strategy, Variable key, LabelRef[] keyTargets, LabelRef defaultTarget);
-
-    protected abstract void emitTableSwitch(int lowKey, LabelRef defaultTarget, LabelRef[] targets, Value key);
 
     public final NodeMap<Value> getNodeOperands() {
         assert nodeOperands != null;
@@ -861,148 +699,36 @@ public abstract class NodeLIRGenerator implements NodeMappableLIRGenerator, Node
         return debugInfoBuilder;
     }
 
-    /**
-     * Moves deferred {@linkplain LoadConstant loads} of constants into blocks dominating all usages
-     * of the constant. Any operations inserted into a block are guaranteed to be immediately prior
-     * to the first control flow instruction near the end of the block.
-     */
-    private void insertConstantLoads() {
-        if (constantLoads != null) {
-            // Remove loads where all usages are in the same block.
-            for (Iterator<Map.Entry<Constant, LoadConstant>> iter = constantLoads.entrySet().iterator(); iter.hasNext();) {
-                LoadConstant lc = iter.next().getValue();
-
-                // Move loads of constant outside of loops
-                if (OptScheduleOutOfLoops.getValue()) {
-                    Block outOfLoopDominator = lc.block;
-                    while (outOfLoopDominator.getLoop() != null) {
-                        outOfLoopDominator = outOfLoopDominator.getDominator();
-                    }
-                    if (outOfLoopDominator != lc.block) {
-                        lc.unpin(res.getLIR());
-                        lc.block = outOfLoopDominator;
-                    }
-                }
-
-                if (lc.index != -1) {
-                    assert res.getLIR().getLIRforBlock(lc.block).get(lc.index) == lc.op;
-                    iter.remove();
-                }
-            }
-            if (constantLoads.isEmpty()) {
-                return;
-            }
-
-            // Sorting groups the loads per block.
-            LoadConstant[] groupedByBlock = constantLoads.values().toArray(new LoadConstant[constantLoads.size()]);
-            Arrays.sort(groupedByBlock);
-
-            int groupBegin = 0;
-            while (true) {
-                int groupEnd = groupBegin + 1;
-                Block block = groupedByBlock[groupBegin].block;
-                while (groupEnd < groupedByBlock.length && groupedByBlock[groupEnd].block == block) {
-                    groupEnd++;
-                }
-                int groupSize = groupEnd - groupBegin;
-
-                List<LIRInstruction> ops = res.getLIR().getLIRforBlock(block);
-                int lastIndex = ops.size() - 1;
-                assert ops.get(lastIndex) instanceof BlockEndOp;
-                int insertionIndex = lastIndex;
-                for (int i = Math.max(0, lastIndex - MAX_EXCEPTION_EDGE_OP_DISTANCE_FROM_END); i < lastIndex; i++) {
-                    if (getExceptionEdge(ops.get(i)) != null) {
-                        insertionIndex = i;
-                        break;
-                    }
-                }
-
-                if (groupSize == 1) {
-                    ops.add(insertionIndex, groupedByBlock[groupBegin].op);
-                } else {
-                    assert groupSize > 1;
-                    List<LIRInstruction> moves = new ArrayList<>(groupSize);
-                    for (int i = groupBegin; i < groupEnd; i++) {
-                        moves.add(groupedByBlock[i].op);
-                    }
-                    ops.addAll(insertionIndex, moves);
-                }
-
-                if (groupEnd == groupedByBlock.length) {
-                    break;
-                }
-                groupBegin = groupEnd;
-            }
-            constantLoads = null;
-        }
+    public void emitOverflowCheckBranch(AbstractBeginNode overflowSuccessor, AbstractBeginNode next, double probability) {
+        gen.emitOverflowCheckBranch(getLIRBlock(overflowSuccessor), getLIRBlock(next), probability);
     }
 
-    /**
-     * Gets a garbage value for a given kind.
-     */
-    protected Constant zapValueForKind(PlatformKind kind) {
-        long dead = 0xDEADDEADDEADDEADL;
-        switch ((Kind) kind) {
-            case Boolean:
-                return Constant.FALSE;
-            case Byte:
-                return Constant.forByte((byte) dead);
-            case Char:
-                return Constant.forChar((char) dead);
-            case Short:
-                return Constant.forShort((short) dead);
-            case Int:
-                return Constant.forInt((int) dead);
-            case Double:
-                return Constant.forDouble(Double.longBitsToDouble(dead));
-            case Float:
-                return Constant.forFloat(Float.intBitsToFloat((int) dead));
-            case Long:
-                return Constant.forLong(dead);
-            case Object:
-                return Constant.NULL_OBJECT;
-            default:
-                throw new IllegalArgumentException(kind.toString());
-        }
+    public void emitArrayEquals(Kind kind, Variable result, Value array1, Value array2, Value length) {
+        gen.emitArrayEquals(kind, result, array1, array2, length);
     }
 
-    /**
-     * Default implementation: Return the Java stack kind for each stamp.
-     */
-    public PlatformKind getPlatformKind(Stamp stamp) {
-        return stamp.getPlatformKind(this);
+    public Variable newVariable(Kind i) {
+        return gen.newVariable(i);
     }
 
-    public PlatformKind getIntegerKind(int bits, boolean unsigned) {
-        if (bits > 32) {
-            return Kind.Long;
-        } else {
-            return Kind.Int;
-        }
+    public void emitBitCount(Variable result, Value operand) {
+        gen.emitBitCount(result, operand);
     }
 
-    public PlatformKind getFloatingKind(int bits) {
-        switch (bits) {
-            case 32:
-                return Kind.Float;
-            case 64:
-                return Kind.Double;
-            default:
-                throw GraalInternalError.shouldNotReachHere();
-        }
+    public void emitBitScanForward(Variable result, Value operand) {
+        gen.emitBitScanForward(result, operand);
     }
 
-    public PlatformKind getObjectKind() {
-        return Kind.Object;
+    public void emitBitScanReverse(Variable result, Value operand) {
+        gen.emitBitScanReverse(result, operand);
     }
 
-    public abstract void emitBitCount(Variable result, Value operand);
+    @Override
+    public LIRGenerator getLIRGeneratorTool() {
+        return gen;
+    }
 
-    public abstract void emitBitScanForward(Variable result, Value operand);
-
-    public abstract void emitBitScanReverse(Variable result, Value operand);
-
-    public abstract void emitByteSwap(Variable result, Value operand);
-
-    public abstract void emitArrayEquals(Kind kind, Variable result, Value array1, Value array2, Value length);
+    public LIRGenerator getLIRGenerator() {
+        return gen;
+    }
 }

@@ -31,6 +31,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.word.*;
 
 /**
@@ -47,12 +48,12 @@ public final class DimensionsNode extends FixedWithNextNode implements LIRGenRes
     }
 
     @Override
-    public void generate(LIRGenerator gen, LIRGenerationResult res) {
+    public void generate(NodeLIRGeneratorTool gen, LIRGenerationResult res) {
         int size = rank * 4;
-        int wordSize = gen.target().wordSize;
+        int wordSize = gen.getLIRGeneratorTool().target().wordSize;
         int slots = roundUp(size, wordSize) / wordSize;
         StackSlot array = res.getFrameMap().allocateStackSlots(slots, new BitSet(0), null);
-        Value result = gen.emitAddress(array);
+        Value result = gen.getLIRGeneratorTool().emitAddress(array);
         gen.setResult(this, result);
     }
 

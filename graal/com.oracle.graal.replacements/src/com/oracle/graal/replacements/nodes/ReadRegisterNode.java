@@ -24,17 +24,16 @@ package com.oracle.graal.replacements.nodes;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.gen.*;
-import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
 /**
  * Access the value of a specific register.
  */
 @NodeInfo(nameTemplate = "ReadRegister %{p#register}")
-public final class ReadRegisterNode extends FixedWithNextNode implements LIRGenLowerable {
+public final class ReadRegisterNode extends FixedWithNextNode implements LIRLowerable {
 
     /**
      * The fixed register to access.
@@ -75,13 +74,13 @@ public final class ReadRegisterNode extends FixedWithNextNode implements LIRGenL
     }
 
     @Override
-    public void generate(LIRGenerator generator) {
+    public void generate(NodeLIRGeneratorTool generator) {
         Value result = register.asValue(getKind());
         if (incoming) {
-            generator.emitIncomingValues(new Value[]{result});
+            generator.getLIRGeneratorTool().emitIncomingValues(new Value[]{result});
         }
         if (!directUse) {
-            result = generator.emitMove(result);
+            result = generator.getLIRGeneratorTool().emitMove(result);
         }
         generator.setResult(this, result);
     }

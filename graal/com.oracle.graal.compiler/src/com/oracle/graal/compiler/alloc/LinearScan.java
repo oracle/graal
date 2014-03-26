@@ -880,9 +880,9 @@ public final class LinearScan {
         indent.outdent();
     }
 
-    private static LIRGenerator getLIRGeneratorFromDebugContext() {
+    private static NodeLIRGenerator getNodeLIRGeneratorFromDebugContext() {
         if (Debug.isEnabled()) {
-            LIRGenerator lirGen = Debug.contextLookup(LIRGenerator.class);
+            NodeLIRGenerator lirGen = Debug.contextLookup(NodeLIRGenerator.class);
             assert lirGen != null;
             return lirGen;
         }
@@ -890,7 +890,7 @@ public final class LinearScan {
     }
 
     private static ValueNode getValueForOperandFromDebugContext(Value value) {
-        LIRGenerator gen = getLIRGeneratorFromDebugContext();
+        NodeLIRGenerator gen = getNodeLIRGeneratorFromDebugContext();
         if (gen != null) {
             return gen.valueForOperand(value);
         }

@@ -59,7 +59,7 @@ public final class FloatMulNode extends FloatArithmeticNode implements Canonical
     }
 
     @Override
-    public void generate(NodeMappableArithmeticLIRGenerator gen) {
+    public void generate(NodeLIRGeneratorTool gen) {
         Value op1 = gen.operand(x());
         Value op2 = gen.operand(y());
         if (!y().isConstant() && !FloatAddNode.livesLonger(this, y(), gen)) {
@@ -67,6 +67,6 @@ public final class FloatMulNode extends FloatArithmeticNode implements Canonical
             op1 = op2;
             op2 = op;
         }
-        gen.setResult(this, gen.emitMul(op1, op2));
+        gen.setResult(this, gen.getLIRGeneratorTool().emitMul(op1, op2));
     }
 }

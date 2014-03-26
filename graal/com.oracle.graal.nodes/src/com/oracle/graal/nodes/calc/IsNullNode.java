@@ -50,7 +50,7 @@ public final class IsNullNode extends LogicNode implements Canonicalizable, LIRL
     }
 
     @Override
-    public void generate(NodeBasedLIRGeneratorTool gen) {
+    public void generate(NodeLIRGeneratorTool gen) {
         // Nothing to do.
     }
 

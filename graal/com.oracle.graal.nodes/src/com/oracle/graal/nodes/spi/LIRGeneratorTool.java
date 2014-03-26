@@ -24,8 +24,10 @@ package com.oracle.graal.nodes.spi;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.extended.*;
 
-public interface LIRGeneratorTool {
+public interface LIRGeneratorTool extends ArithmeticLIRGenerator {
 
     TargetDescription target();
 
@@ -34,6 +36,14 @@ public interface LIRGeneratorTool {
     CodeCacheProvider getCodeCache();
 
     ForeignCallsProvider getForeignCalls();
+
+    Value emitLoad(Kind kind, Value address, Access access);
+
+    void emitStore(Kind kind, Value address, Value input, Access access);
+
+    void emitDeoptimize(Value actionAndReason, Value failedSpeculation, DeoptimizingNode deopting);
+
+    Value emitForeignCall(ForeignCallLinkage linkage, DeoptimizingNode info, Value... args);
 
     /**
      * Checks whether the supplied constant can be used without loading it into a register for most
@@ -68,4 +78,8 @@ public interface LIRGeneratorTool {
      * Overriding implementations of this method must call the overridden method.
      */
     void beforeRegisterAllocation();
+
+    void emitIncomingValues(Value[] params);
+
+    void emitReturn(Value input);
 }

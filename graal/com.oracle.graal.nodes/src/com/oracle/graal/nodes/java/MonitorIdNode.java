@@ -49,7 +49,7 @@ public class MonitorIdNode extends ValueNode implements IterableNodeType, LIRLow
         this.lockDepth = lockDepth;
     }
 
-    public void generate(NodeBasedLIRGeneratorTool generator) {
+    public void generate(NodeLIRGeneratorTool generator) {
         // nothing to do
     }
 }

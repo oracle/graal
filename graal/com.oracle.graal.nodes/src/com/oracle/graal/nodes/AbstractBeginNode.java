@@ -128,7 +128,7 @@ public abstract class AbstractBeginNode extends FixedWithNextNode implements Sta
     }
 
     @Override
-    public void generate(NodeBasedLIRGeneratorTool gen) {
+    public void generate(NodeLIRGeneratorTool gen) {
         // nop
     }
 

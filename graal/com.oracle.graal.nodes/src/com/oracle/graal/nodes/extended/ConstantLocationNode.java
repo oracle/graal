@@ -65,7 +65,7 @@ public final class ConstantLocationNode extends LocationNode {
     }
 
     @Override
-    public Value generateAddress(NodeBasedLIRGeneratorTool gen, Value base) {
-        return gen.emitAddress(base, getDisplacement(), Value.ILLEGAL, 0);
+    public Value generateAddress(NodeLIRGeneratorTool gen, Value base) {
+        return gen.getLIRGeneratorTool().emitAddress(base, getDisplacement(), Value.ILLEGAL, 0);
     }
 }
