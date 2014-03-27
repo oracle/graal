@@ -45,22 +45,22 @@ public interface ArithmeticLIRGenerator {
     Value emitMul(Value a, Value b);
 
     /**
-     * TODO remove {@link DeoptimizeNode}
+     * TODO remove {@link DeoptimizeNode}.
      */
     Value emitDiv(Value a, Value b, DeoptimizingNode deopting);
 
     /**
-     * TODO remove {@link DeoptimizeNode}
+     * TODO remove {@link DeoptimizeNode}.
      */
     Value emitRem(Value a, Value b, DeoptimizingNode deopting);
 
     /**
-     * TODO remove {@link DeoptimizeNode}
+     * TODO remove {@link DeoptimizeNode}.
      */
     Value emitUDiv(Value a, Value b, DeoptimizingNode deopting);
 
     /**
-     * TODO remove {@link DeoptimizeNode}
+     * TODO remove {@link DeoptimizeNode}.
      */
     Value emitURem(Value a, Value b, DeoptimizingNode deopting);
 

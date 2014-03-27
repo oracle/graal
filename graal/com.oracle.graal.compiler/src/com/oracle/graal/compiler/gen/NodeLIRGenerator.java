@@ -234,24 +234,6 @@ public abstract class NodeLIRGenerator implements NodeLIRGeneratorTool {
         }
     }
 
-    /**
-     * For Baseline compilation
-     */
-
-    public <T extends AbstractBlock<T>> void doBlock(T block, ResolvedJavaMethod method, BytecodeParser<T> parser) {
-        doBlockStart(block);
-
-        if (block == res.getLIR().getControlFlowGraph().getStartBlock()) {
-            assert block.getPredecessorCount() == 0;
-            emitPrologue(method, parser);
-        } else {
-            assert block.getPredecessorCount() > 0;
-        }
-        parser.processBlock(block);
-
-        doBlockEnd(block);
-    }
-
     public void doBlock(Block block, StructuredGraph graph, BlockMap<List<ScheduledNode>> blockMap) {
         doBlockStart(block);
 

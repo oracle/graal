@@ -59,7 +59,7 @@ public class BlocksToDoubles {
         return blockProbabilities;
     }
 
-    static private boolean verify(NodesToDoubles nodeProbabilities, ControlFlowGraph cfg, BlocksToDoubles blockProbabilities) {
+    private static boolean verify(NodesToDoubles nodeProbabilities, ControlFlowGraph cfg, BlocksToDoubles blockProbabilities) {
         for (Block b : cfg.getBlocks()) {
             double p = blockProbabilities.get(b);
             for (FixedNode n : b.getNodes()) {

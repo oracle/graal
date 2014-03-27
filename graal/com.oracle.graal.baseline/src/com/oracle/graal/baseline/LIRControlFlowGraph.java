@@ -44,8 +44,9 @@ public class LIRControlFlowGraph implements AbstractControlFlowGraph<BciBlock> {
     }
 
     public BciBlock getStartBlock() {
-        if (blocks.length > 0)
+        if (blocks.length > 0) {
             return blocks[0];
+        }
         return null;
     }
 

@@ -196,12 +196,12 @@ public class AMD64HotSpotNodeLIRGenerator extends AMD64NodeLIRGenerator implemen
             address = new AMD64AddressValue(kind, gen.load(operand(x.object())), gen.load(index), Scale.Times1, disp);
         }
 
-        RegisterValue rax_local = AMD64.rax.asValue(kind);
-        gen.emitMove(rax_local, expected);
-        append(new CompareAndSwapOp(rax_local, address, rax_local, newVal));
+        RegisterValue raxLocal = AMD64.rax.asValue(kind);
+        gen.emitMove(raxLocal, expected);
+        append(new CompareAndSwapOp(raxLocal, address, raxLocal, newVal));
 
         Variable result = newVariable(x.getKind());
-        gen.emitMove(result, rax_local);
+        gen.emitMove(result, raxLocal);
         setResult(x, result);
     }
 

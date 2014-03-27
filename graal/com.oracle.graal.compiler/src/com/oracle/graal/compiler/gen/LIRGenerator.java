@@ -144,7 +144,7 @@ public abstract class LIRGenerator implements ArithmeticLIRGenerator, LIRGenerat
     protected LIRGenerationResult res;
 
     /**
-     * set this before using the LIRGenerator
+     * Set this before using the LIRGenerator.
      *
      * TODO this should be removed
      */
