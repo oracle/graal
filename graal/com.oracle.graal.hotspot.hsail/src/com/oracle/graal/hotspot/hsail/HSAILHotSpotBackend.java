@@ -26,6 +26,7 @@ import static com.oracle.graal.api.code.CallingConvention.Type.*;
 import static com.oracle.graal.api.code.CodeUtil.*;
 import static com.oracle.graal.api.code.ValueUtil.*;
 import static com.oracle.graal.compiler.GraalCompiler.*;
+import static com.oracle.graal.api.meta.LocationIdentity.*;
 
 import java.lang.reflect.*;
 import java.util.*;
@@ -51,12 +52,17 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.bridge.CompilerToVM.CodeInstallResult;
 import com.oracle.graal.hotspot.meta.*;
+import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.hsail.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.hsail.*;
+import com.oracle.graal.lir.hsail.HSAILControlFlow.DeoptimizeOp;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.StructuredGraph.GuardsStage;
+import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.tiers.*;
@@ -365,7 +371,7 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
 
     @Override
     public LIRGenerationResult newLIRGenerationResult(LIR lir, FrameMap frameMap, Object stub) {
-        return new LIRGenerationResultBase(lir, frameMap);
+        return new HSAILHotSpotLIRGenerationResult(lir, frameMap);
     }
 
     @Override
@@ -394,12 +400,12 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
      * a class to allow us to save lirGen.
      */
     static class HSAILCompilationResultBuilder extends CompilationResultBuilder {
-        public HSAILHotSpotLIRGenerator lirGen;
+        public HSAILHotSpotLIRGenerationResult lirGenRes;
 
         public HSAILCompilationResultBuilder(CodeCacheProvider codeCache, ForeignCallsProvider foreignCalls, FrameMap frameMap, Assembler asm, FrameContext frameContext,
-                        CompilationResult compilationResult, LIRGenerator lirGen) {
+                        CompilationResult compilationResult, HSAILHotSpotLIRGenerationResult lirGenRes) {
             super(codeCache, foreignCalls, frameMap, asm, frameContext, compilationResult);
-            this.lirGen = (HSAILHotSpotLIRGenerator) lirGen;
+            this.lirGenRes = lirGenRes;
         }
     }
 
@@ -414,7 +420,8 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
         Assembler masm = createAssembler(frameMap);
         HotSpotFrameContext frameContext = new HotSpotFrameContext();
         // save lirGen for later use by setHostGraph
-        CompilationResultBuilder crb = new HSAILCompilationResultBuilder(getCodeCache(), getForeignCalls(), frameMap, masm, frameContext, compilationResult, lirGen);
+        CompilationResultBuilder crb = new HSAILCompilationResultBuilder(getCodeCache(), getForeignCalls(), frameMap, masm, frameContext, compilationResult,
+                        (HSAILHotSpotLIRGenerationResult) lirGenRes);
         crb.setFrameSize(frameMap.frameSize());
         return crb;
     }
@@ -770,7 +777,140 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
         asm.emitString0("}; \n");
 
         ExternalCompilationResult compilationResult = (ExternalCompilationResult) crb.compilationResult;
-        compilationResult.setHostGraph(((HSAILCompilationResultBuilder) crb).lirGen.prepareHostGraph());
+        HSAILHotSpotLIRGenerationResult lirGenRes = ((HSAILCompilationResultBuilder) crb).lirGenRes;
+        compilationResult.setHostGraph(prepareHostGraph(method, lirGenRes.getDeopts(), getProviders(), getRuntime().getConfig()));
+    }
+
+    private static StructuredGraph prepareHostGraph(ResolvedJavaMethod method, List<DeoptimizeOp> deopts, HotSpotProviders providers, HotSpotVMConfig config) {
+        if (deopts.isEmpty()) {
+            return null;
+        }
+        StructuredGraph hostGraph = new StructuredGraph(method, -2);
+        ParameterNode deoptId = hostGraph.unique(new ParameterNode(0, StampFactory.intValue()));
+        ParameterNode hsailFrame = hostGraph.unique(new ParameterNode(1, StampFactory.forKind(providers.getCodeCache().getTarget().wordKind)));
+        ParameterNode reasonAndAction = hostGraph.unique(new ParameterNode(2, StampFactory.intValue()));
+        ParameterNode speculation = hostGraph.unique(new ParameterNode(3, StampFactory.object()));
+        AbstractBeginNode[] branches = new AbstractBeginNode[deopts.size() + 1];
+        int[] keys = new int[deopts.size()];
+        int[] keySuccessors = new int[deopts.size() + 1];
+        double[] keyProbabilities = new double[deopts.size() + 1];
+        int i = 0;
+        Collections.sort(deopts, new Comparator<DeoptimizeOp>() {
+            public int compare(DeoptimizeOp o1, DeoptimizeOp o2) {
+                return o1.getCodeBufferPos() - o2.getCodeBufferPos();
+            }
+        });
+        for (DeoptimizeOp deopt : deopts) {
+            keySuccessors[i] = i;
+            keyProbabilities[i] = 1.0 / deopts.size();
+            keys[i] = deopt.getCodeBufferPos();
+            assert keys[i] >= 0;
+            branches[i] = createHostDeoptBranch(deopt, hsailFrame, reasonAndAction, speculation, providers, config);
+
+            i++;
+        }
+        keyProbabilities[deopts.size()] = 0; // default
+        keySuccessors[deopts.size()] = deopts.size();
+        branches[deopts.size()] = createHostCrashBranch(hostGraph, deoptId);
+        IntegerSwitchNode switchNode = hostGraph.add(new IntegerSwitchNode(deoptId, branches, keys, keyProbabilities, keySuccessors));
+        StartNode start = hostGraph.start();
+        start.setNext(switchNode);
+        /*
+         * printf.setNext(printf2); printf2.setNext(switchNode);
+         */
+        hostGraph.setGuardsStage(GuardsStage.AFTER_FSA);
+        return hostGraph;
+    }
+
+    private static AbstractBeginNode createHostCrashBranch(StructuredGraph hostGraph, ValueNode deoptId) {
+        VMErrorNode vmError = hostGraph.add(new VMErrorNode("Error in HSAIL deopt. DeoptId=%d", deoptId));
+        // ConvertNode.convert(hostGraph, Kind.Long, deoptId)));
+        vmError.setNext(hostGraph.add(new ReturnNode(ConstantNode.defaultForKind(hostGraph.method().getSignature().getReturnKind(), hostGraph))));
+        return BeginNode.begin(vmError);
+    }
+
+    private static AbstractBeginNode createHostDeoptBranch(DeoptimizeOp deopt, ParameterNode hsailFrame, ValueNode reasonAndAction, ValueNode speculation, HotSpotProviders providers,
+                    HotSpotVMConfig config) {
+        BeginNode branch = hsailFrame.graph().add(new BeginNode());
+        DynamicDeoptimizeNode deoptimization = hsailFrame.graph().add(new DynamicDeoptimizeNode(reasonAndAction, speculation));
+        deoptimization.setStateBefore(createFrameState(deopt.getFrameState().topFrame, hsailFrame, providers, config));
+        branch.setNext(deoptimization);
+        return branch;
+    }
+
+    private static FrameState createFrameState(BytecodeFrame lowLevelFrame, ParameterNode hsailFrame, HotSpotProviders providers, HotSpotVMConfig config) {
+        StructuredGraph hostGraph = hsailFrame.graph();
+        ValueNode[] locals = new ValueNode[lowLevelFrame.numLocals];
+        for (int i = 0; i < lowLevelFrame.numLocals; i++) {
+            locals[i] = getNodeForValueFromFrame(lowLevelFrame.getLocalValue(i), hsailFrame, hostGraph, providers, config);
+        }
+        List<ValueNode> stack = new ArrayList<>(lowLevelFrame.numStack);
+        for (int i = 0; i < lowLevelFrame.numStack; i++) {
+            stack.add(getNodeForValueFromFrame(lowLevelFrame.getStackValue(i), hsailFrame, hostGraph, providers, config));
+        }
+        ValueNode[] locks = new ValueNode[lowLevelFrame.numLocks];
+        MonitorIdNode[] monitorIds = new MonitorIdNode[lowLevelFrame.numLocks];
+        for (int i = 0; i < lowLevelFrame.numLocks; i++) {
+            HotSpotMonitorValue lockValue = (HotSpotMonitorValue) lowLevelFrame.getLockValue(i);
+            locks[i] = getNodeForValueFromFrame(lockValue, hsailFrame, hostGraph, providers, config);
+            monitorIds[i] = getMonitorIdForHotSpotMonitorValueFromFrame(lockValue, hsailFrame, hostGraph);
+        }
+        FrameState frameState = hostGraph.add(new FrameState(lowLevelFrame.getMethod(), lowLevelFrame.getBCI(), locals, stack, locks, monitorIds, lowLevelFrame.rethrowException, false));
+        if (lowLevelFrame.caller() != null) {
+            frameState.setOuterFrameState(createFrameState(lowLevelFrame.caller(), hsailFrame, providers, config));
+        }
+        return frameState;
+    }
+
+    @SuppressWarnings({"unused"})
+    private static MonitorIdNode getMonitorIdForHotSpotMonitorValueFromFrame(HotSpotMonitorValue lockValue, ParameterNode hsailFrame, StructuredGraph hsailGraph) {
+        if (lockValue.isEliminated()) {
+            return null;
+        }
+        throw GraalInternalError.unimplemented();
+    }
+
+    private static ValueNode getNodeForValueFromFrame(Value localValue, ParameterNode hsailFrame, StructuredGraph hostGraph, HotSpotProviders providers, HotSpotVMConfig config) {
+        ValueNode valueNode;
+        if (localValue instanceof Constant) {
+            valueNode = ConstantNode.forConstant((Constant) localValue, providers.getMetaAccess(), hostGraph);
+        } else if (localValue instanceof VirtualObject) {
+            throw GraalInternalError.unimplemented();
+        } else if (localValue instanceof StackSlot) {
+            throw GraalInternalError.unimplemented();
+        } else if (localValue instanceof HotSpotMonitorValue) {
+            HotSpotMonitorValue hotSpotMonitorValue = (HotSpotMonitorValue) localValue;
+            return getNodeForValueFromFrame(hotSpotMonitorValue.getOwner(), hsailFrame, hostGraph, providers, config);
+        } else if (localValue instanceof RegisterValue) {
+            RegisterValue registerValue = (RegisterValue) localValue;
+            int regNumber = registerValue.getRegister().number;
+            valueNode = getNodeForRegisterFromFrame(regNumber, localValue.getKind(), hsailFrame, hostGraph, providers, config);
+        } else if (Value.ILLEGAL.equals(localValue)) {
+            valueNode = null;
+        } else {
+            throw GraalInternalError.shouldNotReachHere();
+        }
+        return valueNode;
+    }
+
+    private static ValueNode getNodeForRegisterFromFrame(int regNumber, Kind valueKind, ParameterNode hsailFrame, StructuredGraph hostGraph, HotSpotProviders providers, HotSpotVMConfig config) {
+        ValueNode valueNode;
+        LocationNode location;
+        if (regNumber >= HSAIL.s0.number && regNumber <= HSAIL.s31.number) {
+            int intSize = providers.getCodeCache().getTarget().arch.getSizeInBytes(Kind.Int);
+            long offset = config.hsailFrameSaveAreaOffset + intSize * (regNumber - HSAIL.s0.number);
+            location = ConstantLocationNode.create(FINAL_LOCATION, valueKind, offset, hostGraph);
+        } else if (regNumber >= HSAIL.d0.number && regNumber <= HSAIL.d15.number) {
+            int longSize = providers.getCodeCache().getTarget().arch.getSizeInBytes(Kind.Long);
+            long offset = config.hsailFrameSaveAreaOffset + longSize * (regNumber - HSAIL.d0.number);
+            LocationNode numSRegsLocation = ConstantLocationNode.create(FINAL_LOCATION, Kind.Byte, config.hsailFrameNumSRegOffset, hostGraph);
+            ValueNode numSRegs = hostGraph.unique(new FloatingReadNode(hsailFrame, numSRegsLocation, null, StampFactory.forKind(Kind.Byte)));
+            location = IndexedLocationNode.create(FINAL_LOCATION, valueKind, offset, numSRegs, hostGraph, 4);
+        } else {
+            throw GraalInternalError.shouldNotReachHere("unknown hsail register: " + regNumber);
+        }
+        valueNode = hostGraph.unique(new FloatingReadNode(hsailFrame, location, null, StampFactory.forKind(valueKind)));
+        return valueNode;
     }
 
 }

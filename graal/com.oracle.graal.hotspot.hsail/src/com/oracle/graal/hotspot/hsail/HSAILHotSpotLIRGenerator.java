@@ -25,8 +25,6 @@ package com.oracle.graal.hotspot.hsail;
 
 import static com.oracle.graal.api.code.ValueUtil.*;
 
-import java.util.*;
-
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.gen.*;
@@ -55,8 +53,6 @@ import com.oracle.graal.phases.util.*;
  */
 public class HSAILHotSpotLIRGenerator extends HSAILLIRGenerator {
 
-    // TODO this should be removed
-    final List<DeoptimizeOp> deopts = new ArrayList<>();
     final HotSpotVMConfig config;
 
     public HSAILHotSpotLIRGenerator(Providers providers, HotSpotVMConfig config, CallingConvention cc, LIRGenerationResult lirGenRes) {
@@ -178,7 +174,7 @@ public class HSAILHotSpotLIRGenerator extends HSAILLIRGenerator {
      */
     private void emitDeoptimizeInner(Value actionAndReason, LIRFrameState lirFrameState, String emitName) {
         DeoptimizeOp deopt = new DeoptimizeOp(actionAndReason, lirFrameState, emitName, getMetaAccess());
-        deopts.add(deopt);
+        ((HSAILHotSpotLIRGenerationResult) res).addDeopt(deopt);
         append(deopt);
     }
 
