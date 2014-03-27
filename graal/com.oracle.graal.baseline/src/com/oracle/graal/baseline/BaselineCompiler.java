@@ -782,14 +782,14 @@ public class BaselineCompiler implements BytecodeParser<BciBlock> {
     private void genReturn(Value x) {
         // frameState.setRethrowException(false);
         frameState.clearStack();
-// if (graphBuilderConfig.eagerInfopointMode()) {
-// append(new InfopointNode(InfopointReason.METHOD_END, frameState.create(bci())));
-// }
+        // if (graphBuilderConfig.eagerInfopointMode()) {
+        // append(new InfopointNode(InfopointReason.METHOD_END, frameState.create(bci())));
+        // }
 
-// synchronizedEpilogue(FrameState.AFTER_BCI, x);
-// if (frameState.lockDepth() != 0) {
-// throw new BailoutException("unbalanced monitors");
-// }
+        // synchronizedEpilogue(FrameState.AFTER_BCI, x);
+        // if (frameState.lockDepth() != 0) {
+        // throw new BailoutException("unbalanced monitors");
+        // }
 
         // lirGen.visitReturn(x);
         throw GraalInternalError.unimplemented();

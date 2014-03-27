@@ -58,15 +58,6 @@ import com.oracle.graal.phases.*;
  */
 public abstract class NodeLIRGenerator implements NodeLIRGeneratorTool {
 
-    public static class Options {
-        // @formatter:off
-//        @Option(help = "Print HIR along side LIR as the latter is generated")
-//        public static final OptionValue<Boolean> PrintIRWithLIR = new OptionValue<>(false);
-//        @Option(help = "The trace level for the LIR generator")
-//        public static final OptionValue<Integer> TraceLIRGeneratorLevel = new OptionValue<>(0);
-        // @formatter:on
-    }
-
     private final NodeMap<Value> nodeOperands;
     private final DebugInfoBuilder debugInfoBuilder;
 
@@ -640,24 +631,6 @@ public abstract class NodeLIRGenerator implements NodeLIRGeneratorTool {
             throw GraalInternalError.unimplemented(node.toString());
         }
     }
-
-// public abstract void emitJump(LabelRef label);
-//
-// public abstract void emitCompareBranch(Value left, Value right, Condition cond, boolean
-// unorderedIsTrue, LabelRef trueDestination, LabelRef falseDestination, double
-// trueDestinationProbability);
-//
-// public abstract void emitOverflowCheckBranch(LabelRef overflow, LabelRef noOverflow, double
-// overflowProbability);
-//
-// public abstract void emitIntegerTestBranch(Value left, Value right, LabelRef trueDestination,
-// LabelRef falseDestination, double trueSuccessorProbability);
-//
-// public abstract Variable emitConditionalMove(Value leftVal, Value right, Condition cond, boolean
-// unorderedIsTrue, Value trueValue, Value falseValue);
-//
-// public abstract Variable emitIntegerTestMove(Value leftVal, Value right, Value trueValue, Value
-// falseValue);
 
     @Override
     public void emitInvoke(Invoke x) {

@@ -87,7 +87,7 @@ public final class BciBlockMapping {
 
         // public ArrayList<BciBlock> successors = new ArrayList<>(2);
         // public ArrayList<BciBlock> predecessors = new ArrayList<>(2); // only used in the
-// baseline
+        // baseline
 
         public long exits;
 
