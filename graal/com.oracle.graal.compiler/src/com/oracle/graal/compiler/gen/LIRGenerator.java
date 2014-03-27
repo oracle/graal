@@ -370,8 +370,10 @@ public abstract class LIRGenerator implements LIRGeneratorTool, LIRTypeTool {
 
     private static FrameState getFrameState(DeoptimizingNode deopt) {
         if (deopt instanceof DeoptimizingNode.DeoptBefore) {
+            assert !(deopt instanceof DeoptimizingNode.DeoptDuring || deopt instanceof DeoptimizingNode.DeoptAfter);
             return ((DeoptimizingNode.DeoptBefore) deopt).stateBefore();
         } else if (deopt instanceof DeoptimizingNode.DeoptDuring) {
+            assert !(deopt instanceof DeoptimizingNode.DeoptAfter);
             return ((DeoptimizingNode.DeoptDuring) deopt).stateDuring();
         } else {
             assert deopt instanceof DeoptimizingNode.DeoptAfter;
