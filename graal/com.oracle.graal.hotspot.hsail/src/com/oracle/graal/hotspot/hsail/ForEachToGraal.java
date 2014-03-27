@@ -42,6 +42,7 @@ import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.util.*;
 import com.oracle.graal.printer.*;
+import com.oracle.graal.gpu.*;
 
 /**
  * Implements compile and dispatch of Java code containing lambda constructs. Currently only used by

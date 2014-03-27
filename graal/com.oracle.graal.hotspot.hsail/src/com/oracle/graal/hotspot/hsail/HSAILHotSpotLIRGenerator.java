@@ -25,6 +25,8 @@ package com.oracle.graal.hotspot.hsail;
 
 import static com.oracle.graal.api.code.ValueUtil.*;
 
+import java.util.*;
+
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.gen.*;
@@ -35,6 +37,7 @@ import com.oracle.graal.hotspot.HotSpotVMConfig.CompressEncoding;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.hsail.*;
+import com.oracle.graal.lir.hsail.HSAILControlFlow.DeoptimizeOp;
 import com.oracle.graal.lir.hsail.HSAILControlFlow.ForeignCall1ArgOp;
 import com.oracle.graal.lir.hsail.HSAILControlFlow.ForeignCall2ArgOp;
 import com.oracle.graal.lir.hsail.HSAILControlFlow.ForeignCallNoArgOp;
@@ -52,6 +55,8 @@ import com.oracle.graal.phases.util.*;
  */
 public class HSAILHotSpotLIRGenerator extends HSAILLIRGenerator {
 
+    // TODO this should be removed
+    final List<DeoptimizeOp> deopts = new ArrayList<>();
     final HotSpotVMConfig config;
 
     public HSAILHotSpotLIRGenerator(Providers providers, HotSpotVMConfig config, CallingConvention cc, LIRGenerationResult lirGenRes) {
@@ -163,11 +168,25 @@ public class HSAILHotSpotLIRGenerator extends HSAILLIRGenerator {
         }
     }
 
+    @Override
+    public void emitDeoptimize(Value actionAndReason, Value failedSpeculation, DeoptimizingNode deopting) {
+        emitDeoptimizeInner(actionAndReason, state(deopting), "emitDeoptimize");
+    }
+
+    /***
+     * We need 64-bit and 32-bit scratch registers for the codegen $s0 can be live at this block.
+     */
+    private void emitDeoptimizeInner(Value actionAndReason, LIRFrameState lirFrameState, String emitName) {
+        DeoptimizeOp deopt = new DeoptimizeOp(actionAndReason, lirFrameState, emitName, getMetaAccess());
+        deopts.add(deopt);
+        append(deopt);
+    }
+
     /***
      * This is a very temporary solution to emitForeignCall. We don't really support foreign calls
      * yet, but we do want to generate dummy code for them. The ForeignCallXXXOps just end up
      * emitting a comment as to what Foreign call they would have made.
-     **/
+     */
     @Override
     public Variable emitForeignCall(ForeignCallLinkage linkage, DeoptimizingNode info, Value... args) {
         Variable result = newVariable(Kind.Object);  // linkage.getDescriptor().getResultType());

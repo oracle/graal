@@ -39,7 +39,7 @@ public class InvokeWithExceptionNode extends ControlSplitNode implements Invoke,
     @Successor private AbstractBeginNode next;
     @Successor private DispatchBeginNode exceptionEdge;
     @Input private CallTargetNode callTarget;
-    @Input private FrameState deoptState;
+    @Input private FrameState stateDuring;
     @Input private FrameState stateAfter;
     @Input private GuardingNode guard;
     private final int bci;
@@ -213,20 +213,20 @@ public class InvokeWithExceptionNode extends ControlSplitNode implements Invoke,
 
     @Override
     public FrameState stateDuring() {
-        return deoptState;
+        return stateDuring;
     }
 
     @Override
     public void setStateDuring(FrameState stateDuring) {
-        updateUsages(deoptState, stateDuring);
-        deoptState = stateDuring;
+        updateUsages(this.stateDuring, stateDuring);
+        this.stateDuring = stateDuring;
     }
 
     @Override
     public void computeStateDuring(FrameState tempStateAfter) {
-        FrameState stateDuring = tempStateAfter.duplicateModified(bci(), tempStateAfter.rethrowException(), getKind());
-        stateDuring.setDuringCall(true);
-        setStateDuring(stateDuring);
+        FrameState newStateDuring = tempStateAfter.duplicateModified(bci(), tempStateAfter.rethrowException(), getKind());
+        newStateDuring.setDuringCall(true);
+        setStateDuring(newStateDuring);
     }
 
     @Override

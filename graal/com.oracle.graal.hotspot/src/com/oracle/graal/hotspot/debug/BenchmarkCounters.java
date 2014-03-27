@@ -44,22 +44,24 @@ import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.options.*;
 import com.oracle.graal.replacements.nodes.*;
 
+import edu.umd.cs.findbugs.annotations.*;
+
 /**
  * This class contains infrastructure to maintain counters based on {@link DynamicCounterNode}s. The
  * infrastructure is enabled by specifying either the GenericDynamicCounters or
  * BenchmarkDynamicCounters option.<br/>
- * 
+ *
  * The counters are kept in a special area allocated for each native JavaThread object, and the
  * number of counters is configured using {@code -XX:GraalCounterSize=value}.
  * {@code -XX:+/-GraalCountersExcludeCompiler} configures whether to exclude compiler threads
  * (defaults to true).
- * 
+ *
  * The subsystems that use the logging need to have their own options to turn on the counters, and
  * insert DynamicCounterNodes when they're enabled.
- * 
+ *
  * Counters will be displayed as a rate (per second) if their group name starts with "~", otherwise
  * they will be displayed as a total number.
- * 
+ *
  * <h1>Example</h1> In order to create statistics about allocations within the DaCapo pmd benchmark
  * the following steps are necessary:
  * <ul>
@@ -104,6 +106,7 @@ public class BenchmarkCounters {
     public static long[] delta;
     public static final ArrayList<AtomicLong> staticCounters = new ArrayList<>();
 
+    @SuppressFBWarnings(value = "AT_OPERATION_SEQUENCE_ON_CONCURRENT_ABSTRACTION", justification = "concurrent abstraction calls are in synchronized block")
     public static int getIndex(DynamicCounterNode counter) {
         if (!enabled) {
             throw new GraalInternalError("counter nodes shouldn't exist when counters are not enabled: " + counter.getGroup() + ", " + counter.getName());

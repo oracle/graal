@@ -26,11 +26,11 @@ import java.lang.reflect.*;
 
 import org.junit.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
+import com.oracle.graal.gpu.*;
 import com.oracle.graal.hotspot.hsail.*;
 import com.oracle.graal.hsail.*;
 

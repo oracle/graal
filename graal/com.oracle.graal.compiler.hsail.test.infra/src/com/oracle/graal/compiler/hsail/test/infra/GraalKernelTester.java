@@ -39,6 +39,7 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.debug.*;
+import com.oracle.graal.gpu.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.hsail.*;
 import com.oracle.graal.hotspot.meta.*;
@@ -131,16 +132,21 @@ public abstract class GraalKernelTester extends KernelTester {
 
     // Special overrides for the testGeneratedxxx routines which set
     // required graal options that we need to run any junit test
+
+    private OverrideScope getOverrideScope() {
+        return OptionValue.override(GraalOptions.InlineEverything, true, accessibleRemoveNeverExecutedCode, false);
+    }
+
     @Override
     public void testGeneratedHsail() {
-        try (OverrideScope s = OptionValue.override(GraalOptions.InlineEverything, true, accessibleRemoveNeverExecutedCode, false)) {
+        try (OverrideScope s = getOverrideScope()) {
             super.testGeneratedHsail();
         }
     }
 
     @Override
     public void testGeneratedHsailUsingLambdaMethod() {
-        try (OverrideScope s = OptionValue.override(GraalOptions.InlineEverything, true, accessibleRemoveNeverExecutedCode, false)) {
+        try (OverrideScope s = getOverrideScope()) {
             super.testGeneratedHsailUsingLambdaMethod();
         }
     }

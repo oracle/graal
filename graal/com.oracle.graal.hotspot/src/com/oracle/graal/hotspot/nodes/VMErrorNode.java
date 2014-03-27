@@ -42,7 +42,7 @@ public final class VMErrorNode extends DeoptimizingStubCall implements LIRLowera
     @Input private ValueNode value;
     public static final ForeignCallDescriptor VM_ERROR = new ForeignCallDescriptor("vm_error", void.class, Object.class, Object.class, long.class);
 
-    private VMErrorNode(String format, ValueNode value) {
+    public VMErrorNode(String format, ValueNode value) {
         super(StampFactory.forVoid());
         this.format = format;
         this.value = value;

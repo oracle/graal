@@ -154,7 +154,7 @@ public class Debug {
      * <p>
      * It is recommended to use the try-with-resource statement for managing entering and leaving
      * debug scopes. For example:
-     * 
+     *
      * <pre>
      * try (Scope s = Debug.scope(&quot;InliningGraph&quot;, inlineeGraph)) {
      *     ...
@@ -162,17 +162,17 @@ public class Debug {
      *     throw Debug.handle(e);
      * }
      * </pre>
-     * 
+     *
      * The {@code name} argument is subject to the following type based conversion before having
      * {@link Object#toString()} called on it:
-     * 
+     *
      * <pre>
      *     Type          | Conversion
      * ------------------+-----------------
      *  java.lang.Class  | arg.getSimpleName()
      *                   |
      * </pre>
-     * 
+     *
      * @param name the name of the new scope
      * @return the scope entered by this method which will be exited when its {@link Scope#close()}
      *         method is called
@@ -234,7 +234,7 @@ public class Debug {
      * <p>
      * It is recommended to use the try-with-resource statement for managing entering and leaving
      * debug scopes. For example:
-     * 
+     *
      * <pre>
      * try (Scope s = Debug.sandbox(&quot;CompilingStub&quot;, null, stubGraph)) {
      *     ...
@@ -242,7 +242,7 @@ public class Debug {
      *     throw Debug.handle(e);
      * }
      * </pre>
-     * 
+     *
      * @param name the name of the new scope
      * @param config the debug configuration to use for the new scope
      * @param context objects to be appended to the {@linkplain #context() current} debug context
@@ -277,7 +277,7 @@ public class Debug {
      * must have the current scope as its parent which will be the case if the try-with-resource
      * pattern recommended by {@link #scope(Object)} and
      * {@link #sandbox(String, DebugConfig, Object...)} is used
-     * 
+     *
      * @see #scope(Object)
      * @see #sandbox(String, DebugConfig, Object...)
      */
@@ -297,7 +297,7 @@ public class Debug {
 
     /**
      * Prints a message to the current debug scope's logging stream if logging is enabled.
-     * 
+     *
      * @param msg the message to log
      */
     public static void log(String msg) {
@@ -308,7 +308,7 @@ public class Debug {
 
     /**
      * Prints a message to the current debug scope's logging stream if logging is enabled.
-     * 
+     *
      * @param format a format string
      * @param arg the argument referenced by the format specifiers in {@code format}
      */
@@ -359,7 +359,7 @@ public class Debug {
      * if debugging is {@linkplain Debug#isEnabled() enabled} as it incurs allocation at the call
      * site. If possible, call one of the other {@code log()} methods in this class that take a
      * fixed number of parameters.
-     * 
+     *
      * @param format a format string
      * @param args the arguments referenced by the format specifiers in {@code format}
      */
@@ -427,7 +427,7 @@ public class Debug {
     /**
      * Creates a new indentation level (by adding some spaces) based on the last used Indent of the
      * current DebugScope.
-     * 
+     *
      * @return The new indentation level
      * @see Indent#indent
      */
@@ -441,7 +441,7 @@ public class Debug {
 
     /**
      * A convenience function which combines {@link #log} and {@link #indent()}.
-     * 
+     *
      * @param msg The format string of the log message
      * @param args The arguments referenced by the log message string
      * @return The new indentation level
@@ -454,73 +454,6 @@ public class Debug {
             return scope.pushIndentLogger();
         }
         return noLoggerInstance;
-    }
-
-    /**
-     * A convenience function which combines enabling/disabling of logging and
-     * {@link #logAndIndent(String, Object...)}. Note: Use this method with care because it
-     * overrules the -G:Log option.
-     * 
-     * @param enabled Flag for enabling or disabling logging
-     * @param msg The format string of the log message
-     * @param args The arguments referenced by the log message string
-     * @return The new indentation level
-     * @see Indent#logAndIndent
-     */
-    public static Indent logAndIndent(boolean enabled, String msg, Object... args) {
-        if (ENABLED) {
-            Collection<DebugDumpHandler> dumpHandlers;
-            PrintStream output;
-            DebugConfig currentConfig = DebugScope.getConfig();
-            if (currentConfig != null) {
-                dumpHandlers = currentConfig.dumpHandlers();
-                output = currentConfig.output();
-            } else {
-                dumpHandlers = Collections.<DebugDumpHandler> emptyList();
-                output = System.out;
-            }
-            DebugConfigScope configScope = new DebugConfigScope(Debug.fixedConfig(enabled, Debug.isDumpEnabled(), false, false, dumpHandlers, output));
-            return new IndentWithEnable(Debug.logAndIndent(msg, args), configScope);
-        }
-        return noLoggerInstance;
-    }
-
-    private static class IndentWithEnable implements Indent {
-
-        Indent delegate;
-        DebugConfigScope configScope;
-
-        IndentWithEnable(Indent delegate, DebugConfigScope configScope) {
-            this.delegate = delegate;
-            this.configScope = configScope;
-        }
-
-        @Override
-        public void log(String msg, Object... args) {
-            delegate.log(msg, args);
-        }
-
-        @Override
-        public Indent indent() {
-            return delegate.indent();
-        }
-
-        @Override
-        public Indent logAndIndent(String msg, Object... args) {
-            return delegate.logAndIndent(msg, args);
-        }
-
-        @Override
-        public Indent outdent() {
-            configScope.close();
-            return delegate.outdent();
-        }
-
-        @Override
-        public void close() {
-            configScope.close();
-            delegate.close();
-        }
     }
 
     public static Iterable<Object> context() {
@@ -606,13 +539,13 @@ public class Debug {
 
     /**
      * Creates a debug metric. Invoking this method is equivalent to:
-     * 
+     *
      * <pre>
      * Debug.metric(format, arg, null)
      * </pre>
-     * 
+     *
      * except that the string formatting only happens if metering is enabled.
-     * 
+     *
      * @see #metric(String, Object, Object)
      */
     public static DebugMetric metric(String format, Object arg) {
@@ -624,22 +557,22 @@ public class Debug {
 
     /**
      * Creates a debug metric. Invoking this method is equivalent to:
-     * 
+     *
      * <pre>
      * Debug.metric(String.format(format, arg1, arg2))
      * </pre>
-     * 
+     *
      * except that the string formatting only happens if metering is enabled. In addition, each
      * argument is subject to the following type based conversion before being passed as an argument
      * to {@link String#format(String, Object...)}:
-     * 
+     *
      * <pre>
      *     Type          | Conversion
      * ------------------+-----------------
      *  java.lang.Class  | arg.getSimpleName()
      *                   |
      * </pre>
-     * 
+     *
      * @see #metric(CharSequence)
      */
     public static DebugMetric metric(String format, Object arg1, Object arg2) {
@@ -657,7 +590,7 @@ public class Debug {
 
     /**
      * Changes the debug configuration for the current thread.
-     * 
+     *
      * @param config new configuration to use for the current thread
      * @return an object that when {@linkplain DebugConfigScope#close() closed} will restore the
      *         debug configuration for the current thread to what it was before this method was
@@ -807,13 +740,13 @@ public class Debug {
 
     /**
      * Creates a debug timer. Invoking this method is equivalent to:
-     * 
+     *
      * <pre>
      * Debug.timer(format, arg, null)
      * </pre>
-     * 
+     *
      * except that the string formatting only happens if timing is enabled.
-     * 
+     *
      * @see #timer(String, Object, Object)
      */
     public static DebugTimer timer(String format, Object arg) {
@@ -825,22 +758,22 @@ public class Debug {
 
     /**
      * Creates a debug timer. Invoking this method is equivalent to:
-     * 
+     *
      * <pre>
      * Debug.timer(String.format(format, arg1, arg2))
      * </pre>
-     * 
+     *
      * except that the string formatting only happens if timing is enabled. In addition, each
      * argument is subject to the following type based conversion before being passed as an argument
      * to {@link String#format(String, Object...)}:
-     * 
+     *
      * <pre>
      *     Type          | Conversion
      * ------------------+-----------------
      *  java.lang.Class  | arg.getSimpleName()
      *                   |
      * </pre>
-     * 
+     *
      * @see #timer(CharSequence)
      */
     public static DebugTimer timer(String format, Object arg1, Object arg2) {
