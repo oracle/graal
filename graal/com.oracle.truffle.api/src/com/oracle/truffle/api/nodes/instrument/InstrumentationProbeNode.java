@@ -62,7 +62,7 @@ public abstract class InstrumentationProbeNode extends Node implements Instrumen
      */
     protected void internalAppendProbe(InstrumentationProbeNode newProbeNode) {
         if (next == null) {
-            this.next = newProbeNode;
+            this.next = insert(newProbeNode);
         } else {
             next.internalAppendProbe(newProbeNode);
         }
@@ -75,7 +75,7 @@ public abstract class InstrumentationProbeNode extends Node implements Instrumen
             if (oldProbeNode.next == null) {
                 this.next = null;
             } else {
-                this.next = oldProbeNode.next;
+                this.next = insert(oldProbeNode.next);
                 oldProbeNode.next = null;
             }
         } else {
