@@ -300,6 +300,8 @@ public abstract class NodeLIRGenerator implements NodeLIRGeneratorTool {
         return null;
     }
 
+    private static final Object LOG_OUTPUT_LOCK = new Object();
+
     /**
      * Try to find a sequence of Nodes which can be passed to the backend to look for optimized
      * instruction sequences using memory. Currently this basically is a read with a single
@@ -342,7 +344,7 @@ public abstract class NodeLIRGenerator implements NodeLIRGeneratorTool {
                         }
                     }
                     if (Debug.isLogEnabled()) {
-                        synchronized ("lock") {  // Hack to ensure the output is grouped.
+                        synchronized (LOG_OUTPUT_LOCK) {  // Hack to ensure the output is grouped.
                             try (Indent indent = Debug.logAndIndent("checking operations")) {
                                 int start = nodes.indexOf(access);
                                 int end = nodes.indexOf(operation);

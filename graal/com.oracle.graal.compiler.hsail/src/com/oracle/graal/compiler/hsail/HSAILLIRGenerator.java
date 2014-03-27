@@ -251,7 +251,7 @@ public abstract class HSAILLIRGenerator extends LIRGenerator {
 
     /**
      * Generates the LIR instruction for a negation operation.
-     * 
+     *
      * @param input the value that is being negated
      * @return Variable that represents the result of the negation
      */
@@ -282,7 +282,7 @@ public abstract class HSAILLIRGenerator extends LIRGenerator {
 
     /**
      * Generates the LIR instruction for a bitwise NOT operation.
-     * 
+     *
      * @param input the source operand
      * @return Variable that represents the result of the operation
      */
@@ -518,7 +518,7 @@ public abstract class HSAILLIRGenerator extends LIRGenerator {
 
     /**
      * Generates the LIR instruction for a shift left operation.
-     * 
+     *
      * @param a The value that is being shifted
      * @param b The shift amount
      * @return Variable that represents the result of the operation
@@ -543,7 +543,7 @@ public abstract class HSAILLIRGenerator extends LIRGenerator {
 
     /**
      * Generates the LIR instruction for a shift right operation.
-     * 
+     *
      * @param a The value that is being shifted
      * @param b The shift amount
      * @return Variable that represents the result of the operation
@@ -568,7 +568,7 @@ public abstract class HSAILLIRGenerator extends LIRGenerator {
 
     /**
      * Generates the LIR instruction for an unsigned shift right operation.
-     * 
+     *
      * @param a The value that is being shifted
      * @param b The shift amount
      * @return Variable that represents the result of the operation
@@ -713,7 +713,7 @@ public abstract class HSAILLIRGenerator extends LIRGenerator {
 
     /**
      * Emits the LIR code for the {@link HSAILArithmetic#ABS} operation.
-     * 
+     *
      * @param input the source operand
      * @return Value representing the result of the operation
      */
@@ -726,7 +726,7 @@ public abstract class HSAILLIRGenerator extends LIRGenerator {
 
     /**
      * Emits the LIR code for the {@link HSAILArithmetic#CEIL} operation.
-     * 
+     *
      * @param input the source operand
      * @return Value representing the result of the operation
      */
@@ -738,7 +738,7 @@ public abstract class HSAILLIRGenerator extends LIRGenerator {
 
     /**
      * Emits the LIR code for the {@link HSAILArithmetic#FLOOR} operation.
-     * 
+     *
      * @param input the source operand
      * @return Value representing the result of the operation
      */
@@ -750,7 +750,7 @@ public abstract class HSAILLIRGenerator extends LIRGenerator {
 
     /**
      * Emits the LIR code for the {@link HSAILArithmetic#RINT} operation.
-     * 
+     *
      * @param input the source operand
      * @return Value representing the result of the operation
      */
@@ -762,7 +762,7 @@ public abstract class HSAILLIRGenerator extends LIRGenerator {
 
     /**
      * Emits the LIR code for the {@link HSAILArithmetic#SQRT} operation.
-     * 
+     *
      * @param input the source operand
      * @return value representing the result of the operation
      */
@@ -812,14 +812,14 @@ public abstract class HSAILLIRGenerator extends LIRGenerator {
     /**
      * This routine handles the LIR code generation for switch nodes by calling
      * emitSequentialSwitch.
-     * 
+     *
      * This routine overrides LIRGenerator.emitSwitch( ) which calls emitSequentialSwitch or
      * emitTableSwitch based on a heuristic.
-     * 
+     *
      * The recommended approach in HSAIL for generating performant code for switch statements is to
      * emit a series of cascading compare and branches. Thus this routines always calls
      * emitSequentialSwitch, which implements this approach.
-     * 
+     *
      * Note: Only IntegerSwitchNodes are currently supported. The IntegerSwitchNode is the node that
      * Graal generates for any switch construct appearing in Java bytecode.
      */
@@ -832,17 +832,17 @@ public abstract class HSAILLIRGenerator extends LIRGenerator {
      * Generates the LIR instruction for a switch construct that is meant to be assembled into a
      * series of cascading compare and branch instructions. This is currently the recommended way of
      * generating performant HSAIL code for switch constructs.
-     * 
+     *
      * In Java bytecode the keys for switch statements are always ints.
-     * 
+     *
      * The x86 backend also adds support for handling keys of type long or Object but these two
      * special cases are for handling the TypeSwitchNode, which is a node that the JVM produces for
      * handling operations related to method dispatch. We haven't yet added support for the
      * TypeSwitchNode, so for the time being we have added a check to ensure that the keys are of
      * type int. This also allows us to flag any test cases/execution paths that may trigger the
      * creation of a TypeSwitchNode which we don't support yet.
-     * 
-     * 
+     *
+     *
      * @param strategy the strategy used for this switch.
      * @param keyTargets array of branch targets for each of the cases.
      * @param defaultTarget the branch target for the default case.

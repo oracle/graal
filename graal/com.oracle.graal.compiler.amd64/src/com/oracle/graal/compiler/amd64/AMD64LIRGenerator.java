@@ -60,12 +60,13 @@ import com.oracle.graal.lir.amd64.AMD64ControlFlow.FloatCondMoveOp;
 import com.oracle.graal.lir.amd64.AMD64ControlFlow.ReturnOp;
 import com.oracle.graal.lir.amd64.AMD64ControlFlow.StrategySwitchOp;
 import com.oracle.graal.lir.amd64.AMD64ControlFlow.TableSwitchOp;
+import com.oracle.graal.lir.amd64.AMD64Move.LeaDataOp;
 import com.oracle.graal.lir.amd64.AMD64Move.LeaOp;
-import com.oracle.graal.lir.amd64.AMD64Move.LoadOp;
 import com.oracle.graal.lir.amd64.AMD64Move.MembarOp;
 import com.oracle.graal.lir.amd64.AMD64Move.MoveFromRegOp;
 import com.oracle.graal.lir.amd64.AMD64Move.MoveToRegOp;
 import com.oracle.graal.lir.amd64.AMD64Move.StackLeaOp;
+import com.oracle.graal.lir.amd64.AMD64Move.ZeroExtendLoadOp;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.calc.FloatConvertNode.FloatConvert;
@@ -155,6 +156,10 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     @Override
     public void emitMove(AllocatableValue dst, Value src) {
         append(createMove(dst, src));
+    }
+
+    public void emitData(AllocatableValue dst, byte[] data) {
+        append(new LeaDataOp(dst, data));
     }
 
     @Override
@@ -545,11 +550,10 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     protected Value emitZeroExtendMemory(Kind memoryKind, int resultBits, AMD64AddressValue address, LIRFrameState state) {
-        assert memoryKind.isUnsigned();
         // Issue a zero extending load of the proper bit size and set the result to
         // the proper kind.
         Variable result = newVariable(resultBits == 32 ? Kind.Int : Kind.Long);
-        append(new LoadOp(memoryKind, result, address, state));
+        append(new ZeroExtendLoadOp(memoryKind, result, address, state));
         return result;
     }
 

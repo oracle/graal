@@ -90,7 +90,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
 
         /**
          * Replaces this operation with the appropriate move for saving rbp.
-         * 
+         *
          * @param useStack specifies if rbp must be saved to the stack
          */
         public AllocatableValue finalize(boolean useStack) {
@@ -153,6 +153,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         return ((AMD64HotSpotLIRGenerationResult) res).getStub() != null;
     }
 
+    @Override
     public void emitData(AllocatableValue dst, byte[] data) {
         append(new LeaDataOp(dst, data));
     }
