@@ -60,7 +60,7 @@ public abstract class AMD64NodeLIRGenerator extends NodeLIRGenerator {
     @Override
     public void emitNullCheck(ValueNode v, DeoptimizingNode deopt) {
         assert v.getKind() == Kind.Object : v + " - " + v.stamp() + " @ " + deopt;
-        append(new AMD64Move.NullCheckOp(gen.load(operand(v)), state(deopt)));
+        append(new AMD64Move.NullCheckOp(gen.load(operand(v)), gen.state(deopt)));
     }
 
     @Override
@@ -103,7 +103,7 @@ public abstract class AMD64NodeLIRGenerator extends NodeLIRGenerator {
 
     @Override
     public void visitInfopointNode(InfopointNode i) {
-        append(new InfopointOp(stateFor(i.getState()), i.reason));
+        append(new InfopointOp(gen.stateFor(i.getState()), i.reason));
     }
 
     @Override

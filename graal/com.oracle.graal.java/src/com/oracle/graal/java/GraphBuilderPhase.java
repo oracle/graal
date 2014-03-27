@@ -291,7 +291,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
         /**
          * A hook for derived classes to modify the graph start instruction or append new
          * instructions to it.
-         * 
+         *
          * @param startInstr The start instruction of the graph.
          */
         protected void finishPrepare(FixedWithNextNode startInstr) {
@@ -316,6 +316,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             return stream.currentBCI();
         }
 
+        @SuppressWarnings("unused")
         private void loadLocal(int index, Kind kind) {
             frameState.push(kind, frameState.loadLocal(index));
         }
@@ -913,7 +914,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
         /**
          * Gets the kind of array elements for the array type code that appears in a
          * {@link Bytecodes#NEWARRAY} bytecode.
-         * 
+         *
          * @param code the array type code
          * @return the kind from the array type code
          */
@@ -1320,7 +1321,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
         /**
          * Helper function that sums up the probabilities of all keys that lead to a specific
          * successor.
-         * 
+         *
          * @return an array of size successorCount with the accumulated probability for each
          *         successor.
          */
@@ -1832,7 +1833,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
         /**
          * A hook for derived classes to modify the last instruction or add other instructions.
-         * 
+         *
          * @param instr The last instruction (= fixed node) which was added.
          * @param state The current frame state.
          * @Returns Returns the (new) last instruction.

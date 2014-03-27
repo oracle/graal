@@ -60,7 +60,7 @@ public class SPARCHotSpotNodeLIRGenerator extends SPARCNodeLIRGenerator implemen
 
     @Override
     public void visitSafepointNode(SafepointNode i) {
-        LIRFrameState info = state(i);
+        LIRFrameState info = gen.state(i);
         append(new SPARCHotSpotSafepointOp(info, getGen().config, gen));
     }
 

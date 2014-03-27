@@ -65,7 +65,7 @@ public abstract class SPARCNodeLIRGenerator extends NodeLIRGenerator {
     @Override
     public void emitNullCheck(ValueNode v, DeoptimizingNode deopting) {
         assert v.getKind() == Kind.Object;
-        append(new NullCheckOp(gen.load(operand(v)), state(deopting)));
+        append(new NullCheckOp(gen.load(operand(v)), gen.state(deopting)));
     }
 
     @Override

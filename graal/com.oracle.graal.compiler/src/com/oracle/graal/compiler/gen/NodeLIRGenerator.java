@@ -192,48 +192,6 @@ public abstract class NodeLIRGenerator implements NodeLIRGeneratorTool {
         return LabelRef.forSuccessor(res.getLIR(), (Block) gen.getCurrentBlock(), suxIndex);
     }
 
-    @Deprecated
-    private static FrameState getFrameState(DeoptimizingNode deopt) {
-        if (deopt instanceof DeoptimizingNode.DeoptBefore) {
-            return ((DeoptimizingNode.DeoptBefore) deopt).stateBefore();
-        } else if (deopt instanceof DeoptimizingNode.DeoptDuring) {
-            return ((DeoptimizingNode.DeoptDuring) deopt).stateDuring();
-        } else {
-            assert deopt instanceof DeoptimizingNode.DeoptAfter;
-            return ((DeoptimizingNode.DeoptAfter) deopt).stateAfter();
-        }
-    }
-
-    @Deprecated
-    public LIRFrameState state(DeoptimizingNode deopt) {
-        if (!deopt.canDeoptimize()) {
-            return null;
-        }
-        return stateFor(getFrameState(deopt));
-    }
-
-    @Deprecated
-    public LIRFrameState stateWithExceptionEdge(DeoptimizingNode deopt, LabelRef exceptionEdge) {
-        if (!deopt.canDeoptimize()) {
-            return null;
-        }
-        return stateForWithExceptionEdge(getFrameState(deopt), exceptionEdge);
-    }
-
-    @Deprecated
-    public LIRFrameState stateFor(FrameState state) {
-        return stateForWithExceptionEdge(state, null);
-    }
-
-    @Deprecated
-    public LIRFrameState stateForWithExceptionEdge(FrameState state, LabelRef exceptionEdge) {
-        if (gen.needOnlyOopMaps()) {
-            return new LIRFrameState(null, null, null);
-        }
-        assert state != null;
-        return getDebugInfoBuilder().build(state, exceptionEdge);
-    }
-
     public final void append(LIRInstruction op) {
         if (printIRWithLIR && !TTY.isSuppressed()) {
             if (currentInstruction != null && lastInstructionPrinted != currentInstruction) {
@@ -732,7 +690,7 @@ public abstract class NodeLIRGenerator implements NodeLIRGeneratorTool {
         if (x instanceof InvokeWithExceptionNode) {
             exceptionEdge = getLIRBlock(((InvokeWithExceptionNode) x).exceptionEdge());
         }
-        LIRFrameState callState = stateWithExceptionEdge(x, exceptionEdge);
+        LIRFrameState callState = gen.stateWithExceptionEdge(x, exceptionEdge);
 
         Value result = invokeCc.getReturn();
         if (callTarget instanceof DirectCallTargetNode) {

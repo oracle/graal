@@ -72,7 +72,7 @@ public abstract class HSAILNodeLIRGenerator extends NodeLIRGenerator {
         assert v.stamp() instanceof ObjectStamp;
         Variable obj = newVariable(Kind.Object);
         gen.emitMove(obj, operand(v));
-        append(new HSAILMove.NullCheckOp(obj, state(deopting)));
+        append(new HSAILMove.NullCheckOp(obj, gen.state(deopting)));
     }
 
     @Override

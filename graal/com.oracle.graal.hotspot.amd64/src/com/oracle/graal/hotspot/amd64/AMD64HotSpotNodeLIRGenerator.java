@@ -111,7 +111,7 @@ public class AMD64HotSpotNodeLIRGenerator extends AMD64NodeLIRGenerator implemen
 
     @Override
     public void visitSafepointNode(SafepointNode i) {
-        LIRFrameState info = state(i);
+        LIRFrameState info = gen.state(i);
         append(new AMD64HotSpotSafepointOp(info, getGen().config, this));
     }
 
