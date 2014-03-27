@@ -39,7 +39,7 @@ public class ForeignCallNode extends AbstractMemoryCheckpoint implements LIRLowe
 
     @Input private final NodeInputList<ValueNode> arguments;
     private final ForeignCallsProvider foreignCalls;
-    @Input private FrameState deoptState;
+    @Input private FrameState stateDuring;
 
     private final ForeignCallDescriptor descriptor;
 
@@ -102,24 +102,24 @@ public class ForeignCallNode extends AbstractMemoryCheckpoint implements LIRLowe
 
     @Override
     public FrameState stateDuring() {
-        return deoptState;
+        return stateDuring;
     }
 
     @Override
     public void setStateDuring(FrameState stateDuring) {
-        updateUsages(deoptState, stateDuring);
-        deoptState = stateDuring;
+        updateUsages(this.stateDuring, stateDuring);
+        this.stateDuring = stateDuring;
     }
 
     @Override
     public void computeStateDuring(FrameState stateAfter) {
-        FrameState stateDuring;
+        FrameState newStateDuring;
         if ((stateAfter.stackSize() > 0 && stateAfter.stackAt(stateAfter.stackSize() - 1) == this) || (stateAfter.stackSize() > 1 && stateAfter.stackAt(stateAfter.stackSize() - 2) == this)) {
-            stateDuring = stateAfter.duplicateModified(stateAfter.bci, stateAfter.rethrowException(), this.getKind());
+            newStateDuring = stateAfter.duplicateModified(stateAfter.bci, stateAfter.rethrowException(), this.getKind());
         } else {
-            stateDuring = stateAfter;
+            newStateDuring = stateAfter;
         }
-        setStateDuring(stateDuring);
+        setStateDuring(newStateDuring);
     }
 
     @Override

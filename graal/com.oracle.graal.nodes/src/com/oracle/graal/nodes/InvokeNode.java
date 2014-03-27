@@ -38,7 +38,7 @@ import com.oracle.graal.nodes.util.*;
 public final class InvokeNode extends AbstractMemoryCheckpoint implements Invoke, LIRLowerable, MemoryCheckpoint.Single {
 
     @Input private CallTargetNode callTarget;
-    @Input private FrameState deoptState;
+    @Input private FrameState stateDuring;
     @Input private GuardingNode guard;
     private final int bci;
     private boolean polymorphic;
@@ -164,20 +164,20 @@ public final class InvokeNode extends AbstractMemoryCheckpoint implements Invoke
 
     @Override
     public FrameState stateDuring() {
-        return deoptState;
+        return stateDuring;
     }
 
     @Override
     public void setStateDuring(FrameState stateDuring) {
-        updateUsages(deoptState, stateDuring);
-        deoptState = stateDuring;
+        updateUsages(this.stateDuring, stateDuring);
+        this.stateDuring = stateDuring;
     }
 
     @Override
     public void computeStateDuring(FrameState stateAfter) {
-        FrameState stateDuring = stateAfter.duplicateModified(bci(), stateAfter.rethrowException(), getKind());
-        stateDuring.setDuringCall(true);
-        setStateDuring(stateDuring);
+        FrameState newStateDuring = stateAfter.duplicateModified(bci(), stateAfter.rethrowException(), getKind());
+        newStateDuring.setDuringCall(true);
+        setStateDuring(newStateDuring);
     }
 
     @Override
