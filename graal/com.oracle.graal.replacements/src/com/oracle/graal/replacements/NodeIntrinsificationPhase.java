@@ -138,7 +138,7 @@ public class NodeIntrinsificationPhase extends Phase {
     /**
      * Converts the arguments of an invoke node to object values suitable for use as the arguments
      * to a reflective invocation of a Java constructor or method.
-     * 
+     *
      * @param folding specifies if the invocation is for handling a {@link Fold} annotation
      * @return the arguments for the reflective invocation or null if an argument of {@code invoke}
      *         that is expected to be constant isn't
@@ -395,7 +395,7 @@ public class NodeIntrinsificationPhase extends Phase {
             }
             graph.removeFixed(pi);
         } else {
-            DebugScope.dump(graph, "exception");
+            DebugScope.forceDump(graph, "exception");
             assert false : sourceLocation(usage) + " has unexpected usage " + usage + " of checkcast " + input + " at " + sourceLocation(input);
         }
     }

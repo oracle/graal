@@ -41,7 +41,7 @@ public interface DebugConfig {
     /**
      * Determines if metering is enabled in the {@linkplain Debug#currentScope() current debug
      * scope}.
-     * 
+     *
      * @see Debug#metric(CharSequence)
      */
     boolean isMeterEnabled();
@@ -49,8 +49,8 @@ public interface DebugConfig {
     /**
      * Determines if dumping is enabled in the {@linkplain Debug#currentScope() current debug scope}
      * .
-     * 
-     * @see Debug#dump(Object, String, Object...)
+     *
+     * @see Debug#dump(Object, String)
      */
     boolean isDumpEnabled();
 
@@ -67,7 +67,7 @@ public interface DebugConfig {
 
     /**
      * Removes an object the context used by this configuration to do filtering.
-     * 
+     *
      * This should only removes extra context added by {@link #addToContext(Object)}.
      */
     void removeFromContext(Object o);
@@ -79,7 +79,7 @@ public interface DebugConfig {
 
     /**
      * Handles notification of an exception occurring within a debug scope.
-     * 
+     *
      * @return the exception object that is to be propagated to parent scope. A value of
      *         {@code null} indicates that {@code e} is to be propagated.
      */

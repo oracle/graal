@@ -180,7 +180,7 @@ public final class DebugScope implements Debug.Scope {
         }
     }
 
-    public void dump(Object object, String formatString, Object[] args) {
+    public void dump(Object object, String formatString, Object... args) {
         if (isDumpEnabled()) {
             DebugConfig config = getConfig();
             if (config != null) {
@@ -195,7 +195,7 @@ public final class DebugScope implements Debug.Scope {
     /**
      * This method exists mainly to allow a debugger (e.g., Eclipse) to force dump a graph.
      */
-    public static void dump(Object object, String message) {
+    public static void forceDump(Object object, String message) {
         DebugConfig config = getConfig();
         if (config != null) {
             for (DebugDumpHandler dumpHandler : config.dumpHandlers()) {
