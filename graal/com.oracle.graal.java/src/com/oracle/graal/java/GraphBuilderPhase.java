@@ -224,68 +224,68 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 TTY.println(MetaUtil.indent(MetaUtil.profileToString(profilingInfo, method, CodeUtil.NEW_LINE), "  "));
             }
 
-            Indent indent = Debug.logAndIndent("build graph for %s", method);
+            try (Indent indent = Debug.logAndIndent("build graph for %s", method)) {
 
-            // compute the block map, setup exception handlers and get the entrypoint(s)
-            BciBlockMapping blockMap = BciBlockMapping.create(method);
-            loopHeaders = blockMap.loopHeaders;
-            liveness = blockMap.liveness;
+                // compute the block map, setup exception handlers and get the entrypoint(s)
+                BciBlockMapping blockMap = BciBlockMapping.create(method);
+                loopHeaders = blockMap.loopHeaders;
+                liveness = blockMap.liveness;
 
-            lastInstr = currentGraph.start();
-            if (isSynchronized(method.getModifiers())) {
-                // add a monitor enter to the start block
-                currentGraph.start().setStateAfter(frameState.create(FrameState.BEFORE_BCI));
-                methodSynchronizedObject = synchronizedObject(frameState, method);
-                lastInstr = genMonitorEnter(methodSynchronizedObject);
-            }
-            frameState.clearNonLiveLocals(blockMap.startBlock, liveness, true);
-            ((StateSplit) lastInstr).setStateAfter(frameState.create(0));
-            finishPrepare(lastInstr);
+                lastInstr = currentGraph.start();
+                if (isSynchronized(method.getModifiers())) {
+                    // add a monitor enter to the start block
+                    currentGraph.start().setStateAfter(frameState.create(FrameState.BEFORE_BCI));
+                    methodSynchronizedObject = synchronizedObject(frameState, method);
+                    lastInstr = genMonitorEnter(methodSynchronizedObject);
+                }
+                frameState.clearNonLiveLocals(blockMap.startBlock, liveness, true);
+                ((StateSplit) lastInstr).setStateAfter(frameState.create(0));
+                finishPrepare(lastInstr);
 
-            if (graphBuilderConfig.eagerInfopointMode()) {
-                InfopointNode ipn = currentGraph.add(new InfopointNode(InfopointReason.METHOD_START, frameState.create(0)));
-                lastInstr.setNext(ipn);
-                lastInstr = ipn;
-            }
+                if (graphBuilderConfig.eagerInfopointMode()) {
+                    InfopointNode ipn = currentGraph.add(new InfopointNode(InfopointReason.METHOD_START, frameState.create(0)));
+                    lastInstr.setNext(ipn);
+                    lastInstr = ipn;
+                }
 
-            currentBlock = blockMap.startBlock;
-            blockMap.startBlock.entryState = frameState;
-            if (blockMap.startBlock.isLoopHeader) {
-                /*
-                 * TODO(lstadler,gduboscq) createTarget might not be safe at this position, since it
-                 * expects currentBlock, etc. to be set up correctly. A better solution to this
-                 * problem of start blocks that are loop headers would be to create a dummy block in
-                 * BciBlockMapping.
-                 */
-                appendGoto(createTarget(blockMap.startBlock, frameState));
-            } else {
-                blockMap.startBlock.firstInstruction = lastInstr;
-            }
+                currentBlock = blockMap.startBlock;
+                blockMap.startBlock.entryState = frameState;
+                if (blockMap.startBlock.isLoopHeader) {
+                    /*
+                     * TODO(lstadler,gduboscq) createTarget might not be safe at this position,
+                     * since it expects currentBlock, etc. to be set up correctly. A better solution
+                     * to this problem of start blocks that are loop headers would be to create a
+                     * dummy block in BciBlockMapping.
+                     */
+                    appendGoto(createTarget(blockMap.startBlock, frameState));
+                } else {
+                    blockMap.startBlock.firstInstruction = lastInstr;
+                }
 
-            for (BciBlock block : blockMap.blocks) {
-                processBlock(block);
-            }
-            processBlock(unwindBlock);
+                for (BciBlock block : blockMap.blocks) {
+                    processBlock(block);
+                }
+                processBlock(unwindBlock);
 
-            Debug.dump(currentGraph, "After bytecode parsing");
+                Debug.dump(currentGraph, "After bytecode parsing");
 
-            connectLoopEndToBegin();
+                connectLoopEndToBegin();
 
-            // remove Placeholders
-            for (BlockPlaceholderNode n = placeholders; n != null; n = n.nextPlaceholder()) {
-                if (!n.isDeleted()) {
-                    currentGraph.removeFixed(n);
+                // remove Placeholders
+                for (BlockPlaceholderNode n = placeholders; n != null; n = n.nextPlaceholder()) {
+                    if (!n.isDeleted()) {
+                        currentGraph.removeFixed(n);
+                    }
+                }
+                placeholders = null;
+
+                // remove dead FrameStates
+                for (Node n : currentGraph.getNodes(FrameState.class)) {
+                    if (n.usages().isEmpty() && n.predecessor() == null) {
+                        n.safeDelete();
+                    }
                 }
             }
-            placeholders = null;
-
-            // remove dead FrameStates
-            for (Node n : currentGraph.getNodes(FrameState.class)) {
-                if (n.usages().isEmpty() && n.predecessor() == null) {
-                    n.safeDelete();
-                }
-            }
-            indent.outdent();
         }
 
         /**
@@ -1613,32 +1613,32 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 Debug.log("Ignoring block %s", block);
                 return;
             }
-            Indent indent = Debug.logAndIndent("Parsing block %s  firstInstruction: %s  loopHeader: %b", block, block.firstInstruction, block.isLoopHeader);
+            try (Indent indent = Debug.logAndIndent("Parsing block %s  firstInstruction: %s  loopHeader: %b", block, block.firstInstruction, block.isLoopHeader)) {
 
-            lastInstr = block.firstInstruction;
-            frameState = block.entryState;
-            parseHelper.setCurrentFrameState(frameState);
-            currentBlock = block;
+                lastInstr = block.firstInstruction;
+                frameState = block.entryState;
+                parseHelper.setCurrentFrameState(frameState);
+                currentBlock = block;
 
-            frameState.cleanupDeletedPhis();
-            if (lastInstr instanceof MergeNode) {
-                int bci = block.startBci;
-                if (block instanceof ExceptionDispatchBlock) {
-                    bci = ((ExceptionDispatchBlock) block).deoptBci;
+                frameState.cleanupDeletedPhis();
+                if (lastInstr instanceof MergeNode) {
+                    int bci = block.startBci;
+                    if (block instanceof ExceptionDispatchBlock) {
+                        bci = ((ExceptionDispatchBlock) block).deoptBci;
+                    }
+                    ((MergeNode) lastInstr).setStateAfter(frameState.create(bci));
                 }
-                ((MergeNode) lastInstr).setStateAfter(frameState.create(bci));
-            }
 
-            if (block == unwindBlock) {
-                frameState.setRethrowException(false);
-                createUnwind();
-            } else if (block instanceof ExceptionDispatchBlock) {
-                createExceptionDispatch((ExceptionDispatchBlock) block);
-            } else {
-                frameState.setRethrowException(false);
-                iterateBytecodesForBlock(block);
+                if (block == unwindBlock) {
+                    frameState.setRethrowException(false);
+                    createUnwind();
+                } else if (block instanceof ExceptionDispatchBlock) {
+                    createExceptionDispatch((ExceptionDispatchBlock) block);
+                } else {
+                    frameState.setRethrowException(false);
+                    iterateBytecodesForBlock(block);
+                }
             }
-            indent.outdent();
         }
 
         private void connectLoopEndToBegin() {

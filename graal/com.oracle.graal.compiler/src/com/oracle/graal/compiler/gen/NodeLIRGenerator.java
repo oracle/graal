@@ -334,7 +334,7 @@ public abstract class NodeLIRGenerator implements NodeLIRGeneratorTool {
                                     int start = nodes.indexOf(access);
                                     int end = nodes.indexOf(operation);
                                     for (int i1 = Math.min(start, end); i1 <= Math.max(start, end); i1++) {
-                                        indent.log("%d: (%d) %1s", i1, nodes.get(i1).usages().count(), nodes.get(i1));
+                                        Debug.log("%d: (%d) %1s", i1, nodes.get(i1).usages().count(), nodes.get(i1));
                                     }
                                 }
                                 return 0;
@@ -349,7 +349,7 @@ public abstract class NodeLIRGenerator implements NodeLIRGeneratorTool {
                                 int start = nodes.indexOf(access);
                                 int end = nodes.indexOf(operation);
                                 for (int i1 = Math.min(start, end); i1 <= Math.max(start, end); i1++) {
-                                    indent.log("%d: (%d) %1s", i1, nodes.get(i1).usages().count(), nodes.get(i1));
+                                    Debug.log("%d: (%d) %1s", i1, nodes.get(i1).usages().count(), nodes.get(i1));
                                 }
                             }
                         }

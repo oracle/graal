@@ -450,82 +450,82 @@ final class LinearScanWalker extends IntervalWalker {
         int maxSplitPos = currentPosition;
         int minSplitPos = Math.max(interval.previousUsage(RegisterPriority.ShouldHaveRegister, maxSplitPos) + 1, interval.from());
 
-        Indent indent = Debug.logAndIndent("splitting and spilling interval %s between %d and %d", interval, minSplitPos, maxSplitPos);
+        try (Indent indent = Debug.logAndIndent("splitting and spilling interval %s between %d and %d", interval, minSplitPos, maxSplitPos)) {
 
-        assert interval.state == State.Active : "why spill interval that is not active?";
-        assert interval.from() <= minSplitPos : "cannot split before start of interval";
-        assert minSplitPos <= maxSplitPos : "invalid order";
-        assert maxSplitPos < interval.to() : "cannot split at end end of interval";
-        assert currentPosition < interval.to() : "interval must not end before current position";
+            assert interval.state == State.Active : "why spill interval that is not active?";
+            assert interval.from() <= minSplitPos : "cannot split before start of interval";
+            assert minSplitPos <= maxSplitPos : "invalid order";
+            assert maxSplitPos < interval.to() : "cannot split at end end of interval";
+            assert currentPosition < interval.to() : "interval must not end before current position";
 
-        if (minSplitPos == interval.from()) {
-            // the whole interval is never used, so spill it entirely to memory
+            if (minSplitPos == interval.from()) {
+                // the whole interval is never used, so spill it entirely to memory
 
-            try (Indent indent2 = Debug.logAndIndent("spilling entire interval because split pos is at beginning of interval (use positions: %d)", interval.usePosList().size())) {
+                try (Indent indent2 = Debug.logAndIndent("spilling entire interval because split pos is at beginning of interval (use positions: %d)", interval.usePosList().size())) {
 
-                assert interval.firstUsage(RegisterPriority.ShouldHaveRegister) > currentPosition : "interval must not have use position before currentPosition";
+                    assert interval.firstUsage(RegisterPriority.ShouldHaveRegister) > currentPosition : "interval must not have use position before currentPosition";
 
-                allocator.assignSpillSlot(interval);
-                allocator.changeSpillState(interval, minSplitPos);
+                    allocator.assignSpillSlot(interval);
+                    allocator.changeSpillState(interval, minSplitPos);
 
-                // Also kick parent intervals out of register to memory when they have no use
-                // position. This avoids short interval in register surrounded by intervals in
-                // memory . avoid useless moves from memory to register and back
-                Interval parent = interval;
-                while (parent != null && parent.isSplitChild()) {
-                    parent = parent.getSplitChildBeforeOpId(parent.from());
+                    // Also kick parent intervals out of register to memory when they have no use
+                    // position. This avoids short interval in register surrounded by intervals in
+                    // memory . avoid useless moves from memory to register and back
+                    Interval parent = interval;
+                    while (parent != null && parent.isSplitChild()) {
+                        parent = parent.getSplitChildBeforeOpId(parent.from());
 
-                    if (isRegister(parent.location())) {
-                        if (parent.firstUsage(RegisterPriority.ShouldHaveRegister) == Integer.MAX_VALUE) {
-                            // parent is never used, so kick it out of its assigned register
-                            Debug.log("kicking out interval %d out of its register because it is never used", parent.operandNumber);
-                            allocator.assignSpillSlot(parent);
-                        } else {
-                            // do not go further back because the register is actually used by
-                            // the interval
-                            parent = null;
+                        if (isRegister(parent.location())) {
+                            if (parent.firstUsage(RegisterPriority.ShouldHaveRegister) == Integer.MAX_VALUE) {
+                                // parent is never used, so kick it out of its assigned register
+                                Debug.log("kicking out interval %d out of its register because it is never used", parent.operandNumber);
+                                allocator.assignSpillSlot(parent);
+                            } else {
+                                // do not go further back because the register is actually used by
+                                // the interval
+                                parent = null;
+                            }
                         }
                     }
                 }
-            }
 
-        } else {
-            // search optimal split pos, split interval and spill only the right hand part
-            int optimalSplitPos = findOptimalSplitPos(interval, minSplitPos, maxSplitPos, false);
+            } else {
+                // search optimal split pos, split interval and spill only the right hand part
+                int optimalSplitPos = findOptimalSplitPos(interval, minSplitPos, maxSplitPos, false);
 
-            assert minSplitPos <= optimalSplitPos && optimalSplitPos <= maxSplitPos : "out of range";
-            assert optimalSplitPos < interval.to() : "cannot split at end of interval";
-            assert optimalSplitPos >= interval.from() : "cannot split before start of interval";
-
-            if (!allocator.isBlockBegin(optimalSplitPos)) {
-                // move position before actual instruction (odd opId)
-                optimalSplitPos = (optimalSplitPos - 1) | 1;
-            }
-
-            try (Indent indent2 = Debug.logAndIndent("splitting at position %d", optimalSplitPos)) {
-                assert allocator.isBlockBegin(optimalSplitPos) || ((optimalSplitPos & 1) == 1) : "split pos must be odd when not on block boundary";
-                assert !allocator.isBlockBegin(optimalSplitPos) || ((optimalSplitPos & 1) == 0) : "split pos must be even on block boundary";
-
-                Interval spilledPart = interval.split(optimalSplitPos, allocator);
-                allocator.assignSpillSlot(spilledPart);
-                allocator.changeSpillState(spilledPart, optimalSplitPos);
+                assert minSplitPos <= optimalSplitPos && optimalSplitPos <= maxSplitPos : "out of range";
+                assert optimalSplitPos < interval.to() : "cannot split at end of interval";
+                assert optimalSplitPos >= interval.from() : "cannot split before start of interval";
 
                 if (!allocator.isBlockBegin(optimalSplitPos)) {
-                    Debug.log("inserting move from interval %d to %d", interval.operandNumber, spilledPart.operandNumber);
-                    insertMove(optimalSplitPos, interval, spilledPart);
+                    // move position before actual instruction (odd opId)
+                    optimalSplitPos = (optimalSplitPos - 1) | 1;
                 }
 
-                // the currentSplitChild is needed later when moves are inserted for reloading
-                assert spilledPart.currentSplitChild() == interval : "overwriting wrong currentSplitChild";
-                spilledPart.makeCurrentSplitChild();
+                try (Indent indent2 = Debug.logAndIndent("splitting at position %d", optimalSplitPos)) {
+                    assert allocator.isBlockBegin(optimalSplitPos) || ((optimalSplitPos & 1) == 1) : "split pos must be odd when not on block boundary";
+                    assert !allocator.isBlockBegin(optimalSplitPos) || ((optimalSplitPos & 1) == 0) : "split pos must be even on block boundary";
 
-                if (Debug.isLogEnabled()) {
-                    Debug.log("left interval: %s", interval.logString(allocator));
-                    Debug.log("spilled interval   : %s", spilledPart.logString(allocator));
+                    Interval spilledPart = interval.split(optimalSplitPos, allocator);
+                    allocator.assignSpillSlot(spilledPart);
+                    allocator.changeSpillState(spilledPart, optimalSplitPos);
+
+                    if (!allocator.isBlockBegin(optimalSplitPos)) {
+                        Debug.log("inserting move from interval %d to %d", interval.operandNumber, spilledPart.operandNumber);
+                        insertMove(optimalSplitPos, interval, spilledPart);
+                    }
+
+                    // the currentSplitChild is needed later when moves are inserted for reloading
+                    assert spilledPart.currentSplitChild() == interval : "overwriting wrong currentSplitChild";
+                    spilledPart.makeCurrentSplitChild();
+
+                    if (Debug.isLogEnabled()) {
+                        Debug.log("left interval: %s", interval.logString(allocator));
+                        Debug.log("spilled interval   : %s", spilledPart.logString(allocator));
+                    }
                 }
             }
         }
-        indent.outdent();
     }
 
     void splitStackInterval(Interval interval) {
@@ -840,52 +840,52 @@ final class LinearScanWalker extends IntervalWalker {
         Interval interval = currentInterval;
         boolean result = true;
 
-        Indent indent = Debug.logAndIndent("activating interval %s,  splitParent: %d", interval, interval.splitParent().operandNumber);
+        try (Indent indent = Debug.logAndIndent("activating interval %s,  splitParent: %d", interval, interval.splitParent().operandNumber)) {
 
-        final Value operand = interval.operand;
-        if (interval.location() != null && isStackSlot(interval.location())) {
-            // activating an interval that has a stack slot assigned . split it at first use
-            // position
-            // used for method parameters
-            Debug.log("interval has spill slot assigned (method parameter) . split it before first use");
-            splitStackInterval(interval);
-            result = false;
+            final Value operand = interval.operand;
+            if (interval.location() != null && isStackSlot(interval.location())) {
+                // activating an interval that has a stack slot assigned . split it at first use
+                // position
+                // used for method parameters
+                Debug.log("interval has spill slot assigned (method parameter) . split it before first use");
+                splitStackInterval(interval);
+                result = false;
 
-        } else {
-            if (interval.location() == null) {
-                // interval has not assigned register . normal allocation
-                // (this is the normal case for most intervals)
-                Debug.log("normal allocation of register");
+            } else {
+                if (interval.location() == null) {
+                    // interval has not assigned register . normal allocation
+                    // (this is the normal case for most intervals)
+                    Debug.log("normal allocation of register");
 
-                // assign same spill slot to non-intersecting intervals
-                combineSpilledIntervals(interval);
+                    // assign same spill slot to non-intersecting intervals
+                    combineSpilledIntervals(interval);
 
-                initVarsForAlloc(interval);
-                if (noAllocationPossible(interval) || !allocFreeRegister(interval)) {
-                    // no empty register available.
-                    // split and spill another interval so that this interval gets a register
-                    allocLockedRegister(interval);
-                }
+                    initVarsForAlloc(interval);
+                    if (noAllocationPossible(interval) || !allocFreeRegister(interval)) {
+                        // no empty register available.
+                        // split and spill another interval so that this interval gets a register
+                        allocLockedRegister(interval);
+                    }
 
-                // spilled intervals need not be move to active-list
-                if (!isRegister(interval.location())) {
-                    result = false;
+                    // spilled intervals need not be move to active-list
+                    if (!isRegister(interval.location())) {
+                        result = false;
+                    }
                 }
             }
+
+            // load spilled values that become active from stack slot to register
+            if (interval.insertMoveWhenActivated()) {
+                assert interval.isSplitChild();
+                assert interval.currentSplitChild() != null;
+                assert !interval.currentSplitChild().operand.equals(operand) : "cannot insert move between same interval";
+                Debug.log("Inserting move from interval %d to %d because insertMoveWhenActivated is set", interval.currentSplitChild().operandNumber, interval.operandNumber);
+
+                insertMove(interval.from(), interval.currentSplitChild(), interval);
+            }
+            interval.makeCurrentSplitChild();
+
         }
-
-        // load spilled values that become active from stack slot to register
-        if (interval.insertMoveWhenActivated()) {
-            assert interval.isSplitChild();
-            assert interval.currentSplitChild() != null;
-            assert !interval.currentSplitChild().operand.equals(operand) : "cannot insert move between same interval";
-            Debug.log("Inserting move from interval %d to %d because insertMoveWhenActivated is set", interval.currentSplitChild().operandNumber, interval.operandNumber);
-
-            insertMove(interval.from(), interval.currentSplitChild(), interval);
-        }
-        interval.makeCurrentSplitChild();
-
-        indent.outdent();
 
         return result; // true = interval is moved to active list
     }

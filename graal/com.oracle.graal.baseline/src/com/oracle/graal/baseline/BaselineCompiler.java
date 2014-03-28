@@ -506,10 +506,10 @@ public class BaselineCompiler implements BytecodeParser<BciBlock> {
     }
 
     public void processBlock(BciBlock block) {
-        Indent indent = Debug.logAndIndent("Parsing block %s  firstInstruction: %s  loopHeader: %b", block, block.firstInstruction, block.isLoopHeader);
-        currentBlock = block;
-        iterateBytecodesForBlock(block);
-        indent.outdent();
+        try (Indent indent = Debug.logAndIndent("Parsing block %s  firstInstruction: %s  loopHeader: %b", block, block.firstInstruction, block.isLoopHeader)) {
+            currentBlock = block;
+            iterateBytecodesForBlock(block);
+        }
     }
 
     private void createExceptionDispatch(ExceptionDispatchBlock block) {

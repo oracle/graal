@@ -279,7 +279,7 @@ public final class LinearScan {
 
     /**
      * Creates a new interval.
-     * 
+     *
      * @param operand the operand for the interval
      * @return the created interval
      */
@@ -295,7 +295,7 @@ public final class LinearScan {
 
     /**
      * Creates an interval as a result of splitting or spilling another interval.
-     * 
+     *
      * @param source an interval being split of spilled
      * @return a new interval derived from {@code source}
      */
@@ -376,7 +376,7 @@ public final class LinearScan {
 
     /**
      * Retrieves the {@link LIRInstruction} based on its {@linkplain LIRInstruction#id id}.
-     * 
+     *
      * @param opId an instruction {@linkplain LIRInstruction#id id}
      * @return the instruction whose {@linkplain LIRInstruction#id} {@code == id}
      */
@@ -389,7 +389,7 @@ public final class LinearScan {
 
     /**
      * Gets the block containing a given instruction.
-     * 
+     *
      * @param opId an instruction {@linkplain LIRInstruction#id id}
      * @return the block containing the instruction denoted by {@code opId}
      */
@@ -408,7 +408,7 @@ public final class LinearScan {
 
     /**
      * Determines if an {@link LIRInstruction} destroys all caller saved registers.
-     * 
+     *
      * @param opId an instruction {@linkplain LIRInstruction#id id}
      * @return {@code true} if the instruction denoted by {@code id} destroys all caller saved
      *         registers.
@@ -505,79 +505,82 @@ public final class LinearScan {
 
     // called once before assignment of register numbers
     void eliminateSpillMoves() {
-        Indent indent = Debug.logAndIndent("Eliminating unnecessary spill moves");
+        try (Indent indent = Debug.logAndIndent("Eliminating unnecessary spill moves")) {
 
-        // collect all intervals that must be stored after their definition.
-        // the list is sorted by Interval.spillDefinitionPos
-        Interval interval;
-        interval = createUnhandledLists(mustStoreAtDefinition, null).first;
-        if (DetailedAsserts.getValue()) {
-            checkIntervals(interval);
-        }
-
-        LIRInsertionBuffer insertionBuffer = new LIRInsertionBuffer();
-        for (AbstractBlock<?> block : sortedBlocks) {
-            List<LIRInstruction> instructions = ir.getLIRforBlock(block);
-            int numInst = instructions.size();
-
-            // iterate all instructions of the block. skip the first because it is always a label
-            for (int j = 1; j < numInst; j++) {
-                LIRInstruction op = instructions.get(j);
-                int opId = op.id();
-
-                if (opId == -1) {
-                    MoveOp move = (MoveOp) op;
-                    // remove move from register to stack if the stack slot is guaranteed to be
-                    // correct.
-                    // only moves that have been inserted by LinearScan can be removed.
-                    assert isVariable(move.getResult()) : "LinearScan inserts only moves to variables";
-
-                    Interval curInterval = intervalFor(move.getResult());
-
-                    if (!isRegister(curInterval.location()) && curInterval.alwaysInMemory()) {
-                        // move target is a stack slot that is always correct, so eliminate
-                        // instruction
-                        if (Debug.isLogEnabled()) {
-                            Debug.log("eliminating move from interval %d to %d", operandNumber(move.getInput()), operandNumber(move.getResult()));
-                        }
-                        instructions.set(j, null); // null-instructions are deleted by assignRegNum
-                    }
-
-                } else {
-                    // insert move from register to stack just after the beginning of the interval
-                    assert interval == Interval.EndMarker || interval.spillDefinitionPos() >= opId : "invalid order";
-                    assert interval == Interval.EndMarker || (interval.isSplitParent() && interval.spillState() == SpillState.StoreAtDefinition) : "invalid interval";
-
-                    while (interval != Interval.EndMarker && interval.spillDefinitionPos() == opId) {
-                        if (!interval.canMaterialize()) {
-                            if (!insertionBuffer.initialized()) {
-                                // prepare insertion buffer (appended when all instructions of the
-                                // block are processed)
-                                insertionBuffer.init(instructions);
-                            }
-
-                            AllocatableValue fromLocation = interval.location();
-                            AllocatableValue toLocation = canonicalSpillOpr(interval);
-
-                            assert isRegister(fromLocation) : "from operand must be a register but is: " + fromLocation + " toLocation=" + toLocation + " spillState=" + interval.spillState();
-                            assert isStackSlot(toLocation) : "to operand must be a stack slot";
-
-                            insertionBuffer.append(j + 1, ir.getSpillMoveFactory().createMove(toLocation, fromLocation));
-
-                            Debug.log("inserting move after definition of interval %d to stack slot %s at opId %d", interval.operandNumber, interval.spillSlot(), opId);
-                        }
-                        interval = interval.next;
-                    }
-                }
-            } // end of instruction iteration
-
-            if (insertionBuffer.initialized()) {
-                insertionBuffer.finish();
+            // collect all intervals that must be stored after their definition.
+            // the list is sorted by Interval.spillDefinitionPos
+            Interval interval;
+            interval = createUnhandledLists(mustStoreAtDefinition, null).first;
+            if (DetailedAsserts.getValue()) {
+                checkIntervals(interval);
             }
-        } // end of block iteration
 
-        assert interval == Interval.EndMarker : "missed an interval";
-        indent.outdent();
+            LIRInsertionBuffer insertionBuffer = new LIRInsertionBuffer();
+            for (AbstractBlock<?> block : sortedBlocks) {
+                List<LIRInstruction> instructions = ir.getLIRforBlock(block);
+                int numInst = instructions.size();
+
+                // iterate all instructions of the block. skip the first
+                // because it is always a label
+                for (int j = 1; j < numInst; j++) {
+                    LIRInstruction op = instructions.get(j);
+                    int opId = op.id();
+
+                    if (opId == -1) {
+                        MoveOp move = (MoveOp) op;
+                        // remove move from register to stack if the stack slot is guaranteed to be
+                        // correct.
+                        // only moves that have been inserted by LinearScan can be removed.
+                        assert isVariable(move.getResult()) : "LinearScan inserts only moves to variables";
+
+                        Interval curInterval = intervalFor(move.getResult());
+
+                        if (!isRegister(curInterval.location()) && curInterval.alwaysInMemory()) {
+                            // move target is a stack slot that is always correct, so eliminate
+                            // instruction
+                            if (Debug.isLogEnabled()) {
+                                Debug.log("eliminating move from interval %d to %d", operandNumber(move.getInput()), operandNumber(move.getResult()));
+                            }
+                            // null-instructions are deleted by assignRegNum
+                            instructions.set(j, null);
+                        }
+
+                    } else {
+                        // insert move from register to stack just after
+                        // the beginning of the interval
+                        assert interval == Interval.EndMarker || interval.spillDefinitionPos() >= opId : "invalid order";
+                        assert interval == Interval.EndMarker || (interval.isSplitParent() && interval.spillState() == SpillState.StoreAtDefinition) : "invalid interval";
+
+                        while (interval != Interval.EndMarker && interval.spillDefinitionPos() == opId) {
+                            if (!interval.canMaterialize()) {
+                                if (!insertionBuffer.initialized()) {
+                                    // prepare insertion buffer (appended when all instructions in
+                                    // the block are processed)
+                                    insertionBuffer.init(instructions);
+                                }
+
+                                AllocatableValue fromLocation = interval.location();
+                                AllocatableValue toLocation = canonicalSpillOpr(interval);
+
+                                assert isRegister(fromLocation) : "from operand must be a register but is: " + fromLocation + " toLocation=" + toLocation + " spillState=" + interval.spillState();
+                                assert isStackSlot(toLocation) : "to operand must be a stack slot";
+
+                                insertionBuffer.append(j + 1, ir.getSpillMoveFactory().createMove(toLocation, fromLocation));
+
+                                Debug.log("inserting move after definition of interval %d to stack slot %s at opId %d", interval.operandNumber, interval.spillSlot(), opId);
+                            }
+                            interval = interval.next;
+                        }
+                    }
+                } // end of instruction iteration
+
+                if (insertionBuffer.initialized()) {
+                    insertionBuffer.finish();
+                }
+            } // end of block iteration
+
+            assert interval == Interval.EndMarker : "missed an interval";
+        }
     }
 
     private static void checkIntervals(Interval interval) {
@@ -676,95 +679,95 @@ public final class LinearScan {
 
         // iterate all blocks
         for (final AbstractBlock<?> block : sortedBlocks) {
-            Indent indent = Debug.logAndIndent("compute local live sets for block %d", block.getId());
+            try (Indent indent = Debug.logAndIndent("compute local live sets for block %d", block.getId())) {
 
-            final BitSet liveGen = new BitSet(liveSize);
-            final BitSet liveKill = new BitSet(liveSize);
+                final BitSet liveGen = new BitSet(liveSize);
+                final BitSet liveKill = new BitSet(liveSize);
 
-            List<LIRInstruction> instructions = ir.getLIRforBlock(block);
-            int numInst = instructions.size();
+                List<LIRInstruction> instructions = ir.getLIRforBlock(block);
+                int numInst = instructions.size();
 
-            // iterate all instructions of the block
-            for (int j = 0; j < numInst; j++) {
-                final LIRInstruction op = instructions.get(j);
+                // iterate all instructions of the block
+                for (int j = 0; j < numInst; j++) {
+                    final LIRInstruction op = instructions.get(j);
 
-                ValueProcedure useProc = new ValueProcedure() {
+                    ValueProcedure useProc = new ValueProcedure() {
 
-                    @Override
-                    protected Value doValue(Value operand) {
-                        if (isVariable(operand)) {
+                        @Override
+                        protected Value doValue(Value operand) {
+                            if (isVariable(operand)) {
+                                int operandNum = operandNumber(operand);
+                                if (!liveKill.get(operandNum)) {
+                                    liveGen.set(operandNum);
+                                    Debug.log("liveGen for operand %d", operandNum);
+                                }
+                                if (block.getLoop() != null) {
+                                    intervalInLoop.setBit(operandNum, block.getLoop().index);
+                                }
+                            }
+
+                            if (DetailedAsserts.getValue()) {
+                                verifyInput(block, liveKill, operand);
+                            }
+                            return operand;
+                        }
+                    };
+                    ValueProcedure stateProc = new ValueProcedure() {
+
+                        @Override
+                        public Value doValue(Value operand) {
                             int operandNum = operandNumber(operand);
                             if (!liveKill.get(operandNum)) {
                                 liveGen.set(operandNum);
-                                Debug.log("liveGen for operand %d", operandNum);
+                                Debug.log("liveGen in state for operand %d", operandNum);
                             }
-                            if (block.getLoop() != null) {
-                                intervalInLoop.setBit(operandNum, block.getLoop().index);
+                            return operand;
+                        }
+                    };
+                    ValueProcedure defProc = new ValueProcedure() {
+
+                        @Override
+                        public Value doValue(Value operand) {
+                            if (isVariable(operand)) {
+                                int varNum = operandNumber(operand);
+                                liveKill.set(varNum);
+                                Debug.log("liveKill for operand %d", varNum);
+                                if (block.getLoop() != null) {
+                                    intervalInLoop.setBit(varNum, block.getLoop().index);
+                                }
                             }
-                        }
 
-                        if (DetailedAsserts.getValue()) {
-                            verifyInput(block, liveKill, operand);
-                        }
-                        return operand;
-                    }
-                };
-                ValueProcedure stateProc = new ValueProcedure() {
-
-                    @Override
-                    public Value doValue(Value operand) {
-                        int operandNum = operandNumber(operand);
-                        if (!liveKill.get(operandNum)) {
-                            liveGen.set(operandNum);
-                            Debug.log("liveGen in state for operand %d", operandNum);
-                        }
-                        return operand;
-                    }
-                };
-                ValueProcedure defProc = new ValueProcedure() {
-
-                    @Override
-                    public Value doValue(Value operand) {
-                        if (isVariable(operand)) {
-                            int varNum = operandNumber(operand);
-                            liveKill.set(varNum);
-                            Debug.log("liveKill for operand %d", varNum);
-                            if (block.getLoop() != null) {
-                                intervalInLoop.setBit(varNum, block.getLoop().index);
+                            if (DetailedAsserts.getValue()) {
+                                // fixed intervals are never live at block boundaries, so
+                                // they need not be processed in live sets
+                                // process them only in debug mode so that this can be checked
+                                verifyTemp(liveKill, operand);
                             }
+                            return operand;
                         }
+                    };
 
-                        if (DetailedAsserts.getValue()) {
-                            // fixed intervals are never live at block boundaries, so
-                            // they need not be processed in live sets
-                            // process them only in debug mode so that this can be checked
-                            verifyTemp(liveKill, operand);
-                        }
-                        return operand;
+                    try (Indent indent2 = Debug.logAndIndent("handle op %d", op.id())) {
+                        op.forEachInput(useProc);
+                        op.forEachAlive(useProc);
+                        // Add uses of live locals from interpreter's point of view for proper debug
+                        // information generation
+                        op.forEachState(stateProc);
+                        op.forEachTemp(defProc);
+                        op.forEachOutput(defProc);
                     }
-                };
+                } // end of instruction iteration
 
-                try (Indent indent2 = Debug.logAndIndent("handle op %d", op.id())) {
-                    op.forEachInput(useProc);
-                    op.forEachAlive(useProc);
-                    // Add uses of live locals from interpreter's point of view for proper debug
-                    // information generation
-                    op.forEachState(stateProc);
-                    op.forEachTemp(defProc);
-                    op.forEachOutput(defProc);
-                }
-            } // end of instruction iteration
+                BlockData blockSets = blockData.get(block);
+                blockSets.liveGen = liveGen;
+                blockSets.liveKill = liveKill;
+                blockSets.liveIn = new BitSet(liveSize);
+                blockSets.liveOut = new BitSet(liveSize);
 
-            BlockData blockSets = blockData.get(block);
-            blockSets.liveGen = liveGen;
-            blockSets.liveKill = liveKill;
-            blockSets.liveIn = new BitSet(liveSize);
-            blockSets.liveOut = new BitSet(liveSize);
+                Debug.log("liveGen  B%d %s", block.getId(), blockSets.liveGen);
+                Debug.log("liveKill B%d %s", block.getId(), blockSets.liveKill);
 
-            Debug.log("liveGen  B%d %s", block.getId(), blockSets.liveGen);
-            Debug.log("liveKill B%d %s", block.getId(), blockSets.liveKill);
-
-            indent.outdent();
+            }
         } // end of block iteration
     }
 
@@ -797,87 +800,88 @@ public final class LinearScan {
      * {@link BlockData#liveIn} and {@link BlockData#liveOut}) for each block.
      */
     void computeGlobalLiveSets() {
-        Indent indent = Debug.logAndIndent("compute global live sets");
-        int numBlocks = blockCount();
-        boolean changeOccurred;
-        boolean changeOccurredInBlock;
-        int iterationCount = 0;
-        BitSet liveOut = new BitSet(liveSetSize()); // scratch set for calculations
+        try (Indent indent = Debug.logAndIndent("compute global live sets")) {
+            int numBlocks = blockCount();
+            boolean changeOccurred;
+            boolean changeOccurredInBlock;
+            int iterationCount = 0;
+            BitSet liveOut = new BitSet(liveSetSize()); // scratch set for calculations
 
-        // Perform a backward dataflow analysis to compute liveOut and liveIn for each block.
-        // The loop is executed until a fixpoint is reached (no changes in an iteration)
-        do {
-            changeOccurred = false;
+            // Perform a backward dataflow analysis to compute liveOut and liveIn for each block.
+            // The loop is executed until a fixpoint is reached (no changes in an iteration)
+            do {
+                changeOccurred = false;
 
-            Indent indent2 = Debug.logAndIndent("new iteration %d", iterationCount);
+                try (Indent indent2 = Debug.logAndIndent("new iteration %d", iterationCount)) {
 
-            // iterate all blocks in reverse order
-            for (int i = numBlocks - 1; i >= 0; i--) {
-                AbstractBlock<?> block = blockAt(i);
-                BlockData blockSets = blockData.get(block);
+                    // iterate all blocks in reverse order
+                    for (int i = numBlocks - 1; i >= 0; i--) {
+                        AbstractBlock<?> block = blockAt(i);
+                        BlockData blockSets = blockData.get(block);
 
-                changeOccurredInBlock = false;
+                        changeOccurredInBlock = false;
 
-                // liveOut(block) is the union of liveIn(sux), for successors sux of block
-                int n = block.getSuccessorCount();
-                if (n > 0) {
-                    // block has successors
-                    if (n > 0) {
-                        liveOut.clear();
-                        for (AbstractBlock<?> successor : block.getSuccessors()) {
-                            liveOut.or(blockData.get(successor).liveIn);
+                        // liveOut(block) is the union of liveIn(sux), for successors sux of block
+                        int n = block.getSuccessorCount();
+                        if (n > 0) {
+                            // block has successors
+                            if (n > 0) {
+                                liveOut.clear();
+                                for (AbstractBlock<?> successor : block.getSuccessors()) {
+                                    liveOut.or(blockData.get(successor).liveIn);
+                                }
+                            } else {
+                                liveOut.clear();
+                            }
+
+                            if (!blockSets.liveOut.equals(liveOut)) {
+                                // A change occurred. Swap the old and new live out
+                                // sets to avoid copying.
+                                BitSet temp = blockSets.liveOut;
+                                blockSets.liveOut = liveOut;
+                                liveOut = temp;
+
+                                changeOccurred = true;
+                                changeOccurredInBlock = true;
+                            }
                         }
-                    } else {
-                        liveOut.clear();
+
+                        if (iterationCount == 0 || changeOccurredInBlock) {
+                            // liveIn(block) is the union of liveGen(block) with (liveOut(block) &
+                            // !liveKill(block))
+                            // note: liveIn has to be computed only in first iteration
+                            // or if liveOut has changed!
+                            BitSet liveIn = blockSets.liveIn;
+                            liveIn.clear();
+                            liveIn.or(blockSets.liveOut);
+                            liveIn.andNot(blockSets.liveKill);
+                            liveIn.or(blockSets.liveGen);
+
+                            Debug.log("block %d: livein = %s,  liveout = %s", block.getId(), liveIn, blockSets.liveOut);
+                        }
                     }
+                    iterationCount++;
 
-                    if (!blockSets.liveOut.equals(liveOut)) {
-                        // A change occurred. Swap the old and new live out sets to avoid copying.
-                        BitSet temp = blockSets.liveOut;
-                        blockSets.liveOut = liveOut;
-                        liveOut = temp;
-
-                        changeOccurred = true;
-                        changeOccurredInBlock = true;
+                    if (changeOccurred && iterationCount > 50) {
+                        throw new BailoutException("too many iterations in computeGlobalLiveSets");
                     }
                 }
+            } while (changeOccurred);
 
-                if (iterationCount == 0 || changeOccurredInBlock) {
-                    // liveIn(block) is the union of liveGen(block) with (liveOut(block) &
-                    // !liveKill(block))
-                    // note: liveIn has to be computed only in first iteration or if liveOut has
-                    // changed!
-                    BitSet liveIn = blockSets.liveIn;
-                    liveIn.clear();
-                    liveIn.or(blockSets.liveOut);
-                    liveIn.andNot(blockSets.liveKill);
-                    liveIn.or(blockSets.liveGen);
-
-                    Debug.log("block %d: livein = %s,  liveout = %s", block.getId(), liveIn, blockSets.liveOut);
-                }
-            }
-            iterationCount++;
-
-            if (changeOccurred && iterationCount > 50) {
-                throw new BailoutException("too many iterations in computeGlobalLiveSets");
-            }
-            indent2.outdent();
-        } while (changeOccurred);
-
-        if (DetailedAsserts.getValue()) {
-            verifyLiveness();
-        }
-
-        // check that the liveIn set of the first block is empty
-        AbstractBlock<?> startBlock = ir.getControlFlowGraph().getStartBlock();
-        if (blockData.get(startBlock).liveIn.cardinality() != 0) {
             if (DetailedAsserts.getValue()) {
-                reportFailure(numBlocks);
+                verifyLiveness();
             }
-            // bailout if this occurs in product mode.
-            throw new GraalInternalError("liveIn set of first block must be empty: " + blockData.get(startBlock).liveIn);
+
+            // check that the liveIn set of the first block is empty
+            AbstractBlock<?> startBlock = ir.getControlFlowGraph().getStartBlock();
+            if (blockData.get(startBlock).liveIn.cardinality() != 0) {
+                if (DetailedAsserts.getValue()) {
+                    reportFailure(numBlocks);
+                }
+                // bailout if this occurs in product mode.
+                throw new GraalInternalError("liveIn set of first block must be empty: " + blockData.get(startBlock).liveIn);
+            }
         }
-        indent.outdent();
     }
 
     private static NodeLIRGenerator getNodeLIRGeneratorFromDebugContext() {
@@ -899,76 +903,76 @@ public final class LinearScan {
 
     private void reportFailure(int numBlocks) {
         try (Scope s = Debug.forceLog()) {
-            Indent indent = Debug.logAndIndent("report failure");
+            try (Indent indent = Debug.logAndIndent("report failure")) {
 
-            BitSet startBlockLiveIn = blockData.get(ir.getControlFlowGraph().getStartBlock()).liveIn;
-            try (Indent indent2 = Debug.logAndIndent("Error: liveIn set of first block must be empty (when this fails, variables are used before they are defined):")) {
+                BitSet startBlockLiveIn = blockData.get(ir.getControlFlowGraph().getStartBlock()).liveIn;
+                try (Indent indent2 = Debug.logAndIndent("Error: liveIn set of first block must be empty (when this fails, variables are used before they are defined):")) {
+                    for (int operandNum = startBlockLiveIn.nextSetBit(0); operandNum >= 0; operandNum = startBlockLiveIn.nextSetBit(operandNum + 1)) {
+                        Value operand = operandFor(operandNum);
+                        Debug.log("var %d; operand=%s; node=%s", operandNum, operand, getValueForOperandFromDebugContext(operand));
+                    }
+                }
+
+                // print some additional information to simplify debugging
                 for (int operandNum = startBlockLiveIn.nextSetBit(0); operandNum >= 0; operandNum = startBlockLiveIn.nextSetBit(operandNum + 1)) {
                     Value operand = operandFor(operandNum);
-                    Debug.log("var %d; operand=%s; node=%s", operandNum, operand, getValueForOperandFromDebugContext(operand));
-                }
-            }
+                    try (Indent indent2 = Debug.logAndIndent("---- Detailed information for var %d; operand=%s; node=%s ----", operandNum, operand, getValueForOperandFromDebugContext(operand))) {
 
-            // print some additional information to simplify debugging
-            for (int operandNum = startBlockLiveIn.nextSetBit(0); operandNum >= 0; operandNum = startBlockLiveIn.nextSetBit(operandNum + 1)) {
-                Value operand = operandFor(operandNum);
-                final Indent indent2 = Debug.logAndIndent("---- Detailed information for var %d; operand=%s; node=%s ----", operandNum, operand, getValueForOperandFromDebugContext(operand));
+                        Deque<AbstractBlock<?>> definedIn = new ArrayDeque<>();
+                        HashSet<AbstractBlock<?>> usedIn = new HashSet<>();
+                        for (AbstractBlock<?> block : sortedBlocks) {
+                            if (blockData.get(block).liveGen.get(operandNum)) {
+                                usedIn.add(block);
+                                try (Indent indent3 = Debug.logAndIndent("used in block B%d", block.getId())) {
+                                    for (LIRInstruction ins : ir.getLIRforBlock(block)) {
+                                        try (Indent indent4 = Debug.logAndIndent("%d: %s", ins.id(), ins)) {
+                                            ins.forEachState(new ValueProcedure() {
 
-                Deque<AbstractBlock<?>> definedIn = new ArrayDeque<>();
-                HashSet<AbstractBlock<?>> usedIn = new HashSet<>();
-                for (AbstractBlock<?> block : sortedBlocks) {
-                    if (blockData.get(block).liveGen.get(operandNum)) {
-                        usedIn.add(block);
-                        try (Indent indent3 = Debug.logAndIndent("used in block B%d", block.getId())) {
-                            for (LIRInstruction ins : ir.getLIRforBlock(block)) {
-                                try (Indent indent4 = Debug.logAndIndent("%d: %s", ins.id(), ins)) {
-                                    ins.forEachState(new ValueProcedure() {
-
-                                        @Override
-                                        public Value doValue(Value liveStateOperand) {
-                                            Debug.log("operand=%s", liveStateOperand);
-                                            return liveStateOperand;
+                                                @Override
+                                                public Value doValue(Value liveStateOperand) {
+                                                    Debug.log("operand=%s", liveStateOperand);
+                                                    return liveStateOperand;
+                                                }
+                                            });
                                         }
-                                    });
+                                    }
+                                }
+                            }
+                            if (blockData.get(block).liveKill.get(operandNum)) {
+                                definedIn.add(block);
+                                try (Indent indent3 = Debug.logAndIndent("defined in block B%d", block.getId())) {
+                                    for (LIRInstruction ins : ir.getLIRforBlock(block)) {
+                                        Debug.log("%d: %s", ins.id(), ins);
+                                    }
                                 }
                             }
                         }
-                    }
-                    if (blockData.get(block).liveKill.get(operandNum)) {
-                        definedIn.add(block);
-                        try (Indent indent3 = Debug.logAndIndent("defined in block B%d", block.getId())) {
-                            for (LIRInstruction ins : ir.getLIRforBlock(block)) {
-                                Debug.log("%d: %s", ins.id(), ins);
+
+                        int[] hitCount = new int[numBlocks];
+
+                        while (!definedIn.isEmpty()) {
+                            AbstractBlock<?> block = definedIn.removeFirst();
+                            usedIn.remove(block);
+                            for (AbstractBlock<?> successor : block.getSuccessors()) {
+                                if (successor.isLoopHeader()) {
+                                    if (!block.isLoopEnd()) {
+                                        definedIn.add(successor);
+                                    }
+                                } else {
+                                    if (++hitCount[successor.getId()] == successor.getPredecessorCount()) {
+                                        definedIn.add(successor);
+                                    }
+                                }
+                            }
+                        }
+                        try (Indent indent3 = Debug.logAndIndent("**** offending usages are in: ")) {
+                            for (AbstractBlock<?> block : usedIn) {
+                                Debug.log("B%d", block.getId());
                             }
                         }
                     }
                 }
-
-                int[] hitCount = new int[numBlocks];
-
-                while (!definedIn.isEmpty()) {
-                    AbstractBlock<?> block = definedIn.removeFirst();
-                    usedIn.remove(block);
-                    for (AbstractBlock<?> successor : block.getSuccessors()) {
-                        if (successor.isLoopHeader()) {
-                            if (!block.isLoopEnd()) {
-                                definedIn.add(successor);
-                            }
-                        } else {
-                            if (++hitCount[successor.getId()] == successor.getPredecessorCount()) {
-                                definedIn.add(successor);
-                            }
-                        }
-                    }
-                }
-                try (Indent indent3 = Debug.logAndIndent("**** offending usages are in: ")) {
-                    for (AbstractBlock<?> block : usedIn) {
-                        Debug.log("B%d", block.getId());
-                    }
-                }
-                indent2.outdent();
             }
-            indent.outdent();
         }
     }
 
@@ -1147,140 +1151,142 @@ public final class LinearScan {
 
     void buildIntervals() {
 
-        Indent indent = Debug.logAndIndent("build intervals");
+        try (Indent indent = Debug.logAndIndent("build intervals")) {
 
-        intervalsSize = operandSize();
-        intervals = new Interval[intervalsSize + INITIAL_SPLIT_INTERVALS_CAPACITY];
+            intervalsSize = operandSize();
+            intervals = new Interval[intervalsSize + INITIAL_SPLIT_INTERVALS_CAPACITY];
 
-        // create a list with all caller-save registers (cpu, fpu, xmm)
-        Register[] callerSaveRegs = frameMap.registerConfig.getCallerSaveRegisters();
+            // create a list with all caller-save registers (cpu, fpu, xmm)
+            Register[] callerSaveRegs = frameMap.registerConfig.getCallerSaveRegisters();
 
-        // iterate all blocks in reverse order
-        for (int i = blockCount() - 1; i >= 0; i--) {
+            // iterate all blocks in reverse order
+            for (int i = blockCount() - 1; i >= 0; i--) {
 
-            AbstractBlock<?> block = blockAt(i);
-            Indent indent2 = Debug.logAndIndent("handle block %d", block.getId());
+                AbstractBlock<?> block = blockAt(i);
+                try (Indent indent2 = Debug.logAndIndent("handle block %d", block.getId())) {
 
-            List<LIRInstruction> instructions = ir.getLIRforBlock(block);
-            final int blockFrom = getFirstLirInstructionId(block);
-            int blockTo = getLastLirInstructionId(block);
+                    List<LIRInstruction> instructions = ir.getLIRforBlock(block);
+                    final int blockFrom = getFirstLirInstructionId(block);
+                    int blockTo = getLastLirInstructionId(block);
 
-            assert blockFrom == instructions.get(0).id();
-            assert blockTo == instructions.get(instructions.size() - 1).id();
+                    assert blockFrom == instructions.get(0).id();
+                    assert blockTo == instructions.get(instructions.size() - 1).id();
 
-            // Update intervals for operands live at the end of this block;
-            BitSet live = blockData.get(block).liveOut;
-            for (int operandNum = live.nextSetBit(0); operandNum >= 0; operandNum = live.nextSetBit(operandNum + 1)) {
-                assert live.get(operandNum) : "should not stop here otherwise";
-                AllocatableValue operand = operandFor(operandNum);
-                Debug.log("live in %d: %s", operandNum, operand);
+                    // Update intervals for operands live at the end of this block;
+                    BitSet live = blockData.get(block).liveOut;
+                    for (int operandNum = live.nextSetBit(0); operandNum >= 0; operandNum = live.nextSetBit(operandNum + 1)) {
+                        assert live.get(operandNum) : "should not stop here otherwise";
+                        AllocatableValue operand = operandFor(operandNum);
+                        Debug.log("live in %d: %s", operandNum, operand);
 
-                addUse(operand, blockFrom, blockTo + 2, RegisterPriority.None, Kind.Illegal);
+                        addUse(operand, blockFrom, blockTo + 2, RegisterPriority.None, Kind.Illegal);
 
-                // add special use positions for loop-end blocks when the
-                // interval is used anywhere inside this loop. It's possible
-                // that the block was part of a non-natural loop, so it might
-                // have an invalid loop index.
-                if (block.isLoopEnd() && block.getLoop() != null && isIntervalInLoop(operandNum, block.getLoop().index)) {
-                    intervalFor(operand).addUsePos(blockTo + 1, RegisterPriority.LiveAtLoopEnd);
+                        // add special use positions for loop-end blocks when the
+                        // interval is used anywhere inside this loop. It's possible
+                        // that the block was part of a non-natural loop, so it might
+                        // have an invalid loop index.
+                        if (block.isLoopEnd() && block.getLoop() != null && isIntervalInLoop(operandNum, block.getLoop().index)) {
+                            intervalFor(operand).addUsePos(blockTo + 1, RegisterPriority.LiveAtLoopEnd);
+                        }
+                    }
+
+                    // iterate all instructions of the block in reverse order.
+                    // definitions of intervals are processed before uses
+                    for (int j = instructions.size() - 1; j >= 0; j--) {
+                        final LIRInstruction op = instructions.get(j);
+                        final int opId = op.id();
+
+                        try (Indent indent3 = Debug.logAndIndent("handle inst %d: %s", opId, op)) {
+
+                            // add a temp range for each register if operation destroys
+                            // caller-save registers
+                            if (op.destroysCallerSavedRegisters()) {
+                                for (Register r : callerSaveRegs) {
+                                    if (attributes(r).isAllocatable()) {
+                                        addTemp(r.asValue(), opId, RegisterPriority.None, Kind.Illegal);
+                                    }
+                                }
+                                Debug.log("operation destroys all caller-save registers");
+                            }
+
+                            op.forEachOutput(new ValueProcedure() {
+
+                                @Override
+                                public Value doValue(Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
+                                    if (isVariableOrRegister(operand)) {
+                                        addDef((AllocatableValue) operand, op, registerPriorityOfOutputOperand(op), operand.getPlatformKind());
+                                        addRegisterHint(op, operand, mode, flags, true);
+                                    }
+                                    return operand;
+                                }
+                            });
+                            op.forEachTemp(new ValueProcedure() {
+
+                                @Override
+                                public Value doValue(Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
+                                    if (isVariableOrRegister(operand)) {
+                                        addTemp((AllocatableValue) operand, opId, RegisterPriority.MustHaveRegister, operand.getPlatformKind());
+                                        addRegisterHint(op, operand, mode, flags, false);
+                                    }
+                                    return operand;
+                                }
+                            });
+                            op.forEachAlive(new ValueProcedure() {
+
+                                @Override
+                                public Value doValue(Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
+                                    if (isVariableOrRegister(operand)) {
+                                        RegisterPriority p = registerPriorityOfInputOperand(flags);
+                                        addUse((AllocatableValue) operand, blockFrom, opId + 1, p, operand.getPlatformKind());
+                                        addRegisterHint(op, operand, mode, flags, false);
+                                    }
+                                    return operand;
+                                }
+                            });
+                            op.forEachInput(new ValueProcedure() {
+
+                                @Override
+                                public Value doValue(Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
+                                    if (isVariableOrRegister(operand)) {
+                                        RegisterPriority p = registerPriorityOfInputOperand(flags);
+                                        addUse((AllocatableValue) operand, blockFrom, opId, p, operand.getPlatformKind());
+                                        addRegisterHint(op, operand, mode, flags, false);
+                                    }
+                                    return operand;
+                                }
+                            });
+
+                            // Add uses of live locals from interpreter's point of view for proper
+                            // debug information generation
+                            // Treat these operands as temp values (if the live range is extended
+                            // to a call site, the value would be in a register at
+                            // the call otherwise)
+                            op.forEachState(new ValueProcedure() {
+
+                                @Override
+                                public Value doValue(Value operand) {
+                                    addUse((AllocatableValue) operand, blockFrom, opId + 1, RegisterPriority.None, operand.getPlatformKind());
+                                    return operand;
+                                }
+                            });
+
+                            // special steps for some instructions (especially moves)
+                            handleMethodArguments(op);
+
+                        }
+
+                    } // end of instruction iteration
                 }
-            }
+            } // end of block iteration
 
-            // iterate all instructions of the block in reverse order.
-            // definitions of intervals are processed before uses
-            for (int j = instructions.size() - 1; j >= 0; j--) {
-                final LIRInstruction op = instructions.get(j);
-                final int opId = op.id();
-
-                Indent indent3 = Debug.logAndIndent("handle inst %d: %s", opId, op);
-
-                // add a temp range for each register if operation destroys caller-save registers
-                if (op.destroysCallerSavedRegisters()) {
-                    for (Register r : callerSaveRegs) {
-                        if (attributes(r).isAllocatable()) {
-                            addTemp(r.asValue(), opId, RegisterPriority.None, Kind.Illegal);
-                        }
-                    }
-                    Debug.log("operation destroys all caller-save registers");
+            // add the range [0, 1] to all fixed intervals.
+            // the register allocator need not handle unhandled fixed intervals
+            for (Interval interval : intervals) {
+                if (interval != null && isRegister(interval.operand)) {
+                    interval.addRange(0, 1);
                 }
-
-                op.forEachOutput(new ValueProcedure() {
-
-                    @Override
-                    public Value doValue(Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
-                        if (isVariableOrRegister(operand)) {
-                            addDef((AllocatableValue) operand, op, registerPriorityOfOutputOperand(op), operand.getPlatformKind());
-                            addRegisterHint(op, operand, mode, flags, true);
-                        }
-                        return operand;
-                    }
-                });
-                op.forEachTemp(new ValueProcedure() {
-
-                    @Override
-                    public Value doValue(Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
-                        if (isVariableOrRegister(operand)) {
-                            addTemp((AllocatableValue) operand, opId, RegisterPriority.MustHaveRegister, operand.getPlatformKind());
-                            addRegisterHint(op, operand, mode, flags, false);
-                        }
-                        return operand;
-                    }
-                });
-                op.forEachAlive(new ValueProcedure() {
-
-                    @Override
-                    public Value doValue(Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
-                        if (isVariableOrRegister(operand)) {
-                            RegisterPriority p = registerPriorityOfInputOperand(flags);
-                            addUse((AllocatableValue) operand, blockFrom, opId + 1, p, operand.getPlatformKind());
-                            addRegisterHint(op, operand, mode, flags, false);
-                        }
-                        return operand;
-                    }
-                });
-                op.forEachInput(new ValueProcedure() {
-
-                    @Override
-                    public Value doValue(Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
-                        if (isVariableOrRegister(operand)) {
-                            RegisterPriority p = registerPriorityOfInputOperand(flags);
-                            addUse((AllocatableValue) operand, blockFrom, opId, p, operand.getPlatformKind());
-                            addRegisterHint(op, operand, mode, flags, false);
-                        }
-                        return operand;
-                    }
-                });
-
-                // Add uses of live locals from interpreter's point of view for proper
-                // debug information generation
-                // Treat these operands as temp values (if the live range is extended
-                // to a call site, the value would be in a register at the call otherwise)
-                op.forEachState(new ValueProcedure() {
-
-                    @Override
-                    public Value doValue(Value operand) {
-                        addUse((AllocatableValue) operand, blockFrom, opId + 1, RegisterPriority.None, operand.getPlatformKind());
-                        return operand;
-                    }
-                });
-
-                // special steps for some instructions (especially moves)
-                handleMethodArguments(op);
-
-                indent3.outdent();
-
-            } // end of instruction iteration
-            indent2.outdent();
-        } // end of block iteration
-
-        // add the range [0, 1] to all fixed intervals.
-        // the register allocator need not handle unhandled fixed intervals
-        for (Interval interval : intervals) {
-            if (interval != null && isRegister(interval.operand)) {
-                interval.addRange(0, 1);
             }
         }
-        indent.outdent();
     }
 
     // * Phase 5: actual register allocation
@@ -1432,19 +1438,19 @@ public final class LinearScan {
     };
 
     public void allocateRegisters() {
-        Indent indent = Debug.logAndIndent("allocate registers");
-        Interval precoloredIntervals;
-        Interval notPrecoloredIntervals;
+        try (Indent indent = Debug.logAndIndent("allocate registers")) {
+            Interval precoloredIntervals;
+            Interval notPrecoloredIntervals;
 
-        Interval.Pair result = createUnhandledLists(IS_PRECOLORED_INTERVAL, IS_VARIABLE_INTERVAL);
-        precoloredIntervals = result.first;
-        notPrecoloredIntervals = result.second;
+            Interval.Pair result = createUnhandledLists(IS_PRECOLORED_INTERVAL, IS_VARIABLE_INTERVAL);
+            precoloredIntervals = result.first;
+            notPrecoloredIntervals = result.second;
 
-        // allocate cpu registers
-        LinearScanWalker lsw = new LinearScanWalker(this, precoloredIntervals, notPrecoloredIntervals);
-        lsw.walk();
-        lsw.finishAllocation();
-        indent.outdent();
+            // allocate cpu registers
+            LinearScanWalker lsw = new LinearScanWalker(this, precoloredIntervals, notPrecoloredIntervals);
+            lsw.walk();
+            lsw.finishAllocation();
+        }
     }
 
     // * Phase 6: resolve data flow
@@ -1543,69 +1549,71 @@ public final class LinearScan {
      * have been split.
      */
     void resolveDataFlow() {
-        Indent indent = Debug.logAndIndent("resolve data flow");
+        try (Indent indent = Debug.logAndIndent("resolve data flow")) {
 
-        int numBlocks = blockCount();
-        MoveResolver moveResolver = new MoveResolver(this);
-        BitSet blockCompleted = new BitSet(numBlocks);
-        BitSet alreadyResolved = new BitSet(numBlocks);
+            int numBlocks = blockCount();
+            MoveResolver moveResolver = new MoveResolver(this);
+            BitSet blockCompleted = new BitSet(numBlocks);
+            BitSet alreadyResolved = new BitSet(numBlocks);
 
-        for (AbstractBlock<?> block : sortedBlocks) {
+            for (AbstractBlock<?> block : sortedBlocks) {
 
-            // check if block has only one predecessor and only one successor
-            if (block.getPredecessorCount() == 1 && block.getSuccessorCount() == 1) {
-                List<LIRInstruction> instructions = ir.getLIRforBlock(block);
-                assert instructions.get(0) instanceof StandardOp.LabelOp : "block must start with label";
-                assert instructions.get(instructions.size() - 1) instanceof StandardOp.JumpOp : "block with successor must end with unconditional jump";
+                // check if block has only one predecessor and only one successor
+                if (block.getPredecessorCount() == 1 && block.getSuccessorCount() == 1) {
+                    List<LIRInstruction> instructions = ir.getLIRforBlock(block);
+                    assert instructions.get(0) instanceof StandardOp.LabelOp : "block must start with label";
+                    assert instructions.get(instructions.size() - 1) instanceof StandardOp.JumpOp : "block with successor must end with unconditional jump";
 
-                // check if block is empty (only label and branch)
-                if (instructions.size() == 2) {
-                    AbstractBlock<?> pred = block.getPredecessors().iterator().next();
-                    AbstractBlock<?> sux = block.getSuccessors().iterator().next();
+                    // check if block is empty (only label and branch)
+                    if (instructions.size() == 2) {
+                        AbstractBlock<?> pred = block.getPredecessors().iterator().next();
+                        AbstractBlock<?> sux = block.getSuccessors().iterator().next();
 
-                    // prevent optimization of two consecutive blocks
-                    if (!blockCompleted.get(pred.getLinearScanNumber()) && !blockCompleted.get(sux.getLinearScanNumber())) {
-                        Debug.log(" optimizing empty block B%d (pred: B%d, sux: B%d)", block.getId(), pred.getId(), sux.getId());
+                        // prevent optimization of two consecutive blocks
+                        if (!blockCompleted.get(pred.getLinearScanNumber()) && !blockCompleted.get(sux.getLinearScanNumber())) {
+                            Debug.log(" optimizing empty block B%d (pred: B%d, sux: B%d)", block.getId(), pred.getId(), sux.getId());
 
-                        blockCompleted.set(block.getLinearScanNumber());
+                            blockCompleted.set(block.getLinearScanNumber());
 
-                        // directly resolve between pred and sux (without looking at the empty block
-                        // between)
-                        resolveCollectMappings(pred, sux, moveResolver);
-                        if (moveResolver.hasMappings()) {
-                            moveResolver.setInsertPosition(instructions, 1);
-                            moveResolver.resolveAndAppendMoves();
+                            // directly resolve between pred and sux (without looking
+                            // at the empty block
+                            // between)
+                            resolveCollectMappings(pred, sux, moveResolver);
+                            if (moveResolver.hasMappings()) {
+                                moveResolver.setInsertPosition(instructions, 1);
+                                moveResolver.resolveAndAppendMoves();
+                            }
+                        }
+                    }
+                }
+            }
+
+            for (AbstractBlock<?> fromBlock : sortedBlocks) {
+                if (!blockCompleted.get(fromBlock.getLinearScanNumber())) {
+                    alreadyResolved.clear();
+                    alreadyResolved.or(blockCompleted);
+
+                    for (AbstractBlock<?> toBlock : fromBlock.getSuccessors()) {
+
+                        // check for duplicate edges between the same blocks (can happen with switch
+                        // blocks)
+                        if (!alreadyResolved.get(toBlock.getLinearScanNumber())) {
+                            Debug.log("processing edge between B%d and B%d", fromBlock.getId(), toBlock.getId());
+
+                            alreadyResolved.set(toBlock.getLinearScanNumber());
+
+                            // collect all intervals that have been split between
+                            // fromBlock and toBlock
+                            resolveCollectMappings(fromBlock, toBlock, moveResolver);
+                            if (moveResolver.hasMappings()) {
+                                resolveFindInsertPos(fromBlock, toBlock, moveResolver);
+                                moveResolver.resolveAndAppendMoves();
+                            }
                         }
                     }
                 }
             }
         }
-
-        for (AbstractBlock<?> fromBlock : sortedBlocks) {
-            if (!blockCompleted.get(fromBlock.getLinearScanNumber())) {
-                alreadyResolved.clear();
-                alreadyResolved.or(blockCompleted);
-
-                for (AbstractBlock<?> toBlock : fromBlock.getSuccessors()) {
-
-                    // check for duplicate edges between the same blocks (can happen with switch
-                    // blocks)
-                    if (!alreadyResolved.get(toBlock.getLinearScanNumber())) {
-                        Debug.log("processing edge between B%d and B%d", fromBlock.getId(), toBlock.getId());
-
-                        alreadyResolved.set(toBlock.getLinearScanNumber());
-
-                        // collect all intervals that have been split between fromBlock and toBlock
-                        resolveCollectMappings(fromBlock, toBlock, moveResolver);
-                        if (moveResolver.hasMappings()) {
-                            resolveFindInsertPos(fromBlock, toBlock, moveResolver);
-                            moveResolver.resolveAndAppendMoves();
-                        }
-                    }
-                }
-            }
-        }
-        indent.outdent();
     }
 
     // * Phase 7: assign register numbers back to LIR
@@ -1618,7 +1626,7 @@ public final class LinearScan {
 
     /**
      * Assigns the allocated location for an LIR instruction operand back into the instruction.
-     * 
+     *
      * @param operand an LIR instruction operand
      * @param opId the id of the LIR instruction using {@code operand}
      * @param mode the usage mode for {@code operand} by the instruction
@@ -1857,57 +1865,57 @@ public final class LinearScan {
         /*
          * This is the point to enable debug logging for the whole register allocation.
          */
-        Indent indent = Debug.logAndIndent("LinearScan allocate");
+        try (Indent indent = Debug.logAndIndent("LinearScan allocate")) {
 
-        try (Scope s = Debug.scope("LifetimeAnalysis")) {
-            numberInstructions();
-            printLir("Before register allocation", true);
-            computeLocalLiveSets();
-            computeGlobalLiveSets();
-            buildIntervals();
-            sortIntervalsBeforeAllocation();
-        } catch (Throwable e) {
-            throw Debug.handle(e);
-        }
-
-        try (Scope s = Debug.scope("RegisterAllocation")) {
-            printIntervals("Before register allocation");
-            allocateRegisters();
-        } catch (Throwable e) {
-            throw Debug.handle(e);
-        }
-
-        try (Scope s = Debug.scope("ResolveDataFlow")) {
-            resolveDataFlow();
-        } catch (Throwable e) {
-            throw Debug.handle(e);
-        }
-
-        try (Scope s = Debug.scope("DebugInfo")) {
-            frameMap.finish();
-
-            printIntervals("After register allocation");
-            printLir("After register allocation", true);
-
-            sortIntervalsAfterAllocation();
-
-            if (DetailedAsserts.getValue()) {
-                verify();
+            try (Scope s = Debug.scope("LifetimeAnalysis")) {
+                numberInstructions();
+                printLir("Before register allocation", true);
+                computeLocalLiveSets();
+                computeGlobalLiveSets();
+                buildIntervals();
+                sortIntervalsBeforeAllocation();
+            } catch (Throwable e) {
+                throw Debug.handle(e);
             }
 
-            eliminateSpillMoves();
-            assignLocations();
-
-            if (DetailedAsserts.getValue()) {
-                verifyIntervals();
+            try (Scope s = Debug.scope("RegisterAllocation")) {
+                printIntervals("Before register allocation");
+                allocateRegisters();
+            } catch (Throwable e) {
+                throw Debug.handle(e);
             }
-        } catch (Throwable e) {
-            throw Debug.handle(e);
+
+            try (Scope s = Debug.scope("ResolveDataFlow")) {
+                resolveDataFlow();
+            } catch (Throwable e) {
+                throw Debug.handle(e);
+            }
+
+            try (Scope s = Debug.scope("DebugInfo")) {
+                frameMap.finish();
+
+                printIntervals("After register allocation");
+                printLir("After register allocation", true);
+
+                sortIntervalsAfterAllocation();
+
+                if (DetailedAsserts.getValue()) {
+                    verify();
+                }
+
+                eliminateSpillMoves();
+                assignLocations();
+
+                if (DetailedAsserts.getValue()) {
+                    verifyIntervals();
+                }
+            } catch (Throwable e) {
+                throw Debug.handle(e);
+            }
+
+            printLir("After register number assignment", true);
+
         }
-
-        printLir("After register number assignment", true);
-
-        indent.outdent();
     }
 
     void printIntervals(String label) {
@@ -2114,7 +2122,7 @@ public final class LinearScan {
 
     /**
      * Returns a value for a interval definition, which can be used for re-materialization.
-     * 
+     *
      * @param op An instruction which defines a value
      * @param operand The destination operand of the instruction
      * @param interval The interval for this defined value.
