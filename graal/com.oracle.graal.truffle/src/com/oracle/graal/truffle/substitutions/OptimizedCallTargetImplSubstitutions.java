@@ -22,20 +22,22 @@
  */
 package com.oracle.graal.truffle.substitutions;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.truffle.api.nodes.*;
+import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.truffle.*;
+import com.oracle.graal.truffle.nodes.asserts.*;
+import com.oracle.truffle.api.*;
+import com.oracle.truffle.api.frame.*;
 
-/**
- * Deoptimize on creation of a new UnexpectedResultException instance.
- */
-@ClassSubstitution(UnexpectedResultException.class)
-public class UnexpectedResultExceptionSubstitutions {
+@ClassSubstitution(OptimizedCallTargetImpl.class)
+public class OptimizedCallTargetImplSubstitutions {
 
-    @SuppressWarnings("unused")
-    @MethodSubstitution(value = "<init>")
-    public static void init(Object result) {
-        DeoptimizeNode.deopt(DeoptimizationAction.InvalidateRecompile, DeoptimizationReason.UnreachedCode);
-    }
+    @MacroSubstitution(macro = NeverInlineMacroNode.class, isStatic = false)
+    public static native Object callHelper(OptimizedCallTarget target, PackedFrame caller, Arguments args);
+
+    @MacroSubstitution(macro = NeverInlineMacroNode.class, isStatic = false)
+    public static native Object interpreterCall(OptimizedCallTarget target, PackedFrame caller, Arguments args);
+
+    @MacroSubstitution(macro = NeverInlineMacroNode.class, isStatic = false)
+    public static native Object compiledCodeInvalidated(OptimizedCallTarget target, PackedFrame caller, Arguments args);
 }

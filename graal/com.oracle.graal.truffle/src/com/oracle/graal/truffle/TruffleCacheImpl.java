@@ -49,32 +49,51 @@ import com.oracle.graal.phases.util.*;
 import com.oracle.graal.truffle.phases.*;
 import com.oracle.graal.virtual.phases.ea.*;
 import com.oracle.truffle.api.*;
+import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
 
 /**
  * Implementation of a cache for Truffle graphs for improving partial evaluation time.
  */
-public final class TruffleCache {
+public final class TruffleCacheImpl implements TruffleCache {
 
     private final Providers providers;
     private final GraphBuilderConfiguration config;
+    private final GraphBuilderConfiguration configForRootGraph;
     private final OptimisticOptimizations optimisticOptimizations;
 
     private final HashMap<List<Object>, StructuredGraph> cache = new HashMap<>();
     private final HashMap<List<Object>, Long> lastUsed = new HashMap<>();
     private final StructuredGraph markerGraph = new StructuredGraph();
     private final ResolvedJavaType stringBuilderClass;
+    private final ResolvedJavaMethod executeHelperMethod;
     private long counter;
 
-    public TruffleCache(Providers providers, GraphBuilderConfiguration config, OptimisticOptimizations optimisticOptimizations) {
+    public TruffleCacheImpl(Providers providers, GraphBuilderConfiguration config, GraphBuilderConfiguration configForRootGraph, OptimisticOptimizations optimisticOptimizations) {
         this.providers = providers;
         this.config = config;
+        this.configForRootGraph = configForRootGraph;
         this.optimisticOptimizations = optimisticOptimizations;
         this.stringBuilderClass = providers.getMetaAccess().lookupJavaType(StringBuilder.class);
+        try {
+            executeHelperMethod = providers.getMetaAccess().lookupJavaMethod(OptimizedCallTarget.class.getDeclaredMethod("executeHelper", PackedFrame.class, Arguments.class));
+        } catch (NoSuchMethodException ex) {
+            throw new RuntimeException(ex);
+        }
+    }
+
+    public StructuredGraph createRootGraph() {
+        StructuredGraph graph = new StructuredGraph(executeHelperMethod);
+        new GraphBuilderPhase.Instance(providers.getMetaAccess(), configForRootGraph, TruffleCompilerImpl.Optimizations).apply(graph);
+        return graph;
     }
 
     @SuppressWarnings("unused")
     public StructuredGraph lookup(final ResolvedJavaMethod method, final NodeInputList<ValueNode> arguments, final Assumptions assumptions, final CanonicalizerPhase finalCanonicalizer) {
+
+        if (method.getAnnotation(CompilerDirectives.SlowPath.class) != null) {
+            return null;
+        }
 
         List<Object> key = new ArrayList<>(arguments.size() + 1);
         key.add(method);
@@ -217,7 +236,7 @@ public final class TruffleCache {
     private void expandInvoke(MethodCallTargetNode methodCallTargetNode) {
         StructuredGraph inlineGraph = providers.getReplacements().getMethodSubstitution(methodCallTargetNode.targetMethod());
         if (inlineGraph == null) {
-            inlineGraph = TruffleCache.this.lookup(methodCallTargetNode.targetMethod(), methodCallTargetNode.arguments(), null, null);
+            inlineGraph = TruffleCacheImpl.this.lookup(methodCallTargetNode.targetMethod(), methodCallTargetNode.arguments(), null, null);
         }
         if (inlineGraph == this.markerGraph) {
             // Can happen for recursive calls.

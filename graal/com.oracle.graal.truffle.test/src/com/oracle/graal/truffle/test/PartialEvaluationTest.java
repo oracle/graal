@@ -85,7 +85,7 @@ public class PartialEvaluationTest extends GraalCompilerTest {
     }
 
     protected StructuredGraph partialEval(RootNode root, Arguments arguments, final Assumptions assumptions, final boolean canonicalizeReads) {
-        final OptimizedCallTarget compilable = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(root);
+        final OptimizedCallTargetImpl compilable = (OptimizedCallTargetImpl) Truffle.getRuntime().createCallTarget(root);
 
         // Executed AST so that all classes are loaded and initialized.
         compilable.call(null, arguments);
