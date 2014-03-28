@@ -276,7 +276,7 @@ public class NewObjectSnippets implements Snippets {
     }
 
     /**
-     * Maximum number of long stores to emit when zeroing an object with a constant size Larger
+     * Maximum number of long stores to emit when zeroing an object with a constant size. Larger
      * objects have their bodies initialized in a loop.
      */
     private static final int MAX_UNROLLED_OBJECT_ZEROING_STORES = 8;

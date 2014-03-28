@@ -763,6 +763,15 @@ public class HotSpotLoweringProvider implements LoweringProvider {
             arrayLength = readArrayLength;
         }
 
+        if (arrayLength.isConstant() && n.index().isConstant()) {
+            int l = arrayLength.asConstant().asInt();
+            int i = n.index().asConstant().asInt();
+            if (i >= 0 && i < l) {
+                // unneeded range check
+                return null;
+            }
+        }
+
         return tool.createGuard(n, g.unique(new IntegerBelowThanNode(n.index(), arrayLength)), BoundsCheckException, InvalidateReprofile);
     }
 
