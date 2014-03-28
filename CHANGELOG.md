@@ -2,7 +2,9 @@
 
 ## `tip`
 ### Graal
+* LIRGenerator refactoring.
 * ...
+
 ### Truffle
 * ...
 
