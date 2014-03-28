@@ -55,7 +55,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
 
     @Override
     public <T extends Arguments> T getArguments(Class<T> clazz) {
-        return CompilerDirectives.unsafeCast(arguments, clazz, true);
+        return CompilerDirectives.unsafeCast(arguments, clazz, true, true);
     }
 
     @Override
@@ -85,15 +85,15 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     }
 
     private Object[] getLocals() {
-        return CompilerDirectives.unsafeCast(locals, Object[].class, true);
+        return CompilerDirectives.unsafeCast(locals, Object[].class, true, true);
     }
 
     private long[] getPrimitiveLocals() {
-        return CompilerDirectives.unsafeCast(this.primitiveLocals, long[].class, true);
+        return CompilerDirectives.unsafeCast(this.primitiveLocals, long[].class, true, true);
     }
 
     private byte[] getTags() {
-        return CompilerDirectives.unsafeCast(tags, byte[].class, true);
+        return CompilerDirectives.unsafeCast(tags, byte[].class, true, true);
     }
 
     private Object getObjectUnsafe(FrameSlot slot) {
