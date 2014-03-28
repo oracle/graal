@@ -75,7 +75,8 @@ public class ThreadSafetyTest {
             });
         }
         executorService.shutdown();
-        executorService.awaitTermination(30, TimeUnit.SECONDS);
+        executorService.awaitTermination(90, TimeUnit.SECONDS);
+        assertTrue("test did not terminate", executorService.isTerminated());
         assertEquals(numberOfIterations, ai.get());
     }
 
