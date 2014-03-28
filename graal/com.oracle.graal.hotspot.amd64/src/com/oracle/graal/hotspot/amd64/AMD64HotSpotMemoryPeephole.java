@@ -29,6 +29,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.amd64.*;
 import com.oracle.graal.compiler.amd64.*;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.data.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.amd64.*;
@@ -49,6 +50,7 @@ public class AMD64HotSpotMemoryPeephole extends AMD64MemoryPeephole {
         @State protected LIRFrameState state;
 
         public CompareMemoryCompressedOp(AMD64AddressValue x, Constant y, LIRFrameState state) {
+            assert HotSpotGraalRuntime.runtime().getConfig().useCompressedOops;
             this.x = x;
             this.y = y;
             this.state = state;
@@ -83,15 +85,17 @@ public class AMD64HotSpotMemoryPeephole extends AMD64MemoryPeephole {
     protected boolean emitCompareBranchMemory(ValueNode left, ValueNode right, Access access, Condition cond, boolean unorderedIsTrue, LabelRef trueLabel, LabelRef falseLabel,
                     double trueLabelProbability) {
         assert left == access || right == access;
-        ValueNode other = left == access ? right : left;
-        Kind kind = access.nullCheckLocation().getValueKind();
+        if (HotSpotGraalRuntime.runtime().getConfig().useCompressedOops) {
+            ValueNode other = left == access ? right : left;
+            Kind kind = access.nullCheckLocation().getValueKind();
 
-        if (other.isConstant() && kind == Kind.Object && access.isCompressible()) {
-            ensureEvaluated(other);
-            gen.append(new CompareMemoryCompressedOp(makeAddress(access), other.asConstant(), getState(access)));
-            Condition finalCondition = right == access ? cond.mirror() : cond;
-            gen.append(new BranchOp(finalCondition, trueLabel, falseLabel, trueLabelProbability));
-            return true;
+            if (other.isConstant() && kind == Kind.Object && access.isCompressible()) {
+                ensureEvaluated(other);
+                gen.append(new CompareMemoryCompressedOp(makeAddress(access), other.asConstant(), getState(access)));
+                Condition finalCondition = right == access ? cond.mirror() : cond;
+                gen.append(new BranchOp(finalCondition, trueLabel, falseLabel, trueLabelProbability));
+                return true;
+            }
         }
 
         return super.emitCompareBranchMemory(left, right, access, cond, unorderedIsTrue, trueLabel, falseLabel, trueLabelProbability);

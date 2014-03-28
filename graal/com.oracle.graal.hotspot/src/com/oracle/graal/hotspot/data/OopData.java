@@ -27,6 +27,7 @@ import java.nio.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.nodes.type.*;
 
 /**
@@ -39,6 +40,7 @@ public class OopData extends PatchedData {
 
     public OopData(int alignment, Object object, boolean compressed) {
         super(alignment);
+        assert !compressed || HotSpotGraalRuntime.runtime().getConfig().useCompressedOops;
         this.object = object;
         this.compressed = compressed;
     }
