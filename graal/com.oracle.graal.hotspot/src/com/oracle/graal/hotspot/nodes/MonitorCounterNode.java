@@ -29,22 +29,23 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.nodes.calc.*;
+import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.word.*;
 
 /**
  * Node that is used to maintain a stack based counter of how many locks are currently held.
  */
-public final class MonitorCounterNode extends FloatingNode implements LIRGenLowerable {
+public final class MonitorCounterNode extends FloatingNode implements LIRGenResLowerable {
 
     private MonitorCounterNode() {
         super(null);
     }
 
     @Override
-    public void generate(LIRGenerator gen) {
+    public void generate(NodeLIRGeneratorTool gen, LIRGenerationResult res) {
         assert graph().getNodes().filter(MonitorCounterNode.class).count() == 1 : "monitor counters not canonicalized to single instance";
-        StackSlot counter = gen.frameMap().allocateStackSlots(1, new BitSet(0), null);
-        Value result = gen.emitAddress(counter);
+        StackSlot counter = res.getFrameMap().allocateStackSlots(1, new BitSet(0), null);
+        Value result = gen.getLIRGeneratorTool().emitAddress(counter);
         gen.setResult(this, result);
     }
 

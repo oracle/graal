@@ -22,8 +22,12 @@
  */
 package com.oracle.graal.hotspot.meta;
 
+import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
+
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.meta.ProfilingInfo.TriState;
+import com.oracle.graal.graph.*;
+import com.oracle.graal.hotspot.*;
 
 /**
  * Interface for accessor objects that encapsulate the logic for accessing the different kinds of
@@ -33,11 +37,54 @@ import com.oracle.graal.api.meta.ProfilingInfo.TriState;
 public interface HotSpotMethodDataAccessor {
 
     /**
-     * Returns the tag stored in the LayoutData header.
-     * 
-     * @return An integer >= 0 or -1 if not supported.
+     * {@code DataLayout} tag values.
      */
-    int getTag();
+    enum Tag {
+        No(config().dataLayoutNoTag),
+        BitData(config().dataLayoutBitDataTag),
+        CounterData(config().dataLayoutCounterDataTag),
+        JumpData(config().dataLayoutJumpDataTag),
+        ReceiverTypeData(config().dataLayoutReceiverTypeDataTag),
+        VirtualCallData(config().dataLayoutVirtualCallDataTag),
+        RetData(config().dataLayoutRetDataTag),
+        BranchData(config().dataLayoutBranchDataTag),
+        MultiBranchData(config().dataLayoutMultiBranchDataTag),
+        ArgInfoData(config().dataLayoutArgInfoDataTag),
+        CallTypeData(config().dataLayoutCallTypeDataTag),
+        VirtualCallTypeData(config().dataLayoutVirtualCallTypeDataTag),
+        ParametersTypeData(config().dataLayoutParametersTypeDataTag),
+        SpeculativeTrapData(config().dataLayoutSpeculativeTrapDataTag);
+
+        private final int value;
+
+        private Tag(int value) {
+            this.value = value;
+        }
+
+        public int getValue() {
+            return value;
+        }
+
+        private static HotSpotVMConfig config() {
+            return runtime().getConfig();
+        }
+
+        public static Tag getEnum(int value) {
+            for (Tag e : values()) {
+                if (e.value == value) {
+                    return e;
+                }
+            }
+            throw GraalInternalError.shouldNotReachHere("unknown enum value " + value);
+        }
+    }
+
+    /**
+     * Returns the {@link Tag} stored in the LayoutData header.
+     * 
+     * @return tag stored in the LayoutData header
+     */
+    Tag getTag();
 
     /**
      * Returns the BCI stored in the LayoutData header.

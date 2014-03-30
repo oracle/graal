@@ -26,38 +26,31 @@ import static com.oracle.graal.api.code.ValueUtil.*;
 import static com.oracle.graal.api.meta.Value.*;
 import static com.oracle.graal.lir.LIR.*;
 import static com.oracle.graal.lir.LIRValueUtil.*;
-import static com.oracle.graal.nodes.ConstantNode.*;
 import static com.oracle.graal.phases.GraalOptions.*;
 
 import java.util.*;
-import java.util.Map.Entry;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
-import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.BlockEndOp;
-import com.oracle.graal.lir.StandardOp.JumpOp;
 import com.oracle.graal.lir.StandardOp.LabelOp;
 import com.oracle.graal.lir.StandardOp.NoOp;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.PhiNode.PhiType;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.cfg.*;
-import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
-import com.oracle.graal.nodes.virtual.*;
 import com.oracle.graal.options.*;
 import com.oracle.graal.phases.util.*;
 
 /**
  * This class traverses the HIR instructions and generates LIR instructions from them.
  */
-public abstract class LIRGenerator implements LIRGeneratorTool, LIRTypeTool {
+public abstract class LIRGenerator implements ArithmeticLIRGenerator, LIRGeneratorTool, LIRTypeTool {
 
     public static class Options {
         // @formatter:off
@@ -68,16 +61,12 @@ public abstract class LIRGenerator implements LIRGeneratorTool, LIRTypeTool {
         // @formatter:on
     }
 
-    public final FrameMap frameMap;
-    public final NodeMap<Value> nodeOperands;
-    public final LIR lir;
-
     private final Providers providers;
-    protected final CallingConvention cc;
+    private final CallingConvention cc;
 
-    protected final DebugInfoBuilder debugInfoBuilder;
+    private DebugInfoBuilder debugInfoBuilder;
 
-    protected Block currentBlock;
+    protected AbstractBlock<?> currentBlock;
     private final int traceLevel;
     private final boolean printIRWithLIR;
 
@@ -103,12 +92,12 @@ public abstract class LIRGenerator implements LIRGeneratorTool, LIRTypeTool {
          * The block that does or will contain {@link #op}. This is initially the block where the
          * first usage of the constant is seen during LIR generation.
          */
-        private Block block;
+        Block block;
 
         /**
          * The variable into which the constant is loaded.
          */
-        private final Variable variable;
+        final Variable variable;
 
         public LoadConstant(Variable variable, Block block, int index, LIRInstruction op) {
             this.variable = variable;
@@ -143,40 +132,40 @@ public abstract class LIRGenerator implements LIRGeneratorTool, LIRTypeTool {
             if (index >= 0) {
                 // Replace the move with a filler op so that the operation
                 // list does not need to be adjusted.
-                List<LIRInstruction> instructions = lir.lir(block);
+                List<LIRInstruction> instructions = lir.getLIRforBlock(block);
                 instructions.set(index, new NoOp(null, -1));
                 index = -1;
             }
         }
     }
 
-    private Map<Constant, LoadConstant> constantLoads;
+    Map<Constant, LoadConstant> constantLoads;
 
-    private ValueNode currentInstruction;
-    private ValueNode lastInstructionPrinted; // Debugging only
+    protected LIRGenerationResult res;
 
     /**
-     * Records whether the code being generated makes at least one foreign call.
+     * Set this before using the LIRGenerator.
+     *
+     * TODO this should be removed
      */
-    private boolean hasForeignCall;
+    void setDebugInfoBuilder(DebugInfoBuilder builder) {
+        debugInfoBuilder = builder;
+    }
 
     /**
      * Checks whether the supplied constant can be used without loading it into a register for store
      * operations, i.e., on the right hand side of a memory access.
-     * 
+     *
      * @param c The constant to check.
      * @return True if the constant can be used directly, false if the constant needs to be in a
      *         register.
      */
     public abstract boolean canStoreConstant(Constant c, boolean isCompressed);
 
-    public LIRGenerator(StructuredGraph graph, Providers providers, FrameMap frameMap, CallingConvention cc, LIR lir) {
+    public LIRGenerator(Providers providers, CallingConvention cc, LIRGenerationResult res) {
+        this.res = res;
         this.providers = providers;
-        this.frameMap = frameMap;
         this.cc = cc;
-        this.nodeOperands = graph.createNodeMap();
-        this.lir = lir;
-        this.debugInfoBuilder = createDebugInfoBuilder(nodeOperands);
         this.traceLevel = Options.TraceLIRGeneratorLevel.getValue();
         this.printIRWithLIR = Options.PrintIRWithLIR.getValue();
     }
@@ -189,17 +178,12 @@ public abstract class LIRGenerator implements LIRGeneratorTool, LIRTypeTool {
         return true;
     }
 
-    @SuppressWarnings("hiding")
-    protected DebugInfoBuilder createDebugInfoBuilder(NodeMap<Value> nodeOperands) {
-        return new DebugInfoBuilder(nodeOperands);
-    }
-
     @Override
     public TargetDescription target() {
         return getCodeCache().getTarget();
     }
 
-    protected Providers getProviders() {
+    public Providers getProviders() {
         return providers;
     }
 
@@ -219,100 +203,19 @@ public abstract class LIRGenerator implements LIRGeneratorTool, LIRTypeTool {
     }
 
     /**
-     * Determines whether the code being generated makes at least one foreign call.
-     */
-    public boolean hasForeignCall() {
-        return hasForeignCall;
-    }
-
-    /**
-     * Returns the operand that has been previously initialized by
-     * {@link #setResult(ValueNode, Value)} with the result of an instruction.
-     * 
-     * @param node A node that produces a result value.
-     */
-    @Override
-    public Value operand(ValueNode node) {
-        if (nodeOperands == null) {
-            return null;
-        }
-        Value operand = nodeOperands.get(node);
-        if (operand == null) {
-            return getConstantOperand(node);
-        }
-        return operand;
-    }
-
-    private Value getConstantOperand(ValueNode node) {
-        if (!ConstantNodeRecordsUsages) {
-            Constant value = node.asConstant();
-            if (value != null) {
-                if (canInlineConstant(value)) {
-                    return setResult(node, value);
-                } else {
-                    Variable loadedValue;
-                    if (constantLoads == null) {
-                        constantLoads = new HashMap<>();
-                    }
-                    LoadConstant load = constantLoads.get(value);
-                    if (load == null) {
-                        int index = lir.lir(currentBlock).size();
-                        loadedValue = emitMove(value);
-                        LIRInstruction op = lir.lir(currentBlock).get(index);
-                        constantLoads.put(value, new LoadConstant(loadedValue, currentBlock, index, op));
-                    } else {
-                        Block dominator = ControlFlowGraph.commonDominator(load.block, currentBlock);
-                        loadedValue = load.variable;
-                        if (dominator != load.block) {
-                            load.unpin(lir);
-                        } else {
-                            assert load.block != currentBlock || load.index < lir.lir(currentBlock).size();
-                        }
-                        load.block = dominator;
-                    }
-                    return loadedValue;
-                }
-            }
-        } else {
-            // Constant is loaded by ConstantNode.generate()
-        }
-        return null;
-    }
-
-    public ValueNode valueForOperand(Value value) {
-        for (Entry<Node, Value> entry : nodeOperands.entries()) {
-            if (entry.getValue().equals(value)) {
-                return (ValueNode) entry.getKey();
-            }
-        }
-        return null;
-    }
-
-    /**
      * Creates a new {@linkplain Variable variable}.
-     * 
+     *
      * @param platformKind The kind of the new variable.
      * @return a new variable
      */
     @Override
     public Variable newVariable(PlatformKind platformKind) {
-        return new Variable(platformKind, lir.nextVariable());
+        return new Variable(platformKind, res.getLIR().nextVariable());
     }
 
     @Override
     public RegisterAttributes attributes(Register register) {
-        return frameMap.registerConfig.getAttributesMap()[register.number];
-    }
-
-    @Override
-    public Value setResult(ValueNode x, Value operand) {
-        assert (!isRegister(operand) || !attributes(asRegister(operand)).isAllocatable());
-        assert nodeOperands == null || nodeOperands.get(x) == null : "operand cannot be set twice";
-        assert operand != null && isLegal(operand) : "operand must be legal";
-        assert operand.getKind().getStackKind() == x.kind() || x.kind() == Kind.Illegal : operand.getKind().getStackKind() + " must match " + x.kind();
-        assert !(x instanceof VirtualObjectNode);
-        nodeOperands.set(x, operand);
-        return operand;
+        return res.getFrameMap().registerConfig.getAttributesMap()[register.number];
     }
 
     @Override
@@ -341,11 +244,13 @@ public abstract class LIRGenerator implements LIRGeneratorTool, LIRTypeTool {
     }
 
     public LabelRef getLIRBlock(FixedNode b) {
-        Block result = lir.getControlFlowGraph().blockFor(b);
+        assert res.getLIR().getControlFlowGraph() instanceof ControlFlowGraph;
+        Block result = ((ControlFlowGraph) res.getLIR().getControlFlowGraph()).blockFor(b);
         int suxIndex = currentBlock.getSuccessors().indexOf(result);
         assert suxIndex != -1 : "Block not in successor list of current block";
 
-        return LabelRef.forSuccessor(lir, currentBlock, suxIndex);
+        assert currentBlock instanceof Block;
+        return LabelRef.forSuccessor(res.getLIR(), (Block) currentBlock, suxIndex);
     }
 
     /**
@@ -355,18 +260,31 @@ public abstract class LIRGenerator implements LIRGeneratorTool, LIRTypeTool {
         return false;
     }
 
+    private static FrameState getFrameState(DeoptimizingNode deopt) {
+        if (deopt instanceof DeoptimizingNode.DeoptBefore) {
+            assert !(deopt instanceof DeoptimizingNode.DeoptDuring || deopt instanceof DeoptimizingNode.DeoptAfter);
+            return ((DeoptimizingNode.DeoptBefore) deopt).stateBefore();
+        } else if (deopt instanceof DeoptimizingNode.DeoptDuring) {
+            assert !(deopt instanceof DeoptimizingNode.DeoptAfter);
+            return ((DeoptimizingNode.DeoptDuring) deopt).stateDuring();
+        } else {
+            assert deopt instanceof DeoptimizingNode.DeoptAfter;
+            return ((DeoptimizingNode.DeoptAfter) deopt).stateAfter();
+        }
+    }
+
     public LIRFrameState state(DeoptimizingNode deopt) {
         if (!deopt.canDeoptimize()) {
             return null;
         }
-        return stateFor(deopt.getDeoptimizationState());
+        return stateFor(getFrameState(deopt));
     }
 
     public LIRFrameState stateWithExceptionEdge(DeoptimizingNode deopt, LabelRef exceptionEdge) {
         if (!deopt.canDeoptimize()) {
             return null;
         }
-        return stateForWithExceptionEdge(deopt.getDeoptimizationState(), exceptionEdge);
+        return stateForWithExceptionEdge(getFrameState(deopt), exceptionEdge);
     }
 
     public LIRFrameState stateFor(FrameState state) {
@@ -378,12 +296,12 @@ public abstract class LIRGenerator implements LIRGeneratorTool, LIRTypeTool {
             return new LIRFrameState(null, null, null);
         }
         assert state != null;
-        return debugInfoBuilder.build(state, exceptionEdge);
+        return getDebugInfoBuilder().build(state, exceptionEdge);
     }
 
     /**
      * Gets the ABI specific operand used to return a value of a given kind from a method.
-     * 
+     *
      * @param kind the kind of value being returned
      * @return the operand representing the ABI defined location used return a value of kind
      *         {@code kind}
@@ -392,24 +310,24 @@ public abstract class LIRGenerator implements LIRGeneratorTool, LIRTypeTool {
         if (kind == Kind.Void) {
             return ILLEGAL;
         }
-        return frameMap.registerConfig.getReturnRegister(kind).asValue(kind);
+        return res.getFrameMap().registerConfig.getReturnRegister(kind).asValue(kind);
     }
 
     public void append(LIRInstruction op) {
         if (printIRWithLIR && !TTY.isSuppressed()) {
-            if (currentInstruction != null && lastInstructionPrinted != currentInstruction) {
-                lastInstructionPrinted = currentInstruction;
-                InstructionPrinter ip = new InstructionPrinter(TTY.out());
-                ip.printInstructionListing(currentInstruction);
-            }
+            // if (currentInstruction != null && lastInstructionPrinted != currentInstruction) {
+            // lastInstructionPrinted = currentInstruction;
+            // InstructionPrinter ip = new InstructionPrinter(TTY.out());
+            // ip.printInstructionListing(currentInstruction);
+            // }
             TTY.println(op.toStringWithIdPrefix());
             TTY.println();
         }
         assert LIRVerifier.verify(op);
-        lir.lir(currentBlock).add(op);
+        res.getLIR().getLIRforBlock(currentBlock).add(op);
     }
 
-    public void doBlock(Block block, StructuredGraph graph, BlockMap<List<ScheduledNode>> blockMap) {
+    public final void doBlockStart(AbstractBlock<?> block) {
         if (printIRWithLIR) {
             TTY.print(block.toString());
         }
@@ -417,63 +335,17 @@ public abstract class LIRGenerator implements LIRGeneratorTool, LIRTypeTool {
         currentBlock = block;
 
         // set up the list of LIR instructions
-        assert lir.lir(block) == null : "LIR list already computed for this block";
-        lir.setLir(block, new ArrayList<LIRInstruction>());
+        assert res.getLIR().getLIRforBlock(block) == null : "LIR list already computed for this block";
+        res.getLIR().setLIRforBlock(block, new ArrayList<LIRInstruction>());
 
         append(new LabelOp(new Label(block.getId()), block.isAligned()));
 
         if (traceLevel >= 1) {
             TTY.println("BEGIN Generating LIR for block B" + block.getId());
         }
+    }
 
-        if (block == lir.getControlFlowGraph().getStartBlock()) {
-            assert block.getPredecessorCount() == 0;
-            emitPrologue(graph);
-        } else {
-            assert block.getPredecessorCount() > 0;
-        }
-
-        List<ScheduledNode> nodes = blockMap.get(block);
-        for (int i = 0; i < nodes.size(); i++) {
-            Node instr = nodes.get(i);
-            if (traceLevel >= 3) {
-                TTY.println("LIRGen for " + instr);
-            }
-            if (!ConstantNodeRecordsUsages && instr instanceof ConstantNode) {
-                // Loading of constants is done lazily by operand()
-            } else if (instr instanceof ValueNode) {
-                ValueNode valueNode = (ValueNode) instr;
-                if (operand(valueNode) == null) {
-                    if (!peephole(valueNode)) {
-                        try {
-                            doRoot((ValueNode) instr);
-                        } catch (GraalInternalError e) {
-                            throw e.addContext(instr);
-                        } catch (Throwable e) {
-                            throw new GraalInternalError(e).addContext(instr);
-                        }
-                    }
-                } else {
-                    // There can be cases in which the result of an instruction is already set
-                    // before by other instructions.
-                }
-            }
-        }
-
-        if (!hasBlockEnd(block)) {
-            NodeClassIterable successors = block.getEndNode().successors();
-            assert successors.count() == block.getSuccessorCount();
-            if (block.getSuccessorCount() != 1) {
-                /*
-                 * If we have more than one successor, we cannot just use the first one. Since
-                 * successors are unordered, this would be a random choice.
-                 */
-                throw new GraalInternalError("Block without BlockEndOp: " + block.getEndNode());
-            }
-            emitJump(getLIRBlock((FixedNode) successors.first()));
-        }
-
-        assert verifyBlock(lir, block);
+    public final void doBlockEnd(AbstractBlock<?> block) {
 
         if (traceLevel >= 1) {
             TTY.println("END Generating LIR for block B" + block.getId());
@@ -486,188 +358,12 @@ public abstract class LIRGenerator implements LIRGeneratorTool, LIRTypeTool {
         }
     }
 
-    protected abstract boolean peephole(ValueNode valueNode);
-
-    private boolean hasBlockEnd(Block block) {
-        List<LIRInstruction> ops = lir.lir(block);
-        if (ops.size() == 0) {
-            return false;
-        }
-        return ops.get(ops.size() - 1) instanceof BlockEndOp;
-    }
-
-    private void doRoot(ValueNode instr) {
-        if (traceLevel >= 2) {
-            TTY.println("Emitting LIR for instruction " + instr);
-        }
-        currentInstruction = instr;
-
-        Debug.log("Visiting %s", instr);
-        emitNode(instr);
-        Debug.log("Operand for %s = %s", instr, operand(instr));
-    }
-
-    protected void emitNode(ValueNode node) {
-        if (Debug.isLogEnabled() && node.stamp() instanceof IllegalStamp) {
-            Debug.log("This node has invalid type, we are emitting dead code(?): %s", node);
-        }
-        if (node instanceof LIRGenLowerable) {
-            ((LIRGenLowerable) node).generate(this);
-        } else if (node instanceof LIRLowerable) {
-            ((LIRLowerable) node).generate(this);
-        } else if (node instanceof ArithmeticLIRLowerable) {
-            ((ArithmeticLIRLowerable) node).generate(this);
-        } else {
-            throw GraalInternalError.shouldNotReachHere("node is not LIRLowerable: " + node);
-        }
-    }
-
-    protected void emitPrologue(StructuredGraph graph) {
-        CallingConvention incomingArguments = cc;
-
-        Value[] params = new Value[incomingArguments.getArgumentCount()];
-        for (int i = 0; i < params.length; i++) {
-            params[i] = toStackKind(incomingArguments.getArgument(i));
-            if (ValueUtil.isStackSlot(params[i])) {
-                StackSlot slot = ValueUtil.asStackSlot(params[i]);
-                if (slot.isInCallerFrame() && !lir.hasArgInCallerFrame()) {
-                    lir.setHasArgInCallerFrame();
-                }
-            }
-        }
-
-        emitIncomingValues(params);
-
-        for (ParameterNode param : graph.getNodes(ParameterNode.class)) {
-            Value paramValue = params[param.index()];
-            assert paramValue.getKind() == param.kind().getStackKind();
-            setResult(param, emitMove(paramValue));
-        }
-    }
-
     public void emitIncomingValues(Value[] params) {
-        ((LabelOp) lir.lir(currentBlock).get(0)).setIncomingValues(params);
-    }
-
-    @Override
-    public void visitReturn(ReturnNode x) {
-        AllocatableValue operand = ILLEGAL;
-        if (x.result() != null) {
-            operand = resultOperandFor(x.result().kind());
-            emitMove(operand, operand(x.result()));
-        }
-        emitReturn(operand);
-    }
-
-    protected abstract void emitReturn(Value input);
-
-    @Override
-    public void visitMerge(MergeNode x) {
-    }
-
-    @Override
-    public void visitEndNode(AbstractEndNode end) {
-        moveToPhi(end.merge(), end);
-    }
-
-    /**
-     * Runtime specific classes can override this to insert a safepoint at the end of a loop.
-     */
-    @Override
-    public void visitLoopEnd(LoopEndNode x) {
-    }
-
-    private void moveToPhi(MergeNode merge, AbstractEndNode pred) {
-        if (traceLevel >= 1) {
-            TTY.println("MOVE TO PHI from " + pred + " to " + merge);
-        }
-        PhiResolver resolver = new PhiResolver(this);
-        for (PhiNode phi : merge.phis()) {
-            if (phi.type() == PhiType.Value) {
-                ValueNode curVal = phi.valueAt(pred);
-                resolver.move(operandForPhi(phi), operand(curVal));
-            }
-        }
-        resolver.dispose();
-
-        append(new JumpOp(getLIRBlock(merge)));
+        ((LabelOp) res.getLIR().getLIRforBlock(currentBlock).get(0)).setIncomingValues(params);
     }
 
     protected PlatformKind getPhiKind(PhiNode phi) {
-        return phi.kind();
-    }
-
-    private Value operandForPhi(PhiNode phi) {
-        assert phi.type() == PhiType.Value : "wrong phi type: " + phi;
-        Value result = operand(phi);
-        if (result == null) {
-            // allocate a variable for this phi
-            Variable newOperand = newVariable(getPhiKind(phi));
-            setResult(phi, newOperand);
-            return newOperand;
-        } else {
-            return result;
-        }
-    }
-
-    @Override
-    public void emitIf(IfNode x) {
-        emitBranch(x.condition(), getLIRBlock(x.trueSuccessor()), getLIRBlock(x.falseSuccessor()), x.probability(x.trueSuccessor()));
-    }
-
-    public void emitBranch(LogicNode node, LabelRef trueSuccessor, LabelRef falseSuccessor, double trueSuccessorProbability) {
-        if (node instanceof IsNullNode) {
-            emitNullCheckBranch((IsNullNode) node, trueSuccessor, falseSuccessor, trueSuccessorProbability);
-        } else if (node instanceof CompareNode) {
-            emitCompareBranch((CompareNode) node, trueSuccessor, falseSuccessor, trueSuccessorProbability);
-        } else if (node instanceof LogicConstantNode) {
-            emitConstantBranch(((LogicConstantNode) node).getValue(), trueSuccessor, falseSuccessor);
-        } else if (node instanceof IntegerTestNode) {
-            emitIntegerTestBranch((IntegerTestNode) node, trueSuccessor, falseSuccessor, trueSuccessorProbability);
-        } else {
-            throw GraalInternalError.unimplemented(node.toString());
-        }
-    }
-
-    private void emitNullCheckBranch(IsNullNode node, LabelRef trueSuccessor, LabelRef falseSuccessor, double trueSuccessorProbability) {
-        emitCompareBranch(operand(node.object()), Constant.NULL_OBJECT, Condition.EQ, false, trueSuccessor, falseSuccessor, trueSuccessorProbability);
-    }
-
-    public void emitCompareBranch(CompareNode compare, LabelRef trueSuccessor, LabelRef falseSuccessor, double trueSuccessorProbability) {
-        emitCompareBranch(operand(compare.x()), operand(compare.y()), compare.condition(), compare.unorderedIsTrue(), trueSuccessor, falseSuccessor, trueSuccessorProbability);
-    }
-
-    public void emitIntegerTestBranch(IntegerTestNode test, LabelRef trueSuccessor, LabelRef falseSuccessor, double trueSuccessorProbability) {
-        emitIntegerTestBranch(operand(test.x()), operand(test.y()), trueSuccessor, falseSuccessor, trueSuccessorProbability);
-    }
-
-    public void emitConstantBranch(boolean value, LabelRef trueSuccessorBlock, LabelRef falseSuccessorBlock) {
-        LabelRef block = value ? trueSuccessorBlock : falseSuccessorBlock;
-        emitJump(block);
-    }
-
-    @Override
-    public void emitConditional(ConditionalNode conditional) {
-        Value tVal = operand(conditional.trueValue());
-        Value fVal = operand(conditional.falseValue());
-        setResult(conditional, emitConditional(conditional.condition(), tVal, fVal));
-    }
-
-    public Variable emitConditional(LogicNode node, Value trueValue, Value falseValue) {
-        if (node instanceof IsNullNode) {
-            IsNullNode isNullNode = (IsNullNode) node;
-            return emitConditionalMove(operand(isNullNode.object()), Constant.NULL_OBJECT, Condition.EQ, false, trueValue, falseValue);
-        } else if (node instanceof CompareNode) {
-            CompareNode compare = (CompareNode) node;
-            return emitConditionalMove(operand(compare.x()), operand(compare.y()), compare.condition(), compare.unorderedIsTrue(), trueValue, falseValue);
-        } else if (node instanceof LogicConstantNode) {
-            return emitMove(((LogicConstantNode) node).getValue() ? trueValue : falseValue);
-        } else if (node instanceof IntegerTestNode) {
-            IntegerTestNode test = (IntegerTestNode) node;
-            return emitIntegerTestMove(operand(test.x()), operand(test.y()), trueValue, falseValue);
-        } else {
-            throw GraalInternalError.unimplemented(node.toString());
-        }
+        return phi.getKind();
     }
 
     public abstract void emitJump(LabelRef label);
@@ -681,42 +377,6 @@ public abstract class LIRGenerator implements LIRGeneratorTool, LIRTypeTool {
     public abstract Variable emitConditionalMove(Value leftVal, Value right, Condition cond, boolean unorderedIsTrue, Value trueValue, Value falseValue);
 
     public abstract Variable emitIntegerTestMove(Value leftVal, Value right, Value trueValue, Value falseValue);
-
-    @Override
-    public void emitInvoke(Invoke x) {
-        LoweredCallTargetNode callTarget = (LoweredCallTargetNode) x.callTarget();
-        CallingConvention invokeCc = frameMap.registerConfig.getCallingConvention(callTarget.callType(), x.asNode().stamp().javaType(getMetaAccess()), callTarget.signature(), target(), false);
-        frameMap.callsMethod(invokeCc);
-
-        Value[] parameters = visitInvokeArguments(invokeCc, callTarget.arguments());
-
-        LabelRef exceptionEdge = null;
-        if (x instanceof InvokeWithExceptionNode) {
-            exceptionEdge = getLIRBlock(((InvokeWithExceptionNode) x).exceptionEdge());
-        }
-        LIRFrameState callState = stateWithExceptionEdge(x, exceptionEdge);
-
-        Value result = invokeCc.getReturn();
-        if (callTarget instanceof DirectCallTargetNode) {
-            emitDirectCall((DirectCallTargetNode) callTarget, result, parameters, AllocatableValue.NONE, callState);
-        } else if (callTarget instanceof IndirectCallTargetNode) {
-            emitIndirectCall((IndirectCallTargetNode) callTarget, result, parameters, AllocatableValue.NONE, callState);
-        } else {
-            throw GraalInternalError.shouldNotReachHere();
-        }
-
-        if (isLegal(result)) {
-            setResult(x.asNode(), emitMove(result));
-        }
-
-        if (x instanceof InvokeWithExceptionNode) {
-            emitJump(getLIRBlock(((InvokeWithExceptionNode) x).next()));
-        }
-    }
-
-    protected abstract void emitDirectCall(DirectCallTargetNode callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState callState);
-
-    protected abstract void emitIndirectCall(IndirectCallTargetNode callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState callState);
 
     protected abstract void emitForeignCall(ForeignCallLinkage linkage, Value result, Value[] arguments, Value[] temps, LIRFrameState info);
 
@@ -735,29 +395,12 @@ public abstract class LIRGenerator implements LIRGeneratorTool, LIRTypeTool {
         return value;
     }
 
-    public Value[] visitInvokeArguments(CallingConvention invokeCc, Collection<ValueNode> arguments) {
-        // for each argument, load it into the correct location
-        Value[] result = new Value[arguments.size()];
-        int j = 0;
-        for (ValueNode arg : arguments) {
-            if (arg != null) {
-                AllocatableValue operand = toStackKind(invokeCc.getArgument(j));
-                emitMove(operand, operand(arg));
-                result[j] = operand;
-                j++;
-            } else {
-                throw GraalInternalError.shouldNotReachHere("I thought we no longer have null entries for two-slot types...");
-            }
-        }
-        return result;
-    }
-
     @Override
     public Variable emitForeignCall(ForeignCallLinkage linkage, DeoptimizingNode info, Value... args) {
         LIRFrameState state = null;
         if (linkage.canDeoptimize()) {
             if (info != null) {
-                state = stateFor(info.getDeoptimizationState());
+                state = stateFor(getFrameState(info));
             } else {
                 assert needOnlyOopMaps();
                 state = new LIRFrameState(null, null, null);
@@ -766,7 +409,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool, LIRTypeTool {
 
         // move the arguments into the correct location
         CallingConvention linkageCc = linkage.getOutgoingCallingConvention();
-        frameMap.callsMethod(linkageCc);
+        res.getFrameMap().callsMethod(linkageCc);
         assert linkageCc.getArgumentCount() == args.length : "argument count mismatch";
         Value[] argLocations = new Value[args.length];
         for (int i = 0; i < args.length; i++) {
@@ -775,53 +418,13 @@ public abstract class LIRGenerator implements LIRGeneratorTool, LIRTypeTool {
             emitMove(loc, arg);
             argLocations[i] = loc;
         }
-        this.hasForeignCall = true;
+        res.setForeignCall(true);
         emitForeignCall(linkage, linkageCc.getReturn(), argLocations, linkage.getTemporaries(), state);
 
         if (isLegal(linkageCc.getReturn())) {
             return emitMove(linkageCc.getReturn());
         } else {
             return null;
-        }
-    }
-
-    /**
-     * This method tries to create a switch implementation that is optimal for the given switch. It
-     * will either generate a sequential if/then/else cascade, a set of range tests or a table
-     * switch.
-     * 
-     * If the given switch does not contain int keys, it will always create a sequential
-     * implementation.
-     */
-    @Override
-    public void emitSwitch(SwitchNode x) {
-        assert x.defaultSuccessor() != null;
-        LabelRef defaultTarget = getLIRBlock(x.defaultSuccessor());
-        int keyCount = x.keyCount();
-        if (keyCount == 0) {
-            emitJump(defaultTarget);
-        } else {
-            Variable value = load(operand(x.value()));
-            if (keyCount == 1) {
-                assert defaultTarget != null;
-                double probability = x.probability(x.keySuccessor(0));
-                emitCompareBranch(load(operand(x.value())), x.keyAt(0), Condition.EQ, false, getLIRBlock(x.keySuccessor(0)), defaultTarget, probability);
-            } else {
-                LabelRef[] keyTargets = new LabelRef[keyCount];
-                Constant[] keyConstants = new Constant[keyCount];
-                double[] keyProbabilities = new double[keyCount];
-                for (int i = 0; i < keyCount; i++) {
-                    keyTargets[i] = getLIRBlock(x.keySuccessor(i));
-                    keyConstants[i] = x.keyAt(i);
-                    keyProbabilities[i] = x.keyProbability(i);
-                }
-                if (value.getKind() != Kind.Int || !x.isSorted()) {
-                    // hopefully only a few entries
-                    emitStrategySwitch(new SwitchStrategy.SequentialStrategy(keyProbabilities, keyConstants), value, keyTargets, defaultTarget);
-                } else {
-                    emitStrategySwitch(keyConstants, keyProbabilities, keyTargets, defaultTarget, value);
-                }
-            }
         }
     }
 
@@ -856,8 +459,13 @@ public abstract class LIRGenerator implements LIRGeneratorTool, LIRTypeTool {
 
     protected abstract void emitTableSwitch(int lowKey, LabelRef defaultTarget, LabelRef[] targets, Value key);
 
-    public FrameMap frameMap() {
-        return frameMap;
+    public CallingConvention getCallingConvention() {
+        return cc;
+    }
+
+    public DebugInfoBuilder getDebugInfoBuilder() {
+        assert debugInfoBuilder != null;
+        return debugInfoBuilder;
     }
 
     @Override
@@ -883,13 +491,13 @@ public abstract class LIRGenerator implements LIRGeneratorTool, LIRTypeTool {
                         outOfLoopDominator = outOfLoopDominator.getDominator();
                     }
                     if (outOfLoopDominator != lc.block) {
-                        lc.unpin(lir);
+                        lc.unpin(res.getLIR());
                         lc.block = outOfLoopDominator;
                     }
                 }
 
                 if (lc.index != -1) {
-                    assert lir.lir(lc.block).get(lc.index) == lc.op;
+                    assert res.getLIR().getLIRforBlock(lc.block).get(lc.index) == lc.op;
                     iter.remove();
                 }
             }
@@ -910,7 +518,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool, LIRTypeTool {
                 }
                 int groupSize = groupEnd - groupBegin;
 
-                List<LIRInstruction> ops = lir.lir(block);
+                List<LIRInstruction> ops = res.getLIR().getLIRforBlock(block);
                 int lastIndex = ops.size() - 1;
                 assert ops.get(lastIndex) instanceof BlockEndOp;
                 int insertionIndex = lastIndex;
@@ -1009,4 +617,12 @@ public abstract class LIRGenerator implements LIRGeneratorTool, LIRTypeTool {
     public abstract void emitByteSwap(Variable result, Value operand);
 
     public abstract void emitArrayEquals(Kind kind, Variable result, Value array1, Value array2, Value length);
+
+    public AbstractBlock<?> getCurrentBlock() {
+        return currentBlock;
+    }
+
+    void setCurrentBlock(AbstractBlock<?> block) {
+        currentBlock = block;
+    }
 }

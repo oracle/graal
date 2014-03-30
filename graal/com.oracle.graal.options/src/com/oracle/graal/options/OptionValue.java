@@ -38,7 +38,7 @@ public class OptionValue<T> {
      * <p>
      * Since the returned object is {@link AutoCloseable} the try-with-resource construct can be
      * used:
-     * 
+     *
      * <pre>
      * try (OverrideScope s = OptionValue.override(myOption, myValue) {
      *     // code that depends on myOption == myValue
@@ -65,7 +65,7 @@ public class OptionValue<T> {
      * <p>
      * Since the returned object is {@link AutoCloseable} the try-with-resource construct can be
      * used:
-     * 
+     *
      * <pre>
      * Map<OptionValue, Object> overrides = new HashMap<>();
      * overrides.put(myOption1, myValue1);
@@ -96,13 +96,13 @@ public class OptionValue<T> {
      * <p>
      * Since the returned object is {@link AutoCloseable} the try-with-resource construct can be
      * used:
-     * 
+     *
      * <pre>
      * try (OverrideScope s = OptionValue.override(myOption1, myValue1, myOption2, myValue2) {
      *     // code that depends on myOption == myValue
      * }
      * </pre>
-     * 
+     *
      * @param overrides overrides in the form {@code [option1, override1, option2, override2, ...]}
      */
     public static OverrideScope override(Object... overrides) {
@@ -221,14 +221,14 @@ public class OptionValue<T> {
 
     /**
      * Gets the values of this option including overridden values.
-     * 
+     *
      * @param c the collection to which the values are added. If null, one is allocated.
      * @return the collection to which the values were added in order from most overridden to
      *         current value
      */
     @SuppressWarnings("unchecked")
     public Collection<T> getValues(Collection<T> c) {
-        Collection<T> values = c == null ? new ArrayList<T>() : c;
+        Collection<T> values = c == null ? new ArrayList<>() : c;
         if (!(this instanceof StableOptionValue)) {
             OverrideScope overrideScope = overrideScopes.get();
             if (overrideScope != null) {

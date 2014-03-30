@@ -158,6 +158,7 @@ public class CheckGraalInvariants {
         new VerifyUsageWithEquals(JavaType.class).apply(graph, context);
         new VerifyUsageWithEquals(JavaMethod.class).apply(graph, context);
         new VerifyUsageWithEquals(JavaField.class).apply(graph, context);
+        new VerifyDebugUsage().apply(graph, context);
     }
 
     private static boolean matches(String[] filters, String s) {

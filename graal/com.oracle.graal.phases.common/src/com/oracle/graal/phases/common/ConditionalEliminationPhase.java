@@ -27,6 +27,7 @@ import java.util.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
+import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.PhiNode.PhiType;
@@ -63,7 +64,40 @@ public class ConditionalEliminationPhase extends Phase {
     @Override
     protected void run(StructuredGraph inputGraph) {
         graph = inputGraph;
-        new ConditionalElimination(graph.start(), new State()).apply();
+        try (Scope s = Debug.scope("ConditionalElimination")) {
+            new ConditionalElimination(graph.start(), new State()).apply();
+        } catch (Throwable e) {
+            throw Debug.handle(e);
+        }
+    }
+
+    /**
+     * Type information about a {@code value} that it produced by a {@code guard}. Usage of the
+     * stamp information requires adopting the guard. Usually this means replacing an existing guard
+     * with this guard.
+     */
+    static class GuardedStamp {
+        private final ValueNode value;
+        private final Stamp stamp;
+        private final GuardNode guard;
+
+        GuardedStamp(ValueNode value, Stamp stamp, GuardNode guard) {
+            this.value = value;
+            this.stamp = stamp;
+            this.guard = guard;
+        }
+
+        public Stamp getStamp() {
+            return stamp;
+        }
+
+        public GuardNode getGuard() {
+            return guard;
+        }
+
+        public ValueNode getValue() {
+            return value;
+        }
     }
 
     public static class State extends MergeableState<State> implements Cloneable {
@@ -73,6 +107,7 @@ public class ConditionalEliminationPhase extends Phase {
         private HashSet<ValueNode> knownNull;
         private IdentityHashMap<LogicNode, ValueNode> trueConditions;
         private IdentityHashMap<LogicNode, ValueNode> falseConditions;
+        private IdentityHashMap<ValueNode, GuardedStamp> valueConstraints;
 
         public State() {
             this.knownTypes = new IdentityHashMap<>();
@@ -80,6 +115,7 @@ public class ConditionalEliminationPhase extends Phase {
             this.knownNull = new HashSet<>();
             this.trueConditions = new IdentityHashMap<>();
             this.falseConditions = new IdentityHashMap<>();
+            this.valueConstraints = new IdentityHashMap<>();
         }
 
         public State(State other) {
@@ -88,6 +124,7 @@ public class ConditionalEliminationPhase extends Phase {
             this.knownNull = new HashSet<>(other.knownNull);
             this.trueConditions = new IdentityHashMap<>(other.trueConditions);
             this.falseConditions = new IdentityHashMap<>(other.falseConditions);
+            this.valueConstraints = new IdentityHashMap<>(other.valueConstraints);
         }
 
         @Override
@@ -95,6 +132,7 @@ public class ConditionalEliminationPhase extends Phase {
             IdentityHashMap<ValueNode, ResolvedJavaType> newKnownTypes = new IdentityHashMap<>();
             IdentityHashMap<LogicNode, ValueNode> newTrueConditions = new IdentityHashMap<>();
             IdentityHashMap<LogicNode, ValueNode> newFalseConditions = new IdentityHashMap<>();
+            IdentityHashMap<ValueNode, GuardedStamp> newValueConstraints = new IdentityHashMap<>();
 
             HashSet<ValueNode> newKnownNull = new HashSet<>(knownNull);
             HashSet<ValueNode> newKnownNonNull = new HashSet<>(knownNonNull);
@@ -159,7 +197,7 @@ public class ConditionalEliminationPhase extends Phase {
             // this piece of code handles phis
             if (!(merge instanceof LoopBeginNode)) {
                 for (PhiNode phi : merge.phis()) {
-                    if (phi.type() == PhiType.Value && phi.kind() == Kind.Object) {
+                    if (phi.type() == PhiType.Value && phi.getKind() == Kind.Object) {
                         ValueNode firstValue = phi.valueAt(0);
                         ResolvedJavaType type = getNodeType(firstValue);
                         boolean nonNull = knownNonNull.contains(firstValue);
@@ -191,6 +229,7 @@ public class ConditionalEliminationPhase extends Phase {
             this.knownNull = newKnownNull;
             this.trueConditions = newTrueConditions;
             this.falseConditions = newFalseConditions;
+            this.valueConstraints = newValueConstraints;
             return true;
         }
 
@@ -404,32 +443,145 @@ public class ConditionalEliminationPhase extends Phase {
             }
         }
 
-        private void registerGuard(GuardNode guard) {
+        private GuardedStamp computeGuardedStamp(GuardNode guard) {
+            if (guard.condition() instanceof IntegerBelowThanNode) {
+                if (guard.negated()) {
+                    // Not sure how to reason about negated guards
+                    return null;
+                }
+                IntegerBelowThanNode below = (IntegerBelowThanNode) guard.condition();
+                if (below.x().getKind() == Kind.Int && below.x().isConstant() && !below.y().isConstant()) {
+                    Stamp stamp = StampTool.unsignedCompare(below.x().stamp(), below.y().stamp());
+                    if (stamp != null) {
+                        return new GuardedStamp(below.y(), stamp, guard);
+                    }
+                }
+                if (below.y().getKind() == Kind.Int && below.y().isConstant() && !below.x().isConstant()) {
+                    Stamp stamp = StampTool.unsignedCompare(below.x().stamp(), below.y().stamp());
+                    if (stamp != null) {
+                        return new GuardedStamp(below.x(), stamp, guard);
+                    }
+                }
+            }
+            return null;
+        }
+
+        private boolean eliminateTrivialGuard(GuardNode guard) {
             LogicNode condition = guard.condition();
 
             ValueNode existingGuards = guard.negated() ? state.falseConditions.get(condition) : state.trueConditions.get(condition);
             if (existingGuards != null) {
-                guard.replaceAtUsages(existingGuards);
-                GraphUtil.killWithUnusedFloatingInputs(guard);
-                metricGuardsRemoved.increment();
+                eliminateGuard(guard, existingGuards);
+                return true;
             } else {
                 ValueNode anchor = state.trueConditions.get(condition);
                 if (anchor != null) {
                     if (!guard.negated()) {
-                        guard.replaceAtUsages(anchor);
-                        metricGuardsRemoved.increment();
-                        GraphUtil.killWithUnusedFloatingInputs(guard);
+                        eliminateGuard(guard, anchor);
+                        return true;
                     }
                 } else {
                     anchor = state.falseConditions.get(condition);
                     if (anchor != null) {
                         if (guard.negated()) {
-                            guard.replaceAtUsages(anchor);
-                            metricGuardsRemoved.increment();
-                            GraphUtil.killWithUnusedFloatingInputs(guard);
+                            eliminateGuard(guard, anchor);
+                            return true;
                         }
+                    }
+                }
+            }
+            // Can't be eliminated so accumulate any type information from the guard
+            registerConditionalStamp(guard);
+            return false;
+        }
+
+        /**
+         * Replace {@code guard} with {@code anchor} .
+         *
+         * @param guard The guard to eliminate.
+         * @param anchor Node to replace the guard.
+         */
+        private void eliminateGuard(GuardNode guard, ValueNode anchor) {
+            guard.replaceAtUsages(anchor);
+            metricGuardsRemoved.increment();
+            GraphUtil.killWithUnusedFloatingInputs(guard);
+        }
+
+        /**
+         * See if a conditional type constraint can prove this guard.
+         *
+         * @param guard
+         * @return true if the guard was eliminated.
+         */
+        private boolean testImpliedGuard(GuardNode guard) {
+            if (state.valueConstraints.size() == 0) {
+                // Nothing to do.
+                return false;
+            }
+
+            GuardNode existingGuard = null;
+            if (guard.condition() instanceof IntegerBelowThanNode) {
+                IntegerBelowThanNode below = (IntegerBelowThanNode) guard.condition();
+                IntegerStamp xStamp = (IntegerStamp) below.x().stamp();
+                IntegerStamp yStamp = (IntegerStamp) below.y().stamp();
+                GuardedStamp cstamp = state.valueConstraints.get(below.x());
+                if (cstamp != null) {
+                    xStamp = (IntegerStamp) cstamp.getStamp();
+                } else {
+                    cstamp = state.valueConstraints.get(below.y());
+                    if (cstamp != null) {
+                        yStamp = (IntegerStamp) cstamp.getStamp();
+                    }
+                }
+                if (cstamp != null) {
+                    if (cstamp.getGuard() == guard) {
+                        // found ourselves
+                        return false;
+                    }
+                    // See if we can use the other guard
+                    if (!guard.negated() && !cstamp.getGuard().negated() && yStamp.isPositive()) {
+                        if (xStamp.isPositive() && xStamp.upperBound() < yStamp.lowerBound()) {
+                            // Proven true
+                            existingGuard = cstamp.getGuard();
+                            Debug.log("existing guard %s %1s proves %1s", existingGuard, existingGuard.condition(), guard.condition());
+                        } else if (xStamp.isStrictlyNegative() || xStamp.lowerBound() >= yStamp.upperBound()) {
+                            // An earlier guard proves that this will always fail but it's probably
+                            // not worth trying to use it.
+                        }
+                    }
+                }
+            }
+
+            if (existingGuard != null) {
+                // Found a guard which proves this guard to be true, so replace it.
+                eliminateGuard(guard, existingGuard);
+                return true;
+            }
+            return false;
+        }
+
+        private void registerConditionalStamp(GuardNode guard) {
+            GuardedStamp conditional = computeGuardedStamp(guard);
+            if (conditional != null) {
+                GuardedStamp other = state.valueConstraints.get(conditional.getValue());
+                if (other == null) {
+                    state.valueConstraints.put(conditional.getValue(), conditional);
+                } else if (guard.negated() != other.getGuard().negated()) {
+                    // This seems impossible
+                    // Debug.log("negated and !negated guards %1s %1s", guard, other.getGuard());
+                } else if (!guard.negated()) {
+                    // two different constraints, pick the one with the tightest type
+                    // information
+                    Stamp result = conditional.getStamp().join(other.getStamp());
+                    if (result == conditional.getStamp()) {
+                        Debug.log("%1s overrides existing value %1s", guard.condition(), other.getGuard().condition());
+                        state.valueConstraints.put(conditional.getValue(), conditional);
+                    } else if (result == other.getStamp()) {
+                        // existing type constraint is best
+                        Debug.log("existing value is best %s", other.getGuard());
                     } else {
-                        registerCondition(!guard.negated(), condition, guard);
+                        // The merger produced some combination of values
+                        Debug.log("type merge produced new type %s", result);
                     }
                 }
             }
@@ -494,8 +646,29 @@ public class ConditionalEliminationPhase extends Phase {
                 if (pred != null) {
                     registerControlSplitInfo(pred, begin);
                 }
+
+                // First eliminate any guards which can be trivially removed and register any
+                // type constraints the guards produce.
                 for (GuardNode guard : begin.guards().snapshot()) {
-                    registerGuard(guard);
+                    eliminateTrivialGuard(guard);
+                }
+
+                // Collect the guards which have produced conditional stamps.
+                HashSet<GuardNode> provers = new HashSet<>();
+                for (Map.Entry<ValueNode, GuardedStamp> e : state.valueConstraints.entrySet()) {
+                    provers.add(e.getValue().getGuard());
+                }
+
+                // Process the remaining guards. Guards which produced some type constraint should
+                // just be registered since they aren't trivially deleteable. Test the other guards
+                // to see if they can be deleted using type constraints.
+                for (GuardNode guard : begin.guards().snapshot()) {
+                    if (provers.contains(guard) || !testImpliedGuard(guard)) {
+                        registerCondition(!guard.negated(), guard.condition(), guard);
+                    }
+                }
+                for (GuardNode guard : provers) {
+                    assert !testImpliedGuard(guard) : "provers shouldn't be trivially eliminatable";
                 }
             } else if (node instanceof FixedGuardNode) {
                 FixedGuardNode guard = (FixedGuardNode) node;

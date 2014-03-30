@@ -182,20 +182,20 @@ public class StandardOp {
         /**
          * The block in which this instruction is located.
          */
-        final Block block;
+        final AbstractBlock<?> block;
 
         /**
          * The block index of this instruction.
          */
         final int index;
 
-        public NoOp(Block block, int index) {
+        public NoOp(AbstractBlock<?> block, int index) {
             this.block = block;
             this.index = index;
         }
 
         public void replace(LIR lir, LIRInstruction replacement) {
-            lir.lir(block).set(index, replacement);
+            lir.getLIRforBlock(block).set(index, replacement);
         }
 
         @Override

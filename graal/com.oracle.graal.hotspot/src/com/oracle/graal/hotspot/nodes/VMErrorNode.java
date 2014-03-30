@@ -22,11 +22,13 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
+import static com.oracle.graal.api.meta.MetaUtil.*;
+import static com.oracle.graal.hotspot.nodes.CStringNode.*;
+
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.gen.*;
-import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.replacements.*;
 
@@ -34,31 +36,39 @@ import com.oracle.graal.replacements.*;
  * Causes the VM to exit with a description of the current Java location and an optional
  * {@linkplain Log#printf(String, long) formatted} error message specified.
  */
-public final class VMErrorNode extends DeoptimizingStubCall implements LIRGenLowerable {
+public final class VMErrorNode extends DeoptimizingStubCall implements LIRLowerable {
 
     private final String format;
     @Input private ValueNode value;
     public static final ForeignCallDescriptor VM_ERROR = new ForeignCallDescriptor("vm_error", void.class, Object.class, Object.class, long.class);
 
-    private VMErrorNode(String format, ValueNode value) {
+    public VMErrorNode(String format, ValueNode value) {
         super(StampFactory.forVoid());
         this.format = format;
         this.value = value;
     }
 
     @Override
-    public void generate(LIRGenerator gen) {
-        String whereString = "in compiled code for " + graph();
+    public void generate(NodeLIRGeneratorTool gen) {
+        String whereString;
+        if (stateBefore() != null) {
+            String nl = CodeUtil.NEW_LINE;
+            StringBuilder sb = new StringBuilder("in compiled code associated with frame state:");
+            FrameState fs = stateBefore();
+            while (fs != null) {
+                MetaUtil.appendLocation(sb.append(nl).append("\t"), fs.method(), fs.bci);
+                fs = fs.outerFrameState();
+            }
+            whereString = sb.toString();
+        } else {
+            ResolvedJavaMethod method = graph().method();
+            whereString = "in compiled code for " + (method == null ? graph().toString() : format("%H.%n(%p)", method));
+        }
+        Value whereArg = emitCString(gen, whereString);
+        Value formatArg = emitCString(gen, format);
 
-        // As these strings will end up embedded as oops in the code, they
-        // must be interned or else they will cause the nmethod to be unloaded
-        // (nmethods are a) weak GC roots and b) unloaded if any of their
-        // embedded oops become unreachable).
-        Constant whereArg = Constant.forObject(whereString.intern());
-        Constant formatArg = Constant.forObject(format.intern());
-
-        ForeignCallLinkage linkage = gen.getForeignCalls().lookupForeignCall(VMErrorNode.VM_ERROR);
-        gen.emitForeignCall(linkage, null, whereArg, formatArg, gen.operand(value));
+        ForeignCallLinkage linkage = gen.getLIRGeneratorTool().getForeignCalls().lookupForeignCall(VMErrorNode.VM_ERROR);
+        gen.getLIRGeneratorTool().emitForeignCall(linkage, null, whereArg, formatArg, gen.operand(value));
     }
 
     @NodeIntrinsic

@@ -122,7 +122,7 @@ public class HotSpotSignature extends CompilerObject implements Signature {
     public int getParameterSlots(boolean withReceiver) {
         int argSlots = 0;
         for (int i = 0; i < getParameterCount(false); i++) {
-            argSlots += FrameStateBuilder.stackSlots(getParameterKind(i));
+            argSlots += HIRFrameStateBuilder.stackSlots(getParameterKind(i));
         }
         return argSlots + (withReceiver ? 1 : 0);
     }

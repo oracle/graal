@@ -99,12 +99,12 @@ public interface CompilerToVM {
     long getKlassImplementor(long metaspaceKlass);
 
     /**
-     * Initializes a {@link HotSpotResolvedJavaMethod} object from a metaspace Method object.
+     * Determines if a given metaspace method is ignored by security stack walks.
      * 
      * @param metaspaceMethod the metaspace Method object
-     * @param method address of a metaspace Method object
+     * @return true if the method is ignored
      */
-    void initializeMethod(long metaspaceMethod, HotSpotResolvedJavaMethod method);
+    boolean methodIsIgnoredBySecurityStackWalk(long metaspaceMethod);
 
     /**
      * Converts a name to a metaspace klass.

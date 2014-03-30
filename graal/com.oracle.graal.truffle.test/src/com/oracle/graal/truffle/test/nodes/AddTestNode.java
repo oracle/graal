@@ -30,8 +30,8 @@ public class AddTestNode extends AbstractTestNode {
     @Child private AbstractTestNode right;
 
     public AddTestNode(AbstractTestNode left, AbstractTestNode right) {
-        this.left = adoptChild(left);
-        this.right = adoptChild(right);
+        this.left = left;
+        this.right = right;
     }
 
     @Override

@@ -34,7 +34,7 @@ import com.oracle.graal.nodes.type.*;
  * This node is used to perform the finalizer registration at the end of the java.lang.Object
  * constructor.
  */
-public final class RegisterFinalizerNode extends AbstractStateSplit implements Canonicalizable, LIRLowerable, Virtualizable, DeoptimizingNode {
+public final class RegisterFinalizerNode extends AbstractStateSplit implements Canonicalizable, LIRLowerable, Virtualizable, DeoptimizingNode.DeoptAfter {
 
     public static final ForeignCallDescriptor REGISTER_FINALIZER = new ForeignCallDescriptor("registerFinalizer", void.class, Object.class);
 
@@ -51,9 +51,9 @@ public final class RegisterFinalizerNode extends AbstractStateSplit implements C
     }
 
     @Override
-    public void generate(LIRGeneratorTool gen) {
-        ForeignCallLinkage linkage = gen.getForeignCalls().lookupForeignCall(REGISTER_FINALIZER);
-        gen.emitForeignCall(linkage, this, gen.operand(object()));
+    public void generate(NodeLIRGeneratorTool gen) {
+        ForeignCallLinkage linkage = gen.getLIRGeneratorTool().getForeignCalls().lookupForeignCall(REGISTER_FINALIZER);
+        gen.getLIRGeneratorTool().emitForeignCall(linkage, this, gen.operand(object()));
     }
 
     @Override
@@ -94,17 +94,6 @@ public final class RegisterFinalizerNode extends AbstractStateSplit implements C
     @Override
     public boolean canDeoptimize() {
         return true;
-    }
-
-    @Override
-    public FrameState getDeoptimizationState() {
-        return deoptState;
-    }
-
-    @Override
-    public void setDeoptimizationState(FrameState f) {
-        updateUsages(deoptState, f);
-        deoptState = f;
     }
 
     @SuppressWarnings("unused")

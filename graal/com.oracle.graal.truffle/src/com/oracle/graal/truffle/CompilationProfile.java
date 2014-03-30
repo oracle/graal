@@ -132,9 +132,16 @@ public class CompilationProfile {
         ensureProfiling(reprofile, reprofile);
     }
 
-    void reportInterpreterCall() {
+    public void reportInterpreterCall() {
         callCount++;
         callAndLoopCount++;
+    }
+
+    void reportInlinedCall() {
+        callCount++;
+        callAndLoopCount++;
+        compilationCallThreshold++;
+        compilationCallAndLoopThreshold++;
     }
 
     void reportInterpreterCalls(int calls) {

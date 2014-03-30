@@ -26,6 +26,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
@@ -78,9 +79,6 @@ public class IntegerAddNode extends IntegerArithmeticNode implements Canonicaliz
             if (reassociated != this) {
                 return reassociated;
             }
-            if (c < 0) {
-                return IntegerArithmeticNode.sub(graph(), x(), ConstantNode.forIntegerStamp(stamp(), -c, graph()));
-            }
         }
         if (x() instanceof NegateNode) {
             return IntegerArithmeticNode.sub(graph(), y(), ((NegateNode) x()).x());
@@ -91,7 +89,7 @@ public class IntegerAddNode extends IntegerArithmeticNode implements Canonicaliz
     }
 
     @Override
-    public void generate(ArithmeticLIRGenerator gen) {
+    public void generate(NodeLIRGeneratorTool gen) {
         Value op1 = gen.operand(x());
         assert op1 != null : x() + ", this=" + this;
         Value op2 = gen.operand(y());
@@ -100,6 +98,15 @@ public class IntegerAddNode extends IntegerArithmeticNode implements Canonicaliz
             op1 = op2;
             op2 = op;
         }
-        gen.setResult(this, gen.emitAdd(op1, op2));
+        gen.setResult(this, gen.getLIRGeneratorTool().emitAdd(op1, op2));
+    }
+
+    @Override
+    public boolean generate(MemoryArithmeticLIRLowerer gen, Access access) {
+        Value result = gen.emitAddMemory(x(), y(), access);
+        if (result != null) {
+            gen.setResult(this, result);
+        }
+        return result != null;
     }
 }

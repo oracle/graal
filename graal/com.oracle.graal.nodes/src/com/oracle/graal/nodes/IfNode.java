@@ -33,6 +33,7 @@ import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.PhiNode.PhiType;
 import com.oracle.graal.nodes.calc.*;
+import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
@@ -42,7 +43,7 @@ import com.oracle.graal.nodes.util.*;
  * The {@code IfNode} represents a branch that can go one of two directions depending on the outcome
  * of a comparison.
  */
-public final class IfNode extends ControlSplitNode implements Simplifiable, LIRLowerable {
+public final class IfNode extends ControlSplitNode implements Simplifiable, LIRLowerable, MemoryArithmeticLIRLowerable {
 
     @Successor private AbstractBeginNode trueSuccessor;
     @Successor private AbstractBeginNode falseSuccessor;
@@ -126,8 +127,13 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
     }
 
     @Override
-    public void generate(LIRGeneratorTool gen) {
+    public void generate(NodeLIRGeneratorTool gen) {
         gen.emitIf(this);
+    }
+
+    @Override
+    public boolean generate(MemoryArithmeticLIRLowerer gen, Access access) {
+        return gen.emitIfMemory(this, access);
     }
 
     @Override
@@ -356,10 +362,10 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                         boolean inverted = trueEnd == merge.forwardEndAt(1);
                         ValueNode trueValue = singlePhi.valueAt(inverted ? 1 : 0);
                         ValueNode falseValue = singlePhi.valueAt(inverted ? 0 : 1);
-                        if (trueValue.kind() != falseValue.kind()) {
+                        if (trueValue.getKind() != falseValue.getKind()) {
                             return false;
                         }
-                        if (trueValue.kind() != Kind.Int && trueValue.kind() != Kind.Long) {
+                        if (trueValue.getKind() != Kind.Int && trueValue.getKind() != Kind.Long) {
                             return false;
                         }
                         ConditionalNode conditional = canonicalizeConditionalCascade(trueValue, falseValue);
@@ -379,10 +385,10 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
             ValueNode falseValue = falseEnd.result();
             ConditionalNode conditional = null;
             if (trueValue != null) {
-                if (trueValue.kind() != falseValue.kind()) {
+                if (trueValue.getKind() != falseValue.getKind()) {
                     return false;
                 }
-                if (trueValue.kind() != Kind.Int && trueValue.kind() != Kind.Long) {
+                if (trueValue.getKind() != Kind.Int && trueValue.getKind() != Kind.Long) {
                     return false;
                 }
                 conditional = canonicalizeConditionalCascade(trueValue, falseValue);

@@ -67,7 +67,7 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
     public void testStaticFinalObjectAOT() {
         StructuredGraph result = compile("getStaticFinalObject", true);
         assertEquals(1, getConstantNodes(result).count());
-        assertEquals(getCodeCache().getTarget().wordKind, getConstantNodes(result).first().kind());
+        assertEquals(getCodeCache().getTarget().wordKind, getConstantNodes(result).first().getKind());
         assertEquals(2, result.getNodes(FloatingReadNode.class).count());
         assertEquals(0, result.getNodes().filter(ReadNode.class).count());
     }
@@ -76,7 +76,7 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
     public void testStaticFinalObject() {
         StructuredGraph result = compile("getStaticFinalObject", false);
         assertEquals(1, getConstantNodes(result).count());
-        assertEquals(Kind.Object, getConstantNodes(result).first().kind());
+        assertEquals(Kind.Object, getConstantNodes(result).first().getKind());
         assertEquals(0, result.getNodes(FloatingReadNode.class).count());
         assertEquals(0, result.getNodes().filter(ReadNode.class).count());
     }
@@ -121,7 +121,7 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
         StructuredGraph result = compile("getPrimitiveClassObject", true);
         NodeIterable<ConstantNode> filter = getConstantNodes(result);
         assertEquals(1, filter.count());
-        assertEquals(getCodeCache().getTarget().wordKind, filter.first().kind());
+        assertEquals(getCodeCache().getTarget().wordKind, filter.first().getKind());
 
         assertEquals(2, result.getNodes(FloatingReadNode.class).count());
         assertEquals(0, result.getNodes().filter(ReadNode.class).count());
@@ -181,7 +181,7 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
         assertEquals(1, result.getNodes(PiNode.class).count());
         assertEquals(1, getConstantNodes(result).count());
         ConstantNode constant = getConstantNodes(result).first();
-        assertEquals(Kind.Long, constant.kind());
+        assertEquals(Kind.Long, constant.getKind());
         assertEquals(((HotSpotResolvedObjectType) getMetaAccess().lookupJavaType(Boolean.class)).klass(), constant.asConstant());
     }
 
@@ -192,7 +192,7 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
         assertEquals(0, result.getNodes(PiNode.class).count());
         assertEquals(1, getConstantNodes(result).count());
         ConstantNode constant = getConstantNodes(result).first();
-        assertEquals(Kind.Object, constant.kind());
+        assertEquals(Kind.Object, constant.getKind());
         assertEquals(Boolean.TRUE, constant.asConstant().asObject());
     }
 

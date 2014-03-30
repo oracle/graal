@@ -34,11 +34,15 @@ import javax.tools.*;
 
 import com.oracle.graal.api.runtime.*;
 
-@SupportedSourceVersion(SourceVersion.RELEASE_7)
 @SupportedAnnotationTypes("com.oracle.graal.api.runtime.ServiceProvider")
 public class ServiceProviderProcessor extends AbstractProcessor {
 
     private final Set<TypeElement> processed = new HashSet<>();
+
+    @Override
+    public SourceVersion getSupportedSourceVersion() {
+        return SourceVersion.latest();
+    }
 
     private boolean verifyAnnotation(TypeMirror serviceInterface, TypeElement serviceProvider) {
         if (!processingEnv.getTypeUtils().isSubtype(serviceProvider.asType(), serviceInterface)) {

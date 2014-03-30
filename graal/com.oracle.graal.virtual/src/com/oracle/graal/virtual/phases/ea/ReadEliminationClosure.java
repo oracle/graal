@@ -94,6 +94,9 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
                 ReadCacheEntry identifier = new ReadCacheEntry(object, read.location());
                 ValueNode cachedValue = state.getCacheEntry(identifier);
                 if (cachedValue != null) {
+                    if (read.getGuard() != null && !(read.getGuard() instanceof FixedNode)) {
+                        effects.addFixedNodeBefore(new ValueAnchorNode((ValueNode) read.getGuard()), read);
+                    }
                     effects.replaceAtUsages(read, cachedValue);
                     addScalarAlias(read, cachedValue);
                     deleted = true;
@@ -241,7 +244,7 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
                 }
             }
             for (PhiNode phi : merge.phis()) {
-                if (phi.kind() == Kind.Object) {
+                if (phi.getKind() == Kind.Object) {
                     for (Map.Entry<CacheEntry<?>, ValueNode> entry : states.get(0).readCache.entrySet()) {
                         if (entry.getKey().object == phi.valueAt(0)) {
                             mergeReadCachePhi(phi, entry.getKey(), states);

@@ -44,12 +44,14 @@ final class PartialEvaluatorCanonicalizer implements CanonicalizerPhase.CustomCa
         this.constantReflection = constantReflection;
     }
 
+    private static final Unsafe unsafe = Unsafe.getUnsafe();
+
     @Override
     public Node canonicalize(Node node) {
         if (node instanceof LoadFieldNode) {
             LoadFieldNode loadFieldNode = (LoadFieldNode) node;
             if (!loadFieldNode.isStatic() && loadFieldNode.object().isConstant() && !loadFieldNode.object().isNullConstant()) {
-                if (Modifier.isFinal(loadFieldNode.field().getModifiers()) || (loadFieldNode.kind() == Kind.Object && loadFieldNode.field().getAnnotation(Child.class) != null) ||
+                if (Modifier.isFinal(loadFieldNode.field().getModifiers()) || (loadFieldNode.getKind() == Kind.Object && loadFieldNode.field().getAnnotation(Child.class) != null) ||
                                 loadFieldNode.field().getAnnotation(CompilerDirectives.CompilationFinal.class) != null) {
                     Constant constant = loadFieldNode.field().readValue(loadFieldNode.object().asConstant());
                     assert verifyFieldValue(loadFieldNode.field(), constant);
@@ -62,8 +64,8 @@ final class PartialEvaluatorCanonicalizer implements CanonicalizerPhase.CustomCa
                 Object array = loadIndexedNode.array().asConstant().asObject();
                 long index = loadIndexedNode.index().asConstant().asLong();
                 if (index >= 0 && index < Array.getLength(array)) {
-                    int arrayBaseOffset = Unsafe.getUnsafe().arrayBaseOffset(array.getClass());
-                    int arrayIndexScale = Unsafe.getUnsafe().arrayIndexScale(array.getClass());
+                    int arrayBaseOffset = unsafe.arrayBaseOffset(array.getClass());
+                    int arrayIndexScale = unsafe.arrayIndexScale(array.getClass());
                     Constant constant = constantReflection.readUnsafeConstant(loadIndexedNode.elementKind(), array, arrayBaseOffset + index * arrayIndexScale,
                                     loadIndexedNode.elementKind() == Kind.Object);
                     return ConstantNode.forConstant(constant, metaAccess, loadIndexedNode.graph());

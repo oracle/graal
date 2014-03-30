@@ -39,7 +39,7 @@ public final class UnwindNode extends ControlSinkNode implements Lowerable, LIRL
 
     public UnwindNode(ValueNode exception) {
         super(StampFactory.forVoid());
-        assert exception == null || exception.kind() == Kind.Object;
+        assert exception == null || exception.getKind() == Kind.Object;
         this.exception = exception;
     }
 
@@ -49,7 +49,7 @@ public final class UnwindNode extends ControlSinkNode implements Lowerable, LIRL
     }
 
     @Override
-    public void generate(LIRGeneratorTool gen) {
-        gen.emitUnwind(gen.operand(exception()));
+    public void generate(NodeLIRGeneratorTool gen) {
+        gen.getLIRGeneratorTool().emitUnwind(gen.operand(exception()));
     }
 }

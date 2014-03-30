@@ -23,43 +23,41 @@
 package com.oracle.graal.baseline;
 
 import static com.oracle.graal.api.code.TypeCheckHints.*;
-import static com.oracle.graal.api.meta.DeoptimizationAction.*;
-import static com.oracle.graal.api.meta.DeoptimizationReason.*;
 import static com.oracle.graal.bytecode.Bytecodes.*;
 import static com.oracle.graal.phases.GraalOptions.*;
 import static java.lang.reflect.Modifier.*;
 
-import java.lang.reflect.*;
 import java.util.*;
 
+import com.oracle.graal.alloc.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.meta.ProfilingInfo.TriState;
 import com.oracle.graal.api.meta.ResolvedJavaType.Representation;
 import com.oracle.graal.bytecode.*;
+import com.oracle.graal.compiler.*;
+import com.oracle.graal.compiler.alloc.*;
+import com.oracle.graal.compiler.gen.*;
+import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.debug.*;
+import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.java.*;
-import com.oracle.graal.java.BciBlockMapping.Block;
+import com.oracle.graal.java.BciBlockMapping.BciBlock;
 import com.oracle.graal.java.BciBlockMapping.ExceptionDispatchBlock;
-import com.oracle.graal.java.GraphBuilderPhase.*;
 import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.calc.FloatConvertNode.FloatConvert;
-import com.oracle.graal.nodes.extended.*;
-import com.oracle.graal.nodes.java.*;
+import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
-import com.oracle.graal.nodes.type.*;
-import com.oracle.graal.nodes.util.*;
-import com.oracle.graal.phases.*;
-import com.oracle.graal.phases.tiers.*;
+import com.oracle.graal.nodes.java.*;
 
 /**
  * The {@code GraphBuilder} class parses the bytecode of a method and builds the IR graph.
  */
 @SuppressWarnings("all")
-public class BaselineCompiler {
+public class BaselineCompiler implements BytecodeParser<BciBlock> {
 
     public BaselineCompiler(GraphBuilderConfiguration graphBuilderConfig, MetaAccessProvider metaAccess) {
         this.graphBuilderConfig = graphBuilderConfig;
@@ -73,13 +71,19 @@ public class BaselineCompiler {
     private ProfilingInfo profilingInfo;
     private BytecodeStream stream;           // the bytecode stream
 
-    private Block currentBlock;
+    private Backend backend;
+    private LIRGenerator lirGen;
+    private LIRFrameStateBuilder frameState;
+    private LIRGenerationResult lirGenRes;
+
+    private BciBlock currentBlock;
 
     private ValueNode methodSynchronizedObject;
     private ExceptionDispatchBlock unwindBlock;
 
     private final GraphBuilderConfiguration graphBuilderConfig;
-    private Block[] loopHeaders;
+    private BciBlock[] loopHeaders;
+    private BytecodeParseHelper<Value> parserHelper;
 
     /**
      * Meters the number of actual bytecodes parsed.
@@ -90,9 +94,11 @@ public class BaselineCompiler {
         return method;
     }
 
-    public LIR generate(ResolvedJavaMethod method, int entryBCI) {
+    public CompilationResult generate(ResolvedJavaMethod method, int entryBCI, Backend backend, CompilationResult compilationResult, ResolvedJavaMethod installedCodeOwner,
+                    CompilationResultBuilderFactory factory) {
         this.method = method;
         this.entryBCI = entryBCI;
+        this.backend = backend;
         profilingInfo = method.getProfilingInfo();
         assert method.getCode() != null : "method must contain bytecodes: " + method;
         this.stream = new BytecodeStream(method.getCode());
@@ -100,12 +106,22 @@ public class BaselineCompiler {
         unwindBlock = null;
         methodSynchronizedObject = null;
         TTY.Filter filter = new TTY.Filter(PrintFilter.getValue(), method);
+
+        frameState = new LIRFrameStateBuilder(method);
+        parserHelper = new BytecodeParseHelper<>(frameState);
+
+        // build blocks and LIR instructions
         try {
             build();
         } finally {
             filter.remove();
         }
-        return null;
+
+        // emitCode
+        Assumptions assumptions = new Assumptions(OptAssumptions.getValue());
+        GraalCompiler.emitCode(backend, assumptions, lirGenRes, compilationResult, installedCodeOwner, factory);
+
+        return compilationResult;
     }
 
     protected void build() {
@@ -114,11 +130,18 @@ public class BaselineCompiler {
             TTY.println(MetaUtil.indent(MetaUtil.profileToString(profilingInfo, method, CodeUtil.NEW_LINE), "  "));
         }
 
-        Indent indent = Debug.logAndIndent("build graph for %s", method);
+        // Indent indent = Debug.logAndIndent("build graph for %s", method);
 
         // compute the block map, setup exception handlers and get the entrypoint(s)
         BciBlockMapping blockMap = BciBlockMapping.create(method);
         loopHeaders = blockMap.loopHeaders;
+
+        // add predecessors
+        for (BciBlock block : blockMap.blocks) {
+            for (BciBlock successor : block.getSuccessors()) {
+                successor.getPredecessors().add(block);
+            }
+        }
 
         if (isSynchronized(method.getModifiers())) {
             throw GraalInternalError.unimplemented("Handle synchronized methods");
@@ -131,11 +154,56 @@ public class BaselineCompiler {
             throw GraalInternalError.unimplemented("Handle start block as loop header");
         }
 
-        for (Block block : blockMap.blocks) {
-            processBlock(block);
+        // add loops ? how do we add looks when we haven't parsed the bytecode?
+
+        // create the control flow graph
+        LIRControlFlowGraph cfg = new LIRControlFlowGraph(blockMap.blocks.toArray(new BciBlock[0]), new Loop[0]);
+
+        BlocksToDoubles blockProbabilities = new BlocksToDoubles(blockMap.blocks.size());
+        for (BciBlock b : blockMap.blocks) {
+            blockProbabilities.put(b, 1);
         }
 
-        indent.outdent();
+        // create the LIR
+        List<? extends AbstractBlock<?>> linearScanOrder = ComputeBlockOrder.computeLinearScanOrder(blockMap.blocks.size(), blockMap.startBlock, blockProbabilities);
+        List<? extends AbstractBlock<?>> codeEmittingOrder = ComputeBlockOrder.computeCodeEmittingOrder(blockMap.blocks.size(), blockMap.startBlock, blockProbabilities);
+        LIR lir = new LIR(cfg, linearScanOrder, codeEmittingOrder);
+
+        FrameMap frameMap = backend.newFrameMap();
+        TargetDescription target = backend.getTarget();
+        CallingConvention cc = CodeUtil.getCallingConvention(backend.getProviders().getCodeCache(), CallingConvention.Type.JavaCallee, method, false);
+        this.lirGenRes = backend.newLIRGenerationResult(lir, frameMap, null);
+        this.lirGen = backend.newLIRGenerator(cc, lirGenRes);
+
+        try (Scope ds = Debug.scope("BackEnd", lir)) {
+            try (Scope s = Debug.scope("LIRGen", lirGen)) {
+
+                // possibly add all the arguments to slots in the local variable array
+
+                for (BciBlock block : blockMap.blocks) {
+
+                    // lirGen.doBlock(block, method, this);
+                }
+                // indent.outdent();
+
+                lirGen.beforeRegisterAllocation();
+                Debug.dump(lir, "After LIR generation");
+            } catch (Throwable e) {
+                throw Debug.handle(e);
+            }
+
+            // try (Scope s = Debug.scope("Allocator", nodeLirGen)) {
+            try (Scope s = Debug.scope("Allocator")) {
+
+                if (backend.shouldAllocateRegisters()) {
+                    new LinearScan(target, lir, frameMap).allocate();
+                }
+            } catch (Throwable e) {
+                throw Debug.handle(e);
+            }
+        } catch (Throwable e) {
+            throw Debug.handle(e);
+        }
     }
 
     public BytecodeStream stream() {
@@ -147,11 +215,11 @@ public class BaselineCompiler {
     }
 
     private void loadLocal(int index, Kind kind) {
-        throw GraalInternalError.unimplemented();
+        parserHelper.loadLocal(index, kind);
     }
 
     private void storeLocal(Kind kind, int index) {
-        throw GraalInternalError.unimplemented();
+        parserHelper.storeLocal(kind, index);
     }
 
     /**
@@ -250,7 +318,10 @@ public class BaselineCompiler {
     }
 
     private void genArithmeticOp(Kind result, int opcode) {
-        throw GraalInternalError.unimplemented();
+        Value a = frameState.ipop();
+        Value b = frameState.ipop();
+        Value r = lirGen.emitAdd(a, b);
+        frameState.ipush(r);
     }
 
     private void genIntegerDivOp(Kind result, int opcode) {
@@ -434,18 +505,18 @@ public class BaselineCompiler {
         throw GraalInternalError.unimplemented();
     }
 
-    private void processBlock(Block block) {
-        Indent indent = Debug.logAndIndent("Parsing block %s  firstInstruction: %s  loopHeader: %b", block, block.firstInstruction, block.isLoopHeader);
-        currentBlock = block;
-        iterateBytecodesForBlock(block);
-        indent.outdent();
+    public void processBlock(BciBlock block) {
+        try (Indent indent = Debug.logAndIndent("Parsing block %s  firstInstruction: %s  loopHeader: %b", block, block.firstInstruction, block.isLoopHeader)) {
+            currentBlock = block;
+            iterateBytecodesForBlock(block);
+        }
     }
 
     private void createExceptionDispatch(ExceptionDispatchBlock block) {
         throw GraalInternalError.unimplemented();
     }
 
-    private void iterateBytecodesForBlock(Block block) {
+    private void iterateBytecodesForBlock(BciBlock block) {
 
         int endBCI = stream.endBCI();
 
@@ -646,12 +717,12 @@ public class BaselineCompiler {
             case RET            : genRet(stream.readLocalIndex()); break;
             case TABLESWITCH    : genSwitch(new BytecodeTableSwitch(stream(), bci())); break;
             case LOOKUPSWITCH   : genSwitch(new BytecodeLookupSwitch(stream(), bci())); break;
-//            case IRETURN        : genReturn(frameState.ipop()); break;
-//            case LRETURN        : genReturn(frameState.lpop()); break;
-//            case FRETURN        : genReturn(frameState.fpop()); break;
-//            case DRETURN        : genReturn(frameState.dpop()); break;
-//            case ARETURN        : genReturn(frameState.apop()); break;
-//            case RETURN         : genReturn(null); break;
+            case IRETURN        : genReturn(frameState.ipop()); break;
+            case LRETURN        : genReturn(frameState.lpop()); break;
+            case FRETURN        : genReturn(frameState.fpop()); break;
+            case DRETURN        : genReturn(frameState.dpop()); break;
+            case ARETURN        : genReturn(frameState.apop()); break;
+            case RETURN         : genReturn(null); break;
             case GETSTATIC      : cpi = stream.readCPI(); genGetStatic(lookupField(cpi, opcode)); break;
             case PUTSTATIC      : cpi = stream.readCPI(); genPutStatic(lookupField(cpi, opcode)); break;
             case GETFIELD       : cpi = stream.readCPI(); genGetField(lookupField(cpi, opcode)); break;
@@ -700,11 +771,31 @@ public class BaselineCompiler {
             if (!currentBlock.jsrScope.isEmpty()) {
                 sb.append(' ').append(currentBlock.jsrScope);
             }
-            Debug.log(sb.toString());
+            Debug.log("%s", sb);
         }
     }
 
     private void genArrayLength() {
         throw GraalInternalError.unimplemented();
+    }
+
+    private void genReturn(Value x) {
+        // frameState.setRethrowException(false);
+        frameState.clearStack();
+        // if (graphBuilderConfig.eagerInfopointMode()) {
+        // append(new InfopointNode(InfopointReason.METHOD_END, frameState.create(bci())));
+        // }
+
+        // synchronizedEpilogue(FrameState.AFTER_BCI, x);
+        // if (frameState.lockDepth() != 0) {
+        // throw new BailoutException("unbalanced monitors");
+        // }
+
+        // lirGen.visitReturn(x);
+        throw GraalInternalError.unimplemented();
+    }
+
+    public void setParameter(int i, Variable emitMove) {
+        frameState.storeLocal(i, emitMove);
     }
 }

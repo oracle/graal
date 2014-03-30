@@ -116,7 +116,7 @@ public class WordTypeRewriterPhase extends Phase {
      * Remove casts between word types (which by now no longer have kind Object).
      */
     protected void rewriteCheckCast(StructuredGraph graph, CheckCastNode node) {
-        if (node.kind() == wordKind) {
+        if (node.getKind() == wordKind) {
             node.replaceAtUsages(node.object());
             graph.removeFixed(node);
         }
@@ -173,7 +173,7 @@ public class WordTypeRewriterPhase extends Phase {
         }
 
         if (!callTargetNode.isStatic()) {
-            assert callTargetNode.receiver().kind() == wordKind : "changeToWord() missed the receiver";
+            assert callTargetNode.receiver().getKind() == wordKind : "changeToWord() missed the receiver";
             targetMethod = wordImplType.resolveMethod(targetMethod);
         }
         Operation operation = targetMethod.getAnnotation(Word.Operation.class);
@@ -214,7 +214,7 @@ public class WordTypeRewriterPhase extends Phase {
                 } else {
                     location = makeLocation(graph, arguments.get(1), readKind, arguments.get(2));
                 }
-                replace(invoke, readOp(graph, arguments.get(0), invoke, location, readKind, BarrierType.NONE, false));
+                replace(invoke, readOp(graph, arguments.get(0), invoke, location, StampFactory.forKind(readKind.getStackKind()), BarrierType.NONE, false));
                 break;
             }
             case READ_HEAP: {
@@ -222,7 +222,8 @@ public class WordTypeRewriterPhase extends Phase {
                 Kind readKind = asKind(callTargetNode.returnType());
                 LocationNode location = makeLocation(graph, arguments.get(1), readKind, ANY_LOCATION);
                 BarrierType barrierType = (BarrierType) arguments.get(2).asConstant().asObject();
-                replace(invoke, readOp(graph, arguments.get(0), invoke, location, readKind, barrierType, arguments.get(3).asConstant().asInt() == 0 ? false : true));
+                boolean compressible = arguments.get(3).asConstant().asInt() != 0;
+                replace(invoke, readOp(graph, arguments.get(0), invoke, location, StampFactory.forKind(readKind.getStackKind()), barrierType, compressible));
                 break;
             }
             case WRITE:
@@ -295,16 +296,16 @@ public class WordTypeRewriterPhase extends Phase {
     }
 
     private static ValueNode convert(StructuredGraph graph, ValueNode value, Kind toKind, boolean unsigned) {
-        if (value.kind() == toKind) {
+        if (value.getKind() == toKind) {
             return value;
         }
 
         if (toKind == Kind.Int) {
-            assert value.kind() == Kind.Long;
+            assert value.getKind() == Kind.Long;
             return graph.unique(new NarrowNode(value, 32));
         } else {
             assert toKind == Kind.Long;
-            assert value.kind().getStackKind() == Kind.Int;
+            assert value.getKind().getStackKind() == Kind.Int;
             if (unsigned) {
                 return graph.unique(new ZeroExtendNode(value, 64));
             } else {
@@ -328,7 +329,7 @@ public class WordTypeRewriterPhase extends Phase {
     }
 
     private ValueNode comparisonOp(StructuredGraph graph, Condition condition, ValueNode left, ValueNode right) {
-        assert left.kind() == wordKind && right.kind() == wordKind;
+        assert left.getKind() == wordKind && right.getKind() == wordKind;
 
         // mirroring gets the condition into canonical form
         boolean mirror = condition.canonicalMirror();
@@ -369,8 +370,8 @@ public class WordTypeRewriterPhase extends Phase {
         return IndexedLocationNode.create(locationIdentity, readKind, 0, fromSigned(graph, offset), graph, 1);
     }
 
-    protected ValueNode readOp(StructuredGraph graph, ValueNode base, Invoke invoke, LocationNode location, Kind readKind, BarrierType barrierType, boolean compressible) {
-        ReadNode read = graph.add(new ReadNode(base, location, StampFactory.forKind(readKind.getStackKind()), barrierType, compressible));
+    protected ValueNode readOp(StructuredGraph graph, ValueNode base, Invoke invoke, LocationNode location, Stamp stamp, BarrierType barrierType, boolean compressible) {
+        ReadNode read = graph.add(new ReadNode(base, location, stamp, barrierType, compressible));
         graph.addBeforeFixed(invoke.asNode(), read);
         /*
          * The read must not float outside its block otherwise it may float above an explicit zero

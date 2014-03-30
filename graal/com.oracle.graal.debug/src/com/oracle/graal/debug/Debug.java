@@ -23,6 +23,7 @@
 package com.oracle.graal.debug;
 
 import static com.oracle.graal.debug.Debug.Initialization.*;
+import static java.util.FormattableFlags.*;
 
 import java.io.*;
 import java.util.*;
@@ -129,7 +130,7 @@ public class Debug {
 
     /**
      * Gets a string composed of the names in the current nesting of debug
-     * {@linkplain #scope(String, Object...) scopes} separated by {@code '.'}.
+     * {@linkplain #scope(Object) scopes} separated by {@code '.'}.
      */
     public static String currentScope() {
         if (ENABLED) {
@@ -140,7 +141,7 @@ public class Debug {
     }
 
     /**
-     * Represents a debug scope entered by {@link Debug#scope(String, Object...)} or
+     * Represents a debug scope entered by {@link Debug#scope(Object)} or
      * {@link Debug#sandbox(String, DebugConfig, Object...)}. Leaving the scope is achieved via
      * {@link #close()}.
      */
@@ -153,7 +154,7 @@ public class Debug {
      * <p>
      * It is recommended to use the try-with-resource statement for managing entering and leaving
      * debug scopes. For example:
-     * 
+     *
      * <pre>
      * try (Scope s = Debug.scope(&quot;InliningGraph&quot;, inlineeGraph)) {
      *     ...
@@ -161,15 +162,68 @@ public class Debug {
      *     throw Debug.handle(e);
      * }
      * </pre>
-     * 
+     *
+     * The {@code name} argument is subject to the following type based conversion before having
+     * {@link Object#toString()} called on it:
+     *
+     * <pre>
+     *     Type          | Conversion
+     * ------------------+-----------------
+     *  java.lang.Class  | arg.getSimpleName()
+     *                   |
+     * </pre>
+     *
      * @param name the name of the new scope
-     * @param context objects to be appended to the {@linkplain #context() current} debug context
      * @return the scope entered by this method which will be exited when its {@link Scope#close()}
      *         method is called
      */
-    public static Scope scope(CharSequence name, Object... context) {
+    public static Scope scope(Object name) {
         if (ENABLED) {
-            return DebugScope.getInstance().scope(name, null, context);
+            return DebugScope.getInstance().scope(convertFormatArg(name).toString(), null);
+        } else {
+            return null;
+        }
+    }
+
+    /**
+     * @see #scope(Object)
+     * @param context an object to be appended to the {@linkplain #context() current} debug context
+     */
+    public static Scope scope(Object name, Object context) {
+        if (ENABLED) {
+            return DebugScope.getInstance().scope(convertFormatArg(name).toString(), null, context);
+        } else {
+            return null;
+        }
+    }
+
+    /**
+     * @see #scope(Object)
+     * @param context1 first object to be appended to the {@linkplain #context() current} debug
+     *            context
+     * @param context2 second object to be appended to the {@linkplain #context() current} debug
+     *            context
+     */
+    public static Scope scope(Object name, Object context1, Object context2) {
+        if (ENABLED) {
+            return DebugScope.getInstance().scope(convertFormatArg(name).toString(), null, context1, context2);
+        } else {
+            return null;
+        }
+    }
+
+    /**
+     * @see #scope(Object)
+     * @param context1 first object to be appended to the {@linkplain #context() current} debug
+     *            context
+     * @param context2 second object to be appended to the {@linkplain #context() current} debug
+     *            context
+     * @param context3 third object to be appended to the {@linkplain #context() current} debug
+     *            context
+     */
+    public static Scope scope(Object name, Object context1, Object context2, Object context3) {
+        if (ENABLED) {
+            return DebugScope.getInstance().scope(convertFormatArg(name).toString(), null, context1, context2, context3);
         } else {
             return null;
         }
@@ -180,7 +234,7 @@ public class Debug {
      * <p>
      * It is recommended to use the try-with-resource statement for managing entering and leaving
      * debug scopes. For example:
-     * 
+     *
      * <pre>
      * try (Scope s = Debug.sandbox(&quot;CompilingStub&quot;, null, stubGraph)) {
      *     ...
@@ -188,7 +242,7 @@ public class Debug {
      *     throw Debug.handle(e);
      * }
      * </pre>
-     * 
+     *
      * @param name the name of the new scope
      * @param config the debug configuration to use for the new scope
      * @param context objects to be appended to the {@linkplain #context() current} debug context
@@ -221,10 +275,10 @@ public class Debug {
     /**
      * Handles an exception in the context of the debug scope just exited. The just exited scope
      * must have the current scope as its parent which will be the case if the try-with-resource
-     * pattern recommended by {@link #scope(String, Object...)} and
+     * pattern recommended by {@link #scope(Object)} and
      * {@link #sandbox(String, DebugConfig, Object...)} is used
-     * 
-     * @see #scope(String, Object...)
+     *
+     * @see #scope(Object)
      * @see #sandbox(String, DebugConfig, Object...)
      */
     public static RuntimeException handle(Throwable exception) {
@@ -242,92 +296,232 @@ public class Debug {
     }
 
     /**
-     * Prints an indented message to the current debug scopes's logging stream if logging is enabled
-     * in the scope.
-     * 
-     * @param msg The format string of the log message
-     * @param args The arguments referenced by the log message string
-     * @see Indent#log
+     * Prints a message to the current debug scope's logging stream if logging is enabled.
+     *
+     * @param msg the message to log
      */
-    public static void log(String msg, Object... args) {
+    public static void log(String msg) {
         if (ENABLED) {
-            DebugScope.getInstance().log(msg, args);
+            DebugScope.getInstance().log(msg);
         }
     }
 
     /**
-     * The same as {@link #log}, but without line termination and without indentation.
+     * Prints a message to the current debug scope's logging stream if logging is enabled.
+     *
+     * @param format a format string
+     * @param arg the argument referenced by the format specifiers in {@code format}
      */
-    public static void printf(String msg, Object... args) {
-        if (ENABLED && DebugScope.getInstance().isLogEnabled()) {
-            DebugScope.getInstance().printf(msg, args);
+    public static void log(String format, Object arg) {
+        if (ENABLED) {
+            DebugScope.getInstance().log(format, arg);
         }
     }
-
-    public static void dump(Object object, String msg, Object... args) {
-        if (ENABLED && DebugScope.getInstance().isDumpEnabled()) {
-            DebugScope.getInstance().dump(object, msg, args);
-        }
-    }
-
-    private static final class NoLogger implements Indent {
-
-        @Override
-        public void log(String msg, Object... args) {
-        }
-
-        @Override
-        public Indent indent() {
-            return this;
-        }
-
-        @Override
-        public Indent logAndIndent(String msg, Object... args) {
-            return this;
-        }
-
-        @Override
-        public Indent outdent() {
-            return this;
-        }
-
-        @Override
-        public void close() {
-        }
-    }
-
-    private static final NoLogger noLoggerInstance = new NoLogger();
 
     /**
-     * Creates a new indentation level (by adding some spaces) based on the last used Indent of the
-     * current DebugScope.
-     * 
-     * @return The new indentation level
-     * @see Indent#indent
+     * @see #log(String, Object)
+     */
+    public static void log(String format, Object arg1, Object arg2) {
+        if (ENABLED) {
+            DebugScope.getInstance().log(format, arg1, arg2);
+        }
+    }
+
+    /**
+     * @see #log(String, Object)
+     */
+    public static void log(String format, Object arg1, Object arg2, Object arg3) {
+        if (ENABLED) {
+            DebugScope.getInstance().log(format, arg1, arg2, arg3);
+        }
+    }
+
+    /**
+     * @see #log(String, Object)
+     */
+    public static void log(String format, Object arg1, Object arg2, Object arg3, Object arg4) {
+        if (ENABLED) {
+            DebugScope.getInstance().log(format, arg1, arg2, arg3, arg4);
+        }
+    }
+
+    /**
+     * @see #log(String, Object)
+     */
+    public static void log(String format, Object arg1, Object arg2, Object arg3, Object arg4, Object arg5) {
+        if (ENABLED) {
+            DebugScope.getInstance().log(format, arg1, arg2, arg3, arg4, arg5);
+        }
+    }
+
+    /**
+     * @see #log(String, Object)
+     */
+    public static void log(String format, Object arg1, Object arg2, Object arg3, Object arg4, Object arg5, Object arg6) {
+        if (ENABLED) {
+            DebugScope.getInstance().log(format, arg1, arg2, arg3, arg4, arg5, arg6);
+        }
+    }
+
+    /**
+     * Prints a message to the current debug scope's logging stream. This method must only be called
+     * if debugging is {@linkplain Debug#isEnabled() enabled} as it incurs allocation at the call
+     * site. If possible, call one of the other {@code log()} methods in this class that take a
+     * fixed number of parameters.
+     *
+     * @param format a format string
+     * @param args the arguments referenced by the format specifiers in {@code format}
+     */
+    public static void logv(String format, Object... args) {
+        if (!ENABLED) {
+            throw new InternalError("Use of Debug.logv() must be guarded by a test of Debug.isEnabled()");
+        }
+        DebugScope.getInstance().log(format, args);
+    }
+
+    /**
+     * This override exists to catch cases when {@link #log(String, Object)} is called with one
+     * argument bound to a varargs method parameter. It will bind to this method instead of the
+     * single arg variant and produce a deprecation warning instead of silently wrapping the
+     * Object[] inside of another Object[].
+     */
+    @Deprecated
+    public static void log(String format, Object[] args) {
+        assert false : "shouldn't use this";
+        logv(format, args);
+    }
+
+    public static void dump(Object object, String msg) {
+        if (ENABLED && DebugScope.getInstance().isDumpEnabled()) {
+            DebugScope.getInstance().dump(object, msg);
+        }
+    }
+
+    public static void dump(Object object, String format, Object arg) {
+        if (ENABLED && DebugScope.getInstance().isDumpEnabled()) {
+            DebugScope.getInstance().dump(object, format, arg);
+        }
+    }
+
+    public static void dump(Object object, String format, Object arg1, Object arg2) {
+        if (ENABLED && DebugScope.getInstance().isDumpEnabled()) {
+            DebugScope.getInstance().dump(object, format, arg1, arg2);
+        }
+    }
+
+    public static void dump(Object object, String format, Object arg1, Object arg2, Object arg3) {
+        if (ENABLED && DebugScope.getInstance().isDumpEnabled()) {
+            DebugScope.getInstance().dump(object, format, arg1, arg2, arg3);
+        }
+    }
+
+    /**
+     * This override exists to catch cases when {@link #dump(Object, String, Object)} is called with
+     * one argument bound to a varargs method parameter. It will bind to this method instead of the
+     * single arg variant and produce a deprecation warning instead of silently wrapping the
+     * Object[] inside of another Object[].
+     */
+    @Deprecated
+    public static void dump(Object object, String format, Object[] args) {
+        assert false : "shouldn't use this";
+        if (ENABLED && DebugScope.getInstance().isDumpEnabled()) {
+            DebugScope.getInstance().dump(object, format, args);
+        }
+    }
+
+    /**
+     * Opens a new indentation level (by adding some spaces) based on the current indentation level.
+     * This should be used in a {@linkplain Indent try-with-resources} pattern.
+     *
+     * @return an object that reverts to the current indentation level when
+     *         {@linkplain Indent#close() closed} or null if debugging is disabled
+     * @see #logAndIndent(String)
+     * @see #logAndIndent(String, Object)
      */
     public static Indent indent() {
         if (ENABLED) {
             DebugScope scope = DebugScope.getInstance();
             return scope.pushIndentLogger();
         }
-        return noLoggerInstance;
+        return null;
     }
 
     /**
-     * A convenience function which combines {@link #log} and {@link #indent()}.
-     * 
-     * @param msg The format string of the log message
-     * @param args The arguments referenced by the log message string
-     * @return The new indentation level
-     * @see Indent#logAndIndent
+     * A convenience function which combines {@link #log(String)} and {@link #indent()}.
+     *
+     * @param msg the message to log
+     * @return an object that reverts to the current indentation level when
+     *         {@linkplain Indent#close() closed} or null if debugging is disabled
      */
-    public static Indent logAndIndent(String msg, Object... args) {
+    public static Indent logAndIndent(String msg) {
+        if (ENABLED) {
+            return logvAndIndent(msg);
+        }
+        return null;
+    }
+
+    /**
+     * A convenience function which combines {@link #log(String, Object)} and {@link #indent()}.
+     *
+     * @param format a format string
+     * @param arg the argument referenced by the format specifiers in {@code format}
+     * @return an object that reverts to the current indentation level when
+     *         {@linkplain Indent#close() closed} or null if debugging is disabled
+     */
+    public static Indent logAndIndent(String format, Object arg) {
+        if (ENABLED) {
+            return logvAndIndent(format, arg);
+        }
+        return null;
+    }
+
+    /**
+     * @see #logAndIndent(String, Object)
+     */
+    public static Indent logAndIndent(String format, Object arg1, Object arg2) {
+        if (ENABLED) {
+            return logvAndIndent(format, arg1, arg2);
+        }
+        return null;
+    }
+
+    /**
+     * @see #logAndIndent(String, Object)
+     */
+    public static Indent logAndIndent(String format, Object arg1, Object arg2, Object arg3) {
+        if (ENABLED) {
+            return logvAndIndent(format, arg1, arg2, arg3);
+        }
+        return null;
+    }
+
+    /**
+     * A convenience function which combines {@link #logv(String, Object...)} and {@link #indent()}.
+     *
+     * @param format a format string
+     * @param args the arguments referenced by the format specifiers in {@code format}
+     * @return an object that reverts to the current indentation level when
+     *         {@linkplain Indent#close() closed} or null if debugging is disabled
+     */
+    public static Indent logvAndIndent(String format, Object... args) {
         if (ENABLED) {
             DebugScope scope = DebugScope.getInstance();
-            scope.log(msg, args);
+            scope.log(format, args);
             return scope.pushIndentLogger();
         }
-        return noLoggerInstance;
+        throw new InternalError("Use of Debug.logvAndIndent() must be guarded by a test of Debug.isEnabled()");
+    }
+
+    /**
+     * This override exists to catch cases when {@link #logAndIndent(String, Object)} is called with
+     * one argument bound to a varargs method parameter. It will bind to this method instead of the
+     * single arg variant and produce a deprecation warning instead of silently wrapping the
+     * Object[] inside of another Object[].
+     */
+    @Deprecated
+    public static void logAndIndent(String format, Object[] args) {
+        assert false : "shouldn't use this";
+        logvAndIndent(format, args);
     }
 
     public static Iterable<Object> context() {
@@ -380,18 +574,91 @@ public class Debug {
      * A disabled metric has virtually no overhead.
      */
     public static DebugMetric metric(CharSequence name) {
-        if (enabledMetrics != null && enabledMetrics.contains(name.toString())) {
-            return new MetricImpl(name.toString(), false);
-        } else if (ENABLED) {
-            return new MetricImpl(name.toString(), true);
-        } else {
+        if (enabledMetrics == null && !ENABLED) {
             return VOID_METRIC;
         }
+        return createMetric("%s", name, null);
+    }
+
+    public static String applyFormattingFlagsAndWidth(String s, int flags, int width) {
+        if (flags == 0 && width < 0) {
+            return s;
+        }
+        StringBuilder sb = new StringBuilder(s);
+
+        // apply width and justification
+        int len = sb.length();
+        if (len < width) {
+            for (int i = 0; i < width - len; i++) {
+                if ((flags & LEFT_JUSTIFY) == LEFT_JUSTIFY) {
+                    sb.append(' ');
+                } else {
+                    sb.insert(0, ' ');
+                }
+            }
+        }
+
+        String res = sb.toString();
+        if ((flags & UPPERCASE) == UPPERCASE) {
+            res = res.toUpperCase();
+        }
+        return res;
+    }
+
+    /**
+     * Creates a debug metric. Invoking this method is equivalent to:
+     *
+     * <pre>
+     * Debug.metric(format, arg, null)
+     * </pre>
+     *
+     * except that the string formatting only happens if metering is enabled.
+     *
+     * @see #metric(String, Object, Object)
+     */
+    public static DebugMetric metric(String format, Object arg) {
+        if (enabledMetrics == null && !ENABLED) {
+            return VOID_METRIC;
+        }
+        return createMetric(format, arg, null);
+    }
+
+    /**
+     * Creates a debug metric. Invoking this method is equivalent to:
+     *
+     * <pre>
+     * Debug.metric(String.format(format, arg1, arg2))
+     * </pre>
+     *
+     * except that the string formatting only happens if metering is enabled. In addition, each
+     * argument is subject to the following type based conversion before being passed as an argument
+     * to {@link String#format(String, Object...)}:
+     *
+     * <pre>
+     *     Type          | Conversion
+     * ------------------+-----------------
+     *  java.lang.Class  | arg.getSimpleName()
+     *                   |
+     * </pre>
+     *
+     * @see #metric(CharSequence)
+     */
+    public static DebugMetric metric(String format, Object arg1, Object arg2) {
+        if (enabledMetrics == null && !ENABLED) {
+            return VOID_METRIC;
+        }
+        return createMetric(format, arg1, arg2);
+    }
+
+    private static DebugMetric createMetric(String format, Object arg1, Object arg2) {
+        String name = formatDebugName(format, arg1, arg2);
+        boolean conditional = enabledMetrics != null && enabledMetrics.contains(name);
+        return new MetricImpl(name, conditional);
     }
 
     /**
      * Changes the debug configuration for the current thread.
-     * 
+     *
      * @param config new configuration to use for the current thread
      * @return an object that when {@linkplain DebugConfigScope#close() closed} will restore the
      *         debug configuration for the current thread to what it was before this method was
@@ -533,13 +800,72 @@ public class Debug {
      * A disabled timer has virtually no overhead.
      */
     public static DebugTimer timer(CharSequence name) {
-        if (enabledTimers != null && enabledTimers.contains(name.toString())) {
-            return new TimerImpl(name.toString(), false);
-        } else if (ENABLED) {
-            return new TimerImpl(name.toString(), true);
-        } else {
+        if (enabledTimers == null && !ENABLED) {
             return VOID_TIMER;
         }
+        return createTimer("%s", name, null);
+    }
+
+    /**
+     * Creates a debug timer. Invoking this method is equivalent to:
+     *
+     * <pre>
+     * Debug.timer(format, arg, null)
+     * </pre>
+     *
+     * except that the string formatting only happens if timing is enabled.
+     *
+     * @see #timer(String, Object, Object)
+     */
+    public static DebugTimer timer(String format, Object arg) {
+        if (enabledTimers == null && !ENABLED) {
+            return VOID_TIMER;
+        }
+        return createTimer(format, arg, null);
+    }
+
+    /**
+     * Creates a debug timer. Invoking this method is equivalent to:
+     *
+     * <pre>
+     * Debug.timer(String.format(format, arg1, arg2))
+     * </pre>
+     *
+     * except that the string formatting only happens if timing is enabled. In addition, each
+     * argument is subject to the following type based conversion before being passed as an argument
+     * to {@link String#format(String, Object...)}:
+     *
+     * <pre>
+     *     Type          | Conversion
+     * ------------------+-----------------
+     *  java.lang.Class  | arg.getSimpleName()
+     *                   |
+     * </pre>
+     *
+     * @see #timer(CharSequence)
+     */
+    public static DebugTimer timer(String format, Object arg1, Object arg2) {
+        if (enabledTimers == null && !ENABLED) {
+            return VOID_TIMER;
+        }
+        return createTimer(format, arg1, arg2);
+    }
+
+    public static Object convertFormatArg(Object arg) {
+        if (arg instanceof Class) {
+            return ((Class) arg).getSimpleName();
+        }
+        return arg;
+    }
+
+    private static String formatDebugName(String format, Object arg1, Object arg2) {
+        return String.format(format, convertFormatArg(arg1), convertFormatArg(arg2));
+    }
+
+    private static DebugTimer createTimer(String format, Object arg1, Object arg2) {
+        String name = formatDebugName(format, arg1, arg2);
+        boolean conditional = enabledTimers != null && enabledTimers.contains(name);
+        return new TimerImpl(name, conditional);
     }
 
     private static final DebugTimer VOID_TIMER = new DebugTimer() {

@@ -61,7 +61,7 @@ public class NewMultiArrayStubCall extends ForeignCallNode {
     }
 
     @Override
-    protected Value[] operands(LIRGeneratorTool gen) {
+    protected Value[] operands(NodeLIRGeneratorTool gen) {
         return new Value[]{gen.operand(hub), Constant.forInt(rank), gen.operand(dims)};
     }
 

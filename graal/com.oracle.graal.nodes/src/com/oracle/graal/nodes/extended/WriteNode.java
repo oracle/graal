@@ -24,6 +24,7 @@ package com.oracle.graal.nodes.extended;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.LocationNode.Location;
 import com.oracle.graal.nodes.spi.*;
@@ -33,7 +34,7 @@ import com.oracle.graal.nodes.virtual.*;
 /**
  * Writes a given {@linkplain #value() value} a {@linkplain FixedAccessNode memory location}.
  */
-public final class WriteNode extends FixedAccessNode implements StateSplit, LIRLowerable, MemoryCheckpoint.Single, MemoryAccess, Virtualizable {
+public final class WriteNode extends FixedAccessNode implements StateSplit, LIRLowerable, MemoryCheckpoint.Single, MemoryAccess, Simplifiable, Virtualizable {
 
     @Input private ValueNode value;
     @Input(notDataflow = true) private FrameState stateAfter;
@@ -43,16 +44,6 @@ public final class WriteNode extends FixedAccessNode implements StateSplit, LIRL
 
     public FrameState stateAfter() {
         return stateAfter;
-    }
-
-    @Override
-    public FrameState getState() {
-        if (stateAfter != null) {
-            assert super.getState() == null;
-            return stateAfter;
-        } else {
-            return super.getState();
-        }
     }
 
     public void setStateAfter(FrameState x) {
@@ -89,17 +80,24 @@ public final class WriteNode extends FixedAccessNode implements StateSplit, LIRL
     }
 
     @Override
-    public void generate(LIRGeneratorTool gen) {
+    public void generate(NodeLIRGeneratorTool gen) {
         Value address = location().generateAddress(gen, gen.operand(object()));
         // It's possible a constant was forced for other usages so inspect the value directly and
         // use a constant if it can be directly stored.
         Value v;
-        if (value().isConstant() && gen.canStoreConstant(value().asConstant(), isCompressible())) {
+        if (value().isConstant() && gen.getLIRGeneratorTool().canStoreConstant(value().asConstant(), isCompressible())) {
             v = value().asConstant();
         } else {
             v = gen.operand(value());
         }
-        gen.emitStore(location().getValueKind(), address, v, this);
+        gen.getLIRGeneratorTool().emitStore(location().getValueKind(), address, v, this);
+    }
+
+    @Override
+    public void simplify(SimplifierTool tool) {
+        if (object() instanceof PiNode && ((PiNode) object()).getGuard() == getGuard()) {
+            setObject(((PiNode) object()).getOriginalValue());
+        }
     }
 
     @NodeIntrinsic

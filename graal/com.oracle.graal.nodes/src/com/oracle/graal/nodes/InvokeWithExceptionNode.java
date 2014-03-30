@@ -39,7 +39,7 @@ public class InvokeWithExceptionNode extends ControlSplitNode implements Invoke,
     @Successor private AbstractBeginNode next;
     @Successor private DispatchBeginNode exceptionEdge;
     @Input private CallTargetNode callTarget;
-    @Input private FrameState deoptState;
+    @Input private FrameState stateDuring;
     @Input private FrameState stateAfter;
     @Input private GuardingNode guard;
     private final int bci;
@@ -133,7 +133,7 @@ public class InvokeWithExceptionNode extends ControlSplitNode implements Invoke,
     }
 
     @Override
-    public void generate(LIRGeneratorTool gen) {
+    public void generate(NodeLIRGeneratorTool gen) {
         gen.emitInvoke(this);
     }
 
@@ -155,13 +155,6 @@ public class InvokeWithExceptionNode extends ControlSplitNode implements Invoke,
         return LocationIdentity.ANY_LOCATION;
     }
 
-    public FrameState stateDuring() {
-        FrameState tempStateAfter = stateAfter();
-        FrameState stateDuring = tempStateAfter.duplicateModified(bci(), tempStateAfter.rethrowException(), kind());
-        stateDuring.setDuringCall(true);
-        return stateDuring;
-    }
-
     @Override
     public Map<Object, Object> getDebugProperties(Map<Object, Object> map) {
         Map<Object, Object> debugProperties = super.getDebugProperties(map);
@@ -177,7 +170,7 @@ public class InvokeWithExceptionNode extends ControlSplitNode implements Invoke,
 
     @Override
     public void intrinsify(Node node) {
-        assert !(node instanceof ValueNode) || (((ValueNode) node).kind() == Kind.Void) == (kind() == Kind.Void);
+        assert !(node instanceof ValueNode) || (((ValueNode) node).getKind() == Kind.Void) == (getKind() == Kind.Void);
         CallTargetNode call = callTarget;
         FrameState state = stateAfter();
         killExceptionEdge();
@@ -186,7 +179,7 @@ public class InvokeWithExceptionNode extends ControlSplitNode implements Invoke,
             stateSplit.setStateAfter(state);
         }
         if (node == null) {
-            assert kind() == Kind.Void && usages().isEmpty();
+            assert getKind() == Kind.Void && usages().isEmpty();
             graph().removeSplit(this, next());
         } else if (node instanceof ControlSinkNode) {
             this.replaceAtPredecessor(node);
@@ -219,18 +212,21 @@ public class InvokeWithExceptionNode extends ControlSplitNode implements Invoke,
     }
 
     @Override
-    public FrameState getDeoptimizationState() {
-        if (deoptState == null) {
-            FrameState stateDuring = stateDuring();
-            updateUsages(deoptState, stateDuring);
-            deoptState = stateDuring;
-        }
-        return deoptState;
+    public FrameState stateDuring() {
+        return stateDuring;
     }
 
     @Override
-    public void setDeoptimizationState(FrameState f) {
-        throw new IllegalStateException();
+    public void setStateDuring(FrameState stateDuring) {
+        updateUsages(this.stateDuring, stateDuring);
+        this.stateDuring = stateDuring;
+    }
+
+    @Override
+    public void computeStateDuring(FrameState tempStateAfter) {
+        FrameState newStateDuring = tempStateAfter.duplicateModified(bci(), tempStateAfter.rethrowException(), getKind());
+        newStateDuring.setDuringCall(true);
+        setStateDuring(newStateDuring);
     }
 
     @Override
@@ -242,16 +238,6 @@ public class InvokeWithExceptionNode extends ControlSplitNode implements Invoke,
     public void setGuard(GuardingNode guard) {
         updateUsages(this.guard == null ? null : this.guard.asNode(), guard == null ? null : guard.asNode());
         this.guard = guard;
-    }
-
-    @Override
-    public FrameState getState() {
-        if (deoptState != null) {
-            assert stateAfter() == null;
-            return deoptState;
-        } else {
-            return stateAfter();
-        }
     }
 
     public MemoryCheckpoint asMemoryCheckpoint() {

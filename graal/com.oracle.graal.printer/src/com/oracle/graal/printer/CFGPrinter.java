@@ -50,7 +50,7 @@ class CFGPrinter extends CompilationPrinter {
 
     protected TargetDescription target;
     protected LIR lir;
-    protected LIRGenerator lirGenerator;
+    protected NodeLIRGenerator nodeLirGenerator;
     protected ControlFlowGraph cfg;
     protected SchedulePhase schedule;
 
@@ -73,7 +73,7 @@ class CFGPrinter extends CompilationPrinter {
     public void printCFG(String label, BciBlockMapping blockMap) {
         begin("cfg");
         out.print("name \"").print(label).println('"');
-        for (BciBlockMapping.Block block : blockMap.blocks) {
+        for (BciBlockMapping.BciBlock block : blockMap.blocks) {
             begin("block");
             printBlock(block);
             end("block");
@@ -81,7 +81,7 @@ class CFGPrinter extends CompilationPrinter {
         end("cfg");
     }
 
-    private void printBlock(BciBlockMapping.Block block) {
+    private void printBlock(BciBlockMapping.BciBlock block) {
         out.print("name \"B").print(block.startBci).println('"');
         out.print("from_bci ").println(block.startBci);
         out.print("to_bci ").println(block.endBci);
@@ -89,7 +89,7 @@ class CFGPrinter extends CompilationPrinter {
         out.println("predecessors ");
 
         out.print("successors ");
-        for (BciBlockMapping.Block succ : block.successors) {
+        for (BciBlockMapping.BciBlock succ : block.getSuccessors()) {
             if (!succ.isExceptionEntry) {
                 out.print("\"B").print(succ.startBci).print("\" ");
             }
@@ -97,7 +97,7 @@ class CFGPrinter extends CompilationPrinter {
         out.println();
 
         out.print("xhandlers");
-        for (BciBlockMapping.Block succ : block.successors) {
+        for (BciBlockMapping.BciBlock succ : block.getSuccessors()) {
             if (succ.isExceptionEntry) {
                 out.print("\"B").print(succ.startBci).print("\" ");
             }
@@ -129,10 +129,11 @@ class CFGPrinter extends CompilationPrinter {
      * @param label A label describing the compilation phase that produced the control flow graph.
      * @param blocks The list of blocks to be printed.
      */
-    public void printCFG(String label, List<Block> blocks, boolean printNodes) {
+    public void printCFG(String label, List<? extends AbstractBlock<?>> blocks, boolean printNodes) {
         if (lir == null) {
             latestScheduling = new NodeMap<>(cfg.getNodeToBlock());
-            for (Block block : blocks) {
+            for (AbstractBlock<?> abstractBlock : blocks) {
+                Block block = (Block) abstractBlock;
                 Node cur = block.getBeginNode();
                 while (true) {
                     assert inFixedSchedule(cur) && latestScheduling.get(cur) == block;
@@ -146,17 +147,15 @@ class CFGPrinter extends CompilationPrinter {
                 }
             }
         }
-        printedNodes = new NodeBitMap(cfg.graph);
 
         begin("cfg");
         out.print("name \"").print(label).println('"');
-        for (Block block : blocks) {
+        for (AbstractBlock<?> block : blocks) {
             printBlock(block, printNodes);
         }
         end("cfg");
 
         latestScheduling = null;
-        printedNodes = null;
     }
 
     private void scheduleInputs(Node node, Block nodeBlock) {
@@ -187,20 +186,21 @@ class CFGPrinter extends CompilationPrinter {
         }
     }
 
-    private void printBlock(Block block, boolean printNodes) {
+    private void printBlock(AbstractBlock<?> block, boolean printNodes) {
         printBlockProlog(block);
         if (printNodes) {
-            printNodes(block);
+            assert block instanceof Block;
+            printNodes((Block) block);
         }
         printBlockEpilog(block);
     }
 
-    private void printBlockEpilog(Block block) {
+    private void printBlockEpilog(AbstractBlock<?> block) {
         printLIR(block);
         end("block");
     }
 
-    private void printBlockProlog(Block block) {
+    private void printBlockProlog(AbstractBlock<?> block) {
         begin("block");
 
         out.print("name \"").print(blockToString(block)).println('"');
@@ -208,13 +208,13 @@ class CFGPrinter extends CompilationPrinter {
         out.println("to_bci -1");
 
         out.print("predecessors ");
-        for (Block pred : block.getPredecessors()) {
+        for (AbstractBlock<?> pred : block.getPredecessors()) {
             out.print("\"").print(blockToString(pred)).print("\" ");
         }
         out.println();
 
         out.print("successors ");
-        for (Block succ : block.getSuccessors()) {
+        for (AbstractBlock<?> succ : block.getSuccessors()) {
             if (!succ.isExceptionEntry()) {
                 out.print("\"").print(blockToString(succ)).print("\" ");
             }
@@ -222,7 +222,7 @@ class CFGPrinter extends CompilationPrinter {
         out.println();
 
         out.print("xhandlers");
-        for (Block succ : block.getSuccessors()) {
+        for (AbstractBlock<?> succ : block.getSuccessors()) {
             if (succ.isExceptionEntry()) {
                 out.print("\"").print(blockToString(succ)).print("\" ");
             }
@@ -248,6 +248,7 @@ class CFGPrinter extends CompilationPrinter {
     }
 
     private void printNodes(Block block) {
+        printedNodes = new NodeBitMap(cfg.graph);
         begin("IR");
         out.println("HIR");
         out.disableIndentation();
@@ -281,6 +282,7 @@ class CFGPrinter extends CompilationPrinter {
 
         out.enableIndentation();
         end("IR");
+        printedNodes = null;
     }
 
     private void printNode(Node node, boolean unscheduled) {
@@ -307,8 +309,8 @@ class CFGPrinter extends CompilationPrinter {
         }
         out.print("tid ").print(nodeToString(node)).println(COLUMN_END);
 
-        if (lirGenerator != null) {
-            Value operand = lirGenerator.nodeOperands.get(node);
+        if (nodeLirGenerator != null) {
+            Value operand = nodeLirGenerator.getNodeOperands().get(node);
             if (operand != null) {
                 out.print("result ").print(operand.toString()).println(COLUMN_END);
             }
@@ -412,8 +414,8 @@ class CFGPrinter extends CompilationPrinter {
 
     private String stateValueToString(ValueNode value) {
         String result = nodeToString(value);
-        if (lirGenerator != null && lirGenerator.nodeOperands != null && value != null) {
-            Value operand = lirGenerator.nodeOperands.get(value);
+        if (nodeLirGenerator != null && nodeLirGenerator.getNodeOperands() != null && value != null) {
+            Value operand = nodeLirGenerator.getNodeOperands().get(value);
             if (operand != null) {
                 result += ": " + operand;
             }
@@ -426,11 +428,11 @@ class CFGPrinter extends CompilationPrinter {
      * 
      * @param block the block to print
      */
-    private void printLIR(Block block) {
+    private void printLIR(AbstractBlock<?> block) {
         if (lir == null) {
             return;
         }
-        List<LIRInstruction> lirInstructions = lir.lir(block);
+        List<LIRInstruction> lirInstructions = lir.getLIRforBlock(block);
         if (lirInstructions == null) {
             return;
         }
@@ -477,10 +479,10 @@ class CFGPrinter extends CompilationPrinter {
             prefix = "B";
         } else if (node instanceof ValueNode) {
             ValueNode value = (ValueNode) node;
-            if (value.kind() == Kind.Illegal) {
+            if (value.getKind() == Kind.Illegal) {
                 prefix = "v";
             } else {
-                prefix = String.valueOf(value.kind().getTypeChar());
+                prefix = String.valueOf(value.getKind().getTypeChar());
             }
         } else {
             prefix = "?";
@@ -488,13 +490,13 @@ class CFGPrinter extends CompilationPrinter {
         return prefix + node.toString(Verbosity.Id);
     }
 
-    private String blockToString(Block block) {
-        if (lir == null && schedule == null) {
+    private String blockToString(AbstractBlock<?> block) {
+        if (lir == null && schedule == null && block instanceof Block) {
             // During all the front-end phases, the block schedule is built only for the debug
             // output.
             // Therefore, the block numbers would be different for every CFG printed -> use the id
             // of the first instruction.
-            return "B" + block.getBeginNode().toString(Verbosity.Id);
+            return "B" + ((Block) block).getBeginNode().toString(Verbosity.Id);
         } else {
             // LIR instructions contain references to blocks and these blocks are printed as the
             // blockID -> use the blockID.

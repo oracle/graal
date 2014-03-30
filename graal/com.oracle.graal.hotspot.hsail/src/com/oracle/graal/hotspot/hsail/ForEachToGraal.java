@@ -42,6 +42,7 @@ import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.util.*;
 import com.oracle.graal.printer.*;
+import com.oracle.graal.gpu.*;
 
 /**
  * Implements compile and dispatch of Java code containing lambda constructs. Currently only used by
@@ -82,7 +83,7 @@ public class ForEachToGraal implements CompileAndDispatch {
         NodeIterable<MethodCallTargetNode> calls = graph.getNodes(MethodCallTargetNode.class);
         assert calls.count() == 1;
         ResolvedJavaMethod lambdaMethod = calls.first().targetMethod();
-        Debug.log("target ... " + lambdaMethod);
+        Debug.log("target ... %s", lambdaMethod);
 
         if (lambdaMethod == null) {
             Debug.log("Did not find call in accept()");
@@ -115,7 +116,7 @@ public class ForEachToGraal implements CompileAndDispatch {
                 getHSAILBackend().executeKernel(code, jobSize, args);
                 return true;
             } catch (InvalidInstalledCodeException iice) {
-                Debug.log("WARNING: Invalid installed code at exec time." + iice);
+                Debug.log("WARNING: Invalid installed code at exec time: %s", iice);
                 iice.printStackTrace();
                 return false;
             }

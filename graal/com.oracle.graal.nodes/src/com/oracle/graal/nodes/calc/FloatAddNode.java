@@ -26,6 +26,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
@@ -64,7 +65,7 @@ public final class FloatAddNode extends FloatArithmeticNode implements Canonical
     }
 
     @Override
-    public void generate(ArithmeticLIRGenerator gen) {
+    public void generate(NodeLIRGeneratorTool gen) {
         Value op1 = gen.operand(x());
         Value op2 = gen.operand(y());
         if (!y().isConstant() && !livesLonger(this, y(), gen)) {
@@ -72,15 +73,24 @@ public final class FloatAddNode extends FloatArithmeticNode implements Canonical
             op1 = op2;
             op2 = op;
         }
-        gen.setResult(this, gen.emitAdd(op1, op2));
+        gen.setResult(this, gen.getLIRGeneratorTool().emitAdd(op1, op2));
     }
 
-    public static boolean livesLonger(ValueNode after, ValueNode value, ArithmeticLIRGenerator gen) {
+    public static boolean livesLonger(ValueNode after, ValueNode value, NodeLIRGeneratorTool gen) {
         for (Node usage : value.usages()) {
-            if (usage != after && usage instanceof ValueNode && gen.operand(((ValueNode) usage)) != null) {
+            if (usage != after && usage instanceof ValueNode && gen.hasOperand(((ValueNode) usage))) {
                 return true;
             }
         }
         return false;
+    }
+
+    @Override
+    public boolean generate(MemoryArithmeticLIRLowerer gen, Access access) {
+        Value result = gen.emitAddMemory(x(), y(), access);
+        if (result != null) {
+            gen.setResult(this, result);
+        }
+        return result != null;
     }
 }

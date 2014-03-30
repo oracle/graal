@@ -31,6 +31,7 @@ import static com.oracle.graal.phases.GraalOptions.*;
 import static com.oracle.graal.phases.common.InliningUtil.*;
 
 import java.io.*;
+import java.lang.management.*;
 import java.lang.reflect.*;
 import java.util.*;
 import java.util.concurrent.*;
@@ -39,18 +40,22 @@ import java.util.concurrent.atomic.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.CallingConvention.Type;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.CompilerThreadFactory.CompilerThread;
+import com.oracle.graal.baseline.*;
+import com.oracle.graal.compiler.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.debug.internal.*;
 import com.oracle.graal.hotspot.bridge.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.phases.*;
+import com.oracle.graal.java.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.tiers.*;
+
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 
 public class CompilationTask implements Runnable, Comparable {
 
@@ -106,6 +111,12 @@ public class CompilationTask implements Runnable, Comparable {
 
     private boolean blocking;
 
+    /**
+     * A {@link com.sun.management.ThreadMXBean} to be able to query some information about the
+     * current compiler thread, e.g. total allocated bytes.
+     */
+    private final com.sun.management.ThreadMXBean threadMXBean = (com.sun.management.ThreadMXBean) ManagementFactory.getThreadMXBean();
+
     public CompilationTask(HotSpotBackend backend, HotSpotResolvedJavaMethod method, int entryBCI, boolean blocking) {
         this.backend = backend;
         this.method = method;
@@ -128,6 +139,7 @@ public class CompilationTask implements Runnable, Comparable {
         return entryBCI;
     }
 
+    @SuppressFBWarnings(value = "NN_NAKED_NOTIFY")
     public void run() {
         withinEnqueue.set(Boolean.FALSE);
         try {
@@ -208,9 +220,11 @@ public class CompilationTask implements Runnable, Comparable {
          */
 
         HotSpotVMConfig config = backend.getRuntime().getConfig();
+        final long threadId = Thread.currentThread().getId();
         long previousInlinedBytecodes = InlinedBytecodes.getCurrentValue();
         long previousCompilationTime = CompilationTime.getCurrentValue();
         HotSpotInstalledCode installedCode = null;
+
         try (TimerCloseable a = CompilationTime.start()) {
             if (!tryToChangeStatus(CompilationStatus.Queued, CompilationStatus.Running)) {
                 return;
@@ -235,36 +249,45 @@ public class CompilationTask implements Runnable, Comparable {
 
             CompilationResult result = null;
             TTY.Filter filter = new TTY.Filter(PrintFilter.getValue(), method);
-            long start = System.currentTimeMillis();
-            try (Scope s = Debug.scope("Compiling", new DebugDumpScope(String.valueOf(id), true))) {
-                Map<ResolvedJavaMethod, StructuredGraph> graphCache = null;
-                if (GraalOptions.CacheGraphs.getValue()) {
-                    graphCache = new HashMap<>();
-                }
+            final long start = System.currentTimeMillis();
+            final long allocatedBytesBefore = threadMXBean.getThreadAllocatedBytes(threadId);
 
-                HotSpotProviders providers = backend.getProviders();
-                Replacements replacements = providers.getReplacements();
-                graph = replacements.getMethodSubstitution(method);
-                if (graph == null || entryBCI != INVOCATION_ENTRY_BCI) {
-                    graph = new StructuredGraph(method, entryBCI);
+            try (Scope s = Debug.scope("Compiling", new DebugDumpScope(String.valueOf(id), true))) {
+
+                if (UseBaselineCompiler.getValue() == true) {
+                    HotSpotProviders providers = backend.getProviders();
+                    BaselineCompiler baselineCompiler = new BaselineCompiler(GraphBuilderConfiguration.getDefault(), providers.getMetaAccess());
+                    result = baselineCompiler.generate(method, -1, backend, new CompilationResult(), method, CompilationResultBuilderFactory.Default);
                 } else {
-                    // Compiling method substitution - must clone the graph
-                    graph = graph.copy();
+                    Map<ResolvedJavaMethod, StructuredGraph> graphCache = null;
+                    if (GraalOptions.CacheGraphs.getValue()) {
+                        graphCache = new HashMap<>();
+                    }
+
+                    HotSpotProviders providers = backend.getProviders();
+                    Replacements replacements = providers.getReplacements();
+                    graph = replacements.getMethodSubstitution(method);
+                    if (graph == null || entryBCI != INVOCATION_ENTRY_BCI) {
+                        graph = new StructuredGraph(method, entryBCI);
+                    } else {
+                        // Compiling method substitution - must clone the graph
+                        graph = graph.copy();
+                    }
+                    InlinedBytecodes.add(method.getCodeSize());
+                    CallingConvention cc = getCallingConvention(providers.getCodeCache(), Type.JavaCallee, graph.method(), false);
+                    if (graph.getEntryBCI() != StructuredGraph.INVOCATION_ENTRY_BCI) {
+                        // for OSR, only a pointer is passed to the method.
+                        JavaType[] parameterTypes = new JavaType[]{providers.getMetaAccess().lookupJavaType(long.class)};
+                        CallingConvention tmp = providers.getCodeCache().getRegisterConfig().getCallingConvention(JavaCallee, providers.getMetaAccess().lookupJavaType(void.class), parameterTypes,
+                                        backend.getTarget(), false);
+                        cc = new CallingConvention(cc.getStackSize(), cc.getReturn(), tmp.getArgument(0));
+                    }
+                    Suites suites = getSuites(providers);
+                    ProfilingInfo profilingInfo = getProfilingInfo();
+                    OptimisticOptimizations optimisticOpts = getOptimisticOpts(profilingInfo);
+                    result = compileGraph(graph, null, cc, method, providers, backend, backend.getTarget(), graphCache, getGraphBuilderSuite(providers), optimisticOpts, profilingInfo,
+                                    method.getSpeculationLog(), suites, new CompilationResult(), CompilationResultBuilderFactory.Default);
                 }
-                InlinedBytecodes.add(method.getCodeSize());
-                CallingConvention cc = getCallingConvention(providers.getCodeCache(), Type.JavaCallee, graph.method(), false);
-                if (graph.getEntryBCI() != StructuredGraph.INVOCATION_ENTRY_BCI) {
-                    // for OSR, only a pointer is passed to the method.
-                    JavaType[] parameterTypes = new JavaType[]{providers.getMetaAccess().lookupJavaType(long.class)};
-                    CallingConvention tmp = providers.getCodeCache().getRegisterConfig().getCallingConvention(JavaCallee, providers.getMetaAccess().lookupJavaType(void.class), parameterTypes,
-                                    backend.getTarget(), false);
-                    cc = new CallingConvention(cc.getStackSize(), cc.getReturn(), tmp.getArgument(0));
-                }
-                Suites suites = getSuites(providers);
-                ProfilingInfo profilingInfo = getProfilingInfo();
-                OptimisticOptimizations optimisticOpts = getOptimisticOpts(profilingInfo);
-                result = compileGraph(graph, null, cc, method, providers, backend, backend.getTarget(), graphCache, getGraphBuilderSuite(providers), optimisticOpts, profilingInfo,
-                                method.getSpeculationLog(), suites, new CompilationResult(), CompilationResultBuilderFactory.Default);
                 result.setId(getId());
                 result.setEntryBCI(entryBCI);
             } catch (Throwable e) {
@@ -272,10 +295,18 @@ public class CompilationTask implements Runnable, Comparable {
             } finally {
                 filter.remove();
                 final boolean printAfterCompilation = PrintAfterCompilation.getValue() && !TTY.isSuppressed();
-                if (printAfterCompilation) {
-                    TTY.println(getMethodDescription() + String.format(" | %4dms %5dB", System.currentTimeMillis() - start, (result != null ? result.getTargetCodeSize() : -1)));
-                } else if (printCompilation) {
-                    TTY.println(String.format("%-6d Graal %-70s %-45s %-50s | %4dms %5dB", id, "", "", "", System.currentTimeMillis() - start, (result != null ? result.getTargetCodeSize() : -1)));
+
+                if (printAfterCompilation || printCompilation) {
+                    final long stop = System.currentTimeMillis();
+                    final int targetCodeSize = result != null ? result.getTargetCodeSize() : -1;
+                    final long allocatedBytesAfter = threadMXBean.getThreadAllocatedBytes(threadId);
+                    final long allocatedBytes = (allocatedBytesAfter - allocatedBytesBefore) / 1024;
+
+                    if (printAfterCompilation) {
+                        TTY.println(getMethodDescription() + String.format(" | %4dms %5dB %5dkB", stop - start, targetCodeSize, allocatedBytes));
+                    } else if (printCompilation) {
+                        TTY.println(String.format("%-6d Graal %-70s %-45s %-50s | %4dms %5dB %5dkB", id, "", "", "", stop - start, targetCodeSize, allocatedBytes));
+                    }
                 }
             }
 

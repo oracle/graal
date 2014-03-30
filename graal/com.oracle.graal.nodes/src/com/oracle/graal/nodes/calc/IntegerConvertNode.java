@@ -31,7 +31,7 @@ import com.oracle.graal.nodes.type.*;
 /**
  * An {@code IntegerConvert} converts an integer to an integer of different width.
  */
-public abstract class IntegerConvertNode extends ConvertNode implements ArithmeticLIRLowerable, Canonicalizable {
+public abstract class IntegerConvertNode extends ConvertNode implements ArithmeticLIRLowerable, Canonicalizable, MemoryArithmeticLIRLowerable {
 
     private final int resultBits;
 

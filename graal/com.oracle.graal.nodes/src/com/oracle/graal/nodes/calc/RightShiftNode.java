@@ -39,10 +39,10 @@ public final class RightShiftNode extends ShiftNode implements Canonicalizable {
     @Override
     public Constant evalConst(Constant... inputs) {
         assert inputs.length == 2;
-        if (kind() == Kind.Int) {
+        if (getKind() == Kind.Int) {
             return Constant.forInt(inputs[0].asInt() >> inputs[1].asInt());
         } else {
-            assert kind() == Kind.Long;
+            assert getKind() == Kind.Long;
             return Constant.forLong(inputs[0].asLong() >> inputs[1].asLong());
         }
     }
@@ -57,13 +57,7 @@ public final class RightShiftNode extends ShiftNode implements Canonicalizable {
         } else if (y().isConstant()) {
             int amount = y().asConstant().asInt();
             int originalAmout = amount;
-            int mask;
-            if (kind() == Kind.Int) {
-                mask = 0x1f;
-            } else {
-                assert kind() == Kind.Long;
-                mask = 0x3f;
-            }
+            int mask = getShiftAmountMask();
             amount &= mask;
             if (amount == 0) {
                 return x();
@@ -79,10 +73,10 @@ public final class RightShiftNode extends ShiftNode implements Canonicalizable {
                             IntegerStamp istamp = (IntegerStamp) other.x().stamp();
 
                             if (istamp.isPositive()) {
-                                return ConstantNode.forIntegerKind(kind(), 0, graph());
+                                return ConstantNode.forIntegerKind(getKind(), 0, graph());
                             }
                             if (istamp.isStrictlyNegative()) {
-                                return ConstantNode.forIntegerKind(kind(), -1L, graph());
+                                return ConstantNode.forIntegerKind(getKind(), -1L, graph());
                             }
 
                             /*
@@ -104,7 +98,7 @@ public final class RightShiftNode extends ShiftNode implements Canonicalizable {
     }
 
     @Override
-    public void generate(ArithmeticLIRGenerator gen) {
-        gen.setResult(this, gen.emitShr(gen.operand(x()), gen.operand(y())));
+    public void generate(NodeLIRGeneratorTool gen) {
+        gen.setResult(this, gen.getLIRGeneratorTool().emitShr(gen.operand(x()), gen.operand(y())));
     }
 }

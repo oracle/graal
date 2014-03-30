@@ -24,6 +24,8 @@ package com.oracle.graal.replacements;
 
 import static com.oracle.graal.api.meta.LocationIdentity.*;
 import static com.oracle.graal.api.meta.MetaUtil.*;
+import static com.oracle.graal.debug.Debug.*;
+import static java.util.FormattableFlags.*;
 
 import java.io.*;
 import java.lang.reflect.*;
@@ -97,8 +99,8 @@ public class SnippetTemplate {
 
         protected SnippetInfo(ResolvedJavaMethod method) {
             this.method = method;
-            instantiationCounter = Debug.metric(new MethodDebugValueName("SnippetInstantiationCount", method));
-            instantiationTimer = Debug.timer(new MethodDebugValueName("SnippetInstantiationTime", method));
+            instantiationCounter = Debug.metric("SnippetInstantiationCount[%s]", method);
+            instantiationTimer = Debug.timer("SnippetInstantiationTime[%s]", method);
             assert Modifier.isStatic(method.getModifiers()) : "snippet method must be static: " + MetaUtil.format("%H.%n", method);
             int count = method.getSignature().getParameterCount(false);
             constantParameters = new boolean[count];
@@ -176,7 +178,7 @@ public class SnippetTemplate {
      * {@link SnippetTemplate#instantiate instantiated}
      * </ul>
      */
-    public static class Arguments {
+    public static class Arguments implements Formattable {
 
         protected final SnippetInfo info;
         protected final CacheKey cacheKey;
@@ -242,6 +244,30 @@ public class SnippetTemplate {
             }
             result.append(">");
             return result.toString();
+        }
+
+        public void formatTo(Formatter formatter, int flags, int width, int precision) {
+            if ((flags & ALTERNATE) == 0) {
+                formatter.format(applyFormattingFlagsAndWidth(toString(), flags, width));
+            } else {
+                StringBuilder sb = new StringBuilder();
+                sb.append(info.method.getName()).append('(');
+                String sep = "";
+                for (int i = 0; i < info.getParameterCount(); i++) {
+                    if (info.isConstantParameter(i)) {
+                        sb.append(sep);
+                        if (info.names[i] != null) {
+                            sb.append(info.names[i]);
+                        } else {
+                            sb.append(i);
+                        }
+                        sb.append('=').append(values[i]);
+                        sep = ", ";
+                    }
+                }
+                sb.append(")");
+                formatter.format(applyFormattingFlagsAndWidth(sb.toString(), flags & ~ALTERNATE, width));
+            }
         }
     }
 
@@ -440,38 +466,13 @@ public class SnippetTemplate {
         return false;
     }
 
-    private static String debugValueName(String category, Arguments args) {
-        if (Debug.isEnabled()) {
-            StringBuilder result = new StringBuilder(category).append('[');
-            SnippetInfo info = args.info;
-            result.append(info.method.getName()).append('(');
-            String sep = "";
-            for (int i = 0; i < info.getParameterCount(); i++) {
-                if (info.isConstantParameter(i)) {
-                    result.append(sep);
-                    if (info.names[i] != null) {
-                        result.append(info.names[i]);
-                    } else {
-                        result.append(i);
-                    }
-                    result.append('=').append(args.values[i]);
-                    sep = ", ";
-                }
-            }
-            result.append(")]");
-            return result.toString();
-
-        }
-        return null;
-    }
-
     /**
      * Creates a snippet template.
      */
     protected SnippetTemplate(final Providers providers, Arguments args) {
         StructuredGraph snippetGraph = providers.getReplacements().getSnippet(args.info.method);
-        instantiationTimer = Debug.timer(debugValueName("SnippetTemplateInstantiationTime", args));
-        instantiationCounter = Debug.metric(debugValueName("SnippetTemplateInstantiationCount", args));
+        instantiationTimer = Debug.timer("SnippetTemplateInstantiationTime[%#s]", args);
+        instantiationCounter = Debug.metric("SnippetTemplateInstantiationCount[%#s]", args);
 
         ResolvedJavaMethod method = snippetGraph.method();
         Signature signature = method.getSignature();
@@ -665,7 +666,7 @@ public class SnippetTemplate {
             }
         }
 
-        Debug.metric(debugValueName("SnippetTemplateNodeCount", args)).add(nodes.size());
+        Debug.metric("SnippetTemplateNodeCount[%#s]", args).add(nodes.size());
         args.info.notifyNewTemplate();
         Debug.dump(snippet, "SnippetTemplate final state");
     }
@@ -727,8 +728,8 @@ public class SnippetTemplate {
     private final ArrayList<StateSplit> sideEffectNodes;
 
     /**
-     * Nodes that inherit the {@link DeoptimizingNode#getDeoptimizationState()} from the replacee
-     * during instantiation.
+     * Nodes that inherit a deoptimization {@link FrameState} from the replacee during
+     * instantiation.
      */
     private final ArrayList<DeoptimizingNode> deoptNodes;
 
@@ -777,7 +778,7 @@ public class SnippetTemplate {
                 if (argument instanceof ValueNode) {
                     replacements.put((ParameterNode) parameter, (ValueNode) argument);
                 } else {
-                    Kind kind = ((ParameterNode) parameter).kind();
+                    Kind kind = ((ParameterNode) parameter).getKind();
                     assert argument != null || kind == Kind.Object : this + " cannot accept null for non-object parameter named " + args.info.names[i];
                     Constant constant = forBoxed(argument, kind);
                     replacements.put((ParameterNode) parameter, ConstantNode.forConstant(constant, metaAccess, replaceeGraph));
@@ -804,7 +805,7 @@ public class SnippetTemplate {
                     if (value instanceof ValueNode) {
                         replacements.put(param, (ValueNode) value);
                     } else {
-                        Constant constant = forBoxed(value, param.kind());
+                        Constant constant = forBoxed(value, param.getKind());
                         ConstantNode element = ConstantNode.forConstant(constant, metaAccess, replaceeGraph);
                         replacements.put(param, element);
                     }
@@ -1023,11 +1024,50 @@ public class SnippetTemplate {
 
             if (replacee instanceof DeoptimizingNode) {
                 DeoptimizingNode replaceeDeopt = (DeoptimizingNode) replacee;
-                FrameState state = replaceeDeopt.getDeoptimizationState();
+
+                FrameState stateBefore = null;
+                FrameState stateDuring = null;
+                FrameState stateAfter = null;
+                if (replaceeDeopt.canDeoptimize()) {
+                    if (replaceeDeopt instanceof DeoptimizingNode.DeoptBefore) {
+                        stateBefore = ((DeoptimizingNode.DeoptBefore) replaceeDeopt).stateBefore();
+                    }
+                    if (replaceeDeopt instanceof DeoptimizingNode.DeoptDuring) {
+                        stateDuring = ((DeoptimizingNode.DeoptDuring) replaceeDeopt).stateDuring();
+                    }
+                    if (replaceeDeopt instanceof DeoptimizingNode.DeoptAfter) {
+                        stateAfter = ((DeoptimizingNode.DeoptAfter) replaceeDeopt).stateAfter();
+                    }
+                }
+
                 for (DeoptimizingNode deoptNode : deoptNodes) {
                     DeoptimizingNode deoptDup = (DeoptimizingNode) duplicates.get(deoptNode);
-                    assert replaceeDeopt.canDeoptimize() || !deoptDup.canDeoptimize();
-                    deoptDup.setDeoptimizationState(state);
+                    if (deoptDup.canDeoptimize()) {
+                        if (deoptDup instanceof DeoptimizingNode.DeoptBefore) {
+                            ((DeoptimizingNode.DeoptBefore) deoptDup).setStateBefore(stateBefore);
+                        }
+                        if (deoptDup instanceof DeoptimizingNode.DeoptDuring) {
+                            DeoptimizingNode.DeoptDuring deoptDupDuring = (DeoptimizingNode.DeoptDuring) deoptDup;
+                            if (stateDuring != null) {
+                                deoptDupDuring.setStateDuring(stateDuring);
+                            } else if (stateAfter != null) {
+                                deoptDupDuring.computeStateDuring(stateAfter);
+                            } else if (stateBefore != null) {
+                                assert !deoptDupDuring.hasSideEffect() : "can't use stateBefore as stateDuring for state split " + deoptDupDuring;
+                                deoptDupDuring.setStateDuring(stateBefore);
+                            }
+                        }
+                        if (deoptDup instanceof DeoptimizingNode.DeoptAfter) {
+                            DeoptimizingNode.DeoptAfter deoptDupAfter = (DeoptimizingNode.DeoptAfter) deoptDup;
+                            if (stateAfter != null) {
+                                deoptDupAfter.setStateAfter(stateAfter);
+                            } else {
+                                assert !deoptDupAfter.hasSideEffect() : "can't use stateBefore as stateAfter for state split " + deoptDupAfter;
+                                deoptDupAfter.setStateAfter(stateBefore);
+                            }
+
+                        }
+                    }
                 }
             }
 
@@ -1171,10 +1211,10 @@ public class SnippetTemplate {
                 buf.append("<constant> ").append(name);
             } else if (value instanceof ParameterNode) {
                 ParameterNode param = (ParameterNode) value;
-                buf.append(param.kind().getJavaName()).append(' ').append(name);
+                buf.append(param.getKind().getJavaName()).append(' ').append(name);
             } else {
                 ParameterNode[] params = (ParameterNode[]) value;
-                String kind = params.length == 0 ? "?" : params[0].kind().getJavaName();
+                String kind = params.length == 0 ? "?" : params[0].getKind().getJavaName();
                 buf.append(kind).append('[').append(params.length).append("] ").append(name);
             }
         }

@@ -28,7 +28,7 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 
-public class ControlFlowGraph {
+public class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
 
     public final StructuredGraph graph;
 

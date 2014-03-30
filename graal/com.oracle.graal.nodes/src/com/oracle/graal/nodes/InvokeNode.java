@@ -38,7 +38,7 @@ import com.oracle.graal.nodes.util.*;
 public final class InvokeNode extends AbstractMemoryCheckpoint implements Invoke, LIRLowerable, MemoryCheckpoint.Single {
 
     @Input private CallTargetNode callTarget;
-    @Input private FrameState deoptState;
+    @Input private FrameState stateDuring;
     @Input private GuardingNode guard;
     private final int bci;
     private boolean polymorphic;
@@ -113,7 +113,7 @@ public final class InvokeNode extends AbstractMemoryCheckpoint implements Invoke
     }
 
     @Override
-    public void generate(LIRGeneratorTool gen) {
+    public void generate(NodeLIRGeneratorTool gen) {
         gen.emitInvoke(this);
     }
 
@@ -133,19 +133,8 @@ public final class InvokeNode extends AbstractMemoryCheckpoint implements Invoke
     }
 
     @Override
-    public FrameState stateDuring() {
-        FrameState stateAfter = stateAfter();
-        if (stateAfter == null) {
-            return null;
-        }
-        FrameState stateDuring = stateAfter.duplicateModified(bci(), stateAfter.rethrowException(), kind());
-        stateDuring.setDuringCall(true);
-        return stateDuring;
-    }
-
-    @Override
     public void intrinsify(Node node) {
-        assert !(node instanceof ValueNode) || (((ValueNode) node).kind() == Kind.Void) == (kind() == Kind.Void);
+        assert !(node instanceof ValueNode) || (((ValueNode) node).getKind() == Kind.Void) == (getKind() == Kind.Void);
         CallTargetNode call = callTarget;
         FrameState stateAfter = stateAfter();
         if (node instanceof StateSplit) {
@@ -174,18 +163,21 @@ public final class InvokeNode extends AbstractMemoryCheckpoint implements Invoke
     }
 
     @Override
-    public FrameState getDeoptimizationState() {
-        if (deoptState == null) {
-            FrameState stateDuring = stateDuring();
-            updateUsages(deoptState, stateDuring);
-            deoptState = stateDuring;
-        }
-        return deoptState;
+    public FrameState stateDuring() {
+        return stateDuring;
     }
 
     @Override
-    public void setDeoptimizationState(FrameState f) {
-        throw new IllegalStateException("Cannot set deoptimization state " + f + " for invoke " + this);
+    public void setStateDuring(FrameState stateDuring) {
+        updateUsages(this.stateDuring, stateDuring);
+        this.stateDuring = stateDuring;
+    }
+
+    @Override
+    public void computeStateDuring(FrameState stateAfter) {
+        FrameState newStateDuring = stateAfter.duplicateModified(bci(), stateAfter.rethrowException(), getKind());
+        newStateDuring.setDuringCall(true);
+        setStateDuring(newStateDuring);
     }
 
     @Override
@@ -197,15 +189,5 @@ public final class InvokeNode extends AbstractMemoryCheckpoint implements Invoke
     public void setGuard(GuardingNode guard) {
         updateUsages(this.guard == null ? null : this.guard.asNode(), guard == null ? null : guard.asNode());
         this.guard = guard;
-    }
-
-    @Override
-    public FrameState getState() {
-        if (deoptState != null) {
-            assert stateAfter() == null;
-            return deoptState;
-        } else {
-            return super.getState();
-        }
     }
 }

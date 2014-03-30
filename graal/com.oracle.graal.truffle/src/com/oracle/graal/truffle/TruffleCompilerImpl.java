@@ -98,18 +98,19 @@ public class TruffleCompilerImpl implements TruffleCompiler {
         ResolvedJavaType[] skippedExceptionTypes = getSkippedExceptionTypes(providers.getMetaAccess());
         GraphBuilderConfiguration eagerConfig = GraphBuilderConfiguration.getEagerDefault();
         eagerConfig.setSkippedExceptionTypes(skippedExceptionTypes);
-        this.truffleCache = new TruffleCache(providers, eagerConfig, TruffleCompilerImpl.Optimizations);
-
         this.config = GraphBuilderConfiguration.getDefault();
         this.config.setSkippedExceptionTypes(skippedExceptionTypes);
-        this.partialEvaluator = new PartialEvaluator(providers, truffleCache, config);
+
+        this.truffleCache = new TruffleCacheImpl(providers, eagerConfig, config, TruffleCompilerImpl.Optimizations);
+
+        this.partialEvaluator = new PartialEvaluator(providers, truffleCache);
 
         if (Debug.isEnabled()) {
             DebugEnvironment.initialize(System.out);
         }
     }
 
-    private static ResolvedJavaType[] getSkippedExceptionTypes(MetaAccessProvider metaAccess) {
+    public static ResolvedJavaType[] getSkippedExceptionTypes(MetaAccessProvider metaAccess) {
         ResolvedJavaType[] skippedExceptionTypes = new ResolvedJavaType[SKIPPED_EXCEPTION_CLASSES.length];
         for (int i = 0; i < SKIPPED_EXCEPTION_CLASSES.length; i++) {
             skippedExceptionTypes[i] = metaAccess.lookupJavaType(SKIPPED_EXCEPTION_CLASSES[i]);
@@ -122,7 +123,7 @@ public class TruffleCompilerImpl implements TruffleCompiler {
             @Override
             public InstalledCode call() throws Exception {
                 try (Scope s = Debug.scope("Truffle", new TruffleDebugJavaMethod(compilable))) {
-                    return compileMethodImpl(compilable);
+                    return compileMethodImpl((OptimizedCallTargetImpl) compilable);
                 } catch (Throwable e) {
                     throw Debug.handle(e);
                 }
@@ -134,11 +135,11 @@ public class TruffleCompilerImpl implements TruffleCompiler {
     public static final DebugTimer CompilationTime = Debug.timer("CompilationTime");
     public static final DebugTimer CodeInstallationTime = Debug.timer("CodeInstallation");
 
-    private InstalledCode compileMethodImpl(final OptimizedCallTarget compilable) {
+    private InstalledCode compileMethodImpl(final OptimizedCallTargetImpl compilable) {
         final StructuredGraph graph;
 
         if (TraceTruffleCompilation.getValue()) {
-            OptimizedCallTarget.logOptimizingStart(compilable);
+            OptimizedCallTargetImpl.logOptimizingStart(compilable);
         }
 
         if (TraceTruffleInliningTree.getValue()) {
@@ -178,7 +179,7 @@ public class TruffleCompilerImpl implements TruffleCompiler {
             properties.put("CodeSize", code != null ? code.length : 0);
             properties.put("Source", formatSourceSection(compilable.getRootNode().getSourceSection()));
 
-            OptimizedCallTarget.logOptimizingDone(compilable, properties);
+            OptimizedCallTargetImpl.logOptimizingDone(compilable, properties);
         }
         return compiledMethod;
     }

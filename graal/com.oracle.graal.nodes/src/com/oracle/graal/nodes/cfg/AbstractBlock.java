@@ -22,13 +22,11 @@
  */
 package com.oracle.graal.nodes.cfg;
 
-import com.oracle.graal.nodes.*;
+import java.util.*;
 
 public interface AbstractBlock<T extends AbstractBlock<?>> {
 
     int getId();
-
-    AbstractBeginNode getBeginNode();
 
     Loop getLoop();
 
@@ -40,11 +38,11 @@ public interface AbstractBlock<T extends AbstractBlock<?>> {
 
     boolean isExceptionEntry();
 
-    Iterable<T> getPredecessors();
+    List<T> getPredecessors();
 
     int getPredecessorCount();
 
-    Iterable<T> getSuccessors();
+    List<T> getSuccessors();
 
     int getSuccessorCount();
 
@@ -55,4 +53,6 @@ public interface AbstractBlock<T extends AbstractBlock<?>> {
     boolean isAligned();
 
     void setAlign(boolean align);
+
+    T getDominator();
 }

@@ -52,7 +52,6 @@ public final class DebugScope implements Debug.Scope {
             }
         }
 
-        @Override
         public void log(String msg, Object... args) {
             if (isLogEnabled()) {
                 printScopeName();
@@ -61,29 +60,16 @@ public final class DebugScope implements Debug.Scope {
             }
         }
 
-        @Override
-        public Indent indent() {
+        IndentImpl indent() {
             lastUsedIndent = new IndentImpl(this);
             return lastUsedIndent;
         }
 
         @Override
-        public Indent logAndIndent(String msg, Object... args) {
-            log(msg, args);
-            return indent();
-        }
-
-        @Override
-        public Indent outdent() {
+        public void close() {
             if (parentIndent != null) {
                 lastUsedIndent = parentIndent;
             }
-            return lastUsedIndent;
-        }
-
-        @Override
-        public void close() {
-            outdent();
         }
     }
 
@@ -194,7 +180,7 @@ public final class DebugScope implements Debug.Scope {
         }
     }
 
-    public void dump(Object object, String formatString, Object[] args) {
+    public void dump(Object object, String formatString, Object... args) {
         if (isDumpEnabled()) {
             DebugConfig config = getConfig();
             if (config != null) {
@@ -209,7 +195,7 @@ public final class DebugScope implements Debug.Scope {
     /**
      * This method exists mainly to allow a debugger (e.g., Eclipse) to force dump a graph.
      */
-    public static void dump(Object object, String message) {
+    public static void forceDump(Object object, String message) {
         DebugConfig config = getConfig();
         if (config != null) {
             for (DebugDumpHandler dumpHandler : config.dumpHandlers()) {
@@ -224,7 +210,7 @@ public final class DebugScope implements Debug.Scope {
     /**
      * Creates and enters a new debug scope which is either a child of the current scope or a
      * disjoint top level scope.
-     * 
+     *
      * @param name the name of the new scope
      * @param sandboxConfig the configuration to use for a new top level scope, or null if the new
      *            scope should be a child scope
@@ -387,7 +373,7 @@ public final class DebugScope implements Debug.Scope {
     }
 
     public Indent pushIndentLogger() {
-        lastUsedIndent = (IndentImpl) lastUsedIndent.indent();
+        lastUsedIndent = lastUsedIndent.indent();
         return lastUsedIndent;
     }
 }

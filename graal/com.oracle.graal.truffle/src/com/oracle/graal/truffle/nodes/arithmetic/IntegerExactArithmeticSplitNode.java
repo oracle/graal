@@ -23,14 +23,12 @@
 package com.oracle.graal.truffle.nodes.arithmetic;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.gen.*;
-import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
-public abstract class IntegerExactArithmeticSplitNode extends ControlSplitNode implements LIRGenLowerable {
+public abstract class IntegerExactArithmeticSplitNode extends ControlSplitNode implements LIRLowerable {
 
     @Successor private AbstractBeginNode overflowSuccessor;
     @Successor private AbstractBeginNode next;
@@ -72,12 +70,12 @@ public abstract class IntegerExactArithmeticSplitNode extends ControlSplitNode i
     }
 
     @Override
-    public void generate(LIRGenerator generator) {
+    public void generate(NodeLIRGeneratorTool generator) {
         generator.setResult(this, generateArithmetic(generator));
-        generator.emitOverflowCheckBranch(generator.getLIRBlock(getOverflowSuccessor()), generator.getLIRBlock(getNext()), probability(getOverflowSuccessor()));
+        generator.emitOverflowCheckBranch(getOverflowSuccessor(), getNext(), probability(getOverflowSuccessor()));
     }
 
-    protected abstract Value generateArithmetic(LIRGeneratorTool generator);
+    protected abstract Value generateArithmetic(NodeLIRGeneratorTool generator);
 
     static void lower(LoweringTool tool, IntegerExactArithmeticNode node) {
         if (node.asNode().graph().getGuardsStage() == StructuredGraph.GuardsStage.FIXED_DEOPTS) {

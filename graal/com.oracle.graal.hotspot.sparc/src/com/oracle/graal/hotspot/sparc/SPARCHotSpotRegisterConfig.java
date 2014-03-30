@@ -144,6 +144,11 @@ public class SPARCHotSpotRegisterConfig implements RegisterConfig {
     }
 
     @Override
+    public boolean areAllAllocatableRegistersCallerSaved() {
+        return false;
+    }
+
+    @Override
     public Register getRegisterForRole(int index) {
         throw new UnsupportedOperationException();
     }

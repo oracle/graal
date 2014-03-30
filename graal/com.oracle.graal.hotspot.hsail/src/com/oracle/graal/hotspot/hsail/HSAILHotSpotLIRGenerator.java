@@ -23,58 +23,69 @@
 
 package com.oracle.graal.hotspot.hsail;
 
-import sun.misc.*;
+import static com.oracle.graal.api.code.ValueUtil.*;
 
 import com.oracle.graal.api.code.*;
-import static com.oracle.graal.api.code.ValueUtil.asConstant;
-import static com.oracle.graal.api.code.ValueUtil.isConstant;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.hsail.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
+import com.oracle.graal.hotspot.HotSpotVMConfig.CompressEncoding;
+import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.hsail.*;
-import com.oracle.graal.lir.hsail.HSAILControlFlow.*;
-import com.oracle.graal.lir.hsail.HSAILMove.*;
-import com.oracle.graal.phases.util.*;
+import com.oracle.graal.lir.hsail.HSAILControlFlow.DeoptimizeOp;
+import com.oracle.graal.lir.hsail.HSAILControlFlow.ForeignCall1ArgOp;
+import com.oracle.graal.lir.hsail.HSAILControlFlow.ForeignCall2ArgOp;
+import com.oracle.graal.lir.hsail.HSAILControlFlow.ForeignCallNoArgOp;
+import com.oracle.graal.lir.hsail.HSAILMove.LoadCompressedPointer;
+import com.oracle.graal.lir.hsail.HSAILMove.LoadOp;
+import com.oracle.graal.lir.hsail.HSAILMove.StoreCompressedPointer;
+import com.oracle.graal.lir.hsail.HSAILMove.StoreConstantOp;
+import com.oracle.graal.lir.hsail.HSAILMove.StoreOp;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
-import com.oracle.graal.nodes.java.*;
-import com.oracle.graal.graph.*;
+import com.oracle.graal.phases.util.*;
 
 /**
  * The HotSpot specific portion of the HSAIL LIR generator.
  */
 public class HSAILHotSpotLIRGenerator extends HSAILLIRGenerator {
 
-    private final HotSpotVMConfig config;
+    final HotSpotVMConfig config;
 
-    public HSAILHotSpotLIRGenerator(StructuredGraph graph, Providers providers, HotSpotVMConfig config, FrameMap frameMap, CallingConvention cc, LIR lir) {
-        super(graph, providers, frameMap, cc, lir);
+    public HSAILHotSpotLIRGenerator(Providers providers, HotSpotVMConfig config, CallingConvention cc, LIRGenerationResult lirGenRes) {
+        super(providers, cc, lirGenRes);
         this.config = config;
     }
 
-    private int getLogMinObjectAlignment() {
+    @Override
+    public HotSpotProviders getProviders() {
+        return (HotSpotProviders) super.getProviders();
+    }
+
+    int getLogMinObjectAlignment() {
         return config.logMinObjAlignment();
     }
 
-    private int getNarrowOopShift() {
+    int getNarrowOopShift() {
         return config.narrowOopShift;
     }
 
-    private long getNarrowOopBase() {
+    long getNarrowOopBase() {
         return config.narrowOopBase;
     }
 
-    private int getLogKlassAlignment() {
+    int getLogKlassAlignment() {
         return config.logKlassAlignment;
     }
 
-    private int getNarrowKlassShift() {
+    int getNarrowKlassShift() {
         return config.narrowKlassShift;
     }
 
-    private long getNarrowKlassBase() {
+    long getNarrowKlassBase() {
         return config.narrowKlassBase;
     }
 
@@ -85,41 +96,6 @@ public class HSAILHotSpotLIRGenerator extends HSAILLIRGenerator {
     @Override
     public boolean canStoreConstant(Constant c, boolean isCompressed) {
         return true;
-    }
-
-    /**
-     * Appends either a {@link CompareAndSwapOp} or a {@link CompareAndSwapCompressedOp} depending
-     * on whether the memory location of a given {@link LoweredCompareAndSwapNode} contains a
-     * compressed oop. For the {@link CompareAndSwapCompressedOp} case, allocates a number of
-     * scratch registers. The result {@link #operand(ValueNode) operand} for {@code node} complies
-     * with the API for {@link Unsafe#compareAndSwapInt(Object, long, int, int)}.
-     * 
-     * @param address the memory location targeted by the operation
-     */
-    @Override
-    public void visitCompareAndSwap(LoweredCompareAndSwapNode node, Value address) {
-        Kind kind = node.getNewValue().kind();
-        assert kind == node.getExpectedValue().kind();
-        Variable expected = load(operand(node.getExpectedValue()));
-        Variable newValue = load(operand(node.getNewValue()));
-        HSAILAddressValue addressValue = asAddressValue(address);
-        Variable casResult = newVariable(kind);
-        if (config.useCompressedOops && node.isCompressible()) {
-            // make 64-bit scratch variables for expected and new
-            Variable scratchExpected64 = newVariable(Kind.Long);
-            Variable scratchNewValue64 = newVariable(Kind.Long);
-            // make 32-bit scratch variables for expected and new and result
-            Variable scratchExpected32 = newVariable(Kind.Int);
-            Variable scratchNewValue32 = newVariable(Kind.Int);
-            Variable scratchCasResult32 = newVariable(Kind.Int);
-            append(new CompareAndSwapCompressedOp(casResult, addressValue, expected, newValue, scratchExpected64, scratchNewValue64, scratchExpected32, scratchNewValue32, scratchCasResult32,
-                            getNarrowOopBase(), getNarrowOopShift(), getLogMinObjectAlignment()));
-        } else {
-            append(new CompareAndSwapOp(casResult, addressValue, expected, newValue));
-        }
-        Variable nodeResult = newVariable(node.kind());
-        append(new CondMoveOp(mapKindToCompareOp(kind), casResult, expected, nodeResult, Condition.EQ, Constant.INT_1, Constant.INT_0));
-        setResult(node, nodeResult);
     }
 
     /**
@@ -163,6 +139,9 @@ public class HSAILHotSpotLIRGenerator extends HSAILLIRGenerator {
                 if (isCompressed) {
                     if ((c.getKind() == Kind.Object) && c.isNull()) {
                         append(new StoreConstantOp(Kind.Int, storeAddress, Constant.forInt(0), state));
+                    } else if (c.getKind() == Kind.Long) {
+                        Constant value = compress(c, config.getKlassEncoding());
+                        append(new StoreConstantOp(Kind.Int, storeAddress, value, state));
                     } else {
                         throw GraalInternalError.shouldNotReachHere("can't handle: " + access);
                     }
@@ -185,11 +164,25 @@ public class HSAILHotSpotLIRGenerator extends HSAILLIRGenerator {
         }
     }
 
+    @Override
+    public void emitDeoptimize(Value actionAndReason, Value failedSpeculation, DeoptimizingNode deopting) {
+        emitDeoptimizeInner(actionAndReason, state(deopting), "emitDeoptimize");
+    }
+
+    /***
+     * We need 64-bit and 32-bit scratch registers for the codegen $s0 can be live at this block.
+     */
+    private void emitDeoptimizeInner(Value actionAndReason, LIRFrameState lirFrameState, String emitName) {
+        DeoptimizeOp deopt = new DeoptimizeOp(actionAndReason, lirFrameState, emitName, getMetaAccess());
+        ((HSAILHotSpotLIRGenerationResult) res).addDeopt(deopt);
+        append(deopt);
+    }
+
     /***
      * This is a very temporary solution to emitForeignCall. We don't really support foreign calls
      * yet, but we do want to generate dummy code for them. The ForeignCallXXXOps just end up
      * emitting a comment as to what Foreign call they would have made.
-     **/
+     */
     @Override
     public Variable emitForeignCall(ForeignCallLinkage linkage, DeoptimizingNode info, Value... args) {
         Variable result = newVariable(Kind.Object);  // linkage.getDescriptor().getResultType());
@@ -226,4 +219,14 @@ public class HSAILHotSpotLIRGenerator extends HSAILLIRGenerator {
         // this version of emitForeignCall not used for now
     }
 
+    /**
+     * @return a compressed version of the incoming constant lifted from AMD64HotSpotLIRGenerator
+     */
+    protected static Constant compress(Constant c, CompressEncoding encoding) {
+        if (c.getKind() == Kind.Long) {
+            return Constant.forIntegerKind(Kind.Int, (int) (((c.asLong() - encoding.base) >> encoding.shift) & 0xffffffffL), c.getPrimitiveAnnotation());
+        } else {
+            throw GraalInternalError.shouldNotReachHere();
+        }
+    }
 }

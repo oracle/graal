@@ -60,13 +60,16 @@ public final class FloatingReadNode extends FloatingAccessNode implements Iterab
     }
 
     @Override
-    public void generate(LIRGeneratorTool gen) {
+    public void generate(NodeLIRGeneratorTool gen) {
         Value address = location().generateAddress(gen, gen.operand(object()));
-        gen.setResult(this, gen.emitLoad(location().getValueKind(), address, this));
+        gen.setResult(this, gen.getLIRGeneratorTool().emitLoad(location().getValueKind(), address, this));
     }
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
+        if (object() instanceof PiNode && ((PiNode) object()).getGuard() == getGuard()) {
+            return graph().unique(new FloatingReadNode(((PiNode) object()).getOriginalValue(), location(), getLastLocationAccess(), stamp(), getGuard(), getBarrierType(), isCompressible()));
+        }
         return ReadNode.canonicalizeRead(this, location(), object(), tool, isCompressible());
     }
 

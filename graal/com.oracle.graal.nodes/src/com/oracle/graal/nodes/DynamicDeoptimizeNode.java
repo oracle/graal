@@ -54,8 +54,8 @@ public class DynamicDeoptimizeNode extends AbstractDeoptimizeNode implements LIR
         return getSpeculation();
     }
 
-    public void generate(LIRGeneratorTool generator) {
-        generator.emitDeoptimize(generator.operand(actionAndReason), generator.operand(speculation), this);
+    public void generate(NodeLIRGeneratorTool generator) {
+        generator.getLIRGeneratorTool().emitDeoptimize(generator.operand(actionAndReason), generator.operand(speculation), this);
     }
 
     @Override
@@ -66,7 +66,7 @@ public class DynamicDeoptimizeNode extends AbstractDeoptimizeNode implements LIR
             DeoptimizeNode newDeopt = graph().add(
                             new DeoptimizeNode(tool.getMetaAccess().decodeDeoptAction(constant), tool.getMetaAccess().decodeDeoptReason(constant), tool.getMetaAccess().decodeDebugId(constant),
                                             speculationConstant));
-            newDeopt.setDeoptimizationState(getDeoptimizationState());
+            newDeopt.setStateBefore(stateBefore());
             return newDeopt;
         }
         return this;

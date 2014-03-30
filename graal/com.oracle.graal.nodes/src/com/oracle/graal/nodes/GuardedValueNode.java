@@ -53,8 +53,8 @@ public class GuardedValueNode extends FloatingGuardedNode implements LIRLowerabl
     }
 
     @Override
-    public void generate(LIRGeneratorTool generator) {
-        if (object.kind() != Kind.Void && object.kind() != Kind.Illegal) {
+    public void generate(NodeLIRGeneratorTool generator) {
+        if (object.getKind() != Kind.Void && object.getKind() != Kind.Illegal) {
             generator.setResult(this, generator.operand(object));
         }
     }

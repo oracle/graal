@@ -71,7 +71,7 @@ public class CompilerDirectivesSubstitutions {
     public static native void bailout(String reason);
 
     @MacroSubstitution(macro = UnsafeTypeCastMacroNode.class, isStatic = true)
-    public static native Object unsafeCast(Object value, Class clazz, boolean condition);
+    public static native Object unsafeCast(Object value, Class clazz, boolean condition, boolean nonNull);
 
     @MethodSubstitution
     private static Class<? extends MaterializedFrame> getUnsafeFrameType() {

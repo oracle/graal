@@ -61,7 +61,7 @@ public final class TypeSwitchNode extends SwitchNode implements LIRLowerable, Si
 
     @Override
     public boolean isSorted() {
-        Kind kind = value().kind();
+        Kind kind = value().getKind();
         if (kind.isNumericInteger()) {
             Constant lastKey = null;
             for (int i = 0; i < keyCount(); i++) {
@@ -92,7 +92,7 @@ public final class TypeSwitchNode extends SwitchNode implements LIRLowerable, Si
     }
 
     @Override
-    public void generate(LIRGeneratorTool gen) {
+    public void generate(NodeLIRGeneratorTool gen) {
         gen.emitSwitch(this);
     }
 

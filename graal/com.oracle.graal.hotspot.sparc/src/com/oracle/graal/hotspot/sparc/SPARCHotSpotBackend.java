@@ -22,6 +22,12 @@
  */
 package com.oracle.graal.hotspot.sparc;
 
+import static com.oracle.graal.api.code.CallingConvention.Type.*;
+import static com.oracle.graal.api.code.ValueUtil.*;
+import static com.oracle.graal.phases.GraalOptions.*;
+import static com.oracle.graal.sparc.SPARC.*;
+import static java.lang.reflect.Modifier.*;
+
 import java.util.*;
 
 import sun.misc.*;
@@ -30,25 +36,26 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
 import com.oracle.graal.asm.sparc.*;
-import com.oracle.graal.asm.sparc.SPARCAssembler.*;
-import com.oracle.graal.compiler.gen.LIRGenerator;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Bpne;
+import com.oracle.graal.asm.sparc.SPARCAssembler.CC;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Ldx;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Save;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Stx;
+import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Cmp;
+import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Nop;
+import com.oracle.graal.asm.sparc.SPARCMacroAssembler.RestoreWindow;
+import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Setx;
+import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.meta.HotSpotCodeCacheProvider.MarkId;
-import com.oracle.graal.hotspot.stubs.Stub;
+import com.oracle.graal.hotspot.stubs.*;
 import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.StandardOp.*;
+import com.oracle.graal.lir.StandardOp.SaveRegistersOp;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.sparc.*;
 import com.oracle.graal.nodes.*;
-
-import static com.oracle.graal.sparc.SPARC.*;
-import static com.oracle.graal.asm.sparc.SPARCMacroAssembler.*;
-import static com.oracle.graal.api.code.CallingConvention.Type.*;
-import static com.oracle.graal.api.code.ValueUtil.*;
-import static com.oracle.graal.phases.GraalOptions.*;
-import static java.lang.reflect.Modifier.*;
 
 /**
  * HotSpot SPARC specific backend.
@@ -72,8 +79,13 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
     }
 
     @Override
-    public LIRGenerator newLIRGenerator(StructuredGraph graph, Object stub, FrameMap frameMap, CallingConvention cc, LIR lir) {
-        return new SPARCHotSpotLIRGenerator(graph, stub, getProviders(), getRuntime().getConfig(), frameMap, cc, lir);
+    public LIRGenerator newLIRGenerator(CallingConvention cc, LIRGenerationResult lirGenRes) {
+        return new SPARCHotSpotLIRGenerator(getProviders(), getRuntime().getConfig(), cc, lirGenRes);
+    }
+
+    @Override
+    public NodeLIRGenerator newNodeLIRGenerator(StructuredGraph graph, LIRGenerationResult lirGenRes, LIRGenerator lirGen) {
+        return new SPARCHotSpotNodeLIRGenerator(graph, lirGenRes, lirGen);
     }
 
     /**
@@ -152,10 +164,10 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
     }
 
     @Override
-    public CompilationResultBuilder newCompilationResultBuilder(LIRGenerator lirGen, CompilationResult compilationResult, CompilationResultBuilderFactory factory) {
-        SPARCHotSpotLIRGenerator gen = (SPARCHotSpotLIRGenerator) lirGen;
-        FrameMap frameMap = gen.frameMap;
-        assert gen.deoptimizationRescueSlot == null || frameMap.frameNeedsAllocating() : "method that can deoptimize must have a frame";
+    public CompilationResultBuilder newCompilationResultBuilder(LIRGenerationResult lirGenRes, CompilationResult compilationResult, CompilationResultBuilderFactory factory) {
+        SPARCHotSpotLIRGenerationResult gen = (SPARCHotSpotLIRGenerationResult) lirGenRes;
+        FrameMap frameMap = gen.getFrameMap();
+        assert gen.getDeoptimizationRescueSlot() == null || frameMap.frameNeedsAllocating() : "method that can deoptimize must have a frame";
 
         Stub stub = gen.getStub();
         Assembler masm = createAssembler(frameMap);
@@ -163,7 +175,7 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
         HotSpotFrameContext frameContext = new HotSpotFrameContext(stub != null);
         CompilationResultBuilder crb = factory.createBuilder(getProviders().getCodeCache(), getProviders().getForeignCalls(), frameMap, masm, frameContext, compilationResult);
         crb.setFrameSize(frameMap.frameSize());
-        StackSlot deoptimizationRescueSlot = gen.deoptimizationRescueSlot;
+        StackSlot deoptimizationRescueSlot = gen.getDeoptimizationRescueSlot();
         if (deoptimizationRescueSlot != null && stub == null) {
             crb.compilationResult.setCustomStackAreaOffset(frameMap.offsetForStackSlot(deoptimizationRescueSlot));
         }
@@ -176,6 +188,11 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
         }
 
         return crb;
+    }
+
+    @Override
+    public LIRGenerationResult newLIRGenerationResult(LIR lir, FrameMap frameMap, Object stub) {
+        return new LIRGenerationResultBase(lir, frameMap);
     }
 
     @Override
@@ -233,4 +250,5 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
     public NativeFunctionInterface getNativeFunctionInterface() {
         throw GraalInternalError.unimplemented("No NativeFunctionInterface of SPARC");
     }
+
 }

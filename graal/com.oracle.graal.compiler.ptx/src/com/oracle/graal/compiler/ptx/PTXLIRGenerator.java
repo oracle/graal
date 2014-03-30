@@ -29,13 +29,10 @@ import static com.oracle.graal.lir.ptx.PTXArithmetic.*;
 import static com.oracle.graal.lir.ptx.PTXBitManipulationOp.IntrinsicOpcode.*;
 import static com.oracle.graal.lir.ptx.PTXCompare.*;
 
-import java.lang.reflect.*;
-
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
 import com.oracle.graal.compiler.gen.*;
-import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.JumpOp;
@@ -64,7 +61,6 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.calc.FloatConvertNode.FloatConvert;
 import com.oracle.graal.nodes.extended.*;
-import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.phases.util.*;
 
@@ -89,11 +85,11 @@ public class PTXLIRGenerator extends LIRGenerator {
         }
     }
 
-    public PTXLIRGenerator(StructuredGraph graph, Providers providers, FrameMap frameMap, CallingConvention cc, LIR lir) {
-        super(graph, providers, frameMap, cc, lir);
-        lir.setSpillMoveFactory(new PTXSpillMoveFactory());
+    public PTXLIRGenerator(Providers providers, CallingConvention cc, LIRGenerationResult lirGenRes) {
+        super(providers, cc, lirGenRes);
+        lirGenRes.getLIR().setSpillMoveFactory(new PTXSpillMoveFactory());
         int callVariables = cc.getArgumentCount() + (cc.getReturn().equals(Value.ILLEGAL) ? 0 : 1);
-        lir.setFirstVariableNumber(callVariables);
+        lirGenRes.getLIR().setFirstVariableNumber(callVariables);
         nextPredRegNum = 0;
     }
 
@@ -134,43 +130,6 @@ public class PTXLIRGenerator extends LIRGenerator {
         return value;
     }
 
-    @Override
-    public void emitPrologue(StructuredGraph graph) {
-        // Need to emit .param directives based on incoming arguments and return value
-        CallingConvention incomingArguments = cc;
-        Object returnObject = incomingArguments.getReturn();
-        AllocatableValue[] params = incomingArguments.getArguments();
-        int argCount = incomingArguments.getArgumentCount();
-
-        if (returnObject.equals(Value.ILLEGAL)) {
-            params = incomingArguments.getArguments();
-            append(new PTXParameterOp(params, false));
-        } else {
-            argCount = incomingArguments.getArgumentCount();
-            params = new Variable[argCount + 1];
-            for (int i = 0; i < argCount; i++) {
-                params[i] = incomingArguments.getArgument(i);
-            }
-            params[argCount] = (Variable) returnObject;
-            append(new PTXParameterOp(params, true));
-        }
-
-        for (ParameterNode param : graph.getNodes(ParameterNode.class)) {
-            int localIndex = param.index();
-            Value paramValue = params[param.index()];
-            int parameterIndex = localIndex;
-            if (!Modifier.isStatic(graph.method().getModifiers())) {
-                parameterIndex--;
-            }
-            Warp warpAnnotation = parameterIndex >= 0 ? MetaUtil.getParameterAnnotation(Warp.class, parameterIndex, graph.method()) : null;
-            if (warpAnnotation != null) {
-                setResult(param, emitWarpParam(paramValue.getKind().getStackKind(), warpAnnotation));
-            } else {
-                setResult(param, emitLoadParam(paramValue.getKind().getStackKind(), paramValue, null));
-            }
-        }
-    }
-
     public Variable emitWarpParam(Kind kind, Warp annotation) {
         Variable result = newVariable(kind);
         Variable tid = newVariable(Kind.Char);
@@ -205,6 +164,11 @@ public class PTXLIRGenerator extends LIRGenerator {
         } else {
             append(new MoveToRegOp(dst, src));
         }
+    }
+
+    @Override
+    public void emitData(AllocatableValue dst, byte[] data) {
+        throw GraalInternalError.unimplemented();
     }
 
     @Override
@@ -533,12 +497,6 @@ public class PTXLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    protected boolean peephole(ValueNode valueNode) {
-        // No peephole optimizations for now
-        return false;
-    }
-
-    @Override
     public Value emitDiv(Value a, Value b, DeoptimizingNode deopting) {
         Variable result = newVariable(a.getKind());
         switch (a.getKind()) {
@@ -805,16 +763,6 @@ public class PTXLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    protected void emitDirectCall(DirectCallTargetNode callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState callState) {
-        throw GraalInternalError.unimplemented("PTXLIRGenerator.emitDirectCall()");
-    }
-
-    @Override
-    protected void emitIndirectCall(IndirectCallTargetNode callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState callState) {
-        throw GraalInternalError.unimplemented("PTXLIRGenerator.emitIndirectCall()");
-    }
-
-    @Override
     protected void emitForeignCall(ForeignCallLinkage callTarget, Value result, Value[] arguments, Value[] temps, LIRFrameState info) {
         throw GraalInternalError.unimplemented("PTXLIRGenerator.emitForeignCall()");
     }
@@ -880,11 +828,11 @@ public class PTXLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    protected void emitReturn(Value input) {
+    public void emitReturn(Value input) {
         append(new ReturnOp(input));
     }
 
-    private void emitReturnNoVal() {
+    void emitReturnNoVal() {
         append(new ReturnNoValOp());
     }
 
@@ -903,36 +851,8 @@ public class PTXLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public void visitCompareAndSwap(LoweredCompareAndSwapNode node, Value address) {
-        throw GraalInternalError.unimplemented("PTXLIRGenerator.visitCompareAndSwap()");
-    }
-
-    @Override
-    public void visitBreakpointNode(BreakpointNode node) {
-        throw GraalInternalError.unimplemented("PTXLIRGenerator.visitBreakpointNode()");
-    }
-
-    @Override
-    public void visitSafepointNode(SafepointNode i) {
-        // LIRFrameState info = state(i);
-        // append(new PTXSafepointOp(info, runtime().config, this));
-        Debug.log("visitSafePointNode unimplemented");
-    }
-
-    @Override
     public void emitUnwind(Value operand) {
         throw GraalInternalError.unimplemented("PTXLIRGenerator.emitUnwind()");
-    }
-
-    @Override
-    public void emitNullCheck(ValueNode v, DeoptimizingNode deopting) {
-        assert v.kind() == Kind.Object;
-        append(new PTXMove.NullCheckOp(load(operand(v)), state(deopting)));
-    }
-
-    @Override
-    public void visitInfopointNode(InfopointNode i) {
-        throw GraalInternalError.unimplemented("PTXLIRGenerator.visitInfopointNode()");
     }
 
     public Variable emitLoadParam(Kind kind, Value address, DeoptimizingNode deopting) {
@@ -979,16 +899,4 @@ public class PTXLIRGenerator extends LIRGenerator {
         return (new Variable(kind, 0));
     }
 
-    @Override
-    public void visitReturn(ReturnNode x) {
-        AllocatableValue operand = Value.ILLEGAL;
-        if (x.result() != null) {
-            operand = resultOperandFor(x.result().kind());
-            // Load the global memory address from return parameter
-            Variable loadVar = emitLoadReturnAddress(operand.getKind(), operand, null);
-            // Store result in global memory whose location is loadVar
-            emitStoreReturnValue(operand.getKind(), loadVar, operand(x.result()), null);
-        }
-        emitReturnNoVal();
-    }
 }

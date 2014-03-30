@@ -301,7 +301,7 @@ public class CompilationResultBuilder {
      */
     public boolean isSuccessorEdge(LabelRef edge) {
         assert lir != null;
-        List<Block> order = lir.codeEmittingOrder();
+        List<? extends AbstractBlock<?>> order = lir.codeEmittingOrder();
         assert order.get(currentBlockIndex) == edge.getSourceBlock();
         return currentBlockIndex < order.size() - 1 && order.get(currentBlockIndex + 1) == edge.getTargetBlock();
     }
@@ -315,7 +315,7 @@ public class CompilationResultBuilder {
         this.lir = lir;
         this.currentBlockIndex = 0;
         frameContext.enter(this);
-        for (Block b : lir.codeEmittingOrder()) {
+        for (AbstractBlock<?> b : lir.codeEmittingOrder()) {
             emitBlock(b);
             currentBlockIndex++;
         }
@@ -323,12 +323,12 @@ public class CompilationResultBuilder {
         this.currentBlockIndex = 0;
     }
 
-    private void emitBlock(Block block) {
+    private void emitBlock(AbstractBlock<?> block) {
         if (Debug.isDumpEnabled()) {
             blockComment(String.format("block B%d %s", block.getId(), block.getLoop()));
         }
 
-        for (LIRInstruction op : lir.lir(block)) {
+        for (LIRInstruction op : lir.getLIRforBlock(block)) {
             if (Debug.isDumpEnabled()) {
                 blockComment(String.format("%d %s", op.id(), op));
             }

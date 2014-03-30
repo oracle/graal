@@ -76,6 +76,18 @@ public class HotSpotReferenceMap implements ReferenceMap, Serializable {
         }
     }
 
+    public PlatformKind getRegister(int idx) {
+        int refMapIndex = idx * 2;
+        if (registerRefMap.get(refMapIndex)) {
+            if (registerRefMap.get(refMapIndex + 1)) {
+                return NarrowOopStamp.NarrowOop;
+            } else {
+                return Kind.Object;
+            }
+        }
+        return null;
+    }
+
     public void setStackSlot(int offset, PlatformKind kind) {
         int idx = offset / frameSlotSize;
         if (kind == Kind.Object) {

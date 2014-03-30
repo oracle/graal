@@ -35,11 +35,11 @@ import com.oracle.graal.nodes.type.*;
  * Node for a {@linkplain ForeignCallDescriptor foreign} call.
  */
 @NodeInfo(nameTemplate = "ForeignCall#{p#descriptor/s}")
-public class ForeignCallNode extends AbstractMemoryCheckpoint implements LIRLowerable, DeoptimizingNode, MemoryCheckpoint.Multi {
+public class ForeignCallNode extends AbstractMemoryCheckpoint implements LIRLowerable, DeoptimizingNode.DeoptDuring, MemoryCheckpoint.Multi {
 
     @Input private final NodeInputList<ValueNode> arguments;
     private final ForeignCallsProvider foreignCalls;
-    @Input private FrameState deoptState;
+    @Input private FrameState stateDuring;
 
     private final ForeignCallDescriptor descriptor;
 
@@ -82,7 +82,7 @@ public class ForeignCallNode extends AbstractMemoryCheckpoint implements LIRLowe
         return foreignCalls.getKilledLocations(descriptor);
     }
 
-    protected Value[] operands(LIRGeneratorTool gen) {
+    protected Value[] operands(NodeLIRGeneratorTool gen) {
         Value[] operands = new Value[arguments.size()];
         for (int i = 0; i < operands.length; i++) {
             operands[i] = gen.operand(arguments.get(i));
@@ -91,42 +91,35 @@ public class ForeignCallNode extends AbstractMemoryCheckpoint implements LIRLowe
     }
 
     @Override
-    public void generate(LIRGeneratorTool gen) {
-        ForeignCallLinkage linkage = gen.getForeignCalls().lookupForeignCall(descriptor);
+    public void generate(NodeLIRGeneratorTool gen) {
+        ForeignCallLinkage linkage = gen.getLIRGeneratorTool().getForeignCalls().lookupForeignCall(descriptor);
         Value[] operands = operands(gen);
-        Value result = gen.emitForeignCall(linkage, this, operands);
+        Value result = gen.getLIRGeneratorTool().emitForeignCall(linkage, this, operands);
         if (result != null) {
             gen.setResult(this, result);
         }
     }
 
     @Override
-    public FrameState getDeoptimizationState() {
-        if (deoptState != null) {
-            return deoptState;
-        } else if (stateAfter() != null && canDeoptimize()) {
-            FrameState stateDuring = stateAfter();
-            if ((stateDuring.stackSize() > 0 && stateDuring.stackAt(stateDuring.stackSize() - 1) == this) || (stateDuring.stackSize() > 1 && stateDuring.stackAt(stateDuring.stackSize() - 2) == this)) {
-                stateDuring = stateDuring.duplicateModified(stateDuring.bci, stateDuring.rethrowException(), this.kind());
-            }
-            setDeoptimizationState(stateDuring);
-            return stateDuring;
-        }
-        return null;
+    public FrameState stateDuring() {
+        return stateDuring;
     }
 
     @Override
-    public void setDeoptimizationState(FrameState f) {
-        updateUsages(deoptState, f);
-        assert deoptState == null && canDeoptimize() : "shouldn't assign deoptState to " + this;
-        deoptState = f;
+    public void setStateDuring(FrameState stateDuring) {
+        updateUsages(this.stateDuring, stateDuring);
+        this.stateDuring = stateDuring;
     }
 
     @Override
-    public void setStateAfter(FrameState x) {
-        if (hasSideEffect()) {
-            super.setStateAfter(x);
+    public void computeStateDuring(FrameState stateAfter) {
+        FrameState newStateDuring;
+        if ((stateAfter.stackSize() > 0 && stateAfter.stackAt(stateAfter.stackSize() - 1) == this) || (stateAfter.stackSize() > 1 && stateAfter.stackAt(stateAfter.stackSize() - 2) == this)) {
+            newStateDuring = stateAfter.duplicateModified(stateAfter.bci, stateAfter.rethrowException(), this.getKind());
+        } else {
+            newStateDuring = stateAfter;
         }
+        setStateDuring(newStateDuring);
     }
 
     @Override
@@ -140,15 +133,5 @@ public class ForeignCallNode extends AbstractMemoryCheckpoint implements LIRLowe
     @Override
     public boolean canDeoptimize() {
         return foreignCalls.canDeoptimize(descriptor);
-    }
-
-    @Override
-    public FrameState getState() {
-        if (deoptState != null) {
-            assert stateAfter() == null;
-            return deoptState;
-        } else {
-            return super.getState();
-        }
     }
 }

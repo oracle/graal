@@ -113,8 +113,8 @@ public abstract class HotSpotBackend extends Backend {
                 return value;
             }
         };
-        for (Block block : lir.codeEmittingOrder()) {
-            for (LIRInstruction op : lir.lir(block)) {
+        for (AbstractBlock<?> block : lir.codeEmittingOrder()) {
+            for (LIRInstruction op : lir.getLIRforBlock(block)) {
                 if (op instanceof LabelOp) {
                     // Don't consider this as a definition
                 } else {

@@ -37,9 +37,8 @@ public final class ControlFlowOptimizer {
     /**
      * Performs control flow optimizations on the given LIR graph.
      */
-    public static void optimize(LIR lir) {
-        List<Block> blocks = lir.codeEmittingOrder();
-        ControlFlowOptimizer.deleteEmptyBlocks(lir, blocks);
+    public static <T extends AbstractBlock<T>> void optimize(LIR lir, List<T> codeEmittingOrder) {
+        ControlFlowOptimizer.deleteEmptyBlocks(lir, codeEmittingOrder);
     }
 
     private ControlFlowOptimizer() {
@@ -54,41 +53,41 @@ public final class ControlFlowOptimizer {
      * @param block the block checked for deletion
      * @return whether the block can be deleted
      */
-    private static boolean canDeleteBlock(LIR lir, Block block) {
-        if (block.getSuccessorCount() != 1 || block.getPredecessorCount() == 0 || block.getFirstSuccessor() == block) {
+    private static boolean canDeleteBlock(LIR lir, AbstractBlock<?> block) {
+        if (block.getSuccessorCount() != 1 || block.getPredecessorCount() == 0 || block.getSuccessors().iterator().next() == block) {
             return false;
         }
 
-        List<LIRInstruction> instructions = lir.lir(block);
+        List<LIRInstruction> instructions = lir.getLIRforBlock(block);
 
         assert instructions.size() >= 2 : "block must have label and branch";
         assert instructions.get(0) instanceof StandardOp.LabelOp : "first instruction must always be a label";
         assert instructions.get(instructions.size() - 1) instanceof StandardOp.JumpOp : "last instruction must always be a branch";
-        assert ((StandardOp.JumpOp) instructions.get(instructions.size() - 1)).destination().label() == ((StandardOp.LabelOp) lir.lir(block.getFirstSuccessor()).get(0)).getLabel() : "branch target must be the successor";
+        assert ((StandardOp.JumpOp) instructions.get(instructions.size() - 1)).destination().label() == ((StandardOp.LabelOp) lir.getLIRforBlock(block.getSuccessors().iterator().next()).get(0)).getLabel() : "branch target must be the successor";
 
         // Block must have exactly one successor.
         return instructions.size() == 2 && !instructions.get(instructions.size() - 1).hasState() && !block.isExceptionEntry();
     }
 
-    private static void alignBlock(LIR lir, Block block) {
+    private static void alignBlock(LIR lir, AbstractBlock<?> block) {
         if (!block.isAligned()) {
             block.setAlign(true);
-            List<LIRInstruction> instructions = lir.lir(block);
+            List<LIRInstruction> instructions = lir.getLIRforBlock(block);
             assert instructions.get(0) instanceof StandardOp.LabelOp : "first instruction must always be a label";
             StandardOp.LabelOp label = (StandardOp.LabelOp) instructions.get(0);
             instructions.set(0, new StandardOp.LabelOp(label.getLabel(), true));
         }
     }
 
-    private static void deleteEmptyBlocks(LIR lir, List<Block> blocks) {
+    private static <T extends AbstractBlock<T>> void deleteEmptyBlocks(LIR lir, List<T> blocks) {
         assert verifyBlocks(lir, blocks);
-        Iterator<Block> iterator = blocks.iterator();
+        Iterator<T> iterator = blocks.iterator();
         while (iterator.hasNext()) {
-            Block block = iterator.next();
+            T block = iterator.next();
             if (canDeleteBlock(lir, block)) {
                 // adjust successor and predecessor lists
-                Block other = block.getFirstSuccessor();
-                for (Block pred : block.getPredecessors()) {
+                T other = block.getSuccessors().iterator().next();
+                for (AbstractBlock<T> pred : block.getPredecessors()) {
                     Collections.replaceAll(pred.getSuccessors(), block, other);
                 }
                 for (int i = 0; i < other.getPredecessorCount(); i++) {

@@ -462,4 +462,41 @@ public class StampTool {
         }
         return v;
     }
+
+    /**
+     * Compute the stamp resulting from the unsigned comparison being true.
+     * 
+     * @return null if it's can't be true or it nothing useful can be encoded.
+     */
+    public static Stamp unsignedCompare(Stamp stamp, Stamp stamp2) {
+        IntegerStamp x = (IntegerStamp) stamp;
+        IntegerStamp y = (IntegerStamp) stamp2;
+        if (x == x.unrestricted() && y == y.unrestricted()) {
+            // Don't know anything.
+            return null;
+        }
+        // c <| n, where c is a constant and n is known to be positive.
+        if (x.lowerBound() == x.upperBound()) {
+            if (y.isPositive()) {
+                if (x.lowerBound() == (1 << x.getBits()) - 1) {
+                    // Constant is MAX_VALUE which must fail.
+                    return null;
+                }
+                if (x.lowerBound() <= y.lowerBound()) {
+                    // Test will fail. Return illegalStamp instead?
+                    return null;
+                }
+                // If the test succeeds then this proves that n is at greater than c so the bounds
+                // are [c+1..-n.upperBound)].
+                return StampFactory.forInteger(x.getBits(), false, x.lowerBound() + 1, y.upperBound());
+            }
+            return null;
+        }
+        // n <| c, where c is a strictly positive constant
+        if (y.lowerBound() == y.upperBound() && y.isStrictlyPositive()) {
+            // The test proves that n is positive and less than c, [0..c-1]
+            return StampFactory.forInteger(y.getBits(), false, 0, y.lowerBound() - 1);
+        }
+        return null;
+    }
 }

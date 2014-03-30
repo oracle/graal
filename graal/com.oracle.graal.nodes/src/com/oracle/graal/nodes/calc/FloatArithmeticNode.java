@@ -26,7 +26,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
-public abstract class FloatArithmeticNode extends BinaryNode implements ArithmeticLIRLowerable {
+public abstract class FloatArithmeticNode extends BinaryNode implements ArithmeticLIRLowerable, MemoryArithmeticLIRLowerable {
 
     private final boolean isStrictFP;
 

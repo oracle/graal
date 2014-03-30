@@ -48,6 +48,15 @@ public class GraalTest {
                 found = m;
             }
         }
+        if (found == null) {
+            /* Now look for non-public methods (but this does not look in superclasses). */
+            for (Method m : clazz.getDeclaredMethods()) {
+                if (m.getName().equals(methodName)) {
+                    Assert.assertNull(found);
+                    found = m;
+                }
+            }
+        }
         if (found != null) {
             return found;
         } else {

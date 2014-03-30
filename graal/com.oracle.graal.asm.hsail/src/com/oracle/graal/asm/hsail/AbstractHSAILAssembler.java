@@ -47,7 +47,11 @@ public abstract class AbstractHSAILAssembler extends Assembler {
 
     @Override
     public void jmp(Label l) {
-        emitString("brn " + nameOf(l) + ";");
+        emitJumpToLabelName(nameOf(l));
+    }
+
+    public void emitJumpToLabelName(String labelName) {
+        emitString("brn " + labelName + ";");
     }
 
     @Override

@@ -31,7 +31,7 @@ public class LoopTestNode extends AbstractTestNode {
 
     public LoopTestNode(int numberOfIterations, AbstractTestNode child) {
         this.numberOfIterations = numberOfIterations;
-        this.child = adoptChild(child);
+        this.child = child;
     }
 
     @Override

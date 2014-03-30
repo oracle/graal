@@ -34,6 +34,11 @@ import com.oracle.graal.lir.SwitchStrategy.BaseSwitchClosure;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.nodes.calc.*;
 
+import static com.oracle.graal.api.code.ValueUtil.*;
+
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.hsail.HSAIL;
+
 /**
  * Implementation of control flow instructions.
  */
@@ -96,11 +101,11 @@ public class HSAILControlFlow {
                 protected void conditionalJump(int index, Condition condition, Label target) {
                     switch (key.getKind()) {
                         case Int:
+                        case Long:
                             // Generate cascading compare and branches for each case.
                             masm.emitCompare(key, keyConstants[index], HSAILCompare.conditionToString(condition), false, false);
                             masm.cbr(masm.nameOf(target));
                             break;
-                        case Long:
                         case Object:
                         default:
                             throw new GraalInternalError("switch only supported for int");
@@ -123,6 +128,100 @@ public class HSAILControlFlow {
         public void emitCode(CompilationResultBuilder crb, HSAILAssembler masm) {
             crb.frameContext.leave(crb);
             masm.exit();
+        }
+    }
+
+    /***
+     * The ALIVE annotation is so we can get a scratch32 register that does not clobber
+     * actionAndReason.
+     */
+    public static class DeoptimizeOp extends ReturnOp {
+
+        @Alive({REG, CONST}) protected Value actionAndReason;
+        @State protected LIRFrameState frameState;
+        protected MetaAccessProvider metaAccessProvider;
+        protected String emitName;
+        protected int codeBufferPos = -1;
+        protected int dregOopMap = 0;
+
+        public DeoptimizeOp(Value actionAndReason, LIRFrameState frameState, String emitName, MetaAccessProvider metaAccessProvider) {
+            super(Value.ILLEGAL);   // return with no ret value
+            this.actionAndReason = actionAndReason;
+            this.frameState = frameState;
+            this.emitName = emitName;
+            this.metaAccessProvider = metaAccessProvider;
+        }
+
+        @Override
+        public void emitCode(CompilationResultBuilder crb, HSAILAssembler masm) {
+            String reasonString;
+            if (isConstant(actionAndReason)) {
+                DeoptimizationReason reason = metaAccessProvider.decodeDeoptReason((Constant) actionAndReason);
+                reasonString = reason.toString();
+            } else {
+                reasonString = "Variable Reason";
+            }
+
+            masm.emitComment("// " + emitName + ", Deoptimization for " + reasonString);
+
+            if (frameState == null) {
+                masm.emitComment("// frameState == null");
+                // and emit the return
+                super.emitCode(crb, masm);
+                return;
+            }
+            // get a unique codeBuffer position
+            // when we save our state, we will save this as well (it can be used as a key to get the
+            // debugInfo)
+            codeBufferPos = masm.position();
+
+            // get the bitmap of $d regs that contain references
+            ReferenceMap referenceMap = frameState.debugInfo().getReferenceMap();
+            for (int dreg = HSAIL.d0.number; dreg <= HSAIL.d15.number; dreg++) {
+                if (referenceMap.getRegister(dreg) == Kind.Object) {
+                    dregOopMap |= 1 << (dreg - HSAIL.d0.number);
+                }
+            }
+
+            // here we will by convention use some never-allocated registers to pass to the epilogue
+            // deopt code
+            // todo: define these in HSAIL.java
+            // we need to pass the actionAndReason and the codeBufferPos
+
+            AllocatableValue actionAndReasonReg = HSAIL.s32.asValue(Kind.Int);
+            AllocatableValue codeBufferOffsetReg = HSAIL.s33.asValue(Kind.Int);
+            AllocatableValue dregOopMapReg = HSAIL.s39.asValue(Kind.Int);
+            masm.emitMov(actionAndReasonReg, actionAndReason);
+            masm.emitMov(codeBufferOffsetReg, Constant.forInt(codeBufferPos));
+            masm.emitMov(dregOopMapReg, Constant.forInt(dregOopMap));
+            masm.emitJumpToLabelName(masm.getDeoptLabelName());
+
+            // now record the debuginfo
+            crb.recordInfopoint(codeBufferPos, frameState, InfopointReason.IMPLICIT_EXCEPTION);
+        }
+
+        public LIRFrameState getFrameState() {
+            return frameState;
+        }
+
+        public int getCodeBufferPos() {
+            return codeBufferPos;
+        }
+    }
+
+    public static class UnwindOp extends ReturnOp {
+
+        protected String commentMessage;
+
+        public UnwindOp(String commentMessage) {
+            super(Value.ILLEGAL);   // return with no ret value
+            this.commentMessage = commentMessage;
+        }
+
+        @Override
+        public void emitCode(CompilationResultBuilder crb, HSAILAssembler masm) {
+            masm.emitComment("// " + commentMessage);
+            super.emitCode(crb, masm);
         }
     }
 
@@ -224,7 +323,7 @@ public class HSAILControlFlow {
         @Override
         public void emitCode(CompilationResultBuilder crb, HSAILAssembler masm) {
             HSAILCompare.emit(crb, masm, condition, left, right, right, false);
-            cmove(crb, masm, result, false, trueValue, falseValue);
+            cmove(masm, result, trueValue, falseValue);
         }
     }
 
@@ -240,12 +339,11 @@ public class HSAILControlFlow {
         @Override
         public void emitCode(CompilationResultBuilder crb, HSAILAssembler masm) {
             HSAILCompare.emit(crb, masm, condition, left, right, right, unorderedIsTrue);
-            cmove(crb, masm, result, false, trueValue, falseValue);
+            cmove(masm, result, trueValue, falseValue);
         }
     }
 
-    @SuppressWarnings("unused")
-    private static void cmove(CompilationResultBuilder crb, HSAILAssembler masm, Value result, boolean unorderedIsTrue, Value trueValue, Value falseValue) {
+    private static void cmove(HSAILAssembler masm, Value result, Value trueValue, Value falseValue) {
         // Check that we don't overwrite an input operand before it is used.
         assert (result.getKind() == trueValue.getKind() && result.getKind() == falseValue.getKind());
         int width;

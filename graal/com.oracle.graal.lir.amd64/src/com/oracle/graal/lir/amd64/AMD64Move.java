@@ -29,6 +29,7 @@ import static java.lang.Float.*;
 
 import com.oracle.graal.amd64.*;
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.code.CompilationResult.RawData;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
 import com.oracle.graal.asm.amd64.*;
@@ -171,6 +172,38 @@ public class AMD64Move {
         }
     }
 
+    public static class ZeroExtendLoadOp extends MemOp {
+
+        @Def({REG}) protected AllocatableValue result;
+
+        public ZeroExtendLoadOp(Kind kind, AllocatableValue result, AMD64AddressValue address, LIRFrameState state) {
+            super(kind, address, state);
+            this.result = result;
+        }
+
+        @Override
+        public void emitMemAccess(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
+            switch (kind) {
+                case Boolean:
+                case Byte:
+                    masm.movzbl(asRegister(result), address.toAddress());
+                    break;
+                case Char:
+                case Short:
+                    masm.movzwl(asRegister(result), address.toAddress());
+                    break;
+                case Int:
+                    masm.movl(asRegister(result), address.toAddress());
+                    break;
+                case Long:
+                    masm.movq(asRegister(result), address.toAddress());
+                    break;
+                default:
+                    throw GraalInternalError.shouldNotReachHere();
+            }
+        }
+    }
+
     public static class StoreOp extends MemOp {
 
         @Use({REG}) protected AllocatableValue input;
@@ -274,6 +307,23 @@ public class AMD64Move {
         @Override
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
             masm.leaq(asLongReg(result), address.toAddress());
+        }
+    }
+
+    public static class LeaDataOp extends AMD64LIRInstruction {
+
+        @Def({REG}) protected AllocatableValue result;
+        private final byte[] data;
+
+        public LeaDataOp(AllocatableValue result, byte[] data) {
+            this.result = result;
+            this.data = data;
+        }
+
+        @Override
+        public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
+            RawData rawData = new RawData(data, 16);
+            masm.leaq(asRegister(result), (AMD64Address) crb.recordDataReferenceInCode(rawData));
         }
     }
 

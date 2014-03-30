@@ -58,7 +58,7 @@ public class TruffleCompilerOptions {
     @Option(help = "Stop inlining if caller's cumulative tree size would exceed this limit")
     public static final OptionValue<Integer> TruffleInliningMaxCallerSize = new OptionValue<>(2250);
     @Option(help = "Skip inlining candidate if its tree size exceeds this limit")
-    public static final OptionValue<Integer> TruffleInliningMaxCalleeSize = new OptionValue<>(250);
+    public static final OptionValue<Integer> TruffleInliningMaxCalleeSize = new OptionValue<>(350);
     @Option(help = "Call frequency relative to call target")
     public static final OptionValue<Double> TruffleInliningMinFrequency = new OptionValue<>(0.3);
     @Option(help = "Allow inlining of less hot candidates if tree size is small")

@@ -41,7 +41,7 @@ public class InfopointNode extends FixedWithNextNode implements LIRLowerable, No
     }
 
     @Override
-    public void generate(LIRGeneratorTool generator) {
+    public void generate(NodeLIRGeneratorTool generator) {
         generator.visitInfopointNode(this);
     }
 
@@ -51,7 +51,7 @@ public class InfopointNode extends FixedWithNextNode implements LIRLowerable, No
 
     @Override
     public boolean verify() {
-        return getState() != null && super.verify();
+        return state != null && super.verify();
     }
 
 }

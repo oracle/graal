@@ -25,9 +25,7 @@ package com.oracle.graal.nodes.spi;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
-import com.oracle.graal.nodes.java.*;
 
 public interface LIRGeneratorTool extends ArithmeticLIRGenerator {
 
@@ -38,6 +36,14 @@ public interface LIRGeneratorTool extends ArithmeticLIRGenerator {
     CodeCacheProvider getCodeCache();
 
     ForeignCallsProvider getForeignCalls();
+
+    Value emitLoad(Kind kind, Value address, Access access);
+
+    void emitStore(Kind kind, Value address, Value input, Access access);
+
+    void emitDeoptimize(Value actionAndReason, Value failedSpeculation, DeoptimizingNode deopting);
+
+    Value emitForeignCall(ForeignCallLinkage linkage, DeoptimizingNode info, Value... args);
 
     /**
      * Checks whether the supplied constant can be used without loading it into a register for most
@@ -59,46 +65,19 @@ public interface LIRGeneratorTool extends ArithmeticLIRGenerator {
 
     void emitMove(AllocatableValue dst, Value src);
 
+    /**
+     * Emits an op that loads the address of some raw data.
+     * 
+     * @param dst the variable into which the address is loaded
+     * @param data the data to be installed with the generated code
+     */
+    void emitData(AllocatableValue dst, byte[] data);
+
     Value emitAddress(Value base, long displacement, Value index, int scale);
 
     Value emitAddress(StackSlot slot);
 
-    Value emitLoad(Kind kind, Value address, Access access);
-
-    void emitStore(Kind kind, Value address, Value input, Access access);
-
     void emitMembar(int barriers);
-
-    void emitDeoptimize(Value actionAndReason, Value failedSpeculation, DeoptimizingNode deopting);
-
-    void emitNullCheck(ValueNode v, DeoptimizingNode deopting);
-
-    Value emitForeignCall(ForeignCallLinkage linkage, DeoptimizingNode info, Value... args);
-
-    void emitIf(IfNode i);
-
-    void emitConditional(ConditionalNode i);
-
-    void emitSwitch(SwitchNode i);
-
-    void emitInvoke(Invoke i);
-
-    // Handling of block-end nodes still needs to be unified in the LIRGenerator.
-    void visitMerge(MergeNode i);
-
-    void visitEndNode(AbstractEndNode i);
-
-    void visitLoopEnd(LoopEndNode i);
-
-    void visitCompareAndSwap(LoweredCompareAndSwapNode i, Value address);
-
-    // These methods define the contract a runtime specific backend must provide.
-
-    void visitReturn(ReturnNode i);
-
-    void visitSafepointNode(SafepointNode i);
-
-    void visitBreakpointNode(BreakpointNode i);
 
     void emitUnwind(Value operand);
 
@@ -108,5 +87,7 @@ public interface LIRGeneratorTool extends ArithmeticLIRGenerator {
      */
     void beforeRegisterAllocation();
 
-    void visitInfopointNode(InfopointNode i);
+    void emitIncomingValues(Value[] params);
+
+    void emitReturn(Value input);
 }

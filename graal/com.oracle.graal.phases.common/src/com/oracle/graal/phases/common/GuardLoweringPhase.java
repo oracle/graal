@@ -55,6 +55,9 @@ import com.oracle.graal.phases.tiers.*;
  * does the actual control-flow expansion of the remaining {@link GuardNode GuardNodes}.
  */
 public class GuardLoweringPhase extends BasePhase<MidTierContext> {
+
+    private static final DebugMetric metricImplicitNullCheck = Debug.metric("ImplicitNullCheck");
+
     private static class UseImplicitNullChecks extends ScheduledNodeIterator {
 
         private final IdentityHashMap<ValueNode, GuardNode> nullGuarded = new IdentityHashMap<>();
@@ -88,6 +91,7 @@ public class GuardLoweringPhase extends BasePhase<MidTierContext> {
         private void processAccess(Access access) {
             GuardNode guard = nullGuarded.get(access.object());
             if (guard != null && isImplicitNullCheck(access.nullCheckLocation())) {
+                metricImplicitNullCheck.increment();
                 access.setGuard(guard.getGuard());
                 FixedAccessNode fixedAccess;
                 if (access instanceof FloatingAccessNode) {

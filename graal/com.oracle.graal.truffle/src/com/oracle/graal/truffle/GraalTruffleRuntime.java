@@ -77,7 +77,7 @@ public final class GraalTruffleRuntime implements TruffleRuntime {
         if (truffleCompiler == null) {
             truffleCompiler = new TruffleCompilerImpl();
         }
-        return new OptimizedCallTarget(rootNode, truffleCompiler, TruffleMinInvokeThreshold.getValue(), TruffleCompilationThreshold.getValue(), acceptForCompilation(rootNode));
+        return new OptimizedCallTargetImpl(rootNode, truffleCompiler, TruffleMinInvokeThreshold.getValue(), TruffleCompilationThreshold.getValue(), acceptForCompilation(rootNode));
     }
 
     public CallNode createCallNode(CallTarget target) {
@@ -90,7 +90,7 @@ public final class GraalTruffleRuntime implements TruffleRuntime {
 
     @Override
     public VirtualFrame createVirtualFrame(PackedFrame caller, Arguments arguments, FrameDescriptor frameDescriptor) {
-        return OptimizedCallTarget.createFrame(frameDescriptor, caller, arguments);
+        return OptimizedCallTargetImpl.createFrame(frameDescriptor, caller, arguments);
     }
 
     @Override
@@ -173,7 +173,7 @@ public final class GraalTruffleRuntime implements TruffleRuntime {
     private static Method getCallMethod() {
         Method method;
         try {
-            method = OptimizedCallTarget.class.getDeclaredMethod("call", new Class[]{PackedFrame.class, Arguments.class});
+            method = OptimizedCallTargetImpl.class.getDeclaredMethod("call", new Class[]{PackedFrame.class, Arguments.class});
         } catch (NoSuchMethodException | SecurityException e) {
             throw GraalInternalError.shouldNotReachHere();
         }

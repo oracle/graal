@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,22 +20,23 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.truffle.substitutions;
 
-import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.replacements.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.truffle.api.nodes.*;
+package com.oracle.graal.compiler.hsail.test;
+
+import org.junit.Test;
 
 /**
- * Deoptimize on creation of a new UnexpectedResultException instance.
+ * For globalsize 16384, deopt on many gids but then catch the exception in the run routine itself.
  */
-@ClassSubstitution(UnexpectedResultException.class)
-public class UnexpectedResultExceptionSubstitutions {
+public class BoundsCatchMany16384Test extends BoundsCatchManyBase {
 
-    @SuppressWarnings("unused")
-    @MethodSubstitution(value = "<init>")
-    public static void init(Object result) {
-        DeoptimizeNode.deopt(DeoptimizationAction.InvalidateRecompile, DeoptimizationReason.UnreachedCode);
+    @Override
+    int getGlobalSize() {
+        return 16384;
+    }
+
+    @Test
+    public void test() {
+        testGeneratedHsail();
     }
 }

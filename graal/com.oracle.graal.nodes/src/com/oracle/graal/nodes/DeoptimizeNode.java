@@ -62,8 +62,8 @@ public class DeoptimizeNode extends AbstractDeoptimizeNode implements Lowerable,
     }
 
     @Override
-    public void generate(LIRGeneratorTool gen) {
-        gen.emitDeoptimize(gen.getMetaAccess().encodeDeoptActionAndReason(action, reason, debugId), speculation, this);
+    public void generate(NodeLIRGeneratorTool gen) {
+        gen.getLIRGeneratorTool().emitDeoptimize(gen.getLIRGeneratorTool().getMetaAccess().encodeDeoptActionAndReason(action, reason, debugId), speculation, this);
     }
 
     @Override

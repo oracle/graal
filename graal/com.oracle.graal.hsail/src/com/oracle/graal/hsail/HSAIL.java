@@ -118,6 +118,20 @@ public class HSAIL extends Architecture {
     public static final Register q14 = new Register(70, 14, "q14", CPU);
     public static final Register q15 = new Register(71, 15, "q15", CPU);
 
+    // non-allocatable registers used for deopt
+    public static final Register s32 = new Register(72, 32, "s32", CPU);
+    public static final Register s33 = new Register(73, 33, "s33", CPU);
+    public static final Register s34 = new Register(74, 34, "s34", CPU);
+    public static final Register s35 = new Register(75, 35, "s35", CPU);
+    public static final Register s36 = new Register(76, 36, "s36", CPU);
+    public static final Register s37 = new Register(77, 37, "s37", CPU);
+    public static final Register s38 = new Register(78, 38, "s38", CPU);
+    public static final Register s39 = new Register(79, 39, "s39", CPU);
+    public static final Register d16 = new Register(80, 16, "d16", CPU);
+    public static final Register d17 = new Register(81, 17, "d17", CPU);
+    public static final Register d18 = new Register(82, 18, "d18", CPU);
+    public static final Register d19 = new Register(83, 19, "d19", CPU);
+
     // @formatter:off
     public static final Register[] cRegisters = {
         c0, c1, c2, c3, c4, c5, c6, c7

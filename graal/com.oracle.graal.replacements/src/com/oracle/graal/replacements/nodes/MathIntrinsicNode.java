@@ -55,30 +55,30 @@ public class MathIntrinsicNode extends FloatingNode implements Canonicalizable, 
     }
 
     @Override
-    public void generate(ArithmeticLIRGenerator gen) {
+    public void generate(NodeLIRGeneratorTool gen) {
         Value input = gen.operand(x());
         Value result;
         switch (operation()) {
             case ABS:
-                result = gen.emitMathAbs(input);
+                result = gen.getLIRGeneratorTool().emitMathAbs(input);
                 break;
             case SQRT:
-                result = gen.emitMathSqrt(input);
+                result = gen.getLIRGeneratorTool().emitMathSqrt(input);
                 break;
             case LOG:
-                result = gen.emitMathLog(input, false);
+                result = gen.getLIRGeneratorTool().emitMathLog(input, false);
                 break;
             case LOG10:
-                result = gen.emitMathLog(input, true);
+                result = gen.getLIRGeneratorTool().emitMathLog(input, true);
                 break;
             case SIN:
-                result = gen.emitMathSin(input);
+                result = gen.getLIRGeneratorTool().emitMathSin(input);
                 break;
             case COS:
-                result = gen.emitMathCos(input);
+                result = gen.getLIRGeneratorTool().emitMathCos(input);
                 break;
             case TAN:
-                result = gen.emitMathTan(input);
+                result = gen.getLIRGeneratorTool().emitMathTan(input);
                 break;
             default:
                 throw GraalInternalError.shouldNotReachHere();
@@ -88,7 +88,7 @@ public class MathIntrinsicNode extends FloatingNode implements Canonicalizable, 
 
     public Constant evalConst(Constant... inputs) {
         assert inputs.length == 1;
-        return Constant.forDouble(compute(inputs[0].asDouble(), operation()));
+        return Constant.forDouble(doCompute(inputs[0].asDouble(), operation()));
     }
 
     @Override
@@ -101,6 +101,10 @@ public class MathIntrinsicNode extends FloatingNode implements Canonicalizable, 
 
     @NodeIntrinsic
     public static double compute(double value, @ConstantNodeParameter Operation op) {
+        return doCompute(value, op);
+    }
+
+    private static double doCompute(double value, Operation op) throws GraalInternalError {
         switch (op) {
             case ABS:
                 return Math.abs(value);

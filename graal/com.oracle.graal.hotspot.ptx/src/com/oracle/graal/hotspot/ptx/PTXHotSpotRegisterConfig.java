@@ -74,6 +74,11 @@ public class PTXHotSpotRegisterConfig implements RegisterConfig {
     }
 
     @Override
+    public boolean areAllAllocatableRegistersCallerSaved() {
+        throw GraalInternalError.unimplemented();
+    }
+
+    @Override
     public Register getRegisterForRole(int index) {
         throw GraalInternalError.unimplemented("PTXHotSpotRegisterConfig.getRegisterForRole()");
     }
