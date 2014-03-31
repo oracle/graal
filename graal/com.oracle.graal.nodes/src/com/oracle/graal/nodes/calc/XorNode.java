@@ -72,7 +72,7 @@ public final class XorNode extends BitLogicNode implements Canonicalizable {
     }
 
     @Override
-    public void generate(NodeLIRGeneratorTool gen) {
+    public void generate(NodeLIRBuiderTool gen) {
         gen.setResult(this, gen.getLIRGeneratorTool().emitXor(gen.operand(x()), gen.operand(y())));
     }
 

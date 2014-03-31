@@ -94,7 +94,7 @@ public class UnsafeCastNode extends FloatingGuardedNode implements LIRLowerable,
     }
 
     @Override
-    public void generate(NodeLIRGeneratorTool generator) {
+    public void generate(NodeLIRBuiderTool generator) {
         assert getKind() == Kind.Object && object.getKind() == Kind.Object;
         /*
          * The LIR only cares about the kind of an operand, not the actual type of an object. So we

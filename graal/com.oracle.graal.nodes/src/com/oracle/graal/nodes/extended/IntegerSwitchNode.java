@@ -101,7 +101,7 @@ public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable,
     }
 
     @Override
-    public void generate(NodeLIRGeneratorTool gen) {
+    public void generate(NodeLIRBuiderTool gen) {
         gen.emitSwitch(this);
     }
 

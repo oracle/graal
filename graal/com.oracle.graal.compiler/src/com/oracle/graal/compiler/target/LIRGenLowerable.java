@@ -32,5 +32,5 @@ import com.oracle.graal.nodes.spi.*;
  */
 public interface LIRGenLowerable {
 
-    void generate(NodeLIRGenerator generator);
+    void generate(NodeLIRBuilder generator);
 }

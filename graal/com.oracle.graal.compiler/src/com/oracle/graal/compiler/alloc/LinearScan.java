@@ -884,9 +884,9 @@ public final class LinearScan {
         }
     }
 
-    private static NodeLIRGenerator getNodeLIRGeneratorFromDebugContext() {
+    private static NodeLIRBuilder getNodeLIRGeneratorFromDebugContext() {
         if (Debug.isEnabled()) {
-            NodeLIRGenerator lirGen = Debug.contextLookup(NodeLIRGenerator.class);
+            NodeLIRBuilder lirGen = Debug.contextLookup(NodeLIRBuilder.class);
             assert lirGen != null;
             return lirGen;
         }
@@ -894,7 +894,7 @@ public final class LinearScan {
     }
 
     private static ValueNode getValueForOperandFromDebugContext(Value value) {
-        NodeLIRGenerator gen = getNodeLIRGeneratorFromDebugContext();
+        NodeLIRBuilder gen = getNodeLIRGeneratorFromDebugContext();
         if (gen != null) {
             return gen.valueForOperand(value);
         }

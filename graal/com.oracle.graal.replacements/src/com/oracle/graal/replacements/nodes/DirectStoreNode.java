@@ -48,7 +48,7 @@ public class DirectStoreNode extends FixedWithNextNode implements LIRLowerable {
     }
 
     @Override
-    public void generate(NodeLIRGeneratorTool gen) {
+    public void generate(NodeLIRBuiderTool gen) {
         Value v = gen.operand(value);
         gen.getLIRGeneratorTool().emitStore(kind, gen.operand(address), v, null);
     }

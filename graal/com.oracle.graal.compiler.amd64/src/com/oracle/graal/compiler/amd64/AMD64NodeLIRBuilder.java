@@ -33,9 +33,9 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
 
-public abstract class AMD64NodeLIRGenerator extends NodeLIRGenerator {
+public abstract class AMD64NodeLIRBuilder extends NodeLIRBuilder {
 
-    public AMD64NodeLIRGenerator(StructuredGraph graph, LIRGenerationResult res, LIRGenerator gen) {
+    public AMD64NodeLIRBuilder(StructuredGraph graph, LIRGenerationResult res, LIRGenerator gen) {
         super(graph, res, gen);
     }
 

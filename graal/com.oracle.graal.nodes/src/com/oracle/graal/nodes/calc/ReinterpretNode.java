@@ -102,7 +102,7 @@ public class ReinterpretNode extends FloatingNode implements Canonicalizable, Ar
     }
 
     @Override
-    public void generate(NodeLIRGeneratorTool gen) {
+    public void generate(NodeLIRBuiderTool gen) {
         PlatformKind kind = gen.getLIRGeneratorTool().getPlatformKind(stamp());
         gen.setResult(this, gen.getLIRGeneratorTool().emitReinterpret(kind, gen.operand(value())));
     }

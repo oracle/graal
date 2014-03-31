@@ -49,7 +49,7 @@ public final class VMErrorNode extends DeoptimizingStubCall implements LIRLowera
     }
 
     @Override
-    public void generate(NodeLIRGeneratorTool gen) {
+    public void generate(NodeLIRBuiderTool gen) {
         String whereString;
         if (stateBefore() != null) {
             String nl = CodeUtil.NEW_LINE;

@@ -34,9 +34,9 @@ import com.oracle.graal.nodes.java.*;
 /**
  * This class implements the SPARC specific portion of the LIR generator.
  */
-public abstract class SPARCNodeLIRGenerator extends NodeLIRGenerator {
+public abstract class SPARCNodeLIRBuilder extends NodeLIRBuilder {
 
-    public SPARCNodeLIRGenerator(StructuredGraph graph, LIRGenerationResult lirGenRes, LIRGenerator lirGen) {
+    public SPARCNodeLIRBuilder(StructuredGraph graph, LIRGenerationResult lirGenRes, LIRGenerator lirGen) {
         super(graph, lirGenRes, lirGen);
     }
 

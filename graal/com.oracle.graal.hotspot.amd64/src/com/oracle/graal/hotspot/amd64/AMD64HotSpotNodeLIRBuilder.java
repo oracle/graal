@@ -55,9 +55,9 @@ import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
 /**
  * LIR generator specialized for AMD64 HotSpot.
  */
-public class AMD64HotSpotNodeLIRGenerator extends AMD64NodeLIRGenerator implements HotSpotNodeLIRGenerator {
+public class AMD64HotSpotNodeLIRBuilder extends AMD64NodeLIRBuilder implements HotSpotNodeLIRBuilder {
 
-    public AMD64HotSpotNodeLIRGenerator(StructuredGraph graph, LIRGenerationResult res, LIRGenerator gen) {
+    public AMD64HotSpotNodeLIRBuilder(StructuredGraph graph, LIRGenerationResult res, LIRGenerator gen) {
         super(graph, res, gen);
         memoryPeephole = new AMD64HotSpotMemoryPeephole(this);
     }

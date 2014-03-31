@@ -33,9 +33,9 @@ import com.oracle.graal.nodes.*;
 /**
  * LIR generator specialized for PTX HotSpot.
  */
-public class PTXHotSpotNodeLIRGenerator extends PTXNodeLIRGenerator implements HotSpotNodeLIRGenerator {
+public class PTXHotSpotNodeLIRBuilder extends PTXNodeLIRBuilder implements HotSpotNodeLIRBuilder {
 
-    protected PTXHotSpotNodeLIRGenerator(StructuredGraph graph, LIRGenerationResult lirGenRes, LIRGenerator lirGen) {
+    protected PTXHotSpotNodeLIRBuilder(StructuredGraph graph, LIRGenerationResult lirGenRes, LIRGenerator lirGen) {
         super(graph, lirGenRes, lirGen);
     }
 

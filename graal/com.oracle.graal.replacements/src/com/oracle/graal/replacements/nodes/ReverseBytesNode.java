@@ -66,7 +66,7 @@ public class ReverseBytesNode extends FloatingNode implements LIRGenLowerable, C
     }
 
     @Override
-    public void generate(NodeLIRGenerator gen) {
+    public void generate(NodeLIRBuilder gen) {
         Variable result = gen.newVariable(value.getKind());
         gen.getLIRGenerator().emitByteSwap(result, gen.operand(value));
         gen.setResult(this, result);

@@ -56,7 +56,7 @@ import com.oracle.graal.phases.*;
 /**
  * This class traverses the HIR instructions and generates LIR instructions from them.
  */
-public abstract class NodeLIRGenerator implements NodeLIRGeneratorTool {
+public abstract class NodeLIRBuilder implements NodeLIRBuiderTool {
 
     private final NodeMap<Value> nodeOperands;
     private final DebugInfoBuilder debugInfoBuilder;
@@ -71,7 +71,7 @@ public abstract class NodeLIRGenerator implements NodeLIRGeneratorTool {
 
     protected LIRGenerationResult res;
 
-    public NodeLIRGenerator(StructuredGraph graph, LIRGenerationResult res, LIRGenerator gen) {
+    public NodeLIRBuilder(StructuredGraph graph, LIRGenerationResult res, LIRGenerator gen) {
         this.res = res;
         this.nodeOperands = graph.createNodeMap();
         this.debugInfoBuilder = createDebugInfoBuilder(nodeOperands);

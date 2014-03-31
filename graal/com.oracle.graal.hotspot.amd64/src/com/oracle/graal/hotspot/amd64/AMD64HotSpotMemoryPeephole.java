@@ -77,7 +77,7 @@ public class AMD64HotSpotMemoryPeephole extends AMD64MemoryPeephole {
         }
     }
 
-    AMD64HotSpotMemoryPeephole(AMD64NodeLIRGenerator gen) {
+    AMD64HotSpotMemoryPeephole(AMD64NodeLIRBuilder gen) {
         super(gen);
     }
 

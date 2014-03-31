@@ -131,7 +131,7 @@ public class ArrayEqualsNode extends FixedWithNextNode implements LIRGenLowerabl
     public static native boolean equals(double[] array1, double[] array2, int length);
 
     @Override
-    public void generate(NodeLIRGenerator gen) {
+    public void generate(NodeLIRBuilder gen) {
         Variable result = gen.newVariable(Kind.Int);
         gen.emitArrayEquals(kind, result, gen.operand(array1), gen.operand(array2), gen.operand(length));
         gen.setResult(this, result);

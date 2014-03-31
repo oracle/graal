@@ -60,7 +60,7 @@ public class IntegerTestNode extends LogicNode implements Canonicalizable, LIRLo
     }
 
     @Override
-    public void generate(NodeLIRGeneratorTool gen) {
+    public void generate(NodeLIRBuiderTool gen) {
     }
 
     @Override

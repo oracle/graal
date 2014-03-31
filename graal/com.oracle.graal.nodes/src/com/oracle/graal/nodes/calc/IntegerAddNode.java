@@ -89,7 +89,7 @@ public class IntegerAddNode extends IntegerArithmeticNode implements Canonicaliz
     }
 
     @Override
-    public void generate(NodeLIRGeneratorTool gen) {
+    public void generate(NodeLIRBuiderTool gen) {
         Value op1 = gen.operand(x());
         assert op1 != null : x() + ", this=" + this;
         Value op2 = gen.operand(y());

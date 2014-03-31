@@ -91,7 +91,7 @@ public abstract class VirtualObjectNode extends ValueNode implements LIRLowerabl
     public abstract ValueNode getMaterializedRepresentation(FixedNode fixed, ValueNode[] entries, LockState locks);
 
     @Override
-    public void generate(NodeLIRGeneratorTool gen) {
+    public void generate(NodeLIRBuiderTool gen) {
         // nothing to do...
     }
 }

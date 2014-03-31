@@ -43,9 +43,9 @@ import com.oracle.graal.nodes.java.*;
 /**
  * The HotSpot specific portion of the HSAIL LIR generator.
  */
-public class HSAILHotSpotNodeLIRGenerator extends HSAILNodeLIRGenerator {
+public class HSAILHotSpotNodeLIRBuilder extends HSAILNodeLIRBuilder {
 
-    public HSAILHotSpotNodeLIRGenerator(StructuredGraph graph, LIRGenerationResult lirGenRes, LIRGenerator lirGen) {
+    public HSAILHotSpotNodeLIRBuilder(StructuredGraph graph, LIRGenerationResult lirGenRes, LIRGenerator lirGen) {
         super(graph, lirGenRes, lirGen);
     }
 

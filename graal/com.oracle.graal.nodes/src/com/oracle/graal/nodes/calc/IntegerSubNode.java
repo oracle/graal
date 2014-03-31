@@ -117,7 +117,7 @@ public class IntegerSubNode extends IntegerArithmeticNode implements Canonicaliz
     }
 
     @Override
-    public void generate(NodeLIRGeneratorTool gen) {
+    public void generate(NodeLIRBuiderTool gen) {
         gen.setResult(this, gen.getLIRGeneratorTool().emitSub(gen.operand(x()), gen.operand(y())));
     }
 

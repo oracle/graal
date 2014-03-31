@@ -44,8 +44,8 @@ public class AMD64RawNativeCallNode extends FixedWithNextNode implements LIRGenL
     }
 
     @Override
-    public void generate(NodeLIRGenerator generator) {
-        AMD64NodeLIRGenerator gen = (AMD64NodeLIRGenerator) generator;
+    public void generate(NodeLIRBuilder generator) {
+        AMD64NodeLIRBuilder gen = (AMD64NodeLIRBuilder) generator;
         Value[] parameter = new Value[args.count()];
         JavaType[] parameterTypes = new JavaType[args.count()];
         for (int i = 0; i < args.count(); i++) {

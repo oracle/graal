@@ -50,7 +50,7 @@ class CFGPrinter extends CompilationPrinter {
 
     protected TargetDescription target;
     protected LIR lir;
-    protected NodeLIRGenerator nodeLirGenerator;
+    protected NodeLIRBuilder nodeLirGenerator;
     protected ControlFlowGraph cfg;
     protected SchedulePhase schedule;
 

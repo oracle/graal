@@ -61,7 +61,7 @@ public class NewArrayStubCall extends DeoptimizingStubCall implements LIRGenLowe
     }
 
     @Override
-    public void generate(NodeLIRGenerator gen) {
+    public void generate(NodeLIRBuilder gen) {
         ForeignCallLinkage linkage = gen.getLIRGeneratorTool().getForeignCalls().lookupForeignCall(NEW_ARRAY);
         Variable result = gen.getLIRGenerator().emitForeignCall(linkage, this, gen.operand(hub), gen.operand(length));
         gen.setResult(this, result);

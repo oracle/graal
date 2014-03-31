@@ -49,7 +49,7 @@ public final class FixedValueAnchorNode extends FixedWithNextNode implements LIR
     public static native <T> T getObject(Object object);
 
     @Override
-    public void generate(NodeLIRGeneratorTool generator) {
+    public void generate(NodeLIRBuiderTool generator) {
         generator.setResult(this, generator.operand(object));
     }
 

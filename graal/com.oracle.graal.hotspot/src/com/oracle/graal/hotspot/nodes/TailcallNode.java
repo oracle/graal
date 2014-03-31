@@ -58,7 +58,7 @@ public class TailcallNode extends FixedWithNextNode implements LIRGenResLowerabl
         this.frameState = frameState;
     }
 
-    public void generate(NodeLIRGeneratorTool gen, LIRGenerationResult res) {
+    public void generate(NodeLIRBuiderTool gen, LIRGenerationResult res) {
         HotSpotVMConfig config = runtime().getConfig();
         ResolvedJavaMethod method = frameState.method();
         boolean isStatic = Modifier.isStatic(method.getModifiers());

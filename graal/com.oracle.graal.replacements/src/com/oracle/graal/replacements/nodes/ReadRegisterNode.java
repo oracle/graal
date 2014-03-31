@@ -74,7 +74,7 @@ public final class ReadRegisterNode extends FixedWithNextNode implements LIRLowe
     }
 
     @Override
-    public void generate(NodeLIRGeneratorTool generator) {
+    public void generate(NodeLIRBuiderTool generator) {
         Value result = register.asValue(getKind());
         if (incoming) {
             generator.getLIRGeneratorTool().emitIncomingValues(new Value[]{result});

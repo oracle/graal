@@ -42,8 +42,8 @@ public class PrefetchAllocateNode extends FixedWithNextNode implements LIRGenLow
     }
 
     @Override
-    public void generate(NodeLIRGenerator gen) {
-        ((HotSpotNodeLIRGenerator) gen).emitPrefetchAllocate(address, distance);
+    public void generate(NodeLIRBuilder gen) {
+        ((HotSpotNodeLIRBuilder) gen).emitPrefetchAllocate(address, distance);
     }
 
     @NodeIntrinsic

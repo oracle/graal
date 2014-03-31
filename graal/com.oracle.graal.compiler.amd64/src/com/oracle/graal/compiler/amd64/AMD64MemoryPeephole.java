@@ -45,10 +45,10 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
 public class AMD64MemoryPeephole implements MemoryArithmeticLIRLowerer {
-    protected final AMD64NodeLIRGenerator gen;
+    protected final AMD64NodeLIRBuilder gen;
     protected List<ValueNode> deferredNodes;
 
-    protected AMD64MemoryPeephole(AMD64NodeLIRGenerator gen) {
+    protected AMD64MemoryPeephole(AMD64NodeLIRBuilder gen) {
         this.gen = gen;
     }
 

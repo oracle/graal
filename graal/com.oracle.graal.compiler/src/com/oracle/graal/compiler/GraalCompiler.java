@@ -205,7 +205,7 @@ public class GraalCompiler {
 
     }
 
-    private static void emitBlock(NodeLIRGenerator nodeLirGen, LIRGenerationResult lirGenRes, Block b, StructuredGraph graph, BlockMap<List<ScheduledNode>> blockMap) {
+    private static void emitBlock(NodeLIRBuilder nodeLirGen, LIRGenerationResult lirGenRes, Block b, StructuredGraph graph, BlockMap<List<ScheduledNode>> blockMap) {
         if (lirGenRes.getLIR().getLIRforBlock(b) == null) {
             for (Block pred : b.getPredecessors()) {
                 if (!b.isLoopHeader() || !pred.isLoopEnd()) {
@@ -244,7 +244,7 @@ public class GraalCompiler {
             FrameMap frameMap = backend.newFrameMap();
             LIRGenerationResult lirGenRes = backend.newLIRGenerationResult(lir, frameMap, stub);
             LIRGenerator lirGen = backend.newLIRGenerator(cc, lirGenRes);
-            NodeLIRGenerator nodeLirGen = backend.newNodeLIRGenerator(graph, lirGenRes, lirGen);
+            NodeLIRBuilder nodeLirGen = backend.newNodeLIRGenerator(graph, lirGenRes, lirGen);
 
             try (Scope s = Debug.scope("LIRGen", lirGen)) {
                 for (Block b : linearScanOrder) {

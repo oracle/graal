@@ -39,7 +39,7 @@ import com.oracle.graal.nodes.java.*;
 /**
  * This class implements the PTX specific portion of the LIR generator.
  */
-public class PTXNodeLIRGenerator extends NodeLIRGenerator {
+public class PTXNodeLIRBuilder extends NodeLIRBuilder {
 
     // Number of the predicate register that can be used when needed.
     // This value will be recorded and incremented in the LIR instruction
@@ -57,7 +57,7 @@ public class PTXNodeLIRGenerator extends NodeLIRGenerator {
         }
     }
 
-    public PTXNodeLIRGenerator(StructuredGraph graph, LIRGenerationResult lirGenRes, LIRGenerator lirGen) {
+    public PTXNodeLIRBuilder(StructuredGraph graph, LIRGenerationResult lirGenRes, LIRGenerator lirGen) {
         super(graph, lirGenRes, lirGen);
     }
 

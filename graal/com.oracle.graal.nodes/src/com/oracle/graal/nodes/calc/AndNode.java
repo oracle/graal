@@ -81,7 +81,7 @@ public final class AndNode extends BitLogicNode implements Canonicalizable, Narr
     }
 
     @Override
-    public void generate(NodeLIRGeneratorTool gen) {
+    public void generate(NodeLIRBuiderTool gen) {
         gen.setResult(this, gen.getLIRGeneratorTool().emitAnd(gen.operand(x()), gen.operand(y())));
     }
 

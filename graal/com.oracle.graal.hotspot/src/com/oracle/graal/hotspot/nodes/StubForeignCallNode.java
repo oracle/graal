@@ -57,7 +57,7 @@ public class StubForeignCallNode extends FixedWithNextNode implements LIRLowerab
         return foreignCalls.getKilledLocations(descriptor);
     }
 
-    protected Value[] operands(NodeLIRGeneratorTool gen) {
+    protected Value[] operands(NodeLIRBuiderTool gen) {
         Value[] operands = new Value[arguments.size()];
         for (int i = 0; i < operands.length; i++) {
             operands[i] = gen.operand(arguments.get(i));
@@ -66,7 +66,7 @@ public class StubForeignCallNode extends FixedWithNextNode implements LIRLowerab
     }
 
     @Override
-    public void generate(NodeLIRGeneratorTool gen) {
+    public void generate(NodeLIRBuiderTool gen) {
         assert graph().start() instanceof StubStartNode;
         ForeignCallLinkage linkage = gen.getLIRGeneratorTool().getForeignCalls().lookupForeignCall(descriptor);
         Value[] operands = operands(gen);

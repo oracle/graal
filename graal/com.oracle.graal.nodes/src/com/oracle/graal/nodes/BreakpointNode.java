@@ -54,7 +54,7 @@ public final class BreakpointNode extends FixedWithNextNode implements LIRLowera
     }
 
     @Override
-    public void generate(NodeLIRGeneratorTool gen) {
+    public void generate(NodeLIRBuiderTool gen) {
         gen.visitBreakpointNode(this);
     }
 

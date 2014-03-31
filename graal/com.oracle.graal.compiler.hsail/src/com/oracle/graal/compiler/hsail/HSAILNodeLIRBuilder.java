@@ -35,9 +35,9 @@ import com.oracle.graal.nodes.type.*;
 /**
  * This class implements the HSAIL specific portion of the LIR generator.
  */
-public abstract class HSAILNodeLIRGenerator extends NodeLIRGenerator {
+public abstract class HSAILNodeLIRBuilder extends NodeLIRBuilder {
 
-    public HSAILNodeLIRGenerator(StructuredGraph graph, LIRGenerationResult lirGenRes, LIRGenerator lirGen) {
+    public HSAILNodeLIRBuilder(StructuredGraph graph, LIRGenerationResult lirGenRes, LIRGenerator lirGen) {
         super(graph, lirGenRes, lirGen);
     }
 

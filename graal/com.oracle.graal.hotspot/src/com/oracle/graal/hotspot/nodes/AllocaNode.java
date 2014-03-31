@@ -58,7 +58,7 @@ public final class AllocaNode extends FixedWithNextNode implements LIRGenResLowe
     }
 
     @Override
-    public void generate(NodeLIRGeneratorTool gen, LIRGenerationResult res) {
+    public void generate(NodeLIRBuiderTool gen, LIRGenerationResult res) {
         StackSlot array = res.getFrameMap().allocateStackSlots(slots, objects, null);
         Value result = gen.getLIRGeneratorTool().emitAddress(array);
         gen.setResult(this, result);

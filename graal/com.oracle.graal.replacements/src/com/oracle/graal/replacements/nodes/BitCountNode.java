@@ -65,7 +65,7 @@ public class BitCountNode extends FloatingNode implements LIRGenLowerable, Canon
     }
 
     @Override
-    public void generate(NodeLIRGenerator gen) {
+    public void generate(NodeLIRBuilder gen) {
         Variable result = gen.newVariable(Kind.Int);
         gen.emitBitCount(result, gen.operand(value));
         gen.setResult(this, result);

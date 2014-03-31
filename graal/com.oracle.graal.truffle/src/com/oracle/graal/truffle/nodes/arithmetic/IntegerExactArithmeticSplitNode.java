@@ -70,12 +70,12 @@ public abstract class IntegerExactArithmeticSplitNode extends ControlSplitNode i
     }
 
     @Override
-    public void generate(NodeLIRGeneratorTool generator) {
+    public void generate(NodeLIRBuiderTool generator) {
         generator.setResult(this, generateArithmetic(generator));
         generator.emitOverflowCheckBranch(getOverflowSuccessor(), getNext(), probability(getOverflowSuccessor()));
     }
 
-    protected abstract Value generateArithmetic(NodeLIRGeneratorTool generator);
+    protected abstract Value generateArithmetic(NodeLIRBuiderTool generator);
 
     static void lower(LoweringTool tool, IntegerExactArithmeticNode node) {
         if (node.asNode().graph().getGuardsStage() == StructuredGraph.GuardsStage.FIXED_DEOPTS) {

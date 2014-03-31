@@ -137,7 +137,7 @@ public class CFGPrinterObserver implements DebugDumpHandler {
         } else {
             cfgPrinter.lir = Debug.contextLookup(LIR.class);
         }
-        cfgPrinter.nodeLirGenerator = Debug.contextLookup(NodeLIRGenerator.class);
+        cfgPrinter.nodeLirGenerator = Debug.contextLookup(NodeLIRBuilder.class);
         if (cfgPrinter.nodeLirGenerator != null) {
             cfgPrinter.target = cfgPrinter.nodeLirGenerator.getLIRGeneratorTool().target();
         }

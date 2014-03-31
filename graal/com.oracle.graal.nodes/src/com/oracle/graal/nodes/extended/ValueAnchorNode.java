@@ -42,7 +42,7 @@ public final class ValueAnchorNode extends FixedWithNextNode implements LIRLower
     }
 
     @Override
-    public void generate(NodeLIRGeneratorTool gen) {
+    public void generate(NodeLIRBuiderTool gen) {
         // Nothing to emit, since this node is used for structural purposes only.
     }
 
