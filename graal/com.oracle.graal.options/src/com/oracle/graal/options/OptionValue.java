@@ -67,7 +67,7 @@ public class OptionValue<T> {
      * used:
      *
      * <pre>
-     * Map<OptionValue, Object> overrides = new HashMap<>();
+     * Map&lt;OptionValue, Object&gt; overrides = new HashMap&lt;&gt;();
      * overrides.put(myOption1, myValue1);
      * overrides.put(myOption2, myValue2);
      * try (OverrideScope s = OptionValue.override(overrides) {

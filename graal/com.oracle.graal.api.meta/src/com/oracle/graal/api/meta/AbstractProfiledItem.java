@@ -48,8 +48,8 @@ public abstract class AbstractProfiledItem<T> implements Comparable<AbstractProf
 
     /**
      * Returns the estimated probability of {@link #getItem()}.
-     * 
-     * @return double value >= 0.0 and <= 1.0
+     *
+     * @return double value &ge; 0.0 and &le; 1.0
      */
     public double getProbability() {
         return probability;

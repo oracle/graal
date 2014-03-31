@@ -24,7 +24,7 @@ package com.oracle.graal.api.code;
 
 /**
  * Constants and intrinsic definition for memory barriers.
- * 
+ *
  * The documentation for each constant is taken from Doug Lea's <a
  * href="http://gee.cs.oswego.edu/dl/jmm/cookbook.html">The JSR-133 Cookbook for Compiler
  * Writers</a>.
@@ -32,17 +32,17 @@ package com.oracle.graal.api.code;
  * The {@code JMM_*} constants capture the memory barriers necessary to implement the Java Memory
  * Model with respect to volatile field accesses. Their values are explained by this comment from
  * templateTable_i486.cpp in the HotSpot source code:
- * 
+ *
  * <pre>
  * Volatile variables demand their effects be made known to all CPU's in
- * order.  Store buffers on most chips allow reads & writes to reorder; the
+ * order.  Store buffers on most chips allow reads &amp; writes to reorder; the
  * JMM's ReadAfterWrite.java test fails in -Xint mode without some kind of
  * memory barrier (i.e., it's not sufficient that the interpreter does not
  * reorder volatile references, the hardware also must not reorder them).
  * 
  * According to the new Java Memory Model (JMM):
  * (1) All volatiles are serialized wrt to each other.
- * ALSO reads & writes act as acquire & release, so:
+ * ALSO reads &amp; writes act as acquire &amp; release, so:
  * (2) A read cannot let unrelated NON-volatile memory refs that happen after
  * the read float up to before the read.  It's OK for non-volatile memory refs
  * that happen before the volatile read to float down below it.

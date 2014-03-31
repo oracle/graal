@@ -28,12 +28,12 @@ import com.oracle.graal.lir.*;
 
 /**
  * SPARC specific frame map.
- * 
+ *
  * This is the format of a SPARC stack frame:
- * 
+ *
  * <pre>
  *   Base       Contents
- * 
+ *
  *            :                                :  -----
  *   caller   | incoming overflow argument n   |    ^
  *   frame    :     ...                        :    | positive
@@ -54,10 +54,10 @@ import com.oracle.graal.lir.*;
  *            |                                |    |            |      |
  *            : callee save area               :    |            |      |
  *            |                                |    |            v      v
- *    %sp-->  +--------------------------------+---------------------------
- * 
+ *    %sp--&gt;  +--------------------------------+---------------------------
+ *
  * </pre>
- * 
+ *
  * The spill slot area also includes stack allocated memory blocks (ALLOCA blocks). The size of such
  * a block may be greater than the size of a normal spill slot or the word size.
  * <p>

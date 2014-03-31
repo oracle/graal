@@ -39,7 +39,7 @@ public class BytecodeFrame extends BytecodePosition implements Serializable {
      * An array of values representing how to reconstruct the state of the Java frame. This is array
      * is partitioned as follows:
      * <p>
-     * <table border="1" cellpadding="5" frame="void", rules="all">
+     * <table summary="" border="1" cellpadding="5" frame="void" rules="all">
      * <tr>
      * <th>Start index (inclusive)</th>
      * <th>End index (exclusive)</th>
@@ -95,7 +95,7 @@ public class BytecodeFrame extends BytecodePosition implements Serializable {
 
     /**
      * Creates a new frame object.
-     * 
+     *
      * @param caller the caller frame (which may be {@code null})
      * @param method the method
      * @param bci a BCI within the method
@@ -138,7 +138,7 @@ public class BytecodeFrame extends BytecodePosition implements Serializable {
 
     /**
      * Gets the value representing the specified local variable.
-     * 
+     *
      * @param i the local variable index
      * @return the value that can be used to reconstruct the local's current value
      */
@@ -148,7 +148,7 @@ public class BytecodeFrame extends BytecodePosition implements Serializable {
 
     /**
      * Gets the value representing the specified stack slot.
-     * 
+     *
      * @param i the stack index
      * @return the value that can be used to reconstruct the stack slot's current value
      */
@@ -158,7 +158,7 @@ public class BytecodeFrame extends BytecodePosition implements Serializable {
 
     /**
      * Gets the value representing the specified lock.
-     * 
+     *
      * @param i the lock index
      * @return the value that can be used to reconstruct the lock's current value
      */
@@ -168,7 +168,7 @@ public class BytecodeFrame extends BytecodePosition implements Serializable {
 
     /**
      * Gets the caller of this frame.
-     * 
+     *
      * @return {@code null} if this frame has no caller
      */
     public BytecodeFrame caller() {

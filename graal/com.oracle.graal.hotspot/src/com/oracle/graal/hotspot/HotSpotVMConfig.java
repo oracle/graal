@@ -1320,14 +1320,14 @@ public class HotSpotVMConfig extends CompilerObject {
     @HotSpotVMField(name = "VirtualSpace::_high_boundary", type = "char*", get = HotSpotVMField.Type.OFFSET) @Stable private int virtualSpaceHighBoundaryOffset;
 
     /**
-     * @return CodeCache::_heap->_memory._low_boundary
+     * @return CodeCache::_heap-&gt;_memory._low_boundary
      */
     public long codeCacheLowBoundary() {
         return unsafe.getAddress(codeCacheHeap + codeHeapMemoryOffset + virtualSpaceLowBoundaryOffset);
     }
 
     /**
-     * @return CodeCache::_heap->_memory._high_boundary
+     * @return CodeCache::_heap-&gt;_memory._high_boundary
      */
     public long codeCacheHighBoundary() {
         return unsafe.getAddress(codeCacheHeap + codeHeapMemoryOffset + virtualSpaceHighBoundaryOffset);

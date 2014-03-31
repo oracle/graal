@@ -34,6 +34,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.nodes.type.*;
+import com.oracle.graal.phases.*;
 
 public class AMD64HotSpotRegisterConfig implements RegisterConfig {
 
@@ -43,8 +44,8 @@ public class AMD64HotSpotRegisterConfig implements RegisterConfig {
 
     /**
      * The same as {@link #allocatable}, except if parameter registers are removed with the
-     * {@link #RegisterPressure} option. The caller saved registers always include all parameter
-     * registers.
+     * {@link GraalOptions#RegisterPressure} option. The caller saved registers always include all
+     * parameter registers.
      */
     private final Register[] callerSaved;
 

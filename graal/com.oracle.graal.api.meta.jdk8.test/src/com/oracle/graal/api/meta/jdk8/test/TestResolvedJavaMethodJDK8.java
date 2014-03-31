@@ -33,7 +33,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.meta.test.*;
 
 /**
- * Tests for {@link ResolvedJavaMethod} that require JDK >= 8.
+ * Tests for {@link ResolvedJavaMethod} that require JDK &ge; 8.
  */
 public class TestResolvedJavaMethodJDK8 extends MethodUniverse {
 

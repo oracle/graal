@@ -49,7 +49,8 @@ import edu.umd.cs.findbugs.annotations.*;
 /**
  * This class contains infrastructure to maintain counters based on {@link DynamicCounterNode}s. The
  * infrastructure is enabled by specifying either the GenericDynamicCounters or
- * BenchmarkDynamicCounters option.<br/>
+ * BenchmarkDynamicCounters option.
+ * <p>
  *
  * The counters are kept in a special area allocated for each native JavaThread object, and the
  * number of counters is configured using {@code -XX:GraalCounterSize=value}.

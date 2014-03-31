@@ -29,7 +29,7 @@ import java.io.*;
  * BCI. The precision of the supplied values may vary, but a runtime that provides this information
  * should be aware that it will be used to guide performance-critical decisions like speculative
  * inlining, etc.
- * 
+ *
  * @param <T> a subclass of AbstractProfiledItem
  * @param <U> the class of the items that are profiled at the specific BCI and for which
  *            probabilities are stored. E.g., a ResolvedJavaType or a ResolvedJavaMethod.
@@ -64,8 +64,8 @@ public abstract class AbstractJavaProfile<T extends AbstractProfiledItem<U>, U> 
     /**
      * Returns the estimated probability of all types that could not be recorded due to profiling
      * limitations.
-     * 
-     * @return double value >= 0.0 and <= 1.0
+     *
+     * @return double value &ge; 0.0 and &le; 1.0
      */
     public double getNotRecordedProbability() {
         return notRecordedProbability;
@@ -77,7 +77,7 @@ public abstract class AbstractJavaProfile<T extends AbstractProfiledItem<U>, U> 
 
     /**
      * Searches for an entry of a given resolved Java type.
-     * 
+     *
      * @param type the type for which an entry should be searched
      * @return the entry or null if no entry for this type can be found
      */

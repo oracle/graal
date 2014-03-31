@@ -1377,7 +1377,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
              *
              * @param instr The last instruction (= fixed node) which was added.
              * @param state The current frame state.
-             * @Returns Returns the (new) last instruction.
+             * @return Returns the (new) last instruction.
              */
             protected FixedWithNextNode finishInstruction(FixedWithNextNode instr, HIRFrameStateBuilder state) {
                 return instr;

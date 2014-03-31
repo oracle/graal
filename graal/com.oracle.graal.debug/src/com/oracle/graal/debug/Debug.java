@@ -142,8 +142,8 @@ public class Debug {
 
     /**
      * Represents a debug scope entered by {@link Debug#scope(Object)} or
-     * {@link Debug#sandbox(String, DebugConfig, Object...)}. Leaving the scope is achieved via
-     * {@link #close()}.
+     * {@link Debug#sandbox(CharSequence, DebugConfig, Object...)}. Leaving the scope is achieved
+     * via {@link #close()}.
      */
     public interface Scope extends AutoCloseable {
         void close();
@@ -276,10 +276,10 @@ public class Debug {
      * Handles an exception in the context of the debug scope just exited. The just exited scope
      * must have the current scope as its parent which will be the case if the try-with-resource
      * pattern recommended by {@link #scope(Object)} and
-     * {@link #sandbox(String, DebugConfig, Object...)} is used
+     * {@link #sandbox(CharSequence, DebugConfig, Object...)} is used
      *
      * @see #scope(Object)
-     * @see #sandbox(String, DebugConfig, Object...)
+     * @see #sandbox(CharSequence, DebugConfig, Object...)
      */
     public static RuntimeException handle(Throwable exception) {
         if (ENABLED) {

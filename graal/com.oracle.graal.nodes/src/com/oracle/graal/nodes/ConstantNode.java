@@ -103,7 +103,7 @@ public final class ConstantNode extends FloatingNode implements LIRLowerable {
     }
 
     /**
-     * Replaces this node at its usages with another node. If {@value #ConstantNodeRecordsUsages} is
+     * Replaces this node at its usages with another node. If {@link #ConstantNodeRecordsUsages} is
      * false, this is an expensive operation that should only be used in test/verification/AOT code.
      */
     public void replace(StructuredGraph graph, Node replacement) {

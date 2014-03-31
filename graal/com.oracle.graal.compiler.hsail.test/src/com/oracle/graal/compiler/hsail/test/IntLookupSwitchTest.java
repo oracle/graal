@@ -29,21 +29,21 @@ import com.oracle.graal.compiler.hsail.test.infra.*;
 /**
  * Tests a switch statement with integer keys. This test exercises the LOOKUPSWITCH Java bytecode
  * instruction.
- * 
+ *
  * The HSAIL code generated for this example is a series of cascading compare and branch
  * instructions for each case of the switch.
- * 
+ *
  * These HSAIL instructions have the following form:
- * 
- * 
+ *
+ *
  * //Check whether the key matches the key constant of the case. Store the result of the compare (0
  * or 1) in the control register c0.
- * 
- * cmp_eq $c0 <source register>, <key constant for case statement>
- * 
+ *
+ * cmp_eq $c0 &lt;source register&gt;, &lt;key constant for case statement&gt;
+ *
  * //Branch to the corresponding label of that case if there's a match.
- * 
- * cbr $c0 <branch target for that case>
+ *
+ * cbr $c0 &lt;branch target for that case&gt;
  */
 public class IntLookupSwitchTest extends GraalKernelTester {
 
@@ -54,12 +54,12 @@ public class IntLookupSwitchTest extends GraalKernelTester {
     /**
      * The static "kernel" method we will be testing. This method writes to an output array based on
      * switching on an element of an input array. By convention the gid is the last parameter.
-     * 
+     *
      * Note: Because the key constants used in the cases of the switch are sparsely distributed, the
      * Java source compiler compiles this example into the LOOKUPSWITCH bytecode instruction. So
      * this is really a test to see whether the HSAIL backend is appropriately handling the
      * LOOKUPSWITCH bytecode.
-     * 
+     *
      * @param out the output array
      * @param ina the input array
      * @param gid the parameter used to index into the input and output arrays
@@ -102,7 +102,7 @@ public class IntLookupSwitchTest extends GraalKernelTester {
 
     /**
      * Initializes the input and output arrays passed to the run routine.
-     * 
+     *
      * @param in the input array
      */
     void setupArrays(int[] in) {

@@ -994,7 +994,7 @@ public class SnippetTemplate {
      * @param replacee the node that will be replaced
      * @param replacer object that replaces the usages of {@code replacee}
      * @param args the arguments to be bound to the flattened positional parameters of the snippet
-     * @return the map of duplicated nodes (original -> duplicate)
+     * @return the map of duplicated nodes (original -&gt; duplicate)
      */
     public Map<Node, Node> instantiate(MetaAccessProvider metaAccess, FixedNode replacee, UsageReplacer replacer, Arguments args) {
         assert checkSnippetKills(replacee);

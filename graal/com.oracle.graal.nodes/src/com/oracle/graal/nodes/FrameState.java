@@ -131,7 +131,7 @@ public final class FrameState extends VirtualState implements IterableNodeType {
     /**
      * Simple constructor used to create marker FrameStates.
      * 
-     * @param bci marker bci, needs to be < 0
+     * @param bci marker bci, needs to be &lt; 0
      */
     public FrameState(int bci) {
         this(null, bci, Collections.<ValueNode> emptyList(), 0, 0, false, false, Collections.<MonitorIdNode> emptyList(), Collections.<EscapeObjectState> emptyList());

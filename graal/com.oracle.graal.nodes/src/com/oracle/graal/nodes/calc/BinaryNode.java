@@ -155,7 +155,7 @@ public abstract class BinaryNode extends FloatingNode {
      * criterion: {@code (a + 2) + 1 => a + (1 + 2)}
      * <p>
      * This method accepts only {@linkplain #canTryReassociate(BinaryNode) reassociable} operations
-     * such as +, -, *, &, | and ^
+     * such as +, -, *, &amp;, | and ^
      */
     public static BinaryNode reassociate(BinaryNode node, NodePredicate criterion) {
         assert canTryReassociate(node);

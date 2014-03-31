@@ -206,7 +206,7 @@ public final class BciBlockMapping {
 
     /**
      * Creates a new BlockMap instance from bytecode of the given method .
-     * 
+     *
      * @param method the compiler interface method containing the code
      */
     private BciBlockMapping(ResolvedJavaMethod method) {
@@ -768,8 +768,8 @@ public final class BciBlockMapping {
     }
 
     /**
-     * Encapsulates the liveness calculation, so that subclasses for locals <= 64 and locals > 64
-     * can be implemented.
+     * Encapsulates the liveness calculation, so that subclasses for locals &le; 64 and locals &gt;
+     * 64 can be implemented.
      */
     public abstract class LocalLiveness {
 

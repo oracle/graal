@@ -30,24 +30,24 @@ import com.oracle.graal.compiler.hsail.test.infra.*;
 
 /**
  * Tests switch statement with String literal keys.
- * 
+ *
  * Note: In Java bytecode, this example reduces to a LOOKUPSWITCH over int keys because the Java
  * source compiler generates a call to String.hashcode( ) to convert to int values.
- * 
+ *
  * The HSAIL code generated for this example is a series of cascading compare and branch
  * instructions for each case of the switch.
- * 
+ *
  * These instruction have the following form:
- * 
- * 
+ *
+ *
  * //Check whether the key matches the key constant of the case. Store the result of the compare (0
  * or 1) in the control register c0.
- * 
- * cmp_eq $c0 <source register>, <key constant for case statement>
- * 
+ *
+ * cmp_eq $c0 &lt;source register&gt;, &lt;key constant for case statement&gt;
+ *
  * //Branch to the corresponding label of that case if there's a match.
- * 
- * cbr $c0 <branch target for that case>
+ *
+ * cbr $c0 &lt;branch target for that case&gt;
  */
 public class StringSwitchTest extends GraalKernelTester {
 
@@ -62,7 +62,7 @@ public class StringSwitchTest extends GraalKernelTester {
     /**
      * The static "kernel" method we will be testing. This method performs a switch statement over a
      * String literal key.
-     * 
+     *
      * @param out the output array
      * @param ina the input array of String literal keys
      * @param gid the parameter used to index into the input and output arrays
@@ -133,7 +133,7 @@ public class StringSwitchTest extends GraalKernelTester {
 
     /**
      * Initializes the input and output arrays passed to the run routine.
-     * 
+     *
      * @param in the input array
      */
     void setupArrays(String[] in) {

@@ -89,14 +89,14 @@ public interface HotSpotMethodDataAccessor {
     /**
      * Returns the BCI stored in the LayoutData header.
      * 
-     * @return An integer >= 0 and <= Short.MAX_VALUE, or -1 if not supported.
+     * @return An integer &ge; 0 and &le; Short.MAX_VALUE, or -1 if not supported.
      */
     int getBCI(HotSpotMethodData data, int position);
 
     /**
      * Computes the size for the specific data at the given position.
      * 
-     * @return An integer > 0.
+     * @return An integer &gt; 0.
      */
     int getSize(HotSpotMethodData data, int position);
 

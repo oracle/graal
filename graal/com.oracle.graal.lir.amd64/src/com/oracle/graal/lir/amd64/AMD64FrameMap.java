@@ -28,12 +28,12 @@ import com.oracle.graal.lir.*;
 
 /**
  * AMD64 specific frame map.
- * 
+ *
  * This is the format of an AMD64 stack frame:
- * 
+ *
  * <pre>
  *   Base       Contents
- * 
+ *
  *            :                                :  -----
  *   caller   | incoming overflow argument n   |    ^
  *   frame    :     ...                        :    | positive
@@ -54,10 +54,10 @@ import com.oracle.graal.lir.*;
  *            | outgoing overflow argument n   |    ^            |      |
  *            :     ...                        :    | positive   |      |
  *            | outgoing overflow argument 0   |    | offsets    v      v
- *    %sp-->  +--------------------------------+---------------------------
- * 
+ *    %sp--&gt;  +--------------------------------+---------------------------
+ *
  * </pre>
- * 
+ *
  * The spill slot area also includes stack allocated memory blocks (ALLOCA blocks). The size of such
  * a block may be greater than the size of a normal spill slot or the word size.
  * <p>
