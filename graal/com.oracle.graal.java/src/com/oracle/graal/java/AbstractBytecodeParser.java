@@ -42,7 +42,7 @@ import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.calc.FloatConvertNode.FloatConvert;
 import com.oracle.graal.phases.*;
 
-public abstract class BytecodeParseHelper<T extends KindInterface, F extends AbstractFrameStateBuilder<T>> {
+public abstract class AbstractBytecodeParser<T extends KindInterface, F extends AbstractFrameStateBuilder<T>> {
 
     protected F frameState;
     protected BytecodeStream stream;           // the bytecode stream
@@ -55,7 +55,7 @@ public abstract class BytecodeParseHelper<T extends KindInterface, F extends Abs
     private final MetaAccessProvider metaAccess;
     protected int entryBCI;
 
-    public BytecodeParseHelper(MetaAccessProvider metaAccess, ResolvedJavaMethod method, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts, F frameState,
+    public AbstractBytecodeParser(MetaAccessProvider metaAccess, ResolvedJavaMethod method, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts, F frameState,
                     BytecodeStream stream, ProfilingInfo profilingInfo, ConstantPool constantPool, int entryBCI) {
         this.frameState = frameState;
         this.graphBuilderConfig = graphBuilderConfig;

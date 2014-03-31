@@ -222,7 +222,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             }
         }
 
-        class BytecodeParser extends BytecodeParseHelper<ValueNode, HIRFrameStateBuilder> {
+        class BytecodeParser extends AbstractBytecodeParser<ValueNode, HIRFrameStateBuilder> {
 
             /**
              * Head of placeholder list.
