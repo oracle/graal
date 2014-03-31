@@ -259,7 +259,8 @@ public class CompilationTask implements Runnable, Comparable {
                 if (UseBaselineCompiler.getValue() == true) {
                     HotSpotProviders providers = backend.getProviders();
                     BaselineCompiler baselineCompiler = new BaselineCompiler(GraphBuilderConfiguration.getDefault(), providers.getMetaAccess());
-                    result = baselineCompiler.generate(method, -1, backend, new CompilationResult(), method, CompilationResultBuilderFactory.Default);
+                    OptimisticOptimizations optimisticOpts = OptimisticOptimizations.ALL;
+                    result = baselineCompiler.generate(method, -1, backend, new CompilationResult(), method, CompilationResultBuilderFactory.Default, optimisticOpts);
                 } else {
                     Map<ResolvedJavaMethod, StructuredGraph> graphCache = null;
                     if (GraalOptions.CacheGraphs.getValue()) {
