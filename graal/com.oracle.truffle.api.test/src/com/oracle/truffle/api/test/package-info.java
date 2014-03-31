@@ -46,7 +46,6 @@
  * <li>How to use type specialization and speculation for node return values? {@link com.oracle.truffle.api.test.ReturnTypeSpecializationTest}</li>
  * </ul>
  *
- * </p>
  *
  */
 package com.oracle.truffle.api.test;

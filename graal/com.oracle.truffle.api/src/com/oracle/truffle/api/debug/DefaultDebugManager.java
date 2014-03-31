@@ -46,12 +46,12 @@ public class DefaultDebugManager implements DebugManager {
     private Source beingLoaded = null;
 
     /**
-     * Map: SourceSection ==> probe chain associated with that source section in an AST.
+     * Map: SourceSection ==&gt; probe chain associated with that source section in an AST.
      */
     private final Map<SourceSection, ProbeChain> srcToProbeChain = new HashMap<>();
 
     /**
-     * Map: Source lines ==> probe chains associated with source sections starting on the line.
+     * Map: Source lines ==&gt; probe chains associated with source sections starting on the line.
      */
     private final Map<SourceLineLocation, Set<ProbeChain>> lineToProbeChains = new HashMap<>();
 

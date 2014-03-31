@@ -35,45 +35,43 @@ import java.lang.annotation.*;
  * {@link TypeSystem}. You can define multiple overloaded {@link TypeCheck} methods for the same
  * type. This can be used to reduce the boxing overhead in type conversions.
  * </p>
- * 
+ *
  * <p>
  * By default the system generates type checks for all types in the parent {@link TypeSystem} which
  * look like the follows:
- * 
+ *
  * <pre>
  * {@literal @}TypeCheck
  * boolean is${typeName}(Object value) {
  *         return value instanceof ${typeName};
  * }
  * </pre>
- * 
- * </p>
- * 
+ *
  * <b>Example:</b>
  * <p>
  * A type check for BigInteger with one overloaded optimized variant to reduce boxing.
  * </p>
- * 
+ *
  * <pre>
- * 
- * 
+ *
+ *
  * {@literal @}TypeSystem(types = {int.class, BigInteger.class, String.class}, nodeBaseClass = TypedNode.class)
  * public abstract class Types {
- * 
+ *
  *     {@literal @}TypeCheck
  *     public boolean isBigInteger(Object value) {
  *         return value instanceof Integer || value instanceof BigInteger;
  *     }
- * 
+ *
  *     {@literal @}TypeCheck
  *     public boolean isBigInteger(int value) {
  *         return true;
  *     }
- * 
+ *
  * }
  * </pre>
- * 
- * 
+ *
+ *
  */
 @Retention(RetentionPolicy.CLASS)
 @Target({ElementType.METHOD})

@@ -42,7 +42,6 @@
  * <ul>
  * <li>What do I need to get started? {@link com.oracle.truffle.api.dsl.test.TypeSystemTest}</li>
  * </ul>
- * </p>
  *
  */
 package com.oracle.truffle.api.dsl.test;

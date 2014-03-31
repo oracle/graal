@@ -37,7 +37,7 @@ import com.oracle.truffle.api.nodes.*;
  * concrete type is found first when searching the list sequentially for the type of a given generic
  * value.
  * </p>
- * 
+ *
  * <p>
  * Each {@link #value()} is represented as a java type. A type can specify two annotations:
  * {@link TypeCheck} and {@link TypeCast}. The {@link TypeCheck} checks whether a given generic
@@ -51,31 +51,30 @@ import com.oracle.truffle.api.nodes.*;
  * accept also {@link Integer} values, implicitly converting them to {@link Double} . This example
  * points out how we express implicit type conversions.
  * </p>
- * 
+ *
  * <p>
  * <b>Example:</b> The {@link TypeSystem} contains the types {@link Boolean}, {@link Integer}, and
  * {@link Double}. The type {@link Object} is always used implicitly as the generic type represent
  * all values.
- * 
+ *
  * <pre>
- * 
+ *
  * {@literal @}TypeSystem(types = {boolean.class, int.class, double.class})
  * public abstract class ExampleTypeSystem {
- * 
+ *
  *     {@literal @}TypeCheck
  *     public boolean isInteger(Object value) {
  *         return value instanceof Integer || value instanceof Double;
  *     }
- * 
+ *
  *     {@literal @}TypeCast
  *     public double asInteger(Object value) {
  *         return ((Number)value).doubleValue();
  *     }
  * }
  * </pre>
- * 
- * </p>
- * 
+ *
+ *
  * @see TypeCast
  * @see TypeCheck
  */

@@ -31,8 +31,8 @@ import com.oracle.truffle.sl.runtime.*;
 
 /**
  * Base class for all SL nodes that produce a value and therefore benefit from type specialization.
- * The annotation {@Link TypeSystemReference} specifies the SL types. Specifying it here
- * defines the type system for all subclasses.
+ * The annotation {@link TypeSystemReference} specifies the SL types. Specifying it here defines the
+ * type system for all subclasses.
  */
 @TypeSystemReference(SLTypes.class)
 public abstract class SLExpressionNode extends SLStatementNode {
@@ -44,8 +44,8 @@ public abstract class SLExpressionNode extends SLStatementNode {
     public abstract Object executeGeneric(VirtualFrame frame);
 
     /**
-     * When we use an expression at places where a {@SLStatmentNode statement} is
-     * already sufficient, the return value is just discarded.
+     * When we use an expression at places where a {@link SLStatementNode statement} is already
+     * sufficient, the return value is just discarded.
      */
     @Override
     public void executeVoid(VirtualFrame frame) {

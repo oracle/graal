@@ -114,7 +114,7 @@ public final class CompilerDirectives {
      * be greater than b is 90%):
      *
      * <code>
-     * if (injectBranchProbability(0.9, a > b)) {
+     * if (injectBranchProbability(0.9, a &gt; b)) {
      *    // ...
      * }
      * </code>
@@ -124,7 +124,7 @@ public final class CompilerDirectives {
      * 10%):
      *
      * <code>
-     * if (injectBranchProbability(0.9, a > b) && injectBranchProbability(0.1, a == 0)) {
+     * if (injectBranchProbability(0.9, a &gt; b) &amp;&amp; injectBranchProbability(0.1, a == 0)) {
      *    // ...
      * }
      * </code>
