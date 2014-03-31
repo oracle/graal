@@ -135,7 +135,7 @@ public class Graph {
 
     /**
      * Creates an empty Graph with a given name.
-     * 
+     *
      * @param name the name of the graph, used for debugging purposes
      */
     public Graph(String name) {
@@ -206,7 +206,7 @@ public class Graph {
 
     /**
      * Creates a copy of this graph.
-     * 
+     *
      * @param newName the name of the copy, used for debugging purposes (can be null)
      */
     public Graph copy(String newName) {
@@ -223,7 +223,7 @@ public class Graph {
     /**
      * Gets the number of live nodes in this graph. That is the number of nodes which have been
      * added to the graph minus the number of deleted nodes.
-     * 
+     *
      * @return the number of live nodes in this graph
      */
     public int getNodeCount() {
@@ -256,7 +256,7 @@ public class Graph {
 
     /**
      * Adds a new node to the graph.
-     * 
+     *
      * @param node the node to be added
      * @return the node which was added to the graph
      */
@@ -341,11 +341,10 @@ public class Graph {
     /**
      * Looks for a node <i>similar</i> to {@code node} and returns it if found. Otherwise
      * {@code node} is added to this graph and returned.
-     * 
+     *
      * @return a node similar to {@code node} if one exists, otherwise {@code node}
      */
-    public <T extends Node> T unique(T node) {
-        assert node instanceof ValueNumberable;
+    public <T extends Node & ValueNumberable> T unique(T node) {
         return uniqueHelper(node, true);
     }
 
@@ -537,7 +536,7 @@ public class Graph {
 
     /**
      * Returns an {@link Iterable} providing all the live nodes.
-     * 
+     *
      * @return an {@link Iterable} providing all the live nodes.
      */
     public NodeIterable<Node> getNodes() {
@@ -709,7 +708,7 @@ public class Graph {
     /**
      * Returns an {@link Iterable} providing all the live nodes whose type is compatible with
      * {@code type}.
-     * 
+     *
      * @param type the type of node to return
      * @return an {@link Iterable} providing all the matching nodes
      */
@@ -726,7 +725,7 @@ public class Graph {
 
     /**
      * Returns whether the graph contains at least one node of the given type.
-     * 
+     *
      * @param type the type of node that is checked for occurrence
      * @return whether there is at least one such node
      */
@@ -852,7 +851,7 @@ public class Graph {
 
     /**
      * Returns the number of node ids generated so far.
-     * 
+     *
      * @return the number of node ids generated so far
      */
     int nodeIdCount() {
@@ -865,7 +864,7 @@ public class Graph {
      * the source graph by a given node (which must already be in this graph). Edges between
      * duplicate and replacement nodes will also be recreated so care should be taken regarding the
      * matching of node types in the replacement map.
-     * 
+     *
      * @param newNodes the nodes to be duplicated
      * @param replacementsMap the replacement map (can be null if no replacement is to be performed)
      * @return a map which associates the original nodes from {@code nodes} to their duplicates
