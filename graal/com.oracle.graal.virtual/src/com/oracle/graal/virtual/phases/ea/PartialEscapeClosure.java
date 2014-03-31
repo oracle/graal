@@ -32,6 +32,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.PhiNode.PhiType;
 import com.oracle.graal.nodes.VirtualState.NodeClosure;
 import com.oracle.graal.nodes.cfg.*;
+import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.spi.Virtualizable.EscapeState;
@@ -110,7 +111,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
             ((Virtualizable) node).virtualize(tool);
         }
         if (tool.isDeleted()) {
-            return !(node instanceof CommitAllocationNode || node instanceof AllocatedObjectNode);
+            return !(node instanceof CommitAllocationNode || node instanceof AllocatedObjectNode || node instanceof BoxNode);
         }
         if (isMarked) {
             for (ValueNode input : node.inputs().filter(ValueNode.class)) {
@@ -322,7 +323,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
          * merging operation invalid. The merging process is executed until a stable state has been
          * reached. This method needs to be careful to place the effects of the merging operation
          * into the correct blocks.
-         * 
+         *
          * @param states the predecessor block states of the merge
          */
         @Override
@@ -398,7 +399,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
          * materialized, and a PhiNode for the materialized values will be created. Object states
          * can be incompatible if they contain {@code long} or {@code double} values occupying two
          * {@code int} slots in such a way that that their values cannot be merged using PhiNodes.
-         * 
+         *
          * @param object the virtual object that should be associated with the merged object state
          * @param objStates the incoming object states (all of which need to be virtual)
          * @param blockStates the predecessor block states of the merge
@@ -509,7 +510,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
         /**
          * Fill the inputs of the PhiNode corresponding to one {@link Kind#Object} entry in the
          * virtual object.
-         * 
+         *
          * @return true if materialization happened during the merge, false otherwise
          */
         private boolean mergeObjectEntry(ObjectState[] objStates, List<BlockT> blockStates, PhiNode phi, int entryIndex) {
@@ -548,7 +549,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
          * refer to virtual object states. In order for the merging to happen, all incoming object
          * states need to be compatible and without object identity (meaning that their object
          * identity if not used later on).
-         * 
+         *
          * @param phi the PhiNode that should be processed
          * @param states the predecessor block states of the merge
          * @param mergedVirtualObjects the set of virtual objects that exist in all incoming states,
