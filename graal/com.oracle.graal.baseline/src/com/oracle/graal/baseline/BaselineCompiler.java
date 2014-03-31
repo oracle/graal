@@ -83,7 +83,7 @@ public class BaselineCompiler implements BytecodeParser<BciBlock> {
 
     private final GraphBuilderConfiguration graphBuilderConfig;
     private BciBlock[] loopHeaders;
-    private BytecodeParseHelper<Value> parserHelper;
+    private BytecodeParseHelper<Value, LIRFrameStateBuilder> parserHelper;
 
     /**
      * Meters the number of actual bytecodes parsed.

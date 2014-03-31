@@ -40,24 +40,23 @@ import com.oracle.graal.java.BciBlockMapping.BciBlock;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.calc.FloatConvertNode.FloatConvert;
-import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
 import com.oracle.graal.phases.*;
 
-public abstract class BytecodeParseHelper<T extends KindInterface> {
+public abstract class BytecodeParseHelper<T extends KindInterface, F extends AbstractFrameStateBuilder<T>> {
 
-    private AbstractFrameStateBuilder<T> frameState;
-    private BytecodeStream stream;           // the bytecode stream
+    protected F frameState;
+    protected BytecodeStream stream;           // the bytecode stream
     private GraphBuilderConfiguration graphBuilderConfig;
-    private ResolvedJavaType method;
-    private BciBlock currentBlock;
-    private ProfilingInfo profilingInfo;
-    private OptimisticOptimizations optimisticOpts;
-    private ConstantPool constantPool;
+    protected ResolvedJavaMethod method;
+    protected BciBlock currentBlock;
+    protected ProfilingInfo profilingInfo;
+    protected OptimisticOptimizations optimisticOpts;
+    protected ConstantPool constantPool;
     private final MetaAccessProvider metaAccess;
-    private int entryBCI;
+    protected int entryBCI;
 
-    public BytecodeParseHelper(MetaAccessProvider metaAccess, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts, AbstractFrameStateBuilder<T> frameState,
-                    BytecodeStream stream, ProfilingInfo profilingInfo, ConstantPool constantPool) {
+    public BytecodeParseHelper(MetaAccessProvider metaAccess, ResolvedJavaMethod method, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts, F frameState,
+                    BytecodeStream stream, ProfilingInfo profilingInfo, ConstantPool constantPool, int entryBCI) {
         this.frameState = frameState;
         this.graphBuilderConfig = graphBuilderConfig;
         this.optimisticOpts = optimisticOpts;
@@ -65,13 +64,17 @@ public abstract class BytecodeParseHelper<T extends KindInterface> {
         this.stream = stream;
         this.profilingInfo = profilingInfo;
         this.constantPool = constantPool;
-        this.entryBCI = stream.currentBCI();
+        this.entryBCI = entryBCI;
+        this.method = method;
         assert metaAccess != null;
     }
 
+    /**
+     * Start the bytecode parser.
+     */
     protected abstract void build();
 
-    public void setCurrentFrameState(AbstractFrameStateBuilder<T> frameState) {
+    public void setCurrentFrameState(F frameState) {
         this.frameState = frameState;
     }
 
@@ -79,7 +82,7 @@ public abstract class BytecodeParseHelper<T extends KindInterface> {
         this.stream = stream;
     }
 
-    private BytecodeStream getStream() {
+    protected final BytecodeStream getStream() {
         return stream;
     }
 
@@ -568,7 +571,7 @@ public abstract class BytecodeParseHelper<T extends KindInterface> {
 
     protected abstract void genThrow();
 
-    private JavaType lookupType(int cpi, int bytecode) {
+    protected JavaType lookupType(int cpi, int bytecode) {
         eagerResolvingForSnippets(cpi, bytecode);
         JavaType result = constantPool.lookupType(cpi, bytecode);
         assert !graphBuilderConfig.unresolvedIsError() || result instanceof ResolvedJavaType;
@@ -713,7 +716,7 @@ public abstract class BytecodeParseHelper<T extends KindInterface> {
     private void genNewMultiArray(int cpi) {
         JavaType type = lookupType(cpi, MULTIANEWARRAY);
         int rank = getStream().readUByte(bci() + 3);
-        List<T> dims = new ArrayList<>(rank);
+        List<T> dims = new ArrayList<>(Collections.nCopies(rank, null));
         for (int i = rank - 1; i >= 0; i--) {
             dims.set(i, frameState.ipop());
         }
@@ -753,8 +756,8 @@ public abstract class BytecodeParseHelper<T extends KindInterface> {
 
     protected abstract void emitNullCheck(T receiver);
 
-    private static final ArrayIndexOutOfBoundsException cachedArrayIndexOutOfBoundsException = new ArrayIndexOutOfBoundsException();
-    private static final NullPointerException cachedNullPointerException = new NullPointerException();
+    protected static final ArrayIndexOutOfBoundsException cachedArrayIndexOutOfBoundsException = new ArrayIndexOutOfBoundsException();
+    protected static final NullPointerException cachedNullPointerException = new NullPointerException();
     static {
         cachedArrayIndexOutOfBoundsException.setStackTrace(new StackTraceElement[0]);
         cachedNullPointerException.setStackTrace(new StackTraceElement[0]);
@@ -831,8 +834,6 @@ public abstract class BytecodeParseHelper<T extends KindInterface> {
     protected abstract void genInvokeVirtual(JavaMethod target);
 
     protected abstract void genInvokeSpecial(JavaMethod target);
-
-    protected abstract void genInvokeIndirect(InvokeKind invokeKind, ResolvedJavaMethod target, T[] args);
 
 //
 // protected MethodCallTargetNode createMethodCallTarget(InvokeKind invokeKind, ResolvedJavaMethod
@@ -975,6 +976,18 @@ public abstract class BytecodeParseHelper<T extends KindInterface> {
 
     private boolean isNeverExecutedCode(double probability) {
         return probability == 0 && optimisticOpts.removeNeverExecutedCode() && entryBCI == StructuredGraph.INVOCATION_ENTRY_BCI;
+    }
+
+    protected abstract T genDeoptimization();
+
+    protected T createTarget(double probability, BciBlock block, AbstractFrameStateBuilder<T> stateAfter) {
+        assert probability >= 0 && probability <= 1.01 : probability;
+        if (isNeverExecutedCode(probability)) {
+            return genDeoptimization();
+        } else {
+            assert block != null;
+            return createTarget(block, stateAfter);
+        }
     }
 
     protected abstract T createTarget(BciBlock trueBlock, AbstractFrameStateBuilder<T> state);
@@ -1411,6 +1424,14 @@ public abstract class BytecodeParseHelper<T extends KindInterface> {
 
     private void genArrayLength() {
         frameState.ipush(append(genArrayLength(frameState.apop())));
+    }
+
+    public ResolvedJavaMethod getMethod() {
+        return method;
+    }
+
+    public F getFrameState() {
+        return frameState;
     }
 
 }
