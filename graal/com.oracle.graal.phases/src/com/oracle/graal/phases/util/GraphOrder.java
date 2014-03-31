@@ -80,7 +80,7 @@ public final class GraphOrder {
         final ArrayList<Node> nodes = new ArrayList<>();
         final NodeBitMap visited = graph.createNodeBitMap();
 
-        new PostOrderNodeIterator<MergeableState.EmptyState>(graph.start(), new MergeableState.EmptyState()) {
+        new StatelessPostOrderNodeIterator(graph.start()) {
             @Override
             protected void node(FixedNode node) {
                 visitForward(nodes, visited, node, false);
