@@ -338,6 +338,6 @@ public class BoxingEliminationTest extends GraalCompilerTest {
         new DeadCodeEliminationPhase().apply(referenceGraph);
         new CanonicalizerPhase(true).apply(referenceGraph, context);
 
-        assertEquals(referenceGraph, graph, excludeVirtual);
+        assertEquals(referenceGraph, graph, excludeVirtual, true);
     }
 }
