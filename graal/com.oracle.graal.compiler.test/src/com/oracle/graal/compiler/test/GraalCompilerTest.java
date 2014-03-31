@@ -142,7 +142,7 @@ public abstract class GraalCompilerTest extends GraalTest {
     }
 
     protected void assertEquals(StructuredGraph expected, StructuredGraph graph) {
-        assertEquals(expected, graph, false);
+        assertEquals(expected, graph, false, true);
     }
 
     protected int countUnusedConstants(StructuredGraph graph) {
@@ -165,9 +165,9 @@ public abstract class GraalCompilerTest extends GraalTest {
         return graph.getNodeCount() - countUnusedConstants(graph);
     }
 
-    protected void assertEquals(StructuredGraph expected, StructuredGraph graph, boolean excludeVirtual) {
-        String expectedString = getCanonicalGraphString(expected, excludeVirtual);
-        String actualString = getCanonicalGraphString(graph, excludeVirtual);
+    protected void assertEquals(StructuredGraph expected, StructuredGraph graph, boolean excludeVirtual, boolean checkConstants) {
+        String expectedString = getCanonicalGraphString(expected, excludeVirtual, checkConstants);
+        String actualString = getCanonicalGraphString(graph, excludeVirtual, checkConstants);
         String mismatchString = "mismatch in graphs:\n========= expected =========\n" + expectedString + "\n\n========= actual =========\n" + actualString;
 
         if (!excludeVirtual && getNodeCountExcludingUnusedConstants(expected) != getNodeCountExcludingUnusedConstants(graph)) {
@@ -183,7 +183,7 @@ public abstract class GraalCompilerTest extends GraalTest {
     }
 
     protected void assertConstantReturn(StructuredGraph graph, int value) {
-        String graphString = getCanonicalGraphString(graph, false);
+        String graphString = getCanonicalGraphString(graph, false, true);
         Assert.assertEquals("unexpected number of ReturnNodes: " + graphString, graph.getNodes(ReturnNode.class).count(), 1);
         ValueNode result = graph.getNodes(ReturnNode.class).first().result();
         Assert.assertTrue("unexpected ReturnNode result node: " + graphString, result.isConstant());
@@ -191,7 +191,7 @@ public abstract class GraalCompilerTest extends GraalTest {
         Assert.assertEquals("unexpected ReturnNode result: " + graphString, result.asConstant().asInt(), value);
     }
 
-    protected static String getCanonicalGraphString(StructuredGraph graph, boolean excludeVirtual) {
+    protected static String getCanonicalGraphString(StructuredGraph graph, boolean excludeVirtual, boolean checkConstants) {
         SchedulePhase schedule = new SchedulePhase();
         schedule.apply(graph);
 
@@ -219,7 +219,7 @@ public abstract class GraalCompilerTest extends GraalTest {
                             id = nextId++;
                             canonicalId.set(node, id);
                         }
-                        String name = node instanceof ConstantNode ? node.toString(Verbosity.Name) : node.getClass().getSimpleName();
+                        String name = node instanceof ConstantNode && checkConstants ? node.toString(Verbosity.Name) : node.getClass().getSimpleName();
                         result.append("  " + id + "|" + name + (excludeVirtual ? "\n" : "    (" + node.usages().count() + ")\n"));
                     }
                 }
