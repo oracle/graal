@@ -1277,7 +1277,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             protected void iterateBytecodesForBlock(BciBlock block) {
                 if (block.isLoopHeader) {
                     // Create the loop header block, which later will merge the backward branches of
-// the
+                    // the
                     // loop.
                     AbstractEndNode preLoopEnd = currentGraph.add(new EndNode());
                     LoopBeginNode loopBegin = currentGraph.add(new LoopBeginNode());
