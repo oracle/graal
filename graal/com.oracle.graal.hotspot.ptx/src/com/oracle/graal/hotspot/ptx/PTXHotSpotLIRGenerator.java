@@ -29,6 +29,7 @@ import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.ptx.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
+import com.oracle.graal.hotspot.HotSpotVMConfig.CompressEncoding;
 import com.oracle.graal.hotspot.meta.*;
 
 /**
@@ -55,6 +56,16 @@ public class PTXHotSpotLIRGenerator extends PTXLIRGenerator implements HotSpotLI
 
     @Override
     public HotSpotProviders getProviders() {
+        throw GraalInternalError.unimplemented();
+    }
+
+    public Value emitCompress(Value pointer, CompressEncoding encoding) {
+        // TODO
+        throw GraalInternalError.unimplemented();
+    }
+
+    public Value emitUncompress(Value pointer, CompressEncoding encoding) {
+        // TODO
         throw GraalInternalError.unimplemented();
     }
 }

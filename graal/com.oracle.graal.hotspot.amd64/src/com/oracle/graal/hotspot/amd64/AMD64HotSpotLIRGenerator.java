@@ -40,6 +40,7 @@ import com.oracle.graal.hotspot.amd64.AMD64HotSpotMove.LoadCompressedPointer;
 import com.oracle.graal.hotspot.amd64.AMD64HotSpotMove.StoreCompressedConstantOp;
 import com.oracle.graal.hotspot.amd64.AMD64HotSpotMove.StoreCompressedPointer;
 import com.oracle.graal.hotspot.meta.*;
+import com.oracle.graal.hotspot.nodes.type.*;
 import com.oracle.graal.hotspot.stubs.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.NoOp;
@@ -417,6 +418,20 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         } else {
             append(new StoreOp(kind, storeAddress, input, state));
         }
+    }
+
+    @Override
+    public Value emitCompress(Value pointer, CompressEncoding encoding) {
+        Variable result = newVariable(NarrowOopStamp.NarrowOop);
+        append(new AMD64HotSpotMove.CompressPointer(result, asAllocatable(pointer), getProviders().getRegisters().getHeapBaseRegister().asValue(), encoding));
+        return result;
+    }
+
+    @Override
+    public Value emitUncompress(Value pointer, CompressEncoding encoding) {
+        Variable result = newVariable(Kind.Object);
+        append(new AMD64HotSpotMove.UncompressPointer(result, asAllocatable(pointer), getProviders().getRegisters().getHeapBaseRegister().asValue(), encoding));
+        return result;
     }
 
 }

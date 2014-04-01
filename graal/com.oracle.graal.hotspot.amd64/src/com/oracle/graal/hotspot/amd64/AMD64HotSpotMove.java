@@ -34,6 +34,7 @@ import com.oracle.graal.asm.amd64.AMD64Assembler.ConditionFlag;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.HotSpotVMConfig.CompressEncoding;
 import com.oracle.graal.hotspot.data.*;
+import com.oracle.graal.hotspot.nodes.type.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.amd64.*;
 import com.oracle.graal.lir.amd64.AMD64Move.LoadOp;
@@ -70,6 +71,58 @@ public class AMD64HotSpotMove {
                 }
             } else {
                 throw GraalInternalError.shouldNotReachHere("Attempt to store compressed constant of wrong type.");
+            }
+        }
+    }
+
+    public static class CompressPointer extends AMD64LIRInstruction {
+
+        private final CompressEncoding encoding;
+
+        @Def({REG, HINT}) protected AllocatableValue result;
+        @Use({REG}) protected AllocatableValue input;
+        @Temp({REG, ILLEGAL}) protected AllocatableValue baseRegister;
+
+        public CompressPointer(AllocatableValue result, AllocatableValue input, AllocatableValue baseRegister, CompressEncoding encoding) {
+            this.result = result;
+            this.input = input;
+            this.baseRegister = baseRegister;
+            this.encoding = encoding;
+        }
+
+        @Override
+        public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
+            AMD64Move.move(crb, masm, result, input);
+            if (result.getPlatformKind() == NarrowOopStamp.NarrowOop) {
+                encodePointer(masm, asRegister(result), asRegister(baseRegister), encoding);
+            } else {
+                throw GraalInternalError.unimplemented();
+            }
+        }
+    }
+
+    public static class UncompressPointer extends AMD64LIRInstruction {
+
+        private final CompressEncoding encoding;
+
+        @Def({REG, HINT}) protected AllocatableValue result;
+        @Use({REG}) protected AllocatableValue input;
+        @Temp({REG, ILLEGAL}) protected AllocatableValue baseRegister;
+
+        public UncompressPointer(AllocatableValue result, AllocatableValue input, AllocatableValue baseRegister, CompressEncoding encoding) {
+            this.result = result;
+            this.input = input;
+            this.baseRegister = baseRegister;
+            this.encoding = encoding;
+        }
+
+        @Override
+        public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
+            AMD64Move.move(crb, masm, result, input);
+            if (result.getKind() == Kind.Object) {
+                decodePointer(masm, asRegister(result), asRegister(baseRegister), encoding);
+            } else {
+                throw GraalInternalError.unimplemented();
             }
         }
     }

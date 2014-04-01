@@ -33,7 +33,7 @@ import com.oracle.graal.hotspot.meta.*;
 
 /**
  * Used to access native configuration details.
- * 
+ *
  * All non-static, public fields in this class are so that they can be compiled as constants.
  */
 public class HotSpotVMConfig extends CompilerObject {
@@ -42,7 +42,7 @@ public class HotSpotVMConfig extends CompilerObject {
 
     /**
      * Determines if the current architecture is included in a given architecture set specification.
-     * 
+     *
      * @param currentArch
      * @param archsSpecification specifies a set of architectures. A zero length value implies all
      *            architectures.
@@ -895,7 +895,7 @@ public class HotSpotVMConfig extends CompilerObject {
 
     /**
      * Address of the library lookup routine. The C signature of this routine is:
-     * 
+     *
      * <pre>
      *     void* (const char *filename, char *ebuf, int ebuflen)
      * </pre>
@@ -904,7 +904,7 @@ public class HotSpotVMConfig extends CompilerObject {
 
     /**
      * Address of the library lookup routine. The C signature of this routine is:
-     * 
+     *
      * <pre>
      *     void* (void* handle, const char* name)
      * </pre>
@@ -1495,6 +1495,26 @@ public class HotSpotVMConfig extends CompilerObject {
         @Override
         public String toString() {
             return "base: " + base + " shift: " + shift + " alignment: " + alignment;
+        }
+
+        @Override
+        public int hashCode() {
+            final int prime = 31;
+            int result = 1;
+            result = prime * result + alignment;
+            result = prime * result + (int) (base ^ (base >>> 32));
+            result = prime * result + shift;
+            return result;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (obj instanceof CompressEncoding) {
+                CompressEncoding other = (CompressEncoding) obj;
+                return alignment == other.alignment && base == other.base && shift == other.shift;
+            } else {
+                return false;
+            }
         }
     }
 }

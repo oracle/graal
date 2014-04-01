@@ -25,6 +25,7 @@ package com.oracle.graal.hotspot;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.gen.*;
+import com.oracle.graal.hotspot.HotSpotVMConfig.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.nodes.spi.*;
 
@@ -50,4 +51,8 @@ public interface HotSpotLIRGenerator {
     StackSlot getLockSlot(int lockDepth);
 
     HotSpotProviders getProviders();
+
+    Value emitCompress(Value pointer, CompressEncoding encoding);
+
+    Value emitUncompress(Value pointer, CompressEncoding encoding);
 }
