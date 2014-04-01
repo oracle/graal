@@ -376,7 +376,7 @@ public abstract class LIRGenerator implements ArithmeticLIRGenerator, LIRGenerat
 
     protected abstract void emitForeignCall(ForeignCallLinkage linkage, Value result, Value[] arguments, Value[] temps, LIRFrameState info);
 
-    protected static AllocatableValue toStackKind(AllocatableValue value) {
+    public static AllocatableValue toStackKind(AllocatableValue value) {
         if (value.getKind().getStackKind() != value.getKind()) {
             // We only have stack-kinds in the LIR, so convert the operand kind for values from the
             // calling convention.

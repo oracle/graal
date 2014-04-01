@@ -87,7 +87,7 @@ public class AMD64HotSpotNodeLIRBuilder extends AMD64NodeLIRBuilder implements H
 
         Value[] params = new Value[incomingArguments.getArgumentCount() + 1];
         for (int i = 0; i < params.length - 1; i++) {
-            params[i] = toStackKind(incomingArguments.getArgument(i));
+            params[i] = LIRGenerator.toStackKind(incomingArguments.getArgument(i));
             if (isStackSlot(params[i])) {
                 StackSlot slot = ValueUtil.asStackSlot(params[i]);
                 if (slot.isInCallerFrame() && !gen.getResult().getLIR().hasArgInCallerFrame()) {
@@ -97,7 +97,7 @@ public class AMD64HotSpotNodeLIRBuilder extends AMD64NodeLIRBuilder implements H
         }
         params[params.length - 1] = rbp.asValue(Kind.Long);
 
-        emitIncomingValues(params);
+        gen.emitIncomingValues(params);
 
         setSaveRbp(((AMD64HotSpotLIRGenerator) gen).new SaveRbp(new NoOp(gen.getCurrentBlock(), gen.getResult().getLIR().getLIRforBlock(gen.getCurrentBlock()).size())));
         append(getSaveRbp().placeholder);

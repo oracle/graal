@@ -27,7 +27,6 @@ import static com.oracle.graal.api.meta.Value.*;
 import static com.oracle.graal.lir.LIR.*;
 import static com.oracle.graal.nodes.ConstantNode.*;
 
-import java.lang.reflect.*;
 import java.util.*;
 import java.util.Map.Entry;
 
@@ -41,7 +40,6 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.BlockEndOp;
 import com.oracle.graal.lir.StandardOp.JumpOp;
-import com.oracle.graal.lir.StandardOp.LabelOp;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.PhiNode.PhiType;
 import com.oracle.graal.nodes.calc.*;
@@ -425,7 +423,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuiderTool {
 
         Value[] params = new Value[incomingArguments.getArgumentCount()];
         for (int i = 0; i < params.length; i++) {
-            params[i] = toStackKind(incomingArguments.getArgument(i));
+            params[i] = LIRGenerator.toStackKind(incomingArguments.getArgument(i));
             if (ValueUtil.isStackSlot(params[i])) {
                 StackSlot slot = ValueUtil.asStackSlot(params[i]);
                 if (slot.isInCallerFrame() && !gen.getResult().getLIR().hasArgInCallerFrame()) {
@@ -434,45 +432,13 @@ public abstract class NodeLIRBuilder implements NodeLIRBuiderTool {
             }
         }
 
-        emitIncomingValues(params);
+        gen.emitIncomingValues(params);
 
         for (ParameterNode param : graph.getNodes(ParameterNode.class)) {
             Value paramValue = params[param.index()];
             assert paramValue.getKind() == param.getKind().getStackKind();
             setResult(param, gen.emitMove(paramValue));
         }
-    }
-
-    protected <T extends AbstractBlock<T>> void emitPrologue(ResolvedJavaMethod method, BytecodeParser<T> parser) {
-        CallingConvention incomingArguments = gen.getCallingConvention();
-
-        Value[] params = new Value[incomingArguments.getArgumentCount()];
-        for (int i = 0; i < params.length; i++) {
-            params[i] = toStackKind(incomingArguments.getArgument(i));
-            if (ValueUtil.isStackSlot(params[i])) {
-                StackSlot slot = ValueUtil.asStackSlot(params[i]);
-                if (slot.isInCallerFrame() && !gen.getResult().getLIR().hasArgInCallerFrame()) {
-                    gen.getResult().getLIR().setHasArgInCallerFrame();
-                }
-            }
-        }
-
-        emitIncomingValues(params);
-
-        Signature sig = method.getSignature();
-        boolean isStatic = Modifier.isStatic(method.getModifiers());
-        for (int i = 0; i < sig.getParameterCount(!isStatic); i++) {
-            Value paramValue = params[i];
-            assert paramValue.getKind() == sig.getParameterKind(i).getStackKind();
-            // TODO setResult(param, emitMove(paramValue));
-            parser.setParameter(i, gen.emitMove(paramValue));
-        }
-
-        // return arguments;
-    }
-
-    public void emitIncomingValues(Value[] params) {
-        ((LabelOp) gen.getResult().getLIR().getLIRforBlock(gen.getCurrentBlock()).get(0)).setIncomingValues(params);
     }
 
     @Override
@@ -631,21 +597,6 @@ public abstract class NodeLIRBuilder implements NodeLIRBuiderTool {
 
     protected abstract void emitIndirectCall(IndirectCallTargetNode callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState callState);
 
-    protected static AllocatableValue toStackKind(AllocatableValue value) {
-        if (value.getKind().getStackKind() != value.getKind()) {
-            // We only have stack-kinds in the LIR, so convert the operand kind for values from the
-            // calling convention.
-            if (isRegister(value)) {
-                return asRegister(value).asValue(value.getKind().getStackKind());
-            } else if (isStackSlot(value)) {
-                return StackSlot.get(value.getKind().getStackKind(), asStackSlot(value).getRawOffset(), asStackSlot(value).getRawAddFrameSize());
-            } else {
-                throw GraalInternalError.shouldNotReachHere();
-            }
-        }
-        return value;
-    }
-
     @Override
     public Value[] visitInvokeArguments(CallingConvention invokeCc, Collection<ValueNode> arguments) {
         // for each argument, load it into the correct location
@@ -653,7 +604,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuiderTool {
         int j = 0;
         for (ValueNode arg : arguments) {
             if (arg != null) {
-                AllocatableValue operand = toStackKind(invokeCc.getArgument(j));
+                AllocatableValue operand = LIRGenerator.toStackKind(invokeCc.getArgument(j));
                 gen.emitMove(operand, operand(arg));
                 result[j] = operand;
                 j++;
