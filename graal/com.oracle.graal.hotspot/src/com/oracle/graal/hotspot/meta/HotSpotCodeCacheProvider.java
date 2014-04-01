@@ -113,6 +113,10 @@ public abstract class HotSpotCodeCacheProvider implements CodeCacheProvider {
     @Override
     public String disassemble(CompilationResult compResult, InstalledCode installedCode) {
         byte[] code = installedCode == null ? Arrays.copyOf(compResult.getTargetCode(), compResult.getTargetCodeSize()) : installedCode.getCode();
+        if (code == null) {
+            // Method was deoptimized/invalidated
+            return "";
+        }
         long start = installedCode == null ? 0L : installedCode.getStart();
         HexCodeFile hcf = new HexCodeFile(code, start, target.arch.getName(), target.wordSize * 8);
         if (compResult != null) {
