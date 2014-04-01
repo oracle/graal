@@ -273,9 +273,15 @@ public abstract class NodeLIRBuilder implements NodeLIRBuiderTool {
                 // This is all bit hacky since it's happening on the linearized schedule. This needs
                 // to be revisited at some point.
 
+                // Uncast the memory operation.
+                Node use = access.usages().first();
+                if (use instanceof UnsafeCastNode && use.usages().count() == 1) {
+                    use = use.usages().first();
+                }
+
                 // Find a memory lowerable usage of this operation
-                if (access.usages().first() instanceof MemoryArithmeticLIRLowerable) {
-                    ValueNode operation = (ValueNode) access.usages().first();
+                if (use instanceof MemoryArithmeticLIRLowerable) {
+                    ValueNode operation = (ValueNode) use;
                     if (!nodes.contains(operation)) {
                         Debug.log("node %1s in different block from %1s", access, operation);
                         MemoryFoldFailedDifferentBlock.increment();
@@ -316,11 +322,12 @@ public abstract class NodeLIRBuilder implements NodeLIRBuiderTool {
                     int opIndex = nodes.indexOf(operation);
                     int current = i + 1;
                     ArrayList<ValueNode> deferred = null;
-                    while (current < opIndex) {
+                    for (; current < opIndex; current++) {
                         ScheduledNode node = nodes.get(current);
                         if (node != firstOperation) {
                             if (node instanceof LocationNode || node instanceof VirtualObjectNode) {
                                 // nothing to do
+                                continue;
                             } else if (node instanceof ConstantNode) {
                                 if (deferred == null) {
                                     deferred = new ArrayList<>(2);
@@ -330,13 +337,18 @@ public abstract class NodeLIRBuilder implements NodeLIRBuiderTool {
                                 // basically works around unfriendly scheduling of values which
                                 // are defined in a block but not used there.
                                 deferred.add((ValueNode) node);
-                            } else {
-                                Debug.log("unexpected node %1s", node);
-                                // Unexpected inline node
-                                break;
+                                continue;
+                            } else if (node instanceof UnsafeCastNode) {
+                                UnsafeCastNode cast = (UnsafeCastNode) node;
+                                if (cast.getOriginalValue() == access) {
+                                    continue;
+                                }
                             }
+
+                            // Unexpected inline node
+                            // Debug.log("unexpected node %1s", node);
+                            break;
                         }
-                        current++;
                     }
 
                     if (current == opIndex) {
@@ -369,7 +381,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuiderTool {
                     } else {
                         MemoryFoldFailedNonAdjacent.increment();
                     }
-                } else {
+                } else if (!(use instanceof Access) && !(use instanceof PhiNode) && use.usages().count() == 1) {
                     // memory usage which isn't considered lowerable. Mostly these are
                     // uninteresting but it might be worth looking at to ensure that interesting
                     // nodes are being properly handled.

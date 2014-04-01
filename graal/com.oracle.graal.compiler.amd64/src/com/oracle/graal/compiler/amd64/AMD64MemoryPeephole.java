@@ -82,7 +82,7 @@ public class AMD64MemoryPeephole implements MemoryArithmeticLIRLowerer {
 
     protected Value emitBinaryMemory(AMD64Arithmetic op, boolean commutative, ValueNode x, ValueNode y, Access access) {
         ValueNode other = x;
-        if (other == access) {
+        if (uncast(other) == access) {
             if (commutative) {
                 other = y;
             } else {
@@ -194,7 +194,7 @@ public class AMD64MemoryPeephole implements MemoryArithmeticLIRLowerer {
             case Long:
                 return emitBinaryMemory(LAND, true, x, y, access);
             case Short: {
-                ValueNode other = x == access ? y : x;
+                ValueNode other = selectOtherInput(x, y, access);
                 Constant constant = other instanceof ConstantNode ? ((ConstantNode) other).asConstant() : null;
                 if (constant != null && constant.asInt() == IntegerStamp.defaultMask(kind.getBitCount())) {
                     // Convert to unsigned load
@@ -207,7 +207,7 @@ public class AMD64MemoryPeephole implements MemoryArithmeticLIRLowerer {
                 if (OptFoldMemory.getValue()) {
                     return null;
                 }
-                ValueNode other = x == access ? y : x;
+                ValueNode other = selectOtherInput(x, y, access);
                 Constant constant = other instanceof ConstantNode ? ((ConstantNode) other).asConstant() : null;
                 if (constant != null && constant.asInt() == IntegerStamp.defaultMask(kind.getBitCount())) {
                     // Convert to unsigned load
@@ -398,10 +398,12 @@ public class AMD64MemoryPeephole implements MemoryArithmeticLIRLowerer {
     }
 
     private boolean emitIntegerTestBranchMemory(ValueNode left, ValueNode right, Access access, LabelRef trueLabel, LabelRef falseLabel, double trueLabelProbability) {
-        assert left == access || right == access;
-        ValueNode other = left == access ? right : left;
+        ValueNode other = selectOtherInput(left, right, access);
         Kind kind = access.nullCheckLocation().getValueKind();
         if (other.isConstant()) {
+            if (kind != kind.getStackKind()) {
+                return false;
+            }
             Constant constant = other.asConstant();
             if (kind == Kind.Long && !NumUtil.isInt(constant.asLong())) {
                 // Only imm32 as long
@@ -418,10 +420,25 @@ public class AMD64MemoryPeephole implements MemoryArithmeticLIRLowerer {
         return true;
     }
 
+    /**
+     * @return the input which is not equal to access, accounting for possible UnsafeCastNodes.
+     */
+    protected ValueNode selectOtherInput(ValueNode left, ValueNode right, Access access) {
+        assert uncast(left) == access || uncast(right) == access;
+        return uncast(left) == access ? right : left;
+    }
+
+    protected ValueNode uncast(ValueNode value) {
+        if (value instanceof UnsafeCastNode) {
+            UnsafeCastNode cast = (UnsafeCastNode) value;
+            return cast.getOriginalValue();
+        }
+        return value;
+    }
+
     protected boolean emitCompareBranchMemory(ValueNode left, ValueNode right, Access access, Condition cond, boolean unorderedIsTrue, LabelRef trueLabel, LabelRef falseLabel,
                     double trueLabelProbability) {
-        assert left == access || right == access;
-        ValueNode other = left == access ? right : left;
+        ValueNode other = selectOtherInput(left, right, access);
         Kind kind = access.nullCheckLocation().getValueKind();
         boolean mirrored = false;
 
@@ -447,7 +464,7 @@ public class AMD64MemoryPeephole implements MemoryArithmeticLIRLowerer {
             }
             ensureEvaluated(other);
             gen.getLIRGenerator().emitCompareMemoryConOp(kind, makeAddress(access), constant, getState(access));
-            mirrored = right == access;
+            mirrored = uncast(right) == access;
         } else {
             if (kind != kind.getStackKind()) {
                 // Register compares only work for stack kinds
@@ -461,7 +478,7 @@ public class AMD64MemoryPeephole implements MemoryArithmeticLIRLowerer {
 
             evaluateDeferred();
             gen.getLIRGenerator().emitCompareRegMemoryOp(kind, gen.operand(other), makeAddress(access), getState(access));
-            mirrored = left == access;
+            mirrored = uncast(left) == access;
         }
 
         Condition finalCondition = mirrored ? cond.mirror() : cond;
