@@ -34,7 +34,10 @@ import com.oracle.truffle.dsl.processor.typesystem.*;
 public class SpecializationData extends TemplateMethod {
 
     public enum SpecializationKind {
-        UNINITIALIZED, SPECIALIZED, POLYMORPHIC, GENERIC
+        UNINITIALIZED,
+        SPECIALIZED,
+        POLYMORPHIC,
+        GENERIC
     }
 
     private final NodeData node;
