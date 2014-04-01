@@ -52,7 +52,7 @@ import com.oracle.graal.phases.*;
  * The {@code GraphBuilder} class parses the bytecode of a method and builds the IR graph.
  */
 @SuppressWarnings("all")
-public class BaselineCompiler implements BytecodeParser<BciBlock> {
+public class BaselineCompiler {
 
     public BaselineCompiler(GraphBuilderConfiguration graphBuilderConfig, MetaAccessProvider metaAccess) {
         this.graphBuilderConfig = graphBuilderConfig;
@@ -87,16 +87,6 @@ public class BaselineCompiler implements BytecodeParser<BciBlock> {
         GraalCompiler.emitCode(backend, assumptions, parser.lirGenRes, compilationResult, installedCodeOwner, factory);
 
         return compilationResult;
-    }
-
-    public void setParameter(int i, Variable emitMove) {
-        // TODO Auto-generated method stub
-        throw GraalInternalError.unimplemented("Auto-generated method stub");
-    }
-
-    public void processBlock(BciBlock block) {
-        // TODO Auto-generated method stub
-        throw GraalInternalError.unimplemented("Auto-generated method stub");
     }
 
     private static class BytecodeParser extends AbstractBytecodeParser<Value, LIRFrameStateBuilder> {
