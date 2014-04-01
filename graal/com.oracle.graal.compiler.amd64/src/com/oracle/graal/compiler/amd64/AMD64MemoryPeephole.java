@@ -408,10 +408,10 @@ public class AMD64MemoryPeephole implements MemoryArithmeticLIRLowerer {
                 return false;
             }
             ensureEvaluated(other);
-            gen.append(new AMD64TestMemoryOp(makeAddress(access), constant, getState(access)));
+            gen.append(new AMD64TestMemoryOp(kind, makeAddress(access), constant, getState(access)));
         } else {
             evaluateDeferred();
-            gen.append(new AMD64TestMemoryOp(makeAddress(access), gen.operand(other), getState(access)));
+            gen.append(new AMD64TestMemoryOp(kind, makeAddress(access), gen.operand(other), getState(access)));
         }
 
         gen.append(new BranchOp(Condition.EQ, trueLabel, falseLabel, trueLabelProbability));

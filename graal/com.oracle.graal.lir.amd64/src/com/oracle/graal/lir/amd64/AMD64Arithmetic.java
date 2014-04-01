@@ -32,6 +32,7 @@ import com.oracle.graal.asm.amd64.*;
 import com.oracle.graal.asm.amd64.AMD64Assembler.ConditionFlag;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.amd64.AMD64Move.MemOp;
 import com.oracle.graal.lir.asm.*;
 
 public enum AMD64Arithmetic {
@@ -105,26 +106,20 @@ public enum AMD64Arithmetic {
     /**
      * Unary operation with separate memory source and destination operand.
      */
-    public static class Unary2MemoryOp extends AMD64LIRInstruction {
+    public static class Unary2MemoryOp extends MemOp {
 
         @Opcode private final AMD64Arithmetic opcode;
         @Def({REG}) protected AllocatableValue result;
-        @Use({COMPOSITE}) protected AMD64AddressValue x;
-        @State protected LIRFrameState state;
 
-        public Unary2MemoryOp(AMD64Arithmetic opcode, AllocatableValue result, AMD64AddressValue x, LIRFrameState state) {
+        public Unary2MemoryOp(AMD64Arithmetic opcode, AllocatableValue result, Kind kind, AMD64AddressValue address, LIRFrameState state) {
+            super(kind, address, state);
             this.opcode = opcode;
             this.result = result;
-            this.x = x;
-            this.state = state;
         }
 
         @Override
-        public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-            if (state != null) {
-                crb.recordImplicitException(masm.position(), state);
-            }
-            emit(crb, masm, opcode, result, x, null);
+        public void emitMemAccess(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
+            emit(crb, masm, opcode, result, address, null);
         }
     }
 

@@ -336,40 +336,42 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         }
     }
 
-    protected void emitCompareMemoryConOp(Kind kind, AMD64AddressValue left, Value right, LIRFrameState state) {
-        assert kind == right.getKind();
+    protected void emitCompareMemoryConOp(Kind kind, AMD64AddressValue address, Value value, LIRFrameState state) {
+        assert kind == value.getKind();
         switch (kind) {
             case Int:
-                append(new CompareMemoryOp(ICMP, left, right, state));
+                append(new CompareMemoryOp(ICMP, kind, address, value, state));
                 break;
             case Long:
-                append(new CompareMemoryOp(LCMP, left, right, state));
+                append(new CompareMemoryOp(LCMP, kind, address, value, state));
                 break;
             default:
                 throw GraalInternalError.shouldNotReachHere();
         }
     }
 
-    protected void emitCompareRegMemoryOp(Kind kind, Value left, AMD64AddressValue right, LIRFrameState state) {
+    protected void emitCompareRegMemoryOp(Kind kind, Value value, AMD64AddressValue address, LIRFrameState state) {
+        AMD64Compare opcode = null;
         switch (kind) {
             case Int:
-                append(new CompareMemoryOp(ICMP, left, right, state));
+                opcode = ICMP;
                 break;
             case Long:
-                append(new CompareMemoryOp(LCMP, left, right, state));
+                opcode = LCMP;
                 break;
             case Object:
-                append(new CompareMemoryOp(ACMP, left, right, state));
+                opcode = ACMP;
                 break;
             case Float:
-                append(new CompareMemoryOp(FCMP, left, right, state));
+                opcode = FCMP;
                 break;
             case Double:
-                append(new CompareMemoryOp(DCMP, left, right, state));
+                opcode = DCMP;
                 break;
             default:
                 throw GraalInternalError.shouldNotReachHere();
         }
+        append(new CompareMemoryOp(opcode, kind, address, value, state));
     }
 
     /**
@@ -545,7 +547,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
 
     protected Value emitConvert2MemoryOp(PlatformKind kind, AMD64Arithmetic op, AMD64AddressValue address, LIRFrameState state) {
         Variable result = newVariable(kind);
-        append(new Unary2MemoryOp(op, result, address, state));
+        append(new Unary2MemoryOp(op, result, (Kind) null, address, state));
         return result;
     }
 

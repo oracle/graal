@@ -26,9 +26,11 @@ import static com.oracle.graal.api.code.ValueUtil.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.asm.*;
 import com.oracle.graal.asm.amd64.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.amd64.AMD64Move.MemOp;
 import com.oracle.graal.lir.asm.*;
 
 public enum AMD64Compare {
@@ -63,35 +65,63 @@ public enum AMD64Compare {
         }
     }
 
-    public static class CompareMemoryOp extends AMD64LIRInstruction {
+    public static class CompareMemoryOp extends MemOp {
         @Opcode private final AMD64Compare opcode;
-        @Use({REG, COMPOSITE}) protected Value x;
-        @Use({CONST, COMPOSITE}) protected Value y;
-        @State protected LIRFrameState state;
+        @Use({REG, CONST}) protected Value y;
 
         /**
          * Compare memory, constant or register, memory.
          */
-        public CompareMemoryOp(AMD64Compare opcode, Value x, Value y, LIRFrameState state) {
-            assert (x instanceof AMD64AddressValue && y instanceof Constant) || (x instanceof Variable && y instanceof AMD64AddressValue);
+        public CompareMemoryOp(AMD64Compare opcode, Kind kind, AMD64AddressValue address, Value y, LIRFrameState state) {
+            super(kind, address, state);
             this.opcode = opcode;
-            this.x = x;
             this.y = y;
-            this.state = state;
         }
 
         @Override
-        public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-            if (state != null) {
-                crb.recordImplicitException(masm.position(), state);
+        public void emitMemAccess(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
+            if (isRegister(y)) {
+                switch (opcode) {
+                    case ICMP:
+                        masm.cmpl(asIntReg(y), address.toAddress());
+                        break;
+                    case LCMP:
+                        masm.cmpq(asLongReg(y), address.toAddress());
+                        break;
+                    case ACMP:
+                        masm.cmpptr(asObjectReg(y), address.toAddress());
+                        break;
+                    case FCMP:
+                        masm.ucomiss(asFloatReg(y), address.toAddress());
+                        break;
+                    case DCMP:
+                        masm.ucomisd(asDoubleReg(y), address.toAddress());
+                        break;
+                    default:
+                        throw GraalInternalError.shouldNotReachHere();
+                }
+            } else if (isConstant(y)) {
+                switch (opcode) {
+                    case ICMP:
+                        masm.cmpl(address.toAddress(), crb.asIntConst(y));
+                        break;
+                    case LCMP:
+                        if (NumUtil.isInt(crb.asLongConst(y))) {
+                            masm.cmpq(address.toAddress(), (int) crb.asLongConst(y));
+                        } else {
+                            throw GraalInternalError.shouldNotReachHere();
+                        }
+                        break;
+                    default:
+                        throw GraalInternalError.shouldNotReachHere();
+                }
             }
-            emit(crb, masm, opcode, x, y);
         }
 
         @Override
         protected void verify() {
             super.verify();
-            assert (x instanceof AMD64AddressValue && y instanceof Constant) || (x instanceof Variable && y instanceof AMD64AddressValue);
+            assert y instanceof Variable || y instanceof Constant;
         }
     }
 
@@ -169,41 +199,8 @@ public enum AMD64Compare {
                 default:
                     throw GraalInternalError.shouldNotReachHere();
             }
-        } else if (isRegister(x) && y instanceof AMD64AddressValue) {
-            switch (opcode) {
-                case ICMP:
-                    masm.cmpl(asIntReg(x), ((AMD64AddressValue) y).toAddress());
-                    break;
-                case LCMP:
-                    masm.cmpq(asLongReg(x), ((AMD64AddressValue) y).toAddress());
-                    break;
-                case ACMP:
-                    masm.cmpptr(asObjectReg(x), ((AMD64AddressValue) y).toAddress());
-                    break;
-                case FCMP:
-                    masm.ucomiss(asFloatReg(x), ((AMD64AddressValue) y).toAddress());
-                    break;
-                case DCMP:
-                    masm.ucomisd(asDoubleReg(x), ((AMD64AddressValue) y).toAddress());
-                    break;
-                default:
-                    throw GraalInternalError.shouldNotReachHere();
-            }
-        } else if (x instanceof AMD64AddressValue && isConstant(y)) {
-            switch (opcode) {
-                case ICMP:
-                    masm.cmpl(((AMD64AddressValue) x).toAddress(), crb.asIntConst(y));
-                    break;
-                case LCMP:
-                    if (crb.asLongConst(y) == (int) crb.asLongConst(y)) {
-                        masm.cmpq(((AMD64AddressValue) x).toAddress(), (int) crb.asLongConst(y));
-                    } else {
-                        throw GraalInternalError.shouldNotReachHere();
-                    }
-                    break;
-                default:
-                    throw GraalInternalError.shouldNotReachHere();
-            }
+        } else {
+            throw GraalInternalError.shouldNotReachHere();
         }
     }
 }

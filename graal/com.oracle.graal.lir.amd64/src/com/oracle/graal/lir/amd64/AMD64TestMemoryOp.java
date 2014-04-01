@@ -29,43 +29,28 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.amd64.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.amd64.AMD64Move.MemOp;
 import com.oracle.graal.lir.asm.*;
 
-public class AMD64TestMemoryOp extends AMD64LIRInstruction {
+public class AMD64TestMemoryOp extends MemOp {
 
-    @Use({COMPOSITE}) protected AMD64AddressValue x;
     @Use({REG, CONST}) protected Value y;
-    @State protected LIRFrameState state;
 
-    public AMD64TestMemoryOp(AMD64AddressValue x, Value y, LIRFrameState state) {
-        this.x = x;
+    public AMD64TestMemoryOp(Kind kind, AMD64AddressValue x, Value y, LIRFrameState state) {
+        super(kind, x, state);
         this.y = y;
         this.state = state;
     }
 
     @Override
-    public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-        if (state != null) {
-            crb.recordImplicitException(masm.position(), state);
-        }
-        emit(crb, masm, x, y);
-    }
-
-    @Override
-    protected void verify() {
-        super.verify();
-        // Can't check the kind of an address so just check the other input
-        assert (x.getKind() == Kind.Int || x.getKind() == Kind.Long) : x + " " + y;
-    }
-
-    public static void emit(CompilationResultBuilder crb, AMD64MacroAssembler masm, Value x, Value y) {
+    public void emitMemAccess(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
         if (isRegister(y)) {
             switch (y.getKind()) {
                 case Int:
-                    masm.testl(asIntReg(y), ((AMD64AddressValue) x).toAddress());
+                    masm.testl(asIntReg(y), address.toAddress());
                     break;
                 case Long:
-                    masm.testq(asLongReg(y), ((AMD64AddressValue) x).toAddress());
+                    masm.testq(asLongReg(y), address.toAddress());
                     break;
                 default:
                     throw GraalInternalError.shouldNotReachHere();
@@ -73,10 +58,10 @@ public class AMD64TestMemoryOp extends AMD64LIRInstruction {
         } else if (isConstant(y)) {
             switch (y.getKind()) {
                 case Int:
-                    masm.testl(((AMD64AddressValue) x).toAddress(), crb.asIntConst(y));
+                    masm.testl(address.toAddress(), crb.asIntConst(y));
                     break;
                 case Long:
-                    masm.testq(((AMD64AddressValue) x).toAddress(), crb.asIntConst(y));
+                    masm.testq(address.toAddress(), crb.asIntConst(y));
                     break;
                 default:
                     throw GraalInternalError.shouldNotReachHere();
@@ -84,5 +69,11 @@ public class AMD64TestMemoryOp extends AMD64LIRInstruction {
         } else {
             throw GraalInternalError.shouldNotReachHere();
         }
+    }
+
+    @Override
+    protected void verify() {
+        super.verify();
+        assert (kind == Kind.Int || kind == Kind.Long) && kind == y.getKind() : address + " " + y;
     }
 }
