@@ -86,6 +86,12 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend {
         return new AMD64HotSpotNodeLIRBuilder(graph, lirGen);
     }
 
+    @Override
+    public BytecodeLIRBuilder newBytecodeLIRBuilder(LIRGenerator gen, BytecodeParserTool parser) {
+        return new AMD64HotSpotBytecodeLIRBuilder(gen, parser);
+
+    }
+
     /**
      * Emits code to do stack overflow checking.
      *
