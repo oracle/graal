@@ -40,9 +40,29 @@ import com.oracle.graal.java.BciBlockMapping.BciBlock;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.calc.FloatConvertNode.FloatConvert;
+import com.oracle.graal.options.*;
 import com.oracle.graal.phases.*;
 
 public abstract class AbstractBytecodeParser<T extends KindInterface, F extends AbstractFrameStateBuilder<T>> {
+
+    static class Options {
+        // @formatter:off
+        @Option(help = "The trace level for the bytecode parser used when building a graph from bytecode")
+        public static final OptionValue<Integer> TraceBytecodeParserLevel = new OptionValue<>(0);
+        // @formatter:on
+    }
+
+    /**
+     * The minimum value to which {@link Options#TraceBytecodeParserLevel} must be set to trace the
+     * bytecode instructions as they are parsed.
+     */
+    public static final int TRACELEVEL_INSTRUCTIONS = 1;
+
+    /**
+     * The minimum value to which {@link Options#TraceBytecodeParserLevel} must be set to trace the
+     * frame state before each bytecode instruction as it is parsed.
+     */
+    public static final int TRACELEVEL_STATE = 2;
 
     protected F frameState;
     protected BytecodeStream stream;           // the bytecode stream
@@ -54,6 +74,11 @@ public abstract class AbstractBytecodeParser<T extends KindInterface, F extends 
     protected ConstantPool constantPool;
     private final MetaAccessProvider metaAccess;
     protected int entryBCI;
+
+    /**
+     * Meters the number of actual bytecodes parsed.
+     */
+    public static final DebugMetric BytecodesParsed = Debug.metric("BytecodesParsed");
 
     public AbstractBytecodeParser(MetaAccessProvider metaAccess, ResolvedJavaMethod method, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts, F frameState,
                     BytecodeStream stream, ProfilingInfo profilingInfo, ConstantPool constantPool, int entryBCI) {
@@ -1196,6 +1221,28 @@ public abstract class AbstractBytecodeParser<T extends KindInterface, F extends 
 
     public F getFrameState() {
         return frameState;
+    }
+
+    protected final int traceLevel = Options.TraceBytecodeParserLevel.getValue();
+
+    protected void traceInstruction(int bci, int opcode, boolean blockStart) {
+        if (traceLevel >= TRACELEVEL_INSTRUCTIONS && Debug.isLogEnabled()) {
+            StringBuilder sb = new StringBuilder(40);
+            sb.append(blockStart ? '+' : '|');
+            if (bci < 10) {
+                sb.append("  ");
+            } else if (bci < 100) {
+                sb.append(' ');
+            }
+            sb.append(bci).append(": ").append(Bytecodes.nameOf(opcode));
+            for (int i = bci + 1; i < stream.nextBCI(); ++i) {
+                sb.append(' ').append(stream.readUByte(i));
+            }
+            if (!currentBlock.jsrScope.isEmpty()) {
+                sb.append(' ').append(currentBlock.jsrScope);
+            }
+            Debug.log("%s", sb);
+        }
     }
 
 }

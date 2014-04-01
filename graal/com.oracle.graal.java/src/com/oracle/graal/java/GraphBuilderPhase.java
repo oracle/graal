@@ -39,7 +39,7 @@ import com.oracle.graal.api.meta.ResolvedJavaType.Representation;
 import com.oracle.graal.bytecode.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
-import com.oracle.graal.graph.Node.*;
+import com.oracle.graal.graph.Node.ValueNumberable;
 import com.oracle.graal.java.BciBlockMapping.BciBlock;
 import com.oracle.graal.java.BciBlockMapping.ExceptionDispatchBlock;
 import com.oracle.graal.java.BciBlockMapping.LocalLiveness;
@@ -51,7 +51,6 @@ import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.util.*;
-import com.oracle.graal.options.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.tiers.*;
 
@@ -60,30 +59,11 @@ import com.oracle.graal.phases.tiers.*;
  */
 public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
-    static class Options {
-        // @formatter:off
-        @Option(help = "The trace level for the bytecode parser used when building a graph from bytecode")
-        public static final OptionValue<Integer> TraceBytecodeParserLevel = new OptionValue<>(0);
-        // @formatter:on
-    }
-
     public static final class RuntimeCalls {
 
         public static final ForeignCallDescriptor CREATE_NULL_POINTER_EXCEPTION = new ForeignCallDescriptor("createNullPointerException", NullPointerException.class);
         public static final ForeignCallDescriptor CREATE_OUT_OF_BOUNDS_EXCEPTION = new ForeignCallDescriptor("createOutOfBoundsException", ArrayIndexOutOfBoundsException.class, int.class);
     }
-
-    /**
-     * The minimum value to which {@link Options#TraceBytecodeParserLevel} must be set to trace the
-     * bytecode instructions as they are parsed.
-     */
-    public static final int TRACELEVEL_INSTRUCTIONS = 1;
-
-    /**
-     * The minimum value to which {@link Options#TraceBytecodeParserLevel} must be set to trace the
-     * frame state before each bytecode instruction as it is parsed.
-     */
-    public static final int TRACELEVEL_STATE = 2;
 
     private final GraphBuilderConfiguration graphBuilderConfig;
 
@@ -115,11 +95,6 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
         private final GraphBuilderConfiguration graphBuilderConfig;
         private final OptimisticOptimizations optimisticOpts;
-
-        /**
-         * Meters the number of actual bytecodes parsed.
-         */
-        public static final DebugMetric BytecodesParsed = Debug.metric("BytecodesParsed");
 
         /**
          * Node that marks the begin of block during bytecode parsing. When a block is identified
@@ -1383,8 +1358,6 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 return instr;
             }
 
-            private final int traceLevel = Options.TraceBytecodeParserLevel.getValue();
-
             private void traceState() {
                 if (traceLevel >= TRACELEVEL_STATE && Debug.isLogEnabled()) {
                     Debug.log(String.format("|   state [nr locals = %d, stack depth = %d, method = %s]", frameState.localsSize(), frameState.stackSize(), method));
@@ -1396,26 +1369,6 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                         ValueNode value = frameState.stackAt(i);
                         Debug.log(String.format("|   stack[%d] = %-8s : %s", i, value == null ? "bogus" : value.getKind().getJavaName(), value));
                     }
-                }
-            }
-
-            private void traceInstruction(int bci, int opcode, boolean blockStart) {
-                if (traceLevel >= TRACELEVEL_INSTRUCTIONS && Debug.isLogEnabled()) {
-                    StringBuilder sb = new StringBuilder(40);
-                    sb.append(blockStart ? '+' : '|');
-                    if (bci < 10) {
-                        sb.append("  ");
-                    } else if (bci < 100) {
-                        sb.append(' ');
-                    }
-                    sb.append(bci).append(": ").append(Bytecodes.nameOf(opcode));
-                    for (int i = bci + 1; i < stream.nextBCI(); ++i) {
-                        sb.append(' ').append(stream.readUByte(i));
-                    }
-                    if (!currentBlock.jsrScope.isEmpty()) {
-                        sb.append(' ').append(currentBlock.jsrScope);
-                    }
-                    Debug.log("%s", sb);
                 }
             }
 
