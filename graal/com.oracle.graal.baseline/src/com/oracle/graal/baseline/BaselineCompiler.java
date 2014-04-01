@@ -22,11 +22,10 @@
  */
 package com.oracle.graal.baseline;
 
-import static com.oracle.graal.api.code.TypeCheckHints.*;
-import static com.oracle.graal.bytecode.Bytecodes.*;
 import static com.oracle.graal.phases.GraalOptions.*;
 import static java.lang.reflect.Modifier.*;
 
+import java.lang.reflect.*;
 import java.util.*;
 
 import com.oracle.graal.alloc.*;
@@ -43,15 +42,10 @@ import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.java.BciBlockMapping.BciBlock;
-import com.oracle.graal.java.BciBlockMapping.ExceptionDispatchBlock;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.calc.FloatConvertNode.FloatConvert;
 import com.oracle.graal.nodes.cfg.*;
-import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
-import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.phases.*;
 
 /**
@@ -175,6 +169,7 @@ public class BaselineCompiler implements BytecodeParser<BciBlock> {
                         // possibly add all the arguments to slots in the local variable array
 
                         for (BciBlock block : blockMap.blocks) {
+                            emitBlock(block);
                         }
 
                         lirGen.beforeRegisterAllocation();
@@ -196,6 +191,17 @@ public class BaselineCompiler implements BytecodeParser<BciBlock> {
                 }
             } catch (Throwable e) {
                 throw Debug.handle(e);
+            }
+        }
+
+        private void emitBlock(BciBlock b) {
+            if (lirGenRes.getLIR().getLIRforBlock(b) == null) {
+                for (BciBlock pred : b.getPredecessors()) {
+                    if (!b.isLoopHeader() || !pred.isLoopEnd()) {
+                        emitBlock(pred);
+                    }
+                }
+                processBlock(b);
             }
         }
 
@@ -603,8 +609,7 @@ public class BaselineCompiler implements BytecodeParser<BciBlock> {
 
         @Override
         protected void processBlock(BciBlock block) {
-            // TODO Auto-generated method stub
-            throw GraalInternalError.unimplemented("Auto-generated method stub");
+            iterateBytecodesForBlock(block);
         }
 
         @Override
@@ -615,8 +620,72 @@ public class BaselineCompiler implements BytecodeParser<BciBlock> {
 
         @Override
         protected void iterateBytecodesForBlock(BciBlock block) {
-            // TODO Auto-generated method stub
-            throw GraalInternalError.unimplemented("Auto-generated method stub");
+            lirGen.doBlockStart(block);
+
+            if (block == lirGen.getResult().getLIR().getControlFlowGraph().getStartBlock()) {
+                assert block.getPredecessorCount() == 0;
+                emitPrologue();
+            } else {
+                assert block.getPredecessorCount() > 0;
+            }
+
+            int endBCI = stream.endBCI();
+
+            stream.setBCI(block.startBci);
+            int bci = block.startBci;
+            BytecodesParsed.add(block.endBci - bci);
+
+            while (bci < endBCI) {
+
+                // read the opcode
+                int opcode = stream.currentBC();
+                // traceState();
+                traceInstruction(bci, opcode, bci == block.startBci);
+
+                processBytecode(bci, opcode);
+
+                stream.next();
+                bci = stream.currentBCI();
+
+                if (bci < endBCI) {
+                    if (bci > block.endBci) {
+                        assert !block.getSuccessor(0).isExceptionEntry;
+                        assert block.numNormalSuccessors() == 1;
+                        // we fell through to the next block, add a goto and break
+                        appendGoto(createTarget(block.getSuccessor(0), frameState));
+                        break;
+                    }
+                }
+            }
+
+            assert LIR.verifyBlock(lirGen.getResult().getLIR(), block);
+            lirGen.doBlockEnd(block);
+        }
+
+        protected void emitPrologue() {
+            CallingConvention incomingArguments = lirGen.getCallingConvention();
+
+            Value[] params = new Value[incomingArguments.getArgumentCount()];
+            for (int i = 0; i < params.length; i++) {
+                params[i] = LIRGenerator.toStackKind(incomingArguments.getArgument(i));
+                if (ValueUtil.isStackSlot(params[i])) {
+                    StackSlot slot = ValueUtil.asStackSlot(params[i]);
+                    if (slot.isInCallerFrame() && !lirGen.getResult().getLIR().hasArgInCallerFrame()) {
+                        lirGen.getResult().getLIR().setHasArgInCallerFrame();
+                    }
+                }
+            }
+
+            lirGen.emitIncomingValues(params);
+
+            Signature sig = method.getSignature();
+            boolean isStatic = Modifier.isStatic(method.getModifiers());
+            for (int i = 0; i < sig.getParameterCount(!isStatic); i++) {
+                Value paramValue = params[i];
+                assert paramValue.getKind() == sig.getParameterKind(i).getStackKind();
+                frameState.storeLocal(i, lirGen.emitMove(paramValue));
+            }
+
         }
 
     }
