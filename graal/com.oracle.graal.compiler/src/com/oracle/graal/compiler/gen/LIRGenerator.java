@@ -362,10 +362,6 @@ public abstract class LIRGenerator implements ArithmeticLIRGenerator, LIRGenerat
         ((LabelOp) res.getLIR().getLIRforBlock(currentBlock).get(0)).setIncomingValues(params);
     }
 
-    protected PlatformKind getPhiKind(PhiNode phi) {
-        return phi.getKind();
-    }
-
     public abstract void emitJump(LabelRef label);
 
     public abstract void emitCompareBranch(Value left, Value right, Condition cond, boolean unorderedIsTrue, LabelRef trueDestination, LabelRef falseDestination, double trueDestinationProbability);

@@ -33,7 +33,6 @@ import java.util.Map.Entry;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.asm.*;
 import com.oracle.graal.compiler.gen.LIRGenerator.LoadConstant;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.debug.*;
@@ -194,39 +193,8 @@ public abstract class NodeLIRBuilder implements NodeLIRBuiderTool {
         gen.append(op);
     }
 
-    public final void doBlockStart(AbstractBlock<?> block) {
-        if (printIRWithLIR) {
-            TTY.print(block.toString());
-        }
-
-        gen.setCurrentBlock(block);
-
-        // set up the list of LIR instructions
-        assert res.getLIR().getLIRforBlock(block) == null : "LIR list already computed for this block";
-        res.getLIR().setLIRforBlock(block, new ArrayList<LIRInstruction>());
-
-        append(new LabelOp(new Label(block.getId()), block.isAligned()));
-
-        if (traceLevel >= 1) {
-            TTY.println("BEGIN Generating LIR for block B" + block.getId());
-        }
-    }
-
-    public final void doBlockEnd(AbstractBlock<?> block) {
-
-        if (traceLevel >= 1) {
-            TTY.println("END Generating LIR for block B" + block.getId());
-        }
-
-        gen.setCurrentBlock(null);
-
-        if (printIRWithLIR) {
-            TTY.println();
-        }
-    }
-
     public void doBlock(Block block, StructuredGraph graph, BlockMap<List<ScheduledNode>> blockMap) {
-        doBlockStart(block);
+        gen.doBlockStart(block);
 
         if (block == res.getLIR().getControlFlowGraph().getStartBlock()) {
             assert block.getPredecessorCount() == 0;
@@ -285,7 +253,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuiderTool {
         }
 
         assert verifyBlock(res.getLIR(), block);
-        doBlockEnd(block);
+        gen.doBlockEnd(block);
     }
 
     private static final DebugMetric MemoryFoldSuccess = Debug.metric("MemoryFoldSuccess");
