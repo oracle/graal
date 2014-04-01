@@ -84,13 +84,13 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
     }
 
     @Override
-    public NodeLIRBuilder newNodeLIRGenerator(StructuredGraph graph, LIRGenerationResult lirGenRes, LIRGenerator lirGen) {
-        return new SPARCHotSpotNodeLIRBuilder(graph, lirGenRes, lirGen);
+    public NodeLIRBuilder newNodeLIRGenerator(StructuredGraph graph, LIRGenerator lirGen) {
+        return new SPARCHotSpotNodeLIRBuilder(graph, lirGen);
     }
 
     /**
      * Emits code to do stack overflow checking.
-     * 
+     *
      * @param afterFrameInit specifies if the stack pointer has already been adjusted to allocate
      *            the current frame
      */

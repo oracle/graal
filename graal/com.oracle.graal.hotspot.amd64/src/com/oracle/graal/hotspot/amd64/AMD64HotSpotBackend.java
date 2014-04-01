@@ -82,13 +82,13 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend {
     }
 
     @Override
-    public NodeLIRBuilder newNodeLIRGenerator(StructuredGraph graph, LIRGenerationResult lirGenRes, LIRGenerator lirGen) {
-        return new AMD64HotSpotNodeLIRBuilder(graph, lirGenRes, lirGen);
+    public NodeLIRBuilder newNodeLIRGenerator(StructuredGraph graph, LIRGenerator lirGen) {
+        return new AMD64HotSpotNodeLIRBuilder(graph, lirGen);
     }
 
     /**
      * Emits code to do stack overflow checking.
-     * 
+     *
      * @param afterFrameInit specifies if the stack pointer has already been adjusted to allocate
      *            the current frame
      * @param isVerifiedEntryPoint specifies if the code buffer is currently at the verified entry
@@ -253,7 +253,7 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend {
 
     /**
      * Emits the code prior to the verified entry point.
-     * 
+     *
      * @param installedCodeOwner see {@link Backend#emitCode}
      */
     public void emitCodePrefix(ResolvedJavaMethod installedCodeOwner, CompilationResultBuilder crb, AMD64MacroAssembler asm, RegisterConfig regConfig, HotSpotVMConfig config, Label verifiedEntry) {
@@ -288,7 +288,7 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend {
 
     /**
      * Emits the code which starts at the verified entry point.
-     * 
+     *
      * @param installedCodeOwner see {@link Backend#emitCode}
      */
     public void emitCodeBody(ResolvedJavaMethod installedCodeOwner, CompilationResultBuilder crb, LIR lir) {

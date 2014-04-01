@@ -375,8 +375,8 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
     }
 
     @Override
-    public NodeLIRBuilder newNodeLIRGenerator(StructuredGraph graph, LIRGenerationResult lirGenRes, LIRGenerator lirGen) {
-        return new HSAILHotSpotNodeLIRBuilder(graph, lirGenRes, lirGen);
+    public NodeLIRBuilder newNodeLIRGenerator(StructuredGraph graph, LIRGenerator lirGen) {
+        return new HSAILHotSpotNodeLIRBuilder(graph, lirGen);
     }
 
     class HotSpotFrameContext implements FrameContext {

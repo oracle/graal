@@ -35,8 +35,8 @@ import com.oracle.graal.nodes.spi.*;
 
 public abstract class AMD64NodeLIRBuilder extends NodeLIRBuilder {
 
-    public AMD64NodeLIRBuilder(StructuredGraph graph, LIRGenerationResult res, LIRGenerator gen) {
-        super(graph, res, gen);
+    public AMD64NodeLIRBuilder(StructuredGraph graph, LIRGenerator gen) {
+        super(graph, gen);
     }
 
     protected MemoryArithmeticLIRLowerer memoryPeephole;
@@ -97,7 +97,7 @@ public abstract class AMD64NodeLIRBuilder extends NodeLIRBuilder {
             sig[i] = node.arguments().get(i).stamp().javaType(gen.getMetaAccess());
         }
 
-        Value[] parameters = visitInvokeArguments(res.getFrameMap().registerConfig.getCallingConvention(CallingConvention.Type.JavaCall, null, sig, gen.target(), false), node.arguments());
+        Value[] parameters = visitInvokeArguments(gen.getResult().getFrameMap().registerConfig.getCallingConvention(CallingConvention.Type.JavaCall, null, sig, gen.target(), false), node.arguments());
         append(new AMD64BreakpointOp(parameters));
     }
 

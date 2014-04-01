@@ -174,7 +174,7 @@ public class HSAILHotSpotLIRGenerator extends HSAILLIRGenerator {
      */
     private void emitDeoptimizeInner(Value actionAndReason, LIRFrameState lirFrameState, String emitName) {
         DeoptimizeOp deopt = new DeoptimizeOp(actionAndReason, lirFrameState, emitName, getMetaAccess());
-        ((HSAILHotSpotLIRGenerationResult) res).addDeopt(deopt);
+        ((HSAILHotSpotLIRGenerationResult) getResult()).addDeopt(deopt);
         append(deopt);
     }
 

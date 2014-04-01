@@ -74,7 +74,7 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
     }
 
     public Stub getStub() {
-        return ((SPARCHotSpotLIRGenerationResult) res).getStub();
+        return ((SPARCHotSpotLIRGenerationResult) getResult()).getStub();
     }
 
     @Override

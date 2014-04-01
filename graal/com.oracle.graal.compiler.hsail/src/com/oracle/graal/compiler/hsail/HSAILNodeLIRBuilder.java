@@ -37,8 +37,8 @@ import com.oracle.graal.nodes.type.*;
  */
 public abstract class HSAILNodeLIRBuilder extends NodeLIRBuilder {
 
-    public HSAILNodeLIRBuilder(StructuredGraph graph, LIRGenerationResult lirGenRes, LIRGenerator lirGen) {
-        super(graph, lirGenRes, lirGen);
+    public HSAILNodeLIRBuilder(StructuredGraph graph, LIRGenerator lirGen) {
+        super(graph, lirGen);
     }
 
     @Override

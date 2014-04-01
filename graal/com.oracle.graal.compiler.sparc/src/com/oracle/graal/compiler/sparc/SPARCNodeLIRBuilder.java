@@ -36,8 +36,8 @@ import com.oracle.graal.nodes.java.*;
  */
 public abstract class SPARCNodeLIRBuilder extends NodeLIRBuilder {
 
-    public SPARCNodeLIRBuilder(StructuredGraph graph, LIRGenerationResult lirGenRes, LIRGenerator lirGen) {
-        super(graph, lirGenRes, lirGen);
+    public SPARCNodeLIRBuilder(StructuredGraph graph, LIRGenerator lirGen) {
+        super(graph, lirGen);
     }
 
     @Override
@@ -58,7 +58,7 @@ public abstract class SPARCNodeLIRBuilder extends NodeLIRBuilder {
             sig[i] = node.arguments().get(i).stamp().javaType(gen.getMetaAccess());
         }
 
-        Value[] parameters = visitInvokeArguments(res.getFrameMap().registerConfig.getCallingConvention(CallingConvention.Type.JavaCall, null, sig, gen.target(), false), node.arguments());
+        Value[] parameters = visitInvokeArguments(gen.getResult().getFrameMap().registerConfig.getCallingConvention(CallingConvention.Type.JavaCall, null, sig, gen.target(), false), node.arguments());
         append(new SPARCBreakpointOp(parameters));
     }
 

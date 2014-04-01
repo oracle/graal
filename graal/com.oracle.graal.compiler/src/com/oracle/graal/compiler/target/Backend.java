@@ -69,7 +69,7 @@ public abstract class Backend {
 
     public abstract LIRGenerationResult newLIRGenerationResult(LIR lir, FrameMap frameMap, Object stub);
 
-    public abstract NodeLIRBuilder newNodeLIRGenerator(StructuredGraph graph, LIRGenerationResult lirGenRes, LIRGenerator lirGen);
+    public abstract NodeLIRBuilder newNodeLIRGenerator(StructuredGraph graph, LIRGenerator lirGen);
 
     /**
      * Creates the assembler used to emit the machine code.
@@ -85,7 +85,7 @@ public abstract class Backend {
 
     /**
      * Emits the code for a given graph.
-     * 
+     *
      * @param installedCodeOwner the method the compiled code will be
      *            {@linkplain InstalledCode#getMethod() associated} with once installed. This
      *            argument can be null.

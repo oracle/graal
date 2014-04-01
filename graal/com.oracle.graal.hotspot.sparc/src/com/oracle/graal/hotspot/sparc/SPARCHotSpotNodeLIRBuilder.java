@@ -44,13 +44,13 @@ import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
 
 public class SPARCHotSpotNodeLIRBuilder extends SPARCNodeLIRBuilder implements HotSpotNodeLIRBuilder {
 
-    public SPARCHotSpotNodeLIRBuilder(StructuredGraph graph, LIRGenerationResult lirGenRes, LIRGenerator lirGen) {
-        super(graph, lirGenRes, lirGen);
+    public SPARCHotSpotNodeLIRBuilder(StructuredGraph graph, LIRGenerator lirGen) {
+        super(graph, lirGen);
     }
 
     @Override
     protected DebugInfoBuilder createDebugInfoBuilder(NodeMap<Value> nodeOperands) {
-        HotSpotLockStack lockStack = new HotSpotLockStack(res.getFrameMap(), Kind.Long);
+        HotSpotLockStack lockStack = new HotSpotLockStack(gen.getResult().getFrameMap(), Kind.Long);
         return new HotSpotDebugInfoBuilder(nodeOperands, lockStack);
     }
 

@@ -67,8 +67,8 @@ public abstract class LIRGenerator implements ArithmeticLIRGenerator, LIRGenerat
     private DebugInfoBuilder debugInfoBuilder;
 
     protected AbstractBlock<?> currentBlock;
-    private final int traceLevel;
-    private final boolean printIRWithLIR;
+    public final int traceLevel;
+    public final boolean printIRWithLIR;
 
     /**
      * Handle for an operation that loads a constant into a variable. The operation starts in the
@@ -141,7 +141,7 @@ public abstract class LIRGenerator implements ArithmeticLIRGenerator, LIRGenerat
 
     Map<Constant, LoadConstant> constantLoads;
 
-    protected LIRGenerationResult res;
+    private LIRGenerationResult res;
 
     /**
      * Set this before using the LIRGenerator.
@@ -620,5 +620,9 @@ public abstract class LIRGenerator implements ArithmeticLIRGenerator, LIRGenerat
 
     void setCurrentBlock(AbstractBlock<?> block) {
         currentBlock = block;
+    }
+
+    public LIRGenerationResult getResult() {
+        return res;
     }
 }

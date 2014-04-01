@@ -60,23 +60,15 @@ public abstract class NodeLIRBuilder implements NodeLIRBuiderTool {
     private final NodeMap<Value> nodeOperands;
     private final DebugInfoBuilder debugInfoBuilder;
 
-    private final int traceLevel;
-    private final boolean printIRWithLIR;
-
     protected final LIRGenerator gen;
 
     private ValueNode currentInstruction;
     private ValueNode lastInstructionPrinted; // Debugging only
 
-    protected LIRGenerationResult res;
-
-    public NodeLIRBuilder(StructuredGraph graph, LIRGenerationResult res, LIRGenerator gen) {
-        this.res = res;
+    public NodeLIRBuilder(StructuredGraph graph, LIRGenerator gen) {
+        this.gen = gen;
         this.nodeOperands = graph.createNodeMap();
         this.debugInfoBuilder = createDebugInfoBuilder(nodeOperands);
-        this.gen = gen;
-        this.traceLevel = LIRGenerator.Options.TraceLIRGeneratorLevel.getValue();
-        this.printIRWithLIR = LIRGenerator.Options.PrintIRWithLIR.getValue();
         gen.setDebugInfoBuilder(debugInfoBuilder);
     }
 
@@ -129,17 +121,17 @@ public abstract class NodeLIRBuilder implements NodeLIRBuiderTool {
                     LoadConstant load = gen.constantLoads.get(value);
                     assert gen.getCurrentBlock() instanceof Block;
                     if (load == null) {
-                        int index = res.getLIR().getLIRforBlock(gen.getCurrentBlock()).size();
+                        int index = gen.getResult().getLIR().getLIRforBlock(gen.getCurrentBlock()).size();
                         loadedValue = gen.emitMove(value);
-                        LIRInstruction op = res.getLIR().getLIRforBlock(gen.getCurrentBlock()).get(index);
+                        LIRInstruction op = gen.getResult().getLIR().getLIRforBlock(gen.getCurrentBlock()).get(index);
                         gen.constantLoads.put(value, new LoadConstant(loadedValue, (Block) gen.getCurrentBlock(), index, op));
                     } else {
                         Block dominator = ControlFlowGraph.commonDominator(load.block, (Block) gen.getCurrentBlock());
                         loadedValue = load.variable;
                         if (dominator != load.block) {
-                            load.unpin(res.getLIR());
+                            load.unpin(gen.getResult().getLIR());
                         } else {
-                            assert load.block != gen.getCurrentBlock() || load.index < res.getLIR().getLIRforBlock(gen.getCurrentBlock()).size();
+                            assert load.block != gen.getCurrentBlock() || load.index < gen.getResult().getLIR().getLIRforBlock(gen.getCurrentBlock()).size();
                         }
                         load.block = dominator;
                     }
@@ -173,17 +165,17 @@ public abstract class NodeLIRBuilder implements NodeLIRBuiderTool {
     }
 
     public LabelRef getLIRBlock(FixedNode b) {
-        assert res.getLIR().getControlFlowGraph() instanceof ControlFlowGraph;
-        Block result = ((ControlFlowGraph) res.getLIR().getControlFlowGraph()).blockFor(b);
+        assert gen.getResult().getLIR().getControlFlowGraph() instanceof ControlFlowGraph;
+        Block result = ((ControlFlowGraph) gen.getResult().getLIR().getControlFlowGraph()).blockFor(b);
         int suxIndex = gen.getCurrentBlock().getSuccessors().indexOf(result);
         assert suxIndex != -1 : "Block not in successor list of current block";
 
         assert gen.getCurrentBlock() instanceof Block;
-        return LabelRef.forSuccessor(res.getLIR(), (Block) gen.getCurrentBlock(), suxIndex);
+        return LabelRef.forSuccessor(gen.getResult().getLIR(), (Block) gen.getCurrentBlock(), suxIndex);
     }
 
     public final void append(LIRInstruction op) {
-        if (printIRWithLIR && !TTY.isSuppressed()) {
+        if (gen.printIRWithLIR && !TTY.isSuppressed()) {
             if (currentInstruction != null && lastInstructionPrinted != currentInstruction) {
                 lastInstructionPrinted = currentInstruction;
                 InstructionPrinter ip = new InstructionPrinter(TTY.out());
@@ -196,7 +188,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuiderTool {
     public void doBlock(Block block, StructuredGraph graph, BlockMap<List<ScheduledNode>> blockMap) {
         gen.doBlockStart(block);
 
-        if (block == res.getLIR().getControlFlowGraph().getStartBlock()) {
+        if (block == gen.getResult().getLIR().getControlFlowGraph().getStartBlock()) {
             assert block.getPredecessorCount() == 0;
             emitPrologue(graph);
         } else {
@@ -207,7 +199,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuiderTool {
         int instructionsFolded = 0;
         for (int i = 0; i < nodes.size(); i++) {
             Node instr = nodes.get(i);
-            if (traceLevel >= 3) {
+            if (gen.traceLevel >= 3) {
                 TTY.println("LIRGen for " + instr);
             }
             if (instructionsFolded > 0) {
@@ -252,7 +244,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuiderTool {
             gen.emitJump(getLIRBlock((FixedNode) successors.first()));
         }
 
-        assert verifyBlock(res.getLIR(), block);
+        assert verifyBlock(gen.getResult().getLIR(), block);
         gen.doBlockEnd(block);
     }
 
@@ -393,7 +385,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuiderTool {
     protected abstract boolean peephole(ValueNode valueNode);
 
     private boolean hasBlockEnd(Block block) {
-        List<LIRInstruction> ops = res.getLIR().getLIRforBlock(block);
+        List<LIRInstruction> ops = gen.getResult().getLIR().getLIRforBlock(block);
         if (ops.size() == 0) {
             return false;
         }
@@ -401,7 +393,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuiderTool {
     }
 
     private void doRoot(ValueNode instr) {
-        if (traceLevel >= 2) {
+        if (gen.traceLevel >= 2) {
             TTY.println("Emitting LIR for instruction " + instr);
         }
         currentInstruction = instr;
@@ -418,7 +410,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuiderTool {
         if (node instanceof LIRGenLowerable) {
             ((LIRGenLowerable) node).generate(this);
         } else if (node instanceof LIRGenResLowerable) {
-            ((LIRGenResLowerable) node).generate(this, res);
+            ((LIRGenResLowerable) node).generate(this, gen.getResult());
         } else if (node instanceof LIRLowerable) {
             ((LIRLowerable) node).generate(this);
         } else if (node instanceof ArithmeticLIRLowerable) {
@@ -436,8 +428,8 @@ public abstract class NodeLIRBuilder implements NodeLIRBuiderTool {
             params[i] = toStackKind(incomingArguments.getArgument(i));
             if (ValueUtil.isStackSlot(params[i])) {
                 StackSlot slot = ValueUtil.asStackSlot(params[i]);
-                if (slot.isInCallerFrame() && !res.getLIR().hasArgInCallerFrame()) {
-                    res.getLIR().setHasArgInCallerFrame();
+                if (slot.isInCallerFrame() && !gen.getResult().getLIR().hasArgInCallerFrame()) {
+                    gen.getResult().getLIR().setHasArgInCallerFrame();
                 }
             }
         }
@@ -459,8 +451,8 @@ public abstract class NodeLIRBuilder implements NodeLIRBuiderTool {
             params[i] = toStackKind(incomingArguments.getArgument(i));
             if (ValueUtil.isStackSlot(params[i])) {
                 StackSlot slot = ValueUtil.asStackSlot(params[i]);
-                if (slot.isInCallerFrame() && !res.getLIR().hasArgInCallerFrame()) {
-                    res.getLIR().setHasArgInCallerFrame();
+                if (slot.isInCallerFrame() && !gen.getResult().getLIR().hasArgInCallerFrame()) {
+                    gen.getResult().getLIR().setHasArgInCallerFrame();
                 }
             }
         }
@@ -480,7 +472,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuiderTool {
     }
 
     public void emitIncomingValues(Value[] params) {
-        ((LabelOp) res.getLIR().getLIRforBlock(gen.getCurrentBlock()).get(0)).setIncomingValues(params);
+        ((LabelOp) gen.getResult().getLIR().getLIRforBlock(gen.getCurrentBlock()).get(0)).setIncomingValues(params);
     }
 
     @Override
@@ -510,7 +502,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuiderTool {
     }
 
     private void moveToPhi(MergeNode merge, AbstractEndNode pred) {
-        if (traceLevel >= 1) {
+        if (gen.traceLevel >= 1) {
             TTY.println("MOVE TO PHI from " + pred + " to " + merge);
         }
         PhiResolver resolver = new PhiResolver(gen);
@@ -605,9 +597,9 @@ public abstract class NodeLIRBuilder implements NodeLIRBuiderTool {
     @Override
     public void emitInvoke(Invoke x) {
         LoweredCallTargetNode callTarget = (LoweredCallTargetNode) x.callTarget();
-        CallingConvention invokeCc = res.getFrameMap().registerConfig.getCallingConvention(callTarget.callType(), x.asNode().stamp().javaType(gen.getMetaAccess()), callTarget.signature(),
+        CallingConvention invokeCc = gen.getResult().getFrameMap().registerConfig.getCallingConvention(callTarget.callType(), x.asNode().stamp().javaType(gen.getMetaAccess()), callTarget.signature(),
                         gen.target(), false);
-        res.getFrameMap().callsMethod(invokeCc);
+        gen.getResult().getFrameMap().callsMethod(invokeCc);
 
         Value[] parameters = visitInvokeArguments(invokeCc, callTarget.arguments());
 

@@ -124,7 +124,7 @@ public class GraalCompiler {
 
     /**
      * Requests compilation of a given graph.
-     * 
+     *
      * @param graph the graph to be compiled
      * @param cc the calling convention for calls to the code compiled for {@code graph}
      * @param installedCodeOwner the method the compiled code will be
@@ -244,7 +244,7 @@ public class GraalCompiler {
             FrameMap frameMap = backend.newFrameMap();
             LIRGenerationResult lirGenRes = backend.newLIRGenerationResult(lir, frameMap, stub);
             LIRGenerator lirGen = backend.newLIRGenerator(cc, lirGenRes);
-            NodeLIRBuilder nodeLirGen = backend.newNodeLIRGenerator(graph, lirGenRes, lirGen);
+            NodeLIRBuilder nodeLirGen = backend.newNodeLIRGenerator(graph, lirGen);
 
             try (Scope s = Debug.scope("LIRGen", lirGen)) {
                 for (Block b : linearScanOrder) {

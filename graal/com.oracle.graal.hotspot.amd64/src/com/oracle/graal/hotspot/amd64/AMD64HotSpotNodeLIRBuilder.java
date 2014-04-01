@@ -57,8 +57,8 @@ import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
  */
 public class AMD64HotSpotNodeLIRBuilder extends AMD64NodeLIRBuilder implements HotSpotNodeLIRBuilder {
 
-    public AMD64HotSpotNodeLIRBuilder(StructuredGraph graph, LIRGenerationResult res, LIRGenerator gen) {
-        super(graph, res, gen);
+    public AMD64HotSpotNodeLIRBuilder(StructuredGraph graph, LIRGenerator gen) {
+        super(graph, gen);
         memoryPeephole = new AMD64HotSpotMemoryPeephole(this);
     }
 
@@ -76,7 +76,7 @@ public class AMD64HotSpotNodeLIRBuilder extends AMD64NodeLIRBuilder implements H
 
     @Override
     protected DebugInfoBuilder createDebugInfoBuilder(NodeMap<Value> nodeOperands) {
-        HotSpotLockStack lockStack = new HotSpotLockStack(res.getFrameMap(), Kind.Long);
+        HotSpotLockStack lockStack = new HotSpotLockStack(gen.getResult().getFrameMap(), Kind.Long);
         return new HotSpotDebugInfoBuilder(nodeOperands, lockStack);
     }
 
@@ -90,8 +90,8 @@ public class AMD64HotSpotNodeLIRBuilder extends AMD64NodeLIRBuilder implements H
             params[i] = toStackKind(incomingArguments.getArgument(i));
             if (isStackSlot(params[i])) {
                 StackSlot slot = ValueUtil.asStackSlot(params[i]);
-                if (slot.isInCallerFrame() && !res.getLIR().hasArgInCallerFrame()) {
-                    res.getLIR().setHasArgInCallerFrame();
+                if (slot.isInCallerFrame() && !gen.getResult().getLIR().hasArgInCallerFrame()) {
+                    gen.getResult().getLIR().setHasArgInCallerFrame();
                 }
             }
         }
@@ -99,7 +99,7 @@ public class AMD64HotSpotNodeLIRBuilder extends AMD64NodeLIRBuilder implements H
 
         emitIncomingValues(params);
 
-        setSaveRbp(((AMD64HotSpotLIRGenerator) gen).new SaveRbp(new NoOp(gen.getCurrentBlock(), res.getLIR().getLIRforBlock(gen.getCurrentBlock()).size())));
+        setSaveRbp(((AMD64HotSpotLIRGenerator) gen).new SaveRbp(new NoOp(gen.getCurrentBlock(), gen.getResult().getLIR().getLIRforBlock(gen.getCurrentBlock()).size())));
         append(getSaveRbp().placeholder);
 
         for (ParameterNode param : graph.getNodes(ParameterNode.class)) {

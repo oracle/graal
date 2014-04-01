@@ -67,7 +67,7 @@ public class PTXHotSpotBackend extends HotSpotBackend {
 
     /**
      * Descriptor for the PTX runtime method for calling a kernel. The C++ signature is:
-     * 
+     *
      * <pre>
      *     jlong (JavaThread* thread,
      *            jlong kernel,
@@ -113,7 +113,7 @@ public class PTXHotSpotBackend extends HotSpotBackend {
 
     /**
      * Initializes the GPU device.
-     * 
+     *
      * @return whether or not initialization was successful
      */
     private static native boolean initialize();
@@ -167,7 +167,7 @@ public class PTXHotSpotBackend extends HotSpotBackend {
 
     /**
      * Compiles a given method to PTX code.
-     * 
+     *
      * @param makeBinary specifies whether a GPU binary should also be generated for the PTX code.
      *            If true, the returned value is guaranteed to have a non-zero
      *            {@linkplain ExternalCompilationResult#getEntryPoint() entry point}.
@@ -358,8 +358,8 @@ public class PTXHotSpotBackend extends HotSpotBackend {
     }
 
     @Override
-    public NodeLIRBuilder newNodeLIRGenerator(StructuredGraph graph, LIRGenerationResult lirGenRes, LIRGenerator lirGen) {
-        return new PTXHotSpotNodeLIRBuilder(graph, lirGenRes, lirGen);
+    public NodeLIRBuilder newNodeLIRGenerator(StructuredGraph graph, LIRGenerator lirGen) {
+        return new PTXHotSpotNodeLIRBuilder(graph, lirGen);
     }
 
     private static void emitKernelEntry(CompilationResultBuilder crb, LIR lir, ResolvedJavaMethod codeCacheOwner) {
