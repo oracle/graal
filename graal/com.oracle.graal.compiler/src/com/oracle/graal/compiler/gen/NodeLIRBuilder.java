@@ -156,7 +156,6 @@ public abstract class NodeLIRBuilder implements NodeLIRBuiderTool {
         assert (!isRegister(operand) || !gen.attributes(asRegister(operand)).isAllocatable());
         assert nodeOperands == null || nodeOperands.get(x) == null : "operand cannot be set twice";
         assert operand != null && isLegal(operand) : "operand must be legal";
-        assert operand.getKind().getStackKind() == x.getKind() || x.getKind() == Kind.Illegal : operand.getKind().getStackKind() + " must match " + x.getKind();
         assert !(x instanceof VirtualObjectNode);
         nodeOperands.set(x, operand);
         return operand;

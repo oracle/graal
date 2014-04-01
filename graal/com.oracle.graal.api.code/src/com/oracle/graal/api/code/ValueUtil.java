@@ -91,7 +91,7 @@ public final class ValueUtil {
     }
 
     public static Register asIntReg(Value value) {
-        if (value.getKind() != Kind.Int) {
+        if (value.getKind().getStackKind() != Kind.Int) {
             throw new InternalError("needed Int got: " + value.getKind());
         } else {
             return asRegister(value);
