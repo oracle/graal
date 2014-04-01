@@ -116,7 +116,20 @@ public class AMD64 extends Architecture {
      * Basic set of CPU features mirroring what is returned from the cpuid instruction.
      */
     public static enum CPUFeature {
-        SSE, SSE2, SSE3, SSE4a, SSE4_1, SSE4_2, SSSE3, POPCNT, LZCNT, AVX, AVX2, ERMS, AMD_3DNOW_PREFETCH, AES,
+        SSE,
+        SSE2,
+        SSE3,
+        SSE4a,
+        SSE4_1,
+        SSE4_2,
+        SSSE3,
+        POPCNT,
+        LZCNT,
+        AVX,
+        AVX2,
+        ERMS,
+        AMD_3DNOW_PREFETCH,
+        AES,
     }
 
     private final EnumSet<CPUFeature> features;

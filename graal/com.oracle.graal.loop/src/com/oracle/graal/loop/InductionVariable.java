@@ -32,7 +32,8 @@ import com.oracle.graal.nodes.type.*;
 public abstract class InductionVariable {
 
     public enum Direction {
-        Up, Down;
+        Up,
+        Down;
 
         public Direction opposite() {
             switch (this) {

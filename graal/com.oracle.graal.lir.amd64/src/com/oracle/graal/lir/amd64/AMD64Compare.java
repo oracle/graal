@@ -32,7 +32,11 @@ import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
 
 public enum AMD64Compare {
-    ICMP, LCMP, ACMP, FCMP, DCMP;
+    ICMP,
+    LCMP,
+    ACMP,
+    FCMP,
+    DCMP;
 
     public static class CompareOp extends AMD64LIRInstruction {
         @Opcode private final AMD64Compare opcode;

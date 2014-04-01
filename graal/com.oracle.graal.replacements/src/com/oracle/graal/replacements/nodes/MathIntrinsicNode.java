@@ -36,7 +36,13 @@ public class MathIntrinsicNode extends FloatingNode implements Canonicalizable, 
     private final Operation operation;
 
     public enum Operation {
-        ABS, SQRT, LOG, LOG10, SIN, COS, TAN
+        ABS,
+        SQRT,
+        LOG,
+        LOG10,
+        SIN,
+        COS,
+        TAN
     }
 
     public ValueNode x() {

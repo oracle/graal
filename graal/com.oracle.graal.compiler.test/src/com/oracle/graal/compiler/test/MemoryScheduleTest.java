@@ -59,7 +59,9 @@ import com.oracle.graal.phases.tiers.*;
 public class MemoryScheduleTest extends GraphScheduleTest {
 
     private static enum TestMode {
-        WITH_FRAMESTATES, WITHOUT_FRAMESTATES, INLINED_WITHOUT_FRAMESTATES
+        WITH_FRAMESTATES,
+        WITHOUT_FRAMESTATES,
+        INLINED_WITHOUT_FRAMESTATES
     }
 
     public static class Container {

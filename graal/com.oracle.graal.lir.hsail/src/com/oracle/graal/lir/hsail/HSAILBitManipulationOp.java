@@ -34,7 +34,11 @@ import com.oracle.graal.lir.asm.*;
 public class HSAILBitManipulationOp extends HSAILLIRInstruction {
 
     public enum IntrinsicOpcode {
-        IPOPCNT, LPOPCNT, IBSR, LBSR, BSF;
+        IPOPCNT,
+        LPOPCNT,
+        IBSR,
+        LBSR,
+        BSF;
     }
 
     @Opcode private final IntrinsicOpcode opcode;

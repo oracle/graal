@@ -62,7 +62,6 @@ public final class HotSpotMethodData extends CompilerObject {
         null, // call_type_data_tag
         null, // virtual_call_type_data_tag
         null, // parameters_type_data_tag
-        null  // speculative_trap_data_tag
     };
     // @formatter:on
 

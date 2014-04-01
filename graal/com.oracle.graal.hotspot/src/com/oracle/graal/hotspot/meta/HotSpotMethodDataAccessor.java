@@ -52,8 +52,7 @@ public interface HotSpotMethodDataAccessor {
         ArgInfoData(config().dataLayoutArgInfoDataTag),
         CallTypeData(config().dataLayoutCallTypeDataTag),
         VirtualCallTypeData(config().dataLayoutVirtualCallTypeDataTag),
-        ParametersTypeData(config().dataLayoutParametersTypeDataTag),
-        SpeculativeTrapData(config().dataLayoutSpeculativeTrapDataTag);
+        ParametersTypeData(config().dataLayoutParametersTypeDataTag);
 
         private final int value;
 
@@ -81,21 +80,21 @@ public interface HotSpotMethodDataAccessor {
 
     /**
      * Returns the {@link Tag} stored in the LayoutData header.
-     * 
+     *
      * @return tag stored in the LayoutData header
      */
     Tag getTag();
 
     /**
      * Returns the BCI stored in the LayoutData header.
-     * 
+     *
      * @return An integer &ge; 0 and &le; Short.MAX_VALUE, or -1 if not supported.
      */
     int getBCI(HotSpotMethodData data, int position);
 
     /**
      * Computes the size for the specific data at the given position.
-     * 
+     *
      * @return An integer &gt; 0.
      */
     int getSize(HotSpotMethodData data, int position);

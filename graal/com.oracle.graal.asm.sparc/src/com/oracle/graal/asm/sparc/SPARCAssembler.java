@@ -2938,7 +2938,11 @@ public abstract class SPARCAssembler extends Assembler {
     public static class Prefetch extends Fmt11 {
 
         public enum Fcn {
-            SeveralReads(0), OneRead(1), SeveralWritesAndPossiblyReads(2), OneWrite(3), Page(4);
+            SeveralReads(0),
+            OneRead(1),
+            SeveralWritesAndPossiblyReads(2),
+            OneWrite(3),
+            Page(4);
 
             private final int value;
 

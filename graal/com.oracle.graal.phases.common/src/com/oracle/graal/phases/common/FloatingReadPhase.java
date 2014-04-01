@@ -37,7 +37,8 @@ import com.oracle.graal.phases.graph.ReentrantNodeIterator.NodeIteratorClosure;
 public class FloatingReadPhase extends Phase {
 
     public enum ExecutionMode {
-        ANALYSIS_ONLY, CREATE_FLOATING_READS
+        ANALYSIS_ONLY,
+        CREATE_FLOATING_READS
     }
 
     public static class MemoryMapImpl extends MemoryMapNode {

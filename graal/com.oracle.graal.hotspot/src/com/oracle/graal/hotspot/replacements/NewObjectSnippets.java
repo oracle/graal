@@ -75,7 +75,11 @@ public class NewObjectSnippets implements Snippets {
     }
 
     static enum ProfileMode {
-        AllocatingMethods, InstanceOrArray, AllocatedTypes, AllocatedTypesInMethods, Total
+        AllocatingMethods,
+        InstanceOrArray,
+        AllocatedTypes,
+        AllocatedTypesInMethods,
+        Total
     }
 
     public static final ProfileMode PROFILE_MODE = ProfileMode.Total;

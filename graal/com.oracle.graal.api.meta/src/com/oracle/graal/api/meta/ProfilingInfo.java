@@ -34,7 +34,9 @@ public interface ProfilingInfo {
      * Represents the three possibilities that an exception was seen at a specific BCI.
      */
     public enum TriState {
-        TRUE, FALSE, UNKNOWN;
+        TRUE,
+        FALSE,
+        UNKNOWN;
 
         public static TriState get(boolean value) {
             return value ? TRUE : FALSE;

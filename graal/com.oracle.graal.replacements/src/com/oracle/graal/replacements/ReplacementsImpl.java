@@ -307,7 +307,9 @@ public class ReplacementsImpl implements Replacements {
     final ConcurrentMap<ResolvedJavaMethod, StructuredGraph> graphCache = new ConcurrentHashMap<>();
 
     public enum FrameStateProcessing {
-        None, CollapseFrameForSingleSideEffect, Removal
+        None,
+        CollapseFrameForSingleSideEffect,
+        Removal
     }
 
     /**

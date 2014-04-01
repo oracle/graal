@@ -1301,7 +1301,6 @@ public class HotSpotVMConfig extends CompilerObject {
     @HotSpotVMConstant(name = "DataLayout::call_type_data_tag") @Stable public int dataLayoutCallTypeDataTag;
     @HotSpotVMConstant(name = "DataLayout::virtual_call_type_data_tag") @Stable public int dataLayoutVirtualCallTypeDataTag;
     @HotSpotVMConstant(name = "DataLayout::parameters_type_data_tag") @Stable public int dataLayoutParametersTypeDataTag;
-    @HotSpotVMConstant(name = "DataLayout::speculative_trap_data_tag") @Stable public int dataLayoutSpeculativeTrapDataTag;
 
     @HotSpotVMFlag(name = "BciProfileWidth") @Stable public int bciProfileWidth;
     @HotSpotVMFlag(name = "TypeProfileWidth") @Stable public int typeProfileWidth;

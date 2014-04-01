@@ -480,7 +480,9 @@ public class PTXAssembler extends AbstractPTXAssembler {
     }
 
     public enum BooleanOperator {
-        AND("and"), OR("or"), XOR("xor");
+        AND("and"),
+        OR("or"),
+        XOR("xor");
 
         private final String output;
 

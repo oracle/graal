@@ -34,7 +34,11 @@ import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
 
 public enum SPARCCompare {
-    ICMP, LCMP, ACMP, FCMP, DCMP;
+    ICMP,
+    LCMP,
+    ACMP,
+    FCMP,
+    DCMP;
 
     public static class CompareOp extends SPARCLIRInstruction {
 

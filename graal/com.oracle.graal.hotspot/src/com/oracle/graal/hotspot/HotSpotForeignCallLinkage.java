@@ -46,7 +46,8 @@ public class HotSpotForeignCallLinkage implements ForeignCallLinkage, InvokeTarg
      * {@linkplain ForeignCallLinkage#getTemporaries() temporary} registers.
      */
     public enum RegisterEffect {
-        DESTROYS_REGISTERS, PRESERVES_REGISTERS
+        DESTROYS_REGISTERS,
+        PRESERVES_REGISTERS
     }
 
     /**
@@ -55,7 +56,9 @@ public class HotSpotForeignCallLinkage implements ForeignCallLinkage, InvokeTarg
      * by another thread.
      */
     public enum Transition {
-        LEAF_NOFP, LEAF, NOT_LEAF;
+        LEAF_NOFP,
+        LEAF,
+        NOT_LEAF;
     }
 
     /**
