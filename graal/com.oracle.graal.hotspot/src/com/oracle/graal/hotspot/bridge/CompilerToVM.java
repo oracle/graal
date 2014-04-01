@@ -172,7 +172,10 @@ public interface CompilerToVM {
     Object lookupAppendixInPool(long metaspaceConstantPool, int cpi);
 
     public enum CodeInstallResult {
-        OK("ok"), DEPENDENCIES_FAILED("dependencies failed"), CACHE_FULL("code cache is full"), CODE_TOO_LARGE("code is too large");
+        OK("ok"),
+        DEPENDENCIES_FAILED("dependencies failed"),
+        CACHE_FULL("code cache is full"),
+        CODE_TOO_LARGE("code is too large");
 
         private int value;
         private String message;

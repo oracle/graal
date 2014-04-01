@@ -70,11 +70,14 @@ public final class SchedulePhase extends Phase {
     }
 
     public static enum SchedulingStrategy {
-        EARLIEST, LATEST, LATEST_OUT_OF_LOOPS
+        EARLIEST,
+        LATEST,
+        LATEST_OUT_OF_LOOPS
     }
 
     public static enum MemoryScheduling {
-        NONE, OPTIMAL
+        NONE,
+        OPTIMAL
     }
 
     private class KillSet implements Iterable<LocationIdentity> {
@@ -646,7 +649,7 @@ public final class SchedulePhase extends Phase {
          * implies that the inputs' blocks have a total ordering via their dominance relation. So in
          * order to find the earliest block placement for this node we need to find the input block
          * that is dominated by all other input blocks.
-         *
+         * 
          * While iterating over the inputs a set of dominator blocks of the current earliest
          * placement is maintained. When the block of an input is not within this set, it becomes
          * the current earliest placement and the list of dominator blocks is updated.

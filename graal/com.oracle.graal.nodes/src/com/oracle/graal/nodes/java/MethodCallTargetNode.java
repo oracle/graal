@@ -33,7 +33,10 @@ import com.oracle.graal.nodes.type.*;
 public class MethodCallTargetNode extends CallTargetNode implements IterableNodeType, Canonicalizable {
 
     public enum InvokeKind {
-        Interface, Special, Static, Virtual
+        Interface,
+        Special,
+        Static,
+        Virtual
     }
 
     private final JavaType returnType;

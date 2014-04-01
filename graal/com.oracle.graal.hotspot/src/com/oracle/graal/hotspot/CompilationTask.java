@@ -93,7 +93,9 @@ public class CompilationTask implements Runnable, Comparable {
     }
 
     private enum CompilationStatus {
-        Queued, Running, Finished
+        Queued,
+        Running,
+        Finished
     }
 
     private final HotSpotBackend backend;

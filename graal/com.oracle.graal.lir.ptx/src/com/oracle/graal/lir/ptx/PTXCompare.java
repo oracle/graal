@@ -34,7 +34,11 @@ import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.nodes.calc.*;
 
 public enum PTXCompare {
-    ICMP, LCMP, ACMP, FCMP, DCMP;
+    ICMP,
+    LCMP,
+    ACMP,
+    FCMP,
+    DCMP;
 
     public static class CompareOp extends PTXLIRInstruction {
 

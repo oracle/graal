@@ -221,7 +221,10 @@ public class GraphKit {
     }
 
     protected enum IfState {
-        CONDITION, THEN_PART, ELSE_PART, FINISHED
+        CONDITION,
+        THEN_PART,
+        ELSE_PART,
+        FINISHED
     }
 
     static class IfStructure extends Structure {

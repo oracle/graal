@@ -34,7 +34,12 @@ public final class OptimisticOptimizations {
     private static final DebugMetric disabledOptimisticOptsMetric = Debug.metric("DisabledOptimisticOpts");
 
     public static enum Optimization {
-        RemoveNeverExecutedCode, UseTypeCheckedInlining, UseTypeCheckHints, UseExceptionProbabilityForOperations, UseExceptionProbability, UseLoopLimitChecks
+        RemoveNeverExecutedCode,
+        UseTypeCheckedInlining,
+        UseTypeCheckHints,
+        UseExceptionProbabilityForOperations,
+        UseExceptionProbability,
+        UseLoopLimitChecks
     }
 
     private final Set<Optimization> enabledOpts;

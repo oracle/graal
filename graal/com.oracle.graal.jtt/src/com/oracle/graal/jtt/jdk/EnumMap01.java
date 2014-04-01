@@ -44,7 +44,9 @@ public class EnumMap01 extends JTTTest {
     }
 
     private enum Enum {
-        A, B, C
+        A,
+        B,
+        C
     }
 
     @Test

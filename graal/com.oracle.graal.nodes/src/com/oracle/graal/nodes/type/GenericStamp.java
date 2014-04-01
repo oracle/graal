@@ -29,7 +29,9 @@ import com.oracle.graal.nodes.spi.*;
 public final class GenericStamp extends Stamp {
 
     public enum GenericStampType {
-        Dependency, Extension, Condition
+        Dependency,
+        Extension,
+        Condition
     }
 
     private final GenericStampType type;

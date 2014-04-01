@@ -37,7 +37,16 @@ import com.oracle.graal.nodes.type.*;
 public class FloatConvertNode extends ConvertNode implements Canonicalizable, Lowerable, ArithmeticLIRLowerable, MemoryArithmeticLIRLowerable {
 
     public enum FloatConvert {
-        F2I, D2I, F2L, D2L, I2F, L2F, D2F, I2D, L2D, F2D;
+        F2I,
+        D2I,
+        F2L,
+        D2L,
+        I2F,
+        L2F,
+        D2F,
+        I2D,
+        L2D,
+        F2D;
 
         public FloatConvert reverse() {
             switch (this) {

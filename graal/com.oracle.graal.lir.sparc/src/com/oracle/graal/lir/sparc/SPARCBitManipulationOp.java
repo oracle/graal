@@ -39,7 +39,11 @@ import com.oracle.graal.nodes.spi.*;
 public class SPARCBitManipulationOp extends SPARCLIRInstruction {
 
     public enum IntrinsicOpcode {
-        IPOPCNT, LPOPCNT, IBSR, LBSR, BSF;
+        IPOPCNT,
+        LPOPCNT,
+        IBSR,
+        LBSR,
+        BSF;
     }
 
     @Opcode private final IntrinsicOpcode opcode;

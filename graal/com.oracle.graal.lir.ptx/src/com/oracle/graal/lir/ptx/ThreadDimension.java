@@ -23,5 +23,7 @@
 package com.oracle.graal.lir.ptx;
 
 public enum ThreadDimension {
-    X, Y, Z
+    X,
+    Y,
+    Z
 }

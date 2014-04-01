@@ -57,7 +57,8 @@ public abstract class BinaryNode extends FloatingNode {
     }
 
     public enum ReassociateMatch {
-        x, y;
+        x,
+        y;
 
         public ValueNode getValue(BinaryNode binary) {
             switch (this) {

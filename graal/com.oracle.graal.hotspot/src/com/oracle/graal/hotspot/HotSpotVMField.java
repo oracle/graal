@@ -29,7 +29,9 @@ import java.lang.annotation.*;
 public @interface HotSpotVMField {
 
     enum Type {
-        OFFSET, ADDRESS, VALUE;
+        OFFSET,
+        ADDRESS,
+        VALUE;
     }
 
     String name();
