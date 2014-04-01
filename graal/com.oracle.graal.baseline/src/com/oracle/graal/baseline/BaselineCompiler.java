@@ -263,8 +263,7 @@ public class BaselineCompiler {
 
         @Override
         protected Value genIntegerAdd(Kind kind, Value x, Value y) {
-            // TODO Auto-generated method stub
-            throw GraalInternalError.unimplemented("Auto-generated method stub");
+            return lirGen.emitAdd(x, y);
         }
 
         @Override
@@ -527,8 +526,7 @@ public class BaselineCompiler {
 
         @Override
         protected void genReturn(Value x) {
-            // TODO Auto-generated method stub
-            throw GraalInternalError.unimplemented("Auto-generated method stub");
+            lirGen.emitReturn(x);
         }
 
         @Override
@@ -575,8 +573,7 @@ public class BaselineCompiler {
 
         @Override
         protected Value append(Value v) {
-            // TODO Auto-generated method stub
-            throw GraalInternalError.unimplemented("Auto-generated method stub");
+            return v;
         }
 
         @Override
