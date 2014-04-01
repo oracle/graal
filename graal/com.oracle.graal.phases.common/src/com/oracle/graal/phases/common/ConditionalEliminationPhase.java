@@ -469,9 +469,7 @@ public class ConditionalEliminationPhase extends Phase {
         private boolean eliminateTrivialGuard(GuardNode guard) {
             LogicNode condition = guard.condition();
 
-            ValueNode existingGuards = guard.negated() ? state.falseConditions.get(condition) : state.trueConditions.get(condition);
-            if (existingGuards != null) {
-                eliminateGuard(guard, existingGuards);
+            if (testExistingGuard(guard)) {
                 return true;
             } else {
                 ValueNode anchor = state.trueConditions.get(condition);
@@ -554,6 +552,15 @@ public class ConditionalEliminationPhase extends Phase {
 
             if (existingGuard != null) {
                 // Found a guard which proves this guard to be true, so replace it.
+                eliminateGuard(guard, existingGuard);
+                return true;
+            }
+            return false;
+        }
+
+        private boolean testExistingGuard(GuardNode guard) {
+            ValueNode existingGuard = guard.negated() ? state.falseConditions.get(guard.condition()) : state.trueConditions.get(guard.condition());
+            if (existingGuard != null && existingGuard != guard) {
                 eliminateGuard(guard, existingGuard);
                 return true;
             }
@@ -663,7 +670,7 @@ public class ConditionalEliminationPhase extends Phase {
                 // just be registered since they aren't trivially deleteable. Test the other guards
                 // to see if they can be deleted using type constraints.
                 for (GuardNode guard : begin.guards().snapshot()) {
-                    if (provers.contains(guard) || !testImpliedGuard(guard)) {
+                    if (provers.contains(guard) || !testExistingGuard(guard) || !testImpliedGuard(guard)) {
                         registerCondition(!guard.negated(), guard.condition(), guard);
                     }
                 }
