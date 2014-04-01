@@ -25,7 +25,7 @@ package com.oracle.graal.java;
 
 import com.oracle.graal.api.meta.*;
 
-public abstract class AbstractFrameStateBuilder<T extends KindInterface> {
+public abstract class AbstractFrameStateBuilder<T extends KindProvider> {
 
     protected final ResolvedJavaMethod method;
     protected int stackSize;

@@ -24,9 +24,9 @@
 package com.oracle.graal.api.meta;
 
 /**
- * Interface for the AbstractFrameStateBuilder and BytecodeParserHelper.
+ * Interface for classes which can be associated with a Kind.
  */
-public interface KindInterface {
+public interface KindProvider {
 
     Kind getKind();
 

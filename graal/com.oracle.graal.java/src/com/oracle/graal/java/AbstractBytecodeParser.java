@@ -43,7 +43,7 @@ import com.oracle.graal.nodes.calc.FloatConvertNode.FloatConvert;
 import com.oracle.graal.options.*;
 import com.oracle.graal.phases.*;
 
-public abstract class AbstractBytecodeParser<T extends KindInterface, F extends AbstractFrameStateBuilder<T>> {
+public abstract class AbstractBytecodeParser<T extends KindProvider, F extends AbstractFrameStateBuilder<T>> {
 
     static class Options {
         // @formatter:off
@@ -65,7 +65,7 @@ public abstract class AbstractBytecodeParser<T extends KindInterface, F extends 
     public static final int TRACELEVEL_STATE = 2;
 
     protected F frameState;
-    protected BytecodeStream stream;           // the bytecode stream
+    protected BytecodeStream stream;
     private GraphBuilderConfiguration graphBuilderConfig;
     protected ResolvedJavaMethod method;
     protected BciBlock currentBlock;
