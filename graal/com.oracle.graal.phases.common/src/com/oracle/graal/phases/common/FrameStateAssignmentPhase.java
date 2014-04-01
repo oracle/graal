@@ -36,7 +36,7 @@ import com.oracle.graal.phases.graph.ReentrantNodeIterator.NodeIteratorClosure;
 /**
  * This phase transfers {@link FrameState} nodes from {@link StateSplit} nodes to
  * {@link DeoptimizingNode DeoptimizingNodes}.
- * 
+ *
  * This allow to enter the {@link GuardsStage#AFTER_FSA AFTER_FSA} stage of the graph where no new
  * node that may cause deoptimization can be introduced anymore.
  * <p>
@@ -48,7 +48,8 @@ public class FrameStateAssignmentPhase extends Phase {
     private static class FrameStateAssignmentClosure extends NodeIteratorClosure<FrameState> {
 
         @Override
-        protected FrameState processNode(FixedNode node, FrameState currentState) {
+        protected FrameState processNode(FixedNode node, FrameState previousState) {
+            FrameState currentState = previousState;
             if (node instanceof DeoptimizingNode.DeoptBefore) {
                 DeoptimizingNode.DeoptBefore deopt = (DeoptimizingNode.DeoptBefore) node;
                 if (deopt.canDeoptimize() && deopt.stateBefore() == null) {
@@ -57,12 +58,11 @@ public class FrameStateAssignmentPhase extends Phase {
                 }
             }
 
-            FrameState newState = currentState;
             if (node instanceof StateSplit) {
                 StateSplit stateSplit = (StateSplit) node;
                 FrameState stateAfter = stateSplit.stateAfter();
                 if (stateAfter != null) {
-                    newState = stateAfter;
+                    currentState = stateAfter;
                     stateSplit.setStateAfter(null);
                 }
             }
@@ -70,20 +70,20 @@ public class FrameStateAssignmentPhase extends Phase {
             if (node instanceof DeoptimizingNode.DeoptDuring) {
                 DeoptimizingNode.DeoptDuring deopt = (DeoptimizingNode.DeoptDuring) node;
                 if (deopt.canDeoptimize()) {
-                    GraalInternalError.guarantee(newState != null, "no FrameState at DeoptimizingNode %s", deopt);
-                    deopt.computeStateDuring(newState);
+                    GraalInternalError.guarantee(currentState != null, "no FrameState at DeoptimizingNode %s", deopt);
+                    deopt.computeStateDuring(currentState);
                 }
             }
 
             if (node instanceof DeoptimizingNode.DeoptAfter) {
                 DeoptimizingNode.DeoptAfter deopt = (DeoptimizingNode.DeoptAfter) node;
                 if (deopt.canDeoptimize() && deopt.stateAfter() == null) {
-                    GraalInternalError.guarantee(newState != null, "no FrameState at DeoptimizingNode %s", deopt);
-                    deopt.setStateAfter(newState);
+                    GraalInternalError.guarantee(currentState != null, "no FrameState at DeoptimizingNode %s", deopt);
+                    deopt.setStateAfter(currentState);
                 }
             }
 
-            return newState;
+            return currentState;
         }
 
         @Override
