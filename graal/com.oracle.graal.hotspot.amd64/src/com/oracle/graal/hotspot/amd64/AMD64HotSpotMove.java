@@ -92,8 +92,8 @@ public class AMD64HotSpotMove {
 
         @Override
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-            AMD64Move.move(crb, masm, result, input);
             if (result.getPlatformKind() == NarrowOopStamp.NarrowOop) {
+                AMD64Move.move(Kind.Long, crb, masm, result, input);
                 encodePointer(masm, asRegister(result), asRegister(baseRegister), encoding);
             } else {
                 throw GraalInternalError.unimplemented();
@@ -118,8 +118,8 @@ public class AMD64HotSpotMove {
 
         @Override
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-            AMD64Move.move(crb, masm, result, input);
             if (result.getKind() == Kind.Object) {
+                AMD64Move.move(Kind.Int, crb, masm, result, input);
                 decodePointer(masm, asRegister(result), asRegister(baseRegister), encoding);
             } else {
                 throw GraalInternalError.unimplemented();

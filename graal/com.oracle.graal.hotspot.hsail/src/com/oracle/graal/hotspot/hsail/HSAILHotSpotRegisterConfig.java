@@ -21,28 +21,30 @@
  * questions.
  */
 
-package com.oracle.graal.hsail;
+package com.oracle.graal.hotspot.hsail;
+
+import static com.oracle.graal.hsail.HSAIL.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.CallingConvention.Type;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
-
-import static com.oracle.graal.hsail.HSAIL.*;
+import com.oracle.graal.hotspot.nodes.type.*;
+import com.oracle.graal.hsail.*;
 
 /**
  * This class defines a higher level interface for the register allocator to be able to access info
  * about the {@link HSAIL} register set.
- * 
+ *
  * Note: In HSAIL, the number of registers of each type is actually a variable number that must
  * satisfy the equation: Total num of registers = No. of S registers + 2 * (No. of D registers) + 4
  * * (No. of Q registers) = 128 In other words we can have up to 128S or 64 D or 32Q or a blend.
- * 
+ *
  * For now we haven't implemented support for a variable sized register file. Instead we've fixed
  * the number of registers of each type so that they satisfy the above equation. See {@link HSAIL}
  * for more details.
  */
-public class HSAILRegisterConfig implements RegisterConfig {
+public class HSAILHotSpotRegisterConfig implements RegisterConfig {
 
     private final Register[] allocatable = {s0, s1, s2, s3, s4, s5, s6, /* s7, */s8, s9, s10, s11, s12, s13, s14, s15, s16, s17, s18, s19, s20, s21, s22, s23, s24, s25, s26, s27, s28, s29, s30, s31,
                     d0, d1, d2, d3, d4, d5, d6, d7, d8, d9, d10, d11, d12, d13, d14, d15, q0, q1, q2, q3, q4, q5, q6, q7, q8, q9, q10, q11, q12, q13, q14, q15};
@@ -143,8 +145,14 @@ public class HSAILRegisterConfig implements RegisterConfig {
 
     @Override
     public Register[] getAllocatableRegisters(PlatformKind kind) {
-        Kind k = (Kind) kind;
-        switch (k) {
+        Kind primitiveKind;
+        if (kind == NarrowOopStamp.NarrowOop) {
+            primitiveKind = Kind.Int;
+        } else {
+            primitiveKind = (Kind) kind;
+        }
+
+        switch (primitiveKind) {
             case Int:
             case Short:
             case Byte:
@@ -186,7 +194,7 @@ public class HSAILRegisterConfig implements RegisterConfig {
         throw new UnsupportedOperationException();
     }
 
-    public HSAILRegisterConfig() {
+    public HSAILHotSpotRegisterConfig() {
 
     }
 }

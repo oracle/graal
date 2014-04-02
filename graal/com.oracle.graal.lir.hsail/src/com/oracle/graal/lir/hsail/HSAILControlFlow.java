@@ -47,7 +47,7 @@ public class HSAILControlFlow {
     /**
      * This class represents the LIR instruction that the HSAIL backend generates for a switch
      * construct in Java.
-     * 
+     *
      * The HSAIL backend compiles switch statements into a series of cascading compare and branch
      * instructions because this is the currently the recommended way to generate optimally
      * performing HSAIL code. Thus the execution path for both the TABLESWITCH and LOOKUPSWITCH
@@ -85,12 +85,12 @@ public class HSAILControlFlow {
 
         /**
          * Generates the code for this switch op.
-         * 
+         *
          * The keys for switch statements in Java bytecode for of type int. However, Graal also
          * generates a TypeSwitchNode (for method dispatch) which triggers the invocation of these
          * routines with keys of type Long or Object. Currently we only support the
          * IntegerSwitchNode so we throw an exception if the key isn't of type int.
-         * 
+         *
          * @param crb the CompilationResultBuilder
          * @param masm the HSAIL assembler
          */
@@ -191,9 +191,9 @@ public class HSAILControlFlow {
             AllocatableValue actionAndReasonReg = HSAIL.s32.asValue(Kind.Int);
             AllocatableValue codeBufferOffsetReg = HSAIL.s33.asValue(Kind.Int);
             AllocatableValue dregOopMapReg = HSAIL.s39.asValue(Kind.Int);
-            masm.emitMov(actionAndReasonReg, actionAndReason);
-            masm.emitMov(codeBufferOffsetReg, Constant.forInt(codeBufferPos));
-            masm.emitMov(dregOopMapReg, Constant.forInt(dregOopMap));
+            masm.emitMov(Kind.Int, actionAndReasonReg, actionAndReason);
+            masm.emitMov(Kind.Int, codeBufferOffsetReg, Constant.forInt(codeBufferPos));
+            masm.emitMov(Kind.Int, dregOopMapReg, Constant.forInt(dregOopMap));
             masm.emitJumpToLabelName(masm.getDeoptLabelName());
 
             // now record the debuginfo

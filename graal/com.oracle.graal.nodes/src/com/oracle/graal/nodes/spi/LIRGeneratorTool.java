@@ -37,9 +37,9 @@ public interface LIRGeneratorTool extends ArithmeticLIRGenerator {
 
     ForeignCallsProvider getForeignCalls();
 
-    Value emitLoad(Kind kind, Value address, Access access);
+    Value emitLoad(PlatformKind kind, Value address, Access access);
 
-    void emitStore(Kind kind, Value address, Value input, Access access);
+    void emitStore(PlatformKind kind, Value address, Value input, Access access);
 
     void emitDeoptimize(Value actionAndReason, Value failedSpeculation, DeoptimizingNode deopting);
 

@@ -611,8 +611,9 @@ public interface Pointer extends Unsigned, PointerBase {
     Object readObject(WordBase offset);
 
     /**
-     * Reads the memory at address {@code (this + offset)}. This particular access can allow
-     * decompression and read barriers (G1 referent field).
+     * Reads the memory at address {@code (this + offset)}. This access will decompress the oop if
+     * the VM uses compressed oops, and it can be parameterized to allow read barriers (G1 referent
+     * field).
      * <p>
      * The offset is always treated as a {@link Signed} value. However, the static type is
      * {@link WordBase} to avoid the frequent casts to of {@link Unsigned} values (where the caller
@@ -620,10 +621,9 @@ public interface Pointer extends Unsigned, PointerBase {
      * 
      * @param offset the signed offset for the memory access
      * @param barrierType the type of the read barrier to be added
-     * @param compressible whether or not the object is a decompression candidate
      * @return the result of the memory access
      */
-    Object readObject(WordBase offset, BarrierType barrierType, boolean compressible);
+    Object readObject(WordBase offset, BarrierType barrierType);
 
     /**
      * Reads the memory at address {@code (this + offset)}. Both the base address and offset are in
@@ -707,15 +707,15 @@ public interface Pointer extends Unsigned, PointerBase {
     Object readObject(int offset);
 
     /**
-     * Reads the memory at address {@code (this + offset)}. This particular access can be
-     * parameterized to allow decompression and read barriers (G1 referent field).
+     * Reads the memory at address {@code (this + offset)}. This access will decompress the oop if
+     * the VM uses compressed oops, and it can be parameterized to allow read barriers (G1 referent
+     * field).
      * 
      * @param offset the signed offset for the memory access
      * @param barrierType the type of the read barrier to be added
-     * @param compressible whether or not the object is a decompression candidate
      * @return the result of the memory access
      */
-    Object readObject(int offset, BarrierType barrierType, boolean compressible);
+    Object readObject(int offset, BarrierType barrierType);
 
     /**
      * Writes the memory at address {@code (this + offset)}. Both the base address and offset are in

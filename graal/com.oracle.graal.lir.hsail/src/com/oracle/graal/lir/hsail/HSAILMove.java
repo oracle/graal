@@ -48,20 +48,30 @@ public class HSAILMove {
         return maxStackOffset + maxDatatypeSize;
     }
 
-    @Opcode("MOVE")
-    public static class SpillMoveOp extends HSAILLIRInstruction implements MoveOp {
+    private abstract static class AbstractMoveOp extends HSAILLIRInstruction implements MoveOp {
 
-        @Def({REG, STACK}) protected AllocatableValue result;
-        @Use({REG, STACK, CONST}) protected Value input;
+        private Kind moveKind;
 
-        public SpillMoveOp(AllocatableValue result, Value input) {
-            this.result = result;
-            this.input = input;
+        public AbstractMoveOp(Kind moveKind) {
+            this.moveKind = moveKind;
         }
 
         @Override
         public void emitCode(CompilationResultBuilder crb, HSAILAssembler masm) {
-            move(crb, masm, getResult(), getInput());
+            move(moveKind, crb, masm, getResult(), getInput());
+        }
+    }
+
+    @Opcode("MOVE")
+    public static class SpillMoveOp extends AbstractMoveOp {
+
+        @Def({REG, STACK}) protected AllocatableValue result;
+        @Use({REG, STACK, CONST}) protected Value input;
+
+        public SpillMoveOp(Kind moveKind, AllocatableValue result, Value input) {
+            super(moveKind);
+            this.result = result;
+            this.input = input;
         }
 
         @Override
@@ -76,19 +86,15 @@ public class HSAILMove {
     }
 
     @Opcode("MOVE")
-    public static class MoveToRegOp extends HSAILLIRInstruction implements MoveOp {
+    public static class MoveToRegOp extends AbstractMoveOp {
 
         @Def({REG, HINT}) protected AllocatableValue result;
         @Use({REG, STACK, CONST}) protected Value input;
 
-        public MoveToRegOp(AllocatableValue result, Value input) {
+        public MoveToRegOp(Kind moveKind, AllocatableValue result, Value input) {
+            super(moveKind);
             this.result = result;
             this.input = input;
-        }
-
-        @Override
-        public void emitCode(CompilationResultBuilder crb, HSAILAssembler masm) {
-            move(crb, masm, getResult(), getInput());
         }
 
         @Override
@@ -103,19 +109,15 @@ public class HSAILMove {
     }
 
     @Opcode("MOVE")
-    public static class MoveFromRegOp extends HSAILLIRInstruction implements MoveOp {
+    public static class MoveFromRegOp extends AbstractMoveOp {
 
         @Def({REG, STACK}) protected AllocatableValue result;
         @Use({REG, CONST, HINT}) protected Value input;
 
-        public MoveFromRegOp(AllocatableValue result, Value input) {
+        public MoveFromRegOp(Kind moveKind, AllocatableValue result, Value input) {
+            super(moveKind);
             this.result = result;
             this.input = input;
-        }
-
-        @Override
-        public void emitCode(CompilationResultBuilder crb, HSAILAssembler masm) {
-            move(crb, masm, getResult(), getInput());
         }
 
         @Override
@@ -293,7 +295,7 @@ public class HSAILMove {
 
         @Override
         public void emitCode(CompilationResultBuilder crb, HSAILAssembler masm) {
-            masm.emitMov(scratch, input);
+            masm.emitMov(kind, scratch, input);
             boolean testForNull = (kind == Kind.Object);
             encodePointer(masm, scratch, base, shift, alignment, testForNull);
             if (state != null) {
@@ -301,6 +303,59 @@ public class HSAILMove {
                 // crb.recordImplicitException(masm.position(), state);
             }
             masm.emitStore(scratch, address.toAddress(), "u32");
+        }
+    }
+
+    public static class CompressPointer extends HSAILLIRInstruction {
+
+        private final long base;
+        private final int shift;
+        private final int alignment;
+
+        @Def({REG}) protected AllocatableValue result;
+        @Temp({REG, HINT}) protected AllocatableValue scratch;
+        @Use({REG}) protected AllocatableValue input;
+
+        public CompressPointer(AllocatableValue result, AllocatableValue scratch, AllocatableValue input, long base, int shift, int alignment) {
+            this.result = result;
+            this.scratch = scratch;
+            this.input = input;
+            this.base = base;
+            this.shift = shift;
+            this.alignment = alignment;
+        }
+
+        @Override
+        public void emitCode(CompilationResultBuilder crb, HSAILAssembler masm) {
+            masm.emitMov(Kind.Long, scratch, input);
+            boolean testForNull = (input.getKind() == Kind.Object);
+            encodePointer(masm, scratch, base, shift, alignment, testForNull);
+            masm.emitConvert(result, scratch, "u32", "u64");
+        }
+    }
+
+    public static class UncompressPointer extends HSAILLIRInstruction {
+
+        private final long base;
+        private final int shift;
+        private final int alignment;
+
+        @Def({REG, HINT}) protected AllocatableValue result;
+        @Use({REG}) protected AllocatableValue input;
+
+        public UncompressPointer(AllocatableValue result, AllocatableValue input, long base, int shift, int alignment) {
+            this.result = result;
+            this.input = input;
+            this.base = base;
+            this.shift = shift;
+            this.alignment = alignment;
+        }
+
+        @Override
+        public void emitCode(CompilationResultBuilder crb, HSAILAssembler masm) {
+            masm.emitConvert(result, input, "u64", "u32");
+            boolean testForNull = (result.getKind() == Kind.Object);
+            decodePointer(masm, result, base, shift, alignment, testForNull);
         }
     }
 
@@ -408,9 +463,9 @@ public class HSAILMove {
             // assume any encoded or decoded value could be null
             boolean testForNull = true;
             // set up scratch registers to be encoded versions
-            masm.emitMov(scratchCmpValue64, cmpValue);
+            masm.emitMov(Kind.Long, scratchCmpValue64, cmpValue);
             encodePointer(masm, scratchCmpValue64, base, shift, alignment, testForNull);
-            masm.emitMov(scratchNewValue64, newValue);
+            masm.emitMov(Kind.Long, scratchNewValue64, newValue);
             encodePointer(masm, scratchNewValue64, base, shift, alignment, testForNull);
             // get encoded versions into 32-bit registers
             masm.emitConvertForceUnsigned(scratchCmpValue32, scratchCmpValue64);
@@ -441,24 +496,24 @@ public class HSAILMove {
     }
 
     @SuppressWarnings("unused")
-    public static void move(CompilationResultBuilder crb, HSAILAssembler masm, Value result, Value input) {
+    public static void move(Kind kind, CompilationResultBuilder crb, HSAILAssembler masm, Value result, Value input) {
         if (isRegister(input)) {
             if (isRegister(result)) {
-                masm.emitMov(result, input);
+                masm.emitMov(kind, result, input);
             } else if (isStackSlot(result)) {
-                masm.emitSpillStore(input, result);
+                masm.emitSpillStore(kind, input, result);
             } else {
                 throw GraalInternalError.shouldNotReachHere();
             }
         } else if (isStackSlot(input)) {
             if (isRegister(result)) {
-                masm.emitSpillLoad(result, input);
+                masm.emitSpillLoad(kind, result, input);
             } else {
                 throw GraalInternalError.shouldNotReachHere();
             }
         } else if (isConstant(input)) {
             if (isRegister(result)) {
-                masm.emitMov(result, input);
+                masm.emitMov(kind, result, input);
             } else {
                 throw GraalInternalError.shouldNotReachHere();
             }

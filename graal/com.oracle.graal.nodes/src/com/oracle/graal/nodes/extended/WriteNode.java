@@ -23,60 +23,23 @@
 package com.oracle.graal.nodes.extended;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.LocationNode.Location;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.virtual.*;
 
 /**
  * Writes a given {@linkplain #value() value} a {@linkplain FixedAccessNode memory location}.
  */
-public final class WriteNode extends FixedAccessNode implements StateSplit, LIRLowerable, MemoryCheckpoint.Single, MemoryAccess, Simplifiable, Virtualizable {
-
-    @Input private ValueNode value;
-    @Input(notDataflow = true) private FrameState stateAfter;
-    private final boolean initialization;
-
-    @Input private Node lastLocationAccess;
-
-    public FrameState stateAfter() {
-        return stateAfter;
-    }
-
-    public void setStateAfter(FrameState x) {
-        assert x == null || x.isAlive() : "frame state must be in a graph";
-        updateUsages(stateAfter, x);
-        stateAfter = x;
-    }
-
-    public boolean hasSideEffect() {
-        return true;
-    }
-
-    public ValueNode value() {
-        return value;
-    }
-
-    /**
-     * Returns whether this write is the initialization of the written location. If it is true, the
-     * old value of the memory location is either uninitialized or zero. If it is false, the memory
-     * location is guaranteed to contain a valid value or zero.
-     */
-    public boolean isInitialization() {
-        return initialization;
-    }
+public final class WriteNode extends AbstractWriteNode implements LIRLowerable, Simplifiable, Virtualizable {
 
     public WriteNode(ValueNode object, ValueNode value, ValueNode location, BarrierType barrierType, boolean compressible) {
-        this(object, value, location, barrierType, compressible, false);
+        super(object, value, location, barrierType, compressible);
     }
 
     public WriteNode(ValueNode object, ValueNode value, ValueNode location, BarrierType barrierType, boolean compressible, boolean initialization) {
-        super(object, location, StampFactory.forVoid(), barrierType, compressible);
-        this.value = value;
-        this.initialization = initialization;
+        super(object, value, location, barrierType, compressible, initialization);
     }
 
     @Override
@@ -90,7 +53,8 @@ public final class WriteNode extends FixedAccessNode implements StateSplit, LIRL
         } else {
             v = gen.operand(value());
         }
-        gen.getLIRGeneratorTool().emitStore(location().getValueKind(), address, v, this);
+        PlatformKind writeKind = gen.getLIRGeneratorTool().getPlatformKind(value().stamp());
+        gen.getLIRGeneratorTool().emitStore(writeKind, address, v, this);
     }
 
     @Override
@@ -102,21 +66,6 @@ public final class WriteNode extends FixedAccessNode implements StateSplit, LIRL
 
     @NodeIntrinsic
     public static native void writeMemory(Object object, Object value, Location location, @ConstantNodeParameter BarrierType barrierType, @ConstantNodeParameter boolean compressible);
-
-    @Override
-    public LocationIdentity getLocationIdentity() {
-        return location().getLocationIdentity();
-    }
-
-    public MemoryNode getLastLocationAccess() {
-        return (MemoryNode) lastLocationAccess;
-    }
-
-    public void setLastLocationAccess(MemoryNode lla) {
-        Node newLla = ValueNodeUtil.asNode(lla);
-        updateUsages(lastLocationAccess, newLla);
-        lastLocationAccess = newLla;
-    }
 
     @Override
     public void virtualize(VirtualizerTool tool) {
@@ -132,13 +81,5 @@ public final class WriteNode extends FixedAccessNode implements StateSplit, LIRL
                 }
             }
         }
-    }
-
-    public MemoryCheckpoint asMemoryCheckpoint() {
-        return this;
-    }
-
-    public MemoryPhiNode asMemoryPhi() {
-        return null;
     }
 }

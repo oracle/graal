@@ -62,7 +62,8 @@ public final class FloatingReadNode extends FloatingAccessNode implements Iterab
     @Override
     public void generate(NodeLIRBuiderTool gen) {
         Value address = location().generateAddress(gen, gen.operand(object()));
-        gen.setResult(this, gen.getLIRGeneratorTool().emitLoad(location().getValueKind(), address, this));
+        PlatformKind readKind = gen.getLIRGeneratorTool().getPlatformKind(stamp());
+        gen.setResult(this, gen.getLIRGeneratorTool().emitLoad(readKind, address, this));
     }
 
     @Override

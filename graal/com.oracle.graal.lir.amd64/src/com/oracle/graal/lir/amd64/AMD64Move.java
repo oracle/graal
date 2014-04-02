@@ -42,20 +42,35 @@ import com.oracle.graal.lir.asm.*;
 
 public class AMD64Move {
 
-    @Opcode("MOVE")
-    public static class MoveToRegOp extends AMD64LIRInstruction implements MoveOp {
+    private abstract static class AbstractMoveOp extends AMD64LIRInstruction implements MoveOp {
 
-        @Def({REG, HINT}) protected AllocatableValue result;
-        @Use({REG, STACK, CONST}) protected Value input;
+        private Kind moveKind;
 
-        public MoveToRegOp(AllocatableValue result, Value input) {
-            this.result = result;
-            this.input = input;
+        public AbstractMoveOp(Kind moveKind) {
+            if (moveKind == Kind.Illegal) {
+                // unknown operand size, conservatively move the whole register
+                this.moveKind = Kind.Long;
+            } else {
+                this.moveKind = moveKind;
+            }
         }
 
         @Override
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-            move(crb, masm, getResult(), getInput());
+            move(moveKind, crb, masm, getResult(), getInput());
+        }
+    }
+
+    @Opcode("MOVE")
+    public static class MoveToRegOp extends AbstractMoveOp {
+
+        @Def({REG, HINT}) protected AllocatableValue result;
+        @Use({REG, STACK, CONST}) protected Value input;
+
+        public MoveToRegOp(Kind moveKind, AllocatableValue result, Value input) {
+            super(moveKind);
+            this.result = result;
+            this.input = input;
         }
 
         @Override
@@ -70,19 +85,15 @@ public class AMD64Move {
     }
 
     @Opcode("MOVE")
-    public static class MoveFromRegOp extends AMD64LIRInstruction implements MoveOp {
+    public static class MoveFromRegOp extends AbstractMoveOp {
 
         @Def({REG, STACK}) protected AllocatableValue result;
         @Use({REG, CONST, HINT}) protected Value input;
 
-        public MoveFromRegOp(AllocatableValue result, Value input) {
+        public MoveFromRegOp(Kind moveKind, AllocatableValue result, Value input) {
+            super(moveKind);
             this.result = result;
             this.input = input;
-        }
-
-        @Override
-        public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-            move(crb, masm, getResult(), getInput());
         }
 
         @Override
@@ -404,17 +415,21 @@ public class AMD64Move {
     }
 
     public static void move(CompilationResultBuilder crb, AMD64MacroAssembler masm, Value result, Value input) {
+        move(result.getKind(), crb, masm, result, input);
+    }
+
+    public static void move(Kind moveKind, CompilationResultBuilder crb, AMD64MacroAssembler masm, Value result, Value input) {
         if (isRegister(input)) {
             if (isRegister(result)) {
-                reg2reg(masm, result, input);
+                reg2reg(moveKind, masm, result, input);
             } else if (isStackSlot(result)) {
-                reg2stack(crb, masm, result, input);
+                reg2stack(moveKind, crb, masm, result, input);
             } else {
                 throw GraalInternalError.shouldNotReachHere();
             }
         } else if (isStackSlot(input)) {
             if (isRegister(result)) {
-                stack2reg(crb, masm, result, input);
+                stack2reg(moveKind, crb, masm, result, input);
             } else {
                 throw GraalInternalError.shouldNotReachHere();
             }
@@ -431,11 +446,11 @@ public class AMD64Move {
         }
     }
 
-    private static void reg2reg(AMD64MacroAssembler masm, Value result, Value input) {
+    private static void reg2reg(Kind kind, AMD64MacroAssembler masm, Value result, Value input) {
         if (asRegister(input).equals(asRegister(result))) {
             return;
         }
-        switch (input.getKind()) {
+        switch (kind.getStackKind()) {
             case Int:
                 masm.movl(asRegister(result), asRegister(input));
                 break;
@@ -456,9 +471,9 @@ public class AMD64Move {
         }
     }
 
-    private static void reg2stack(CompilationResultBuilder crb, AMD64MacroAssembler masm, Value result, Value input) {
+    private static void reg2stack(Kind kind, CompilationResultBuilder crb, AMD64MacroAssembler masm, Value result, Value input) {
         AMD64Address dest = (AMD64Address) crb.asAddress(result);
-        switch (input.getKind()) {
+        switch (kind) {
             case Boolean:
             case Byte:
                 masm.movb(dest, asRegister(input));
@@ -487,9 +502,9 @@ public class AMD64Move {
         }
     }
 
-    private static void stack2reg(CompilationResultBuilder crb, AMD64MacroAssembler masm, Value result, Value input) {
+    private static void stack2reg(Kind kind, CompilationResultBuilder crb, AMD64MacroAssembler masm, Value result, Value input) {
         AMD64Address src = (AMD64Address) crb.asAddress(input);
-        switch (input.getKind()) {
+        switch (kind) {
             case Boolean:
                 masm.movzbl(asRegister(result), src);
                 break;

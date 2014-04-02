@@ -60,17 +60,11 @@ import com.oracle.graal.phases.util.*;
  */
 public abstract class HSAILLIRGenerator extends LIRGenerator {
 
-    public static class HSAILSpillMoveFactory implements LIR.SpillMoveFactory {
+    public class HSAILSpillMoveFactory implements LIR.SpillMoveFactory {
 
         @Override
         public LIRInstruction createMove(AllocatableValue dst, Value src) {
-            if (src instanceof HSAILAddressValue) {
-                return new LeaOp(dst, (HSAILAddressValue) src);
-            } else if (isRegister(src) || isStackSlot(dst)) {
-                return new MoveFromRegOp(dst, src);
-            } else {
-                return new MoveToRegOp(dst, src);
-            }
+            return HSAILLIRGenerator.this.createMove(dst, src);
         }
     }
 
@@ -104,13 +98,19 @@ public abstract class HSAILLIRGenerator extends LIRGenerator {
         return result;
     }
 
+    protected HSAILLIRInstruction createMove(AllocatableValue dst, Value src) {
+        if (src instanceof HSAILAddressValue) {
+            return new LeaOp(dst, (HSAILAddressValue) src);
+        } else if (isRegister(src) || isStackSlot(dst)) {
+            return new MoveFromRegOp(dst.getKind(), dst, src);
+        } else {
+            return new MoveToRegOp(dst.getKind(), dst, src);
+        }
+    }
+
     @Override
     public void emitMove(AllocatableValue dst, Value src) {
-        if (isRegister(src) || isStackSlot(dst)) {
-            append(new MoveFromRegOp(dst, src));
-        } else {
-            append(new MoveToRegOp(dst, src));
-        }
+        append(createMove(dst, src));
     }
 
     public void emitData(AllocatableValue dst, byte[] data) {

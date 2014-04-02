@@ -232,26 +232,26 @@ public class PTXLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Variable emitLoad(Kind kind, Value address, Access access) {
+    public Variable emitLoad(PlatformKind kind, Value address, Access access) {
         PTXAddressValue loadAddress = asAddress(address);
         Variable result = newVariable(kind);
         LIRFrameState state = null;
         if (access instanceof DeoptimizingNode) {
             state = state((DeoptimizingNode) access);
         }
-        append(new LoadOp(kind, result, loadAddress, state));
+        append(new LoadOp((Kind) kind, result, loadAddress, state));
         return result;
     }
 
     @Override
-    public void emitStore(Kind kind, Value address, Value inputVal, Access access) {
+    public void emitStore(PlatformKind kind, Value address, Value inputVal, Access access) {
         PTXAddressValue storeAddress = asAddress(address);
         Variable input = load(inputVal);
         LIRFrameState state = null;
         if (access instanceof DeoptimizingNode) {
             state = state((DeoptimizingNode) access);
         }
-        append(new StoreOp(kind, storeAddress, input, state));
+        append(new StoreOp((Kind) kind, storeAddress, input, state));
     }
 
     @Override

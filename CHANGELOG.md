@@ -2,6 +2,7 @@
 
 ## `tip`
 ### Graal
+* Explicit support for oop compression/uncompression in high level graph.
 * LIRGenerator refactoring.
 * ...
 

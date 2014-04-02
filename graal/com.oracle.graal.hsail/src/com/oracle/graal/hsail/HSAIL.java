@@ -176,20 +176,7 @@ public class HSAIL extends Architecture {
     }
 
     public static String mapRegister(Value arg) {
-        Register reg;
-        int encoding = 0;
-        String regPrefix = null;
-        Kind kind = arg.getKind();
-        if (kind == Kind.Double || kind == Kind.Long) {
-            regPrefix = "$d";
-        } else if (kind == Kind.Int || kind == Kind.Float) {
-            regPrefix = "$s";
-        } else {
-            regPrefix = "$d";
-        }
-        reg = asRegister(arg);
-        encoding = reg.encoding();
-        return new String(regPrefix + encoding);
+        return "$" + asRegister(arg).name;
     }
 
     @Override

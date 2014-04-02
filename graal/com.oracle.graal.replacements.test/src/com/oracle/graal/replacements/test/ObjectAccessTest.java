@@ -101,7 +101,7 @@ public class ObjectAccessTest extends GraalCompilerTest implements Snippets {
     }
 
     private static void assertRead(StructuredGraph graph, Kind kind, boolean indexConvert, LocationIdentity locationIdentity) {
-        ReadNode read = (ReadNode) graph.start().next();
+        JavaReadNode read = (JavaReadNode) graph.start().next();
         Assert.assertEquals(kind.getStackKind(), read.stamp().getStackKind());
         Assert.assertEquals(graph.getParameter(0), read.object());
 
@@ -124,7 +124,7 @@ public class ObjectAccessTest extends GraalCompilerTest implements Snippets {
     }
 
     private static void assertWrite(StructuredGraph graph, Kind kind, boolean indexConvert, LocationIdentity locationIdentity) {
-        WriteNode write = (WriteNode) graph.start().next();
+        JavaWriteNode write = (JavaWriteNode) graph.start().next();
         Assert.assertEquals(graph.getParameter(2), write.value());
         Assert.assertEquals(graph.getParameter(0), write.object());
         Assert.assertEquals(FrameState.AFTER_BCI, write.stateAfter().bci);

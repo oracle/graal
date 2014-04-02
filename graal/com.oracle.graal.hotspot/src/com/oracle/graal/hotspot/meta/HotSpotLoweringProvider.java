@@ -42,6 +42,7 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.debug.*;
 import com.oracle.graal.hotspot.nodes.*;
+import com.oracle.graal.hotspot.nodes.type.*;
 import com.oracle.graal.hotspot.replacements.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.nodes.*;
@@ -88,7 +89,7 @@ public class HotSpotLoweringProvider implements LoweringProvider {
         instanceofSnippets = new InstanceOfSnippets.Templates(providers, target);
         newObjectSnippets = new NewObjectSnippets.Templates(providers, target);
         monitorSnippets = new MonitorSnippets.Templates(providers, target, config.useFastLocking);
-        writeBarrierSnippets = new WriteBarrierSnippets.Templates(providers, target);
+        writeBarrierSnippets = new WriteBarrierSnippets.Templates(providers, target, config.useCompressedOops ? config.getOopEncoding() : null);
         boxingSnippets = new BoxingSnippets.Templates(providers, target);
         exceptionObjectSnippets = new LoadExceptionObjectSnippets.Templates(providers, target);
         unsafeLoadSnippets = new UnsafeLoadSnippets.Templates(providers, target);
@@ -117,6 +118,10 @@ public class HotSpotLoweringProvider implements LoweringProvider {
             lowerUnsafeLoadNode((UnsafeLoadNode) n, tool);
         } else if (n instanceof UnsafeStoreNode) {
             lowerUnsafeStoreNode((UnsafeStoreNode) n);
+        } else if (n instanceof JavaReadNode) {
+            lowerJavaReadNode((JavaReadNode) n);
+        } else if (n instanceof JavaWriteNode) {
+            lowerJavaWriteNode((JavaWriteNode) n);
         } else if (n instanceof LoadHubNode) {
             lowerLoadHubNode((LoadHubNode) n);
         } else if (n instanceof LoadMethodNode) {
@@ -255,14 +260,64 @@ public class HotSpotLoweringProvider implements LoweringProvider {
         }
     }
 
+    private Stamp loadStamp(Stamp stamp, Kind kind) {
+        return loadStamp(stamp, kind, true);
+    }
+
+    private Stamp loadStamp(Stamp stamp, Kind kind, boolean compressible) {
+        switch (kind) {
+            case Boolean:
+            case Byte:
+                return StampTool.narrowingConversion(stamp, 8);
+
+            case Char:
+            case Short:
+                return StampTool.narrowingConversion(stamp, 16);
+
+            case Object:
+                if (compressible && runtime.getConfig().useCompressedOops) {
+                    return new NarrowOopStamp((ObjectStamp) stamp, runtime.getConfig().getOopEncoding());
+                }
+        }
+        return stamp;
+    }
+
+    private ValueNode implicitLoadConvert(StructuredGraph graph, Kind kind, ValueNode value) {
+        return implicitLoadConvert(graph, kind, value, true);
+    }
+
+    private ValueNode implicitLoadConvert(StructuredGraph graph, Kind kind, ValueNode value, boolean compressible) {
+        switch (kind) {
+            case Byte:
+            case Short:
+                return graph.unique(new SignExtendNode(value, 32));
+
+            case Boolean:
+            case Char:
+                return graph.unique(new ZeroExtendNode(value, 32));
+
+            case Object:
+                if (compressible && runtime.getConfig().useCompressedOops) {
+                    return CompressionNode.uncompress(value, runtime.getConfig().getOopEncoding());
+                }
+        }
+        return value;
+    }
+
     private void lowerLoadFieldNode(LoadFieldNode loadField, LoweringTool tool) {
         StructuredGraph graph = loadField.graph();
         HotSpotResolvedJavaField field = (HotSpotResolvedJavaField) loadField.field();
         ValueNode object = loadField.isStatic() ? ConstantNode.forObject(field.getDeclaringClass().mirror(), metaAccess, graph) : loadField.object();
         assert loadField.getKind() != Kind.Illegal;
         BarrierType barrierType = getFieldLoadBarrierType(field);
-        ReadNode memoryRead = graph.add(new ReadNode(object, createFieldLocation(graph, field, false), loadField.stamp(), barrierType, (loadField.getKind() == Kind.Object)));
-        graph.replaceFixedWithFixed(loadField, memoryRead);
+
+        Stamp loadStamp = loadStamp(loadField.stamp(), field.getKind());
+        ReadNode memoryRead = graph.add(new ReadNode(object, createFieldLocation(graph, field, false), loadStamp, barrierType, false));
+        ValueNode readValue = implicitLoadConvert(graph, field.getKind(), memoryRead);
+
+        loadField.replaceAtUsages(readValue);
+        graph.replaceFixed(loadField, memoryRead);
+
         memoryRead.setGuard(createNullCheck(object, memoryRead, tool));
 
         if (loadField.isVolatile()) {
@@ -273,12 +328,34 @@ public class HotSpotLoweringProvider implements LoweringProvider {
         }
     }
 
+    private ValueNode implicitStoreConvert(StructuredGraph graph, Kind kind, ValueNode value) {
+        return implicitStoreConvert(graph, kind, value, true);
+    }
+
+    private ValueNode implicitStoreConvert(StructuredGraph graph, Kind kind, ValueNode value, boolean compressible) {
+        switch (kind) {
+            case Boolean:
+            case Byte:
+                return graph.unique(new NarrowNode(value, 8));
+            case Char:
+            case Short:
+                return graph.unique(new NarrowNode(value, 16));
+            case Object:
+                if (compressible && runtime.getConfig().useCompressedOops) {
+                    return CompressionNode.compress(value, runtime.getConfig().getOopEncoding());
+                }
+        }
+        return value;
+    }
+
     private void lowerStoreFieldNode(StoreFieldNode storeField, LoweringTool tool) {
         StructuredGraph graph = storeField.graph();
         HotSpotResolvedJavaField field = (HotSpotResolvedJavaField) storeField.field();
         ValueNode object = storeField.isStatic() ? ConstantNode.forObject(field.getDeclaringClass().mirror(), metaAccess, graph) : storeField.object();
         BarrierType barrierType = getFieldStoreBarrierType(storeField);
-        WriteNode memoryWrite = graph.add(new WriteNode(object, storeField.value(), createFieldLocation(graph, field, false), barrierType, storeField.field().getKind() == Kind.Object));
+
+        ValueNode value = implicitStoreConvert(graph, storeField.field().getKind(), storeField.value());
+        WriteNode memoryWrite = graph.add(new WriteNode(object, value, createFieldLocation(graph, field, false), barrierType, false));
         memoryWrite.setStateAfter(storeField.stateAfter());
         graph.replaceFixedWithFixed(storeField, memoryWrite);
         memoryWrite.setGuard(createNullCheck(object, memoryWrite, tool));
@@ -307,9 +384,15 @@ public class HotSpotLoweringProvider implements LoweringProvider {
         StructuredGraph graph = loadIndexed.graph();
         Kind elementKind = loadIndexed.elementKind();
         LocationNode arrayLocation = createArrayLocation(graph, elementKind, loadIndexed.index(), false);
-        ReadNode memoryRead = graph.add(new ReadNode(loadIndexed.array(), arrayLocation, loadIndexed.stamp(), BarrierType.NONE, elementKind == Kind.Object));
+
+        Stamp loadStamp = loadStamp(loadIndexed.stamp(), elementKind);
+        ReadNode memoryRead = graph.add(new ReadNode(loadIndexed.array(), arrayLocation, loadStamp, BarrierType.NONE, false));
+        ValueNode readValue = implicitLoadConvert(graph, elementKind, memoryRead);
+
         memoryRead.setGuard(createBoundsCheck(loadIndexed, tool));
-        graph.replaceFixedWithFixed(loadIndexed, memoryRead);
+
+        loadIndexed.replaceAtUsages(readValue);
+        graph.replaceFixed(loadIndexed, memoryRead);
     }
 
     private void lowerStoreIndexedNode(StoreIndexedNode storeIndexed, LoweringTool tool) {
@@ -317,6 +400,7 @@ public class HotSpotLoweringProvider implements LoweringProvider {
         GuardingNode boundsCheck = createBoundsCheck(storeIndexed, tool);
         Kind elementKind = storeIndexed.elementKind();
         LocationNode arrayLocation = createArrayLocation(graph, elementKind, storeIndexed.index(), false);
+
         ValueNode value = storeIndexed.value();
         ValueNode array = storeIndexed.array();
 
@@ -348,7 +432,7 @@ public class HotSpotLoweringProvider implements LoweringProvider {
             }
         }
         BarrierType barrierType = getArrayStoreBarrierType(storeIndexed);
-        WriteNode memoryWrite = graph.add(new WriteNode(array, value, arrayLocation, barrierType, elementKind == Kind.Object));
+        WriteNode memoryWrite = graph.add(new WriteNode(array, implicitStoreConvert(graph, elementKind, value), arrayLocation, barrierType, false));
         memoryWrite.setGuard(boundsCheck);
         memoryWrite.setStateAfter(storeIndexed.stateAfter());
         graph.replaceFixedWithFixed(storeIndexed, memoryWrite);
@@ -361,24 +445,30 @@ public class HotSpotLoweringProvider implements LoweringProvider {
         }
     }
 
+    private ReadNode createUnsafeRead(StructuredGraph graph, UnsafeLoadNode load, GuardingNode guard) {
+        boolean compressible = (!load.object().isNullConstant() && load.accessKind() == Kind.Object);
+        Kind readKind = load.accessKind();
+        LocationNode location = createLocation(load);
+        Stamp loadStamp = loadStamp(load.stamp(), readKind, compressible);
+        ReadNode memoryRead = graph.add(new ReadNode(load.object(), location, loadStamp, guard, BarrierType.NONE, false));
+        ValueNode readValue = implicitLoadConvert(graph, readKind, memoryRead, compressible);
+        load.replaceAtUsages(readValue);
+        return memoryRead;
+    }
+
     private void lowerUnsafeLoadNode(UnsafeLoadNode load, LoweringTool tool) {
         StructuredGraph graph = load.graph();
         if (load.getGuardingCondition() != null) {
-            boolean compressible = (!load.object().isNullConstant() && load.accessKind() == Kind.Object);
             ConditionAnchorNode valueAnchorNode = graph.add(new ConditionAnchorNode(load.getGuardingCondition()));
-            LocationNode location = createLocation(load);
-            ReadNode memoryRead = graph.add(new ReadNode(load.object(), location, load.stamp(), valueAnchorNode, BarrierType.NONE, compressible));
-            load.replaceAtUsages(memoryRead);
+            ReadNode memoryRead = createUnsafeRead(graph, load, valueAnchorNode);
             graph.replaceFixedWithFixed(load, valueAnchorNode);
             graph.addAfterFixed(valueAnchorNode, memoryRead);
         } else if (graph.getGuardsStage().ordinal() > StructuredGraph.GuardsStage.FLOATING_GUARDS.ordinal()) {
             assert load.getKind() != Kind.Illegal;
-            boolean compressible = (!load.object().isNullConstant() && load.accessKind() == Kind.Object);
             if (addReadBarrier(load)) {
                 unsafeLoadSnippets.lower(load, tool);
             } else {
-                LocationNode location = createLocation(load);
-                ReadNode memoryRead = graph.add(new ReadNode(load.object(), location, load.stamp(), BarrierType.NONE, compressible));
+                ReadNode memoryRead = createUnsafeRead(graph, load, null);
                 // An unsafe read must not float outside its block otherwise
                 // it may float above an explicit null check on its object.
                 memoryRead.setGuard(AbstractBeginNode.prevBegin(load));
@@ -387,14 +477,44 @@ public class HotSpotLoweringProvider implements LoweringProvider {
         }
     }
 
-    private static void lowerUnsafeStoreNode(UnsafeStoreNode store) {
+    private void lowerUnsafeStoreNode(UnsafeStoreNode store) {
         StructuredGraph graph = store.graph();
         LocationNode location = createLocation(store);
         ValueNode object = store.object();
         BarrierType barrierType = getUnsafeStoreBarrierType(store);
-        WriteNode write = graph.add(new WriteNode(object, store.value(), location, barrierType, store.value().getKind() == Kind.Object));
+        boolean compressible = store.value().getKind() == Kind.Object;
+        Kind valueKind = store.accessKind();
+        ValueNode value = implicitStoreConvert(graph, valueKind, store.value(), compressible);
+        WriteNode write = graph.add(new WriteNode(object, value, location, barrierType, false));
         write.setStateAfter(store.stateAfter());
         graph.replaceFixedWithFixed(store, write);
+    }
+
+    private void lowerJavaReadNode(JavaReadNode read) {
+        StructuredGraph graph = read.graph();
+
+        Kind valueKind = read.location().getValueKind();
+        Stamp loadStamp = loadStamp(read.stamp(), valueKind, read.isCompressible());
+        ReadNode memoryRead = graph.add(new ReadNode(read.object(), read.location(), loadStamp, read.getBarrierType(), false));
+        ValueNode readValue = implicitLoadConvert(graph, valueKind, memoryRead, read.isCompressible());
+
+        memoryRead.setGuard(read.getGuard());
+
+        read.replaceAtUsages(readValue);
+        graph.replaceFixed(read, memoryRead);
+    }
+
+    private void lowerJavaWriteNode(JavaWriteNode write) {
+        StructuredGraph graph = write.graph();
+
+        Kind valueKind = write.location().getValueKind();
+        ValueNode value = implicitStoreConvert(graph, valueKind, write.value(), write.isCompressible());
+
+        WriteNode memoryWrite = graph.add(new WriteNode(write.object(), value, write.location(), write.getBarrierType(), false, write.isInitialization()));
+        memoryWrite.setStateAfter(write.stateAfter());
+        graph.replaceFixedWithFixed(write, memoryWrite);
+
+        memoryWrite.setGuard(write.getGuard());
     }
 
     private void lowerLoadHubNode(LoadHubNode loadHub) {
@@ -464,7 +584,7 @@ public class HotSpotLoweringProvider implements LoweringProvider {
                             location = ConstantLocationNode.create(INIT_LOCATION, accessKind, getArrayBaseOffset(entryKind) + i * getScalingFactor(entryKind), graph);
                             barrierType = (entryKind == Kind.Object && !useDeferredInitBarriers()) ? BarrierType.PRECISE : BarrierType.NONE;
                         }
-                        WriteNode write = new WriteNode(newObject, value, location, barrierType, entryKind == Kind.Object);
+                        WriteNode write = new WriteNode(newObject, implicitStoreConvert(graph, entryKind, value), location, barrierType, false);
                         graph.addAfterFixed(newObject, graph.add(write));
                     }
                     valuePos++;
@@ -487,9 +607,11 @@ public class HotSpotLoweringProvider implements LoweringProvider {
                             WriteNode write;
                             if (virtual instanceof VirtualInstanceNode) {
                                 VirtualInstanceNode virtualInstance = (VirtualInstanceNode) virtual;
-                                write = new WriteNode(newObject, allocValue, createFieldLocation(graph, (HotSpotResolvedJavaField) virtualInstance.field(i), true), BarrierType.IMPRECISE, true);
+                                write = new WriteNode(newObject, implicitStoreConvert(graph, Kind.Object, allocValue), createFieldLocation(graph, (HotSpotResolvedJavaField) virtualInstance.field(i),
+                                                true), BarrierType.IMPRECISE, false);
                             } else {
-                                write = new WriteNode(newObject, allocValue, createArrayLocation(graph, virtual.entryKind(i), ConstantNode.forInt(i, graph), true), BarrierType.PRECISE, true);
+                                write = new WriteNode(newObject, implicitStoreConvert(graph, Kind.Object, allocValue), createArrayLocation(graph, virtual.entryKind(i), ConstantNode.forInt(i, graph),
+                                                true), BarrierType.PRECISE, false);
                             }
                             graph.addBeforeFixed(commit, graph.add(write));
                         }
@@ -569,10 +691,14 @@ public class HotSpotLoweringProvider implements LoweringProvider {
     }
 
     private static LocationNode createLocation(UnsafeAccessNode access) {
-        ValueNode offset = access.offset();
+        return createLocation(access.offset(), access.getLocationIdentity(), access.accessKind());
+    }
+
+    private static LocationNode createLocation(ValueNode offsetNode, LocationIdentity locationIdentity, Kind accessKind) {
+        ValueNode offset = offsetNode;
         if (offset.isConstant()) {
             long offsetValue = offset.asConstant().asLong();
-            return ConstantLocationNode.create(access.getLocationIdentity(), access.accessKind(), offsetValue, access.graph());
+            return ConstantLocationNode.create(locationIdentity, accessKind, offsetValue, offset.graph());
         }
 
         long displacement = 0;
@@ -602,7 +728,7 @@ public class HotSpotLoweringProvider implements LoweringProvider {
             }
         }
 
-        return IndexedLocationNode.create(access.getLocationIdentity(), access.accessKind(), displacement, offset, access.graph(), indexScaling);
+        return IndexedLocationNode.create(locationIdentity, accessKind, displacement, offset, offset.graph(), indexScaling);
     }
 
     private static boolean addReadBarrier(UnsafeLoadNode load) {

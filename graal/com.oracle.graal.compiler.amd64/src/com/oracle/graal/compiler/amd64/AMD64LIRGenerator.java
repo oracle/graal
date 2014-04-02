@@ -147,9 +147,9 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         if (src instanceof AMD64AddressValue) {
             return new LeaOp(dst, (AMD64AddressValue) src);
         } else if (isRegister(src) || isStackSlot(dst)) {
-            return new MoveFromRegOp(dst, src);
+            return new MoveFromRegOp(dst.getKind(), dst, src);
         } else {
-            return new MoveToRegOp(dst, src);
+            return new MoveToRegOp(dst.getKind(), dst, src);
         }
     }
 

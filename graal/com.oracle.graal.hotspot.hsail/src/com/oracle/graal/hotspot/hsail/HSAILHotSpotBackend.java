@@ -61,6 +61,7 @@ import com.oracle.graal.lir.hsail.*;
 import com.oracle.graal.lir.hsail.HSAILControlFlow.DeoptimizeOp;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.StructuredGraph.GuardsStage;
+import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.type.*;
@@ -671,7 +672,7 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
             asm.emitLoadKernelArg(scratch64, asm.getDeoptInfoName(), "u64");
 
             // Set deopt occurred flag
-            asm.emitMov(scratch32, Constant.forInt(1));
+            asm.emitMov(Kind.Int, scratch32, Constant.forInt(1));
             asm.emitStoreRelease(scratch32, deoptInfoAddr);
 
             asm.emitComment("// Determine next deopt save slot");
@@ -904,7 +905,8 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
             int longSize = providers.getCodeCache().getTarget().arch.getSizeInBytes(Kind.Long);
             long offset = config.hsailFrameSaveAreaOffset + longSize * (regNumber - HSAIL.d0.number);
             LocationNode numSRegsLocation = ConstantLocationNode.create(FINAL_LOCATION, Kind.Byte, config.hsailFrameNumSRegOffset, hostGraph);
-            ValueNode numSRegs = hostGraph.unique(new FloatingReadNode(hsailFrame, numSRegsLocation, null, StampFactory.forKind(Kind.Byte)));
+            ValueNode numSRegs = hostGraph.unique(new FloatingReadNode(hsailFrame, numSRegsLocation, null, StampFactory.forInteger(8, false)));
+            numSRegs = SignExtendNode.convert(numSRegs, StampFactory.forKind(Kind.Byte));
             location = IndexedLocationNode.create(FINAL_LOCATION, valueKind, offset, numSRegs, hostGraph, 4);
         } else {
             throw GraalInternalError.shouldNotReachHere("unknown hsail register: " + regNumber);

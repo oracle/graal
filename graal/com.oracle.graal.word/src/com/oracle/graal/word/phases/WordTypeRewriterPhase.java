@@ -214,16 +214,15 @@ public class WordTypeRewriterPhase extends Phase {
                 } else {
                     location = makeLocation(graph, arguments.get(1), readKind, arguments.get(2));
                 }
-                replace(invoke, readOp(graph, arguments.get(0), invoke, location, StampFactory.forKind(readKind.getStackKind()), BarrierType.NONE, false));
+                replace(invoke, readOp(graph, arguments.get(0), invoke, location, BarrierType.NONE, false));
                 break;
             }
             case READ_HEAP: {
-                assert arguments.size() == 4;
+                assert arguments.size() == 3;
                 Kind readKind = asKind(callTargetNode.returnType());
                 LocationNode location = makeLocation(graph, arguments.get(1), readKind, ANY_LOCATION);
                 BarrierType barrierType = (BarrierType) arguments.get(2).asConstant().asObject();
-                boolean compressible = arguments.get(3).asConstant().asInt() != 0;
-                replace(invoke, readOp(graph, arguments.get(0), invoke, location, StampFactory.forKind(readKind.getStackKind()), barrierType, compressible));
+                replace(invoke, readOp(graph, arguments.get(0), invoke, location, barrierType, true));
                 break;
             }
             case WRITE:
@@ -370,8 +369,8 @@ public class WordTypeRewriterPhase extends Phase {
         return IndexedLocationNode.create(locationIdentity, readKind, 0, fromSigned(graph, offset), graph, 1);
     }
 
-    protected ValueNode readOp(StructuredGraph graph, ValueNode base, Invoke invoke, LocationNode location, Stamp stamp, BarrierType barrierType, boolean compressible) {
-        ReadNode read = graph.add(new ReadNode(base, location, stamp, barrierType, compressible));
+    protected ValueNode readOp(StructuredGraph graph, ValueNode base, Invoke invoke, LocationNode location, BarrierType barrierType, boolean compressible) {
+        JavaReadNode read = graph.add(new JavaReadNode(base, location, barrierType, compressible));
         graph.addBeforeFixed(invoke.asNode(), read);
         /*
          * The read must not float outside its block otherwise it may float above an explicit zero
@@ -383,7 +382,7 @@ public class WordTypeRewriterPhase extends Phase {
 
     protected ValueNode writeOp(StructuredGraph graph, ValueNode base, ValueNode value, Invoke invoke, LocationNode location, Opcode op) {
         assert op == Opcode.WRITE || op == Opcode.INITIALIZE;
-        WriteNode write = graph.add(new WriteNode(base, value, location, BarrierType.NONE, false, op == Opcode.INITIALIZE));
+        JavaWriteNode write = graph.add(new JavaWriteNode(base, value, location, BarrierType.NONE, false, op == Opcode.INITIALIZE));
         write.setStateAfter(invoke.stateAfter());
         graph.addBeforeFixed(invoke.asNode(), write);
         return write;

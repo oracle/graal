@@ -495,7 +495,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuiderTool {
     }
 
     protected PlatformKind getPhiKind(PhiNode phi) {
-        return phi.getKind();
+        return gen.getPlatformKind(phi.stamp());
     }
 
     private Value operandForPhi(PhiNode phi) {

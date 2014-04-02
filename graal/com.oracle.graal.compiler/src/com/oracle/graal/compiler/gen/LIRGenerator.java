@@ -582,10 +582,15 @@ public abstract class LIRGenerator implements ArithmeticLIRGenerator, LIRGenerat
     }
 
     public PlatformKind getIntegerKind(int bits, boolean unsigned) {
-        if (bits > 32) {
-            return Kind.Long;
-        } else {
+        if (bits <= 8) {
+            return Kind.Byte;
+        } else if (bits <= 16) {
+            return Kind.Short;
+        } else if (bits <= 32) {
             return Kind.Int;
+        } else {
+            assert bits <= 64;
+            return Kind.Long;
         }
     }
 

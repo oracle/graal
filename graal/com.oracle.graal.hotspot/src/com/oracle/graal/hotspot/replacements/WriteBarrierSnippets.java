@@ -31,8 +31,10 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
+import com.oracle.graal.hotspot.HotSpotVMConfig.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.*;
+import com.oracle.graal.hotspot.nodes.type.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.HeapAccess.BarrierType;
 import com.oracle.graal.nodes.extended.*;
@@ -136,7 +138,7 @@ public class WriteBarrierSnippets implements Snippets {
             // If the previous value has to be loaded (before the write), the load is issued.
             // The load is always issued except the cases of CAS and referent field.
             if (probability(LIKELY_PROBABILITY, doLoad)) {
-                previousOop = (Word) Word.fromObject(field.readObject(0, BarrierType.NONE, true));
+                previousOop = (Word) Word.fromObject(field.readObject(0, BarrierType.NONE));
                 if (trace) {
                     log(trace, "[%d] G1-Pre Thread %p Previous Object %p\n ", gcCycle, thread.rawValue(), previousOop.rawValue());
                     verifyOop(previousOop.toObject());
@@ -252,7 +254,7 @@ public class WriteBarrierSnippets implements Snippets {
 
         for (int i = startIndex; i < length; i++) {
             long address = dstAddr + header + (i * scale);
-            Pointer oop = Word.fromObject(Word.unsigned(address).readObject(0, BarrierType.NONE, true));
+            Pointer oop = Word.fromObject(Word.unsigned(address).readObject(0, BarrierType.NONE));
             verifyOop(oop.toObject());
             if (oop.notEqual(0)) {
                 if (indexValue != 0) {
@@ -330,8 +332,11 @@ public class WriteBarrierSnippets implements Snippets {
         private final SnippetInfo g1ArrayRangePreWriteBarrier = snippet(WriteBarrierSnippets.class, "g1ArrayRangePreWriteBarrier");
         private final SnippetInfo g1ArrayRangePostWriteBarrier = snippet(WriteBarrierSnippets.class, "g1ArrayRangePostWriteBarrier");
 
-        public Templates(Providers providers, TargetDescription target) {
+        private final CompressEncoding oopEncoding;
+
+        public Templates(Providers providers, TargetDescription target, CompressEncoding oopEncoding) {
             super(providers, target);
+            this.oopEncoding = oopEncoding;
         }
 
         public void lower(SerialWriteBarrier writeBarrier, LoweringTool tool) {
@@ -357,7 +362,14 @@ public class WriteBarrierSnippets implements Snippets {
         public void lower(G1PreWriteBarrier writeBarrierPre, HotSpotRegistersProvider registers, LoweringTool tool) {
             Arguments args = new Arguments(g1PreWriteBarrier, writeBarrierPre.graph().getGuardsStage(), tool.getLoweringStage());
             args.add("object", writeBarrierPre.getObject());
-            args.add("expectedObject", writeBarrierPre.getExpectedObject());
+
+            ValueNode expected = writeBarrierPre.getExpectedObject();
+            if (expected != null && expected.stamp() instanceof NarrowOopStamp) {
+                assert oopEncoding != null;
+                expected = CompressionNode.uncompress(expected, oopEncoding);
+            }
+            args.add("expectedObject", expected);
+
             args.add("location", writeBarrierPre.getLocation());
             args.addConst("doLoad", writeBarrierPre.doLoad());
             args.addConst("nullCheck", writeBarrierPre.getNullCheck());
@@ -369,7 +381,14 @@ public class WriteBarrierSnippets implements Snippets {
         public void lower(G1ReferentFieldReadBarrier readBarrier, HotSpotRegistersProvider registers, LoweringTool tool) {
             Arguments args = new Arguments(g1ReferentReadBarrier, readBarrier.graph().getGuardsStage(), tool.getLoweringStage());
             args.add("object", readBarrier.getObject());
-            args.add("expectedObject", readBarrier.getExpectedObject());
+
+            ValueNode expected = readBarrier.getExpectedObject();
+            if (expected != null && expected.stamp() instanceof NarrowOopStamp) {
+                assert oopEncoding != null;
+                expected = CompressionNode.uncompress(expected, oopEncoding);
+            }
+
+            args.add("expectedObject", expected);
             args.add("location", readBarrier.getLocation());
             args.addConst("doLoad", readBarrier.doLoad());
             args.addConst("nullCheck", false);
@@ -379,13 +398,21 @@ public class WriteBarrierSnippets implements Snippets {
         }
 
         public void lower(G1PostWriteBarrier writeBarrierPost, HotSpotRegistersProvider registers, LoweringTool tool) {
+            StructuredGraph graph = writeBarrierPost.graph();
             if (writeBarrierPost.alwaysNull()) {
-                writeBarrierPost.graph().removeFixed(writeBarrierPost);
+                graph.removeFixed(writeBarrierPost);
                 return;
             }
-            Arguments args = new Arguments(g1PostWriteBarrier, writeBarrierPost.graph().getGuardsStage(), tool.getLoweringStage());
+            Arguments args = new Arguments(g1PostWriteBarrier, graph.getGuardsStage(), tool.getLoweringStage());
             args.add("object", writeBarrierPost.getObject());
-            args.add("value", writeBarrierPost.getValue());
+
+            ValueNode value = writeBarrierPost.getValue();
+            if (value.stamp() instanceof NarrowOopStamp) {
+                assert oopEncoding != null;
+                value = CompressionNode.uncompress(value, oopEncoding);
+            }
+            args.add("value", value);
+
             args.add("location", writeBarrierPost.getLocation());
             args.addConst("usePrecise", writeBarrierPost.usePrecise());
             args.addConst("threadRegister", registers.getThreadRegister());

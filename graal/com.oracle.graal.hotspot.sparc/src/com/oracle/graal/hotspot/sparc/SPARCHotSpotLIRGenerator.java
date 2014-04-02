@@ -147,9 +147,9 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
     }
 
     @Override
-    public Variable emitLoad(Kind kind, Value address, Access access) {
+    public Variable emitLoad(PlatformKind kind, Value address, Access access) {
         SPARCAddressValue loadAddress = asAddressValue(address);
-        Variable result = newVariable(kind.getStackKind());
+        Variable result = newVariable(kind);
         LIRFrameState state = null;
         if (access instanceof DeoptimizingNode) {
             state = state((DeoptimizingNode) access);
@@ -168,16 +168,16 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
                 // config.logKlassAlignment));
                 throw GraalInternalError.unimplemented();
             } else {
-                append(new LoadOp(kind, result, loadAddress, state));
+                append(new LoadOp((Kind) kind, result, loadAddress, state));
             }
         } else {
-            append(new LoadOp(kind, result, loadAddress, state));
+            append(new LoadOp((Kind) kind, result, loadAddress, state));
         }
         return result;
     }
 
     @Override
-    public void emitStore(Kind kind, Value address, Value inputVal, Access access) {
+    public void emitStore(PlatformKind kind, Value address, Value inputVal, Access access) {
         SPARCAddressValue storeAddress = asAddressValue(address);
         LIRFrameState state = null;
         if (access instanceof DeoptimizingNode) {
@@ -187,11 +187,11 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
             Constant c = asConstant(inputVal);
             if (canStoreConstant(c, isCompressCandidate(access))) {
                 if (inputVal.getKind() == Kind.Object) {
-                    append(new StoreConstantOp(kind, storeAddress, c, state, config.useCompressedOops && isCompressCandidate(access)));
+                    append(new StoreConstantOp((Kind) kind, storeAddress, c, state, config.useCompressedOops && isCompressCandidate(access)));
                 } else if (inputVal.getKind() == Kind.Long) {
-                    append(new StoreConstantOp(kind, storeAddress, c, state, config.useCompressedClassPointers && isCompressCandidate(access)));
+                    append(new StoreConstantOp((Kind) kind, storeAddress, c, state, config.useCompressedClassPointers && isCompressCandidate(access)));
                 } else {
-                    append(new StoreConstantOp(kind, storeAddress, c, state, false));
+                    append(new StoreConstantOp((Kind) kind, storeAddress, c, state, false));
                 }
                 return;
             }
@@ -216,10 +216,10 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
                 // config.logKlassAlignment));
                 throw GraalInternalError.unimplemented();
             } else {
-                append(new StoreOp(kind, storeAddress, input, state));
+                append(new StoreOp((Kind) kind, storeAddress, input, state));
             }
         } else {
-            append(new StoreOp(kind, storeAddress, input, state));
+            append(new StoreOp((Kind) kind, storeAddress, input, state));
         }
     }
 

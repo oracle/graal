@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,29 +20,22 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.hsail;
+package com.oracle.graal.nodes.extended;
 
-import java.util.*;
+import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.spi.*;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.meta.*;
+/**
+ * Write a raw memory location according to Java field or array write semantics. It will perform
+ * write barriers, implicit conversions and optionally oop compression.
+ */
+public final class JavaWriteNode extends AbstractWriteNode implements Lowerable, StateSplit, MemoryAccess, MemoryCheckpoint.Single {
 
-public class HSAILHotSpotCodeCacheProvider extends HotSpotCodeCacheProvider {
-
-    public HSAILHotSpotCodeCacheProvider(HotSpotGraalRuntime runtime, TargetDescription target) {
-        super(runtime, target);
-
+    public JavaWriteNode(ValueNode object, ValueNode value, ValueNode location, BarrierType barrierType, boolean compressible, boolean initialization) {
+        super(object, value, location, barrierType, compressible, initialization);
     }
 
-    @Override
-    public String disassemble(CompilationResult compResult, InstalledCode installedCode) {
-        byte[] code = installedCode == null ? Arrays.copyOf(compResult.getTargetCode(), compResult.getTargetCodeSize()) : installedCode.getCode();
-        return new String(code);
-    }
-
-    @Override
-    protected RegisterConfig createRegisterConfig() {
-        return new HSAILHotSpotRegisterConfig();
+    public void lower(LoweringTool tool) {
+        tool.getLowerer().lower(this, tool);
     }
 }
