@@ -45,7 +45,7 @@ public class GetObjectAddressNode extends FixedWithNextNode implements LIRLowera
     public static native long get(Object array);
 
     @Override
-    public void generate(NodeLIRBuiderTool gen) {
+    public void generate(NodeLIRBuilderTool gen) {
         AllocatableValue obj = gen.getLIRGeneratorTool().newVariable(gen.getLIRGeneratorTool().target().wordKind);
         gen.getLIRGeneratorTool().emitMove(obj, gen.operand(object));
         gen.setResult(this, obj);

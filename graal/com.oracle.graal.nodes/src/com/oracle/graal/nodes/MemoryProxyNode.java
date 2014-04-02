@@ -42,7 +42,7 @@ public class MemoryProxyNode extends ProxyNode implements MemoryProxy, LIRLowera
     }
 
     @Override
-    public void generate(NodeLIRBuiderTool generator) {
+    public void generate(NodeLIRBuilderTool generator) {
     }
 
     @Override

@@ -42,7 +42,7 @@ public final class CurrentLockNode extends FixedWithNextNode implements LIRLower
     }
 
     @Override
-    public void generate(NodeLIRBuiderTool gen) {
+    public void generate(NodeLIRBuilderTool gen) {
         assert lockDepth != -1;
         HotSpotLIRGenerator hsGen = (HotSpotLIRGenerator) gen.getLIRGeneratorTool();
         StackSlot slot = hsGen.getLockSlot(lockDepth);

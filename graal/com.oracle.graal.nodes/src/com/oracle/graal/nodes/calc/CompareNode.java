@@ -75,7 +75,7 @@ public abstract class CompareNode extends LogicNode implements Canonicalizable, 
     public abstract boolean unorderedIsTrue();
 
     @Override
-    public void generate(NodeLIRBuiderTool gen) {
+    public void generate(NodeLIRBuilderTool gen) {
     }
 
     private LogicNode optimizeConditional(Constant constant, ConditionalNode conditionalNode, ConstantReflectionProvider constantReflection, Condition cond) {

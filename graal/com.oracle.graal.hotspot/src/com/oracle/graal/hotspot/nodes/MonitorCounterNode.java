@@ -42,7 +42,7 @@ public final class MonitorCounterNode extends FloatingNode implements LIRGenResL
     }
 
     @Override
-    public void generate(NodeLIRBuiderTool gen, LIRGenerationResult res) {
+    public void generate(NodeLIRBuilderTool gen, LIRGenerationResult res) {
         assert graph().getNodes().filter(MonitorCounterNode.class).count() == 1 : "monitor counters not canonicalized to single instance";
         StackSlot counter = res.getFrameMap().allocateStackSlots(1, new BitSet(0), null);
         Value result = gen.getLIRGeneratorTool().emitAddress(counter);

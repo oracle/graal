@@ -100,7 +100,7 @@ public final class SnippetLocationNode extends LocationNode implements Canonical
     }
 
     @Override
-    public Value generateAddress(NodeLIRBuiderTool gen, Value base) {
+    public Value generateAddress(NodeLIRBuilderTool gen, Value base) {
         throw new GraalInternalError("locationIdentity must be a constant so that this node can be canonicalized: " + locationIdentity);
     }
 

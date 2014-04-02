@@ -85,7 +85,7 @@ public class HSAILMathIntrinsicsNode extends FloatingNode implements Canonicaliz
      * Generates the LIR instructions for the math operation represented by this node.
      */
     @Override
-    public void generate(NodeLIRBuiderTool gen) {
+    public void generate(NodeLIRBuilderTool gen) {
         Value input = gen.operand(getParameter());
         Value result;
         switch (operation()) {

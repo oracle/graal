@@ -46,7 +46,7 @@ public class JumpToExceptionHandlerInCallerNode extends ControlSinkNode implemen
     }
 
     @Override
-    public void generate(NodeLIRBuiderTool gen) {
+    public void generate(NodeLIRBuilderTool gen) {
         ((HotSpotNodeLIRBuilder) gen).emitJumpToExceptionHandlerInCaller(handlerInCallerPc, exception, exceptionPc);
     }
 

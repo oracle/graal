@@ -73,7 +73,7 @@ public final class NotNode extends FloatingNode implements Canonicalizable, Arit
     }
 
     @Override
-    public void generate(NodeLIRBuiderTool gen) {
+    public void generate(NodeLIRBuilderTool gen) {
         gen.setResult(this, gen.getLIRGeneratorTool().emitNot(gen.operand(x())));
     }
 }

@@ -61,7 +61,7 @@ public class MathIntrinsicNode extends FloatingNode implements Canonicalizable, 
     }
 
     @Override
-    public void generate(NodeLIRBuiderTool gen) {
+    public void generate(NodeLIRBuilderTool gen) {
         Value input = gen.operand(x());
         Value result;
         switch (operation()) {

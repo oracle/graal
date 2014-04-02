@@ -72,7 +72,7 @@ public class LoweredCompareAndSwapNode extends FixedAccessNode implements StateS
     }
 
     @Override
-    public void generate(NodeLIRBuiderTool gen) {
+    public void generate(NodeLIRBuilderTool gen) {
         gen.visitCompareAndSwap(this, location().generateAddress(gen, gen.operand(object())));
     }
 

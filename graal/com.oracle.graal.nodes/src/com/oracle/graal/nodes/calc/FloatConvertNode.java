@@ -201,7 +201,7 @@ public class FloatConvertNode extends ConvertNode implements Canonicalizable, Lo
         tool.getLowerer().lower(this, tool);
     }
 
-    public void generate(NodeLIRBuiderTool gen) {
+    public void generate(NodeLIRBuilderTool gen) {
         gen.setResult(this, gen.getLIRGeneratorTool().emitFloatConvert(op, gen.operand(getInput())));
     }
 

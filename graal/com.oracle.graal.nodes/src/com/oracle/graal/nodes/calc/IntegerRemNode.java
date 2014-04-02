@@ -61,7 +61,7 @@ public class IntegerRemNode extends FixedBinaryNode implements Canonicalizable, 
     }
 
     @Override
-    public void generate(NodeLIRBuiderTool gen) {
+    public void generate(NodeLIRBuilderTool gen) {
         gen.setResult(this, gen.getLIRGeneratorTool().emitRem(gen.operand(x()), gen.operand(y()), this));
     }
 

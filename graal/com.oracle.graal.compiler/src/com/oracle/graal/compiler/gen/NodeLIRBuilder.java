@@ -52,7 +52,7 @@ import com.oracle.graal.phases.*;
 /**
  * This class traverses the HIR instructions and generates LIR instructions from them.
  */
-public abstract class NodeLIRBuilder implements NodeLIRBuiderTool {
+public abstract class NodeLIRBuilder implements NodeLIRBuilderTool {
 
     private final NodeMap<Value> nodeOperands;
     private final DebugInfoBuilder debugInfoBuilder;

@@ -68,7 +68,7 @@ public class LogicConstantNode extends LogicNode implements LIRLowerable {
     }
 
     @Override
-    public void generate(NodeLIRBuiderTool generator) {
+    public void generate(NodeLIRBuilderTool generator) {
         // nothing to do
     }
 }

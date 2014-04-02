@@ -64,7 +64,7 @@ public final class LoopEndNode extends AbstractEndNode {
     }
 
     @Override
-    public void generate(NodeLIRBuiderTool gen) {
+    public void generate(NodeLIRBuilderTool gen) {
         gen.visitLoopEnd(this);
         super.generate(gen);
     }

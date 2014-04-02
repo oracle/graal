@@ -49,7 +49,7 @@ public final class EndLockScopeNode extends AbstractMemoryCheckpoint implements 
     }
 
     @Override
-    public void generate(NodeLIRBuiderTool gen) {
+    public void generate(NodeLIRBuilderTool gen) {
     }
 
     @NodeIntrinsic

@@ -82,7 +82,7 @@ public class ForeignCallNode extends AbstractMemoryCheckpoint implements LIRLowe
         return foreignCalls.getKilledLocations(descriptor);
     }
 
-    protected Value[] operands(NodeLIRBuiderTool gen) {
+    protected Value[] operands(NodeLIRBuilderTool gen) {
         Value[] operands = new Value[arguments.size()];
         for (int i = 0; i < operands.length; i++) {
             operands[i] = gen.operand(arguments.get(i));
@@ -91,7 +91,7 @@ public class ForeignCallNode extends AbstractMemoryCheckpoint implements LIRLowe
     }
 
     @Override
-    public void generate(NodeLIRBuiderTool gen) {
+    public void generate(NodeLIRBuilderTool gen) {
         ForeignCallLinkage linkage = gen.getLIRGeneratorTool().getForeignCalls().lookupForeignCall(descriptor);
         Value[] operands = operands(gen);
         Value result = gen.getLIRGeneratorTool().emitForeignCall(linkage, this, operands);

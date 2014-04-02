@@ -38,7 +38,7 @@ public class EntryMarkerNode extends AbstractBeginNode implements IterableNodeTy
     }
 
     @Override
-    public void generate(NodeLIRBuiderTool gen) {
+    public void generate(NodeLIRBuilderTool gen) {
         throw new GraalInternalError("OnStackReplacementNode should not survive");
     }
 }

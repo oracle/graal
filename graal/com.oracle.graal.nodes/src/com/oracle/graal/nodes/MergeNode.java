@@ -41,7 +41,7 @@ public class MergeNode extends BeginStateSplitNode implements IterableNodeType, 
     @Input(notDataflow = true) private final NodeInputList<AbstractEndNode> ends = new NodeInputList<>(this);
 
     @Override
-    public void generate(NodeLIRBuiderTool gen) {
+    public void generate(NodeLIRBuilderTool gen) {
         gen.visitMerge(this);
     }
 

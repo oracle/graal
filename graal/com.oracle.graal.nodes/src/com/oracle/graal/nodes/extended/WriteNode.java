@@ -43,7 +43,7 @@ public final class WriteNode extends AbstractWriteNode implements LIRLowerable, 
     }
 
     @Override
-    public void generate(NodeLIRBuiderTool gen) {
+    public void generate(NodeLIRBuilderTool gen) {
         Value address = location().generateAddress(gen, gen.operand(object()));
         // It's possible a constant was forced for other usages so inspect the value directly and
         // use a constant if it can be directly stored.

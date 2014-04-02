@@ -106,7 +106,7 @@ public class IntegerDivNode extends FixedBinaryNode implements Canonicalizable, 
     }
 
     @Override
-    public void generate(NodeLIRBuiderTool gen) {
+    public void generate(NodeLIRBuilderTool gen) {
         gen.setResult(this, gen.getLIRGeneratorTool().emitDiv(gen.operand(x()), gen.operand(y()), this));
     }
 

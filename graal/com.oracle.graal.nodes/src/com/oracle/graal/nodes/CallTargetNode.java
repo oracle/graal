@@ -54,7 +54,7 @@ public abstract class CallTargetNode extends ValueNode implements LIRLowerable {
     public abstract String targetName();
 
     @Override
-    public void generate(NodeLIRBuiderTool gen) {
+    public void generate(NodeLIRBuilderTool gen) {
         // nop
     }
 }

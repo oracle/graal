@@ -48,7 +48,7 @@ public final class DimensionsNode extends FixedWithNextNode implements LIRGenRes
     }
 
     @Override
-    public void generate(NodeLIRBuiderTool gen, LIRGenerationResult res) {
+    public void generate(NodeLIRBuilderTool gen, LIRGenerationResult res) {
         int size = rank * 4;
         int wordSize = gen.getLIRGeneratorTool().target().wordSize;
         int slots = roundUp(size, wordSize) / wordSize;

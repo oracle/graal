@@ -41,7 +41,7 @@ public class InfopointNode extends FixedWithNextNode implements LIRLowerable, No
     }
 
     @Override
-    public void generate(NodeLIRBuiderTool generator) {
+    public void generate(NodeLIRBuilderTool generator) {
         generator.visitInfopointNode(this);
     }
 

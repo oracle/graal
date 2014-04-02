@@ -85,7 +85,7 @@ public class ZeroExtendNode extends IntegerConvertNode {
     }
 
     @Override
-    public void generate(NodeLIRBuiderTool gen) {
+    public void generate(NodeLIRBuilderTool gen) {
         gen.setResult(this, gen.getLIRGeneratorTool().emitZeroExtend(gen.operand(getInput()), getInputBits(), getResultBits()));
     }
 

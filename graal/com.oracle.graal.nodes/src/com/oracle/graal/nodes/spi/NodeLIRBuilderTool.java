@@ -31,7 +31,7 @@ import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 
-public interface NodeLIRBuiderTool extends NodeMappableLIRBuilder {
+public interface NodeLIRBuilderTool extends NodeMappableLIRBuilder {
 
     void emitNullCheck(ValueNode v, DeoptimizingNode deopting);
 

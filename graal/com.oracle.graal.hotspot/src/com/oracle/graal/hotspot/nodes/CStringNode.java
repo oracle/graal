@@ -45,7 +45,7 @@ public final class CStringNode extends FloatingNode implements LIRGenLowerable {
         gen.setResult(this, emitCString(gen, string));
     }
 
-    public static AllocatableValue emitCString(NodeLIRBuiderTool gen, String value) {
+    public static AllocatableValue emitCString(NodeLIRBuilderTool gen, String value) {
         AllocatableValue dst = gen.getLIRGeneratorTool().newVariable(gen.getLIRGeneratorTool().target().wordKind);
         gen.getLIRGeneratorTool().emitData(dst, toCString(value));
         return dst;

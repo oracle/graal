@@ -34,7 +34,7 @@ public class IntegerAddExactSplitNode extends IntegerExactArithmeticSplitNode {
     }
 
     @Override
-    protected Value generateArithmetic(NodeLIRBuiderTool gen) {
+    protected Value generateArithmetic(NodeLIRBuilderTool gen) {
         return gen.getLIRGeneratorTool().emitAdd(gen.operand(getX()), gen.operand(getY()));
     }
 }

@@ -105,7 +105,7 @@ public class SignExtendNode extends IntegerConvertNode {
     }
 
     @Override
-    public void generate(NodeLIRBuiderTool gen) {
+    public void generate(NodeLIRBuilderTool gen) {
         gen.setResult(this, gen.getLIRGeneratorTool().emitSignExtend(gen.operand(getInput()), getInputBits(), getResultBits()));
     }
 

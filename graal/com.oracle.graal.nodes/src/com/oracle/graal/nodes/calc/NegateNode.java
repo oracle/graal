@@ -88,7 +88,7 @@ public final class NegateNode extends FloatingNode implements Canonicalizable, A
     }
 
     @Override
-    public void generate(NodeLIRBuiderTool gen) {
+    public void generate(NodeLIRBuilderTool gen) {
         gen.setResult(this, gen.getLIRGeneratorTool().emitNegate(gen.operand(x())));
     }
 }

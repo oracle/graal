@@ -98,7 +98,7 @@ public class LoopBeginNode extends MergeNode implements IterableNodeType, LIRLow
     }
 
     @Override
-    public void generate(NodeLIRBuiderTool gen) {
+    public void generate(NodeLIRBuilderTool gen) {
         // Nothing to emit, since this is node is used for structural purposes only.
     }
 
