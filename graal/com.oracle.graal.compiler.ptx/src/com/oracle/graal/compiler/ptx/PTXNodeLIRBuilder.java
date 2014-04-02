@@ -148,17 +148,4 @@ public class PTXNodeLIRBuilder extends NodeLIRBuilder {
     public void visitInfopointNode(InfopointNode i) {
         throw GraalInternalError.unimplemented("PTXLIRGenerator.visitInfopointNode()");
     }
-
-    @Override
-    public void visitReturn(ReturnNode x) {
-        AllocatableValue operand = Value.ILLEGAL;
-        if (x.result() != null) {
-            operand = gen.resultOperandFor(x.result().getKind());
-            // Load the global memory address from return parameter
-            Variable loadVar = getGen().emitLoadReturnAddress(operand.getKind(), operand, null);
-            // Store result in global memory whose location is loadVar
-            getGen().emitStoreReturnValue(operand.getKind(), loadVar, operand(x.result()), null);
-        }
-        getGen().emitReturnNoVal();
-    }
 }

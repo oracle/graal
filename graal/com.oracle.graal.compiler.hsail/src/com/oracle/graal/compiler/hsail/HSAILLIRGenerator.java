@@ -806,7 +806,12 @@ public abstract class HSAILLIRGenerator extends LIRGenerator {
 
     @Override
     public void emitReturn(Value input) {
-        append(new ReturnOp(input));
+        AllocatableValue operand = Value.ILLEGAL;
+        if (input != null) {
+            operand = resultOperandFor(input.getKind());
+            emitMove(operand, input);
+        }
+        append(new ReturnOp(operand));
     }
 
     /**

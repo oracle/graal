@@ -54,8 +54,6 @@ public interface NodeLIRBuiderTool extends NodeMappableLIRBuilder {
 
     // These methods define the contract a runtime specific backend must provide.
 
-    void visitReturn(ReturnNode i);
-
     void visitSafepointNode(SafepointNode i);
 
     void visitBreakpointNode(BreakpointNode i);

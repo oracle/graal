@@ -99,7 +99,12 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
 
     @Override
     public void emitReturn(Value input) {
-        append(new SPARCHotSpotReturnOp(input, getStub() != null));
+        AllocatableValue operand = Value.ILLEGAL;
+        if (input != null) {
+            operand = resultOperandFor(input.getKind());
+            emitMove(operand, input);
+        }
+        append(new SPARCHotSpotReturnOp(operand, getStub() != null));
     }
 
     @Override

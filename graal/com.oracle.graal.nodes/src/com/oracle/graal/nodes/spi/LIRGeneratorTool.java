@@ -48,7 +48,7 @@ public interface LIRGeneratorTool extends ArithmeticLIRGenerator {
     /**
      * Checks whether the supplied constant can be used without loading it into a register for most
      * operations, i.e., for commonly used arithmetic, logical, and comparison operations.
-     * 
+     *
      * @param c The constant to check.
      * @return True if the constant can be used directly, false if the constant needs to be in a
      *         register.
@@ -67,7 +67,7 @@ public interface LIRGeneratorTool extends ArithmeticLIRGenerator {
 
     /**
      * Emits an op that loads the address of some raw data.
-     * 
+     *
      * @param dst the variable into which the address is loaded
      * @param data the data to be installed with the generated code
      */
@@ -89,5 +89,9 @@ public interface LIRGeneratorTool extends ArithmeticLIRGenerator {
 
     void emitIncomingValues(Value[] params);
 
+    /**
+     * Emits a return instruction. Implementations need to insert a move if the input is not in the
+     * correct location.
+     */
     void emitReturn(Value input);
 }

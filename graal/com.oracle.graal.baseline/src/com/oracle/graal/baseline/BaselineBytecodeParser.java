@@ -523,10 +523,6 @@ public class BaselineBytecodeParser extends AbstractBytecodeParser<Value, LIRFra
 
     @Override
     protected void genReturn(Value x) {
-        if (x != null) {
-            AllocatableValue operand = gen.resultOperandFor(x.getKind());
-            gen.emitMove(operand, x);
-        }
         gen.emitReturn(x);
     }
 
@@ -639,10 +635,12 @@ public class BaselineBytecodeParser extends AbstractBytecodeParser<Value, LIRFra
 
             if (bci < endBCI) {
                 if (bci > block.endBci) {
-                    assert !block.getSuccessor(0).isExceptionEntry;
-                    assert block.numNormalSuccessors() == 1;
-                    // we fell through to the next block, add a goto and break
-                    appendGoto(createTarget(block.getSuccessor(0), frameState));
+                    if (block.numNormalSuccessors() == 1) {
+                        assert !block.getSuccessor(0).isExceptionEntry;
+                        // we fell through to the next block, add a goto and break
+                        LabelRef label = LabelRef.forSuccessor(lirGenRes.getLIR(), block.getSuccessor(0), 0);
+                        gen.emitJump(label);
+                    }
                     break;
                 }
             }
