@@ -459,6 +459,14 @@ public class AMD64Move {
     private static void reg2stack(CompilationResultBuilder crb, AMD64MacroAssembler masm, Value result, Value input) {
         AMD64Address dest = (AMD64Address) crb.asAddress(result);
         switch (input.getKind()) {
+            case Boolean:
+            case Byte:
+                masm.movb(dest, asRegister(input));
+                break;
+            case Short:
+            case Char:
+                masm.movw(dest, asRegister(input));
+                break;
             case Int:
                 masm.movl(dest, asRegister(input));
                 break;
@@ -482,6 +490,18 @@ public class AMD64Move {
     private static void stack2reg(CompilationResultBuilder crb, AMD64MacroAssembler masm, Value result, Value input) {
         AMD64Address src = (AMD64Address) crb.asAddress(input);
         switch (input.getKind()) {
+            case Boolean:
+                masm.movzbl(asRegister(result), src);
+                break;
+            case Byte:
+                masm.movsbl(asRegister(result), src);
+                break;
+            case Short:
+                masm.movswl(asRegister(result), src);
+                break;
+            case Char:
+                masm.movzwl(asRegister(result), src);
+                break;
             case Int:
                 masm.movl(asRegister(result), src);
                 break;
