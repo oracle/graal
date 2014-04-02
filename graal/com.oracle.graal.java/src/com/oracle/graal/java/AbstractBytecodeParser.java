@@ -519,25 +519,25 @@ public abstract class AbstractBytecodeParser<T extends KindProvider, F extends A
 
     protected abstract T genUnique(T x);
 
-    protected abstract void ifNode(T x, Condition cond, T y);
+    protected abstract void genIf(T x, Condition cond, T y);
 
     private void genIfZero(Condition cond) {
         T y = appendConstant(Constant.INT_0);
         T x = frameState.ipop();
-        ifNode(x, cond, y);
+        genIf(x, cond, y);
     }
 
     private void genIfNull(Condition cond) {
         T y = appendConstant(Constant.NULL_OBJECT);
         T x = frameState.apop();
-        ifNode(x, cond, y);
+        genIf(x, cond, y);
     }
 
     private void genIfSame(Kind kind, Condition cond) {
         T y = frameState.pop(kind);
         T x = frameState.pop(kind);
         // assert !x.isDeleted() && !y.isDeleted();
-        ifNode(x, cond, y);
+        genIf(x, cond, y);
     }
 
     protected abstract void genThrow();

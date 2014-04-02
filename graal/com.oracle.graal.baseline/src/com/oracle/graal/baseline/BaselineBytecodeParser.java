@@ -366,7 +366,7 @@ public class BaselineBytecodeParser extends AbstractBytecodeParser<Value, LIRFra
     }
 
     @Override
-    protected void ifNode(Value x, Condition cond, Value y) {
+    protected void genIf(Value x, Condition cond, Value y) {
         assert currentBlock.getSuccessors().size() == 2;
         BciBlock trueBlock = currentBlock.getSuccessors().get(0);
         BciBlock falseBlock = currentBlock.getSuccessors().get(1);

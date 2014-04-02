@@ -588,7 +588,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 return (ValueNode) currentGraph.unique((Node & ValueNumberable) x);
             }
 
-            protected ValueNode genIf(ValueNode condition, ValueNode falseSuccessor, ValueNode trueSuccessor, double d) {
+            protected ValueNode genIfNode(ValueNode condition, ValueNode falseSuccessor, ValueNode trueSuccessor, double d) {
                 return new IfNode((LogicNode) condition, (FixedNode) falseSuccessor, (FixedNode) trueSuccessor, d);
             }
 
@@ -1372,7 +1372,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             }
 
             @Override
-            protected void ifNode(ValueNode x, Condition cond, ValueNode y) {
+            protected void genIf(ValueNode x, Condition cond, ValueNode y) {
                 // assert !x.isDeleted() && !y.isDeleted();
                 // assert currentBlock.numNormalSuccessors() == 2;
                 assert currentBlock.getSuccessors().size() == 2;
@@ -1422,7 +1422,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 ValueNode trueSuccessor = createBlockTarget(probability, trueBlock, frameState);
                 ValueNode falseSuccessor = createBlockTarget(1 - probability, falseBlock, frameState);
 
-                ValueNode ifNode = negate ? genIf(condition, falseSuccessor, trueSuccessor, 1 - probability) : genIf(condition, trueSuccessor, falseSuccessor, probability);
+                ValueNode ifNode = negate ? genIfNode(condition, falseSuccessor, trueSuccessor, 1 - probability) : genIfNode(condition, trueSuccessor, falseSuccessor, probability);
                 append(ifNode);
             }
 
