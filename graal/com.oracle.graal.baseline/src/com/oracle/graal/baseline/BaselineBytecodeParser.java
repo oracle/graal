@@ -41,6 +41,7 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.java.BciBlockMapping.BciBlock;
 import com.oracle.graal.lir.*;
+import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.calc.FloatConvertNode.FloatConvert;
 import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.phases.*;
@@ -365,6 +366,48 @@ public class BaselineBytecodeParser extends AbstractBytecodeParser<Value, LIRFra
     }
 
     @Override
+    protected void ifNode(Value x, Condition cond, Value y) {
+        assert currentBlock.getSuccessors().size() == 2;
+        BciBlock trueBlock = currentBlock.getSuccessors().get(0);
+        BciBlock falseBlock = currentBlock.getSuccessors().get(1);
+        if (trueBlock == falseBlock) {
+            appendGoto(createTarget(trueBlock, frameState));
+            return;
+        }
+
+        double probability = profilingInfo.getBranchTakenProbability(bci());
+        if (probability < 0) {
+            assert probability == -1 : "invalid probability";
+            Debug.log("missing probability in %s at bci %d", method, bci());
+            probability = 0.5;
+        }
+
+        if (!optimisticOpts.removeNeverExecutedCode()) {
+            if (probability == 0) {
+                probability = 0.0000001;
+            } else if (probability == 1) {
+                probability = 0.999999;
+            }
+        }
+
+        // the mirroring and negation operations get the condition into canonical form
+        boolean mirror = cond.canonicalMirror();
+        boolean negate = cond.canonicalNegate();
+
+        Value a = mirror ? y : x;
+        Value b = mirror ? x : y;
+
+        LabelRef trueDestination = LabelRef.forSuccessor(lirGenRes.getLIR(), trueBlock, 0);
+        LabelRef falseDestination = LabelRef.forSuccessor(lirGenRes.getLIR(), falseBlock, 1);
+
+        if (negate) {
+            gen.emitCompareBranch(a, b, cond, false, falseDestination, trueDestination, 1 - probability);
+        } else {
+            gen.emitCompareBranch(a, b, cond, false, trueDestination, falseDestination, probability);
+        }
+    }
+
+    @Override
     protected Value genIntegerLessThan(Value x, Value y) {
         // TODO Auto-generated method stub
         throw GraalInternalError.unimplemented("Auto-generated method stub");
@@ -372,12 +415,6 @@ public class BaselineBytecodeParser extends AbstractBytecodeParser<Value, LIRFra
 
     @Override
     protected Value genUnique(Value x) {
-        // TODO Auto-generated method stub
-        throw GraalInternalError.unimplemented("Auto-generated method stub");
-    }
-
-    @Override
-    protected Value genIf(Value condition, Value falseSuccessor, Value trueSuccessor, double d) {
         // TODO Auto-generated method stub
         throw GraalInternalError.unimplemented("Auto-generated method stub");
     }
@@ -531,8 +568,10 @@ public class BaselineBytecodeParser extends AbstractBytecodeParser<Value, LIRFra
 
     @Override
     protected Value appendConstant(Constant constant) {
-        // TODO Auto-generated method stub
-        throw GraalInternalError.unimplemented("Auto-generated method stub");
+        if (gen.canInlineConstant(constant)) {
+            return constant;
+        }
+        return gen.emitMove(constant);
     }
 
     @Override

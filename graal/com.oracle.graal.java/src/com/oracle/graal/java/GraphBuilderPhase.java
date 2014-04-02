@@ -588,7 +588,6 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 return (ValueNode) currentGraph.unique((Node & ValueNumberable) x);
             }
 
-            @Override
             protected ValueNode genIf(ValueNode condition, ValueNode falseSuccessor, ValueNode trueSuccessor, double d) {
                 return new IfNode((LogicNode) condition, (FixedNode) falseSuccessor, (FixedNode) trueSuccessor, d);
             }
@@ -1370,6 +1369,61 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                         Debug.log(String.format("|   stack[%d] = %-8s : %s", i, value == null ? "bogus" : value.getKind().getJavaName(), value));
                     }
                 }
+            }
+
+            @Override
+            protected void ifNode(ValueNode x, Condition cond, ValueNode y) {
+                // assert !x.isDeleted() && !y.isDeleted();
+                // assert currentBlock.numNormalSuccessors() == 2;
+                assert currentBlock.getSuccessors().size() == 2;
+                BciBlock trueBlock = currentBlock.getSuccessors().get(0);
+                BciBlock falseBlock = currentBlock.getSuccessors().get(1);
+                if (trueBlock == falseBlock) {
+                    appendGoto(createTarget(trueBlock, frameState));
+                    return;
+                }
+
+                double probability = profilingInfo.getBranchTakenProbability(bci());
+                if (probability < 0) {
+                    assert probability == -1 : "invalid probability";
+                    Debug.log("missing probability in %s at bci %d", method, bci());
+                    probability = 0.5;
+                }
+
+                if (!optimisticOpts.removeNeverExecutedCode()) {
+                    if (probability == 0) {
+                        probability = 0.0000001;
+                    } else if (probability == 1) {
+                        probability = 0.999999;
+                    }
+                }
+
+                // the mirroring and negation operations get the condition into canonical form
+                boolean mirror = cond.canonicalMirror();
+                boolean negate = cond.canonicalNegate();
+
+                ValueNode a = mirror ? y : x;
+                ValueNode b = mirror ? x : y;
+
+                ValueNode condition;
+                assert !a.getKind().isNumericFloat();
+                if (cond == Condition.EQ || cond == Condition.NE) {
+                    if (a.getKind() == Kind.Object) {
+                        condition = genObjectEquals(a, b);
+                    } else {
+                        condition = genIntegerEquals(a, b);
+                    }
+                } else {
+                    assert a.getKind() != Kind.Object && !cond.isUnsigned();
+                    condition = genIntegerLessThan(a, b);
+                }
+                condition = genUnique(condition);
+
+                ValueNode trueSuccessor = createBlockTarget(probability, trueBlock, frameState);
+                ValueNode falseSuccessor = createBlockTarget(1 - probability, falseBlock, frameState);
+
+                ValueNode ifNode = negate ? genIf(condition, falseSuccessor, trueSuccessor, 1 - probability) : genIf(condition, trueSuccessor, falseSuccessor, probability);
+                append(ifNode);
             }
 
         }

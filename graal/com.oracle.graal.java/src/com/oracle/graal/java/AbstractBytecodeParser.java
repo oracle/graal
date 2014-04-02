@@ -519,61 +519,7 @@ public abstract class AbstractBytecodeParser<T extends KindProvider, F extends A
 
     protected abstract T genUnique(T x);
 
-    protected abstract T genIf(T condition, T falseSuccessor, T trueSuccessor, double d);
-
-    private void ifNode(T x, Condition cond, T y) {
-        // assert !x.isDeleted() && !y.isDeleted();
-        // assert currentBlock.numNormalSuccessors() == 2;
-        assert currentBlock.getSuccessors().size() == 2;
-        BciBlock trueBlock = currentBlock.getSuccessors().get(0);
-        BciBlock falseBlock = currentBlock.getSuccessors().get(1);
-        if (trueBlock == falseBlock) {
-            appendGoto(createTarget(trueBlock, frameState));
-            return;
-        }
-
-        double probability = profilingInfo.getBranchTakenProbability(bci());
-        if (probability < 0) {
-            assert probability == -1 : "invalid probability";
-            Debug.log("missing probability in %s at bci %d", method, bci());
-            probability = 0.5;
-        }
-
-        if (!optimisticOpts.removeNeverExecutedCode()) {
-            if (probability == 0) {
-                probability = 0.0000001;
-            } else if (probability == 1) {
-                probability = 0.999999;
-            }
-        }
-
-        // the mirroring and negation operations get the condition into canonical form
-        boolean mirror = cond.canonicalMirror();
-        boolean negate = cond.canonicalNegate();
-
-        T a = mirror ? y : x;
-        T b = mirror ? x : y;
-
-        T condition;
-        assert !a.getKind().isNumericFloat();
-        if (cond == Condition.EQ || cond == Condition.NE) {
-            if (a.getKind() == Kind.Object) {
-                condition = genObjectEquals(a, b);
-            } else {
-                condition = genIntegerEquals(a, b);
-            }
-        } else {
-            assert a.getKind() != Kind.Object && !cond.isUnsigned();
-            condition = genIntegerLessThan(a, b);
-        }
-        condition = genUnique(condition);
-
-        T trueSuccessor = createBlockTarget(probability, trueBlock, frameState);
-        T falseSuccessor = createBlockTarget(1 - probability, falseBlock, frameState);
-
-        T ifNode = negate ? genIf(condition, falseSuccessor, trueSuccessor, 1 - probability) : genIf(condition, trueSuccessor, falseSuccessor, probability);
-        append(ifNode);
-    }
+    protected abstract void ifNode(T x, Condition cond, T y);
 
     private void genIfZero(Condition cond) {
         T y = appendConstant(Constant.INT_0);
