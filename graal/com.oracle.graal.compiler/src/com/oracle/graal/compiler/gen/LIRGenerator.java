@@ -250,7 +250,7 @@ public abstract class LIRGenerator implements ArithmeticLIRGenerator, LIRGenerat
         assert suxIndex != -1 : "Block not in successor list of current block";
 
         assert currentBlock instanceof Block;
-        return LabelRef.forSuccessor(res.getLIR(), (Block) currentBlock, suxIndex);
+        return LabelRef.forSuccessor(res.getLIR(), currentBlock, suxIndex);
     }
 
     /**

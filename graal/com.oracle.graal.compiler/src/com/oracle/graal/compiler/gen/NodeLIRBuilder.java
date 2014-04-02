@@ -168,7 +168,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuiderTool {
         assert suxIndex != -1 : "Block not in successor list of current block";
 
         assert gen.getCurrentBlock() instanceof Block;
-        return LabelRef.forSuccessor(gen.getResult().getLIR(), (Block) gen.getCurrentBlock(), suxIndex);
+        return LabelRef.forSuccessor(gen.getResult().getLIR(), gen.getCurrentBlock(), suxIndex);
     }
 
     public final void append(LIRInstruction op) {
