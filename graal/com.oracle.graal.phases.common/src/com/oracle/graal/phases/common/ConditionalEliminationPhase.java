@@ -548,6 +548,17 @@ public class ConditionalEliminationPhase extends Phase {
                         }
                     }
                 }
+            } else if (guard.condition() instanceof IntegerEqualsNode && guard.negated()) {
+                IntegerEqualsNode equals = (IntegerEqualsNode) guard.condition();
+                GuardedStamp cstamp = state.valueConstraints.get(equals.y());
+                if (cstamp != null && equals.x().isConstant()) {
+                    IntegerStamp stamp = (IntegerStamp) cstamp.getStamp();
+                    if (!stamp.contains(equals.x().asConstant().asLong())) {
+                        // x != n is true if n is outside the range of the stamp
+                        existingGuard = cstamp.getGuard();
+                        Debug.log("existing guard %s %1s proves !%1s", existingGuard, existingGuard.condition(), guard.condition());
+                    }
+                }
             }
 
             if (existingGuard != null) {
@@ -670,7 +681,7 @@ public class ConditionalEliminationPhase extends Phase {
                 // just be registered since they aren't trivially deleteable. Test the other guards
                 // to see if they can be deleted using type constraints.
                 for (GuardNode guard : begin.guards().snapshot()) {
-                    if (provers.contains(guard) || !testExistingGuard(guard) || !testImpliedGuard(guard)) {
+                    if (provers.contains(guard) || !(testExistingGuard(guard) || testImpliedGuard(guard))) {
                         registerCondition(!guard.negated(), guard.condition(), guard);
                     }
                 }

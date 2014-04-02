@@ -28,6 +28,7 @@ import static org.junit.Assert.*;
 
 import org.junit.*;
 
+import com.oracle.graal.debug.internal.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.java.*;
@@ -254,6 +255,58 @@ public class ConditionalEliminationTest extends GraalCompilerTest {
         new CanonicalizerPhase(true).apply(graph, new PhaseContext(getProviders(), null));
 
         assertEquals(0, graph.getNodes().filter(CheckCastNode.class).count());
+    }
+
+    public static int testRedundantComparesSnippet(int[] array) {
+        if (array == null) {
+            return 0;
+        }
+        return array[0] + array[1] + array[2] + array[3];
+    }
+
+    @Test
+    public void testRedundantCompares() {
+        StructuredGraph graph = parse("testRedundantComparesSnippet");
+        CanonicalizerPhase canonicalizer = new CanonicalizerPhase(true);
+        PhaseContext context = new PhaseContext(getProviders(), null);
+
+        new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.HIGH_TIER).apply(graph, context);
+        canonicalizer.apply(graph, context);
+        new FloatingReadPhase().apply(graph);
+        new ConditionalEliminationPhase(getMetaAccess()).apply(graph);
+        canonicalizer.apply(graph, context);
+
+        assertEquals(1, graph.getNodes().filter(GuardNode.class).count());
+    }
+
+    public static int testDuplicateNullChecksSnippet(Object a) {
+        if (a == null) {
+            return 2;
+        }
+        try {
+            return ((Integer) a).intValue();
+        } catch (ClassCastException e) {
+            return 0;
+        }
+    }
+
+    @Test
+    @Ignore
+    public void testDuplicateNullChecks() {
+        // This tests whether explicit null checks properly eliminate later null guards. Currently
+        // it's failing.
+        StructuredGraph graph = parse("testDuplicateNullChecksSnippet");
+        CanonicalizerPhase canonicalizer = new CanonicalizerPhase(true);
+        PhaseContext context = new PhaseContext(getProviders(), null);
+
+        new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.HIGH_TIER).apply(graph, context);
+        canonicalizer.apply(graph, context);
+        new FloatingReadPhase().apply(graph);
+        new ConditionalEliminationPhase(getMetaAccess()).apply(graph);
+        canonicalizer.apply(graph, context);
+        DebugScope.forceDump(graph, "dup guards");
+
+        assertEquals(1, graph.getNodes().filter(GuardNode.class).count());
     }
 
     @Test
