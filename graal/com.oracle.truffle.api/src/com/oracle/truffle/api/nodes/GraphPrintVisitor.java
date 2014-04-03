@@ -59,6 +59,8 @@ public class GraphPrintVisitor {
     private Element nodesElement;
     private Element edgesElement;
 
+    private ChildSupplier childSupplier;
+
     public GraphPrintVisitor() {
         DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
         try {
@@ -71,6 +73,14 @@ public class GraphPrintVisitor {
 
         graphDocument = dom.createElement("graphDocument");
         dom.appendChild(graphDocument);
+    }
+
+    public void setChildSupplier(ChildSupplier callNodeVisitor) {
+        this.childSupplier = callNodeVisitor;
+    }
+
+    public ChildSupplier getChildSupplier() {
+        return childSupplier;
     }
 
     public GraphPrintVisitor beginGroup(String groupName) {
@@ -328,6 +338,15 @@ public class GraphPrintVisitor {
             // default handler
             createElementForNode(node);
 
+            if (childSupplier != null) {
+                Object result = childSupplier.startNode(node);
+                if (result != null) {
+                    visit(result);
+                    connectNodes(node, result, "inlined");
+                }
+                childSupplier.endNode(node);
+            }
+
             if (node instanceof Node) {
                 for (Map.Entry<String, Node> child : findNamedNodeChildren((Node) node).entrySet()) {
                     visit(child.getValue());
@@ -343,13 +362,6 @@ public class GraphPrintVisitor {
         LinkedHashMap<String, Node> nodes = new LinkedHashMap<>();
         NodeClass nodeClass = NodeClass.get(node.getClass());
 
-        if (node instanceof CallNode) {
-            CallNode callNode = ((CallNode) node);
-            RootNode inlinedRoot = callNode.getCurrentRootNode();
-            if (inlinedRoot != null && callNode.isInlined()) {
-                nodes.put("inlinedRoot", inlinedRoot);
-            }
-        }
         for (NodeField field : nodeClass.getFields()) {
             NodeFieldKind kind = field.getKind();
             if (kind == NodeFieldKind.CHILD || kind == NodeFieldKind.CHILDREN) {
@@ -394,6 +406,15 @@ public class GraphPrintVisitor {
     public interface GraphPrintHandler {
 
         void visit(Object node, GraphPrintAdapter gPrinter);
+    }
+
+    public interface ChildSupplier {
+
+        /** Supplies an additional child if available. */
+        Object startNode(Object callNode);
+
+        void endNode(Object callNode);
+
     }
 
     @Retention(RetentionPolicy.RUNTIME)

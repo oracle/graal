@@ -45,7 +45,7 @@ public abstract class RootCallTarget extends CallTarget {
         return rootNode.toString();
     }
 
-    public RootNode getRootNode() {
+    public final RootNode getRootNode() {
         return rootNode;
     }
 }

@@ -24,8 +24,6 @@
  */
 package com.oracle.truffle.api.nodes;
 
-import java.util.*;
-
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.frame.*;
 
@@ -38,11 +36,6 @@ public abstract class RootNode extends Node {
 
     private RootCallTarget callTarget;
     private final FrameDescriptor frameDescriptor;
-
-    /*
-     * Internal set to keep back-references to the call-sites.
-     */
-    private final Set<CallNode> cachedCallNodes = Collections.newSetFromMap(new WeakHashMap<CallNode, Boolean>());
 
     protected RootNode() {
         this(null, null);
@@ -112,28 +105,6 @@ public abstract class RootNode extends Node {
 
     public final void setCallTarget(RootCallTarget callTarget) {
         this.callTarget = callTarget;
-    }
-
-    /* Internal API. Do not use. */
-    final void addCachedCallNode(CallNode callSite) {
-        this.cachedCallNodes.add(callSite);
-    }
-
-    /* Internal API. Do not use. */
-    final void removeCachedCallNode(CallNode callSite) {
-        this.cachedCallNodes.remove(callSite);
-    }
-
-    /**
-     * Returns a {@link Set} of {@link CallNode} nodes which are created to invoke this RootNode.
-     * This method does not make any guarantees to contain all the {@link CallNode} nodes that are
-     * invoking this method. Due to its weak nature the elements returned by this method may change
-     * with each consecutive call.
-     * 
-     * @return a set of {@link CallNode} nodes
-     */
-    public final Set<CallNode> getCachedCallNodes() {
-        return Collections.unmodifiableSet(cachedCallNodes);
     }
 
 }

@@ -155,30 +155,4 @@ public abstract class CallNode extends Node {
         return null;
     }
 
-    @Override
-    protected void onReplace(Node newNode, CharSequence reason) {
-        super.onReplace(newNode, reason);
-
-        /*
-         * Old call nodes are removed in the old target root node.
-         */
-        CallNode oldCall = this;
-        RootNode oldRoot = getCurrentRootNode();
-        if (oldRoot != null) {
-            oldRoot.removeCachedCallNode(oldCall);
-        }
-
-        registerCallTarget((CallNode) newNode);
-    }
-
-    /**
-     * Internal API for the runtime system.
-     */
-    protected static final void registerCallTarget(CallNode newNode) {
-        RootNode newRoot = newNode.getCurrentRootNode();
-        if (newRoot != null) {
-            newRoot.addCachedCallNode(newNode);
-        }
-    }
-
 }

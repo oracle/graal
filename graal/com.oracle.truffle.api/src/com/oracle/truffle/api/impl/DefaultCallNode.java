@@ -36,7 +36,7 @@ public class DefaultCallNode extends CallNode {
 
     @Override
     public Object call(PackedFrame caller, Arguments arguments) {
-        return getCallTarget().call(caller, arguments);
+        return getCurrentCallTarget().call(caller, arguments);
     }
 
     @Override
@@ -70,6 +70,6 @@ public class DefaultCallNode extends CallNode {
 
     @Override
     public String toString() {
-        return getParent() != null ? getParent().toString() : super.toString();
+        return (getParent() != null ? getParent().toString() : super.toString()) + " call " + getCurrentCallTarget().toString();
     }
 }
