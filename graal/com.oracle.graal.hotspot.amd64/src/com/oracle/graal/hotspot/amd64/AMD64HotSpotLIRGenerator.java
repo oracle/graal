@@ -189,7 +189,8 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
 
     @Override
     public Variable emitForeignCall(ForeignCallLinkage linkage, DeoptimizingNode info, Value... args) {
-        boolean destroysRegisters = linkage.destroysRegisters();
+        HotSpotForeignCallLinkage hotspotLinkage = (HotSpotForeignCallLinkage) linkage;
+        boolean destroysRegisters = hotspotLinkage.destroysRegisters();
 
         AMD64SaveRegistersOp save = null;
         StackSlot[] savedRegisterLocations = null;
@@ -210,15 +211,20 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         }
 
         Variable result;
+        DeoptimizingNode deoptInfo = null;
+        if (hotspotLinkage.canDeoptimize()) {
+            deoptInfo = info;
+            assert deoptInfo != null || getStub() != null;
+            assert hotspotLinkage.needsJavaFrameAnchor();
+        }
 
-        if (linkage.canDeoptimize()) {
-            assert info != null || ((AMD64HotSpotLIRGenerationResult) getResult()).getStub() != null;
+        if (hotspotLinkage.needsJavaFrameAnchor()) {
             Register thread = getProviders().getRegisters().getThreadRegister();
             append(new AMD64HotSpotCRuntimeCallPrologueOp(config.threadLastJavaSpOffset(), thread));
-            result = super.emitForeignCall(linkage, info, args);
+            result = super.emitForeignCall(hotspotLinkage, deoptInfo, args);
             append(new AMD64HotSpotCRuntimeCallEpilogueOp(config.threadLastJavaSpOffset(), config.threadLastJavaFpOffset(), thread));
         } else {
-            result = super.emitForeignCall(linkage, info, args);
+            result = super.emitForeignCall(hotspotLinkage, deoptInfo, args);
         }
 
         if (destroysRegisters) {
