@@ -95,7 +95,7 @@ public final class HotSpotNmethod extends HotSpotInstalledCode {
     @Override
     public Object execute(Object arg1, Object arg2, Object arg3) throws InvalidInstalledCodeException {
         assert checkThreeObjectArgs();
-        return CompilerToVMImpl.executeCompiledMethodIntrinsic(arg1, arg2, arg3, this);
+        return runtime().getCompilerToVM().executeCompiledMethod(arg1, arg2, arg3, this);
     }
 
     protected boolean checkThreeObjectArgs() {
