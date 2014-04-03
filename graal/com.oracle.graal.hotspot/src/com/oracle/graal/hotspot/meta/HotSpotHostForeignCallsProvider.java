@@ -27,7 +27,6 @@ import static com.oracle.graal.api.meta.LocationIdentity.*;
 import static com.oracle.graal.hotspot.HotSpotBackend.*;
 import static com.oracle.graal.hotspot.HotSpotForeignCallLinkage.RegisterEffect.*;
 import static com.oracle.graal.hotspot.HotSpotForeignCallLinkage.Transition.*;
-import static com.oracle.graal.hotspot.nodes.MonitorExitStubCall.*;
 import static com.oracle.graal.hotspot.nodes.NewArrayStubCall.*;
 import static com.oracle.graal.hotspot.nodes.NewInstanceStubCall.*;
 import static com.oracle.graal.hotspot.nodes.NewMultiArrayStubCall.*;
@@ -131,7 +130,7 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         linkForeignCall(providers, CREATE_NULL_POINTER_EXCEPTION, c.createNullPointerExceptionAddress, PREPEND_THREAD, NOT_LEAF, REEXECUTABLE, ANY_LOCATION);
         linkForeignCall(providers, CREATE_OUT_OF_BOUNDS_EXCEPTION, c.createOutOfBoundsExceptionAddress, PREPEND_THREAD, NOT_LEAF, REEXECUTABLE, ANY_LOCATION);
         linkForeignCall(providers, MONITORENTER, c.monitorenterAddress, PREPEND_THREAD, NOT_LEAF, NOT_REEXECUTABLE, ANY_LOCATION);
-        linkForeignCall(providers, MONITOREXIT, c.monitorexitAddress, PREPEND_THREAD, NOT_LEAF, NOT_REEXECUTABLE, ANY_LOCATION);
+        linkForeignCall(providers, MONITOREXIT, c.monitorexitAddress, PREPEND_THREAD, LEAF_SP, NOT_REEXECUTABLE, ANY_LOCATION);
         linkForeignCall(providers, NEW_MULTI_ARRAY, c.newMultiArrayAddress, PREPEND_THREAD, NOT_LEAF, REEXECUTABLE, INIT_LOCATION);
         linkForeignCall(providers, DYNAMIC_NEW_ARRAY, c.dynamicNewArrayAddress, PREPEND_THREAD, NOT_LEAF, REEXECUTABLE, INIT_LOCATION);
         linkForeignCall(providers, DYNAMIC_NEW_INSTANCE, c.dynamicNewInstanceAddress, PREPEND_THREAD, NOT_LEAF, REEXECUTABLE, INIT_LOCATION);

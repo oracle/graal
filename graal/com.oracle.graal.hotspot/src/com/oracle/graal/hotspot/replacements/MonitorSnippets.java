@@ -59,7 +59,7 @@ import com.oracle.graal.word.*;
 
 /**
  * Snippets used for implementing the monitorenter and monitorexit instructions.
- * 
+ *
  * The locking algorithm used is described in the paper <a
  * href="http://dl.acm.org/citation.cfm?id=1167515.1167496"> Eliminating synchronization-related
  * atomic operations with biased locking and bulk rebiasing</a> by Kenneth Russell and David
@@ -325,7 +325,7 @@ public class MonitorSnippets implements Snippets {
                 // The object's mark word was not pointing to the displaced header,
                 // we do unlocking via runtime call.
                 traceObject(trace, "-lock{stub}", object, false);
-                MonitorExitStubCall.call(object, lockDepth);
+                monitorexitStub(MONITOREXIT, object, lock);
             } else {
                 traceObject(trace, "-lock{cas}", object, false);
             }
@@ -341,7 +341,8 @@ public class MonitorSnippets implements Snippets {
     public static void monitorexitStub(Object object, @ConstantParameter int lockDepth, @ConstantParameter boolean trace) {
         verifyOop(object);
         traceObject(trace, "-lock{stub}", object, false);
-        MonitorExitStubCall.call(object, lockDepth);
+        final Word lock = CurrentLockNode.currentLock(lockDepth);
+        monitorexitStub(MONITOREXIT, object, lock);
         endLockScope();
         decCounter();
     }
@@ -528,8 +529,12 @@ public class MonitorSnippets implements Snippets {
     }
 
     public static final ForeignCallDescriptor MONITORENTER = new ForeignCallDescriptor("monitorenter", void.class, Object.class, Word.class);
+    public static final ForeignCallDescriptor MONITOREXIT = new ForeignCallDescriptor("monitorexit", void.class, Object.class, Word.class);
 
     @NodeIntrinsic(ForeignCallNode.class)
     private static native void monitorenterStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Object object, Word lock);
+
+    @NodeIntrinsic(ForeignCallNode.class)
+    private static native void monitorexitStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Object object, Word lock);
 
 }

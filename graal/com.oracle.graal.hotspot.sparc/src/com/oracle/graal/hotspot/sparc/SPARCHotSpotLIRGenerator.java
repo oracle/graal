@@ -80,18 +80,23 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
 
     @Override
     public Variable emitForeignCall(ForeignCallLinkage linkage, DeoptimizingNode info, Value... args) {
+        HotSpotForeignCallLinkage hotspotLinkage = (HotSpotForeignCallLinkage) linkage;
         Variable result;
+        DeoptimizingNode deoptInfo = null;
+        if (hotspotLinkage.canDeoptimize()) {
+            deoptInfo = info;
+            assert deoptInfo != null || getStub() != null;
+        }
 
-        if (linkage.canDeoptimize()) {
-            assert info != null || getStub() != null;
+        if (hotspotLinkage.needsJavaFrameAnchor()) {
             HotSpotRegistersProvider registers = getProviders().getRegisters();
             Register thread = registers.getThreadRegister();
             Register stackPointer = registers.getStackPointerRegister();
             append(new SPARCHotSpotCRuntimeCallPrologueOp(config.threadLastJavaSpOffset(), thread, stackPointer));
-            result = super.emitForeignCall(linkage, info, args);
+            result = super.emitForeignCall(hotspotLinkage, deoptInfo, args);
             append(new SPARCHotSpotCRuntimeCallEpilogueOp(config.threadLastJavaSpOffset(), config.threadLastJavaPcOffset(), config.threadJavaFrameAnchorFlagsOffset(), thread));
         } else {
-            result = super.emitForeignCall(linkage, null, args);
+            result = super.emitForeignCall(hotspotLinkage, deoptInfo, args);
         }
 
         return result;
