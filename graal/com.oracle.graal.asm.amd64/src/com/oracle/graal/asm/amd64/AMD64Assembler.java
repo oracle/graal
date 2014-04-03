@@ -163,7 +163,7 @@ public class AMD64Assembler extends Assembler {
 
     /**
      * Constructs an assembler for the AMD64 architecture.
-     * 
+     *
      * @param registerConfig the register configuration used to bind {@link Register#Frame} and
      *            {@link Register#CallerFrame} to physical registers. This value can be null if this
      *            assembler instance will not be used to assemble instructions using these logical
@@ -183,44 +183,48 @@ public class AMD64Assembler extends Assembler {
         return r.encoding & 0x7;
     }
 
-    private void emitArith(int op1, int op2, Register dst, int imm32) {
-        emitArith(op1, op2, dst, imm32, false);
-    }
-
-    private void emitArith(int op1, int op2, Register dst, int imm32, boolean force32Imm) {
-        assert isUByte(op1) && isUByte(op2) : "wrong opcode";
-        assert (op1 & 0x01) == 1 : "should be 32bit operation";
-        assert (op1 & 0x02) == 0 : "sign-extension bit should not be set";
-        if (isByte(imm32) && !force32Imm) {
-            emitByte(op1 | 0x02); // set sign bit
-            emitByte(op2 | encode(dst));
+    private void emitArithImm32(int op, Register dst, int imm32) {
+        int encode = prefixAndEncode(op, dst.encoding);
+        if (isByte(imm32)) {
+            emitByte(0x83); // imm8 sign extend
+            emitByte(0xC0 | encode);
             emitByte(imm32 & 0xFF);
         } else {
-            emitByte(op1);
-            emitByte(op2 | encode(dst));
+            emitByte(0x81);
+            emitByte(0xC0 | encode);
+            emitInt(imm32);
+        }
+    }
+
+    private void emitArithImm32q(int op, Register dst, int imm32) {
+        emitArithImm32q(op, dst, imm32, false);
+    }
+
+    private void emitArithImm32q(int op, Register dst, int imm32, boolean force32Imm) {
+        int encode = prefixqAndEncode(op, dst.encoding);
+        if (isByte(imm32) && !force32Imm) {
+            emitByte(0x83); // imm8 sign extend
+            emitByte(0xC0 | encode);
+            emitByte(imm32 & 0xFF);
+        } else {
+            emitByte(0x81);
+            emitByte(0xC0 | encode);
             emitInt(imm32);
         }
     }
 
     // immediate-to-memory forms
-    private void emitArithOperand(int op1, int op2, AMD64Address adr, int imm32) {
-        assert (op1 & 0x01) == 1 : "should be 32bit operation";
-        assert (op1 & 0x02) == 0 : "sign-extension bit should not be set";
+    private void emitArithImm32(int op, AMD64Address adr, int imm32) {
+        prefix(adr);
         if (isByte(imm32)) {
-            emitByte(op1 | 0x02); // set sign bit
-            emitOperandHelper(op2, adr);
+            emitByte(0x83); // imm8 sign extend
+            emitOperandHelper(op, adr);
             emitByte(imm32 & 0xFF);
         } else {
-            emitByte(op1);
-            emitOperandHelper(op2, adr);
+            emitByte(0x81);
+            emitOperandHelper(op, adr);
             emitInt(imm32);
         }
-    }
-
-    private void emitArith(int op1, int op2, Register dst, Register src) {
-        assert isUByte(op1) && isUByte(op2) : "wrong opcode";
-        emitByte(op1);
-        emitByte(op2 | encode(dst) << 3 | encode(src));
     }
 
     protected void emitOperandHelper(Register reg, AMD64Address addr) {
@@ -333,13 +337,11 @@ public class AMD64Assembler extends Assembler {
     }
 
     public final void addl(AMD64Address dst, int imm32) {
-        prefix(dst);
-        emitArithOperand(0x81, 0, dst, imm32);
+        emitArithImm32(0, dst, imm32);
     }
 
     public final void addl(Register dst, int imm32) {
-        prefix(dst);
-        emitArith(0x81, 0xC0, dst, imm32);
+        emitArithImm32(0, dst, imm32);
     }
 
     public final void addl(Register dst, AMD64Address src) {
@@ -349,8 +351,9 @@ public class AMD64Assembler extends Assembler {
     }
 
     public final void addl(Register dst, Register src) {
-        prefixAndEncode(dst.encoding, src.encoding);
-        emitArith(0x03, 0xC0, dst, src);
+        int encode = prefixAndEncode(dst.encoding, src.encoding);
+        emitByte(0x03);
+        emitByte(0xC0 | encode);
     }
 
     private void addrNop4() {
@@ -424,8 +427,7 @@ public class AMD64Assembler extends Assembler {
     }
 
     public final void andl(Register dst, int imm32) {
-        prefix(dst);
-        emitArith(0x81, 0xE0, dst, imm32);
+        emitArithImm32(4, dst, imm32);
     }
 
     public final void andl(Register dst, AMD64Address src) {
@@ -435,8 +437,9 @@ public class AMD64Assembler extends Assembler {
     }
 
     public final void andl(Register dst, Register src) {
-        prefixAndEncode(dst.encoding, src.encoding);
-        emitArith(0x23, 0xC0, dst, src);
+        int encode = prefixAndEncode(dst.encoding, src.encoding);
+        emitByte(0x23);
+        emitByte(0xC0 | encode);
     }
 
     public final void bsfq(Register dst, Register src) {
@@ -510,13 +513,13 @@ public class AMD64Assembler extends Assembler {
     }
 
     public final void cmpl(Register dst, int imm32) {
-        prefix(dst);
-        emitArith(0x81, 0xF8, dst, imm32);
+        emitArithImm32(7, dst, imm32);
     }
 
     public final void cmpl(Register dst, Register src) {
-        prefixAndEncode(dst.encoding, src.encoding);
-        emitArith(0x3B, 0xC0, dst, src);
+        int encode = prefixAndEncode(dst.encoding, src.encoding);
+        emitByte(0x3B);
+        emitByte(0xC0 | encode);
     }
 
     public final void cmpl(Register dst, AMD64Address src) {
@@ -526,10 +529,7 @@ public class AMD64Assembler extends Assembler {
     }
 
     public final void cmpl(AMD64Address dst, int imm32) {
-        prefix(dst);
-        emitByte(0x81);
-        emitOperandHelper(7, dst);
-        emitInt(imm32);
+        emitArithImm32(7, dst, imm32);
     }
 
     // The 32-bit cmpxchg compares the value at adr with the contents of X86.rax,
@@ -1425,8 +1425,7 @@ public class AMD64Assembler extends Assembler {
     }
 
     public final void orl(Register dst, int imm32) {
-        prefix(dst);
-        emitArith(0x81, 0xC8, dst, imm32);
+        emitArithImm32(1, dst, imm32);
     }
 
     public final void orl(Register dst, AMD64Address src) {
@@ -1436,8 +1435,9 @@ public class AMD64Assembler extends Assembler {
     }
 
     public final void orl(Register dst, Register src) {
-        prefixAndEncode(dst.encoding, src.encoding);
-        emitArith(0x0B, 0xC0, dst, src);
+        int encode = prefixAndEncode(dst.encoding, src.encoding);
+        emitByte(0x0B);
+        emitByte(0xC0 | encode);
     }
 
     public final void popcntl(Register dst, AMD64Address src) {
@@ -1595,13 +1595,11 @@ public class AMD64Assembler extends Assembler {
     }
 
     public final void subl(AMD64Address dst, int imm32) {
-        prefix(dst);
-        emitArithOperand(0x81, 5, dst, imm32);
+        emitArithImm32(5, dst, imm32);
     }
 
     public final void subl(Register dst, int imm32) {
-        prefix(dst);
-        emitArith(0x81, 0xE8, dst, imm32);
+        emitArithImm32(5, dst, imm32);
     }
 
     public final void subl(Register dst, AMD64Address src) {
@@ -1611,8 +1609,9 @@ public class AMD64Assembler extends Assembler {
     }
 
     public final void subl(Register dst, Register src) {
-        prefixAndEncode(dst.encoding, src.encoding);
-        emitArith(0x2B, 0xC0, dst, src);
+        int encode = prefixAndEncode(dst.encoding, src.encoding);
+        emitByte(0x2B);
+        emitByte(0xC0 | encode);
     }
 
     public final void subsd(Register dst, Register src) {
@@ -1678,8 +1677,9 @@ public class AMD64Assembler extends Assembler {
     }
 
     public final void testl(Register dst, Register src) {
-        prefixAndEncode(dst.encoding, src.encoding);
-        emitArith(0x85, 0xC0, dst, src);
+        int encode = prefixAndEncode(dst.encoding, src.encoding);
+        emitByte(0x85);
+        emitByte(0xC0 | encode);
     }
 
     public final void testl(Register dst, AMD64Address src) {
@@ -1720,8 +1720,7 @@ public class AMD64Assembler extends Assembler {
     }
 
     public final void xorl(Register dst, int imm32) {
-        prefix(dst);
-        emitArith(0x81, 0xF0, dst, imm32);
+        emitArithImm32(6, dst, imm32);
     }
 
     public final void xorl(Register dst, AMD64Address src) {
@@ -1731,8 +1730,9 @@ public class AMD64Assembler extends Assembler {
     }
 
     public final void xorl(Register dst, Register src) {
-        prefixAndEncode(dst.encoding, src.encoding);
-        emitArith(0x33, 0xC0, dst, src);
+        int encode = prefixAndEncode(dst.encoding, src.encoding);
+        emitByte(0x33);
+        emitByte(0xC0 | encode);
     }
 
     public final void andpd(Register dst, Register src) {
@@ -1880,7 +1880,7 @@ public class AMD64Assembler extends Assembler {
     /**
      * Creates prefix and the encoding of the lower 6 bits of the ModRM-Byte. It emits an operand
      * prefix. If the given operands exceed 3 bits, the 4th bit is encoded in the prefix.
-     * 
+     *
      * @param regEncoding the encoding of the register part of the ModRM-Byte
      * @param rmEncoding the encoding of the r/m part of the ModRM-Byte
      * @return the lower 6 bits of the ModRM-Byte that should be emitted
@@ -1905,12 +1905,6 @@ public class AMD64Assembler extends Assembler {
             regEnc -= 8;
         }
         return regEnc << 3 | rmEnc;
-    }
-
-    private void prefix(Register reg) {
-        if (reg.encoding >= 8) {
-            emitByte(Prefix.REXB);
-        }
     }
 
     private static boolean needsRex(Register reg) {
@@ -2016,8 +2010,7 @@ public class AMD64Assembler extends Assembler {
     }
 
     public final void addq(Register dst, int imm32) {
-        prefixqAndEncode(dst.encoding);
-        emitArith(0x81, 0xC0, dst, imm32);
+        emitArithImm32q(0, dst, imm32);
     }
 
     public final void addq(Register dst, AMD64Address src) {
@@ -2027,13 +2020,13 @@ public class AMD64Assembler extends Assembler {
     }
 
     public final void addq(Register dst, Register src) {
-        prefixqAndEncode(dst.encoding, src.encoding);
-        emitArith(0x03, 0xC0, dst, src);
+        int encode = prefixqAndEncode(dst.encoding, src.encoding);
+        emitByte(0x03);
+        emitByte(0xC0 | encode);
     }
 
     public final void andq(Register dst, int imm32) {
-        prefixqAndEncode(dst.encoding);
-        emitArith(0x81, 0xE0, dst, imm32);
+        emitArithImm32q(4, dst, imm32);
     }
 
     public final void andq(Register dst, AMD64Address src) {
@@ -2043,8 +2036,9 @@ public class AMD64Assembler extends Assembler {
     }
 
     public final void andq(Register dst, Register src) {
-        prefixqAndEncode(dst.encoding, src.encoding);
-        emitArith(0x23, 0xC0, dst, src);
+        int encode = prefixqAndEncode(dst.encoding, src.encoding);
+        emitByte(0x23);
+        emitByte(0xC0 | encode);
     }
 
     public final void bswapq(Register reg) {
@@ -2080,13 +2074,13 @@ public class AMD64Assembler extends Assembler {
     }
 
     public final void cmpq(Register dst, int imm32) {
-        prefixqAndEncode(dst.encoding);
-        emitArith(0x81, 0xF8, dst, imm32);
+        emitArithImm32q(7, dst, imm32);
     }
 
     public final void cmpq(Register dst, Register src) {
-        prefixqAndEncode(dst.encoding, src.encoding);
-        emitArith(0x3B, 0xC0, dst, src);
+        int encode = prefixqAndEncode(dst.encoding, src.encoding);
+        emitByte(0x3B);
+        emitByte(0xC0 | encode);
     }
 
     public final void cmpq(Register dst, AMD64Address src) {
@@ -2307,8 +2301,7 @@ public class AMD64Assembler extends Assembler {
     }
 
     public final void orq(Register dst, int imm32) {
-        prefixqAndEncode(dst.encoding);
-        emitArith(0x81, 0xC8, dst, imm32);
+        emitArithImm32q(1, dst, imm32);
     }
 
     public final void orq(Register dst, AMD64Address src) {
@@ -2318,8 +2311,9 @@ public class AMD64Assembler extends Assembler {
     }
 
     public final void orq(Register dst, Register src) {
-        prefixqAndEncode(dst.encoding, src.encoding);
-        emitArith(0x0B, 0xC0, dst, src);
+        int encode = prefixqAndEncode(dst.encoding, src.encoding);
+        emitByte(0x0B);
+        emitByte(0xC0 | encode);
     }
 
     public final void sarq(Register dst, int imm8) {
@@ -2383,8 +2377,7 @@ public class AMD64Assembler extends Assembler {
     }
 
     private void subq(Register dst, int imm32, boolean force32Imm) {
-        prefixqAndEncode(dst.encoding);
-        emitArith(0x81, 0xE8, dst, imm32, force32Imm);
+        emitArithImm32q(5, dst, imm32, force32Imm);
     }
 
     public final void subq(Register dst, AMD64Address src) {
@@ -2394,8 +2387,9 @@ public class AMD64Assembler extends Assembler {
     }
 
     public final void subq(Register dst, Register src) {
-        prefixqAndEncode(dst.encoding, src.encoding);
-        emitArith(0x2B, 0xC0, dst, src);
+        int encode = prefixqAndEncode(dst.encoding, src.encoding);
+        emitByte(0x2B);
+        emitByte(0xC0 | encode);
     }
 
     public final void testq(Register dst, int imm32) {
@@ -2415,8 +2409,9 @@ public class AMD64Assembler extends Assembler {
     }
 
     public final void testq(Register dst, Register src) {
-        prefixqAndEncode(dst.encoding, src.encoding);
-        emitArith(0x85, 0xC0, dst, src);
+        int encode = prefixqAndEncode(dst.encoding, src.encoding);
+        emitByte(0x85);
+        emitByte(0xC0 | encode);
     }
 
     public final void testq(Register dst, AMD64Address src) {
@@ -2433,13 +2428,13 @@ public class AMD64Assembler extends Assembler {
     }
 
     public final void xorq(Register dst, int imm32) {
-        prefixqAndEncode(dst.encoding);
-        emitArith(0x81, 0xF0, dst, imm32);
+        emitArithImm32q(6, dst, imm32);
     }
 
     public final void xorq(Register dst, Register src) {
-        prefixqAndEncode(dst.encoding, src.encoding);
-        emitArith(0x33, 0xC0, dst, src);
+        int encode = prefixqAndEncode(dst.encoding, src.encoding);
+        emitByte(0x33);
+        emitByte(0xC0 | encode);
     }
 
     public final void xorq(Register dst, AMD64Address src) {
