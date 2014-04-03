@@ -390,21 +390,10 @@ public class BaselineBytecodeParser extends AbstractBytecodeParser<Value, LIRFra
             }
         }
 
-        // the mirroring and negation operations get the condition into canonical form
-        boolean mirror = cond.canonicalMirror();
-        boolean negate = cond.canonicalNegate();
+        LabelRef trueDestination = LabelRef.forSuccessor(lirGenRes.getLIR(), currentBlock, 0);
+        LabelRef falseDestination = LabelRef.forSuccessor(lirGenRes.getLIR(), currentBlock, 1);
 
-        Value a = mirror ? y : x;
-        Value b = mirror ? x : y;
-
-        LabelRef trueDestination = LabelRef.forSuccessor(lirGenRes.getLIR(), trueBlock, 0);
-        LabelRef falseDestination = LabelRef.forSuccessor(lirGenRes.getLIR(), falseBlock, 1);
-
-        if (negate) {
-            gen.emitCompareBranch(a.getKind(), a, b, cond, false, falseDestination, trueDestination, 1 - probability);
-        } else {
-            gen.emitCompareBranch(a.getKind(), a, b, cond, false, trueDestination, falseDestination, probability);
-        }
+        gen.emitCompareBranch(x.getKind(), x, y, cond, false, trueDestination, falseDestination, probability);
     }
 
     @Override
