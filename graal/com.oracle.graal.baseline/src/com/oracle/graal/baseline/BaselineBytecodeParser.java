@@ -401,9 +401,9 @@ public class BaselineBytecodeParser extends AbstractBytecodeParser<Value, LIRFra
         LabelRef falseDestination = LabelRef.forSuccessor(lirGenRes.getLIR(), falseBlock, 1);
 
         if (negate) {
-            gen.emitCompareBranch(a, b, cond, false, falseDestination, trueDestination, 1 - probability);
+            gen.emitCompareBranch(a.getKind(), a, b, cond, false, falseDestination, trueDestination, 1 - probability);
         } else {
-            gen.emitCompareBranch(a, b, cond, false, trueDestination, falseDestination, probability);
+            gen.emitCompareBranch(a.getKind(), a, b, cond, false, trueDestination, falseDestination, probability);
         }
     }
 

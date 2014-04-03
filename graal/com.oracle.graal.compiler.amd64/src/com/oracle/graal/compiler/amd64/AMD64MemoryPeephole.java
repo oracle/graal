@@ -458,19 +458,11 @@ public class AMD64MemoryPeephole implements MemoryArithmeticLIRLowerer {
                     return false;
                 }
             }
-            if (kind != kind.getStackKind()) {
-                Debug.log("Skipping constant compares for stack kinds");
-                return false;
-            }
             ensureEvaluated(other);
             gen.getLIRGenerator().emitCompareMemoryConOp(kind, makeAddress(access), constant, getState(access));
             mirrored = uncast(right) == access;
         } else {
-            if (kind != kind.getStackKind()) {
-                // Register compares only work for stack kinds
-                Debug.log("Register compares only work for stack kinds");
-                return false;
-            } else if (kind == Kind.Object) {
+            if (kind == Kind.Object) {
                 // Can't compare against objects since they require encode/decode
                 Debug.log("Skipping compares for Object kinds");
                 return false;

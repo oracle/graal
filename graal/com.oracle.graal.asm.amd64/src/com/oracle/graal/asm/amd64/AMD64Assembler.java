@@ -183,6 +183,27 @@ public class AMD64Assembler extends Assembler {
         return r.encoding & 0x7;
     }
 
+    private void emitArithImm8(int op, Register dst, int imm8) {
+        int encode = prefixAndEncode(op, dst.encoding, true);
+        emitByte(0x80);
+        emitByte(0xC0 | encode);
+        emitByte(imm8);
+    }
+
+    private void emitArithImm16(int op, Register dst, int imm16) {
+        emitByte(0x66);
+        int encode = prefixAndEncode(op, dst.encoding);
+        if (isByte(imm16)) {
+            emitByte(0x83); // imm8 sign extend
+            emitByte(0xC0 | encode);
+            emitByte(imm16 & 0xFF);
+        } else {
+            emitByte(0x81);
+            emitByte(0xC0 | encode);
+            emitShort(imm16);
+        }
+    }
+
     private void emitArithImm32(int op, Register dst, int imm32) {
         int encode = prefixAndEncode(op, dst.encoding);
         if (isByte(imm32)) {
@@ -214,6 +235,27 @@ public class AMD64Assembler extends Assembler {
     }
 
     // immediate-to-memory forms
+    private void emitArithImm8(int op, AMD64Address adr, int imm8) {
+        prefix(adr);
+        emitByte(0x80);
+        emitOperandHelper(op, adr);
+        emitByte(imm8);
+    }
+
+    private void emitArithImm16(int op, AMD64Address adr, int imm16) {
+        emitByte(0x66);
+        prefix(adr);
+        if (isByte(imm16)) {
+            emitByte(0x83); // imm8 sign extend
+            emitOperandHelper(op, adr);
+            emitByte(imm16 & 0xFF);
+        } else {
+            emitByte(0x81);
+            emitOperandHelper(op, adr);
+            emitShort(imm16);
+        }
+    }
+
     private void emitArithImm32(int op, AMD64Address adr, int imm32) {
         prefix(adr);
         if (isByte(imm32)) {
@@ -510,6 +552,48 @@ public class AMD64Assembler extends Assembler {
         emitByte(0x0F);
         emitByte(0x40 | cc.getValue());
         emitOperandHelper(dst, src);
+    }
+
+    public final void cmpb(Register dst, int imm8) {
+        emitArithImm8(7, dst, imm8);
+    }
+
+    public final void cmpb(Register dst, Register src) {
+        int encode = prefixAndEncode(dst.encoding, src.encoding, true);
+        emitByte(0x3A);
+        emitByte(0xC0 | encode);
+    }
+
+    public final void cmpb(Register dst, AMD64Address src) {
+        prefix(src, dst, true);
+        emitByte(0x3A);
+        emitOperandHelper(dst, src);
+    }
+
+    public final void cmpb(AMD64Address dst, int imm8) {
+        emitArithImm8(7, dst, imm8);
+    }
+
+    public final void cmpw(Register dst, int imm16) {
+        emitArithImm16(7, dst, imm16);
+    }
+
+    public final void cmpw(Register dst, Register src) {
+        emitByte(0x66);
+        int encode = prefixAndEncode(dst.encoding, src.encoding);
+        emitByte(0x3B);
+        emitByte(0xC0 | encode);
+    }
+
+    public final void cmpw(Register dst, AMD64Address src) {
+        emitByte(0x66);
+        prefix(src, dst);
+        emitByte(0x3B);
+        emitOperandHelper(dst, src);
+    }
+
+    public final void cmpw(AMD64Address dst, int imm16) {
+        emitArithImm16(7, dst, imm16);
     }
 
     public final void cmpl(Register dst, int imm32) {
