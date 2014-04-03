@@ -22,9 +22,12 @@
  */
 package com.oracle.graal.truffle;
 
+import java.util.*;
+
 import com.oracle.graal.debug.*;
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.nodes.GraphPrintVisitor.ChildSupplier;
 
 public class TruffleTreeDumpHandler implements DebugDumpHandler {
 
@@ -32,10 +35,63 @@ public class TruffleTreeDumpHandler implements DebugDumpHandler {
     public void dump(Object object, final String message) {
         if (object instanceof RootCallTarget) {
             RootCallTarget callTarget = (RootCallTarget) object;
-            if (callTarget.getRootNode() != null) {
-                new GraphPrintVisitor().beginGroup(callTarget.toString()).beginGraph(message).visit(callTarget.getRootNode()).printToNetwork(false);
-            }
+            dumpRootCallTarget(message, callTarget);
         }
+    }
+
+    private static void dumpRootCallTarget(final String message, RootCallTarget callTarget) {
+        if (callTarget.getRootNode() != null) {
+            final GraphPrintVisitor visitor = new GraphPrintVisitor();
+
+            final OptimizedCallTarget oct = (OptimizedCallTarget) callTarget;
+
+            visitor.beginGroup(callTarget.toString());
+            dumpInlinedCalls(visitor, oct);
+            dumpFullTree(visitor, message, oct);
+            visitor.printToNetwork(false);
+        }
+    }
+
+    private static void dumpFullTree(final GraphPrintVisitor visitor, final String message, final OptimizedCallTarget oct) {
+        visitor.setChildSupplier(new ChildSupplier() {
+            private TruffleCallPath currentPath = new TruffleCallPath(oct);
+
+            public Object startNode(Object callNode) {
+                if (callNode instanceof OptimizedCallNode) {
+                    currentPath = new TruffleCallPath(currentPath, (OptimizedCallNode) callNode);
+                    if (oct.getInliningResult() != null && oct.getInliningResult().isInlined(currentPath)) {
+                        return ((OptimizedCallNode) callNode).getCurrentRootNode();
+                    }
+                }
+                return null;
+            }
+
+            public void endNode(Object callNode) {
+                if (callNode instanceof OptimizedCallNode) {
+                    currentPath = currentPath.getParent();
+                }
+            }
+        });
+
+        visitor.beginGraph(message).visit(oct.getRootNode());
+        visitor.setChildSupplier(null);
+    }
+
+    private static void dumpInlinedCalls(final GraphPrintVisitor visitor, final OptimizedCallTarget oct) {
+        final Set<OptimizedCallTarget> visitedRoots = new HashSet<>();
+        oct.getRootNode().accept(new OptimizedCallUtils.InlinedCallVisitor(oct.getInliningResult(), new TruffleCallPath(oct)) {
+            @Override
+            public boolean visit(TruffleCallPath path, Node node) {
+                if (node instanceof OptimizedCallNode) {
+                    OptimizedCallTarget target = ((OptimizedCallNode) node).getCurrentCallTarget();
+                    if (!visitedRoots.contains(target)) {
+                        visitor.beginGraph("inlined " + target.toString()).visit(target.getRootNode());
+                        visitedRoots.add(target);
+                    }
+                }
+                return true;
+            }
+        });
     }
 
     public void close() {

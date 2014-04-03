@@ -96,7 +96,8 @@ public final class OptimizedCallTargetImpl extends OptimizedCallTarget {
         cancelInstalledTask(oldNode, newNode, reason);
     }
 
-    private void cancelInstalledTask(Node oldNode, Node newNode, CharSequence reason) {
+    @Override
+    protected void cancelInstalledTask(Node oldNode, Node newNode, CharSequence reason) {
         Future<InstalledCode> task = this.installedCodeTask;
         if (task != null) {
             task.cancel(true);
@@ -145,6 +146,7 @@ public final class OptimizedCallTargetImpl extends OptimizedCallTarget {
             return null;
         } else {
             performInlining();
+            cancelInlinedCallOptimization();
             logOptimizingQueued(this);
             this.installedCodeTask = compiler.compile(this);
             if (!TruffleBackgroundCompilation.getValue()) {
@@ -171,6 +173,8 @@ public final class OptimizedCallTargetImpl extends OptimizedCallTarget {
                 }
             }
             return null;
+        } finally {
+            onCompilationDone();
         }
     }
 

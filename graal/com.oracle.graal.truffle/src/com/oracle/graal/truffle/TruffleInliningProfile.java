@@ -24,14 +24,98 @@ package com.oracle.graal.truffle;
 
 import java.util.*;
 
-public interface TruffleInliningProfile extends Comparable<TruffleInliningProfile> {
+public class TruffleInliningProfile implements Comparable<TruffleInliningProfile> {
 
-    OptimizedCallNode getCallNode();
+    private final TruffleCallPath callPath;
 
-    boolean isInliningAllowed();
+    private final int nodeCount;
+    private final int deepNodeCount;
+    private final int callSites;
+    private final double frequency;
+    private final boolean forced;
+    private final TruffleInliningResult recursiveResult;
 
-    int compareTo(TruffleInliningProfile o);
+    private String failedReason;
+    private int queryIndex = -1;
+    private double score;
 
-    Map<String, Object> getDebugProperties();
+    public TruffleInliningProfile(TruffleCallPath callPath, int callSites, int nodeCount, int deepNodeCount, double frequency, boolean forced, TruffleInliningResult recursiveResult) {
+        if (callPath.isRoot()) {
+            throw new IllegalArgumentException("Root call path not profilable.");
+        }
+        this.callSites = callSites;
+        this.callPath = callPath;
+        this.nodeCount = nodeCount;
+        this.deepNodeCount = deepNodeCount;
+        this.frequency = frequency;
+        this.forced = forced;
+        this.recursiveResult = recursiveResult;
+    }
 
+    public int getCallSites() {
+        return callSites;
+    }
+
+    public int getNodeCount() {
+        return nodeCount;
+    }
+
+    public TruffleInliningResult getRecursiveResult() {
+        return recursiveResult;
+    }
+
+    public void setScore(double score) {
+        this.score = score;
+    }
+
+    public double getScore() {
+        return score;
+    }
+
+    public String getFailedReason() {
+        return failedReason;
+    }
+
+    public void setQueryIndex(int queryIndex) {
+        this.queryIndex = queryIndex;
+    }
+
+    public int getQueryIndex() {
+        return queryIndex;
+    }
+
+    public void setFailedReason(String reason) {
+        this.failedReason = reason;
+    }
+
+    public boolean isForced() {
+        return forced;
+    }
+
+    public double getFrequency() {
+        return frequency;
+    }
+
+    public int getDeepNodeCount() {
+        return deepNodeCount;
+    }
+
+    public TruffleCallPath getCallPath() {
+        return callPath;
+    }
+
+    public int compareTo(TruffleInliningProfile o) {
+        return callPath.compareTo(o.callPath);
+    }
+
+    public Map<String, Object> getDebugProperties() {
+        Map<String, Object> properties = new LinkedHashMap<>();
+        properties.put("callSites", callSites);
+        properties.put("nodeCount", nodeCount);
+        properties.put("frequency", frequency);
+        properties.put("score", score);
+        properties.put(String.format("index=%3d, force=%s", queryIndex, (forced ? "Y" : "N")), "");
+        properties.put("reason", failedReason);
+        return properties;
+    }
 }
