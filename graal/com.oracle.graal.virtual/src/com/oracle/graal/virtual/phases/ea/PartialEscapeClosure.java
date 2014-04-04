@@ -29,7 +29,6 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.PhiNode.PhiType;
 import com.oracle.graal.nodes.VirtualState.NodeClosure;
 import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.extended.*;
@@ -248,7 +247,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                     ValueNode value = obj.getEntry(i);
                     if (!(value instanceof VirtualObjectNode || value.isConstant())) {
                         if (exitNode.loopBegin().isPhiAtMerge(value) || initialObj == null || !initialObj.isVirtual() || initialObj.getEntry(i) != value) {
-                            ProxyNode proxy = new ProxyNode(value, exitNode, PhiType.Value);
+                            ProxyNode proxy = new ValueProxyNode(value, exitNode);
                             obj.setEntry(i, proxy);
                             effects.addFloatingNode(proxy, "virtualProxy");
                         }
@@ -258,7 +257,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                 if (initialObj == null || initialObj.isVirtual()) {
                     ProxyNode proxy = proxies.get(obj.virtual);
                     if (proxy == null) {
-                        proxy = new ProxyNode(obj.getMaterializedValue(), exitNode, PhiType.Value);
+                        proxy = new ValueProxyNode(obj.getMaterializedValue(), exitNode);
                         effects.addFloatingNode(proxy, "proxy");
                     } else {
                         effects.replaceFirstInput(proxy, proxy.value(), obj.getMaterializedValue());
@@ -281,34 +280,34 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
 
     protected class MergeProcessor extends EffectsClosure<BlockT>.MergeProcessor {
 
-        private final HashMap<Object, PhiNode> materializedPhis = new HashMap<>();
-        private final IdentityHashMap<ValueNode, PhiNode[]> valuePhis = new IdentityHashMap<>();
-        private final IdentityHashMap<PhiNode, VirtualObjectNode> valueObjectVirtuals = new IdentityHashMap<>();
+        private final HashMap<Object, ValuePhiNode> materializedPhis = new HashMap<>();
+        private final IdentityHashMap<ValueNode, ValuePhiNode[]> valuePhis = new IdentityHashMap<>();
+        private final IdentityHashMap<ValuePhiNode, VirtualObjectNode> valueObjectVirtuals = new IdentityHashMap<>();
 
         public MergeProcessor(Block mergeBlock) {
             super(mergeBlock);
         }
 
         protected <T> PhiNode getCachedPhi(T virtual, Stamp stamp) {
-            PhiNode result = materializedPhis.get(virtual);
+            ValuePhiNode result = materializedPhis.get(virtual);
             if (result == null) {
-                result = new PhiNode(stamp, merge);
+                result = new ValuePhiNode(stamp, merge);
                 materializedPhis.put(virtual, result);
             }
             return result;
         }
 
         private PhiNode[] getValuePhis(ValueNode key, int entryCount) {
-            PhiNode[] result = valuePhis.get(key);
+            ValuePhiNode[] result = valuePhis.get(key);
             if (result == null) {
-                result = new PhiNode[entryCount];
+                result = new ValuePhiNode[entryCount];
                 valuePhis.put(key, result);
             }
             assert result.length == entryCount;
             return result;
         }
 
-        private VirtualObjectNode getValueObjectVirtual(PhiNode phi, VirtualObjectNode virtual) {
+        private VirtualObjectNode getValueObjectVirtual(ValuePhiNode phi, VirtualObjectNode virtual) {
             VirtualObjectNode result = valueObjectVirtuals.get(phi);
             if (result == null) {
                 result = virtual.duplicate();
@@ -380,8 +379,8 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                 }
 
                 for (PhiNode phi : merge.phis()) {
-                    if (usages.isMarked(phi) && phi.type() == PhiType.Value) {
-                        materialized |= processPhi(phi, states, virtualObjTemp);
+                    if (usages.isMarked(phi) && phi instanceof ValuePhiNode) {
+                        materialized |= processPhi((ValuePhiNode) phi, states, virtualObjTemp);
                     }
                 }
                 if (materialized) {
@@ -466,7 +465,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                     for (int i = 1; i < objStates.length; i++) {
                         ValueNode[] fields = objStates[i].getEntries();
                         if (phis[valueIndex] == null && values[valueIndex] != fields[valueIndex]) {
-                            phis[valueIndex] = new PhiNode(values[valueIndex].stamp().unrestricted(), merge);
+                            phis[valueIndex] = new ValuePhiNode(values[valueIndex].stamp().unrestricted(), merge);
                         }
                     }
                     if (twoSlotKinds != null && twoSlotKinds[valueIndex] != null) {
@@ -556,7 +555,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
          *            and therefore also exist in the merged state
          * @return true if materialization happened during the merge, false otherwise
          */
-        private boolean processPhi(PhiNode phi, List<BlockT> states, Set<VirtualObjectNode> mergedVirtualObjects) {
+        private boolean processPhi(ValuePhiNode phi, List<BlockT> states, Set<VirtualObjectNode> mergedVirtualObjects) {
             aliases.set(phi, null);
             assert states.size() == phi.valueCount();
 

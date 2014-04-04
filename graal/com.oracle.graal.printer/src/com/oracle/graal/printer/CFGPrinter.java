@@ -159,7 +159,7 @@ class CFGPrinter extends CompilationPrinter {
     }
 
     private void scheduleInputs(Node node, Block nodeBlock) {
-        if (node instanceof PhiNode) {
+        if (node instanceof ValuePhiNode) {
             PhiNode phi = (PhiNode) node;
             assert nodeBlock.getBeginNode() == phi.merge();
             for (Block pred : nodeBlock.getPredecessors()) {
@@ -289,7 +289,7 @@ class CFGPrinter extends CompilationPrinter {
         assert !printedNodes.isMarked(node);
         printedNodes.mark(node);
 
-        if (!(node instanceof PhiNode)) {
+        if (!(node instanceof ValuePhiNode)) {
             for (Node input : node.inputs()) {
                 if (!inFixedSchedule(input) && !printedNodes.isMarked(input)) {
                     printNode(input, true);

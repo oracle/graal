@@ -192,7 +192,7 @@ public class HIRFrameStateBuilder extends AbstractFrameStateBuilder<ValueNode> {
 
         } else if (block.isPhiAtMerge(currentValue)) {
             if (otherValue == null || otherValue.isDeleted() || currentValue.getKind() != otherValue.getKind()) {
-                propagateDelete((PhiNode) currentValue);
+                propagateDelete((ValuePhiNode) currentValue);
                 return null;
             }
             ((PhiNode) currentValue).addInput(otherValue);
@@ -204,7 +204,7 @@ public class HIRFrameStateBuilder extends AbstractFrameStateBuilder<ValueNode> {
                 return null;
             }
 
-            PhiNode phi = graph.addWithoutUnique(new PhiNode(currentValue.stamp().unrestricted(), block));
+            ValuePhiNode phi = graph.addWithoutUnique(new ValuePhiNode(currentValue.stamp().unrestricted(), block));
             for (int i = 0; i < block.phiPredecessorCount(); i++) {
                 phi.addInput(currentValue);
             }
@@ -218,16 +218,16 @@ public class HIRFrameStateBuilder extends AbstractFrameStateBuilder<ValueNode> {
     }
 
     private void propagateDelete(FloatingNode node) {
-        assert node instanceof PhiNode || node instanceof ProxyNode;
+        assert node instanceof ValuePhiNode || node instanceof ProxyNode;
         if (node.isDeleted()) {
             return;
         }
         // Collect all phi functions that use this phi so that we can delete them recursively (after
         // we delete ourselves to avoid circles).
-        List<FloatingNode> propagateUsages = node.usages().filter(FloatingNode.class).filter(isA(PhiNode.class).or(ProxyNode.class)).snapshot();
+        List<FloatingNode> propagateUsages = node.usages().filter(FloatingNode.class).filter(isA(ValuePhiNode.class).or(ProxyNode.class)).snapshot();
 
         // Remove the phi function from all FrameStates where it is used and then delete it.
-        assert node.usages().filter(isNotA(FrameState.class).nor(PhiNode.class).nor(ProxyNode.class)).isEmpty() : "phi function that gets deletes must only be used in frame states";
+        assert node.usages().filter(isNotA(FrameState.class).nor(ValuePhiNode.class).nor(ProxyNode.class)).isEmpty() : "phi function that gets deletes must only be used in frame states";
         node.replaceAtUsages(null);
         node.safeDelete();
 
@@ -296,13 +296,13 @@ public class HIRFrameStateBuilder extends AbstractFrameStateBuilder<ValueNode> {
         }
     }
 
-    private PhiNode createLoopPhi(MergeNode block, ValueNode value) {
+    private ValuePhiNode createLoopPhi(MergeNode block, ValueNode value) {
         if (value == null) {
             return null;
         }
         assert !block.isPhiAtMerge(value) : "phi function for this block already created";
 
-        PhiNode phi = graph.addWithoutUnique(new PhiNode(value.stamp().unrestricted(), block));
+        ValuePhiNode phi = graph.addWithoutUnique(new ValuePhiNode(value.stamp().unrestricted(), block));
         phi.addInput(value);
         return phi;
     }
@@ -310,7 +310,7 @@ public class HIRFrameStateBuilder extends AbstractFrameStateBuilder<ValueNode> {
     public void cleanupDeletedPhis() {
         for (int i = 0; i < localsSize(); i++) {
             if (localAt(i) != null && localAt(i).isDeleted()) {
-                assert localAt(i) instanceof PhiNode || localAt(i) instanceof ProxyNode : "Only phi and value proxies can be deleted during parsing: " + localAt(i);
+                assert localAt(i) instanceof ValuePhiNode || localAt(i) instanceof ProxyNode : "Only phi and value proxies can be deleted during parsing: " + localAt(i);
                 storeLocal(i, null);
             }
         }

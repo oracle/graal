@@ -628,7 +628,7 @@ public class InliningUtil {
 
             PhiNode returnValuePhi = null;
             if (invoke.asNode().getKind() != Kind.Void) {
-                returnValuePhi = graph.addWithoutUnique(new PhiNode(invoke.asNode().stamp().unrestricted(), returnMerge));
+                returnValuePhi = graph.addWithoutUnique(new ValuePhiNode(invoke.asNode().stamp().unrestricted(), returnMerge));
             }
 
             MergeNode exceptionMerge = null;
@@ -641,7 +641,7 @@ public class InliningUtil {
 
                 FixedNode exceptionSux = exceptionEdge.next();
                 graph.addBeforeFixed(exceptionSux, exceptionMerge);
-                exceptionObjectPhi = graph.addWithoutUnique(new PhiNode(StampFactory.forKind(Kind.Object), exceptionMerge));
+                exceptionObjectPhi = graph.addWithoutUnique(new ValuePhiNode(StampFactory.forKind(Kind.Object), exceptionMerge));
                 exceptionMerge.setStateAfter(exceptionEdge.stateAfter().duplicateModified(invoke.stateAfter().bci, true, Kind.Object, exceptionObjectPhi));
             }
 
@@ -1489,7 +1489,7 @@ public class InliningUtil {
 
             if (returnNode.result() != null) {
                 if (returnValuePhi == null) {
-                    returnValuePhi = merge.graph().addWithoutUnique(new PhiNode(returnNode.result().stamp().unrestricted(), merge));
+                    returnValuePhi = merge.graph().addWithoutUnique(new ValuePhiNode(returnNode.result().stamp().unrestricted(), merge));
                 }
                 returnValuePhi.addInput(returnNode.result());
             }

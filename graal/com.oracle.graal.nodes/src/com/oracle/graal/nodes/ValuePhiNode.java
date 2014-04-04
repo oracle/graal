@@ -22,38 +22,41 @@
  */
 package com.oracle.graal.nodes;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
-import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.type.*;
 
 /**
- * The {@code PhiNode} represents the merging of dataflow in the memory graph.
+ * The {@code PhiNode} represents the merging of dataflow in the graph. It refers to a merge and a
+ * variable.
  */
-public class MemoryPhiNode extends PhiNode implements MemoryNode {
+@NodeInfo(nameTemplate = "ValuePhi({i#values})")
+public class ValuePhiNode extends PhiNode implements Canonicalizable {
 
     @Input final NodeInputList<ValueNode> values = new NodeInputList<>(this);
-    private final LocationIdentity locationIdentity;
 
-    public MemoryPhiNode(MergeNode merge, LocationIdentity locationIdentity) {
-        super(StampFactory.dependency(), merge);
-        this.locationIdentity = locationIdentity;
-    }
-
-    public LocationIdentity getLocationIdentity() {
-        return locationIdentity;
-    }
-
-    public MemoryCheckpoint asMemoryCheckpoint() {
-        return null;
-    }
-
-    public MemoryPhiNode asMemoryPhi() {
-        return this;
+    /**
+     * Create a value phi with the specified stamp.
+     *
+     * @param stamp the stamp of the value
+     * @param merge the merge that the new phi belongs to
+     */
+    public ValuePhiNode(Stamp stamp, MergeNode merge) {
+        super(stamp, merge);
+        assert stamp != StampFactory.forVoid();
     }
 
     @Override
     public NodeInputList<ValueNode> values() {
         return values;
+    }
+
+    @Override
+    public boolean inferStamp() {
+        return inferPhiStamp();
+    }
+
+    public boolean inferPhiStamp() {
+        return updateStamp(StampTool.meet(values()));
     }
 }

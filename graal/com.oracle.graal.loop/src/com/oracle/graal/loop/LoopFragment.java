@@ -330,18 +330,14 @@ public abstract class LoopFragment {
                 ProxyNode newVpn = getDuplicatedNode(vpn);
                 if (newVpn != null) {
                     PhiNode phi;
-                    switch (vpn.type()) {
-                        case Value:
-                            phi = graph.addWithoutUnique(new PhiNode(vpn.stamp(), merge));
-                            break;
-                        case Guard:
-                            phi = graph.addWithoutUnique(new PhiNode(vpn.type(), merge));
-                            break;
-                        case Memory:
-                            phi = graph.addWithoutUnique(new MemoryPhiNode(merge, ((MemoryProxyNode) vpn).getLocationIdentity()));
-                            break;
-                        default:
-                            throw GraalInternalError.shouldNotReachHere();
+                    if (vpn instanceof ValueProxyNode) {
+                        phi = graph.addWithoutUnique(new ValuePhiNode(vpn.stamp(), merge));
+                    } else if (vpn instanceof GuardProxyNode) {
+                        phi = graph.addWithoutUnique(new GuardPhiNode(merge));
+                    } else if (vpn instanceof MemoryProxyNode) {
+                        phi = graph.addWithoutUnique(new MemoryPhiNode(merge, ((MemoryProxyNode) vpn).getLocationIdentity()));
+                    } else {
+                        throw GraalInternalError.shouldNotReachHere();
                     }
                     phi.addInput(vpn);
                     phi.addInput(newVpn);

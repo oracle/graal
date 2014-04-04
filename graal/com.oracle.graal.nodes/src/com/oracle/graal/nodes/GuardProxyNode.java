@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,35 +20,22 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.test.ea;
+package com.oracle.graal.nodes;
 
-import static org.junit.Assert.*;
+import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.nodes.type.*;
 
-import org.junit.*;
+public class GuardProxyNode extends ProxyNode implements GuardingNode {
 
-import com.oracle.graal.nodes.*;
+    @Input private ValueNode value;
 
-public class EAMergingTest extends EATestBase {
-
-    @Test
-    public void testSimpleMerge() {
-        testEscapeAnalysis("simpleMergeSnippet", null, false);
-        assertEquals(1, returnNodes.size());
-        assertTrue(returnNodes.get(0).result() instanceof ValuePhiNode);
-        PhiNode phi = (PhiNode) returnNodes.get(0).result();
-        assertTrue(phi.valueAt(0) instanceof ParameterNode);
-        assertTrue(phi.valueAt(1) instanceof ParameterNode);
+    public GuardProxyNode(ValueNode value, AbstractBeginNode proxyPoint) {
+        super(StampFactory.dependency(), proxyPoint);
+        this.value = value;
     }
 
-    public static int simpleMergeSnippet(boolean b, int u, int v) {
-        TestClassInt obj;
-        if (b) {
-            obj = new TestClassInt(u, 0);
-            notInlineable();
-        } else {
-            obj = new TestClassInt(v, 0);
-            notInlineable();
-        }
-        return obj.x;
+    @Override
+    public ValueNode value() {
+        return value;
     }
 }

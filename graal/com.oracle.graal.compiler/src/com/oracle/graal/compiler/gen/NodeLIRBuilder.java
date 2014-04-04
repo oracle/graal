@@ -39,7 +39,6 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.JumpOp;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.PhiNode.PhiType;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.extended.*;
@@ -464,9 +463,9 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool {
         }
         PhiResolver resolver = new PhiResolver(gen);
         for (PhiNode phi : merge.phis()) {
-            if (phi.type() == PhiType.Value) {
+            if (phi instanceof ValuePhiNode) {
                 ValueNode curVal = phi.valueAt(pred);
-                resolver.move(operandForPhi(phi), operand(curVal));
+                resolver.move(operandForPhi((ValuePhiNode) phi), operand(curVal));
             }
         }
         resolver.dispose();
@@ -478,8 +477,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool {
         return gen.getPlatformKind(phi.stamp());
     }
 
-    private Value operandForPhi(PhiNode phi) {
-        assert phi.type() == PhiType.Value : "wrong phi type: " + phi;
+    private Value operandForPhi(ValuePhiNode phi) {
         Value result = getOperand(phi);
         if (result == null) {
             // allocate a variable for this phi

@@ -20,28 +20,44 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.phases.common;
+package com.oracle.graal.nodes;
 
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.phases.*;
+import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.spi.*;
+import com.oracle.graal.nodes.spi.*;
 
-public class RemoveValueProxyPhase extends Phase {
+public class ValueProxyNode extends ProxyNode implements Canonicalizable, Virtualizable {
+
+    @Input private ValueNode value;
+
+    public ValueProxyNode(ValueNode value, AbstractBeginNode proxyPoint) {
+        super(value.stamp(), proxyPoint);
+        this.value = value;
+    }
 
     @Override
-    protected void run(StructuredGraph graph) {
-        for (ProxyNode vpn : graph.getNodes(ProxyNode.class)) {
-            if (vpn instanceof ValueProxyNode) {
-                graph.replaceFloating(vpn, vpn.value());
-            }
+    public ValueNode value() {
+        return value;
+    }
+
+    @Override
+    public boolean inferStamp() {
+        return updateStamp(value.stamp());
+    }
+
+    @Override
+    public Node canonical(CanonicalizerTool tool) {
+        if (value.isConstant()) {
+            return value;
         }
-        for (LoopExitNode exit : graph.getNodes(LoopExitNode.class)) {
-            FrameState stateAfter = exit.stateAfter();
-            if (stateAfter != null) {
-                exit.setStateAfter(null);
-                if (stateAfter.usages().isEmpty()) {
-                    stateAfter.safeDelete();
-                }
-            }
+        return this;
+    }
+
+    @Override
+    public void virtualize(VirtualizerTool tool) {
+        State state = tool.getObjectState(value);
+        if (state != null && state.getState() == EscapeState.Virtual) {
+            tool.replaceWithVirtual(state.getVirtualObject());
         }
     }
 }

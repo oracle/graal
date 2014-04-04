@@ -41,7 +41,7 @@ public class PhiCreationTests extends GraalCompilerTest {
     @Test
     public void test1() {
         StructuredGraph graph = parse("test1Snippet");
-        Assert.assertFalse(graph.getNodes().filter(PhiNode.class).iterator().hasNext());
+        Assert.assertFalse(graph.getNodes().filter(ValuePhiNode.class).iterator().hasNext());
     }
 
     public static int test1Snippet(int a) {
@@ -54,7 +54,7 @@ public class PhiCreationTests extends GraalCompilerTest {
     @Test
     public void test2() {
         StructuredGraph graph = parse("test2Snippet");
-        Assert.assertFalse(graph.getNodes().filter(PhiNode.class).iterator().hasNext());
+        Assert.assertFalse(graph.getNodes().filter(ValuePhiNode.class).iterator().hasNext());
     }
 
     public static int test2Snippet(int a) {
@@ -68,7 +68,7 @@ public class PhiCreationTests extends GraalCompilerTest {
     public void test3() {
         StructuredGraph graph = parse("test3Snippet");
         Debug.dump(graph, "Graph");
-        Assert.assertFalse(graph.getNodes().filter(PhiNode.class).iterator().hasNext());
+        Assert.assertFalse(graph.getNodes().filter(ValuePhiNode.class).iterator().hasNext());
     }
 
     public static int test3Snippet(int a) {
@@ -84,7 +84,7 @@ public class PhiCreationTests extends GraalCompilerTest {
     public void test4() {
         StructuredGraph graph = parse("test4Snippet");
         Debug.dump(graph, "Graph");
-        Assert.assertFalse(graph.getNodes().filter(PhiNode.class).iterator().hasNext());
+        Assert.assertFalse(graph.getNodes().filter(ValuePhiNode.class).iterator().hasNext());
     }
 
     public static int test4Snippet(int a) {

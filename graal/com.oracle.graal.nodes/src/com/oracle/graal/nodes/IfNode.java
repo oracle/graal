@@ -31,7 +31,6 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.graph.spi.*;
-import com.oracle.graal.nodes.PhiNode.PhiType;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
@@ -514,12 +513,12 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
             return false;
         }
         Node singleUsage = mergeUsages.first();
-        if (!(singleUsage instanceof PhiNode) || (singleUsage != compare.x() && singleUsage != compare.y())) {
+        if (!(singleUsage instanceof ValuePhiNode) || (singleUsage != compare.x() && singleUsage != compare.y())) {
             return false;
         }
 
         // Ensure phi is used by at most the comparison and the merge's frame state (if any)
-        PhiNode phi = (PhiNode) singleUsage;
+        ValuePhiNode phi = (ValuePhiNode) singleUsage;
         NodeIterable<Node> phiUsages = phi.usages();
         if (phiUsages.count() > 2) {
             return false;
@@ -650,7 +649,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                 // removed
                 MergeNode newMerge = graph().add(new MergeNode());
                 PhiNode oldPhi = (PhiNode) oldMerge.usages().first();
-                PhiNode newPhi = graph().addWithoutUnique(new PhiNode(oldPhi.stamp(), newMerge));
+                PhiNode newPhi = graph().addWithoutUnique(new ValuePhiNode(oldPhi.stamp(), newMerge));
 
                 for (AbstractEndNode end : ends) {
                     newPhi.addInput(phiValues.get(end));
@@ -687,7 +686,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
 
         if (node instanceof PhiNode) {
             PhiNode phi = (PhiNode) node;
-            if (phi.merge() == merge && phi.type() == PhiType.Value && phi.valueCount() == merge.forwardEndCount()) {
+            if (phi.merge() == merge && phi instanceof ValuePhiNode && phi.valueCount() == merge.forwardEndCount()) {
                 Constant[] result = new Constant[merge.forwardEndCount()];
                 int i = 0;
                 for (ValueNode n : phi.values()) {
