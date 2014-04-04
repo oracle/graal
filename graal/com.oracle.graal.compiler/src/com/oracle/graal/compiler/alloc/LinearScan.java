@@ -887,7 +887,6 @@ public final class LinearScan {
     private static NodeLIRBuilder getNodeLIRGeneratorFromDebugContext() {
         if (Debug.isEnabled()) {
             NodeLIRBuilder lirGen = Debug.contextLookup(NodeLIRBuilder.class);
-            assert lirGen != null;
             return lirGen;
         }
         return null;

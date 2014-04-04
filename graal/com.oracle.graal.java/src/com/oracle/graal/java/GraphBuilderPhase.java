@@ -569,6 +569,12 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             }
 
             @Override
+            protected void genGoto() {
+                appendGoto(createTarget(currentBlock.getSuccessors().get(0), frameState));
+                assert currentBlock.numNormalSuccessors() == 1;
+            }
+
+            @Override
             protected ValueNode genObjectEquals(ValueNode x, ValueNode y) {
                 return new ObjectEqualsNode(x, y);
             }
@@ -1007,15 +1013,17 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 return currentGraph.add(new DeoptimizeNode(InvalidateReprofile, UnreachedCode));
             }
 
-            @Override
             protected FixedNode createTarget(double probability, BciBlock block, AbstractFrameStateBuilder<ValueNode> stateAfter) {
-                ValueNode fixed = super.createTarget(probability, block, stateAfter);
-                assert fixed instanceof FixedNode;
-                return (FixedNode) fixed;
+                assert probability >= 0 && probability <= 1.01 : probability;
+                if (isNeverExecutedCode(probability)) {
+                    return (FixedNode) genDeoptimization();
+                } else {
+                    assert block != null;
+                    return createTarget(block, stateAfter);
+                }
 
             }
 
-            @Override
             protected FixedNode createTarget(BciBlock block, AbstractFrameStateBuilder<ValueNode> abstractState) {
                 assert abstractState instanceof HIRFrameStateBuilder;
                 HIRFrameStateBuilder state = (HIRFrameStateBuilder) abstractState;

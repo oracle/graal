@@ -354,6 +354,12 @@ public class BaselineBytecodeParser extends AbstractBytecodeParser<Value, LIRFra
     }
 
     @Override
+    protected void genGoto() {
+        assert currentBlock.numNormalSuccessors() == 1;
+        gen.emitJump(LabelRef.forSuccessor(lirGenRes.getLIR(), currentBlock, 0));
+    }
+
+    @Override
     protected Value genObjectEquals(Value x, Value y) {
         // TODO Auto-generated method stub
         throw GraalInternalError.unimplemented("Auto-generated method stub");
@@ -371,7 +377,7 @@ public class BaselineBytecodeParser extends AbstractBytecodeParser<Value, LIRFra
         BciBlock trueBlock = currentBlock.getSuccessors().get(0);
         BciBlock falseBlock = currentBlock.getSuccessors().get(1);
         if (trueBlock == falseBlock) {
-            appendGoto(createTarget(trueBlock, frameState));
+            gen.emitJump(LabelRef.forSuccessor(lirGenRes.getLIR(), currentBlock, 0));
             return;
         }
 
@@ -571,12 +577,6 @@ public class BaselineBytecodeParser extends AbstractBytecodeParser<Value, LIRFra
     }
 
     @Override
-    protected Value createTarget(BciBlock trueBlock, AbstractFrameStateBuilder<Value> state) {
-        // TODO Auto-generated method stub
-        throw GraalInternalError.unimplemented("Auto-generated method stub");
-    }
-
-    @Override
     protected Value createBlockTarget(double probability, BciBlock bciBlock, AbstractFrameStateBuilder<Value> stateAfter) {
         // TODO Auto-generated method stub
         throw GraalInternalError.unimplemented("Auto-generated method stub");
@@ -584,6 +584,7 @@ public class BaselineBytecodeParser extends AbstractBytecodeParser<Value, LIRFra
 
     @Override
     protected void processBlock(BciBlock block) {
+        currentBlock = block;
         iterateBytecodesForBlock(block);
     }
 
@@ -619,17 +620,19 @@ public class BaselineBytecodeParser extends AbstractBytecodeParser<Value, LIRFra
 
             processBytecode(bci, opcode);
 
+            if (gen.hasBlockEnd(currentBlock)) {
+                break;
+            }
+
             stream.next();
             bci = stream.currentBCI();
 
             if (bci < endBCI) {
                 if (bci > block.endBci) {
-                    if (block.numNormalSuccessors() == 1) {
-                        assert !block.getSuccessor(0).isExceptionEntry;
-                        // we fell through to the next block, add a goto and break
-                        LabelRef label = LabelRef.forSuccessor(lirGenRes.getLIR(), block.getSuccessor(0), 0);
-                        gen.emitJump(label);
-                    }
+                    assert block.numNormalSuccessors() == 1;
+                    assert !block.getSuccessor(0).isExceptionEntry;
+                    // we fell through to the next block, add a goto and break
+                    genGoto();
                     break;
                 }
             }
