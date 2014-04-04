@@ -431,7 +431,7 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
     public void emitCode(CompilationResultBuilder crb, LIR lir, ResolvedJavaMethod method) {
         assert method != null : lir + " is not associated with a method";
 
-        boolean usesDeoptInfo = true;     // TODO: make this conditional on something?
+        boolean useHSAILDeoptimization = getRuntime().getConfig().useHSAILDeoptimization;
 
         // Emit the prologue.
         HSAILAssembler asm = (HSAILAssembler) crb.asm;
@@ -513,13 +513,13 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
         for (int i = 0; i < totalParamCount; i++) {
             String str = "align 8 kernarg_" + paramHsailSizes[i] + " " + paramNames[i];
 
-            if (usesDeoptInfo || (i != totalParamCount - 1)) {
+            if (useHSAILDeoptimization || (i != totalParamCount - 1)) {
                 str += ",";
             }
             asm.emitString(str);
         }
 
-        if (usesDeoptInfo) {
+        if (useHSAILDeoptimization) {
             // add in the deoptInfo parameter
             asm.emitString("kernarg_u64 " + asm.getDeoptInfoName());
         }
@@ -542,14 +542,10 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
         String workItemReg = "$s" + Integer.toString(asRegister(cc.getArgument(nonConstantParamCount)).encoding());
         asm.emitString("workitemabsid_u32 " + workItemReg + ", 0;");
 
-        final int offsetToDeoptSaveStates = getRuntime().getConfig().hsailSaveStatesOffset0;
-        final int sizeofKernelDeopt = getRuntime().getConfig().hsailSaveStatesOffset1 - getRuntime().getConfig().hsailSaveStatesOffset0;
         final int offsetToDeopt = getRuntime().getConfig().hsailDeoptOffset;
-        final int offsetToNeverRanArray = getRuntime().getConfig().hsailNeverRanArrayOffset;
-        final int offsetToDeoptNextIndex = getRuntime().getConfig().hsailDeoptNextIndexOffset;
         final String deoptInProgressLabel = "@LHandleDeoptInProgress";
 
-        if (usesDeoptInfo) {
+        if (useHSAILDeoptimization) {
             AllocatableValue scratch64 = HSAIL.d16.asValue(Kind.Object);
             AllocatableValue scratch32 = HSAIL.s34.asValue(Kind.Int);
             HSAILAddress deoptInfoAddr = new HSAILAddressValue(Kind.Int, scratch64, offsetToDeopt).toAddress();
@@ -631,15 +627,19 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
         asm.emitString(spillsegStringFinal, spillsegDeclarationPosition);
         // Emit the epilogue.
 
-        final int offsetToDeoptimizationWorkItem = getRuntime().getConfig().hsailDeoptimizationWorkItem;
-        final int offsetToDeoptimizationReason = getRuntime().getConfig().hsailDeoptimizationReason;
-        final int offsetToDeoptimizationFrame = getRuntime().getConfig().hsailDeoptimizationFrame;
-        final int offsetToFramePc = getRuntime().getConfig().hsailFramePcOffset;
-        final int offsetToNumSaves = getRuntime().getConfig().hsailFrameNumSRegOffset;
-        final int offsetToSaveArea = getRuntime().getConfig().hsailFrameSaveAreaOffset;
-
         // TODO: keep track of whether we need it
-        if (usesDeoptInfo) {
+        if (useHSAILDeoptimization) {
+            final int offsetToDeoptSaveStates = getRuntime().getConfig().hsailSaveStatesOffset0;
+            final int sizeofKernelDeopt = getRuntime().getConfig().hsailSaveStatesOffset1 - getRuntime().getConfig().hsailSaveStatesOffset0;
+            final int offsetToNeverRanArray = getRuntime().getConfig().hsailNeverRanArrayOffset;
+            final int offsetToDeoptNextIndex = getRuntime().getConfig().hsailDeoptNextIndexOffset;
+            final int offsetToDeoptimizationWorkItem = getRuntime().getConfig().hsailDeoptimizationWorkItem;
+            final int offsetToDeoptimizationReason = getRuntime().getConfig().hsailDeoptimizationReason;
+            final int offsetToDeoptimizationFrame = getRuntime().getConfig().hsailDeoptimizationFrame;
+            final int offsetToFramePc = getRuntime().getConfig().hsailFramePcOffset;
+            final int offsetToNumSaves = getRuntime().getConfig().hsailFrameNumSRegOffset;
+            final int offsetToSaveArea = getRuntime().getConfig().hsailFrameSaveAreaOffset;
+
             AllocatableValue scratch64 = HSAIL.d16.asValue(Kind.Object);
             AllocatableValue cuSaveAreaPtr = HSAIL.d17.asValue(Kind.Object);
             AllocatableValue waveMathScratch1 = HSAIL.d18.asValue(Kind.Object);
@@ -773,6 +773,11 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
             // and emit the return
             crb.frameContext.leave(crb);
             asm.exit();
+        } else {
+            // Deoptimization is explicitly off, so emit simple return
+            asm.emitString0(asm.getDeoptLabelName() + ":\n");
+            asm.emitComment("// No deoptimization");
+            asm.emitString("ret;");
         }
 
         asm.emitString0("}; \n");

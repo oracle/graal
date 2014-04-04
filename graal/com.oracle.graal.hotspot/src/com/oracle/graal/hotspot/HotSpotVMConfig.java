@@ -1004,6 +1004,8 @@ public class HotSpotVMConfig extends CompilerObject {
     @HotSpotVMField(name = "ThreadShadow::_pending_deoptimization", type = "int", get = HotSpotVMField.Type.OFFSET) @Stable public int pendingDeoptimizationOffset;
     @HotSpotVMField(name = "ThreadShadow::_pending_failed_speculation", type = "oop", get = HotSpotVMField.Type.OFFSET) @Stable public int pendingFailedSpeculationOffset;
 
+    @HotSpotVMFlag(name = "UseHSAILDeoptimization") @Stable public boolean useHSAILDeoptimization;
+
     /**
      * Offsets of Hsail deoptimization fields (defined in gpu_hsail.hpp). Used to propagate
      * exceptions from Hsail back to C++ runtime.
