@@ -900,7 +900,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
             append(new BinaryRegConst(AMD64Arithmetic.LAND, result, asAllocatable(inputVal), Constant.forLong(mask)));
             return result;
         } else {
-            assert inputVal.getKind() == Kind.Int;
+            assert inputVal.getKind().getStackKind() == Kind.Int;
             Variable result = newVariable(Kind.Int);
             int mask = (int) IntegerStamp.defaultMask(fromBits);
             append(new BinaryRegConst(AMD64Arithmetic.IAND, result, asAllocatable(inputVal), Constant.forInt(mask)));
