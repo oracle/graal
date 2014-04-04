@@ -838,7 +838,7 @@ public class PTXLIRGenerator extends LIRGenerator {
             // Store result in global memory whose location is loadVar
             emitStoreReturnValue(operand.getKind(), loadVar, operand, null);
         }
-        append(new ReturnOp(operand));
+        emitReturnNoVal();
     }
 
     void emitReturnNoVal() {
