@@ -37,7 +37,6 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.StandardOp.BlockEndOp;
 import com.oracle.graal.lir.StandardOp.JumpOp;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.PhiNode.PhiType;
@@ -227,7 +226,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool {
             }
         }
 
-        if (!hasBlockEnd(block)) {
+        if (!gen.hasBlockEnd(block)) {
             NodeClassIterable successors = block.getEndNode().successors();
             assert successors.count() == block.getSuccessorCount();
             if (block.getSuccessorCount() != 1) {
@@ -391,14 +390,6 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool {
     }
 
     protected abstract boolean peephole(ValueNode valueNode);
-
-    private boolean hasBlockEnd(Block block) {
-        List<LIRInstruction> ops = gen.getResult().getLIR().getLIRforBlock(block);
-        if (ops.size() == 0) {
-            return false;
-        }
-        return ops.get(ops.size() - 1) instanceof BlockEndOp;
-    }
 
     private void doRoot(ValueNode instr) {
         if (gen.traceLevel >= 2) {

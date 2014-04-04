@@ -315,16 +315,19 @@ public abstract class LIRGenerator implements ArithmeticLIRGenerator, LIRGenerat
 
     public void append(LIRInstruction op) {
         if (printIRWithLIR && !TTY.isSuppressed()) {
-            // if (currentInstruction != null && lastInstructionPrinted != currentInstruction) {
-            // lastInstructionPrinted = currentInstruction;
-            // InstructionPrinter ip = new InstructionPrinter(TTY.out());
-            // ip.printInstructionListing(currentInstruction);
-            // }
             TTY.println(op.toStringWithIdPrefix());
             TTY.println();
         }
         assert LIRVerifier.verify(op);
         res.getLIR().getLIRforBlock(currentBlock).add(op);
+    }
+
+    public boolean hasBlockEnd(AbstractBlock<?> block) {
+        List<LIRInstruction> ops = getResult().getLIR().getLIRforBlock(block);
+        if (ops.size() == 0) {
+            return false;
+        }
+        return ops.get(ops.size() - 1) instanceof BlockEndOp;
     }
 
     public final void doBlockStart(AbstractBlock<?> block) {
