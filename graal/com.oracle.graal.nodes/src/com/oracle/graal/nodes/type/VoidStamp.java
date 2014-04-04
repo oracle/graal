@@ -91,6 +91,17 @@ public final class VoidStamp extends Stamp {
         return this == stamp;
     }
 
+    @Override
+    public Stamp illegal() {
+        // there is no illegal void stamp
+        return this;
+    }
+
+    @Override
+    public boolean isLegal() {
+        return true;
+    }
+
     private static VoidStamp instance = new VoidStamp();
 
     static VoidStamp getInstance() {

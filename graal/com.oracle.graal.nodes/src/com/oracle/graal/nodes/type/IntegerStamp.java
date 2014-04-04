@@ -31,7 +31,7 @@ import com.oracle.graal.nodes.spi.*;
 
 /**
  * Describes the possible values of a {@link ValueNode} that produces an int or long result.
- * 
+ *
  * The description consists of (inclusive) lower and upper bounds and up (may be set) and down
  * (always set) bit-masks.
  */
@@ -51,18 +51,29 @@ public class IntegerStamp extends PrimitiveStamp {
         this.upperBound = upperBound;
         this.downMask = downMask;
         this.upMask = upMask;
-        assert lowerBound <= upperBound : this;
         assert lowerBound >= defaultMinValue(bits, unsigned) : this;
         assert upperBound <= defaultMaxValue(bits, unsigned) : this;
         assert (downMask & defaultMask(bits)) == downMask : this;
         assert (upMask & defaultMask(bits)) == upMask : this;
-        assert (lowerBound & downMask) == downMask : this;
-        assert (upperBound & downMask) == downMask : this;
     }
 
     @Override
     public Stamp unrestricted() {
         return new IntegerStamp(getBits(), unsigned, defaultMinValue(getBits(), unsigned), defaultMaxValue(getBits(), unsigned), 0, defaultMask(getBits()));
+    }
+
+    @Override
+    public Stamp illegal() {
+        return new IntegerStamp(getBits(), unsigned, defaultMaxValue(getBits(), unsigned), defaultMinValue(getBits(), unsigned), defaultMask(getBits()), 0);
+    }
+
+    @Override
+    public boolean isLegal() {
+        if (unsigned) {
+            return Long.compareUnsigned(lowerBound, upperBound) <= 0;
+        } else {
+            return lowerBound <= upperBound;
+        }
     }
 
     @Override
@@ -211,9 +222,6 @@ public class IntegerStamp extends PrimitiveStamp {
         if (otherStamp == this) {
             return this;
         }
-        if (otherStamp instanceof IllegalStamp) {
-            return otherStamp.meet(this);
-        }
         if (!(otherStamp instanceof IntegerStamp)) {
             return StampFactory.illegal(Kind.Illegal);
         }
@@ -225,9 +233,6 @@ public class IntegerStamp extends PrimitiveStamp {
     public Stamp join(Stamp otherStamp) {
         if (otherStamp == this) {
             return this;
-        }
-        if (otherStamp instanceof IllegalStamp) {
-            return otherStamp.join(this);
         }
         if (!(otherStamp instanceof IntegerStamp)) {
             return StampFactory.illegal(Kind.Illegal);
@@ -310,7 +315,7 @@ public class IntegerStamp extends PrimitiveStamp {
     /**
      * Checks if the 2 stamps represent values of the same sign. Returns true if the two stamps are
      * both positive of null or if they are both strictly negative
-     * 
+     *
      * @return true if the two stamps are both positive of null or if they are both strictly
      *         negative
      */

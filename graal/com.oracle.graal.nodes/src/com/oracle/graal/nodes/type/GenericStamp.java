@@ -61,7 +61,7 @@ public final class GenericStamp extends Stamp {
 
     @Override
     public ResolvedJavaType javaType(MetaAccessProvider metaAccess) {
-        throw GraalInternalError.shouldNotReachHere(type + " stamp has not Java type");
+        throw GraalInternalError.shouldNotReachHere(type + " stamp has no Java type");
     }
 
     @Override
@@ -76,22 +76,16 @@ public final class GenericStamp extends Stamp {
 
     @Override
     public Stamp meet(Stamp other) {
-        if (other instanceof IllegalStamp) {
-            return other.join(this);
-        }
         if (!(other instanceof GenericStamp) || ((GenericStamp) other).type != type) {
-            return StampFactory.illegal(Kind.Illegal);
+            return illegal();
         }
         return this;
     }
 
     @Override
     public Stamp join(Stamp other) {
-        if (other instanceof IllegalStamp) {
-            return other.join(this);
-        }
         if (!(other instanceof GenericStamp) || ((GenericStamp) other).type != type) {
-            return StampFactory.illegal(Kind.Illegal);
+            return illegal();
         }
         return this;
     }
@@ -124,6 +118,16 @@ public final class GenericStamp extends Stamp {
         if (type != ((GenericStamp) obj).type) {
             return false;
         }
+        return true;
+    }
+
+    @Override
+    public Stamp illegal() {
+        return IllegalStamp.getInstance();
+    }
+
+    @Override
+    public boolean isLegal() {
         return true;
     }
 }

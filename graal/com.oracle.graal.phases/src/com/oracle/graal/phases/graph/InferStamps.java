@@ -49,8 +49,8 @@ public class InferStamps {
         for (Node n : graph.getNodes()) {
             if (n instanceof ValuePhiNode || n instanceof ValueAndStampProxy) {
                 ValueNode node = (ValueNode) n;
-                if (ObjectStamp.isObject(node.stamp())) {
-                    assert !(node.stamp() instanceof IllegalStamp) : "We assume all Phi and Proxy stamps are legal before the analysis";
+                if (node.stamp() instanceof ObjectStamp) {
+                    assert node.stamp().isLegal() : "We assume all Phi and Proxy stamps are legal before the analysis";
                     node.setStamp(node.stamp().illegal());
                 }
             }
@@ -68,7 +68,7 @@ public class InferStamps {
             for (Node n : graph.getNodes()) {
                 if (n instanceof ValueNode) {
                     ValueNode node = (ValueNode) n;
-                    if (ObjectStamp.isObject(node.stamp())) {
+                    if (node.stamp() instanceof ObjectStamp) {
                         stampChanged |= node.inferStamp();
                     }
                 }

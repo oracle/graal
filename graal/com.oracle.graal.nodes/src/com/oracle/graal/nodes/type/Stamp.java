@@ -41,7 +41,7 @@ public abstract class Stamp {
     public abstract ResolvedJavaType javaType(MetaAccessProvider metaAccess);
 
     public boolean alwaysDistinct(Stamp other) {
-        return join(other) instanceof IllegalStamp;
+        return !join(other).isLegal();
     }
 
     /**
@@ -76,20 +76,27 @@ public abstract class Stamp {
 
     /**
      * Returns a stamp of the same kind, but allowing the full value range of the kind.
+     *
+     * {@link #unrestricted()} is the neutral element of the {@link #join(Stamp)} operation.
      */
     public abstract Stamp unrestricted();
 
     /**
-     * Returns an illegal stamp that has the same kind, but no valid values.
+     * Returns a stamp of the same kind, but with no allowed values.
+     *
+     * {@link #illegal()} is the neutral element of the {@link #meet(Stamp)} operation.
      */
-    public Stamp illegal() {
-        return StampFactory.illegal(getStackKind());
-    }
+    public abstract Stamp illegal();
 
     /**
      * Test whether two stamps have the same base type.
      */
     public abstract boolean isCompatible(Stamp other);
+
+    /**
+     * Test whether this stamp has legal values.
+     */
+    public abstract boolean isLegal();
 
     /**
      * If this stamp represents a single value, the methods returns this single value. It returns
