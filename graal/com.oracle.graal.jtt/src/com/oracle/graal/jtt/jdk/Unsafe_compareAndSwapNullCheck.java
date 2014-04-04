@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2008, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,16 +20,37 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes.extended;
+package com.oracle.graal.jtt.jdk;
 
-import com.oracle.graal.nodes.*;
+import org.junit.*;
 
-public interface Access extends GuardedNode, HeapAccess {
+import sun.misc.*;
 
-    ValueNode object();
+import com.oracle.graal.jtt.*;
 
-    LocationNode accessLocation();
+public class Unsafe_compareAndSwapNullCheck extends JTTTest {
 
-    boolean canNullCheck();
+    static final Unsafe unsafe = UnsafeAccess01.getUnsafe();
+    static final long valueOffset;
+    static {
+        try {
+            valueOffset = unsafe.objectFieldOffset(Unsafe_compareAndSwap.class.getDeclaredField("value"));
+        } catch (Exception ex) {
+            throw new Error(ex);
+        }
+    }
 
+    long value;
+    long lng;
+
+    public static void test(Unsafe_compareAndSwapNullCheck u, long expected, long newValue) {
+        @SuppressWarnings("unused")
+        long l = u.lng;
+        unsafe.compareAndSwapLong(u, valueOffset, expected, newValue);
+    }
+
+    @Test
+    public void run0() throws Throwable {
+        runTest(EMPTY, false, true, "test", null, 1L, 2L);
+    }
 }

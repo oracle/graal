@@ -86,7 +86,7 @@ public class AMD64HotSpotMemoryPeephole extends AMD64MemoryPeephole {
                     double trueLabelProbability) {
         if (HotSpotGraalRuntime.runtime().getConfig().useCompressedOops) {
             ValueNode other = selectOtherInput(left, right, access);
-            Kind kind = access.nullCheckLocation().getValueKind();
+            Kind kind = access.accessLocation().getValueKind();
 
             if (other.isConstant() && kind == Kind.Object && access.isCompressible()) {
                 ensureEvaluated(other);

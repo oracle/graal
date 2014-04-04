@@ -39,4 +39,8 @@ public final class JavaReadNode extends FixedAccessNode implements Lowerable {
     public void lower(LoweringTool tool) {
         tool.getLowerer().lower(this, tool);
     }
+
+    public boolean canNullCheck() {
+        return true;
+    }
 }
