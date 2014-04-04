@@ -611,10 +611,9 @@ public class HotSpotVMConfig extends CompilerObject {
             nameOffset = vmStructs.get("Flag::_name").getOffset();
             addrOffset = vmStructs.get("Flag::_addr").getOffset();
 
-            // TODO use the following after we switched to JDK 8
-            assert vmTypes.get("bool").getSize() == Byte.SIZE / Byte.SIZE; // TODO Byte.BYTES;
-            assert vmTypes.get("intx").getSize() == Long.SIZE / Byte.SIZE; // TODO Long.BYTES;
-            assert vmTypes.get("uintx").getSize() == Long.SIZE / Byte.SIZE; // TODO Long.BYTES;
+            assert vmTypes.get("bool").getSize() == Byte.BYTES;
+            assert vmTypes.get("intx").getSize() == Long.BYTES;
+            assert vmTypes.get("uintx").getSize() == Long.BYTES;
         }
 
         public Iterator<Flags.Flag> iterator() {
