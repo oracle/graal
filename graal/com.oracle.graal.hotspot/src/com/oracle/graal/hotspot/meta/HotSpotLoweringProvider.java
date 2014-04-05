@@ -378,7 +378,7 @@ public class HotSpotLoweringProvider implements LoweringProvider {
         ValueNode expectedValue = implicitStoreConvert(graph, valueKind, cas.expected(), true);
         ValueNode newValue = implicitStoreConvert(graph, valueKind, cas.newValue(), true);
 
-        LoweredCompareAndSwapNode atomicNode = graph.add(new LoweredCompareAndSwapNode(cas.object(), location, expectedValue, newValue, getCompareAndSwapBarrier(cas), false));
+        LoweredCompareAndSwapNode atomicNode = graph.add(new LoweredCompareAndSwapNode(cas.object(), location, expectedValue, newValue, getCompareAndSwapBarrierType(cas), false));
         atomicNode.setStateAfter(cas.stateAfter());
         graph.replaceFixedWithFixed(cas, atomicNode);
     }
@@ -851,45 +851,41 @@ public class HotSpotLoweringProvider implements LoweringProvider {
     }
 
     private static BarrierType getFieldStoreBarrierType(StoreFieldNode storeField) {
-        BarrierType barrierType = BarrierType.NONE;
         if (storeField.field().getKind() == Kind.Object) {
-            barrierType = BarrierType.IMPRECISE;
+            return BarrierType.IMPRECISE;
         }
-        return barrierType;
+        return BarrierType.NONE;
     }
 
     private static BarrierType getArrayStoreBarrierType(StoreIndexedNode store) {
-        BarrierType barrierType = BarrierType.NONE;
         if (store.elementKind() == Kind.Object) {
-            barrierType = BarrierType.PRECISE;
+            return BarrierType.PRECISE;
         }
-        return barrierType;
+        return BarrierType.NONE;
     }
 
     private static BarrierType getUnsafeStoreBarrierType(UnsafeStoreNode store) {
-        BarrierType barrierType = BarrierType.NONE;
         if (store.value().getKind() == Kind.Object) {
             ResolvedJavaType type = ObjectStamp.typeOrNull(store.object());
             if (type != null && !type.isArray()) {
-                barrierType = BarrierType.IMPRECISE;
+                return BarrierType.IMPRECISE;
             } else {
-                barrierType = BarrierType.PRECISE;
+                return BarrierType.PRECISE;
             }
         }
-        return barrierType;
+        return BarrierType.NONE;
     }
 
-    private static BarrierType getCompareAndSwapBarrier(CompareAndSwapNode cas) {
-        BarrierType barrierType = BarrierType.NONE;
+    private static BarrierType getCompareAndSwapBarrierType(CompareAndSwapNode cas) {
         if (cas.expected().getKind() == Kind.Object) {
             ResolvedJavaType type = ObjectStamp.typeOrNull(cas.object());
             if (type != null && !type.isArray()) {
-                barrierType = BarrierType.IMPRECISE;
+                return BarrierType.IMPRECISE;
             } else {
-                barrierType = BarrierType.PRECISE;
+                return BarrierType.PRECISE;
             }
         }
-        return barrierType;
+        return BarrierType.NONE;
     }
 
     protected static ConstantLocationNode createFieldLocation(StructuredGraph graph, HotSpotResolvedJavaField field, boolean initialization) {
