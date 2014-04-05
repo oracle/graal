@@ -48,15 +48,17 @@ public class TruffleExpansionLogger {
         int sourceMethodBci = callTarget.invoke().bci();
         ResolvedJavaMethod targetMethod = callTarget.targetMethod();
         Object targetReceiver = null;
-        if (!Modifier.isStatic(sourceMethod.getModifiers())) {
-            targetReceiver = callTarget.arguments().first().asConstant().asObject();
+        if (!Modifier.isStatic(sourceMethod.getModifiers()) && callTarget.receiver().isConstant()) {
+            targetReceiver = callTarget.receiver().asConstant().asObject();
         }
 
-        ExpansionTree parent = callToParentTree.get(callTarget);
-        assert parent != null;
-        callToParentTree.remove(callTarget);
-        ExpansionTree tree = new ExpansionTree(parent, targetReceiver, targetMethod, sourceMethodBci);
-        registerParentInCalls(tree, inliningGraph);
+        if (targetReceiver != null) {
+            ExpansionTree parent = callToParentTree.get(callTarget);
+            assert parent != null;
+            callToParentTree.remove(callTarget);
+            ExpansionTree tree = new ExpansionTree(parent, targetReceiver, targetMethod, sourceMethodBci);
+            registerParentInCalls(tree, inliningGraph);
+        }
     }
 
     @SuppressWarnings("unchecked")
