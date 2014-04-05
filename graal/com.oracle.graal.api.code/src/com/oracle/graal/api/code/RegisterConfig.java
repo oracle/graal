@@ -37,13 +37,20 @@ public interface RegisterConfig {
     Register getReturnRegister(Kind kind);
 
     /**
+     * Gets the maximum allowed size of the frame.
+     */
+    default int getMaximumFrameSize() {
+        return Integer.MAX_VALUE;
+    }
+
+    /**
      * Gets the register to which {@link Register#Frame} and {@link Register#CallerFrame} are bound.
      */
     Register getFrameRegister();
 
     /**
      * Gets the calling convention describing how arguments are passed.
-     * 
+     *
      * @param type the type of calling convention being requested
      * @param returnType the return type (can be null for methods returning {@code void})
      * @param parameterTypes the types of the arguments of the call
@@ -55,7 +62,7 @@ public interface RegisterConfig {
     /**
      * Gets the ordered set of registers that are can be used to pass parameters according to a
      * given calling convention.
-     * 
+     *
      * @param type the type of calling convention
      * @param kind specifies what kind of registers is being requested
      * @return the ordered set of registers that may be used to pass parameters in a call conforming
@@ -81,7 +88,7 @@ public interface RegisterConfig {
 
     /**
      * Gets the layout of the callee save area of this register configuration.
-     * 
+     *
      * @return {@code null} if there is no callee save area
      */
     CalleeSaveLayout getCalleeSaveLayout();
@@ -89,7 +96,7 @@ public interface RegisterConfig {
     /**
      * Gets a map from register {@linkplain Register#number numbers} to register
      * {@linkplain RegisterAttributes attributes} for this register configuration.
-     * 
+     *
      * @return an array where an element at index i holds the attributes of the register whose
      *         number is i
      */
@@ -97,7 +104,7 @@ public interface RegisterConfig {
 
     /**
      * Gets the register corresponding to a runtime-defined role.
-     * 
+     *
      * @param id the identifier of a runtime-defined register role
      * @return the register playing the role specified by {@code id}
      */

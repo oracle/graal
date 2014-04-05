@@ -59,6 +59,11 @@ public class HotSpotVMConfig extends CompilerObject {
         return false;
     }
 
+    /**
+     * Maximum allowed size of allocated area for a frame.
+     */
+    public final int maxFrameSize = 16 * 1024;
+
     HotSpotVMConfig(CompilerToVM compilerToVm) {
         /** These fields are set in {@link CompilerToVM#initializeConfiguration}. */
         gHotSpotVMStructs = 0;
