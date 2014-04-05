@@ -46,7 +46,7 @@ public abstract class OptimizedCallTarget extends DefaultCallTarget implements L
     protected InstalledCode installedCode;
     protected boolean compilationEnabled;
     protected int callCount;
-    private TruffleInliningResult inliningResult;
+    protected TruffleInliningResult inliningResult;
     protected final CompilationProfile compilationProfile;
     protected final CompilationPolicy compilationPolicy;
     private final SpeculationLog speculationLog = new SpeculationLog();
@@ -64,27 +64,27 @@ public abstract class OptimizedCallTarget extends DefaultCallTarget implements L
         }
     }
 
-    public int getKnownCallSiteCount() {
+    public final int getKnownCallSiteCount() {
         return callSitesKnown.get();
     }
 
-    public void incrementKnownCallSite() {
+    public final void incrementKnownCallSite() {
         callSitesKnown.incrementAndGet();
     }
 
-    public void decrementKnownCallSite() {
+    public final void decrementKnownCallSite() {
         callSitesKnown.decrementAndGet();
     }
 
-    public TruffleInliningResult getInliningResult() {
+    public final TruffleInliningResult getInliningResult() {
         return inliningResult;
     }
 
-    public OptimizedCallTarget getSplitSource() {
+    public final OptimizedCallTarget getSplitSource() {
         return splitSource;
     }
 
-    public void setSplitSource(OptimizedCallTarget splitSource) {
+    public final void setSplitSource(OptimizedCallTarget splitSource) {
         this.splitSource = splitSource;
     }
 
@@ -109,7 +109,7 @@ public abstract class OptimizedCallTarget extends DefaultCallTarget implements L
 
     public abstract InstalledCode compile();
 
-    public Object callInlined(PackedFrame caller, Arguments arguments) {
+    public final Object callInlined(PackedFrame caller, Arguments arguments) {
         if (CompilerDirectives.inInterpreter()) {
             compilationProfile.reportInlinedCall();
         }
@@ -161,7 +161,7 @@ public abstract class OptimizedCallTarget extends DefaultCallTarget implements L
 
     protected abstract void invalidate(Node oldNode, Node newNode, CharSequence reason);
 
-    public Object executeHelper(PackedFrame caller, Arguments args) {
+    public final Object executeHelper(PackedFrame caller, Arguments args) {
         VirtualFrame frame = createFrame(getRootNode().getFrameDescriptor(), caller, args);
         return getRootNode().execute(frame);
     }

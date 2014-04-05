@@ -25,7 +25,7 @@ package com.oracle.graal.truffle;
 import java.util.concurrent.atomic.*;
 
 import com.oracle.truffle.api.*;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.*;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.impl.*;
 import com.oracle.truffle.api.nodes.*;
@@ -107,17 +107,6 @@ public final class OptimizedCallNode extends DefaultCallNode {
 
     void notifyInliningDone() {
         inliningCounter.decrementAndGet();
-    }
-
-    /**
-     * If the method was inlined the truffle magic redirects calls to
-     * {@link #call(PackedFrame, Arguments)} to this method. You should not call this method
-     * directly.
-     *
-     * @see PartialEvaluator#expandInlinableCallNode
-     */
-    public Object callInlined(PackedFrame caller, Arguments arguments) {
-        return getCurrentCallTarget().callInlined(caller, arguments);
     }
 
     @Override

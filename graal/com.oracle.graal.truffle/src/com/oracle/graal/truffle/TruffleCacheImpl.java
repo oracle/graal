@@ -89,9 +89,10 @@ public final class TruffleCacheImpl implements TruffleCache {
     }
 
     @SuppressWarnings("unused")
-    public StructuredGraph lookup(final ResolvedJavaMethod method, final NodeInputList<ValueNode> arguments, final Assumptions assumptions, final CanonicalizerPhase finalCanonicalizer) {
+    public StructuredGraph lookup(final ResolvedJavaMethod method, final NodeInputList<ValueNode> arguments, final Assumptions assumptions, final CanonicalizerPhase finalCanonicalizer,
+                    boolean ignoreSlowPath) {
 
-        if (method.getAnnotation(CompilerDirectives.SlowPath.class) != null) {
+        if (!ignoreSlowPath && method.getAnnotation(CompilerDirectives.SlowPath.class) != null) {
             return null;
         }
 
@@ -236,7 +237,7 @@ public final class TruffleCacheImpl implements TruffleCache {
     private void expandInvoke(MethodCallTargetNode methodCallTargetNode) {
         StructuredGraph inlineGraph = providers.getReplacements().getMethodSubstitution(methodCallTargetNode.targetMethod());
         if (inlineGraph == null) {
-            inlineGraph = TruffleCacheImpl.this.lookup(methodCallTargetNode.targetMethod(), methodCallTargetNode.arguments(), null, null);
+            inlineGraph = TruffleCacheImpl.this.lookup(methodCallTargetNode.targetMethod(), methodCallTargetNode.arguments(), null, null, false);
         }
         if (inlineGraph == this.markerGraph) {
             // Can happen for recursive calls.
