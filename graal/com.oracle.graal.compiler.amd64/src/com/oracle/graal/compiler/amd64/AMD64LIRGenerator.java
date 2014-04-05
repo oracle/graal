@@ -246,8 +246,8 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public void emitCompareBranch(Value left, Value right, Condition cond, boolean unorderedIsTrue, LabelRef trueLabel, LabelRef falseLabel, double trueLabelProbability) {
-        boolean mirrored = emitCompare(left, right);
+    public void emitCompareBranch(PlatformKind cmpKind, Value left, Value right, Condition cond, boolean unorderedIsTrue, LabelRef trueLabel, LabelRef falseLabel, double trueLabelProbability) {
+        boolean mirrored = emitCompare(cmpKind, left, right);
         Condition finalCondition = mirrored ? cond.mirror() : cond;
         switch (left.getKind().getStackKind()) {
             case Int:
@@ -276,8 +276,8 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Variable emitConditionalMove(Value left, Value right, Condition cond, boolean unorderedIsTrue, Value trueValue, Value falseValue) {
-        boolean mirrored = emitCompare(left, right);
+    public Variable emitConditionalMove(PlatformKind cmpKind, Value left, Value right, Condition cond, boolean unorderedIsTrue, Value trueValue, Value falseValue) {
+        boolean mirrored = emitCompare(cmpKind, left, right);
         Condition finalCondition = mirrored ? cond.mirror() : cond;
 
         Variable result = newVariable(trueValue.getKind());
@@ -314,8 +314,16 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         }
     }
 
-    protected void emitCompareOp(Variable left, Value right) {
-        switch (left.getKind().getStackKind()) {
+    protected void emitCompareOp(PlatformKind cmpKind, Variable left, Value right) {
+        switch ((Kind) cmpKind) {
+            case Byte:
+            case Boolean:
+                append(new CompareOp(BCMP, left, right));
+                break;
+            case Short:
+            case Char:
+                append(new CompareOp(SCMP, left, right));
+                break;
             case Int:
                 append(new CompareOp(ICMP, left, right));
                 break;
@@ -337,8 +345,16 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     protected void emitCompareMemoryConOp(Kind kind, AMD64AddressValue address, Value value, LIRFrameState state) {
-        assert kind == value.getKind();
+        assert kind.getStackKind() == value.getKind().getStackKind();
         switch (kind) {
+            case Byte:
+            case Boolean:
+                append(new CompareMemoryOp(BCMP, kind, address, value, state));
+                break;
+            case Short:
+            case Char:
+                append(new CompareMemoryOp(SCMP, kind, address, value, state));
+                break;
             case Int:
                 append(new CompareMemoryOp(ICMP, kind, address, value, state));
                 break;
@@ -353,6 +369,14 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     protected void emitCompareRegMemoryOp(Kind kind, Value value, AMD64AddressValue address, LIRFrameState state) {
         AMD64Compare opcode = null;
         switch (kind) {
+            case Byte:
+            case Boolean:
+                opcode = BCMP;
+                break;
+            case Short:
+            case Char:
+                opcode = SCMP;
+                break;
             case Int:
                 opcode = ICMP;
                 break;
@@ -382,7 +406,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
      * @param b the right operand of the comparison
      * @return true if the left and right operands were switched, false otherwise
      */
-    private boolean emitCompare(Value a, Value b) {
+    private boolean emitCompare(PlatformKind cmpKind, Value a, Value b) {
         Variable left;
         Value right;
         boolean mirrored;
@@ -395,7 +419,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
             right = loadNonConst(b);
             mirrored = false;
         }
-        emitCompareOp(left, right);
+        emitCompareOp(cmpKind, left, right);
         return mirrored;
     }
 

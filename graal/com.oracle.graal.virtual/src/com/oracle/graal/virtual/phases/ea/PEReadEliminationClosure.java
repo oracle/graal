@@ -30,7 +30,6 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.PhiNode.PhiType;
 import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
@@ -114,7 +113,7 @@ public class PEReadEliminationClosure extends PartialEscapeClosure<PEReadElimina
             if (initialState.getReadCache().get(entry.getKey()) != entry.getValue()) {
                 ValueNode value = exitState.getReadCache(entry.getKey().object, entry.getKey().identity, this);
                 if (!(value instanceof ProxyNode) || ((ProxyNode) value).proxyPoint() != exitNode) {
-                    ProxyNode proxy = new ProxyNode(value, exitNode, PhiType.Value);
+                    ProxyNode proxy = new ValueProxyNode(value, exitNode);
                     effects.addFloatingNode(proxy, "readCacheProxy");
                     entry.setValue(proxy);
                 }

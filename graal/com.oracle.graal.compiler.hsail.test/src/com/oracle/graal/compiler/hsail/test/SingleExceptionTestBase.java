@@ -26,7 +26,7 @@ package com.oracle.graal.compiler.hsail.test;
 import com.oracle.graal.compiler.hsail.test.infra.GraalKernelTester;
 
 /**
- * 
+ *
  * @author ecaspole
  */
 public abstract class SingleExceptionTestBase extends GraalKernelTester {
@@ -34,6 +34,11 @@ public abstract class SingleExceptionTestBase extends GraalKernelTester {
     @Result Class<?> exceptionClass;
     @Result String exceptionString;
     @Result StackTraceElement firstStackTraceElement;
+
+    @Override
+    protected boolean supportsRequiredCapabilities() {
+        return getHSAILBackend().getRuntime().getConfig().useHSAILDeoptimization;
+    }
 
     void recordException(Exception e) {
         // for now we just test that the class the of the exception

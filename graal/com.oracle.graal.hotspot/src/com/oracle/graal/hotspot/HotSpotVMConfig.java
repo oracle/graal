@@ -611,10 +611,9 @@ public class HotSpotVMConfig extends CompilerObject {
             nameOffset = vmStructs.get("Flag::_name").getOffset();
             addrOffset = vmStructs.get("Flag::_addr").getOffset();
 
-            // TODO use the following after we switched to JDK 8
-            assert vmTypes.get("bool").getSize() == Byte.SIZE / Byte.SIZE; // TODO Byte.BYTES;
-            assert vmTypes.get("intx").getSize() == Long.SIZE / Byte.SIZE; // TODO Long.BYTES;
-            assert vmTypes.get("uintx").getSize() == Long.SIZE / Byte.SIZE; // TODO Long.BYTES;
+            assert vmTypes.get("bool").getSize() == Byte.BYTES;
+            assert vmTypes.get("intx").getSize() == Long.BYTES;
+            assert vmTypes.get("uintx").getSize() == Long.BYTES;
         }
 
         public Iterator<Flags.Flag> iterator() {
@@ -1004,6 +1003,8 @@ public class HotSpotVMConfig extends CompilerObject {
     @HotSpotVMField(name = "ThreadShadow::_pending_deoptimization", type = "int", get = HotSpotVMField.Type.OFFSET) @Stable public int pendingDeoptimizationOffset;
     @HotSpotVMField(name = "ThreadShadow::_pending_failed_speculation", type = "oop", get = HotSpotVMField.Type.OFFSET) @Stable public int pendingFailedSpeculationOffset;
 
+    @HotSpotVMFlag(name = "UseHSAILDeoptimization") @Stable public boolean useHSAILDeoptimization;
+
     /**
      * Offsets of Hsail deoptimization fields (defined in gpu_hsail.hpp). Used to propagate
      * exceptions from Hsail back to C++ runtime.
@@ -1107,6 +1108,7 @@ public class HotSpotVMConfig extends CompilerObject {
     @HotSpotVMConstant(name = "JVM_CONSTANT_MethodHandleInError") @Stable public int jvmConstantMethodHandleInError;
     @HotSpotVMConstant(name = "JVM_CONSTANT_MethodType") @Stable public int jvmConstantMethodType;
     @HotSpotVMConstant(name = "JVM_CONSTANT_MethodTypeInError") @Stable public int jvmConstantMethodTypeInError;
+    @HotSpotVMConstant(name = "JVM_CONSTANT_InvokeDynamic") @Stable public int jvmConstantInvokeDynamic;
 
     @HotSpotVMConstant(name = "HeapWordSize") @Stable public int heapWordSize;
 

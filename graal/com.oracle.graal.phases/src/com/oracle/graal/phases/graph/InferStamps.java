@@ -47,7 +47,7 @@ public class InferStamps {
          * when the phi function performs the "meet" operator on its input stamps.
          */
         for (Node n : graph.getNodes()) {
-            if (n instanceof PhiNode || n instanceof ValueAndStampProxy) {
+            if (n instanceof ValuePhiNode || n instanceof ValueAndStampProxy) {
                 ValueNode node = (ValueNode) n;
                 if (ObjectStamp.isObject(node.stamp())) {
                     assert !(node.stamp() instanceof IllegalStamp) : "We assume all Phi and Proxy stamps are legal before the analysis";
@@ -84,7 +84,7 @@ public class InferStamps {
 
     private static boolean checkNoIllegalStamp(StructuredGraph graph) {
         for (Node n : graph.getNodes()) {
-            if (n instanceof PhiNode || n instanceof ValueAndStampProxy) {
+            if (n instanceof ValuePhiNode || n instanceof ValueAndStampProxy) {
                 ValueNode node = (ValueNode) n;
                 assert !(node.stamp() instanceof IllegalStamp) : "Stamp is illegal after analysis. This is not necessarily an error, but a condition that we want to investigate (and then maybe relax or remove the assertion).";
             }

@@ -32,9 +32,10 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.internal.*;
 import com.oracle.graal.graph.*;
-import com.oracle.graal.graph.Node.*;
+import com.oracle.graal.graph.Node.ConstantNodeParameter;
+import com.oracle.graal.graph.Node.InjectedNodeParameter;
+import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.PhiNode.PhiType;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
@@ -387,8 +388,8 @@ public class NodeIntrinsificationPhase extends Phase {
             }
         } else if (usage instanceof ProxyNode) {
             ProxyNode proxy = (ProxyNode) usage;
-            assert proxy.type() == PhiType.Value;
-            ProxyNode newProxy = graph.unique(new ProxyNode((ValueNode) intrinsifiedNode, proxy.proxyPoint(), PhiType.Value));
+            assert proxy instanceof ValueProxyNode;
+            ProxyNode newProxy = ProxyNode.forValue((ValueNode) intrinsifiedNode, proxy.proxyPoint(), graph);
             for (Node proxyUsage : usage.usages().snapshot()) {
                 checkCheckCastUsage(graph, newProxy, proxy, proxyUsage);
             }

@@ -34,6 +34,7 @@ import java.io.*;
 import java.lang.reflect.*;
 
 import org.junit.*;
+import static org.junit.Assume.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
@@ -54,7 +55,7 @@ public abstract class GraalKernelTester extends KernelTester {
         super(getHSAILBackend().isDeviceInitialized());
     }
 
-    private static HSAILHotSpotBackend getHSAILBackend() {
+    protected static HSAILHotSpotBackend getHSAILBackend() {
         Backend backend = runtime().getBackend(HSAIL.class);
         Assume.assumeTrue(backend instanceof HSAILHotSpotBackend);
         return (HSAILHotSpotBackend) backend;
@@ -102,6 +103,13 @@ public abstract class GraalKernelTester extends KernelTester {
         return (canGenerateCalls && canExecuteCalls);
     }
 
+    /**
+     * Determines if the runtime has the capabilities required by this test.
+     */
+    protected boolean supportsRequiredCapabilities() {
+        return true;
+    }
+
     @Override
     protected void dispatchKernelOkra(int range, Object... args) {
         HSAILHotSpotBackend backend = getHSAILBackend();
@@ -140,6 +148,7 @@ public abstract class GraalKernelTester extends KernelTester {
     @Override
     public void testGeneratedHsail() {
         try (OverrideScope s = getOverrideScope()) {
+            assumeTrue(supportsRequiredCapabilities());
             super.testGeneratedHsail();
         }
     }

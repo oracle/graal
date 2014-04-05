@@ -265,7 +265,8 @@ public class PTXLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public void emitCompareBranch(Value left, Value right, Condition cond, boolean unorderedIsTrue, LabelRef trueDestination, LabelRef falseDestination, double trueDestinationProbability) {
+    public void emitCompareBranch(PlatformKind cmpKind, Value left, Value right, Condition cond, boolean unorderedIsTrue, LabelRef trueDestination, LabelRef falseDestination,
+                    double trueDestinationProbability) {
         switch (left.getKind().getStackKind()) {
             case Int:
                 append(new CompareOp(ICMP, cond, left, right, nextPredRegNum));
@@ -305,7 +306,7 @@ public class PTXLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Variable emitConditionalMove(Value left, Value right, Condition cond, boolean unorderedIsTrue, Value trueValue, Value falseValue) {
+    public Variable emitConditionalMove(PlatformKind cmpKind, Value left, Value right, Condition cond, boolean unorderedIsTrue, Value trueValue, Value falseValue) {
 
         Condition finalCondition = LIRValueUtil.isVariable(right) ? cond.mirror() : cond;
 
@@ -837,7 +838,7 @@ public class PTXLIRGenerator extends LIRGenerator {
             // Store result in global memory whose location is loadVar
             emitStoreReturnValue(operand.getKind(), loadVar, operand, null);
         }
-        append(new ReturnOp(operand));
+        emitReturnNoVal();
     }
 
     void emitReturnNoVal() {

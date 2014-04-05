@@ -22,87 +22,56 @@
  */
 package com.oracle.graal.nodes;
 
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Node.ValueNumberable;
-import com.oracle.graal.graph.spi.*;
-import com.oracle.graal.nodes.PhiNode.PhiType;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.type.*;
 
 /**
- * A value proxy that is inserted in the frame state of a loop exit for any value that is created
- * inside the loop (i.e. was not live on entry to the loop) and is (potentially) used after the
- * loop.
+ * A proxy is inserted at loop exits for any value that is created inside the loop (i.e. was not
+ * live on entry to the loop) and is (potentially) used after the loop.
  */
-@NodeInfo(nameTemplate = "{p#type/s}Proxy")
-public class ProxyNode extends FloatingNode implements IterableNodeType, ValueNumberable, Canonicalizable, Virtualizable, ValueAndStampProxy, GuardingNode {
+public abstract class ProxyNode extends FloatingNode implements IterableNodeType, ValueNumberable, ValueAndStampProxy {
 
     @Input(notDataflow = true) private AbstractBeginNode proxyPoint;
-    @Input private ValueNode value;
-    private final PhiType type;
 
-    public ProxyNode(ValueNode value, AbstractBeginNode exit, PhiType type) {
-        super(type == PhiType.Value ? value.stamp() : type.stamp);
-        this.type = type;
-        assert exit != null;
-        this.proxyPoint = exit;
-        this.value = value;
+    public ProxyNode(Stamp stamp, AbstractBeginNode proxyPoint) {
+        super(stamp);
+        assert proxyPoint != null;
+        this.proxyPoint = proxyPoint;
     }
 
-    public ValueNode value() {
-        return value;
-    }
-
-    @Override
-    public boolean inferStamp() {
-        return updateStamp(value.stamp());
-    }
+    public abstract ValueNode value();
 
     public AbstractBeginNode proxyPoint() {
         return proxyPoint;
     }
 
-    public PhiType type() {
-        return type;
-    }
-
     @Override
     public boolean verify() {
-        assert value != null;
+        assert value() != null;
         assert proxyPoint != null;
-        assert !(value instanceof ProxyNode) || ((ProxyNode) value).proxyPoint != proxyPoint;
+        assert !(value() instanceof ProxyNode) || ((ProxyNode) value()).proxyPoint != proxyPoint;
         return super.verify();
     }
 
     @Override
-    public Node canonical(CanonicalizerTool tool) {
-        if (type == PhiType.Value && value.isConstant()) {
-            return value;
-        }
-        return this;
-    }
-
-    @Override
-    public void virtualize(VirtualizerTool tool) {
-        if (type == PhiType.Value) {
-            State state = tool.getObjectState(value);
-            if (state != null && state.getState() == EscapeState.Virtual) {
-                tool.replaceWithVirtual(state.getVirtualObject());
-            }
-        }
-    }
-
-    public static ProxyNode forGuard(ValueNode value, AbstractBeginNode exit, StructuredGraph graph) {
-        return graph.unique(new ProxyNode(value, exit, PhiType.Guard));
-    }
-
-    public static ProxyNode forValue(ValueNode value, AbstractBeginNode exit, StructuredGraph graph) {
-        return graph.unique(new ProxyNode(value, exit, PhiType.Value));
-    }
-
-    @Override
     public ValueNode getOriginalValue() {
-        return value;
+        return value();
+    }
+
+    public static MemoryProxyNode forMemory(MemoryNode value, AbstractBeginNode exit, LocationIdentity location, StructuredGraph graph) {
+        return graph.unique(new MemoryProxyNode(ValueNodeUtil.asNode(value), exit, location));
+    }
+
+    public static ValueProxyNode forValue(ValueNode value, AbstractBeginNode exit, StructuredGraph graph) {
+        return graph.unique(new ValueProxyNode(value, exit));
+    }
+
+    public static GuardProxyNode forGuard(ValueNode value, AbstractBeginNode exit, StructuredGraph graph) {
+        return graph.unique(new GuardProxyNode(value, exit));
     }
 }

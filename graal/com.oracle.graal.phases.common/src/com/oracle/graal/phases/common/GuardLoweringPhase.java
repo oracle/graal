@@ -45,7 +45,7 @@ import com.oracle.graal.phases.tiers.*;
 /**
  * This phase lowers {@link GuardNode GuardNodes} into corresponding control-flow structure and
  * {@link DeoptimizeNode DeoptimizeNodes}.
- * 
+ *
  * This allow to enter the {@link GuardsStage#FIXED_DEOPTS FIXED_DEOPTS} stage of the graph where
  * all node that may cause deoptimization are fixed.
  * <p>
@@ -89,24 +89,26 @@ public class GuardLoweringPhase extends BasePhase<MidTierContext> {
         }
 
         private void processAccess(Access access) {
-            GuardNode guard = nullGuarded.get(access.object());
-            if (guard != null && isImplicitNullCheck(access.nullCheckLocation())) {
-                metricImplicitNullCheck.increment();
-                access.setGuard(guard.getGuard());
-                FixedAccessNode fixedAccess;
-                if (access instanceof FloatingAccessNode) {
-                    fixedAccess = ((FloatingAccessNode) access).asFixedNode();
-                    replaceCurrent(fixedAccess.asNode());
-                } else {
-                    fixedAccess = (FixedAccessNode) access;
+            if (access.canNullCheck()) {
+                GuardNode guard = nullGuarded.get(access.object());
+                if (guard != null && isImplicitNullCheck(access.accessLocation())) {
+                    metricImplicitNullCheck.increment();
+                    access.setGuard(guard.getGuard());
+                    FixedAccessNode fixedAccess;
+                    if (access instanceof FloatingAccessNode) {
+                        fixedAccess = ((FloatingAccessNode) access).asFixedNode();
+                        replaceCurrent(fixedAccess);
+                    } else {
+                        fixedAccess = (FixedAccessNode) access;
+                    }
+                    fixedAccess.setNullCheck(true);
+                    LogicNode condition = guard.condition();
+                    guard.replaceAndDelete(fixedAccess);
+                    if (condition.usages().isEmpty()) {
+                        GraphUtil.killWithUnusedFloatingInputs(condition);
+                    }
+                    nullGuarded.remove(fixedAccess.object());
                 }
-                fixedAccess.setNullCheck(true);
-                LogicNode condition = guard.condition();
-                guard.replaceAndDelete(fixedAccess.asNode());
-                if (condition.usages().isEmpty()) {
-                    GraphUtil.killWithUnusedFloatingInputs(condition);
-                }
-                nullGuarded.remove(fixedAccess.object());
             }
         }
 

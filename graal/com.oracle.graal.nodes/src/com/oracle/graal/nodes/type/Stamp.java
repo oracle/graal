@@ -52,15 +52,15 @@ public abstract class Stamp {
     public abstract Kind getStackKind();
 
     /**
-     * Gets a platform dependend {@link PlatformKind} that can be used to store a value of this
+     * Gets a platform dependent {@link PlatformKind} that can be used to store a value of this
      * stamp.
      */
     public abstract PlatformKind getPlatformKind(LIRTypeTool tool);
 
     /**
      * Returns the union of this stamp and the given stamp. Typically used to create stamps for
-     * {@link PhiNode}s.
-     * 
+     * {@link ValuePhiNode}s.
+     *
      * @param other The stamp that will enlarge this stamp.
      * @return The union of this stamp and the given stamp.
      */
@@ -68,7 +68,7 @@ public abstract class Stamp {
 
     /**
      * Returns the intersection of this stamp and the given stamp.
-     * 
+     *
      * @param other The stamp that will tighten this stamp.
      * @return The intersection of this stamp and the given stamp.
      */
@@ -94,7 +94,7 @@ public abstract class Stamp {
     /**
      * If this stamp represents a single value, the methods returns this single value. It returns
      * null otherwise.
-     * 
+     *
      * @return the constant corresponding to the single value of this stamp and null if this stamp
      *         can represent less or more than one value.
      */

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,61 +25,18 @@ package com.oracle.graal.nodes;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.calc.*;
-import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.type.*;
 
-/**
- * The {@code PhiNode} represents the merging of dataflow in the graph. It refers to a merge and a
- * variable.
- */
-@NodeInfo(nameTemplate = "{p#type/s}Phi({i#values})")
-public class PhiNode extends FloatingNode implements Canonicalizable, GuardingNode {
-
-    public static enum PhiType {
-        Value(null), // normal value phis
-        Guard(StampFactory.dependency()),
-        Memory(StampFactory.dependency());
-
-        public final Stamp stamp;
-
-        PhiType(Stamp stamp) {
-            this.stamp = stamp;
-        }
-    }
+public abstract class PhiNode extends FloatingNode {
 
     @Input(notDataflow = true) private MergeNode merge;
-    @Input private final NodeInputList<ValueNode> values = new NodeInputList<>(this);
-    private final PhiType type;
 
-    /**
-     * Create a value phi ({@link PhiType#Value}) with the specified stamp.
-     * 
-     * @param stamp the stamp of the value
-     * @param merge the merge that the new phi belongs to
-     */
-    public PhiNode(Stamp stamp, MergeNode merge) {
+    protected PhiNode(Stamp stamp, MergeNode merge) {
         super(stamp);
-        assert stamp != StampFactory.forVoid();
-        this.type = PhiType.Value;
         this.merge = merge;
     }
 
-    /**
-     * Create a non-value phi ({@link PhiType#Memory} with the specified kind.
-     * 
-     * @param type the type of the new phi
-     * @param merge the merge that the new phi belongs to
-     */
-    public PhiNode(PhiType type, MergeNode merge) {
-        super(type.stamp);
-        assert type.stamp != null : merge + " " + type;
-        this.type = type;
-        this.merge = merge;
-    }
-
-    public PhiType type() {
-        return type;
-    }
+    public abstract NodeInputList<ValueNode> values();
 
     public MergeNode merge() {
         return merge;
@@ -88,23 +45,6 @@ public class PhiNode extends FloatingNode implements Canonicalizable, GuardingNo
     public void setMerge(MergeNode x) {
         updateUsages(merge, x);
         merge = x;
-    }
-
-    public NodeInputList<ValueNode> values() {
-        return values;
-    }
-
-    @Override
-    public boolean inferStamp() {
-        if (type == PhiType.Value) {
-            return inferPhiStamp();
-        } else {
-            return false;
-        }
-    }
-
-    public boolean inferPhiStamp() {
-        return updateStamp(StampTool.meet(values()));
     }
 
     @Override
@@ -117,29 +57,29 @@ public class PhiNode extends FloatingNode implements Canonicalizable, GuardingNo
     /**
      * Get the instruction that produces the value associated with the i'th predecessor of the
      * merge.
-     * 
+     *
      * @param i the index of the predecessor
      * @return the instruction that produced the value in the i'th predecessor
      */
     public ValueNode valueAt(int i) {
-        return values.get(i);
+        return values().get(i);
     }
 
     /**
      * Sets the value at the given index and makes sure that the values list is large enough.
-     * 
+     *
      * @param i the index at which to set the value
      * @param x the new phi input value for the given location
      */
     public void initializeValueAt(int i, ValueNode x) {
         while (values().size() <= i) {
-            values.add(null);
+            values().add(null);
         }
-        values.set(i, x);
+        values().set(i, x);
     }
 
     public void setValueAt(int i, ValueNode x) {
-        values.set(i, x);
+        values().set(i, x);
     }
 
     public ValueNode valueAt(AbstractEndNode pred) {
@@ -148,15 +88,15 @@ public class PhiNode extends FloatingNode implements Canonicalizable, GuardingNo
 
     /**
      * Get the number of inputs to this phi (i.e. the number of predecessors to the merge).
-     * 
+     *
      * @return the number of inputs in this phi
      */
     public int valueCount() {
-        return values.size();
+        return values().size();
     }
 
     public void clearValues() {
-        values.clear();
+        values().clear();
     }
 
     @Override
@@ -169,24 +109,20 @@ public class PhiNode extends FloatingNode implements Canonicalizable, GuardingNo
                 }
                 str.append(valueAt(i) == null ? "-" : valueAt(i).toString(Verbosity.Id));
             }
-            if (type == PhiType.Value) {
-                return super.toString(Verbosity.Name) + "(" + str + ")";
-            } else {
-                return type + super.toString(Verbosity.Name) + "(" + str + ")";
-            }
+            return super.toString(Verbosity.Name) + "(" + str + ")";
         } else {
             return super.toString(verbosity);
         }
     }
 
     public void addInput(ValueNode x) {
-        assert !(x instanceof PhiNode) || ((PhiNode) x).merge() instanceof LoopBeginNode || ((PhiNode) x).merge() != this.merge();
-        assert x.stamp().isCompatible(stamp()) || type != PhiType.Value;
-        values.add(x);
+        assert !(x instanceof ValuePhiNode) || ((ValuePhiNode) x).merge() instanceof LoopBeginNode || ((ValuePhiNode) x).merge() != this.merge();
+        assert !(this instanceof ValuePhiNode) || x.stamp().isCompatible(stamp());
+        values().add(x);
     }
 
     public void removeInput(int index) {
-        values.remove(index);
+        values().remove(index);
     }
 
     public ValueNode singleValue() {

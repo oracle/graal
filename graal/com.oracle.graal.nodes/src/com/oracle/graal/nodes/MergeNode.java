@@ -210,7 +210,7 @@ public class MergeNode extends BeginStateSplitNode implements IterableNodeType, 
                 }
             }
 
-            PhiNode returnValuePhi = returnNode.result() == null || !isPhiAtMerge(returnNode.result()) ? null : (PhiNode) returnNode.result();
+            ValuePhiNode returnValuePhi = returnNode.result() == null || !isPhiAtMerge(returnNode.result()) ? null : (ValuePhiNode) returnNode.result();
             List<AbstractEndNode> endNodes = forwardEnds().snapshot();
             for (AbstractEndNode end : endNodes) {
                 ReturnNode newReturn = graph().add(new ReturnNode(returnValuePhi == null ? returnNode.result() : returnValuePhi.valueAt(end)));

@@ -90,9 +90,9 @@ public class WordTypeVerificationPhase extends Phase {
                     verify(!isWord(node) || ((ObjectEqualsNode) usage).y() != node, node, usage, "cannot use word type in comparison");
                 } else if (usage instanceof ArrayLengthNode) {
                     verify(!isWord(node) || ((ArrayLengthNode) usage).array() != node, node, usage, "cannot get array length from word value");
-                } else if (usage instanceof PhiNode) {
+                } else if (usage instanceof ValuePhiNode) {
                     if (!(node instanceof MergeNode)) {
-                        PhiNode phi = (PhiNode) usage;
+                        ValuePhiNode phi = (ValuePhiNode) usage;
                         for (ValueNode input : phi.values()) {
                             verify(isWord(node) == isWord(input), node, input, "cannot merge word and non-word values");
                         }

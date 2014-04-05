@@ -20,16 +20,44 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes.extended;
+package com.oracle.graal.nodes;
 
-import com.oracle.graal.nodes.*;
+import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.spi.*;
+import com.oracle.graal.nodes.spi.*;
 
-public interface Access extends GuardedNode, HeapAccess {
+public class ValueProxyNode extends ProxyNode implements Canonicalizable, Virtualizable {
 
-    ValueNode object();
+    @Input private ValueNode value;
 
-    LocationNode accessLocation();
+    public ValueProxyNode(ValueNode value, AbstractBeginNode proxyPoint) {
+        super(value.stamp(), proxyPoint);
+        this.value = value;
+    }
 
-    boolean canNullCheck();
+    @Override
+    public ValueNode value() {
+        return value;
+    }
 
+    @Override
+    public boolean inferStamp() {
+        return updateStamp(value.stamp());
+    }
+
+    @Override
+    public Node canonical(CanonicalizerTool tool) {
+        if (value.isConstant()) {
+            return value;
+        }
+        return this;
+    }
+
+    @Override
+    public void virtualize(VirtualizerTool tool) {
+        State state = tool.getObjectState(value);
+        if (state != null && state.getState() == EscapeState.Virtual) {
+            tool.replaceWithVirtual(state.getVirtualObject());
+        }
+    }
 }

@@ -62,7 +62,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
 
     /**
      * Gets the Graal mirror from a HotSpot metaspace Klass native object.
-     * 
+     *
      * @param metaspaceKlass a metaspace Klass object boxed in a {@link Constant}
      * @return the {@link ResolvedJavaType} corresponding to {@code klassConstant}
      */
@@ -73,7 +73,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
 
     /**
      * Gets the Graal mirror from a HotSpot metaspace Klass native object.
-     * 
+     *
      * @param metaspaceKlass a metaspace Klass object
      * @return the {@link ResolvedJavaType} corresponding to {@code metaspaceKlass}
      */
@@ -86,13 +86,13 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
 
     /**
      * Creates the Graal mirror for a {@link Class} object.
-     * 
+     *
      * <p>
      * <b>NOTE</b>: Creating an instance of this class does not install the mirror for the
      * {@link Class} type. Use {@link #fromClass(Class)}, {@link #fromMetaspaceKlass(Constant)} or
      * {@link #fromMetaspaceKlass(long)} instead.
      * </p>
-     * 
+     *
      * @param javaClass the Class to create the mirror for
      */
     public HotSpotResolvedObjectType(Class<?> javaClass) {
@@ -185,7 +185,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
     /**
      * Returns if type {@code type} is a leaf class. This is the case if the
      * {@code Klass::_subklass} field of the underlying class is zero.
-     * 
+     *
      * @return true if the type is a leaf class
      */
     private boolean isLeafClass() {
@@ -195,7 +195,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
     /**
      * Returns the {@code Klass::_subklass} field of the underlying metaspace klass for the given
      * type {@code type}.
-     * 
+     *
      * @return value of the subklass field as metaspace klass pointer
      */
     private long getSubklass() {
@@ -312,7 +312,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
     /**
      * Returns the value of the state field {@code InstanceKlass::_init_state} of the metaspace
      * klass.
-     * 
+     *
      * @return state field value of this type
      */
     private int getState() {
@@ -476,7 +476,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
 
         /**
          * Creates a field info for the field in the fields array at index {@code index}.
-         * 
+         *
          * @param index index to the fields array
          */
         public FieldInfo(int index) {
@@ -484,8 +484,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
             // Get Klass::_fields
             final long metaspaceFields = unsafe.getAddress(metaspaceKlass() + config.instanceKlassFieldsOffset);
             assert config.fieldInfoFieldSlots == 6 : "revisit the field parsing code";
-            metaspaceData = metaspaceFields + config.arrayU2DataOffset + config.fieldInfoFieldSlots * 2 * index;  // TODO
-            // Short.BYTES
+            metaspaceData = metaspaceFields + config.arrayU2DataOffset + config.fieldInfoFieldSlots * Short.BYTES * index;
         }
 
         private int getAccessFlags() {
@@ -513,7 +512,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
          * on top an array of Java shorts.
          */
         private int readFieldSlot(int index) {
-            return unsafe.getChar(metaspaceData + 2 * index);  // TODO Short.BYTES
+            return unsafe.getChar(metaspaceData + Short.BYTES * index);
         }
 
         /**
@@ -578,8 +577,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
                     }
                 }
 
-                // TODO use in 1.8: fieldsArray.sort(new OffsetComparator());
-                Collections.sort(fieldsArray, new OffsetComparator());
+                fieldsArray.sort(new OffsetComparator());
 
                 HotSpotResolvedJavaField[] myFields = fieldsArray.toArray(new HotSpotResolvedJavaField[0]);
 
@@ -614,7 +612,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
     /**
      * Returns the actual field count of this class's internal {@code InstanceKlass::_fields} array
      * by walking the array and discounting the generic signature slots at the end of the array.
-     * 
+     *
      * <p>
      * See {@code FieldStreamBase::init_generic_signature_start_slot}
      */

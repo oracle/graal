@@ -34,6 +34,8 @@ import com.oracle.graal.lir.amd64.AMD64Move.MemOp;
 import com.oracle.graal.lir.asm.*;
 
 public enum AMD64Compare {
+    BCMP,
+    SCMP,
     ICMP,
     LCMP,
     ACMP,
@@ -59,8 +61,10 @@ public enum AMD64Compare {
         @Override
         protected void verify() {
             super.verify();
-            assert (name().startsWith("I") && x.getKind().getStackKind() == Kind.Int && y.getKind().getStackKind() == Kind.Int) ||
-                            (name().startsWith("L") && x.getKind() == Kind.Long && y.getKind() == Kind.Long) || (name().startsWith("A") && x.getKind() == Kind.Object && y.getKind() == Kind.Object) ||
+            assert (name().startsWith("B") && x.getKind().getStackKind() == Kind.Int && y.getKind().getStackKind() == Kind.Int) ||
+                            (name().startsWith("S") && x.getKind().getStackKind() == Kind.Int && y.getKind().getStackKind() == Kind.Int) ||
+                            (name().startsWith("I") && x.getKind() == Kind.Int && y.getKind() == Kind.Int) || (name().startsWith("L") && x.getKind() == Kind.Long && y.getKind() == Kind.Long) ||
+                            (name().startsWith("A") && x.getKind() == Kind.Object && y.getKind() == Kind.Object) ||
                             (name().startsWith("F") && x.getKind() == Kind.Float && y.getKind() == Kind.Float) || (name().startsWith("D") && x.getKind() == Kind.Double && y.getKind() == Kind.Double);
         }
     }
@@ -82,6 +86,12 @@ public enum AMD64Compare {
         public void emitMemAccess(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
             if (isRegister(y)) {
                 switch (opcode) {
+                    case BCMP:
+                        masm.cmpb(asIntReg(y), address.toAddress());
+                        break;
+                    case SCMP:
+                        masm.cmpw(asIntReg(y), address.toAddress());
+                        break;
                     case ICMP:
                         masm.cmpl(asIntReg(y), address.toAddress());
                         break;
@@ -102,6 +112,12 @@ public enum AMD64Compare {
                 }
             } else if (isConstant(y)) {
                 switch (opcode) {
+                    case BCMP:
+                        masm.cmpb(address.toAddress(), crb.asIntConst(y));
+                        break;
+                    case SCMP:
+                        masm.cmpw(address.toAddress(), crb.asIntConst(y));
+                        break;
                     case ICMP:
                         masm.cmpl(address.toAddress(), crb.asIntConst(y));
                         break;
@@ -128,6 +144,12 @@ public enum AMD64Compare {
     public static void emit(CompilationResultBuilder crb, AMD64MacroAssembler masm, AMD64Compare opcode, Value x, Value y) {
         if (isRegister(x) && isRegister(y)) {
             switch (opcode) {
+                case BCMP:
+                    masm.cmpb(asIntReg(x), asIntReg(y));
+                    break;
+                case SCMP:
+                    masm.cmpw(asIntReg(x), asIntReg(y));
+                    break;
                 case ICMP:
                     masm.cmpl(asIntReg(x), asIntReg(y));
                     break;
@@ -149,6 +171,20 @@ public enum AMD64Compare {
         } else if (isRegister(x) && isConstant(y)) {
             boolean isZero = ((Constant) y).isDefaultForKind();
             switch (opcode) {
+                case BCMP:
+                    if (isZero) {
+                        masm.testl(asIntReg(x), asIntReg(x));
+                    } else {
+                        masm.cmpb(asIntReg(x), crb.asIntConst(y));
+                    }
+                    break;
+                case SCMP:
+                    if (isZero) {
+                        masm.testl(asIntReg(x), asIntReg(x));
+                    } else {
+                        masm.cmpw(asIntReg(x), crb.asIntConst(y));
+                    }
+                    break;
                 case ICMP:
                     if (isZero) {
                         masm.testl(asIntReg(x), asIntReg(x));
@@ -181,6 +217,12 @@ public enum AMD64Compare {
             }
         } else if (isRegister(x) && isStackSlot(y)) {
             switch (opcode) {
+                case BCMP:
+                    masm.cmpb(asIntReg(x), (AMD64Address) crb.asByteAddr(y));
+                    break;
+                case SCMP:
+                    masm.cmpw(asIntReg(x), (AMD64Address) crb.asShortAddr(y));
+                    break;
                 case ICMP:
                     masm.cmpl(asIntReg(x), (AMD64Address) crb.asIntAddr(y));
                     break;

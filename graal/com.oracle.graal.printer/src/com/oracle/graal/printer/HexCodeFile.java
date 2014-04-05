@@ -39,23 +39,23 @@ import com.oracle.graal.api.code.CompilationResult.JumpTable;
  *
  * <pre>
  *     HexCodeFile ::= Platform Delim HexCode Delim (OptionalSection Delim)*
- * 
+ *
  *     OptionalSection ::= Comment | OperandComment | JumpTable | LookupTable
- * 
+ *
  *     Platform ::= "Platform" ISA WordWidth
- * 
+ *
  *     HexCode ::= "HexCode" StartAddress HexDigits
- * 
+ *
  *     Comment ::= "Comment" Position String
- * 
+ *
  *     OperandComment ::= "OperandComment" Position String
- * 
+ *
  *     JumpTable ::= "JumpTable" Position EntrySize Low High
- * 
+ *
  *     LookupTable ::= "LookupTable" Position NPairs KeySize OffsetSize
- * 
+ *
  *     Position, EntrySize, Low, High, NPairs KeySize OffsetSize ::= int
- * 
+ *
  *     Delim := "&lt;||@"
  * </pre>
  *
@@ -184,15 +184,19 @@ public class HexCodeFile {
      * Formats a byte array as a string of hex digits.
      */
     public static String hexCodeString(byte[] code) {
-        StringBuilder sb = new StringBuilder(code.length * 2);
-        for (int b : code) {
-            String hex = Integer.toHexString(b & 0xff);
-            if (hex.length() == 1) {
-                sb.append('0');
+        if (code == null) {
+            return "";
+        } else {
+            StringBuilder sb = new StringBuilder(code.length * 2);
+            for (int b : code) {
+                String hex = Integer.toHexString(b & 0xff);
+                if (hex.length() == 1) {
+                    sb.append('0');
+                }
+                sb.append(hex);
             }
-            sb.append(hex);
+            return sb.toString();
         }
-        return sb.toString();
     }
 
     /**

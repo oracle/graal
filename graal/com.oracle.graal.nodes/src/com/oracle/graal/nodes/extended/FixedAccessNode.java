@@ -27,8 +27,7 @@ import com.oracle.graal.nodes.type.*;
 
 /**
  * Accesses a value at an memory address specified by an {@linkplain #object object} and a
- * {@linkplain #nullCheckLocation() location}. The access does not include a null check on the
- * object.
+ * {@linkplain #accessLocation() location}. The access does not include a null check on the object.
  */
 public abstract class FixedAccessNode extends DeoptimizingFixedWithNextNode implements Access, GuardingNode {
 
@@ -52,7 +51,7 @@ public abstract class FixedAccessNode extends DeoptimizingFixedWithNextNode impl
         return (LocationNode) location;
     }
 
-    public LocationNode nullCheckLocation() {
+    public LocationNode accessLocation() {
         return (LocationNode) location;
     }
 

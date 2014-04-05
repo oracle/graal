@@ -37,7 +37,7 @@ import com.oracle.graal.nodes.cfg.*;
 
 /**
  * Fills in a {@link CompilationResult} as its code is being assembled.
- * 
+ *
  * @see CompilationResultBuilderFactory
  */
 public class CompilationResultBuilder {
@@ -262,6 +262,16 @@ public class CompilationResultBuilder {
     public AbstractAddress asObjectConstRef(Value value) {
         assert value.getKind() == Kind.Object && isConstant(value);
         return recordDataReferenceInCode((Constant) value, 8);
+    }
+
+    public AbstractAddress asByteAddr(Value value) {
+        assert value.getKind() == Kind.Byte || value.getKind() == Kind.Boolean;
+        return asAddress(value);
+    }
+
+    public AbstractAddress asShortAddr(Value value) {
+        assert value.getKind() == Kind.Short || value.getKind() == Kind.Char;
+        return asAddress(value);
     }
 
     public AbstractAddress asIntAddr(Value value) {

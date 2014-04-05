@@ -71,6 +71,10 @@ public class LoweredCompareAndSwapNode extends FixedAccessNode implements StateS
         return location().getLocationIdentity();
     }
 
+    public boolean canNullCheck() {
+        return false;
+    }
+
     @Override
     public void generate(NodeLIRBuilderTool gen) {
         gen.visitCompareAndSwap(this, location().generateAddress(gen, gen.operand(object())));
