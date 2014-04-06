@@ -47,8 +47,8 @@ public class CompressedOopTest extends GraalCompilerTest {
         this.metaAccess = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend().getProviders().getMetaAccess();
     }
 
-    private HotSpotInstalledCode getInstalledCode(String name) throws Exception {
-        final Method method = CompressedOopTest.class.getMethod(name, Object.class, Object.class, Object.class);
+    private HotSpotInstalledCode getInstalledCode(String name, Class<?>... parameterTypes) throws Exception {
+        final Method method = CompressedOopTest.class.getMethod(name, parameterTypes);
         final HotSpotResolvedJavaMethod javaMethod = (HotSpotResolvedJavaMethod) metaAccess.lookupJavaMethod(method);
         final HotSpotInstalledCode installedBenchmarkCode = (HotSpotInstalledCode) getCode(javaMethod, parse(method));
         return installedBenchmarkCode;
@@ -56,19 +56,19 @@ public class CompressedOopTest extends GraalCompilerTest {
 
     @Test
     public void test() throws Exception {
-        HotSpotInstalledCode installedBenchmarkCode = getInstalledCode("fieldTest");
+        HotSpotInstalledCode installedBenchmarkCode = getInstalledCode("fieldTest", Object.class);
         Container c1 = new Container();
-        Assert.assertEquals(c1.b, installedBenchmarkCode.executeVarargs(c1, c1, c1));
+        Assert.assertEquals(c1.b, installedBenchmarkCode.executeVarargs(c1));
     }
 
-    public static Object fieldTest(Object c1, @SuppressWarnings("unused") Object c2, @SuppressWarnings("unused") Object c3) {
+    public static Object fieldTest(Object c1) {
         ((Container) c1).a = ((Container) c1).b;
         return ((Container) c1).a;
     }
 
     @Test
     public void test1() throws Exception {
-        HotSpotInstalledCode installedBenchmarkCode = getInstalledCode("arrayTest");
+        HotSpotInstalledCode installedBenchmarkCode = getInstalledCode("arrayTest", Object.class, Object.class, Object.class);
         ArrayContainer ac = new ArrayContainer();
         Assert.assertEquals(ac.a[9], installedBenchmarkCode.executeVarargs(ac.a, 0, 9));
         Assert.assertEquals(ac.a[8], installedBenchmarkCode.executeVarargs(ac.a, 1, 8));
@@ -92,16 +92,16 @@ public class CompressedOopTest extends GraalCompilerTest {
 
     @Test
     public void test2() throws Exception {
-        HotSpotInstalledCode installedBenchmarkCode = getInstalledCode("arrayCopyTest");
+        HotSpotInstalledCode installedBenchmarkCode = getInstalledCode("arrayCopyTest", Object.class, Object.class);
         ArrayContainer source = new ArrayContainer();
         ArrayContainer destination = new ArrayContainer();
         Assert.assertEquals(source.a.length, destination.a.length);
         Assert.assertFalse(Arrays.equals(source.a, destination.a));
-        installedBenchmarkCode.executeVarargs(source.a, destination.a, source.a);
+        installedBenchmarkCode.executeVarargs(source.a, destination.a);
         Assert.assertArrayEquals(source.a, destination.a);
     }
 
-    public static void arrayCopyTest(Object c1, Object c2, @SuppressWarnings("unused") Object c3) {
+    public static void arrayCopyTest(Object c1, Object c2) {
         Object[] source = (Object[]) c1;
         Object[] destination = (Object[]) c2;
         System.arraycopy(source, 0, destination, 0, source.length);
@@ -109,7 +109,7 @@ public class CompressedOopTest extends GraalCompilerTest {
 
     @Test
     public void test3() throws Exception {
-        HotSpotInstalledCode installedBenchmarkCode = getInstalledCode("compareAndSwapTest");
+        HotSpotInstalledCode installedBenchmarkCode = getInstalledCode("compareAndSwapTest", Object.class, Object.class, Object.class);
         Object initial = new Object();
         Object replacement = new Object();
         AtomicReference<Object> cas = new AtomicReference<>();
@@ -128,7 +128,7 @@ public class CompressedOopTest extends GraalCompilerTest {
 
     @Test
     public void test4() throws Exception {
-        HotSpotInstalledCode installedBenchmarkCode = getInstalledCode("charArrayCopyTest");
+        HotSpotInstalledCode installedBenchmarkCode = getInstalledCode("charArrayCopyTest", Object.class, Object.class, Object.class);
         StringContainer1 source1 = new StringContainer1();
         StringContainer2 source2 = new StringContainer2();
         char[] result = new char[source1.value.length + source2.value.length];
@@ -152,7 +152,7 @@ public class CompressedOopTest extends GraalCompilerTest {
 
     @Test
     public void test5() throws Exception {
-        HotSpotInstalledCode installedBenchmarkCode = getInstalledCode("charContainerArrayCopyTest");
+        HotSpotInstalledCode installedBenchmarkCode = getInstalledCode("charContainerArrayCopyTest", Object.class, Object.class, Object.class);
         StringContainer1 source1 = new StringContainer1();
         StringContainer2 source2 = new StringContainer2();
         char[] result = new char[source1.value.length + source2.value.length];
@@ -175,7 +175,7 @@ public class CompressedOopTest extends GraalCompilerTest {
 
     @Test
     public void test6() throws Exception {
-        HotSpotInstalledCode installedBenchmarkCode = getInstalledCode("stringCopyTest");
+        HotSpotInstalledCode installedBenchmarkCode = getInstalledCode("stringCopyTest", Object.class, Object.class);
         String a = new String("Test ");
         String b = new String("String");
         String c = (String) installedBenchmarkCode.executeVarargs(a, b);
@@ -190,7 +190,7 @@ public class CompressedOopTest extends GraalCompilerTest {
 
     @Test
     public void test7() throws Exception {
-        HotSpotInstalledCode installedBenchmarkCode = getInstalledCode("queueTest");
+        HotSpotInstalledCode installedBenchmarkCode = getInstalledCode("queueTest", Object.class, Object.class);
         ArrayDeque<Object> q = new ArrayDeque<>();
         Object[] objects = new Object[512];
         for (int i = 0; i < objects.length; i++) {
@@ -227,7 +227,7 @@ public class CompressedOopTest extends GraalCompilerTest {
 
     @Test
     public void test8() throws Exception {
-        HotSpotInstalledCode installedBenchmarkCode = getInstalledCode("unmodListTest");
+        HotSpotInstalledCode installedBenchmarkCode = getInstalledCode("unmodListTest", Object.class);
         List<Object> list = new ArrayList<>();
         for (int i = 0; i < 512; i++) {
             list.add(new Object());
@@ -250,50 +250,50 @@ public class CompressedOopTest extends GraalCompilerTest {
 
     @Test
     public void test9() throws Exception {
-        HotSpotInstalledCode installedBenchmarkCode = getInstalledCode("unmodListTest");
+        HotSpotInstalledCode installedBenchmarkCode = getInstalledCode("unmodListTest", Object.class);
         List<Object> list = new ArrayList<>();
-        Object[] array = (Object[]) installedBenchmarkCode.executeVarargs(list, null, null);
+        Object[] array = (Object[]) installedBenchmarkCode.executeVarargs(list);
         Assert.assertTrue(list.size() == array.length);
     }
 
     public void test10() throws Exception {
-        HotSpotInstalledCode installedBenchmarkCode = getInstalledCode("constantTest");
+        HotSpotInstalledCode installedBenchmarkCode = getInstalledCode("constantTest", Object.class);
         Container c = new Container();
-        Assert.assertFalse((boolean) installedBenchmarkCode.executeVarargs(c, null, null));
+        Assert.assertFalse((boolean) installedBenchmarkCode.executeVarargs(c));
     }
 
-    public static Boolean constantTest(Object c1, @SuppressWarnings("unused") Object c2, @SuppressWarnings("unused") Object c3) {
+    public static Boolean constantTest(Object c1) {
         ConstantContainer container = (ConstantContainer) c1;
         return container.a.equals(container.b);
     }
 
     @Test
     public void test11() throws Exception {
-        HotSpotInstalledCode installedBenchmarkCode = getInstalledCode("stringEqualsTest");
+        HotSpotInstalledCode installedBenchmarkCode = getInstalledCode("stringEqualsTest", Object.class, Object.class);
         String s1 = new String("Test");
         String s2 = new String("Test");
         boolean result = ((Boolean) (installedBenchmarkCode.executeVarargs(s1, s2))).booleanValue();
         Assert.assertTrue(result);
     }
 
-    public static Boolean stringEqualsTest(Object c1, Object c2, @SuppressWarnings("unused") Object c3) {
+    public static Boolean stringEqualsTest(Object c1, Object c2) {
         return ((String) c1).equals(c2);
     }
 
     @Test
     public void test12() throws Exception {
-        HotSpotInstalledCode installedBenchmarkCode = getInstalledCode("stringConstantEqualsTest");
+        HotSpotInstalledCode installedBenchmarkCode = getInstalledCode("stringConstantEqualsTest", Object.class);
         String s1 = new String("Test");
         boolean result = ((Boolean) (installedBenchmarkCode.executeVarargs(s1))).booleanValue();
         Assert.assertTrue(result);
     }
 
-    public static Boolean stringConstantEqualsTest(Object c1, @SuppressWarnings("unused") Object c2, @SuppressWarnings("unused") Object c3) {
+    public static Boolean stringConstantEqualsTest(Object c1) {
         return "Test".equals(c1);
     }
 
     @SuppressWarnings("unchecked")
-    public static Object[] unmodListTestByte(Object c1, @SuppressWarnings("unused") Object c2, @SuppressWarnings("unused") Object c3) {
+    public static Object[] unmodListTestByte(Object c1) {
         List<Byte> queue = (ArrayList<Byte>) c1;
         Byte[] result = Collections.unmodifiableCollection(queue).toArray(new Byte[queue.size()]);
         return result;
@@ -301,15 +301,15 @@ public class CompressedOopTest extends GraalCompilerTest {
 
     @Test
     public void test13() throws Exception {
-        HotSpotInstalledCode installedBenchmarkCode = getInstalledCode("unmodListTestByte");
+        HotSpotInstalledCode installedBenchmarkCode = getInstalledCode("unmodListTestByte", Object.class);
         List<Byte> list = new ArrayList<>();
-        Byte[] array = (Byte[]) installedBenchmarkCode.executeVarargs(list, null, null);
+        Byte[] array = (Byte[]) installedBenchmarkCode.executeVarargs(list);
         Assert.assertTrue(list.size() == array.length);
     }
 
     @Test
     public void test14() throws Exception {
-        HotSpotInstalledCode installedBenchmarkCode = getInstalledCode("stringBufferTest");
+        HotSpotInstalledCode installedBenchmarkCode = getInstalledCode("stringBufferTest", Object.class, Object.class);
         StringBuffer buffer = new StringBuffer("TestTestTestTestTestTestTest");
         Assert.assertTrue(buffer.length() == 28);
         String a = new String("TestTestTestTestTestTestTest");
@@ -367,8 +367,7 @@ public class CompressedOopTest extends GraalCompilerTest {
         installedBenchmarkCode.executeVarargs();
     }
 
-    @SuppressWarnings("unused")
-    public static void stringFormat(Object c1, Object c2, Object c3) {
+    public static void stringFormat() {
         String.format("Hello %d", 0);
         String.format("Hello %d", -11);
         String.format("Hello %d", -2147483648);
@@ -382,8 +381,7 @@ public class CompressedOopTest extends GraalCompilerTest {
         Assert.assertTrue(b.length() == 0);
     }
 
-    @SuppressWarnings("unused")
-    public static Object stringBuilder(Object c1, Object c2, Object c3) {
+    public static Object stringBuilder() {
         return new StringBuilder();
     }
 
