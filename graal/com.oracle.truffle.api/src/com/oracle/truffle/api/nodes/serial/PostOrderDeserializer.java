@@ -31,7 +31,9 @@ import sun.misc.*;
 
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.nodes.*;
-import com.oracle.truffle.api.nodes.NodeUtil.*;
+import com.oracle.truffle.api.nodes.NodeUtil.NodeClass;
+import com.oracle.truffle.api.nodes.NodeUtil.NodeField;
+import com.oracle.truffle.api.nodes.NodeUtil.NodeFieldKind;
 
 /**
  * Experimental API. May change without notice.

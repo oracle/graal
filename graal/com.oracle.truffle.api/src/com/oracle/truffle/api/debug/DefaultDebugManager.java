@@ -105,7 +105,7 @@ public class DefaultDebugManager implements DebugManager {
         beingLoaded = null;
     }
 
-    public void haltedAt(Node astNode, VirtualFrame frame) {
+    public void haltedAt(Node astNode, MaterializedFrame frame) {
     }
 
 }

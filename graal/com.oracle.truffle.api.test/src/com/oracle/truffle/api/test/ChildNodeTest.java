@@ -33,7 +33,7 @@ import com.oracle.truffle.api.nodes.Node.Child;
 
 /**
  * <h3>Creating a Child Node</h3>
- * 
+ *
  * <p>
  * Child nodes are stored in the class of the parent node in fields that are marked with the
  * {@link Child} annotation. Before such a field is assigned, {@link Node#adoptChild} must be
@@ -41,13 +41,13 @@ import com.oracle.truffle.api.nodes.Node.Child;
  * {@link Node#getParent()} method allows access to this field. Every node also provides the ability
  * to iterate over its children using {@link Node#getChildren()}.
  * </p>
- * 
+ *
  * <p>
  * A child node field must be declared private and non-final. It may only be assigned in the
  * constructor of the parent node. For changing the structure of the tree at run time, the method
  * {@link Node#replace(Node)} must be used (see {@link ReplaceTest}).
  * </p>
- * 
+ *
  * <p>
  * The next part of the Truffle API introduction is at
  * {@link com.oracle.truffle.api.test.ChildrenNodesTest}.

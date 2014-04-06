@@ -32,11 +32,11 @@ import com.oracle.truffle.sl.runtime.*;
 final class SLGenericDispatchNode extends SLAbstractDispatchNode {
 
     @Override
-    protected Object executeDispatch(VirtualFrame frame, SLFunction function, SLArguments arguments) {
+    protected Object executeDispatch(VirtualFrame frame, SLFunction function, Object[] arguments) {
         /*
          * SL has a quite simple call lookup: just ask the function for the current call target, and
          * call it.
          */
-        return function.getCallTarget().call(frame.pack(), arguments);
+        return function.getCallTarget().call(arguments);
     }
 }

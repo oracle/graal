@@ -71,7 +71,7 @@ final class SLDirectDispatchNode extends SLAbstractDispatchNode {
      * the call target allows method inlining.
      */
     @Override
-    protected Object executeDispatch(VirtualFrame frame, SLFunction function, SLArguments arguments) {
+    protected Object executeDispatch(VirtualFrame frame, SLFunction function, Object[] arguments) {
         /*
          * The inline cache check. Note that cachedFunction must be a final field so that the
          * compiler can optimize the check.
@@ -92,7 +92,7 @@ final class SLDirectDispatchNode extends SLAbstractDispatchNode {
                  * Now we are really ready to perform the call. We use a Truffle CallNode for that,
                  * because it does all the work for method inlining.
                  */
-                return callCachedTargetNode.call(frame.pack(), arguments);
+                return callCachedTargetNode.call(arguments);
 
             } catch (InvalidAssumptionException ex) {
                 /*

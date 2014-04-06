@@ -35,14 +35,14 @@ public interface TruffleRuntime {
 
     /**
      * Name describing this runtime implementation for debugging purposes.
-     * 
+     *
      * @return the name as a String
      */
     String getName();
 
     /**
      * Creates a new call target for a given root node.
-     * 
+     *
      * @param rootNode the root node whose
      *            {@link RootNode#execute(com.oracle.truffle.api.frame.VirtualFrame)} method
      *            represents the entry point
@@ -54,14 +54,14 @@ public interface TruffleRuntime {
 
     /**
      * Creates a new assumption object that can be checked and invalidated.
-     * 
+     *
      * @return the newly created assumption object
      */
     Assumption createAssumption();
 
     /**
      * Creates a new assumption object with a given name that can be checked and invalidated.
-     * 
+     *
      * @param name the name for the new assumption
      * @return the newly created assumption object
      */
@@ -70,24 +70,24 @@ public interface TruffleRuntime {
     /**
      * Creates a new virtual frame object that can be used to store values and is potentially
      * optimizable by the runtime.
-     * 
+     *
      * @return the newly created virtual frame object
      */
-    VirtualFrame createVirtualFrame(PackedFrame caller, Arguments arguments, FrameDescriptor frameDescriptor);
+    VirtualFrame createVirtualFrame(Object[] arguments, FrameDescriptor frameDescriptor);
 
     /**
      * Creates a new materialized frame object that can be used to store values.
-     * 
+     *
      * @return the newly created materialized frame object
      */
-    MaterializedFrame createMaterializedFrame(Arguments arguments);
+    MaterializedFrame createMaterializedFrame(Object[] arguments);
 
     /**
      * Creates a new materialized frame object with the given frame descriptor that can be used to
      * store values.
-     * 
+     *
      * @param frameDescriptor the frame descriptor describing this frame's values
      * @return the newly created materialized frame object
      */
-    MaterializedFrame createMaterializedFrame(Arguments arguments, FrameDescriptor frameDescriptor);
+    MaterializedFrame createMaterializedFrame(Object[] arguments, FrameDescriptor frameDescriptor);
 }

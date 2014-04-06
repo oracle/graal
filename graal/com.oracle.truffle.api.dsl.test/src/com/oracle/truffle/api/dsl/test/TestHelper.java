@@ -31,7 +31,6 @@ import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ArgumentNode;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ChildrenNode;
-import com.oracle.truffle.api.dsl.test.TypeSystemTest.TestArguments;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.TestRootNode;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
 
@@ -96,7 +95,7 @@ class TestHelper {
     }
 
     static <E> Object executeWith(TestRootNode<? extends ValueNode> node, Object... values) {
-        return createCallTarget(node).call(new TestArguments(values));
+        return createCallTarget(node).call(values);
     }
 
     static Object array(Object... val) {

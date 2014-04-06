@@ -32,7 +32,7 @@ import javax.lang.model.type.*;
 import javax.lang.model.util.*;
 
 import com.oracle.truffle.dsl.processor.ast.*;
-import com.oracle.truffle.dsl.processor.ast.CodeTypeMirror.*;
+import com.oracle.truffle.dsl.processor.ast.CodeTypeMirror.ArrayCodeTypeMirror;
 import com.oracle.truffle.dsl.processor.template.*;
 
 /**

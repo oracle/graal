@@ -58,18 +58,18 @@ public final class DefaultTruffleRuntime implements TruffleRuntime {
     }
 
     @Override
-    public VirtualFrame createVirtualFrame(PackedFrame caller, Arguments arguments, FrameDescriptor frameDescriptor) {
-        return new DefaultVirtualFrame(frameDescriptor, caller, arguments);
+    public VirtualFrame createVirtualFrame(Object[] arguments, FrameDescriptor frameDescriptor) {
+        return new DefaultVirtualFrame(frameDescriptor, arguments);
     }
 
     @Override
-    public MaterializedFrame createMaterializedFrame(Arguments arguments) {
+    public MaterializedFrame createMaterializedFrame(Object[] arguments) {
         return createMaterializedFrame(arguments, new FrameDescriptor());
     }
 
     @Override
-    public MaterializedFrame createMaterializedFrame(Arguments arguments, FrameDescriptor frameDescriptor) {
-        return new DefaultMaterializedFrame(new DefaultVirtualFrame(frameDescriptor, null, arguments));
+    public MaterializedFrame createMaterializedFrame(Object[] arguments, FrameDescriptor frameDescriptor) {
+        return new DefaultMaterializedFrame(new DefaultVirtualFrame(frameDescriptor, arguments));
     }
 
     @Override

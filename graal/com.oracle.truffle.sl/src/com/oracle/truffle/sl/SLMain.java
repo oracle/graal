@@ -163,7 +163,7 @@ public class SLMain {
                 long start = System.nanoTime();
                 /* Call the main entry point, without any arguments. */
                 try {
-                    Object result = main.getCallTarget().call(null, new SLArguments(new Object[0]));
+                    Object result = main.getCallTarget().call();
                     if (result != SLNull.SINGLETON) {
                         context.getOutput().println(result);
                     }

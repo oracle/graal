@@ -30,7 +30,7 @@ import com.oracle.truffle.api.nodes.*;
 
 /**
  * <h3>Storing Values in Frame Slots</h3>
- * 
+ *
  * <p>
  * The frame is the preferred data structure for passing values between nodes. It can in particular
  * be used for storing the values of local variables of the guest language. The
@@ -40,7 +40,7 @@ import com.oracle.truffle.api.nodes.*;
  * current value of a particular frame slot. Values can be removed from a frame via the
  * {@link FrameDescriptor#removeFrameSlot(Object)} method.
  * </p>
- * 
+ *
  * <p>
  * There are five primitive types for slots available: {@link java.lang.Boolean},
  * {@link java.lang.Integer}, {@link java.lang.Long}, {@link java.lang.Float}, and
@@ -53,7 +53,7 @@ import com.oracle.truffle.api.nodes.*;
  * {@link Frame#setLong}, {@link Frame#setFloat}, or {@link Frame#setDouble}) in the {@link Frame}
  * class.
  * </p>
- * 
+ *
  * <p>
  * The next part of the Truffle API introduction is at
  * {@link com.oracle.truffle.api.test.FrameSlotTypeSpecializationTest}.

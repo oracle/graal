@@ -24,48 +24,22 @@
  */
 package com.oracle.truffle.api;
 
-import com.oracle.truffle.api.frame.*;
-
 /**
  * Represents the target of a call.
  */
 public abstract class CallTarget {
 
+    public static final Object[] NO_ARGUMENTS = new Object[0];
+
     /**
-     * Calls this target as a root method and without arguments.
-     * 
+     * Calls this target as a root method..
+     *
+     * @param arguments passed arguments as an object array
      * @return the return result of the call
      */
+    public abstract Object call(Object[] arguments);
+
     public final Object call() {
-        return call(null, Arguments.EMPTY_ARGUMENTS);
+        return call(NO_ARGUMENTS);
     }
-
-    /**
-     * Calls this target with a caller frame and no arguments.
-     * 
-     * @param caller the caller frame
-     * @return the return result of the call
-     */
-    public final Object call(PackedFrame caller) {
-        return call(caller, Arguments.EMPTY_ARGUMENTS);
-    }
-
-    /**
-     * Calls this target as a root method passing arguments.
-     * 
-     * @param arguments the arguments that should be passed to the callee
-     * @return the return result of the call
-     */
-    public final Object call(Arguments arguments) {
-        return call(null, arguments);
-    }
-
-    /**
-     * Calls this target passing a caller frame and arguments.
-     * 
-     * @param caller the caller frame
-     * @param arguments the arguments that should be passed to the callee
-     * @return the return result of the call
-     */
-    public abstract Object call(PackedFrame caller, Arguments arguments);
 }

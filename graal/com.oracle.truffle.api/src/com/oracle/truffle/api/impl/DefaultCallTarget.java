@@ -39,8 +39,8 @@ public class DefaultCallTarget extends RootCallTarget {
     }
 
     @Override
-    public Object call(PackedFrame caller, Arguments args) {
-        VirtualFrame frame = new DefaultVirtualFrame(getRootNode().getFrameDescriptor(), caller, args);
+    public Object call(Object[] args) {
+        VirtualFrame frame = new DefaultVirtualFrame(getRootNode().getFrameDescriptor(), args);
         return getRootNode().execute(frame);
     }
 }

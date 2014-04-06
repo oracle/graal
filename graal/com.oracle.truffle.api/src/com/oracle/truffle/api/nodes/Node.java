@@ -67,7 +67,7 @@ public abstract class Node implements Cloneable {
 
     /**
      * Assigns a link to a guest language source section to this node.
-     * 
+     *
      * @param section the object representing a section in guest language source code
      */
     public final void assignSourceSection(SourceSection section) {
@@ -107,7 +107,7 @@ public abstract class Node implements Cloneable {
 
     /**
      * Retrieves the guest language source code section that is currently assigned to this node.
-     * 
+     *
      * @return the assigned source code section
      */
     public final SourceSection getSourceSection() {
@@ -116,7 +116,7 @@ public abstract class Node implements Cloneable {
 
     /**
      * Retrieves the guest language source code section that is currently assigned to this node.
-     * 
+     *
      * @return the assigned source code section
      */
     @CompilerDirectives.SlowPath
@@ -130,7 +130,7 @@ public abstract class Node implements Cloneable {
     /**
      * Method that updates the link to the parent in the array of specified new child nodes to this
      * node.
-     * 
+     *
      * @param newChildren the array of new children whose parent should be updated
      * @return the array of new children
      */
@@ -142,7 +142,7 @@ public abstract class Node implements Cloneable {
 
     /**
      * Method that updates the link to the parent in the specified new child node to this node.
-     * 
+     *
      * @param newChild the new child whose parent should be updated
      * @return the new child
      */
@@ -155,7 +155,7 @@ public abstract class Node implements Cloneable {
     /**
      * Method that updates the link to the parent in the array of specified new child nodes to this
      * node.
-     * 
+     *
      * @param newChildren the array of new children whose parent should be updated
      * @return the array of new children
      */
@@ -170,7 +170,7 @@ public abstract class Node implements Cloneable {
 
     /**
      * Method that updates the link to the parent in the specified new child node to this node.
-     * 
+     *
      * @param newChild the new child whose parent should be updated
      * @return the new child
      */
@@ -225,7 +225,7 @@ public abstract class Node implements Cloneable {
     /**
      * Returns properties of this node interesting for debugging and can be overwritten by
      * subclasses to add their own custom properties.
-     * 
+     *
      * @return the properties as a key/value hash map
      */
     public Map<String, Object> getDebugProperties() {
@@ -235,7 +235,7 @@ public abstract class Node implements Cloneable {
 
     /**
      * The current parent node of this node.
-     * 
+     *
      * @return the parent node
      */
     public final Node getParent() {
@@ -245,7 +245,7 @@ public abstract class Node implements Cloneable {
     /**
      * Replaces this node with another node. If there is a source section (see
      * {@link #getSourceSection()}) associated with this node, it is transferred to the new node.
-     * 
+     *
      * @param newNode the new node that is the replacement
      * @param reason a description of the reason for the replacement
      * @return the new node
@@ -263,7 +263,7 @@ public abstract class Node implements Cloneable {
     /**
      * Replaces this node with another node. If there is a source section (see
      * {@link #getSourceSection()}) associated with this node, it is transferred to the new node.
-     * 
+     *
      * @param newNode the new node that is the replacement
      * @return the new node
      */
@@ -294,7 +294,7 @@ public abstract class Node implements Cloneable {
 
     /**
      * Checks if this node is properly adopted by a parent and can be replaced.
-     * 
+     *
      * @return {@code true} if it is safe to replace this node.
      */
     public final boolean isReplaceable() {
@@ -321,7 +321,7 @@ public abstract class Node implements Cloneable {
     /**
      * Intended to be implemented by subclasses of {@link Node} to receive a notification when the
      * node is rewritten. This method is invoked before the actual replace has happened.
-     * 
+     *
      * @param newNode the replacement node
      * @param reason the reason the replace supplied
      */
@@ -396,7 +396,7 @@ public abstract class Node implements Cloneable {
     /**
      * Invokes the {@link NodeVisitor#visit(Node)} method for this node and recursively also for all
      * child nodes.
-     * 
+     *
      * @param nodeVisitor the visitor
      */
     public final void accept(NodeVisitor nodeVisitor) {
@@ -411,7 +411,7 @@ public abstract class Node implements Cloneable {
 
     /**
      * Iterator over the children of this node.
-     * 
+     *
      * @return the iterator
      */
     public final Iterable<Node> getChildren() {
@@ -426,7 +426,7 @@ public abstract class Node implements Cloneable {
 
     /**
      * Creates a shallow copy of this node.
-     * 
+     *
      * @return the new copy
      */
     public Node copy() {
@@ -449,7 +449,7 @@ public abstract class Node implements Cloneable {
 
     /**
      * Get the root node of the tree a node belongs to.
-     * 
+     *
      * @return the {@link RootNode} or {@code null} if there is none.
      */
     public final RootNode getRootNode() {

@@ -67,6 +67,6 @@ public interface DebugContext {
     /**
      * Invokes appropriate debugging action when Truffle execution halts.
      */
-    void executionHalted(Node node, VirtualFrame frame);
+    void executionHalted(Node node, MaterializedFrame frame);
 
 }

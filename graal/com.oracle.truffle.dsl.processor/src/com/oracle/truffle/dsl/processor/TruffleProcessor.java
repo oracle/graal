@@ -28,9 +28,9 @@ import java.util.*;
 import javax.annotation.processing.*;
 import javax.lang.model.*;
 import javax.lang.model.element.*;
-import javax.tools.Diagnostic.*;
+import javax.tools.Diagnostic.Kind;
 
-import com.oracle.truffle.dsl.processor.ProcessorContext.*;
+import com.oracle.truffle.dsl.processor.ProcessorContext.ProcessCallback;
 import com.oracle.truffle.dsl.processor.node.*;
 import com.oracle.truffle.dsl.processor.typesystem.*;
 

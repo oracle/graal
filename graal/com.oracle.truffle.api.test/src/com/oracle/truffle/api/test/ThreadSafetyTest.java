@@ -64,7 +64,7 @@ public class ThreadSafetyTest {
             executorService.submit(new Runnable() {
                 public void run() {
                     try {
-                        Object result = target.call(new TestArguments(5));
+                        Object result = target.call(new Object[]{5});
                         assertEquals(expectedResult, result);
                         ai.incrementAndGet();
                     } catch (Throwable t) {
@@ -78,14 +78,6 @@ public class ThreadSafetyTest {
         executorService.awaitTermination(90, TimeUnit.SECONDS);
         assertTrue("test did not terminate", executorService.isTerminated());
         assertEquals(numberOfIterations, ai.get());
-    }
-
-    static class TestArguments extends Arguments {
-        final int arg;
-
-        public TestArguments(int arg) {
-            this.arg = arg;
-        }
     }
 
     static class TestRootNode extends RootNode {
@@ -182,9 +174,9 @@ public class ThreadSafetyTest {
 
         @Override
         int execute(VirtualFrame frame) {
-            int arg = frame.getArguments(TestArguments.class).arg;
+            int arg = (Integer) frame.getArguments()[0];
             if (arg > 0) {
-                return (int) callNode.call(frame.pack(), new TestArguments(arg - 1));
+                return (int) callNode.call(new Object[]{(arg - 1)});
             } else {
                 return valueNode.execute(frame);
             }

@@ -66,6 +66,6 @@ public interface DebugManager {
      *            not to be any kind of {@link InstrumentationNode},
      * @param frame execution frame at the site where execution suspended
      */
-    void haltedAt(Node astNode, VirtualFrame frame);
+    void haltedAt(Node astNode, MaterializedFrame frame);
 
 }
