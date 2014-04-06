@@ -38,6 +38,7 @@ import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.runtime.*;
 
+@Ignore
 public class NativeFunctionInterfaceTest {
 
     public final NativeFunctionInterface nfi;
