@@ -44,4 +44,9 @@ public final class BranchProfile {
         }
     }
 
+    @Override
+    public String toString() {
+        return String.format("%s(%s)@%x", getClass().getSimpleName(), visited ? "visited" : "not-visited", hashCode());
+    }
+
 }

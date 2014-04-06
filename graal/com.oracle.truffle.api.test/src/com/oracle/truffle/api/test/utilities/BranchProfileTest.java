@@ -22,6 +22,8 @@
  */
 package com.oracle.truffle.api.test.utilities;
 
+import static org.junit.Assert.*;
+
 import org.junit.*;
 
 import com.oracle.truffle.api.utilities.*;
@@ -33,6 +35,18 @@ public class BranchProfileTest {
         BranchProfile profile = new BranchProfile();
         profile.enter();
         profile.enter();
+    }
+
+    @Test
+    public void testToString() {
+        BranchProfile profile = new BranchProfile();
+        assertTrue(profile.toString().contains(profile.getClass().getSimpleName()));
+        assertTrue(profile.toString().contains("not-visited"));
+        assertTrue(profile.toString().contains(Integer.toHexString(profile.hashCode())));
+        profile.enter();
+        assertTrue(profile.toString().contains(profile.getClass().getSimpleName()));
+        assertTrue(profile.toString().contains("visited"));
+        assertTrue(profile.toString().contains(Integer.toHexString(profile.hashCode())));
     }
 
 }
