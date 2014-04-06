@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.nodes.virtual;
 
-import com.oracle.graal.graph.Node.*;
+import com.oracle.graal.graph.Node.ValueNumberable;
 import com.oracle.graal.nodes.*;
 
 public abstract class EscapeObjectState extends VirtualState implements ValueNumberable {

@@ -105,15 +105,15 @@ public abstract class OptimizedCallTarget extends DefaultCallTarget implements L
     }
 
     @Override
-    public abstract Object call(PackedFrame caller, Arguments args);
+    public abstract Object call(Object[] args);
 
     public abstract InstalledCode compile();
 
-    public final Object callInlined(PackedFrame caller, Arguments arguments) {
+    public final Object callInlined(Object[] arguments) {
         if (CompilerDirectives.inInterpreter()) {
             compilationProfile.reportInlinedCall();
         }
-        return executeHelper(caller, arguments);
+        return executeHelper(arguments);
     }
 
     public final void performInlining() {
@@ -161,13 +161,13 @@ public abstract class OptimizedCallTarget extends DefaultCallTarget implements L
 
     protected abstract void invalidate(Node oldNode, Node newNode, CharSequence reason);
 
-    public final Object executeHelper(PackedFrame caller, Arguments args) {
-        VirtualFrame frame = createFrame(getRootNode().getFrameDescriptor(), caller, args);
+    public final Object executeHelper(Object[] args) {
+        VirtualFrame frame = createFrame(getRootNode().getFrameDescriptor(), args);
         return getRootNode().execute(frame);
     }
 
-    public static FrameWithoutBoxing createFrame(FrameDescriptor descriptor, PackedFrame caller, Arguments args) {
-        return new FrameWithoutBoxing(descriptor, caller, args);
+    public static FrameWithoutBoxing createFrame(FrameDescriptor descriptor, Object[] args) {
+        return new FrameWithoutBoxing(descriptor, args);
     }
 
     @Override

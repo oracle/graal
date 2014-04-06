@@ -26,8 +26,9 @@ package com.oracle.graal.jtt.hotpath;
 
 import java.util.*;
 
-import com.oracle.graal.jtt.*;
 import org.junit.*;
+
+import com.oracle.graal.jtt.*;
 
 public class HP_idea extends JTTTest {
 

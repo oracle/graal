@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.hotspot.hsail;
 
+import java.util.*;
+
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
@@ -29,10 +31,9 @@ import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
-import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
-import java.util.HashMap;
+import com.oracle.graal.nodes.spi.*;
 
 public class HSAILHotSpotLoweringProvider extends HotSpotLoweringProvider {
 

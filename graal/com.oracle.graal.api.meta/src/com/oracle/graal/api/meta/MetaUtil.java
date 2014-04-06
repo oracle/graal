@@ -29,7 +29,7 @@ import java.lang.annotation.*;
 import java.lang.reflect.*;
 import java.util.*;
 
-import com.oracle.graal.api.meta.ProfilingInfo.*;
+import com.oracle.graal.api.meta.ProfilingInfo.TriState;
 
 /**
  * Miscellaneous collection of utility methods used by {@code com.oracle.graal.api.meta} and its

@@ -23,13 +23,13 @@
 package com.oracle.graal.lir.ptx;
 
 import static com.oracle.graal.asm.ptx.PTXAssembler.BooleanOperator.*;
-import static com.oracle.graal.asm.ptx.PTXAssembler.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.ptx.*;
+import com.oracle.graal.asm.ptx.PTXAssembler.Setp;
 import com.oracle.graal.lir.asm.*;
-import com.oracle.graal.nodes.calc.Condition;
+import com.oracle.graal.nodes.calc.*;
 
 public class PTXTestOp extends PTXLIRInstruction {
 

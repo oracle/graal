@@ -29,12 +29,12 @@ package com.oracle.graal.compiler.hsail.test.infra;
  */
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 import static com.oracle.graal.phases.GraalOptions.*;
+import static org.junit.Assume.*;
 
 import java.io.*;
 import java.lang.reflect.*;
 
 import org.junit.*;
-import static org.junit.Assume.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;

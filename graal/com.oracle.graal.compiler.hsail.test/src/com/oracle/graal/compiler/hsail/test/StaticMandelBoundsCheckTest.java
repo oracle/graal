@@ -23,8 +23,9 @@
 
 package com.oracle.graal.compiler.hsail.test;
 
-import org.junit.Test;
 import static org.junit.Assume.*;
+
+import org.junit.*;
 
 /**
  * Unit test that simulates the Mandelbrot application. The run method here is a static method

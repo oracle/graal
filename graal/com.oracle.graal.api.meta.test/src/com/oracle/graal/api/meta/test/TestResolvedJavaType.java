@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.api.meta.test;
 
-import static java.lang.Integer.*;
 import static java.lang.reflect.Modifier.*;
 import static org.junit.Assert.*;
 
@@ -40,7 +39,6 @@ import com.oracle.graal.api.meta.*;
 /**
  * Tests for {@link ResolvedJavaType}.
  */
-@SuppressWarnings("unused")
 public class TestResolvedJavaType extends TypeUniverse {
 
     public TestResolvedJavaType() {

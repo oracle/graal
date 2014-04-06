@@ -23,8 +23,8 @@
 
 package com.oracle.graal.jtt.except;
 
-import com.oracle.graal.test.*;
 import com.oracle.graal.jtt.*;
+import com.oracle.graal.test.*;
 
 /*
  */

@@ -23,9 +23,9 @@
 
 package com.oracle.graal.compiler.hsail.test;
 
-import org.junit.Test;
-
 import static org.junit.Assume.*;
+
+import org.junit.*;
 
 /**
  * Tests codegen for String.contains() but with a wrapper method such as one would get in the

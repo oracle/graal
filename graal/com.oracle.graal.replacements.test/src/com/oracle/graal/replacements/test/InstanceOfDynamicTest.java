@@ -22,9 +22,9 @@
  */
 package com.oracle.graal.replacements.test;
 
-import com.oracle.graal.test.*;
 import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.nodes.java.*;
+import com.oracle.graal.test.*;
 
 /**
  * Tests for {@link InstanceOfDynamicNode}.

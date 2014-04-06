@@ -25,9 +25,9 @@ package com.oracle.graal.asm.ptx;
 import sun.misc.*;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.lir.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.graph.GraalInternalError;
+import com.oracle.graal.graph.*;
+import com.oracle.graal.lir.*;
 
 public class PTXMacroAssembler extends PTXAssembler {
 

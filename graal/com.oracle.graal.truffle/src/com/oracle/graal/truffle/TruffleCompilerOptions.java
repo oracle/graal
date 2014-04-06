@@ -54,7 +54,7 @@ public class TruffleCompilerOptions {
     @Option(help = "Enable automatic inlining of call targets")
     public static final OptionValue<Boolean> TruffleFunctionInlining = new OptionValue<>(true);
     @Option(help = "Maximum number of Graal IR nodes during partial evaluation")
-    public static final OptionValue<Integer> TruffleGraphMaxNodes = new OptionValue<>(30000);
+    public static final OptionValue<Integer> TruffleGraphMaxNodes = new OptionValue<>(45000);
     @Option(help = "Stop inlining if caller's cumulative tree size would exceed this limit")
     public static final OptionValue<Integer> TruffleInliningMaxCallerSize = new OptionValue<>(2250);
     @Option(help = "Skip inlining candidate if its tree size exceeds this limit")

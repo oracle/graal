@@ -28,7 +28,7 @@ import java.io.*;
 import java.util.*;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.CodeUtil.*;
+import com.oracle.graal.api.code.CodeUtil.RefMapFormatter;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
 

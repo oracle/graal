@@ -22,18 +22,18 @@
  */
 package com.oracle.graal.hotspot.sparc;
 
-import static com.oracle.graal.sparc.SPARC.*;
 import static com.oracle.graal.phases.GraalOptions.*;
+import static com.oracle.graal.sparc.SPARC.*;
 
 import java.util.*;
 
-import com.oracle.graal.sparc.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.CallingConvention.Type;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.lir.*;
+import com.oracle.graal.sparc.*;
 
 public class SPARCHotSpotRegisterConfig implements RegisterConfig {
 

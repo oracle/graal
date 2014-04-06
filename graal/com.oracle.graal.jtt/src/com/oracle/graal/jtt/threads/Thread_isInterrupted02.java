@@ -26,8 +26,8 @@
 
 package com.oracle.graal.jtt.threads;
 
-import com.oracle.graal.test.*;
 import com.oracle.graal.jtt.*;
+import com.oracle.graal.test.*;
 
 //Test all, mainly monitors
 public class Thread_isInterrupted02 extends JTTTest {

@@ -24,8 +24,8 @@ package com.oracle.graal.jtt.jdk;
 
 import java.io.*;
 
-import com.oracle.graal.test.*;
 import com.oracle.graal.jtt.*;
+import com.oracle.graal.test.*;
 
 /*
  */

@@ -22,12 +22,14 @@
  */
 package com.oracle.graal.replacements;
 
-import static com.oracle.graal.nodes.calc.ConditionalNode.*;
 import static com.oracle.graal.nodes.calc.Condition.*;
+import static com.oracle.graal.nodes.calc.ConditionalNode.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
+import com.oracle.graal.graph.Node.ConstantNodeParameter;
+import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.nodes.calc.*;
 
 /**

@@ -22,9 +22,9 @@
  */
 package com.oracle.graal.asm.ptx;
 
-import com.oracle.graal.lir.Variable;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.lir.*;
 
 /**
  * Represents an address in target machine memory, specified via some combination of a base register

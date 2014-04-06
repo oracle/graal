@@ -22,10 +22,10 @@
  */
 package com.oracle.graal.compiler.ptx.test;
 
-import org.junit.*;
-
 import java.io.*;
-import java.lang.reflect.Method;
+import java.lang.reflect.*;
+
+import org.junit.*;
 
 public class IntegerPTXTest extends PTXTest {
 

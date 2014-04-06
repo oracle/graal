@@ -27,8 +27,9 @@
  */
 package com.oracle.graal.jtt.lang;
 
-import com.oracle.graal.jtt.*;
 import org.junit.*;
+
+import com.oracle.graal.jtt.*;
 
 public final class Class_getSimpleName01 extends JTTTest {
 

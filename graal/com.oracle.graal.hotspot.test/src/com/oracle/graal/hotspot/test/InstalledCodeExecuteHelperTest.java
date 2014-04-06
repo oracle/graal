@@ -49,7 +49,7 @@ public class InstalledCodeExecuteHelperTest extends GraalCompilerTest {
 
     @Test
     public void test1() throws NoSuchMethodException, SecurityException, InvalidInstalledCodeException {
-        final Method fooMethod = InstalledCodeExecuteHelperTest.class.getMethod("foo", Object.class, Object.class, Object.class);
+        final Method fooMethod = InstalledCodeExecuteHelperTest.class.getMethod("foo");
         final HotSpotResolvedJavaMethod fooJavaMethod = (HotSpotResolvedJavaMethod) metaAccess.lookupJavaMethod(fooMethod);
         final HotSpotInstalledCode fooCode = (HotSpotInstalledCode) getCode(fooJavaMethod, parse(fooMethod));
 
@@ -69,13 +69,13 @@ public class InstalledCodeExecuteHelperTest extends GraalCompilerTest {
         int val = 0;
         for (int j = 0; j < 100; j++) {
             for (int i = 0; i < ITERATIONS; i++) {
-                val = (Integer) code.execute(null, null, null);
+                val = (Integer) code.executeVarargs();
             }
         }
         return val;
     }
 
-    public static Integer foo(@SuppressWarnings("unused") Object a1, @SuppressWarnings("unused") Object a2, @SuppressWarnings("unused") Object a3) {
+    public static Integer foo() {
         return 42;
     }
 

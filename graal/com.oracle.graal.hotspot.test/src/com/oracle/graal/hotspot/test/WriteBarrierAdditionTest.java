@@ -296,6 +296,6 @@ public class WriteBarrierAdditionTest extends GraalCompilerTest {
 
     private void test2(final String snippet, Object a, Object b, Object c) throws Exception {
         HotSpotInstalledCode code = getInstalledCode(snippet);
-        code.execute(a, b, c);
+        code.executeVarargs(a, b, c);
     }
 }

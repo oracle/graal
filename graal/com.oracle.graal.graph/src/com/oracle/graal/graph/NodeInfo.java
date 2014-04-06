@@ -22,12 +22,9 @@
  */
 package com.oracle.graal.graph;
 
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
+import java.lang.annotation.*;
 
-import com.oracle.graal.graph.Node.*;
+import com.oracle.graal.graph.Node.Verbosity;
 
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)

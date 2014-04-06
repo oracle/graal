@@ -26,7 +26,7 @@ import java.util.*;
 
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.GraphEvent.NodeEvent;
-import com.oracle.graal.graph.Node.*;
+import com.oracle.graal.graph.Node.ValueNumberable;
 import com.oracle.graal.graph.iterators.*;
 
 /**

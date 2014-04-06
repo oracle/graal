@@ -28,8 +28,8 @@ import static java.lang.Double.*;
 import static java.lang.Float.*;
 
 import com.oracle.graal.amd64.*;
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.CompilationResult.RawData;
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
 import com.oracle.graal.asm.amd64.*;

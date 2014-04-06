@@ -274,7 +274,7 @@ public class PartialEvaluator {
         }
 
         ResolvedJavaMethod method = methodCallTargetNode.targetMethod();
-        if (!method.getName().equals("call") || method.getSignature().getParameterCount(false) != 2) {
+        if (!method.getName().equals("call") || method.getSignature().getParameterCount(false) != 1) {
             return null;
         }
 

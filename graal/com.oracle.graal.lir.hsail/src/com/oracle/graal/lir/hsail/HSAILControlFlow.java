@@ -22,22 +22,20 @@
  */
 package com.oracle.graal.lir.hsail;
 
+import static com.oracle.graal.api.code.ValueUtil.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
 import com.oracle.graal.asm.hsail.*;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.hsail.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.BlockEndOp;
 import com.oracle.graal.lir.SwitchStrategy.BaseSwitchClosure;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.nodes.calc.*;
-
-import static com.oracle.graal.api.code.ValueUtil.*;
-
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.hsail.HSAIL;
 
 /**
  * Implementation of control flow instructions.

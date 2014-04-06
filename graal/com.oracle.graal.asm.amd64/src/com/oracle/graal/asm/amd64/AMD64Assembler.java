@@ -28,6 +28,7 @@ import static com.oracle.graal.asm.NumUtil.*;
 import static com.oracle.graal.asm.amd64.AMD64AsmOptions.*;
 
 import com.oracle.graal.amd64.*;
+import com.oracle.graal.amd64.AMD64.CPUFeature;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.asm.*;
 

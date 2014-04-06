@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.jtt.optimize;
 
-import com.oracle.graal.test.*;
 import com.oracle.graal.jtt.*;
+import com.oracle.graal.test.*;
 
 /*
  * Tests value numbering of instanceof operations.

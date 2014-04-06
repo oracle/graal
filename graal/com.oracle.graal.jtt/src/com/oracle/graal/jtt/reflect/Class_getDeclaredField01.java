@@ -22,8 +22,9 @@
  */
 package com.oracle.graal.jtt.reflect;
 
-import com.oracle.graal.jtt.*;
 import org.junit.*;
+
+import com.oracle.graal.jtt.*;
 
 /*
  */

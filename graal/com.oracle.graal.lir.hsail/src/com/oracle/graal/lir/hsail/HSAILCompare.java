@@ -23,12 +23,13 @@
 package com.oracle.graal.lir.hsail;
 
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
+
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.hsail.*;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.nodes.calc.*;
-import com.oracle.graal.lir.*;
 
 /**
  * Implementation of compare operations.

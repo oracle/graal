@@ -30,7 +30,9 @@ import java.util.concurrent.*;
 
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.Graph.DuplicationReplacement;
-import com.oracle.graal.graph.Node.*;
+import com.oracle.graal.graph.Node.Input;
+import com.oracle.graal.graph.Node.Successor;
+import com.oracle.graal.graph.Node.Verbosity;
 import com.oracle.graal.graph.spi.*;
 
 /**

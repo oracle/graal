@@ -49,7 +49,6 @@ import com.oracle.graal.phases.util.*;
 import com.oracle.graal.truffle.phases.*;
 import com.oracle.graal.virtual.phases.ea.*;
 import com.oracle.truffle.api.*;
-import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
 
 /**
@@ -76,7 +75,7 @@ public final class TruffleCacheImpl implements TruffleCache {
         this.optimisticOptimizations = optimisticOptimizations;
         this.stringBuilderClass = providers.getMetaAccess().lookupJavaType(StringBuilder.class);
         try {
-            executeHelperMethod = providers.getMetaAccess().lookupJavaMethod(OptimizedCallTarget.class.getDeclaredMethod("executeHelper", PackedFrame.class, Arguments.class));
+            executeHelperMethod = providers.getMetaAccess().lookupJavaMethod(OptimizedCallTarget.class.getDeclaredMethod("executeHelper", Object[].class));
         } catch (NoSuchMethodException ex) {
             throw new RuntimeException(ex);
         }

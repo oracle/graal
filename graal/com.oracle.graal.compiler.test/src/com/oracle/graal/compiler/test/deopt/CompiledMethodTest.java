@@ -67,7 +67,7 @@ public class CompiledMethodTest extends GraalCompilerTest {
         final ResolvedJavaMethod javaMethod = getMetaAccess().lookupJavaMethod(method);
         InstalledCode compiledMethod = getCode(javaMethod, graph);
         try {
-            Object result = compiledMethod.execute("1", "2", "3");
+            Object result = compiledMethod.executeVarargs("1", "2", "3");
             Assert.assertEquals("1-2-3", result);
         } catch (InvalidInstalledCodeException t) {
             Assert.fail("method invalidated");

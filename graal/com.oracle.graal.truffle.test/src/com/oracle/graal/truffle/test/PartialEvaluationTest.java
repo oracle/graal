@@ -58,10 +58,10 @@ public class PartialEvaluationTest extends GraalCompilerTest {
     }
 
     protected InstalledCode assertPartialEvalEquals(String methodName, RootNode root) {
-        return assertPartialEvalEquals(methodName, root, Arguments.EMPTY_ARGUMENTS);
+        return assertPartialEvalEquals(methodName, root, new Object[0]);
     }
 
-    protected InstalledCode assertPartialEvalEquals(String methodName, RootNode root, Arguments arguments) {
+    protected InstalledCode assertPartialEvalEquals(String methodName, RootNode root, Object[] arguments) {
         Assumptions assumptions = new Assumptions(true);
         StructuredGraph actual = partialEval(root, arguments, assumptions, true);
         InstalledCode result = truffleCompiler.compileMethodHelper(actual, assumptions, root.toString(), getSpeculationLog());
@@ -72,10 +72,10 @@ public class PartialEvaluationTest extends GraalCompilerTest {
     }
 
     protected void assertPartialEvalNoInvokes(RootNode root) {
-        assertPartialEvalNoInvokes(root, Arguments.EMPTY_ARGUMENTS);
+        assertPartialEvalNoInvokes(root, new Object[0]);
     }
 
-    protected void assertPartialEvalNoInvokes(RootNode root, Arguments arguments) {
+    protected void assertPartialEvalNoInvokes(RootNode root, Object[] arguments) {
         Assumptions assumptions = new Assumptions(true);
         StructuredGraph actual = partialEval(root, arguments, assumptions, true);
         removeFrameStates(actual);
@@ -84,13 +84,13 @@ public class PartialEvaluationTest extends GraalCompilerTest {
         }
     }
 
-    protected StructuredGraph partialEval(RootNode root, Arguments arguments, final Assumptions assumptions, final boolean canonicalizeReads) {
+    protected StructuredGraph partialEval(RootNode root, Object[] arguments, final Assumptions assumptions, final boolean canonicalizeReads) {
         final OptimizedCallTargetImpl compilable = (OptimizedCallTargetImpl) Truffle.getRuntime().createCallTarget(root);
 
         // Executed AST so that all classes are loaded and initialized.
-        compilable.call(null, arguments);
-        compilable.call(null, arguments);
-        compilable.call(null, arguments);
+        compilable.call(arguments);
+        compilable.call(arguments);
+        compilable.call(arguments);
         compilable.performInlining();
 
         try (Scope s = Debug.scope("TruffleCompilation", new TruffleDebugJavaMethod(compilable))) {

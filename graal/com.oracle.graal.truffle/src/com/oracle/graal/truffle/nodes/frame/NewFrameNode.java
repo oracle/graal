@@ -35,7 +35,6 @@ import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.nodes.virtual.*;
 import com.oracle.graal.truffle.*;
 import com.oracle.graal.truffle.nodes.*;
-import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.frame.*;
 
 /**
@@ -45,26 +44,20 @@ import com.oracle.truffle.api.frame.*;
 public class NewFrameNode extends FixedWithNextNode implements IterableNodeType, VirtualizableAllocation, Canonicalizable {
 
     @Input private ValueNode descriptor;
-    @Input private ValueNode caller;
     @Input private ValueNode arguments;
 
-    public NewFrameNode(Stamp stamp, ValueNode descriptor, ValueNode caller, ValueNode arguments) {
+    public NewFrameNode(Stamp stamp, ValueNode descriptor, ValueNode arguments) {
         super(stamp);
         this.descriptor = descriptor;
-        this.caller = caller;
         this.arguments = arguments;
     }
 
-    public NewFrameNode(ResolvedJavaType frameType, ValueNode descriptor, ValueNode caller, ValueNode arguments) {
-        this(StampFactory.exactNonNull(frameType), descriptor, caller, arguments);
+    public NewFrameNode(ResolvedJavaType frameType, ValueNode descriptor, ValueNode arguments) {
+        this(StampFactory.exactNonNull(frameType), descriptor, arguments);
     }
 
     public ValueNode getDescriptor() {
         return descriptor;
-    }
-
-    public ValueNode getCaller() {
-        return caller;
     }
 
     public ValueNode getArguments() {
@@ -142,7 +135,6 @@ public class NewFrameNode extends FixedWithNextNode implements IterableNodeType,
         ResolvedJavaField[] frameFields = frameType.getInstanceFields(true);
 
         ResolvedJavaField descriptorField = findField(frameFields, "descriptor");
-        ResolvedJavaField callerField = findField(frameFields, "caller");
         ResolvedJavaField argumentsField = findField(frameFields, "arguments");
         ResolvedJavaField localsField = findField(frameFields, "locals");
         ResolvedJavaField primitiveLocalsField = findField(frameFields, "primitiveLocals");
@@ -173,11 +165,10 @@ public class NewFrameNode extends FixedWithNextNode implements IterableNodeType,
         tool.createVirtualObject(virtualFramePrimitiveArray, primitiveArrayEntryState, Collections.<MonitorIdNode> emptyList());
         tool.createVirtualObject(virtualFrameTagArray, tagArrayEntryState, Collections.<MonitorIdNode> emptyList());
 
-        assert frameFields.length == 6;
+        assert frameFields.length == 5;
         ValueNode[] frameEntryState = new ValueNode[frameFields.length];
         List<ResolvedJavaField> frameFieldList = Arrays.asList(frameFields);
         frameEntryState[frameFieldList.indexOf(descriptorField)] = getDescriptor();
-        frameEntryState[frameFieldList.indexOf(callerField)] = getCaller();
         frameEntryState[frameFieldList.indexOf(argumentsField)] = getArguments();
         frameEntryState[frameFieldList.indexOf(localsField)] = virtualFrameObjectArray;
         frameEntryState[frameFieldList.indexOf(primitiveLocalsField)] = virtualFramePrimitiveArray;
@@ -229,5 +220,5 @@ public class NewFrameNode extends FixedWithNextNode implements IterableNodeType,
     }
 
     @NodeIntrinsic
-    public static native FrameWithoutBoxing allocate(@ConstantNodeParameter Class<? extends VirtualFrame> frameType, FrameDescriptor descriptor, PackedFrame caller, Arguments args);
+    public static native FrameWithoutBoxing allocate(@ConstantNodeParameter Class<? extends VirtualFrame> frameType, FrameDescriptor descriptor, Object[] args);
 }

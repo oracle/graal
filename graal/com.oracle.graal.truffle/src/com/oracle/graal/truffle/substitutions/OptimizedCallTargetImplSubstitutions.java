@@ -26,18 +26,16 @@ import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.truffle.*;
 import com.oracle.graal.truffle.nodes.asserts.*;
-import com.oracle.truffle.api.*;
-import com.oracle.truffle.api.frame.*;
 
 @ClassSubstitution(OptimizedCallTargetImpl.class)
 public class OptimizedCallTargetImplSubstitutions {
 
     @MacroSubstitution(macro = NeverInlineMacroNode.class, isStatic = false)
-    public static native Object callHelper(OptimizedCallTarget target, PackedFrame caller, Arguments args);
+    public static native Object callHelper(OptimizedCallTarget target, Object[] args);
 
     @MacroSubstitution(macro = NeverInlineMacroNode.class, isStatic = false)
-    public static native Object interpreterCall(OptimizedCallTarget target, PackedFrame caller, Arguments args);
+    public static native Object interpreterCall(OptimizedCallTarget target, Object[] args);
 
     @MacroSubstitution(macro = NeverInlineMacroNode.class, isStatic = false)
-    public static native Object compiledCodeInvalidated(OptimizedCallTarget target, PackedFrame caller, Arguments args);
+    public static native Object compiledCodeInvalidated(OptimizedCallTarget target, Object[] args);
 }

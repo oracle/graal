@@ -26,10 +26,10 @@ package com.oracle.graal.lir.hsail;
 import static com.oracle.graal.api.code.ValueUtil.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 
-import com.oracle.graal.lir.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.hsail.*;
+import com.oracle.graal.lir.*;
 
 /**
  * Represents an address value used in HSAIL code.

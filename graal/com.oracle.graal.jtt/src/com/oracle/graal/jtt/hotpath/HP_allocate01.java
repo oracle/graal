@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.jtt.hotpath;
 
-import com.oracle.graal.test.*;
 import com.oracle.graal.jtt.*;
+import com.oracle.graal.test.*;
 
 /*
  */

@@ -25,12 +25,13 @@ package com.oracle.graal.asm.hsail;
 import static com.oracle.graal.api.code.MemoryBarriers.*;
 import static com.oracle.graal.api.code.ValueUtil.*;
 
+import java.lang.reflect.*;
+
+import com.amd.okra.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.hsail.*;
-import com.oracle.graal.graph.GraalInternalError;
-import com.amd.okra.OkraUtil;
-import java.lang.reflect.Array;
 
 /**
  * This class contains routines to emit HSAIL assembly code.

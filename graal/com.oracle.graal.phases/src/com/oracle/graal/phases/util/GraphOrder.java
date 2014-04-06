@@ -29,9 +29,10 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.VirtualState.NodeClosure;
 import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.phases.graph.*;
-import com.oracle.graal.phases.graph.ReentrantBlockIterator.*;
+import com.oracle.graal.phases.graph.ReentrantBlockIterator.BlockIteratorClosure;
 import com.oracle.graal.phases.schedule.*;
-import com.oracle.graal.phases.schedule.SchedulePhase.*;
+import com.oracle.graal.phases.schedule.SchedulePhase.MemoryScheduling;
+import com.oracle.graal.phases.schedule.SchedulePhase.SchedulingStrategy;
 
 public final class GraphOrder {
 

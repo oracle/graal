@@ -22,9 +22,9 @@
  */
 package com.oracle.graal.jtt.optimize;
 
-import com.oracle.graal.jtt.*;
-
 import org.junit.*;
+
+import com.oracle.graal.jtt.*;
 
 /*
  * Tests calls to the array copy method.

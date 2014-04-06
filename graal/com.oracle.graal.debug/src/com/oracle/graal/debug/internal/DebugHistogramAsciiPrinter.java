@@ -26,7 +26,8 @@ import java.io.*;
 import java.util.*;
 
 import com.oracle.graal.debug.*;
-import com.oracle.graal.debug.DebugHistogram.*;
+import com.oracle.graal.debug.DebugHistogram.CountedValue;
+import com.oracle.graal.debug.DebugHistogram.Printer;
 
 /**
  * Renders a textual representation of a histogram to a given print stream.

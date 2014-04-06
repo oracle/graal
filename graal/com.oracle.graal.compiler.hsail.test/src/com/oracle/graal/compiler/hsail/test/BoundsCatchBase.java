@@ -23,7 +23,7 @@
 
 package com.oracle.graal.compiler.hsail.test;
 
-import com.oracle.graal.compiler.hsail.test.infra.GraalKernelTester;
+import com.oracle.graal.compiler.hsail.test.infra.*;
 
 /**
  * Base Class for tests that deopt but then catch the exception in the run routine itself.

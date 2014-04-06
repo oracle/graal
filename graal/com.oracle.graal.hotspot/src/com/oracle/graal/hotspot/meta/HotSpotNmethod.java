@@ -91,12 +91,6 @@ public final class HotSpotNmethod extends HotSpotInstalledCode {
         return String.format("InstalledNmethod[method=%s, codeBlob=0x%x, isDefault=%b, name=%s]", method, getCodeBlob(), isDefault, name);
     }
 
-    @Override
-    public Object execute(Object arg1, Object arg2, Object arg3) throws InvalidInstalledCodeException {
-        assert checkThreeObjectArgs();
-        return runtime().getCompilerToVM().executeCompiledMethod(arg1, arg2, arg3, this);
-    }
-
     protected boolean checkThreeObjectArgs() {
         assert method.getSignature().getParameterCount(!Modifier.isStatic(method.getModifiers())) == 3;
         assert method.getSignature().getParameterKind(0) == Kind.Object;

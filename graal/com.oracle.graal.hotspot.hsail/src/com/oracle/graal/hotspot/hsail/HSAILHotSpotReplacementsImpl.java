@@ -23,6 +23,7 @@
 package com.oracle.graal.hotspot.hsail;
 
 import java.lang.reflect.*;
+import java.util.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
@@ -31,7 +32,6 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.util.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.replacements.hsail.*;
-import java.util.HashSet;
 
 /**
  * The substitutions and snippets supported by HSAIL.

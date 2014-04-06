@@ -22,8 +22,9 @@
  */
 package com.oracle.graal.jtt.jdk;
 
-import com.oracle.graal.jtt.*;
 import org.junit.*;
+
+import com.oracle.graal.jtt.*;
 
 public class ShortBits extends JTTTest {
     @SuppressWarnings("unused") private static short init = Short.reverseBytes((short) 42);

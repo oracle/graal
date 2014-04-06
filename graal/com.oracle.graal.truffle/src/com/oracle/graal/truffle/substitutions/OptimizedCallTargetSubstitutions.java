@@ -25,14 +25,13 @@ package com.oracle.graal.truffle.substitutions;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.truffle.*;
 import com.oracle.graal.truffle.nodes.frame.*;
-import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.frame.*;
 
 @ClassSubstitution(OptimizedCallTarget.class)
 public class OptimizedCallTargetSubstitutions {
 
     @MethodSubstitution
-    private static FrameWithoutBoxing createFrame(FrameDescriptor descriptor, PackedFrame caller, Arguments args) {
-        return NewFrameNode.allocate(FrameWithoutBoxing.class, descriptor, caller, args);
+    private static FrameWithoutBoxing createFrame(FrameDescriptor descriptor, Object[] args) {
+        return NewFrameNode.allocate(FrameWithoutBoxing.class, descriptor, args);
     }
 }

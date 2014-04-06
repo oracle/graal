@@ -22,8 +22,9 @@
  */
 package com.oracle.graal.jtt.optimize;
 
-import com.oracle.graal.jtt.*;
 import org.junit.*;
+
+import com.oracle.graal.jtt.*;
 
 /**
  * test some stamps in combination with full loop unrolling and shifts.

@@ -23,7 +23,8 @@
 
 package com.oracle.graal.compiler.hsail.test;
 
-import org.junit.Test;
+import org.junit.*;
+
 import com.oracle.graal.compiler.hsail.test.infra.*;
 
 /**

@@ -23,14 +23,11 @@
 package com.oracle.graal.jtt.optimize;
 
 import java.lang.reflect.*;
-import java.util.*;
 
 import org.junit.*;
 
-import com.oracle.graal.test.*;
 import com.oracle.graal.jtt.*;
 
-@SuppressWarnings("unused")
 public class ConditionalElimination01 extends JTTTest {
 
     private static int x;

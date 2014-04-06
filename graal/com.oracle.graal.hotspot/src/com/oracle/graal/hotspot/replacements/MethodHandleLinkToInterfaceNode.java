@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.hotspot.replacements;
 
-import java.lang.invoke.MethodHandle;
+import java.lang.invoke.*;
 
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;

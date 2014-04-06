@@ -27,7 +27,7 @@ import java.util.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.type.*;
-import com.oracle.graal.replacements.Snippet.*;
+import com.oracle.graal.replacements.Snippet.VarargsParameter;
 
 /**
  * Placeholder node to denote to snippet preparation that the following loop must be completely

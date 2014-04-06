@@ -25,8 +25,8 @@ package com.oracle.graal.hotspot.hsail;
 import static com.oracle.graal.api.code.CallingConvention.Type.*;
 import static com.oracle.graal.api.code.CodeUtil.*;
 import static com.oracle.graal.api.code.ValueUtil.*;
-import static com.oracle.graal.compiler.GraalCompiler.*;
 import static com.oracle.graal.api.meta.LocationIdentity.*;
+import static com.oracle.graal.compiler.GraalCompiler.*;
 
 import java.lang.reflect.*;
 import java.util.*;

@@ -23,25 +23,15 @@
 package com.oracle.graal.baseline;
 
 import static com.oracle.graal.phases.GraalOptions.*;
-import static java.lang.reflect.Modifier.*;
 
-import java.lang.reflect.*;
-import java.util.*;
-
-import com.oracle.graal.alloc.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.bytecode.*;
 import com.oracle.graal.compiler.*;
-import com.oracle.graal.compiler.alloc.*;
-import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.debug.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.java.*;
-import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
-import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.phases.*;
 
 /**

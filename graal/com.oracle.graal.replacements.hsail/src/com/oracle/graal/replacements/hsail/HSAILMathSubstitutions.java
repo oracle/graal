@@ -22,9 +22,8 @@
  */
 package com.oracle.graal.replacements.hsail;
 
-import com.oracle.graal.api.replacements.ClassSubstitution;
-import com.oracle.graal.api.replacements.MethodSubstitution;
-import com.oracle.graal.lir.hsail.HSAILArithmetic;
+import com.oracle.graal.api.replacements.*;
+import com.oracle.graal.lir.hsail.*;
 
 /**
  * Substitutions for {@link Math} methods. For any calls to the routines listed below and annotated
