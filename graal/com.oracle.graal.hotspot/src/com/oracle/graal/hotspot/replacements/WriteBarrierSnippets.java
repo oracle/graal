@@ -72,7 +72,7 @@ public class WriteBarrierSnippets implements Snippets {
         Object fixedObject = FixedValueAnchorNode.getObject(object);
         Pointer oop;
         if (usePrecise) {
-            oop = Word.fromArray(fixedObject, location);
+            oop = Word.fromArray(fixedObject, SnippetLocationProxyNode.location(location));
         } else {
             oop = Word.fromObject(fixedObject);
         }
@@ -117,7 +117,7 @@ public class WriteBarrierSnippets implements Snippets {
         Object fixedObject = FixedValueAnchorNode.getObject(object);
         verifyOop(fixedObject);
         Object fixedExpectedObject = FixedValueAnchorNode.getObject(expectedObject);
-        Word field = (Word) Word.fromArray(fixedObject, location);
+        Word field = (Word) Word.fromArray(fixedObject, SnippetLocationProxyNode.location(location));
         Word previousOop = (Word) Word.fromObject(fixedExpectedObject);
         byte markingValue = thread.readByte(g1SATBQueueMarkingOffset());
         Word bufferAddress = thread.readWord(g1SATBQueueBufferOffset());
@@ -174,7 +174,7 @@ public class WriteBarrierSnippets implements Snippets {
         validateObject(fixedObject, fixedValue);
         Word oop;
         if (usePrecise) {
-            oop = (Word) Word.fromArray(fixedObject, location);
+            oop = (Word) Word.fromArray(fixedObject, SnippetLocationProxyNode.location(location));
         } else {
             oop = (Word) Word.fromObject(fixedObject);
         }
