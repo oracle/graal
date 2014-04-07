@@ -25,7 +25,6 @@ package com.oracle.graal.nodes;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.iterators.*;
-import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.type.*;
 
 /**
@@ -133,23 +132,10 @@ public abstract class ValueNode extends ScheduledNode implements StampProvider, 
 
     @Override
     public boolean isAllowedUsageType(InputType type) {
-        if (getKind() != Kind.Void && getKind() != Kind.Illegal && type == InputType.Value) {
+        if (getKind() != Kind.Void && type == InputType.Value) {
             return true;
         } else {
             return super.isAllowedUsageType(type);
         }
-    }
-
-    @Override
-    public boolean verify() {
-        if ((getKind() != Kind.Illegal && getKind() != Kind.Void) != isAllowedUsageType(InputType.Value)) {
-            System.out.println("mismatch: " + this + " kind: " + getKind() + " isAllowedUsageType: " + isAllowedUsageType(InputType.Value));
-        }
-        if (!(this instanceof WriteNode || this instanceof ReadNode || this instanceof JavaWriteNode || this instanceof JavaReadNode || this instanceof InvokeNode)) {
-            if ((this instanceof GuardingNode) != isAllowedUsageType(InputType.Guard)) {
-                System.out.println("mismatch: " + this + " guard: " + (this instanceof GuardingNode) + " isAllowedUsageType: " + isAllowedUsageType(InputType.Guard));
-            }
-        }
-        return super.verify();
     }
 }

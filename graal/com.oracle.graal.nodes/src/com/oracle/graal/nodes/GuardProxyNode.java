@@ -27,6 +27,7 @@ import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
+@NodeInfo(allowedUsageTypes = {InputType.Guard})
 public class GuardProxyNode extends ProxyNode implements GuardingNode, Proxy {
 
     @Input(InputType.Guard) private GuardingNode value;

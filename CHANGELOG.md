@@ -4,6 +4,7 @@
 ### Graal
 * Explicit support for oop compression/uncompression in high level graph.
 * LIRGenerator refactoring.
+* Explicit types for inputs (InputType enum).
 * ...
 
 ### Truffle
