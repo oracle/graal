@@ -27,6 +27,8 @@ import java.util.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.java.BciBlockMapping.BciBlock;
+import com.oracle.graal.java.BciBlockMapping.LocalLiveness;
 
 public abstract class AbstractFrameStateBuilder<T extends KindProvider, S extends AbstractFrameStateBuilder<T, S>> {
 
@@ -65,6 +67,25 @@ public abstract class AbstractFrameStateBuilder<T extends KindProvider, S extend
     protected abstract T[] getEmtpyArray();
 
     public abstract boolean isCompatibleWith(S other);
+
+    public void clearNonLiveLocals(BciBlock block, LocalLiveness liveness, boolean liveIn) {
+        if (liveness == null) {
+            return;
+        }
+        if (liveIn) {
+            for (int i = 0; i < locals.length; i++) {
+                if (!liveness.localIsLiveIn(block, i)) {
+                    locals[i] = null;
+                }
+            }
+        } else {
+            for (int i = 0; i < locals.length; i++) {
+                if (!liveness.localIsLiveOut(block, i)) {
+                    locals[i] = null;
+                }
+            }
+        }
+    }
 
     /**
      * @see BytecodeFrame#rethrowException

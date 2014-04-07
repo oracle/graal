@@ -31,8 +31,6 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.Node.Verbosity;
-import com.oracle.graal.java.BciBlockMapping.BciBlock;
-import com.oracle.graal.java.BciBlockMapping.LocalLiveness;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.java.*;
@@ -301,25 +299,6 @@ public class HIRFrameStateBuilder extends AbstractFrameStateBuilder<ValueNode, H
             if (localAt(i) != null && localAt(i).isDeleted()) {
                 assert localAt(i) instanceof ValuePhiNode || localAt(i) instanceof ProxyNode : "Only phi and value proxies can be deleted during parsing: " + localAt(i);
                 storeLocal(i, null);
-            }
-        }
-    }
-
-    public void clearNonLiveLocals(BciBlock block, LocalLiveness liveness, boolean liveIn) {
-        if (liveness == null) {
-            return;
-        }
-        if (liveIn) {
-            for (int i = 0; i < locals.length; i++) {
-                if (!liveness.localIsLiveIn(block, i)) {
-                    locals[i] = null;
-                }
-            }
-        } else {
-            for (int i = 0; i < locals.length; i++) {
-                if (!liveness.localIsLiveOut(block, i)) {
-                    locals[i] = null;
-                }
             }
         }
     }

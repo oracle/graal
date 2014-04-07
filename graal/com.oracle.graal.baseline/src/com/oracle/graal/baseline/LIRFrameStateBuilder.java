@@ -24,7 +24,6 @@
 package com.oracle.graal.baseline;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.java.*;
 
 public class LIRFrameStateBuilder extends AbstractFrameStateBuilder<Value, LIRFrameStateBuilder> {
@@ -46,13 +45,59 @@ public class LIRFrameStateBuilder extends AbstractFrameStateBuilder<Value, LIRFr
     }
 
     @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("[locals: [");
+        for (int i = 0; i < locals.length; i++) {
+            sb.append(i == 0 ? "" : ",").append(locals[i] == null ? "_" : locals[i].toString());
+        }
+        sb.append("] stack: [");
+        for (int i = 0; i < stackSize; i++) {
+            sb.append(i == 0 ? "" : ",").append(stack[i] == null ? "_" : stack[i].toString());
+        }
+        sb.append("] locks: [");
+        for (int i = 0; i < lockedObjects.length; i++) {
+            sb.append(i == 0 ? "" : ",").append(lockedObjects[i].toString());
+        }
+        sb.append("]");
+        if (rethrowException) {
+            sb.append(" rethrowException");
+        }
+        sb.append("]");
+        return sb.toString();
+    }
+
+    @Override
     public LIRFrameStateBuilder copy() {
         return new LIRFrameStateBuilder(method);
     }
 
+    private static boolean isCompatible(Value x, Value y) {
+        if (x == null && y == null) {
+            return true;
+        }
+        if ((x == null || y == null) || (x.getKind() != y.getKind())) {
+            return false;
+        }
+        return true;
+
+    }
+
     @Override
     public boolean isCompatibleWith(LIRFrameStateBuilder other) {
-        // TODO Auto-generated method stub
-        throw GraalInternalError.unimplemented("Auto-generated method stub");
+        assert method.equals(other.method) && localsSize() == other.localsSize() : "Can only compare frame states of the same method";
+
+        if (stackSize() != other.stackSize()) {
+            return false;
+        }
+        for (int i = 0; i < stackSize(); i++) {
+            if (!isCompatible(stackAt(i), other.stackAt(i))) {
+                return false;
+            }
+        }
+        if (lockedObjects.length != other.lockedObjects.length) {
+            return false;
+        }
+        return true;
     }
 }
