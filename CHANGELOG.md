@@ -14,6 +14,9 @@
 25-Mar-2014, [Repository Revision](http://hg.openjdk.java.net/graal/graal/rev/graal-0.2)
 
 ### Graal
+* Added graal.version system property to Graal enabled VM builds.
+* Transitioned to JDK 8 as minimum JDK level for Graal.
+* Expanded Debug logging/dumping API to avoid allocation when this Debug facilities are not enabled.
 * Use HotSpot stubs for certain array copy operations.
 * New methods for querying memory usage of individual objects and object graphs in Graal API (`MetaAccessProvider#getMemorySize`, `MetaUtil#getMemorySizeRecursive`).
 * Added tiered configuration (C1 + Graal).
@@ -21,7 +24,8 @@
 * New (tested) invariant that equality comparisons for `JavaType`/`JavaMethod`/`JavaField` values use `.equals()` instead of `==`.
 * Made graph caching compilation-local.
 * Added AllocSpy tool for analyzing allocation in Graal using the [Java Allocation Instrumenter](https://code.google.com/p/java-allocation-instrumenter/).
-* Initial support for memory arithmetic operations on x86
+* Initial support for memory arithmetic operations on x86.
+
 
 ### Truffle
 * New API `TruffleRuntime#createCallNode` to create call nodes and to give the runtime system control over its implementation.
