@@ -39,8 +39,8 @@ import com.oracle.graal.virtual.phases.ea.PEReadEliminationBlockState.ReadCacheE
 
 public class PEReadEliminationClosure extends PartialEscapeClosure<PEReadEliminationBlockState> {
 
-    public PEReadEliminationClosure(SchedulePhase schedule, MetaAccessProvider metaAccess, Assumptions assumptions) {
-        super(schedule, metaAccess, assumptions);
+    public PEReadEliminationClosure(SchedulePhase schedule, MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, Assumptions assumptions) {
+        super(schedule, metaAccess, constantReflection, assumptions);
     }
 
     @Override

@@ -710,7 +710,7 @@ public class ConditionalEliminationPhase extends Phase {
                     replacementAnchor = BeginNode.prevBegin(checkCast);
                     PiNode piNode;
                     if (isNull) {
-                        ConstantNode nullObject = ConstantNode.forObject(null, metaAccess, graph);
+                        ConstantNode nullObject = ConstantNode.defaultForKind(Kind.Object, graph);
                         piNode = graph.unique(new PiNode(nullObject, StampFactory.forConstant(nullObject.getValue(), metaAccess), replacementAnchor.asNode()));
                     } else {
                         piNode = graph.unique(new PiNode(object, StampFactory.declared(type, nonNull), replacementAnchor.asNode()));

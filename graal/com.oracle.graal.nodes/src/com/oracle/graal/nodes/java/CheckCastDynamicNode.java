@@ -76,10 +76,11 @@ public final class CheckCastDynamicNode extends FixedWithNextNode implements Can
         if (ObjectStamp.isObjectAlwaysNull(object())) {
             return object();
         }
-        if (hub.isConstant() && hub.asConstant().getKind() == Kind.Object && hub.asConstant().asObject() instanceof Class) {
-            Class clazz = (Class) hub.asConstant().asObject();
-            ResolvedJavaType t = tool.getMetaAccess().lookupJavaType(clazz);
-            return graph().add(new CheckCastNode(t, object(), null, forStoreCheck));
+        if (hub.isConstant()) {
+            ResolvedJavaType t = tool.getConstantReflection().asJavaType(hub.asConstant());
+            if (t != null) {
+                return graph().add(new CheckCastNode(t, object(), null, forStoreCheck));
+            }
         }
         return this;
     }

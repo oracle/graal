@@ -253,6 +253,6 @@ public final class HotSpotResolvedPrimitiveType extends HotSpotResolvedJavaType 
 
     @Override
     public Constant newArray(int length) {
-        return Constant.forObject(Array.newInstance(mirror(), length));
+        return HotSpotObjectConstant.forObject(Array.newInstance(mirror(), length));
     }
 }

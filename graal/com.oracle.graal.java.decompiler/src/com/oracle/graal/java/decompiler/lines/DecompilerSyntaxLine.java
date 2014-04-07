@@ -48,7 +48,7 @@ public abstract class DecompilerSyntaxLine {
 
     protected static String getStringRepresentation(Node node) {
         if (node instanceof ConstantNode) {
-            return String.valueOf(((ConstantNode) node).asConstant().asBoxedValue());
+            return ((ConstantNode) node).asConstant().toValueString();
         } else if (node instanceof ParameterNode) {
             return "param_" + ((ParameterNode) node).index();
         } else {

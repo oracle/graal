@@ -49,7 +49,6 @@ public abstract class OptimizedCallTarget extends DefaultCallTarget implements L
     protected TruffleInliningResult inliningResult;
     protected final CompilationProfile compilationProfile;
     protected final CompilationPolicy compilationPolicy;
-    private final SpeculationLog speculationLog = new SpeculationLog();
     private OptimizedCallTarget splitSource;
 
     private final AtomicInteger callSitesKnown = new AtomicInteger(0);
@@ -181,9 +180,7 @@ public abstract class OptimizedCallTarget extends DefaultCallTarget implements L
         invalidate(oldNode, newNode, reason);
     }
 
-    public SpeculationLog getSpeculationLog() {
-        return speculationLog;
-    }
+    public abstract SpeculationLog getSpeculationLog();
 
     public Map<String, Object> getDebugProperties() {
         Map<String, Object> properties = new LinkedHashMap<>();

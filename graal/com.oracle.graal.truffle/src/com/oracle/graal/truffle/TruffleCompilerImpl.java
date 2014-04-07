@@ -120,7 +120,7 @@ public class TruffleCompilerImpl implements TruffleCompiler {
             @Override
             public InstalledCode call() throws Exception {
                 try (Scope s = Debug.scope("Truffle", new TruffleDebugJavaMethod(compilable))) {
-                    return compileMethodImpl((OptimizedCallTargetImpl) compilable);
+                    return compileMethodImpl(compilable);
                 } catch (Throwable e) {
                     throw Debug.handle(e);
                 }
@@ -132,11 +132,11 @@ public class TruffleCompilerImpl implements TruffleCompiler {
     public static final DebugTimer CompilationTime = Debug.timer("CompilationTime");
     public static final DebugTimer CodeInstallationTime = Debug.timer("CodeInstallation");
 
-    private InstalledCode compileMethodImpl(final OptimizedCallTargetImpl compilable) {
+    private InstalledCode compileMethodImpl(final OptimizedCallTarget compilable) {
         final StructuredGraph graph;
 
         if (TraceTruffleCompilation.getValue()) {
-            OptimizedCallTargetImpl.logOptimizingStart(compilable);
+            OptimizedCallTarget.logOptimizingStart(compilable);
         }
 
         long timeCompilationStarted = System.nanoTime();
@@ -179,7 +179,7 @@ public class TruffleCompilerImpl implements TruffleCompiler {
             properties.put("CodeSize", code != null ? code.length : 0);
             properties.put("Source", formatSourceSection(compilable.getRootNode().getSourceSection()));
 
-            OptimizedCallTargetImpl.logOptimizingDone(compilable, properties);
+            OptimizedCallTarget.logOptimizingDone(compilable, properties);
         }
         return compiledMethod;
     }

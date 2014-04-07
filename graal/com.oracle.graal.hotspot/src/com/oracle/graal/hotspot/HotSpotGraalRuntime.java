@@ -34,6 +34,7 @@ import sun.reflect.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.graph.*;
@@ -362,6 +363,8 @@ public final class HotSpotGraalRuntime implements GraalRuntime, RuntimeProvider 
     public <T> T getCapability(Class<T> clazz) {
         if (clazz == RuntimeProvider.class) {
             return (T) this;
+        } else if (clazz == SnippetReflectionProvider.class) {
+            return (T) getHostProviders().getSnippetReflection();
         }
         return null;
     }

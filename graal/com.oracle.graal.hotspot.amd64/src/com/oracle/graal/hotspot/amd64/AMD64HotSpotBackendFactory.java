@@ -27,6 +27,7 @@ import java.util.*;
 import com.oracle.graal.amd64.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
@@ -108,10 +109,11 @@ public class AMD64HotSpotBackendFactory implements HotSpotBackendFactory {
         // to be valid for the entire run of the VM.
         Assumptions assumptions = new Assumptions(false);
         Providers p = new Providers(metaAccess, codeCache, constantReflection, foreignCalls, lowerer, null);
-        Replacements replacements = createReplacements(runtime, assumptions, p);
+        HotSpotSnippetReflectionProvider snippetReflection = createSnippetReflection();
+        Replacements replacements = createReplacements(runtime, assumptions, p, snippetReflection);
         HotSpotDisassemblerProvider disassembler = createDisassembler(runtime);
         HotSpotSuitesProvider suites = createSuites(runtime);
-        HotSpotProviders providers = new HotSpotProviders(metaAccess, codeCache, constantReflection, foreignCalls, lowerer, replacements, disassembler, suites, registers);
+        HotSpotProviders providers = new HotSpotProviders(metaAccess, codeCache, constantReflection, foreignCalls, lowerer, replacements, disassembler, suites, registers, snippetReflection);
 
         return createBackend(runtime, providers);
     }
@@ -128,8 +130,8 @@ public class AMD64HotSpotBackendFactory implements HotSpotBackendFactory {
         return new HotSpotDisassemblerProvider(runtime);
     }
 
-    protected Replacements createReplacements(HotSpotGraalRuntime runtime, Assumptions assumptions, Providers p) {
-        return new HotSpotReplacementsImpl(p, runtime.getConfig(), assumptions, p.getCodeCache().getTarget());
+    protected Replacements createReplacements(HotSpotGraalRuntime runtime, Assumptions assumptions, Providers p, SnippetReflectionProvider snippetReflection) {
+        return new HotSpotReplacementsImpl(p, snippetReflection, runtime.getConfig(), assumptions, p.getCodeCache().getTarget());
     }
 
     protected AMD64HotSpotForeignCallsProvider createForeignCalls(HotSpotGraalRuntime runtime, HotSpotMetaAccessProvider metaAccess, HotSpotCodeCacheProvider codeCache,
@@ -151,6 +153,10 @@ public class AMD64HotSpotBackendFactory implements HotSpotBackendFactory {
 
     protected HotSpotSuitesProvider createSuites(HotSpotGraalRuntime runtime) {
         return new HotSpotSuitesProvider(runtime);
+    }
+
+    protected HotSpotSnippetReflectionProvider createSnippetReflection() {
+        return new HotSpotSnippetReflectionProvider();
     }
 
     protected AMD64HotSpotLoweringProvider createLowerer(HotSpotGraalRuntime runtime, HotSpotMetaAccessProvider metaAccess, HotSpotForeignCallsProvider foreignCalls, HotSpotRegistersProvider registers) {
@@ -183,15 +189,15 @@ public class AMD64HotSpotBackendFactory implements HotSpotBackendFactory {
         } else {
             /*
              * System V Application Binary Interface, AMD64 Architecture Processor Supplement
-             * 
+             *
              * Draft Version 0.96
-             * 
+             *
              * http://www.uclibc.org/docs/psABI-x86_64.pdf
-             * 
+             *
              * 3.2.1
-             * 
+             *
              * ...
-             * 
+             *
              * This subsection discusses usage of each register. Registers %rbp, %rbx and %r12
              * through %r15 "belong" to the calling function and the called function is required to
              * preserve their values. In other words, a called function must preserve these

@@ -55,9 +55,8 @@ public class DynamicNewArrayNode extends AbstractNewArrayNode {
     @Override
     public void simplify(SimplifierTool tool) {
         if (isAlive() && elementType.isConstant()) {
-            Class<?> elementClass = (Class<?>) elementType.asConstant().asObject();
-            if (elementClass != null && !(elementClass.equals(void.class))) {
-                ResolvedJavaType javaType = tool.getMetaAccess().lookupJavaType(elementClass);
+            ResolvedJavaType javaType = tool.getConstantReflection().asJavaType(elementType.asConstant());
+            if (javaType != null && !javaType.equals(tool.getMetaAccess().lookupJavaType(void.class))) {
                 NewArrayNode newArray = graph().add(new NewArrayNode(javaType, length(), fillContents()));
                 List<Node> snapshot = inputs().snapshot();
                 graph().replaceFixedWithFixed(this, newArray);

@@ -91,7 +91,7 @@ public class NativeCallStubGraphBuilder {
 
             ReturnNode returnNode = g.add(new ReturnNode(boxedResult));
             callNode.setNext(returnNode);
-            (new WordTypeRewriterPhase(providers.getMetaAccess(), Kind.Long)).apply(g);
+            (new WordTypeRewriterPhase(providers.getMetaAccess(), providers.getSnippetReflection(), Kind.Long)).apply(g);
             return g;
         } catch (NoSuchMethodException e) {
             throw GraalInternalError.shouldNotReachHere("Call Stub method not found");

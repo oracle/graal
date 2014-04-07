@@ -20,27 +20,35 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.truffle;
+package com.oracle.graal.truffle.hotspot;
 
 import static com.oracle.graal.truffle.TruffleCompilerOptions.*;
 
 import java.util.concurrent.*;
 
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.hotspot.meta.*;
+import com.oracle.graal.truffle.*;
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.nodes.*;
 
 /**
  * Call target for running truffle on a standard VM (and not in SubstrateVM).
  */
-public final class OptimizedCallTargetImpl extends OptimizedCallTarget {
+public final class HotSpotOptimizedCallTarget extends OptimizedCallTarget {
 
     protected final TruffleCompiler compiler;
     private Future<InstalledCode> installedCodeTask;
+    private SpeculationLog speculationLog = new HotSpotSpeculationLog();
 
-    OptimizedCallTargetImpl(RootNode rootNode, TruffleCompiler compiler, int invokeCounter, int compilationThreshold, boolean compilationEnabled) {
+    HotSpotOptimizedCallTarget(RootNode rootNode, TruffleCompiler compiler, int invokeCounter, int compilationThreshold, boolean compilationEnabled) {
         super(rootNode, invokeCounter, compilationThreshold, compilationEnabled, TruffleUseTimeForCompilationDecision.getValue() ? new TimedCompilationPolicy() : new DefaultCompilationPolicy());
         this.compiler = compiler;
+    }
+
+    @Override
+    public SpeculationLog getSpeculationLog() {
+        return speculationLog;
     }
 
     public boolean isOptimized() {
@@ -75,7 +83,7 @@ public final class OptimizedCallTargetImpl extends OptimizedCallTarget {
         if (TraceTruffleCompilation.getValue()) {
             OUT.println("[truffle] reinstall OptimizedCallTarget.call code with frame prolog shortcut.");
         }
-        GraalTruffleRuntime.installOptimizedCallTargetCallMethod();
+        HotSpotTruffleRuntime.installOptimizedCallTargetCallMethod();
     }
 
     private Object compiledCodeInvalidated(Object[] args) {

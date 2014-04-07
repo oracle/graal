@@ -42,5 +42,7 @@ public class HotSpotSubstitutions implements ReplacementsProvider {
         replacements.registerSubstitutions(CipherBlockChainingSubstitutions.class);
         replacements.registerSubstitutions(CRC32Substitutions.class);
         replacements.registerSubstitutions(ReflectionSubstitutions.class);
+        replacements.registerSubstitutions(NodeClassSubstitutions.class);
+        replacements.registerSubstitutions(CompositeValueClassSubstitutions.class);
     }
 }

@@ -25,6 +25,7 @@ package com.oracle.graal.hotspot.replacements;
 import static com.oracle.graal.phases.GraalOptions.*;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.replacements.nodes.*;
 
@@ -36,6 +37,6 @@ public class SystemIdentityHashCodeNode extends PureFunctionMacroNode {
 
     @Override
     protected Constant evaluate(Constant param, MetaAccessProvider metaAccess) {
-        return ImmutableCode.getValue() || param.isNull() ? null : Constant.forInt(System.identityHashCode(param.asObject()));
+        return ImmutableCode.getValue() || param.isNull() ? null : Constant.forInt(System.identityHashCode(HotSpotObjectConstant.asObject(param)));
     }
 }

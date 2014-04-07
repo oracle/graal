@@ -712,13 +712,6 @@ public abstract class AbstractBytecodeParser<T extends KindProvider, F extends A
 
     protected abstract void emitNullCheck(T receiver);
 
-    protected static final ArrayIndexOutOfBoundsException cachedArrayIndexOutOfBoundsException = new ArrayIndexOutOfBoundsException();
-    protected static final NullPointerException cachedNullPointerException = new NullPointerException();
-    static {
-        cachedArrayIndexOutOfBoundsException.setStackTrace(new StackTraceElement[0]);
-        cachedNullPointerException.setStackTrace(new StackTraceElement[0]);
-    }
-
     protected abstract void emitBoundsCheck(T index, T length);
 
     private static final DebugMetric EXPLICIT_EXCEPTIONS = Debug.metric("ExplicitExceptions");

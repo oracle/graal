@@ -55,13 +55,13 @@ public class MetaUtil {
      * @param printTopN print total size and instance count of the top n classes is desired
      * @return the number of bytes occupied by this constant
      */
-    public static long getMemorySizeRecursive(MetaAccessProvider access, Constant constant, PrintStream out, int printTopN) {
-        IdentityHashMap<Object, Boolean> marked = new IdentityHashMap<>();
+    public static long getMemorySizeRecursive(MetaAccessProvider access, ConstantReflectionProvider constantReflection, Constant constant, PrintStream out, int printTopN) {
+        Set<Constant> marked = new HashSet<>();
         Stack<Constant> stack = new Stack<>();
         if (constant.getKind() == Kind.Object && constant.isNonNull()) {
-            marked.put(constant.asObject(), Boolean.TRUE);
+            marked.add(constant);
         }
-        final HashMap<Class, ClassInfo> histogram = new HashMap<>();
+        final HashMap<ResolvedJavaType, ClassInfo> histogram = new HashMap<>();
         stack.push(constant);
         long sum = 0;
         while (!stack.isEmpty()) {
@@ -69,7 +69,7 @@ public class MetaUtil {
             long memorySize = access.getMemorySize(constant);
             sum += memorySize;
             if (c.getKind() == Kind.Object && c.isNonNull()) {
-                Class<?> clazz = c.asObject().getClass();
+                ResolvedJavaType clazz = access.lookupJavaType(c);
                 if (!histogram.containsKey(clazz)) {
                     histogram.put(clazz, new ClassInfo());
                 }
@@ -79,10 +79,10 @@ public class MetaUtil {
                 ResolvedJavaType type = access.lookupJavaType(c);
                 if (type.isArray()) {
                     if (!type.getComponentType().isPrimitive()) {
-                        Object[] array = (Object[]) c.asObject();
-                        for (Object value : array) {
-                            Constant forObject = Constant.forObject(value);
-                            pushConstant(marked, stack, forObject);
+                        int length = constantReflection.readArrayLength(c);
+                        for (int i = 0; i < length; i++) {
+                            Constant value = constantReflection.readArrayElement(c, i);
+                            pushConstant(marked, stack, value);
                         }
                     }
                 } else {
@@ -96,12 +96,12 @@ public class MetaUtil {
                 }
             }
         }
-        ArrayList<Class> clazzes = new ArrayList<>();
+        ArrayList<ResolvedJavaType> clazzes = new ArrayList<>();
         clazzes.addAll(histogram.keySet());
-        Collections.sort(clazzes, new Comparator<Class>() {
+        Collections.sort(clazzes, new Comparator<ResolvedJavaType>() {
 
             @Override
-            public int compare(Class o1, Class o2) {
+            public int compare(ResolvedJavaType o1, ResolvedJavaType o2) {
                 long l1 = histogram.get(o1).totalSize;
                 long l2 = histogram.get(o2).totalSize;
                 if (l1 > l2) {
@@ -115,7 +115,7 @@ public class MetaUtil {
         });
 
         int z = 0;
-        for (Class c : clazzes) {
+        for (ResolvedJavaType c : clazzes) {
             if (z > printTopN) {
                 break;
             }
@@ -126,10 +126,10 @@ public class MetaUtil {
         return sum;
     }
 
-    private static void pushConstant(IdentityHashMap<Object, Boolean> marked, Stack<Constant> stack, Constant value) {
+    private static void pushConstant(Set<Constant> marked, Stack<Constant> stack, Constant value) {
         if (value.isNonNull()) {
-            if (!marked.containsKey(value.asObject())) {
-                marked.put(value.asObject(), Boolean.TRUE);
+            if (!marked.contains(value)) {
+                marked.add(value);
                 stack.push(value);
             }
         }

@@ -399,11 +399,13 @@ public class SnippetTemplate {
     public abstract static class AbstractTemplates implements SnippetTemplateCache {
 
         protected final Providers providers;
+        protected final SnippetReflectionProvider snippetReflection;
         protected final TargetDescription target;
         private final ConcurrentHashMap<CacheKey, SnippetTemplate> templates;
 
-        protected AbstractTemplates(Providers providers, TargetDescription target) {
+        protected AbstractTemplates(Providers providers, SnippetReflectionProvider snippetReflection, TargetDescription target) {
             this.providers = providers;
+            this.snippetReflection = snippetReflection;
             this.target = target;
             if (UseSnippetTemplateCache) {
                 this.templates = new ConcurrentHashMap<>();
@@ -443,7 +445,7 @@ public class SnippetTemplate {
             if (template == null) {
                 SnippetTemplates.increment();
                 try (TimerCloseable a = SnippetTemplateCreationTime.start(); Scope s = Debug.scope("SnippetSpecialization", args.info.method)) {
-                    template = new SnippetTemplate(providers, args);
+                    template = new SnippetTemplate(providers, snippetReflection, args);
                     if (UseSnippetTemplateCache) {
                         templates.put(args.cacheKey, template);
                     }
@@ -470,10 +472,14 @@ public class SnippetTemplate {
         return false;
     }
 
+    private final SnippetReflectionProvider snippetReflection;
+
     /**
      * Creates a snippet template.
      */
-    protected SnippetTemplate(final Providers providers, Arguments args) {
+    protected SnippetTemplate(final Providers providers, SnippetReflectionProvider snippetReflection, Arguments args) {
+        this.snippetReflection = snippetReflection;
+
         StructuredGraph snippetGraph = providers.getReplacements().getSnippet(args.info.method);
         instantiationTimer = Debug.timer("SnippetTemplateInstantiationTime[%#s]", args);
         instantiationCounter = Debug.metric("SnippetTemplateInstantiationCount[%#s]", args);
@@ -502,7 +508,7 @@ public class SnippetTemplate {
                 if (arg instanceof Constant) {
                     constantArg = (Constant) arg;
                 } else {
-                    constantArg = Constant.forBoxed(kind, arg);
+                    constantArg = snippetReflection.forBoxed(kind, arg);
                 }
                 nodeReplacements.put(snippetGraph.getParameter(i), ConstantNode.forConstant(constantArg, metaAccess, snippetCopy));
             } else if (args.info.isVarargsParameter(i)) {
@@ -702,9 +708,7 @@ public class SnippetTemplate {
             assert arg instanceof Constant : method + ": word constant parameters must be passed boxed in a Constant value: " + arg;
             return true;
         }
-        if (kind == Kind.Object) {
-            assert arg == null || type.isInstance(Constant.forObject(arg)) : method + ": wrong value type for " + name + ": expected " + type.getName() + ", got " + arg.getClass().getName();
-        } else {
+        if (kind != Kind.Object) {
             assert arg != null && kind.toBoxedJavaClass() == arg.getClass() : method + ": wrong value kind for " + name + ": expected " + kind + ", got " +
                             (arg == null ? "null" : arg.getClass().getSimpleName());
         }
@@ -843,20 +847,10 @@ public class SnippetTemplate {
      */
     protected Constant forBoxed(Object argument, Kind localKind) {
         assert localKind == localKind.getStackKind();
-        if (localKind == Kind.Int && !(argument instanceof Integer)) {
-            if (argument instanceof Boolean) {
-                return Constant.forBoxed(Kind.Boolean, argument);
-            }
-            if (argument instanceof Byte) {
-                return Constant.forBoxed(Kind.Byte, argument);
-            }
-            if (argument instanceof Short) {
-                return Constant.forBoxed(Kind.Short, argument);
-            }
-            assert argument instanceof Character;
-            return Constant.forBoxed(Kind.Char, argument);
+        if (localKind == Kind.Int) {
+            return Constant.forBoxedPrimitive(argument);
         }
-        return Constant.forBoxed(localKind, argument);
+        return snippetReflection.forBoxed(localKind, argument);
     }
 
     /**

@@ -65,7 +65,7 @@ public class NewInstanceStub extends SnippetStub {
         // convert the hub (i.e., Klass*) for int[] to be a naked word. This should be safe since
         // the int[] class will never be unloaded.
         Constant intArrayHub = intArrayType.klass();
-        intArrayHub = Constant.forIntegerKind(runtime().getTarget().wordKind, intArrayHub.asLong(), null);
+        intArrayHub = Constant.forIntegerKind(runtime().getTarget().wordKind, intArrayHub.asLong());
 
         Arguments args = new Arguments(stub, GuardsStage.FLOATING_GUARDS, LoweringTool.StandardLoweringStage.HIGH_TIER);
         args.add("hub", null);

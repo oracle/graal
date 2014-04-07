@@ -25,9 +25,6 @@ package com.oracle.graal.asm.hsail;
 import static com.oracle.graal.api.code.MemoryBarriers.*;
 import static com.oracle.graal.api.code.ValueUtil.*;
 
-import java.lang.reflect.*;
-
-import com.amd.okra.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
@@ -36,7 +33,7 @@ import com.oracle.graal.hsail.*;
 /**
  * This class contains routines to emit HSAIL assembly code.
  */
-public class HSAILAssembler extends AbstractHSAILAssembler {
+public abstract class HSAILAssembler extends AbstractHSAILAssembler {
 
     /**
      * Stack size in bytes (used to keep track of spilling).
@@ -87,35 +84,13 @@ public class HSAILAssembler extends AbstractHSAILAssembler {
      * references get updated by the GC whenever the GC moves an Object.
      *
      * @param a the destination register
-     * @param obj the Object being moved
+     * @param src the Object Constant being moved
      */
-    public final void mov(Register a, Object obj) {
-        String regName = "$d" + a.encoding();
-        // For a null object simply move 0x0 into the destination register.
-        if (obj == null) {
-            emitString("mov_b64 " + regName + ", 0x0;  // null object");
-        } else {
-            // Get a JNI reference handle to the object.
-            long refHandle = OkraUtil.getRefHandle(obj);
-            // Get the clasname of the object for emitting a comment.
-            Class<?> clazz = obj.getClass();
-            String className = clazz.getName();
-            String comment = "// handle for object of type " + className;
-            // If the object is an array note the array length in the comment.
-            if (className.startsWith("[")) {
-                comment += ", length " + Array.getLength(obj);
-            }
-            // First move the reference handle into a register.
-            emitString("mov_b64 " + regName + ", 0x" + Long.toHexString(refHandle) + ";    " + comment);
-            // Next load the Object addressed by this reference handle into the destination reg.
-            emitString("ld_global_u64 " + regName + ", [" + regName + "];");
-        }
-
-    }
+    public abstract void mov(Register a, Constant src);
 
     public final void emitMov(Kind kind, Value dst, Value src) {
         if (isRegister(dst) && isConstant(src) && kind.getStackKind() == Kind.Object) {
-            mov(asRegister(dst), (asConstant(src)).asObject());
+            mov(asRegister(dst), asConstant(src));
         } else {
             String argtype = getArgTypeFromKind(kind).substring(1);
             emitString("mov_b" + argtype + " " + mapRegOrConstToString(dst) + ", " + mapRegOrConstToString(src) + ";");
@@ -127,7 +102,7 @@ public class HSAILAssembler extends AbstractHSAILAssembler {
         if (reg instanceof RegisterValue) {
             storeValue = HSAIL.mapRegister(reg);
         } else if (reg instanceof Constant) {
-            storeValue = ((Constant) reg).asBoxedValue().toString();
+            storeValue = ((Constant) reg).toValueString();
         }
         emitString(instr + " " + storeValue + ", " + mapAddress(addr) + ";");
     }
@@ -320,7 +295,7 @@ public class HSAILAssembler extends AbstractHSAILAssembler {
         String unorderedPrefix = (argType.startsWith("f") && unordered ? "u" : "");
         String prefix = "cmp_" + condition + unorderedPrefix + "_b1_" + (isUnsignedCompare ? getArgTypeForceUnsigned(src1) : argType);
         // Generate a comment for debugging purposes
-        String comment = (isConstant(src1) && (src1.getKind() == Kind.Object) && (asConstant(src1).asObject() == null) ? " // null test " : "");
+        String comment = (isConstant(src1) && (src1.getKind() == Kind.Object) && (asConstant(src1).isNull()) ? " // null test " : "");
         // Emit the instruction.
         emitString(prefix + " $c0, " + mapRegOrConstToString(src0) + ", " + mapRegOrConstToString(src1) + ";" + comment);
     }
@@ -367,8 +342,7 @@ public class HSAILAssembler extends AbstractHSAILAssembler {
                 case Long:
                     return "0x" + Long.toHexString(consrc.asLong());
                 case Object:
-                    Object obj = consrc.asObject();
-                    if (obj == null) {
+                    if (consrc.isNull()) {
                         return "0";
                     } else {
                         throw GraalInternalError.shouldNotReachHere("unknown type: " + src);

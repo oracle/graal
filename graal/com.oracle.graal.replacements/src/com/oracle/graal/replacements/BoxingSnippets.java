@@ -30,6 +30,7 @@ import java.util.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.nodes.*;
@@ -173,30 +174,13 @@ public class BoxingSnippets implements Snippets {
         return value.shortValue();
     }
 
-    public static FloatingNode canonicalizeBoxing(BoxNode box, MetaAccessProvider metaAccess) {
+    public static FloatingNode canonicalizeBoxing(BoxNode box, MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection) {
         ValueNode value = box.getValue();
         if (value.isConstant()) {
             Constant sourceConstant = value.asConstant();
-            switch (box.getBoxingKind()) {
-                case Boolean:
-                    return ConstantNode.forObject(Boolean.valueOf(sourceConstant.asInt() != 0), metaAccess, box.graph());
-                case Byte:
-                    return ConstantNode.forObject(Byte.valueOf((byte) sourceConstant.asInt()), metaAccess, box.graph());
-                case Char:
-                    return ConstantNode.forObject(Character.valueOf((char) sourceConstant.asInt()), metaAccess, box.graph());
-                case Short:
-                    return ConstantNode.forObject(Short.valueOf((short) sourceConstant.asInt()), metaAccess, box.graph());
-                case Int:
-                    return ConstantNode.forObject(Integer.valueOf(sourceConstant.asInt()), metaAccess, box.graph());
-                case Long:
-                    return ConstantNode.forObject(Long.valueOf(sourceConstant.asLong()), metaAccess, box.graph());
-                case Float:
-                    return ConstantNode.forObject(Float.valueOf(sourceConstant.asFloat()), metaAccess, box.graph());
-                case Double:
-                    return ConstantNode.forObject(Double.valueOf(sourceConstant.asDouble()), metaAccess, box.graph());
-                default:
-                    assert false : "Unexpected source kind for boxing";
-                    break;
+            Constant boxedConstant = constantReflection.boxPrimitive(sourceConstant);
+            if (boxedConstant != null && boxedConstant.getKind() == box.getBoxingKind()) {
+                return ConstantNode.forConstant(boxedConstant, metaAccess, box.graph());
             }
         }
         return null;
@@ -207,8 +191,8 @@ public class BoxingSnippets implements Snippets {
         private final EnumMap<Kind, SnippetInfo> boxSnippets = new EnumMap<>(Kind.class);
         private final EnumMap<Kind, SnippetInfo> unboxSnippets = new EnumMap<>(Kind.class);
 
-        public Templates(Providers providers, TargetDescription target) {
-            super(providers, target);
+        public Templates(Providers providers, SnippetReflectionProvider snippetReflection, TargetDescription target) {
+            super(providers, snippetReflection, target);
             for (Kind kind : new Kind[]{Kind.Boolean, Kind.Byte, Kind.Char, Kind.Double, Kind.Float, Kind.Int, Kind.Long, Kind.Short}) {
                 boxSnippets.put(kind, snippet(BoxingSnippets.class, kind.getJavaName() + "ValueOf"));
                 unboxSnippets.put(kind, snippet(BoxingSnippets.class, kind.getJavaName() + "Value"));
@@ -216,7 +200,7 @@ public class BoxingSnippets implements Snippets {
         }
 
         public void lower(BoxNode box, LoweringTool tool) {
-            FloatingNode canonical = canonicalizeBoxing(box, providers.getMetaAccess());
+            FloatingNode canonical = canonicalizeBoxing(box, providers.getMetaAccess(), providers.getConstantReflection());
             // if in AOT mode, we don't want to embed boxed constants.
             if (canonical != null && !ImmutableCode.getValue()) {
                 box.graph().replaceFloating(box, canonical);

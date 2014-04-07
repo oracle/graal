@@ -95,21 +95,11 @@ public final class ReadNode extends FloatableAccessNode implements LIRLowerable,
                                 location instanceof ConstantLocationNode) {
                     long displacement = ((ConstantLocationNode) location).getDisplacement();
                     Kind kind = location.getValueKind();
-                    if (object.getKind() == Kind.Object) {
-                        Object base = object.asConstant().asObject();
-                        if (base != null) {
-                            Constant constant = tool.getConstantReflection().readUnsafeConstant(kind, base, displacement, compressible);
-                            if (constant != null) {
-                                return ConstantNode.forConstant(constant, metaAccess, read.graph());
-                            }
-                        }
-                    } else if (object.getKind().isNumericInteger()) {
-                        long base = object.asConstant().asLong();
-                        if (base != 0L) {
-                            Constant constant = tool.getConstantReflection().readUnsafeConstant(kind, null, base + displacement, compressible);
-                            if (constant != null) {
-                                return ConstantNode.forConstant(constant, metaAccess, read.graph());
-                            }
+                    Constant base = object.asConstant();
+                    if (base != null) {
+                        Constant constant = tool.getConstantReflection().readUnsafeConstant(kind, base, displacement, compressible);
+                        if (constant != null) {
+                            return ConstantNode.forConstant(constant, metaAccess, read.graph());
                         }
                     }
                 }

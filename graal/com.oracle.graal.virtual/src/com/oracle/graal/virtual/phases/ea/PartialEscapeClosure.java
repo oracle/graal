@@ -63,8 +63,8 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
      */
     public static final class Final extends PartialEscapeClosure<PartialEscapeBlockState.Final> {
 
-        public Final(SchedulePhase schedule, MetaAccessProvider metaAccess, Assumptions assumptions) {
-            super(schedule, metaAccess, assumptions);
+        public Final(SchedulePhase schedule, MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, Assumptions assumptions) {
+            super(schedule, metaAccess, constantReflection, assumptions);
         }
 
         @Override
@@ -78,10 +78,10 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
         }
     }
 
-    public PartialEscapeClosure(SchedulePhase schedule, MetaAccessProvider metaAccess, Assumptions assumptions) {
+    public PartialEscapeClosure(SchedulePhase schedule, MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, Assumptions assumptions) {
         super(schedule);
         this.usages = schedule.getCFG().graph.createNodeBitMap();
-        this.tool = new VirtualizerToolImpl(metaAccess, assumptions, this);
+        this.tool = new VirtualizerToolImpl(metaAccess, constantReflection, assumptions, this);
     }
 
     public Map<Invoke, Double> getHints() {

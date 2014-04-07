@@ -117,26 +117,7 @@ public class BytecodeDisassembler implements BytecodeDisassemblerProvider {
                         String desc = null;
                         if (constant instanceof Constant) {
                             Constant c = ((Constant) constant);
-                            switch (c.getKind()) {
-                                case Int :
-                                    desc = String.valueOf(c.asInt());
-                                    break;
-                                case Float:
-                                    desc = String.valueOf(c.asFloat());
-                                    break;
-                                case Object:
-                                    desc = Kind.Object.format(c.asObject());
-                                    break;
-                                case Double :
-                                    desc = String.valueOf(c.asDouble());
-                                    break;
-                                case Long :
-                                    desc = String.valueOf(c.asLong());
-                                    break;
-                                default:
-                                    desc = c.toString();
-                                    break;
-                            }
+                            desc = c.toValueString();
                         } else {
                             desc = constant.toString();
                         }

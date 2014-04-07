@@ -25,6 +25,7 @@ package com.oracle.graal.word.phases;
 import java.lang.reflect.*;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.nodes.*;
@@ -44,8 +45,8 @@ public class WordTypeVerificationPhase extends Phase {
 
     private final WordTypeRewriterPhase wordAccess;
 
-    public WordTypeVerificationPhase(MetaAccessProvider metaAccess, Kind wordKind) {
-        this.wordAccess = new WordTypeRewriterPhase(metaAccess, wordKind);
+    public WordTypeVerificationPhase(MetaAccessProvider metaAccess, SnippetReflectionProvider snippetReflection, Kind wordKind) {
+        this.wordAccess = new WordTypeRewriterPhase(metaAccess, snippetReflection, wordKind);
     }
 
     @Override

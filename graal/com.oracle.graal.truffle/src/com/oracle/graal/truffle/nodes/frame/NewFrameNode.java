@@ -25,6 +25,8 @@ package com.oracle.graal.truffle.nodes.frame;
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.replacements.*;
+import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
@@ -64,9 +66,17 @@ public class NewFrameNode extends FixedWithNextNode implements IterableNodeType,
         return arguments;
     }
 
+    private static SnippetReflectionProvider getSnippetReflection() {
+        /*
+         * This class requires access to the objects encapsulated in Constants, and therefore breaks
+         * the compiler-VM separation of object constants.
+         */
+        return Graal.getRequiredCapability(SnippetReflectionProvider.class);
+    }
+
     private FrameDescriptor getConstantFrameDescriptor() {
         assert descriptor.isConstant() && !descriptor.isNullConstant();
-        return (FrameDescriptor) descriptor.asConstant().asObject();
+        return (FrameDescriptor) getSnippetReflection().asObject(descriptor.asConstant());
     }
 
     private int getFrameSize() {
@@ -151,7 +161,7 @@ public class NewFrameNode extends FixedWithNextNode implements IterableNodeType,
 
         if (frameSize > 0) {
             FrameDescriptor frameDescriptor = getConstantFrameDescriptor();
-            ConstantNode objectDefault = ConstantNode.forObject(frameDescriptor.getTypeConversion().getDefaultValue(), tool.getMetaAccessProvider(), graph());
+            ConstantNode objectDefault = ConstantNode.forConstant(getSnippetReflection().forObject(frameDescriptor.getTypeConversion().getDefaultValue()), tool.getMetaAccessProvider(), graph());
             ConstantNode tagDefault = ConstantNode.forByte((byte) 0, graph());
             for (int i = 0; i < frameSize; i++) {
                 objectArrayEntryState[i] = objectDefault;

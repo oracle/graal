@@ -31,6 +31,7 @@ import com.oracle.graal.compiler.amd64.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.data.*;
+import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.amd64.*;
 import com.oracle.graal.lir.amd64.AMD64ControlFlow.BranchOp;
@@ -63,9 +64,9 @@ public class AMD64HotSpotMemoryPeephole extends AMD64MemoryPeephole {
                 masm.cmpl(x.toAddress(), 0);
             } else {
                 if (y.getKind() == Kind.Object) {
-                    crb.recordInlineDataInCode(new OopData(0, constant.asObject(), true));
+                    crb.recordInlineDataInCode(new OopData(0, HotSpotObjectConstant.asObject(constant), true));
                 } else if (y.getKind() == Kind.Long) {
-                    crb.recordInlineDataInCode(new MetaspaceData(0, constant.asLong(), constant.getPrimitiveAnnotation(), true));
+                    crb.recordInlineDataInCode(new MetaspaceData(0, constant.asLong(), HotSpotMetaspaceConstant.getMetaspaceObject(constant), true));
                 } else {
                     throw GraalInternalError.shouldNotReachHere();
                 }

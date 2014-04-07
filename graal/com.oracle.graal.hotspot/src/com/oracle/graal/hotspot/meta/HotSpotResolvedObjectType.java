@@ -267,7 +267,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
     public Constant getEncoding(Representation r) {
         switch (r) {
             case JavaClass:
-                return Constant.forObject(mirror());
+                return HotSpotObjectConstant.forObject(mirror());
             case ObjectHub:
                 return klass();
             default:
@@ -330,7 +330,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
     @Override
     public boolean isInstance(Constant obj) {
         if (obj.getKind() == Kind.Object && !obj.isNull()) {
-            return mirror().isInstance(obj.asObject());
+            return mirror().isInstance(HotSpotObjectConstant.asObject(obj));
         }
         return false;
     }
@@ -661,7 +661,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
      * Gets the metaspace Klass boxed in a {@link Constant}.
      */
     public Constant klass() {
-        return Constant.forIntegerKind(runtime().getTarget().wordKind, metaspaceKlass(), this);
+        return HotSpotMetaspaceConstant.forMetaspaceObject(runtime().getTarget().wordKind, metaspaceKlass(), this);
     }
 
     public boolean isPrimaryType() {
@@ -747,7 +747,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
 
     @Override
     public Constant newArray(int length) {
-        return Constant.forObject(Array.newInstance(mirror(), length));
+        return HotSpotObjectConstant.forObject(Array.newInstance(mirror(), length));
     }
 
     /**

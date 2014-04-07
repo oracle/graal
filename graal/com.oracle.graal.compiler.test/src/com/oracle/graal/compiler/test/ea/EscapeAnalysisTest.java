@@ -62,7 +62,7 @@ public class EscapeAnalysisTest extends EATestBase {
 
     @Test
     public void test3() {
-        testEscapeAnalysis("test3Snippet", Constant.forObject(null), false);
+        testEscapeAnalysis("test3Snippet", Constant.NULL_OBJECT, false);
     }
 
     public static Object test3Snippet() {
@@ -257,7 +257,7 @@ public class EscapeAnalysisTest extends EATestBase {
 
     @Test
     public void testCheckCast() {
-        testEscapeAnalysis("testCheckCastSnippet", Constant.forObject(TestClassObject.class), false);
+        testEscapeAnalysis("testCheckCastSnippet", getSnippetReflection().forObject(TestClassObject.class), false);
     }
 
     public Object testCheckCastSnippet() {

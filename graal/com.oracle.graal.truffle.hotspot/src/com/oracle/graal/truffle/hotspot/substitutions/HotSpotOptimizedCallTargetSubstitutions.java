@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,37 +20,23 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.api.meta;
+package com.oracle.graal.truffle.hotspot.substitutions;
 
-import java.util.*;
+import com.oracle.graal.api.replacements.*;
+import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.truffle.*;
+import com.oracle.graal.truffle.hotspot.*;
+import com.oracle.graal.truffle.nodes.asserts.*;
 
-/**
- * A {@link LocationIdentity} wrapping an object.
- */
-public final class ObjectLocationIdentity implements LocationIdentity {
+@ClassSubstitution(HotSpotOptimizedCallTarget.class)
+public class HotSpotOptimizedCallTargetSubstitutions {
 
-    private static IdentityHashMap<Object, LocationIdentity> map = new IdentityHashMap<>();
+    @MacroSubstitution(macro = NeverInlineMacroNode.class, isStatic = false)
+    public static native Object callHelper(OptimizedCallTarget target, Object[] args);
 
-    private Object object;
+    @MacroSubstitution(macro = NeverInlineMacroNode.class, isStatic = false)
+    public static native Object interpreterCall(OptimizedCallTarget target, Object[] args);
 
-    public static LocationIdentity create(Object object) {
-        synchronized (map) {
-            if (map.containsKey(object)) {
-                return map.get(object);
-            } else {
-                ObjectLocationIdentity locationIdentity = new ObjectLocationIdentity(object);
-                map.put(object, locationIdentity);
-                return locationIdentity;
-            }
-        }
-    }
-
-    private ObjectLocationIdentity(Object object) {
-        this.object = object;
-    }
-
-    @Override
-    public String toString() {
-        return "Identity(" + object + ")";
-    }
+    @MacroSubstitution(macro = NeverInlineMacroNode.class, isStatic = false)
+    public static native Object compiledCodeInvalidated(OptimizedCallTarget target, Object[] args);
 }

@@ -56,6 +56,7 @@ import com.oracle.graal.word.phases.*;
 public class ReplacementsImpl implements Replacements {
 
     protected final Providers providers;
+    protected final SnippetReflectionProvider snippetReflection;
     protected final TargetDescription target;
     protected final Assumptions assumptions;
 
@@ -71,8 +72,9 @@ public class ReplacementsImpl implements Replacements {
     private final Set<ResolvedJavaMethod> forcedSubstitutions;
     private final Map<Class<? extends SnippetTemplateCache>, SnippetTemplateCache> snippetTemplateCache;
 
-    public ReplacementsImpl(Providers providers, Assumptions assumptions, TargetDescription target) {
+    public ReplacementsImpl(Providers providers, SnippetReflectionProvider snippetReflection, Assumptions assumptions, TargetDescription target) {
         this.providers = providers.copyWith(this);
+        this.snippetReflection = snippetReflection;
         this.target = target;
         this.assumptions = assumptions;
         this.graphs = new ConcurrentHashMap<>();
@@ -121,7 +123,7 @@ public class ReplacementsImpl implements Replacements {
 
         // Do deferred intrinsification of node intrinsics
 
-        new NodeIntrinsificationPhase(providers).apply(specializedSnippet);
+        new NodeIntrinsificationPhase(providers, snippetReflection).apply(specializedSnippet);
         new CanonicalizerPhase(true).apply(specializedSnippet, new PhaseContext(providers, assumptions));
         NodeIntrinsificationVerificationPhase.verify(specializedSnippet);
     }
@@ -364,7 +366,7 @@ public class ReplacementsImpl implements Replacements {
          * Does final processing of a snippet graph.
          */
         protected void finalizeGraph(StructuredGraph graph) {
-            new NodeIntrinsificationPhase(providers).apply(graph);
+            new NodeIntrinsificationPhase(providers, snippetReflection).apply(graph);
             if (!SnippetTemplate.hasConstantParameter(method)) {
                 NodeIntrinsificationVerificationPhase.verify(graph);
             }
@@ -412,8 +414,8 @@ public class ReplacementsImpl implements Replacements {
             try (Scope s = Debug.scope("buildInitialGraph", graph)) {
                 MetaAccessProvider metaAccess = providers.getMetaAccess();
                 createGraphBuilder(metaAccess, GraphBuilderConfiguration.getSnippetDefault(), OptimisticOptimizations.NONE).apply(graph);
-                new WordTypeVerificationPhase(metaAccess, target.wordKind).apply(graph);
-                new WordTypeRewriterPhase(metaAccess, target.wordKind).apply(graph);
+                new WordTypeVerificationPhase(metaAccess, snippetReflection, target.wordKind).apply(graph);
+                new WordTypeRewriterPhase(metaAccess, snippetReflection, target.wordKind).apply(graph);
 
                 if (OptCanonicalizer.getValue()) {
                     new CanonicalizerPhase(true).apply(graph, new PhaseContext(providers, assumptions));
@@ -449,7 +451,7 @@ public class ReplacementsImpl implements Replacements {
          * Called after all inlining for a given graph is complete.
          */
         protected void afterInlining(StructuredGraph graph) {
-            new NodeIntrinsificationPhase(providers).apply(graph);
+            new NodeIntrinsificationPhase(providers, snippetReflection).apply(graph);
             new DeadCodeEliminationPhase().apply(graph);
             if (OptCanonicalizer.getValue()) {
                 new CanonicalizerPhase(true).apply(graph, new PhaseContext(providers, assumptions));

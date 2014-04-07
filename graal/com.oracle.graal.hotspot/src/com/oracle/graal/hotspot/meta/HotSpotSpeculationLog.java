@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,22 +20,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.truffle.substitutions;
+package com.oracle.graal.hotspot.meta;
 
-import com.oracle.graal.api.replacements.*;
-import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.truffle.*;
-import com.oracle.graal.truffle.nodes.asserts.*;
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
 
-@ClassSubstitution(OptimizedCallTargetImpl.class)
-public class OptimizedCallTargetImplSubstitutions {
+public class HotSpotSpeculationLog extends SpeculationLog {
 
-    @MacroSubstitution(macro = NeverInlineMacroNode.class, isStatic = false)
-    public static native Object callHelper(OptimizedCallTarget target, Object[] args);
-
-    @MacroSubstitution(macro = NeverInlineMacroNode.class, isStatic = false)
-    public static native Object interpreterCall(OptimizedCallTarget target, Object[] args);
-
-    @MacroSubstitution(macro = NeverInlineMacroNode.class, isStatic = false)
-    public static native Object compiledCodeInvalidated(OptimizedCallTarget target, Object[] args);
+    @Override
+    public Constant speculate(Object reason) {
+        addSpeculation(reason);
+        return HotSpotObjectConstant.forObject(reason);
+    }
 }

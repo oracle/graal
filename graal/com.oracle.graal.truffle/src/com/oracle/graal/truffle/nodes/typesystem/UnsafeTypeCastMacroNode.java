@@ -55,11 +55,10 @@ public class UnsafeTypeCastMacroNode extends NeverPartOfCompilationNode implemen
         if (classArgument.isConstant() && nonNullArgument.isConstant()) {
             ValueNode objectArgument = arguments.get(OBJECT_ARGUMENT_INDEX);
             ValueNode conditionArgument = arguments.get(CONDITION_ARGUMENT_INDEX);
-            Class c = (Class) classArgument.asConstant().asObject();
-            if (c == null) {
+            ResolvedJavaType lookupJavaType = tool.getConstantReflection().asJavaType(classArgument.asConstant());
+            if (lookupJavaType == null) {
                 return objectArgument;
             }
-            ResolvedJavaType lookupJavaType = tool.getMetaAccess().lookupJavaType(c);
             Stamp stamp = StampFactory.declared(lookupJavaType, nonNullArgument.asConstant().asInt() != 0);
             ConditionAnchorNode valueAnchorNode = graph().add(new ConditionAnchorNode(CompareNode.createCompareNode(graph(), Condition.EQ, conditionArgument, ConstantNode.forBoolean(true, graph()))));
             UnsafeCastNode piCast = graph().unique(new UnsafeCastNode(objectArgument, stamp, valueAnchorNode));

@@ -38,6 +38,7 @@ import org.junit.internal.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.CallingConvention.Type;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.baseline.*;
 import com.oracle.graal.compiler.target.*;
@@ -238,6 +239,10 @@ public abstract class GraalCompilerTest extends GraalTest {
 
     protected Providers getProviders() {
         return providers;
+    }
+
+    protected SnippetReflectionProvider getSnippetReflection() {
+        return Graal.getRequiredCapability(SnippetReflectionProvider.class);
     }
 
     protected TargetDescription getTarget() {

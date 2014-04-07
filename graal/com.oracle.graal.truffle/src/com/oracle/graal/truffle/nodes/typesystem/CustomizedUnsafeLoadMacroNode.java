@@ -28,6 +28,7 @@ import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.truffle.nodes.*;
 import com.oracle.graal.truffle.nodes.asserts.*;
 import com.oracle.truffle.api.*;
 
@@ -54,12 +55,11 @@ public class CustomizedUnsafeLoadMacroNode extends NeverPartOfCompilationNode im
             ValueNode objectArgument = arguments.get(OBJECT_ARGUMENT_INDEX);
             ValueNode offsetArgument = arguments.get(OFFSET_ARGUMENT_INDEX);
             ValueNode conditionArgument = arguments.get(CONDITION_ARGUMENT_INDEX);
-            Object locationIdentityObject = locationArgument.asConstant().asObject();
             LocationIdentity locationIdentity;
-            if (locationIdentityObject == null) {
+            if (locationArgument.asConstant().isNull()) {
                 locationIdentity = LocationIdentity.ANY_LOCATION;
             } else {
-                locationIdentity = ObjectLocationIdentity.create(locationIdentityObject);
+                locationIdentity = ObjectLocationIdentity.create(locationArgument.asConstant());
             }
             CompareNode compare = CompareNode.createCompareNode(graph(), Condition.EQ, conditionArgument, ConstantNode.forBoolean(true, graph()));
             Kind returnKind = this.getTargetMethod().getSignature().getReturnKind();

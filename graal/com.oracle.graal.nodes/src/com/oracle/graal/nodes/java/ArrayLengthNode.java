@@ -72,7 +72,7 @@ public final class ArrayLengthNode extends FixedWithNextNode implements Canonica
         if (constantReflection != null && array.isConstant() && !array.isNullConstant()) {
             Constant constantValue = array.asConstant();
             if (constantValue != null && constantValue.isNonNull()) {
-                Integer constantLength = constantReflection.lookupArrayLength(constantValue);
+                Integer constantLength = constantReflection.readArrayLength(constantValue);
                 if (constantLength != null) {
                     return ConstantNode.forInt(constantLength, graph);
                 }

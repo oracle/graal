@@ -262,18 +262,6 @@ public final class ConstantNode extends FloatingNode implements LIRLowerable {
         return unique(graph, createPrimitive(Constant.forInt(i)));
     }
 
-    /**
-     * Returns a node for an object constant.
-     *
-     * @param o the object value for which to create the instruction
-     * @return a node representing the object
-     */
-    public static ConstantNode forObject(Object o, MetaAccessProvider metaAccess, StructuredGraph graph) {
-        assert !(o instanceof Constant) : "wrapping a Constant into a Constant";
-        Constant constant = Constant.forObject(o);
-        return unique(graph, new ConstantNode(constant, StampFactory.forConstant(constant, metaAccess)));
-    }
-
     private static ConstantNode unique(StructuredGraph graph, ConstantNode node) {
         return graph.unique(node);
     }
@@ -351,7 +339,7 @@ public final class ConstantNode extends FloatingNode implements LIRLowerable {
             case Long:
                 return ConstantNode.forLong(0L, graph);
             case Object:
-                return ConstantNode.forObject(null, null, graph);
+                return ConstantNode.forConstant(Constant.NULL_OBJECT, null, graph);
             default:
                 return null;
         }
@@ -360,14 +348,14 @@ public final class ConstantNode extends FloatingNode implements LIRLowerable {
     @Override
     public Map<Object, Object> getDebugProperties(Map<Object, Object> map) {
         Map<Object, Object> properties = super.getDebugProperties(map);
-        properties.put("rawvalue", value.getKind() == Kind.Object ? value.getKind().format(value.asBoxedValue()) : value.asBoxedValue());
+        properties.put("rawvalue", value.toValueString());
         return properties;
     }
 
     @Override
     public String toString(Verbosity verbosity) {
         if (verbosity == Verbosity.Name) {
-            return super.toString(Verbosity.Name) + "(" + value.getKind().format(value.asBoxedValue()) + ")";
+            return super.toString(Verbosity.Name) + "(" + value.toValueString() + ")";
         } else {
             return super.toString(verbosity);
         }

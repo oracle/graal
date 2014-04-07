@@ -25,7 +25,6 @@ package com.oracle.graal.java;
 import static com.oracle.graal.api.meta.DeoptimizationAction.*;
 import static com.oracle.graal.api.meta.DeoptimizationReason.*;
 import static com.oracle.graal.bytecode.Bytecodes.*;
-import static com.oracle.graal.java.GraphBuilderPhase.RuntimeCalls.*;
 import static com.oracle.graal.phases.GraalOptions.*;
 import static java.lang.reflect.Modifier.*;
 
@@ -58,12 +57,6 @@ import com.oracle.graal.phases.tiers.*;
  * The {@code GraphBuilder} class parses the bytecode of a method and builds the IR graph.
  */
 public class GraphBuilderPhase extends BasePhase<HighTierContext> {
-
-    public static final class RuntimeCalls {
-
-        public static final ForeignCallDescriptor CREATE_NULL_POINTER_EXCEPTION = new ForeignCallDescriptor("createNullPointerException", NullPointerException.class);
-        public static final ForeignCallDescriptor CREATE_OUT_OF_BOUNDS_EXCEPTION = new ForeignCallDescriptor("createOutOfBoundsException", ArrayIndexOutOfBoundsException.class, int.class);
-    }
 
     private final GraphBuilderConfiguration graphBuilderConfig;
 
@@ -650,16 +643,10 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 append(new IfNode(currentGraph.unique(new IsNullNode(receiver)), trueSucc, falseSucc, 0.01));
                 lastInstr = falseSucc;
 
-                if (OmitHotExceptionStacktrace.getValue()) {
-                    ValueNode exception = ConstantNode.forObject(cachedNullPointerException, metaAccess, currentGraph);
-                    trueSucc.setNext(handleException(exception, bci()));
-                } else {
-                    DeferredForeignCallNode call = currentGraph.add(new DeferredForeignCallNode(CREATE_NULL_POINTER_EXCEPTION));
-                    call.setStamp(StampFactory.exactNonNull(metaAccess.lookupJavaType(CREATE_NULL_POINTER_EXCEPTION.getResultType())));
-                    call.setStateAfter(frameState.create(bci()));
-                    trueSucc.setNext(call);
-                    call.setNext(handleException(call, bci()));
-                }
+                BytecodeExceptionNode exception = currentGraph.add(new BytecodeExceptionNode(metaAccess, NullPointerException.class));
+                exception.setStateAfter(frameState.create(bci()));
+                trueSucc.setNext(exception);
+                exception.setNext(handleException(exception, bci()));
             }
 
             @Override
@@ -669,16 +656,10 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 append(new IfNode(currentGraph.unique(new IntegerBelowThanNode(index, length)), trueSucc, falseSucc, 0.99));
                 lastInstr = trueSucc;
 
-                if (OmitHotExceptionStacktrace.getValue()) {
-                    ValueNode exception = ConstantNode.forObject(cachedArrayIndexOutOfBoundsException, metaAccess, currentGraph);
-                    falseSucc.setNext(handleException(exception, bci()));
-                } else {
-                    DeferredForeignCallNode call = currentGraph.add(new DeferredForeignCallNode(CREATE_OUT_OF_BOUNDS_EXCEPTION, index));
-                    call.setStamp(StampFactory.exactNonNull(metaAccess.lookupJavaType(CREATE_OUT_OF_BOUNDS_EXCEPTION.getResultType())));
-                    call.setStateAfter(frameState.create(bci()));
-                    falseSucc.setNext(call);
-                    call.setNext(handleException(call, bci()));
-                }
+                BytecodeExceptionNode exception = currentGraph.add(new BytecodeExceptionNode(metaAccess, ArrayIndexOutOfBoundsException.class, index));
+                exception.setStateAfter(frameState.create(bci()));
+                falseSucc.setNext(exception);
+                exception.setNext(handleException(exception, bci()));
             }
 
             @Override
@@ -720,9 +701,9 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             @Override
             protected void genInvokeDynamic(JavaMethod target) {
                 if (target instanceof ResolvedJavaMethod) {
-                    Object appendix = constantPool.lookupAppendix(stream.readCPI4(), Bytecodes.INVOKEDYNAMIC);
+                    Constant appendix = constantPool.lookupAppendix(stream.readCPI4(), Bytecodes.INVOKEDYNAMIC);
                     if (appendix != null) {
-                        frameState.apush(ConstantNode.forObject(appendix, metaAccess, currentGraph));
+                        frameState.apush(ConstantNode.forConstant(appendix, metaAccess, currentGraph));
                     }
                     ValueNode[] args = frameState.popArguments(target.getSignature().getParameterSlots(false), target.getSignature().getParameterCount(false));
                     appendInvoke(InvokeKind.Static, (ResolvedJavaMethod) target, args);
@@ -742,9 +723,9 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                      * +and+invokedynamic
                      */
                     boolean hasReceiver = !isStatic(((ResolvedJavaMethod) target).getModifiers());
-                    Object appendix = constantPool.lookupAppendix(stream.readCPI(), Bytecodes.INVOKEVIRTUAL);
+                    Constant appendix = constantPool.lookupAppendix(stream.readCPI(), Bytecodes.INVOKEVIRTUAL);
                     if (appendix != null) {
-                        frameState.apush(ConstantNode.forObject(appendix, metaAccess, currentGraph));
+                        frameState.apush(ConstantNode.forConstant(appendix, metaAccess, currentGraph));
                     }
                     ValueNode[] args = frameState.popArguments(target.getSignature().getParameterSlots(hasReceiver), target.getSignature().getParameterCount(hasReceiver));
                     if (hasReceiver) {

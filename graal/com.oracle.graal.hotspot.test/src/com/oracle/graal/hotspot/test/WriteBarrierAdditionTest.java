@@ -187,7 +187,7 @@ public class WriteBarrierAdditionTest extends GraalCompilerTest {
      */
     @Test
     public void test8() throws Exception {
-        test2("testUnsafeLoad", wr, new Long(32), null);
+        test2("testUnsafeLoad", wr, new Long(useCompressedOops() ? 20 : 32), null);
     }
 
     /**
@@ -207,7 +207,7 @@ public class WriteBarrierAdditionTest extends GraalCompilerTest {
      */
     @Test
     public void test9() throws Exception {
-        test2("testUnsafeLoad", wr, new Long(16), new Integer(16));
+        test2("testUnsafeLoad", wr, new Long(useCompressedOops() ? 10 : 16), new Integer(useCompressedOops() ? 10 : 16));
     }
 
     static Object[] src = new Object[1];

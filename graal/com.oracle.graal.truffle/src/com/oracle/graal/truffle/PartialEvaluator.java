@@ -30,6 +30,8 @@ import java.util.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.replacements.*;
+import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.debug.internal.*;
@@ -95,7 +97,14 @@ public class PartialEvaluator {
 
             // Replace thisNode with constant.
             ParameterNode thisNode = graph.getParameter(0);
-            thisNode.replaceAndDelete(ConstantNode.forObject(callTarget, providers.getMetaAccess(), graph));
+
+            /*
+             * Converting the call target to a Constant using the SnippetReflectionProvider is a
+             * workaround, we should think about a better solution. Since object constants are
+             * VM-specific, only the hosting VM knows how to do the conversion.
+             */
+            SnippetReflectionProvider snippetReflection = Graal.getRequiredCapability(SnippetReflectionProvider.class);
+            thisNode.replaceAndDelete(ConstantNode.forConstant(snippetReflection.forObject(callTarget), providers.getMetaAccess(), graph));
 
             // Canonicalize / constant propagate.
             PhaseContext baseContext = new PhaseContext(providers, assumptions);
@@ -123,7 +132,7 @@ public class PartialEvaluator {
             if (TraceTruffleCompilationHistogram.getValue() && constantReceivers != null) {
                 DebugHistogram histogram = Debug.createHistogram("Expanded Truffle Nodes");
                 for (Constant c : constantReceivers) {
-                    histogram.add(c.asObject().getClass().getSimpleName());
+                    histogram.add(providers.getMetaAccess().lookupJavaType(c).getName());
                 }
                 new DebugHistogramAsciiPrinter(TTY.out().out()).print(histogram);
             }
@@ -170,7 +179,7 @@ public class PartialEvaluator {
         PhaseContext phaseContext = new PhaseContext(providers, assumptions);
         TruffleExpansionLogger expansionLogger = null;
         if (TraceTruffleExpansion.getValue()) {
-            expansionLogger = new TruffleExpansionLogger(graph);
+            expansionLogger = new TruffleExpansionLogger(providers, graph);
         }
         boolean inliningEnabled = target.getInliningResult() != null && target.getInliningResult().size() > 0;
         Map<Node, TruffleCallPath> methodTargetToStack = new HashMap<>();
@@ -278,7 +287,13 @@ public class PartialEvaluator {
             return null;
         }
 
-        Object receiverValue = receiverNode.asConstant().asObject();
+        /*
+         * Accessing the constant using the SnippetReflectionProvider is a workaround, we should
+         * think about a better solution. Since object constants are VM-specific, only the hosting
+         * VM knows how to do the conversion.
+         */
+        SnippetReflectionProvider snippetReflection = Graal.getRequiredCapability(SnippetReflectionProvider.class);
+        Object receiverValue = snippetReflection.asObject(receiverNode.asConstant());
         if (receiverValue instanceof OptimizedCallNode) {
             OptimizedCallNode callNode = (OptimizedCallNode) receiverValue;
             TruffleCallPath callPath = methodCallToCallPath.get(methodCallTargetNode);

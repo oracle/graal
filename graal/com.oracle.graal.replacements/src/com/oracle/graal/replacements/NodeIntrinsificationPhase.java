@@ -29,6 +29,7 @@ import java.util.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.internal.*;
 import com.oracle.graal.graph.*;
@@ -52,9 +53,11 @@ import com.oracle.graal.replacements.Snippet.Fold;
 public class NodeIntrinsificationPhase extends Phase {
 
     private final Providers providers;
+    private final SnippetReflectionProvider snippetReflection;
 
-    public NodeIntrinsificationPhase(Providers providers) {
+    public NodeIntrinsificationPhase(Providers providers, SnippetReflectionProvider snippetReflection) {
         this.providers = providers;
+        this.snippetReflection = snippetReflection;
     }
 
     @Override
@@ -167,25 +170,25 @@ public class NodeIntrinsificationPhase extends Phase {
                 }
                 ConstantNode constantNode = (ConstantNode) argument;
                 Constant constant = constantNode.asConstant();
-                Object o = constant.asBoxedValue();
-                if (o instanceof Class<?>) {
-                    reflectionCallArguments[i] = Constant.forObject(providers.getMetaAccess().lookupJavaType((Class<?>) o));
+                ResolvedJavaType type = providers.getConstantReflection().asJavaType(constant);
+                if (type != null) {
+                    reflectionCallArguments[i] = snippetReflection.forObject(type);
                     parameterTypes[i] = providers.getMetaAccess().lookupJavaType(ResolvedJavaType.class);
                 } else {
                     if (parameterTypes[i].getKind() == Kind.Boolean) {
-                        reflectionCallArguments[i] = Constant.forObject(Boolean.valueOf(constant.asInt() != 0));
+                        reflectionCallArguments[i] = snippetReflection.forObject(Boolean.valueOf(constant.asInt() != 0));
                     } else if (parameterTypes[i].getKind() == Kind.Byte) {
-                        reflectionCallArguments[i] = Constant.forObject(Byte.valueOf((byte) constant.asInt()));
+                        reflectionCallArguments[i] = snippetReflection.forObject(Byte.valueOf((byte) constant.asInt()));
                     } else if (parameterTypes[i].getKind() == Kind.Short) {
-                        reflectionCallArguments[i] = Constant.forObject(Short.valueOf((short) constant.asInt()));
+                        reflectionCallArguments[i] = snippetReflection.forObject(Short.valueOf((short) constant.asInt()));
                     } else if (parameterTypes[i].getKind() == Kind.Char) {
-                        reflectionCallArguments[i] = Constant.forObject(Character.valueOf((char) constant.asInt()));
+                        reflectionCallArguments[i] = snippetReflection.forObject(Character.valueOf((char) constant.asInt()));
                     } else {
                         reflectionCallArguments[i] = constant;
                     }
                 }
             } else {
-                reflectionCallArguments[i] = Constant.forObject(argument);
+                reflectionCallArguments[i] = snippetReflection.forObject(argument);
                 parameterTypes[i] = providers.getMetaAccess().lookupJavaType(ValueNode.class);
             }
         }
@@ -226,7 +229,7 @@ public class NodeIntrinsificationPhase extends Phase {
         }
 
         try {
-            ValueNode intrinsicNode = (ValueNode) constructor.newInstance(arguments).asObject();
+            ValueNode intrinsicNode = (ValueNode) snippetReflection.asObject(constructor.newInstance(arguments));
 
             if (setStampFromReturnType) {
                 intrinsicNode.setStamp(invokeStamp);
@@ -267,11 +270,13 @@ public class NodeIntrinsificationPhase extends Phase {
             if (getParameterAnnotation(InjectedNodeParameter.class, i, c) != null) {
                 injected = injected == null ? new Constant[1] : Arrays.copyOf(injected, injected.length + 1);
                 if (signature[i].equals(metaAccess.lookupJavaType(MetaAccessProvider.class))) {
-                    injected[injected.length - 1] = Constant.forObject(metaAccess);
+                    injected[injected.length - 1] = snippetReflection.forObject(metaAccess);
                 } else if (signature[i].equals(metaAccess.lookupJavaType(StructuredGraph.class))) {
-                    injected[injected.length - 1] = Constant.forObject(graph);
+                    injected[injected.length - 1] = snippetReflection.forObject(graph);
                 } else if (signature[i].equals(metaAccess.lookupJavaType(ForeignCallsProvider.class))) {
-                    injected[injected.length - 1] = Constant.forObject(providers.getForeignCalls());
+                    injected[injected.length - 1] = snippetReflection.forObject(providers.getForeignCalls());
+                } else if (signature[i].equals(metaAccess.lookupJavaType(SnippetReflectionProvider.class))) {
+                    injected[injected.length - 1] = snippetReflection.forObject(snippetReflection);
                 } else {
                     throw new GraalInternalError("Cannot handle injected argument of type %s in %s", toJavaName(signature[i]), format("%H.%n(%p)", c));
                 }
@@ -311,9 +316,9 @@ public class NodeIntrinsificationPhase extends Phase {
             arguments = Arrays.copyOf(nodeConstructorArguments, fixedArgs + 1);
             arguments[fixedArgs] = componentType.newArray(nodeConstructorArguments.length - fixedArgs);
 
-            Object varargs = arguments[fixedArgs].asObject();
+            Object varargs = snippetReflection.asObject(arguments[fixedArgs]);
             for (int i = fixedArgs; i < nodeConstructorArguments.length; i++) {
-                Array.set(varargs, i - fixedArgs, nodeConstructorArguments[i].asBoxedValue());
+                Array.set(varargs, i - fixedArgs, snippetReflection.asBoxedValue(nodeConstructorArguments[i]));
             }
         } else {
             return null;

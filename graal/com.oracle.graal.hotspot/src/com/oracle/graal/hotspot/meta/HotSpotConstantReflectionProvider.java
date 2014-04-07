@@ -48,15 +48,34 @@ public class HotSpotConstantReflectionProvider implements ConstantReflectionProv
     }
 
     @Override
-    public Integer lookupArrayLength(Constant array) {
-        if (array.getKind() != Kind.Object || array.isNull() || !array.asObject().getClass().isArray()) {
+    public Integer readArrayLength(Constant array) {
+        if (array.getKind() != Kind.Object || array.isNull() || !HotSpotObjectConstant.asObject(array).getClass().isArray()) {
             return null;
         }
-        return Array.getLength(array.asObject());
+        return Array.getLength(HotSpotObjectConstant.asObject(array));
     }
 
     @Override
-    public Constant readUnsafeConstant(Kind kind, Object base, long displacement, boolean compressible) {
+    public Constant readUnsafeConstant(Kind kind, Constant baseConstant, long initialDisplacement, boolean compressible) {
+        Object base;
+        long displacement;
+        if (baseConstant.getKind() == Kind.Object) {
+            base = HotSpotObjectConstant.asObject(baseConstant);
+            displacement = initialDisplacement;
+            if (base == null) {
+                return null;
+            }
+        } else if (baseConstant.getKind().isNumericInteger()) {
+            long baseLong = baseConstant.asLong();
+            if (baseLong == 0L) {
+                return null;
+            }
+            displacement = initialDisplacement + baseLong;
+            base = null;
+        } else {
+            throw GraalInternalError.shouldNotReachHere();
+        }
+
         switch (kind) {
             case Boolean:
                 return Constant.forBoolean(base == null ? unsafe.getByte(displacement) != 0 : unsafe.getBoolean(base, displacement));
@@ -89,10 +108,55 @@ public class HotSpotConstantReflectionProvider implements ConstantReflectionProv
                 } else {
                     o = runtime.getCompilerToVM().readUnsafeUncompressedPointer(base, displacement);
                 }
-                return Constant.forObject(o);
+                return HotSpotObjectConstant.forObject(o);
             }
             default:
                 throw GraalInternalError.shouldNotReachHere();
         }
+    }
+
+    @Override
+    public Constant readArrayElement(Constant array, int index) {
+        if (array.getKind() != Kind.Object || array.isNull()) {
+            return null;
+        }
+        Object a = HotSpotObjectConstant.asObject(array);
+
+        if (index < 0 || index >= Array.getLength(a)) {
+            return null;
+        }
+
+        if (a instanceof Object[]) {
+            return HotSpotObjectConstant.forObject(((Object[]) a)[index]);
+        } else {
+            return Constant.forBoxedPrimitive(Array.get(a, index));
+        }
+    }
+
+    @Override
+    public Constant boxPrimitive(Constant source) {
+        if (!source.getKind().isPrimitive()) {
+            return null;
+        }
+        return HotSpotObjectConstant.forObject(source.asBoxedPrimitive());
+    }
+
+    @Override
+    public Constant unboxPrimitive(Constant source) {
+        if (!source.getKind().isObject()) {
+            return null;
+        }
+        return Constant.forBoxedPrimitive(HotSpotObjectConstant.asObject(source));
+    }
+
+    @Override
+    public ResolvedJavaType asJavaType(Constant constant) {
+        if (constant.getKind() == Kind.Object) {
+            Object obj = HotSpotObjectConstant.asObject(constant);
+            if (obj instanceof Class) {
+                return runtime.getHostProviders().getMetaAccess().lookupJavaType((Class) obj);
+            }
+        }
+        return null;
     }
 }

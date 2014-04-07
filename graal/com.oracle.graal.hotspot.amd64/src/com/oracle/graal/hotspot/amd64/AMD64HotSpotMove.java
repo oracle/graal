@@ -34,6 +34,7 @@ import com.oracle.graal.asm.amd64.AMD64Assembler.ConditionFlag;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.HotSpotVMConfig.CompressEncoding;
 import com.oracle.graal.hotspot.data.*;
+import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.type.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.amd64.*;
@@ -53,8 +54,8 @@ public class AMD64HotSpotMove {
         public void emitMemAccess(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
             if (kind == Kind.Long) {
                 if (NumUtil.isInt(input.asLong())) {
-                    if (input.getPrimitiveAnnotation() != null) {
-                        crb.recordInlineDataInCode(new MetaspaceData(0, input.asLong(), input.getPrimitiveAnnotation(), true));
+                    if (input instanceof HotSpotMetaspaceConstant) {
+                        crb.recordInlineDataInCode(new MetaspaceData(0, input.asLong(), HotSpotMetaspaceConstant.getMetaspaceObject(input), true));
                     }
                     masm.movl(address.toAddress(), (int) input.asLong());
                 } else {
@@ -64,7 +65,7 @@ public class AMD64HotSpotMove {
                 if (input.isNull()) {
                     masm.movl(address.toAddress(), 0);
                 } else if (crb.target.inlineObjects) {
-                    crb.recordInlineDataInCode(new OopData(0, input.asObject(), true));
+                    crb.recordInlineDataInCode(new OopData(0, HotSpotObjectConstant.asObject(input), true));
                     masm.movl(address.toAddress(), 0xDEADDEAD);
                 } else {
                     throw GraalInternalError.shouldNotReachHere("Cannot store 64-bit constants to memory");

@@ -79,9 +79,8 @@ public interface CodeCacheProvider {
     int getMinimumOutgoingSize();
 
     /**
-     * Determines if a {@link DataPatch} should be created for a given
-     * {@linkplain Constant#getPrimitiveAnnotation() annotated} primitive constant that part of a
-     * {@link CompilationResult}. A data patch is always created for an object constant.
+     * Determines if a {@link DataPatch} should be created for a given primitive constant that is
+     * part of a {@link CompilationResult}. A data patch is always created for an object constant.
      */
     boolean needsDataPatch(Constant constant);
 

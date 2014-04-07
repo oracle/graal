@@ -20,12 +20,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.replacements;
+package com.oracle.graal.hotspot.replacements;
 
 import static com.oracle.graal.phases.GraalOptions.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
+import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
@@ -54,7 +55,7 @@ public class CompositeValueClassSubstitutions {
             if (param.isNull() || ImmutableCode.getValue()) {
                 return null;
             }
-            return Constant.forObject(CompositeValueClass.get((Class<? extends CompositeValue>) param.asObject()));
+            return HotSpotObjectConstant.forObject(CompositeValueClass.get((Class<? extends CompositeValue>) HotSpotObjectConstant.asObject(param)));
         }
     }
 

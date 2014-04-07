@@ -370,7 +370,7 @@ public class PTXAssembler extends AbstractPTXAssembler {
             assert var instanceof Variable;
             assert val instanceof Constant;
             Constant constant = (Constant) val;
-            return ("[" + ((space == PTXStateSpace.Parameter) ? emitParameter((Variable) var) : emitRegister((Variable) var, false)) + " + " + constant.asBoxedValue() + "]");
+            return ("[" + ((space == PTXStateSpace.Parameter) ? emitParameter((Variable) var) : emitRegister((Variable) var, false)) + " + " + constant.toValueString() + "]");
         }
 
         @Override

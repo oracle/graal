@@ -28,8 +28,8 @@ import org.junit.*;
 
 import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.runtime.*;
-import com.oracle.graal.truffle.*;
 import com.oracle.truffle.api.*;
+import com.oracle.truffle.api.impl.*;
 
 public class TruffleRuntimeTest {
 
@@ -46,6 +46,6 @@ public class TruffleRuntimeTest {
     @Test
     public void testRuntimeIsGraalRuntime() {
         TruffleRuntime runtime = Truffle.getRuntime();
-        assertEquals(GraalTruffleRuntime.class, runtime.getClass());
+        assertTrue(runtime.getClass() != DefaultTruffleRuntime.class);
     }
 }

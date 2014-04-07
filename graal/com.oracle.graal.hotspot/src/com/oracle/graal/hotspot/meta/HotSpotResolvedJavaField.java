@@ -213,7 +213,7 @@ public class HotSpotResolvedJavaField extends CompilerObject implements Resolved
              * have a non-default value.
              */
             assert !isStatic(modifiers);
-            Object object = receiver.asObject();
+            Object object = HotSpotObjectConstant.asObject(receiver);
 
             // Canonicalization may attempt to process an unsafe read before
             // processing a guard (e.g. a null check or a type check) for this read
@@ -234,7 +234,7 @@ public class HotSpotResolvedJavaField extends CompilerObject implements Resolved
                     if (StableOptionValue.class.isAssignableFrom(clazz)) {
                         assert getName().equals("value") : "Unexpected field in " + StableOptionValue.class.getName() + " hierarchy:" + this;
                         StableOptionValue<?> option = (StableOptionValue<?>) object;
-                        return Constant.forObject(option.getValue());
+                        return HotSpotObjectConstant.forObject(option.getValue());
                     }
                 }
             }
@@ -260,14 +260,13 @@ public class HotSpotResolvedJavaField extends CompilerObject implements Resolved
         if (receiver == null) {
             assert isStatic(modifiers);
             if (holder.isInitialized()) {
-                return runtime().getHostProviders().getConstantReflection().readUnsafeConstant(getKind(), holder.mirror(), offset, getKind() == Kind.Object);
+                return runtime().getHostProviders().getConstantReflection().readUnsafeConstant(getKind(), HotSpotObjectConstant.forObject(holder.mirror()), offset, getKind() == Kind.Object);
             }
             return null;
         } else {
             assert !isStatic(modifiers);
-            Object object = receiver.asObject();
-            assert object != null && isInObject(object);
-            return runtime().getHostProviders().getConstantReflection().readUnsafeConstant(getKind(), object, offset, getKind() == Kind.Object);
+            assert receiver.isNonNull() && isInObject(HotSpotObjectConstant.asObject(receiver));
+            return runtime().getHostProviders().getConstantReflection().readUnsafeConstant(getKind(), receiver, offset, getKind() == Kind.Object);
         }
     }
 

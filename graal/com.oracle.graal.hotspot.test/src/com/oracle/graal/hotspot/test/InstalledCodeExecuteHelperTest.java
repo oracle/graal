@@ -89,7 +89,7 @@ public class InstalledCodeExecuteHelperTest extends GraalCompilerTest {
             assert parameterTypes.length == args.length;
             for (int i = 0; i < argsToBind.length; i++) {
                 ParameterNode param = graph.getParameter(i);
-                Constant c = Constant.forBoxed(parameterTypes[i].getKind(), argsToBind[i]);
+                Constant c = HotSpotObjectConstant.forBoxedValue(parameterTypes[i].getKind(), argsToBind[i]);
                 ConstantNode replacement = ConstantNode.forConstant(c, getMetaAccess(), graph);
                 param.replaceAtUsages(replacement);
             }

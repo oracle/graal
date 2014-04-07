@@ -23,6 +23,8 @@
 package com.oracle.graal.truffle.nodes;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.replacements.*;
+import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.replacements.nodes.*;
@@ -39,13 +41,21 @@ public class AssumptionNode extends MacroNode implements com.oracle.graal.graph.
         return arguments.first();
     }
 
+    private static SnippetReflectionProvider getSnippetReflection() {
+        /*
+         * This class requires access to the objects encapsulated in Constants, and therefore breaks
+         * the compiler-VM separation of object constants.
+         */
+        return Graal.getRequiredCapability(SnippetReflectionProvider.class);
+    }
+
     @Override
     public void simplify(SimplifierTool tool) {
         ValueNode assumption = getAssumption();
         if (tool.assumptions() != null && assumption.isConstant()) {
             Constant c = assumption.asConstant();
             assert c.getKind() == Kind.Object;
-            Object object = c.asObject();
+            Object object = getSnippetReflection().asObject(c);
             OptimizedAssumption assumptionObject = (OptimizedAssumption) object;
             StructuredGraph graph = graph();
             if (assumptionObject.isValid()) {

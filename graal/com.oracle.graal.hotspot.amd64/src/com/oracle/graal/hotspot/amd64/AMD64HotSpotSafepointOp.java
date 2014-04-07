@@ -77,7 +77,7 @@ public class AMD64HotSpotSafepointOp extends AMD64LIRInstruction {
         if (ImmutableCode.getValue()) {
             Kind hostWordKind = HotSpotGraalRuntime.getHostWordKind();
             int alignment = hostWordKind.getBitCount() / Byte.SIZE;
-            Constant pollingPageAddress = Constant.forIntegerKind(hostWordKind, config.safepointPollingAddress, null);
+            Constant pollingPageAddress = Constant.forIntegerKind(hostWordKind, config.safepointPollingAddress);
             // This move will be patched to load the safepoint page from a data segment
             // co-located with the immutable code.
             asm.movq(scratch, (AMD64Address) crb.recordDataReferenceInCode(pollingPageAddress, alignment));

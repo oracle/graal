@@ -27,6 +27,7 @@ import static com.oracle.graal.nodes.calc.CompareNode.*;
 import java.util.*;
 
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
@@ -53,8 +54,8 @@ import com.oracle.graal.replacements.SnippetTemplate.UsageReplacer;
  */
 public abstract class InstanceOfSnippetsTemplates extends AbstractTemplates {
 
-    public InstanceOfSnippetsTemplates(Providers providers, TargetDescription target) {
-        super(providers, target);
+    public InstanceOfSnippetsTemplates(Providers providers, SnippetReflectionProvider snippetReflection, TargetDescription target) {
+        super(providers, snippetReflection, target);
     }
 
     /**
@@ -130,7 +131,7 @@ public abstract class InstanceOfSnippetsTemplates extends AbstractTemplates {
 
         /**
          * Gets the result of this instantiation as a condition.
-         * 
+         *
          * @param testValue the returned condition is true if the result is equal to this value
          */
         LogicNode asCondition(ValueNode testValue) {
@@ -148,7 +149,7 @@ public abstract class InstanceOfSnippetsTemplates extends AbstractTemplates {
 
         /**
          * Gets the result of the instantiation as a materialized value.
-         * 
+         *
          * @param t the true value for the materialization
          * @param f the false value for the materialization
          */

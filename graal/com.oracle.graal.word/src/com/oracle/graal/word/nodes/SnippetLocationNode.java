@@ -20,14 +20,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes.extended;
+package com.oracle.graal.word.nodes;
 
 import static com.oracle.graal.api.meta.LocationIdentity.*;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
@@ -40,22 +42,27 @@ import com.oracle.graal.nodes.type.*;
  */
 public final class SnippetLocationNode extends LocationNode implements Canonicalizable {
 
+    private final SnippetReflectionProvider snippetReflection;
+
     @Input private ValueNode valueKind;
     @Input(InputType.Association) private ValueNode locationIdentity;
     @Input private ValueNode displacement;
     @Input private ValueNode index;
     @Input private ValueNode indexScaling;
 
-    public static SnippetLocationNode create(ValueNode identity, ValueNode kind, ValueNode displacement, ValueNode index, ValueNode indexScaling, Graph graph) {
-        return graph.unique(new SnippetLocationNode(identity, kind, displacement, index, indexScaling));
+    public static SnippetLocationNode create(SnippetReflectionProvider snippetReflection, ValueNode identity, ValueNode kind, ValueNode displacement, ValueNode index, ValueNode indexScaling,
+                    Graph graph) {
+        return graph.unique(new SnippetLocationNode(snippetReflection, identity, kind, displacement, index, indexScaling));
     }
 
-    private SnippetLocationNode(ValueNode locationIdentity, ValueNode kind, ValueNode displacement) {
-        this(locationIdentity, kind, displacement, null, null);
+    private SnippetLocationNode(@InjectedNodeParameter SnippetReflectionProvider snippetReflection, ValueNode locationIdentity, ValueNode kind, ValueNode displacement) {
+        this(snippetReflection, locationIdentity, kind, displacement, null, null);
     }
 
-    private SnippetLocationNode(ValueNode locationIdentity, ValueNode kind, ValueNode displacement, ValueNode index, ValueNode indexScaling) {
+    private SnippetLocationNode(@InjectedNodeParameter SnippetReflectionProvider snippetReflection, ValueNode locationIdentity, ValueNode kind, ValueNode displacement, ValueNode index,
+                    ValueNode indexScaling) {
         super(StampFactory.object());
+        this.snippetReflection = snippetReflection;
         this.valueKind = kind;
         this.locationIdentity = locationIdentity;
         this.displacement = displacement;
@@ -66,7 +73,7 @@ public final class SnippetLocationNode extends LocationNode implements Canonical
     @Override
     public Kind getValueKind() {
         if (valueKind.isConstant()) {
-            return (Kind) valueKind.asConstant().asObject();
+            return (Kind) snippetReflection.asObject(valueKind.asConstant());
         }
         throw new GraalInternalError("Cannot access kind yet because it is not constant: " + valueKind);
     }
@@ -74,7 +81,7 @@ public final class SnippetLocationNode extends LocationNode implements Canonical
     @Override
     public LocationIdentity getLocationIdentity() {
         if (locationIdentity.isConstant()) {
-            return (LocationIdentity) locationIdentity.asConstant().asObject();
+            return (LocationIdentity) snippetReflection.asObject(locationIdentity.asConstant());
         }
         // We do not know our actual location identity yet, so be conservative.
         return ANY_LOCATION;
@@ -83,8 +90,8 @@ public final class SnippetLocationNode extends LocationNode implements Canonical
     @Override
     public Node canonical(CanonicalizerTool tool) {
         if (valueKind.isConstant() && locationIdentity.isConstant() && displacement.isConstant() && (indexScaling == null || indexScaling.isConstant())) {
-            Kind constKind = (Kind) valueKind.asConstant().asObject();
-            LocationIdentity constLocation = (LocationIdentity) locationIdentity.asConstant().asObject();
+            Kind constKind = (Kind) snippetReflection.asObject(valueKind.asConstant());
+            LocationIdentity constLocation = (LocationIdentity) snippetReflection.asObject(locationIdentity.asConstant());
             long constDisplacement = displacement.asConstant().asLong();
             int constIndexScaling = indexScaling == null ? 0 : indexScaling.asConstant().asInt();
 

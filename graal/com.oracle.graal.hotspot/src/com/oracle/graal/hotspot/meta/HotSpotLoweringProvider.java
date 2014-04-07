@@ -90,7 +90,7 @@ public class HotSpotLoweringProvider implements LoweringProvider {
         newObjectSnippets = new NewObjectSnippets.Templates(providers, target);
         monitorSnippets = new MonitorSnippets.Templates(providers, target, config.useFastLocking);
         writeBarrierSnippets = new WriteBarrierSnippets.Templates(providers, target, config.useCompressedOops ? config.getOopEncoding() : null);
-        boxingSnippets = new BoxingSnippets.Templates(providers, target);
+        boxingSnippets = new BoxingSnippets.Templates(providers, providers.getSnippetReflection(), target);
         exceptionObjectSnippets = new LoadExceptionObjectSnippets.Templates(providers, target);
         unsafeLoadSnippets = new UnsafeLoadSnippets.Templates(providers, target);
         providers.getReplacements().registerSnippetTemplateCache(new UnsafeArrayCopySnippets.Templates(providers, target));
@@ -134,8 +134,8 @@ public class HotSpotLoweringProvider implements LoweringProvider {
             lowerOSRStartNode((OSRStartNode) n);
         } else if (n instanceof DynamicCounterNode) {
             lowerDynamicCounterNode((DynamicCounterNode) n);
-        } else if (n instanceof DeferredForeignCallNode) {
-            lowerDeferredForeignCallNode((DeferredForeignCallNode) n);
+        } else if (n instanceof BytecodeExceptionNode) {
+            lowerBytecodeExceptionNode((BytecodeExceptionNode) n);
         } else if (n instanceof CheckCastDynamicNode) {
             checkcastDynamicSnippets.lower((CheckCastDynamicNode) n, tool);
         } else if (n instanceof InstanceOfNode) {
@@ -307,7 +307,7 @@ public class HotSpotLoweringProvider implements LoweringProvider {
     private void lowerLoadFieldNode(LoadFieldNode loadField, LoweringTool tool) {
         StructuredGraph graph = loadField.graph();
         HotSpotResolvedJavaField field = (HotSpotResolvedJavaField) loadField.field();
-        ValueNode object = loadField.isStatic() ? ConstantNode.forObject(field.getDeclaringClass().mirror(), metaAccess, graph) : loadField.object();
+        ValueNode object = loadField.isStatic() ? ConstantNode.forConstant(HotSpotObjectConstant.forObject(field.getDeclaringClass().mirror()), metaAccess, graph) : loadField.object();
         assert loadField.getKind() != Kind.Illegal;
         BarrierType barrierType = getFieldLoadBarrierType(field);
 
@@ -351,7 +351,7 @@ public class HotSpotLoweringProvider implements LoweringProvider {
     private void lowerStoreFieldNode(StoreFieldNode storeField, LoweringTool tool) {
         StructuredGraph graph = storeField.graph();
         HotSpotResolvedJavaField field = (HotSpotResolvedJavaField) storeField.field();
-        ValueNode object = storeField.isStatic() ? ConstantNode.forObject(field.getDeclaringClass().mirror(), metaAccess, graph) : storeField.object();
+        ValueNode object = storeField.isStatic() ? ConstantNode.forConstant(HotSpotObjectConstant.forObject(field.getDeclaringClass().mirror()), metaAccess, graph) : storeField.object();
         BarrierType barrierType = getFieldStoreBarrierType(storeField);
 
         ValueNode value = implicitStoreConvert(graph, storeField.field().getKind(), storeField.value());
@@ -661,11 +661,51 @@ public class HotSpotLoweringProvider implements LoweringProvider {
         }
     }
 
-    private void lowerDeferredForeignCallNode(DeferredForeignCallNode deferred) {
-        StructuredGraph graph = deferred.graph();
+    static final class Exceptions {
+        protected static final ArrayIndexOutOfBoundsException cachedArrayIndexOutOfBoundsException;
+        protected static final NullPointerException cachedNullPointerException;
+
+        static {
+            cachedArrayIndexOutOfBoundsException = new ArrayIndexOutOfBoundsException();
+            cachedArrayIndexOutOfBoundsException.setStackTrace(new StackTraceElement[0]);
+            cachedNullPointerException = new NullPointerException();
+            cachedNullPointerException.setStackTrace(new StackTraceElement[0]);
+        }
+    }
+
+    public static final class RuntimeCalls {
+        public static final ForeignCallDescriptor CREATE_NULL_POINTER_EXCEPTION = new ForeignCallDescriptor("createNullPointerException", NullPointerException.class);
+        public static final ForeignCallDescriptor CREATE_OUT_OF_BOUNDS_EXCEPTION = new ForeignCallDescriptor("createOutOfBoundsException", ArrayIndexOutOfBoundsException.class, int.class);
+    }
+
+    private void lowerBytecodeExceptionNode(BytecodeExceptionNode node) {
+        StructuredGraph graph = node.graph();
         if (graph.getGuardsStage() == StructuredGraph.GuardsStage.FLOATING_GUARDS) {
-            ForeignCallNode foreignCallNode = graph.add(new ForeignCallNode(foreignCalls, deferred.getDescriptor(), deferred.stamp(), deferred.getArguments()));
-            graph.replaceFixedWithFixed(deferred, foreignCallNode);
+            if (OmitHotExceptionStacktrace.getValue()) {
+                Throwable exception;
+                if (node.getExceptionClass() == NullPointerException.class) {
+                    exception = Exceptions.cachedNullPointerException;
+                } else if (node.getExceptionClass() == ArrayIndexOutOfBoundsException.class) {
+                    exception = Exceptions.cachedArrayIndexOutOfBoundsException;
+                } else {
+                    throw GraalInternalError.shouldNotReachHere();
+                }
+                FloatingNode exceptionNode = ConstantNode.forConstant(HotSpotObjectConstant.forObject(exception), metaAccess, graph);
+                graph.replaceFixedWithFloating(node, exceptionNode);
+
+            } else {
+                ForeignCallDescriptor descriptor;
+                if (node.getExceptionClass() == NullPointerException.class) {
+                    descriptor = RuntimeCalls.CREATE_NULL_POINTER_EXCEPTION;
+                } else if (node.getExceptionClass() == ArrayIndexOutOfBoundsException.class) {
+                    descriptor = RuntimeCalls.CREATE_OUT_OF_BOUNDS_EXCEPTION;
+                } else {
+                    throw GraalInternalError.shouldNotReachHere();
+                }
+
+                ForeignCallNode foreignCallNode = graph.add(new ForeignCallNode(foreignCalls, descriptor, node.stamp(), node.getArguments()));
+                graph.replaceFixedWithFixed(node, foreignCallNode);
+            }
         }
     }
 

@@ -40,13 +40,9 @@ public class DynamicNewInstanceNode extends AbstractNewObjectNode implements Can
     @Override
     public Node canonical(CanonicalizerTool tool) {
         if (clazz.isConstant()) {
-            Constant clazzConstant = clazz.asConstant();
-            if (clazzConstant.getKind() == Kind.Object && clazzConstant.asObject() instanceof Class) {
-                Class staticClass = (Class) clazzConstant.asObject();
-                ResolvedJavaType type = tool.getMetaAccess().lookupJavaType(staticClass);
-                if (type.isInitialized()) {
-                    return graph().add(new NewInstanceNode(type, fillContents()));
-                }
+            ResolvedJavaType type = tool.getConstantReflection().asJavaType(clazz.asConstant());
+            if (type != null && type.isInitialized()) {
+                return graph().add(new NewInstanceNode(type, fillContents()));
             }
         }
         return this;

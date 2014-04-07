@@ -40,11 +40,13 @@ import com.oracle.graal.nodes.virtual.*;
 class VirtualizerToolImpl implements VirtualizerTool {
 
     private final MetaAccessProvider metaAccess;
+    private final ConstantReflectionProvider constantReflection;
     private final Assumptions assumptions;
     private final PartialEscapeClosure<?> closure;
 
-    VirtualizerToolImpl(MetaAccessProvider metaAccess, Assumptions assumptions, PartialEscapeClosure<?> closure) {
+    VirtualizerToolImpl(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, Assumptions assumptions, PartialEscapeClosure<?> closure) {
         this.metaAccess = metaAccess;
+        this.constantReflection = constantReflection;
         this.assumptions = assumptions;
         this.closure = closure;
     }
@@ -58,6 +60,10 @@ class VirtualizerToolImpl implements VirtualizerTool {
     @Override
     public MetaAccessProvider getMetaAccessProvider() {
         return metaAccess;
+    }
+
+    public ConstantReflectionProvider getConstantReflectionProvider() {
+        return constantReflection;
     }
 
     @Override

@@ -203,8 +203,8 @@ public class ForeignCallStub extends Stub {
             Debug.dump(graph, "Initial stub graph");
         }
 
-        kit.rewriteWordTypes();
-        kit.inlineInvokes();
+        kit.rewriteWordTypes(providers.getSnippetReflection());
+        kit.inlineInvokes(providers.getSnippetReflection());
 
         if (Debug.isDumpEnabled()) {
             Debug.dump(graph, "Stub graph before compilation");

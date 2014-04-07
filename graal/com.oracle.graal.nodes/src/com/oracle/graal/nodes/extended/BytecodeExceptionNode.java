@@ -29,30 +29,29 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
 /**
- * A node that will be lowered to a {@linkplain ForeignCallDescriptor foreign} call.
+ * A node that represents an exception thrown implicitly by a Java bytecode. It can be lowered to
+ * either a {@linkplain ForeignCallDescriptor foreign} call or a pre-allocated exception object.
  */
-@NodeInfo(nameTemplate = "DeferredForeignCall#{p#descriptor/s}")
-public class DeferredForeignCallNode extends AbstractMemoryCheckpoint implements Lowerable, MemoryCheckpoint.Single {
+public class BytecodeExceptionNode extends AbstractMemoryCheckpoint implements Lowerable, MemoryCheckpoint.Single {
 
+    private final Class<? extends Throwable> exceptionClass;
     @Input private final NodeInputList<ValueNode> arguments;
-    @Input(InputType.State) private FrameState deoptState;
+    @Input private FrameState deoptState;
 
-    private final ForeignCallDescriptor descriptor;
-
-    public DeferredForeignCallNode(ForeignCallDescriptor descriptor, ValueNode... arguments) {
-        super(StampFactory.forKind(Kind.fromJavaClass(descriptor.getResultType())));
+    public BytecodeExceptionNode(MetaAccessProvider metaAccess, Class<? extends Throwable> exceptionClass, ValueNode... arguments) {
+        super(StampFactory.exactNonNull(metaAccess.lookupJavaType(exceptionClass)));
+        this.exceptionClass = exceptionClass;
         this.arguments = new NodeInputList<>(this, arguments);
-        this.descriptor = descriptor;
     }
 
-    public ForeignCallDescriptor getDescriptor() {
-        return descriptor;
+    public Class<? extends Throwable> getExceptionClass() {
+        return exceptionClass;
     }
 
     @Override
     public String toString(Verbosity verbosity) {
         if (verbosity == Verbosity.Name) {
-            return super.toString(verbosity) + "#" + descriptor;
+            return super.toString(verbosity) + "#" + exceptionClass.getSimpleName();
         }
         return super.toString(verbosity);
     }

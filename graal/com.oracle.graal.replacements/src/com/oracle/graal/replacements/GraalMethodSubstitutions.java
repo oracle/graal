@@ -50,8 +50,6 @@ public class GraalMethodSubstitutions implements ReplacementsProvider {
             replacements.registerSubstitutions(CharacterSubstitutions.class);
             replacements.registerSubstitutions(ShortSubstitutions.class);
             replacements.registerSubstitutions(UnsignedMathSubstitutions.class);
-            replacements.registerSubstitutions(NodeClassSubstitutions.class);
-            replacements.registerSubstitutions(CompositeValueClassSubstitutions.class);
         }
     }
 }

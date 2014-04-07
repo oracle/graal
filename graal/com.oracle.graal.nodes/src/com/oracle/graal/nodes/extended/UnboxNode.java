@@ -70,28 +70,9 @@ public class UnboxNode extends FloatingNode implements Virtualizable, Lowerable,
     public Node canonical(CanonicalizerTool tool) {
         if (value.isConstant()) {
             Constant constant = value.asConstant();
-            Object o = constant.asObject();
-            if (o != null) {
-                switch (boxingKind) {
-                    case Boolean:
-                        return ConstantNode.forBoolean((Boolean) o, graph());
-                    case Byte:
-                        return ConstantNode.forByte((Byte) o, graph());
-                    case Char:
-                        return ConstantNode.forChar((Character) o, graph());
-                    case Short:
-                        return ConstantNode.forShort((Short) o, graph());
-                    case Int:
-                        return ConstantNode.forInt((Integer) o, graph());
-                    case Long:
-                        return ConstantNode.forLong((Long) o, graph());
-                    case Float:
-                        return ConstantNode.forFloat((Float) o, graph());
-                    case Double:
-                        return ConstantNode.forDouble((Double) o, graph());
-                    default:
-                        ValueNodeUtil.shouldNotReachHere();
-                }
+            Constant unboxed = tool.getConstantReflection().unboxPrimitive(constant);
+            if (unboxed != null && unboxed.getKind() == boxingKind) {
+                return ConstantNode.forConstant(unboxed, tool.getMetaAccess(), graph());
             }
         } else if (value instanceof BoxNode) {
             BoxNode box = (BoxNode) value;

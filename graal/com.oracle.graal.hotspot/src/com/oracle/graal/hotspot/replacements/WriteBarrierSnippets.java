@@ -40,7 +40,6 @@ import com.oracle.graal.nodes.HeapAccess.BarrierType;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.*;
-import com.oracle.graal.phases.util.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.replacements.Snippet.ConstantParameter;
 import com.oracle.graal.replacements.SnippetTemplate.AbstractTemplates;
@@ -334,8 +333,8 @@ public class WriteBarrierSnippets implements Snippets {
 
         private final CompressEncoding oopEncoding;
 
-        public Templates(Providers providers, TargetDescription target, CompressEncoding oopEncoding) {
-            super(providers, target);
+        public Templates(HotSpotProviders providers, TargetDescription target, CompressEncoding oopEncoding) {
+            super(providers, providers.getSnippetReflection(), target);
             this.oopEncoding = oopEncoding;
         }
 
