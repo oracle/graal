@@ -43,7 +43,7 @@ import com.oracle.graal.nodes.calc.FloatConvertNode.FloatConvert;
 import com.oracle.graal.options.*;
 import com.oracle.graal.phases.*;
 
-public abstract class AbstractBytecodeParser<T extends KindProvider, F extends AbstractFrameStateBuilder<T>> {
+public abstract class AbstractBytecodeParser<T extends KindProvider, F extends AbstractFrameStateBuilder<T, F>> {
 
     static class Options {
         // @formatter:off

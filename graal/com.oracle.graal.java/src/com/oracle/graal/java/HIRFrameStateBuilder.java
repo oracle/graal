@@ -23,7 +23,6 @@
 package com.oracle.graal.java;
 
 import static com.oracle.graal.graph.iterators.NodePredicates.*;
-import static com.oracle.graal.nodes.ValueNodeUtil.*;
 import static java.lang.reflect.Modifier.*;
 
 import java.util.*;
@@ -40,31 +39,19 @@ import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.util.*;
 
-public class HIRFrameStateBuilder extends AbstractFrameStateBuilder<ValueNode> {
+public class HIRFrameStateBuilder extends AbstractFrameStateBuilder<ValueNode, HIRFrameStateBuilder> {
 
     private static final ValueNode[] EMPTY_ARRAY = new ValueNode[0];
     private static final MonitorIdNode[] EMPTY_MONITOR_ARRAY = new MonitorIdNode[0];
 
-    private final ValueNode[] locals;
-    private final ValueNode[] stack;
-    private ValueNode[] lockedObjects;
     private MonitorIdNode[] monitorIds;
     private final StructuredGraph graph;
 
-    /**
-     * @see BytecodeFrame#rethrowException
-     */
-    private boolean rethrowException;
-
     public HIRFrameStateBuilder(ResolvedJavaMethod method, StructuredGraph graph, boolean eagerResolve) {
-        super(method);
+        super(method, new ValueNode[method.getMaxLocals()], new ValueNode[Math.max(1, method.getMaxStackSize())], EMPTY_ARRAY);
 
         assert graph != null;
 
-        this.locals = new ValueNode[method.getMaxLocals()];
-        // we always need at least one stack slot (for exceptions)
-        this.stack = new ValueNode[Math.max(1, method.getMaxStackSize())];
-        this.lockedObjects = EMPTY_ARRAY;
         this.monitorIds = EMPTY_MONITOR_ARRAY;
         this.graph = graph;
 
@@ -103,16 +90,16 @@ public class HIRFrameStateBuilder extends AbstractFrameStateBuilder<ValueNode> {
         super(other);
         assert other.graph != null;
         graph = other.graph;
-        locals = other.locals.clone();
-        stack = other.stack.clone();
-        lockedObjects = other.lockedObjects == EMPTY_ARRAY ? EMPTY_ARRAY : other.lockedObjects.clone();
         monitorIds = other.monitorIds == EMPTY_MONITOR_ARRAY ? EMPTY_MONITOR_ARRAY : other.monitorIds.clone();
-        stackSize = other.stackSize;
-        rethrowException = other.rethrowException;
 
         assert locals.length == method.getMaxLocals();
         assert stack.length == Math.max(1, method.getMaxStackSize());
         assert lockedObjects.length == monitorIds.length;
+    }
+
+    @Override
+    protected ValueNode[] getEmtpyArray() {
+        return EMPTY_ARRAY;
     }
 
     @Override
@@ -142,10 +129,12 @@ public class HIRFrameStateBuilder extends AbstractFrameStateBuilder<ValueNode> {
         return graph.add(new FrameState(method, bci, locals, Arrays.asList(stack).subList(0, stackSize), lockedObjects, monitorIds, rethrowException, false));
     }
 
+    @Override
     public HIRFrameStateBuilder copy() {
         return new HIRFrameStateBuilder(this);
     }
 
+    @Override
     public boolean isCompatibleWith(HIRFrameStateBuilder other) {
         assert method.equals(other.method) && graph == other.graph && localsSize() == other.localsSize() : "Can only compare frame states of the same method";
         assert lockedObjects.length == monitorIds.length && other.lockedObjects.length == other.monitorIds.length : "mismatch between lockedObjects and monitorIds";
@@ -336,35 +325,6 @@ public class HIRFrameStateBuilder extends AbstractFrameStateBuilder<ValueNode> {
     }
 
     /**
-     * @see BytecodeFrame#rethrowException
-     */
-    public boolean rethrowException() {
-        return rethrowException;
-    }
-
-    /**
-     * @see BytecodeFrame#rethrowException
-     */
-    public void setRethrowException(boolean b) {
-        rethrowException = b;
-    }
-
-    @Override
-    public int localsSize() {
-        return locals.length;
-    }
-
-    @Override
-    public ValueNode localAt(int i) {
-        return locals[i];
-    }
-
-    @Override
-    public ValueNode stackAt(int i) {
-        return stack[i];
-    }
-
-    /**
      * Adds a locked monitor to this frame state.
      *
      * @param object the object whose monitor will be locked.
@@ -402,159 +362,6 @@ public class HIRFrameStateBuilder extends AbstractFrameStateBuilder<ValueNode> {
     public int lockDepth() {
         assert lockedObjects.length == monitorIds.length;
         return lockedObjects.length;
-    }
-
-    @Override
-    public ValueNode loadLocal(int i) {
-        ValueNode x = locals[i];
-        assert !x.isDeleted();
-        assert !isTwoSlot(x.getKind()) || locals[i + 1] == null;
-        assert i == 0 || locals[i - 1] == null || !isTwoSlot(locals[i - 1].getKind());
-        return x;
-    }
-
-    @Override
-    public void storeLocal(int i, ValueNode x) {
-        assert x == null || x.isAlive() && x.getKind() != Kind.Void && x.getKind() != Kind.Illegal : "unexpected value: " + x;
-        locals[i] = x;
-        if (x != null && isTwoSlot(x.getKind())) {
-            // if this is a double word, then kill i+1
-            locals[i + 1] = null;
-        }
-        if (x != null && i > 0) {
-            ValueNode p = locals[i - 1];
-            if (p != null && isTwoSlot(p.getKind())) {
-                // if there was a double word at i - 1, then kill it
-                locals[i - 1] = null;
-            }
-        }
-    }
-
-    @Override
-    public void storeStack(int i, ValueNode x) {
-        assert x == null || x.isAlive() && (stack[i] == null || x.getKind() == stack[i].getKind()) : "Method does not handle changes from one-slot to two-slot values or non-alive values";
-        stack[i] = x;
-    }
-
-    @Override
-    public void push(Kind kind, ValueNode x) {
-        assert x.isAlive() && x.getKind() != Kind.Void && x.getKind() != Kind.Illegal;
-        xpush(assertKind(kind, x));
-        if (isTwoSlot(kind)) {
-            xpush(null);
-        }
-    }
-
-    @Override
-    public void xpush(ValueNode x) {
-        assert x == null || (x.isAlive() && x.getKind() != Kind.Void && x.getKind() != Kind.Illegal);
-        stack[stackSize++] = x;
-    }
-
-    @Override
-    public void ipush(ValueNode x) {
-        xpush(assertInt(x));
-    }
-
-    @Override
-    public void fpush(ValueNode x) {
-        xpush(assertFloat(x));
-    }
-
-    @Override
-    public void apush(ValueNode x) {
-        xpush(assertObject(x));
-    }
-
-    @Override
-    public void lpush(ValueNode x) {
-        xpush(assertLong(x));
-        xpush(null);
-    }
-
-    @Override
-    public void dpush(ValueNode x) {
-        xpush(assertDouble(x));
-        xpush(null);
-    }
-
-    @Override
-    public void pushReturn(Kind kind, ValueNode x) {
-        if (kind != Kind.Void) {
-            push(kind.getStackKind(), x);
-        }
-    }
-
-    @Override
-    public ValueNode pop(Kind kind) {
-        assert kind != Kind.Void;
-        if (isTwoSlot(kind)) {
-            xpop();
-        }
-        return assertKind(kind, xpop());
-    }
-
-    @Override
-    public ValueNode xpop() {
-        ValueNode result = stack[--stackSize];
-        assert result == null || !result.isDeleted();
-        return result;
-    }
-
-    @Override
-    public ValueNode ipop() {
-        return assertInt(xpop());
-    }
-
-    @Override
-    public ValueNode fpop() {
-        return assertFloat(xpop());
-    }
-
-    @Override
-    public ValueNode apop() {
-        return assertObject(xpop());
-    }
-
-    @Override
-    public ValueNode lpop() {
-        assertHigh(xpop());
-        return assertLong(xpop());
-    }
-
-    @Override
-    public ValueNode dpop() {
-        assertHigh(xpop());
-        return assertDouble(xpop());
-    }
-
-    @Override
-    public ValueNode[] popArguments(int slotSize, int argSize) {
-        int base = stackSize - slotSize;
-        ValueNode[] r = new ValueNode[argSize];
-        int argIndex = 0;
-        int stackindex = 0;
-        while (stackindex < slotSize) {
-            ValueNode element = stack[base + stackindex];
-            assert element != null;
-            r[argIndex++] = element;
-            stackindex += stackSlots(element.getKind());
-        }
-        stackSize = base;
-        return r;
-    }
-
-    @Override
-    public ValueNode peek(int argumentNumber) {
-        int idx = stackSize() - 1;
-        for (int i = 0; i < argumentNumber; i++) {
-            if (stackAt(idx) == null) {
-                idx--;
-                assert isTwoSlot(stackAt(idx).getKind());
-            }
-            idx--;
-        }
-        return stackAt(idx);
     }
 
     public boolean contains(ValueNode value) {
