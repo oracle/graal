@@ -478,6 +478,10 @@ public abstract class Node implements Cloneable, Formattable {
         }
     }
 
+    protected void updateUsagesInterface(NodeInterface oldInput, NodeInterface newInput) {
+        updateUsages(oldInput == null ? null : oldInput.asNode(), newInput == null ? null : newInput.asNode());
+    }
+
     /**
      * Updates the predecessor of the given nodes after a successor slot is changed from
      * oldSuccessor to newSuccessor: removes this node from oldSuccessor's predecessors and adds

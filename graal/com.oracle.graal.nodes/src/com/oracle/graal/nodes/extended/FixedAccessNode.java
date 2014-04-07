@@ -93,7 +93,7 @@ public abstract class FixedAccessNode extends DeoptimizingFixedWithNextNode impl
 
     @Override
     public void setGuard(GuardingNode guard) {
-        updateUsages(this.guard == null ? null : this.guard.asNode(), guard == null ? null : guard.asNode());
+        updateUsagesInterface(this.guard, guard);
         this.guard = guard;
     }
 

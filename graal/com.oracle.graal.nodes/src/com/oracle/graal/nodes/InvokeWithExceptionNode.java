@@ -236,7 +236,7 @@ public class InvokeWithExceptionNode extends ControlSplitNode implements Invoke,
 
     @Override
     public void setGuard(GuardingNode guard) {
-        updateUsages(this.guard == null ? null : this.guard.asNode(), guard == null ? null : guard.asNode());
+        updateUsagesInterface(this.guard, guard);
         this.guard = guard;
     }
 

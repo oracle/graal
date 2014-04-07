@@ -198,7 +198,7 @@ public class LoopBeginNode extends MergeNode implements IterableNodeType, LIRLow
     }
 
     public void setOverflowGuard(GuardingNode overflowGuard) {
-        updateUsages(this.overflowGuard == null ? null : this.overflowGuard.asNode(), overflowGuard == null ? null : overflowGuard.asNode());
+        updateUsagesInterface(this.overflowGuard, overflowGuard);
         this.overflowGuard = overflowGuard;
     }
 }
