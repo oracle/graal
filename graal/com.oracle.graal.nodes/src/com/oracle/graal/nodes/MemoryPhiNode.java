@@ -37,7 +37,7 @@ public class MemoryPhiNode extends PhiNode implements MemoryNode {
     private final LocationIdentity locationIdentity;
 
     public MemoryPhiNode(MergeNode merge, LocationIdentity locationIdentity) {
-        super(StampFactory.dependency(), merge);
+        super(StampFactory.forVoid(), merge);
         this.locationIdentity = locationIdentity;
     }
 

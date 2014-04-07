@@ -39,7 +39,7 @@ public final class ValueAnchorNode extends FixedWithNextNode implements LIRLower
     @Input(InputType.Guard) private ValueNode anchored;
 
     public ValueAnchorNode(ValueNode value) {
-        super(StampFactory.dependency());
+        super(StampFactory.forVoid());
         this.anchored = value;
     }
 

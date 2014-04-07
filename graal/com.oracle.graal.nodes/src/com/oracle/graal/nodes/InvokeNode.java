@@ -145,7 +145,7 @@ public final class InvokeNode extends AbstractMemoryCheckpoint implements Invoke
 
     @Override
     public void intrinsify(Node node) {
-        assert !(node instanceof ValueNode) || (((ValueNode) node).getKind() == Kind.Void) == (getKind() == Kind.Void);
+        assert !(node instanceof ValueNode) || node.isAllowedUsageType(InputType.Value) == isAllowedUsageType(InputType.Value) : "replacing " + this + " with " + node;
         CallTargetNode call = callTarget;
         FrameState stateAfter = stateAfter();
         if (node instanceof StateSplit) {

@@ -38,7 +38,7 @@ public class MonitorIdNode extends ValueNode implements IterableNodeType, LIRLow
     private int lockDepth;
 
     public MonitorIdNode(int lockDepth) {
-        super(StampFactory.dependency());
+        super(StampFactory.forVoid());
         this.lockDepth = lockDepth;
     }
 

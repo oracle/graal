@@ -39,7 +39,7 @@ public final class ConditionAnchorNode extends FixedWithNextNode implements Cano
     }
 
     public ConditionAnchorNode(LogicNode condition, boolean negated) {
-        super(StampFactory.dependency());
+        super(StampFactory.forVoid());
         this.negated = negated;
         this.condition = condition;
     }

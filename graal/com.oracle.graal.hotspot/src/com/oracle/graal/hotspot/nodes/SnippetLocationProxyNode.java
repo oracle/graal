@@ -29,13 +29,13 @@ import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.type.*;
 
-@NodeInfo(allowedUsageTypes = {InputType.Association})
+@NodeInfo(allowedUsageTypes = {InputType.Association, InputType.Value})
 public final class SnippetLocationProxyNode extends FloatingNode implements Canonicalizable {
 
     @Input(InputType.Unchecked) private ValueNode location;
 
     public SnippetLocationProxyNode(ValueNode location) {
-        super(StampFactory.extension());
+        super(StampFactory.object());
         this.location = location;
     }
 

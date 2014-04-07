@@ -32,7 +32,7 @@ import com.oracle.graal.nodes.type.*;
 public final class SnippetAnchorNode extends FixedWithNextNode implements Simplifiable, GuardingNode {
 
     public SnippetAnchorNode() {
-        super(StampFactory.dependency());
+        super(StampFactory.object());
     }
 
     @Override

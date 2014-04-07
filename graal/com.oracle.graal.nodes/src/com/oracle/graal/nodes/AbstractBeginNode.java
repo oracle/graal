@@ -53,7 +53,7 @@ public abstract class AbstractBeginNode extends FixedWithNextNode implements Sta
     }
 
     protected AbstractBeginNode() {
-        super(StampFactory.dependency());
+        super(StampFactory.forVoid());
     }
 
     protected AbstractBeginNode(Stamp stamp) {

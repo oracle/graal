@@ -32,7 +32,7 @@ import com.oracle.graal.nodes.type.*;
 public abstract class LogicNode extends FloatingNode {
 
     public LogicNode() {
-        super(StampFactory.condition());
+        super(StampFactory.forVoid());
     }
 
     public static LogicNode and(LogicNode a, LogicNode b, double shortCircuitProbability) {

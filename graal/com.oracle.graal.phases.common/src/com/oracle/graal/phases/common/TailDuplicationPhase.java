@@ -30,6 +30,8 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.Graph.DuplicationReplacement;
 import com.oracle.graal.graph.Graph.Mark;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.NodeClass.NodeClassIterator;
+import com.oracle.graal.graph.NodeClass.Position;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.VirtualState.NodeClosure;
 import com.oracle.graal.nodes.extended.*;
@@ -453,20 +455,16 @@ public class TailDuplicationPhase extends BasePhase<PhaseContext> {
         /**
          * Expands the set of nodes to be duplicated by looking at a number of conditions:
          * <ul>
-         * <li>{@link ValueNode}s that have usages on the outside need to be replaced with phis for
-         * the outside usages.</li>
-         * <li>Non-{@link ValueNode} nodes that have outside usages (frame states, virtual object
-         * states, ...) need to be cloned immediately for the outside usages.</li>
-         * <li>Nodes that have a {@link StampFactory#extension()} or
-         * {@link StampFactory#condition()} stamp need to be cloned immediately for the outside
-         * usages.</li>
+         * <li>Inputs of type {@link InputType#Value} into the duplicated set will be rerouted to a
+         * new phi node.</li>
+         * <li>Inputs of type {@link InputType#Association}, {@link InputType#Condition} and
+         * {@link InputType#State} into the duplicated set will be rerouted to a duplicated version
+         * of the inside node.</li>
          * <li>Dependencies into the duplicated nodes will be replaced with dependencies on the
          * merge.</li>
-         * <li>Outside non-{@link ValueNode}s with usages within the duplicated set of nodes need to
-         * also be duplicated.</li>
-         * <li>Outside {@link ValueNode}s with {@link StampFactory#extension()} or
-         * {@link StampFactory#condition()} stamps that have usages within the duplicated set of
-         * nodes need to also be duplicated.</li>
+         * <li>Inputs of type {@link InputType#Association}, {@link InputType#Condition} and
+         * {@link InputType#State} to outside the duplicated set will cause the outside node to be
+         * pulled into the duplicated set.</li>
          * </ul>
          *
          * @param duplicatedNodes The set of duplicated nodes that will be modified (expanded).
@@ -479,91 +477,86 @@ public class TailDuplicationPhase extends BasePhase<PhaseContext> {
 
             while (!worklist.isEmpty()) {
                 Node duplicated = worklist.remove();
-                if (hasUsagesOutside(duplicated, duplicatedNodes)) {
-                    boolean cloneForOutsideUsages = false;
-                    if (duplicated instanceof ValueNode) {
-                        ValueNode node = (ValueNode) duplicated;
-                        if (node.stamp() == StampFactory.dependency()) {
-                            // re-route dependencies to the merge
-                            replaceUsagesOutside(node, newBottomMerge, duplicatedNodes);
-                            // TODO(ls) maybe introduce phis for dependencies
-                        } else if (node.stamp() == StampFactory.extension() || node.stamp() == StampFactory.condition()) {
-                            cloneForOutsideUsages = true;
-                        } else {
-                            // introduce a new phi
-                            PhiNode newPhi = bottomPhis.get(node);
-                            if (newPhi == null) {
-                                newPhi = graph.addWithoutUnique(new ValuePhiNode(node.stamp().unrestricted(), newBottomMerge));
-                                bottomPhis.put(node, newPhi);
-                                newPhi.addInput(node);
+                processUsages(duplicated, duplicatedNodes, newBottomMerge, worklist);
+                processInputs(duplicated, duplicatedNodes, worklist);
+            }
+        }
+
+        private void processUsages(Node duplicated, HashSet<Node> duplicatedNodes, MergeNode newBottomMerge, Deque<Node> worklist) {
+            HashSet<Node> unique = new HashSet<>();
+            duplicated.usages().snapshotTo(unique);
+            Node newOutsideClone = null;
+            for (Node usage : unique) {
+                if (!duplicatedNodes.contains(usage)) {
+                    NodeClassIterator iter = usage.inputs().iterator();
+                    while (iter.hasNext()) {
+                        Position pos = iter.nextPosition();
+                        if (pos.get(usage) == duplicated) {
+                            switch (pos.getInputType(usage)) {
+                                case Association:
+                                case Condition:
+                                case State:
+                                    // clone the offending node to the outside
+                                    if (newOutsideClone == null) {
+                                        newOutsideClone = duplicated.copyWithInputs();
+                                        // this might cause other nodes to have outside usages
+                                        for (Node input : newOutsideClone.inputs()) {
+                                            if (duplicatedNodes.contains(input)) {
+                                                worklist.add(input);
+                                            }
+                                        }
+                                    }
+                                    pos.set(usage, newOutsideClone);
+                                    break;
+                                case Guard:
+                                case Anchor:
+                                    // re-route dependencies to the merge
+                                    pos.set(usage, newBottomMerge);
+                                    break;
+                                case Value:
+                                    // introduce a new phi
+                                    ValueNode node = (ValueNode) duplicated;
+                                    PhiNode newPhi = bottomPhis.get(node);
+                                    if (newPhi == null) {
+                                        newPhi = graph.addWithoutUnique(new ValuePhiNode(node.stamp().unrestricted(), newBottomMerge));
+                                        bottomPhis.put(node, newPhi);
+                                        newPhi.addInput(node);
+                                    }
+                                    pos.set(usage, newPhi);
+                                    break;
+                                default:
+                                    throw GraalInternalError.shouldNotReachHere();
                             }
-                            replaceUsagesOutside(node, newPhi, duplicatedNodes);
                         }
-                    } else {
-                        cloneForOutsideUsages = true;
                     }
-                    if (cloneForOutsideUsages) {
-                        // clone the offending node to the outside
-                        Node newOutsideClone = duplicated.copyWithInputs();
-                        replaceUsagesOutside(duplicated, newOutsideClone, duplicatedNodes);
-                        // this might cause other nodes to have outside usages, we need to look at
-                        // those as well
-                        for (Node input : newOutsideClone.inputs()) {
-                            if (duplicatedNodes.contains(input)) {
+                }
+            }
+        }
+
+        private void processInputs(Node duplicated, HashSet<Node> duplicatedNodes, Deque<Node> worklist) {
+            // check if this node has an input that lies outside and cannot be shared
+            NodeClassIterator iter = duplicated.inputs().iterator();
+            while (iter.hasNext()) {
+                Position pos = iter.nextPosition();
+                Node input = pos.get(duplicated);
+                if (input != null && !duplicatedNodes.contains(input)) {
+                    switch (pos.getInputType(duplicated)) {
+                        case Association:
+                        case Condition:
+                        case State:
+                            if (input != merge) {
+                                duplicatedNodes.add(input);
                                 worklist.add(input);
                             }
-                        }
+                            break;
+                        case Guard:
+                        case Anchor:
+                        case Value:
+                            // no change needed
+                            break;
+                        default:
+                            throw GraalInternalError.shouldNotReachHere();
                     }
-                }
-                // check if this node has an input that lies outside and cannot be shared
-                for (Node input : duplicated.inputs()) {
-                    if (!duplicatedNodes.contains(input)) {
-                        boolean duplicateInput = false;
-                        if (input instanceof VirtualState) {
-                            duplicateInput = true;
-                        } else if (input instanceof ValueNode) {
-                            Stamp inputStamp = ((ValueNode) input).stamp();
-                            if (inputStamp == StampFactory.extension() || inputStamp == StampFactory.condition()) {
-                                duplicateInput = true;
-                            }
-                        }
-                        if (duplicateInput) {
-                            duplicatedNodes.add(input);
-                            worklist.add(input);
-                        }
-                    }
-                }
-            }
-        }
-
-        /**
-         * Checks if the given node has usages that are not within the given set of nodes.
-         *
-         * @param node The node whose usages are checked.
-         * @param nodeSet The set of nodes that are considered to be "within".
-         * @return true if the given node has usages on the outside, false otherwise.
-         */
-        private static boolean hasUsagesOutside(Node node, HashSet<Node> nodeSet) {
-            for (Node usage : node.usages()) {
-                if (!nodeSet.contains(usage)) {
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        /**
-         * Replaces the given node with the given replacement at all usages that are not within the
-         * given set of nodes.
-         *
-         * @param node The node to be replaced at outside usages.
-         * @param replacement The node that replaced the given node at outside usages.
-         * @param nodeSet The set of nodes that are considered to be "within".
-         */
-        private static void replaceUsagesOutside(Node node, Node replacement, HashSet<Node> nodeSet) {
-            for (Node usage : node.usages().snapshot()) {
-                if (!nodeSet.contains(usage)) {
-                    usage.replaceFirstInput(node, replacement);
                 }
             }
         }

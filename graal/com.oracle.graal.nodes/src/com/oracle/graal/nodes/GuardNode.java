@@ -50,7 +50,7 @@ public class GuardNode extends FloatingGuardedNode implements Canonicalizable, I
     private boolean negated;
 
     public GuardNode(LogicNode condition, GuardingNode anchor, DeoptimizationReason reason, DeoptimizationAction action, boolean negated, Constant speculation) {
-        super(StampFactory.dependency(), anchor);
+        super(StampFactory.forVoid(), anchor);
         this.condition = condition;
         this.reason = reason;
         this.action = action;

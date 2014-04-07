@@ -46,7 +46,7 @@ public abstract class AbstractFixedGuardNode extends DeoptimizingFixedWithNextNo
     }
 
     protected AbstractFixedGuardNode(LogicNode condition, DeoptimizationReason deoptReason, DeoptimizationAction action, boolean negated) {
-        super(StampFactory.dependency());
+        super(StampFactory.forVoid());
         this.action = action;
         this.negated = negated;
         this.condition = condition;
