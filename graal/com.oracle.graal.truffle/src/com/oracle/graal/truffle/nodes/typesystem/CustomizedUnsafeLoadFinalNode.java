@@ -40,8 +40,8 @@ import com.oracle.truffle.api.*;
 public class CustomizedUnsafeLoadFinalNode extends FixedWithNextNode implements Canonicalizable, Virtualizable, Lowerable {
     @Input private ValueNode object;
     @Input private ValueNode offset;
-    @Input(InputType.Condition) private ValueNode condition;
-    @Input(InputType.Association) private ValueNode location;
+    @Input private ValueNode condition;
+    @Input private ValueNode location;
     private final Kind accessKind;
 
     public CustomizedUnsafeLoadFinalNode(ValueNode object, ValueNode offset, ValueNode condition, ValueNode location, Kind accessKind) {
