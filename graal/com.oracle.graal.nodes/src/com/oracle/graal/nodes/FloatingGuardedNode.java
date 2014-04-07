@@ -29,7 +29,7 @@ import com.oracle.graal.nodes.type.*;
 
 public abstract class FloatingGuardedNode extends FloatingNode implements GuardedNode {
 
-    @Input(InputType.Anchor) private GuardingNode guard;
+    @Input(InputType.Guard) private GuardingNode guard;
 
     public FloatingGuardedNode(Stamp stamp) {
         super(stamp);

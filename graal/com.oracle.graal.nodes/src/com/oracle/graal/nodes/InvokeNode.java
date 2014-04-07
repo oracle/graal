@@ -27,6 +27,7 @@ import java.util.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.util.*;
@@ -34,7 +35,7 @@ import com.oracle.graal.nodes.util.*;
 /**
  * The {@code InvokeNode} represents all kinds of method calls.
  */
-@NodeInfo(nameTemplate = "Invoke#{p#targetMethod/s}")
+@NodeInfo(nameTemplate = "Invoke#{p#targetMethod/s}", allowedUsageTypes = {InputType.Memory})
 public final class InvokeNode extends AbstractMemoryCheckpoint implements Invoke, LIRLowerable, MemoryCheckpoint.Single {
 
     @Input(InputType.Association) private CallTargetNode callTarget;
@@ -91,6 +92,16 @@ public final class InvokeNode extends AbstractMemoryCheckpoint implements Invoke
     @Override
     public void setUseForInlining(boolean value) {
         this.useForInlining = value;
+    }
+
+    @Override
+    public boolean isAllowedUsageType(InputType type) {
+        if (getKind() != Kind.Void) {
+            if (callTarget instanceof MethodCallTargetNode && ((MethodCallTargetNode) callTarget).targetMethod().getAnnotation(NodeIntrinsic.class) != null) {
+                return true;
+            }
+        }
+        return super.isAllowedUsageType(type);
     }
 
     @Override

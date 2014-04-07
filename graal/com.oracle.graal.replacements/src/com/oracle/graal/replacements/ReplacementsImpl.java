@@ -220,7 +220,7 @@ public class ReplacementsImpl implements Replacements {
 
     /**
      * Registers a method substitution.
-     * 
+     *
      * @param originalMember a method or constructor being substituted
      * @param substituteMethod the substitute method
      * @return the original method
@@ -244,7 +244,7 @@ public class ReplacementsImpl implements Replacements {
 
     /**
      * Registers a macro substitution.
-     * 
+     *
      * @param originalMethod a method or constructor being substituted
      * @param macro the substitute macro node class
      * @return the original method
@@ -283,7 +283,7 @@ public class ReplacementsImpl implements Replacements {
 
     /**
      * Creates a preprocessed graph for a snippet or method substitution.
-     * 
+     *
      * @param method the snippet or method substitution for which a graph will be created
      * @param original the original method if {@code method} is a {@linkplain MethodSubstitution
      *            substitution} otherwise null
@@ -434,7 +434,7 @@ public class ReplacementsImpl implements Replacements {
 
         /**
          * Called after a graph is inlined.
-         * 
+         *
          * @param caller the graph into which {@code callee} was inlined
          * @param callee the graph that was inlined into {@code caller}
          * @param beforeInlineData value returned by {@link #beforeInline}.
@@ -528,7 +528,7 @@ public class ReplacementsImpl implements Replacements {
 
     /**
      * Resolves a name to a class.
-     * 
+     *
      * @param className the name of the class to resolve
      * @param optional if true, resolution failure returns null
      * @return the resolved class or null if resolution fails and {@code optional} is true

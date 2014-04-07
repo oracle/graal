@@ -40,7 +40,7 @@ import com.oracle.graal.nodes.type.*;
  * maximum flexibility for the guard node and guarantees that deoptimization occurs only if the
  * control flow would have reached the guarded node (without taking exceptions into account).
  */
-@NodeInfo(nameTemplate = "Guard(!={p#negated}) {p#reason/s}")
+@NodeInfo(nameTemplate = "Guard(!={p#negated}) {p#reason/s}", allowedUsageTypes = {InputType.Guard})
 public class GuardNode extends FloatingGuardedNode implements Canonicalizable, IterableNodeType, GuardingNode, GuardedNode {
 
     @Input(InputType.Condition) private LogicNode condition;

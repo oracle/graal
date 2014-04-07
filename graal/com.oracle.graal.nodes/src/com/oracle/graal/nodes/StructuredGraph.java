@@ -41,7 +41,7 @@ public class StructuredGraph extends Graph {
      * The different stages of the compilation of a {@link Graph} regarding the status of
      * {@link GuardNode guards}, {@link DeoptimizingNode deoptimizations} and {@link FrameState
      * framestates}. The stage of a graph progresses monotonously.
-     * 
+     *
      */
     public static enum GuardsStage {
         /**
@@ -137,7 +137,7 @@ public class StructuredGraph extends Graph {
 
     /**
      * Gets the method from which this graph was built.
-     * 
+     *
      * @return null if this method was not built from a method or the method is not available
      */
     public ResolvedJavaMethod method() {
@@ -250,7 +250,7 @@ public class StructuredGraph extends Graph {
     /**
      * Unlinks a node from all its control flow neighbors and then removes it from its graph. The
      * node must have no {@linkplain Node#usages() usages}.
-     * 
+     *
      * @param node the node to be unlinked and removed
      */
     public void removeFixed(FixedWithNextNode node) {

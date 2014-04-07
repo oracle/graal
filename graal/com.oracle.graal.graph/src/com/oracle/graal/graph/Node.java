@@ -136,6 +136,8 @@ public abstract class Node implements Cloneable, Formattable {
     private static final int INLINE_USAGE_COUNT = 2;
     private static final Node[] NO_NODES = {};
 
+    private static final boolean VERIFY_TYPES = true;
+
     /**
      * Head of usage list. The elements of the usage list in order are {@link #usage0},
      * {@link #usage1} and {@link #extraUsages}. The first null entry terminates the list.
@@ -512,6 +514,10 @@ public abstract class Node implements Cloneable, Formattable {
         return NodeClass.get(getClass());
     }
 
+    public boolean isAllowedUsageType(InputType type) {
+        return getNodeClass().getAllowedUsageTypes().contains(type);
+    }
+
     private boolean checkReplaceWith(Node other) {
         assert assertTrue(graph == null || !graph.isFrozen(), "cannot modify frozen graph");
         assert assertFalse(other == this, "cannot replace a node with itself");
@@ -738,6 +744,16 @@ public abstract class Node implements Cloneable, Formattable {
             for (Node usage : usages()) {
                 assertFalse(usage.isDeleted(), "usage %s must never be deleted", usage);
                 assertTrue(usage.inputs().contains(this), "missing input in usage %s", usage);
+                if (VERIFY_TYPES) {
+                    NodeClassIterator iterator = usage.inputs().iterator();
+                    while (iterator.hasNext()) {
+                        Position pos = iterator.nextPosition();
+                        if (pos.get(usage) == this && pos.getInputType(usage) != InputType.Unchecked) {
+                            assert isAllowedUsageType(pos.getInputType(usage)) : "invalid input of type " + pos.getInputType(usage) + " from " + usage + " to " + this + " (" +
+                                            pos.getInputName(usage) + ")";
+                        }
+                    }
+                }
             }
         }
         if (predecessor != null) {

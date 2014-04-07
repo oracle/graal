@@ -43,7 +43,7 @@ public final class GraphOrder {
      * Quick (and imprecise) assertion that there are no (invalid) cycles in the given graph. First,
      * an ordered list of all nodes in the graph (a total ordering) is created. A second run over
      * this list checks whether inputs are scheduled before their usages.
-     * 
+     *
      * @param graph the graph to be checked.
      * @throws AssertionError if a cycle was detected.
      */
@@ -133,7 +133,7 @@ public final class GraphOrder {
     /**
      * This method schedules the graph and makes sure that, for every node, all inputs are available
      * at the position where it is scheduled. This is a very expensive assertion.
-     * 
+     *
      * Also, this phase assumes ProxyNodes to exist at LoopExitNodes, so that it cannot be run after
      * phases that remove loop proxies or move proxies to BeginNodes.
      */

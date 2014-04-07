@@ -56,10 +56,10 @@ public final class ArrayLengthNode extends FixedWithNextNode implements Canonica
 
     /**
      * Gets the length of an array if possible.
-     * 
+     *
      * @param graph TODO
      * @param array an array
-     * 
+     *
      * @return a node representing the length of {@code array} or null if it is not available
      */
     public static ValueNode readArrayLength(StructuredGraph graph, ValueNode array, ConstantReflectionProvider constantReflection) {

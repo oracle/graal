@@ -25,6 +25,7 @@ package com.oracle.graal.nodes;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 
+@NodeInfo(allowedUsageTypes = {InputType.Association})
 public class LoopExitNode extends BeginStateSplitNode implements IterableNodeType {
 
     @Input(InputType.Association) private LoopBeginNode loopBegin;

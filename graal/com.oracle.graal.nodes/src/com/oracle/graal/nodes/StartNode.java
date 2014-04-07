@@ -23,11 +23,13 @@
 package com.oracle.graal.nodes;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.extended.*;
 
 /**
  * The start node of a graph.
  */
+@NodeInfo(allowedUsageTypes = {InputType.Memory})
 public class StartNode extends BeginStateSplitNode implements MemoryCheckpoint.Single {
 
     @Override

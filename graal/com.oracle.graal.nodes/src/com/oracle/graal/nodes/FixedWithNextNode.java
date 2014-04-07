@@ -44,9 +44,4 @@ public abstract class FixedWithNextNode extends FixedNode {
     public FixedWithNextNode(Stamp stamp) {
         super(stamp);
     }
-
-    @Override
-    public FixedWithNextNode asNode() {
-        return this;
-    }
 }

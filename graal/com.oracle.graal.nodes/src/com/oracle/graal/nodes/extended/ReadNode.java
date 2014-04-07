@@ -72,6 +72,11 @@ public final class ReadNode extends FloatableAccessNode implements LIRLowerable,
         return graph().unique(new FloatingReadNode(object(), location(), lastLocationAccess, stamp(), getGuard(), getBarrierType(), isCompressible()));
     }
 
+    @Override
+    public boolean isAllowedUsageType(InputType type) {
+        return (getNullCheck() && type == InputType.Guard) ? true : super.isAllowedUsageType(type);
+    }
+
     public static ValueNode canonicalizeRead(ValueNode read, LocationNode location, ValueNode object, CanonicalizerTool tool, boolean compressible) {
         MetaAccessProvider metaAccess = tool.getMetaAccess();
         if (read.usages().isEmpty()) {

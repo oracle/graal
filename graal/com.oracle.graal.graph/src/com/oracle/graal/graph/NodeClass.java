@@ -148,6 +148,7 @@ public final class NodeClass extends FieldIntrospection {
     private final String shortName;
     private final String nameTemplate;
     private final int iterableId;
+    private final EnumSet<InputType> allowedUsageTypes;
     private int[] iterableIds;
 
     private static final DebugMetric ITERABLE_NODE_TYPES = Debug.metric("IterableNodeTypes");
@@ -220,7 +221,19 @@ public final class NodeClass extends FieldIntrospection {
                 newNameTemplate = info.nameTemplate();
             }
         }
+        EnumSet<InputType> newAllowedUsageTypes = EnumSet.noneOf(InputType.class);
+        Class<?> current = clazz;
+        do {
+            NodeInfo currentInfo = current.getAnnotation(NodeInfo.class);
+            if (currentInfo != null) {
+                if (currentInfo.allowedUsageTypes().length > 0) {
+                    newAllowedUsageTypes.addAll(Arrays.asList(currentInfo.allowedUsageTypes()));
+                }
+            }
+            current = current.getSuperclass();
+        } while (current != Node.class);
         this.nameTemplate = newNameTemplate == null ? newShortName : newNameTemplate;
+        this.allowedUsageTypes = newAllowedUsageTypes;
         this.shortName = newShortName;
         if (presetIterableIds != null) {
             this.iterableIds = presetIterableIds;
@@ -312,6 +325,10 @@ public final class NodeClass extends FieldIntrospection {
 
     public static int cacheSize() {
         return nextIterableId;
+    }
+
+    public EnumSet<InputType> getAllowedUsageTypes() {
+        return allowedUsageTypes;
     }
 
     protected static class FieldScanner extends BaseFieldScanner {

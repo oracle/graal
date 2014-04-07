@@ -47,7 +47,7 @@ public final class NegateNode extends FloatingNode implements Canonicalizable, A
 
     /**
      * Creates new NegateNode instance.
-     * 
+     *
      * @param x the instruction producing the value that is input to this instruction
      */
     public NegateNode(ValueNode x) {

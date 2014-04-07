@@ -27,6 +27,7 @@ import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.runtime.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.nodes.*;
@@ -38,6 +39,7 @@ import com.oracle.graal.phases.*;
 import com.oracle.graal.replacements.SnippetTemplate.Arguments;
 import com.oracle.graal.runtime.*;
 
+@NodeInfo(allowedUsageTypes = {InputType.Memory})
 public final class ArrayCopyCallNode extends ArrayRangeWriteNode implements Lowerable, MemoryCheckpoint.Single {
 
     @Input private ValueNode src;

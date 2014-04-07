@@ -28,6 +28,7 @@ import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
+@NodeInfo(allowedUsageTypes = {InputType.Memory})
 public class MemoryProxyNode extends ProxyNode implements MemoryProxy, LIRLowerable {
 
     @Input(InputType.Memory) private ValueNode value;

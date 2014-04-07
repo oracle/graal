@@ -53,7 +53,7 @@ public final class NotNode extends FloatingNode implements Canonicalizable, Arit
 
     /**
      * Creates new NegateNode instance.
-     * 
+     *
      * @param x the instruction producing the value that is input to this instruction
      */
     public NotNode(ValueNode x) {

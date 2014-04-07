@@ -25,12 +25,14 @@ package com.oracle.graal.hotspot.replacements;
 import static com.oracle.graal.api.meta.LocationIdentity.*;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.replacements.SnippetTemplate.Arguments;
 
+@NodeInfo(allowedUsageTypes = {InputType.Memory})
 public final class UnsafeArrayCopyNode extends ArrayRangeWriteNode implements Lowerable, MemoryCheckpoint.Single {
 
     @Input private ValueNode src;

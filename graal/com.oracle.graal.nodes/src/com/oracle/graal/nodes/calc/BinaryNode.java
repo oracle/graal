@@ -45,7 +45,7 @@ public abstract class BinaryNode extends FloatingNode {
 
     /**
      * Creates a new BinaryNode instance.
-     * 
+     *
      * @param stamp the result type of this instruction
      * @param x the first input instruction
      * @param y the second input instruction

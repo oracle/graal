@@ -37,4 +37,6 @@ public @interface NodeInfo {
      * using &#123;i#inputName&#125; or &#123;p#propertyName&#125;.
      */
     String nameTemplate() default "";
+
+    InputType[] allowedUsageTypes() default {};
 }
