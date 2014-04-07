@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,26 +20,30 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes;
+package com.oracle.graal.replacements.nodes;
 
-import java.util.*;
-
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
-import com.oracle.graal.nodes.calc.*;
+import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
-@NodeInfo(allowedUsageTypes = {InputType.Association})
-public abstract class MemoryMapNode extends FloatingNode {
+@NodeInfo(allowedUsageTypes = {InputType.Memory})
+public class MemoryAnchorNode extends FixedWithNextNode implements LIRLowerable, MemoryNode {
 
-    public MemoryMapNode() {
+    public MemoryAnchorNode() {
         super(StampFactory.forVoid());
     }
 
-    public abstract MemoryNode getLastLocationAccess(LocationIdentity locationIdentity);
+    public void generate(NodeLIRBuilderTool generator) {
+        // Nothing to emit, since this node is used for structural purposes only.
+    }
 
-    public abstract Set<LocationIdentity> getLocations();
+    public MemoryCheckpoint asMemoryCheckpoint() {
+        return null;
+    }
 
-    public abstract void replaceLastLocationAccess(MemoryNode oldNode, MemoryNode newNode);
+    public MemoryPhiNode asMemoryPhi() {
+        return null;
+    }
 }

@@ -61,7 +61,7 @@ import com.oracle.graal.word.*;
 /**
  * A snippet template is a graph created by parsing a snippet method and then specialized by binding
  * constants to the snippet's {@link ConstantParameter} parameters.
- * 
+ *
  * Snippet templates can be managed in a cache maintained by {@link AbstractTemplates}.
  */
 public class SnippetTemplate {
@@ -79,14 +79,14 @@ public class SnippetTemplate {
 
         /**
          * Times instantiations of all templates derived form this snippet.
-         * 
+         *
          * @see SnippetTemplate#instantiationTimer
          */
         private final DebugTimer instantiationTimer;
 
         /**
          * Counts instantiations of all templates derived from this snippet.
-         * 
+         *
          * @see SnippetTemplate#instantiationCounter
          */
         private final DebugMetric instantiationCounter;
@@ -627,12 +627,24 @@ public class SnippetTemplate {
 
         new FloatingReadPhase(FloatingReadPhase.ExecutionMode.ANALYSIS_ONLY).apply(snippetCopy);
 
+        MemoryAnchorNode memoryAnchor = snippetCopy.add(new MemoryAnchorNode());
+        snippetCopy.start().replaceAtUsages(InputType.Memory, memoryAnchor);
+        if (memoryAnchor.usages().isEmpty()) {
+            memoryAnchor.safeDelete();
+        } else {
+            snippetCopy.addAfterFixed(snippetCopy.start(), memoryAnchor);
+        }
+
         this.snippet = snippetCopy;
+
+        Debug.dump(snippet, "SnippetTemplate after fixing memory anchoring");
+
         List<ReturnNode> returnNodes = new ArrayList<>(4);
         List<MemoryMapNode> memMaps = new ArrayList<>(4);
         StartNode entryPointNode = snippet.start();
         for (ReturnNode retNode : snippet.getNodes(ReturnNode.class)) {
             MemoryMapNode memMap = retNode.getMemoryMap();
+            memMap.replaceLastLocationAccess(snippetCopy.start(), memoryAnchor);
             memMaps.add(memMap);
             retNode.setMemoryMap(null);
             returnNodes.add(retNode);
@@ -750,21 +762,21 @@ public class SnippetTemplate {
 
     /**
      * Times instantiations of this template.
-     * 
+     *
      * @see SnippetInfo#instantiationTimer
      */
     private final DebugTimer instantiationTimer;
 
     /**
      * Counts instantiations of this template.
-     * 
+     *
      * @see SnippetInfo#instantiationCounter
      */
     private final DebugMetric instantiationCounter;
 
     /**
      * Gets the instantiation-time bindings to this template's parameters.
-     * 
+     *
      * @return the map that will be used to bind arguments to parameters when inlining this template
      */
     private IdentityHashMap<Node, Node> bind(StructuredGraph replaceeGraph, MetaAccessProvider metaAccess, Arguments args) {
@@ -821,7 +833,7 @@ public class SnippetTemplate {
      * Converts a Java boxed value to a {@link Constant} of the right kind. This adjusts for the
      * limitation that a {@link Local}'s kind is a {@linkplain Kind#getStackKind() stack kind} and
      * so cannot be used for re-boxing primitives smaller than an int.
-     * 
+     *
      * @param argument a Java boxed value
      * @param localKind the kind of the {@link Local} to which {@code argument} will be bound
      */
@@ -929,7 +941,7 @@ public class SnippetTemplate {
             // check if some node in snippet graph also kills the same location
             LocationIdentity locationIdentity = ((MemoryCheckpoint.Single) replacee).getLocationIdentity();
             if (locationIdentity == ANY_LOCATION) {
-                assert !(memoryMap.getLastLocationAccess(ANY_LOCATION) instanceof StartNode) : replacee + " kills ANY_LOCATION, but snippet does not";
+                assert !(memoryMap.getLastLocationAccess(ANY_LOCATION) instanceof MemoryAnchorNode) : replacee + " kills ANY_LOCATION, but snippet does not";
             }
             assert kills.contains(locationIdentity) : replacee + " kills " + locationIdentity + ", but snippet doesn't contain a kill to this location";
             return true;
@@ -939,7 +951,7 @@ public class SnippetTemplate {
         Debug.log("WARNING: %s is not a MemoryCheckpoint, but the snippet graph contains kills (%s). You might want %s to be a MemoryCheckpoint", replacee, kills, replacee);
 
         // remove ANY_LOCATION if it's just a kill by the start node
-        if (memoryMap.getLastLocationAccess(ANY_LOCATION) instanceof StartNode) {
+        if (memoryMap.getLastLocationAccess(ANY_LOCATION) instanceof MemoryAnchorNode) {
             kills.remove(ANY_LOCATION);
         }
 
@@ -985,11 +997,16 @@ public class SnippetTemplate {
         public Set<LocationIdentity> getLocations() {
             return memoryMap.getLocations();
         }
+
+        @Override
+        public void replaceLastLocationAccess(MemoryNode oldNode, MemoryNode newNode) {
+            throw GraalInternalError.shouldNotReachHere();
+        }
     }
 
     /**
      * Replaces a given fixed node with this specialized snippet.
-     * 
+     *
      * @param metaAccess
      * @param replacee the node that will be replaced
      * @param replacer object that replaces the usages of {@code replacee}
@@ -1140,7 +1157,7 @@ public class SnippetTemplate {
 
     /**
      * Replaces a given floating node with this specialized snippet.
-     * 
+     *
      * @param metaAccess
      * @param replacee the node that will be replaced
      * @param replacer object that replaces the usages of {@code replacee}
