@@ -121,7 +121,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
         /**
          * Gets the current frame state being processed by this builder.
          */
-        protected AbstractFrameStateBuilder<ValueNode> getCurrentFrameState() {
+        protected HIRFrameStateBuilder getCurrentFrameState() {
             return parser.getFrameState();
         }
 
@@ -989,7 +989,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             }
 
             @Override
-            protected FixedNode createTarget(double probability, BciBlock block, AbstractFrameStateBuilder<ValueNode> stateAfter) {
+            protected FixedNode createTarget(double probability, BciBlock block, HIRFrameStateBuilder stateAfter) {
                 ValueNode fixed = super.createTarget(probability, block, stateAfter);
                 assert fixed instanceof FixedNode;
                 return (FixedNode) fixed;
@@ -997,9 +997,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             }
 
             @Override
-            protected FixedNode createTarget(BciBlock block, AbstractFrameStateBuilder<ValueNode> abstractState) {
-                assert abstractState instanceof HIRFrameStateBuilder;
-                HIRFrameStateBuilder state = (HIRFrameStateBuilder) abstractState;
+            protected FixedNode createTarget(BciBlock block, HIRFrameStateBuilder state) {
                 assert block != null && state != null;
                 assert !block.isExceptionEntry || state.stackSize() == 1;
 
@@ -1080,7 +1078,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
              * 0, the block deoptimizes immediately.
              */
             @Override
-            protected AbstractBeginNode createBlockTarget(double probability, BciBlock block, AbstractFrameStateBuilder<ValueNode> stateAfter) {
+            protected AbstractBeginNode createBlockTarget(double probability, BciBlock block, HIRFrameStateBuilder stateAfter) {
                 FixedNode target = createTarget(probability, block, stateAfter);
                 AbstractBeginNode begin = AbstractBeginNode.begin(target);
 

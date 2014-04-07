@@ -910,7 +910,7 @@ public abstract class AbstractBytecodeParser<T extends KindProvider, F extends A
 
     protected abstract T genDeoptimization();
 
-    protected T createTarget(double probability, BciBlock block, AbstractFrameStateBuilder<T> stateAfter) {
+    protected T createTarget(double probability, BciBlock block, F stateAfter) {
         assert probability >= 0 && probability <= 1.01 : probability;
         if (isNeverExecutedCode(probability)) {
             return genDeoptimization();
@@ -920,13 +920,13 @@ public abstract class AbstractBytecodeParser<T extends KindProvider, F extends A
         }
     }
 
-    protected abstract T createTarget(BciBlock trueBlock, AbstractFrameStateBuilder<T> state);
+    protected abstract T createTarget(BciBlock trueBlock, F state);
 
     /**
      * Returns a block begin node with the specified state. If the specified probability is 0, the
      * block deoptimizes immediately.
      */
-    protected abstract T createBlockTarget(double probability, BciBlock bciBlock, AbstractFrameStateBuilder<T> stateAfter);
+    protected abstract T createBlockTarget(double probability, BciBlock bciBlock, F stateAfter);
 
     protected abstract void processBlock(BciBlock block);
 
