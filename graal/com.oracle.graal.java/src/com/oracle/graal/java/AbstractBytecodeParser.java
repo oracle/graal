@@ -916,12 +916,6 @@ public abstract class AbstractBytecodeParser<T extends KindProvider, F extends A
 
     protected abstract T createTarget(BciBlock trueBlock, F state);
 
-    /**
-     * Returns a block begin node with the specified state. If the specified probability is 0, the
-     * block deoptimizes immediately.
-     */
-    protected abstract T createBlockTarget(double probability, BciBlock bciBlock, F stateAfter);
-
     protected abstract void processBlock(BciBlock block);
 
     protected abstract void appendGoto(T target);

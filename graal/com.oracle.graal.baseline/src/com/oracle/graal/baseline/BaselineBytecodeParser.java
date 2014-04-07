@@ -571,12 +571,6 @@ public class BaselineBytecodeParser extends AbstractBytecodeParser<Value, LIRFra
     }
 
     @Override
-    protected Value createBlockTarget(double probability, BciBlock bciBlock, LIRFrameStateBuilder stateAfter) {
-        // TODO Auto-generated method stub
-        throw GraalInternalError.unimplemented("Auto-generated method stub");
-    }
-
-    @Override
     protected void processBlock(BciBlock block) {
         iterateBytecodesForBlock(block);
     }
