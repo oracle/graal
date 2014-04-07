@@ -47,7 +47,7 @@ public final class NodeClass extends FieldIntrospection {
 
     /**
      * Maps {@link Class} values (for {@link Node} types) to {@link NodeClass} values.
-     * 
+     *
      * Only a single Registry instance can be created. If a runtime creates a specialized registry,
      * it must do so before the class initializer of {@link NodeClass} is executed.
      */
@@ -101,7 +101,7 @@ public final class NodeClass extends FieldIntrospection {
 
         /**
          * Hook for a subclass to be notified of a new mapping added to the registry.
-         * 
+         *
          * @param key
          * @param value
          */
@@ -136,8 +136,11 @@ public final class NodeClass extends FieldIntrospection {
 
     private final int directInputCount;
     private final long[] inputOffsets;
+    private final InputType[] inputTypes;
+    private final String[] inputNames;
     private final int directSuccessorCount;
     private final long[] successorOffsets;
+    private final String[] successorNames;
     private final Class<?>[] dataTypes;
     private final boolean canGVN;
     private final boolean isLeafNode;
@@ -175,8 +178,21 @@ public final class NodeClass extends FieldIntrospection {
 
         directInputCount = scanner.inputOffsets.size();
         inputOffsets = sortedLongCopy(scanner.inputOffsets, scanner.inputListOffsets);
+        inputTypes = new InputType[inputOffsets.length];
+        inputNames = new String[inputOffsets.length];
+        for (int i = 0; i < inputOffsets.length; i++) {
+            inputTypes[i] = scanner.types.get(inputOffsets[i]);
+            inputNames[i] = scanner.names.get(inputOffsets[i]);
+            assert inputTypes[i] != null;
+            assert inputNames[i] != null;
+        }
         directSuccessorCount = scanner.successorOffsets.size();
         successorOffsets = sortedLongCopy(scanner.successorOffsets, scanner.successorListOffsets);
+        successorNames = new String[successorOffsets.length];
+        for (int i = 0; i < successorOffsets.length; i++) {
+            successorNames[i] = scanner.names.get(successorOffsets[i]);
+            assert successorNames[i] != null;
+        }
 
         dataOffsets = sortedLongCopy(scanner.dataOffsets);
         dataTypes = new Class[dataOffsets.length];
@@ -304,6 +320,8 @@ public final class NodeClass extends FieldIntrospection {
         public final ArrayList<Long> inputListOffsets = new ArrayList<>();
         public final ArrayList<Long> successorOffsets = new ArrayList<>();
         public final ArrayList<Long> successorListOffsets = new ArrayList<>();
+        public final HashMap<Long, InputType> types = new HashMap<>();
+        public final HashMap<Long, String> names = new HashMap<>();
 
         protected FieldScanner(CalcOffset calc) {
             super(calc);
@@ -313,6 +331,7 @@ public final class NodeClass extends FieldIntrospection {
         protected void scanField(Field field, Class<?> type, long offset) {
             if (field.isAnnotationPresent(Node.Input.class)) {
                 assert !field.isAnnotationPresent(Node.Successor.class) : "field cannot be both input and successor";
+                Input inputAnnotation = field.getAnnotation(Node.Input.class);
                 if (INPUT_LIST_CLASS.isAssignableFrom(type)) {
                     GraalInternalError.guarantee(Modifier.isFinal(field.getModifiers()), "NodeInputList input field %s should be final", field);
                     GraalInternalError.guarantee(!Modifier.isPublic(field.getModifiers()), "NodeInputList input field %s should not be public", field);
@@ -323,7 +342,9 @@ public final class NodeClass extends FieldIntrospection {
                     GraalInternalError.guarantee(Modifier.isPrivate(field.getModifiers()), "Node input field %s should be private", field);
                     inputOffsets.add(offset);
                 }
-                if (field.getAnnotation(Node.Input.class).notDataflow()) {
+                types.put(offset, inputAnnotation.value());
+                names.put(offset, field.getName());
+                if (inputAnnotation.value() != InputType.Value) {
                     fieldNames.put(offset, field.getName() + "#NDF");
                 }
             } else if (field.isAnnotationPresent(Node.Successor.class)) {
@@ -337,6 +358,7 @@ public final class NodeClass extends FieldIntrospection {
                     GraalInternalError.guarantee(Modifier.isPrivate(field.getModifiers()), "Node successor field %s should be private", field);
                     successorOffsets.add(offset);
                 }
+                names.put(offset, field.getName());
             } else {
                 GraalInternalError.guarantee(!NODE_CLASS.isAssignableFrom(type) || field.getName().equals("Null"), "suspicious node field: %s", field);
                 GraalInternalError.guarantee(!INPUT_LIST_CLASS.isAssignableFrom(type), "suspicious node input list field: %s", field);
@@ -367,7 +389,7 @@ public final class NodeClass extends FieldIntrospection {
 
     /**
      * Describes an edge slot for a {@link NodeClass}.
-     * 
+     *
      * @see NodeClass#get(Node, Position)
      * @see NodeClass#getName(Position)
      */
@@ -390,6 +412,14 @@ public final class NodeClass extends FieldIntrospection {
 
         public Node get(Node node) {
             return node.getNodeClass().get(node, this);
+        }
+
+        public InputType getInputType(Node node) {
+            return node.getNodeClass().getInputType(this);
+        }
+
+        public String getInputName(Node node) {
+            return node.getNodeClass().getEdgeName(this);
         }
 
         public void set(Node node, Node value) {
@@ -458,7 +488,7 @@ public final class NodeClass extends FieldIntrospection {
      * of the fields are treated as {@link NodeList}s. All elements of these NodeLists will be
      * visited by the iterator as well. This iterator can be used to iterate over the inputs or
      * successors of a node.
-     * 
+     *
      * An iterator of this type will not return null values, unless the field values are modified
      * concurrently. Concurrent modifications are detected by an assertion on a best-effort basis.
      */
@@ -469,7 +499,7 @@ public final class NodeClass extends FieldIntrospection {
 
         /**
          * Creates an iterator that will iterate over fields in the given node.
-         * 
+         *
          * @param node the node which contains the fields.
          */
         NodeClassIterator(Node node) {
@@ -761,7 +791,7 @@ public final class NodeClass extends FieldIntrospection {
 
     /**
      * Populates a given map with the names and values of all data fields.
-     * 
+     *
      * @param node the node from which to take the values.
      * @param properties a map that will be populated.
      */
@@ -920,6 +950,15 @@ public final class NodeClass extends FieldIntrospection {
         } else {
             return getNodeList(node, offset).get(pos.subIndex);
         }
+    }
+
+    public InputType getInputType(Position pos) {
+        assert pos.input;
+        return inputTypes[pos.index];
+    }
+
+    public String getEdgeName(Position pos) {
+        return pos.input ? inputNames[pos.index] : successorNames[pos.index];
     }
 
     public NodeList<?> getNodeList(Node node, Position pos) {
@@ -1128,7 +1167,7 @@ public final class NodeClass extends FieldIntrospection {
      * Clear all inputs in the given node. This is accomplished by setting input fields to null and
      * replacing input lists with new lists. (which is important so that this method can be used to
      * clear the inputs of cloned nodes.)
-     * 
+     *
      * @param node the node to be cleared
      */
     public void clearInputs(Node node) {
@@ -1148,7 +1187,7 @@ public final class NodeClass extends FieldIntrospection {
      * Clear all successors in the given node. This is accomplished by setting successor fields to
      * null and replacing successor lists with new lists. (which is important so that this method
      * can be used to clear the successors of cloned nodes.)
-     * 
+     *
      * @param node the node to be cleared
      */
     public void clearSuccessors(Node node) {
@@ -1167,7 +1206,7 @@ public final class NodeClass extends FieldIntrospection {
     /**
      * Copies the inputs from node to newNode. The nodes are expected to be of the exact same
      * NodeClass type.
-     * 
+     *
      * @param node the node from which the inputs should be copied.
      * @param newNode the node to which the inputs should be copied.
      */
@@ -1189,7 +1228,7 @@ public final class NodeClass extends FieldIntrospection {
     /**
      * Copies the successors from node to newNode. The nodes are expected to be of the exact same
      * NodeClass type.
-     * 
+     *
      * @param node the node from which the successors should be copied.
      * @param newNode the node to which the successors should be copied.
      */

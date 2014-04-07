@@ -46,7 +46,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
 
     @Successor private AbstractBeginNode trueSuccessor;
     @Successor private AbstractBeginNode falseSuccessor;
-    @Input private LogicNode condition;
+    @Input(InputType.Condition) private LogicNode condition;
     private double trueSuccessorProbability;
 
     public LogicNode condition() {
@@ -73,7 +73,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
 
     /**
      * Gets the true successor.
-     * 
+     *
      * @return the true successor
      */
     public AbstractBeginNode trueSuccessor() {
@@ -82,7 +82,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
 
     /**
      * Gets the false successor.
-     * 
+     *
      * @return the false successor
      */
     public AbstractBeginNode falseSuccessor() {
@@ -101,7 +101,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
 
     /**
      * Gets the node corresponding to the specified outcome of the branch.
-     * 
+     *
      * @param istrue {@code true} if the true successor is requested, {@code false} otherwise
      * @return the corresponding successor
      */
@@ -339,7 +339,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
 
     /**
      * Tries to remove an empty if construct or replace an if construct with a materialization.
-     * 
+     *
      * @return true if a transformation was made, false otherwise
      */
     private boolean removeOrMaterializeIf(SimplifierTool tool) {
@@ -444,7 +444,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
     /**
      * Tries to connect code that initializes a variable directly with the successors of an if
      * construct that switches on the variable. For example, the pseudo code below:
-     * 
+     *
      * <pre>
      * contains(list, e, yes, no) {
      *     if (list == null || e == null) {
@@ -465,9 +465,9 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
      *     }
      * }
      * </pre>
-     * 
+     *
      * will be transformed into:
-     * 
+     *
      * <pre>
      * contains(list, e, yes, no) {
      *     if (list == null || e == null) {
@@ -483,7 +483,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
      *     }
      * }
      * </pre>
-     * 
+     *
      * @return true if a transformation was made, false otherwise
      */
     private boolean removeIntermediateMaterialization(SimplifierTool tool) {
@@ -633,7 +633,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
      * Connects a set of ends to a given successor, inserting a merge node if there is more than one
      * end. If {@code ends} is not empty, then {@code successor} is added to {@code tool}'s
      * {@linkplain SimplifierTool#addToWorkList(com.oracle.graal.graph.Node) work list}.
-     * 
+     *
      * @param oldMerge the merge being removed
      * @param phiValues the values of the phi at the merge, keyed by the merge ends
      */
@@ -673,7 +673,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
      * Gets an array of constants derived from a node that is either a {@link ConstantNode} or a
      * {@link PhiNode} whose input values are all constants. The length of the returned array is
      * equal to the number of ends terminating in a given merge node.
-     * 
+     *
      * @return null if {@code node} is neither a {@link ConstantNode} nor a {@link PhiNode} whose
      *         input values are all constants
      */

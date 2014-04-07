@@ -31,7 +31,7 @@ import com.oracle.graal.nodes.type.*;
 @NodeInfo(nameTemplate = "ConditionAnchor(!={p#negated})")
 public final class ConditionAnchorNode extends FixedWithNextNode implements Canonicalizable, Lowerable, GuardingNode {
 
-    @Input private LogicNode condition;
+    @Input(InputType.Condition) private LogicNode condition;
     private boolean negated;
 
     public ConditionAnchorNode(LogicNode condition) {

@@ -23,13 +23,14 @@
 package com.oracle.graal.nodes.extended;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.type.*;
 
 public abstract class FloatingAccessNode extends FloatingGuardedNode implements Access, MemoryAccess {
 
     @Input private ValueNode object;
-    @Input private LocationNode location;
+    @Input(InputType.Association) private LocationNode location;
     private BarrierType barrierType;
     private boolean compressible;
 

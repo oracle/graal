@@ -25,6 +25,7 @@ package com.oracle.graal.nodes.extended;
 import static com.oracle.graal.graph.UnsafeAccess.*;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
@@ -37,7 +38,7 @@ import com.oracle.graal.nodes.type.*;
 public class UnsafeStoreNode extends UnsafeAccessNode implements StateSplit, Lowerable, Virtualizable, MemoryCheckpoint.Single {
 
     @Input private ValueNode value;
-    @Input(notDataflow = true) private FrameState stateAfter;
+    @Input(InputType.State) private FrameState stateAfter;
 
     public UnsafeStoreNode(ValueNode object, ValueNode offset, ValueNode value, Kind accessKind, LocationIdentity locationIdentity) {
         super(StampFactory.forVoid(), object, offset, accessKind, locationIdentity);

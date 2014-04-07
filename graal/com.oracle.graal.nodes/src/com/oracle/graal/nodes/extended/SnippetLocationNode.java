@@ -41,7 +41,7 @@ import com.oracle.graal.nodes.type.*;
 public final class SnippetLocationNode extends LocationNode implements Canonicalizable {
 
     @Input private ValueNode valueKind;
-    @Input private ValueNode locationIdentity;
+    @Input(InputType.Association) private ValueNode locationIdentity;
     @Input private ValueNode displacement;
     @Input private ValueNode index;
     @Input private ValueNode indexScaling;

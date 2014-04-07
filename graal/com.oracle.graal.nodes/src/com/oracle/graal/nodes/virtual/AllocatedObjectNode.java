@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.nodes.virtual;
 
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
@@ -34,7 +35,7 @@ import com.oracle.graal.nodes.type.*;
 public class AllocatedObjectNode extends FloatingNode implements Virtualizable, ArrayLengthProvider {
 
     @Input private VirtualObjectNode virtualObject;
-    @Input private CommitAllocationNode commit;
+    @Input(InputType.Association) private CommitAllocationNode commit;
 
     public AllocatedObjectNode(VirtualObjectNode virtualObject) {
         super(StampFactory.exactNonNull(virtualObject.type()));

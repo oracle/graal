@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.nodes.extended;
 
+import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
@@ -32,9 +33,9 @@ import com.oracle.graal.nodes.util.*;
 /**
  * The ValueAnchor instruction keeps non-CFG (floating) nodes above a certain point in the graph.
  */
-public final class ValueAnchorNode extends FixedWithNextNode implements LIRLowerable, Simplifiable, Virtualizable, GuardingNode {
+public final class ValueAnchorNode extends FixedWithNextNode implements LIRLowerable, Simplifiable, Virtualizable {
 
-    @Input private ValueNode anchored;
+    @Input(InputType.Guard) private ValueNode anchored;
 
     public ValueAnchorNode(ValueNode value) {
         super(StampFactory.dependency());

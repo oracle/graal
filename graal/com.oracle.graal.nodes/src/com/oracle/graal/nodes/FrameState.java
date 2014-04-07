@@ -34,7 +34,7 @@ import com.oracle.graal.nodes.virtual.*;
 /**
  * The {@code FrameState} class encapsulates the frame state (i.e. local variables and operand
  * stack) at a particular point in the abstract interpretation.
- * 
+ *
  * This can be used as debug or deoptimization information.
  */
 @NodeInfo(nameTemplate = "FrameState@{p#method/s}:{p#bci}")
@@ -80,16 +80,16 @@ public final class FrameState extends VirtualState implements IterableNodeType {
      */
     public static final int INVALID_FRAMESTATE_BCI = -5;
 
-    @Input private FrameState outerFrameState;
+    @Input(InputType.State) private FrameState outerFrameState;
 
     /**
      * Contains the locals, the expressions and the locked objects, in this order.
      */
     @Input private final NodeInputList<ValueNode> values;
 
-    @Input private final NodeInputList<MonitorIdNode> monitorIds;
+    @Input(InputType.Association) private final NodeInputList<MonitorIdNode> monitorIds;
 
-    @Input private final NodeInputList<EscapeObjectState> virtualObjectMappings;
+    @Input(InputType.State) private final NodeInputList<EscapeObjectState> virtualObjectMappings;
 
     /**
      * The bytecode index to which this frame state applies.
@@ -100,7 +100,7 @@ public final class FrameState extends VirtualState implements IterableNodeType {
 
     /**
      * Creates a {@code FrameState} with the given locals, stack expressions and locked monitors.
-     * 
+     *
      * @param method the method for this frame state
      * @param bci the bytecode index of the frame state
      * @param values the locals, stack expressions and locked objects, in this order
@@ -130,7 +130,7 @@ public final class FrameState extends VirtualState implements IterableNodeType {
 
     /**
      * Simple constructor used to create marker FrameStates.
-     * 
+     *
      * @param bci marker bci, needs to be &lt; 0
      */
     public FrameState(int bci) {
@@ -306,7 +306,7 @@ public final class FrameState extends VirtualState implements IterableNodeType {
 
     /**
      * Gets the value in the local variables at the specified index.
-     * 
+     *
      * @param i the index into the locals
      * @return the instruction that produced the value for the specified local
      */
@@ -317,7 +317,7 @@ public final class FrameState extends VirtualState implements IterableNodeType {
 
     /**
      * Get the value on the stack at the specified stack index.
-     * 
+     *
      * @param i the index into the stack, with {@code 0} being the bottom of the stack
      * @return the instruction at the specified position in the stack
      */
@@ -328,7 +328,7 @@ public final class FrameState extends VirtualState implements IterableNodeType {
 
     /**
      * Get the monitor owner at the specified index.
-     * 
+     *
      * @param i the index into the list of locked monitors.
      * @return the lock owner at the given index.
      */

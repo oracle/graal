@@ -44,9 +44,9 @@ import com.oracle.graal.graph.spi.*;
  * this field points to.
  * <p>
  * Nodes which are be value numberable should implement the {@link ValueNumberable} interface.
- * 
+ *
  * <h1>Assertions and Verification</h1>
- * 
+ *
  * The Node class supplies the {@link #assertTrue(boolean, String, Object...)} and
  * {@link #assertFalse(boolean, String, Object...)} methods, which will check the supplied boolean
  * and throw a VerificationError if it has the wrong value. Both methods will always either throw an
@@ -67,8 +67,7 @@ public abstract class Node implements Cloneable, Formattable {
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.FIELD)
     public static @interface Input {
-
-        boolean notDataflow() default false;
+        InputType value() default InputType.Value;
     }
 
     @Retention(RetentionPolicy.RUNTIME)
@@ -166,7 +165,7 @@ public abstract class Node implements Cloneable, Formattable {
     /**
      * Returns an {@link NodeClassIterable iterable} which can be used to traverse all non-null
      * input edges of this node.
-     * 
+     *
      * @return an {@link NodeClassIterable iterable} for all non-null input edges.
      */
     public NodeClassIterable inputs() {
@@ -176,7 +175,7 @@ public abstract class Node implements Cloneable, Formattable {
     /**
      * Returns an {@link NodeClassIterable iterable} which can be used to traverse all non-null
      * successor edges of this node.
-     * 
+     *
      * @return an {@link NodeClassIterable iterable} for all non-null successor edges.
      */
     public NodeClassIterable successors() {
@@ -288,7 +287,7 @@ public abstract class Node implements Cloneable, Formattable {
     /**
      * Finds the index of the last non-null entry in a node array. The search assumes that all
      * non-null entries precede the first null entry in the array.
-     * 
+     *
      * @param nodes the array to search
      * @return the index of the last non-null entry in {@code nodes} if it exists, else -1
      */
@@ -321,7 +320,7 @@ public abstract class Node implements Cloneable, Formattable {
 
     /**
      * Adds a given node to this node's {@linkplain #usages() usages}.
-     * 
+     *
      * @param node the node to add
      */
     private void addUsage(Node node) {
@@ -352,7 +351,7 @@ public abstract class Node implements Cloneable, Formattable {
 
     /**
      * Removes a given node from this node's {@linkplain #usages() usages}.
-     * 
+     *
      * @param node the node to remove
      * @return whether or not {@code usage} was in the usage list
      */
@@ -536,6 +535,19 @@ public abstract class Node implements Cloneable, Formattable {
         clearUsages();
     }
 
+    public void replaceAtUsages(InputType type, Node other) {
+        assert checkReplaceWith(other);
+        for (Node usage : usages().snapshot()) {
+            NodeClassIterator iter = usage.inputs().iterator();
+            while (iter.hasNext()) {
+                Position pos = iter.nextPosition();
+                if (pos.getInputType(usage) == type) {
+                    pos.set(usage, other);
+                }
+            }
+        }
+    }
+
     private void maybeNotifyChanged(Node usage) {
         if (graph != null) {
             assert !graph.isFrozen();
@@ -656,7 +668,7 @@ public abstract class Node implements Cloneable, Formattable {
      * Must be overridden by subclasses that implement {@link Canonicalizable}. The implementation
      * in {@link Node} exists to obviate the need to cast a node before invoking
      * {@link Canonicalizable#canonical(CanonicalizerTool)}.
-     * 
+     *
      * @param tool
      */
     public Node canonical(CanonicalizerTool tool) {
@@ -667,7 +679,7 @@ public abstract class Node implements Cloneable, Formattable {
      * Must be overridden by subclasses that implement {@link Simplifiable}. The implementation in
      * {@link Node} exists to obviate the need to cast a node before invoking
      * {@link Simplifiable#simplify(SimplifierTool)}.
-     * 
+     *
      * @param tool
      */
     public void simplify(SimplifierTool tool) {
@@ -797,7 +809,7 @@ public abstract class Node implements Cloneable, Formattable {
      * Fills a {@link Map} with properties of this node for use in debugging (e.g., to view in the
      * ideal graph visualizer). Subclasses overriding this method should also fill the map using
      * their superclass.
-     * 
+     *
      * @param map
      */
     public Map<Object, Object> getDebugProperties(Map<Object, Object> map) {

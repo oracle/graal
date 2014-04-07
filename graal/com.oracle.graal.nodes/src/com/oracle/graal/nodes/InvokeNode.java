@@ -37,16 +37,16 @@ import com.oracle.graal.nodes.util.*;
 @NodeInfo(nameTemplate = "Invoke#{p#targetMethod/s}")
 public final class InvokeNode extends AbstractMemoryCheckpoint implements Invoke, LIRLowerable, MemoryCheckpoint.Single {
 
-    @Input private CallTargetNode callTarget;
-    @Input private FrameState stateDuring;
-    @Input private GuardingNode guard;
+    @Input(InputType.Association) private CallTargetNode callTarget;
+    @Input(InputType.State) private FrameState stateDuring;
+    @Input(InputType.Guard) private GuardingNode guard;
     private final int bci;
     private boolean polymorphic;
     private boolean useForInlining;
 
     /**
      * Constructs a new Invoke instruction.
-     * 
+     *
      * @param callTarget the target method being called
      * @param bci the bytecode index of the original invoke (used for debug infos)
      */
@@ -56,7 +56,7 @@ public final class InvokeNode extends AbstractMemoryCheckpoint implements Invoke
 
     /**
      * Constructs a new Invoke instruction.
-     * 
+     *
      * @param callTarget the target method being called
      * @param bci the bytecode index of the original invoke (used for debug infos)
      * @param stamp the stamp to be used for this value

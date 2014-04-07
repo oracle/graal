@@ -34,14 +34,14 @@ import com.oracle.truffle.api.*;
 
 /**
  * Load of a final value from a location specified as an offset relative to an object.
- * 
+ *
  * Substitution for method {@link CompilerDirectives#unsafeGetFinalObject} and friends.
  */
 public class CustomizedUnsafeLoadFinalNode extends FixedWithNextNode implements Canonicalizable, Virtualizable, Lowerable {
     @Input private ValueNode object;
     @Input private ValueNode offset;
-    @Input private ValueNode condition;
-    @Input private ValueNode location;
+    @Input(InputType.Condition) private ValueNode condition;
+    @Input(InputType.Association) private ValueNode location;
     private final Kind accessKind;
 
     public CustomizedUnsafeLoadFinalNode(ValueNode object, ValueNode offset, ValueNode condition, ValueNode location, Kind accessKind) {

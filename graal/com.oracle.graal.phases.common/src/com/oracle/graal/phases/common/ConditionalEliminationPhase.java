@@ -707,11 +707,7 @@ public class ConditionalEliminationPhase extends Phase {
                     if (nonNull) {
                         replacementAnchor = searchAnchor(GraphUtil.unproxify(object), type);
                     }
-                    ValueAnchorNode anchor = null;
-                    if (replacementAnchor == null) {
-                        anchor = graph.add(new ValueAnchorNode(null));
-                        replacementAnchor = anchor;
-                    }
+                    replacementAnchor = BeginNode.prevBegin(checkCast);
                     PiNode piNode;
                     if (isNull) {
                         ConstantNode nullObject = ConstantNode.forObject(null, metaAccess, graph);
@@ -720,11 +716,7 @@ public class ConditionalEliminationPhase extends Phase {
                         piNode = graph.unique(new PiNode(object, StampFactory.declared(type, nonNull), replacementAnchor.asNode()));
                     }
                     checkCast.replaceAtUsages(piNode);
-                    if (anchor != null) {
-                        graph.replaceFixedWithFixed(checkCast, anchor);
-                    } else {
-                        graph.removeFixed(checkCast);
-                    }
+                    graph.removeFixed(checkCast);
                     metricCheckCastRemoved.increment();
                 }
             } else if (node instanceof ConditionAnchorNode) {

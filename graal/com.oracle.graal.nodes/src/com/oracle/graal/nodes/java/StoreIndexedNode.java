@@ -23,6 +23,7 @@
 package com.oracle.graal.nodes.java;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
@@ -33,7 +34,7 @@ import com.oracle.graal.nodes.type.*;
 public final class StoreIndexedNode extends AccessIndexedNode implements StateSplit, Lowerable, Virtualizable {
 
     @Input private ValueNode value;
-    @Input(notDataflow = true) private FrameState stateAfter;
+    @Input(InputType.State) private FrameState stateAfter;
 
     public FrameState stateAfter() {
         return stateAfter;
@@ -55,7 +56,7 @@ public final class StoreIndexedNode extends AccessIndexedNode implements StateSp
 
     /**
      * Creates a new StoreIndexedNode.
-     * 
+     *
      * @param array the node producing the array
      * @param index the node producing the index
      * @param elementKind the element type

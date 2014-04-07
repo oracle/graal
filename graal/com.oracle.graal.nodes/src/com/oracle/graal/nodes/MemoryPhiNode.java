@@ -32,7 +32,7 @@ import com.oracle.graal.nodes.type.*;
  */
 public class MemoryPhiNode extends PhiNode implements MemoryNode {
 
-    @Input final NodeInputList<ValueNode> values = new NodeInputList<>(this);
+    @Input(InputType.Memory) final NodeInputList<ValueNode> values = new NodeInputList<>(this);
     private final LocationIdentity locationIdentity;
 
     public MemoryPhiNode(MergeNode merge, LocationIdentity locationIdentity) {

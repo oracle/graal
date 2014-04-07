@@ -38,7 +38,7 @@ import com.oracle.graal.nodes.type.*;
  */
 public final class ConditionalNode extends BinaryNode implements Canonicalizable, LIRLowerable {
 
-    @Input private LogicNode condition;
+    @Input(InputType.Condition) private LogicNode condition;
 
     public LogicNode condition() {
         return condition;

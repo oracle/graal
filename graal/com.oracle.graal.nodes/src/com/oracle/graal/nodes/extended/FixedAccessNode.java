@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.nodes.extended;
 
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.type.*;
 
@@ -29,11 +30,11 @@ import com.oracle.graal.nodes.type.*;
  * Accesses a value at an memory address specified by an {@linkplain #object object} and a
  * {@linkplain #accessLocation() location}. The access does not include a null check on the object.
  */
-public abstract class FixedAccessNode extends DeoptimizingFixedWithNextNode implements Access, GuardingNode {
+public abstract class FixedAccessNode extends DeoptimizingFixedWithNextNode implements Access {
 
-    @Input private GuardingNode guard;
+    @Input(InputType.Guard) private GuardingNode guard;
     @Input private ValueNode object;
-    @Input private ValueNode location;
+    @Input(InputType.Association) private ValueNode location;
     private boolean nullCheck;
     private BarrierType barrierType;
     private boolean compressible;

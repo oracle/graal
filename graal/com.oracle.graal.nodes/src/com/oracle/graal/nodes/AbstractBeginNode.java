@@ -35,7 +35,7 @@ import com.oracle.graal.nodes.type.*;
 
 public abstract class AbstractBeginNode extends FixedWithNextNode implements StateSplit, LIRLowerable, Simplifiable, GuardingNode, IterableNodeType {
 
-    @Input(notDataflow = true) private FrameState stateAfter;
+    @Input(InputType.State) private FrameState stateAfter;
 
     public FrameState stateAfter() {
         return stateAfter;

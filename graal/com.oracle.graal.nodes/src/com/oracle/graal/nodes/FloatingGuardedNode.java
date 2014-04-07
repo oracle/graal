@@ -22,13 +22,14 @@
  */
 package com.oracle.graal.nodes;
 
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.type.*;
 
 public abstract class FloatingGuardedNode extends FloatingNode implements GuardedNode {
 
-    @Input private GuardingNode guard;
+    @Input(InputType.Anchor) private GuardingNode guard;
 
     public FloatingGuardedNode(Stamp stamp) {
         super(stamp);

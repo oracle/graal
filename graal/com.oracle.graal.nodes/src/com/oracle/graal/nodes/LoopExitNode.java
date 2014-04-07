@@ -27,7 +27,7 @@ import com.oracle.graal.graph.spi.*;
 
 public class LoopExitNode extends BeginStateSplitNode implements IterableNodeType {
 
-    @Input(notDataflow = true) private LoopBeginNode loopBegin;
+    @Input(InputType.Association) private LoopBeginNode loopBegin;
 
     public LoopExitNode(LoopBeginNode loop) {
         assert loop != null;

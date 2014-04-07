@@ -36,7 +36,7 @@ import com.oracle.graal.nodes.type.*;
  */
 public abstract class ProxyNode extends FloatingNode implements IterableNodeType, ValueNumberable, ValueAndStampProxy {
 
-    @Input(notDataflow = true) private AbstractBeginNode proxyPoint;
+    @Input(InputType.Association) private AbstractBeginNode proxyPoint;
 
     public ProxyNode(Stamp stamp, AbstractBeginNode proxyPoint) {
         super(stamp);

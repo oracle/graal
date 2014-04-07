@@ -35,7 +35,7 @@ import com.oracle.graal.nodes.type.*;
 public class DeferredForeignCallNode extends AbstractMemoryCheckpoint implements Lowerable, MemoryCheckpoint.Single {
 
     @Input private final NodeInputList<ValueNode> arguments;
-    @Input private FrameState deoptState;
+    @Input(InputType.State) private FrameState deoptState;
 
     private final ForeignCallDescriptor descriptor;
 

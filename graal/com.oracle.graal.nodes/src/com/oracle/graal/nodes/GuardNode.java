@@ -43,7 +43,7 @@ import com.oracle.graal.nodes.type.*;
 @NodeInfo(nameTemplate = "Guard(!={p#negated}) {p#reason/s}")
 public class GuardNode extends FloatingGuardedNode implements Canonicalizable, IterableNodeType, GuardingNode, GuardedNode {
 
-    @Input private LogicNode condition;
+    @Input(InputType.Condition) private LogicNode condition;
     private final DeoptimizationReason reason;
     private Constant speculation;
     private DeoptimizationAction action;
