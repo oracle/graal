@@ -361,8 +361,8 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
      * Use the HSAIL register set when the compilation target is HSAIL.
      */
     @Override
-    public FrameMap newFrameMap() {
-        return new HSAILFrameMap(getCodeCache());
+    public FrameMap newFrameMap(RegisterConfig registerConfig) {
+        return new HSAILFrameMap(getCodeCache(), registerConfig);
     }
 
     @Override

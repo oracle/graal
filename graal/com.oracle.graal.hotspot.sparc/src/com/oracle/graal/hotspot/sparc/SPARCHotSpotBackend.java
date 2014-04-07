@@ -74,8 +74,8 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
     }
 
     @Override
-    public FrameMap newFrameMap() {
-        return new SPARCFrameMap(getProviders().getCodeCache());
+    public FrameMap newFrameMap(RegisterConfig registerConfig) {
+        return new SPARCFrameMap(getProviders().getCodeCache(), registerConfig);
     }
 
     @Override

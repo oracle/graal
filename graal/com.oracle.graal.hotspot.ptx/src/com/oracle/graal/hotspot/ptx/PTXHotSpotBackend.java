@@ -95,6 +95,7 @@ public class PTXHotSpotBackend extends HotSpotBackend {
                     long.class, // objectParameterOffsets
                     long.class, // pinnedObjects
                     int.class); // encodedReturnTypeSize
+
     // @formatter:on
 
     public PTXHotSpotBackend(HotSpotGraalRuntime runtime, HotSpotProviders providers) {
@@ -154,8 +155,8 @@ public class PTXHotSpotBackend extends HotSpotBackend {
     private static native long getLaunchKernelAddress();
 
     @Override
-    public FrameMap newFrameMap() {
-        return new PTXFrameMap(getCodeCache());
+    public FrameMap newFrameMap(RegisterConfig registerConfig) {
+        return new PTXFrameMap(getCodeCache(), registerConfig);
     }
 
     /**

@@ -84,11 +84,12 @@ public abstract class FrameMap {
     private boolean accessesCallerFrame;
 
     /**
-     * Creates a new frame map for the specified method.
+     * Creates a new frame map for the specified method. The given registerConfig is optional, in
+     * case null is passed the default RegisterConfig from the CodeCacheProvider will be used.
      */
-    public FrameMap(CodeCacheProvider codeCache) {
+    public FrameMap(CodeCacheProvider codeCache, RegisterConfig registerConfig) {
         this.target = codeCache.getTarget();
-        this.registerConfig = codeCache.getRegisterConfig();
+        this.registerConfig = registerConfig == null ? codeCache.getRegisterConfig() : registerConfig;
         this.frameSize = -1;
         this.outgoingSize = codeCache.getMinimumOutgoingSize();
         this.objectStackSlots = new ArrayList<>();

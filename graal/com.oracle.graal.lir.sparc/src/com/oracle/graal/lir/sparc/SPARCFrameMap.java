@@ -69,8 +69,8 @@ import com.oracle.graal.lir.*;
  */
 public final class SPARCFrameMap extends FrameMap {
 
-    public SPARCFrameMap(CodeCacheProvider codeCache) {
-        super(codeCache);
+    public SPARCFrameMap(CodeCacheProvider codeCache, RegisterConfig registerConfig) {
+        super(codeCache, registerConfig);
         // offset relative to sp + total frame size
         initialSpillSize = 0;
         spillSize = initialSpillSize;

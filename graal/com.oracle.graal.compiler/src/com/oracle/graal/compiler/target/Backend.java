@@ -64,7 +64,11 @@ public abstract class Backend {
         return providers.getCodeCache().getTarget();
     }
 
-    public abstract FrameMap newFrameMap();
+    /**
+     * The given registerConfig is optional, in case null is passed the default RegisterConfig from
+     * the CodeCacheProvider will be used.
+     */
+    public abstract FrameMap newFrameMap(RegisterConfig registerConfig);
 
     public abstract LIRGenerator newLIRGenerator(CallingConvention cc, LIRGenerationResult lirGenRes);
 

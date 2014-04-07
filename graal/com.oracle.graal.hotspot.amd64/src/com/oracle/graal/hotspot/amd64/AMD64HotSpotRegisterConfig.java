@@ -141,6 +141,11 @@ public class AMD64HotSpotRegisterConfig implements RegisterConfig {
     }
 
     public AMD64HotSpotRegisterConfig(Architecture architecture, HotSpotVMConfig config) {
+        this(architecture, config, initAllocatable(config.useCompressedOops));
+        assert callerSaved.length == allocatable.length || RegisterPressure.getValue() != null;
+    }
+
+    public AMD64HotSpotRegisterConfig(Architecture architecture, HotSpotVMConfig config, Register[] allocatable) {
         this.architecture = architecture;
         this.maxFrameSize = config.maxFrameSize;
 
@@ -153,14 +158,13 @@ public class AMD64HotSpotRegisterConfig implements RegisterConfig {
         }
 
         csl = null;
-        allocatable = initAllocatable(config.useCompressedOops);
+        this.allocatable = allocatable.clone();
         Set<Register> callerSaveSet = new HashSet<>();
         Collections.addAll(callerSaveSet, allocatable);
         Collections.addAll(callerSaveSet, xmmParameterRegisters);
         Collections.addAll(callerSaveSet, javaGeneralParameterRegisters);
         Collections.addAll(callerSaveSet, nativeGeneralParameterRegisters);
         callerSaved = callerSaveSet.toArray(new Register[callerSaveSet.size()]);
-        assert callerSaved.length == allocatable.length || RegisterPressure.getValue() != null;
 
         allAllocatableAreCallerSaved = true;
         attributesMap = RegisterAttributes.createMap(this, AMD64.allRegisters);

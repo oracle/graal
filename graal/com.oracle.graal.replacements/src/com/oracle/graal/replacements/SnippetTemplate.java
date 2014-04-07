@@ -419,11 +419,15 @@ public class SnippetTemplate {
          */
         protected SnippetInfo snippet(Class<? extends Snippets> declaringClass, String methodName) {
             Method found = null;
-            for (Method method : declaringClass.getDeclaredMethods()) {
-                if (method.getAnnotation(Snippet.class) != null && (methodName == null || method.getName().equals(methodName))) {
-                    assert found == null : "found more than one @" + Snippet.class.getSimpleName() + " method in " + declaringClass + (methodName == null ? "" : " named " + methodName);
-                    found = method;
+            Class<?> clazz = declaringClass;
+            while (clazz != Object.class) {
+                for (Method method : clazz.getDeclaredMethods()) {
+                    if (method.getAnnotation(Snippet.class) != null && (methodName == null || method.getName().equals(methodName))) {
+                        assert found == null : "found more than one @" + Snippet.class.getSimpleName() + " method in " + declaringClass + (methodName == null ? "" : " named " + methodName);
+                        found = method;
+                    }
                 }
+                clazz = clazz.getSuperclass();
             }
             assert found != null : "did not find @" + Snippet.class.getSimpleName() + " method in " + declaringClass + (methodName == null ? "" : " named " + methodName);
             ResolvedJavaMethod javaMethod = providers.getMetaAccess().lookupJavaMethod(found);

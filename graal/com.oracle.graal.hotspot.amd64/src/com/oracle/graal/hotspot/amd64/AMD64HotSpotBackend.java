@@ -67,8 +67,8 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend {
     }
 
     @Override
-    public FrameMap newFrameMap() {
-        return new AMD64FrameMap(getCodeCache());
+    public FrameMap newFrameMap(RegisterConfig registerConfig) {
+        return new AMD64FrameMap(getCodeCache(), registerConfig);
     }
 
     @Override

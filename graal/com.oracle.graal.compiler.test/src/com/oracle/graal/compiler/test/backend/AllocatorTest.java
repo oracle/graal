@@ -113,14 +113,14 @@ public class AllocatorTest extends GraalCompilerTest {
 
         SchedulePhase schedule = null;
         try (Scope s = Debug.scope("FrontEnd")) {
-            schedule = GraalCompiler.emitHIR(getProviders(), getBackend().getTarget(), graph, assumptions, null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.NONE,
+            schedule = GraalCompiler.emitFrontEnd(getProviders(), getBackend().getTarget(), graph, assumptions, null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.NONE,
                             graph.method().getProfilingInfo(), new SpeculationLog(), getSuites());
         } catch (Throwable e) {
             throw Debug.handle(e);
         }
 
         CallingConvention cc = getCallingConvention(getCodeCache(), Type.JavaCallee, graph.method(), false);
-        LIRGenerationResult lirGen = GraalCompiler.emitLIR(getBackend(), getBackend().getTarget(), schedule, graph, null, cc);
+        LIRGenerationResult lirGen = GraalCompiler.emitLIR(getBackend(), getBackend().getTarget(), schedule, graph, null, cc, null);
         return new RegisterStats(lirGen.getLIR());
     }
 }

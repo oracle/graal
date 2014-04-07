@@ -107,7 +107,7 @@ public class BaselineBytecodeParser extends AbstractBytecodeParser<Value, LIRFra
             List<? extends AbstractBlock<?>> codeEmittingOrder = ComputeBlockOrder.computeCodeEmittingOrder(blockMap.blocks.size(), blockMap.startBlock, blockProbabilities);
             LIR lir = new LIR(cfg, linearScanOrder, codeEmittingOrder);
 
-            FrameMap frameMap = backend.newFrameMap();
+            FrameMap frameMap = backend.newFrameMap(null);
             TargetDescription target = backend.getTarget();
             CallingConvention cc = CodeUtil.getCallingConvention(backend.getProviders().getCodeCache(), CallingConvention.Type.JavaCallee, method, false);
             this.lirGenRes = backend.newLIRGenerationResult(lir, frameMap, null);
