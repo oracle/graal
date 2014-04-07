@@ -371,7 +371,7 @@ public class BaselineBytecodeParser extends AbstractBytecodeParser<Value, LIRFra
         BciBlock trueBlock = currentBlock.getSuccessors().get(0);
         BciBlock falseBlock = currentBlock.getSuccessors().get(1);
         if (trueBlock == falseBlock) {
-            appendGoto(createTarget(trueBlock, frameState));
+            genGoto();
             return;
         }
 
@@ -559,26 +559,8 @@ public class BaselineBytecodeParser extends AbstractBytecodeParser<Value, LIRFra
     }
 
     @Override
-    protected Value genDeoptimization() {
-        // TODO Auto-generated method stub
-        throw GraalInternalError.unimplemented("Auto-generated method stub");
-    }
-
-    @Override
-    protected Value createTarget(BciBlock trueBlock, LIRFrameStateBuilder state) {
-        // TODO Auto-generated method stub
-        throw GraalInternalError.unimplemented("Auto-generated method stub");
-    }
-
-    @Override
     protected void processBlock(BciBlock block) {
         iterateBytecodesForBlock(block);
-    }
-
-    @Override
-    protected void appendGoto(Value target) {
-        // TODO Auto-generated method stub
-        throw GraalInternalError.unimplemented("Auto-generated method stub");
     }
 
     @Override
@@ -615,8 +597,7 @@ public class BaselineBytecodeParser extends AbstractBytecodeParser<Value, LIRFra
                     if (block.numNormalSuccessors() == 1) {
                         assert !block.getSuccessor(0).isExceptionEntry;
                         // we fell through to the next block, add a goto and break
-                        LabelRef label = LabelRef.forSuccessor(lirGenRes.getLIR(), block.getSuccessor(0), 0);
-                        gen.emitJump(label);
+                        genGoto();
                     }
                     break;
                 }
@@ -629,6 +610,12 @@ public class BaselineBytecodeParser extends AbstractBytecodeParser<Value, LIRFra
 
     public void storeLocal(int i, Value x) {
         frameState.storeLocal(i, x);
+    }
+
+    @Override
+    protected void genGoto() {
+        LabelRef label = LabelRef.forSuccessor(lirGenRes.getLIR(), currentBlock, 0);
+        gen.emitJump(label);
     }
 
 }
