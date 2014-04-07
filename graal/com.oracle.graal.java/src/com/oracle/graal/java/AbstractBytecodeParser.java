@@ -827,7 +827,7 @@ public abstract class AbstractBytecodeParser<T extends KindProvider, F extends A
      *
      * @return an array of size successorCount with the accumulated probability for each successor.
      */
-    private static double[] successorProbabilites(int successorCount, int[] keySuccessors, double[] keyProbabilities) {
+    public static double[] successorProbabilites(int successorCount, int[] keySuccessors, double[] keyProbabilities) {
         double[] probability = new double[successorCount];
         for (int i = 0; i < keySuccessors.length; i++) {
             probability[keySuccessors[i]] += keyProbabilities[i];
@@ -877,17 +877,11 @@ public abstract class AbstractBytecodeParser<T extends KindProvider, F extends A
             }
         }
 
-        double[] successorProbabilities = successorProbabilites(actualSuccessors.size(), keySuccessors, keyProbabilities);
-        T switchNode = append(genIntegerSwitch(value, actualSuccessors.size(), keys, keyProbabilities, keySuccessors));
-        for (int i = 0; i < actualSuccessors.size(); i++) {
-            setBlockSuccessor(switchNode, i, createBlockTarget(successorProbabilities[i], actualSuccessors.get(i), frameState));
-        }
+        genIntegerSwitch(value, actualSuccessors, keys, keyProbabilities, keySuccessors);
 
     }
 
-    protected abstract void setBlockSuccessor(T switchNode, int i, T createBlockTarget);
-
-    protected abstract T genIntegerSwitch(T value, int size, int[] keys, double[] keyProbabilities, int[] keySuccessors);
+    protected abstract void genIntegerSwitch(T value, ArrayList<BciBlock> actualSuccessors, int[] keys, double[] keyProbabilities, int[] keySuccessors);
 
     private static class SuccessorInfo {
 
