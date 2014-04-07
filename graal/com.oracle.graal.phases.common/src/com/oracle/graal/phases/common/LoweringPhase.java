@@ -50,11 +50,11 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
 
         private final PhaseContext context;
         private final NodeBitMap activeGuards;
-        private GuardingNode guardAnchor;
+        private AnchoringNode guardAnchor;
         private FixedWithNextNode lastFixedNode;
         private ControlFlowGraph cfg;
 
-        public LoweringToolImpl(PhaseContext context, GuardingNode guardAnchor, NodeBitMap activeGuards, FixedWithNextNode lastFixedNode, ControlFlowGraph cfg) {
+        public LoweringToolImpl(PhaseContext context, AnchoringNode guardAnchor, NodeBitMap activeGuards, FixedWithNextNode lastFixedNode, ControlFlowGraph cfg) {
             this.context = context;
             this.guardAnchor = guardAnchor;
             this.activeGuards = activeGuards;
@@ -88,7 +88,7 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
         }
 
         @Override
-        public GuardingNode getCurrentGuardAnchor() {
+        public AnchoringNode getCurrentGuardAnchor() {
             return guardAnchor;
         }
 
@@ -115,7 +115,7 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
             }
 
             public void setGuard(GuardingNode guard) {
-                updateUsages(this.guard == null ? null : this.guard.asNode(), guard == null ? null : guard.asNode());
+                updateUsagesInterface(this.guard, guard);
                 this.guard = guard;
             }
 
@@ -253,9 +253,9 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
             processBlock(schedule.getCFG().getStartBlock(), graph.createNodeBitMap(), null);
         }
 
-        private void processBlock(Block block, NodeBitMap activeGuards, GuardingNode parentAnchor) {
+        private void processBlock(Block block, NodeBitMap activeGuards, AnchoringNode parentAnchor) {
 
-            GuardingNode anchor = parentAnchor;
+            AnchoringNode anchor = parentAnchor;
             if (anchor == null) {
                 anchor = block.getBeginNode();
             }
@@ -284,7 +284,7 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
             }
         }
 
-        private GuardingNode process(final Block b, final NodeBitMap activeGuards, final GuardingNode startAnchor) {
+        private AnchoringNode process(final Block b, final NodeBitMap activeGuards, final AnchoringNode startAnchor) {
 
             final LoweringToolImpl loweringTool = new LoweringToolImpl(context, startAnchor, activeGuards, b.getBeginNode(), schedule.getCFG());
 

@@ -41,7 +41,7 @@ import com.oracle.graal.nodes.type.*;
  * control flow would have reached the guarded node (without taking exceptions into account).
  */
 @NodeInfo(nameTemplate = "Guard(!={p#negated}) {p#reason/s}", allowedUsageTypes = {InputType.Guard})
-public class GuardNode extends FloatingGuardedNode implements Canonicalizable, IterableNodeType, GuardingNode, GuardedNode {
+public class GuardNode extends FloatingAnchoredNode implements Canonicalizable, IterableNodeType, GuardingNode {
 
     @Input(InputType.Condition) private LogicNode condition;
     private final DeoptimizationReason reason;
@@ -49,7 +49,7 @@ public class GuardNode extends FloatingGuardedNode implements Canonicalizable, I
     private DeoptimizationAction action;
     private boolean negated;
 
-    public GuardNode(LogicNode condition, GuardingNode anchor, DeoptimizationReason reason, DeoptimizationAction action, boolean negated, Constant speculation) {
+    public GuardNode(LogicNode condition, AnchoringNode anchor, DeoptimizationReason reason, DeoptimizationAction action, boolean negated, Constant speculation) {
         super(StampFactory.forVoid(), anchor);
         this.condition = condition;
         this.reason = reason;
@@ -103,7 +103,7 @@ public class GuardNode extends FloatingGuardedNode implements Canonicalizable, I
     public Node canonical(CanonicalizerTool tool) {
         if (condition() instanceof LogicNegationNode) {
             LogicNegationNode negation = (LogicNegationNode) condition();
-            return graph().unique(new GuardNode(negation.getInput(), getGuard(), reason, action, !negated, speculation));
+            return graph().unique(new GuardNode(negation.getInput(), getAnchor(), reason, action, !negated, speculation));
         } else if (condition() instanceof LogicConstantNode) {
             LogicConstantNode c = (LogicConstantNode) condition();
             if (c.getValue() != negated) {

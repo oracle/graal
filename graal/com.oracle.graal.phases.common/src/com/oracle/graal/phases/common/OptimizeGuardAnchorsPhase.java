@@ -64,7 +64,7 @@ public class OptimizeGuardAnchorsPhase extends Phase {
                     // loops never end
                     if (newAnchor != begin) {
                         for (GuardNode guard : guards.snapshot()) {
-                            guard.setGuard(newAnchor);
+                            guard.setAnchor(newAnchor);
                         }
                         metricGuardsAnchorOptimized.increment();
                     }
@@ -101,7 +101,7 @@ public class OptimizeGuardAnchorsPhase extends Phase {
             }
             for (GuardNode conditonGuard : guard.condition().usages().filter(GuardNode.class)) {
                 if (conditonGuard != guard) {
-                    GuardingNode conditonGuardAnchor = conditonGuard.getGuard();
+                    AnchoringNode conditonGuardAnchor = conditonGuard.getAnchor();
                     if (conditonGuardAnchor.asNode().predecessor() == controlSplit && compatibleGuards(guard, conditonGuard)) {
                         otherGuards.add(conditonGuard);
                     }

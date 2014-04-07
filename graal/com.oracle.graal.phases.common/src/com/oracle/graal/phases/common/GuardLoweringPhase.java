@@ -93,7 +93,7 @@ public class GuardLoweringPhase extends BasePhase<MidTierContext> {
                 GuardNode guard = nullGuarded.get(access.object());
                 if (guard != null && isImplicitNullCheck(access.accessLocation())) {
                     metricImplicitNullCheck.increment();
-                    access.setGuard(guard.getGuard());
+                    access.setGuard(null);
                     FixedAccessNode fixedAccess;
                     if (access instanceof FloatingAccessNode) {
                         fixedAccess = ((FloatingAccessNode) access).asFixedNode();
