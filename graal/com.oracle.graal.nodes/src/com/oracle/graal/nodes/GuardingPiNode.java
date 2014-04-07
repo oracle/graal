@@ -132,7 +132,7 @@ public class GuardingPiNode extends FixedWithNextNode implements Lowerable, Virt
                     @ConstantNodeParameter DeoptimizationAction action, @ConstantNodeParameter Stamp stamp);
 
     @Override
-    public ValueNode getOriginalValue() {
+    public ValueNode getOriginalNode() {
         return object;
     }
 }

@@ -431,7 +431,7 @@ public class AMD64MemoryPeephole implements MemoryArithmeticLIRLowerer {
     protected ValueNode uncast(ValueNode value) {
         if (value instanceof UnsafeCastNode) {
             UnsafeCastNode cast = (UnsafeCastNode) value;
-            return cast.getOriginalValue();
+            return cast.getOriginalNode();
         }
         return value;
     }

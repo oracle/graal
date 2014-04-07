@@ -88,7 +88,7 @@ public class GuardedValueNode extends FloatingGuardedNode implements LIRLowerabl
     }
 
     @Override
-    public ValueNode getOriginalValue() {
+    public ValueNode getOriginalNode() {
         return object;
     }
 }

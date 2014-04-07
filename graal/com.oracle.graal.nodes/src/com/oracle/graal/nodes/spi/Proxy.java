@@ -22,12 +22,16 @@
  */
 package com.oracle.graal.nodes.spi;
 
-import com.oracle.graal.api.meta.*;
-import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.graph.*;
 
-public interface MemoryProxy extends Proxy, MemoryNode {
+/**
+ * This interface marks nodes whose result is the same as one of their inputs. Such nodes are used
+ * to add type information, to introduce scheduling restrictions, etc.
+ *
+ * For some algorithms it is necessary or advantageous to see through these proxies.
+ */
+public interface Proxy extends NodeInterface {
 
-    LocationIdentity getLocationIdentity();
+    Node getOriginalNode();
 
-    MemoryNode getOriginalMemoryNode();
 }

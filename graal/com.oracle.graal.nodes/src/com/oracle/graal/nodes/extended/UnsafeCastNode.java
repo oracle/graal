@@ -54,7 +54,7 @@ public class UnsafeCastNode extends FloatingGuardedNode implements LIRLowerable,
     }
 
     @Override
-    public ValueNode getOriginalValue() {
+    public ValueNode getOriginalNode() {
         return object;
     }
 

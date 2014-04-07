@@ -168,7 +168,7 @@ public class GraphUtil {
         if (proxyPoint instanceof LoopExitNode) {
             LoopExitNode exit = (LoopExitNode) proxyPoint;
             LoopBeginNode loopBegin = exit.loopBegin();
-            ValueNode vpnValue = vpn.value();
+            Node vpnValue = vpn.value();
             for (ValueNode v : loopBegin.stateAfter().values()) {
                 ValueNode v2 = v;
                 if (loopBegin.isPhiAtMerge(v2)) {
@@ -297,7 +297,7 @@ public class GraphUtil {
     public static ValueNode unproxify(ValueNode value) {
         ValueNode result = value;
         while (result instanceof ValueProxy) {
-            result = ((ValueProxy) result).getOriginalValue();
+            result = ((ValueProxy) result).getOriginalNode();
         }
         return result;
     }
@@ -313,7 +313,7 @@ public class GraphUtil {
         ValueNode v = proxy;
         do {
             if (v instanceof ValueProxy) {
-                v = ((ValueProxy) v).getOriginalValue();
+                v = ((ValueProxy) v).getOriginalNode();
             } else if (v instanceof PhiNode) {
                 v = ((PhiNode) v).singleValue();
             } else {
@@ -339,7 +339,7 @@ public class GraphUtil {
             worklist.add(proxy);
             for (Node node : worklist) {
                 if (node instanceof ValueProxy) {
-                    ValueNode originalValue = ((ValueProxy) node).getOriginalValue();
+                    ValueNode originalValue = ((ValueProxy) node).getOriginalNode();
                     if (!process(originalValue, worklist)) {
                         return;
                     }

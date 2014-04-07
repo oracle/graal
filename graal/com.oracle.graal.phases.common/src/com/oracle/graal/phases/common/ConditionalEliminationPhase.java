@@ -845,7 +845,7 @@ public class ConditionalEliminationPhase extends Phase {
             for (Node n : value.usages()) {
                 if (n instanceof ValueProxy) {
                     ValueProxy proxyNode = (ValueProxy) n;
-                    if (proxyNode.getOriginalValue() == value) {
+                    if (proxyNode.getOriginalNode() == value) {
                         GuardingNode result = searchAnchor((ValueNode) n, type);
                         if (result != null) {
                             return result;

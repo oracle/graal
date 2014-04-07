@@ -27,14 +27,13 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Node.ValueNumberable;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
-import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
 /**
  * A proxy is inserted at loop exits for any value that is created inside the loop (i.e. was not
  * live on entry to the loop) and is (potentially) used after the loop.
  */
-public abstract class ProxyNode extends FloatingNode implements IterableNodeType, ValueNumberable, ValueAndStampProxy {
+public abstract class ProxyNode extends FloatingNode implements IterableNodeType, ValueNumberable {
 
     @Input(InputType.Association) private AbstractBeginNode proxyPoint;
 
@@ -58,20 +57,15 @@ public abstract class ProxyNode extends FloatingNode implements IterableNodeType
         return super.verify();
     }
 
-    @Override
-    public ValueNode getOriginalValue() {
-        return value();
-    }
-
     public static MemoryProxyNode forMemory(MemoryNode value, AbstractBeginNode exit, LocationIdentity location, StructuredGraph graph) {
-        return graph.unique(new MemoryProxyNode(ValueNodeUtil.asNode(value), exit, location));
+        return graph.unique(new MemoryProxyNode(value, exit, location));
     }
 
     public static ValueProxyNode forValue(ValueNode value, AbstractBeginNode exit, StructuredGraph graph) {
         return graph.unique(new ValueProxyNode(value, exit));
     }
 
-    public static GuardProxyNode forGuard(ValueNode value, AbstractBeginNode exit, StructuredGraph graph) {
+    public static GuardProxyNode forGuard(GuardingNode value, AbstractBeginNode exit, StructuredGraph graph) {
         return graph.unique(new GuardProxyNode(value, exit));
     }
 }

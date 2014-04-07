@@ -25,7 +25,6 @@ package com.oracle.graal.nodes;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.calc.*;
-import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.type.*;
 
 public abstract class PhiNode extends FloatingNode {
@@ -58,7 +57,7 @@ public abstract class PhiNode extends FloatingNode {
     /**
      * Get the instruction that produces the value associated with the i'th predecessor of the
      * merge.
-     * 
+     *
      * @param i the index of the predecessor
      * @return the instruction that produced the value in the i'th predecessor
      */
@@ -68,7 +67,7 @@ public abstract class PhiNode extends FloatingNode {
 
     /**
      * Sets the value at the given index and makes sure that the values list is large enough.
-     * 
+     *
      * @param i the index at which to set the value
      * @param x the new phi input value for the given location
      */
@@ -89,7 +88,7 @@ public abstract class PhiNode extends FloatingNode {
 
     /**
      * Get the number of inputs to this phi (i.e. the number of predecessors to the merge).
-     * 
+     *
      * @return the number of inputs in this phi
      */
     public int valueCount() {

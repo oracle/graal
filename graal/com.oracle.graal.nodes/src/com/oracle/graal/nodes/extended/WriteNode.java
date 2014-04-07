@@ -60,7 +60,7 @@ public final class WriteNode extends AbstractWriteNode implements LIRLowerable, 
     @Override
     public void simplify(SimplifierTool tool) {
         if (object() instanceof PiNode && ((PiNode) object()).getGuard() == getGuard()) {
-            setObject(((PiNode) object()).getOriginalValue());
+            setObject(((PiNode) object()).getOriginalNode());
         }
     }
 

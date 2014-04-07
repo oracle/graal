@@ -94,7 +94,7 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
     }
 
     @Override
-    public ValueNode getOriginalValue() {
+    public ValueNode getOriginalNode() {
         return object;
     }
 

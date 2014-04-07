@@ -201,7 +201,7 @@ public final class CheckCastNode extends FixedWithNextNode implements Canonicali
     }
 
     @Override
-    public ValueNode getOriginalValue() {
+    public ValueNode getOriginalNode() {
         return object;
     }
 }
