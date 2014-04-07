@@ -265,22 +265,22 @@ public class CompilationResultBuilder {
     }
 
     public AbstractAddress asByteAddr(Value value) {
-        assert value.getKind() == Kind.Byte || value.getKind() == Kind.Boolean;
+        assert value.getKind().getByteCount() >= Kind.Byte.getByteCount();
         return asAddress(value);
     }
 
     public AbstractAddress asShortAddr(Value value) {
-        assert value.getKind() == Kind.Short || value.getKind() == Kind.Char;
+        assert value.getKind().getByteCount() >= Kind.Short.getByteCount();
         return asAddress(value);
     }
 
     public AbstractAddress asIntAddr(Value value) {
-        assert value.getKind() == Kind.Int;
+        assert value.getKind().getByteCount() >= Kind.Int.getByteCount();
         return asAddress(value);
     }
 
     public AbstractAddress asLongAddr(Value value) {
-        assert value.getKind() == Kind.Long;
+        assert value.getKind().getByteCount() >= Kind.Long.getByteCount();
         return asAddress(value);
     }
 
@@ -290,12 +290,12 @@ public class CompilationResultBuilder {
     }
 
     public AbstractAddress asFloatAddr(Value value) {
-        assert value.getKind() == Kind.Float;
+        assert value.getKind().getByteCount() >= Kind.Float.getByteCount();
         return asAddress(value);
     }
 
     public AbstractAddress asDoubleAddr(Value value) {
-        assert value.getKind() == Kind.Double;
+        assert value.getKind().getByteCount() >= Kind.Double.getByteCount();
         return asAddress(value);
     }
 
