@@ -164,7 +164,7 @@ public class HotSpotReplacementsUtil {
 
     /**
      * Clears the pending exception for the given thread.
-     * 
+     *
      * @return {@code true} if there was a pending exception
      */
     public static boolean clearPendingException(Word thread) {
@@ -175,7 +175,7 @@ public class HotSpotReplacementsUtil {
 
     /**
      * Gets and clears the object result from a runtime call stored in a thread local.
-     * 
+     *
      * @return the object that was in the thread local
      */
     public static Object getAndClearObjectResult(Word thread) {
@@ -247,9 +247,9 @@ public class HotSpotReplacementsUtil {
 
     /**
      * Checks if class {@code klass} is an array.
-     * 
+     *
      * See: Klass::layout_helper_is_array
-     * 
+     *
      * @param klass the class to be checked
      * @return true if klass is an array, false otherwise
      */
@@ -299,13 +299,13 @@ public class HotSpotReplacementsUtil {
 
     /**
      * Mask for a biasable, locked or unlocked mark word.
-     * 
+     *
      * <pre>
      * +----------------------------------+-+-+
      * |                                 1|1|1|
      * +----------------------------------+-+-+
      * </pre>
-     * 
+     *
      */
     @Fold
     public static int biasedLockMaskInPlace() {
@@ -319,13 +319,13 @@ public class HotSpotReplacementsUtil {
 
     /**
      * Pattern for a biasable, unlocked mark word.
-     * 
+     *
      * <pre>
      * +----------------------------------+-+-+
      * |                                 1|0|1|
      * +----------------------------------+-+-+
      * </pre>
-     * 
+     *
      */
     @Fold
     public static int biasedLockPattern() {
@@ -467,7 +467,7 @@ public class HotSpotReplacementsUtil {
      * Loads the hub of an object (without null checking it first).
      */
     public static Word loadHub(Object object) {
-        return loadHubIntrinsic(object, getWordKind(), null);
+        return loadHubIntrinsic(object, getWordKind());
     }
 
     public static Object verifyOop(Object object) {
@@ -487,7 +487,7 @@ public class HotSpotReplacementsUtil {
 
     /**
      * Reads the value of a given register.
-     * 
+     *
      * @param register a register which must not be available to the register allocator
      * @return the value of {@code register} as a word
      */
@@ -507,6 +507,12 @@ public class HotSpotReplacementsUtil {
     @SuppressWarnings("unused")
     @NodeIntrinsic(value = LoadHubNode.class, setStampFromReturnType = true)
     public static Word loadHubIntrinsic(Object object, @ConstantNodeParameter Kind word, GuardingNode anchor) {
+        return Word.unsigned(unsafeReadKlassPointer(object));
+    }
+
+    @SuppressWarnings("unused")
+    @NodeIntrinsic(value = LoadHubNode.class, setStampFromReturnType = true)
+    public static Word loadHubIntrinsic(Object object, @ConstantNodeParameter Kind word) {
         return Word.unsigned(unsafeReadKlassPointer(object));
     }
 

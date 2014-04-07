@@ -42,21 +42,20 @@ public final class LoadHubNode extends FloatingGuardedNode implements Lowerable,
         return object;
     }
 
+    public LoadHubNode(ValueNode object, Kind kind) {
+        super(getKind(kind), null);
+        this.object = object;
+    }
+
     public LoadHubNode(ValueNode object, Kind kind, ValueNode guard) {
-        super(getKind(kind), asGuard(guard));
+        super(getKind(kind), (GuardingNode) guard);
         assert object != guard;
+        assert guard != null;
         this.object = object;
     }
 
     private static Stamp getKind(Kind kind) {
         return kind == Kind.Object ? StampFactory.objectNonNull() : StampFactory.forKind(kind);
-    }
-
-    private static GuardingNode asGuard(ValueNode guard) {
-        if (guard instanceof GuardingNode) {
-            return (GuardingNode) guard;
-        }
-        return null;
     }
 
     @Override
