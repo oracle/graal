@@ -20,13 +20,31 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes;
+package com.oracle.graal.hotspot.nodes;
 
+import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.spi.*;
+import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.type.*;
 
-public final class BeginNode extends AbstractBeginNode {
+@NodeInfo(allowedUsageTypes = {InputType.Value, InputType.Anchor, InputType.Guard})
+public final class SnippetAnchorNode extends FixedWithNextNode implements Simplifiable, GuardingNode {
 
-    public BeginNode() {
+    public SnippetAnchorNode() {
         super(StampFactory.dependency());
     }
+
+    @Override
+    public void simplify(SimplifierTool tool) {
+        AbstractBeginNode prevBegin = BeginNode.prevBegin(this);
+        replaceAtUsages(InputType.Anchor, prevBegin);
+        replaceAtUsages(InputType.Guard, prevBegin);
+        if (usages().isEmpty()) {
+            graph().removeFixed(this);
+        }
+    }
+
+    @NodeIntrinsic
+    public static native GuardingNode anchor();
 }

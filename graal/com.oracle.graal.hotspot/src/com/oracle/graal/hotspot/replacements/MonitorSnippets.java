@@ -103,7 +103,7 @@ public class MonitorSnippets implements Snippets {
         if (object == null) {
             DeoptimizeNode.deopt(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.NullCheckException);
         }
-        BeginNode anchorNode = BeginNode.anchor();
+        GuardingNode anchorNode = SnippetAnchorNode.anchor();
 
         // Load the mark word - this includes a null-check on object
         final Word mark = loadWordFromObject(object, markOffset());

@@ -36,7 +36,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.hotspot.nodes.*;
-import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.replacements.Snippet.Fold;
 import com.oracle.graal.word.*;
@@ -98,7 +98,7 @@ public class StubUtil {
      * <p>
      * <b>Stubs must use this instead of {@link Log#printf(String, long)} to avoid an object
      * constant in a RuntimeStub.</b>
-     * 
+     *
      * @param message a message string
      */
     public static void printf(String message) {
@@ -110,7 +110,7 @@ public class StubUtil {
      * <p>
      * <b>Stubs must use this instead of {@link Log#printf(String, long)} to avoid an object
      * constant in a RuntimeStub.</b>
-     * 
+     *
      * @param format a C style printf format value
      * @param value the value associated with the first conversion specifier in {@code format}
      */
@@ -123,7 +123,7 @@ public class StubUtil {
      * <p>
      * <b>Stubs must use this instead of {@link Log#printf(String, long, long)} to avoid an object
      * constant in a RuntimeStub.</b>
-     * 
+     *
      * @param format a C style printf format value
      * @param v1 the value associated with the first conversion specifier in {@code format}
      * @param v2 the value associated with the second conversion specifier in {@code format}
@@ -137,7 +137,7 @@ public class StubUtil {
      * <p>
      * <b>Stubs must use this instead of {@link Log#printf(String, long, long, long)} to avoid an
      * object constant in a RuntimeStub.</b>
-     * 
+     *
      * @param format a C style printf format value
      * @param v1 the value associated with the first conversion specifier in {@code format}
      * @param v2 the value associated with the second conversion specifier in {@code format}
@@ -159,7 +159,7 @@ public class StubUtil {
      * <p>
      * <b>Stubs must use this instead of {@link VMErrorNode#vmError(String, long)} to avoid an
      * object constant in a RuntimeStub.</b>
-     * 
+     *
      * @param message an error message
      */
     public static void fatal(String message) {
@@ -171,7 +171,7 @@ public class StubUtil {
      * <p>
      * <b>Stubs must use this instead of {@link Log#printf(String, long, long, long)} to avoid an
      * object constant in a RuntimeStub.</b>
-     * 
+     *
      * @param format a C style printf format value
      * @param value the value associated with the first conversion specifier in {@code format}
      */
@@ -184,7 +184,7 @@ public class StubUtil {
      * <p>
      * <b>Stubs must use this instead of {@link Log#printf(String, long, long, long)} to avoid an
      * object constant in a RuntimeStub.</b>
-     * 
+     *
      * @param format a C style printf format value
      * @param v1 the value associated with the first conversion specifier in {@code format}
      * @param v2 the value associated with the second conversion specifier in {@code format}
@@ -198,7 +198,7 @@ public class StubUtil {
      * <p>
      * <b>Stubs must use this instead of {@link Log#printf(String, long, long, long)} to avoid an
      * object constant in a RuntimeStub.</b>
-     * 
+     *
      * @param format a C style printf format value
      * @param v1 the value associated with the first conversion specifier in {@code format}
      * @param v2 the value associated with the second conversion specifier in {@code format}
@@ -218,7 +218,7 @@ public class StubUtil {
 
             Pointer oop = Word.fromObject(object);
             if (object != null) {
-                BeginNode anchorNode = BeginNode.anchor();
+                GuardingNode anchorNode = SnippetAnchorNode.anchor();
                 // make sure object is 'reasonable'
                 if (!oop.and(unsigned(verifyOopMask())).equal(unsigned(verifyOopBits()))) {
                     fatal("oop not in heap: %p", oop.rawValue());
