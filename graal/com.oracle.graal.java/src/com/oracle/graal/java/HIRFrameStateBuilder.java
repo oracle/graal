@@ -85,7 +85,7 @@ public class HIRFrameStateBuilder extends AbstractFrameStateBuilder<ValueNode> {
             if (eagerResolve) {
                 type = type.resolve(accessingClass);
             }
-            Kind kind = type.getKind().getStackKind();
+            Kind kind = type.getKind();
             Stamp stamp;
             if (kind == Kind.Object && type instanceof ResolvedJavaType) {
                 stamp = StampFactory.declared((ResolvedJavaType) type);
@@ -366,7 +366,7 @@ public class HIRFrameStateBuilder extends AbstractFrameStateBuilder<ValueNode> {
 
     /**
      * Adds a locked monitor to this frame state.
-     * 
+     *
      * @param object the object whose monitor will be locked.
      */
     public void pushLock(ValueNode object, MonitorIdNode monitorId) {
@@ -380,7 +380,7 @@ public class HIRFrameStateBuilder extends AbstractFrameStateBuilder<ValueNode> {
 
     /**
      * Removes a locked monitor from this frame state.
-     * 
+     *
      * @return the object whose monitor was removed from the locks list.
      */
     public ValueNode popLock() {
