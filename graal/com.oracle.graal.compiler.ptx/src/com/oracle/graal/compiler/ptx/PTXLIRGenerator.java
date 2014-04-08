@@ -908,4 +908,7 @@ public class PTXLIRGenerator extends LIRGenerator {
         return (new Variable(kind, 0));
     }
 
+    public Value emitCompareAndSwap(Value address, Value expectedValue, Value newValue, Value trueValue, Value falseValue) {
+        throw GraalInternalError.unimplemented("PTXLIRGenerator.emitCompareAndSwap()");
+    }
 }

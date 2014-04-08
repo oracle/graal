@@ -101,7 +101,7 @@ public class HSAILControlFlow {
                         case Int:
                         case Long:
                             // Generate cascading compare and branches for each case.
-                            masm.emitCompare(key, keyConstants[index], HSAILCompare.conditionToString(condition), false, false);
+                            masm.emitCompare(key.getKind(), key, keyConstants[index], HSAILCompare.conditionToString(condition), false, false);
                             masm.cbr(masm.nameOf(target));
                             break;
                         case Object:
@@ -286,10 +286,10 @@ public class HSAILControlFlow {
         @Override
         public void emitCode(CompilationResultBuilder crb, HSAILAssembler masm) {
             if (crb.isSuccessorEdge(trueDestination)) {
-                HSAILCompare.emit(crb, masm, condition.negate(), x, y, z, !unordered);
+                HSAILCompare.emit(crb, masm, opcode, condition.negate(), x, y, z, !unordered);
                 masm.cbr(masm.nameOf(falseDestination.label()));
             } else {
-                HSAILCompare.emit(crb, masm, condition, x, y, z, unordered);
+                HSAILCompare.emit(crb, masm, opcode, condition, x, y, z, unordered);
                 masm.cbr(masm.nameOf(trueDestination.label()));
                 if (!crb.isSuccessorEdge(falseDestination)) {
                     masm.jmp(falseDestination.label());
@@ -320,7 +320,7 @@ public class HSAILControlFlow {
 
         @Override
         public void emitCode(CompilationResultBuilder crb, HSAILAssembler masm) {
-            HSAILCompare.emit(crb, masm, condition, left, right, right, false);
+            HSAILCompare.emit(crb, masm, opcode, condition, left, right, right, false);
             cmove(masm, result, trueValue, falseValue);
         }
     }
@@ -336,7 +336,7 @@ public class HSAILControlFlow {
 
         @Override
         public void emitCode(CompilationResultBuilder crb, HSAILAssembler masm) {
-            HSAILCompare.emit(crb, masm, condition, left, right, right, unorderedIsTrue);
+            HSAILCompare.emit(crb, masm, opcode, condition, left, right, right, unorderedIsTrue);
             cmove(masm, result, trueValue, falseValue);
         }
     }

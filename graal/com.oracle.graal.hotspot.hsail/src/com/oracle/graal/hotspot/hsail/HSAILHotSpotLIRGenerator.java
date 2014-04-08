@@ -36,10 +36,12 @@ import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.type.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.hsail.*;
+import com.oracle.graal.lir.hsail.HSAILControlFlow.CondMoveOp;
 import com.oracle.graal.lir.hsail.HSAILControlFlow.DeoptimizeOp;
 import com.oracle.graal.lir.hsail.HSAILControlFlow.ForeignCall1ArgOp;
 import com.oracle.graal.lir.hsail.HSAILControlFlow.ForeignCall2ArgOp;
 import com.oracle.graal.lir.hsail.HSAILControlFlow.ForeignCallNoArgOp;
+import com.oracle.graal.lir.hsail.HSAILMove.CompareAndSwapOp;
 import com.oracle.graal.lir.hsail.HSAILMove.LoadCompressedPointer;
 import com.oracle.graal.lir.hsail.HSAILMove.LoadOp;
 import com.oracle.graal.lir.hsail.HSAILMove.MoveFromRegOp;
@@ -48,6 +50,7 @@ import com.oracle.graal.lir.hsail.HSAILMove.StoreCompressedPointer;
 import com.oracle.graal.lir.hsail.HSAILMove.StoreConstantOp;
 import com.oracle.graal.lir.hsail.HSAILMove.StoreOp;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.phases.util.*;
 
@@ -177,6 +180,22 @@ public class HSAILHotSpotLIRGenerator extends HSAILLIRGenerator implements HotSp
         } else {
             append(new StoreOp(getMemoryKind(kind), storeAddress, input, state));
         }
+    }
+
+    public Value emitCompareAndSwap(Value address, Value expectedValue, Value newValue, Value trueValue, Value falseValue) {
+        PlatformKind kind = newValue.getPlatformKind();
+        assert kind == expectedValue.getPlatformKind();
+        Kind memKind = getMemoryKind(kind);
+
+        HSAILAddressValue addressValue = asAddressValue(address);
+        Variable expected = emitMove(expectedValue);
+        Variable casResult = newVariable(kind);
+        append(new CompareAndSwapOp(memKind, casResult, addressValue, expected, asAllocatable(newValue)));
+
+        assert trueValue.getPlatformKind() == falseValue.getPlatformKind();
+        Variable nodeResult = newVariable(trueValue.getPlatformKind());
+        append(new CondMoveOp(HSAILLIRGenerator.mapKindToCompareOp(memKind), casResult, expected, nodeResult, Condition.EQ, trueValue, falseValue));
+        return nodeResult;
     }
 
     @Override

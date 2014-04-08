@@ -45,6 +45,8 @@ import com.oracle.graal.hotspot.stubs.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.NoOp;
 import com.oracle.graal.lir.amd64.*;
+import com.oracle.graal.lir.amd64.AMD64ControlFlow.CondMoveOp;
+import com.oracle.graal.lir.amd64.AMD64Move.CompareAndSwapOp;
 import com.oracle.graal.lir.amd64.AMD64Move.LeaDataOp;
 import com.oracle.graal.lir.amd64.AMD64Move.LoadOp;
 import com.oracle.graal.lir.amd64.AMD64Move.MoveFromRegOp;
@@ -52,6 +54,7 @@ import com.oracle.graal.lir.amd64.AMD64Move.MoveToRegOp;
 import com.oracle.graal.lir.amd64.AMD64Move.StoreConstantOp;
 import com.oracle.graal.lir.amd64.AMD64Move.StoreOp;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 
 /**
@@ -504,4 +507,20 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         }
     }
 
+    @Override
+    public Value emitCompareAndSwap(Value address, Value expectedValue, Value newValue, Value trueValue, Value falseValue) {
+        PlatformKind kind = newValue.getPlatformKind();
+        assert kind == expectedValue.getPlatformKind();
+        Kind memKind = getMemoryKind(kind);
+
+        AMD64AddressValue addressValue = asAddressValue(address);
+        RegisterValue raxRes = AMD64.rax.asValue(kind);
+        emitMove(raxRes, expectedValue);
+        append(new CompareAndSwapOp(memKind, raxRes, addressValue, raxRes, asAllocatable(newValue)));
+
+        assert trueValue.getPlatformKind() == falseValue.getPlatformKind();
+        Variable result = newVariable(trueValue.getPlatformKind());
+        append(new CondMoveOp(result, Condition.EQ, asAllocatable(trueValue), falseValue));
+        return result;
+    }
 }

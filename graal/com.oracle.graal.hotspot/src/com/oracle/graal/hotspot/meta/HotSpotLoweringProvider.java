@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -370,12 +370,15 @@ public class HotSpotLoweringProvider implements LoweringProvider {
         }
     }
 
-    private static void lowerCompareAndSwapNode(CompareAndSwapNode cas) {
-        // Separate out GC barrier semantics
+    private void lowerCompareAndSwapNode(CompareAndSwapNode cas) {
         StructuredGraph graph = cas.graph();
-        LocationNode location = IndexedLocationNode.create(cas.getLocationIdentity(), cas.expected().getKind(), cas.displacement(), cas.offset(), graph, 1);
-        LoweredCompareAndSwapNode atomicNode = graph.add(new LoweredCompareAndSwapNode(cas.object(), location, cas.expected(), cas.newValue(), getCompareAndSwapBarrier(cas),
-                        cas.expected().getKind() == Kind.Object));
+        Kind valueKind = cas.getValueKind();
+        LocationNode location = IndexedLocationNode.create(cas.getLocationIdentity(), valueKind, cas.displacement(), cas.offset(), graph, 1);
+
+        ValueNode expectedValue = implicitStoreConvert(graph, valueKind, cas.expected(), true);
+        ValueNode newValue = implicitStoreConvert(graph, valueKind, cas.newValue(), true);
+
+        LoweredCompareAndSwapNode atomicNode = graph.add(new LoweredCompareAndSwapNode(cas.object(), location, expectedValue, newValue, getCompareAndSwapBarrier(cas), false));
         atomicNode.setStateAfter(cas.stateAfter());
         graph.replaceFixedWithFixed(cas, atomicNode);
     }

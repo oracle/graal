@@ -29,7 +29,6 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
-import com.oracle.graal.nodes.java.*;
 
 public interface NodeLIRBuilderTool extends NodeMappableLIRBuilder {
 
@@ -49,8 +48,6 @@ public interface NodeLIRBuilderTool extends NodeMappableLIRBuilder {
     void visitEndNode(AbstractEndNode i);
 
     void visitLoopEnd(LoopEndNode i);
-
-    void visitCompareAndSwap(LoweredCompareAndSwapNode i, Value address);
 
     // These methods define the contract a runtime specific backend must provide.
 

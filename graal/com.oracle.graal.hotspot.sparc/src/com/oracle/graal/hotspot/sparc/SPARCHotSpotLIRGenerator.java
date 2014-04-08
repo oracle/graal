@@ -233,6 +233,10 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
         }
     }
 
+    public Value emitCompareAndSwap(Value address, Value expectedValue, Value newValue, Value trueValue, Value falseValue) {
+        throw new InternalError("NYI");
+    }
+
     @Override
     public Value emitNot(Value input) {
         GraalInternalError.shouldNotReachHere("binary negation not implemented");

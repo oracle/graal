@@ -288,10 +288,10 @@ public abstract class HSAILAssembler extends AbstractHSAILAssembler {
      *            float compares.
      * @param isUnsignedCompare - flag specifying if this is a compare of unsigned values.
      */
-    public void emitCompare(Value src0, Value src1, String condition, boolean unordered, boolean isUnsignedCompare) {
+    public void emitCompare(Kind compareKind, Value src0, Value src1, String condition, boolean unordered, boolean isUnsignedCompare) {
         // Formulate the prefix of the instruction.
         // if unordered is true, it should be ignored unless the src type is f32 or f64
-        String argType = getArgTypeFromKind(src1.getKind().getStackKind());
+        String argType = getArgTypeFromKind(compareKind);
         String unorderedPrefix = (argType.startsWith("f") && unordered ? "u" : "");
         String prefix = "cmp_" + condition + unorderedPrefix + "_b1_" + (isUnsignedCompare ? getArgTypeForceUnsigned(src1) : argType);
         // Generate a comment for debugging purposes
@@ -507,7 +507,7 @@ public abstract class HSAILAssembler extends AbstractHSAILAssembler {
      */
     private void emitWithOptionalTestForNull(boolean testForNull, String mnemonic, Value result, Value... sources) {
         if (testForNull) {
-            emitCompare(result, Constant.forLong(0), "eq", false, true);
+            emitCompare(Kind.Long, result, Constant.forLong(0), "eq", false, true);
         }
         emitForceUnsigned(mnemonic, result, sources);
         if (testForNull) {
@@ -524,8 +524,8 @@ public abstract class HSAILAssembler extends AbstractHSAILAssembler {
      * @param newValue the new value that will be written to the memory location if the cmpValue
      *            comparison matches
      */
-    public void emitAtomicCas(AllocatableValue result, HSAILAddress address, Value cmpValue, Value newValue) {
-        emitString(String.format("atomic_cas_global_b%d   %s, %s, %s, %s;", getArgSize(cmpValue), HSAIL.mapRegister(result), mapAddress(address), mapRegOrConstToString(cmpValue),
+    public void emitAtomicCas(Kind accessKind, AllocatableValue result, HSAILAddress address, Value cmpValue, Value newValue) {
+        emitString(String.format("atomic_cas_global_b%d   %s, %s, %s, %s;", getArgSizeFromKind(accessKind), HSAIL.mapRegister(result), mapAddress(address), mapRegOrConstToString(cmpValue),
                         mapRegOrConstToString(newValue)));
     }
 

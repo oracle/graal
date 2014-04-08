@@ -42,6 +42,8 @@ public class CompareAndSwapNode extends AbstractMemoryCheckpoint implements Lowe
     @Input private ValueNode offset;
     @Input private ValueNode expected;
     @Input private ValueNode newValue;
+
+    private final Kind valueKind;
     private final int displacement;
 
     public ValueNode object() {
@@ -64,7 +66,11 @@ public class CompareAndSwapNode extends AbstractMemoryCheckpoint implements Lowe
         return displacement;
     }
 
-    public CompareAndSwapNode(ValueNode object, int displacement, ValueNode offset, ValueNode expected, ValueNode newValue) {
+    public Kind getValueKind() {
+        return valueKind;
+    }
+
+    public CompareAndSwapNode(ValueNode object, int displacement, ValueNode offset, ValueNode expected, ValueNode newValue, Kind valueKind) {
         super(StampFactory.forKind(Kind.Boolean.getStackKind()));
         assert expected.stamp().isCompatible(newValue.stamp());
         this.object = object;
@@ -72,6 +78,7 @@ public class CompareAndSwapNode extends AbstractMemoryCheckpoint implements Lowe
         this.expected = expected;
         this.newValue = newValue;
         this.displacement = displacement;
+        this.valueKind = valueKind;
     }
 
     @Override
@@ -86,17 +93,20 @@ public class CompareAndSwapNode extends AbstractMemoryCheckpoint implements Lowe
 
     // specialized on value type until boxing/unboxing is sorted out in intrinsification
     @NodeIntrinsic
-    public static boolean compareAndSwap(Object object, @ConstantNodeParameter int displacement, long offset, Object expected, Object newValue) {
+    public static boolean compareAndSwap(Object object, @ConstantNodeParameter int displacement, long offset, Object expected, Object newValue,
+                    @SuppressWarnings("unused") @ConstantNodeParameter Kind valueKind) {
         return unsafe.compareAndSwapObject(object, displacement + offset, expected, newValue);
     }
 
     @NodeIntrinsic
-    public static boolean compareAndSwap(Object object, @ConstantNodeParameter int displacement, long offset, long expected, long newValue) {
+    public static boolean compareAndSwap(Object object, @ConstantNodeParameter int displacement, long offset, long expected, long newValue,
+                    @SuppressWarnings("unused") @ConstantNodeParameter Kind valueKind) {
         return unsafe.compareAndSwapLong(object, displacement + offset, expected, newValue);
     }
 
     @NodeIntrinsic
-    public static boolean compareAndSwap(Object object, @ConstantNodeParameter int displacement, long offset, int expected, int newValue) {
+    public static boolean compareAndSwap(Object object, @ConstantNodeParameter int displacement, long offset, int expected, int newValue,
+                    @SuppressWarnings("unused") @ConstantNodeParameter Kind valueKind) {
         return unsafe.compareAndSwapInt(object, displacement + offset, expected, newValue);
     }
 }

@@ -552,7 +552,7 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
             asm.emitLoadKernelArg(scratch64, asm.getDeoptInfoName(), "u64");
             asm.emitComment("// Check if a deopt has occurred and abort if true before doing any work");
             asm.emitLoadAcquire(scratch32, deoptInfoAddr);
-            asm.emitCompare(scratch32, Constant.forInt(0), "ne", false, false);
+            asm.emitCompare(Kind.Int, scratch32, Constant.forInt(0), "ne", false, false);
             asm.cbr(deoptInProgressLabel);
         }
 
@@ -680,7 +680,7 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
             // scratch32 now holds next index to use
             // set error condition if no room in save area
             asm.emitComment("// assert room to save deopt");
-            asm.emitCompare(scratch32, Constant.forInt(maxDeoptIndex), "lt", false, false);
+            asm.emitCompare(Kind.Int, scratch32, Constant.forInt(maxDeoptIndex), "lt", false, false);
             asm.cbr("@L_StoreDeopt");
             // if assert fails, store a guaranteed negative workitemid in top level deopt occurred
             // flag

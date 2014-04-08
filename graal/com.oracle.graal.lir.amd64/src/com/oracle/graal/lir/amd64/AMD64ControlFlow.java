@@ -261,7 +261,7 @@ public class AMD64ControlFlow {
         @Use({REG, STACK, CONST}) protected Value falseValue;
         private final ConditionFlag condition;
 
-        public CondMoveOp(Variable result, Condition condition, Variable trueValue, Value falseValue) {
+        public CondMoveOp(Variable result, Condition condition, AllocatableValue trueValue, Value falseValue) {
             this.result = result;
             this.condition = intCond(condition);
             this.trueValue = trueValue;

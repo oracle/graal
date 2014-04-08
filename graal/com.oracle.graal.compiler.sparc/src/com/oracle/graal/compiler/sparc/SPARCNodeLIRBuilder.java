@@ -29,7 +29,6 @@ import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.lir.sparc.*;
 import com.oracle.graal.lir.sparc.SPARCMove.NullCheckOp;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.java.*;
 
 /**
  * This class implements the SPARC specific portion of the LIR generator.
@@ -44,11 +43,6 @@ public abstract class SPARCNodeLIRBuilder extends NodeLIRBuilder {
     protected boolean peephole(ValueNode valueNode) {
         // No peephole optimizations for now
         return false;
-    }
-
-    @Override
-    public void visitCompareAndSwap(LoweredCompareAndSwapNode i, Value address) {
-        throw new InternalError("NYI");
     }
 
     @Override

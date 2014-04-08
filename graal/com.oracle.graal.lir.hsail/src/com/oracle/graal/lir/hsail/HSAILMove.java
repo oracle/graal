@@ -414,12 +414,15 @@ public class HSAILMove {
     @Opcode("CAS")
     public static class CompareAndSwapOp extends HSAILLIRInstruction {
 
+        private final Kind accessKind;
+
         @Def protected AllocatableValue result;
         @Use({COMPOSITE}) protected HSAILAddressValue address;
         @Use protected AllocatableValue cmpValue;
         @Use protected AllocatableValue newValue;
 
-        public CompareAndSwapOp(AllocatableValue result, HSAILAddressValue address, AllocatableValue cmpValue, AllocatableValue newValue) {
+        public CompareAndSwapOp(Kind accessKind, AllocatableValue result, HSAILAddressValue address, AllocatableValue cmpValue, AllocatableValue newValue) {
+            this.accessKind = accessKind;
             this.result = result;
             this.address = address;
             this.cmpValue = cmpValue;
@@ -428,54 +431,7 @@ public class HSAILMove {
 
         @Override
         public void emitCode(CompilationResultBuilder crb, HSAILAssembler masm) {
-            masm.emitAtomicCas(result, address.toAddress(), cmpValue, newValue);
-        }
-    }
-
-    @Opcode("CAS")
-    public static class CompareAndSwapCompressedOp extends CompareAndSwapOp {
-
-        @Temp({REG}) private AllocatableValue scratchCmpValue64;
-        @Temp({REG}) private AllocatableValue scratchNewValue64;
-        @Temp({REG}) private AllocatableValue scratchCmpValue32;
-        @Temp({REG}) private AllocatableValue scratchNewValue32;
-        @Temp({REG}) private AllocatableValue scratchCasResult32;
-        private final long base;
-        private final int shift;
-        private final int alignment;
-
-        public CompareAndSwapCompressedOp(AllocatableValue result, HSAILAddressValue address, AllocatableValue cmpValue, AllocatableValue newValue, AllocatableValue scratchCmpValue64,
-                        AllocatableValue scratchNewValue64, AllocatableValue scratchCmpValue32, AllocatableValue scratchNewValue32, AllocatableValue scratchCasResult32, long base, int shift,
-                        int alignment) {
-            super(result, address, cmpValue, newValue);
-            this.scratchCmpValue64 = scratchCmpValue64;
-            this.scratchNewValue64 = scratchNewValue64;
-            this.scratchCmpValue32 = scratchCmpValue32;
-            this.scratchNewValue32 = scratchNewValue32;
-            this.scratchCasResult32 = scratchCasResult32;
-            this.base = base;
-            this.shift = shift;
-            this.alignment = alignment;
-        }
-
-        @Override
-        public void emitCode(CompilationResultBuilder crb, HSAILAssembler masm) {
-            // assume any encoded or decoded value could be null
-            boolean testForNull = true;
-            // set up scratch registers to be encoded versions
-            masm.emitMov(Kind.Long, scratchCmpValue64, cmpValue);
-            encodePointer(masm, scratchCmpValue64, base, shift, alignment, testForNull);
-            masm.emitMov(Kind.Long, scratchNewValue64, newValue);
-            encodePointer(masm, scratchNewValue64, base, shift, alignment, testForNull);
-            // get encoded versions into 32-bit registers
-            masm.emitConvertForceUnsigned(scratchCmpValue32, scratchCmpValue64);
-            masm.emitConvertForceUnsigned(scratchNewValue32, scratchNewValue64);
-            // finally do the cas
-            masm.emitAtomicCas(scratchCasResult32, address.toAddress(), scratchCmpValue32, scratchNewValue32);
-            // and convert the 32-bit CasResult back to 64-bit
-            masm.emitConvertForceUnsigned(result, scratchCasResult32);
-            // and decode/uncompress the 64-bit cas result
-            decodePointer(masm, result, base, shift, alignment, testForNull);
+            masm.emitAtomicCas(accessKind, result, address.toAddress(), cmpValue, newValue);
         }
     }
 
