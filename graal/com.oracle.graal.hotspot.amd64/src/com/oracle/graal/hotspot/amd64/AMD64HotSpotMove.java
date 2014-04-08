@@ -35,7 +35,6 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.HotSpotVMConfig.CompressEncoding;
 import com.oracle.graal.hotspot.data.*;
 import com.oracle.graal.hotspot.meta.*;
-import com.oracle.graal.hotspot.nodes.type.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.amd64.*;
 import com.oracle.graal.lir.amd64.AMD64Move.LoadOp;
@@ -82,7 +81,7 @@ public class AMD64HotSpotMove {
 
         @Def({REG, HINT}) protected AllocatableValue result;
         @Use({REG}) protected AllocatableValue input;
-        @Temp({REG, ILLEGAL}) protected AllocatableValue baseRegister;
+        @Use({REG, ILLEGAL}) protected AllocatableValue baseRegister;
 
         public CompressPointer(AllocatableValue result, AllocatableValue input, AllocatableValue baseRegister, CompressEncoding encoding) {
             this.result = result;
@@ -93,12 +92,9 @@ public class AMD64HotSpotMove {
 
         @Override
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-            if (result.getPlatformKind() == NarrowOopStamp.NarrowOop) {
-                AMD64Move.move(Kind.Long, crb, masm, result, input);
-                encodePointer(masm, asRegister(result), asRegister(baseRegister), encoding);
-            } else {
-                throw GraalInternalError.unimplemented();
-            }
+            AMD64Move.move(Kind.Long, crb, masm, result, input);
+            Register base = encoding.base != 0 ? asRegister(baseRegister) : null;
+            encodePointer(masm, asRegister(result), base, encoding);
         }
     }
 
@@ -108,7 +104,7 @@ public class AMD64HotSpotMove {
 
         @Def({REG, HINT}) protected AllocatableValue result;
         @Use({REG}) protected AllocatableValue input;
-        @Temp({REG, ILLEGAL}) protected AllocatableValue baseRegister;
+        @Use({REG, ILLEGAL}) protected AllocatableValue baseRegister;
 
         public UncompressPointer(AllocatableValue result, AllocatableValue input, AllocatableValue baseRegister, CompressEncoding encoding) {
             this.result = result;
@@ -119,12 +115,9 @@ public class AMD64HotSpotMove {
 
         @Override
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-            if (result.getKind() == Kind.Object) {
-                AMD64Move.move(Kind.Int, crb, masm, result, input);
-                decodePointer(masm, asRegister(result), asRegister(baseRegister), encoding);
-            } else {
-                throw GraalInternalError.unimplemented();
-            }
+            AMD64Move.move(Kind.Int, crb, masm, result, input);
+            Register base = encoding.base != 0 ? asRegister(baseRegister) : null;
+            decodePointer(masm, asRegister(result), base, encoding);
         }
     }
 

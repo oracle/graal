@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -1497,6 +1497,22 @@ public class HotSpotVMConfig extends CompilerObject {
             this.base = base;
             this.shift = shift;
             this.alignment = alignment;
+        }
+
+        public int compress(long ptr) {
+            if (ptr == 0L) {
+                return 0;
+            } else {
+                return (int) ((ptr - base) >>> shift);
+            }
+        }
+
+        public long uncompress(int ptr) {
+            if (ptr == 0) {
+                return 0L;
+            } else {
+                return (ptr & 0xFFFFFFFFL) << shift + base;
+            }
         }
 
         @Override

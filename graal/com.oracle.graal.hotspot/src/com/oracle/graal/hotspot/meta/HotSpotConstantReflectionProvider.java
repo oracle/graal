@@ -56,7 +56,7 @@ public class HotSpotConstantReflectionProvider implements ConstantReflectionProv
     }
 
     @Override
-    public Constant readUnsafeConstant(Kind kind, Constant baseConstant, long initialDisplacement, boolean compressible) {
+    public Constant readUnsafeConstant(Kind kind, Constant baseConstant, long initialDisplacement) {
         Object base;
         long displacement;
         if (baseConstant.getKind() == Kind.Object) {
@@ -103,7 +103,7 @@ public class HotSpotConstantReflectionProvider implements ConstantReflectionProv
                 return Constant.forDouble(base == null ? unsafe.getDouble(displacement) : unsafe.getDouble(base, displacement));
             case Object: {
                 Object o = null;
-                if (compressible) {
+                if (baseConstant.getKind() == Kind.Object) {
                     o = unsafe.getObject(base, displacement);
                 } else {
                     o = runtime.getCompilerToVM().readUnsafeUncompressedPointer(base, displacement);
@@ -112,6 +112,71 @@ public class HotSpotConstantReflectionProvider implements ConstantReflectionProv
             }
             default:
                 throw GraalInternalError.shouldNotReachHere();
+        }
+    }
+
+    @Override
+    public Constant readRawConstant(Kind kind, Constant baseConstant, long initialDisplacement, int bits) {
+        Object base;
+        long displacement;
+        if (baseConstant.getKind() == Kind.Object) {
+            base = HotSpotObjectConstant.asObject(baseConstant);
+            displacement = initialDisplacement;
+            if (base == null) {
+                return null;
+            }
+        } else if (baseConstant.getKind().isNumericInteger()) {
+            long baseLong = baseConstant.asLong();
+            if (baseLong == 0L) {
+                return null;
+            }
+            displacement = initialDisplacement + baseLong;
+            base = null;
+        } else {
+            throw GraalInternalError.shouldNotReachHere();
+        }
+
+        long rawValue;
+        switch (bits) {
+            case 8:
+                rawValue = base == null ? unsafe.getByte(displacement) : unsafe.getByte(base, displacement);
+                break;
+            case 16:
+                rawValue = base == null ? unsafe.getShort(displacement) : unsafe.getShort(base, displacement);
+                break;
+            case 32:
+                rawValue = base == null ? unsafe.getInt(displacement) : unsafe.getInt(base, displacement);
+                break;
+            case 64:
+                rawValue = base == null ? unsafe.getLong(displacement) : unsafe.getLong(base, displacement);
+                break;
+            default:
+                throw GraalInternalError.shouldNotReachHere();
+        }
+
+        if (base != null && displacement == config().hubOffset) {
+            if (config().useCompressedClassPointers) {
+                assert bits == 32 && kind == Kind.Int;
+                long klassPointer = config().getKlassEncoding().uncompress((int) rawValue);
+                assert klassPointer == runtime.getCompilerToVM().readUnsafeKlassPointer(base);
+                return HotSpotMetaspaceConstant.forMetaspaceObject(kind, rawValue, HotSpotResolvedObjectType.fromMetaspaceKlass(klassPointer));
+            } else {
+                assert bits == 64 && kind == Kind.Long;
+                return HotSpotMetaspaceConstant.forMetaspaceObject(kind, rawValue, HotSpotResolvedObjectType.fromMetaspaceKlass(rawValue));
+            }
+        } else {
+            switch (kind) {
+                case Int:
+                    return Constant.forInt((int) rawValue);
+                case Long:
+                    return Constant.forLong(rawValue);
+                case Float:
+                    return Constant.forFloat(Float.intBitsToFloat((int) rawValue));
+                case Double:
+                    return Constant.forDouble(Double.longBitsToDouble(rawValue));
+                default:
+                    throw GraalInternalError.shouldNotReachHere();
+            }
         }
     }
 

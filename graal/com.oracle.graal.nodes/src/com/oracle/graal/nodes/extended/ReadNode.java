@@ -90,16 +90,22 @@ public final class ReadNode extends FloatableAccessNode implements LIRLowerable,
             }
         }
         if (tool.canonicalizeReads()) {
-            if (metaAccess != null && object != null && object.isConstant()) {
+            if (metaAccess != null && object != null && object.isConstant() && !compressible) {
                 if ((location.getLocationIdentity() == LocationIdentity.FINAL_LOCATION || location.getLocationIdentity() == LocationIdentity.ARRAY_LENGTH_LOCATION) &&
                                 location instanceof ConstantLocationNode) {
                     long displacement = ((ConstantLocationNode) location).getDisplacement();
-                    Kind kind = location.getValueKind();
                     Constant base = object.asConstant();
                     if (base != null) {
-                        Constant constant = tool.getConstantReflection().readUnsafeConstant(kind, base, displacement, compressible);
+                        Constant constant;
+                        if (read.stamp() instanceof PrimitiveStamp) {
+                            PrimitiveStamp stamp = (PrimitiveStamp) read.stamp();
+                            constant = tool.getConstantReflection().readRawConstant(stamp.getStackKind(), base, displacement, stamp.getBits());
+                        } else {
+                            assert read.stamp() instanceof ObjectStamp;
+                            constant = tool.getConstantReflection().readUnsafeConstant(Kind.Object, base, displacement);
+                        }
                         if (constant != null) {
-                            return ConstantNode.forConstant(constant, metaAccess, read.graph());
+                            return ConstantNode.forConstant(read.stamp(), constant, metaAccess, read.graph());
                         }
                     }
                 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -244,7 +244,7 @@ public class HotSpotResolvedJavaField extends CompilerObject implements Resolved
 
     /**
      * Determines if a given object contains this field.
-     * 
+     *
      * @return true iff this is a non-static field and its declaring class is assignable from
      *         {@code object}'s class
      */
@@ -260,13 +260,13 @@ public class HotSpotResolvedJavaField extends CompilerObject implements Resolved
         if (receiver == null) {
             assert isStatic(modifiers);
             if (holder.isInitialized()) {
-                return runtime().getHostProviders().getConstantReflection().readUnsafeConstant(getKind(), HotSpotObjectConstant.forObject(holder.mirror()), offset, getKind() == Kind.Object);
+                return runtime().getHostProviders().getConstantReflection().readUnsafeConstant(getKind(), HotSpotObjectConstant.forObject(holder.mirror()), offset);
             }
             return null;
         } else {
             assert !isStatic(modifiers);
             assert receiver.isNonNull() && isInObject(HotSpotObjectConstant.asObject(receiver));
-            return runtime().getHostProviders().getConstantReflection().readUnsafeConstant(getKind(), receiver, offset, getKind() == Kind.Object);
+            return runtime().getHostProviders().getConstantReflection().readUnsafeConstant(getKind(), receiver, offset);
         }
     }
 
@@ -331,7 +331,7 @@ public class HotSpotResolvedJavaField extends CompilerObject implements Resolved
 
     /**
      * Checks if this field has the {@link Stable} annotation.
-     * 
+     *
      * @return true if field has {@link Stable} annotation, false otherwise
      */
     public boolean isStable() {
