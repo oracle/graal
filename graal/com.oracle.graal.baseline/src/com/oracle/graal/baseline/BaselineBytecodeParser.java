@@ -42,6 +42,7 @@ import com.oracle.graal.java.*;
 import com.oracle.graal.java.BciBlockMapping.BciBlock;
 import com.oracle.graal.java.BciBlockMapping.LocalLiveness;
 import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.StandardOp.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.calc.FloatConvertNode.FloatConvert;
 import com.oracle.graal.nodes.cfg.*;
@@ -54,6 +55,23 @@ public class BaselineBytecodeParser extends AbstractBytecodeParser<Value, LIRFra
     private BytecodeLIRBuilder lirBuilder;
     @SuppressWarnings("unused") private BciBlock[] loopHeaders;
     private LocalLiveness liveness;
+    private BciBlockBitMap blockVisited;
+
+    private class BciBlockBitMap {
+        BitSet bitSet;
+
+        public BciBlockBitMap(BciBlockMapping blockMap) {
+            bitSet = new BitSet(blockMap.blocks.size());
+        }
+
+        public boolean get(BciBlock block) {
+            return bitSet.get(block.getId());
+        }
+
+        public void set(BciBlock block) {
+            bitSet.set(block.getId());
+        }
+    }
 
     public BaselineBytecodeParser(MetaAccessProvider metaAccess, ResolvedJavaMethod method, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts,
                     LIRFrameStateBuilder frameState, BytecodeStream stream, ProfilingInfo profilingInfo, ConstantPool constantPool, int entryBCI, Backend backend) {
@@ -79,6 +97,7 @@ public class BaselineBytecodeParser extends AbstractBytecodeParser<Value, LIRFra
             BciBlockMapping blockMap = BciBlockMapping.create(method);
             loopHeaders = blockMap.loopHeaders;
             liveness = blockMap.liveness;
+            blockVisited = new BciBlockBitMap(blockMap);
             // add predecessors
             for (BciBlock block : blockMap.blocks) {
                 for (BciBlock successor : block.getSuccessors()) {
@@ -90,9 +109,11 @@ public class BaselineBytecodeParser extends AbstractBytecodeParser<Value, LIRFra
                 throw GraalInternalError.unimplemented("Handle synchronized methods");
             }
 
-            // TODO: clear non live locals
+            frameState = new LIRFrameStateBuilder(method);
+            frameState.clearNonLiveLocals(blockMap.startBlock, liveness, true);
 
             currentBlock = blockMap.startBlock;
+            blockMap.startBlock.entryState = frameState;
             if (blockMap.startBlock.isLoopHeader) {
                 throw GraalInternalError.unimplemented("Handle start block as loop header");
             }
@@ -567,15 +588,17 @@ public class BaselineBytecodeParser extends AbstractBytecodeParser<Value, LIRFra
         assert block != null && state != null;
         assert !block.isExceptionEntry || state.stackSize() == 1;
 
-        if (block.firstInstruction == null) {
+        if (!blockVisited.get(block)) {
             /*
              * This is the first time we see this block as a branch target. Create and return a
              * placeholder that later can be replaced with a MergeNode when we see this block again.
              */
+            blockVisited.set(block);
             block.entryState = state.copy();
             block.entryState.clearNonLiveLocals(block, liveness, true);
 
-            Debug.log("createTarget %s: first visit, result: %s", block, block.firstInstruction);
+            Debug.log("createTarget %s: first visit", block);
+            return;
         }
 
         // We already saw this block before, so we have to merge states.
@@ -589,24 +612,63 @@ public class BaselineBytecodeParser extends AbstractBytecodeParser<Value, LIRFra
         }
         assert currentBlock == null || currentBlock.getId() < block.getId() : "must not be backward branch";
 
-        GraalInternalError.unimplemented("second block visit not yet implemented");
-        // if second visit
-        {
-            /*
-             * This is the second time we see this block. Create the actual MergeNode and the End
-             * Node for the already existing edge. For simplicity, we leave the placeholder in the
-             * graph and just append the new nodes after the placeholder.
-             */
+        /*
+         * This is the second time we see this block. Create the actual MergeNode and the End Node
+         * for the already existing edge. For simplicity, we leave the placeholder in the graph and
+         * just append the new nodes after the placeholder.
+         */
+        if (currentBlock != null && currentBlock.numNormalSuccessors() == 1) {
+            // this is the only successor of the current block so we can adjust
+            adaptFramestate((LIRFrameStateBuilder) block.entryState);
+            return;
         }
+        GraalInternalError.unimplemented("second block visit not yet implemented");
 
         // merge frame states e.g. block.entryState.merge(mergeNode, target.state);
 
         Debug.log("createTarget %s: merging state", block);
     }
 
+    private void adaptValues(Value dst, Value src) {
+        if (dst == null) {
+            return;
+        }
+        assert src != null : "Source is null but Destination is not!";
+
+        if (!dst.equals(src)) {
+            assert dst instanceof AllocatableValue;
+            gen.emitMove((AllocatableValue) dst, src);
+        }
+    }
+
+    private void adaptFramestate(LIRFrameStateBuilder other) {
+        assert frameState.isCompatibleWith(other) : "framestates not compatible!";
+        for (int i = 0; i < frameState.stackSize(); i++) {
+            Value src = frameState.stackAt(i);
+            Value dst = other.stackAt(i);
+            adaptValues(dst, src);
+        }
+        for (int i = 0; i < frameState.localsSize(); i++) {
+            Value src = frameState.localAt(i);
+            Value dst = other.localAt(i);
+            adaptValues(dst, src);
+        }
+    }
+
     @Override
     protected void processBlock(BciBlock block) {
+        frameState = (LIRFrameStateBuilder) block.entryState;
+        setCurrentFrameState(frameState);
+        currentBlock = block;
         iterateBytecodesForBlock(block);
+    }
+
+    private boolean isBlockEnd() {
+        List<LIRInstruction> l = gen.getResult().getLIR().getLIRforBlock(currentBlock);
+        if (l.isEmpty()) {
+            return false;
+        }
+        return l.get(l.size() - 1) instanceof BlockEndOp;
     }
 
     @Override
@@ -638,6 +700,10 @@ public class BaselineBytecodeParser extends AbstractBytecodeParser<Value, LIRFra
             stream.next();
             bci = stream.currentBCI();
 
+            if (isBlockEnd()) {
+                break;
+            }
+
             if (bci < endBCI) {
                 if (bci > block.endBci) {
                     if (block.numNormalSuccessors() == 1) {
@@ -660,7 +726,7 @@ public class BaselineBytecodeParser extends AbstractBytecodeParser<Value, LIRFra
 
     LabelRef getSuccessor(int index) {
         createTarget(currentBlock.getSuccessor(index), frameState);
-        return LabelRef.forSuccessor(lirGenRes.getLIR(), currentBlock, 0);
+        return LabelRef.forSuccessor(lirGenRes.getLIR(), currentBlock, index);
     }
 
     @Override

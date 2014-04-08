@@ -69,7 +69,7 @@ public class LIRFrameStateBuilder extends AbstractFrameStateBuilder<Value, LIRFr
 
     @Override
     public LIRFrameStateBuilder copy() {
-        return new LIRFrameStateBuilder(method);
+        return new LIRFrameStateBuilder(this);
     }
 
     private static boolean isCompatible(Value x, Value y) {
