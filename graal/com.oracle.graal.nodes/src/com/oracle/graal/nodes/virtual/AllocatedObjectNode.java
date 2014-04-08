@@ -35,7 +35,7 @@ import com.oracle.graal.nodes.type.*;
 public class AllocatedObjectNode extends FloatingNode implements Virtualizable, ArrayLengthProvider {
 
     @Input private VirtualObjectNode virtualObject;
-    @Input(InputType.Association) private CommitAllocationNode commit;
+    @Input(InputType.Extension) private CommitAllocationNode commit;
 
     public AllocatedObjectNode(VirtualObjectNode virtualObject) {
         super(StampFactory.exactNonNull(virtualObject.type()));

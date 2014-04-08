@@ -30,7 +30,7 @@ import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.type.*;
 
-@NodeInfo(allowedUsageTypes = {InputType.Association})
+@NodeInfo(allowedUsageTypes = {InputType.Extension})
 public abstract class MemoryMapNode extends FloatingNode {
 
     public MemoryMapNode() {

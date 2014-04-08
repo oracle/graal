@@ -53,6 +53,10 @@ public enum InputType {
      */
     Association,
     /**
+     * Inputs that connect tightly coupled nodes, e.g., an InvokeNode and its CallTargetNode.
+     */
+    Extension,
+    /**
      * Inputs of this type are temporarily exempt from type checking. This should only be used in
      * exceptional cases and should never survive to later stages of compilation.
      */

@@ -493,7 +493,7 @@ public class TailDuplicationPhase extends BasePhase<PhaseContext> {
                         Position pos = iter.nextPosition();
                         if (pos.get(usage) == duplicated) {
                             switch (pos.getInputType(usage)) {
-                                case Association:
+                                case Extension:
                                 case Condition:
                                 case State:
                                     // clone the offending node to the outside
@@ -524,6 +524,7 @@ public class TailDuplicationPhase extends BasePhase<PhaseContext> {
                                     }
                                     pos.set(usage, newPhi);
                                     break;
+                                case Association:
                                 default:
                                     throw GraalInternalError.shouldNotReachHere();
                             }
@@ -541,7 +542,7 @@ public class TailDuplicationPhase extends BasePhase<PhaseContext> {
                 Node input = pos.get(duplicated);
                 if (input != null && !duplicatedNodes.contains(input)) {
                     switch (pos.getInputType(duplicated)) {
-                        case Association:
+                        case Extension:
                         case Condition:
                         case State:
                             if (input != merge) {
@@ -549,6 +550,7 @@ public class TailDuplicationPhase extends BasePhase<PhaseContext> {
                                 worklist.add(input);
                             }
                             break;
+                        case Association:
                         case Guard:
                         case Anchor:
                         case Value:
