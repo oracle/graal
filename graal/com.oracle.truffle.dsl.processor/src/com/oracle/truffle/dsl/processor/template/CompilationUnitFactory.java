@@ -36,6 +36,7 @@ public abstract class CompilationUnitFactory<M> extends CodeElementFactory<M> {
         return new CodeCompilationUnit();
     }
 
+    @SuppressWarnings("rawtypes")
     @Override
     public CodeCompilationUnit process(CodeElement parent, M m) {
         return (CodeCompilationUnit) super.process(parent, m);
