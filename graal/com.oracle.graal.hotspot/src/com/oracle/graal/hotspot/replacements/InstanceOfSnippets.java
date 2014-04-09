@@ -180,7 +180,7 @@ public class InstanceOfSnippets implements Snippets {
      * Type test used when the type being tested against is not known at compile time.
      */
     @Snippet
-    public static Object instanceofDynamic(Class mirror, Object object, Object trueValue, Object falseValue) {
+    public static Object instanceofDynamic(Class<?> mirror, Object object, Object trueValue, Object falseValue) {
         if (probability(NOT_FREQUENT_PROBABILITY, object == null)) {
             isNull.inc();
             return falseValue;

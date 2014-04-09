@@ -53,5 +53,5 @@ public class DynamicNewInstanceNode extends AbstractNewObjectNode implements Can
     }
 
     @NodeIntrinsic
-    public static native Object allocateInstance(Class clazz, @ConstantNodeParameter boolean fillContents);
+    public static native Object allocateInstance(Class<?> clazz, @ConstantNodeParameter boolean fillContents);
 }

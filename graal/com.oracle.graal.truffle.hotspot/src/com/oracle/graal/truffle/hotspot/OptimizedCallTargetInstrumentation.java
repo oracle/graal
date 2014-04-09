@@ -55,7 +55,7 @@ public abstract class OptimizedCallTargetInstrumentation extends CompilationResu
         return mark;
     }
 
-    protected static int getFieldOffset(String name, Class declaringClass) {
+    protected static int getFieldOffset(String name, Class<?> declaringClass) {
         try {
             declaringClass.getDeclaredField(name).setAccessible(true);
             Field field = declaringClass.getDeclaredField(name);

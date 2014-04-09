@@ -71,10 +71,10 @@ public class TypeUniverse {
         }
         unsafe = theUnsafe;
 
-        Class[] initialClasses = {void.class, boolean.class, byte.class, short.class, char.class, int.class, float.class, long.class, double.class, Object.class, Class.class, ClassLoader.class,
+        Class<?>[] initialClasses = {void.class, boolean.class, byte.class, short.class, char.class, int.class, float.class, long.class, double.class, Object.class, Class.class, ClassLoader.class,
                         String.class, Serializable.class, Cloneable.class, Test.class, TestMetaAccessProvider.class, List.class, Collection.class, Map.class, Queue.class, HashMap.class,
                         LinkedHashMap.class, IdentityHashMap.class, AbstractCollection.class, AbstractList.class, ArrayList.class};
-        for (Class c : initialClasses) {
+        for (Class<?> c : initialClasses) {
             addClass(c);
         }
         for (Field f : Constant.class.getDeclaredFields()) {
@@ -89,7 +89,7 @@ public class TypeUniverse {
                 }
             }
         }
-        for (Class c : classes) {
+        for (Class<?> c : classes) {
             if (c != void.class && !c.isArray()) {
                 constants.add(snippetReflection.forObject(Array.newInstance(c, 42)));
             }
@@ -106,7 +106,7 @@ public class TypeUniverse {
         constants.add(snippetReflection.forObject(String[].class));
     }
 
-    public synchronized Class<?> getArrayClass(Class componentType) {
+    public synchronized Class<?> getArrayClass(Class<?> componentType) {
         Class<?> arrayClass = arrayClasses.get(componentType);
         if (arrayClass == null) {
             arrayClass = Array.newInstance(componentType, 0).getClass();
@@ -115,27 +115,27 @@ public class TypeUniverse {
         return arrayClass;
     }
 
-    public static int dimensions(Class c) {
+    public static int dimensions(Class<?> c) {
         if (c.getComponentType() != null) {
             return 1 + dimensions(c.getComponentType());
         }
         return 0;
     }
 
-    private void addClass(Class c) {
+    private void addClass(Class<?> c) {
         if (classes.add(c)) {
             if (c.getSuperclass() != null) {
                 addClass(c.getSuperclass());
             }
-            for (Class sc : c.getInterfaces()) {
+            for (Class<?> sc : c.getInterfaces()) {
                 addClass(sc);
             }
-            for (Class dc : c.getDeclaredClasses()) {
+            for (Class<?> dc : c.getDeclaredClasses()) {
                 addClass(dc);
             }
             for (Method m : c.getDeclaredMethods()) {
                 addClass(m.getReturnType());
-                for (Class p : m.getParameterTypes()) {
+                for (Class<?> p : m.getParameterTypes()) {
                     addClass(p);
                 }
             }

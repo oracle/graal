@@ -71,7 +71,7 @@ class VirtualizerToolImpl implements VirtualizerTool {
         return assumptions;
     }
 
-    public void reset(PartialEscapeBlockState newState, ValueNode newCurrent, FixedNode newPosition, GraphEffectList newEffects) {
+    public void reset(PartialEscapeBlockState<?> newState, ValueNode newCurrent, FixedNode newPosition, GraphEffectList newEffects) {
         deleted = false;
         state = newState;
         current = newCurrent;

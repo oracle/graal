@@ -173,8 +173,8 @@ public class StandardMethodSubstitutionsTest extends MethodSubstitutionTest {
         assertEquals(unsafe.compareAndSwapLong(l1, off(l1, "value"), 42, 53), compareAndSwapLong(unsafe, l2, off(l2, "value"), 42, 53));
         assertEquals(l1.get(), l2.get());
 
-        AtomicReference o1 = new AtomicReference<>("42");
-        AtomicReference o2 = new AtomicReference<>("42");
+        AtomicReference<String> o1 = new AtomicReference<>("42");
+        AtomicReference<String> o2 = new AtomicReference<>("42");
         assertEquals(unsafe.compareAndSwapObject(o1, off(o1, "value"), "42", "53"), compareAndSwapObject(unsafe, o2, off(o2, "value"), "42", "53"));
         assertEquals(o1.get(), o2.get());
 

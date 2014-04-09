@@ -48,7 +48,7 @@ public class ClassIsArrayNode extends MacroNode implements Canonicalizable {
     public Node canonical(CanonicalizerTool tool) {
         ValueNode javaClass = getJavaClass();
         if (javaClass.isConstant()) {
-            Class c = (Class) HotSpotObjectConstant.asObject(javaClass.asConstant());
+            Class<?> c = (Class<?>) HotSpotObjectConstant.asObject(javaClass.asConstant());
             if (c != null) {
                 return ConstantNode.forBoolean(c.isArray(), graph());
             }

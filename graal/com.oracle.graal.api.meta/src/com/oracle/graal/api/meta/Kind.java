@@ -66,10 +66,10 @@ public enum Kind implements PlatformKind {
     private final char typeChar;
     private final String javaName;
     private final boolean isStackInt;
-    private final Class primitiveJavaClass;
-    private final Class boxedJavaClass;
+    private final Class<?> primitiveJavaClass;
+    private final Class<?> boxedJavaClass;
 
-    private Kind(char typeChar, String javaName, boolean isStackInt, Class primitiveJavaClass, Class boxedJavaClass) {
+    private Kind(char typeChar, String javaName, boolean isStackInt, Class<?> primitiveJavaClass, Class<?> boxedJavaClass) {
         this.typeChar = typeChar;
         this.javaName = javaName;
         this.isStackInt = isStackInt;
@@ -95,7 +95,7 @@ public enum Kind implements PlatformKind {
 
     /**
      * Checks whether this type is a Java primitive type.
-     * 
+     *
      * @return {@code true} if this is {@link #Boolean}, {@link #Byte}, {@link #Char},
      *         {@link #Short}, {@link #Int}, {@link #Long}, {@link #Float}, {@link #Double}, or
      *         {@link #Void}.
@@ -106,7 +106,7 @@ public enum Kind implements PlatformKind {
 
     /**
      * Returns the kind that represents this kind when on the Java operand stack.
-     * 
+     *
      * @return the kind used on the operand stack
      */
     public Kind getStackKind() {
@@ -118,7 +118,7 @@ public enum Kind implements PlatformKind {
 
     /**
      * Checks whether this type is a Java primitive type representing an integer number.
-     * 
+     *
      * @return {@code true} if the stack kind is {@link #Int} or {@link #Long}.
      */
     public boolean isNumericInteger() {
@@ -127,7 +127,7 @@ public enum Kind implements PlatformKind {
 
     /**
      * Checks whether this type is a Java primitive type representing an unsigned number.
-     * 
+     *
      * @return {@code true} if the kind is {@link #Boolean} or {@link #Char}.
      */
     public boolean isUnsigned() {
@@ -136,7 +136,7 @@ public enum Kind implements PlatformKind {
 
     /**
      * Checks whether this type is a Java primitive type representing a floating point number.
-     * 
+     *
      * @return {@code true} if this is {@link #Float} or {@link #Double}.
      */
     public boolean isNumericFloat() {
@@ -145,7 +145,7 @@ public enum Kind implements PlatformKind {
 
     /**
      * Checks whether this represent an Object of some sort.
-     * 
+     *
      * @return {@code true} if this is {@link #Object}.
      */
     public boolean isObject() {
@@ -154,7 +154,7 @@ public enum Kind implements PlatformKind {
 
     /**
      * Returns the kind corresponding to the Java type string.
-     * 
+     *
      * @param typeString the Java type string
      * @return the kind
      */
@@ -169,7 +169,7 @@ public enum Kind implements PlatformKind {
 
     /**
      * Returns the kind of a word given the size of a word in bytes.
-     * 
+     *
      * @param wordSizeInBytes the size of a word in bytes
      * @return the kind representing a word value
      */
@@ -184,7 +184,7 @@ public enum Kind implements PlatformKind {
 
     /**
      * Returns the kind from the character describing a primitive or void.
-     * 
+     *
      * @param ch the character
      * @return the kind
      */
@@ -214,7 +214,7 @@ public enum Kind implements PlatformKind {
 
     /**
      * Returns the Kind representing the given Java class.
-     * 
+     *
      * @param klass the class
      * @return the kind
      */
@@ -244,7 +244,7 @@ public enum Kind implements PlatformKind {
 
     /**
      * Returns the Java class representing this kind.
-     * 
+     *
      * @return the Java class
      */
     public Class<?> toJavaClass() {
@@ -253,7 +253,7 @@ public enum Kind implements PlatformKind {
 
     /**
      * Returns the Java class for instances of boxed values of this kind.
-     * 
+     *
      * @return the Java class
      */
     public Class<?> toBoxedJavaClass() {
@@ -279,13 +279,13 @@ public enum Kind implements PlatformKind {
     /**
      * Classes for which invoking {@link Object#toString()} does not run user code.
      */
-    private static boolean isToStringSafe(Class c) {
+    private static boolean isToStringSafe(Class<?> c) {
         return c == Boolean.class || c == Byte.class || c == Character.class || c == Short.class || c == Integer.class || c == Float.class || c == Long.class || c == Double.class;
     }
 
     /**
      * Gets a formatted string for a given value of this kind.
-     * 
+     *
      * @param value a value of this kind
      * @return a formatted string for {@code value} based on this kind
      */
@@ -307,7 +307,7 @@ public enum Kind implements PlatformKind {
                 } else if (value instanceof JavaType) {
                     return "JavaType:" + MetaUtil.toJavaName((JavaType) value);
                 } else if (value instanceof Enum) {
-                    return MetaUtil.getSimpleName(value.getClass(), true) + ":" + ((Enum) value).name();
+                    return MetaUtil.getSimpleName(value.getClass(), true) + ":" + ((Enum<?>) value).name();
                 } else if (value instanceof FormatWithToString) {
                     return MetaUtil.getSimpleName(value.getClass(), true) + ":" + String.valueOf(value);
                 } else if (value instanceof Class<?>) {
@@ -351,7 +351,7 @@ public enum Kind implements PlatformKind {
 
     /**
      * The minimum value that can be represented as a value of this kind.
-     * 
+     *
      * @return the minimum value
      */
     public long getMinValue() {
@@ -375,7 +375,7 @@ public enum Kind implements PlatformKind {
 
     /**
      * The maximum value that can be represented as a value of this kind.
-     * 
+     *
      * @return the maximum value
      */
     public long getMaxValue() {
@@ -399,7 +399,7 @@ public enum Kind implements PlatformKind {
 
     /**
      * Number of bytes that are necessary to represent a value of this kind.
-     * 
+     *
      * @return the number of bytes
      */
     public int getByteCount() {
@@ -412,7 +412,7 @@ public enum Kind implements PlatformKind {
 
     /**
      * Number of bits that are necessary to represent a value of this kind.
-     * 
+     *
      * @return the number of bits
      */
     public int getBitCount() {

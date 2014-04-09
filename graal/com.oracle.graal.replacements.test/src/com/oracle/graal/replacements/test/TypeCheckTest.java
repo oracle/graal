@@ -48,11 +48,11 @@ public abstract class TypeCheckTest extends GraalCompilerTest {
         return super.getCode(method, graph, forceCompile);
     }
 
-    protected JavaTypeProfile profile(Class... types) {
+    protected JavaTypeProfile profile(Class<?>... types) {
         return profile(TriState.FALSE, types);
     }
 
-    protected JavaTypeProfile profile(TriState nullSeen, Class... types) {
+    protected JavaTypeProfile profile(TriState nullSeen, Class<?>... types) {
         if (types.length == 0) {
             return null;
         }

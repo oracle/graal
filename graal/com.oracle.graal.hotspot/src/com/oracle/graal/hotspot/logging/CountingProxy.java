@@ -79,7 +79,7 @@ public class CountingProxy<T> implements InvocationHandler {
         return interf.cast(obj);
     }
 
-    private static ArrayList<CountingProxy> proxies = new ArrayList<>();
+    private static ArrayList<CountingProxy<?>> proxies = new ArrayList<>();
 
     static {
         if (ENABLED) {
@@ -87,7 +87,7 @@ public class CountingProxy<T> implements InvocationHandler {
 
                 @Override
                 public void run() {
-                    for (CountingProxy proxy : proxies) {
+                    for (CountingProxy<?> proxy : proxies) {
                         proxy.print();
                     }
                 }

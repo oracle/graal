@@ -151,7 +151,7 @@ public class ObjectPTXTest extends PTXTest {
     @Ignore("Object return values not yet supported")
     @Test
     public void test9() {
-        for (Object o : new Object[]{null, "object", new Object(), new HashMap()}) {
+        for (Object o : new Object[]{null, "object", new Object(), new HashMap<>()}) {
             A a = new A();
             a.o = o;
             test("testObject", a);

@@ -29,13 +29,13 @@ package com.oracle.graal.options;
 public class OptionDescriptor {
 
     protected final String name;
-    protected final Class type;
+    protected final Class<?> type;
     protected final String help;
     protected final OptionValue<?> option;
     protected final Class<?> declaringClass;
     protected final String fieldName;
 
-    public OptionDescriptor(String name, Class type, String help, Class<?> declaringClass, String fieldName, OptionValue<?> option) {
+    public OptionDescriptor(String name, Class<?> type, String help, Class<?> declaringClass, String fieldName, OptionValue<?> option) {
         this.name = name;
         this.type = type;
         this.help = help;
@@ -48,7 +48,7 @@ public class OptionDescriptor {
     /**
      * Gets the type of values stored in the option.
      */
-    public Class getType() {
+    public Class<?> getType() {
         return type;
     }
 

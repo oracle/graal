@@ -43,7 +43,7 @@ public class UnsafeAllocateInstance01 extends JTTTest {
         return newObject.field01;
     }
 
-    public static void testClassForException(Class clazz) throws SecurityException, InstantiationException {
+    public static void testClassForException(Class<?> clazz) throws SecurityException, InstantiationException {
         final Unsafe unsafe = getUnsafe();
         unsafe.allocateInstance(clazz);
     }

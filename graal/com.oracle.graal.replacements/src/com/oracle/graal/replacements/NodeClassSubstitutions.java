@@ -44,7 +44,7 @@ public class NodeClassSubstitutions {
     }
 
     @MethodSubstitution
-    private static NodeList getNodeList(Node node, long offset) {
+    private static NodeList<?> getNodeList(Node node, long offset) {
         return PiNode.piCast(UnsafeLoadNode.load(node, offset, Kind.Object, LocationIdentity.ANY_LOCATION), NodeList.class);
     }
 
@@ -54,7 +54,7 @@ public class NodeClassSubstitutions {
     }
 
     @MethodSubstitution
-    private static void putNodeList(Node node, long offset, NodeList value) {
+    private static void putNodeList(Node node, long offset, NodeList<?> value) {
         UnsafeStoreNode.store(node, offset, value, Kind.Object, LocationIdentity.ANY_LOCATION);
     }
 

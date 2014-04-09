@@ -82,11 +82,11 @@ public class InstanceOfDynamicTest extends GraalCompilerTest {
         return o.getClass().getName().length();
     }
 
-    public static boolean isInstanceDynamic(Class c, Object o) {
+    public static boolean isInstanceDynamic(Class<?> c, Object o) {
         return c.isInstance(o);
     }
 
-    public static int isInstanceIntDynamic(Class c, Object o) {
+    public static int isInstanceIntDynamic(Class<?> c, Object o) {
         if (c.isInstance(o)) {
             return o.toString().length();
         }

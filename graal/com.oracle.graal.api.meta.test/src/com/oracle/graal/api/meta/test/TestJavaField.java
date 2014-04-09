@@ -68,7 +68,7 @@ public class TestJavaField extends FieldUniverse {
     @Test
     public void getDeclaringClassTest() {
         for (Map.Entry<Field, ResolvedJavaField> e : fields.entrySet()) {
-            Class expected = e.getKey().getDeclaringClass();
+            Class<?> expected = e.getKey().getDeclaringClass();
             ResolvedJavaType actual = e.getValue().getDeclaringClass();
             assertTrue(actual.equals(metaAccess.lookupJavaType(expected)));
         }

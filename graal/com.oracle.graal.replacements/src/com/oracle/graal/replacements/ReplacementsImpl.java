@@ -234,7 +234,7 @@ public class ReplacementsImpl implements Replacements {
         if (originalMember instanceof Method) {
             original = metaAccess.lookupJavaMethod((Method) originalMember);
         } else {
-            original = metaAccess.lookupJavaConstructor((Constructor) originalMember);
+            original = metaAccess.lookupJavaConstructor((Constructor<?>) originalMember);
         }
         if (Debug.isLogEnabled()) {
             Debug.log("substitution: %s --> %s", MetaUtil.format("%H.%n(%p) %r", original), MetaUtil.format("%H.%n(%p) %r", substitute));
@@ -257,7 +257,7 @@ public class ReplacementsImpl implements Replacements {
         if (originalMethod instanceof Method) {
             originalJavaMethod = metaAccess.lookupJavaMethod((Method) originalMethod);
         } else {
-            originalJavaMethod = metaAccess.lookupJavaConstructor((Constructor) originalMethod);
+            originalJavaMethod = metaAccess.lookupJavaConstructor((Constructor<?>) originalMethod);
         }
         registeredMacroSubstitutions.put(originalJavaMethod, macro);
         return originalJavaMethod;
@@ -535,7 +535,7 @@ public class ReplacementsImpl implements Replacements {
      * @param optional if true, resolution failure returns null
      * @return the resolved class or null if resolution fails and {@code optional} is true
      */
-    static Class resolveType(String className, boolean optional) {
+    static Class<?> resolveType(String className, boolean optional) {
         try {
             // Need to use launcher class path to handle classes
             // that are not on the boot class path
@@ -549,7 +549,7 @@ public class ReplacementsImpl implements Replacements {
         }
     }
 
-    private static Class resolveType(JavaType type) {
+    private static Class<?> resolveType(JavaType type) {
         JavaType base = type;
         int dimensions = 0;
         while (base.getComponentType() != null) {
@@ -557,15 +557,15 @@ public class ReplacementsImpl implements Replacements {
             dimensions++;
         }
 
-        Class baseClass = base.getKind() != Kind.Object ? base.getKind().toJavaClass() : resolveType(toJavaName(base), false);
+        Class<?> baseClass = base.getKind() != Kind.Object ? base.getKind().toJavaClass() : resolveType(toJavaName(base), false);
         return dimensions == 0 ? baseClass : Array.newInstance(baseClass, new int[dimensions]).getClass();
     }
 
     static class JavaSignature {
-        final Class returnType;
-        final Class[] parameters;
+        final Class<?> returnType;
+        final Class<?>[] parameters;
 
-        public JavaSignature(Class returnType, Class[] parameters) {
+        public JavaSignature(Class<?> returnType, Class<?>[] parameters) {
             this.parameters = parameters;
             this.returnType = returnType;
         }
@@ -584,8 +584,8 @@ public class ReplacementsImpl implements Replacements {
     }
 
     private JavaSignature originalSignature(Method substituteMethod, String methodSubstitution, boolean isStatic) {
-        Class[] parameters;
-        Class returnType;
+        Class<?>[] parameters;
+        Class<?> returnType;
         if (methodSubstitution.isEmpty()) {
             parameters = substituteMethod.getParameterTypes();
             if (!isStatic) {

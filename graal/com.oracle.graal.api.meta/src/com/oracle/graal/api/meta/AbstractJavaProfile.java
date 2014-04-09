@@ -131,7 +131,7 @@ public abstract class AbstractJavaProfile<T extends AbstractProfiledItem<U>, U> 
         if (!(obj instanceof AbstractJavaProfile)) {
             return false;
         }
-        AbstractJavaProfile that = (AbstractJavaProfile) obj;
+        AbstractJavaProfile<?, ?> that = (AbstractJavaProfile<?, ?>) obj;
         if (that.notRecordedProbability != notRecordedProbability) {
             return false;
         }

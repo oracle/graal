@@ -38,7 +38,7 @@ public class TestMetaAccessProvider extends TypeUniverse {
 
     @Test
     public void lookupJavaTypeTest() {
-        for (Class c : classes) {
+        for (Class<?> c : classes) {
             ResolvedJavaType type = metaAccess.lookupJavaType(c);
             assertNotNull(type);
             assertEquals(c.getModifiers(), type.getModifiers());
@@ -51,7 +51,7 @@ public class TestMetaAccessProvider extends TypeUniverse {
 
     @Test
     public void lookupJavaMethodTest() {
-        for (Class c : classes) {
+        for (Class<?> c : classes) {
             for (Method reflect : c.getDeclaredMethods()) {
                 ResolvedJavaMethod method = metaAccess.lookupJavaMethod(reflect);
                 assertNotNull(method);
@@ -65,7 +65,7 @@ public class TestMetaAccessProvider extends TypeUniverse {
 
     @Test
     public void lookupJavaFieldTest() {
-        for (Class c : classes) {
+        for (Class<?> c : classes) {
             for (Field reflect : c.getDeclaredFields()) {
                 ResolvedJavaField field = metaAccess.lookupJavaField(reflect);
                 assertNotNull(field);

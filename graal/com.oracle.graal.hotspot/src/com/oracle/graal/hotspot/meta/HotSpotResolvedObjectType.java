@@ -79,7 +79,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
      */
     public static ResolvedJavaType fromMetaspaceKlass(long metaspaceKlass) {
         assert metaspaceKlass != 0;
-        Class javaClass = (Class) runtime().getCompilerToVM().readUnsafeUncompressedPointer(null, metaspaceKlass + runtime().getConfig().classMirrorOffset);
+        Class<?> javaClass = (Class<?>) runtime().getCompilerToVM().readUnsafeUncompressedPointer(null, metaspaceKlass + runtime().getConfig().classMirrorOffset);
         assert javaClass != null;
         return fromClass(javaClass);
     }
@@ -138,7 +138,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
 
     @Override
     public ResolvedJavaType getComponentType() {
-        Class javaComponentType = mirror().getComponentType();
+        Class<?> javaComponentType = mirror().getComponentType();
         return javaComponentType == null ? null : fromClass(javaComponentType);
     }
 
@@ -204,14 +204,14 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
 
     @Override
     public HotSpotResolvedObjectType getSuperclass() {
-        Class javaSuperclass = mirror().getSuperclass();
+        Class<?> javaSuperclass = mirror().getSuperclass();
         return javaSuperclass == null ? null : (HotSpotResolvedObjectType) fromClass(javaSuperclass);
     }
 
     @Override
     public ResolvedJavaType[] getInterfaces() {
         if (interfaces == null) {
-            Class[] javaInterfaces = mirror().getInterfaces();
+            Class<?>[] javaInterfaces = mirror().getInterfaces();
             ResolvedJavaType[] result = new ResolvedJavaType[javaInterfaces.length];
             for (int i = 0; i < javaInterfaces.length; i++) {
                 result[i] = fromClass(javaInterfaces[i]);
@@ -717,7 +717,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
 
     @Override
     public ResolvedJavaMethod[] getDeclaredConstructors() {
-        Constructor[] constructors = mirror().getDeclaredConstructors();
+        Constructor<?>[] constructors = mirror().getDeclaredConstructors();
         ResolvedJavaMethod[] result = new ResolvedJavaMethod[constructors.length];
         for (int i = 0; i < constructors.length; i++) {
             result[i] = runtime().getHostProviders().getMetaAccess().lookupJavaConstructor(constructors[i]);

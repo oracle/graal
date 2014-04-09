@@ -151,7 +151,7 @@ public class HotSpotForeignCallLinkage implements ForeignCallLinkage, InvokeTarg
         return regConfig.getCallingConvention(ccType, returnType, parameterTypes, target, false);
     }
 
-    private static JavaType asJavaType(Class type, MetaAccessProvider metaAccess, CodeCacheProvider codeCache) {
+    private static JavaType asJavaType(Class<?> type, MetaAccessProvider metaAccess, CodeCacheProvider codeCache) {
         if (WordBase.class.isAssignableFrom(type)) {
             return metaAccess.lookupJavaType(codeCache.getTarget().wordKind.toJavaClass());
         } else {

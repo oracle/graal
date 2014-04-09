@@ -219,7 +219,7 @@ public class HotSpotConstantReflectionProvider implements ConstantReflectionProv
         if (constant.getKind() == Kind.Object) {
             Object obj = HotSpotObjectConstant.asObject(constant);
             if (obj instanceof Class) {
-                return runtime.getHostProviders().getMetaAccess().lookupJavaType((Class) obj);
+                return runtime.getHostProviders().getMetaAccess().lookupJavaType((Class<?>) obj);
             }
         }
         return null;

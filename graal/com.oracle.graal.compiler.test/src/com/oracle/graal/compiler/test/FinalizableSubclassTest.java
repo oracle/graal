@@ -59,7 +59,7 @@ public class FinalizableSubclassTest extends GraalCompilerTest {
         }
     }
 
-    private StructuredGraph parseAndProcess(Class cl, Assumptions assumptions) {
+    private StructuredGraph parseAndProcess(Class<?> cl, Assumptions assumptions) {
         Constructor<?>[] constructors = cl.getConstructors();
         Assert.assertTrue(constructors.length == 1);
         final ResolvedJavaMethod javaMethod = getMetaAccess().lookupJavaConstructor(constructors[0]);
@@ -73,7 +73,7 @@ public class FinalizableSubclassTest extends GraalCompilerTest {
         return graph;
     }
 
-    private void checkForRegisterFinalizeNode(Class cl, boolean shouldContainFinalizer, boolean optimistic) {
+    private void checkForRegisterFinalizeNode(Class<?> cl, boolean shouldContainFinalizer, boolean optimistic) {
         Assumptions assumptions = new Assumptions(optimistic);
         StructuredGraph graph = parseAndProcess(cl, assumptions);
         Assert.assertTrue(graph.getNodes().filter(RegisterFinalizerNode.class).count() == (shouldContainFinalizer ? 1 : 0));
@@ -109,7 +109,7 @@ public class FinalizableSubclassTest extends GraalCompilerTest {
         private static int loaderInstance = 0;
 
         private final String replaceTo;
-        private HashMap<String, Class> cache = new HashMap<>();
+        private HashMap<String, Class<?>> cache = new HashMap<>();
 
         public ClassTemplateLoader() {
             loaderInstance++;
@@ -149,7 +149,7 @@ public class FinalizableSubclassTest extends GraalCompilerTest {
             }
             dumpStringsInByteArray(classData);
 
-            Class c = defineClass(null, classData, 0, classData.length);
+            Class<?> c = defineClass(null, classData, 0, classData.length);
             cache.put(nameReplaced, c);
             return c;
         }

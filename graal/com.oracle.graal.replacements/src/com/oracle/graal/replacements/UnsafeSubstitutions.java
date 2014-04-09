@@ -387,7 +387,7 @@ public class UnsafeSubstitutions {
     }
 
     @MethodSubstitution(isStatic = false)
-    public static Object allocateInstance(final Unsafe thisObj, Class clazz) throws InstantiationException {
+    public static Object allocateInstance(final Unsafe thisObj, Class<?> clazz) throws InstantiationException {
         if (clazz.isPrimitive()) {
             throw new InstantiationException(clazz.getName());
         }

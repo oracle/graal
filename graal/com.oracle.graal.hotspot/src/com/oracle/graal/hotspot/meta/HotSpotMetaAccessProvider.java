@@ -93,7 +93,7 @@ public class HotSpotMetaAccessProvider implements MetaAccessProvider {
         }
     }
 
-    public ResolvedJavaMethod lookupJavaConstructor(Constructor reflectionConstructor) {
+    public ResolvedJavaMethod lookupJavaConstructor(Constructor<?> reflectionConstructor) {
         try {
             Class<?> holder = reflectionConstructor.getDeclaringClass();
             final int slot = reflectionConstructorSlot.getInt(reflectionConstructor);

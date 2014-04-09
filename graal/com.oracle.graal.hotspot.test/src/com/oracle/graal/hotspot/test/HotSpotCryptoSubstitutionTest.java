@@ -127,7 +127,7 @@ public class HotSpotCryptoSubstitutionTest extends GraalCompilerTest {
     }
 
     private static Method lookup(String className, String methodName) {
-        Class c;
+        Class<?> c;
         try {
             c = Class.forName(className);
             for (Method m : c.getDeclaredMethods()) {
@@ -180,7 +180,7 @@ public class HotSpotCryptoSubstitutionTest extends GraalCompilerTest {
         return result;
     }
 
-    private static byte[] readClassfile16(Class c) throws IOException {
+    private static byte[] readClassfile16(Class<? extends HotSpotCryptoSubstitutionTest> c) throws IOException {
         String classFilePath = "/" + c.getName().replace('.', '/') + ".class";
         InputStream stream = c.getResourceAsStream(classFilePath);
         int bytesToRead = stream.available();

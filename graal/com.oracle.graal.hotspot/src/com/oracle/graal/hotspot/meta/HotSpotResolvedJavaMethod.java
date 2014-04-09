@@ -451,7 +451,7 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
     @Override
     public Annotation[][] getParameterAnnotations() {
         if (isConstructor()) {
-            Constructor javaConstructor = toJavaConstructor();
+            Constructor<?> javaConstructor = toJavaConstructor();
             return javaConstructor == null ? null : javaConstructor.getParameterAnnotations();
         }
         Method javaMethod = toJava();
@@ -486,7 +486,7 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
     @Override
     public Type[] getGenericParameterTypes() {
         if (isConstructor()) {
-            Constructor javaConstructor = toJavaConstructor();
+            Constructor<?> javaConstructor = toJavaConstructor();
             return javaConstructor == null ? null : javaConstructor.getGenericParameterTypes();
         }
         Method javaMethod = toJava();
@@ -511,7 +511,7 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
         }
     }
 
-    private Constructor toJavaConstructor() {
+    private Constructor<?> toJavaConstructor() {
         try {
             return holder.mirror().getDeclaredConstructor(signatureToTypes());
         } catch (NoSuchMethodException e) {
@@ -652,7 +652,7 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
     @Override
     public Constant newInstance(Constant[] arguments) {
         assert isConstructor();
-        Constructor javaConstructor = toJavaConstructor();
+        Constructor<?> javaConstructor = toJavaConstructor();
         javaConstructor.setAccessible(true);
 
         Object[] objArguments = new Object[arguments.length];

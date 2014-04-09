@@ -63,7 +63,7 @@ public class CipherBlockChainingSubstitutions {
     }
 
     @Fold
-    private static Class getAESCryptClass() {
+    private static Class<?> getAESCryptClass() {
         return AESCryptSubstitutions.AESCryptClass;
     }
 

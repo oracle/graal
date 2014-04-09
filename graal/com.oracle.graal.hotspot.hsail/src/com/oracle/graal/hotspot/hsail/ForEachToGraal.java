@@ -62,7 +62,7 @@ public class ForEachToGraal implements CompileAndDispatch {
      * @param intConsumerClass a class implementing {@code java.util.function.IntConsumer}
      * @return a {@link HotSpotNmethod} handle to the compiled and installed kernel
      */
-    private static HotSpotNmethod getCompiledLambda(Class intConsumerClass) {
+    private static HotSpotNmethod getCompiledLambda(Class<?> intConsumerClass) {
         Method acceptMethod = null;
         for (Method m : intConsumerClass.getMethods()) {
             if (m.getName().equals("accept")) {

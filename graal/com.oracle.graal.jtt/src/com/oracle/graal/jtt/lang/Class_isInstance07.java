@@ -35,7 +35,7 @@ public final class Class_isInstance07 extends JTTTest implements Cloneable {
     static final String[] sarray = {};
     static final Object thisObject = new Class_isInstance07();
 
-    public static boolean test(int i, Class c) {
+    public static boolean test(int i, Class<?> c) {
         Object object = null;
         if (i == 0) {
             object = obj;
