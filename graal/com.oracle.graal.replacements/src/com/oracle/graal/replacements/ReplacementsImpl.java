@@ -39,6 +39,7 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.debug.internal.*;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.Graph.Mark;
 import com.oracle.graal.java.*;
 import com.oracle.graal.java.GraphBuilderPhase.Instance;
 import com.oracle.graal.nodes.*;
@@ -460,17 +461,30 @@ public class ReplacementsImpl implements Replacements {
 
         private StructuredGraph buildGraph(final ResolvedJavaMethod methodToParse, final SnippetInliningPolicy policy, int inliningDepth) {
             assert inliningDepth < MAX_GRAPH_INLINING_DEPTH : "inlining limit exceeded";
-            assert isInlinableSnippet(methodToParse) : methodToParse;
+            assert isInlinable(methodToParse) : methodToParse;
             final StructuredGraph graph = buildInitialGraph(methodToParse);
             try (Scope s = Debug.scope("buildGraph", graph)) {
-
+                Set<MethodCallTargetNode> doNotInline = null;
                 for (MethodCallTargetNode callTarget : graph.getNodes(MethodCallTargetNode.class)) {
+                    if (doNotInline != null && doNotInline.contains(callTarget)) {
+                        continue;
+                    }
                     ResolvedJavaMethod callee = callTarget.targetMethod();
                     if (callee.equals(recursiveEntry)) {
-                        if (isInlinableSnippet(substitutedMethod)) {
+                        if (isInlinable(substitutedMethod)) {
                             final StructuredGraph originalGraph = buildInitialGraph(substitutedMethod);
+                            Mark mark = graph.getMark();
                             InliningUtil.inline(callTarget.invoke(), originalGraph, true);
-
+                            for (MethodCallTargetNode inlinedCallTarget : graph.getNewNodes(mark).filter(MethodCallTargetNode.class)) {
+                                if (doNotInline == null) {
+                                    doNotInline = new HashSet<>();
+                                }
+                                // We do not want to do further inlining (now) for calls
+                                // in the original method as this can cause unlimited
+                                // recursive inlining given an eager inlining policy such
+                                // as DefaultSnippetInliningPolicy.
+                                doNotInline.add(inlinedCallTarget);
+                            }
                             Debug.dump(graph, "after inlining %s", callee);
                             afterInline(graph, originalGraph, null);
                         }
@@ -516,8 +530,8 @@ public class ReplacementsImpl implements Replacements {
         }
     }
 
-    private static boolean isInlinableSnippet(final ResolvedJavaMethod methodToParse) {
-        return !Modifier.isAbstract(methodToParse.getModifiers()) && !Modifier.isNative(methodToParse.getModifiers());
+    private static boolean isInlinable(final ResolvedJavaMethod method) {
+        return !Modifier.isAbstract(method.getModifiers()) && !Modifier.isNative(method.getModifiers());
     }
 
     private static String originalName(Method substituteMethod, String methodSubstitution) {
