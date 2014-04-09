@@ -33,7 +33,7 @@ public final class Class_forName03 extends JTTTest {
 
     public static String test(int i) throws ClassNotFoundException {
         String clname = null;
-        Class cl = null;
+        Class<?> cl = null;
         if (i == 0) {
             clname = "java.lang.Object[]";
             cl = Object.class;

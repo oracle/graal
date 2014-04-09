@@ -853,7 +853,7 @@ public class Debug {
 
     public static Object convertFormatArg(Object arg) {
         if (arg instanceof Class) {
-            return ((Class) arg).getSimpleName();
+            return ((Class<?>) arg).getSimpleName();
         }
         return arg;
     }

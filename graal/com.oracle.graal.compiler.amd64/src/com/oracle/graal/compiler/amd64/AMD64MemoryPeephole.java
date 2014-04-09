@@ -353,10 +353,10 @@ public class AMD64MemoryPeephole implements MemoryArithmeticLIRLowerer {
     }
 
     @Override
-    public Value emitZeroExtendMemory(int inputBits, int resultBits, Access access) {
-        assert resultBits == 32 || resultBits == 64;
+    public Value emitZeroExtendMemory(int fromBits, int toBits, Access access) {
+        assert fromBits != toBits;
         Kind memoryKind = access.accessLocation().getValueKind();
-        if (memoryKind.getBitCount() != inputBits && !memoryKind.isUnsigned()) {
+        if (memoryKind.getBitCount() != fromBits && !memoryKind.isUnsigned()) {
             // The memory being read from is signed and smaller than the result size so
             // this is a sign extension to inputBits followed by a zero extension to resultBits
             // which can't be expressed in a memory operation.
@@ -366,7 +366,7 @@ public class AMD64MemoryPeephole implements MemoryArithmeticLIRLowerer {
             memoryKind = Kind.Char;
         }
         evaluateDeferred();
-        return gen.getLIRGenerator().emitZeroExtendMemory(memoryKind, resultBits, makeAddress(access), getState(access));
+        return gen.getLIRGenerator().emitZeroExtendMemory(memoryKind, toBits, makeAddress(access), getState(access));
     }
 
     public boolean emitIfMemory(IfNode x, Access access) {

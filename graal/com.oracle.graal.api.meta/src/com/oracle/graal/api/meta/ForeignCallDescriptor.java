@@ -41,10 +41,10 @@ import java.util.*;
 public class ForeignCallDescriptor {
 
     private final String name;
-    private final Class resultType;
-    private final Class[] argumentTypes;
+    private final Class<?> resultType;
+    private final Class<?>[] argumentTypes;
 
-    public ForeignCallDescriptor(String name, Class resultType, Class... argumentTypes) {
+    public ForeignCallDescriptor(String name, Class<?> resultType, Class<?>... argumentTypes) {
         this.name = name;
         this.resultType = resultType;
         this.argumentTypes = argumentTypes;
@@ -89,7 +89,7 @@ public class ForeignCallDescriptor {
     public String toString() {
         StringBuilder sb = new StringBuilder(name).append('(');
         String sep = "";
-        for (Class arg : argumentTypes) {
+        for (Class<?> arg : argumentTypes) {
             sb.append(sep).append(arg.getSimpleName());
             sep = ",";
         }

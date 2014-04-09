@@ -135,8 +135,8 @@ public class NewInstanceTest extends GraalCompilerTest {
         return new String(value);
     }
 
-    public static HashMap newHashMap(int initialCapacity) {
-        return new HashMap(initialCapacity);
+    public static HashMap<?, ?> newHashMap(int initialCapacity) {
+        return new HashMap<>(initialCapacity);
     }
 
     static class SomeObject {

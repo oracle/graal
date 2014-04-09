@@ -111,7 +111,7 @@ public abstract class Node implements Cloneable, Formattable {
          * method. If not specified, then the class in which the annotated method is declared is
          * used (and is assumed to be a {@link Node} subclass).
          */
-        Class value() default NodeIntrinsic.class;
+        Class<?> value() default NodeIntrinsic.class;
 
         /**
          * Determines if the stamp of the instantiated intrinsic node has its stamp set from the
@@ -907,7 +907,8 @@ public abstract class Node implements Cloneable, Formattable {
         if ((flags & FormattableFlags.ALTERNATE) == FormattableFlags.ALTERNATE) {
             formatter.format("%s", toString(Verbosity.Id));
         } else if ((flags & FormattableFlags.UPPERCASE) == FormattableFlags.UPPERCASE) {
-            formatter.format("%s", toString(Verbosity.Long));
+            // Use All here since Long is only slightly longer than Short.
+            formatter.format("%s", toString(Verbosity.All));
         } else {
             formatter.format("%s", toString(Verbosity.Short));
         }

@@ -198,10 +198,10 @@ public class Test6823354 {
     }
 
     static void loadandrunclass(String classname) throws Exception {
-        Class cl = Class.forName(classname);
+        Class<?> cl = Class.forName(classname);
         URLClassLoader apploader = (URLClassLoader) cl.getClassLoader();
         ClassLoader loader = new URLClassLoader(apploader.getURLs(), apploader.getParent());
-        Class c = loader.loadClass(classname);
+        Class<?> c = loader.loadClass(classname);
         Runnable r = (Runnable) c.newInstance();
         r.run();
     }

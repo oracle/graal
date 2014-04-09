@@ -67,6 +67,13 @@ public final class AndNode extends BitLogicNode implements Canonicalizable, Narr
             if ((rawY & mask) == 0) {
                 return ConstantNode.forIntegerStamp(stamp(), 0, graph());
             }
+            if (x() instanceof SignExtendNode) {
+                SignExtendNode ext = (SignExtendNode) x();
+                if (rawY == ((1L << ext.getInputBits()) - 1)) {
+                    ValueNode result = graph().unique(new ZeroExtendNode(ext.getInput(), ext.getResultBits()));
+                    return result;
+                }
+            }
             if (x().stamp() instanceof IntegerStamp) {
                 IntegerStamp xStamp = (IntegerStamp) x().stamp();
                 if (((xStamp.upMask() | xStamp.downMask()) & ~rawY) == 0) {

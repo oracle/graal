@@ -57,7 +57,7 @@ import com.oracle.graal.phases.tiers.*;
 
 import edu.umd.cs.findbugs.annotations.*;
 
-public class CompilationTask implements Runnable, Comparable {
+public class CompilationTask implements Runnable, Comparable<Object> {
 
     private static final long TIMESTAMP_START = System.currentTimeMillis();
 

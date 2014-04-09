@@ -38,7 +38,7 @@ import com.oracle.graal.hotspot.meta.*;
  */
 public class HotSpotResolvedJavaFieldTest {
 
-    private static final Class[] classesWithInternalFields = {Class.class, ClassLoader.class};
+    private static final Class<?>[] classesWithInternalFields = {Class.class, ClassLoader.class};
 
     /**
      * Tests that {@link HotSpotResolvedJavaField#getModifiers()} only includes the modifiers
@@ -47,7 +47,7 @@ public class HotSpotResolvedJavaFieldTest {
      */
     @Test
     public void testModifiersForInternal() {
-        for (Class c : classesWithInternalFields) {
+        for (Class<?> c : classesWithInternalFields) {
             ResolvedJavaType type = HotSpotResolvedObjectType.fromClass(c);
             for (ResolvedJavaField field : type.getInstanceFields(false)) {
                 if (field.isInternal()) {
@@ -63,7 +63,7 @@ public class HotSpotResolvedJavaFieldTest {
      */
     @Test
     public void testCachingForInternalFields() {
-        for (Class c : classesWithInternalFields) {
+        for (Class<?> c : classesWithInternalFields) {
             HotSpotResolvedObjectType type = (HotSpotResolvedObjectType) HotSpotResolvedObjectType.fromClass(c);
             for (ResolvedJavaField field : type.getInstanceFields(false)) {
                 if (field.isInternal()) {

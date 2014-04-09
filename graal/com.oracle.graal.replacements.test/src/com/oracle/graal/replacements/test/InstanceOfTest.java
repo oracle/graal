@@ -116,7 +116,7 @@ public class InstanceOfTest extends TypeCheckTest {
 
     @LongTest
     public void test5() {
-        Map map = new HashMap<>();
+        Map<?, ?> map = new HashMap<>();
         test("isMap", profile(), map);
         test("isMap", profile(HashMap.class), map);
         test("isMap", profile(TreeMap.class, HashMap.class), map);
@@ -129,7 +129,7 @@ public class InstanceOfTest extends TypeCheckTest {
 
     @LongTest
     public void test6() {
-        Map map = new HashMap<>();
+        Map<?, ?> map = new HashMap<>();
         test("isMapInt", profile(), map);
         test("isMapInt", profile(HashMap.class), map);
         test("isMapInt", profile(TreeMap.class, HashMap.class), map);

@@ -63,7 +63,7 @@ public final class HotSpotGraalRuntime implements GraalRuntime, RuntimeProvider 
     public static HotSpotGraalRuntime runtime() {
         SecurityManager sm = System.getSecurityManager();
         if (sm != null) {
-            Class cc = Reflection.getCallerClass();
+            Class<?> cc = Reflection.getCallerClass();
             if (cc != null && cc.getClassLoader() != null) {
                 sm.checkPermission(Graal.ACCESS_PERMISSION);
             }

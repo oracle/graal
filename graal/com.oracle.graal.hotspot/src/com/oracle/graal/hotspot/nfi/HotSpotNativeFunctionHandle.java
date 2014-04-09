@@ -34,9 +34,9 @@ public class HotSpotNativeFunctionHandle implements NativeFunctionHandle {
 
     private final InstalledCode code;
     private final String name;
-    private final Class[] argumentTypes;
+    private final Class<?>[] argumentTypes;
 
-    public HotSpotNativeFunctionHandle(InstalledCode code, String name, Class... argumentTypes) {
+    public HotSpotNativeFunctionHandle(InstalledCode code, String name, Class<?>... argumentTypes) {
         this.argumentTypes = argumentTypes;
         this.name = name;
         this.code = code;
@@ -76,7 +76,7 @@ public class HotSpotNativeFunctionHandle implements NativeFunctionHandle {
         for (int i = 0; i < argumentTypes.length; i++) {
             Object arg = args[i];
             assert arg != null;
-            Class expectedType = argumentTypes[i];
+            Class<?> expectedType = argumentTypes[i];
             if (expectedType.isPrimitive()) {
                 Kind kind = Kind.fromJavaClass(expectedType);
                 expectedType = kind.toBoxedJavaClass();

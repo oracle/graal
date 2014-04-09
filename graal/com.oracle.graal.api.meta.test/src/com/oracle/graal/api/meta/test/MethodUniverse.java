@@ -36,12 +36,12 @@ public class MethodUniverse extends TypeUniverse {
     public final Map<Constructor<?>, ResolvedJavaMethod> constructors = new HashMap<>();
 
     public MethodUniverse() {
-        for (Class c : classes) {
+        for (Class<?> c : classes) {
             for (Method m : c.getDeclaredMethods()) {
                 ResolvedJavaMethod method = metaAccess.lookupJavaMethod(m);
                 methods.put(m, method);
             }
-            for (Constructor m : c.getDeclaredConstructors()) {
+            for (Constructor<?> m : c.getDeclaredConstructors()) {
                 constructors.put(m, metaAccess.lookupJavaConstructor(m));
             }
         }

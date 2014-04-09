@@ -38,7 +38,7 @@ public class TestJavaType extends TypeUniverse {
 
     @Test
     public void getKindTest() {
-        for (Class c : classes) {
+        for (Class<?> c : classes) {
             JavaType type = metaAccess.lookupJavaType(c);
             Kind expected = Kind.fromJavaClass(c);
             Kind actual = type.getKind();

@@ -69,7 +69,7 @@ public class StubUtil {
         }
         assert found != null : "could not find foreign call named " + name + " in " + stubClass;
         List<Class<?>> paramList = Arrays.asList(found.getParameterTypes());
-        Class[] cCallTypes = paramList.subList(1, paramList.size()).toArray(new Class[paramList.size() - 1]);
+        Class<?>[] cCallTypes = paramList.subList(1, paramList.size()).toArray(new Class[paramList.size() - 1]);
         return new ForeignCallDescriptor(name, found.getReturnType(), cCallTypes);
     }
 

@@ -126,7 +126,7 @@ public abstract class GraalKernelTester extends KernelTester {
         }
     }
 
-    public static OptionValue<?> getOptionFromField(Class declaringClass, String fieldName) {
+    public static OptionValue<?> getOptionFromField(Class<?> declaringClass, String fieldName) {
         try {
             Field f = declaringClass.getDeclaredField(fieldName);
             f.setAccessible(true);

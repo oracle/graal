@@ -495,7 +495,7 @@ public final class NodeClass extends FieldIntrospection {
         unsafe.putObject(node, offset, value);
     }
 
-    private static void putNodeList(Node node, long offset, NodeList value) {
+    private static void putNodeList(Node node, long offset, NodeList<?> value) {
         unsafe.putObject(node, offset, value);
     }
 

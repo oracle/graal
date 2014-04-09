@@ -84,7 +84,7 @@ public class VerifyOptionsPhase extends Phase {
         this.optionValueType = metaAccess.lookupJavaType(OptionValue.class);
         this.option = option;
         this.boxingTypes = new HashSet<>();
-        for (Class c : new Class[]{Boolean.class, Byte.class, Short.class, Character.class, Integer.class, Float.class, Long.class, Double.class}) {
+        for (Class<?> c : new Class[]{Boolean.class, Byte.class, Short.class, Character.class, Integer.class, Float.class, Long.class, Double.class}) {
             this.boxingTypes.add(metaAccess.lookupJavaType(c));
         }
     }

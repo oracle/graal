@@ -39,7 +39,7 @@ public final class Class_getModifiers01 extends JTTTest {
     private static class Private {
     }
 
-    public static int test(Class c) {
+    public static int test(Class<?> c) {
         return c.getModifiers();
     }
 

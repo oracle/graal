@@ -43,7 +43,7 @@ public class Test6186134 extends JTTTest {
             return num-- > 0;
         }
 
-        public ArrayList test1() {
+        public ArrayList<?> test1() {
             ArrayList<Object> res = new ArrayList<>();
             int maxResults = Integer.MAX_VALUE;
             int n = 0;

@@ -34,8 +34,8 @@ class NameAndSignature {
     public static final MetaAccessProvider metaAccess = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend().getProviders().getMetaAccess();
 
     final String name;
-    final Class returnType;
-    final Class[] parameterTypes;
+    final Class<?> returnType;
+    final Class<?>[] parameterTypes;
 
     public NameAndSignature(Method m) {
         this.name = m.getName();
@@ -61,7 +61,7 @@ class NameAndSignature {
     public String toString() {
         StringBuilder sb = new StringBuilder(name + "(");
         String sep = "";
-        for (Class p : parameterTypes) {
+        for (Class<?> p : parameterTypes) {
             sb.append(sep);
             sep = ", ";
             sb.append(p.getName());

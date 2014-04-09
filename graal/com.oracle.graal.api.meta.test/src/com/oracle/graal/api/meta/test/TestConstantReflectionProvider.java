@@ -108,7 +108,7 @@ public class TestConstantReflectionProvider extends TypeUniverse {
 
             Object o = snippetReflection.asBoxedValue(c);
             if (o instanceof Class) {
-                assertEquals(metaAccess.lookupJavaType((Class) o), type);
+                assertEquals(metaAccess.lookupJavaType((Class<?>) o), type);
             } else {
                 assertNull(type);
             }

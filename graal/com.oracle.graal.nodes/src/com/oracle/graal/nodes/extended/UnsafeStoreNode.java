@@ -108,6 +108,11 @@ public class UnsafeStoreNode extends UnsafeAccessNode implements StateSplit, Low
         return storeFieldNode;
     }
 
+    @Override
+    protected ValueNode cloneAsArrayAccess(ValueNode location, LocationIdentity identity) {
+        return this.graph().add(new UnsafeStoreNode(object(), location, value, accessKind(), identity));
+    }
+
     public FrameState getState() {
         return stateAfter;
     }

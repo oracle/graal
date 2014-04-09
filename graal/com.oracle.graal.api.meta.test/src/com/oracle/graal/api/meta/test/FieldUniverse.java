@@ -35,7 +35,7 @@ public class FieldUniverse extends TypeUniverse {
     public final Map<Field, ResolvedJavaField> fields = new HashMap<>();
 
     public FieldUniverse() {
-        for (Class c : classes) {
+        for (Class<?> c : classes) {
             for (Field f : c.getDeclaredFields()) {
                 ResolvedJavaField field = metaAccess.lookupJavaField(f);
                 fields.put(f, field);

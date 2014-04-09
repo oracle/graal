@@ -207,7 +207,7 @@ public class SnippetTemplate {
             return this;
         }
 
-        public Arguments addVarargs(String name, Class componentType, Stamp argStamp, Object value) {
+        public Arguments addVarargs(String name, Class<?> componentType, Stamp argStamp, Object value) {
             assert check(name, false, true);
             Varargs varargs = new Varargs(componentType, argStamp, value);
             values[nextParamIdx] = varargs;
@@ -276,17 +276,17 @@ public class SnippetTemplate {
      */
     static class Varargs {
 
-        protected final Class componentType;
+        protected final Class<?> componentType;
         protected final Stamp stamp;
         protected final Object value;
         protected final int length;
 
-        protected Varargs(Class componentType, Stamp stamp, Object value) {
+        protected Varargs(Class<?> componentType, Stamp stamp, Object value) {
             this.componentType = componentType;
             this.stamp = stamp;
             this.value = value;
             if (value instanceof List) {
-                this.length = ((List) value).size();
+                this.length = ((List<?>) value).size();
             } else {
                 this.length = Array.getLength(value);
             }
@@ -807,10 +807,10 @@ public class SnippetTemplate {
                 ParameterNode[] params = (ParameterNode[]) parameter;
                 Varargs varargs = (Varargs) argument;
                 int length = params.length;
-                List list = null;
+                List<?> list = null;
                 Object array = null;
                 if (varargs.value instanceof List) {
-                    list = (List) varargs.value;
+                    list = (List<?>) varargs.value;
                     assert list.size() == length : length + " != " + list.size();
                 } else {
                     array = varargs.value;

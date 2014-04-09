@@ -75,6 +75,19 @@ public class ZeroExtendNode extends IntegerConvertNode {
             ZeroExtendNode other = (ZeroExtendNode) getInput();
             return graph().unique(new ZeroExtendNode(other.getInput(), getResultBits()));
         }
+        if (getInput() instanceof NarrowNode) {
+            NarrowNode narrow = (NarrowNode) getInput();
+            Stamp inputStamp = narrow.getInput().stamp();
+            if (inputStamp instanceof IntegerStamp && inputStamp.isCompatible(stamp())) {
+                IntegerStamp istamp = (IntegerStamp) inputStamp;
+                long mask = IntegerStamp.defaultMask(PrimitiveStamp.getBits(narrow.stamp()));
+                if (((istamp.upMask() | istamp.downMask()) & ~mask) == 0) {
+                    // The original value is in the range of the masked zero extended result so
+                    // simply return the original input.
+                    return narrow.getInput();
+                }
+            }
+        }
 
         return this;
     }

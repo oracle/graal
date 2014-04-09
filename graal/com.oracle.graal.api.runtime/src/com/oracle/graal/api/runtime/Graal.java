@@ -38,7 +38,7 @@ public class Graal {
     public static GraalRuntime getRuntime() {
         SecurityManager sm = System.getSecurityManager();
         if (sm != null) {
-            Class cc = Reflection.getCallerClass();
+            Class<?> cc = Reflection.getCallerClass();
             if (cc.getClassLoader() != null) {
                 sm.checkPermission(ACCESS_PERMISSION);
             }
@@ -60,7 +60,7 @@ public class Graal {
     public static <T> T getRequiredCapability(Class<T> clazz) {
         SecurityManager sm = System.getSecurityManager();
         if (sm != null) {
-            Class cc = Reflection.getCallerClass();
+            Class<?> cc = Reflection.getCallerClass();
             if (cc.getClassLoader() != null) {
                 sm.checkPermission(ACCESS_PERMISSION);
             }

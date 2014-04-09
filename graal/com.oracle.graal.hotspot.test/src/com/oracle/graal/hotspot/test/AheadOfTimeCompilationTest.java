@@ -81,7 +81,7 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
         assertEquals(0, result.getNodes().filter(ReadNode.class).count());
     }
 
-    public static Class getClassObject() {
+    public static Class<AheadOfTimeCompilationTest> getClassObject() {
         return AheadOfTimeCompilationTest.class;
     }
 
@@ -112,7 +112,7 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
         assertEquals(0, result.getNodes().filter(ReadNode.class).count());
     }
 
-    public static Class getPrimitiveClassObject() {
+    public static Class<Integer> getPrimitiveClassObject() {
         return int.class;
     }
 
