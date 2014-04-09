@@ -69,21 +69,20 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
     }
 
     public static ForeignCallDescriptor lookupArraycopyDescriptor(Kind kind, boolean aligned, boolean disjoint) {
-        return (ForeignCallDescriptor) arraycopyDescriptors[aligned ? 1 : 0][disjoint ? 1 : 0].get(kind);
+        return arraycopyDescriptors[aligned ? 1 : 0][disjoint ? 1 : 0].get(kind);
     }
 
-    private static final EnumMap[][] arraycopyDescriptors = new EnumMap[2][2];
+    @SuppressWarnings("unchecked") private static final EnumMap<Kind, ForeignCallDescriptor>[][] arraycopyDescriptors = new EnumMap[2][2];
 
     static {
         // Populate the EnumMap instances
         for (int i = 0; i < arraycopyDescriptors.length; i++) {
             for (int j = 0; j < arraycopyDescriptors[i].length; j++) {
-                arraycopyDescriptors[i][j] = new EnumMap<Kind, ForeignCallDescriptor>(Kind.class);
+                arraycopyDescriptors[i][j] = new EnumMap<>(Kind.class);
             }
         }
     }
 
-    @SuppressWarnings("unchecked")
     private static ForeignCallDescriptor registerArraycopyDescriptor(Kind kind, boolean aligned, boolean disjoint) {
         String name = kind + (aligned ? "Aligned" : "") + (disjoint ? "Disjoint" : "") + "Arraycopy";
         ForeignCallDescriptor desc = new ForeignCallDescriptor(name, void.class, Word.class, Word.class, Word.class);
