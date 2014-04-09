@@ -174,7 +174,7 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
                 loopMergeEffects.put(loop, mergeProcessor.afterMergeEffects);
 
                 assert info.exitStates.size() == loop.exits.size();
-                loopEntryStates.put(loop.loopBegin(), loopEntryState);
+                loopEntryStates.put((LoopBeginNode) loop.header.getBeginNode(), loopEntryState);
                 for (int i = 0; i < loop.exits.size(); i++) {
                     assert info.exitStates.get(i) != null : "no loop exit state at " + loop.exits.get(i) + " / " + loop.header;
                 }

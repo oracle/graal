@@ -92,9 +92,9 @@ public class DeoptimizationGroupingPhase extends BasePhase<MidTierContext> {
 
     private static void exitLoops(AbstractDeoptimizeNode deopt, EndNode end, ControlFlowGraph cfg) {
         Block block = cfg.blockFor(deopt);
-        Loop<?> loop = block.getLoop();
+        Loop<Block> loop = block.getLoop();
         while (loop != null) {
-            end.graph().addBeforeFixed(end, end.graph().add(new LoopExitNode(loop.loopBegin())));
+            end.graph().addBeforeFixed(end, end.graph().add(new LoopExitNode((LoopBeginNode) loop.header.getBeginNode())));
             loop = loop.parent;
         }
     }

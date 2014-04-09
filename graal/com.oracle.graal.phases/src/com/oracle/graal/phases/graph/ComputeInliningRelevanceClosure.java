@@ -124,7 +124,7 @@ public class ComputeInliningRelevanceClosure {
             if (parent == null) {
                 parent = createScope(loop.parent, processedLoops);
             }
-            Scope result = new Scope(loop.loopBegin(), parent);
+            Scope result = new Scope(loop.header.getBeginNode(), parent);
             processedLoops.put(loop, result);
             return result;
         }

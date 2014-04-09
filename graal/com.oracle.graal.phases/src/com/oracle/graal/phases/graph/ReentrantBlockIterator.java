@@ -102,7 +102,7 @@ public final class ReentrantBlockIterator {
                         } else {
                             // recurse into the loop
                             Loop<Block> loop = successor.getLoop();
-                            LoopBeginNode loopBegin = loop.loopBegin();
+                            LoopBeginNode loopBegin = (LoopBeginNode) loop.header.getBeginNode();
                             assert successor.getBeginNode() == loopBegin;
 
                             List<StateT> exitStates = closure.processLoop(loop, state);

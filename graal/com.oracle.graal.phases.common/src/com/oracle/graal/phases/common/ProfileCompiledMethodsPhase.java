@@ -66,9 +66,9 @@ public class ProfileCompiledMethodsPhase extends Phase {
 
         ControlFlowGraph cfg = ControlFlowGraph.compute(graph, true, true, true, true);
         for (Loop<Block> loop : cfg.getLoops()) {
-            double loopProbability = probabilities.get(loop.loopBegin());
+            double loopProbability = probabilities.get(loop.header.getBeginNode());
             if (loopProbability > (1D / Integer.MAX_VALUE)) {
-                addSectionCounters(loop.loopBegin(), loop.blocks, loop.children, schedule, probabilities);
+                addSectionCounters(loop.header.getBeginNode(), loop.blocks, loop.children, schedule, probabilities);
             }
         }
         addSectionCounters(graph.start(), Arrays.asList(cfg.getBlocks()), cfg.getLoops(), schedule, probabilities);

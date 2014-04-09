@@ -229,8 +229,8 @@ public final class ComputeBlockOrder {
      * Skip the loop header block if the loop consists of more than one block and it has only a
      * single loop end block.
      */
-    private static boolean skipLoopHeader(AbstractBlock<?> block) {
-        return (block.isLoopHeader() && !block.isLoopEnd() && block.getLoop().loopBegin().loopEnds().count() == 1);
+    private static <T extends AbstractBlock<T>> boolean skipLoopHeader(AbstractBlock<T> block) {
+        return (block.isLoopHeader() && !block.isLoopEnd() && block.getLoop().numBackedges() == 1);
     }
 
     /**

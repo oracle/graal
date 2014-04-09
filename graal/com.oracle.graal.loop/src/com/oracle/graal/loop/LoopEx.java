@@ -88,7 +88,7 @@ public class LoopEx {
     }
 
     public LoopBeginNode loopBegin() {
-        return lirLoop().loopBegin();
+        return (LoopBeginNode) lirLoop().header.getBeginNode();
     }
 
     public FixedNode predecessor() {
