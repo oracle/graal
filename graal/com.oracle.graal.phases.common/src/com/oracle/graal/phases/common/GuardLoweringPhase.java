@@ -174,7 +174,7 @@ public class GuardLoweringPhase extends BasePhase<MidTierContext> {
         }
 
         private void insertLoopExits(DeoptimizeNode deopt) {
-            Loop loop = block.getLoop();
+            Loop<?> loop = block.getLoop();
             StructuredGraph graph = deopt.graph();
             while (loop != null) {
                 LoopExitNode exit = graph.add(new LoopExitNode(loop.loopBegin()));

@@ -144,7 +144,7 @@ public final class BciBlockMapping {
             return sb.toString();
         }
 
-        public Loop getLoop() {
+        public Loop<BciBlock> getLoop() {
             // TODO Auto-generated method stub
             return null;
         }

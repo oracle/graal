@@ -36,19 +36,19 @@ import com.oracle.graal.nodes.extended.*;
 
 public class LoopEx {
 
-    private final Loop lirLoop;
+    private final Loop<Block> lirLoop;
     private LoopFragmentInside inside;
     private LoopFragmentWhole whole;
     private CountedLoopInfo counted; // TODO (gd) detect
     private LoopsData data;
     private InductionVariables ivs;
 
-    LoopEx(Loop lirLoop, LoopsData data) {
+    LoopEx(Loop<Block> lirLoop, LoopsData data) {
         this.lirLoop = lirLoop;
         this.data = data;
     }
 
-    public Loop lirLoop() {
+    public Loop<Block> lirLoop() {
         return lirLoop;
     }
 

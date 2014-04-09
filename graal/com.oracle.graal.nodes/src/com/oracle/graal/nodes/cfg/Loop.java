@@ -26,18 +26,18 @@ import java.util.*;
 
 import com.oracle.graal.nodes.*;
 
-public class Loop {
+public class Loop<T extends AbstractBlock<T>> {
 
-    public final Loop parent;
-    public final List<Loop> children;
+    public final Loop<T> parent;
+    public final List<Loop<T>> children;
 
     public final int depth;
     public final int index;
-    public final Block header;
-    public final List<Block> blocks;
-    public final List<Block> exits;
+    public final T header;
+    public final List<T> blocks;
+    public final List<T> exits;
 
-    protected Loop(Loop parent, int index, Block header) {
+    protected Loop(Loop<T> parent, int index, T header) {
         this.parent = parent;
         if (parent != null) {
             this.depth = parent.depth + 1;
@@ -58,6 +58,6 @@ public class Loop {
     }
 
     public LoopBeginNode loopBegin() {
-        return (LoopBeginNode) header.getBeginNode();
+        return (LoopBeginNode) ((Block) header).getBeginNode();
     }
 }

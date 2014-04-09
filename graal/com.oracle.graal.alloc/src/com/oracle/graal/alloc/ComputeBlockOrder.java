@@ -34,12 +34,12 @@ import com.oracle.graal.nodes.cfg.*;
  * with the most likely path that was left out during this process. The process iteratively
  * continues until all blocks are scheduled. Additionally, it is guaranteed that all blocks of a
  * loop are scheduled before any block following the loop is scheduled.
- * 
+ *
  * The machine code generator order includes reordering of loop headers such that the backward jump
  * is a conditional jump if there is only one loop end block. Additionally, the target of loop
  * backward jumps are always marked as aligned. Aligning the target of conditional jumps does not
  * bring a measurable benefit and is therefore avoided to keep the code size small.
- * 
+ *
  * The linear scan register allocator order has an additional mechanism that prevents merge nodes
  * from being scheduled if there is at least one highly likely predecessor still unscheduled. This
  * increases the probability that the merge node and the corresponding predecessor are more closely
@@ -63,7 +63,7 @@ public final class ComputeBlockOrder {
 
     /**
      * Computes the block order used for the linear scan register allocator.
-     * 
+     *
      * @return sorted list of blocks
      */
     public static <T extends AbstractBlock<T>> List<T> computeLinearScanOrder(int blockCount, T startBlock, BlocksToDoubles blockProbabilities) {
@@ -77,7 +77,7 @@ public final class ComputeBlockOrder {
 
     /**
      * Computes the block order used for code emission.
-     * 
+     *
      * @return sorted list of blocks
      */
     public static <T extends AbstractBlock<T>> List<T> computeCodeEmittingOrder(int blockCount, T startBlock, BlocksToDoubles blockProbabilities) {
@@ -151,7 +151,6 @@ public final class ComputeBlockOrder {
     /**
      * Add a linear path to the code emission order greedily following the most likely successor.
      */
-    @SuppressWarnings("unchecked")
     private static <T extends AbstractBlock<T>> void addPathToCodeEmittingOrder(T initialBlock, List<T> order, PriorityQueue<T> worklist, BitSet visitedBlocks, BlocksToDoubles blockProbabilities) {
         T block = initialBlock;
         while (block != null) {
@@ -166,17 +165,17 @@ public final class ComputeBlockOrder {
                 addBlock(block, order);
             }
 
-            Loop loop = block.getLoop();
+            Loop<T> loop = block.getLoop();
             if (block.isLoopEnd() && skipLoopHeader(loop.header)) {
 
                 // This is the only loop end of a skipped loop header.
                 // Add the header immediately afterwards.
-                addBlock((T) loop.header, order);
+                addBlock(loop.header, order);
 
                 // Make sure the loop successors of the loop header are aligned
                 // as they are the target
                 // of the backward jump.
-                for (Block successor : loop.header.getSuccessors()) {
+                for (T successor : loop.header.getSuccessors()) {
                     if (successor.getLoopDepth() == block.getLoopDepth()) {
                         successor.setAlign(true);
                     }

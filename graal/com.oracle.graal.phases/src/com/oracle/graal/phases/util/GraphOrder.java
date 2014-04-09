@@ -140,7 +140,7 @@ public final class GraphOrder {
             BlockIteratorClosure<NodeBitMap> closure = new BlockIteratorClosure<NodeBitMap>() {
 
                 @Override
-                protected List<NodeBitMap> processLoop(Loop loop, NodeBitMap initialState) {
+                protected List<NodeBitMap> processLoop(Loop<Block> loop, NodeBitMap initialState) {
                     return ReentrantBlockIterator.processLoop(this, loop, initialState).exitStates;
                 }
 

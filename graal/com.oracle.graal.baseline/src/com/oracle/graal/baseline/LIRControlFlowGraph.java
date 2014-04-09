@@ -22,15 +22,17 @@
  */
 package com.oracle.graal.baseline;
 
+import java.util.*;
+
 import com.oracle.graal.java.BciBlockMapping.BciBlock;
 import com.oracle.graal.nodes.cfg.*;
 
 public class LIRControlFlowGraph implements AbstractControlFlowGraph<BciBlock> {
 
     private BciBlock[] blocks;
-    private Loop[] loops;
+    private List<Loop<BciBlock>> loops;
 
-    public LIRControlFlowGraph(BciBlock[] blocks, Loop[] loops) {
+    public LIRControlFlowGraph(BciBlock[] blocks, List<Loop<BciBlock>> loops) {
         this.blocks = blocks;
         this.loops = loops;
     }
@@ -39,7 +41,7 @@ public class LIRControlFlowGraph implements AbstractControlFlowGraph<BciBlock> {
         return blocks;
     }
 
-    public Loop[] getLoops() {
+    public Collection<Loop<BciBlock>> getLoops() {
         return loops;
     }
 

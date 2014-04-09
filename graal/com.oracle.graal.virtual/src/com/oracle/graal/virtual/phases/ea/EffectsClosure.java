@@ -43,7 +43,7 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
 
     protected final NodeMap<ValueNode> aliases;
     protected final BlockMap<GraphEffectList> blockEffects;
-    private final IdentityHashMap<Loop, GraphEffectList> loopMergeEffects = new IdentityHashMap<>();
+    private final IdentityHashMap<Loop<Block>, GraphEffectList> loopMergeEffects = new IdentityHashMap<>();
     private final IdentityHashMap<LoopBeginNode, BlockT> loopEntryStates = new IdentityHashMap<>();
 
     private boolean changed;
@@ -105,7 +105,7 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
             }
 
             @Override
-            protected List<Void> processLoop(Loop loop, Void initialState) {
+            protected List<Void> processLoop(Loop<Block> loop, Void initialState) {
                 LoopInfo<Void> info = ReentrantBlockIterator.processLoop(this, loop, initialState);
                 apply(loopMergeEffects.get(loop), loop);
                 return info.exitStates;
@@ -150,7 +150,7 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
     }
 
     @Override
-    protected final List<BlockT> processLoop(Loop loop, BlockT initialState) {
+    protected final List<BlockT> processLoop(Loop<Block> loop, BlockT initialState) {
         BlockT loopEntryState = initialState;
         BlockT lastMergedState = cloneState(initialState);
         MergeProcessor mergeProcessor = createMergeProcessor(loop.header);
