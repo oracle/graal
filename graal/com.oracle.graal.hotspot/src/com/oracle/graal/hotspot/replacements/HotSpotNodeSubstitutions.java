@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,33 +20,29 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.bridge;
+package com.oracle.graal.hotspot.replacements;
 
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
+import static com.oracle.graal.nodes.PiNode.*;
+
+import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.word.*;
 
-/**
- * Direct access to the {@code InstanceKlass::_graal_node_class} field.
- */
-class FastNodeClassRegistry extends NodeClass.Registry {
+@ClassSubstitution(Node.class)
+public class HotSpotNodeSubstitutions {
 
-    private final CompilerToVM vm;
-
-    public FastNodeClassRegistry(CompilerToVM vm) {
-        this.vm = vm;
-    }
-
-    @SuppressWarnings("unused")
-    static void initialize(CompilerToVM vm) {
-        new FastNodeClassRegistry(vm);
-    }
-
-    @Override
-    public NodeClass get(Class<? extends Node> key) {
-        return vm.getNodeClass(key);
-    }
-
-    @Override
-    protected void registered(Class<? extends Node> key, NodeClass value) {
-        vm.setNodeClass(key, value);
+    /**
+     * Partial substitution of {@link Node#getNodeClass()} that returns the value of the
+     * InstanceKlass::_graal_node_class C++ field if it is non-null.
+     */
+    @MethodSubstitution(isStatic = false)
+    public static NodeClass getNodeClass(final Node thisObj) {
+        Word klass = loadHub(thisObj);
+        NodeClass nc = piCastExact(klass.readObject(Word.signed(klassNodeClassOffset()), KLASS_NODE_CLASS), NodeClass.class);
+        if (nc != null) {
+            return nc;
+        }
+        return getNodeClass(thisObj);
     }
 }

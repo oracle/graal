@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,33 +20,25 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.bridge;
+package com.oracle.graal.hotspot.test;
+
+import org.junit.*;
 
 import com.oracle.graal.graph.*;
+import com.oracle.graal.nodes.*;
+import com.oracle.graal.replacements.test.*;
 
 /**
- * Direct access to the {@code InstanceKlass::_graal_node_class} field.
+ * Tests HotSpot specific substitutions for {@link NodeClass}.
  */
-class FastNodeClassRegistry extends NodeClass.Registry {
+public class HotSpotNodeClassSubstitutionsTest extends MethodSubstitutionTest {
 
-    private final CompilerToVM vm;
-
-    public FastNodeClassRegistry(CompilerToVM vm) {
-        this.vm = vm;
+    @Test
+    public void test() {
+        test("get", ValueNode.class);
     }
 
-    @SuppressWarnings("unused")
-    static void initialize(CompilerToVM vm) {
-        new FastNodeClassRegistry(vm);
-    }
-
-    @Override
-    public NodeClass get(Class<? extends Node> key) {
-        return vm.getNodeClass(key);
-    }
-
-    @Override
-    protected void registered(Class<? extends Node> key, NodeClass value) {
-        vm.setNodeClass(key, value);
+    public static NodeClass get(Class<?> c) {
+        return NodeClass.get(c);
     }
 }

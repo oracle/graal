@@ -48,11 +48,6 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
      */
     private final Class<?> javaClass;
 
-    /**
-     * Used for implemented a lazy binding from a {@link Node} type to a {@link NodeClass} value.
-     */
-    private NodeClass nodeClass;
-
     private HashMap<Long, HotSpotResolvedJavaField> fieldCache;
     private HashMap<Long, HotSpotResolvedJavaMethod> methodCache;
     private HotSpotResolvedJavaField[] instanceFields;
@@ -79,7 +74,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
      */
     public static ResolvedJavaType fromMetaspaceKlass(long metaspaceKlass) {
         assert metaspaceKlass != 0;
-        Class javaClass = (Class) runtime().getCompilerToVM().readUnsafeUncompressedPointer(null, metaspaceKlass + runtime().getConfig().classMirrorOffset);
+        Class javaClass = runtime().getCompilerToVM().getJavaMirror(metaspaceKlass);
         assert javaClass != null;
         return fromClass(javaClass);
     }
@@ -748,20 +743,6 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
     @Override
     public Constant newArray(int length) {
         return HotSpotObjectConstant.forObject(Array.newInstance(mirror(), length));
-    }
-
-    /**
-     * @return the {@link NodeClass} value (which may be {@code null}) associated with this type
-     */
-    public NodeClass getNodeClass() {
-        return nodeClass;
-    }
-
-    /**
-     * Sets the {@link NodeClass} value associated with this type.
-     */
-    public void setNodeClass(NodeClass nodeClass) {
-        this.nodeClass = nodeClass;
     }
 
     @Override

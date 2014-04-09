@@ -108,6 +108,10 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
         return piCast(object, toType, true, true);
     }
 
+    public static <T> T piCastExact(Object object, @ConstantNodeParameter Class<T> toType) {
+        return piCast(object, toType, true, false);
+    }
+
     public static <T> T piCast(Object object, @ConstantNodeParameter Class<T> toType) {
         return piCast(object, toType, false, false);
     }

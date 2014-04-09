@@ -556,6 +556,13 @@ public class HotSpotReplacementsUtil {
         return config().arrayKlassOffset;
     }
 
+    public static final LocationIdentity KLASS_NODE_CLASS = new NamedLocationIdentity("KlassNodeClass");
+
+    @Fold
+    public static int klassNodeClassOffset() {
+        return config().klassNodeClassOffset;
+    }
+
     @Fold
     public static int classMirrorOffset() {
         return config().classMirrorOffset;

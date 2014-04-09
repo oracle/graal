@@ -105,8 +105,15 @@ public class HotSpotConstantReflectionProvider implements ConstantReflectionProv
                 Object o = null;
                 if (baseConstant.getKind() == Kind.Object) {
                     o = unsafe.getObject(base, displacement);
+                } else if (baseConstant instanceof HotSpotMetaspaceConstant) {
+                    Object metaspaceObject = HotSpotMetaspaceConstant.getMetaspaceObject(baseConstant);
+                    if (metaspaceObject instanceof HotSpotResolvedObjectType && initialDisplacement == runtime.getConfig().classMirrorOffset) {
+                        o = ((HotSpotResolvedObjectType) metaspaceObject).mirror();
+                    } else {
+                        throw GraalInternalError.shouldNotReachHere();
+                    }
                 } else {
-                    o = runtime.getCompilerToVM().readUnsafeUncompressedPointer(base, displacement);
+                    throw GraalInternalError.shouldNotReachHere();
                 }
                 return HotSpotObjectConstant.forObject(o);
             }

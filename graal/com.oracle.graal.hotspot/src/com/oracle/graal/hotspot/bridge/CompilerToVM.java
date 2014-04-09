@@ -36,7 +36,7 @@ public interface CompilerToVM {
 
     /**
      * Copies the original bytecode of a given method into a given byte array.
-     * 
+     *
      * @param metaspaceMethod the metaspace Method object
      * @param code the array into which to copy the original bytecode
      * @return the value of {@code code}
@@ -49,7 +49,7 @@ public interface CompilerToVM {
 
     /**
      * Determines if a given metaspace Method object has balanced monitors.
-     * 
+     *
      * @param metaspaceMethod the metaspace Method object to query
      * @return true if the method has balanced monitors
      */
@@ -63,7 +63,7 @@ public interface CompilerToVM {
      * <li>the method may have a bytecode breakpoint set</li>
      * <li>the method may have other bytecode features that require special handling by the VM</li>
      * </ul>
-     * 
+     *
      * @param metaspaceMethod the metaspace Method object to query
      * @return true if the method can be inlined
      */
@@ -75,7 +75,7 @@ public interface CompilerToVM {
      * <li>a CompileOracle directive may forces inlining of this methods</li>
      * <li>an annotation forces inlining of this method</li>
      * </ul>
-     * 
+     *
      * @param metaspaceMethod the metaspace Method object to query
      * @return true if the method should be inlined
      */
@@ -83,7 +83,7 @@ public interface CompilerToVM {
 
     /**
      * Used to implement {@link ResolvedJavaType#findUniqueConcreteMethod(ResolvedJavaMethod)}.
-     * 
+     *
      * @param metaspaceMethod the metaspace Method on which to based the search
      * @return the metaspace Method result or 0 is there is no unique concrete method for
      *         {@code metaspaceMethod}
@@ -92,7 +92,7 @@ public interface CompilerToVM {
 
     /**
      * Returns the implementor for the given interface class.
-     * 
+     *
      * @param metaspaceKlass the metaspace klass to get the implementor for
      * @return the implementor as metaspace klass pointer or null if there is no implementor
      */
@@ -100,7 +100,7 @@ public interface CompilerToVM {
 
     /**
      * Determines if a given metaspace method is ignored by security stack walks.
-     * 
+     *
      * @param metaspaceMethod the metaspace Method object
      * @return true if the method is ignored
      */
@@ -108,7 +108,7 @@ public interface CompilerToVM {
 
     /**
      * Converts a name to a metaspace klass.
-     * 
+     *
      * @param name a well formed Java type in {@linkplain JavaType#getName() internal} format
      * @param accessingClass the context of resolution (may be null)
      * @param resolve force resolution to a {@link ResolvedJavaType}. If true, this method will
@@ -134,7 +134,7 @@ public interface CompilerToVM {
 
     /**
      * Looks up a class entry in a constant pool.
-     * 
+     *
      * @param metaspaceConstantPool metaspace constant pool pointer
      * @param cpi constant pool index
      * @return a metaspace Klass for a resolved method entry, a metaspace Symbol otherwise (with
@@ -144,7 +144,7 @@ public interface CompilerToVM {
 
     /**
      * Looks up a method entry in a constant pool.
-     * 
+     *
      * @param metaspaceConstantPool metaspace constant pool pointer
      * @param cpi constant pool index
      * @return a metaspace Method for a resolved method entry, 0 otherwise
@@ -154,12 +154,12 @@ public interface CompilerToVM {
     /**
      * Looks up a field entry in a constant pool and attempts to resolve it. The values returned in
      * {@code info} are:
-     * 
+     *
      * <pre>
      *     [(int) flags,   // only valid if field is resolved
      *      (int) offset]  // only valid if field is resolved
      * </pre>
-     * 
+     *
      * @param metaspaceConstantPool metaspace constant pool pointer
      * @param cpi constant pool index
      * @param info an array in which the details of the field are returned
@@ -221,7 +221,7 @@ public interface CompilerToVM {
 
     /**
      * Installs the result of a compilation into the code cache.
-     * 
+     *
      * @param compiledCode the result of a compilation
      * @param code the details of the installed CodeBlob are written to this object
      * @return the outcome of the installation as a {@link CodeInstallResult}.
@@ -230,7 +230,7 @@ public interface CompilerToVM {
 
     /**
      * Notifies the VM of statistics for a completed compilation.
-     * 
+     *
      * @param id the identifier of the compilation
      * @param method the method compiled
      * @param osr specifies if the compilation was for on-stack-replacement
@@ -257,7 +257,7 @@ public interface CompilerToVM {
     /**
      * Gets the metaspace Method object corresponding to a given {@link Class} object and slot
      * number.
-     * 
+     *
      * @param holder method holder
      * @param slot slot number of the method
      * @return the metaspace Method
@@ -282,7 +282,11 @@ public interface CompilerToVM {
 
     String getFileName(HotSpotResolvedJavaType method);
 
-    Object readUnsafeUncompressedPointer(Object o, long displacement);
+    Class<?> getJavaMirror(long metaspaceKlass);
+
+    NodeClass getNodeClass(Class<?> c);
+
+    void setNodeClass(Class<?> c, NodeClass nodeClass);
 
     long readUnsafeKlassPointer(Object o);
 
@@ -290,7 +294,7 @@ public interface CompilerToVM {
 
     /**
      * Invalidates the profiling information and restarts profiling upon the next invocation.
-     * 
+     *
      * @param metaspaceMethod the metaspace Method object
      */
     void reprofile(long metaspaceMethod);
@@ -311,13 +315,13 @@ public interface CompilerToVM {
 
     /**
      * Gets the names of the supported GPU architectures.
-     * 
+     *
      * @return a comma separated list of names
      */
     String getGPUs();
 
     /**
-     * 
+     *
      * @param metaspaceMethod the method to check
      * @param entryBCI
      * @param level the compilation level
