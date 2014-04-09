@@ -37,7 +37,7 @@ import javax.tools.*;
  * Processes static fields annotated with {@link Option}. An {@link Options} service is generated
  * for each top level class containing at least one such field. These service objects can be
  * retrieved as follows:
- * 
+ *
  * <pre>
  * ServiceLoader&lt;Options&gt; sl = ServiceLoader.loadInstalled(Options.class);
  * for (OptionDescriptor desc : sl) {
@@ -184,11 +184,11 @@ public class OptionProcessor extends AbstractProcessor {
             out.println("        return options.iterator();");
             out.println("    }");
             if (needPrivateFieldAccessor) {
-                out.println("    private static " + OptionValue.class.getSimpleName() + " field(Class<?> declaringClass, String fieldName) {");
+                out.println("    private static " + OptionValue.class.getSimpleName() + "<?> field(Class<?> declaringClass, String fieldName) {");
                 out.println("        try {");
                 out.println("            java.lang.reflect.Field field = declaringClass.getDeclaredField(fieldName);");
                 out.println("            field.setAccessible(true);");
-                out.println("            return (" + OptionValue.class.getSimpleName() + ") field.get(null);");
+                out.println("            return (" + OptionValue.class.getSimpleName() + "<?>) field.get(null);");
                 out.println("        } catch (Exception e) {");
                 out.println("            throw (InternalError) new InternalError().initCause(e);");
                 out.println("        }");
