@@ -746,6 +746,14 @@ public class HotSpotLoweringProvider implements LoweringProvider {
 
         long displacement = 0;
         int indexScaling = 1;
+        boolean signExtend = false;
+        if (offset instanceof SignExtendNode) {
+            SignExtendNode extend = (SignExtendNode) offset;
+            if (extend.getResultBits() == 64) {
+                signExtend = true;
+                offset = extend.getInput();
+            }
+        }
         if (offset instanceof IntegerAddNode) {
             IntegerAddNode integerAddNode = (IntegerAddNode) offset;
             if (integerAddNode.y() instanceof ConstantNode) {
@@ -770,7 +778,10 @@ public class HotSpotLoweringProvider implements LoweringProvider {
                 }
             }
         }
-
+        if (signExtend) {
+            // If we were using sign extended values before restore the sign extension.
+            offset = offset.graph().addOrUnique(new SignExtendNode(offset, 64));
+        }
         return IndexedLocationNode.create(locationIdentity, accessKind, displacement, offset, offset.graph(), indexScaling);
     }
 

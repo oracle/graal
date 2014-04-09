@@ -79,6 +79,11 @@ public class UnsafeLoadNode extends UnsafeAccessNode implements Lowerable, Virtu
         return this.graph().add(new LoadFieldNode(object(), field));
     }
 
+    @Override
+    protected ValueNode cloneAsArrayAccess(ValueNode location, LocationIdentity identity) {
+        return this.graph().add(new UnsafeLoadNode(object(), location, accessKind(), identity));
+    }
+
     @SuppressWarnings({"unchecked", "unused"})
     @NodeIntrinsic
     public static <T> T load(Object object, long offset, @ConstantNodeParameter Kind kind, @ConstantNodeParameter LocationIdentity locationIdentity) {
