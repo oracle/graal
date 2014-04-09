@@ -907,7 +907,8 @@ public abstract class Node implements Cloneable, Formattable {
         if ((flags & FormattableFlags.ALTERNATE) == FormattableFlags.ALTERNATE) {
             formatter.format("%s", toString(Verbosity.Id));
         } else if ((flags & FormattableFlags.UPPERCASE) == FormattableFlags.UPPERCASE) {
-            formatter.format("%s", toString(Verbosity.Long));
+            // Use All here since Long is only slightly longer than Short.
+            formatter.format("%s", toString(Verbosity.All));
         } else {
             formatter.format("%s", toString(Verbosity.Short));
         }
