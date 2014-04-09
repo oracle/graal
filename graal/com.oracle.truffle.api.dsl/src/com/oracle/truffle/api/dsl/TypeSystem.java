@@ -61,12 +61,12 @@ import com.oracle.truffle.api.nodes.*;
  *
  * {@literal @}TypeSystem(types = {boolean.class, int.class, double.class})
  * public abstract class ExampleTypeSystem {
- *
+ * 
  *     {@literal @}TypeCheck
  *     public boolean isInteger(Object value) {
  *         return value instanceof Integer || value instanceof Double;
  *     }
- *
+ * 
  *     {@literal @}TypeCast
  *     public double asInteger(Object value) {
  *         return ((Number)value).doubleValue();
@@ -85,6 +85,6 @@ public @interface TypeSystem {
     /**
      * The list of types as child elements of the {@link TypeSystem}. Each precedes its super type.
      */
-    Class[] value();
+    Class<?>[] value();
 
 }

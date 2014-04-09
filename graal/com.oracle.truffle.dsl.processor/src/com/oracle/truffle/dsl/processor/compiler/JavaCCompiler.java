@@ -44,8 +44,8 @@ public class JavaCCompiler extends AbstractCompiler {
         return type.getEnclosedElements();
     }
 
-    private static final Class[] getTreeAndTopLevelSignature = new Class[]{Element.class, AnnotationMirror.class, AnnotationValue.class};
-    private static final Class[] getCharContentSignature = new Class[]{boolean.class};
+    private static final Class<?>[] getTreeAndTopLevelSignature = new Class[]{Element.class, AnnotationMirror.class, AnnotationValue.class};
+    private static final Class<?>[] getCharContentSignature = new Class[]{boolean.class};
 
     @Override
     public String getMethodBody(ProcessingEnvironment env, ExecutableElement method) {

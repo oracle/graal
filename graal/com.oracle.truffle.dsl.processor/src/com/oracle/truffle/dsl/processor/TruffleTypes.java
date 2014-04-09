@@ -112,7 +112,7 @@ public final class TruffleTypes {
         return nodeCost;
     }
 
-    private DeclaredType getRequired(ProcessorContext context, Class clazz) {
+    private DeclaredType getRequired(ProcessorContext context, Class<?> clazz) {
         TypeMirror type = context.getType(clazz);
         if (type == null) {
             errors.add(String.format("Could not find required type: %s", clazz.getSimpleName()));

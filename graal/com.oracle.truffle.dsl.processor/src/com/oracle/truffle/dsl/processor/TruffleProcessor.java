@@ -60,7 +60,7 @@ public class TruffleProcessor extends AbstractProcessor implements ProcessCallba
         // TODO run verifications that other annotations are not processed out of scope of the
         // operation or typelattice.
         try {
-            for (AnnotationProcessor generator : getGenerators()) {
+            for (AnnotationProcessor<?> generator : getGenerators()) {
                 AbstractParser<?> parser = generator.getParser();
                 if (parser.getAnnotationType() != null) {
                     for (Element e : env.getElementsAnnotatedWith(parser.getAnnotationType())) {
@@ -86,7 +86,7 @@ public class TruffleProcessor extends AbstractProcessor implements ProcessCallba
         }
     }
 
-    private static void processElement(RoundEnvironment env, AnnotationProcessor generator, Element e, boolean callback) {
+    private static void processElement(RoundEnvironment env, AnnotationProcessor<?> generator, Element e, boolean callback) {
         try {
             generator.process(env, e, callback);
         } catch (Throwable e1) {
@@ -94,16 +94,15 @@ public class TruffleProcessor extends AbstractProcessor implements ProcessCallba
         }
     }
 
-    private static void handleThrowable(AnnotationProcessor generator, Throwable t, Element e) {
+    private static void handleThrowable(AnnotationProcessor<?> generator, Throwable t, Element e) {
         String message = "Uncaught error in " + generator.getClass().getSimpleName() + " while processing " + e;
         generator.getContext().getEnvironment().getMessager().printMessage(Kind.ERROR, message + ": " + Utils.printException(t), e);
     }
 
-    @SuppressWarnings("unchecked")
     @Override
     public void callback(TypeElement template) {
-        for (AnnotationProcessor generator : generators) {
-            Class annotationType = generator.getParser().getAnnotationType();
+        for (AnnotationProcessor<?> generator : generators) {
+            Class<? extends Annotation> annotationType = generator.getParser().getAnnotationType();
             if (annotationType != null) {
                 Annotation annotation = template.getAnnotation(annotationType);
                 if (annotation != null) {
