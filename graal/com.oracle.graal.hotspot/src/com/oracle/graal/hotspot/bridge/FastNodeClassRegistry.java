@@ -23,9 +23,12 @@
 package com.oracle.graal.hotspot.bridge;
 
 import com.oracle.graal.graph.*;
+import com.oracle.graal.hotspot.replacements.*;
 
 /**
- * Direct access to the {@code InstanceKlass::_graal_node_class} field.
+ * Updates the {@code InstanceKlass::_graal_node_class} field when a {@link NodeClass} is created so
+ * that the {@link HotSpotNodeClassSubstitutions} and {@link HotSpotNodeSubstitutions}
+ * intrinsifications can read it.
  */
 class FastNodeClassRegistry extends NodeClass.Registry {
 
@@ -38,11 +41,6 @@ class FastNodeClassRegistry extends NodeClass.Registry {
     @SuppressWarnings("unused")
     static void initialize(CompilerToVM vm) {
         new FastNodeClassRegistry(vm);
-    }
-
-    @Override
-    public NodeClass get(Class<? extends Node> key) {
-        return vm.getNodeClass(key);
     }
 
     @Override

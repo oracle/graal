@@ -34,7 +34,7 @@ public class HotSpotNodeSubstitutions {
 
     /**
      * Partial substitution of {@link Node#getNodeClass()} that returns the value of the
-     * InstanceKlass::_graal_node_class C++ field if it is non-null.
+     * {@code InstanceKlass::_graal_node_class} field if it is non-null.
      */
     @MethodSubstitution(isStatic = false)
     public static NodeClass getNodeClass(final Node thisObj) {

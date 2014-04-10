@@ -145,9 +145,6 @@ public class CompilerToVMImpl implements CompilerToVM {
     public native Class<?> getJavaMirror(long metaspaceKlass);
 
     @Override
-    public native NodeClass getNodeClass(Class<?> c);
-
-    @Override
     public native void setNodeClass(Class<?> c, NodeClass nodeClass);
 
     @Override
