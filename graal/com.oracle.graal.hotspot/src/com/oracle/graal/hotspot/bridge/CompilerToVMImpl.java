@@ -182,4 +182,5 @@ public class CompilerToVMImpl implements CompilerToVM {
 
     public native boolean hasCompiledCodeForOSR(long metaspaceMethod, int entryBCI, int level);
 
+    public native long getTimeStamp();
 }

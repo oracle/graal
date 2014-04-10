@@ -328,4 +328,12 @@ public interface CompilerToVM {
      * @return true if the {@code metaspaceMethod} has code for {@code level}
      */
     boolean hasCompiledCodeForOSR(long metaspaceMethod, int entryBCI, int level);
+
+    /**
+     * Fetch the time stamp used for printing inside hotspot. It's relative to VM start to that all
+     * events can be ordered.
+     * 
+     * @return milliseconds since VM start
+     */
+    long getTimeStamp();
 }
