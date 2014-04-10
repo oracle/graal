@@ -457,10 +457,10 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     }
 
     @Override
-    public Value emitCompress(Value pointer, CompressEncoding encoding) {
+    public Value emitCompress(Value pointer, CompressEncoding encoding, boolean nonNull) {
         if (pointer.getPlatformKind() == Kind.Object) {
             Variable result = newVariable(NarrowOopStamp.NarrowOop);
-            append(new AMD64HotSpotMove.CompressPointer(result, asAllocatable(pointer), getProviders().getRegisters().getHeapBaseRegister().asValue(), encoding));
+            append(new AMD64HotSpotMove.CompressPointer(result, asAllocatable(pointer), getProviders().getRegisters().getHeapBaseRegister().asValue(), encoding, nonNull));
             return result;
         } else {
             assert pointer.getPlatformKind() == Kind.Long;
@@ -470,16 +470,16 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
                 base = newVariable(Kind.Long);
                 append(new AMD64Move.MoveToRegOp(Kind.Long, base, Constant.forLong(encoding.base)));
             }
-            append(new AMD64HotSpotMove.CompressPointer(result, asAllocatable(pointer), base, encoding));
+            append(new AMD64HotSpotMove.CompressPointer(result, asAllocatable(pointer), base, encoding, nonNull));
             return result;
         }
     }
 
     @Override
-    public Value emitUncompress(Value pointer, CompressEncoding encoding) {
+    public Value emitUncompress(Value pointer, CompressEncoding encoding, boolean nonNull) {
         if (pointer.getPlatformKind() == NarrowOopStamp.NarrowOop) {
             Variable result = newVariable(Kind.Object);
-            append(new AMD64HotSpotMove.UncompressPointer(result, asAllocatable(pointer), getProviders().getRegisters().getHeapBaseRegister().asValue(), encoding));
+            append(new AMD64HotSpotMove.UncompressPointer(result, asAllocatable(pointer), getProviders().getRegisters().getHeapBaseRegister().asValue(), encoding, nonNull));
             return result;
         } else {
             assert pointer.getPlatformKind() == Kind.Int;
@@ -489,7 +489,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
                 base = newVariable(Kind.Long);
                 append(new AMD64Move.MoveToRegOp(Kind.Long, base, Constant.forLong(encoding.base)));
             }
-            append(new AMD64HotSpotMove.UncompressPointer(result, asAllocatable(pointer), base, encoding));
+            append(new AMD64HotSpotMove.UncompressPointer(result, asAllocatable(pointer), base, encoding, nonNull));
             return result;
         }
     }

@@ -294,15 +294,17 @@ public class HSAILHotSpotLIRGenerator extends HSAILLIRGenerator implements HotSp
         throw GraalInternalError.shouldNotReachHere("NYI");
     }
 
-    public Value emitCompress(Value pointer, CompressEncoding encoding) {
+    @Override
+    public Value emitCompress(Value pointer, CompressEncoding encoding, boolean nonNull) {
         Variable result = newVariable(NarrowOopStamp.NarrowOop);
-        append(new HSAILMove.CompressPointer(result, newVariable(pointer.getPlatformKind()), asAllocatable(pointer), encoding.base, encoding.shift, encoding.alignment));
+        append(new HSAILMove.CompressPointer(result, newVariable(pointer.getPlatformKind()), asAllocatable(pointer), encoding.base, encoding.shift, encoding.alignment, nonNull));
         return result;
     }
 
-    public Value emitUncompress(Value pointer, CompressEncoding encoding) {
+    @Override
+    public Value emitUncompress(Value pointer, CompressEncoding encoding, boolean nonNull) {
         Variable result = newVariable(Kind.Object);
-        append(new HSAILMove.UncompressPointer(result, asAllocatable(pointer), encoding.base, encoding.shift, encoding.alignment));
+        append(new HSAILMove.UncompressPointer(result, asAllocatable(pointer), encoding.base, encoding.shift, encoding.alignment, nonNull));
         return result;
     }
 }

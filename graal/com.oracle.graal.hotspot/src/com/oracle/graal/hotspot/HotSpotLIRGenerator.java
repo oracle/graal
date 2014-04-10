@@ -37,7 +37,7 @@ public interface HotSpotLIRGenerator {
 
     /**
      * Emits an operation to make a tail call.
-     * 
+     *
      * @param args the arguments of the call
      * @param address the target address of the call
      */
@@ -52,7 +52,7 @@ public interface HotSpotLIRGenerator {
 
     HotSpotProviders getProviders();
 
-    Value emitCompress(Value pointer, CompressEncoding encoding);
+    Value emitCompress(Value pointer, CompressEncoding encoding, boolean nonNull);
 
-    Value emitUncompress(Value pointer, CompressEncoding encoding);
+    Value emitUncompress(Value pointer, CompressEncoding encoding, boolean nonNull);
 }

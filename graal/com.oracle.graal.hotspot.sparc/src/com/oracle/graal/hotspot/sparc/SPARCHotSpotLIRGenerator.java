@@ -247,12 +247,14 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
         return deoptimizationRescueSlot;
     }
 
-    public Value emitCompress(Value pointer, CompressEncoding encoding) {
+    @Override
+    public Value emitCompress(Value pointer, CompressEncoding encoding, boolean nonNull) {
         // TODO
         throw GraalInternalError.unimplemented();
     }
 
-    public Value emitUncompress(Value pointer, CompressEncoding encoding) {
+    @Override
+    public Value emitUncompress(Value pointer, CompressEncoding encoding, boolean nonNull) {
         // TODO
         throw GraalInternalError.unimplemented();
     }

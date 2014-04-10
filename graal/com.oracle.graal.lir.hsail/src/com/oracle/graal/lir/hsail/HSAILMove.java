@@ -311,24 +311,26 @@ public class HSAILMove {
         private final long base;
         private final int shift;
         private final int alignment;
+        private final boolean nonNull;
 
         @Def({REG}) protected AllocatableValue result;
         @Temp({REG, HINT}) protected AllocatableValue scratch;
         @Use({REG}) protected AllocatableValue input;
 
-        public CompressPointer(AllocatableValue result, AllocatableValue scratch, AllocatableValue input, long base, int shift, int alignment) {
+        public CompressPointer(AllocatableValue result, AllocatableValue scratch, AllocatableValue input, long base, int shift, int alignment, boolean nonNull) {
             this.result = result;
             this.scratch = scratch;
             this.input = input;
             this.base = base;
             this.shift = shift;
             this.alignment = alignment;
+            this.nonNull = nonNull;
         }
 
         @Override
         public void emitCode(CompilationResultBuilder crb, HSAILAssembler masm) {
             masm.emitMov(Kind.Long, scratch, input);
-            boolean testForNull = (input.getKind() == Kind.Object);
+            boolean testForNull = !nonNull;
             encodePointer(masm, scratch, base, shift, alignment, testForNull);
             masm.emitConvert(result, scratch, "u32", "u64");
         }
@@ -339,22 +341,24 @@ public class HSAILMove {
         private final long base;
         private final int shift;
         private final int alignment;
+        private final boolean nonNull;
 
         @Def({REG, HINT}) protected AllocatableValue result;
         @Use({REG}) protected AllocatableValue input;
 
-        public UncompressPointer(AllocatableValue result, AllocatableValue input, long base, int shift, int alignment) {
+        public UncompressPointer(AllocatableValue result, AllocatableValue input, long base, int shift, int alignment, boolean nonNull) {
             this.result = result;
             this.input = input;
             this.base = base;
             this.shift = shift;
             this.alignment = alignment;
+            this.nonNull = nonNull;
         }
 
         @Override
         public void emitCode(CompilationResultBuilder crb, HSAILAssembler masm) {
             masm.emitConvert(result, input, "u64", "u32");
-            boolean testForNull = (result.getKind() == Kind.Object);
+            boolean testForNull = !nonNull;
             decodePointer(masm, result, base, shift, alignment, testForNull);
         }
     }
