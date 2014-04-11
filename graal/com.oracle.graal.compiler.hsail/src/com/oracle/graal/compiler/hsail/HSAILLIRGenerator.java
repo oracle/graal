@@ -221,7 +221,9 @@ public abstract class HSAILLIRGenerator extends LIRGenerator {
 
     @Override
     public void emitIntegerTestBranch(Value left, Value right, LabelRef trueDestination, LabelRef falseDestination, double trueDestinationProbability) {
-        throw GraalInternalError.unimplemented();
+        Variable result = emitAnd(left, right);
+        Variable dummyResult = newVariable(left.getKind());
+        append(new CompareBranchOp(mapKindToCompareOp(left.getKind()), Condition.EQ, result, Constant.forInt(0), dummyResult, dummyResult, trueDestination, falseDestination, false));
     }
 
     @Override

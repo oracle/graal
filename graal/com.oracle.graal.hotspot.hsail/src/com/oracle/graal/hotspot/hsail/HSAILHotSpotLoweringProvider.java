@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.hotspot.hsail;
 
-import java.util.*;
-
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
@@ -31,32 +29,51 @@ import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
+import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
-import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.hotspot.hsail.nodes.*;
+import com.oracle.graal.hotspot.hsail.replacements.*;
+import java.util.HashMap;
 
 public class HSAILHotSpotLoweringProvider extends HotSpotLoweringProvider {
 
-    abstract static class LoweringStrategy {
+    private HSAILNewObjectSnippets.Templates hsailNewObjectSnippets;
+
+    abstract class LoweringStrategy {
         abstract void lower(Node n, LoweringTool tool);
     }
 
-    static LoweringStrategy PassThruStrategy = new LoweringStrategy() {
+    LoweringStrategy PassThruStrategy = new LoweringStrategy() {
         @Override
         void lower(Node n, LoweringTool tool) {
             return;
         }
     };
 
-    static LoweringStrategy RejectStrategy = new LoweringStrategy() {
+    LoweringStrategy RejectStrategy = new LoweringStrategy() {
         @Override
         void lower(Node n, LoweringTool tool) {
             throw new GraalInternalError("Node implementing Lowerable not handled in HSAIL Backend: " + n);
         }
     };
 
+    LoweringStrategy NewObjectStrategy = new LoweringStrategy() {
+        @Override
+        void lower(Node n, LoweringTool tool) {
+            StructuredGraph graph = (StructuredGraph) n.graph();
+            if (graph.getGuardsStage() == StructuredGraph.GuardsStage.AFTER_FSA) {
+                if (n instanceof NewInstanceNode) {
+                    hsailNewObjectSnippets.lower((NewInstanceNode) n, tool);
+                } else if (n instanceof NewArrayNode) {
+                    hsailNewObjectSnippets.lower((NewArrayNode) n, tool);
+                }
+            }
+        }
+    };
+
     // strategy to replace an UnwindNode with a DeoptNode
-    static LoweringStrategy UnwindNodeStrategy = new LoweringStrategy() {
+    LoweringStrategy UnwindNodeStrategy = new LoweringStrategy() {
         @Override
         void lower(Node n, LoweringTool tool) {
             StructuredGraph graph = (StructuredGraph) n.graph();
@@ -85,25 +102,58 @@ public class HSAILHotSpotLoweringProvider extends HotSpotLoweringProvider {
         }
     };
 
-    private static HashMap<Class<?>, LoweringStrategy> strategyMap = new HashMap<>();
-    static {
+    LoweringStrategy AtomicGetAndAddStrategy = new LoweringStrategy() {
+        @Override
+        void lower(Node n, LoweringTool tool) {
+            StructuredGraph graph = (StructuredGraph) n.graph();
+
+            // Note: this code adapted from CompareAndSwapNode
+            // lowering but since we are not dealing with an object
+            // but a word (thread passed in), I wasn't sure what
+            // should be done with the Location stuff so leaving it
+            // out for now
+
+            AtomicGetAndAddNode getAdd = (AtomicGetAndAddNode) n;
+            // LocationNode location = IndexedLocationNode.create(ANY_LOCATION, Kind.Long, 0,
+            // getAdd.offset(), graph, 1);
+            LocationNode location = IndexedLocationNode.create(getAdd.getLocationIdentity(), Kind.Long, 0, getAdd.offset(), graph, 1);
+            // note: getAdd.base() used to be getAdd.object()
+            LoweredAtomicGetAndAddNode loweredAtomicGetAdd = graph.add(new LoweredAtomicGetAndAddNode(getAdd.base(), location, getAdd.delta(), HeapAccess.BarrierType.NONE,
+                            getAdd.getKind() == Kind.Object));
+            loweredAtomicGetAdd.setStateAfter(getAdd.stateAfter());
+            graph.replaceFixedWithFixed(getAdd, loweredAtomicGetAdd);
+        }
+    };
+
+    private HashMap<Class<?>, LoweringStrategy> strategyMap = new HashMap<>();
+
+    void initStrategyMap() {
         strategyMap.put(ConvertNode.class, PassThruStrategy);
         strategyMap.put(FloatConvertNode.class, PassThruStrategy);
-        strategyMap.put(NewInstanceNode.class, RejectStrategy);
-        strategyMap.put(NewArrayNode.class, RejectStrategy);
+        strategyMap.put(NewInstanceNode.class, NewObjectStrategy);
+        strategyMap.put(NewArrayNode.class, NewObjectStrategy);
         strategyMap.put(NewMultiArrayNode.class, RejectStrategy);
         strategyMap.put(DynamicNewArrayNode.class, RejectStrategy);
         strategyMap.put(MonitorEnterNode.class, RejectStrategy);
         strategyMap.put(MonitorExitNode.class, RejectStrategy);
         strategyMap.put(UnwindNode.class, UnwindNodeStrategy);
+        strategyMap.put(AtomicGetAndAddNode.class, AtomicGetAndAddStrategy);
     }
 
-    private static LoweringStrategy getStrategy(Node n) {
+    private LoweringStrategy getStrategy(Node n) {
         return strategyMap.get(n.getClass());
     }
 
     public HSAILHotSpotLoweringProvider(HotSpotGraalRuntime runtime, MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls, HotSpotRegistersProvider registers) {
         super(runtime, metaAccess, foreignCalls, registers);
+        initStrategyMap();
+    }
+
+    @Override
+    public void initialize(HotSpotProviders providers, HotSpotVMConfig config) {
+        super.initialize(providers, config);
+        TargetDescription target = providers.getCodeCache().getTarget();
+        hsailNewObjectSnippets = new HSAILNewObjectSnippets.Templates(providers, target);
     }
 
     @Override

@@ -231,7 +231,7 @@ public class NewInstanceStub extends SnippetStub {
      * @param log specifies if logging is enabled
      * @return the allocated chunk or {@link Word#zero()} if allocation fails
      */
-    static Word edenAllocate(Word sizeInBytes, boolean log) {
+    public static Word edenAllocate(Word sizeInBytes, boolean log) {
         Word heapTopAddress = Word.unsigned(heapTopAddress());
         Word heapEndAddress = Word.unsigned(heapEndAddress());
 

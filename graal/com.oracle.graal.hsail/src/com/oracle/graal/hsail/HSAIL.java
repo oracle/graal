@@ -131,6 +131,8 @@ public class HSAIL extends Architecture {
     public static final Register d17 = new Register(81, 17, "d17", CPU);
     public static final Register d18 = new Register(82, 18, "d18", CPU);
     public static final Register d19 = new Register(83, 19, "d19", CPU);
+    public static final Register d20 = new Register(84, 20, "d20", CPU);
+    public static final Register threadRegister = d20;
 
     // @formatter:off
     public static final Register[] cRegisters = {
@@ -145,7 +147,7 @@ public class HSAIL extends Architecture {
     };
 
     public static final Register[] dRegisters = {
-        d0, d1, d2, d3, d4, d5, d6, d7, d8, d9, d10, d11, d12, d13, d14, d15
+        d0, d1, d2, d3, d4, d5, d6, d7, d8, d9, d10, d11, d12, d13, d14, d15, threadRegister
     };
 
     public static final Register[] qRegisters = {
@@ -156,7 +158,7 @@ public class HSAIL extends Architecture {
         c0, c1, c2, c3, c4, c5, c6, c7, s0, s1, s2, s3, s4, s5, s6, s7, s8, s9, s10, s11, s12, s13, s14, s15,
         d0, d1, d2, d3, d4, d5, d6, d7, d8, d9, d10, d11, d12, d13,
         d14, d15, q0, q1, q2, q3, q4, q5, q6, q7, q8, q9, q10, q11,
-        q12, q13, q14, q15
+        q12, q13, q14, q15, threadRegister
     };
 
     // @formatter:on

@@ -95,6 +95,13 @@ public class HSAILMove {
             super(moveKind);
             this.result = result;
             this.input = input;
+            checkForNullObjectInput();
+        }
+
+        private void checkForNullObjectInput() {
+            if (result.getKind() == Kind.Object && isConstant(input) && input.getKind() == Kind.Long && ((Constant) input).asLong() == 0) {
+                input = Constant.NULL_OBJECT;
+            }
         }
 
         @Override
@@ -481,4 +488,28 @@ public class HSAILMove {
             throw GraalInternalError.shouldNotReachHere();
         }
     }
+
+    @Opcode("ATOMICADD")
+    public static class AtomicGetAndAddOp extends HSAILLIRInstruction {
+
+        @Def protected AllocatableValue result;
+        @Use({COMPOSITE}) protected HSAILAddressValue address;
+        @Use({REG, CONST}) protected Value delta;
+
+        public AtomicGetAndAddOp(AllocatableValue result, HSAILAddressValue address, Value delta) {
+            this.result = result;
+            this.address = address;
+            this.delta = delta;
+        }
+
+        public HSAILAddressValue getAddress() {
+            return address;
+        }
+
+        @Override
+        public void emitCode(CompilationResultBuilder crb, HSAILAssembler masm) {
+            masm.emitAtomicAdd(result, address.toAddress(), delta);
+        }
+    }
+
 }

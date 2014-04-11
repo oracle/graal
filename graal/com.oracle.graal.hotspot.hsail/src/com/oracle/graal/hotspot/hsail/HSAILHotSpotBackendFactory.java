@@ -28,10 +28,10 @@ import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hsail.*;
-import com.oracle.graal.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.phases.util.*;
+import com.oracle.graal.hotspot.hsail.replacements.*;
 
 @ServiceProvider(HotSpotBackendFactory.class)
 public class HSAILHotSpotBackendFactory implements HotSpotBackendFactory {
@@ -40,7 +40,7 @@ public class HSAILHotSpotBackendFactory implements HotSpotBackendFactory {
     public HSAILHotSpotBackend createBackend(HotSpotGraalRuntime runtime, HotSpotBackend hostBackend) {
         HotSpotProviders host = hostBackend.getProviders();
 
-        HotSpotRegisters registers = new HotSpotRegisters(Register.None, Register.None, Register.None);
+        HotSpotRegisters registers = new HotSpotRegisters(HSAIL.threadRegister, Register.None, Register.None);
         HotSpotMetaAccessProvider metaAccess = host.getMetaAccess();
         HSAILHotSpotCodeCacheProvider codeCache = new HSAILHotSpotCodeCacheProvider(runtime, createTarget());
         ConstantReflectionProvider constantReflection = host.getConstantReflection();
@@ -52,8 +52,11 @@ public class HSAILHotSpotBackendFactory implements HotSpotBackendFactory {
         Providers p = new Providers(metaAccess, codeCache, constantReflection, foreignCalls, lowerer, null);
         Replacements replacements = new HSAILHotSpotReplacementsImpl(p, host.getSnippetReflection(), assumptions, codeCache.getTarget(), host.getReplacements());
         HotSpotDisassemblerProvider disassembler = host.getDisassembler();
-        SuitesProvider suites = new DefaultSuitesProvider();
+        SuitesProvider suites = new HotSpotSuitesProvider(runtime);
         HotSpotProviders providers = new HotSpotProviders(metaAccess, codeCache, constantReflection, foreignCalls, lowerer, replacements, disassembler, suites, registers, host.getSnippetReflection());
+
+        // pass registers info down to ReplacementsUtil (maybe a better way to do this?)
+        HSAILHotSpotReplacementsUtil.initialize(providers.getRegisters());
 
         return new HSAILHotSpotBackend(runtime, providers);
     }

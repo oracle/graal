@@ -105,7 +105,7 @@ public class NewObjectSnippets implements Snippets {
         return ProfileAllocations.getValue();
     }
 
-    private static void profileAllocation(String path, long size, String typeContext) {
+    protected static void profileAllocation(String path, long size, String typeContext) {
         if (doProfile()) {
             String name = createName(path, typeContext);
 
@@ -347,7 +347,7 @@ public class NewObjectSnippets implements Snippets {
     /**
      * Formats some allocated memory with an object header and zeroes out the rest.
      */
-    private static Object formatObject(Word hub, int size, Word memory, Word compileTimePrototypeMarkWord, boolean fillContents, boolean constantSize, boolean noAsserts, boolean useSnippetCounters) {
+    protected static Object formatObject(Word hub, int size, Word memory, Word compileTimePrototypeMarkWord, boolean fillContents, boolean constantSize, boolean noAsserts, boolean useSnippetCounters) {
         Word prototypeMarkWord = useBiasedLocking() ? hub.readWord(prototypeMarkWordOffset(), PROTOTYPE_MARK_WORD_LOCATION) : compileTimePrototypeMarkWord;
         initializeObjectHeader(memory, prototypeMarkWord, hub);
         if (fillContents) {
