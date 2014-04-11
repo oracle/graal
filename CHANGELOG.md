@@ -7,9 +7,11 @@
 * Explicit types for inputs (InputType enum).
 * Added graal.version system property to Graal enabled VM builds.
 * Transitioned to JDK 8 as minimum JDK level for Graal.
+* Added support for stack introspection
 * ...
 
 ### Truffle
+* Support for collecting stack traces and for accessing the current frame in slow paths
 * ...
 
 ## Version 0.2
