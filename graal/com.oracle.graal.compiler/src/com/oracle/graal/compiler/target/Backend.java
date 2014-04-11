@@ -23,6 +23,7 @@
 package com.oracle.graal.compiler.target;
 
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.code.stack.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
 import com.oracle.graal.compiler.gen.*;
@@ -95,6 +96,8 @@ public abstract class Backend {
     public abstract CompilationResultBuilder newCompilationResultBuilder(LIRGenerationResult lirGenResult, CompilationResult compilationResult, CompilationResultBuilderFactory factory);
 
     public abstract boolean shouldAllocateRegisters();
+
+    public abstract StackIntrospection getStackIntrospection();
 
     /**
      * Emits the code for a given graph.

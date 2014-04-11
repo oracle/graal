@@ -25,6 +25,7 @@ package com.oracle.graal.hotspot;
 import java.util.*;
 
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.code.stack.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.hotspot.meta.*;
@@ -96,7 +97,7 @@ public abstract class HotSpotBackend extends Backend {
 
     /**
      * Finds all the registers that are defined by some given LIR.
-     * 
+     *
      * @param lir the LIR to examine
      * @return the registers that are defined by or used as temps for any instruction in {@code lir}
      */
@@ -134,7 +135,7 @@ public abstract class HotSpotBackend extends Backend {
      * {@linkplain SaveRegistersOp#remove(Set) removed} as these registers are declared as
      * temporaries in the stub's {@linkplain ForeignCallLinkage linkage} (and thus will be saved by
      * the stub's caller).
-     * 
+     *
      * @param stub the stub to update
      * @param destroyedRegisters the registers destroyed by the stub
      * @param calleeSaveInfo a map from debug infos to the operations that provide their
@@ -155,6 +156,11 @@ public abstract class HotSpotBackend extends Backend {
                 info.setCalleeSaveInfo(save.getMap(frameMap));
             }
         }
+    }
+
+    @Override
+    public StackIntrospection getStackIntrospection() {
+        return runtime;
     }
 
     @Override
