@@ -1512,7 +1512,7 @@ public class HotSpotVMConfig extends CompilerObject {
             if (ptr == 0) {
                 return 0L;
             } else {
-                return (ptr & 0xFFFFFFFFL) << shift + base;
+                return ((ptr & 0xFFFFFFFFL) << shift) + base;
             }
         }
 
