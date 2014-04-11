@@ -126,7 +126,7 @@ public abstract class NodePredicates {
         return new NegativeTypePredicate(iface);
     }
 
-    private static final class TautologyPredicate extends NodePredicate {
+    private static final class TautologyPredicate implements NodePredicate {
 
         @Override
         public boolean apply(Node n) {
@@ -134,7 +134,7 @@ public abstract class NodePredicates {
         }
     }
 
-    private static final class FalsePredicate extends NodePredicate {
+    private static final class FalsePredicate implements NodePredicate {
 
         @Override
         public boolean apply(Node n) {
@@ -142,7 +142,7 @@ public abstract class NodePredicates {
         }
     }
 
-    private static final class AndPredicate extends NodePredicate {
+    private static final class AndPredicate implements NodePredicate {
 
         private final NodePredicate a;
         private final NodePredicate b;
@@ -158,7 +158,7 @@ public abstract class NodePredicates {
         }
     }
 
-    private static final class NotPredicate extends NodePredicate {
+    private static final class NotPredicate implements NodePredicate {
 
         private final NodePredicate a;
 
@@ -172,7 +172,7 @@ public abstract class NodePredicates {
         }
     }
 
-    private static final class OrPredicate extends NodePredicate {
+    private static final class OrPredicate implements NodePredicate {
 
         private final NodePredicate a;
         private final NodePredicate b;
@@ -188,7 +188,7 @@ public abstract class NodePredicates {
         }
     }
 
-    private static final class IsNullPredicate extends NodePredicate {
+    private static final class IsNullPredicate implements NodePredicate {
 
         @Override
         public boolean apply(Node n) {
@@ -196,7 +196,7 @@ public abstract class NodePredicates {
         }
     }
 
-    private static final class IsNotNullPredicate extends NodePredicate {
+    private static final class IsNotNullPredicate implements NodePredicate {
 
         @Override
         public boolean apply(Node n) {
@@ -204,7 +204,7 @@ public abstract class NodePredicates {
         }
     }
 
-    private static final class EqualsPredicate extends NodePredicate {
+    private static final class EqualsPredicate implements NodePredicate {
 
         private final Node u;
 
@@ -218,7 +218,7 @@ public abstract class NodePredicates {
         }
     }
 
-    private static final class NotEqualsPredicate extends NodePredicate {
+    private static final class NotEqualsPredicate implements NodePredicate {
 
         private final Node u;
 
@@ -232,7 +232,7 @@ public abstract class NodePredicates {
         }
     }
 
-    public static final class PositiveTypePredicate extends NodePredicate {
+    public static final class PositiveTypePredicate implements NodePredicate {
 
         private final Class<?> type;
         private PositiveTypePredicate or;
@@ -263,7 +263,7 @@ public abstract class NodePredicates {
         }
     }
 
-    public static final class NegativeTypePredicate extends NodePredicate {
+    public static final class NegativeTypePredicate implements NodePredicate {
 
         private final Class<?> type;
         private NegativeTypePredicate nor;

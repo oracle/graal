@@ -123,7 +123,7 @@ public class LoopEx {
         return (isCounted() ? "CountedLoop [" + counted() + "] " : "Loop ") + "(depth=" + lirLoop().depth + ") " + loopBegin();
     }
 
-    private class InvariantPredicate extends NodePredicate {
+    private class InvariantPredicate implements NodePredicate {
 
         @Override
         public boolean apply(Node n) {
