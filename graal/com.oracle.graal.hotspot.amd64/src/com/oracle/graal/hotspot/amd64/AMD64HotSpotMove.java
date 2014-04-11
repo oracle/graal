@@ -82,7 +82,7 @@ public class AMD64HotSpotMove {
 
         @Def({REG, HINT}) protected AllocatableValue result;
         @Use({REG}) protected AllocatableValue input;
-        @Use({REG, ILLEGAL}) protected AllocatableValue baseRegister;
+        @Alive({REG, ILLEGAL}) protected AllocatableValue baseRegister;
 
         public CompressPointer(AllocatableValue result, AllocatableValue input, AllocatableValue baseRegister, CompressEncoding encoding, boolean nonNull) {
             this.result = result;
@@ -119,7 +119,7 @@ public class AMD64HotSpotMove {
 
         @Def({REG, HINT}) protected AllocatableValue result;
         @Use({REG}) protected AllocatableValue input;
-        @Use({REG, ILLEGAL}) protected AllocatableValue baseRegister;
+        @Alive({REG, ILLEGAL}) protected AllocatableValue baseRegister;
 
         public UncompressPointer(AllocatableValue result, AllocatableValue input, AllocatableValue baseRegister, CompressEncoding encoding, boolean nonNull) {
             this.result = result;
