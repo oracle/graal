@@ -124,24 +124,12 @@ public class MergeNode extends BeginStateSplitNode implements IterableNodeType, 
     }
 
     public NodeIterable<PhiNode> phis() {
-        return this.usages().filter(PhiNode.class).filter(new NodePredicate() {
-
-            @Override
-            public boolean apply(Node n) {
-                return ((PhiNode) n).merge() == MergeNode.this;
-            }
-        });
+        return this.usages().filter(PhiNode.class).filter(this::isPhiAtMerge);
     }
 
     @Override
     public NodeIterable<Node> anchored() {
-        return super.anchored().filter(isNotA(PhiNode.class).or(new NodePredicate() {
-
-            @Override
-            public boolean apply(Node n) {
-                return ((PhiNode) n).merge() != MergeNode.this;
-            }
-        }));
+        return super.anchored().filter(n -> !isPhiAtMerge(n));
     }
 
     @Override
@@ -163,10 +151,8 @@ public class MergeNode extends BeginStateSplitNode implements IterableNodeType, 
                 return;
             }
             for (PhiNode phi : phis()) {
-                for (Node usage : phi.usages().filter(isNotA(FrameState.class))) {
-                    if (!merge.isPhiAtMerge(usage)) {
-                        return;
-                    }
+                if (phi.usages().filter(isNotA(FrameState.class)).and(node -> !merge.isPhiAtMerge(node)).isNotEmpty()) {
+                    return;
                 }
             }
             Debug.log("Split %s into ends for %s.", this, merge);
