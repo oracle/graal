@@ -31,8 +31,8 @@ import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
 
 /**
- * A direct call that complies with the conventions for such calls in HotSpot. In particular, for
- * calls using an inline cache, a MOVE instruction is emitted just prior to the aligned direct call.
+ * A direct call that complies with the conventions for such calls in HotSpot. It doesn't use an
+ * inline cache so it's just a patchable call site.
  */
 @Opcode("CALL_DIRECT")
 final class AMD64HotspotDirectStaticCallOp extends DirectCallOp {
