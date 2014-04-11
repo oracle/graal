@@ -176,7 +176,7 @@ public class ThreadSafetyTest {
         int execute(VirtualFrame frame) {
             int arg = (Integer) frame.getArguments()[0];
             if (arg > 0) {
-                return (int) callNode.call(new Object[]{(arg - 1)});
+                return (int) callNode.call(frame, new Object[]{(arg - 1)});
             } else {
                 return valueNode.execute(frame);
             }

@@ -92,7 +92,7 @@ final class SLDirectDispatchNode extends SLAbstractDispatchNode {
                  * Now we are really ready to perform the call. We use a Truffle CallNode for that,
                  * because it does all the work for method inlining.
                  */
-                return callCachedTargetNode.call(arguments);
+                return callCachedTargetNode.call(frame, arguments);
 
             } catch (InvalidAssumptionException ex) {
                 /*

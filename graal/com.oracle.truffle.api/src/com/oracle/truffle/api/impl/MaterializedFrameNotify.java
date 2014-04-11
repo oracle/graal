@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,31 +24,11 @@
  */
 package com.oracle.truffle.api.impl;
 
-import com.oracle.truffle.api.*;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.frame.*;
-import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.frame.FrameInstance.*;
 
-/**
- * This is an implementation-specific class. Do not use or instantiate it. Instead, use
- * {@link TruffleRuntime#createCallTarget(RootNode)} to create a {@link RootCallTarget}.
- */
-public class DefaultCallTarget extends RootCallTarget {
+public interface MaterializedFrameNotify {
 
-    @CompilationFinal protected boolean needsMaterializedFrame = true;
+    FrameAccess getOutsideFrameAccess();
 
-    protected DefaultCallTarget(RootNode function) {
-        super(function);
-    }
-
-    @Override
-    public Object call(Object[] args) {
-        VirtualFrame frame = new DefaultVirtualFrame(getRootNode().getFrameDescriptor(), args);
-        return callProxy(frame);
-    }
-
-    @Override
-    public void setNeedsMaterializedFrame() {
-        needsMaterializedFrame = true;
-    }
+    void setOutsideFrameAccess(FrameAccess outsideFrameAccess);
 }

@@ -97,6 +97,8 @@ public final class SLContext {
         installBuiltin(SLPrintlnBuiltinFactory.getInstance());
         installBuiltin(SLNanoTimeBuiltinFactory.getInstance());
         installBuiltin(SLDefineFunctionBuiltinFactory.getInstance());
+        installBuiltin(SLStackTraceBuiltinFactory.getInstance());
+        installBuiltin(SLHelloEqualsWorldBuiltinFactory.getInstance());
     }
 
     private void installBuiltin(NodeFactory<? extends SLBuiltinNode> factory) {

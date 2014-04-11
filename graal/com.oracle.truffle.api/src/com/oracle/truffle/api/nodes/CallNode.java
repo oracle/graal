@@ -25,11 +25,14 @@
 package com.oracle.truffle.api.nodes;
 
 import com.oracle.truffle.api.*;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.frame.FrameInstance.FrameAccess;
+import com.oracle.truffle.api.frame.*;
 
 /**
- * Represents a call to a {@link CallTarget} in the Truffle AST. Addtionally to calling the
- * {@link CallTarget} this {@link Node} enables the runtime system to implement further
- * optimizations. Optimizations that can possibly applied to a {@link CallNode} are inlining and
+ * Represents a call to a {@link CallTarget} in the Truffle AST. In addition to calling the
+ * {@link CallTarget}, this {@link Node} enables the runtime system to implement further
+ * optimizations. Optimizations that can possibly be applied to a {@link CallNode} are inlining and
  * splitting. Inlining inlines this call site into the call graph of the parent {@link CallTarget}.
  * Splitting duplicates the {@link CallTarget} using {@link RootNode#split()} to collect call site
  * sensitive profiling information.
@@ -54,7 +57,7 @@ public abstract class CallNode extends Node {
      * @param arguments the arguments that should be passed to the callee
      * @return the return result of the call
      */
-    public abstract Object call(Object[] arguments);
+    public abstract Object call(VirtualFrame frame, Object[] arguments);
 
     /**
      * Returns the originally supplied {@link CallTarget} when this call node was created. Please
@@ -115,14 +118,14 @@ public abstract class CallNode extends Node {
     }
 
     /**
-     * Returns the splitted {@link CallTarget} if this method is split.
+     * Returns the split {@link CallTarget} if this method is split.
      *
      * @return the split {@link CallTarget}
      */
     public abstract CallTarget getSplitCallTarget();
 
     /**
-     * Returns the used call target when {@link #call(Object[])} is invoked. If the
+     * Returns the used call target when {@link #call(VirtualFrame, Object[])} is invoked. If the
      * {@link CallTarget} was split this method returns the {@link CallTarget} returned by
      * {@link #getSplitCallTarget()}.
      *
@@ -152,5 +155,4 @@ public abstract class CallNode extends Node {
         }
         return null;
     }
-
 }

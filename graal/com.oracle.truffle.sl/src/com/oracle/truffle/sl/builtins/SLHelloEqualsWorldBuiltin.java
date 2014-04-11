@@ -1,12 +1,10 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.  Oracle designates this
- * particular file as subject to the "Classpath" exception as provided
- * by Oracle in the LICENSE file that accompanied this code.
+ * published by the Free Software Foundation.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -22,33 +20,26 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.impl;
+package com.oracle.truffle.sl.builtins;
 
 import com.oracle.truffle.api.*;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.frame.*;
+import com.oracle.truffle.api.frame.FrameInstance.FrameAccess;
 import com.oracle.truffle.api.nodes.*;
 
 /**
- * This is an implementation-specific class. Do not use or instantiate it. Instead, use
- * {@link TruffleRuntime#createCallTarget(RootNode)} to create a {@link RootCallTarget}.
+ * This builtin sets the variable named "hello" in the caller frame to the string "world".
  */
-public class DefaultCallTarget extends RootCallTarget {
+@NodeInfo(shortName = "helloEqualsWorld")
+public abstract class SLHelloEqualsWorldBuiltin extends SLBuiltinNode {
 
-    @CompilationFinal protected boolean needsMaterializedFrame = true;
-
-    protected DefaultCallTarget(RootNode function) {
-        super(function);
-    }
-
-    @Override
-    public Object call(Object[] args) {
-        VirtualFrame frame = new DefaultVirtualFrame(getRootNode().getFrameDescriptor(), args);
-        return callProxy(frame);
-    }
-
-    @Override
-    public void setNeedsMaterializedFrame() {
-        needsMaterializedFrame = true;
+    @Specialization
+    public Object change() {
+        FrameInstance frameInstance = Truffle.getRuntime().getStackTrace().iterator().next();
+        Frame frame = frameInstance.getFrame(FrameAccess.READ_WRITE, false);
+        FrameSlot slot = frame.getFrameDescriptor().findOrAddFrameSlot("hello");
+        frame.setObject(slot, "world");
+        return null;
     }
 }

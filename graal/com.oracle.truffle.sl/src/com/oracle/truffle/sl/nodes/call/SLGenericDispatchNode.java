@@ -22,14 +22,19 @@
  */
 package com.oracle.truffle.sl.nodes.call;
 
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.*;
+import com.oracle.truffle.api.frame.FrameInstance.FrameAccess;
+import com.oracle.truffle.api.impl.*;
 import com.oracle.truffle.sl.runtime.*;
 
 /**
  * Slow-path code for a call, used when the polymorphic inline cache exceeded its maximum size. Such
  * calls are not optimized any further, e.g., no method inlining is performed.
  */
-final class SLGenericDispatchNode extends SLAbstractDispatchNode {
+final class SLGenericDispatchNode extends SLAbstractDispatchNode implements MaterializedFrameNotify {
+
+    @CompilationFinal private FrameAccess outsideFrameAccess = FrameAccess.NONE;
 
     @Override
     protected Object executeDispatch(VirtualFrame frame, SLFunction function, Object[] arguments) {
@@ -37,6 +42,14 @@ final class SLGenericDispatchNode extends SLAbstractDispatchNode {
          * SL has a quite simple call lookup: just ask the function for the current call target, and
          * call it.
          */
-        return function.getCallTarget().call(arguments);
+        return DefaultCallNode.callProxy(this, function.getCallTarget(), frame, arguments);
+    }
+
+    public FrameAccess getOutsideFrameAccess() {
+        return outsideFrameAccess;
+    }
+
+    public void setOutsideFrameAccess(FrameAccess outsideFrameAccess) {
+        this.outsideFrameAccess = outsideFrameAccess;
     }
 }

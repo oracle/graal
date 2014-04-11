@@ -619,4 +619,13 @@ public final class CompilerDirectives {
     @Target({ElementType.TYPE})
     public @interface ValueType {
     }
+
+    /**
+     * Ensures that the given object is not virtual, i.e., not removed by Escape Analysis at the
+     * point of this call.
+     *
+     * @param obj the object to exclude from Escape Analysis
+     */
+    public static void materialize(Object obj) {
+    }
 }

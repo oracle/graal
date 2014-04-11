@@ -25,17 +25,44 @@
 package com.oracle.truffle.api.impl;
 
 import com.oracle.truffle.api.*;
+import com.oracle.truffle.api.CompilerDirectives.*;
+import com.oracle.truffle.api.frame.*;
+import com.oracle.truffle.api.frame.FrameInstance.*;
 import com.oracle.truffle.api.nodes.*;
 
-public class DefaultCallNode extends CallNode {
+public class DefaultCallNode extends CallNode implements MaterializedFrameNotify {
+
+    @CompilationFinal private FrameAccess outsideFrameAccess = FrameAccess.NONE;
 
     public DefaultCallNode(CallTarget target) {
         super(target);
     }
 
     @Override
-    public Object call(Object[] arguments) {
-        return getCurrentCallTarget().call(arguments);
+    public Object call(VirtualFrame frame, Object[] arguments) {
+        return callProxy(this, getCurrentCallTarget(), frame, arguments);
+    }
+
+    public static Object callProxy(MaterializedFrameNotify notify, CallTarget callTarget, VirtualFrame frame, Object[] arguments) {
+        try {
+            if (notify.getOutsideFrameAccess() != FrameAccess.NONE) {
+                CompilerDirectives.materialize(frame);
+            }
+            return callTarget.call(arguments);
+        } finally {
+            // this assertion is needed to keep the values from being cleared as non-live locals
+            assert notify != null & callTarget != null & frame != null;
+        }
+    }
+
+    @Override
+    public FrameAccess getOutsideFrameAccess() {
+        return outsideFrameAccess;
+    }
+
+    @Override
+    public void setOutsideFrameAccess(FrameAccess outsideFrameAccess) {
+        this.outsideFrameAccess = outsideFrameAccess;
     }
 
     @Override

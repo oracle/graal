@@ -81,4 +81,14 @@ public final class DefaultTruffleRuntime implements TruffleRuntime {
     public Assumption createAssumption(String name) {
         return new DefaultAssumption(name);
     }
+
+    public Iterable<FrameInstance> getStackTrace() {
+        // TODO(lstadler) implement this using ThreadLocal
+        return null;
+    }
+
+    public FrameInstance getCurrentFrame() {
+        // TODO(lstadler) implement this using ThreadLocal
+        return null;
+    }
 }

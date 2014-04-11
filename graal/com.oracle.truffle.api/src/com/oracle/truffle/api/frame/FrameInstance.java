@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,33 +22,25 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.impl;
+package com.oracle.truffle.api.frame;
 
 import com.oracle.truffle.api.*;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
 
-/**
- * This is an implementation-specific class. Do not use or instantiate it. Instead, use
- * {@link TruffleRuntime#createCallTarget(RootNode)} to create a {@link RootCallTarget}.
- */
-public class DefaultCallTarget extends RootCallTarget {
+public interface FrameInstance {
 
-    @CompilationFinal protected boolean needsMaterializedFrame = true;
-
-    protected DefaultCallTarget(RootNode function) {
-        super(function);
+    public static enum FrameAccess {
+        NONE,
+        READ_ONLY,
+        READ_WRITE,
+        MATERIALIZE
     }
 
-    @Override
-    public Object call(Object[] args) {
-        VirtualFrame frame = new DefaultVirtualFrame(getRootNode().getFrameDescriptor(), args);
-        return callProxy(frame);
-    }
+    Frame getFrame(FrameAccess access, boolean slowPath);
 
-    @Override
-    public void setNeedsMaterializedFrame() {
-        needsMaterializedFrame = true;
-    }
+    boolean isVirtualFrame();
+
+    CallNode getCallNode();
+
+    CallTarget getCallTarget();
 }
