@@ -86,7 +86,7 @@ public class PartialEvaluator {
             throw Debug.handle(e);
         }
 
-        if (TraceTruffleCompilationHistogram.getValue()) {
+        if (TraceTruffleCompilationHistogram.getValue() || TraceTruffleCompilationDetails.getValue()) {
             constantReceivers = new HashSet<>();
         }
 
@@ -190,21 +190,16 @@ public class PartialEvaluator {
                 InvokeKind kind = methodCallTargetNode.invokeKind();
                 try (Indent id1 = Debug.logAndIndent("try inlining %s, kind = %s", methodCallTargetNode.targetMethod(), kind)) {
                     if (kind == InvokeKind.Static || (kind == InvokeKind.Special && (methodCallTargetNode.receiver().isConstant() || isFrame(methodCallTargetNode.receiver())))) {
-                        if (TraceTruffleCompilationHistogram.getValue() && kind == InvokeKind.Special) {
-                            ConstantNode constantNode = (ConstantNode) methodCallTargetNode.arguments().first();
-                            constantReceivers.add(constantNode.asConstant());
+                        if ((TraceTruffleCompilationHistogram.getValue() || TraceTruffleCompilationDetails.getValue()) && kind == InvokeKind.Special && methodCallTargetNode.receiver().isConstant()) {
+                            constantReceivers.add(methodCallTargetNode.receiver().asConstant());
                         }
+
                         Replacements replacements = providers.getReplacements();
                         Class<? extends FixedWithNextNode> macroSubstitution = replacements.getMacroSubstitution(methodCallTargetNode.targetMethod());
                         if (macroSubstitution != null) {
                             InliningUtil.inlineMacroNode(methodCallTargetNode.invoke(), methodCallTargetNode.targetMethod(), macroSubstitution);
                             changed = true;
                             continue;
-                        }
-
-                        if (TraceTruffleCompilationDetails.getValue() && kind == InvokeKind.Special) {
-                            ConstantNode constantNode = (ConstantNode) methodCallTargetNode.arguments().first();
-                            constantReceivers.add(constantNode.asConstant());
                         }
 
                         StructuredGraph inlineGraph = replacements.getMethodSubstitution(methodCallTargetNode.targetMethod());
@@ -227,7 +222,6 @@ public class PartialEvaluator {
                                     expansionLogger.preExpand(methodCallTargetNode, inlineGraph);
                                 }
                                 List<Node> invokeUsages = methodCallTargetNode.invoke().asNode().usages().snapshot();
-                                // try (Indent in2 = Debug.logAndIndent(false, "do inlining")) {
                                 Map<Node, Node> inlined = InliningUtil.inline(methodCallTargetNode.invoke(), inlineGraph, false);
                                 if (TraceTruffleExpansion.getValue()) {
                                     expansionLogger.postExpand(inlined);
