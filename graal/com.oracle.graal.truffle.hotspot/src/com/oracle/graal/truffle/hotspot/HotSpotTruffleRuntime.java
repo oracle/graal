@@ -31,6 +31,7 @@ import java.util.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.CallingConvention.Type;
+import com.oracle.graal.api.code.stack.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.compiler.target.*;
@@ -48,6 +49,7 @@ import com.oracle.graal.phases.util.*;
 import com.oracle.graal.runtime.*;
 import com.oracle.graal.truffle.*;
 import com.oracle.truffle.api.*;
+import com.oracle.truffle.api.CompilerDirectives.*;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.impl.*;
 import com.oracle.truffle.api.nodes.*;
@@ -63,6 +65,7 @@ public final class HotSpotTruffleRuntime implements GraalTruffleRuntime {
 
     private TruffleCompiler truffleCompiler;
     private Replacements truffleReplacements;
+    private StackIntrospection stackIntrospection;
     private ArrayList<String> includes;
     private ArrayList<String> excludes;
 
@@ -211,5 +214,43 @@ public final class HotSpotTruffleRuntime implements GraalTruffleRuntime {
     private static Providers getGraalProviders() {
         RuntimeProvider runtimeProvider = Graal.getRequiredCapability(RuntimeProvider.class);
         return runtimeProvider.getHostBackend().getProviders();
+    }
+
+    @SlowPath
+    public Iterable<FrameInstance> getStackTrace() {
+        if (stackIntrospection == null) {
+            stackIntrospection = Graal.getRequiredCapability(StackIntrospection.class);
+        }
+        ResolvedJavaMethod method = getGraalProviders().getMetaAccess().lookupJavaMethod(HotSpotFrameInstance.NextFrame.METHOD);
+        final Iterator<InspectedFrame> frames = stackIntrospection.getStackTrace(method, method).iterator();
+        class FrameIterator implements Iterator<FrameInstance> {
+            public boolean hasNext() {
+                return frames.hasNext();
+            }
+
+            public FrameInstance next() {
+                InspectedFrame frame = frames.next();
+                return new HotSpotFrameInstance.NextFrame(frame);
+            }
+        }
+        return new Iterable<FrameInstance>() {
+            public Iterator<FrameInstance> iterator() {
+                return new FrameIterator();
+            }
+        };
+    }
+
+    public FrameInstance getCurrentFrame() {
+        if (stackIntrospection == null) {
+            stackIntrospection = Graal.getRequiredCapability(StackIntrospection.class);
+        }
+        ResolvedJavaMethod method = getGraalProviders().getMetaAccess().lookupJavaMethod(HotSpotFrameInstance.CurrentFrame.METHOD);
+        Iterator<InspectedFrame> frames = stackIntrospection.getStackTrace(method, method).iterator();
+        if (frames.hasNext()) {
+            return new HotSpotFrameInstance.CurrentFrame(frames.next());
+        } else {
+            System.out.println("no current frame found");
+            return null;
+        }
     }
 }

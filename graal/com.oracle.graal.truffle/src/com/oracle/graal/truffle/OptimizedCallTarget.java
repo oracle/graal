@@ -162,10 +162,14 @@ public abstract class OptimizedCallTarget extends DefaultCallTarget implements L
 
     public final Object executeHelper(Object[] args) {
         VirtualFrame frame = createFrame(getRootNode().getFrameDescriptor(), args);
-        return getRootNode().execute(frame);
+        return callProxy(frame);
     }
 
     public static FrameWithoutBoxing createFrame(FrameDescriptor descriptor, Object[] args) {
+        return new FrameWithoutBoxing(descriptor, args);
+    }
+
+    public static FrameWithoutBoxing createMaterializedFrame(FrameDescriptor descriptor, Object[] args) {
         return new FrameWithoutBoxing(descriptor, args);
     }
 
