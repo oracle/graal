@@ -451,7 +451,7 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
         boolean usesThreadRegister = false;
         search: for (AbstractBlock<?> b : lir.linearScanOrder()) {
             for (LIRInstruction op : lir.getLIRforBlock(b)) {
-                if (op instanceof AtomicGetAndAddOp && ((AtomicGetAndAddOp) op).getAddress().toAddress().getBase() == HSAIL.threadRegister) {
+                if (op instanceof AtomicGetAndAddOp && ((AtomicGetAndAddOp) op).getAddress().toAddress().getBase().equals(HSAIL.threadRegister)) {
                     usesThreadRegister = true;
                     assert useHSAILDeoptimization : "cannot use thread register if HSAIL deopt support is disabled";
                     break search;
