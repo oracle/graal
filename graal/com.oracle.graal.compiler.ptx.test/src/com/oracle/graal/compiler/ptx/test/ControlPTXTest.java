@@ -35,6 +35,7 @@ public class ControlPTXTest extends PTXTest {
         test("testIfElse2I", 19, 64);
     }
 
+    @Ignore("PTXHotSpotLIRGenerator.emitCompress is unimplemented")
     @Test
     public void testControl2() {
         compileKernel("testStatic");
