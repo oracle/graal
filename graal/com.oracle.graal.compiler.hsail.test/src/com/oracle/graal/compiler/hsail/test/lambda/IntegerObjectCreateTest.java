@@ -21,41 +21,49 @@
  * questions.
  */
 
-package com.oracle.graal.compiler.hsail.test;
+package com.oracle.graal.compiler.hsail.test.lambda;
 
-import com.oracle.graal.compiler.hsail.test.infra.*;
+import com.oracle.graal.compiler.hsail.test.infra.GraalKernelTester;
+import org.junit.Test;
 
 /**
- *
- * @author ecaspole
+ * Tests allocation of an Integer object.
  */
-public abstract class SingleExceptionTestBase extends GraalKernelTester {
+public class IntegerObjectCreateTest extends GraalKernelTester {
 
-    @Result Class<?> exceptionClass;
-    @Result String exceptionString;
-    @Result StackTraceElement firstStackTraceElement;
+    static final int NUM = 20;
+    @Result public Integer[] outArray = new Integer[NUM];
+    public Integer[] inArray = new Integer[NUM];
+
+    void setupArrays() {
+        for (int i = 0; i < NUM; i++) {
+            inArray[i] = i;
+            outArray[i] = -i;
+        }
+    }
+
+    @Override
+    public void runTest() {
+        setupArrays();
+
+        dispatchLambdaKernel(NUM, (gid) -> {
+            int val = inArray[gid];
+            outArray[gid] = val * val + 1;
+        });
+    }
 
     @Override
     protected boolean supportsRequiredCapabilities() {
-        return canDeoptimize();
+        return canHandleObjectAllocation();
     }
 
-    void recordException(Exception e) {
-        // for now we just test that the class the of the exception
-        // matches for the java and gpu side
-        exceptionClass = e.getClass();
-        // exception = e;
-        StackTraceElement[] elems = e.getStackTrace();
-        firstStackTraceElement = elems[0];
-        // for tests where the exception was in the method parameters
-        // ignore the firstStackTraceElement matching
-        if (firstStackTraceElement.getClassName().contains("KernelTester")) {
-            firstStackTraceElement = null;
-        }
-        for (StackTraceElement elem : elems) {
-            if (elem.toString().contains("KernelTester")) {
-                break;
-            }
-        }
+    @Test
+    public void test() {
+        testGeneratedHsail();
+    }
+
+    @Test
+    public void testUsingLambdaMethod() {
+        testGeneratedHsailUsingLambdaMethod();
     }
 }

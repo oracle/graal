@@ -103,8 +103,38 @@ public abstract class GraalKernelTester extends KernelTester {
         return (canGenerateCalls && canExecuteCalls);
     }
 
-    public boolean canHandleObjectAllocation() {
+    private static boolean supportsObjectAllocation() {
         return true;
+    }
+
+    /**
+     * Determines if the runtime supports object allocation in HSAIL code.
+     */
+    public boolean canHandleObjectAllocation() {
+        return supportsObjectAllocation() && canDeoptimize();
+    }
+
+    /**
+     * Determines if the runtime supports deoptimization in HSAIL code.
+     */
+    public boolean canDeoptimize() {
+        return getHSAILBackend().getRuntime().getConfig().useHSAILDeoptimization;
+    }
+
+    /**
+     * Determines if the runtime supports {@link VirtualObject}s in {@link DebugInfo} associated
+     * with HSAIL code.
+     */
+    public boolean canHandleDeoptVirtualObjects() {
+        return false;
+    }
+
+    /**
+     * Determines if the runtime supports {@link StackSlot}s in {@link DebugInfo} associated with
+     * HSAIL code.
+     */
+    public boolean canHandleDeoptStackSlots() {
+        return false;
     }
 
     /**
@@ -164,5 +194,4 @@ public abstract class GraalKernelTester extends KernelTester {
             super.testGeneratedHsailUsingLambdaMethod();
         }
     }
-
 }

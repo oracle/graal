@@ -21,33 +21,53 @@
  * questions.
  */
 
-package com.oracle.graal.compiler.hsail.test;
+package com.oracle.graal.compiler.hsail.test.lambda;
 
-import org.junit.*;
+import com.oracle.graal.compiler.hsail.test.infra.GraalKernelTester;
+import org.junit.Test;
 
 /**
- * Tests codegen for String.contains() but with a wrapper method such as one would get in the
- * IntConsumer.accept calls.
+ * Tests creating a String and calling .equals() on it.
  */
-public class StringContainsAcceptTest extends StringContainsTest {
+public class NewStringEqualsTest extends GraalKernelTester {
 
-    String base = "CDE";
+    static final int NUM = 20;
+    @Result public boolean[] outArray = new boolean[NUM];
+    char[] chars = new char[100];
 
-    // the accept method which "captured" the base
-    public void run(int gid) {
-        super.run(base, gid);
+    void setupArrays() {
+        for (int i = 0; i < chars.length; i++) {
+            chars[i] = (char) ('A' + i);
+        }
+        for (int i = 0; i < NUM; i++) {
+        }
     }
 
     @Override
     public void runTest() {
         setupArrays();
+        String base = "ABCDEFGHIJ";
 
-        dispatchMethodKernel(NUM);
+        dispatchLambdaKernel(NUM, (gid) -> {
+            outArray[gid] = new String(chars, 0, 10 + (gid % 3)).equals(base);
+        });
     }
 
-    @Test
     @Override
+    protected boolean supportsRequiredCapabilities() {
+        // although not escaping, seems to require object allocation support
+        return (canHandleObjectAllocation());
+    }
+
+    // NYI emitForeignCall charAlignedDisjointArraycopy
+    @Test(expected = com.oracle.graal.graph.GraalInternalError.class)
     public void test() {
         testGeneratedHsail();
     }
+
+    @Test(expected = com.oracle.graal.graph.GraalInternalError.class)
+    public void testUsingLambdaMethod() {
+        testGeneratedHsailUsingLambdaMethod();
+    }
+
 }

@@ -21,28 +21,43 @@
  * questions.
  */
 
-package com.oracle.graal.compiler.hsail.test;
+package com.oracle.graal.compiler.hsail.test.lambda;
 
-import org.junit.*;
+import com.oracle.graal.compiler.hsail.test.infra.GraalKernelTester;
+import java.util.concurrent.atomic.LongAdder;
+import org.junit.Test;
 
 /**
- * Unit test of NBody demo app. This version uses a call to the main routine which would normally be
- * too large to inline.
+ * Tests calling LongAdder.add().
  */
-public class StaticNBodyCallTest extends StaticNBodyTest {
+public class LongAdderTest extends GraalKernelTester {
 
-    public static void run(float[] inxyz, float[] outxyz, float[] invxyz, float[] outvxyz, int gid) {
-        StaticNBodyTest.run(inxyz, outxyz, invxyz, outvxyz, gid);
+    static final int NUM = 20;
+    @Result public long finalSum;
+    LongAdder adder = new LongAdder();
+
+    void setupArrays() {
     }
 
     @Override
     public void runTest() {
-        super.runTest();
+        setupArrays();
+
+        dispatchLambdaKernel(NUM, (gid) -> {
+            adder.add(gid);
+        });
+
+        finalSum = adder.sum();
     }
 
-    @Test
-    @Override
-    public void test() throws Exception {
+    // cannot handle node: CurrentJavaThread
+    @Test(expected = com.oracle.graal.graph.GraalInternalError.class)
+    public void test() {
         testGeneratedHsail();
+    }
+
+    @Test(expected = com.oracle.graal.graph.GraalInternalError.class)
+    public void testUsingLambdaMethod() {
+        testGeneratedHsailUsingLambdaMethod();
     }
 }

@@ -21,28 +21,15 @@
  * questions.
  */
 
-package com.oracle.graal.compiler.hsail.test;
-
-import org.junit.*;
+package com.oracle.graal.compiler.hsail.test.lambda;
 
 /**
- * Unit test of NBody demo app. This version uses a call to the main routine which would normally be
- * too large to inline.
+ * a place to put a direct call to a test if you don't want to go thru junit.
  */
-public class StaticNBodyCallTest extends StaticNBodyTest {
 
-    public static void run(float[] inxyz, float[] outxyz, float[] invxyz, float[] outvxyz, int gid) {
-        StaticNBodyTest.run(inxyz, outxyz, invxyz, outvxyz, gid);
-    }
+public class Main {
 
-    @Override
-    public void runTest() {
-        super.runTest();
-    }
-
-    @Test
-    @Override
-    public void test() throws Exception {
-        testGeneratedHsail();
+    public static void main(String[] args) {
+        // new StaticIntFieldAccessTest().test();
     }
 }

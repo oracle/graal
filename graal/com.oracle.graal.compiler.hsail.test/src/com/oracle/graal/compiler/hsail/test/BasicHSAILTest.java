@@ -30,6 +30,7 @@ import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
+import com.oracle.graal.debug.internal.*;
 import com.oracle.graal.gpu.*;
 import com.oracle.graal.hotspot.hsail.*;
 import com.oracle.graal.hsail.*;
@@ -343,12 +344,22 @@ public class BasicHSAILTest extends GraalCompilerTest {
     }
 
     private void test(final String snippet) {
-        try (Scope s = Debug.scope("HSAILCodeGen")) {
-            Method method = getMethod(snippet);
-            ExternalCompilationResult hsailCode = getBackend().compileKernel(getMetaAccess().lookupJavaMethod(method), false);
-            Debug.log("HSAIL code generated for %s:%n%s", snippet, hsailCode.getCodeString());
-        } catch (Throwable e) {
-            throw Debug.handle(e);
+        DebugConfig debugConfig = DebugScope.getConfig();
+        DebugConfig noInterceptConfig = new DelegatingDebugConfig(debugConfig) {
+            @Override
+            public RuntimeException interceptException(Throwable e) {
+                return null;
+            }
+        };
+
+        try (DebugConfigScope dcs = Debug.setConfig(noInterceptConfig)) {
+            try (Scope s = Debug.scope("HSAILCodeGen")) {
+                Method method = getMethod(snippet);
+                ExternalCompilationResult hsailCode = getBackend().compileKernel(getMetaAccess().lookupJavaMethod(method), false);
+                Debug.log("HSAIL code generated for %s:%n%s", snippet, hsailCode.getCodeString());
+            } catch (Throwable e) {
+                throw Debug.handle(e);
+            }
         }
     }
 

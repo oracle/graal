@@ -20,42 +20,66 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.graal.compiler.hsail.test;
 
-import com.oracle.graal.compiler.hsail.test.infra.*;
+import org.junit.*;
+
+import com.oracle.graal.compiler.hsail.test.infra.GraalKernelTester;
 
 /**
- *
- * @author ecaspole
+ * Tests direct method calls.
  */
-public abstract class SingleExceptionTestBase extends GraalKernelTester {
+public class NestedStaticCallTest extends GraalKernelTester {
 
-    @Result Class<?> exceptionClass;
-    @Result String exceptionString;
-    @Result StackTraceElement firstStackTraceElement;
+    static final int width = 768;
+    static final int height = width;
+    private int iterations = 100;
+    static final int range = width * height;
+    @Result public float[] outArray = new float[range];
 
-    @Override
-    protected boolean supportsRequiredCapabilities() {
-        return canDeoptimize();
+    public static int a(int i) {
+        if (i < 2) {
+            return b(i);
+        } else {
+            return i;
+        }
     }
 
-    void recordException(Exception e) {
-        // for now we just test that the class the of the exception
-        // matches for the java and gpu side
-        exceptionClass = e.getClass();
-        // exception = e;
-        StackTraceElement[] elems = e.getStackTrace();
-        firstStackTraceElement = elems[0];
-        // for tests where the exception was in the method parameters
-        // ignore the firstStackTraceElement matching
-        if (firstStackTraceElement.getClassName().contains("KernelTester")) {
-            firstStackTraceElement = null;
+    public static int b(int i) {
+        if (i < 90) {
+            return c(i) + i;
+        } else {
+            return d(i) - i;
         }
-        for (StackTraceElement elem : elems) {
-            if (elem.toString().contains("KernelTester")) {
-                break;
-            }
+    }
+
+    public static int c(int i) {
+
+        return d(i) + 5;
+    }
+
+    public static int d(int i) {
+
+        return e(i) + 10;
+    }
+
+    public static int e(int i) {
+        return 52 + i;
+    }
+
+    public void run(int gid) {
+        for (int i = 0; i < iterations; i++) {
+            outArray[gid] = a(gid) + i;
         }
+    }
+
+    @Override
+    public void runTest() {
+        dispatchMethodKernel(range);
+    }
+
+    @Test
+    public void test() {
+        testGeneratedHsail();
     }
 }

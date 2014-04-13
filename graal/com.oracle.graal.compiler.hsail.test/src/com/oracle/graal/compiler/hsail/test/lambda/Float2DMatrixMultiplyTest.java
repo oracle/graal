@@ -21,28 +21,39 @@
  * questions.
  */
 
-package com.oracle.graal.compiler.hsail.test;
+package com.oracle.graal.compiler.hsail.test.lambda;
 
-import org.junit.*;
+import org.junit.Test;
 
 /**
- * Unit test of NBody demo app. This version uses a call to the main routine which would normally be
- * too large to inline.
+ * Tests 2D float matrix multiply with each workitem outputting one row of the result matrix.
  */
-public class StaticNBodyCallTest extends StaticNBodyTest {
-
-    public static void run(float[] inxyz, float[] outxyz, float[] invxyz, float[] outvxyz, int gid) {
-        StaticNBodyTest.run(inxyz, outxyz, invxyz, outvxyz, gid);
-    }
+public class Float2DMatrixMultiplyTest extends Float2DMatrixBase {
 
     @Override
     public void runTest() {
-        super.runTest();
+        int range = 20;
+        setupArrays(range);
+
+        dispatchLambdaKernel(range, (gid) -> {
+            for (int j = 0; j < range; j++) {
+                float sum = 0;
+                for (int k = 0; k < range; k++) {
+                    sum += (matrixA[gid][k] * matrixB[k][j]);
+                }
+                outMatrix[gid][j] = sum;
+            }
+        });
     }
 
     @Test
-    @Override
-    public void test() throws Exception {
+    public void test() {
         testGeneratedHsail();
     }
+
+    @Test
+    public void testUsingLambdaMethod() {
+        testGeneratedHsailUsingLambdaMethod();
+    }
+
 }

@@ -23,39 +23,37 @@
 
 package com.oracle.graal.compiler.hsail.test;
 
+import org.junit.*;
+
 import com.oracle.graal.compiler.hsail.test.infra.*;
 
 /**
- *
- * @author ecaspole
+ * Tests floating point square root.
  */
-public abstract class SingleExceptionTestBase extends GraalKernelTester {
+public class FloatSqrtTest extends GraalKernelTester {
 
-    @Result Class<?> exceptionClass;
-    @Result String exceptionString;
-    @Result StackTraceElement firstStackTraceElement;
+    static final int size = 64;
+    float[] input = new float[size];
+    @Result float[] output = new float[size];
+    {
+        for (int i = 0; i < size; i++) {
+            input[i] = i;
+            output[i] = -1.0f;
+        }
 
-    @Override
-    protected boolean supportsRequiredCapabilities() {
-        return canDeoptimize();
     }
 
-    void recordException(Exception e) {
-        // for now we just test that the class the of the exception
-        // matches for the java and gpu side
-        exceptionClass = e.getClass();
-        // exception = e;
-        StackTraceElement[] elems = e.getStackTrace();
-        firstStackTraceElement = elems[0];
-        // for tests where the exception was in the method parameters
-        // ignore the firstStackTraceElement matching
-        if (firstStackTraceElement.getClassName().contains("KernelTester")) {
-            firstStackTraceElement = null;
-        }
-        for (StackTraceElement elem : elems) {
-            if (elem.toString().contains("KernelTester")) {
-                break;
-            }
-        }
+    public static void run(float[] input1, float[] output1, int gid) {
+        output1[gid] = (float) Math.sqrt(input1[gid]);
+    }
+
+    @Override
+    public void runTest() {
+        dispatchMethodKernel(size, input, output);
+    }
+
+    @Test
+    public void test() {
+        testGeneratedHsail();
     }
 }

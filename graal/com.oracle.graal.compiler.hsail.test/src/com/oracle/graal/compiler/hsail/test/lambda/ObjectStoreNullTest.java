@@ -21,28 +21,34 @@
  * questions.
  */
 
-package com.oracle.graal.compiler.hsail.test;
+package com.oracle.graal.compiler.hsail.test.lambda;
 
-import org.junit.*;
+import org.junit.Test;
 
 /**
- * Unit test of NBody demo app. This version uses a call to the main routine which would normally be
- * too large to inline.
+ * Tests the storing of null in an Object array
  */
-public class StaticNBodyCallTest extends StaticNBodyTest {
-
-    public static void run(float[] inxyz, float[] outxyz, float[] invxyz, float[] outvxyz, int gid) {
-        StaticNBodyTest.run(inxyz, outxyz, invxyz, outvxyz, gid);
-    }
+public class ObjectStoreNullTest extends ObjectStoreTest {
 
     @Override
     public void runTest() {
-        super.runTest();
+        setupArrays();
+
+        dispatchLambdaKernel(NUM, (gid) -> {
+            outBodyArray[gid] = (gid % 3 == 1 ? null : inBodyArray[gid]);
+        });
     }
 
-    @Test
     @Override
-    public void test() throws Exception {
+    @Test
+    public void test() {
         testGeneratedHsail();
     }
+
+    @Override
+    @Test
+    public void testUsingLambdaMethod() {
+        testGeneratedHsailUsingLambdaMethod();
+    }
+
 }

@@ -21,28 +21,50 @@
  * questions.
  */
 
-package com.oracle.graal.compiler.hsail.test;
+package com.oracle.graal.compiler.hsail.test.lambda;
 
-import org.junit.*;
+import com.oracle.graal.compiler.hsail.test.infra.GraalKernelTester;
+import org.junit.Test;
 
 /**
- * Unit test of NBody demo app. This version uses a call to the main routine which would normally be
- * too large to inline.
+ * Tests calling a synchronized method.
  */
-public class StaticNBodyCallTest extends StaticNBodyTest {
+public class SynchronizedMethodTest extends GraalKernelTester {
 
-    public static void run(float[] inxyz, float[] outxyz, float[] invxyz, float[] outvxyz, int gid) {
-        StaticNBodyTest.run(inxyz, outxyz, invxyz, outvxyz, gid);
+    static final int NUM = 20;
+    @Result public int[] outArray = new int[NUM];
+    public int[] inArray = new int[NUM];
+
+    void setupArrays() {
+        for (int i = 0; i < NUM; i++) {
+            inArray[i] = i;
+            outArray[i] = -i;
+        }
+    }
+
+    synchronized int syncSquare(int n) {
+        return n * n;
     }
 
     @Override
     public void runTest() {
-        super.runTest();
+        setupArrays();
+
+        dispatchLambdaKernel(NUM, (gid) -> {
+            outArray[gid] = syncSquare(inArray[gid]);
+        });
     }
 
-    @Test
-    @Override
-    public void test() throws Exception {
+    // cannot handle the BeginLockScope node
+    @Test(expected = com.oracle.graal.graph.GraalInternalError.class)
+    public void test() {
         testGeneratedHsail();
     }
+
+    // cannot handle the BeginLockScope node
+    @Test(expected = com.oracle.graal.graph.GraalInternalError.class)
+    public void testUsingLambdaMethod() {
+        testGeneratedHsailUsingLambdaMethod();
+    }
+
 }

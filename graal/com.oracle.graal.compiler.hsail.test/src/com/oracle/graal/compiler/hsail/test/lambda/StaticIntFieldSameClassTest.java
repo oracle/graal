@@ -21,28 +21,42 @@
  * questions.
  */
 
-package com.oracle.graal.compiler.hsail.test;
+package com.oracle.graal.compiler.hsail.test.lambda;
 
-import org.junit.*;
+import org.junit.Test;
 
 /**
- * Unit test of NBody demo app. This version uses a call to the main routine which would normally be
- * too large to inline.
+ * Tests reading from a two static int fields in the same class.
  */
-public class StaticNBodyCallTest extends StaticNBodyTest {
+public class StaticIntFieldSameClassTest extends StaticIntFieldReadTest {
 
-    public static void run(float[] inxyz, float[] outxyz, float[] invxyz, float[] outvxyz, int gid) {
-        StaticNBodyTest.run(inxyz, outxyz, invxyz, outvxyz, gid);
-    }
+    static int myField1 = 5;
+    static int myField2 = -99;
+    @Result int fieldResult;
 
     @Override
     public void runTest() {
-        super.runTest();
+        setupArrays();
+        myField2 = -99;
+        dispatchLambdaKernel(NUM, (gid) -> {
+            int val = inArray[gid] * myField1;
+            outArray[gid] = val;
+            if (gid == 3)
+                myField2 = val + gid;
+        });
+        fieldResult = myField2;
     }
 
-    @Test
     @Override
-    public void test() throws Exception {
+    @Test
+    public void test() {
         testGeneratedHsail();
     }
+
+    @Override
+    @Test
+    public void testUsingLambdaMethod() {
+        testGeneratedHsailUsingLambdaMethod();
+    }
+
 }

@@ -21,28 +21,45 @@
  * questions.
  */
 
-package com.oracle.graal.compiler.hsail.test;
+package com.oracle.graal.compiler.hsail.test.lambda;
 
-import org.junit.*;
+import com.oracle.graal.compiler.hsail.test.infra.GraalKernelTester;
+import org.junit.Test;
+import com.oracle.graal.compiler.hsail.test.Vec3;
 
 /**
- * Unit test of NBody demo app. This version uses a call to the main routine which would normally be
- * too large to inline.
+ * Tests codegen for a java 8 lambda style object array stream kernel, one object capture.
  */
-public class StaticNBodyCallTest extends StaticNBodyTest {
+public class Vec3ObjStreamObjCaptureTest extends GraalKernelTester {
 
-    public static void run(float[] inxyz, float[] outxyz, float[] invxyz, float[] outvxyz, int gid) {
-        StaticNBodyTest.run(inxyz, outxyz, invxyz, outvxyz, gid);
+    static final int NUM = 20;
+
+    @Result public Vec3[] inArray = new Vec3[NUM];
+    float baseAdjustment = 0.5f;
+
+    void setupArrays() {
+        for (int i = 0; i < NUM; i++) {
+            inArray[i] = new Vec3(i, i + 1, -1);
+        }
     }
 
     @Override
     public void runTest() {
-        super.runTest();
+        setupArrays();
+        Vec3 basevec = new Vec3(1, 2, 3);
+        dispatchLambdaKernel(inArray, obj -> {
+            Vec3 vec3 = (Vec3) obj;
+            vec3.z = vec3.x + vec3.y - basevec.z;
+        });
     }
 
     @Test
-    @Override
-    public void test() throws Exception {
+    public void test() {
         testGeneratedHsail();
+    }
+
+    @Test
+    public void testUsingLambdaMethod() {
+        testGeneratedHsailUsingLambdaMethod();
     }
 }

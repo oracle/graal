@@ -21,28 +21,43 @@
  * questions.
  */
 
-package com.oracle.graal.compiler.hsail.test;
+package com.oracle.graal.compiler.hsail.test.lambda;
 
-import org.junit.*;
+import com.oracle.graal.compiler.hsail.test.infra.GraalKernelTester;
+import org.junit.Test;
 
 /**
- * Unit test of NBody demo app. This version uses a call to the main routine which would normally be
- * too large to inline.
+ * Tests creating a non-escaping array and using it.
  */
-public class StaticNBodyCallTest extends StaticNBodyTest {
+public class NonEscapingNewArrayTest extends GraalKernelTester {
 
-    public static void run(float[] inxyz, float[] outxyz, float[] invxyz, float[] outvxyz, int gid) {
-        StaticNBodyTest.run(inxyz, outxyz, invxyz, outvxyz, gid);
+    static final int NUM = 20;
+    @Result public float[] outArray = new float[NUM];
+
+    void setupArrays() {
+        for (int i = 0; i < NUM; i++) {
+            outArray[i] = -i;
+        }
     }
 
     @Override
     public void runTest() {
-        super.runTest();
+        setupArrays();
+
+        dispatchLambdaKernel(NUM, (gid) -> {
+            float[] ary = {gid, gid + 1, gid + 2};
+            outArray[gid] = ary[0] * ary[1] * ary[2];
+        });
     }
 
     @Test
-    @Override
-    public void test() throws Exception {
+    public void test() {
         testGeneratedHsail();
     }
+
+    @Test
+    public void testUsingLambdaMethod() {
+        testGeneratedHsailUsingLambdaMethod();
+    }
+
 }

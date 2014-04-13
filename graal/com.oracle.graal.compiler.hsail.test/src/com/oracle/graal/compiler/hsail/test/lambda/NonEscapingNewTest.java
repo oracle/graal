@@ -21,28 +21,48 @@
  * questions.
  */
 
-package com.oracle.graal.compiler.hsail.test;
+package com.oracle.graal.compiler.hsail.test.lambda;
 
-import org.junit.*;
+import com.oracle.graal.compiler.hsail.test.infra.GraalKernelTester;
+import org.junit.Test;
+import com.oracle.graal.compiler.hsail.test.Vec3;
 
 /**
- * Unit test of NBody demo app. This version uses a call to the main routine which would normally be
- * too large to inline.
+ * Tests creation of three non-escaping objects.
  */
-public class StaticNBodyCallTest extends StaticNBodyTest {
+public class NonEscapingNewTest extends GraalKernelTester {
 
-    public static void run(float[] inxyz, float[] outxyz, float[] invxyz, float[] outvxyz, int gid) {
-        StaticNBodyTest.run(inxyz, outxyz, invxyz, outvxyz, gid);
+    static final int NUM = 20;
+    @Result public float[] outArray = new float[NUM];
+    public Vec3[] inArray = new Vec3[NUM];
+
+    void setupArrays() {
+        for (int i = 0; i < NUM; i++) {
+            inArray[i] = new Vec3(i, i + 1, i + 2);
+            outArray[i] = -i;
+        }
     }
 
     @Override
     public void runTest() {
-        super.runTest();
+        setupArrays();
+
+        dispatchLambdaKernel(NUM, (gid) -> {
+            Vec3 veca = inArray[gid];
+            Vec3 vecb = inArray[(gid + 1) % NUM];
+            Vec3 vecresult = Vec3.add(veca, vecb);
+            outArray[gid] = vecresult.z;
+        });
     }
 
     @Test
-    @Override
-    public void test() throws Exception {
+    public void test() {
         testGeneratedHsail();
     }
+
+    @Test
+    public void testUsingLambdaMethod() {
+        testGeneratedHsailUsingLambdaMethod();
+    }
+
 }

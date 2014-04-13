@@ -21,28 +21,46 @@
  * questions.
  */
 
-package com.oracle.graal.compiler.hsail.test;
+package com.oracle.graal.compiler.hsail.test.lambda;
+
+import static com.oracle.graal.compiler.hsail.test.lambda.StringUtilsCountMatchesTest.*;
 
 import org.junit.*;
 
 /**
- * Unit test of NBody demo app. This version uses a call to the main routine which would normally be
- * too large to inline.
+ * Tests calling a method similar to {@code StringUtils.countMatches()} from the Apache commons-lang
+ * library. The second argument varies per workitem.
  */
-public class StaticNBodyCallTest extends StaticNBodyTest {
-
-    public static void run(float[] inxyz, float[] outxyz, float[] invxyz, float[] outvxyz, int gid) {
-        StaticNBodyTest.run(inxyz, outxyz, invxyz, outvxyz, gid);
+public class StringUtilsCountMatches2Test extends CountMatchesBase {
+    @Override
+    void setupArrays() {
+        char[] chars = new char[100];
+        for (int i = 0; i < chars.length; i++) {
+            chars[i] = (char) ('A' + (i % 10));
+        }
+        for (int i = 0; i < NUM; i++) {
+            inArray[i] = new String(chars, i, (i % 5 + 1));
+        }
     }
 
     @Override
     public void runTest() {
-        super.runTest();
+        setupArrays();
+        String base = "ABCDE BCDEF CDEFG DEFGH EFGHI FGHIJ ABCDE BCDEF CDEFG DEFGH EFGHI FGHIJ ";
+
+        dispatchLambdaKernel(NUM, (gid) -> {
+            outArray[gid] = countMatches(base, inArray[gid]);
+        });
     }
 
     @Test
-    @Override
-    public void test() throws Exception {
+    public void test() {
         testGeneratedHsail();
     }
+
+    @Test
+    public void testUsingLambdaMethod() {
+        testGeneratedHsailUsingLambdaMethod();
+    }
+
 }

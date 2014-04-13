@@ -20,42 +20,56 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.graal.compiler.hsail.test;
 
-import com.oracle.graal.compiler.hsail.test.infra.*;
+import com.oracle.graal.compiler.hsail.test.infra.GraalKernelTester;
+import org.junit.Test;
 
 /**
- *
+ * 
  * @author ecaspole
  */
-public abstract class SingleExceptionTestBase extends GraalKernelTester {
+public class VolatileIntTest extends GraalKernelTester {
 
-    @Result Class<?> exceptionClass;
-    @Result String exceptionString;
-    @Result StackTraceElement firstStackTraceElement;
+    static final int num = 20;
+    @Result protected int[] outArray = new int[num];
+
+    volatile int theVolatileInt = 42;
+
+    /**
+     * The static "kernel" method we will be testing. By convention the gid is the last parameter.
+     * 
+     */
+    public void run(int[] out, int[] ina, int[] inb, int gid) {
+
+        // Note these array ops are not really part of the test results
+        int x = theVolatileInt;
+
+        out[gid] = ina[gid] + inb[gid];
+
+        theVolatileInt = x;
+    }
+
+    @Test
+    public void test() {
+        super.testGeneratedHsail();
+    }
+
+    void setupArrays(int[] in, int[] in2) {
+        for (int i = 0; i < num; i++) {
+            in[i] = 1;
+            in2[i] = 2;
+            outArray[i] = 0;
+        }
+    }
 
     @Override
-    protected boolean supportsRequiredCapabilities() {
-        return canDeoptimize();
+    public void runTest() {
+        int[] inArray = new int[num];
+        int[] inArray2 = new int[num];
+        setupArrays(inArray, inArray2);
+
+        dispatchMethodKernel(num, outArray, inArray, inArray2);
     }
 
-    void recordException(Exception e) {
-        // for now we just test that the class the of the exception
-        // matches for the java and gpu side
-        exceptionClass = e.getClass();
-        // exception = e;
-        StackTraceElement[] elems = e.getStackTrace();
-        firstStackTraceElement = elems[0];
-        // for tests where the exception was in the method parameters
-        // ignore the firstStackTraceElement matching
-        if (firstStackTraceElement.getClassName().contains("KernelTester")) {
-            firstStackTraceElement = null;
-        }
-        for (StackTraceElement elem : elems) {
-            if (elem.toString().contains("KernelTester")) {
-                break;
-            }
-        }
-    }
 }

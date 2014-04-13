@@ -21,28 +21,34 @@
  * questions.
  */
 
-package com.oracle.graal.compiler.hsail.test;
+package com.oracle.graal.compiler.hsail.test.lambda;
 
-import org.junit.*;
+import org.junit.Test;
 
 /**
- * Unit test of NBody demo app. This version uses a call to the main routine which would normally be
- * too large to inline.
+ * Tests instanceof operator.
  */
-public class StaticNBodyCallTest extends StaticNBodyTest {
-
-    public static void run(float[] inxyz, float[] outxyz, float[] invxyz, float[] outvxyz, int gid) {
-        StaticNBodyTest.run(inxyz, outxyz, invxyz, outvxyz, gid);
-    }
+public class InstanceOfTest extends VirtualCallTest {
 
     @Override
     public void runTest() {
-        super.runTest();
+        setupArrays();
+
+        dispatchLambdaKernel(NUM, (gid) -> {
+            outArray[gid] = (inShapeArray[gid] instanceof Circle ? 1.0f : 2.0f);
+        });
     }
 
-    @Test
     @Override
-    public void test() throws Exception {
+    @Test
+    public void test() {
         testGeneratedHsail();
     }
+
+    @Override
+    @Test
+    public void testUsingLambdaMethod() {
+        testGeneratedHsailUsingLambdaMethod();
+    }
+
 }

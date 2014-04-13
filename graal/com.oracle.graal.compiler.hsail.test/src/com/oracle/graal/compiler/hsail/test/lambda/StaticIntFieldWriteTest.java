@@ -21,28 +21,50 @@
  * questions.
  */
 
-package com.oracle.graal.compiler.hsail.test;
+package com.oracle.graal.compiler.hsail.test.lambda;
 
-import org.junit.*;
+import com.oracle.graal.compiler.hsail.test.infra.GraalKernelTester;
+import org.junit.Test;
 
 /**
- * Unit test of NBody demo app. This version uses a call to the main routine which would normally be
- * too large to inline.
+ * Tests writing a static int field.
  */
-public class StaticNBodyCallTest extends StaticNBodyTest {
+public class StaticIntFieldWriteTest extends GraalKernelTester {
 
-    public static void run(float[] inxyz, float[] outxyz, float[] invxyz, float[] outvxyz, int gid) {
-        StaticNBodyTest.run(inxyz, outxyz, invxyz, outvxyz, gid);
+    static final int NUM = 20;
+    @Result public int[] outArray = new int[NUM];
+    public int[] inArray = new int[NUM];
+    @Result int fieldResult;
+
+    static int intStaticField = -99;
+
+    void setupArrays() {
+        for (int i = 0; i < NUM; i++) {
+            inArray[i] = i;
+            outArray[i] = -i;
+        }
     }
 
     @Override
     public void runTest() {
-        super.runTest();
+        setupArrays();
+        intStaticField = -99;
+        dispatchLambdaKernel(NUM, (gid) -> {
+            outArray[gid] = inArray[gid] * 2;
+            if (gid == 3)
+                intStaticField = outArray[gid];
+        });
+        fieldResult = intStaticField;   // save for kerneltester comparison
     }
 
     @Test
-    @Override
-    public void test() throws Exception {
+    public void test() {
         testGeneratedHsail();
     }
+
+    @Test
+    public void testUsingLambdaMethod() {
+        testGeneratedHsailUsingLambdaMethod();
+    }
+
 }

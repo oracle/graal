@@ -21,28 +21,42 @@
  * questions.
  */
 
-package com.oracle.graal.compiler.hsail.test;
+package com.oracle.graal.compiler.hsail.test.lambda;
 
-import org.junit.*;
+import com.oracle.graal.compiler.hsail.test.infra.GraalKernelTester;
+import org.junit.Test;
+import java.util.ArrayList;
 
 /**
- * Unit test of NBody demo app. This version uses a call to the main routine which would normally be
- * too large to inline.
+ * Tests calling ArrayList.get().
  */
-public class StaticNBodyCallTest extends StaticNBodyTest {
+public class ArrayListGetTest extends GraalKernelTester {
 
-    public static void run(float[] inxyz, float[] outxyz, float[] invxyz, float[] outvxyz, int gid) {
-        StaticNBodyTest.run(inxyz, outxyz, invxyz, outvxyz, gid);
+    static final int NUM = 20;
+    @Result public int[] outArray = new int[NUM];
+    public ArrayList<Integer> inList = new ArrayList<>();
+
+    void setupArrays() {
+        for (int i = 0; i < NUM; i++) {
+            inList.add(i);
+            outArray[i] = -i;
+        }
     }
 
     @Override
     public void runTest() {
-        super.runTest();
+        setupArrays();
+
+        dispatchLambdaKernel(NUM, (gid) -> {
+            int val = inList.get(gid);
+            outArray[gid] = val * val + 1;
+        });
     }
 
-    @Test
-    @Override
-    public void test() throws Exception {
-        testGeneratedHsail();
+    // NYI emitForeignCall charAlignedDisjointArraycopy
+    @Test(expected = com.oracle.graal.graph.GraalInternalError.class)
+    public void testUsingLambdaMethod() {
+        testGeneratedHsailUsingLambdaMethod();
     }
+
 }

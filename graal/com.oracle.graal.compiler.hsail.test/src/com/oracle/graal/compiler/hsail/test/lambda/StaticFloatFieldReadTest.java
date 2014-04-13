@@ -21,28 +21,48 @@
  * questions.
  */
 
-package com.oracle.graal.compiler.hsail.test;
+package com.oracle.graal.compiler.hsail.test.lambda;
 
-import org.junit.*;
+import com.oracle.graal.compiler.hsail.test.infra.GraalKernelTester;
+import org.junit.Test;
 
 /**
- * Unit test of NBody demo app. This version uses a call to the main routine which would normally be
- * too large to inline.
+ * Tests reading from a static float field.
  */
-public class StaticNBodyCallTest extends StaticNBodyTest {
+public class StaticFloatFieldReadTest extends GraalKernelTester {
 
-    public static void run(float[] inxyz, float[] outxyz, float[] invxyz, float[] outvxyz, int gid) {
-        StaticNBodyTest.run(inxyz, outxyz, invxyz, outvxyz, gid);
+    static final int NUM = 20;
+    @Result public float[] outArray = new float[NUM];
+    public float[] inArray = new float[NUM];
+
+    static float floatField = 7.123f;
+
+    void setupArrays() {
+        for (int i = 0; i < NUM; i++) {
+            inArray[i] = i;
+            outArray[i] = -i;
+        }
     }
 
     @Override
     public void runTest() {
-        super.runTest();
+        setupArrays();
+
+        float[] out = outArray;
+        float[] in = inArray;
+        dispatchLambdaKernel(NUM, (gid) -> {
+            out[gid] = in[gid] + floatField;
+        });
     }
 
     @Test
-    @Override
-    public void test() throws Exception {
+    public void test() {
         testGeneratedHsail();
     }
+
+    @Test
+    public void testUsingLambdaMethod() {
+        testGeneratedHsailUsingLambdaMethod();
+    }
+
 }

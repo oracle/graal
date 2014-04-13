@@ -21,28 +21,27 @@
  * questions.
  */
 
-package com.oracle.graal.compiler.hsail.test;
+package com.oracle.graal.compiler.hsail.test.lambda;
 
-import org.junit.*;
+import com.oracle.graal.compiler.hsail.test.infra.GraalKernelTester;
 
 /**
- * Unit test of NBody demo app. This version uses a call to the main routine which would normally be
- * too large to inline.
+ * Base class for tests that use Apache StringUtils.countMatches().
  */
-public class StaticNBodyCallTest extends StaticNBodyTest {
+public abstract class CountMatchesBase extends GraalKernelTester {
 
-    public static void run(float[] inxyz, float[] outxyz, float[] invxyz, float[] outvxyz, int gid) {
-        StaticNBodyTest.run(inxyz, outxyz, invxyz, outvxyz, gid);
+    static final int NUM = 20;
+    @Result public int[] outArray = new int[NUM];
+    public String[] inArray = new String[NUM];
+
+    void setupArrays() {
+        char[] chars = new char[100];
+        for (int i = 0; i < chars.length; i++) {
+            chars[i] = (char) ('A' + (i % 10));
+        }
+        for (int i = 0; i < NUM; i++) {
+            inArray[i] = new String(chars, i, 40);
+        }
     }
 
-    @Override
-    public void runTest() {
-        super.runTest();
-    }
-
-    @Test
-    @Override
-    public void test() throws Exception {
-        testGeneratedHsail();
-    }
 }

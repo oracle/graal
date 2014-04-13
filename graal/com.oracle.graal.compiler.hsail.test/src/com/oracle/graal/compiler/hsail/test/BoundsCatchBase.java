@@ -56,7 +56,7 @@ public abstract class BoundsCatchBase extends GraalKernelTester {
 
     @Override
     protected boolean supportsRequiredCapabilities() {
-        return getHSAILBackend().getRuntime().getConfig().useHSAILDeoptimization;
+        return canDeoptimize();
     }
 
     @Override

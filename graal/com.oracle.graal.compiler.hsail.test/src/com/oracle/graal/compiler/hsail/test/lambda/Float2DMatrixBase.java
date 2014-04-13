@@ -21,28 +21,31 @@
  * questions.
  */
 
-package com.oracle.graal.compiler.hsail.test;
+package com.oracle.graal.compiler.hsail.test.lambda;
 
-import org.junit.*;
+import com.oracle.graal.compiler.hsail.test.infra.GraalKernelTester;
 
 /**
- * Unit test of NBody demo app. This version uses a call to the main routine which would normally be
- * too large to inline.
+ * Base class for 2D float matrix tests.
  */
-public class StaticNBodyCallTest extends StaticNBodyTest {
+public abstract class Float2DMatrixBase extends GraalKernelTester {
 
-    public static void run(float[] inxyz, float[] outxyz, float[] invxyz, float[] outvxyz, int gid) {
-        StaticNBodyTest.run(inxyz, outxyz, invxyz, outvxyz, gid);
-    }
+    float[][] matrixA;
+    float[][] matrixB;
+    @Result float[][] outMatrix;
 
-    @Override
-    public void runTest() {
-        super.runTest();
-    }
-
-    @Test
-    @Override
-    public void test() throws Exception {
-        testGeneratedHsail();
+    public void setupArrays(int range) {
+        matrixA = new float[range][];
+        matrixB = new float[range][];
+        outMatrix = new float[range][];
+        for (int j = 0; j < range; j++) {
+            matrixA[j] = new float[range];
+            matrixB[j] = new float[range];
+            outMatrix[j] = new float[range];
+            for (int k = 0; k < range; k++) {
+                matrixA[j][k] = (j + k) % 7;
+                matrixB[j][k] = (j + k + 1) % 8;
+            }
+        }
     }
 }
