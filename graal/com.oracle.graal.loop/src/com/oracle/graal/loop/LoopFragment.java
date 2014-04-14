@@ -254,7 +254,7 @@ public abstract class LoopFragment {
     }
 
     public static NodeIterable<BeginNode> toHirBlocks(final Iterable<Block> blocks) {
-        return new AbstractNodeIterable<BeginNode>() {
+        return new NodeIterable<BeginNode>() {
 
             public Iterator<BeginNode> iterator() {
                 final Iterator<Block> it = blocks.iterator();
@@ -279,7 +279,7 @@ public abstract class LoopFragment {
     }
 
     public static NodeIterable<LoopExitNode> toHirExits(final Iterable<Block> blocks) {
-        return new AbstractNodeIterable<LoopExitNode>() {
+        return new NodeIterable<LoopExitNode>() {
 
             public Iterator<LoopExitNode> iterator() {
                 final Iterator<Block> it = blocks.iterator();
@@ -341,7 +341,7 @@ public abstract class LoopFragment {
                  * VirtualState nodes contained in the old exit's state may be shared by other
                  * dominated VirtualStates. Those dominated virtual states need to see the
                  * proxy->phi update that are applied below.
-                 * 
+                 *
                  * We now update the original fragment's nodes accordingly:
                  */
                 state.applyToVirtual(new VirtualClosure() {

@@ -228,7 +228,7 @@ public abstract class Node implements Cloneable, Formattable {
         }
     }
 
-    class NodeUsageIterable extends AbstractNodeIterable<Node> {
+    class NodeUsageIterable implements NodeIterable<Node> {
 
         public NodeUsageIterator iterator() {
             return new NodeUsageIterator();

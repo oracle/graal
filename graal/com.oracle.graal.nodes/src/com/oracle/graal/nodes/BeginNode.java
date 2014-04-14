@@ -130,7 +130,7 @@ public class BeginNode extends FixedWithNextNode implements LIRLowerable, Simpli
     }
 
     public NodeIterable<FixedNode> getBlockNodes() {
-        return new AbstractNodeIterable<FixedNode>() {
+        return new NodeIterable<FixedNode>() {
 
             @Override
             public Iterator<FixedNode> iterator() {

@@ -525,7 +525,7 @@ public class Graph {
      */
     public NodeIterable<Node> getNewNodes(Mark mark) {
         final int index = mark.getValue();
-        return new AbstractNodeIterable<Node>() {
+        return new NodeIterable<Node>() {
 
             @Override
             public Iterator<Node> iterator() {
@@ -540,7 +540,7 @@ public class Graph {
      * @return an {@link Iterable} providing all the live nodes.
      */
     public NodeIterable<Node> getNodes() {
-        return new AbstractNodeIterable<Node>() {
+        return new NodeIterable<Node>() {
 
             @Override
             public Iterator<Node> iterator() {
@@ -714,7 +714,7 @@ public class Graph {
      */
     public <T extends Node & IterableNodeType> NodeIterable<T> getNodes(final Class<T> type) {
         final NodeClass nodeClass = NodeClass.get(type);
-        return new AbstractNodeIterable<T>() {
+        return new NodeIterable<T>() {
 
             @Override
             public Iterator<T> iterator() {
