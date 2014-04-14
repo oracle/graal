@@ -34,6 +34,8 @@ public class DefaultCallNode extends CallNode implements MaterializedFrameNotify
 
     @CompilationFinal private FrameAccess outsideFrameAccess = FrameAccess.NONE;
 
+    private boolean inliningForced;
+
     public DefaultCallNode(CallTarget target) {
         super(target);
     }
@@ -66,7 +68,8 @@ public class DefaultCallNode extends CallNode implements MaterializedFrameNotify
     }
 
     @Override
-    public void inline() {
+    public void forceInlining() {
+        inliningForced = true;
     }
 
     @Override
@@ -80,13 +83,18 @@ public class DefaultCallNode extends CallNode implements MaterializedFrameNotify
     }
 
     @Override
+    public boolean isInlined() {
+        return false;
+    }
+
+    @Override
     public boolean isSplittable() {
         return false;
     }
 
     @Override
-    public boolean isInlined() {
-        return false;
+    public boolean isInliningForced() {
+        return inliningForced;
     }
 
     @Override

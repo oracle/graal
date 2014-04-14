@@ -638,7 +638,7 @@ public final class NodeUtil {
 
             if (visitInlinedCallNodes && node instanceof CallNode) {
                 CallNode call = (CallNode) node;
-                if (call.isInlined()) {
+                if (call.isInliningForced()) {
                     Node target = ((RootCallTarget) call.getCurrentCallTarget()).getRootNode();
                     if (target != null) {
                         target.accept(this);
