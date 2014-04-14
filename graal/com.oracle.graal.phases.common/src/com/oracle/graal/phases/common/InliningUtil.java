@@ -646,7 +646,7 @@ public class InliningUtil {
             }
 
             // create one separate block for each invoked method
-            AbstractBeginNode[] successors = new AbstractBeginNode[numberOfMethods + 1];
+            BeginNode[] successors = new BeginNode[numberOfMethods + 1];
             for (int i = 0; i < numberOfMethods; i++) {
                 successors[i] = createInvocationBlock(graph, invoke, returnMerge, returnValuePhi, exceptionMerge, exceptionObjectPhi, true);
             }
@@ -658,7 +658,7 @@ public class InliningUtil {
             } else {
                 unknownTypeSux = graph.add(new DeoptimizeNode(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.TypeCheckedInliningViolated));
             }
-            successors[successors.length - 1] = AbstractBeginNode.begin(unknownTypeSux);
+            successors[successors.length - 1] = BeginNode.begin(unknownTypeSux);
 
             // replace the invoke exception edge
             if (invoke instanceof InvokeWithExceptionNode) {
@@ -684,7 +684,7 @@ public class InliningUtil {
 
             // do the actual inlining for every invoke
             for (int i = 0; i < numberOfMethods; i++) {
-                AbstractBeginNode node = successors[i];
+                BeginNode node = successors[i];
                 Invoke invokeForInlining = (Invoke) node.next();
 
                 ResolvedJavaType commonType;
@@ -770,10 +770,10 @@ public class InliningUtil {
         private void inlineSingleMethod(StructuredGraph graph, MetaAccessProvider metaAccess, Assumptions assumptions) {
             assert concretes.size() == 1 && inlineableElements.length == 1 && ptypes.size() > 1 && !shouldFallbackToInvoke() && notRecordedTypeProbability == 0;
 
-            AbstractBeginNode calleeEntryNode = graph.add(new BeginNode());
+            BeginNode calleeEntryNode = graph.add(new BeginNode());
 
-            AbstractBeginNode unknownTypeSux = createUnknownTypeSuccessor(graph);
-            AbstractBeginNode[] successors = new AbstractBeginNode[]{calleeEntryNode, unknownTypeSux};
+            BeginNode unknownTypeSux = createUnknownTypeSuccessor(graph);
+            BeginNode[] successors = new BeginNode[]{calleeEntryNode, unknownTypeSux};
             createDispatchOnTypeBeforeInvoke(graph, successors, false, metaAccess);
 
             calleeEntryNode.setNext(invoke.asNode());
@@ -781,7 +781,7 @@ public class InliningUtil {
             inline(invoke, methodAt(0), inlineableElementAt(0), assumptions, false);
         }
 
-        private boolean createDispatchOnTypeBeforeInvoke(StructuredGraph graph, AbstractBeginNode[] successors, boolean invokeIsOnlySuccessor, MetaAccessProvider metaAccess) {
+        private boolean createDispatchOnTypeBeforeInvoke(StructuredGraph graph, BeginNode[] successors, boolean invokeIsOnlySuccessor, MetaAccessProvider metaAccess) {
             assert ptypes.size() >= 1;
             ValueNode nonNullReceiver = nonNullReceiver(invoke);
             Kind hubKind = ((MethodCallTargetNode) invoke.callTarget()).targetMethod().getDeclaringClass().getEncoding(Representation.ObjectHub).getKind();
@@ -891,10 +891,10 @@ public class InliningUtil {
             return costEstimateMethodDispatch < costEstimateTypeDispatch;
         }
 
-        private static AbstractBeginNode createInvocationBlock(StructuredGraph graph, Invoke invoke, MergeNode returnMerge, PhiNode returnValuePhi, MergeNode exceptionMerge,
+        private static BeginNode createInvocationBlock(StructuredGraph graph, Invoke invoke, MergeNode returnMerge, PhiNode returnValuePhi, MergeNode exceptionMerge,
                         PhiNode exceptionObjectPhi, boolean useForInlining) {
             Invoke duplicatedInvoke = duplicateInvokeForInlining(graph, invoke, exceptionMerge, exceptionObjectPhi, useForInlining);
-            AbstractBeginNode calleeEntryNode = graph.add(new BeginNode());
+            BeginNode calleeEntryNode = graph.add(new BeginNode());
             calleeEntryNode.setNext(duplicatedInvoke.asNode());
 
             AbstractEndNode endNode = graph.add(new EndNode());
@@ -969,9 +969,9 @@ public class InliningUtil {
         }
 
         private void devirtualizeWithTypeSwitch(StructuredGraph graph, InvokeKind kind, ResolvedJavaMethod target, MetaAccessProvider metaAccess) {
-            AbstractBeginNode invocationEntry = graph.add(new BeginNode());
-            AbstractBeginNode unknownTypeSux = createUnknownTypeSuccessor(graph);
-            AbstractBeginNode[] successors = new AbstractBeginNode[]{invocationEntry, unknownTypeSux};
+            BeginNode invocationEntry = graph.add(new BeginNode());
+            BeginNode unknownTypeSux = createUnknownTypeSuccessor(graph);
+            BeginNode[] successors = new BeginNode[]{invocationEntry, unknownTypeSux};
             createDispatchOnTypeBeforeInvoke(graph, successors, true, metaAccess);
 
             invocationEntry.setNext(invoke.asNode());
@@ -981,8 +981,8 @@ public class InliningUtil {
             replaceInvokeCallTarget(invoke, graph, kind, target);
         }
 
-        private static AbstractBeginNode createUnknownTypeSuccessor(StructuredGraph graph) {
-            return AbstractBeginNode.begin(graph.add(new DeoptimizeNode(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.TypeCheckedInliningViolated)));
+        private static BeginNode createUnknownTypeSuccessor(StructuredGraph graph) {
+            return BeginNode.begin(graph.add(new DeoptimizeNode(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.TypeCheckedInliningViolated)));
         }
 
         @Override
@@ -1347,7 +1347,7 @@ public class InliningUtil {
             }
         }
 
-        final AbstractBeginNode prevBegin = AbstractBeginNode.prevBegin(invokeNode);
+        final BeginNode prevBegin = BeginNode.prevBegin(invokeNode);
         DuplicationReplacement localReplacement = new DuplicationReplacement() {
 
             public Node replacement(Node node) {
@@ -1386,7 +1386,7 @@ public class InliningUtil {
             }
 
             // get rid of memory kill
-            AbstractBeginNode begin = invokeWithException.next();
+            BeginNode begin = invokeWithException.next();
             if (begin instanceof KillingBeginNode) {
                 BeginNode newBegin = new BeginNode();
                 graph.addAfterFixed(begin, graph.add(newBegin));

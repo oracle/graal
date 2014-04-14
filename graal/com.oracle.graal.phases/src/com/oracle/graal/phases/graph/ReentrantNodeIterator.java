@@ -41,7 +41,7 @@ public final class ReentrantNodeIterator {
 
         protected abstract StateT merge(MergeNode merge, List<StateT> states);
 
-        protected abstract StateT afterSplit(AbstractBeginNode node, StateT oldState);
+        protected abstract StateT afterSplit(BeginNode node, StateT oldState);
 
         protected abstract Map<LoopExitNode, StateT> processLoop(LoopBeginNode loop, StateT initialState);
 
@@ -81,7 +81,7 @@ public final class ReentrantNodeIterator {
     }
 
     public static <StateT> Map<FixedNode, StateT> apply(NodeIteratorClosure<StateT> closure, FixedNode start, StateT initialState, Set<FixedNode> boundary) {
-        Deque<AbstractBeginNode> nodeQueue = new ArrayDeque<>();
+        Deque<BeginNode> nodeQueue = new ArrayDeque<>();
         IdentityHashMap<FixedNode, StateT> blockEndStates = new IdentityHashMap<>();
 
         StateT state = initialState;
@@ -146,14 +146,14 @@ public final class ReentrantNodeIterator {
                             continue;
                         } else {
                             while (successors.hasNext()) {
-                                AbstractBeginNode successor = (AbstractBeginNode) successors.next();
+                                BeginNode successor = (BeginNode) successors.next();
                                 StateT successorState = closure.afterSplit(successor, state);
                                 if (closure.continueIteration(successorState)) {
                                     blockEndStates.put(successor, successorState);
                                     nodeQueue.add(successor);
                                 }
                             }
-                            state = closure.afterSplit((AbstractBeginNode) firstSuccessor, state);
+                            state = closure.afterSplit((BeginNode) firstSuccessor, state);
                             current = closure.continueIteration(state) ? firstSuccessor : null;
                             continue;
                         }
@@ -167,7 +167,7 @@ public final class ReentrantNodeIterator {
             } else {
                 current = nodeQueue.removeFirst();
                 state = blockEndStates.get(current);
-                assert !(current instanceof MergeNode) && current instanceof AbstractBeginNode;
+                assert !(current instanceof MergeNode) && current instanceof BeginNode;
             }
         } while (true);
     }

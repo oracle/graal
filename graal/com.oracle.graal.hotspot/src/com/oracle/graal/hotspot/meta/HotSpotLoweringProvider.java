@@ -474,7 +474,7 @@ public class HotSpotLoweringProvider implements LoweringProvider {
                 ReadNode memoryRead = createUnsafeRead(graph, load, null);
                 // An unsafe read must not float outside its block otherwise
                 // it may float above an explicit null check on its object.
-                memoryRead.setGuard(AbstractBeginNode.prevBegin(load));
+                memoryRead.setGuard(BeginNode.prevBegin(load));
                 graph.replaceFixedWithFixed(load, memoryRead);
             }
         }

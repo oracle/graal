@@ -30,7 +30,7 @@ public class ValueProxyNode extends ProxyNode implements Canonicalizable, Virtua
 
     @Input private ValueNode value;
 
-    public ValueProxyNode(ValueNode value, AbstractBeginNode proxyPoint) {
+    public ValueProxyNode(ValueNode value, BeginNode proxyPoint) {
         super(value.stamp(), proxyPoint);
         this.value = value;
     }

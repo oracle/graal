@@ -28,5 +28,5 @@ import com.oracle.graal.nodes.spi.*;
 
 interface IntegerExactArithmeticNode extends Lowerable, IterableNodeType {
 
-    IntegerExactArithmeticSplitNode createSplit(AbstractBeginNode next, AbstractBeginNode deopt);
+    IntegerExactArithmeticSplitNode createSplit(BeginNode next, BeginNode deopt);
 }

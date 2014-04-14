@@ -222,9 +222,9 @@ public class LoopEx {
         return data;
     }
 
-    public NodeBitMap nodesInLoopFrom(AbstractBeginNode point, AbstractBeginNode until) {
-        Collection<AbstractBeginNode> blocks = new LinkedList<>();
-        Collection<AbstractBeginNode> exits = new LinkedList<>();
+    public NodeBitMap nodesInLoopFrom(BeginNode point, BeginNode until) {
+        Collection<BeginNode> blocks = new LinkedList<>();
+        Collection<LoopExitNode> exits = new LinkedList<>();
         Queue<Block> work = new LinkedList<>();
         ControlFlowGraph cfg = loopsData().controlFlowGraph();
         work.add(cfg.blockFor(point));
@@ -235,7 +235,7 @@ public class LoopEx {
                 continue;
             }
             if (lirLoop().exits.contains(b)) {
-                exits.add(b.getBeginNode());
+                exits.add((LoopExitNode) b.getBeginNode());
             } else if (lirLoop().blocks.contains(b)) {
                 blocks.add(b.getBeginNode());
                 work.addAll(b.getDominated());

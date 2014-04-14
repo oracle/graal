@@ -379,7 +379,7 @@ public class WordTypeRewriterPhase extends Phase {
          * The read must not float outside its block otherwise it may float above an explicit zero
          * check on its base address.
          */
-        read.setGuard(AbstractBeginNode.prevBegin(invoke.asNode()));
+        read.setGuard(BeginNode.prevBegin(invoke.asNode()));
         return read;
     }
 

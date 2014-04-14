@@ -27,7 +27,7 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.extended.*;
 
 @NodeInfo(allowedUsageTypes = {InputType.Memory})
-public class KillingBeginNode extends AbstractBeginNode implements MemoryCheckpoint.Single {
+public class KillingBeginNode extends BeginNode implements MemoryCheckpoint.Single {
 
     private LocationIdentity locationIdentity;
 

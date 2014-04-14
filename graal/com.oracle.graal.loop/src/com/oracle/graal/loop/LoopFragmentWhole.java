@@ -57,7 +57,7 @@ public class LoopFragmentWhole extends LoopFragment {
     public NodeIterable<Node> nodes() {
         if (nodes == null) {
             Loop<Block> lirLoop = loop().lirLoop();
-            nodes = LoopFragment.computeNodes(graph(), LoopFragment.toHirBlocks(lirLoop.blocks), LoopFragment.toHirBlocks(lirLoop.exits));
+            nodes = LoopFragment.computeNodes(graph(), LoopFragment.toHirBlocks(lirLoop.blocks), LoopFragment.toHirExits(lirLoop.exits));
         }
         return nodes;
     }

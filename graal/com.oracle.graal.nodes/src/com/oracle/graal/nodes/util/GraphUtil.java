@@ -163,7 +163,7 @@ public class GraphUtil {
     }
 
     public static void checkRedundantProxy(ProxyNode vpn) {
-        AbstractBeginNode proxyPoint = vpn.proxyPoint();
+        BeginNode proxyPoint = vpn.proxyPoint();
         if (proxyPoint instanceof LoopExitNode) {
             LoopExitNode exit = (LoopExitNode) proxyPoint;
             LoopBeginNode loopBegin = exit.loopBegin();

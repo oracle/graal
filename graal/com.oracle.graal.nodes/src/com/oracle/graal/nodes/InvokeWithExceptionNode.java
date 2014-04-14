@@ -36,7 +36,7 @@ public class InvokeWithExceptionNode extends ControlSplitNode implements Invoke,
 
     private static final double EXCEPTION_PROBA = 1e-5;
 
-    @Successor private AbstractBeginNode next;
+    @Successor private BeginNode next;
     @Successor private DispatchBeginNode exceptionEdge;
     @Input(InputType.Extension) private CallTargetNode callTarget;
     @Input(InputType.State) private FrameState stateDuring;
@@ -66,11 +66,11 @@ public class InvokeWithExceptionNode extends ControlSplitNode implements Invoke,
         exceptionEdge = x;
     }
 
-    public AbstractBeginNode next() {
+    public BeginNode next() {
         return next;
     }
 
-    public void setNext(AbstractBeginNode x) {
+    public void setNext(BeginNode x) {
         updatePredecessor(next, x);
         next = x;
     }
@@ -163,7 +163,7 @@ public class InvokeWithExceptionNode extends ControlSplitNode implements Invoke,
     }
 
     public void killExceptionEdge() {
-        AbstractBeginNode edge = exceptionEdge();
+        BeginNode edge = exceptionEdge();
         setExceptionEdge(null);
         GraphUtil.killCFG(edge);
     }
@@ -196,12 +196,12 @@ public class InvokeWithExceptionNode extends ControlSplitNode implements Invoke,
     }
 
     @Override
-    public double probability(AbstractBeginNode successor) {
+    public double probability(BeginNode successor) {
         return successor == next ? 1 - exceptionProbability : exceptionProbability;
     }
 
     @Override
-    public void setProbability(AbstractBeginNode successor, double value) {
+    public void setProbability(BeginNode successor, double value) {
         assert successor == next || successor == exceptionEdge;
         this.exceptionProbability = successor == next ? 1 - value : value;
     }

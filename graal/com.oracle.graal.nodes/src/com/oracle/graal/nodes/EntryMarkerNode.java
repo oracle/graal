@@ -31,7 +31,7 @@ import com.oracle.graal.nodes.spi.*;
  * by the graph builder.
  */
 @NodeInfo(allowedUsageTypes = {InputType.Association})
-public class EntryMarkerNode extends AbstractBeginNode implements IterableNodeType, Simplifiable, LIRLowerable {
+public class EntryMarkerNode extends BeginStateSplitNode implements IterableNodeType, Simplifiable, LIRLowerable {
 
     @Override
     public void simplify(SimplifierTool tool) {

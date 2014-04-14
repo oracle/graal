@@ -1077,11 +1077,11 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
              * Returns a block begin node with the specified state. If the specified probability is
              * 0, the block deoptimizes immediately.
              */
-            private AbstractBeginNode createBlockTarget(double probability, BciBlock block, HIRFrameStateBuilder stateAfter) {
+            private BeginNode createBlockTarget(double probability, BciBlock block, HIRFrameStateBuilder stateAfter) {
                 FixedNode target = createTarget(probability, block, stateAfter);
-                AbstractBeginNode begin = AbstractBeginNode.begin(target);
+                BeginNode begin = BeginNode.begin(target);
 
-                assert !(target instanceof DeoptimizeNode && begin.stateAfter() != null) : "We are not allowed to set the stateAfter of the begin node, because we have to deoptimize "
+                assert !(target instanceof DeoptimizeNode && begin instanceof BeginStateSplitNode && ((BeginStateSplitNode) begin).stateAfter() != null) : "We are not allowed to set the stateAfter of the begin node, because we have to deoptimize "
                                 + "to a bci _before_ the actual if, so that the interpreter can update the profiling information.";
                 return begin;
             }
@@ -1299,7 +1299,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                         frameState.clearNonLiveLocals(currentBlock, liveness, false);
                     }
                     if (lastInstr instanceof StateSplit) {
-                        if (lastInstr.getClass() == AbstractBeginNode.class) {
+                        if (lastInstr.getClass() == BeginNode.class) {
                             // BeginNodes do not need a frame state
                         } else {
                             StateSplit stateSplit = (StateSplit) lastInstr;

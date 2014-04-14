@@ -843,7 +843,7 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
         ParameterNode hsailFrame = hostGraph.unique(new ParameterNode(1, StampFactory.forKind(providers.getCodeCache().getTarget().wordKind)));
         ParameterNode reasonAndAction = hostGraph.unique(new ParameterNode(2, StampFactory.intValue()));
         ParameterNode speculation = hostGraph.unique(new ParameterNode(3, StampFactory.object()));
-        AbstractBeginNode[] branches = new AbstractBeginNode[deopts.size() + 1];
+        BeginNode[] branches = new BeginNode[deopts.size() + 1];
         int[] keys = new int[deopts.size()];
         int[] keySuccessors = new int[deopts.size() + 1];
         double[] keyProbabilities = new double[deopts.size() + 1];
@@ -875,14 +875,14 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
         return hostGraph;
     }
 
-    private static AbstractBeginNode createHostCrashBranch(StructuredGraph hostGraph, ValueNode deoptId) {
+    private static BeginNode createHostCrashBranch(StructuredGraph hostGraph, ValueNode deoptId) {
         VMErrorNode vmError = hostGraph.add(new VMErrorNode("Error in HSAIL deopt. DeoptId=%d", deoptId));
         // ConvertNode.convert(hostGraph, Kind.Long, deoptId)));
         vmError.setNext(hostGraph.add(new ReturnNode(ConstantNode.defaultForKind(hostGraph.method().getSignature().getReturnKind(), hostGraph))));
         return BeginNode.begin(vmError);
     }
 
-    private static AbstractBeginNode createHostDeoptBranch(DeoptimizeOp deopt, ParameterNode hsailFrame, ValueNode reasonAndAction, ValueNode speculation, HotSpotProviders providers,
+    private static BeginNode createHostDeoptBranch(DeoptimizeOp deopt, ParameterNode hsailFrame, ValueNode reasonAndAction, ValueNode speculation, HotSpotProviders providers,
                     HotSpotVMConfig config) {
         BeginNode branch = hsailFrame.graph().add(new BeginNode());
         DynamicDeoptimizeNode deoptimization = hsailFrame.graph().add(new DynamicDeoptimizeNode(reasonAndAction, speculation));

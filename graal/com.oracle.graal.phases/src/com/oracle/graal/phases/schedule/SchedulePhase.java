@@ -201,7 +201,7 @@ public final class SchedulePhase extends Phase {
             }
         }
 
-        AbstractBeginNode startNode = cfg.getStartBlock().getBeginNode();
+        BeginNode startNode = cfg.getStartBlock().getBeginNode();
         assert startNode instanceof StartNode;
 
         KillSet accm = foundExcludeNode ? set : excludedLocations;
@@ -753,7 +753,7 @@ public final class SchedulePhase extends Phase {
                     // If a FrameState is an outer FrameState this method behaves as if the inner
                     // FrameState was the actual usage, by recursing.
                     blocksForUsage(node, unscheduledUsage, closure, strategy);
-                } else if (unscheduledUsage instanceof AbstractBeginNode) {
+                } else if (unscheduledUsage instanceof BeginNode) {
                     // Only FrameStates can be connected to BeginNodes.
                     if (!(usage instanceof FrameState)) {
                         throw new SchedulingError(usage.toString());
@@ -1047,7 +1047,7 @@ public final class SchedulePhase extends Phase {
                 }
             }
 
-            if (instruction instanceof AbstractBeginNode) {
+            if (instruction instanceof BeginNode) {
                 ArrayList<ProxyNode> proxies = (instruction instanceof LoopExitNode) ? new ArrayList<>() : null;
                 for (ScheduledNode inBlock : blockToNodesMap.get(b)) {
                     if (!visited.isMarked(inBlock)) {

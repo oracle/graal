@@ -659,7 +659,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool {
         return debugInfoBuilder;
     }
 
-    public void emitOverflowCheckBranch(AbstractBeginNode overflowSuccessor, AbstractBeginNode next, double probability) {
+    public void emitOverflowCheckBranch(BeginNode overflowSuccessor, BeginNode next, double probability) {
         gen.emitOverflowCheckBranch(getLIRBlock(overflowSuccessor), getLIRBlock(next), probability);
     }
 

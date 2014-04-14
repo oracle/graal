@@ -178,7 +178,7 @@ public class LoopBeginNode extends MergeNode implements IterableNodeType, LIRLow
         // nothing yet
     }
 
-    public boolean isLoopExit(AbstractBeginNode begin) {
+    public boolean isLoopExit(BeginNode begin) {
         return begin instanceof LoopExitNode && ((LoopExitNode) begin).loopBegin() == this;
     }
 

@@ -108,7 +108,7 @@ public class ProfileCompiledMethodsPhase extends Phase {
     private static double getNodeWeight(ScheduledNode node) {
         if (node instanceof MergeNode) {
             return ((MergeNode) node).phiPredecessorCount();
-        } else if (node instanceof AbstractBeginNode || node instanceof AbstractEndNode || node instanceof MonitorIdNode || node instanceof ConstantNode || node instanceof ParameterNode ||
+        } else if (node instanceof BeginNode || node instanceof AbstractEndNode || node instanceof MonitorIdNode || node instanceof ConstantNode || node instanceof ParameterNode ||
                         node instanceof CallTargetNode || node instanceof ValueProxy || node instanceof VirtualObjectNode || node instanceof ReinterpretNode) {
             return 0;
         } else if (node instanceof AccessMonitorNode) {

@@ -37,9 +37,9 @@ public class CountedLoopInfo {
     private InductionVariable iv;
     private ValueNode end;
     private boolean oneOff;
-    private AbstractBeginNode body;
+    private BeginNode body;
 
-    CountedLoopInfo(LoopEx loop, InductionVariable iv, ValueNode end, boolean oneOff, AbstractBeginNode body) {
+    CountedLoopInfo(LoopEx loop, InductionVariable iv, ValueNode end, boolean oneOff, BeginNode body) {
         this.loop = loop;
         this.iv = iv;
         this.end = end;
@@ -117,7 +117,7 @@ public class CountedLoopInfo {
         return oneOff;
     }
 
-    public AbstractBeginNode getBody() {
+    public BeginNode getBody() {
         return body;
     }
 

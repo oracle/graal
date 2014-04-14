@@ -407,7 +407,7 @@ public class ConditionalEliminationPhase extends Phase {
             }
         }
 
-        private void registerControlSplitInfo(Node pred, AbstractBeginNode begin) {
+        private void registerControlSplitInfo(Node pred, BeginNode begin) {
             assert pred != null && begin != null;
             if (begin instanceof LoopExitNode) {
                 state.clear();
@@ -656,8 +656,8 @@ public class ConditionalEliminationPhase extends Phase {
 
         @Override
         protected void node(FixedNode node) {
-            if (node instanceof AbstractBeginNode) {
-                AbstractBeginNode begin = (AbstractBeginNode) node;
+            if (node instanceof BeginNode) {
+                BeginNode begin = (BeginNode) node;
                 Node pred = node.predecessor();
 
                 if (pred != null) {
@@ -742,7 +742,7 @@ public class ConditionalEliminationPhase extends Phase {
 
                 LogicNode replacement = null;
                 ValueNode replacementAnchor = null;
-                AbstractBeginNode survivingSuccessor = null;
+                BeginNode survivingSuccessor = null;
                 if (state.trueConditions.containsKey(compare)) {
                     replacement = trueConstant;
                     replacementAnchor = state.trueConditions.get(compare);
@@ -764,7 +764,7 @@ public class ConditionalEliminationPhase extends Phase {
                 }
 
                 if (replacement != null) {
-                    if (!(replacementAnchor instanceof AbstractBeginNode)) {
+                    if (!(replacementAnchor instanceof BeginNode)) {
                         ValueAnchorNode anchor = graph.add(new ValueAnchorNode(replacementAnchor));
                         graph.addBeforeFixed(ifNode, anchor);
                     }
