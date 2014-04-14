@@ -256,7 +256,9 @@ public abstract class HotSpotCodeCacheProvider implements CodeCacheProvider {
 
     public Data createDataItem(Constant constant, int alignment) {
         if (constant instanceof HotSpotMetaspaceConstant) {
-            return new MetaspaceData(alignment, constant.asLong(), HotSpotMetaspaceConstant.getMetaspaceObject(constant), false);
+            // constant.getKind() == target.wordKind for uncompressed pointers
+            // otherwise, it's a compressed pointer
+            return new MetaspaceData(alignment, constant.asLong(), HotSpotMetaspaceConstant.getMetaspaceObject(constant), constant.getKind() != target.wordKind);
         } else if (constant.getKind().isObject()) {
             return new OopData(alignment, HotSpotObjectConstant.asObject(constant), false);
         } else {
