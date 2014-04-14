@@ -43,4 +43,6 @@ public interface FrameInstance {
     CallNode getCallNode();
 
     CallTarget getCallTarget();
+
+    CallTarget getTargetCallTarget();
 }

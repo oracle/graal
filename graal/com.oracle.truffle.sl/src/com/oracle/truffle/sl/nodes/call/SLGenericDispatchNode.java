@@ -42,7 +42,7 @@ final class SLGenericDispatchNode extends SLAbstractDispatchNode implements Mate
          * SL has a quite simple call lookup: just ask the function for the current call target, and
          * call it.
          */
-        return DefaultCallNode.callProxy(this, function.getCallTarget(), frame, arguments);
+        return function.getCallTarget().call(arguments);
     }
 
     public FrameAccess getOutsideFrameAccess() {
