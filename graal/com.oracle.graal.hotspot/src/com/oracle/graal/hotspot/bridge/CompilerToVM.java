@@ -339,10 +339,11 @@ public interface CompilerToVM {
      * Looks for the next Java stack frame with the given method.
      *
      * @param frame the starting point of the search, where {@code null} refers to the topmost frame
-     * @param method the method to look for, where {@code null} means that any frame is returned
+     * @param methods the metaspace methods to look for, where {@code null} means that any frame is
+     *            returned
      * @return the frame, or {@code null} if the end of the stack was reached during the search
      */
-    HotSpotStackFrameReference getNextStackFrame(HotSpotStackFrameReference frame, HotSpotResolvedJavaMethod method);
+    HotSpotStackFrameReference getNextStackFrame(HotSpotStackFrameReference frame, long[] methods);
 
     /**
      * Materialized all virtual objects within the given stack frame and update the locals within

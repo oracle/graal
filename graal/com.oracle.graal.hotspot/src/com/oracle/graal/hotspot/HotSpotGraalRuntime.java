@@ -445,10 +445,12 @@ public final class HotSpotGraalRuntime implements GraalRuntime, RuntimeProvider,
         }
     }
 
-    public Iterable<InspectedFrame> getStackTrace(final ResolvedJavaMethod initialMethod, final ResolvedJavaMethod matchingMethod) {
+    public Iterable<InspectedFrame> getStackTrace(ResolvedJavaMethod[] initialMethods, ResolvedJavaMethod[] matchingMethods) {
+        final long[] initialMetaMethods = toMeta(initialMethods);
+        final long[] matchingMetaMethods = toMeta(matchingMethods);
         class StackFrameIterator implements Iterator<InspectedFrame> {
 
-            private HotSpotStackFrameReference current = compilerToVm.getNextStackFrame(null, (HotSpotResolvedJavaMethod) initialMethod);
+            private HotSpotStackFrameReference current = compilerToVm.getNextStackFrame(null, initialMetaMethods);
             // we don't want to read ahead if hasNext isn't called
             private boolean advanced = true;
 
@@ -465,7 +467,7 @@ public final class HotSpotGraalRuntime implements GraalRuntime, RuntimeProvider,
 
             private void update() {
                 if (!advanced) {
-                    current = compilerToVm.getNextStackFrame(current, (HotSpotResolvedJavaMethod) matchingMethod);
+                    current = compilerToVm.getNextStackFrame(current, matchingMetaMethods);
                     advanced = true;
                 }
             }
@@ -475,5 +477,17 @@ public final class HotSpotGraalRuntime implements GraalRuntime, RuntimeProvider,
                 return new StackFrameIterator();
             }
         };
+    }
+
+    private static long[] toMeta(ResolvedJavaMethod[] methods) {
+        if (methods == null) {
+            return null;
+        } else {
+            long[] result = new long[methods.length];
+            for (int i = 0; i < result.length; i++) {
+                result[i] = ((HotSpotResolvedJavaMethod) methods[i]).getMetaspaceMethod();
+            }
+            return result;
+        }
     }
 }

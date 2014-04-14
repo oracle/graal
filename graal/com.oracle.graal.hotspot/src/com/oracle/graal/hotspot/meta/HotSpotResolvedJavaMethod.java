@@ -162,6 +162,10 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
         return HotSpotMetaspaceConstant.forMetaspaceObject(getHostWordKind(), metaspaceMethod, this);
     }
 
+    public long getMetaspaceMethod() {
+        return metaspaceMethod;
+    }
+
     @Override
     public Constant getEncoding() {
         return getMetaspaceMethodConstant();

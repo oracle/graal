@@ -30,10 +30,10 @@ public interface StackIntrospection {
      * Accesses the current stack, returning a collection of {@long InspectedFrame}s that can be
      * used to inspect the stack frames' contents.
      *
-     * @param initialMethod if this is non-{@code null}, then the stack trace will start at this
-     *            method
-     * @param matchingMethod if this is non-{@code null}, then only matching stack frames are
+     * @param initialMethods if this is non-{@code null}, then the stack trace will start at these
+     *            methods
+     * @param matchingMethods if this is non-{@code null}, then only matching stack frames are
      *            returned
      */
-    Iterable<InspectedFrame> getStackTrace(ResolvedJavaMethod initialMethod, ResolvedJavaMethod matchingMethod);
+    Iterable<InspectedFrame> getStackTrace(ResolvedJavaMethod[] initialMethods, ResolvedJavaMethod[] matchingMethods);
 }

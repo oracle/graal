@@ -69,8 +69,16 @@ public final class HotSpotTruffleRuntime implements GraalTruffleRuntime {
     private ArrayList<String> includes;
     private ArrayList<String> excludes;
 
+    private final ResolvedJavaMethod[] callNodeMethod;
+    private final ResolvedJavaMethod[] callTargetMethod;
+    private final ResolvedJavaMethod[] anyFrameMethod;
+
     private HotSpotTruffleRuntime() {
         installOptimizedCallTargetCallMethod();
+
+        callNodeMethod = new ResolvedJavaMethod[]{getGraalProviders().getMetaAccess().lookupJavaMethod(HotSpotFrameInstance.CallNodeFrame.METHOD)};
+        callTargetMethod = new ResolvedJavaMethod[]{getGraalProviders().getMetaAccess().lookupJavaMethod(HotSpotFrameInstance.CallTargetFrame.METHOD)};
+        anyFrameMethod = new ResolvedJavaMethod[]{callNodeMethod[0], callTargetMethod[0]};
     }
 
     public String getName() {
@@ -221,16 +229,27 @@ public final class HotSpotTruffleRuntime implements GraalTruffleRuntime {
         if (stackIntrospection == null) {
             stackIntrospection = Graal.getRequiredCapability(StackIntrospection.class);
         }
-        ResolvedJavaMethod method = getGraalProviders().getMetaAccess().lookupJavaMethod(HotSpotFrameInstance.NextFrame.METHOD);
-        final Iterator<InspectedFrame> frames = stackIntrospection.getStackTrace(method, method).iterator();
+        final Iterator<InspectedFrame> frames = stackIntrospection.getStackTrace(anyFrameMethod, anyFrameMethod).iterator();
+        assert frames.hasNext();
+        InspectedFrame calltarget = frames.next();
+        assert calltarget.getMethod().equals(callTargetMethod[0]);
         class FrameIterator implements Iterator<FrameInstance> {
+
             public boolean hasNext() {
                 return frames.hasNext();
             }
 
             public FrameInstance next() {
                 InspectedFrame frame = frames.next();
-                return new HotSpotFrameInstance.NextFrame(frame);
+                if (frame.getMethod().equals(callNodeMethod[0])) {
+                    assert frames.hasNext();
+                    InspectedFrame calltarget2 = frames.next();
+                    assert calltarget2.getMethod().equals(callTargetMethod[0]);
+                    return new HotSpotFrameInstance.CallNodeFrame(frame);
+                } else {
+                    assert frame.getMethod().equals(callTargetMethod[0]);
+                    return new HotSpotFrameInstance.CallTargetFrame(frame, false);
+                }
             }
         }
         return new Iterable<FrameInstance>() {
@@ -244,10 +263,9 @@ public final class HotSpotTruffleRuntime implements GraalTruffleRuntime {
         if (stackIntrospection == null) {
             stackIntrospection = Graal.getRequiredCapability(StackIntrospection.class);
         }
-        ResolvedJavaMethod method = getGraalProviders().getMetaAccess().lookupJavaMethod(HotSpotFrameInstance.CurrentFrame.METHOD);
-        Iterator<InspectedFrame> frames = stackIntrospection.getStackTrace(method, method).iterator();
+        Iterator<InspectedFrame> frames = stackIntrospection.getStackTrace(callTargetMethod, callTargetMethod).iterator();
         if (frames.hasNext()) {
-            return new HotSpotFrameInstance.CurrentFrame(frames.next());
+            return new HotSpotFrameInstance.CallTargetFrame(frames.next(), true);
         } else {
             System.out.println("no current frame found");
             return null;

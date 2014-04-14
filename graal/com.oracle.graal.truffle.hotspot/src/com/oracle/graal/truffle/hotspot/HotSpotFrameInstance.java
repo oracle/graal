@@ -34,7 +34,7 @@ import com.oracle.truffle.api.nodes.*;
 
 public abstract class HotSpotFrameInstance implements FrameInstance {
 
-    private final InspectedFrame stackFrame;
+    protected final InspectedFrame stackFrame;
 
     public HotSpotFrameInstance(InspectedFrame stackFrame) {
         this.stackFrame = stackFrame;
@@ -51,13 +51,15 @@ public abstract class HotSpotFrameInstance implements FrameInstance {
         if (access == FrameAccess.NONE) {
             return null;
         }
-        if (!slowPath) {
+        if (!slowPath && getNotifyIndex() != -1) {
             MaterializedFrameNotify notify = (MaterializedFrameNotify) stackFrame.getLocal(getNotifyIndex());
-            if (access.ordinal() > notify.getOutsideFrameAccess().ordinal()) {
-                notify.setOutsideFrameAccess(access);
-            }
-            if (stackFrame.isVirtual(getFrameIndex())) {
-                stackFrame.materializeVirtualObjects(true);
+            if (notify != null) {
+                if (access.ordinal() > notify.getOutsideFrameAccess().ordinal()) {
+                    notify.setOutsideFrameAccess(access);
+                }
+                if (stackFrame.isVirtual(getFrameIndex())) {
+                    stackFrame.materializeVirtualObjects(true);
+                }
             }
         }
         switch (access) {
@@ -82,9 +84,9 @@ public abstract class HotSpotFrameInstance implements FrameInstance {
         return stackFrame.isVirtual(getFrameIndex());
     }
 
-    public CallTarget getCallTarget() {
-        return (CallTarget) stackFrame.getLocal(getCallTargetIndex());
-    }
+    public abstract CallTarget getCallTarget();
+
+    public abstract CallTarget getTargetCallTarget();
 
     public CallNode getCallNode() {
         Object receiver = stackFrame.getLocal(getNotifyIndex());
@@ -100,7 +102,7 @@ public abstract class HotSpotFrameInstance implements FrameInstance {
      * {@link DefaultCallNode#callProxy(MaterializedFrameNotify, CallTarget, VirtualFrame, Object[])}
      * method.
      */
-    public static final class NextFrame extends HotSpotFrameInstance {
+    public static final class CallNodeFrame extends HotSpotFrameInstance {
         public static final Method METHOD;
         static {
             try {
@@ -113,7 +115,7 @@ public abstract class HotSpotFrameInstance implements FrameInstance {
         private static final int CALL_TARGET_INDEX = 1;
         private static final int FRAME_INDEX = 2;
 
-        public NextFrame(InspectedFrame stackFrame) {
+        public CallNodeFrame(InspectedFrame stackFrame) {
             super(stackFrame);
         }
 
@@ -131,6 +133,16 @@ public abstract class HotSpotFrameInstance implements FrameInstance {
         protected int getFrameIndex() {
             return FRAME_INDEX;
         }
+
+        @Override
+        public CallTarget getCallTarget() {
+            return getCallNode().getRootNode().getCallTarget();
+        }
+
+        @Override
+        public CallTarget getTargetCallTarget() {
+            return (CallTarget) stackFrame.getLocal(getCallTargetIndex());
+        }
     }
 
     /**
@@ -138,7 +150,7 @@ public abstract class HotSpotFrameInstance implements FrameInstance {
      * {@link RootCallTarget#callProxy(VirtualFrame)} method.
      */
     @SuppressWarnings("javadoc")
-    public static final class CurrentFrame extends HotSpotFrameInstance {
+    public static final class CallTargetFrame extends HotSpotFrameInstance {
         public static final Method METHOD;
         static {
             try {
@@ -147,17 +159,19 @@ public abstract class HotSpotFrameInstance implements FrameInstance {
                 throw new GraalInternalError(e);
             }
         }
-        private static final int NOTIFY_INDEX = 0;
+        private static final int NOTIFY_INDEX = -1;
         private static final int CALL_TARGET_INDEX = 0;
         private static final int FRAME_INDEX = 1;
+        private final boolean currentFrame;
 
-        public CurrentFrame(InspectedFrame stackFrame) {
+        public CallTargetFrame(InspectedFrame stackFrame, boolean currentFrame) {
             super(stackFrame);
+            this.currentFrame = currentFrame;
         }
 
         @Override
         public Frame getFrame(FrameAccess access, boolean slowPath) {
-            if (!slowPath) {
+            if (!slowPath && currentFrame) {
                 throw new UnsupportedOperationException("cannot access current frame as fast path");
             }
             return super.getFrame(access, slowPath);
@@ -176,6 +190,16 @@ public abstract class HotSpotFrameInstance implements FrameInstance {
         @Override
         protected int getFrameIndex() {
             return FRAME_INDEX;
+        }
+
+        @Override
+        public CallTarget getCallTarget() {
+            return (CallTarget) stackFrame.getLocal(getCallTargetIndex());
+        }
+
+        @Override
+        public CallTarget getTargetCallTarget() {
+            return null;
         }
     }
 }
