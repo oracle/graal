@@ -27,14 +27,8 @@ import com.oracle.truffle.api.nodes.NodeUtil.NodeCountFilter;
 
 class OptimizedCallUtils {
 
-    public static int countNodes(OptimizedCallTarget target, NodeCountFilter filter, boolean inlined) {
-        NodeCountVisitorImpl nodeCount = new NodeCountVisitorImpl(filter, inlined);
-        target.getRootNode().accept(nodeCount);
-        return nodeCount.nodeCount;
-    }
-
     public static int countCalls(OptimizedCallTarget target) {
-        return countNodes(target, new NodeCountFilter() {
+        return NodeUtil.countNodes(target.getRootNode(), new NodeCountFilter() {
             public boolean isCounted(Node node) {
                 return node instanceof CallNode;
             }
@@ -42,7 +36,7 @@ class OptimizedCallUtils {
     }
 
     public static int countCallsInlined(OptimizedCallTarget target) {
-        return countNodes(target, new NodeCountFilter() {
+        return NodeUtil.countNodes(target.getRootNode(), new NodeCountFilter() {
             public boolean isCounted(Node node) {
                 return (node instanceof OptimizedCallNode) && ((OptimizedCallNode) node).isInlined();
             }
@@ -50,7 +44,7 @@ class OptimizedCallUtils {
     }
 
     public static int countNonTrivialNodes(final OptimizedCallTarget target, final boolean inlined) {
-        return countNodes(target, new NodeCountFilter() {
+        return NodeUtil.countNodes(target.getRootNode(), new NodeCountFilter() {
             public boolean isCounted(Node node) {
                 NodeCost cost = node.getCost();
                 if (cost != null && cost != NodeCost.NONE && cost != NodeCost.UNINITIALIZED) {
@@ -60,33 +54,4 @@ class OptimizedCallUtils {
             }
         }, inlined);
     }
-
-    private static final class NodeCountVisitorImpl implements NodeVisitor {
-
-        private final NodeCountFilter filter;
-        private int nodeCount;
-        private boolean followInlined;
-
-        private NodeCountVisitorImpl(NodeCountFilter filter, boolean followInlined) {
-            this.filter = filter;
-            this.followInlined = followInlined;
-        }
-
-        public boolean visit(Node node) {
-            if (filter == null || filter.isCounted(node)) {
-                nodeCount++;
-            }
-            if (followInlined) {
-                if (node instanceof OptimizedCallNode) {
-                    OptimizedCallNode ocn = (OptimizedCallNode) node;
-                    if (ocn.isInlined()) {
-                        ocn.getCurrentRootNode().accept(this);
-                    }
-                }
-            }
-            return true;
-        }
-
-    }
-
 }

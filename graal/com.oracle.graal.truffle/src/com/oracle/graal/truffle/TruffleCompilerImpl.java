@@ -136,7 +136,7 @@ public class TruffleCompilerImpl implements TruffleCompiler {
         final StructuredGraph graph;
 
         if (TraceTruffleCompilation.getValue()) {
-            OptimizedCallTarget.logOptimizingStart(compilable);
+            OptimizedCallTargetLog.logOptimizingStart(compilable);
         }
 
         long timeCompilationStarted = System.nanoTime();
@@ -169,7 +169,7 @@ public class TruffleCompilerImpl implements TruffleCompiler {
             int inlinedCalls = OptimizedCallUtils.countCallsInlined(compilable);
             int dispatchedCalls = calls - inlinedCalls;
             Map<String, Object> properties = new LinkedHashMap<>();
-            OptimizedCallTarget.addASTSizeProperty(compilable, properties);
+            OptimizedCallTargetLog.addASTSizeProperty(compilable, properties);
             properties.put("Time", String.format("%5.0f(%4.0f+%-4.0f)ms", //
                             (timeCompilationFinished - timeCompilationStarted) / 1e6, //
                             (timePartialEvaluationFinished - timeCompilationStarted) / 1e6, //
@@ -179,7 +179,7 @@ public class TruffleCompilerImpl implements TruffleCompiler {
             properties.put("CodeSize", code != null ? code.length : 0);
             properties.put("Source", formatSourceSection(compilable.getRootNode().getSourceSection()));
 
-            OptimizedCallTarget.logOptimizingDone(compilable, properties);
+            OptimizedCallTargetLog.logOptimizingDone(compilable, properties);
         }
         return compiledMethod;
     }

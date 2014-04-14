@@ -23,6 +23,7 @@
 package com.oracle.graal.truffle.hotspot;
 
 import static com.oracle.graal.truffle.TruffleCompilerOptions.*;
+import static com.oracle.graal.truffle.OptimizedCallTargetLog.*;
 
 import java.util.concurrent.*;
 
@@ -152,7 +153,6 @@ public final class HotSpotOptimizedCallTarget extends OptimizedCallTarget {
             return null;
         } else {
             performInlining();
-// cancelInlinedCallOptimization();
             logOptimizingQueued(this);
             this.installedCodeTask = compiler.compile(this);
             if (!TruffleBackgroundCompilation.getValue()) {

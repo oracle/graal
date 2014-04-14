@@ -119,7 +119,7 @@ public final class OptimizedCallNode extends DefaultCallNode {
         OptimizedCallTarget splitTarget = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(getCallTarget().getRootNode().split());
         splitTarget.setSplitSource(getCallTarget());
         if (heuristic) {
-            OptimizedCallTarget.logSplit(this, getCallTarget(), splitTarget);
+            OptimizedCallTargetLog.logSplit(this, getCallTarget(), splitTarget);
         }
         if (callCount >= 1) {
             getCallTarget().decrementKnownCallSites();
