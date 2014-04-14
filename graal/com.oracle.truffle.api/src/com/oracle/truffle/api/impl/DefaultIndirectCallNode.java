@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,27 +22,20 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.frame;
+package com.oracle.truffle.api.impl;
 
 import com.oracle.truffle.api.*;
+import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
 
-public interface FrameInstance {
+/**
+ * This is runtime specific API. Do not use in a guest language.
+ */
+final class DefaultIndirectCallNode extends IndirectCallNode {
 
-    public static enum FrameAccess {
-        NONE,
-        READ_ONLY,
-        READ_WRITE,
-        MATERIALIZE
+    @Override
+    public Object call(VirtualFrame frame, CallTarget target, Object[] arguments) {
+        return target.call(arguments);
     }
 
-    Frame getFrame(FrameAccess access, boolean slowPath);
-
-    boolean isVirtualFrame();
-
-    DirectCallNode getCallNode();
-
-    CallTarget getCallTarget();
-
-    CallTarget getTargetCallTarget();
 }

@@ -50,7 +50,7 @@ public class ThreadSafetyTest {
         RecursiveCallNode callNode = new RecursiveCallNode(new ConstNode(42));
         TestRootNode rootNode2 = new TestRootNode(new RewritingNode(new RewritingNode(new RewritingNode(new RewritingNode(new RewritingNode(callNode))))));
         final CallTarget target2 = runtime.createCallTarget(rootNode2);
-        callNode.setCallNode(runtime.createCallNode(target2));
+        callNode.setCallNode(runtime.createDirectCallNode(target2));
         NodeUtil.verify(rootNode2);
 
         testTarget(target1, 47, 1_000_000);
@@ -165,7 +165,7 @@ public class ThreadSafetyTest {
     }
 
     static class RecursiveCallNode extends ValueNode {
-        @Child CallNode callNode;
+        @Child DirectCallNode callNode;
         @Child private ValueNode valueNode;
 
         RecursiveCallNode(ValueNode value) {
@@ -182,7 +182,7 @@ public class ThreadSafetyTest {
             }
         }
 
-        void setCallNode(CallNode callNode) {
+        void setCallNode(DirectCallNode callNode) {
             this.callNode = insert(callNode);
         }
     }

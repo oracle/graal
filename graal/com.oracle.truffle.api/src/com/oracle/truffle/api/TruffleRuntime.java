@@ -50,7 +50,20 @@ public interface TruffleRuntime {
      */
     RootCallTarget createCallTarget(RootNode rootNode);
 
-    CallNode createCallNode(CallTarget target);
+    /**
+     * Creates a new runtime specific version of {@link DirectCallNode}.
+     *
+     * @param target the direct {@link CallTarget} to call
+     * @return the new call node
+     */
+    DirectCallNode createDirectCallNode(CallTarget target);
+
+    /**
+     * Creates a new runtime specific version of {@link IndirectCallNode}.
+     *
+     * @return the new call node
+     */
+    IndirectCallNode createIndirectCallNode();
 
     /**
      * Creates a new assumption object that can be checked and invalidated.
@@ -104,4 +117,5 @@ public interface TruffleRuntime {
      * important to note that this {@link FrameInstance} supports only slow path access.
      */
     FrameInstance getCurrentFrame();
+
 }

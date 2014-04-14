@@ -67,7 +67,7 @@ public abstract class RootNode extends Node {
 
     /**
      * Returns <code>true</code> if this {@link RootNode} can be split. A {@link RootNode} can be
-     * split inside of a {@link CallTarget} that is invoked using a {@link CallNode}. If this method
+     * split inside of a {@link CallTarget} that is invoked using a {@link DirectCallNode}. If this method
      * returns <code>true</code> a proper implementation of {@link #split()} must also be provided.
      * This method is intended to be overridden by a subclass.
      * 

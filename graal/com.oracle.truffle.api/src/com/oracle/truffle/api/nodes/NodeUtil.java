@@ -636,8 +636,8 @@ public final class NodeUtil {
                 nodeCount++;
             }
 
-            if (visitInlinedCallNodes && node instanceof CallNode) {
-                CallNode call = (CallNode) node;
+            if (visitInlinedCallNodes && node instanceof DirectCallNode) {
+                DirectCallNode call = (DirectCallNode) node;
                 if (call.isInlined()) {
                     Node target = ((RootCallTarget) call.getCurrentCallTarget()).getRootNode();
                     if (target != null) {

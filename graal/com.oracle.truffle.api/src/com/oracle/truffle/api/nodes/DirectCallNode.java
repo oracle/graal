@@ -28,24 +28,27 @@ import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.frame.*;
 
 /**
- * Represents a call to a {@link CallTarget} in the Truffle AST. In addition to calling the
- * {@link CallTarget}, this {@link Node} enables the runtime system to implement further
- * optimizations. Optimizations that can possibly be applied to a {@link CallNode} are inlining and
- * splitting. Inlining inlines this call site into the call graph of the parent {@link CallTarget}.
- * Splitting duplicates the {@link CallTarget} using {@link RootNode#split()} to collect call site
- * sensitive profiling information.
+ * Represents a direct call to a {@link CallTarget}. Direct calls are calls for which the
+ * {@link CallTarget} remains the same for each consecutive call. This part of the Truffle API
+ * enables the runtime system to perform additional optimizations on direct calls.
+ *
+ * Optimizations that can be applied to a {@link DirectCallNode} are inlining and splitting.
+ * Inlining inlines this call site into the call graph of the parent {@link CallTarget}. Splitting
+ * duplicates the {@link CallTarget} using {@link RootNode#split()} to collect call site sensitive
+ * profiling information.
  *
  * Please note: This class is not intended to be subclassed by guest language implementations.
  *
- * @see TruffleRuntime#createCallNode(CallTarget)
+ * @see IndirectCallNode for calls with a non-constant target
+ * @see TruffleRuntime#createDirectCallNode(CallTarget)
  * @see #forceInlining()
  * @see #split()
  */
-public abstract class CallNode extends Node {
+public abstract class DirectCallNode extends Node {
 
     protected final CallTarget callTarget;
 
-    protected CallNode(CallTarget callTarget) {
+    protected DirectCallNode(CallTarget callTarget) {
         this.callTarget = callTarget;
     }
 
@@ -70,7 +73,7 @@ public abstract class CallNode extends Node {
 
     /**
      * Returns <code>true</code> if the underlying runtime system supports inlining for the
-     * {@link CallTarget} in this {@link CallNode}.
+     * {@link CallTarget} in this {@link DirectCallNode}.
      *
      * @return true if inlining is supported.
      */
@@ -78,8 +81,8 @@ public abstract class CallNode extends Node {
 
     /**
      * Returns <code>true</code> if the {@link CallTarget} is forced to be inlined. A
-     * {@link CallNode} can either be inlined manually by invoking {@link #forceInlining()} or by
-     * the runtime system which may at any point decide to inline.
+     * {@link DirectCallNode} can either be inlined manually by invoking {@link #forceInlining()} or
+     * by the runtime system which may at any point decide to inline.
      *
      * @return true if this method was inlined else false.
      */
@@ -94,30 +97,31 @@ public abstract class CallNode extends Node {
 
     /**
      * Returns true if the runtime system has decided to inline this call-site. If the
-     * {@link CallNode} was forced to inline then this does not necessarily mean that the
-     * {@link CallNode} is really going to be inlined. This depends on whether or not the runtime
-     * system supports inlining. The runtime system may also decide to not inline calls which were
-     * forced to inline.
+     * {@link DirectCallNode} was forced to inline then this does not necessarily mean that the
+     * {@link DirectCallNode} is really going to be inlined. This depends on whether or not the
+     * runtime system supports inlining. The runtime system may also decide to not inline calls
+     * which were forced to inline.
      */
     public abstract boolean isInlined();
 
     /**
-     * Returns <code>true</code> if this {@link CallNode} can be split. A {@link CallNode} can only
-     * be split if the runtime system supports splitting and if the {@link RootNode} contained the
-     * {@link CallTarget} returns <code>true</code> for {@link RootNode#isSplittable()}.
+     * Returns <code>true</code> if this {@link DirectCallNode} can be split. A
+     * {@link DirectCallNode} can only be split if the runtime system supports splitting and if the
+     * {@link RootNode} contained the {@link CallTarget} returns <code>true</code> for
+     * {@link RootNode#isSplittable()}.
      *
      * @return <code>true</code> if the target can be split
      */
     public abstract boolean isSplittable();
 
     /**
-     * Enforces the runtime system to split the {@link CallTarget}. If the {@link CallNode} is not
-     * splittable this methods has no effect.
+     * Enforces the runtime system to split the {@link CallTarget}. If the {@link DirectCallNode} is
+     * not splittable this methods has no effect.
      */
     public abstract boolean split();
 
     /**
-     * Returns <code>true</code> if the target of the {@link CallNode} was split.
+     * Returns <code>true</code> if the target of the {@link DirectCallNode} was split.
      *
      * @return if the target was split
      */

@@ -25,18 +25,17 @@
 package com.oracle.truffle.api.impl;
 
 import com.oracle.truffle.api.*;
-import com.oracle.truffle.api.CompilerDirectives.*;
 import com.oracle.truffle.api.frame.*;
-import com.oracle.truffle.api.frame.FrameInstance.*;
 import com.oracle.truffle.api.nodes.*;
 
-public class DefaultCallNode extends CallNode implements MaterializedFrameNotify {
-
-    @CompilationFinal private FrameAccess outsideFrameAccess = FrameAccess.NONE;
+/**
+ * This is runtime specific API. Do not use in a guest language.
+ */
+public final class DefaultDirectCallNode extends DirectCallNode {
 
     private boolean inliningForced;
 
-    public DefaultCallNode(CallTarget target) {
+    public DefaultDirectCallNode(CallTarget target) {
         super(target);
     }
 
@@ -46,18 +45,13 @@ public class DefaultCallNode extends CallNode implements MaterializedFrameNotify
     }
 
     @Override
-    public FrameAccess getOutsideFrameAccess() {
-        return outsideFrameAccess;
-    }
-
-    @Override
-    public void setOutsideFrameAccess(FrameAccess outsideFrameAccess) {
-        this.outsideFrameAccess = outsideFrameAccess;
-    }
-
-    @Override
     public void forceInlining() {
         inliningForced = true;
+    }
+
+    @Override
+    public boolean isInliningForced() {
+        return inliningForced;
     }
 
     @Override
@@ -78,11 +72,6 @@ public class DefaultCallNode extends CallNode implements MaterializedFrameNotify
     @Override
     public boolean isSplittable() {
         return false;
-    }
-
-    @Override
-    public boolean isInliningForced() {
-        return inliningForced;
     }
 
     @Override
