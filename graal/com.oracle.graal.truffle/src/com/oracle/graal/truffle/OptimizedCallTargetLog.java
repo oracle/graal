@@ -69,7 +69,7 @@ public final class OptimizedCallTargetLog {
             TruffleInliningProfile profile = result.getProfiles().get(callNode);
             boolean inlined = result.isInlined(callNode);
             String msg = inlined ? "inline success" : "inline failed";
-            logInlinedImpl(msg, profile, depth);
+            logInlinedImpl(msg, callNode, profile, depth);
             if (profile.getRecursiveResult() != null && inlined) {
                 logInliningDecisionRecursive(profile.getRecursiveResult(), depth + 1);
             }
@@ -89,13 +89,13 @@ public final class OptimizedCallTargetLog {
         return callNodes;
     }
 
-    private static void logInlinedImpl(String status, TruffleInliningProfile profile, int depth) {
+    private static void logInlinedImpl(String status, OptimizedDirectCallNode callNode, TruffleInliningProfile profile, int depth) {
         Map<String, Object> properties = new LinkedHashMap<>();
-        addASTSizeProperty(profile.getCallNode().getCurrentCallTarget(), properties);
+        addASTSizeProperty(callNode.getCurrentCallTarget(), properties);
         if (profile != null) {
             properties.putAll(profile.getDebugProperties());
         }
-        log((depth * 2), status, profile.getCallNode().getCurrentCallTarget().toString(), properties);
+        log((depth * 2), status, callNode.getCurrentCallTarget().toString(), properties);
     }
 
     private static void logInliningStart(OptimizedCallTarget target) {
