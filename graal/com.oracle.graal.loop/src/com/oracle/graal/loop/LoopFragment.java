@@ -355,6 +355,7 @@ public abstract class LoopFragment {
                     }
                 });
             }
+            FrameState finalExitState = exitState;
 
             for (Node anchored : loopEarlyExit.anchored().snapshot()) {
                 anchored.replaceFirstInput(loopEarlyExit, merge);
@@ -384,17 +385,18 @@ public abstract class LoopFragment {
                 } else {
                     replaceWith = vpn.value();
                 }
-                for (Node usage : vpn.usages().snapshot()) {
-                    if (!merge.isPhiAtMerge(usage)) {
-                        if (usage instanceof VirtualState) {
-                            VirtualState stateUsage = (VirtualState) usage;
-                            if (exitState.isPartOfThisState(stateUsage)) {
-                                continue;
-                            }
-                        }
-                        usage.replaceFirstInput(vpn, replaceWith);
+                vpn.replaceAtMatchingUsages(replaceWith, usage -> {
+                    if (merge.isPhiAtMerge(usage)) {
+                        return false;
                     }
-                }
+                    if (usage instanceof VirtualState) {
+                        VirtualState stateUsage = (VirtualState) usage;
+                        if (finalExitState.isPartOfThisState(stateUsage)) {
+                            return false;
+                        }
+                    }
+                    return true;
+                });
             }
         }
     }
