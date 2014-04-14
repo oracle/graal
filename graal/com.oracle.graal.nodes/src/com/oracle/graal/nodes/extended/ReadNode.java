@@ -62,7 +62,10 @@ public final class ReadNode extends FloatableAccessNode implements LIRLowerable,
     @Override
     public Node canonical(CanonicalizerTool tool) {
         if (object() instanceof PiNode && ((PiNode) object()).getGuard() == getGuard()) {
-            return graph().add(new ReadNode(((PiNode) object()).getOriginalNode(), location(), stamp(), getGuard(), getBarrierType(), isCompressible()));
+            ReadNode readNode = graph().add(new ReadNode(((PiNode) object()).getOriginalNode(), location(), stamp(), getGuard(), getBarrierType(), isCompressible()));
+            readNode.setNullCheck(getNullCheck());
+            readNode.setStateBefore(stateBefore());
+            return readNode;
         }
         return canonicalizeRead(this, location(), object(), tool, isCompressible());
     }
