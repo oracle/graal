@@ -25,6 +25,7 @@ package com.oracle.graal.truffle;
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.*;
+import com.oracle.truffle.api.frame.FrameInstance.*;
 import com.oracle.truffle.api.impl.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.api.nodes.NodeUtil.NodeCountFilter;
@@ -73,11 +74,22 @@ public final class OptimizedCallNode extends DefaultCallNode {
         if (CompilerDirectives.inInterpreter()) {
             onInterpreterCall();
         }
-        OptimizedCallTarget target = getCurrentCallTarget();
-        if (inlined) {
-            return target.callInlined(arguments);
-        } else {
-            return super.call(frame, arguments);
+        return callProxy(this, getCurrentCallTarget(), frame, arguments, inlined);
+    }
+
+    public static Object callProxy(MaterializedFrameNotify notify, OptimizedCallTarget callTarget, VirtualFrame frame, Object[] arguments, boolean inlined) {
+        try {
+            if (notify.getOutsideFrameAccess() != FrameAccess.NONE) {
+                CompilerDirectives.materialize(frame);
+            }
+            if (inlined) {
+                return callTarget.callInlined(arguments);
+            } else {
+                return callTarget.call(arguments);
+            }
+        } finally {
+            // this assertion is needed to keep the values from being cleared as non-live locals
+            assert notify != null & callTarget != null & frame != null;
         }
     }
 
