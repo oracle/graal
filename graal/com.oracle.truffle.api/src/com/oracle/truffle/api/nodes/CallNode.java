@@ -88,6 +88,7 @@ public abstract class CallNode extends Node {
     /**
      * Enforces the runtime system to inline the {@link CallTarget} at this call site. If the
      * runtime system does not support inlining or it is already inlined this method has no effect.
+     * The runtime system may decide to not inline calls which were forced to inline.
      */
     public abstract void forceInlining();
 
@@ -95,8 +96,8 @@ public abstract class CallNode extends Node {
      * Returns true if the runtime system has decided to inline this call-site. If the
      * {@link CallNode} was forced to inline then this does not necessarily mean that the
      * {@link CallNode} is really going to be inlined. This depends on whether or not the runtime
-     * system supports inlining or not. The runtime system may also decide to ignore calls to
-     * {@link #forceInlining()}.
+     * system supports inlining. The runtime system may also decide to not inline calls which were
+     * forced to inline.
      */
     public abstract boolean isInlined();
 
