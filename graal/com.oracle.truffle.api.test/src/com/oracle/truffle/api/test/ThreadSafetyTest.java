@@ -24,7 +24,6 @@ package com.oracle.truffle.api.test;
 
 import static org.junit.Assert.*;
 
-import java.io.*;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.*;
@@ -68,8 +67,7 @@ public class ThreadSafetyTest {
                         assertEquals(expectedResult, result);
                         ai.incrementAndGet();
                     } catch (Throwable t) {
-                        PrintStream out = System.out;
-                        out.println(t);
+                        t.printStackTrace(System.out);
                     }
                 }
             });
