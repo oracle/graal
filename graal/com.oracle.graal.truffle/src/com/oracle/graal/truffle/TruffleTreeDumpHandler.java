@@ -53,9 +53,9 @@ public class TruffleTreeDumpHandler implements DebugDumpHandler {
         visitor.setChildSupplier(new ChildSupplier() {
 
             public Object startNode(Object callNode) {
-                if (callNode instanceof OptimizedCallNode) {
-                    if (((OptimizedCallNode) callNode).isInlined()) {
-                        return ((OptimizedCallNode) callNode).getCurrentRootNode();
+                if (callNode instanceof OptimizedDirectCallNode) {
+                    if (((OptimizedDirectCallNode) callNode).isInlined()) {
+                        return ((OptimizedDirectCallNode) callNode).getCurrentRootNode();
                     }
                 }
                 return null;

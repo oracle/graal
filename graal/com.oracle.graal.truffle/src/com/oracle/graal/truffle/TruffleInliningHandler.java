@@ -67,23 +67,23 @@ public final class TruffleInliningHandler {
     }
 
     private List<TruffleInliningProfile> lookupProfiles(final OptimizedCallTarget target, int depth) {
-        final List<OptimizedCallNode> callNodes = new ArrayList<>();
+        final List<OptimizedDirectCallNode> callNodes = new ArrayList<>();
         target.getRootNode().accept(new NodeVisitor() {
             public boolean visit(Node node) {
-                if (node instanceof OptimizedCallNode) {
-                    callNodes.add((OptimizedCallNode) node);
+                if (node instanceof OptimizedDirectCallNode) {
+                    callNodes.add((OptimizedDirectCallNode) node);
                 }
                 return true;
             }
         });
         final List<TruffleInliningProfile> profiles = new ArrayList<>();
-        for (OptimizedCallNode callNode : callNodes) {
+        for (OptimizedDirectCallNode callNode : callNodes) {
             profiles.add(lookupProfile(target, callNode, depth));
         }
         return profiles;
     }
 
-    public TruffleInliningProfile lookupProfile(OptimizedCallTarget parentTarget, OptimizedCallNode ocn, int depth) {
+    public TruffleInliningProfile lookupProfile(OptimizedCallTarget parentTarget, OptimizedDirectCallNode ocn, int depth) {
         OptimizedCallTarget target = ocn.getCurrentCallTarget();
 
         int callSites = ocn.getCurrentCallTarget().getKnownCallSiteCount();
@@ -116,7 +116,7 @@ public final class TruffleInliningHandler {
         return policy;
     }
 
-    private static double calculateFrequency(OptimizedCallTarget target, OptimizedCallNode ocn) {
+    private static double calculateFrequency(OptimizedCallTarget target, OptimizedDirectCallNode ocn) {
         return (double) Math.max(1, target.getCompilationProfile().getCallCount()) / Math.max(1, ocn.getCallCount());
     }
 

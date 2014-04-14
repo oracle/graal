@@ -27,7 +27,7 @@ import java.util.*;
 public final class TruffleInliningResult implements Iterable<TruffleInliningProfile> {
 
     private final OptimizedCallTarget callTarget;
-    private final Map<OptimizedCallNode, TruffleInliningProfile> profiles;
+    private final Map<OptimizedDirectCallNode, TruffleInliningProfile> profiles;
     private final Set<TruffleInliningProfile> inlined;
     private final int nodeCount;
 
@@ -41,7 +41,7 @@ public final class TruffleInliningResult implements Iterable<TruffleInliningProf
         this.inlined = inlined;
     }
 
-    public Map<OptimizedCallNode, TruffleInliningProfile> getProfiles() {
+    public Map<OptimizedDirectCallNode, TruffleInliningProfile> getProfiles() {
         return profiles;
     }
 
@@ -53,7 +53,7 @@ public final class TruffleInliningResult implements Iterable<TruffleInliningProf
         return callTarget;
     }
 
-    public boolean isInlined(OptimizedCallNode path) {
+    public boolean isInlined(OptimizedDirectCallNode path) {
         return inlined.contains(profiles.get(path));
     }
 

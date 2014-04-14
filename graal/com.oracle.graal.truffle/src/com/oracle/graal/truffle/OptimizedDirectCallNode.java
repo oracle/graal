@@ -24,25 +24,75 @@ package com.oracle.graal.truffle;
 
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.frame.FrameInstance.FrameAccess;
 import com.oracle.truffle.api.frame.*;
-import com.oracle.truffle.api.frame.FrameInstance.*;
-import com.oracle.truffle.api.impl.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.api.nodes.NodeUtil.NodeCountFilter;
 
 /**
  * A call node with a constant {@link CallTarget} that can be optimized by Graal.
  */
-public final class OptimizedCallNode extends DefaultCallNode {
+public final class OptimizedDirectCallNode extends DirectCallNode implements MaterializedFrameNotify {
 
     private int callCount;
     private boolean trySplit = true;
+    private boolean inliningForced;
 
     @CompilationFinal private boolean inlined;
     @CompilationFinal private OptimizedCallTarget splitCallTarget;
+    @CompilationFinal private FrameAccess outsideFrameAccess = FrameAccess.NONE;
 
-    private OptimizedCallNode(OptimizedCallTarget target) {
+    private OptimizedDirectCallNode(OptimizedCallTarget target) {
         super(target);
+    }
+
+    @Override
+    public Object call(VirtualFrame frame, Object[] arguments) {
+        if (CompilerDirectives.inInterpreter()) {
+            onInterpreterCall();
+        }
+        return callProxy(this, getCurrentCallTarget(), frame, arguments, inlined);
+    }
+
+    public static Object callProxy(MaterializedFrameNotify notify, CallTarget callTarget, VirtualFrame frame, Object[] arguments, boolean inlined) {
+        try {
+            if (notify.getOutsideFrameAccess() != FrameAccess.NONE) {
+                CompilerDirectives.materialize(frame);
+            }
+            if (inlined) {
+                return ((OptimizedCallTarget) callTarget).callInlined(arguments);
+            } else {
+                return callTarget.call(arguments);
+            }
+        } finally {
+            // this assertion is needed to keep the values from being cleared as non-live locals
+            assert notify != null & callTarget != null & frame != null;
+        }
+    }
+
+    @Override
+    public boolean isInlinable() {
+        return true;
+    }
+
+    @Override
+    public void forceInlining() {
+        inliningForced = true;
+    }
+
+    @Override
+    public boolean isInliningForced() {
+        return inliningForced;
+    }
+
+    @Override
+    public FrameAccess getOutsideFrameAccess() {
+        return outsideFrameAccess;
+    }
+
+    @Override
+    public void setOutsideFrameAccess(FrameAccess outsideFrameAccess) {
+        this.outsideFrameAccess = outsideFrameAccess;
     }
 
     @Override
@@ -67,30 +117,6 @@ public final class OptimizedCallNode extends DefaultCallNode {
     @Override
     public OptimizedCallTarget getSplitCallTarget() {
         return splitCallTarget;
-    }
-
-    @Override
-    public Object call(VirtualFrame frame, Object[] arguments) {
-        if (CompilerDirectives.inInterpreter()) {
-            onInterpreterCall();
-        }
-        return callProxy(this, getCurrentCallTarget(), frame, arguments, inlined);
-    }
-
-    public static Object callProxy(MaterializedFrameNotify notify, OptimizedCallTarget callTarget, VirtualFrame frame, Object[] arguments, boolean inlined) {
-        try {
-            if (notify.getOutsideFrameAccess() != FrameAccess.NONE) {
-                CompilerDirectives.materialize(frame);
-            }
-            if (inlined) {
-                return callTarget.callInlined(arguments);
-            } else {
-                return callTarget.call(arguments);
-            }
-        } finally {
-            // this assertion is needed to keep the values from being cleared as non-live locals
-            assert notify != null & callTarget != null & frame != null;
-        }
     }
 
     private void onInterpreterCall() {
@@ -173,7 +199,7 @@ public final class OptimizedCallNode extends DefaultCallNode {
     private boolean isMaxSingleCall() {
         return NodeUtil.countNodes(getCurrentCallTarget().getRootNode(), new NodeCountFilter() {
             public boolean isCounted(Node node) {
-                return node instanceof CallNode;
+                return node instanceof DirectCallNode;
             }
         }) <= 1;
     }
@@ -188,7 +214,7 @@ public final class OptimizedCallNode extends DefaultCallNode {
         });
     }
 
-    public static OptimizedCallNode create(OptimizedCallTarget target) {
-        return new OptimizedCallNode(target);
+    public static OptimizedDirectCallNode create(OptimizedCallTarget target) {
+        return new OptimizedDirectCallNode(target);
     }
 }

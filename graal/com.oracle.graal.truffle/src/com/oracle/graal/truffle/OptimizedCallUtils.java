@@ -30,7 +30,7 @@ class OptimizedCallUtils {
     public static int countCalls(OptimizedCallTarget target) {
         return NodeUtil.countNodes(target.getRootNode(), new NodeCountFilter() {
             public boolean isCounted(Node node) {
-                return node instanceof CallNode;
+                return node instanceof DirectCallNode;
             }
         }, true);
     }
@@ -38,7 +38,7 @@ class OptimizedCallUtils {
     public static int countCallsInlined(OptimizedCallTarget target) {
         return NodeUtil.countNodes(target.getRootNode(), new NodeCountFilter() {
             public boolean isCounted(Node node) {
-                return (node instanceof OptimizedCallNode) && ((OptimizedCallNode) node).isInlined();
+                return (node instanceof OptimizedDirectCallNode) && ((OptimizedDirectCallNode) node).isInlined();
             }
         }, true);
     }

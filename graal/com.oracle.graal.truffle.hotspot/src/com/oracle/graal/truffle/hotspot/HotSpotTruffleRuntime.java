@@ -92,12 +92,16 @@ public final class HotSpotTruffleRuntime implements GraalTruffleRuntime {
         return new HotSpotOptimizedCallTarget(rootNode, truffleCompiler, TruffleMinInvokeThreshold.getValue(), TruffleCompilationThreshold.getValue(), acceptForCompilation(rootNode));
     }
 
-    public CallNode createCallNode(CallTarget target) {
+    public DirectCallNode createDirectCallNode(CallTarget target) {
         if (target instanceof OptimizedCallTarget) {
-            return OptimizedCallNode.create((OptimizedCallTarget) target);
+            return OptimizedDirectCallNode.create((OptimizedCallTarget) target);
         } else {
-            return new DefaultCallNode(target);
+            return new DefaultDirectCallNode(target);
         }
+    }
+
+    public IndirectCallNode createIndirectCallNode() {
+        return new OptimizedIndirectCallNode();
     }
 
     @Override

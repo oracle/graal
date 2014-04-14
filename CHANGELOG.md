@@ -12,7 +12,11 @@
 
 ### Truffle
 * Support for collecting stack traces and for accessing the current frame in slow paths
-* CallNode#inline was renamed to CallNode#forceInlining().
+* Renamed CallNode to DirectCallNode.
+* Renamed TruffleRuntime#createCallNode to TruffleRuntime#createDirectCallNode.
+* Added IndirectCallNode for calls with a changing CallTarget. 
+* Added TruffleRuntime#createIndirectCallNode to create an IndirectCallNode.
+* DirectCallNode#inline was renamed to DirectCallNode#forceInlining().
 * ...
 
 ## Version 0.2

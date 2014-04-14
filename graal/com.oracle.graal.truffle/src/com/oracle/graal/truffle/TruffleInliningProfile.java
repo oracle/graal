@@ -26,7 +26,7 @@ import java.util.*;
 
 public class TruffleInliningProfile {
 
-    private final OptimizedCallNode callNode;
+    private final OptimizedDirectCallNode callNode;
     private final int nodeCount;
     private final int deepNodeCount;
     private final int callSites;
@@ -39,7 +39,7 @@ public class TruffleInliningProfile {
     private int queryIndex = -1;
     private double score;
 
-    public TruffleInliningProfile(OptimizedCallNode callNode, int callSites, int nodeCount, int deepNodeCount, double frequency, boolean forced, boolean recursiveCall,
+    public TruffleInliningProfile(OptimizedDirectCallNode callNode, int callSites, int nodeCount, int deepNodeCount, double frequency, boolean forced, boolean recursiveCall,
                     TruffleInliningResult recursiveResult) {
         this.callNode = callNode;
         this.callSites = callSites;
@@ -55,7 +55,7 @@ public class TruffleInliningProfile {
         return recursiveCall;
     }
 
-    public OptimizedCallNode getCallNode() {
+    public OptimizedDirectCallNode getCallNode() {
         return callNode;
     }
 
