@@ -187,7 +187,7 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
     @Override
     public boolean canBeStaticallyBound() {
         int modifiers = getModifiers();
-        return (Modifier.isFinal(modifiers) || Modifier.isPrivate(modifiers) || Modifier.isStatic(modifiers)) && !Modifier.isAbstract(modifiers);
+        return (Modifier.isFinal(modifiers) || Modifier.isPrivate(modifiers) || Modifier.isStatic(modifiers) || Modifier.isFinal(holder.getModifiers())) && !Modifier.isAbstract(modifiers);
     }
 
     @Override
@@ -616,8 +616,11 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
      * @return virtual table index
      */
     private int getVtableIndex() {
+        assert !Modifier.isInterface(holder.getModifiers());
         HotSpotVMConfig config = runtime().getConfig();
-        return unsafe.getInt(metaspaceMethod + config.methodVtableIndexOffset);
+        int result = unsafe.getInt(metaspaceMethod + config.methodVtableIndexOffset);
+        assert result >= config.nonvirtualVtableIndex : "must be linked";
+        return result;
     }
 
     public SpeculationLog getSpeculationLog() {

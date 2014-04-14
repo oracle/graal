@@ -35,10 +35,10 @@ public interface ResolvedJavaMethod extends JavaMethod, InvokeTarget {
      * Returns the bytecode of this method, if the method has code. The returned byte array does not
      * contain breakpoints or non-Java bytecodes. This may return null if the
      * {@link #getDeclaringClass() holder} is not {@link ResolvedJavaType#isLinked() linked}.
-     * 
+     *
      * The contained constant pool indices may not be the ones found in the original class file but
      * they can be used with the Graal API (e.g. methods in {@link ConstantPool}).
-     * 
+     *
      * @return the bytecode of the method, or {@code null} if {@code getCodeSize() == 0} or if the
      *         code is not ready.
      */
@@ -47,7 +47,7 @@ public interface ResolvedJavaMethod extends JavaMethod, InvokeTarget {
     /**
      * Returns the size of the bytecode of this method, if the method has code. This is equivalent
      * to {@link #getCode()}. {@code length} if the method has code.
-     * 
+     *
      * @return the size of the bytecode in bytes, or 0 if no bytecode is available
      */
     int getCodeSize();
@@ -84,10 +84,10 @@ public interface ResolvedJavaMethod extends JavaMethod, InvokeTarget {
 
     /**
      * Returns {@code true} if this method is a default method; returns {@code false} otherwise.
-     * 
+     *
      * A default method is a public non-abstract instance method, that is, a non-static method with
      * a body, declared in an interface type.
-     * 
+     *
      * @return true if and only if this method is a default method as defined by the Java Language
      *         Specification.
      */
@@ -95,22 +95,22 @@ public interface ResolvedJavaMethod extends JavaMethod, InvokeTarget {
 
     /**
      * Checks whether this method is a class initializer.
-     * 
+     *
      * @return {@code true} if the method is a class initializer
      */
     boolean isClassInitializer();
 
     /**
      * Checks whether this method is a constructor.
-     * 
+     *
      * @return {@code true} if the method is a constructor
      */
     boolean isConstructor();
 
     /**
      * Checks whether this method can be statically bound (usually, that means it is final or
-     * private or static, but not abstract).
-     * 
+     * private or static, but not abstract, or the declaring class is final)
+     *
      * @return {@code true} if this method can be statically bound
      */
     boolean canBeStaticallyBound();
@@ -143,7 +143,7 @@ public interface ResolvedJavaMethod extends JavaMethod, InvokeTarget {
     /**
      * Returns the annotation for the specified type of this method, if such an annotation is
      * present.
-     * 
+     *
      * @param annotationClass the Class object corresponding to the annotation type
      * @return this element's annotation for the specified annotation type if present on this
      *         method, else {@code null}
@@ -153,7 +153,7 @@ public interface ResolvedJavaMethod extends JavaMethod, InvokeTarget {
     /**
      * Returns an array of arrays that represent the annotations on the formal parameters, in
      * declaration order, of this method.
-     * 
+     *
      * @see Method#getParameterAnnotations()
      */
     Annotation[][] getParameterAnnotations();
@@ -161,7 +161,7 @@ public interface ResolvedJavaMethod extends JavaMethod, InvokeTarget {
     /**
      * Returns an array of {@link Type} objects that represent the formal parameter types, in
      * declaration order, of this method.
-     * 
+     *
      * @see Method#getGenericParameterTypes()
      */
     Type[] getGenericParameterTypes();
@@ -192,7 +192,7 @@ public interface ResolvedJavaMethod extends JavaMethod, InvokeTarget {
      * Invokes the underlying method represented by this object, on the specified object with the
      * specified parameters. This method is similar to a reflective method invocation by
      * {@link Method#invoke}.
-     * 
+     *
      * @param receiver The receiver for the invocation, or {@code null} if it is a static method.
      * @param arguments The arguments for the invocation.
      * @return The value returned by the method invocation, or {@code null} if the return type is
@@ -204,7 +204,7 @@ public interface ResolvedJavaMethod extends JavaMethod, InvokeTarget {
      * Uses the constructor represented by this object to create and initialize a new instance of
      * the constructor's declaring class, with the specified initialization parameters. This method
      * is similar to a reflective instantiation by {@link Constructor#newInstance}.
-     * 
+     *
      * @param arguments The arguments for the constructor.
      * @return The newly created and initialized object.
      */
@@ -212,14 +212,14 @@ public interface ResolvedJavaMethod extends JavaMethod, InvokeTarget {
 
     /**
      * Gets the encoding of (that is, a constant representing the value of) this method.
-     * 
+     *
      * @return a constant representing a reference to this method
      */
     Constant getEncoding();
 
     /**
      * Checks if this method is present in the virtual table.
-     * 
+     *
      * @return true is this method is present in the virtual table
      */
     boolean isInVirtualMethodTable();
