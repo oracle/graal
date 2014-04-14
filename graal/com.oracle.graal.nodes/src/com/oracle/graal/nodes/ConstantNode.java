@@ -175,7 +175,8 @@ public final class ConstantNode extends FloatingNode implements LIRLowerable {
     public static ConstantNode forPrimitive(Stamp stamp, Constant constant, StructuredGraph graph) {
         if (stamp instanceof IntegerStamp) {
             assert constant.getKind().isNumericInteger() && stamp.getStackKind() == constant.getKind().getStackKind();
-            return forIntegerStamp(stamp, constant.asLong(), graph);
+            IntegerStamp istamp = (IntegerStamp) stamp;
+            return forIntegerBits(istamp.getBits(), istamp.isUnsigned(), constant, graph);
         } else {
             assert constant.getKind().isNumericFloat() && stamp.getStackKind() == constant.getKind();
             return forPrimitive(constant, graph);
@@ -266,12 +267,8 @@ public final class ConstantNode extends FloatingNode implements LIRLowerable {
         return graph.unique(node);
     }
 
-    /**
-     * Returns a node for a constant integer that's not directly representable as Java primitive
-     * (e.g. short).
-     */
-    public static ConstantNode forIntegerBits(int bits, boolean unsigned, long value, StructuredGraph graph) {
-        Constant constant = Constant.forPrimitiveInt(bits, value);
+    private static ConstantNode forIntegerBits(int bits, boolean unsigned, Constant constant, StructuredGraph graph) {
+        long value = constant.asLong();
         long bounds;
         if (unsigned) {
             bounds = ZeroExtendNode.zeroExtend(value, bits);
@@ -279,6 +276,14 @@ public final class ConstantNode extends FloatingNode implements LIRLowerable {
             bounds = SignExtendNode.signExtend(value, bits);
         }
         return unique(graph, new ConstantNode(constant, StampFactory.forInteger(bits, unsigned, bounds, bounds)));
+    }
+
+    /**
+     * Returns a node for a constant integer that's not directly representable as Java primitive
+     * (e.g. short).
+     */
+    public static ConstantNode forIntegerBits(int bits, boolean unsigned, long value, StructuredGraph graph) {
+        return forIntegerBits(bits, unsigned, Constant.forPrimitiveInt(bits, value), graph);
     }
 
     /**
