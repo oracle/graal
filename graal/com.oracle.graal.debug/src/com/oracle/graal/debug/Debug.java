@@ -188,6 +188,19 @@ public class Debug {
 
     /**
      * @see #scope(Object)
+     * @param contextObjects an array of object to be appended to the {@linkplain #context()
+     *            current} debug context
+     */
+    public static Scope scope(Object name, Object[] contextObjects) {
+        if (ENABLED) {
+            return DebugScope.getInstance().scope(convertFormatArg(name).toString(), null, contextObjects);
+        } else {
+            return null;
+        }
+    }
+
+    /**
+     * @see #scope(Object)
      * @param context an object to be appended to the {@linkplain #context() current} debug context
      */
     public static Scope scope(Object name, Object context) {
