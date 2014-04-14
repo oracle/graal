@@ -184,6 +184,9 @@ public class LoopFragmentInside extends LoopFragment {
         StructuredGraph graph = loopBegin.graph();
         List<PhiNode> newPhis = new LinkedList<>();
         for (PhiNode phi : loopBegin.phis().snapshot()) {
+            if (phi.usages().isEmpty()) {
+                continue;
+            }
             ValueNode first;
             if (loopBegin.loopEnds().count() == 1) {
                 ValueNode b = phi.valueAt(loopBegin.loopEnds().first()); // back edge value
@@ -284,6 +287,9 @@ public class LoopFragmentInside extends LoopFragment {
             }
 
             for (final PhiNode phi : loopBegin.phis().snapshot()) {
+                if (phi.usages().isEmpty()) {
+                    continue;
+                }
                 final PhiNode firstPhi = patchPhi(graph, phi, newExitMerge);
                 for (AbstractEndNode end : newExitMerge.forwardEnds()) {
                     LoopEndNode loopEnd = reverseEnds.get(end);
