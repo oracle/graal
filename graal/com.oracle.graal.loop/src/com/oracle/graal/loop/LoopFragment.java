@@ -79,6 +79,15 @@ public abstract class LoopFragment {
         duplicationMap.put(oldNode, newNode);
     }
 
+    /**
+     * Gets the corresponding value in this fragment. Should be called on duplicate fragments with a
+     * node from the original fragment as argument.
+     *
+     * @param b original value
+     * @return corresponding value in the peel
+     */
+    protected abstract ValueNode prim(ValueNode b);
+
     public boolean isDuplicate() {
         return original != null;
     }

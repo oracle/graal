@@ -63,6 +63,11 @@ public class LoopFragmentWhole extends LoopFragment {
     }
 
     @Override
+    protected ValueNode prim(ValueNode b) {
+        return getDuplicatedNode(b);
+    }
+
+    @Override
     protected DuplicationReplacement getDuplicationReplacement() {
         final FixedNode entry = loop().entryPoint();
         final Graph graph = this.graph();

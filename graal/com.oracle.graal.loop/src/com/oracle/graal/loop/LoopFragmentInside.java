@@ -229,7 +229,8 @@ public class LoopFragmentInside extends LoopFragment {
      * @param b original value
      * @return corresponding value in the peel
      */
-    private ValueNode prim(ValueNode b) {
+    @Override
+    protected ValueNode prim(ValueNode b) {
         assert isDuplicate();
         LoopBeginNode loopBegin = original().loop().loopBegin();
         if (loopBegin.isPhiAtMerge(b)) {
