@@ -27,6 +27,7 @@ import com.oracle.graal.api.code.CompilationResult.Call;
 import com.oracle.graal.api.code.CompilationResult.DataPatch;
 import com.oracle.graal.api.code.CompilationResult.Infopoint;
 import com.oracle.graal.hotspot.data.*;
+import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.stubs.*;
 
 /**
@@ -50,6 +51,15 @@ public final class HotSpotCompiledRuntimeStub extends HotSpotCompiledCode {
     private boolean checkStubInvariants(CompilationResult compResult) {
         assert compResult.getExceptionHandlers().isEmpty();
         for (DataPatch data : compResult.getDataReferences()) {
+            if (data.data instanceof MetaspaceData) {
+                MetaspaceData meta = (MetaspaceData) data.data;
+                if (meta.annotation instanceof HotSpotResolvedObjectType && ((HotSpotResolvedObjectType) meta.annotation).getName().equals("[I")) {
+                    // special handling for NewArrayStub
+                    // embedding the type '[I' is safe, since it is never unloaded
+                    continue;
+                }
+            }
+
             assert !(data.data instanceof PatchedData) : this + " cannot have embedded object or metadata constant: " + data.data;
         }
         for (Infopoint infopoint : compResult.getInfopoints()) {
