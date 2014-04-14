@@ -111,7 +111,7 @@ public class SignExtendNode extends IntegerConvertNode {
 
     @Override
     public boolean generate(MemoryArithmeticLIRLowerer gen, Access access) {
-        Value result = gen.emitSignExtendMemory(access, access.accessLocation().getValueKind().getBitCount(), getResultBits());
+        Value result = gen.emitSignExtendMemory(access, getInputBits(), getResultBits());
         if (result != null) {
             gen.setResult(this, result);
         }
