@@ -12,6 +12,7 @@
 
 ### Truffle
 * Support for collecting stack traces and for accessing the current frame in slow paths
+* CallNode#inline was renamed to CallNode#forceInlining().
 * ...
 
 ## Version 0.2

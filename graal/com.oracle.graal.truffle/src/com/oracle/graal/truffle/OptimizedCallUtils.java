@@ -23,98 +23,70 @@
 package com.oracle.graal.truffle;
 
 import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.nodes.NodeUtil.NodeCountFilter;
 
 class OptimizedCallUtils {
 
-    public abstract static class InlinedCallVisitor implements NodeVisitor {
-
-        private TruffleCallPath currentPath;
-        private final TruffleInliningResult inliningDecision;
-
-        public InlinedCallVisitor(TruffleInliningResult inliningDecision, TruffleCallPath initialPath) {
-            this.inliningDecision = inliningDecision;
-            this.currentPath = initialPath;
-        }
-
-        public final TruffleInliningResult getInliningDecision() {
-            return inliningDecision;
-        }
-
-        public final boolean visit(Node node) {
-            if (node instanceof OptimizedCallNode) {
-                OptimizedCallNode callNode = ((OptimizedCallNode) node);
-                this.currentPath = new TruffleCallPath(this.currentPath, callNode);
-                try {
-                    boolean result = visit(currentPath, node);
-                    TruffleInliningResult decision = inliningDecision;
-                    if (decision != null && decision.isInlined(currentPath)) {
-                        callNode.getCurrentRootNode().accept(this);
-                    }
-                    return result;
-                } finally {
-                    this.currentPath = this.currentPath.getParent();
-                }
-            } else {
-                return visit(currentPath, node);
-            }
-        }
-
-        public abstract boolean visit(TruffleCallPath path, Node node);
-
-    }
-
-    public static int countNodes(TruffleInliningResult decision, TruffleCallPath path, InlinedNodeCountFilter filter) {
-        InlinedNodeCountVisitor nodeCount = new InlinedNodeCountVisitor(decision, path, filter);
-        path.getCallTarget().getRootNode().accept(nodeCount);
+    public static int countNodes(OptimizedCallTarget target, NodeCountFilter filter, boolean inlined) {
+        NodeCountVisitorImpl nodeCount = new NodeCountVisitorImpl(filter, inlined);
+        target.getRootNode().accept(nodeCount);
         return nodeCount.nodeCount;
     }
 
-    public static int countCalls(TruffleInliningResult decision, TruffleCallPath path) {
-        InlinedNodeCountVisitor nodeCount = new InlinedNodeCountVisitor(decision, path, new InlinedNodeCountFilter() {
-            public boolean isCounted(TruffleCallPath p, Node node) {
+    public static int countCalls(OptimizedCallTarget target) {
+        return countNodes(target, new NodeCountFilter() {
+            public boolean isCounted(Node node) {
                 return node instanceof CallNode;
             }
-        });
-        path.getCallTarget().getRootNode().accept(nodeCount);
-        return nodeCount.nodeCount;
+        }, true);
     }
 
-    public interface InlinedNodeCountFilter {
-
-        boolean isCounted(TruffleCallPath path, Node node);
-    }
-
-    private static final class InlinedNodeCountVisitor extends InlinedCallVisitor {
-
-        private final InlinedNodeCountFilter filter;
-        int nodeCount;
-
-        private InlinedNodeCountVisitor(TruffleInliningResult decision, TruffleCallPath initialPath, InlinedNodeCountFilter filter) {
-            super(decision, initialPath);
-            this.filter = filter;
-        }
-
-        @Override
-        public boolean visit(TruffleCallPath path, Node node) {
-            if (filter == null || filter.isCounted(path, node)) {
-                nodeCount++;
+    public static int countCallsInlined(OptimizedCallTarget target) {
+        return countNodes(target, new NodeCountFilter() {
+            public boolean isCounted(Node node) {
+                return (node instanceof OptimizedCallNode) && ((OptimizedCallNode) node).isInlined();
             }
-            return true;
-        }
-
+        }, true);
     }
 
-    static int countNonTrivialNodes(TruffleInliningResult state, TruffleCallPath path) {
-        return countNodes(state, path, new InlinedNodeCountFilter() {
-
-            public boolean isCounted(TruffleCallPath p, Node node) {
+    public static int countNonTrivialNodes(final OptimizedCallTarget target, final boolean inlined) {
+        return countNodes(target, new NodeCountFilter() {
+            public boolean isCounted(Node node) {
                 NodeCost cost = node.getCost();
                 if (cost != null && cost != NodeCost.NONE && cost != NodeCost.UNINITIALIZED) {
                     return true;
                 }
                 return false;
             }
-        });
+        }, inlined);
+    }
+
+    private static final class NodeCountVisitorImpl implements NodeVisitor {
+
+        private final NodeCountFilter filter;
+        private int nodeCount;
+        private boolean followInlined;
+
+        private NodeCountVisitorImpl(NodeCountFilter filter, boolean followInlined) {
+            this.filter = filter;
+            this.followInlined = followInlined;
+        }
+
+        public boolean visit(Node node) {
+            if (filter == null || filter.isCounted(node)) {
+                nodeCount++;
+            }
+            if (followInlined) {
+                if (node instanceof OptimizedCallNode) {
+                    OptimizedCallNode ocn = (OptimizedCallNode) node;
+                    if (ocn.isInlined()) {
+                        ocn.getCurrentRootNode().accept(this);
+                    }
+                }
+            }
+            return true;
+        }
+
     }
 
 }

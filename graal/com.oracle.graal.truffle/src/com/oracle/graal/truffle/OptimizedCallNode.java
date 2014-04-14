@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.truffle;
 
-import java.util.concurrent.atomic.*;
-
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.*;
@@ -32,15 +30,15 @@ import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.api.nodes.NodeUtil.NodeCountFilter;
 
 /**
- * Call target that is optimized by Graal upon surpassing a specific invocation threshold.
+ * A call node with a constant {@link CallTarget} that can be optimized by Graal.
  */
 public final class OptimizedCallNode extends DefaultCallNode {
 
-    protected int callCount;
+    private int callCount;
     private boolean trySplit = true;
-    private boolean inliningForced;
+
+    @CompilationFinal private boolean inlined;
     @CompilationFinal private OptimizedCallTarget splitCallTarget;
-    private final AtomicInteger inliningCounter = new AtomicInteger(0);
 
     private OptimizedCallNode(OptimizedCallTarget target) {
         super(target);
@@ -70,29 +68,27 @@ public final class OptimizedCallNode extends DefaultCallNode {
         return splitCallTarget;
     }
 
-    public static OptimizedCallNode create(OptimizedCallTarget target) {
-        return new OptimizedCallNode(target);
-    }
-
     @Override
     public Object call(VirtualFrame frame, Object[] arguments) {
         if (CompilerDirectives.inInterpreter()) {
-            interpreterCall();
-            if (inliningCounter.get() > 0 || inliningForced) {
-                return getCurrentCallTarget().callInlined(arguments);
-            }
+            onInterpreterCall();
         }
-        return callProxy(this, getCurrentCallTarget(), frame, arguments);
+        OptimizedCallTarget target = getCurrentCallTarget();
+        if (inlined) {
+            return target.callInlined(arguments);
+        } else {
+            return super.call(frame, arguments);
+        }
     }
 
-    private void interpreterCall() {
+    private void onInterpreterCall() {
         callCount++;
         if (trySplit) {
             if (callCount == 1) {
                 // on first call
-                getCurrentCallTarget().incrementKnownCallSite();
+                getCurrentCallTarget().incrementKnownCallSites();
             }
-            if (callCount > 1) {
+            if (callCount > 1 && !inlined) {
                 trySplit = false;
                 if (shouldSplit()) {
                     splitImpl(true);
@@ -101,22 +97,20 @@ public final class OptimizedCallNode extends DefaultCallNode {
         }
     }
 
-    void notifyInlining() {
-        inliningCounter.incrementAndGet();
-    }
-
-    void notifyInliningDone() {
-        inliningCounter.decrementAndGet();
-    }
-
-    @Override
-    public void inline() {
-        inliningForced = true;
+    /* Called by the runtime system if this CallNode is really going to be inlined. */
+    void inline() {
+        inlined = true;
     }
 
     @Override
     public boolean isInlined() {
-        return inliningForced;
+        return inlined;
+    }
+
+    @Override
+    public boolean split() {
+        splitImpl(false);
+        return true;
     }
 
     private void splitImpl(boolean heuristic) {
@@ -128,8 +122,8 @@ public final class OptimizedCallNode extends DefaultCallNode {
             OptimizedCallTarget.logSplit(this, getCallTarget(), splitTarget);
         }
         if (callCount >= 1) {
-            getCallTarget().decrementKnownCallSite();
-            splitTarget.incrementKnownCallSite();
+            getCallTarget().decrementKnownCallSites();
+            splitTarget.incrementKnownCallSites();
         }
         this.splitCallTarget = splitTarget;
     }
@@ -145,7 +139,7 @@ public final class OptimizedCallNode extends DefaultCallNode {
             return false;
         }
         OptimizedCallTarget splitTarget = getCallTarget();
-        int nodeCount = OptimizedCallUtils.countNonTrivialNodes(null, new TruffleCallPath(splitTarget));
+        int nodeCount = OptimizedCallUtils.countNonTrivialNodes(splitTarget, false);
         if (nodeCount > TruffleCompilerOptions.TruffleSplittingMaxCalleeSize.getValue()) {
             return false;
         }
@@ -173,7 +167,7 @@ public final class OptimizedCallNode extends DefaultCallNode {
     }
 
     private int countPolymorphic() {
-        return NodeUtil.countNodes(getCallTarget().getRootNode(), new NodeCountFilter() {
+        return NodeUtil.countNodes(getCurrentCallTarget().getRootNode(), new NodeCountFilter() {
             public boolean isCounted(Node node) {
                 NodeCost cost = node.getCost();
                 boolean polymorphic = cost == NodeCost.POLYMORPHIC || cost == NodeCost.MEGAMORPHIC;
@@ -182,10 +176,7 @@ public final class OptimizedCallNode extends DefaultCallNode {
         });
     }
 
-    @SuppressWarnings("unused")
-    public void nodeReplaced(Node oldNode, Node newNode, CharSequence reason) {
-        if (!isSplit() && isSplittable()) {
-            trySplit = true;
-        }
+    public static OptimizedCallNode create(OptimizedCallTarget target) {
+        return new OptimizedCallNode(target);
     }
 }

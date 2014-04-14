@@ -121,7 +121,7 @@ public class PartialEvaluator {
             Debug.dump(graph, "Before inlining");
 
             // Make sure frame does not escape.
-            expandTree(callTarget, graph, assumptions);
+            expandTree(graph, assumptions);
 
             if (Thread.currentThread().isInterrupted()) {
                 return null;
@@ -175,14 +175,12 @@ public class PartialEvaluator {
         return graph;
     }
 
-    private void expandTree(OptimizedCallTarget target, StructuredGraph graph, Assumptions assumptions) {
+    private void expandTree(StructuredGraph graph, Assumptions assumptions) {
         PhaseContext phaseContext = new PhaseContext(providers, assumptions);
         TruffleExpansionLogger expansionLogger = null;
         if (TraceTruffleExpansion.getValue()) {
             expansionLogger = new TruffleExpansionLogger(providers, graph);
         }
-        boolean inliningEnabled = target.getInliningResult() != null && target.getInliningResult().size() > 0;
-        Map<Node, TruffleCallPath> methodTargetToStack = new HashMap<>();
         boolean changed;
         do {
             changed = false;
@@ -203,19 +201,13 @@ public class PartialEvaluator {
                         }
 
                         StructuredGraph inlineGraph = replacements.getMethodSubstitution(methodCallTargetNode.targetMethod());
-                        if (inliningEnabled && inlineGraph == null) {
-                            inlineGraph = expandInlinableCallNode(target, methodTargetToStack, assumptions, phaseContext, methodCallTargetNode);
-                        }
-
                         if (inlineGraph == null && !Modifier.isNative(methodCallTargetNode.targetMethod().getModifiers())) {
                             inlineGraph = parseGraph(methodCallTargetNode.targetMethod(), methodCallTargetNode.arguments(), assumptions, phaseContext, false);
                         }
 
                         if (inlineGraph != null) {
                             try (Indent indent = Debug.logAndIndent("inline graph %s", methodCallTargetNode.targetMethod())) {
-                                if (inliningEnabled) {
-                                    preExpandTruffleCallPath(inlineGraph, methodTargetToStack, methodTargetToStack.get(methodCallTargetNode));
-                                }
+
                                 int nodeCountBefore = graph.getNodeCount();
                                 Mark mark = graph.getMark();
                                 if (TraceTruffleExpansion.getValue()) {
@@ -225,9 +217,6 @@ public class PartialEvaluator {
                                 Map<Node, Node> inlined = InliningUtil.inline(methodCallTargetNode.invoke(), inlineGraph, false);
                                 if (TraceTruffleExpansion.getValue()) {
                                     expansionLogger.postExpand(inlined);
-                                }
-                                if (inliningEnabled) {
-                                    postExpandTruffleCallPath(methodTargetToStack, inlined);
                                 }
                                 if (Debug.isDumpEnabled()) {
                                     Debug.log("dump enabled");
@@ -251,76 +240,6 @@ public class PartialEvaluator {
         if (TraceTruffleExpansion.getValue()) {
             expansionLogger.print();
         }
-    }
-
-    private static void preExpandTruffleCallPath(StructuredGraph inlineGraph, Map<Node, TruffleCallPath> methodTargetToCallPath, TruffleCallPath truffleCallPath) {
-        for (MethodCallTargetNode methodTargetNode : inlineGraph.getNodes(MethodCallTargetNode.class)) {
-            methodTargetToCallPath.put(methodTargetNode, truffleCallPath);
-        }
-    }
-
-    private static void postExpandTruffleCallPath(Map<Node, TruffleCallPath> methodCallTargetToCallPath, Map<Node, Node> nodeUpdates) {
-        for (Object key : methodCallTargetToCallPath.keySet().toArray()) {
-            if (nodeUpdates.containsKey(key)) {
-                methodCallTargetToCallPath.put(nodeUpdates.get(key), methodCallTargetToCallPath.get(key));
-                methodCallTargetToCallPath.remove(key);
-            }
-        }
-    }
-
-    private StructuredGraph expandInlinableCallNode(OptimizedCallTarget target, Map<Node, TruffleCallPath> methodCallToCallPath, Assumptions assumptions, PhaseContext phaseContext,
-                    MethodCallTargetNode methodCallTargetNode) {
-
-        ValueNode receiverNode = methodCallTargetNode.receiver();
-        if (receiverNode == null || !receiverNode.isConstant() || !receiverNode.asConstant().getKind().isObject()) {
-            return null;
-        }
-
-        ResolvedJavaMethod method = methodCallTargetNode.targetMethod();
-
-        /*
-         * Accessing the constant using the SnippetReflectionProvider is a workaround, we should
-         * think about a better solution. Since object constants are VM-specific, only the hosting
-         * VM knows how to do the conversion.
-         */
-        SnippetReflectionProvider snippetReflection = Graal.getRequiredCapability(SnippetReflectionProvider.class);
-        Object receiverValue = snippetReflection.asObject(receiverNode.asConstant());
-        if (receiverValue instanceof OptimizedCallNode) {
-            if (!method.getName().equals("call") || method.getSignature().getParameterCount(false) != 2) { // FIXME
-                return null;
-            }
-
-            OptimizedCallNode callNode = (OptimizedCallNode) receiverValue;
-            TruffleCallPath callPath = methodCallToCallPath.get(methodCallTargetNode);
-            if (callPath == null) {
-                callPath = new TruffleCallPath(target);
-            }
-            callPath = new TruffleCallPath(callPath, callNode);
-            methodCallToCallPath.put(methodCallTargetNode, callPath);
-            // let the normal expansion do the work
-            return null;
-        } else if (receiverValue instanceof OptimizedCallTarget) {
-            TruffleCallPath path = methodCallToCallPath.get(methodCallTargetNode);
-            // path unknown. direct call to OptimizedCallTarget without OptimizedCallNode?
-            if (path == null) {
-                return null;
-            }
-
-            TruffleInliningResult decision = target.getInliningResult();
-            if (decision == null) { // no inlining decision. inlining disabled?
-                return null;
-            }
-
-            if (!decision.isInlined(path)) {
-                // the OptimizedCallTarget has decided not to inline this call path
-                return null;
-            }
-
-            // inline truffle call
-            return parseGraph(methodCallTargetNode.targetMethod(), methodCallTargetNode.arguments(), assumptions, phaseContext, true);
-        }
-
-        return null;
     }
 
     private boolean isFrame(ValueNode receiver) {

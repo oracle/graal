@@ -165,11 +165,11 @@ public class TruffleCompilerImpl implements TruffleCompiler {
 
         if (TraceTruffleCompilation.getValue()) {
             byte[] code = compiledMethod.getCode();
-            int calls = OptimizedCallUtils.countCalls(compilable.getInliningResult(), new TruffleCallPath(compilable));
-            int inlinedCalls = (compilable.getInliningResult() != null ? compilable.getInliningResult().size() : 0);
+            int calls = OptimizedCallUtils.countCalls(compilable);
+            int inlinedCalls = OptimizedCallUtils.countCallsInlined(compilable);
             int dispatchedCalls = calls - inlinedCalls;
             Map<String, Object> properties = new LinkedHashMap<>();
-            OptimizedCallTarget.addASTSizeProperty(compilable.getInliningResult(), new TruffleCallPath(compilable), properties);
+            OptimizedCallTarget.addASTSizeProperty(compilable, properties);
             properties.put("Time", String.format("%5.0f(%4.0f+%-4.0f)ms", //
                             (timeCompilationFinished - timeCompilationStarted) / 1e6, //
                             (timePartialEvaluationFinished - timeCompilationStarted) / 1e6, //
