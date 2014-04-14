@@ -36,8 +36,8 @@ final class SLDirectDispatchNode extends SLAbstractDispatchNode {
     private final SLFunction cachedFunction;
 
     /**
-     * {@link DirectCallNode} is part of the Truffle API and handles all the steps necessary for method
-     * inlining: if the call is executed frequently and the callee is small, then the call is
+     * {@link DirectCallNode} is part of the Truffle API and handles all the steps necessary for
+     * method inlining: if the call is executed frequently and the callee is small, then the call is
      * inlined, i.e., the call node is replaced with a copy of the callee's AST.
      */
     @Child private DirectCallNode callCachedTargetNode;

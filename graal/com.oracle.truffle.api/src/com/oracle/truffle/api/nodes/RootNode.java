@@ -58,7 +58,7 @@ public abstract class RootNode extends Node {
      * Creates a split {@link RootNode} based on the current {@link RootNode}. This method should
      * return an AST that was never executed and must not be shared with other {@link RootNode} or
      * {@link CallTarget} instances. This method is intended to be overridden by a subclass.
-     * 
+     *
      * @return the split {@link RootNode}
      */
     public RootNode split() {
@@ -67,10 +67,10 @@ public abstract class RootNode extends Node {
 
     /**
      * Returns <code>true</code> if this {@link RootNode} can be split. A {@link RootNode} can be
-     * split inside of a {@link CallTarget} that is invoked using a {@link DirectCallNode}. If this method
-     * returns <code>true</code> a proper implementation of {@link #split()} must also be provided.
-     * This method is intended to be overridden by a subclass.
-     * 
+     * split inside of a {@link CallTarget} that is invoked using a {@link DirectCallNode}. If this
+     * method returns <code>true</code> a proper implementation of {@link #split()} must also be
+     * provided. This method is intended to be overridden by a subclass.
+     *
      * @return <code>true</code> if splittable else <code>false</code>.
      */
     public boolean isSplittable() {
@@ -89,7 +89,7 @@ public abstract class RootNode extends Node {
 
     /**
      * Executes this function using the specified frame and returns the result value.
-     * 
+     *
      * @param frame the frame of the currently executing guest language method
      * @return the value of the execution
      */
