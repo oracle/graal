@@ -1,14 +1,14 @@
 function doIt(a) {
-  println("Initial stack trace:");
-  println(stacktrace());
+//  println("Initial stack trace:");
+//  println(stacktrace());
   
   hello = 123;
-  println("After 123 assignment:");
-  println(stacktrace());
+//  println("After 123 assignment:");
+//  println(stacktrace());
   
-  helloEqualsWorld();
-  println("After hello assignment:");
-  println(stacktrace());
+//  helloEqualsWorld();
+//  println("After hello assignment:");
+//  println(stacktrace());
   
 //  readln();
 }
