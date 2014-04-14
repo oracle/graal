@@ -35,5 +35,5 @@ public interface StackIntrospection {
      * @param matchingMethods if this is non-{@code null}, then only matching stack frames are
      *            returned
      */
-    Iterable<InspectedFrame> getStackTrace(ResolvedJavaMethod[] initialMethods, ResolvedJavaMethod[] matchingMethods);
+    Iterable<InspectedFrame> getStackTrace(ResolvedJavaMethod[] initialMethods, ResolvedJavaMethod[] matchingMethods, int initialSkip);
 }

@@ -229,10 +229,7 @@ public final class HotSpotTruffleRuntime implements GraalTruffleRuntime {
         if (stackIntrospection == null) {
             stackIntrospection = Graal.getRequiredCapability(StackIntrospection.class);
         }
-        final Iterator<InspectedFrame> frames = stackIntrospection.getStackTrace(anyFrameMethod, anyFrameMethod).iterator();
-        assert frames.hasNext();
-        InspectedFrame calltarget = frames.next();
-        assert calltarget.getMethod().equals(callTargetMethod[0]);
+        final Iterator<InspectedFrame> frames = stackIntrospection.getStackTrace(anyFrameMethod, anyFrameMethod, 1).iterator();
         class FrameIterator implements Iterator<FrameInstance> {
 
             public boolean hasNext() {
@@ -263,7 +260,7 @@ public final class HotSpotTruffleRuntime implements GraalTruffleRuntime {
         if (stackIntrospection == null) {
             stackIntrospection = Graal.getRequiredCapability(StackIntrospection.class);
         }
-        Iterator<InspectedFrame> frames = stackIntrospection.getStackTrace(callTargetMethod, callTargetMethod).iterator();
+        Iterator<InspectedFrame> frames = stackIntrospection.getStackTrace(callTargetMethod, callTargetMethod, 0).iterator();
         if (frames.hasNext()) {
             return new HotSpotFrameInstance.CallTargetFrame(frames.next(), true);
         } else {

@@ -343,7 +343,7 @@ public interface CompilerToVM {
      *            returned
      * @return the frame, or {@code null} if the end of the stack was reached during the search
      */
-    HotSpotStackFrameReference getNextStackFrame(HotSpotStackFrameReference frame, long[] methods);
+    HotSpotStackFrameReference getNextStackFrame(HotSpotStackFrameReference frame, long[] methods, int initialSkip);
 
     /**
      * Materialized all virtual objects within the given stack frame and update the locals within
