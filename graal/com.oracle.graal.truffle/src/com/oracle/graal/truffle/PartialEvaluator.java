@@ -277,9 +277,6 @@ public class PartialEvaluator {
         }
 
         ResolvedJavaMethod method = methodCallTargetNode.targetMethod();
-        if (!method.getName().equals("call") || method.getSignature().getParameterCount(false) != 1) {
-            return null;
-        }
 
         /*
          * Accessing the constant using the SnippetReflectionProvider is a workaround, we should
@@ -289,6 +286,10 @@ public class PartialEvaluator {
         SnippetReflectionProvider snippetReflection = Graal.getRequiredCapability(SnippetReflectionProvider.class);
         Object receiverValue = snippetReflection.asObject(receiverNode.asConstant());
         if (receiverValue instanceof OptimizedCallNode) {
+            if (!method.getName().equals("call") || method.getSignature().getParameterCount(false) != 2) { // FIXME
+                return null;
+            }
+
             OptimizedCallNode callNode = (OptimizedCallNode) receiverValue;
             TruffleCallPath callPath = methodCallToCallPath.get(methodCallTargetNode);
             if (callPath == null) {
