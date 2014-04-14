@@ -42,19 +42,7 @@ public class DefaultCallNode extends CallNode implements MaterializedFrameNotify
 
     @Override
     public Object call(VirtualFrame frame, Object[] arguments) {
-        return callProxy(this, getCurrentCallTarget(), frame, arguments);
-    }
-
-    public static Object callProxy(MaterializedFrameNotify notify, CallTarget callTarget, VirtualFrame frame, Object[] arguments) {
-        try {
-            if (notify.getOutsideFrameAccess() != FrameAccess.NONE) {
-                CompilerDirectives.materialize(frame);
-            }
-            return callTarget.call(arguments);
-        } finally {
-            // this assertion is needed to keep the values from being cleared as non-live locals
-            assert notify != null & callTarget != null & frame != null;
-        }
+        return getCurrentCallTarget().call(arguments);
     }
 
     @Override

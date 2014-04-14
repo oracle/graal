@@ -25,7 +25,6 @@
 package com.oracle.truffle.api;
 
 import com.oracle.truffle.api.frame.*;
-import com.oracle.truffle.api.impl.*;
 import com.oracle.truffle.api.nodes.*;
 
 /**
@@ -94,9 +93,7 @@ public interface TruffleRuntime {
 
     /**
      * Accesses the current stack, i.e., the contents of the {@link Frame}s and the associated
-     * {@link CallTarget}s. For this functionality to work each call needs to go through
-     * {@link DefaultCallNode#callProxy(MaterializedFrameNotify, CallTarget, VirtualFrame, Object[])}
-     * instead of calling {@link CallTarget#call(Object[])} directly.
+     * {@link CallTarget}s.
      *
      * @return a lazy collection of {@link FrameInstance}.
      */
