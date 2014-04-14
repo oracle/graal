@@ -82,6 +82,12 @@ public final class BciBlockMapping {
         public boolean isLoopHeader;
         public int loopId;
 
+        /**
+         * XXX to be removed - currently only used by baseline compiler
+         */
+        public Loop<BciBlock> loop;
+        public boolean isLoopEnd;
+
         public FixedWithNextNode firstInstruction;
         public AbstractFrameStateBuilder<?, ?> entryState;
 
@@ -145,13 +151,11 @@ public final class BciBlockMapping {
         }
 
         public Loop<BciBlock> getLoop() {
-            // TODO Auto-generated method stub
-            return null;
+            return loop;
         }
 
         public int getLoopDepth() {
-            // TODO Auto-generated method stub
-            return 0;
+            return Long.bitCount(loops);
         }
 
         public boolean isLoopHeader() {
@@ -159,13 +163,11 @@ public final class BciBlockMapping {
         }
 
         public boolean isLoopEnd() {
-            // TODO Auto-generated method stub
-            return false;
+            return isLoopEnd;
         }
 
         public boolean isExceptionEntry() {
-            // TODO Auto-generated method stub
-            return false;
+            return isExceptionEntry;
         }
 
         public BciBlock getSuccessor(int index) {
@@ -716,6 +718,10 @@ public final class BciBlockMapping {
         for (BciBlock successor : block.getSuccessors()) {
             // Recursively process successors.
             loops |= computeBlockOrder(successor);
+            if (block.visited && successor.active) {
+                // Reached block via backward branch.
+                block.isLoopEnd = true;
+            }
         }
 
         block.loops = loops;
