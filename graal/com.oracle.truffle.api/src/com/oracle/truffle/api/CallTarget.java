@@ -42,6 +42,4 @@ public abstract class CallTarget {
     public final Object call() {
         return call(NO_ARGUMENTS);
     }
-
-    public abstract void setNeedsMaterializedFrame();
 }
