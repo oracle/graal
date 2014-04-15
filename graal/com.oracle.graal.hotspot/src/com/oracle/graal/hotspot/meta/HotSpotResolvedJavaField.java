@@ -174,8 +174,6 @@ public class HotSpotResolvedJavaField extends CompilerObject implements Resolved
 
                 fields.add(metaAccess.lookupJavaField(Throwable.class.getDeclaredField("UNASSIGNED_STACK")));
                 fields.add(metaAccess.lookupJavaField(Throwable.class.getDeclaredField("SUPPRESSED_SENTINEL")));
-
-                fields.add(metaAccess.lookupJavaField(NodeClass.class.getDeclaredField("registry")));
             } catch (SecurityException | NoSuchFieldException e) {
                 throw new GraalInternalError(e);
             }
