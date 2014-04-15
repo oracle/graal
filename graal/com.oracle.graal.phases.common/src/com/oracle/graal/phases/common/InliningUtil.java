@@ -891,8 +891,8 @@ public class InliningUtil {
             return costEstimateMethodDispatch < costEstimateTypeDispatch;
         }
 
-        private static BeginNode createInvocationBlock(StructuredGraph graph, Invoke invoke, MergeNode returnMerge, PhiNode returnValuePhi, MergeNode exceptionMerge,
-                        PhiNode exceptionObjectPhi, boolean useForInlining) {
+        private static BeginNode createInvocationBlock(StructuredGraph graph, Invoke invoke, MergeNode returnMerge, PhiNode returnValuePhi, MergeNode exceptionMerge, PhiNode exceptionObjectPhi,
+                        boolean useForInlining) {
             Invoke duplicatedInvoke = duplicateInvokeForInlining(graph, invoke, exceptionMerge, exceptionObjectPhi, useForInlining);
             BeginNode calleeEntryNode = graph.add(new BeginNode());
             calleeEntryNode.setNext(duplicatedInvoke.asNode());

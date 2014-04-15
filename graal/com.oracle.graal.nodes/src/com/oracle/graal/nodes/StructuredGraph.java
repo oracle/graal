@@ -79,16 +79,14 @@ public class StructuredGraph extends Graph {
     private boolean isAfterFloatingReadPhase = false;
 
     /**
-     * Creates a new Graph containing a single {@link BeginNode} as the {@link #start()
-     * start} node.
+     * Creates a new Graph containing a single {@link BeginNode} as the {@link #start() start} node.
      */
     public StructuredGraph() {
         this(null, null);
     }
 
     /**
-     * Creates a new Graph containing a single {@link BeginNode} as the {@link #start()
-     * start} node.
+     * Creates a new Graph containing a single {@link BeginNode} as the {@link #start() start} node.
      */
     public StructuredGraph(String name, ResolvedJavaMethod method) {
         this(name, method, uniqueGraphIds.incrementAndGet(), INVOCATION_ENTRY_BCI);

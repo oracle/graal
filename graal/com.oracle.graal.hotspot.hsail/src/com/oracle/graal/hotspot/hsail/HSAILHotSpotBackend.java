@@ -882,8 +882,7 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
         return BeginNode.begin(vmError);
     }
 
-    private static BeginNode createHostDeoptBranch(DeoptimizeOp deopt, ParameterNode hsailFrame, ValueNode reasonAndAction, ValueNode speculation, HotSpotProviders providers,
-                    HotSpotVMConfig config) {
+    private static BeginNode createHostDeoptBranch(DeoptimizeOp deopt, ParameterNode hsailFrame, ValueNode reasonAndAction, ValueNode speculation, HotSpotProviders providers, HotSpotVMConfig config) {
         BeginNode branch = hsailFrame.graph().add(new BeginNode());
         DynamicDeoptimizeNode deoptimization = hsailFrame.graph().add(new DynamicDeoptimizeNode(reasonAndAction, speculation));
         deoptimization.setStateBefore(createFrameState(deopt.getFrameState().topFrame, hsailFrame, providers, config));
