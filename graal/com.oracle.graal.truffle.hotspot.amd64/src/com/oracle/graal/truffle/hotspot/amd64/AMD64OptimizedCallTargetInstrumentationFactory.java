@@ -65,7 +65,7 @@ public class AMD64OptimizedCallTargetInstrumentationFactory implements Optimized
                 asm.cmpq(spillRegister, 0);
                 asm.jcc(ConditionFlag.Equal, doProlog);
 
-                AMD64Address codeBlobAddress = new AMD64Address(spillRegister, getFieldOffset("codeBlob", HotSpotInstalledCode.class));
+                AMD64Address codeBlobAddress = new AMD64Address(spillRegister, getFieldOffset("address", InstalledCode.class));
                 asm.movq(spillRegister, codeBlobAddress);
                 asm.cmpq(spillRegister, 0);
                 asm.jcc(ConditionFlag.Equal, doProlog);

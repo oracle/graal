@@ -53,6 +53,7 @@ public abstract class OptimizedCallTarget extends RootCallTarget implements Loop
 
     public OptimizedCallTarget(RootNode rootNode, int invokeCounter, int compilationThreshold, boolean compilationEnabled, CompilationPolicy compilationPolicy) {
         super(rootNode);
+        this.installedCode = new InstalledCode();
         this.compilationEnabled = compilationEnabled;
         this.compilationPolicy = compilationPolicy;
         this.compilationProfile = new CompilationProfile(compilationThreshold, invokeCounter, rootNode.toString());
@@ -84,7 +85,7 @@ public abstract class OptimizedCallTarget extends RootCallTarget implements Loop
     @Override
     public String toString() {
         String superString = super.toString();
-        if (installedCode != null) {
+        if (installedCode.isValid()) {
             superString += " <compiled>";
         }
         if (splitSource != null) {
@@ -100,7 +101,7 @@ public abstract class OptimizedCallTarget extends RootCallTarget implements Loop
     @Override
     public abstract Object call(Object... args);
 
-    public abstract InstalledCode compile();
+    public abstract void compile();
 
     public final Object callInlined(Object[] arguments) {
         if (CompilerDirectives.inInterpreter()) {

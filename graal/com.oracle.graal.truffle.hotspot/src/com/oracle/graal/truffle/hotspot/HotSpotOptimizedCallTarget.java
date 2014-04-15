@@ -63,21 +63,13 @@ public final class HotSpotOptimizedCallTarget extends OptimizedCallTarget {
     }
 
     private Object callHelper(Object[] args) {
-        if (installedCode != null && installedCode.isValid()) {
+        if (installedCode.isValid()) {
             reinstallCallMethodShortcut();
         }
         if (TruffleCallTargetProfiling.getValue()) {
             callCount++;
         }
-        if (CompilerDirectives.injectBranchProbability(CompilerDirectives.FASTPATH_PROBABILITY, installedCode != null)) {
-            try {
-                return installedCode.executeVarargs(new Object[]{this, args});
-            } catch (InvalidInstalledCodeException ex) {
-                return compiledCodeInvalidated(args);
-            }
-        } else {
-            return interpreterCall(args);
-        }
+        return interpreterCall(args);
     }
 
     private static void reinstallCallMethodShortcut() {
@@ -119,11 +111,10 @@ public final class HotSpotOptimizedCallTarget extends OptimizedCallTarget {
         compilationProfile.reportInterpreterCall();
 
         if (compilationEnabled && compilationPolicy.shouldCompile(compilationProfile)) {
-            InstalledCode code = compile();
-            if (code != null && code.isValid()) {
-                this.installedCode = code;
+            compile();
+            if (installedCode.isValid()) {
                 try {
-                    return code.executeVarargs(new Object[]{this, args});
+                    return installedCode.executeVarargs(new Object[]{this, args});
                 } catch (InvalidInstalledCodeException ex) {
                     return compiledCodeInvalidated(args);
                 }
@@ -145,20 +136,14 @@ public final class HotSpotOptimizedCallTarget extends OptimizedCallTarget {
     }
 
     @Override
-    public InstalledCode compile() {
-        if (isCompiling()) {
-            if (installedCodeTask.isDone()) {
-                return receiveInstalledCode();
-            }
-            return null;
-        } else {
+    public void compile() {
+        if (!isCompiling()) {
             performInlining();
             logOptimizingQueued(this);
             this.installedCodeTask = compiler.compile(this);
             if (!TruffleBackgroundCompilation.getValue()) {
-                return receiveInstalledCode();
+                receiveInstalledCode();
             }
-            return null;
         }
     }
 

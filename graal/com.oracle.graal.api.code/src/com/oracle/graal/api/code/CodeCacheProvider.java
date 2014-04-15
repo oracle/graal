@@ -34,18 +34,18 @@ public interface CodeCacheProvider {
     /**
      * Adds the given compilation result as an implementation of the given method without making it
      * the default implementation.
-     * 
+     *
      * @param method a method to which the executable code is begin added
      * @param compResult the compilation result to be added
      * @param speculationLog the speculation log to be used
      * @return a reference to the compiled and ready-to-run code or null if the code installation
      *         failed
      */
-    InstalledCode addMethod(ResolvedJavaMethod method, CompilationResult compResult, SpeculationLog speculationLog);
+    InstalledCode addMethod(ResolvedJavaMethod method, CompilationResult compResult, SpeculationLog speculationLog, InstalledCode predefinedInstalledCode);
 
     /**
      * Sets the given compilation result as the default implementation of the given method.
-     * 
+     *
      * @param method a method to which the executable code is begin added
      * @param compResult the compilation result to be added
      * @return a reference to the compiled and ready-to-run code or null if the code installation
@@ -55,11 +55,11 @@ public interface CodeCacheProvider {
 
     /**
      * Returns a disassembly of some compiled code.
-     * 
+     *
      * @param compResult some compiled code
      * @param installedCode the result of installing the code in {@code compResult} or null if the
      *            code has not yet been installed
-     * 
+     *
      * @return a disassembly. This will be of length 0 if the runtime does not support
      *         disassembling.
      */
@@ -73,7 +73,7 @@ public interface CodeCacheProvider {
     /**
      * Minimum size of the stack area reserved for outgoing parameters. This area is reserved in all
      * cases, even when the compiled method has no regular call instructions.
-     * 
+     *
      * @return the minimum size of the outgoing parameter area in bytes
      */
     int getMinimumOutgoingSize();

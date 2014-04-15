@@ -26,7 +26,7 @@ package com.oracle.graal.api.code;
  * Represents a compiled instance of a method. It may have been invalidated or removed in the
  * meantime.
  */
-public abstract class InstalledCode {
+public class InstalledCode {
 
     /**
      * Raw address of this code blob.
@@ -77,6 +77,7 @@ public abstract class InstalledCode {
      * @param args the array of object arguments
      * @return the value returned by the executed code
      */
+    @SuppressWarnings("unused")
     public Object executeVarargs(Object... args) throws InvalidInstalledCodeException {
         return null;
     }

@@ -61,7 +61,7 @@ public abstract class AssemblerTest extends GraalTest {
         byte[] targetCode = test.generateCode(compResult, codeCache.getTarget(), registerConfig, cc);
         compResult.setTargetCode(targetCode, targetCode.length);
 
-        InstalledCode code = codeCache.addMethod(method, compResult, null);
+        InstalledCode code = codeCache.addMethod(method, compResult, null, null);
 
         DisassemblerProvider dis = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend().getDisassembler();
         if (dis != null) {

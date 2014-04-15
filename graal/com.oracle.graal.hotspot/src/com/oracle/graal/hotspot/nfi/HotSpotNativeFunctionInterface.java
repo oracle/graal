@@ -161,7 +161,7 @@ public class HotSpotNativeFunctionInterface implements NativeFunctionInterface {
                         DefaultProfilingInfo.get(TriState.UNKNOWN), null, suites, new CompilationResult(), CompilationResultBuilderFactory.Default);
         InstalledCode installedCode;
         try (Scope s = Debug.scope("CodeInstall", providers.getCodeCache(), g.method())) {
-            installedCode = providers.getCodeCache().addMethod(g.method(), compResult, null);
+            installedCode = providers.getCodeCache().addMethod(g.method(), compResult, null, null);
         }
         return installedCode;
     }
