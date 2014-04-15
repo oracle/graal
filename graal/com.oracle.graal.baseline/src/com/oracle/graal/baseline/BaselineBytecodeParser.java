@@ -717,6 +717,14 @@ public class BaselineBytecodeParser extends AbstractBytecodeParser<Value, LIRFra
             assert block.getPredecessorCount() > 0;
         }
 
+        if (block.isLoopHeader) {
+            /*
+             * We need to preserve the frame state builder of the loop header so that we can merge
+             * values for phi functions, so make a copy of it.
+             */
+            block.entryState = frameState.copy();
+
+        }
         int endBCI = stream.endBCI();
 
         stream.setBCI(block.startBci);
