@@ -29,8 +29,6 @@ package com.oracle.truffle.api;
  */
 public interface CallTarget {
 
-    public static final Object[] NO_ARGUMENTS = new Object[0];
-
     /**
      * Calls this target as a root method..
      *
