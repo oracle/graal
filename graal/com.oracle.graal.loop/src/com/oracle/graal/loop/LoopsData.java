@@ -31,7 +31,7 @@ import com.oracle.graal.nodes.cfg.*;
 
 public class LoopsData {
 
-    private Map<Loop, LoopEx> lirLoopToEx = new IdentityHashMap<>();
+    private Map<Loop<Block>, LoopEx> lirLoopToEx = new IdentityHashMap<>();
     private Map<LoopBeginNode, LoopEx> loopBeginToEx = new IdentityHashMap<>();
     private ControlFlowGraph cfg;
 
@@ -42,14 +42,14 @@ public class LoopsData {
             throw Debug.handle(e);
         }
 
-        for (Loop lirLoop : cfg.getLoops()) {
+        for (Loop<Block> lirLoop : cfg.getLoops()) {
             LoopEx ex = new LoopEx(lirLoop, this);
             lirLoopToEx.put(lirLoop, ex);
             loopBeginToEx.put(ex.loopBegin(), ex);
         }
     }
 
-    public LoopEx loop(Loop lirLoop) {
+    public LoopEx loop(Loop<?> lirLoop) {
         return lirLoopToEx.get(lirLoop);
     }
 

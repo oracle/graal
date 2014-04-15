@@ -24,20 +24,18 @@ package com.oracle.graal.nodes.cfg;
 
 import java.util.*;
 
-import com.oracle.graal.nodes.*;
+public abstract class Loop<T extends AbstractBlock<T>> {
 
-public class Loop {
-
-    public final Loop parent;
-    public final List<Loop> children;
+    public final Loop<T> parent;
+    public final List<Loop<T>> children;
 
     public final int depth;
     public final int index;
-    public final Block header;
-    public final List<Block> blocks;
-    public final List<Block> exits;
+    public final T header;
+    public final List<T> blocks;
+    public final List<T> exits;
 
-    protected Loop(Loop parent, int index, Block header) {
+    protected Loop(Loop<T> parent, int index, T header) {
         this.parent = parent;
         if (parent != null) {
             this.depth = parent.depth + 1;
@@ -52,12 +50,10 @@ public class Loop {
         this.exits = new ArrayList<>();
     }
 
+    public abstract long numBackedges();
+
     @Override
     public String toString() {
         return "loop " + index + " depth " + depth + (parent != null ? " outer " + parent.index : "");
-    }
-
-    public LoopBeginNode loopBegin() {
-        return (LoopBeginNode) header.getBeginNode();
     }
 }

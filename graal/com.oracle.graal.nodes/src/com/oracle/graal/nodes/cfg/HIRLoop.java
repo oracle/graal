@@ -22,13 +22,16 @@
  */
 package com.oracle.graal.nodes.cfg;
 
-import java.util.*;
+import com.oracle.graal.nodes.*;
 
-public interface AbstractControlFlowGraph<T extends AbstractBlock<T>> {
+public class HIRLoop extends Loop<Block> {
 
-    T[] getBlocks();
+    protected HIRLoop(Loop<Block> parent, int index, Block header) {
+        super(parent, index, header);
+    }
 
-    Collection<Loop<T>> getLoops();
-
-    T getStartBlock();
+    @Override
+    public long numBackedges() {
+        return ((LoopBeginNode) header.getBeginNode()).loopEnds().count();
+    }
 }

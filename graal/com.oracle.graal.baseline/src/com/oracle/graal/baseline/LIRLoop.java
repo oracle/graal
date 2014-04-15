@@ -20,15 +20,22 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes.cfg;
 
-import java.util.*;
+package com.oracle.graal.baseline;
 
-public interface AbstractControlFlowGraph<T extends AbstractBlock<T>> {
+import com.oracle.graal.java.BciBlockMapping.BciBlock;
+import com.oracle.graal.nodes.cfg.*;
 
-    T[] getBlocks();
+public class LIRLoop extends Loop<BciBlock> {
 
-    Collection<Loop<T>> getLoops();
+    protected LIRLoop(Loop<BciBlock> parent, int index, BciBlock header) {
+        super(parent, index, header);
+    }
 
-    T getStartBlock();
+    @Override
+    public long numBackedges() {
+        // currently only loops with one backedge are supported
+        return 1;
+    }
+
 }

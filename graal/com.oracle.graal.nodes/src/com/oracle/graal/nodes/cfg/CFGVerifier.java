@@ -84,13 +84,13 @@ public class CFGVerifier {
         }
 
         if (cfg.getLoops() != null) {
-            for (Loop loop : cfg.getLoops()) {
+            for (Loop<Block> loop : cfg.getLoops()) {
                 assert loop.header.isLoopHeader();
 
                 for (Block block : loop.blocks) {
                     assert block.getId() >= loop.header.getId();
 
-                    Loop blockLoop = block.getLoop();
+                    Loop<?> blockLoop = block.getLoop();
                     while (blockLoop != loop) {
                         assert blockLoop != null;
                         blockLoop = blockLoop.parent;
@@ -109,7 +109,7 @@ public class CFGVerifier {
                 for (Block block : loop.exits) {
                     assert block.getId() >= loop.header.getId();
 
-                    Loop blockLoop = block.getLoop();
+                    Loop<?> blockLoop = block.getLoop();
                     while (blockLoop != null) {
                         blockLoop = blockLoop.parent;
                         assert blockLoop != loop;
