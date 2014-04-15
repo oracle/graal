@@ -962,7 +962,10 @@ public class HotSpotVMConfig extends CompilerObject {
         return javaThreadAnchorOffset + javaFrameAnchorFlagsOffset;
     }
 
+    // These are only valid on AMD64.
     @HotSpotVMConstant(name = "frame::arg_reg_save_area_bytes", archs = {"amd64"}) @Stable public int runtimeCallStackSize;
+    @HotSpotVMConstant(name = "frame::interpreter_frame_sender_sp_offset", archs = {"amd64"}) @Stable public int frameInterpreterFrameSenderSpOffset;
+    @HotSpotVMConstant(name = "frame::interpreter_frame_last_sp_offset", archs = {"amd64"}) @Stable public int frameInterpreterFrameLastSpOffset;
 
     @HotSpotVMField(name = "PtrQueue::_active", type = "bool", get = HotSpotVMField.Type.OFFSET) @Stable public int ptrQueueActiveOffset;
     @HotSpotVMField(name = "PtrQueue::_buf", type = "void**", get = HotSpotVMField.Type.OFFSET) @Stable public int ptrQueueBufferOffset;
@@ -1348,7 +1351,6 @@ public class HotSpotVMConfig extends CompilerObject {
     }
 
     @Stable public long handleDeoptStub;
-    @Stable public long uncommonTrapStub;
 
     @HotSpotVMField(name = "StubRoutines::_aescrypt_encryptBlock", type = "address", get = HotSpotVMField.Type.VALUE) @Stable public long aescryptEncryptBlockStub;
     @HotSpotVMField(name = "StubRoutines::_aescrypt_decryptBlock", type = "address", get = HotSpotVMField.Type.VALUE) @Stable public long aescryptDecryptBlockStub;
@@ -1418,6 +1420,10 @@ public class HotSpotVMConfig extends CompilerObject {
 
     @Stable public int graalCountersSize;
 
+    @Stable public long deoptimizationFetchUnrollInfo;
+    @Stable public long deoptimizationUncommonTrap;
+    @Stable public long deoptimizationUnpackFrames;
+
     @HotSpotVMConstant(name = "Deoptimization::Reason_none") @Stable public int deoptReasonNone;
     @HotSpotVMConstant(name = "Deoptimization::Reason_null_check") @Stable public int deoptReasonNullCheck;
     @HotSpotVMConstant(name = "Deoptimization::Reason_range_check") @Stable public int deoptReasonRangeCheck;
@@ -1447,6 +1453,19 @@ public class HotSpotVMConfig extends CompilerObject {
     @HotSpotVMConstant(name = "Deoptimization::_action_shift") @Stable public int deoptimizationActionShift;
     @HotSpotVMConstant(name = "Deoptimization::_reason_shift") @Stable public int deoptimizationReasonShift;
     @HotSpotVMConstant(name = "Deoptimization::_debug_id_shift") @Stable public int deoptimizationDebugIdShift;
+
+    @HotSpotVMConstant(name = "Deoptimization::Unpack_deopt") @Stable public int deoptimizationUnpackDeopt;
+    @HotSpotVMConstant(name = "Deoptimization::Unpack_exception") @Stable public int deoptimizationUnpackException;
+    @HotSpotVMConstant(name = "Deoptimization::Unpack_uncommon_trap") @Stable public int deoptimizationUnpackUncommonTrap;
+    @HotSpotVMConstant(name = "Deoptimization::Unpack_reexecute") @Stable public int deoptimizationUnpackReexecute;
+
+    @HotSpotVMField(name = "Deoptimization::UnrollBlock::_size_of_deoptimized_frame", type = "int", get = HotSpotVMField.Type.OFFSET) @Stable public int deoptimizationUnrollBlockSizeOfDeoptimizedFrameOffset;
+    @HotSpotVMField(name = "Deoptimization::UnrollBlock::_caller_adjustment", type = "int", get = HotSpotVMField.Type.OFFSET) @Stable public int deoptimizationUnrollBlockCallerAdjustmentOffset;
+    @HotSpotVMField(name = "Deoptimization::UnrollBlock::_number_of_frames", type = "int", get = HotSpotVMField.Type.OFFSET) @Stable public int deoptimizationUnrollBlockNumberOfFramesOffset;
+    @HotSpotVMField(name = "Deoptimization::UnrollBlock::_total_frame_sizes", type = "int", get = HotSpotVMField.Type.OFFSET) @Stable public int deoptimizationUnrollBlockTotalFrameSizesOffset;
+    @HotSpotVMField(name = "Deoptimization::UnrollBlock::_frame_sizes", type = "intptr_t*", get = HotSpotVMField.Type.OFFSET) @Stable public int deoptimizationUnrollBlockFrameSizesOffset;
+    @HotSpotVMField(name = "Deoptimization::UnrollBlock::_frame_pcs", type = "address*", get = HotSpotVMField.Type.OFFSET) @Stable public int deoptimizationUnrollBlockFramePcsOffset;
+    @HotSpotVMField(name = "Deoptimization::UnrollBlock::_initial_info", type = "intptr_t", get = HotSpotVMField.Type.OFFSET) @Stable public int deoptimizationUnrollBlockInitialInfoOffset;
 
     @HotSpotVMConstant(name = "vmIntrinsics::_invokeBasic") @Stable public int vmIntrinsicInvokeBasic;
     @HotSpotVMConstant(name = "vmIntrinsics::_linkToVirtual") @Stable public int vmIntrinsicLinkToVirtual;

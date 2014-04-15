@@ -31,6 +31,7 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.HotSpotVMConfig.CompressEncoding;
 import com.oracle.graal.hotspot.meta.*;
+import com.oracle.graal.lir.StandardOp.SaveRegistersOp;
 
 /**
  * LIR generator specialized for PTX HotSpot.
@@ -68,6 +69,34 @@ public class PTXHotSpotLIRGenerator extends PTXLIRGenerator implements HotSpotLI
     @Override
     public Value emitUncompress(Value pointer, CompressEncoding encoding, boolean nonNull) {
         // TODO
+        throw GraalInternalError.unimplemented();
+    }
+
+    public void emitLeaveCurrentStackFrame() {
+        throw GraalInternalError.unimplemented();
+    }
+
+    public void emitLeaveDeoptimizedStackFrame(Value frameSize, Value initialInfo) {
+        throw GraalInternalError.unimplemented();
+    }
+
+    public void emitEnterUnpackFramesStackFrame(Value framePc, Value senderSp, Value senderFp) {
+        throw GraalInternalError.unimplemented();
+    }
+
+    public void emitLeaveUnpackFramesStackFrame() {
+        throw GraalInternalError.unimplemented();
+    }
+
+    public SaveRegistersOp emitSaveAllRegisters() {
+        throw GraalInternalError.unimplemented();
+    }
+
+    public void emitPushInterpreterFrame(Value frameSize, Value framePc, Value senderSp, Value initialInfo) {
+        throw GraalInternalError.unimplemented();
+    }
+
+    public Value emitUncommonTrapCall(Value trapRequest, SaveRegistersOp saveRegisterOp) {
         throw GraalInternalError.unimplemented();
     }
 }

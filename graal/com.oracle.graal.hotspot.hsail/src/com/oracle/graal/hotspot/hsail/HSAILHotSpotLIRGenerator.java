@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,6 +35,7 @@ import com.oracle.graal.hotspot.HotSpotVMConfig.CompressEncoding;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.type.*;
 import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.StandardOp.SaveRegistersOp;
 import com.oracle.graal.lir.hsail.*;
 import com.oracle.graal.lir.hsail.HSAILControlFlow.CondMoveOp;
 import com.oracle.graal.lir.hsail.HSAILControlFlow.DeoptimizeOp;
@@ -286,15 +287,15 @@ public class HSAILHotSpotLIRGenerator extends HSAILLIRGenerator implements HotSp
     }
 
     public void emitTailcall(Value[] args, Value address) {
-        throw GraalInternalError.shouldNotReachHere("NYI");
+        throw GraalInternalError.unimplemented();
     }
 
     public void emitDeoptimizeCaller(DeoptimizationAction action, DeoptimizationReason reason) {
-        throw GraalInternalError.shouldNotReachHere("NYI");
+        throw GraalInternalError.unimplemented();
     }
 
     public StackSlot getLockSlot(int lockDepth) {
-        throw GraalInternalError.shouldNotReachHere("NYI");
+        throw GraalInternalError.unimplemented();
     }
 
     @Override
@@ -309,5 +310,33 @@ public class HSAILHotSpotLIRGenerator extends HSAILLIRGenerator implements HotSp
         Variable result = newVariable(Kind.Object);
         append(new HSAILMove.UncompressPointer(result, asAllocatable(pointer), encoding.base, encoding.shift, encoding.alignment, nonNull));
         return result;
+    }
+
+    public void emitLeaveCurrentStackFrame() {
+        throw GraalInternalError.unimplemented();
+    }
+
+    public void emitLeaveDeoptimizedStackFrame(Value frameSize, Value initialInfo) {
+        throw GraalInternalError.unimplemented();
+    }
+
+    public void emitEnterUnpackFramesStackFrame(Value framePc, Value senderSp, Value senderFp) {
+        throw GraalInternalError.unimplemented();
+    }
+
+    public void emitLeaveUnpackFramesStackFrame() {
+        throw GraalInternalError.unimplemented();
+    }
+
+    public SaveRegistersOp emitSaveAllRegisters() {
+        throw GraalInternalError.unimplemented();
+    }
+
+    public void emitPushInterpreterFrame(Value frameSize, Value framePc, Value senderSp, Value initialInfo) {
+        throw GraalInternalError.unimplemented();
+    }
+
+    public Value emitUncommonTrapCall(Value trapRequest, SaveRegistersOp saveRegisterOp) {
+        throw GraalInternalError.unimplemented();
     }
 }

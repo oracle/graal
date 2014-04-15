@@ -30,6 +30,7 @@ import static com.oracle.graal.hotspot.HotSpotForeignCallLinkage.Transition.*;
 import static com.oracle.graal.hotspot.nodes.NewArrayStubCall.*;
 import static com.oracle.graal.hotspot.nodes.NewInstanceStubCall.*;
 import static com.oracle.graal.hotspot.nodes.NewMultiArrayStubCall.*;
+import static com.oracle.graal.hotspot.nodes.UncommonTrapCallNode.*;
 import static com.oracle.graal.hotspot.nodes.VMErrorNode.*;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 import static com.oracle.graal.hotspot.replacements.MonitorSnippets.*;
@@ -37,6 +38,7 @@ import static com.oracle.graal.hotspot.replacements.NewObjectSnippets.*;
 import static com.oracle.graal.hotspot.replacements.SystemSubstitutions.*;
 import static com.oracle.graal.hotspot.replacements.ThreadSubstitutions.*;
 import static com.oracle.graal.hotspot.replacements.WriteBarrierSnippets.*;
+import static com.oracle.graal.hotspot.stubs.DeoptimizationStub.*;
 import static com.oracle.graal.hotspot.stubs.ExceptionHandlerStub.*;
 import static com.oracle.graal.hotspot.stubs.NewArrayStub.*;
 import static com.oracle.graal.hotspot.stubs.NewInstanceStub.*;
@@ -64,7 +66,7 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         super(runtime, metaAccess, codeCache);
     }
 
-    private static void link(Stub stub) {
+    protected static void link(Stub stub) {
         stub.getLinkage().setCompiledStub(stub);
     }
 
@@ -101,7 +103,6 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
     public void initialize(HotSpotProviders providers, HotSpotVMConfig c) {
         TargetDescription target = providers.getCodeCache().getTarget();
 
-        registerForeignCall(UNCOMMON_TRAP, c.uncommonTrapStub, NativeCall, PRESERVES_REGISTERS, LEAF_NOFP, REEXECUTABLE, NO_LOCATIONS);
         registerForeignCall(DEOPT_HANDLER, c.handleDeoptStub, NativeCall, PRESERVES_REGISTERS, LEAF_NOFP, REEXECUTABLE, NO_LOCATIONS);
         registerForeignCall(IC_MISS_HANDLER, c.inlineCacheMissStub(), NativeCall, PRESERVES_REGISTERS, LEAF_NOFP, REEXECUTABLE, NO_LOCATIONS);
 
@@ -114,8 +115,11 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
 
         registerForeignCall(EXCEPTION_HANDLER_FOR_PC, c.exceptionHandlerForPcAddress, NativeCall, DESTROYS_REGISTERS, NOT_LEAF, REEXECUTABLE, ANY_LOCATION);
         registerForeignCall(EXCEPTION_HANDLER_FOR_RETURN_ADDRESS, c.exceptionHandlerForReturnAddressAddress, NativeCall, DESTROYS_REGISTERS, NOT_LEAF, REEXECUTABLE, ANY_LOCATION);
+        registerForeignCall(FETCH_UNROLL_INFO, c.deoptimizationFetchUnrollInfo, NativeCall, DESTROYS_REGISTERS, NOT_LEAF, REEXECUTABLE, ANY_LOCATION);
         registerForeignCall(NEW_ARRAY_C, c.newArrayAddress, NativeCall, DESTROYS_REGISTERS, NOT_LEAF, REEXECUTABLE, ANY_LOCATION);
         registerForeignCall(NEW_INSTANCE_C, c.newInstanceAddress, NativeCall, DESTROYS_REGISTERS, NOT_LEAF, REEXECUTABLE, ANY_LOCATION);
+        registerForeignCall(UNCOMMON_TRAP, c.deoptimizationUncommonTrap, NativeCall, DESTROYS_REGISTERS, NOT_LEAF, NOT_REEXECUTABLE, ANY_LOCATION);
+        registerForeignCall(UNPACK_FRAMES, c.deoptimizationUnpackFrames, NativeCall, DESTROYS_REGISTERS, LEAF, NOT_REEXECUTABLE, ANY_LOCATION);
         registerForeignCall(VM_MESSAGE_C, c.vmMessageAddress, NativeCall, DESTROYS_REGISTERS, NOT_LEAF, REEXECUTABLE, NO_LOCATIONS);
 
         link(new NewInstanceStub(providers, target, registerStubCall(NEW_INSTANCE, REEXECUTABLE, NOT_LEAF, ANY_LOCATION)));

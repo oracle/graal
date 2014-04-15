@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,23 +22,34 @@
  */
 package com.oracle.graal.hotspot.amd64;
 
-import static com.oracle.graal.hotspot.HotSpotBackend.*;
+import static com.oracle.graal.api.code.ValueUtil.*;
+import static com.oracle.graal.amd64.AMD64.*;
+import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.amd64.*;
 import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.StandardOp.*;
-import com.oracle.graal.lir.amd64.*;
 import com.oracle.graal.lir.asm.*;
 
 /**
- * Removes the current frame and tail calls the uncommon trap routine.
+ * Pops the current frame off the stack including the return address.
  */
-@Opcode("DEOPT_CALLER")
-final class AMD64HotSpotDeoptimizeCallerOp extends AMD64HotSpotEpilogueOp implements BlockEndOp {
+@Opcode("LEAVE_DEOPTIMIZED_STACK_FRAME")
+final class AMD64HotSpotLeaveDeoptimizedStackFrameOp extends AMD64HotSpotEpilogueOp {
+
+    @Use(REG) AllocatableValue frameSize;
+    @Use(REG) AllocatableValue framePointer;
+
+    public AMD64HotSpotLeaveDeoptimizedStackFrameOp(AllocatableValue frameSize, AllocatableValue initialInfo) {
+        this.frameSize = frameSize;
+        this.framePointer = initialInfo;
+    }
 
     @Override
     public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-        leaveFrameAndRestoreRbp(crb, masm);
-        AMD64Call.directJmp(crb, masm, crb.foreignCalls.lookupForeignCall(UNCOMMON_TRAP_HANDLER));
+        masm.addq(rsp, asRegister(frameSize));
+        // Restore the frame pointer before stack bang because if a stack overflow is thrown it
+        // needs to be pushed (and preserved).
+        masm.movq(rbp, asRegister(framePointer));
     }
 }

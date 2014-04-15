@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,25 +20,26 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.amd64;
+package com.oracle.graal.hotspot.sparc;
 
-import static com.oracle.graal.hotspot.HotSpotBackend.*;
+import static com.oracle.graal.sparc.SPARC.*;
 
-import com.oracle.graal.asm.amd64.*;
-import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.StandardOp.*;
-import com.oracle.graal.lir.amd64.*;
-import com.oracle.graal.lir.asm.*;
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.hotspot.*;
+import com.oracle.graal.hotspot.meta.*;
+import com.oracle.graal.hotspot.stubs.*;
 
-/**
- * Removes the current frame and tail calls the uncommon trap routine.
- */
-@Opcode("DEOPT_CALLER")
-final class AMD64HotSpotDeoptimizeCallerOp extends AMD64HotSpotEpilogueOp implements BlockEndOp {
+final class SPARCDeoptimizationStub extends DeoptimizationStub {
+
+    private RegisterConfig registerConfig;
+
+    public SPARCDeoptimizationStub(HotSpotProviders providers, TargetDescription target, HotSpotForeignCallLinkage linkage) {
+        super(providers, target, linkage);
+        registerConfig = new SPARCHotSpotRegisterConfig(target, new Register[]{o0, o1, o2, o3, o4, o5, o7, l0, l1, l2, l3, l4, l5, l6, l7, i0, i1, i2, i3, i4, i5, f0, f1, f2, f3, f4, f5, f6, f7});
+    }
 
     @Override
-    public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-        leaveFrameAndRestoreRbp(crb, masm);
-        AMD64Call.directJmp(crb, masm, crb.foreignCalls.lookupForeignCall(UNCOMMON_TRAP_HANDLER));
+    public RegisterConfig getRegisterConfig() {
+        return registerConfig;
     }
 }

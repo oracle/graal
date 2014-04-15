@@ -35,6 +35,7 @@ import com.oracle.graal.hotspot.HotSpotVMConfig.CompressEncoding;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.stubs.*;
 import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.StandardOp.SaveRegistersOp;
 import com.oracle.graal.lir.sparc.*;
 import com.oracle.graal.lir.sparc.SPARCMove.LoadOp;
 import com.oracle.graal.lir.sparc.SPARCMove.StoreConstantOp;
@@ -256,6 +257,41 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
     @Override
     public Value emitUncompress(Value pointer, CompressEncoding encoding, boolean nonNull) {
         // TODO
+        throw GraalInternalError.unimplemented();
+    }
+
+    public SaveRegistersOp emitSaveAllRegisters() {
+        // TODO Auto-generated method stub
+        throw GraalInternalError.unimplemented();
+    }
+
+    public void emitLeaveCurrentStackFrame() {
+        // TODO Auto-generated method stub
+        throw GraalInternalError.unimplemented();
+    }
+
+    public void emitLeaveDeoptimizedStackFrame(Value frameSize, Value initialInfo) {
+        // TODO Auto-generated method stub
+        throw GraalInternalError.unimplemented();
+    }
+
+    public void emitEnterUnpackFramesStackFrame(Value framePc, Value senderSp, Value senderFp) {
+        // TODO Auto-generated method stub
+        throw GraalInternalError.unimplemented();
+    }
+
+    public void emitLeaveUnpackFramesStackFrame() {
+        // TODO Auto-generated method stub
+        throw GraalInternalError.unimplemented();
+    }
+
+    public void emitPushInterpreterFrame(Value frameSize, Value framePc, Value senderSp, Value initialInfo) {
+        // TODO Auto-generated method stub
+        throw GraalInternalError.unimplemented();
+    }
+
+    public Value emitUncommonTrapCall(Value trapRequest, SaveRegistersOp saveRegisterOp) {
+        // TODO Auto-generated method stub
         throw GraalInternalError.unimplemented();
     }
 }

@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.hotspot;
 
+import static com.oracle.graal.hotspot.HotSpotBackend.*;
+
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.CompilationResult.Call;
 import com.oracle.graal.api.code.CompilationResult.DataPatch;
@@ -41,8 +43,8 @@ public final class HotSpotCompiledRuntimeStub extends HotSpotCompiledCode {
 
     public HotSpotCompiledRuntimeStub(TargetDescription target, Stub stub, CompilationResult compResult) {
         super(target, compResult);
-        assert checkStubInvariants(compResult);
         this.stubName = stub.toString();
+        assert checkStubInvariants(compResult);
     }
 
     /**
@@ -67,8 +69,13 @@ public final class HotSpotCompiledRuntimeStub extends HotSpotCompiledCode {
             Call call = (Call) infopoint;
             assert call.target instanceof HotSpotForeignCallLinkage : this + " cannot have non runtime call: " + call.target;
             HotSpotForeignCallLinkage linkage = (HotSpotForeignCallLinkage) call.target;
-            assert !linkage.isCompiledStub() : this + " cannot call compiled stub " + linkage;
+            assert !linkage.isCompiledStub() || linkage.getDescriptor() == UNCOMMON_TRAP_HANDLER : this + " cannot call compiled stub " + linkage;
         }
         return true;
+    }
+
+    @Override
+    public String toString() {
+        return stubName != null ? stubName : super.toString();
     }
 }

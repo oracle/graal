@@ -27,6 +27,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.hotspot.HotSpotVMConfig.CompressEncoding;
 import com.oracle.graal.hotspot.meta.*;
+import com.oracle.graal.lir.StandardOp.SaveRegistersOp;
 import com.oracle.graal.nodes.spi.*;
 
 /**
@@ -43,7 +44,21 @@ public interface HotSpotLIRGenerator extends LIRGeneratorTool {
      */
     void emitTailcall(Value[] args, Value address);
 
+    void emitLeaveCurrentStackFrame();
+
+    void emitLeaveDeoptimizedStackFrame(Value frameSize, Value initialInfo);
+
+    void emitEnterUnpackFramesStackFrame(Value framePc, Value senderSp, Value senderFp);
+
+    void emitLeaveUnpackFramesStackFrame();
+
+    SaveRegistersOp emitSaveAllRegisters();
+
     void emitDeoptimizeCaller(DeoptimizationAction action, DeoptimizationReason reason);
+
+    void emitPushInterpreterFrame(Value frameSize, Value framePc, Value senderSp, Value initialInfo);
+
+    Value emitUncommonTrapCall(Value trapRequest, SaveRegistersOp saveRegisterOp);
 
     /**
      * Gets a stack slot for a lock at a given lock nesting depth.

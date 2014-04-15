@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,25 +20,29 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.amd64;
+package com.oracle.graal.hotspot.nodes;
 
-import static com.oracle.graal.hotspot.HotSpotBackend.*;
-
-import com.oracle.graal.asm.amd64.*;
-import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.StandardOp.*;
-import com.oracle.graal.lir.amd64.*;
-import com.oracle.graal.lir.asm.*;
+import com.oracle.graal.hotspot.*;
+import com.oracle.graal.hotspot.stubs.*;
+import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.type.*;
 
 /**
- * Removes the current frame and tail calls the uncommon trap routine.
+ * Emits code to leave a low-level stack frame specifically to call out to the C++ method
+ * {@link DeoptimizationStub#UNPACK_FRAMES Deoptimization::unpack_frames}.
  */
-@Opcode("DEOPT_CALLER")
-final class AMD64HotSpotDeoptimizeCallerOp extends AMD64HotSpotEpilogueOp implements BlockEndOp {
+public class LeaveUnpackFramesStackFrameNode extends FixedWithNextNode implements LIRLowerable {
+
+    public LeaveUnpackFramesStackFrameNode() {
+        super(StampFactory.forVoid());
+    }
 
     @Override
-    public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-        leaveFrameAndRestoreRbp(crb, masm);
-        AMD64Call.directJmp(crb, masm, crb.foreignCalls.lookupForeignCall(UNCOMMON_TRAP_HANDLER));
+    public void generate(NodeLIRBuilderTool gen) {
+        ((HotSpotLIRGenerator) gen.getLIRGeneratorTool()).emitLeaveUnpackFramesStackFrame();
     }
+
+    @NodeIntrinsic
+    public static native void leaveUnpackFramesStackFrame();
 }

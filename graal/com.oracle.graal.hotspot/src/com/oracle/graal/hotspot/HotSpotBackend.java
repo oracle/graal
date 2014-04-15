@@ -45,9 +45,9 @@ import com.oracle.graal.word.*;
 public abstract class HotSpotBackend extends Backend {
 
     /**
-     * Descriptor for SharedRuntime::deopt_blob()-&gt;uncommon_trap().
+     * Descriptor for {@link DeoptimizationStub}.
      */
-    public static final ForeignCallDescriptor UNCOMMON_TRAP = new ForeignCallDescriptor("deoptimize", void.class);
+    public static final ForeignCallDescriptor UNCOMMON_TRAP_HANDLER = new ForeignCallDescriptor("uncommonTrapHandler", void.class);
 
     /**
      * Descriptor for {@link ExceptionHandlerStub}. This stub is called by the

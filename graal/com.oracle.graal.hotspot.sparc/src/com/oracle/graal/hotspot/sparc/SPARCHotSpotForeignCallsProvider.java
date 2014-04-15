@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -46,7 +46,8 @@ public class SPARCHotSpotForeignCallsProvider extends HotSpotHostForeignCallsPro
 
     @Override
     public void initialize(HotSpotProviders providers, HotSpotVMConfig config) {
-        Kind word = providers.getCodeCache().getTarget().wordKind;
+        TargetDescription target = providers.getCodeCache().getTarget();
+        Kind word = target.wordKind;
 
         // The calling convention for the exception handler stub is (only?) defined in
         // TemplateInterpreterGenerator::generate_throw_exception()
@@ -59,6 +60,8 @@ public class SPARCHotSpotForeignCallsProvider extends HotSpotHostForeignCallsPro
         CallingConvention incomingExceptionCc = new CallingConvention(0, ILLEGAL, incomingException, incomingExceptionPc);
         register(new HotSpotForeignCallLinkage(EXCEPTION_HANDLER, 0L, PRESERVES_REGISTERS, LEAF_NOFP, outgoingExceptionCc, incomingExceptionCc, NOT_REEXECUTABLE, ANY_LOCATION));
         register(new HotSpotForeignCallLinkage(EXCEPTION_HANDLER_IN_CALLER, JUMP_ADDRESS, PRESERVES_REGISTERS, LEAF_NOFP, outgoingExceptionCc, incomingExceptionCc, NOT_REEXECUTABLE, ANY_LOCATION));
+
+        link(new SPARCDeoptimizationStub(providers, target, registerStubCall(UNCOMMON_TRAP_HANDLER, REEXECUTABLE, LEAF, NO_LOCATIONS)));
 
         super.initialize(providers, config);
     }

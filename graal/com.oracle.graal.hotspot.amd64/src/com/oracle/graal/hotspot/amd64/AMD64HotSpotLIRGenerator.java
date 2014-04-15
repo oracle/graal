@@ -25,6 +25,7 @@ package com.oracle.graal.hotspot.amd64;
 import static com.oracle.graal.amd64.AMD64.*;
 import static com.oracle.graal.api.code.ValueUtil.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
+import static com.oracle.graal.hotspot.nodes.UncommonTrapCallNode.*;
 
 import java.util.*;
 
@@ -43,7 +44,8 @@ import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.type.*;
 import com.oracle.graal.hotspot.stubs.*;
 import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.StandardOp.NoOp;
+import com.oracle.graal.lir.StandardOp.SaveRegistersOp;
+import com.oracle.graal.lir.StandardOp.*;
 import com.oracle.graal.lir.amd64.*;
 import com.oracle.graal.lir.amd64.AMD64ControlFlow.CondMoveOp;
 import com.oracle.graal.lir.amd64.AMD64Move.CompareAndSwapOp;
@@ -176,10 +178,63 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         super.emitForeignCall(linkage, result, arguments, temps, info);
     }
 
-    protected AMD64SaveRegistersOp emitSaveRegisters(Register[] savedRegisters, StackSlot[] savedRegisterLocations) {
-        AMD64SaveRegistersOp save = new AMD64SaveRegistersOp(savedRegisters, savedRegisterLocations, true);
+    public void emitLeaveCurrentStackFrame() {
+        append(new AMD64HotSpotLeaveCurrentStackFrameOp());
+    }
+
+    public void emitLeaveDeoptimizedStackFrame(Value frameSize, Value initialInfo) {
+        Variable frameSizeVariable = load(frameSize);
+        Variable initialInfoVariable = load(initialInfo);
+        append(new AMD64HotSpotLeaveDeoptimizedStackFrameOp(frameSizeVariable, initialInfoVariable));
+    }
+
+    public void emitEnterUnpackFramesStackFrame(Value framePc, Value senderSp, Value senderFp) {
+        Register thread = getProviders().getRegisters().getThreadRegister();
+        Variable framePcVariable = load(framePc);
+        Variable senderSpVariable = load(senderSp);
+        Variable senderFpVariable = load(senderFp);
+        append(new AMD64HotSpotEnterUnpackFramesStackFrameOp(thread, config.threadLastJavaSpOffset(), config.threadLastJavaPcOffset(), config.threadLastJavaFpOffset(), framePcVariable,
+                        senderSpVariable, senderFpVariable));
+    }
+
+    public void emitLeaveUnpackFramesStackFrame() {
+        Register thread = getProviders().getRegisters().getThreadRegister();
+        append(new AMD64HotSpotLeaveUnpackFramesStackFrameOp(thread, config.threadLastJavaSpOffset(), config.threadLastJavaPcOffset(), config.threadLastJavaFpOffset()));
+    }
+
+    /**
+     * @param savedRegisters the registers saved by this operation which may be subject to pruning
+     * @param savedRegisterLocations the slots to which the registers are saved
+     * @param supportsRemove determines if registers can be pruned
+     */
+    protected AMD64SaveRegistersOp emitSaveRegisters(Register[] savedRegisters, StackSlot[] savedRegisterLocations, boolean supportsRemove) {
+        AMD64SaveRegistersOp save = new AMD64SaveRegistersOp(savedRegisters, savedRegisterLocations, supportsRemove);
         append(save);
         return save;
+    }
+
+    /**
+     * Adds a node to the graph that saves all allocatable registers to the stack.
+     *
+     * @param supportsRemove determines if registers can be pruned
+     * @return the register save node
+     */
+    private AMD64SaveRegistersOp emitSaveAllRegisters(Register[] savedRegisters, boolean supportsRemove) {
+        StackSlot[] savedRegisterLocations = new StackSlot[savedRegisters.length];
+        for (int i = 0; i < savedRegisters.length; i++) {
+            PlatformKind kind = target().arch.getLargestStorableKind(savedRegisters[i].getRegisterCategory());
+            assert kind != Kind.Illegal;
+            StackSlot spillSlot = getResult().getFrameMap().allocateSpillSlot(kind);
+            savedRegisterLocations[i] = spillSlot;
+        }
+        return emitSaveRegisters(savedRegisters, savedRegisterLocations, supportsRemove);
+    }
+
+    @Override
+    public SaveRegistersOp emitSaveAllRegisters() {
+        // We are saving all registers.
+        // TODO Save upper half of YMM registers.
+        return emitSaveAllRegisters(cpuxmmRegisters, false);
     }
 
     protected void emitRestoreRegisters(AMD64SaveRegistersOp save) {
@@ -196,19 +251,11 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         boolean destroysRegisters = hotspotLinkage.destroysRegisters();
 
         AMD64SaveRegistersOp save = null;
-        StackSlot[] savedRegisterLocations = null;
         if (destroysRegisters) {
             if (getStub() != null) {
                 if (getStub().preservesRegisters()) {
                     Register[] savedRegisters = getResult().getFrameMap().registerConfig.getAllocatableRegisters();
-                    savedRegisterLocations = new StackSlot[savedRegisters.length];
-                    for (int i = 0; i < savedRegisters.length; i++) {
-                        PlatformKind kind = target().arch.getLargestStorableKind(savedRegisters[i].getRegisterCategory());
-                        assert kind != Kind.Illegal;
-                        StackSlot spillSlot = getResult().getFrameMap().allocateSpillSlot(kind);
-                        savedRegisterLocations[i] = spillSlot;
-                    }
-                    save = emitSaveRegisters(savedRegisters, savedRegisterLocations);
+                    save = emitSaveAllRegisters(savedRegisters, true);
                 }
             }
         }
@@ -233,15 +280,30 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         if (destroysRegisters) {
             if (getStub() != null) {
                 if (getStub().preservesRegisters()) {
-                    assert !((AMD64HotSpotLIRGenerationResult) getResult()).getCalleeSaveInfo().containsKey(currentRuntimeCallInfo);
-                    ((AMD64HotSpotLIRGenerationResult) getResult()).getCalleeSaveInfo().put(currentRuntimeCallInfo, save);
-
+                    AMD64HotSpotLIRGenerationResult generationResult = (AMD64HotSpotLIRGenerationResult) getResult();
+                    assert !generationResult.getCalleeSaveInfo().containsKey(currentRuntimeCallInfo);
+                    generationResult.getCalleeSaveInfo().put(currentRuntimeCallInfo, save);
                     emitRestoreRegisters(save);
                 } else {
                     assert zapRegisters();
                 }
             }
         }
+
+        return result;
+    }
+
+    public Value emitUncommonTrapCall(Value trapRequest, SaveRegistersOp saveRegisterOp) {
+        ForeignCallLinkage linkage = getForeignCalls().lookupForeignCall(UNCOMMON_TRAP);
+
+        Register thread = getProviders().getRegisters().getThreadRegister();
+        append(new AMD64HotSpotCRuntimeCallPrologueOp(config.threadLastJavaSpOffset(), thread));
+        Variable result = super.emitForeignCall(linkage, null, thread.asValue(Kind.Long), trapRequest);
+        append(new AMD64HotSpotCRuntimeCallEpilogueOp(config.threadLastJavaSpOffset(), config.threadLastJavaFpOffset(), thread));
+
+        Map<LIRFrameState, SaveRegistersOp> calleeSaveInfo = ((AMD64HotSpotLIRGenerationResult) getResult()).getCalleeSaveInfo();
+        assert !calleeSaveInfo.containsKey(currentRuntimeCallInfo);
+        calleeSaveInfo.put(currentRuntimeCallInfo, saveRegisterOp);
 
         return result;
     }
@@ -372,6 +434,14 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         } else {
             return kind;
         }
+    }
+
+    public void emitPushInterpreterFrame(Value frameSize, Value framePc, Value senderSp, Value initialInfo) {
+        Variable frameSizeVariable = load(frameSize);
+        Variable framePcVariable = load(framePc);
+        Variable senderSpVariable = load(senderSp);
+        Variable initialInfoVariable = load(initialInfo);
+        append(new AMD64HotSpotPushInterpreterFrameOp(frameSizeVariable, framePcVariable, senderSpVariable, initialInfoVariable));
     }
 
     @Override
