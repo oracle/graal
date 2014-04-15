@@ -175,25 +175,43 @@ public final class HotSpotTruffleRuntime implements GraalTruffleRuntime {
         }
     }
 
-    public static void installOptimizedCallTargetCallMethod() {
-        Providers providers = getGraalProviders();
-        MetaAccessProvider metaAccess = providers.getMetaAccess();
-        CodeCacheProvider codeCache = providers.getCodeCache();
-        ResolvedJavaMethod resolvedCallMethod = metaAccess.lookupJavaMethod(getCallMethod());
-        CompilationResult compResult = compileMethod(resolvedCallMethod);
-        try (Scope s = Debug.scope("CodeInstall", codeCache, resolvedCallMethod)) {
-            codeCache.setDefaultMethod(resolvedCallMethod, compResult);
+    private static Method[] callBoundaryMethods;
+
+    public static boolean isCallBoundaryMethod(ResolvedJavaMethod method) {
+        for (Method m : getCallBoundaryMethods()) {
+            Providers providers = getGraalProviders();
+            ResolvedJavaMethod current = providers.getMetaAccess().lookupJavaMethod(m);
+            if (current.equals(method)) {
+                return true;
+            }
         }
+        return false;
     }
 
-    private static Method getCallMethod() {
-        Method method;
-        try {
-            method = HotSpotOptimizedCallTarget.class.getDeclaredMethod("call", new Class[]{Object[].class});
-        } catch (NoSuchMethodException | SecurityException e) {
-            throw GraalInternalError.shouldNotReachHere();
+    public static Method[] getCallBoundaryMethods() {
+        if (callBoundaryMethods == null) {
+            try {
+                callBoundaryMethods = new Method[]{HotSpotOptimizedCallTarget.class.getDeclaredMethod("callBoundary", new Class[]{Object[].class})};
+            } catch (NoSuchMethodException | SecurityException e) {
+                throw GraalInternalError.shouldNotReachHere();
+            }
         }
-        return method;
+
+        return callBoundaryMethods;
+    }
+
+    public static void installOptimizedCallTargetCallMethod() {
+        Method[] methods = getCallBoundaryMethods();
+        for (Method method : methods) {
+            Providers providers = getGraalProviders();
+            MetaAccessProvider metaAccess = providers.getMetaAccess();
+            CodeCacheProvider codeCache = providers.getCodeCache();
+            ResolvedJavaMethod resolvedCallMethod = metaAccess.lookupJavaMethod(method);
+            CompilationResult compResult = compileMethod(resolvedCallMethod);
+            try (Scope s = Debug.scope("CodeInstall", codeCache, resolvedCallMethod)) {
+                codeCache.setDefaultMethod(resolvedCallMethod, compResult);
+            }
+        }
     }
 
     private static CompilationResultBuilderFactory getOptimizedCallTargetInstrumentationFactory(String arch, ResolvedJavaMethod method) {

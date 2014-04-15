@@ -56,18 +56,27 @@ public final class HotSpotOptimizedCallTarget extends OptimizedCallTarget {
         return installedCode != null || installedCodeTask != null;
     }
 
-    @CompilerDirectives.SlowPath
     @Override
     public Object call(Object... args) {
-        return CompilerDirectives.inInterpreter() ? callHelper(args) : executeHelper(args);
+        return callBoundary(args);
     }
 
-    private Object callHelper(Object[] args) {
-        if (installedCode.isValid()) {
-            reinstallCallMethodShortcut();
+    @TruffleCallBoundary
+    private Object callBoundary(Object[] args) {
+        if (CompilerDirectives.inInterpreter()) {
+            return compiledCallFallback(args);
+        } else {
+            // We come here from compiled code (i.e., we have been inlined).
+            return executeHelper(args);
         }
-        if (TruffleCallTargetProfiling.getValue()) {
-            callCount++;
+    }
+
+    private Object compiledCallFallback(Object[] args) {
+        InstalledCode currentInstalledCode = installedCode;
+        if (currentInstalledCode.isValid()) {
+            reinstallCallMethodShortcut();
+        } else {
+            return compiledCodeInvalidated(args);
         }
         return interpreterCall(args);
     }
@@ -109,6 +118,9 @@ public final class HotSpotOptimizedCallTarget extends OptimizedCallTarget {
     private Object interpreterCall(Object[] args) {
         CompilerAsserts.neverPartOfCompilation();
         compilationProfile.reportInterpreterCall();
+        if (TruffleCallTargetProfiling.getValue()) {
+            callCount++;
+        }
 
         if (compilationEnabled && compilationPolicy.shouldCompile(compilationProfile)) {
             compile();
