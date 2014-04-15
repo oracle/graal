@@ -127,9 +127,8 @@ public class GraalCompiler {
      *
      * @param graph the graph to be compiled
      * @param cc the calling convention for calls to the code compiled for {@code graph}
-     * @param installedCodeOwner the method the compiled code will be
-     *            {@linkplain InstalledCode#getMethod() associated} with once installed. This
-     *            argument can be null.
+     * @param installedCodeOwner the method the compiled code will be associated with once
+     *            installed. This argument can be null.
      * @return the result of the compilation
      */
     public static <T extends CompilationResult> T compileGraph(StructuredGraph graph, Object stub, CallingConvention cc, ResolvedJavaMethod installedCodeOwner, Providers providers, Backend backend,

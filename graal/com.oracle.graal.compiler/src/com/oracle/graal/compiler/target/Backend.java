@@ -102,9 +102,8 @@ public abstract class Backend {
     /**
      * Emits the code for a given graph.
      *
-     * @param installedCodeOwner the method the compiled code will be
-     *            {@linkplain InstalledCode#getMethod() associated} with once installed. This
-     *            argument can be null.
+     * @param installedCodeOwner the method the compiled code will be associated with once
+     *            installed. This argument can be null.
      */
     public abstract void emitCode(CompilationResultBuilder crb, LIR lir, ResolvedJavaMethod installedCodeOwner);
 

@@ -33,10 +33,10 @@ import com.oracle.graal.hotspot.meta.*;
  */
 public class CompilerToVMImpl implements CompilerToVM {
 
-    private native int installCode0(HotSpotCompiledCode compiledCode, HotSpotInstalledCode code, SpeculationLog speculationLog);
+    private native int installCode0(HotSpotCompiledCode compiledCode, InstalledCode code, SpeculationLog speculationLog);
 
     @Override
-    public CodeInstallResult installCode(HotSpotCompiledCode compiledCode, HotSpotInstalledCode code, SpeculationLog speculationLog) {
+    public CodeInstallResult installCode(HotSpotCompiledCode compiledCode, InstalledCode code, SpeculationLog speculationLog) {
         return CodeInstallResult.getEnum(installCode0(compiledCode, code, speculationLog));
     }
 
@@ -121,7 +121,7 @@ public class CompilerToVMImpl implements CompilerToVM {
     public native StackTraceElement getStackTraceElement(long metaspaceMethod, int bci);
 
     @Override
-    public native Object executeCompiledMethodVarargs(Object[] args, HotSpotInstalledCode hotspotInstalledCode);
+    public native Object executeCompiledMethodVarargs(Object[] args, InstalledCode hotspotInstalledCode);
 
     @Override
     public native long[] getLineNumberTable(long metaspaceMethod);
@@ -139,7 +139,7 @@ public class CompilerToVMImpl implements CompilerToVM {
     public native void reprofile(long metaspaceMethod);
 
     @Override
-    public native void invalidateInstalledCode(HotSpotInstalledCode hotspotInstalledCode);
+    public native void invalidateInstalledCode(InstalledCode hotspotInstalledCode);
 
     @Override
     public native Class<?> getJavaMirror(long metaspaceKlass);
@@ -154,12 +154,12 @@ public class CompilerToVMImpl implements CompilerToVM {
     public native void doNotInlineOrCompile(long metaspaceMethod);
 
     @Override
-    public Object executeCompiledMethod(Object arg1, Object arg2, Object arg3, HotSpotInstalledCode hotspotInstalledCode) throws InvalidInstalledCodeException {
+    public Object executeCompiledMethod(Object arg1, Object arg2, Object arg3, InstalledCode hotspotInstalledCode) throws InvalidInstalledCodeException {
         return executeCompiledMethodVarargs(new Object[]{arg1, arg2, arg3}, hotspotInstalledCode);
     }
 
     public synchronized native void notifyCompilationStatistics(int id, HotSpotResolvedJavaMethod method, boolean osr, int processedBytecodes, long time, long timeUnitsPerSecond,
-                    HotSpotInstalledCode installedCode);
+                    InstalledCode installedCode);
 
     public synchronized native void printCompilationStatistics(boolean perCompiler, boolean aggregate);
 

@@ -32,8 +32,6 @@ import com.oracle.graal.hotspot.stubs.*;
  */
 public class HotSpotRuntimeStub extends HotSpotInstalledCode {
 
-    private static final long serialVersionUID = -6388648408298441748L;
-
     private final Stub stub;
 
     public HotSpotRuntimeStub(Stub stub) {
@@ -44,18 +42,21 @@ public class HotSpotRuntimeStub extends HotSpotInstalledCode {
         return null;
     }
 
+    @Override
     public boolean isValid() {
         return true;
     }
 
+    @Override
     public void invalidate() {
     }
 
     @Override
     public String toString() {
-        return String.format("InstalledRuntimeStub[stub=%s, codeBlob=0x%x]", stub, getCodeBlob());
+        return String.format("InstalledRuntimeStub[stub=%s, codeBlob=0x%x]", stub, getAddress());
     }
 
+    @Override
     public Object executeVarargs(Object... args) throws InvalidInstalledCodeException {
         throw new GraalInternalError("Cannot call stub %s", stub);
     }

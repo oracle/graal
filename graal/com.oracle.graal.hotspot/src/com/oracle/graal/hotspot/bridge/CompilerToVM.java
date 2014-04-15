@@ -226,7 +226,7 @@ public interface CompilerToVM {
      * @param code the details of the installed CodeBlob are written to this object
      * @return the outcome of the installation as a {@link CodeInstallResult}.
      */
-    CodeInstallResult installCode(HotSpotCompiledCode compiledCode, HotSpotInstalledCode code, SpeculationLog speculationLog);
+    CodeInstallResult installCode(HotSpotCompiledCode compiledCode, InstalledCode code, SpeculationLog speculationLog);
 
     /**
      * Notifies the VM of statistics for a completed compilation.
@@ -240,7 +240,7 @@ public interface CompilerToVM {
      * @param timeUnitsPerSecond the granularity of the units for the {@code time} value
      * @param installedCode the nmethod installed as a result of the compilation
      */
-    void notifyCompilationStatistics(int id, HotSpotResolvedJavaMethod method, boolean osr, int processedBytecodes, long time, long timeUnitsPerSecond, HotSpotInstalledCode installedCode);
+    void notifyCompilationStatistics(int id, HotSpotResolvedJavaMethod method, boolean osr, int processedBytecodes, long time, long timeUnitsPerSecond, InstalledCode installedCode);
 
     void printCompilationStatistics(boolean perCompiler, boolean aggregate);
 
@@ -270,9 +270,9 @@ public interface CompilerToVM {
 
     StackTraceElement getStackTraceElement(long metaspaceMethod, int bci);
 
-    Object executeCompiledMethod(Object arg1, Object arg2, Object arg3, HotSpotInstalledCode hotspotInstalledCode) throws InvalidInstalledCodeException;
+    Object executeCompiledMethod(Object arg1, Object arg2, Object arg3, InstalledCode hotspotInstalledCode) throws InvalidInstalledCodeException;
 
-    Object executeCompiledMethodVarargs(Object[] args, HotSpotInstalledCode hotspotInstalledCode) throws InvalidInstalledCodeException;
+    Object executeCompiledMethodVarargs(Object[] args, InstalledCode hotspotInstalledCode) throws InvalidInstalledCodeException;
 
     long[] getLineNumberTable(long metaspaceMethod);
 
@@ -297,7 +297,7 @@ public interface CompilerToVM {
      */
     void reprofile(long metaspaceMethod);
 
-    void invalidateInstalledCode(HotSpotInstalledCode hotspotInstalledCode);
+    void invalidateInstalledCode(InstalledCode hotspotInstalledCode);
 
     /**
      * Collects the current values of all Graal benchmark counters, summed up over all threads.

@@ -273,7 +273,7 @@ public abstract class HotSpotCodeCacheProvider implements CodeCacheProvider {
 
     public String disassemble(InstalledCode code) {
         if (code.isValid()) {
-            long codeBlob = ((HotSpotInstalledCode) code).getCodeBlob();
+            long codeBlob = ((HotSpotInstalledCode) code).getAddress();
             return runtime.getCompilerToVM().disassembleCodeBlob(codeBlob);
         }
         return null;
