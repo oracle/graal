@@ -33,13 +33,12 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.debug.*;
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.frame.*;
-import com.oracle.truffle.api.impl.*;
 import com.oracle.truffle.api.nodes.*;
 
 /**
  * Call target that is optimized by Graal upon surpassing a specific invocation threshold.
  */
-public abstract class OptimizedCallTarget extends DefaultCallTarget implements LoopCountReceiver, ReplaceObserver {
+public abstract class OptimizedCallTarget extends RootCallTarget implements LoopCountReceiver, ReplaceObserver {
 
     protected static final PrintStream OUT = TTY.out().out();
 
@@ -99,7 +98,7 @@ public abstract class OptimizedCallTarget extends DefaultCallTarget implements L
     }
 
     @Override
-    public abstract Object call(Object[] args);
+    public abstract Object call(Object... args);
 
     public abstract InstalledCode compile();
 

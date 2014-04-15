@@ -58,7 +58,7 @@ public final class HotSpotOptimizedCallTarget extends OptimizedCallTarget {
 
     @CompilerDirectives.SlowPath
     @Override
-    public Object call(Object[] args) {
+    public Object call(Object... args) {
         return CompilerDirectives.inInterpreter() ? callHelper(args) : executeHelper(args);
     }
 
