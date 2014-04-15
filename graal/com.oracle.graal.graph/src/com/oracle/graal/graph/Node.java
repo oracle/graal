@@ -350,6 +350,66 @@ public abstract class Node implements Cloneable, Formattable {
     }
 
     /**
+     * Remove all usages between {@code fromIndex} and {@code toIndex} (inclusive).
+     *
+     * @param fromIndex the index of the first element to be removed
+     * @param toIndex the index of the last element to be removed
+     */
+    private void removeUsages(int fromIndex, int toIndex) {
+        assert fromIndex >= toIndex;
+        assert toIndex < usages().count();
+        int from, holeLength;
+        if (fromIndex < INLINE_USAGE_COUNT) {
+            if (fromIndex == 0) {
+                if (toIndex == 0) {
+                    usage0 = usage1;
+                    if (extraUsages.length > 0) {
+                        usage1 = extraUsages[0];
+                    } else {
+                        usage1 = null;
+                    }
+                } else {
+                    if (extraUsages.length > toIndex - INLINE_USAGE_COUNT + 1) {
+                        usage0 = extraUsages[toIndex - INLINE_USAGE_COUNT + 1];
+                    } else {
+                        usage0 = null;
+                    }
+                    if (extraUsages.length > toIndex - INLINE_USAGE_COUNT + 2) {
+                        usage1 = extraUsages[toIndex - INLINE_USAGE_COUNT + 2];
+                    } else {
+                        usage1 = null;
+                    }
+                }
+            } else {
+                if (extraUsages.length > toIndex - INLINE_USAGE_COUNT + 1) {
+                    usage1 = extraUsages[toIndex - INLINE_USAGE_COUNT + 1];
+                } else {
+                    usage1 = null;
+                }
+            }
+            from = 0;
+        } else {
+            from = fromIndex - INLINE_USAGE_COUNT;
+        }
+        holeLength = toIndex - fromIndex + 1;
+        int i = from;
+        while (i + holeLength < extraUsages.length) {
+            if (extraUsages[i] == null) {
+                return;
+            }
+            extraUsages[i] = extraUsages[i + holeLength];
+            i++;
+        }
+        while (i < extraUsages.length) {
+            if (extraUsages[i] == null) {
+                return;
+            }
+            extraUsages[i] = null;
+            i++;
+        }
+    }
+
+    /**
      * Removes a given node from this node's {@linkplain #usages() usages}.
      *
      * @param node the node to remove
@@ -541,6 +601,40 @@ public abstract class Node implements Cloneable, Formattable {
             }
         }
         clearUsages();
+    }
+
+    public void replaceAtMatchingUsages(Node other, NodePredicate usagePredicate) {
+        assert checkReplaceWith(other);
+        NodeUsageIterator it = (NodeUsageIterator) usages().iterator();
+        int removeStart = -1;
+        while (it.hasNext()) {
+            Node usage = it.next();
+            if (usagePredicate.apply(usage)) {
+                if (removeStart < 0) {
+                    removeStart = it.index - 1;
+                }
+                boolean result = usage.getNodeClass().replaceFirstInput(usage, this, other);
+                assert assertTrue(result, "not found in inputs, usage: %s", usage);
+                if (other != null) {
+                    maybeNotifyChanged(usage);
+                    if (other.recordsUsages()) {
+                        other.addUsage(usage);
+                    }
+                }
+            } else {
+                if (removeStart >= 0) {
+                    int removeEndIndex = it.index - 2;
+                    removeUsages(removeStart, removeEndIndex);
+                    it.index = removeStart;
+                    it.advance();
+                }
+                removeStart = -1;
+            }
+        }
+        if (removeStart >= 0) {
+            int removeEndIndex = it.index - 1;
+            removeUsages(removeStart, removeEndIndex);
+        }
     }
 
     public void replaceAtUsages(InputType type, Node other) {
