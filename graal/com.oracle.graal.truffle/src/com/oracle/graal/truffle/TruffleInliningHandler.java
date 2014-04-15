@@ -94,7 +94,7 @@ public final class TruffleInliningHandler {
         int deepNodeCount;
         TruffleInliningResult recursiveResult;
         boolean recursiveCall = false;
-        if (target.inliningPerformed || depth > MAXIMUM_RECURSIVE_DEPTH) {
+        if (depth > MAXIMUM_RECURSIVE_DEPTH) {
             deepNodeCount = OptimizedCallUtils.countNonTrivialNodes(target, true);
             recursiveResult = null;
         } else {
@@ -117,7 +117,7 @@ public final class TruffleInliningHandler {
     }
 
     private static double calculateFrequency(OptimizedCallTarget target, OptimizedDirectCallNode ocn) {
-        return (double) Math.max(1, target.getCompilationProfile().getCallCount()) / Math.max(1, ocn.getCallCount());
+        return (double) Math.max(1, ocn.getCallCount()) / (double) Math.max(1, target.getCompilationProfile().getCallCount());
     }
 
     private final static class ProfileScoreComparator implements Comparator<TruffleInliningProfile> {
