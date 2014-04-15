@@ -264,6 +264,24 @@ public class Debug {
     }
 
     /**
+     * Opens a scope in which exception {@linkplain DebugConfig#interceptException(Throwable)
+     * interception} is disabled. It is recommended to use the try-with-resource statement for
+     * managing entering and leaving such scopes:
+     *
+     * <pre>
+     * try (DebugConfigScope s = Debug.disableIntercept()) {
+     *     ...
+     * }
+     * </pre>
+     *
+     * This is particularly useful to suppress extraneous output in JUnit tests that are expected to
+     * throw an exception.
+     */
+    public static DebugConfigScope disableIntercept() {
+        return Debug.setConfig(new DelegatingDebugConfig().disable(INTERCEPT));
+    }
+
+    /**
      * Handles an exception in the context of the debug scope just exited. The just exited scope
      * must have the current scope as its parent which will be the case if the try-with-resource
      * pattern recommended by {@link #scope(Object)} and

@@ -23,7 +23,11 @@
 
 package com.oracle.graal.compiler.hsail.test.lambda;
 
+import static com.oracle.graal.debug.Debug.*;
+
 import com.oracle.graal.compiler.hsail.test.infra.GraalKernelTester;
+import com.oracle.graal.debug.*;
+
 import org.junit.Test;
 
 /**
@@ -92,12 +96,16 @@ public class VirtualCallTest extends GraalKernelTester {
     // graal says not inlining getArea():float (0 bytes): no type profile exists
     @Test(expected = com.oracle.graal.graph.GraalInternalError.class)
     public void test() {
-        testGeneratedHsail();
+        try (DebugConfigScope s = disableIntercept()) {
+            testGeneratedHsail();
+        }
     }
 
     @Test(expected = com.oracle.graal.graph.GraalInternalError.class)
     public void testUsingLambdaMethod() {
-        testGeneratedHsailUsingLambdaMethod();
+        try (DebugConfigScope s = disableIntercept()) {
+            testGeneratedHsailUsingLambdaMethod();
+        }
     }
 
 }

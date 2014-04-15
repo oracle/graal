@@ -23,7 +23,11 @@
 
 package com.oracle.graal.compiler.hsail.test.lambda;
 
+import static com.oracle.graal.debug.Debug.*;
+
 import com.oracle.graal.compiler.hsail.test.infra.GraalKernelTester;
+import com.oracle.graal.debug.*;
+
 import org.junit.Test;
 
 /**
@@ -58,13 +62,17 @@ public class SynchronizedMethodTest extends GraalKernelTester {
     // cannot handle the BeginLockScope node
     @Test(expected = com.oracle.graal.graph.GraalInternalError.class)
     public void test() {
-        testGeneratedHsail();
+        try (DebugConfigScope s = disableIntercept()) {
+            testGeneratedHsail();
+        }
     }
 
     // cannot handle the BeginLockScope node
     @Test(expected = com.oracle.graal.graph.GraalInternalError.class)
     public void testUsingLambdaMethod() {
-        testGeneratedHsailUsingLambdaMethod();
+        try (DebugConfigScope s = disableIntercept()) {
+            testGeneratedHsailUsingLambdaMethod();
+        }
     }
 
 }
