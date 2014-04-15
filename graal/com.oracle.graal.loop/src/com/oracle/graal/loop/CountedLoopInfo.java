@@ -143,14 +143,14 @@ public class CountedLoopInfo {
         CompareNode cond; // we use a negated guard with a < condition to achieve a >=
         ConstantNode one = ConstantNode.forIntegerStamp(stamp, 1, graph);
         if (iv.direction() == Direction.Up) {
-            IntegerArithmeticNode v1 = sub(graph, ConstantNode.forIntegerStamp(stamp, IntegerStamp.defaultMaxValue(stamp.getBits(), stamp.isUnsigned()), graph), sub(graph, iv.strideNode(), one));
+            IntegerArithmeticNode v1 = sub(graph, ConstantNode.forIntegerStamp(stamp, IntegerStamp.defaultMaxValue(stamp.getBits()), graph), sub(graph, iv.strideNode(), one));
             if (oneOff) {
                 v1 = sub(graph, v1, one);
             }
             cond = graph.unique(new IntegerLessThanNode(v1, end));
         } else {
             assert iv.direction() == Direction.Down;
-            IntegerArithmeticNode v1 = add(graph, ConstantNode.forIntegerStamp(stamp, IntegerStamp.defaultMinValue(stamp.getBits(), stamp.isUnsigned()), graph), sub(graph, one, iv.strideNode()));
+            IntegerArithmeticNode v1 = add(graph, ConstantNode.forIntegerStamp(stamp, IntegerStamp.defaultMinValue(stamp.getBits()), graph), sub(graph, one, iv.strideNode()));
             if (oneOff) {
                 v1 = add(graph, v1, one);
             }

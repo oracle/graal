@@ -53,7 +53,7 @@ public class StampFactory {
         } else {
             mask = IntegerStamp.defaultMask(bits);
         }
-        setCache(kind, new IntegerStamp(bits, false, kind.getMinValue(), kind.getMaxValue(), 0, mask));
+        setCache(kind, new IntegerStamp(bits, kind.getMinValue(), kind.getMaxValue(), 0, mask));
     }
 
     private static void setFloatCache(Kind kind) {
@@ -127,21 +127,21 @@ public class StampFactory {
     }
 
     public static IntegerStamp forInteger(Kind kind, long lowerBound, long upperBound, long downMask, long upMask) {
-        return new IntegerStamp(kind.getBitCount(), kind.isUnsigned(), lowerBound, upperBound, downMask, upMask);
+        return new IntegerStamp(kind.getBitCount(), lowerBound, upperBound, downMask, upMask);
     }
 
     public static IntegerStamp forInteger(Kind kind, long lowerBound, long upperBound) {
-        return forInteger(kind.getBitCount(), kind.isUnsigned(), lowerBound, upperBound);
+        return forInteger(kind.getBitCount(), lowerBound, upperBound);
     }
 
-    public static IntegerStamp forInteger(int bits, boolean unsigned) {
-        return new IntegerStamp(bits, unsigned, IntegerStamp.defaultMinValue(bits, unsigned), IntegerStamp.defaultMaxValue(bits, unsigned), 0, IntegerStamp.defaultMask(bits));
+    public static IntegerStamp forInteger(int bits) {
+        return new IntegerStamp(bits, IntegerStamp.defaultMinValue(bits), IntegerStamp.defaultMaxValue(bits), 0, IntegerStamp.defaultMask(bits));
     }
 
-    public static IntegerStamp forInteger(int bits, boolean unsigned, long lowerBound, long upperBound) {
+    public static IntegerStamp forInteger(int bits, long lowerBound, long upperBound) {
         long defaultMask = IntegerStamp.defaultMask(bits);
         if (lowerBound == upperBound) {
-            return new IntegerStamp(bits, unsigned, lowerBound, lowerBound, lowerBound & defaultMask, lowerBound & defaultMask);
+            return new IntegerStamp(bits, lowerBound, lowerBound, lowerBound & defaultMask, lowerBound & defaultMask);
         }
         final long downMask;
         final long upMask;
@@ -165,7 +165,7 @@ public class StampFactory {
                 downMask = lowerBound & ~(-1L >>> (lowerBoundLeadingOnes + sameBitCount)) | ~(-1L >>> lowerBoundLeadingOnes);
             }
         }
-        return new IntegerStamp(bits, unsigned, lowerBound, upperBound, downMask & defaultMask, upMask & defaultMask);
+        return new IntegerStamp(bits, lowerBound, upperBound, downMask & defaultMask, upMask & defaultMask);
     }
 
     public static FloatStamp forFloat(Kind kind, double lowerBound, double upperBound, boolean nonNaN) {

@@ -49,7 +49,7 @@ public final class ConstantNode extends FloatingNode implements LIRLowerable {
 
     /**
      * Constructs a new node representing the specified constant.
-     * 
+     *
      * @param value the constant
      */
     protected ConstantNode(Constant value, Stamp stamp) {
@@ -184,7 +184,7 @@ public final class ConstantNode extends FloatingNode implements LIRLowerable {
 
     /**
      * Returns a node for a double constant.
-     * 
+     *
      * @param d the double value for which to create the instruction
      * @return a node for a double constant
      */
@@ -194,7 +194,7 @@ public final class ConstantNode extends FloatingNode implements LIRLowerable {
 
     /**
      * Returns a node for a float constant.
-     * 
+     *
      * @param f the float value for which to create the instruction
      * @return a node for a float constant
      */
@@ -204,7 +204,7 @@ public final class ConstantNode extends FloatingNode implements LIRLowerable {
 
     /**
      * Returns a node for an long constant.
-     * 
+     *
      * @param i the long value for which to create the instruction
      * @return a node for an long constant
      */
@@ -214,7 +214,7 @@ public final class ConstantNode extends FloatingNode implements LIRLowerable {
 
     /**
      * Returns a node for an integer constant.
-     * 
+     *
      * @param i the integer value for which to create the instruction
      * @return a node for an integer constant
      */
@@ -224,7 +224,7 @@ public final class ConstantNode extends FloatingNode implements LIRLowerable {
 
     /**
      * Returns a node for a boolean constant.
-     * 
+     *
      * @param i the boolean value for which to create the instruction
      * @return a node representing the boolean
      */
@@ -234,7 +234,7 @@ public final class ConstantNode extends FloatingNode implements LIRLowerable {
 
     /**
      * Returns a node for a byte constant.
-     * 
+     *
      * @param i the byte value for which to create the instruction
      * @return a node representing the byte
      */
@@ -244,7 +244,7 @@ public final class ConstantNode extends FloatingNode implements LIRLowerable {
 
     /**
      * Returns a node for a char constant.
-     * 
+     *
      * @param i the char value for which to create the instruction
      * @return a node representing the char
      */
@@ -254,7 +254,7 @@ public final class ConstantNode extends FloatingNode implements LIRLowerable {
 
     /**
      * Returns a node for a short constant.
-     * 
+     *
      * @param i the short value for which to create the instruction
      * @return a node representing the short
      */
@@ -264,7 +264,7 @@ public final class ConstantNode extends FloatingNode implements LIRLowerable {
 
     /**
      * Returns a node for an object constant.
-     * 
+     *
      * @param o the object value for which to create the instruction
      * @return a node representing the object
      */
@@ -282,15 +282,10 @@ public final class ConstantNode extends FloatingNode implements LIRLowerable {
      * Returns a node for a constant integer that's not directly representable as Java primitive
      * (e.g. short).
      */
-    public static ConstantNode forIntegerBits(int bits, boolean unsigned, long value, StructuredGraph graph) {
+    public static ConstantNode forIntegerBits(int bits, long value, StructuredGraph graph) {
         Constant constant = Constant.forPrimitiveInt(bits, value);
-        long bounds;
-        if (unsigned) {
-            bounds = ZeroExtendNode.zeroExtend(value, bits);
-        } else {
-            bounds = SignExtendNode.signExtend(value, bits);
-        }
-        return unique(graph, new ConstantNode(constant, StampFactory.forInteger(bits, unsigned, bounds, bounds)));
+        long bounds = SignExtendNode.signExtend(value, bits);
+        return unique(graph, new ConstantNode(constant, StampFactory.forInteger(bits, bounds, bounds)));
     }
 
     /**
@@ -299,7 +294,7 @@ public final class ConstantNode extends FloatingNode implements LIRLowerable {
     public static ConstantNode forIntegerStamp(Stamp stamp, long value, StructuredGraph graph) {
         if (stamp instanceof IntegerStamp) {
             IntegerStamp intStamp = (IntegerStamp) stamp;
-            return forIntegerBits(intStamp.getBits(), intStamp.isUnsigned(), value, graph);
+            return forIntegerBits(intStamp.getBits(), value, graph);
         } else {
             return forIntegerKind(stamp.getStackKind(), value, graph);
         }

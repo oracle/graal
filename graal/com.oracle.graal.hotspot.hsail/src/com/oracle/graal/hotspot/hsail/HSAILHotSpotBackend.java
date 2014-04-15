@@ -905,7 +905,7 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
             int longSize = providers.getCodeCache().getTarget().arch.getSizeInBytes(Kind.Long);
             long offset = config.hsailFrameSaveAreaOffset + longSize * (regNumber - HSAIL.d0.number);
             LocationNode numSRegsLocation = ConstantLocationNode.create(FINAL_LOCATION, Kind.Byte, config.hsailFrameNumSRegOffset, hostGraph);
-            ValueNode numSRegs = hostGraph.unique(new FloatingReadNode(hsailFrame, numSRegsLocation, null, StampFactory.forInteger(8, false)));
+            ValueNode numSRegs = hostGraph.unique(new FloatingReadNode(hsailFrame, numSRegsLocation, null, StampFactory.forInteger(8)));
             numSRegs = SignExtendNode.convert(numSRegs, StampFactory.forKind(Kind.Byte));
             location = IndexedLocationNode.create(FINAL_LOCATION, valueKind, offset, numSRegs, hostGraph, 4);
         } else {

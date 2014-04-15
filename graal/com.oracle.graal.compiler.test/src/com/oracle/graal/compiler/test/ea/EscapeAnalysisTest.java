@@ -279,7 +279,7 @@ public class EscapeAnalysisTest extends EATestBase {
 
     @SuppressWarnings("unused")
     public static void testNewNodeSnippet() {
-        new IntegerAddNode(new IntegerStamp(32, false, Integer.MIN_VALUE, Integer.MAX_VALUE, 0, 0xFFFFFFFF), null, null);
+        new IntegerAddNode(new IntegerStamp(32, Integer.MIN_VALUE, Integer.MAX_VALUE, 0, 0xFFFFFFFF), null, null);
     }
 
     /**
