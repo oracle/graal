@@ -24,17 +24,21 @@ package com.oracle.graal.baseline;
 
 import java.util.*;
 
+import com.oracle.graal.graph.*;
+import com.oracle.graal.java.*;
 import com.oracle.graal.java.BciBlockMapping.BciBlock;
 import com.oracle.graal.nodes.cfg.*;
 
 public class LIRControlFlowGraph implements AbstractControlFlowGraph<BciBlock> {
 
     private BciBlock[] blocks;
-    private List<Loop<BciBlock>> loops;
+    private Collection<Loop<BciBlock>> loops;
+    private BitSet visited;
 
-    public LIRControlFlowGraph(BciBlock[] blocks, List<Loop<BciBlock>> loops) {
-        this.blocks = blocks;
-        this.loops = loops;
+    public LIRControlFlowGraph(BciBlockMapping blockMap) {
+        blocks = blockMap.blocks.toArray(new BciBlock[0]);
+        loops = new ArrayList<>();
+        computeLoopInformation();
     }
 
     public BciBlock[] getBlocks() {
@@ -50,6 +54,46 @@ public class LIRControlFlowGraph implements AbstractControlFlowGraph<BciBlock> {
             return blocks[0];
         }
         return null;
+    }
+
+    private void computeLoopInformation() {
+        visited = new BitSet(blocks.length);
+        Deque<LIRLoop> stack = new ArrayDeque<>();
+        for (int i = blocks.length - 1; i >= 0; i--) {
+            BciBlock block = blocks[i];
+            calcLoop(block, stack);
+        }
+    }
+
+    private void calcLoop(BciBlock block, Deque<LIRLoop> stack) {
+        if (visited.get(block.getId())) {
+            return;
+        }
+        visited.set(block.getId());
+        if (block.isLoopEnd()) {
+            BciBlock loopHeader = getLoopHeader(block);
+            LIRLoop l = new LIRLoop(stack.peek(), loops.size(), loopHeader);
+            loops.add(l);
+            stack.push(l);
+        }
+        block.loop = stack.peek();
+        if (block.isLoopHeader()) {
+            assert block.loop.header.equals(block);
+            stack.pop();
+        }
+        for (BciBlock pred : block.getPredecessors()) {
+            calcLoop(pred, stack);
+        }
+    }
+
+    private static BciBlock getLoopHeader(BciBlock block) {
+        assert block.isLoopEnd();
+        for (BciBlock sux : block.getSuccessors()) {
+            if (sux.isLoopHeader() && sux.getId() <= block.getId() && block.loops == sux.loops) {
+                return sux;
+            }
+        }
+        throw GraalInternalError.shouldNotReachHere("No loop header found for " + block);
     }
 
 }

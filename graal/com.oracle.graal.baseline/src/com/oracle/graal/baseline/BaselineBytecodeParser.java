@@ -121,7 +121,7 @@ public class BaselineBytecodeParser extends AbstractBytecodeParser<Value, LIRFra
             // add loops ? how do we add looks when we haven't parsed the bytecode?
 
             // create the control flow graph
-            LIRControlFlowGraph cfg = new LIRControlFlowGraph(blockMap.blocks.toArray(new BciBlock[0]), new ArrayList<Loop<BciBlock>>());
+            LIRControlFlowGraph cfg = new LIRControlFlowGraph(blockMap);
 
             BlocksToDoubles blockProbabilities = new BlocksToDoubles(blockMap.blocks.size());
             for (BciBlock b : blockMap.blocks) {
@@ -613,7 +613,7 @@ public class BaselineBytecodeParser extends AbstractBytecodeParser<Value, LIRFra
         }
 
         if (block.isLoopHeader) {
-            assert currentBlock.getId() >= block.getId() : "must be backward branch";
+            assert currentBlock == null || currentBlock.getId() >= block.getId() : "must be backward branch";
             if (currentBlock != null && currentBlock.numNormalSuccessors() == 1) {
                 // this is the only successor of the current block so we can adjust
                 adaptFramestate((LIRFrameStateBuilder) block.entryState);
