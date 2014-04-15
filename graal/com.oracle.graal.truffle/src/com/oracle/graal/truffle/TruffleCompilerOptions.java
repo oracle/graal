@@ -46,7 +46,7 @@ public class TruffleCompilerOptions {
     @Option(help = "Compile call target when call count exceeds this threshold")
     public static final OptionValue<Integer> TruffleCompilationThreshold = new OptionValue<>(3);
     @Option(help = "Minimum number of calls before a call target is compiled")
-    public static final OptionValue<Integer> TruffleMinInvokeThreshold = new OptionValue<>(3);
+    public static final OptionValue<Integer> TruffleMinInvokeThreshold = new OptionValue<>(1000);
     @Option(help = "Delay compilation after an invalidation to allow for reprofiling")
     public static final OptionValue<Integer> TruffleInvalidationReprofileCount = new OptionValue<>(3);
     @Option(help = "Delay compilation after a node replacement")
@@ -70,7 +70,7 @@ public class TruffleCompilerOptions {
     @Option(help = "Number of most recently used methods in truffle cache")
     public static final OptionValue<Integer> TruffleMaxCompilationCacheSize = new OptionValue<>(512);
     @Option(help = "Enable asynchronous truffle compilation in background thread")
-    public static final OptionValue<Boolean> TruffleBackgroundCompilation = new OptionValue<>(false);
+    public static final OptionValue<Boolean> TruffleBackgroundCompilation = new OptionValue<>(true);
     @Option(help = "")
     public static final OptionValue<Boolean> TruffleUseTimeForCompilationDecision = new OptionValue<>(false);
     @Option(help = "")
