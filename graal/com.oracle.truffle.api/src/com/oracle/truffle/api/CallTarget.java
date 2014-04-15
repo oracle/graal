@@ -27,7 +27,7 @@ package com.oracle.truffle.api;
 /**
  * Represents the target of a call.
  */
-public abstract class CallTarget {
+public interface CallTarget {
 
     public static final Object[] NO_ARGUMENTS = new Object[0];
 
@@ -37,9 +37,5 @@ public abstract class CallTarget {
      * @param arguments passed arguments as an object array
      * @return the return result of the call
      */
-    public abstract Object call(Object[] arguments);
-
-    public final Object call() {
-        return call(NO_ARGUMENTS);
-    }
+    Object call(Object... arguments);
 }

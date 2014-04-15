@@ -39,7 +39,7 @@ public class DefaultCallTarget extends RootCallTarget {
     }
 
     @Override
-    public Object call(Object[] args) {
+    public Object call(Object... args) {
         VirtualFrame frame = new DefaultVirtualFrame(getRootNode().getFrameDescriptor(), args);
         return callProxy(frame);
     }
