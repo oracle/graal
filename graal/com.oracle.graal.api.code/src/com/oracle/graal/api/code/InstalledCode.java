@@ -34,10 +34,22 @@ public class InstalledCode {
     private long address;
 
     /**
+     * Counts how often the address field was reassigned.
+     */
+    private long version;
+
+    /**
      * @return the address of this code blob
      */
-    public long getAddress() {
+    public final long getAddress() {
         return address;
+    }
+
+    /**
+     * @return the address of this code blob
+     */
+    public final long getVersion() {
+        return version;
     }
 
     /**
