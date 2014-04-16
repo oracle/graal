@@ -57,7 +57,7 @@ public class BaselineBytecodeParser extends AbstractBytecodeParser<Value, LIRFra
     private LocalLiveness liveness;
     private BciBlockBitMap blockVisited;
 
-    private class BciBlockBitMap {
+    private static class BciBlockBitMap {
         BitSet bitSet;
 
         public BciBlockBitMap(BciBlockMapping blockMap) {
@@ -663,30 +663,31 @@ public class BaselineBytecodeParser extends AbstractBytecodeParser<Value, LIRFra
         Debug.log("moveConstantsToVariables: framestate after: %s", frameState);
     }
 
-    private void adaptValues(Value dst, Value src) {
+    private static void adaptValues(Value dst, Value src, PhiResolver resolver) {
         if (dst == null) {
             return;
         }
         assert src != null : "Source is null but Destination is not!";
 
         if (!dst.equals(src)) {
-            assert dst instanceof AllocatableValue : "Not an AllocatableValue: " + dst;
-            gen.emitMove((AllocatableValue) dst, src);
+            resolver.move(dst, src);
         }
     }
 
     private void adaptFramestate(LIRFrameStateBuilder other) {
         assert frameState.isCompatibleWith(other) : "framestates not compatible!";
+        PhiResolver resolver = new PhiResolver(gen);
         for (int i = 0; i < frameState.stackSize(); i++) {
             Value src = frameState.stackAt(i);
             Value dst = other.stackAt(i);
-            adaptValues(dst, src);
+            adaptValues(dst, src, resolver);
         }
         for (int i = 0; i < frameState.localsSize(); i++) {
             Value src = frameState.localAt(i);
             Value dst = other.localAt(i);
-            adaptValues(dst, src);
+            adaptValues(dst, src, resolver);
         }
+        resolver.dispose();
     }
 
     @Override
@@ -716,6 +717,14 @@ public class BaselineBytecodeParser extends AbstractBytecodeParser<Value, LIRFra
             assert block.getPredecessorCount() > 0;
         }
 
+        if (block.isLoopHeader) {
+            /*
+             * We need to preserve the frame state builder of the loop header so that we can merge
+             * values for phi functions, so make a copy of it.
+             */
+            block.entryState = frameState.copy();
+
+        }
         int endBCI = stream.endBCI();
 
         stream.setBCI(block.startBci);
