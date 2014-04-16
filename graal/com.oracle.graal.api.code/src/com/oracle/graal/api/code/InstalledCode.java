@@ -80,7 +80,7 @@ public class InstalledCode {
      * {@link InvalidInstalledCodeException}.
      */
     public void invalidate() {
-
+        throw new UnsupportedOperationException();
     }
 
     /**
@@ -91,6 +91,6 @@ public class InstalledCode {
      */
     @SuppressWarnings("unused")
     public Object executeVarargs(Object... args) throws InvalidInstalledCodeException {
-        return null;
+        throw new UnsupportedOperationException();
     }
 }
