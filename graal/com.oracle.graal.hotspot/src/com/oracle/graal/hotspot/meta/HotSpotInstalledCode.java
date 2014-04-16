@@ -27,6 +27,8 @@ import sun.misc.*;
 
 import com.oracle.graal.api.code.*;
 
+import edu.umd.cs.findbugs.annotations.*;
+
 /**
  * Implementation of {@link InstalledCode} for HotSpot.
  */
@@ -35,17 +37,17 @@ public abstract class HotSpotInstalledCode extends InstalledCode {
     /**
      * Total size of the code blob.
      */
-    private int size;
+    @SuppressFBWarnings(value = "UWF_UNWRITTEN_FIELD", justification = "field is set by the native part") private int size;
 
     /**
      * Start address of the code.
      */
-    private long codeStart;
+    @SuppressFBWarnings(value = "UWF_UNWRITTEN_FIELD", justification = "field is set by the native part") private long codeStart;
 
     /**
      * Size of the code.
      */
-    private int codeSize;
+    @SuppressFBWarnings(value = "UWF_UNWRITTEN_FIELD", justification = "field is set by the native part") private int codeSize;
 
     /**
      * @return the total size of this code blob
