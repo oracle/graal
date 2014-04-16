@@ -266,7 +266,7 @@ public final class OptimizedCallTargetLog {
             }
 
             int nodeCount = OptimizedCallUtils.countNonTrivialNodes(callTarget, true);
-            String comment = callTarget.installedCode == null ? " int" : "";
+            String comment = callTarget.installedCode.isValid() ? "" : " int";
             comment += callTarget.compilationEnabled ? "" : " fail";
             OUT.printf("%-50s | %10d | %15d | %10d | %3d%s\n", callTarget.getRootNode(), callTarget.callCount, nodeCount, nodeCount, callTarget.getCompilationProfile().getInvalidationCount(), comment);
 
