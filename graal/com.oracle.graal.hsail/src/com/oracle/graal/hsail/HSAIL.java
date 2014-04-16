@@ -132,7 +132,11 @@ public class HSAIL extends Architecture {
     public static final Register d18 = new Register(82, 18, "d18", CPU);
     public static final Register d19 = new Register(83, 19, "d19", CPU);
     public static final Register d20 = new Register(84, 20, "d20", CPU);
+
     public static final Register threadRegister = d20;
+    public static final Register actionAndReasonReg = s32;
+    public static final Register codeBufferOffsetReg = s33;
+    public static final Register dregOopMapReg = s39;
 
     // @formatter:off
     public static final Register[] cRegisters = {

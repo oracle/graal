@@ -28,6 +28,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.hsail.*;
+import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.HotSpotVMConfig.CompressEncoding;
@@ -108,6 +109,19 @@ public class HSAILHotSpotNodeLIRBuilder extends HSAILNodeLIRBuilder implements H
         append(new CompareAndSwapOp(kind, casResult, address, expected, newVal));
 
         setResult(x, casResult);
+    }
+
+    @Override
+    public void visitSafepointNode(SafepointNode i) {
+        HotSpotVMConfig config = getGen().config;
+        if (config.useHSAILSafepoints == true) {
+            LIRFrameState info = gen.state(i);
+            HSAILHotSpotSafepointOp safepoint = new HSAILHotSpotSafepointOp(info, config, this);
+            ((HSAILHotSpotLIRGenerationResult) getGen().getResult()).addDeopt(safepoint);
+            append(safepoint);
+        } else {
+            Debug.log("HSAIL safepoints turned off");
+        }
     }
 
     @Override
