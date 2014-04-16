@@ -151,7 +151,7 @@ public class TruffleCompilerImpl implements TruffleCompiler {
 
         long timePartialEvaluationFinished = System.nanoTime();
         int nodeCountPartialEval = graph.getNodeCount();
-        InstalledCode compiledMethod = compileMethodHelper(graph, assumptions, compilable.toString(), compilable.getSpeculationLog(), compilable.installedCode);
+        InstalledCode compiledMethod = compileMethodHelper(graph, assumptions, compilable.toString(), compilable.getSpeculationLog(), compilable);
         long timeCompilationFinished = System.nanoTime();
         int nodeCountLowered = graph.getNodeCount();
 

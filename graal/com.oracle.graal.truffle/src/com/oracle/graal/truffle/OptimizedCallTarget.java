@@ -42,7 +42,6 @@ public abstract class OptimizedCallTarget extends InstalledCode implements RootC
 
     protected static final PrintStream OUT = TTY.out().out();
 
-    protected InstalledCode installedCode;
     protected boolean compilationEnabled;
     protected int callCount;
     protected boolean inliningPerformed;
@@ -61,7 +60,6 @@ public abstract class OptimizedCallTarget extends InstalledCode implements RootC
         this.rootNode = rootNode;
         this.rootNode.adoptChildren();
         this.rootNode.setCallTarget(this);
-        this.installedCode = new InstalledCode();
         this.compilationEnabled = compilationEnabled;
         this.compilationPolicy = compilationPolicy;
         this.compilationProfile = new CompilationProfile(compilationThreshold, invokeCounter, rootNode.toString());
@@ -102,7 +100,7 @@ public abstract class OptimizedCallTarget extends InstalledCode implements RootC
     @Override
     public String toString() {
         String superString = rootNode.toString();
-        if (installedCode.isValid()) {
+        if (isValid()) {
             superString += " <compiled>";
         }
         if (splitSource != null) {
