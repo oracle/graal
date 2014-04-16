@@ -23,8 +23,13 @@
 
 package com.oracle.graal.compiler.hsail.test.lambda;
 
+import static com.oracle.graal.debug.Debug.*;
+import static com.oracle.graal.debug.DelegatingDebugConfig.Feature.*;
+
 import com.oracle.graal.compiler.hsail.test.infra.GraalKernelTester;
+import com.oracle.graal.debug.*;
 import java.util.concurrent.atomic.LongAdder;
+
 import org.junit.Test;
 
 /**
@@ -53,11 +58,15 @@ public class LongAdderTest extends GraalKernelTester {
     // cannot handle node: CurrentJavaThread
     @Test(expected = com.oracle.graal.graph.GraalInternalError.class)
     public void test() {
-        testGeneratedHsail();
+        try (DebugConfigScope dcs = setConfig(new DelegatingDebugConfig().disable(INTERCEPT))) {
+            testGeneratedHsail();
+        }
     }
 
     @Test(expected = com.oracle.graal.graph.GraalInternalError.class)
     public void testUsingLambdaMethod() {
-        testGeneratedHsailUsingLambdaMethod();
+        try (DebugConfigScope dcs = setConfig(new DelegatingDebugConfig().disable(INTERCEPT))) {
+            testGeneratedHsailUsingLambdaMethod();
+        }
     }
 }

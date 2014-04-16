@@ -96,7 +96,7 @@ public final class IndexedLocationNode extends LocationNode implements Canonical
     }
 
     @Override
-    public Value generateAddress(NodeLIRBuilderTool gen, Value base) {
-        return gen.getLIRGeneratorTool().emitAddress(base, displacement, gen.operand(getIndex()), getIndexScaling());
+    public Value generateAddress(NodeMappableLIRBuilder builder, LIRGeneratorTool gen, Value base) {
+        return gen.emitAddress(base, displacement, builder.operand(getIndex()), getIndexScaling());
     }
 }

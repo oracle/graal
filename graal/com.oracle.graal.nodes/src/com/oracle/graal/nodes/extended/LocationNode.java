@@ -62,5 +62,5 @@ public abstract class LocationNode extends FloatingNode implements LIRLowerable,
         // nothing to do...
     }
 
-    public abstract Value generateAddress(NodeLIRBuilderTool gen, Value base);
+    public abstract Value generateAddress(NodeMappableLIRBuilder builder, LIRGeneratorTool gen, Value base);
 }

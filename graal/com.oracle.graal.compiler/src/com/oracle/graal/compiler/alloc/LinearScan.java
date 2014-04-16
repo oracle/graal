@@ -335,7 +335,7 @@ public final class LinearScan {
     }
 
     int numLoops() {
-        return ir.getControlFlowGraph().getLoops().length;
+        return ir.getControlFlowGraph().getLoops().size();
     }
 
     boolean isIntervalInLoop(int interval, int loop) {

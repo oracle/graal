@@ -29,19 +29,19 @@ import com.oracle.graal.nodes.java.*;
 
 public final class Block extends AbstractBlockBase<Block> {
 
-    protected final AbstractBeginNode beginNode;
+    protected final BeginNode beginNode;
 
     protected FixedNode endNode;
-    protected Loop loop;
+    protected Loop<Block> loop;
 
     protected List<Block> dominated;
     protected Block postdominator;
 
-    protected Block(AbstractBeginNode node) {
+    protected Block(BeginNode node) {
         this.beginNode = node;
     }
 
-    public AbstractBeginNode getBeginNode() {
+    public BeginNode getBeginNode() {
         return beginNode;
     }
 
@@ -49,7 +49,7 @@ public final class Block extends AbstractBlockBase<Block> {
         return endNode;
     }
 
-    public Loop getLoop() {
+    public Loop<Block> getLoop() {
         return loop;
     }
 
@@ -122,7 +122,7 @@ public final class Block extends AbstractBlockBase<Block> {
             } else {
                 cur = ((FixedWithNextNode) cur).next();
             }
-            assert !(cur instanceof AbstractBeginNode);
+            assert !(cur instanceof BeginNode);
             return result;
         }
 

@@ -28,32 +28,74 @@ import com.oracle.graal.graph.*;
 
 public interface NodeIterable<T extends Node> extends Iterable<T> {
 
-    NodeIterable<T> until(T u);
+    default NodeIterable<T> until(final T u) {
+        return new FilteredNodeIterable<>(this).until(u);
+    }
 
-    NodeIterable<T> until(Class<? extends T> clazz);
+    default NodeIterable<T> until(final Class<? extends T> clazz) {
+        return new FilteredNodeIterable<>(this).until(clazz);
+    }
 
-    <F extends T> NodeIterable<F> filter(Class<F> clazz);
+    @SuppressWarnings("unchecked")
+    default <F extends T> NodeIterable<F> filter(Class<F> clazz) {
+        return (NodeIterable<F>) new FilteredNodeIterable<>(this).and(NodePredicates.isA(clazz));
+    }
 
-    NodeIterable<T> filterInterface(Class<?> iface);
+    default NodeIterable<T> filterInterface(Class<?> iface) {
+        return new FilteredNodeIterable<>(this).and(NodePredicates.isAInterface(iface));
+    }
 
-    FilteredNodeIterable<T> filter(NodePredicate predicate);
+    default FilteredNodeIterable<T> filter(NodePredicate predicate) {
+        return new FilteredNodeIterable<>(this).and(predicate);
+    }
 
-    FilteredNodeIterable<T> nonNull();
+    default FilteredNodeIterable<T> nonNull() {
+        return new FilteredNodeIterable<>(this).and(NodePredicates.isNotNull());
+    }
 
-    NodeIterable<T> distinct();
+    default NodeIterable<T> distinct() {
+        return new FilteredNodeIterable<>(this).distinct();
+    }
 
-    List<T> snapshot();
+    default List<T> snapshot() {
+        ArrayList<T> list = new ArrayList<>();
+        snapshotTo(list);
+        return list;
+    }
 
-    void snapshotTo(Collection<T> to);
+    default void snapshotTo(Collection<T> to) {
+        for (T n : this) {
+            to.add(n);
+        }
+    }
 
-    T first();
+    default T first() {
+        Iterator<T> iterator = iterator();
+        if (iterator.hasNext()) {
+            return iterator.next();
+        }
+        return null;
+    }
 
-    int count();
+    default int count() {
+        int count = 0;
+        Iterator<T> iterator = iterator();
+        while (iterator.hasNext()) {
+            iterator.next();
+            count++;
+        }
+        return count;
+    }
 
-    boolean isEmpty();
+    default boolean isEmpty() {
+        return !iterator().hasNext();
+    }
 
-    boolean isNotEmpty();
+    default boolean isNotEmpty() {
+        return iterator().hasNext();
+    }
 
-    boolean contains(T node);
-
+    default boolean contains(T node) {
+        return this.filter(NodePredicates.equals(node)).isNotEmpty();
+    }
 }

@@ -55,7 +55,7 @@ public class UseTrappingNullChecksPhase extends BasePhase<LowTierContext> {
         }
         Node predecessor = deopt.predecessor();
         Node branch = null;
-        while (predecessor instanceof AbstractBeginNode) {
+        while (predecessor instanceof BeginNode) {
             branch = predecessor;
             predecessor = predecessor.predecessor();
         }
@@ -73,8 +73,8 @@ public class UseTrappingNullChecksPhase extends BasePhase<LowTierContext> {
 
     private static void replaceWithTrappingNullCheck(DeoptimizeNode deopt, IfNode ifNode, LogicNode condition) {
         IsNullNode isNullNode = (IsNullNode) condition;
-        AbstractBeginNode nonTrappingContinuation = ifNode.falseSuccessor();
-        AbstractBeginNode trappingContinuation = ifNode.trueSuccessor();
+        BeginNode nonTrappingContinuation = ifNode.falseSuccessor();
+        BeginNode trappingContinuation = ifNode.trueSuccessor();
         NullCheckNode trappingNullCheck = deopt.graph().add(new NullCheckNode(isNullNode.object()));
         trappingNullCheck.setStateBefore(deopt.stateBefore());
         deopt.graph().replaceSplit(ifNode, trappingNullCheck, nonTrappingContinuation);

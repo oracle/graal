@@ -23,6 +23,7 @@
 package com.oracle.graal.debug;
 
 import static com.oracle.graal.debug.Debug.Initialization.*;
+import static com.oracle.graal.debug.DelegatingDebugConfig.Feature.*;
 import static java.util.FormattableFlags.*;
 
 import java.io.*;
@@ -187,6 +188,19 @@ public class Debug {
 
     /**
      * @see #scope(Object)
+     * @param contextObjects an array of object to be appended to the {@linkplain #context()
+     *            current} debug context
+     */
+    public static Scope scope(Object name, Object[] contextObjects) {
+        if (ENABLED) {
+            return DebugScope.getInstance().scope(convertFormatArg(name).toString(), null, contextObjects);
+        } else {
+            return null;
+        }
+    }
+
+    /**
+     * @see #scope(Object)
      * @param context an object to be appended to the {@linkplain #context() current} debug context
      */
     public static Scope scope(Object name, Object context) {
@@ -259,17 +273,25 @@ public class Debug {
     }
 
     public static Scope forceLog() {
-        return Debug.sandbox("forceLog", new DelegatingDebugConfig(DebugScope.getConfig()) {
-            @Override
-            public boolean isLogEnabled() {
-                return true;
-            }
+        return Debug.sandbox("forceLog", new DelegatingDebugConfig().enable(LOG).enable(LOG_METHOD));
+    }
 
-            @Override
-            public boolean isLogEnabledForMethod() {
-                return true;
-            }
-        });
+    /**
+     * Opens a scope in which exception {@linkplain DebugConfig#interceptException(Throwable)
+     * interception} is disabled. It is recommended to use the try-with-resource statement for
+     * managing entering and leaving such scopes:
+     *
+     * <pre>
+     * try (DebugConfigScope s = Debug.disableIntercept()) {
+     *     ...
+     * }
+     * </pre>
+     *
+     * This is particularly useful to suppress extraneous output in JUnit tests that are expected to
+     * throw an exception.
+     */
+    public static DebugConfigScope disableIntercept() {
+        return Debug.setConfig(new DelegatingDebugConfig().disable(INTERCEPT));
     }
 
     /**

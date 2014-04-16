@@ -92,7 +92,7 @@ public class FrameStateAssignmentPhase extends Phase {
         }
 
         @Override
-        protected FrameState afterSplit(AbstractBeginNode node, FrameState oldState) {
+        protected FrameState afterSplit(BeginNode node, FrameState oldState) {
             return oldState;
         }
 

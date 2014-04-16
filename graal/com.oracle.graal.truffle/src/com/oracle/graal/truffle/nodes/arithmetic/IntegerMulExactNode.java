@@ -74,7 +74,7 @@ public class IntegerMulExactNode extends IntegerMulNode implements Canonicalizab
     }
 
     @Override
-    public IntegerExactArithmeticSplitNode createSplit(AbstractBeginNode next, AbstractBeginNode deopt) {
+    public IntegerExactArithmeticSplitNode createSplit(BeginNode next, BeginNode deopt) {
         return graph().add(new IntegerMulExactSplitNode(stamp(), x(), y(), next, deopt));
     }
 

@@ -38,11 +38,7 @@ public interface VMToCompiler {
 
     void shutdownCompiler() throws Exception;
 
-    /**
-     * @param hostedOnly specifies if the Graal compiler is only being used in hosted mode (i.e., it
-     *            will never compile itself)
-     */
-    void startCompiler(boolean bootstrapEnabled, boolean hostedOnly) throws Throwable;
+    void startCompiler(boolean bootstrapEnabled) throws Throwable;
 
     void bootstrap() throws Throwable;
 

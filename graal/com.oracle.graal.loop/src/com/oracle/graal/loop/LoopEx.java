@@ -36,19 +36,19 @@ import com.oracle.graal.nodes.extended.*;
 
 public class LoopEx {
 
-    private final Loop lirLoop;
+    private final Loop<Block> lirLoop;
     private LoopFragmentInside inside;
     private LoopFragmentWhole whole;
     private CountedLoopInfo counted; // TODO (gd) detect
     private LoopsData data;
     private InductionVariables ivs;
 
-    LoopEx(Loop lirLoop, LoopsData data) {
+    LoopEx(Loop<Block> lirLoop, LoopsData data) {
         this.lirLoop = lirLoop;
         this.data = data;
     }
 
-    public Loop lirLoop() {
+    public Loop<Block> lirLoop() {
         return lirLoop;
     }
 
@@ -88,7 +88,7 @@ public class LoopEx {
     }
 
     public LoopBeginNode loopBegin() {
-        return lirLoop().loopBegin();
+        return (LoopBeginNode) lirLoop().header.getBeginNode();
     }
 
     public FixedNode predecessor() {
@@ -123,7 +123,7 @@ public class LoopEx {
         return (isCounted() ? "CountedLoop [" + counted() + "] " : "Loop ") + "(depth=" + lirLoop().depth + ") " + loopBegin();
     }
 
-    private class InvariantPredicate extends NodePredicate {
+    private class InvariantPredicate implements NodePredicate {
 
         @Override
         public boolean apply(Node n) {
@@ -222,9 +222,9 @@ public class LoopEx {
         return data;
     }
 
-    public NodeBitMap nodesInLoopFrom(AbstractBeginNode point, AbstractBeginNode until) {
-        Collection<AbstractBeginNode> blocks = new LinkedList<>();
-        Collection<AbstractBeginNode> exits = new LinkedList<>();
+    public NodeBitMap nodesInLoopFrom(BeginNode point, BeginNode until) {
+        Collection<BeginNode> blocks = new LinkedList<>();
+        Collection<LoopExitNode> exits = new LinkedList<>();
         Queue<Block> work = new LinkedList<>();
         ControlFlowGraph cfg = loopsData().controlFlowGraph();
         work.add(cfg.blockFor(point));
@@ -235,7 +235,7 @@ public class LoopEx {
                 continue;
             }
             if (lirLoop().exits.contains(b)) {
-                exits.add(b.getBeginNode());
+                exits.add((LoopExitNode) b.getBeginNode());
             } else if (lirLoop().blocks.contains(b)) {
                 blocks.add(b.getBeginNode());
                 work.addAll(b.getDominated());

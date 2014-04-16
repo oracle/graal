@@ -30,7 +30,7 @@ import com.oracle.graal.graph.iterators.*;
  * The iterator returned by this iterable can be used to access {@link Position Positions} during
  * iteration using {@link NodeClassIterator#nextPosition()}.
  */
-public abstract class NodeClassIterable extends AbstractNodeIterable<Node> {
+public interface NodeClassIterable extends NodeIterable<Node> {
 
     @Override
     public abstract NodeClassIterator iterator();

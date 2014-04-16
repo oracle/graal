@@ -57,11 +57,11 @@ public class AtomicIntAddAndGetGidTest extends GraalKernelTester {
         // note: the actual order of entries in outArray is not predictable
         // thus we sort before we compare results
         Arrays.sort(outArray);
-        System.out.print("outArray: ");
-        for (int val : outArray) {
-            System.out.print(val + ", ");
-        }
-        System.out.println();
+        // System.out.print("outArray: ");
+        // for (int val : outArray) {
+        // System.out.print(val + ", ");
+        // }
+        // System.out.println();
         // create array of gaps
         gaps[0] = outArray[0] - 0;
         for (int i = 1; i < NUM; i++) {

@@ -284,8 +284,6 @@ public interface CompilerToVM {
 
     Class<?> getJavaMirror(long metaspaceKlass);
 
-    void setNodeClass(Class<?> c, NodeClass nodeClass);
-
     long readUnsafeKlassPointer(Object o);
 
     void doNotInlineOrCompile(long metaspaceMethod);

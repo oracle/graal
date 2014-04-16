@@ -412,7 +412,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool {
         } else if (node instanceof LIRLowerable) {
             ((LIRLowerable) node).generate(this);
         } else if (node instanceof ArithmeticLIRLowerable) {
-            ((ArithmeticLIRLowerable) node).generate(this);
+            ((ArithmeticLIRLowerable) node).generate(this, gen);
         } else {
             throw GraalInternalError.shouldNotReachHere("node is not LIRLowerable: " + node);
         }
@@ -659,7 +659,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool {
         return debugInfoBuilder;
     }
 
-    public void emitOverflowCheckBranch(AbstractBeginNode overflowSuccessor, AbstractBeginNode next, double probability) {
+    public void emitOverflowCheckBranch(BeginNode overflowSuccessor, BeginNode next, double probability) {
         gen.emitOverflowCheckBranch(getLIRBlock(overflowSuccessor), getLIRBlock(next), probability);
     }
 

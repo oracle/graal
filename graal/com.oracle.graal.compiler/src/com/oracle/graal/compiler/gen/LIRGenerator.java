@@ -585,7 +585,7 @@ public abstract class LIRGenerator implements ArithmeticLIRGenerator, LIRGenerat
         return stamp.getPlatformKind(this);
     }
 
-    public PlatformKind getIntegerKind(int bits, boolean unsigned) {
+    public PlatformKind getIntegerKind(int bits) {
         if (bits <= 8) {
             return Kind.Byte;
         } else if (bits <= 16) {

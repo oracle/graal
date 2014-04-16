@@ -22,11 +22,13 @@
  */
 package com.oracle.graal.nodes.cfg;
 
+import java.util.*;
+
 public interface AbstractControlFlowGraph<T extends AbstractBlock<T>> {
 
     T[] getBlocks();
 
-    Loop[] getLoops();
+    Collection<Loop<T>> getLoops();
 
     T getStartBlock();
 }

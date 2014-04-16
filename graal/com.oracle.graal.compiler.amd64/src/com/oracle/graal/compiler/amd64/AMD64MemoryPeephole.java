@@ -81,7 +81,7 @@ public class AMD64MemoryPeephole implements MemoryArithmeticLIRLowerer {
     }
 
     protected AMD64AddressValue makeAddress(Access access) {
-        return (AMD64AddressValue) access.accessLocation().generateAddress(gen, gen.operand(access.object()));
+        return (AMD64AddressValue) access.accessLocation().generateAddress(gen, gen.getLIRGeneratorTool(), gen.operand(access.object()));
     }
 
     protected Value emitBinaryMemory(AMD64Arithmetic op, boolean commutative, ValueNode x, ValueNode y, Access access) {

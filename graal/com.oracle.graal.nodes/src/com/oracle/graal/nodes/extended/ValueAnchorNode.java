@@ -91,7 +91,7 @@ public final class ValueAnchorNode extends FixedWithNextNode implements LIRLower
 
     @Override
     public void virtualize(VirtualizerTool tool) {
-        if (anchored != null && !(anchored instanceof AbstractBeginNode)) {
+        if (anchored != null && !(anchored instanceof BeginNode)) {
             State state = tool.getObjectState(anchored);
             if (state == null || state.getState() != EscapeState.Virtual) {
                 return;

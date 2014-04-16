@@ -92,13 +92,7 @@ public abstract class ValueNode extends ScheduledNode implements StampProvider, 
         return this instanceof ConstantNode;
     }
 
-    private static final NodePredicate IS_CONSTANT = new NodePredicate() {
-
-        @Override
-        public boolean apply(Node n) {
-            return n instanceof ValueNode && ((ValueNode) n).isConstant();
-        }
-    };
+    private static final NodePredicate IS_CONSTANT = node -> node instanceof ConstantNode;
 
     public static NodePredicate isConstantPredicate() {
         return IS_CONSTANT;

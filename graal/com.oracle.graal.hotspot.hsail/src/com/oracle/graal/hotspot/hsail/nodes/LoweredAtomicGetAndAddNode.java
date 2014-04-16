@@ -74,7 +74,7 @@ public class LoweredAtomicGetAndAddNode extends FixedAccessNode implements State
     @Override
     public void generate(NodeLIRBuilderTool gen) {
         HSAILHotSpotNodeLIRBuilder hsailGen = (HSAILHotSpotNodeLIRBuilder) gen;
-        hsailGen.visitAtomicGetAndAdd(this, location().generateAddress(hsailGen, hsailGen.operand(object())));
+        hsailGen.visitAtomicGetAndAdd(this, location().generateAddress(gen, gen.getLIRGeneratorTool(), gen.operand(object())));
     }
 
     @Override

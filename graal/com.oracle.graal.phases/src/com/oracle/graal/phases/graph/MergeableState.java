@@ -58,7 +58,7 @@ public abstract class MergeableState<T> {
      * 
      * @param node the successor of the control split that is about to be visited
      */
-    public void afterSplit(AbstractBeginNode node) {
+    public void afterSplit(BeginNode node) {
         // empty default implementation
     }
 }

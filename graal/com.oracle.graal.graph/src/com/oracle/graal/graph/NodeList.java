@@ -348,42 +348,6 @@ public abstract class NodeList<T extends Node> extends AbstractList<T> implement
     }
 
     @Override
-    public NodeIterable<T> until(final T u) {
-        return new FilteredNodeIterable<>(this).until(u);
-    }
-
-    @Override
-    public NodeIterable<T> until(final Class<? extends T> clazz) {
-        return new FilteredNodeIterable<>(this).until(clazz);
-    }
-
-    @Override
-    @SuppressWarnings("unchecked")
-    public <F extends T> NodeIterable<F> filter(Class<F> clazz) {
-        return (NodeIterable<F>) new FilteredNodeIterable<>(this).and(NodePredicates.isA(clazz));
-    }
-
-    @Override
-    public NodeIterable<T> filterInterface(Class<?> iface) {
-        return new FilteredNodeIterable<>(this).and(NodePredicates.isAInterface(iface));
-    }
-
-    @Override
-    public FilteredNodeIterable<T> filter(NodePredicate predicate) {
-        return new FilteredNodeIterable<>(this).and(predicate);
-    }
-
-    @Override
-    public FilteredNodeIterable<T> nonNull() {
-        return new FilteredNodeIterable<>(this).and(NodePredicates.isNotNull());
-    }
-
-    @Override
-    public NodeIterable<T> distinct() {
-        return new FilteredNodeIterable<>(this).distinct();
-    }
-
-    @Override
     public T first() {
         if (size() > 0) {
             return get(0);

@@ -73,7 +73,7 @@ public final class CompressionNode extends FloatingNode implements LIRLowerable,
                 } else if (input instanceof IntegerStamp) {
                     // compressed metaspace pointer
                     assert PrimitiveStamp.getBits(input) == 64;
-                    return StampFactory.forInteger(32, false);
+                    return StampFactory.forInteger(32);
                 }
                 break;
             case Uncompress:
@@ -84,7 +84,7 @@ public final class CompressionNode extends FloatingNode implements LIRLowerable,
                 } else if (input instanceof IntegerStamp) {
                     // metaspace pointer
                     assert PrimitiveStamp.getBits(input) == 32;
-                    return StampFactory.forInteger(64, false);
+                    return StampFactory.forInteger(64);
                 }
                 break;
         }

@@ -50,13 +50,7 @@ public class NarrowNode extends IntegerConvertNode {
 
     @Override
     public Constant reverse(Constant input) {
-        IntegerStamp stamp = (IntegerStamp) stamp();
-        long result;
-        if (stamp.isUnsigned()) {
-            result = ZeroExtendNode.zeroExtend(input.asLong(), getResultBits());
-        } else {
-            result = SignExtendNode.signExtend(input.asLong(), getResultBits());
-        }
+        long result = SignExtendNode.signExtend(input.asLong(), getResultBits());
         return Constant.forPrimitiveInt(getInputBits(), result);
     }
 
@@ -110,8 +104,8 @@ public class NarrowNode extends IntegerConvertNode {
     }
 
     @Override
-    public void generate(NodeLIRBuilderTool gen) {
-        gen.setResult(this, gen.getLIRGeneratorTool().emitNarrow(gen.operand(getInput()), getResultBits()));
+    public void generate(NodeMappableLIRBuilder builder, ArithmeticLIRGenerator gen) {
+        builder.setResult(this, gen.emitNarrow(builder.operand(getInput()), getResultBits()));
     }
 
     @Override

@@ -26,7 +26,7 @@ import java.util.*;
 
 import com.oracle.graal.graph.*;
 
-public class FilteredNodeIterable<T extends Node> extends AbstractNodeIterable<T> {
+public class FilteredNodeIterable<T extends Node> implements NodeIterable<T> {
 
     protected final NodeIterable<T> nodeIterable;
     protected NodePredicate predicate = NodePredicates.alwaysTrue();

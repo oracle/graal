@@ -685,7 +685,7 @@ public class WriteBarrierVerificationTest extends GraalCompilerTest {
                 }
 
                 @Override
-                protected Boolean afterSplit(AbstractBeginNode node, Boolean oldState) {
+                protected Boolean afterSplit(BeginNode node, Boolean oldState) {
                     return false;
                 }
             };

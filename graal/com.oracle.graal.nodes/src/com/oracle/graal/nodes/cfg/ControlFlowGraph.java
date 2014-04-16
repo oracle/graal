@@ -34,7 +34,7 @@ public class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
 
     private final NodeMap<Block> nodeToBlock;
     private Block[] reversePostOrder;
-    private Loop[] loops;
+    private List<Loop<Block>> loops;
 
     public static ControlFlowGraph compute(StructuredGraph graph, boolean connectBlocks, boolean computeLoops, boolean computeDominators, boolean computePostdominators) {
         ControlFlowGraph cfg = new ControlFlowGraph(graph);
@@ -106,7 +106,7 @@ public class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
         return nodeToBlock.get(node);
     }
 
-    public Loop[] getLoops() {
+    public List<Loop<Block>> getLoops() {
         return loops;
     }
 
@@ -125,7 +125,7 @@ public class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
         Node last;
 
         // assign proxies of a loop exit to this block
-        if (cur instanceof AbstractBeginNode) {
+        if (cur instanceof BeginNode) {
             for (Node usage : cur.usages()) {
                 if (usage instanceof ProxyNode) {
                     nodeToBlock.set(usage, block);
@@ -146,7 +146,7 @@ public class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
 
             last = cur;
             cur = cur.successors().first();
-        } while (cur != null && !(cur instanceof AbstractBeginNode));
+        } while (cur != null && !(cur instanceof BeginNode));
 
         block.endNode = (FixedNode) last;
     }
@@ -154,7 +154,7 @@ public class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
     private void identifyBlocks() {
         // Find all block headers
         int numBlocks = 0;
-        for (AbstractBeginNode begin : graph.getNodes(AbstractBeginNode.class)) {
+        for (BeginNode begin : graph.getNodes(BeginNode.class)) {
             Block block = new Block(begin);
             numBlocks++;
             identifyBlock(block);
@@ -233,12 +233,12 @@ public class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
     }
 
     private void computeLoopInformation() {
-        ArrayList<Loop> loopsList = new ArrayList<>();
+        loops = new ArrayList<>();
         for (Block block : reversePostOrder) {
             Node beginNode = block.getBeginNode();
             if (beginNode instanceof LoopBeginNode) {
-                Loop loop = new Loop(block.getLoop(), loopsList.size(), block);
-                loopsList.add(loop);
+                Loop<Block> loop = new HIRLoop(block.getLoop(), loops.size(), block);
+                loops.add(loop);
 
                 LoopBeginNode loopBegin = (LoopBeginNode) beginNode;
                 for (LoopEndNode end : loopBegin.loopEnds()) {
@@ -256,7 +256,7 @@ public class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
                 for (Block b : loop.blocks) {
                     for (Block sux : b.getSuccessors()) {
                         if (sux.loop != loop) {
-                            AbstractBeginNode begin = sux.getBeginNode();
+                            BeginNode begin = sux.getBeginNode();
                             if (!(begin instanceof LoopExitNode && ((LoopExitNode) begin).loopBegin() == loopBegin)) {
                                 Debug.log("Unexpected loop exit with %s, including whole branch in the loop", sux);
                                 unexpected.add(sux);
@@ -269,10 +269,9 @@ public class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
                 }
             }
         }
-        loops = loopsList.toArray(new Loop[loopsList.size()]);
     }
 
-    private static void addBranchToLoop(Loop l, Block b) {
+    private static void addBranchToLoop(Loop<Block> l, Block b) {
         if (l.blocks.contains(b)) {
             return;
         }
@@ -283,7 +282,7 @@ public class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
         }
     }
 
-    private static void computeLoopBlocks(Block block, Loop loop) {
+    private static void computeLoopBlocks(Block block, Loop<Block> loop) {
         if (block.getLoop() == loop) {
             return;
         }

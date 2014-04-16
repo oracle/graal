@@ -24,11 +24,11 @@ package com.oracle.graal.nodes.cfg;
 
 import java.util.*;
 
-public interface AbstractBlock<T extends AbstractBlock<?>> {
+public interface AbstractBlock<T extends AbstractBlock<T>> {
 
     int getId();
 
-    Loop getLoop();
+    Loop<T> getLoop();
 
     int getLoopDepth();
 

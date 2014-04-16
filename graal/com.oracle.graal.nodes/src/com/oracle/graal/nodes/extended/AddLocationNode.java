@@ -107,9 +107,9 @@ public final class AddLocationNode extends LocationNode implements Canonicalizab
     }
 
     @Override
-    public Value generateAddress(NodeLIRBuilderTool gen, Value base) {
-        Value xAddr = getX().generateAddress(gen, base);
-        return getY().generateAddress(gen, xAddr);
+    public Value generateAddress(NodeMappableLIRBuilder builder, LIRGeneratorTool gen, Value base) {
+        Value xAddr = getX().generateAddress(builder, gen, base);
+        return getY().generateAddress(builder, gen, xAddr);
     }
 
     @NodeIntrinsic

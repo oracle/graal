@@ -29,7 +29,6 @@ import com.oracle.graal.graph.Graph.DuplicationReplacement;
 import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.VirtualState.NodeClosure;
-import com.oracle.graal.nodes.util.*;
 
 public class LoopFragmentInside extends LoopFragment {
 
@@ -88,18 +87,13 @@ public class LoopFragmentInside extends LoopFragment {
 
         patchNodes(dataFixBefore);
 
-        AbstractBeginNode end = mergeEnds();
-
-        original().patchPeeling(this);
+        BeginNode end = mergeEnds();
 
         mergeEarlyExits();
 
-        AbstractBeginNode entry = getDuplicatedNode(loop.loopBegin());
-        FrameState state = entry.stateAfter();
-        if (state != null) {
-            entry.setStateAfter(null);
-            GraphUtil.killWithUnusedFloatingInputs(state);
-        }
+        original().patchPeeling(this);
+
+        BeginNode entry = getDuplicatedNode(loop.loopBegin());
         loop.entryPoint().replaceAtPredecessor(entry);
         end.setNext(loop.entryPoint());
     }
@@ -111,11 +105,25 @@ public class LoopFragmentInside extends LoopFragment {
             whole.nodes(); // init nodes bitmap in whole
             nodes = whole.nodes.copy();
             // remove the phis
-            for (PhiNode phi : loop().loopBegin().phis()) {
+            LoopBeginNode loopBegin = loop().loopBegin();
+            for (PhiNode phi : loopBegin.phis()) {
                 nodes.clear(phi);
+            }
+            for (LoopExitNode exit : exits()) {
+                FrameState exitState = exit.stateAfter();
+                if (exitState != null) {
+                    exitState.applyToVirtual(v -> nodes.clear(v));
+                }
+                for (ProxyNode proxy : exit.proxies()) {
+                    nodes.clear(proxy);
+                }
             }
         }
         return nodes;
+    }
+
+    public NodeIterable<LoopExitNode> exits() {
+        return loop().loopBegin().loopExits();
     }
 
     @Override
@@ -183,7 +191,22 @@ public class LoopFragmentInside extends LoopFragment {
         LoopBeginNode loopBegin = loop().loopBegin();
         StructuredGraph graph = loopBegin.graph();
         List<PhiNode> newPhis = new LinkedList<>();
+
+        NodeBitMap usagesToPatch = nodes.copy();
+        for (LoopExitNode exit : exits()) {
+            FrameState exitState = exit.stateAfter();
+            if (exitState != null) {
+                exitState.applyToVirtual(v -> usagesToPatch.mark(v));
+            }
+            for (ProxyNode proxy : exit.proxies()) {
+                usagesToPatch.mark(proxy);
+            }
+        }
+
         for (PhiNode phi : loopBegin.phis().snapshot()) {
+            if (phi.usages().isEmpty()) {
+                continue;
+            }
             ValueNode first;
             if (loopBegin.loopEnds().count() == 1) {
                 ValueNode b = phi.valueAt(loopBegin.loopEnds().first()); // back edge value
@@ -201,9 +224,8 @@ public class LoopFragmentInside extends LoopFragment {
             peel.putDuplicatedNode(phi, newPhi);
             newPhis.add(newPhi);
             for (Node usage : phi.usages().snapshot()) {
-                if (peel.getDuplicatedNode(usage) != null) { // patch only usages that should use
-                                                             // the new phi ie usages that were
-                                                             // peeled
+                // patch only usages that should use the new phi ie usages that were peeled
+                if (usagesToPatch.isMarked(usage)) {
                     usage.replaceFirstInput(phi, newPhi);
                 }
             }
@@ -229,7 +251,8 @@ public class LoopFragmentInside extends LoopFragment {
      * @param b original value
      * @return corresponding value in the peel
      */
-    private ValueNode prim(ValueNode b) {
+    @Override
+    protected ValueNode prim(ValueNode b) {
         assert isDuplicate();
         LoopBeginNode loopBegin = original().loop().loopBegin();
         if (loopBegin.isPhiAtMerge(b)) {
@@ -246,7 +269,7 @@ public class LoopFragmentInside extends LoopFragment {
         }
     }
 
-    private AbstractBeginNode mergeEnds() {
+    private BeginNode mergeEnds() {
         assert isDuplicate();
         List<AbstractEndNode> endsToMerge = new LinkedList<>();
         Map<AbstractEndNode, LoopEndNode> reverseEnds = new HashMap<>(); // map peel's exit to the
@@ -260,7 +283,7 @@ public class LoopFragmentInside extends LoopFragment {
             }
         }
         mergedInitializers = new IdentityHashMap<>();
-        AbstractBeginNode newExit;
+        BeginNode newExit;
         StructuredGraph graph = graph();
         if (endsToMerge.size() == 1) {
             AbstractEndNode end = endsToMerge.get(0);
@@ -283,6 +306,9 @@ public class LoopFragmentInside extends LoopFragment {
             }
 
             for (final PhiNode phi : loopBegin.phis().snapshot()) {
+                if (phi.usages().isEmpty()) {
+                    continue;
+                }
                 final PhiNode firstPhi = patchPhi(graph, phi, newExitMerge);
                 for (AbstractEndNode end : newExitMerge.forwardEnds()) {
                     LoopEndNode loopEnd = reverseEnds.get(end);

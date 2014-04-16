@@ -152,7 +152,7 @@ public final class SchedulePhase extends Phase {
         }
 
         @Override
-        protected List<KillSet> processLoop(Loop loop, KillSet state) {
+        protected List<KillSet> processLoop(Loop<Block> loop, KillSet state) {
             LoopInfo<KillSet> info = ReentrantBlockIterator.processLoop(this, loop, cloneState(state));
 
             assert loop.header.getBeginNode() instanceof LoopBeginNode;
@@ -201,7 +201,7 @@ public final class SchedulePhase extends Phase {
             }
         }
 
-        AbstractBeginNode startNode = cfg.getStartBlock().getBeginNode();
+        BeginNode startNode = cfg.getStartBlock().getBeginNode();
         assert startNode instanceof StartNode;
 
         KillSet accm = foundExcludeNode ? set : excludedLocations;
@@ -649,7 +649,7 @@ public final class SchedulePhase extends Phase {
          * implies that the inputs' blocks have a total ordering via their dominance relation. So in
          * order to find the earliest block placement for this node we need to find the input block
          * that is dominated by all other input blocks.
-         * 
+         *
          * While iterating over the inputs a set of dominator blocks of the current earliest
          * placement is maintained. When the block of an input is not within this set, it becomes
          * the current earliest placement and the list of dominator blocks is updated.
@@ -753,7 +753,7 @@ public final class SchedulePhase extends Phase {
                     // If a FrameState is an outer FrameState this method behaves as if the inner
                     // FrameState was the actual usage, by recursing.
                     blocksForUsage(node, unscheduledUsage, closure, strategy);
-                } else if (unscheduledUsage instanceof AbstractBeginNode) {
+                } else if (unscheduledUsage instanceof BeginNode) {
                     // Only FrameStates can be connected to BeginNodes.
                     if (!(usage instanceof FrameState)) {
                         throw new SchedulingError(usage.toString());
@@ -1047,7 +1047,7 @@ public final class SchedulePhase extends Phase {
                 }
             }
 
-            if (instruction instanceof AbstractBeginNode) {
+            if (instruction instanceof BeginNode) {
                 ArrayList<ProxyNode> proxies = (instruction instanceof LoopExitNode) ? new ArrayList<>() : null;
                 for (ScheduledNode inBlock : blockToNodesMap.get(b)) {
                     if (!visited.isMarked(inBlock)) {

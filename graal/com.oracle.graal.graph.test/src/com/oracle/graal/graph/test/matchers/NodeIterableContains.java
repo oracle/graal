@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,31 +20,34 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.bridge;
+package com.oracle.graal.graph.test.matchers;
+
+import org.hamcrest.*;
 
 import com.oracle.graal.graph.*;
-import com.oracle.graal.hotspot.replacements.*;
+import com.oracle.graal.graph.iterators.*;
 
-/**
- * Updates the {@code InstanceKlass::_graal_node_class} field when a {@link NodeClass} is created so
- * that the {@link HotSpotNodeClassSubstitutions} and {@link HotSpotNodeSubstitutions}
- * intrinsifications can read it.
- */
-class FastNodeClassRegistry extends NodeClass.Registry {
+public class NodeIterableContains<T extends Node> extends TypeSafeDiagnosingMatcher<NodeIterable<T>> {
+    private T node;
 
-    private final CompilerToVM vm;
-
-    public FastNodeClassRegistry(CompilerToVM vm) {
-        this.vm = vm;
+    public NodeIterableContains(T node) {
+        this.node = node;
     }
 
-    @SuppressWarnings("unused")
-    static void initialize(CompilerToVM vm) {
-        new FastNodeClassRegistry(vm);
+    public void describeTo(Description description) {
+        description.appendText("is a NodeIterable containing").appendValue(node);
+    }
+
+    public static <T extends Node> NodeIterableContains<T> contains(T node) {
+        return new NodeIterableContains<>(node);
+    }
+
+    public static <T extends Node> NodeIterableContains<T> d(T node) {
+        return new NodeIterableContains<>(node);
     }
 
     @Override
-    protected void registered(Class<? extends Node> key, NodeClass value) {
-        vm.setNodeClass(key, value);
+    protected boolean matchesSafely(NodeIterable<T> iterable, Description description) {
+        return iterable.contains(node);
     }
 }

@@ -57,7 +57,7 @@ public class BaselineBytecodeParser extends AbstractBytecodeParser<Value, LIRFra
     private LocalLiveness liveness;
     private BciBlockBitMap blockVisited;
 
-    private class BciBlockBitMap {
+    private static class BciBlockBitMap {
         BitSet bitSet;
 
         public BciBlockBitMap(BciBlockMapping blockMap) {
@@ -121,7 +121,7 @@ public class BaselineBytecodeParser extends AbstractBytecodeParser<Value, LIRFra
             // add loops ? how do we add looks when we haven't parsed the bytecode?
 
             // create the control flow graph
-            LIRControlFlowGraph cfg = new LIRControlFlowGraph(blockMap.blocks.toArray(new BciBlock[0]), new Loop[0]);
+            LIRControlFlowGraph cfg = new LIRControlFlowGraph(blockMap);
 
             BlocksToDoubles blockProbabilities = new BlocksToDoubles(blockMap.blocks.size());
             for (BciBlock b : blockMap.blocks) {
@@ -261,8 +261,7 @@ public class BaselineBytecodeParser extends AbstractBytecodeParser<Value, LIRFra
 
     @Override
     protected Value genIntegerMul(Kind kind, Value x, Value y) {
-        // TODO Auto-generated method stub
-        throw GraalInternalError.unimplemented("Auto-generated method stub");
+        return gen.emitMul(x, y);
     }
 
     @Override
@@ -584,9 +583,9 @@ public class BaselineBytecodeParser extends AbstractBytecodeParser<Value, LIRFra
         return v;
     }
 
-    private void createTarget(BciBlock block, LIRFrameStateBuilder state) {
-        assert block != null && state != null;
-        assert !block.isExceptionEntry || state.stackSize() == 1;
+    private void createTarget(BciBlock block) {
+        assert block != null && frameState != null;
+        assert !block.isExceptionEntry || frameState.stackSize() == 1;
 
         if (!blockVisited.get(block)) {
             /*
@@ -594,7 +593,14 @@ public class BaselineBytecodeParser extends AbstractBytecodeParser<Value, LIRFra
              * placeholder that later can be replaced with a MergeNode when we see this block again.
              */
             blockVisited.set(block);
-            block.entryState = state.copy();
+            if (block.getPredecessorCount() > 1) {
+                /*
+                 * If there are more than one predecessors we have to ensure that we are not passing
+                 * constants to the new framestate otherwise we will get interfacing problems.
+                 */
+                moveConstantsToVariables();
+            }
+            block.entryState = frameState.copy();
             block.entryState.clearNonLiveLocals(block, liveness, true);
 
             Debug.log("createTarget %s: first visit", block);
@@ -602,12 +608,17 @@ public class BaselineBytecodeParser extends AbstractBytecodeParser<Value, LIRFra
         }
 
         // We already saw this block before, so we have to merge states.
-        if (!((LIRFrameStateBuilder) block.entryState).isCompatibleWith(state)) {
+        if (!((LIRFrameStateBuilder) block.entryState).isCompatibleWith(frameState)) {
             throw new BailoutException("stacks do not match; bytecodes would not verify");
         }
 
         if (block.isLoopHeader) {
-            assert currentBlock.getId() >= block.getId() : "must be backward branch";
+            assert currentBlock == null || currentBlock.getId() >= block.getId() : "must be backward branch";
+            if (currentBlock != null && currentBlock.numNormalSuccessors() == 1) {
+                // this is the only successor of the current block so we can adjust
+                adaptFramestate((LIRFrameStateBuilder) block.entryState);
+                return;
+            }
             GraalInternalError.unimplemented("Loops not yet supported");
         }
         assert currentBlock == null || currentBlock.getId() < block.getId() : "must not be backward branch";
@@ -629,30 +640,54 @@ public class BaselineBytecodeParser extends AbstractBytecodeParser<Value, LIRFra
         Debug.log("createTarget %s: merging state", block);
     }
 
-    private void adaptValues(Value dst, Value src) {
+    private void moveConstantsToVariables() {
+        Debug.log("moveConstantsToVariables: framestate before: %s", frameState);
+        for (int i = 0; i < frameState.stackSize(); i++) {
+            Value src = frameState.stackAt(i);
+            if (src instanceof Constant) {
+                AllocatableValue dst = gen.newVariable(src.getPlatformKind());
+                gen.emitMove(dst, src);
+                frameState.storeStack(i, dst);
+                Debug.log("introduce new variabe %s for stackslot %d (end of block %s", dst, i, currentBlock);
+            }
+        }
+        for (int i = 0; i < frameState.localsSize(); i++) {
+            Value src = frameState.localAt(i);
+            if (src instanceof Constant) {
+                AllocatableValue dst = gen.newVariable(src.getPlatformKind());
+                gen.emitMove(dst, src);
+                frameState.storeLocal(i, dst);
+                Debug.log("introduce new variabe %s for local %d (end of block %s", dst, i, currentBlock);
+            }
+        }
+        Debug.log("moveConstantsToVariables: framestate after: %s", frameState);
+    }
+
+    private static void adaptValues(Value dst, Value src, PhiResolver resolver) {
         if (dst == null) {
             return;
         }
         assert src != null : "Source is null but Destination is not!";
 
         if (!dst.equals(src)) {
-            assert dst instanceof AllocatableValue;
-            gen.emitMove((AllocatableValue) dst, src);
+            resolver.move(dst, src);
         }
     }
 
     private void adaptFramestate(LIRFrameStateBuilder other) {
         assert frameState.isCompatibleWith(other) : "framestates not compatible!";
+        PhiResolver resolver = new PhiResolver(gen);
         for (int i = 0; i < frameState.stackSize(); i++) {
             Value src = frameState.stackAt(i);
             Value dst = other.stackAt(i);
-            adaptValues(dst, src);
+            adaptValues(dst, src, resolver);
         }
         for (int i = 0; i < frameState.localsSize(); i++) {
             Value src = frameState.localAt(i);
             Value dst = other.localAt(i);
-            adaptValues(dst, src);
+            adaptValues(dst, src, resolver);
         }
+        resolver.dispose();
     }
 
     @Override
@@ -682,6 +717,14 @@ public class BaselineBytecodeParser extends AbstractBytecodeParser<Value, LIRFra
             assert block.getPredecessorCount() > 0;
         }
 
+        if (block.isLoopHeader) {
+            /*
+             * We need to preserve the frame state builder of the loop header so that we can merge
+             * values for phi functions, so make a copy of it.
+             */
+            block.entryState = frameState.copy();
+
+        }
         int endBCI = stream.endBCI();
 
         stream.setBCI(block.startBci);
@@ -725,7 +768,7 @@ public class BaselineBytecodeParser extends AbstractBytecodeParser<Value, LIRFra
     }
 
     LabelRef getSuccessor(int index) {
-        createTarget(currentBlock.getSuccessor(index), frameState);
+        createTarget(currentBlock.getSuccessor(index));
         return LabelRef.forSuccessor(lirGenRes.getLIR(), currentBlock, index);
     }
 

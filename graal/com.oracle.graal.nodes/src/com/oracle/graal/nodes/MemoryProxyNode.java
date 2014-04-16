@@ -34,7 +34,7 @@ public class MemoryProxyNode extends ProxyNode implements MemoryProxy, LIRLowera
     @Input(InputType.Memory) private MemoryNode value;
     private final LocationIdentity identity;
 
-    public MemoryProxyNode(MemoryNode value, AbstractBeginNode exit, LocationIdentity identity) {
+    public MemoryProxyNode(MemoryNode value, BeginNode exit, LocationIdentity identity) {
         super(StampFactory.forVoid(), exit);
         this.value = value;
         this.identity = identity;

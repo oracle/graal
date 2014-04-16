@@ -29,7 +29,7 @@ import com.oracle.graal.api.meta.*;
  */
 public interface LIRTypeTool {
 
-    PlatformKind getIntegerKind(int bits, boolean unsigned);
+    PlatformKind getIntegerKind(int bits);
 
     PlatformKind getFloatingKind(int bits);
 

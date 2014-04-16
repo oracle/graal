@@ -29,7 +29,7 @@ import com.oracle.graal.nodes.type.*;
 
 public class IntegerSubExactSplitNode extends IntegerExactArithmeticSplitNode {
 
-    public IntegerSubExactSplitNode(Stamp stamp, ValueNode x, ValueNode y, AbstractBeginNode next, AbstractBeginNode overflowSuccessor) {
+    public IntegerSubExactSplitNode(Stamp stamp, ValueNode x, ValueNode y, BeginNode next, BeginNode overflowSuccessor) {
         super(stamp, x, y, next, overflowSuccessor);
     }
 

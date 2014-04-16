@@ -34,7 +34,7 @@ public class LIRBlock extends AbstractBlockBase<LIRBlock> {
         successors = Collections.emptyList();
     }
 
-    public Loop getLoop() {
+    public Loop<LIRBlock> getLoop() {
         // TODO Auto-generated method stub
         return null;
     }

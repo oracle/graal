@@ -259,7 +259,7 @@ public class HIRFrameStateBuilder extends AbstractFrameStateBuilder<ValueNode, H
         }
     }
 
-    public void insertProxies(AbstractBeginNode begin) {
+    public void insertProxies(BeginNode begin) {
         for (int i = 0; i < localsSize(); i++) {
             ValueNode value = localAt(i);
             if (value != null) {
