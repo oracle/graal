@@ -31,6 +31,7 @@ import java.util.*;
 import java.util.Map.Entry;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.cfg.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.NodeClass.Position;
 import com.oracle.graal.nodes.*;

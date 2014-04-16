@@ -27,6 +27,8 @@ import static com.oracle.graal.api.code.CodeUtil.*;
 import static com.oracle.graal.api.code.ValueUtil.*;
 import static com.oracle.graal.api.meta.LocationIdentity.*;
 import static com.oracle.graal.compiler.GraalCompiler.*;
+import static com.oracle.graal.hotspot.hsail.HSAILHotSpotBackend.Options.*;
+import static com.oracle.graal.hotspot.hsail.replacements.HSAILNewObjectSnippets.Options.*;
 
 import java.lang.reflect.*;
 import java.util.*;
@@ -44,6 +46,7 @@ import com.oracle.graal.api.code.CompilationResult.Mark;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
 import com.oracle.graal.asm.hsail.*;
+import com.oracle.graal.cfg.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
@@ -58,10 +61,9 @@ import com.oracle.graal.java.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.hsail.*;
-import com.oracle.graal.lir.hsail.HSAILMove.AtomicGetAndAddOp;
 import com.oracle.graal.lir.hsail.HSAILControlFlow.DeoptimizeOp;
+import com.oracle.graal.lir.hsail.HSAILMove.AtomicGetAndAddOp;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.StructuredGraph.GuardsStage;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
@@ -70,9 +72,6 @@ import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.options.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.tiers.*;
-
-import static com.oracle.graal.hotspot.hsail.HSAILHotSpotBackend.Options.*;
-import static com.oracle.graal.hotspot.hsail.replacements.HSAILNewObjectSnippets.Options.*;
 
 /**
  * HSAIL specific backend.

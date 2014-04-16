@@ -24,10 +24,10 @@ package com.oracle.graal.baseline;
 
 import java.util.*;
 
+import com.oracle.graal.cfg.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.java.BciBlockMapping.BciBlock;
-import com.oracle.graal.nodes.cfg.*;
 
 public class LIRControlFlowGraph implements AbstractControlFlowGraph<BciBlock> {
 

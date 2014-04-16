@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,15 +20,22 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes.cfg;
+package com.oracle.graal.cfg;
 
-import java.util.*;
+public class BlockMap<T> {
 
-public interface AbstractControlFlowGraph<T extends AbstractBlock<T>> {
+    private final T[] data;
 
-    T[] getBlocks();
+    @SuppressWarnings("unchecked")
+    public BlockMap(AbstractControlFlowGraph<?> cfg) {
+        data = (T[]) new Object[cfg.getBlocks().length];
+    }
 
-    Collection<Loop<T>> getLoops();
+    public T get(AbstractBlock<?> block) {
+        return data[block.getId()];
+    }
 
-    T getStartBlock();
+    public void put(AbstractBlock<?> block, T value) {
+        data[block.getId()] = value;
+    }
 }

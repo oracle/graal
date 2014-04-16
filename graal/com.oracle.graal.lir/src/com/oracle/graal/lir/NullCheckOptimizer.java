@@ -24,9 +24,9 @@ package com.oracle.graal.lir;
 
 import java.util.*;
 
+import com.oracle.graal.cfg.*;
 import com.oracle.graal.lir.StandardOp.ImplicitNullCheck;
 import com.oracle.graal.lir.StandardOp.NullCheck;
-import com.oracle.graal.nodes.cfg.*;
 
 public final class NullCheckOptimizer {
 

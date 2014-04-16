@@ -23,8 +23,8 @@
 
 package com.oracle.graal.baseline;
 
+import com.oracle.graal.cfg.*;
 import com.oracle.graal.java.BciBlockMapping.BciBlock;
-import com.oracle.graal.nodes.cfg.*;
 
 public class LIRLoop extends Loop<BciBlock> {
 
