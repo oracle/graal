@@ -24,38 +24,13 @@
  */
 package com.oracle.truffle.api;
 
-import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
 
 /**
  * Represents the target of a call to a {@link RootNode}, i.e., to another tree of nodes. Instances
  * of this class can be created using {@link TruffleRuntime#createCallTarget(RootNode)}.
  */
-public abstract class RootCallTarget implements CallTarget {
+public interface RootCallTarget extends CallTarget {
 
-    private final RootNode rootNode;
-
-    public RootCallTarget(RootNode function) {
-        this.rootNode = function;
-        this.rootNode.adoptChildren();
-        this.rootNode.setCallTarget(this);
-    }
-
-    @Override
-    public String toString() {
-        return rootNode.toString();
-    }
-
-    public final RootNode getRootNode() {
-        return rootNode;
-    }
-
-    protected final Object callProxy(VirtualFrame frame) {
-        try {
-            return getRootNode().execute(frame);
-        } finally {
-            // this assertion is needed to keep the values from being cleared as non-live locals
-            assert frame != null && this != null;
-        }
-    }
+    RootNode getRootNode();
 }
