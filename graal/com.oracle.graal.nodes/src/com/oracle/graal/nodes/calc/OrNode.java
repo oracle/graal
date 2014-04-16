@@ -73,8 +73,8 @@ public final class OrNode extends BitLogicNode implements Canonicalizable {
     }
 
     @Override
-    public void generate(NodeLIRBuilderTool gen) {
-        gen.setResult(this, gen.getLIRGeneratorTool().emitOr(gen.operand(x()), gen.operand(y())));
+    public void generate(NodeMappableLIRBuilder builder, ArithmeticLIRGenerator gen) {
+        builder.setResult(this, gen.emitOr(builder.operand(x()), builder.operand(y())));
     }
 
     @Override

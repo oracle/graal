@@ -53,7 +53,7 @@ public final class NotNode extends FloatingNode implements Canonicalizable, Arit
 
     /**
      * Creates new NegateNode instance.
-     * 
+     *
      * @param x the instruction producing the value that is input to this instruction
      */
     public NotNode(ValueNode x) {
@@ -73,7 +73,7 @@ public final class NotNode extends FloatingNode implements Canonicalizable, Arit
     }
 
     @Override
-    public void generate(NodeLIRBuilderTool gen) {
-        gen.setResult(this, gen.getLIRGeneratorTool().emitNot(gen.operand(x())));
+    public void generate(NodeMappableLIRBuilder builder, ArithmeticLIRGenerator gen) {
+        builder.setResult(this, gen.emitNot(builder.operand(x())));
     }
 }

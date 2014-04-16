@@ -47,7 +47,7 @@ public final class NegateNode extends FloatingNode implements Canonicalizable, A
 
     /**
      * Creates new NegateNode instance.
-     * 
+     *
      * @param x the instruction producing the value that is input to this instruction
      */
     public NegateNode(ValueNode x) {
@@ -88,7 +88,7 @@ public final class NegateNode extends FloatingNode implements Canonicalizable, A
     }
 
     @Override
-    public void generate(NodeLIRBuilderTool gen) {
-        gen.setResult(this, gen.getLIRGeneratorTool().emitNegate(gen.operand(x())));
+    public void generate(NodeMappableLIRBuilder builder, ArithmeticLIRGenerator gen) {
+        builder.setResult(this, gen.emitNegate(builder.operand(x())));
     }
 }

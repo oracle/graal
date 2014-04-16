@@ -57,8 +57,8 @@ public final class FloatRemNode extends FloatArithmeticNode implements Canonical
     }
 
     @Override
-    public void generate(NodeLIRBuilderTool gen) {
-        gen.setResult(this, gen.getLIRGeneratorTool().emitRem(gen.operand(x()), gen.operand(y()), null));
+    public void generate(NodeMappableLIRBuilder builder, ArithmeticLIRGenerator gen) {
+        builder.setResult(this, gen.emitRem(builder.operand(x()), builder.operand(y()), null));
     }
 
     @Override

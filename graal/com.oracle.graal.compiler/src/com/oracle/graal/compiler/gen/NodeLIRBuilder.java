@@ -422,7 +422,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool {
         } else if (node instanceof LIRLowerable) {
             ((LIRLowerable) node).generate(this);
         } else if (node instanceof ArithmeticLIRLowerable) {
-            ((ArithmeticLIRLowerable) node).generate(this);
+            ((ArithmeticLIRLowerable) node).generate(this, gen);
         } else {
             throw GraalInternalError.shouldNotReachHere("node is not LIRLowerable: " + node);
         }

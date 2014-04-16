@@ -92,7 +92,7 @@ public final class LeftShiftNode extends ShiftNode implements Canonicalizable {
     }
 
     @Override
-    public void generate(NodeLIRBuilderTool gen) {
-        gen.setResult(this, gen.getLIRGeneratorTool().emitShl(gen.operand(x()), gen.operand(y())));
+    public void generate(NodeMappableLIRBuilder builder, ArithmeticLIRGenerator gen) {
+        builder.setResult(this, gen.emitShl(builder.operand(x()), builder.operand(y())));
     }
 }

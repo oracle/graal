@@ -73,7 +73,7 @@ public class LoweredCompareAndSwapNode extends FixedAccessNode implements StateS
 
     @Override
     public void generate(NodeLIRBuilderTool gen) {
-        gen.visitCompareAndSwap(this, location().generateAddress(gen, gen.operand(object())));
+        gen.visitCompareAndSwap(this, location().generateAddress(gen, gen.getLIRGeneratorTool(), gen.operand(object())));
     }
 
     public MemoryCheckpoint asMemoryCheckpoint() {
