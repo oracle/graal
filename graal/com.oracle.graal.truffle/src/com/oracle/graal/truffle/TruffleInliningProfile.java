@@ -24,14 +24,96 @@ package com.oracle.graal.truffle;
 
 import java.util.*;
 
-public interface TruffleInliningProfile extends Comparable<TruffleInliningProfile> {
+public class TruffleInliningProfile {
 
-    OptimizedCallNode getCallNode();
+    private final OptimizedDirectCallNode callNode;
+    private final int nodeCount;
+    private final int deepNodeCount;
+    private final int callSites;
+    private final double frequency;
+    private final boolean forced;
+    private final boolean recursiveCall;
+    private final TruffleInliningResult recursiveResult;
 
-    boolean isInliningAllowed();
+    private String failedReason;
+    private int queryIndex = -1;
+    private double score;
 
-    int compareTo(TruffleInliningProfile o);
+    public TruffleInliningProfile(OptimizedDirectCallNode callNode, int callSites, int nodeCount, int deepNodeCount, double frequency, boolean forced, boolean recursiveCall,
+                    TruffleInliningResult recursiveResult) {
+        this.callNode = callNode;
+        this.callSites = callSites;
+        this.nodeCount = nodeCount;
+        this.deepNodeCount = deepNodeCount;
+        this.frequency = frequency;
+        this.recursiveCall = recursiveCall;
+        this.forced = forced;
+        this.recursiveResult = recursiveResult;
+    }
 
-    Map<String, Object> getDebugProperties();
+    public boolean isRecursiveCall() {
+        return recursiveCall;
+    }
 
+    public OptimizedDirectCallNode getCallNode() {
+        return callNode;
+    }
+
+    public int getCallSites() {
+        return callSites;
+    }
+
+    public int getNodeCount() {
+        return nodeCount;
+    }
+
+    public TruffleInliningResult getRecursiveResult() {
+        return recursiveResult;
+    }
+
+    public void setScore(double score) {
+        this.score = score;
+    }
+
+    public double getScore() {
+        return score;
+    }
+
+    public String getFailedReason() {
+        return failedReason;
+    }
+
+    public void setQueryIndex(int queryIndex) {
+        this.queryIndex = queryIndex;
+    }
+
+    public int getQueryIndex() {
+        return queryIndex;
+    }
+
+    public void setFailedReason(String reason) {
+        this.failedReason = reason;
+    }
+
+    public boolean isForced() {
+        return forced;
+    }
+
+    public double getFrequency() {
+        return frequency;
+    }
+
+    public int getDeepNodeCount() {
+        return deepNodeCount;
+    }
+
+    public Map<String, Object> getDebugProperties() {
+        Map<String, Object> properties = new LinkedHashMap<>();
+        properties.put("nodeCount", String.format("%5d/%5d", deepNodeCount, nodeCount));
+        properties.put("frequency", frequency);
+        properties.put("score", String.format("%8.4f", getScore()));
+        properties.put(String.format("index=%3d, force=%s, callSites=%2d", queryIndex, (forced ? "Y" : "N"), callSites), "");
+        properties.put("reason", failedReason);
+        return properties;
+    }
 }

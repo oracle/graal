@@ -38,7 +38,7 @@ public class TestMetaAccessProvider extends TypeUniverse {
 
     @Test
     public void lookupJavaTypeTest() {
-        for (Class c : classes) {
+        for (Class<?> c : classes) {
             ResolvedJavaType type = metaAccess.lookupJavaType(c);
             assertNotNull(type);
             assertEquals(c.getModifiers(), type.getModifiers());
@@ -51,7 +51,7 @@ public class TestMetaAccessProvider extends TypeUniverse {
 
     @Test
     public void lookupJavaMethodTest() {
-        for (Class c : classes) {
+        for (Class<?> c : classes) {
             for (Method reflect : c.getDeclaredMethods()) {
                 ResolvedJavaMethod method = metaAccess.lookupJavaMethod(reflect);
                 assertNotNull(method);
@@ -65,7 +65,7 @@ public class TestMetaAccessProvider extends TypeUniverse {
 
     @Test
     public void lookupJavaFieldTest() {
-        for (Class c : classes) {
+        for (Class<?> c : classes) {
             for (Field reflect : c.getDeclaredFields()) {
                 ResolvedJavaField field = metaAccess.lookupJavaField(reflect);
                 assertNotNull(field);
@@ -81,39 +81,12 @@ public class TestMetaAccessProvider extends TypeUniverse {
     public void lookupJavaTypeConstantTest() {
         for (Constant c : constants) {
             if (c.getKind() == Kind.Object && !c.isNull()) {
-                Object o = c.asObject();
+                Object o = snippetReflection.asObject(c);
                 ResolvedJavaType type = metaAccess.lookupJavaType(c);
                 assertNotNull(type);
                 assertTrue(type.equals(metaAccess.lookupJavaType(o.getClass())));
             } else {
                 assertEquals(metaAccess.lookupJavaType(c), null);
-            }
-        }
-    }
-
-    @Test
-    public void constantEqualsTest() {
-        for (Constant c1 : constants) {
-            for (Constant c2 : constants) {
-                // test symmetry
-                assertEquals(constantReflection.constantEquals(c1, c2), constantReflection.constantEquals(c2, c1));
-                if (c1.getKind() != Kind.Object && c2.getKind() != Kind.Object) {
-                    assertEquals(c1.equals(c2), constantReflection.constantEquals(c2, c1));
-                }
-            }
-        }
-    }
-
-    @Test
-    public void lookupArrayLengthTest() {
-        for (Constant c : constants) {
-            Integer actual = constantReflection.lookupArrayLength(c);
-            if (c.getKind() != Kind.Object || c.isNull() || !c.asObject().getClass().isArray()) {
-                assertNull(actual);
-            } else {
-                assertNotNull(actual);
-                int actualInt = actual;
-                assertEquals(Array.getLength(c.asObject()), actualInt);
             }
         }
     }

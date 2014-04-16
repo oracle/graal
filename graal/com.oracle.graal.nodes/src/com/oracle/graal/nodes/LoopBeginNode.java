@@ -38,7 +38,7 @@ public class LoopBeginNode extends MergeNode implements IterableNodeType, LIRLow
     private double loopFrequency;
     private int nextEndIndex;
     private int unswitches;
-    @Input private GuardingNode overflowGuard;
+    @Input(InputType.Guard) private GuardingNode overflowGuard;
 
     public LoopBeginNode() {
         loopFrequency = 1;
@@ -57,7 +57,7 @@ public class LoopBeginNode extends MergeNode implements IterableNodeType, LIRLow
      * Returns the <b>unordered</b> set of {@link LoopEndNode} that correspond to back-edges for
      * this loop. The order of the back-edges is unspecified, if you need to get an ordering
      * compatible for {@link PhiNode} creation, use {@link #orderedLoopEnds()}.
-     * 
+     *
      * @return the set of {@code LoopEndNode} that correspond to back-edges for this loop
      */
     public NodeIterable<LoopEndNode> loopEnds() {
@@ -77,7 +77,7 @@ public class LoopBeginNode extends MergeNode implements IterableNodeType, LIRLow
      * Returns the set of {@link LoopEndNode} that correspond to back-edges for this loop, ordered
      * in increasing {@link #phiPredecessorIndex}. This method is suited to create new loop
      * {@link PhiNode}.
-     * 
+     *
      * @return the set of {@code LoopEndNode} that correspond to back-edges for this loop
      */
     public List<LoopEndNode> orderedLoopEnds() {
@@ -198,7 +198,7 @@ public class LoopBeginNode extends MergeNode implements IterableNodeType, LIRLow
     }
 
     public void setOverflowGuard(GuardingNode overflowGuard) {
-        updateUsages(this.overflowGuard == null ? null : this.overflowGuard.asNode(), overflowGuard == null ? null : overflowGuard.asNode());
+        updateUsagesInterface(this.overflowGuard, overflowGuard);
         this.overflowGuard = overflowGuard;
     }
 }

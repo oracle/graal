@@ -24,10 +24,10 @@ package com.oracle.graal.jtt.jdk;
 
 import java.lang.reflect.*;
 
-import com.oracle.graal.test.*;
-import com.oracle.graal.jtt.*;
-
 import sun.misc.*;
+
+import com.oracle.graal.jtt.*;
+import com.oracle.graal.test.*;
 
 /*
  */

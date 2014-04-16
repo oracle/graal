@@ -55,11 +55,9 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.tiers.*;
 
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import edu.umd.cs.findbugs.annotations.*;
 
-public class CompilationTask implements Runnable, Comparable {
-
-    private static final long TIMESTAMP_START = System.currentTimeMillis();
+public class CompilationTask implements Runnable, Comparable<Object> {
 
     // Keep static finals in a group with withinEnqueue as the last one. CompilationTask can be
     // called from within it's own clinit so it needs to be careful about accessing state. Once
@@ -372,18 +370,18 @@ public class CompilationTask implements Runnable, Comparable {
         }
         HotSpotVMConfig config = backend.getRuntime().getConfig();
         int compLevel = config.compilationLevelFullOptimization;
-        char compLevelChar;
+        String compLevelString;
         if (config.tieredCompilation) {
-            compLevelChar = '-';
+            compLevelString = "- ";
             if (compLevel != -1) {
-                compLevelChar = (char) ('0' + compLevel);
+                compLevelString = (char) ('0' + compLevel) + " ";
             }
         } else {
-            compLevelChar = ' ';
+            compLevelString = "";
         }
         boolean hasExceptionHandlers = method.getExceptionHandlers().length > 0;
-        TTY.println(String.format("%s%7d %4d %c%c%c%c%c%c      %s %s(%d bytes)", compilerName, (System.currentTimeMillis() - TIMESTAMP_START), id, isOSR ? '%' : ' ',
-                        Modifier.isSynchronized(mod) ? 's' : ' ', hasExceptionHandlers ? '!' : ' ', blocking ? 'b' : ' ', Modifier.isNative(mod) ? 'n' : ' ', compLevelChar,
+        TTY.println(String.format("%s%7d %4d %c%c%c%c%c %s      %s %s(%d bytes)", compilerName, backend.getRuntime().compilerToVm.getTimeStamp(), id, isOSR ? '%' : ' ',
+                        Modifier.isSynchronized(mod) ? 's' : ' ', hasExceptionHandlers ? '!' : ' ', blocking ? 'b' : ' ', Modifier.isNative(mod) ? 'n' : ' ', compLevelString,
                         MetaUtil.format("%H::%n(%p)", method), isOSR ? "@ " + entryBCI + " " : "", method.getCodeSize()));
     }
 

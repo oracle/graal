@@ -28,6 +28,7 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
+import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.replacements.nodes.*;
@@ -44,7 +45,7 @@ public class CallSiteTargetNode extends MacroNode implements Canonicalizable, Lo
 
     private ConstantNode getConstantCallTarget(MetaAccessProvider metaAccess, Assumptions assumptions) {
         if (getCallSite().isConstant() && !getCallSite().isNullConstant()) {
-            CallSite callSite = (CallSite) getCallSite().asConstant().asObject();
+            CallSite callSite = (CallSite) HotSpotObjectConstant.asObject(getCallSite().asConstant());
             MethodHandle target = callSite.getTarget();
             if (!(callSite instanceof ConstantCallSite)) {
                 if (assumptions == null || !assumptions.useOptimisticAssumptions()) {
@@ -52,7 +53,7 @@ public class CallSiteTargetNode extends MacroNode implements Canonicalizable, Lo
                 }
                 assumptions.record(new Assumptions.CallSiteTargetValue(callSite, target));
             }
-            return ConstantNode.forObject(target, metaAccess, graph());
+            return ConstantNode.forConstant(HotSpotObjectConstant.forObject(target), metaAccess, graph());
         }
         return null;
     }

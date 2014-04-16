@@ -22,8 +22,9 @@
  */
 package com.oracle.graal.compiler.hsail.test;
 
-import com.oracle.graal.compiler.hsail.test.infra.GraalKernelTester;
-import org.junit.Test;
+import org.junit.*;
+
+import com.oracle.graal.compiler.hsail.test.infra.*;
 
 /**
  * 

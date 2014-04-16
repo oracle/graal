@@ -53,7 +53,7 @@ public final class CStringNode extends FloatingNode implements LIRGenLowerable {
 
     /**
      * Converts a string to a null terminated byte array of ASCII characters.
-     * 
+     *
      * @param s a String that must only contain ASCII characters
      */
     public static byte[] toCString(String s) {

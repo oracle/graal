@@ -90,6 +90,14 @@ public class FloatingReadPhase extends Phase {
             return lastMemorySnapshot.keySet();
         }
 
+        @Override
+        public void replaceLastLocationAccess(MemoryNode oldNode, MemoryNode newNode) {
+            for (Map.Entry<LocationIdentity, MemoryNode> entry : lastMemorySnapshot.entrySet()) {
+                if (entry.getValue() == oldNode) {
+                    entry.setValue(newNode);
+                }
+            }
+        }
     }
 
     private final ExecutionMode execmode;

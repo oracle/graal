@@ -24,8 +24,9 @@ package com.oracle.graal.jtt.hotspot;
 
 import java.util.*;
 
-import com.oracle.graal.jtt.*;
 import org.junit.*;
+
+import com.oracle.graal.jtt.*;
 
 // @formatter:off
 public class Test6186134 extends JTTTest {
@@ -42,7 +43,7 @@ public class Test6186134 extends JTTTest {
             return num-- > 0;
         }
 
-        public ArrayList test1() {
+        public ArrayList<?> test1() {
             ArrayList<Object> res = new ArrayList<>();
             int maxResults = Integer.MAX_VALUE;
             int n = 0;

@@ -31,6 +31,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.VirtualState.VirtualClosure;
 import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.java.*;
+import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.nodes.virtual.*;
 
 public abstract class LoopFragment {
@@ -285,6 +286,7 @@ public abstract class LoopFragment {
             if (newEarlyExit == null) {
                 continue;
             }
+            boolean newEarlyExitIsBegin = newEarlyExit instanceof BeginNode;
             MergeNode merge = graph.add(new MergeNode());
             AbstractEndNode originalEnd = graph.add(new EndNode());
             AbstractEndNode newEnd = graph.add(new EndNode());
@@ -330,21 +332,17 @@ public abstract class LoopFragment {
                 ProxyNode newVpn = getDuplicatedNode(vpn);
                 if (newVpn != null) {
                     PhiNode phi;
-                    switch (vpn.type()) {
-                        case Value:
-                            phi = graph.addWithoutUnique(new PhiNode(vpn.stamp(), merge));
-                            break;
-                        case Guard:
-                            phi = graph.addWithoutUnique(new PhiNode(vpn.type(), merge));
-                            break;
-                        case Memory:
-                            phi = graph.addWithoutUnique(new MemoryPhiNode(merge, ((MemoryProxyNode) vpn).getLocationIdentity()));
-                            break;
-                        default:
-                            throw GraalInternalError.shouldNotReachHere();
+                    if (vpn instanceof ValueProxyNode) {
+                        phi = graph.addWithoutUnique(new ValuePhiNode(vpn.stamp(), merge));
+                    } else if (vpn instanceof GuardProxyNode) {
+                        phi = graph.addWithoutUnique(new GuardPhiNode(merge));
+                    } else if (vpn instanceof MemoryProxyNode) {
+                        phi = graph.addWithoutUnique(new MemoryPhiNode(merge, ((MemoryProxyNode) vpn).getLocationIdentity()));
+                    } else {
+                        throw GraalInternalError.shouldNotReachHere();
                     }
                     phi.addInput(vpn);
-                    phi.addInput(newVpn);
+                    phi.addInput(newEarlyExitIsBegin ? newVpn.value() : newVpn);
                     replaceWith = phi;
                 } else {
                     replaceWith = vpn.value();
@@ -359,6 +357,16 @@ public abstract class LoopFragment {
                         }
                         usage.replaceFirstInput(vpn, replaceWith);
                     }
+                }
+            }
+            if (newEarlyExitIsBegin) {
+                FrameState stateAtNewEarlyExit = newEarlyExit.stateAfter();
+                if (stateAtNewEarlyExit != null) {
+                    newEarlyExit.setStateAfter(null);
+                    GraphUtil.killWithUnusedFloatingInputs(stateAtNewEarlyExit);
+                }
+                for (ProxyNode proxy : newEarlyExit.proxies().snapshot()) {
+                    GraphUtil.killWithUnusedFloatingInputs(proxy);
                 }
             }
         }

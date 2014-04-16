@@ -41,8 +41,8 @@ import com.oracle.graal.asm.amd64.AMD64Assembler.ConditionFlag;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.meta.HotSpotCodeCacheProvider.MarkId;
+import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nfi.*;
 import com.oracle.graal.hotspot.stubs.*;
 import com.oracle.graal.lir.*;
@@ -67,8 +67,8 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend {
     }
 
     @Override
-    public FrameMap newFrameMap() {
-        return new AMD64FrameMap(getCodeCache());
+    public FrameMap newFrameMap(RegisterConfig registerConfig) {
+        return new AMD64FrameMap(getCodeCache(), registerConfig);
     }
 
     @Override

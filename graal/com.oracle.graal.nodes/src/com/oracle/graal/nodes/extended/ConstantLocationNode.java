@@ -43,7 +43,7 @@ public final class ConstantLocationNode extends LocationNode {
     }
 
     private ConstantLocationNode(LocationIdentity identity, Kind kind, long displacement) {
-        super(StampFactory.extension());
+        super(StampFactory.forVoid());
         assert kind != Kind.Illegal && kind != Kind.Void;
         this.valueKind = kind;
         this.locationIdentity = identity;

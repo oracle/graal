@@ -25,10 +25,12 @@ package com.oracle.graal.nodes;
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.type.*;
 
+@NodeInfo(allowedUsageTypes = {InputType.Extension})
 public abstract class MemoryMapNode extends FloatingNode {
 
     public MemoryMapNode() {
@@ -38,4 +40,6 @@ public abstract class MemoryMapNode extends FloatingNode {
     public abstract MemoryNode getLastLocationAccess(LocationIdentity locationIdentity);
 
     public abstract Set<LocationIdentity> getLocations();
+
+    public abstract void replaceLastLocationAccess(MemoryNode oldNode, MemoryNode newNode);
 }

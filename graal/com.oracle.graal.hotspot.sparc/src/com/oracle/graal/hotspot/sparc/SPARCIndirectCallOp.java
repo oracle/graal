@@ -31,9 +31,9 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.sparc.*;
 import com.oracle.graal.hotspot.meta.HotSpotCodeCacheProvider.MarkId;
 import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.sparc.*;
 import com.oracle.graal.lir.sparc.SPARCCall.IndirectCallOp;
-import com.oracle.graal.lir.asm.*;
 
 /**
  * A register indirect call that complies with the extra conventions for such calls in HotSpot. In

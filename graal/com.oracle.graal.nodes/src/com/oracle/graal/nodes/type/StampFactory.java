@@ -24,7 +24,6 @@ package com.oracle.graal.nodes.type;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
-import com.oracle.graal.nodes.type.GenericStamp.GenericStampType;
 
 public class StampFactory {
 
@@ -35,9 +34,6 @@ public class StampFactory {
     private static final Stamp objectStamp = new ObjectStamp(null, false, false, false);
     private static final Stamp objectNonNullStamp = new ObjectStamp(null, false, true, false);
     private static final Stamp objectAlwaysNullStamp = new ObjectStamp(null, false, false, true);
-    private static final Stamp dependencyStamp = new GenericStamp(GenericStampType.Dependency);
-    private static final Stamp extensionStamp = new GenericStamp(GenericStampType.Extension);
-    private static final Stamp conditionStamp = new GenericStamp(GenericStampType.Condition);
     private static final Stamp nodeIntrinsicStamp = new ObjectStamp(null, false, false, false);
     private static final Stamp positiveInt = forInteger(Kind.Int, 0, Integer.MAX_VALUE, 0, Integer.MAX_VALUE);
 
@@ -73,8 +69,13 @@ public class StampFactory {
 
         setCache(Kind.Object, objectStamp);
         setCache(Kind.Void, VoidStamp.getInstance());
+
         for (Kind k : Kind.values()) {
-            illegalStampCache[k.ordinal()] = new IllegalStamp(k);
+            if (stampCache[k.ordinal()] != null) {
+                illegalStampCache[k.ordinal()] = stampCache[k.ordinal()].illegal();
+            } else {
+                illegalStampCache[k.ordinal()] = IllegalStamp.getInstance();
+            }
         }
     }
 
@@ -106,20 +107,12 @@ public class StampFactory {
         return forKind(Kind.Int);
     }
 
-    public static Stamp dependency() {
-        return dependencyStamp;
-    }
-
-    public static Stamp extension() {
-        return extensionStamp;
-    }
-
-    public static Stamp condition() {
-        return conditionStamp;
-    }
-
     public static Stamp positiveInt() {
         return positiveInt;
+    }
+
+    public static Stamp illegal() {
+        return illegal(Kind.Illegal);
     }
 
     public static Stamp illegal(Kind kind) {

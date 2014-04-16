@@ -27,7 +27,7 @@ import java.lang.annotation.*;
 import javax.annotation.processing.*;
 import javax.lang.model.element.*;
 import javax.lang.model.type.*;
-import javax.tools.Diagnostic.*;
+import javax.tools.Diagnostic.Kind;
 
 import com.oracle.graal.api.replacements.*;
 

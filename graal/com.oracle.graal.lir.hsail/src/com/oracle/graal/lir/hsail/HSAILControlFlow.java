@@ -22,22 +22,20 @@
  */
 package com.oracle.graal.lir.hsail;
 
+import static com.oracle.graal.api.code.ValueUtil.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
 import com.oracle.graal.asm.hsail.*;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.hsail.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.BlockEndOp;
 import com.oracle.graal.lir.SwitchStrategy.BaseSwitchClosure;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.nodes.calc.*;
-
-import static com.oracle.graal.api.code.ValueUtil.*;
-
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.hsail.HSAIL;
 
 /**
  * Implementation of control flow instructions.
@@ -103,7 +101,7 @@ public class HSAILControlFlow {
                         case Int:
                         case Long:
                             // Generate cascading compare and branches for each case.
-                            masm.emitCompare(key, keyConstants[index], HSAILCompare.conditionToString(condition), false, false);
+                            masm.emitCompare(key.getKind(), key, keyConstants[index], HSAILCompare.conditionToString(condition), false, false);
                             masm.cbr(masm.nameOf(target));
                             break;
                         case Object:
@@ -288,10 +286,10 @@ public class HSAILControlFlow {
         @Override
         public void emitCode(CompilationResultBuilder crb, HSAILAssembler masm) {
             if (crb.isSuccessorEdge(trueDestination)) {
-                HSAILCompare.emit(crb, masm, condition.negate(), x, y, z, !unordered);
+                HSAILCompare.emit(crb, masm, opcode, condition.negate(), x, y, z, !unordered);
                 masm.cbr(masm.nameOf(falseDestination.label()));
             } else {
-                HSAILCompare.emit(crb, masm, condition, x, y, z, unordered);
+                HSAILCompare.emit(crb, masm, opcode, condition, x, y, z, unordered);
                 masm.cbr(masm.nameOf(trueDestination.label()));
                 if (!crb.isSuccessorEdge(falseDestination)) {
                     masm.jmp(falseDestination.label());
@@ -322,7 +320,7 @@ public class HSAILControlFlow {
 
         @Override
         public void emitCode(CompilationResultBuilder crb, HSAILAssembler masm) {
-            HSAILCompare.emit(crb, masm, condition, left, right, right, false);
+            HSAILCompare.emit(crb, masm, opcode, condition, left, right, right, false);
             cmove(masm, result, trueValue, falseValue);
         }
     }
@@ -338,7 +336,7 @@ public class HSAILControlFlow {
 
         @Override
         public void emitCode(CompilationResultBuilder crb, HSAILAssembler masm) {
-            HSAILCompare.emit(crb, masm, condition, left, right, right, unorderedIsTrue);
+            HSAILCompare.emit(crb, masm, opcode, condition, left, right, right, unorderedIsTrue);
             cmove(masm, result, trueValue, falseValue);
         }
     }

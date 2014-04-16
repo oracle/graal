@@ -30,7 +30,7 @@ import com.oracle.graal.graph.spi.*;
  */
 public class LogicNegationNode extends LogicNode implements Canonicalizable {
 
-    @Input private LogicNode input;
+    @Input(InputType.Condition) private LogicNode input;
 
     public LogicNegationNode(LogicNode input) {
         this.input = input;

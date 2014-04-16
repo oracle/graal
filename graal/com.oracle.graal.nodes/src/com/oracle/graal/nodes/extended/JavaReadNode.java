@@ -30,7 +30,7 @@ import com.oracle.graal.nodes.type.*;
  * Read a raw memory location according to Java field or array read semantics. It will perform read
  * barriers, implicit conversions and optionally oop uncompression.
  */
-public final class JavaReadNode extends FixedAccessNode implements Lowerable {
+public final class JavaReadNode extends FixedAccessNode implements Lowerable, GuardingNode {
 
     public JavaReadNode(ValueNode object, LocationNode location, BarrierType barrierType, boolean compressible) {
         super(object, location, StampFactory.forKind(location.getValueKind()), barrierType, compressible);
@@ -38,5 +38,9 @@ public final class JavaReadNode extends FixedAccessNode implements Lowerable {
 
     public void lower(LoweringTool tool) {
         tool.getLowerer().lower(this, tool);
+    }
+
+    public boolean canNullCheck() {
+        return true;
     }
 }

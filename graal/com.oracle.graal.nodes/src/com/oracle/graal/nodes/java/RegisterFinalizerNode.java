@@ -38,7 +38,7 @@ public final class RegisterFinalizerNode extends AbstractStateSplit implements C
 
     public static final ForeignCallDescriptor REGISTER_FINALIZER = new ForeignCallDescriptor("registerFinalizer", void.class, Object.class);
 
-    @Input private FrameState deoptState;
+    @Input(InputType.State) private FrameState deoptState;
     @Input private ValueNode object;
 
     public ValueNode object() {

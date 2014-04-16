@@ -126,7 +126,7 @@ public class CompilationProfile {
         this.previousTimestamp = timestamp;
     }
 
-    void reportInvalidated() {
+    public void reportInvalidated() {
         invalidationCount++;
         int reprofile = TruffleInvalidationReprofileCount.getValue();
         ensureProfiling(reprofile, reprofile);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -90,7 +90,7 @@ public class HotSpotLoweringProvider implements LoweringProvider {
         newObjectSnippets = new NewObjectSnippets.Templates(providers, target);
         monitorSnippets = new MonitorSnippets.Templates(providers, target, config.useFastLocking);
         writeBarrierSnippets = new WriteBarrierSnippets.Templates(providers, target, config.useCompressedOops ? config.getOopEncoding() : null);
-        boxingSnippets = new BoxingSnippets.Templates(providers, target);
+        boxingSnippets = new BoxingSnippets.Templates(providers, providers.getSnippetReflection(), target);
         exceptionObjectSnippets = new LoadExceptionObjectSnippets.Templates(providers, target);
         unsafeLoadSnippets = new UnsafeLoadSnippets.Templates(providers, target);
         providers.getReplacements().registerSnippetTemplateCache(new UnsafeArrayCopySnippets.Templates(providers, target));
@@ -134,8 +134,8 @@ public class HotSpotLoweringProvider implements LoweringProvider {
             lowerOSRStartNode((OSRStartNode) n);
         } else if (n instanceof DynamicCounterNode) {
             lowerDynamicCounterNode((DynamicCounterNode) n);
-        } else if (n instanceof DeferredForeignCallNode) {
-            lowerDeferredForeignCallNode((DeferredForeignCallNode) n);
+        } else if (n instanceof BytecodeExceptionNode) {
+            lowerBytecodeExceptionNode((BytecodeExceptionNode) n);
         } else if (n instanceof CheckCastDynamicNode) {
             checkcastDynamicSnippets.lower((CheckCastDynamicNode) n, tool);
         } else if (n instanceof InstanceOfNode) {
@@ -234,7 +234,7 @@ public class HotSpotLoweringProvider implements LoweringProvider {
                         int vtableEntryOffset = hsMethod.vtableEntryOffset();
                         assert vtableEntryOffset > 0;
                         Kind wordKind = runtime.getTarget().wordKind;
-                        FloatingReadNode hub = createReadHub(graph, wordKind, receiver, receiverNullCheck);
+                        ValueNode hub = createReadHub(graph, wordKind, receiver, receiverNullCheck);
 
                         ReadNode metaspaceMethod = createReadVirtualMethod(graph, wordKind, hub, hsMethod);
                         // We use LocationNode.ANY_LOCATION for the reads that access the
@@ -307,7 +307,7 @@ public class HotSpotLoweringProvider implements LoweringProvider {
     private void lowerLoadFieldNode(LoadFieldNode loadField, LoweringTool tool) {
         StructuredGraph graph = loadField.graph();
         HotSpotResolvedJavaField field = (HotSpotResolvedJavaField) loadField.field();
-        ValueNode object = loadField.isStatic() ? ConstantNode.forObject(field.getDeclaringClass().mirror(), metaAccess, graph) : loadField.object();
+        ValueNode object = loadField.isStatic() ? ConstantNode.forConstant(HotSpotObjectConstant.forObject(field.getDeclaringClass().mirror()), metaAccess, graph) : loadField.object();
         assert loadField.getKind() != Kind.Illegal;
         BarrierType barrierType = getFieldLoadBarrierType(field);
 
@@ -351,7 +351,7 @@ public class HotSpotLoweringProvider implements LoweringProvider {
     private void lowerStoreFieldNode(StoreFieldNode storeField, LoweringTool tool) {
         StructuredGraph graph = storeField.graph();
         HotSpotResolvedJavaField field = (HotSpotResolvedJavaField) storeField.field();
-        ValueNode object = storeField.isStatic() ? ConstantNode.forObject(field.getDeclaringClass().mirror(), metaAccess, graph) : storeField.object();
+        ValueNode object = storeField.isStatic() ? ConstantNode.forConstant(HotSpotObjectConstant.forObject(field.getDeclaringClass().mirror()), metaAccess, graph) : storeField.object();
         BarrierType barrierType = getFieldStoreBarrierType(storeField);
 
         ValueNode value = implicitStoreConvert(graph, storeField.field().getKind(), storeField.value());
@@ -370,12 +370,15 @@ public class HotSpotLoweringProvider implements LoweringProvider {
         }
     }
 
-    private static void lowerCompareAndSwapNode(CompareAndSwapNode cas) {
-        // Separate out GC barrier semantics
+    private void lowerCompareAndSwapNode(CompareAndSwapNode cas) {
         StructuredGraph graph = cas.graph();
-        LocationNode location = IndexedLocationNode.create(cas.getLocationIdentity(), cas.expected().getKind(), cas.displacement(), cas.offset(), graph, 1);
-        LoweredCompareAndSwapNode atomicNode = graph.add(new LoweredCompareAndSwapNode(cas.object(), location, cas.expected(), cas.newValue(), getCompareAndSwapBarrier(cas),
-                        cas.expected().getKind() == Kind.Object));
+        Kind valueKind = cas.getValueKind();
+        LocationNode location = IndexedLocationNode.create(cas.getLocationIdentity(), valueKind, cas.displacement(), cas.offset(), graph, 1);
+
+        ValueNode expectedValue = implicitStoreConvert(graph, valueKind, cas.expected(), true);
+        ValueNode newValue = implicitStoreConvert(graph, valueKind, cas.newValue(), true);
+
+        LoweredCompareAndSwapNode atomicNode = graph.add(new LoweredCompareAndSwapNode(cas.object(), location, expectedValue, newValue, getCompareAndSwapBarrierType(cas), false));
         atomicNode.setStateAfter(cas.stateAfter());
         graph.replaceFixedWithFixed(cas, atomicNode);
     }
@@ -418,7 +421,7 @@ public class HotSpotLoweringProvider implements LoweringProvider {
                 }
             } else {
                 Kind wordKind = runtime.getTarget().wordKind;
-                FloatingReadNode arrayClass = createReadHub(graph, wordKind, array, boundsCheck);
+                ValueNode arrayClass = createReadHub(graph, wordKind, array, boundsCheck);
                 LocationNode location = ConstantLocationNode.create(FINAL_LOCATION, wordKind, runtime.getConfig().arrayClassElementOffset, graph);
                 /*
                  * Anchor the read of the element klass to the cfg, because it is only valid when
@@ -524,7 +527,7 @@ public class HotSpotLoweringProvider implements LoweringProvider {
             assert loadHub.getKind() == wordKind;
             ValueNode object = loadHub.object();
             GuardingNode guard = loadHub.getGuard();
-            FloatingReadNode hub = createReadHub(graph, wordKind, object, guard);
+            ValueNode hub = createReadHub(graph, wordKind, object, guard);
             graph.replaceFloating(loadHub, hub);
         }
     }
@@ -661,11 +664,51 @@ public class HotSpotLoweringProvider implements LoweringProvider {
         }
     }
 
-    private void lowerDeferredForeignCallNode(DeferredForeignCallNode deferred) {
-        StructuredGraph graph = deferred.graph();
+    static final class Exceptions {
+        protected static final ArrayIndexOutOfBoundsException cachedArrayIndexOutOfBoundsException;
+        protected static final NullPointerException cachedNullPointerException;
+
+        static {
+            cachedArrayIndexOutOfBoundsException = new ArrayIndexOutOfBoundsException();
+            cachedArrayIndexOutOfBoundsException.setStackTrace(new StackTraceElement[0]);
+            cachedNullPointerException = new NullPointerException();
+            cachedNullPointerException.setStackTrace(new StackTraceElement[0]);
+        }
+    }
+
+    public static final class RuntimeCalls {
+        public static final ForeignCallDescriptor CREATE_NULL_POINTER_EXCEPTION = new ForeignCallDescriptor("createNullPointerException", NullPointerException.class);
+        public static final ForeignCallDescriptor CREATE_OUT_OF_BOUNDS_EXCEPTION = new ForeignCallDescriptor("createOutOfBoundsException", ArrayIndexOutOfBoundsException.class, int.class);
+    }
+
+    private void lowerBytecodeExceptionNode(BytecodeExceptionNode node) {
+        StructuredGraph graph = node.graph();
         if (graph.getGuardsStage() == StructuredGraph.GuardsStage.FLOATING_GUARDS) {
-            ForeignCallNode foreignCallNode = graph.add(new ForeignCallNode(foreignCalls, deferred.getDescriptor(), deferred.stamp(), deferred.getArguments()));
-            graph.replaceFixedWithFixed(deferred, foreignCallNode);
+            if (OmitHotExceptionStacktrace.getValue()) {
+                Throwable exception;
+                if (node.getExceptionClass() == NullPointerException.class) {
+                    exception = Exceptions.cachedNullPointerException;
+                } else if (node.getExceptionClass() == ArrayIndexOutOfBoundsException.class) {
+                    exception = Exceptions.cachedArrayIndexOutOfBoundsException;
+                } else {
+                    throw GraalInternalError.shouldNotReachHere();
+                }
+                FloatingNode exceptionNode = ConstantNode.forConstant(HotSpotObjectConstant.forObject(exception), metaAccess, graph);
+                graph.replaceFixedWithFloating(node, exceptionNode);
+
+            } else {
+                ForeignCallDescriptor descriptor;
+                if (node.getExceptionClass() == NullPointerException.class) {
+                    descriptor = RuntimeCalls.CREATE_NULL_POINTER_EXCEPTION;
+                } else if (node.getExceptionClass() == ArrayIndexOutOfBoundsException.class) {
+                    descriptor = RuntimeCalls.CREATE_OUT_OF_BOUNDS_EXCEPTION;
+                } else {
+                    throw GraalInternalError.shouldNotReachHere();
+                }
+
+                ForeignCallNode foreignCallNode = graph.add(new ForeignCallNode(foreignCalls, descriptor, node.stamp(), node.getArguments()));
+                graph.replaceFixedWithFixed(node, foreignCallNode);
+            }
         }
     }
 
@@ -703,6 +746,14 @@ public class HotSpotLoweringProvider implements LoweringProvider {
 
         long displacement = 0;
         int indexScaling = 1;
+        boolean signExtend = false;
+        if (offset instanceof SignExtendNode) {
+            SignExtendNode extend = (SignExtendNode) offset;
+            if (extend.getResultBits() == 64) {
+                signExtend = true;
+                offset = extend.getInput();
+            }
+        }
         if (offset instanceof IntegerAddNode) {
             IntegerAddNode integerAddNode = (IntegerAddNode) offset;
             if (integerAddNode.y() instanceof ConstantNode) {
@@ -727,7 +778,10 @@ public class HotSpotLoweringProvider implements LoweringProvider {
                 }
             }
         }
-
+        if (signExtend) {
+            // If we were using sign extended values before restore the sign extension.
+            offset = offset.graph().addOrUnique(new SignExtendNode(offset, 64));
+        }
         return IndexedLocationNode.create(locationIdentity, accessKind, displacement, offset, offset.graph(), indexScaling);
     }
 
@@ -755,18 +809,37 @@ public class HotSpotLoweringProvider implements LoweringProvider {
         return metaspaceMethod;
     }
 
-    private FloatingReadNode createReadHub(StructuredGraph graph, Kind wordKind, ValueNode object, GuardingNode guard) {
+    private ValueNode createReadHub(StructuredGraph graph, Kind wordKind, ValueNode object, GuardingNode guard) {
         HotSpotVMConfig config = runtime.getConfig();
         LocationNode location = ConstantLocationNode.create(FINAL_LOCATION, wordKind, config.hubOffset, graph);
         assert !object.isConstant() || object.asConstant().isNull();
-        return graph.unique(new FloatingReadNode(object, location, null, StampFactory.forKind(wordKind), guard, BarrierType.NONE, config.useCompressedClassPointers));
+
+        Stamp hubStamp;
+        if (config.useCompressedClassPointers) {
+            hubStamp = StampFactory.forInteger(32);
+        } else {
+            hubStamp = StampFactory.forKind(wordKind);
+        }
+
+        FloatingReadNode memoryRead = graph.unique(new FloatingReadNode(object, location, null, hubStamp, guard, BarrierType.NONE, false));
+        if (config.useCompressedClassPointers) {
+            return CompressionNode.uncompress(memoryRead, config.getKlassEncoding());
+        } else {
+            return memoryRead;
+        }
     }
 
     private WriteNode createWriteHub(StructuredGraph graph, Kind wordKind, ValueNode object, ValueNode value) {
         HotSpotVMConfig config = runtime.getConfig();
         LocationNode location = ConstantLocationNode.create(HUB_LOCATION, wordKind, config.hubOffset, graph);
         assert !object.isConstant() || object.asConstant().isNull();
-        return graph.add(new WriteNode(object, value, location, BarrierType.NONE, config.useCompressedClassPointers));
+
+        ValueNode writeValue = value;
+        if (config.useCompressedClassPointers) {
+            writeValue = CompressionNode.compress(value, config.getKlassEncoding());
+        }
+
+        return graph.add(new WriteNode(object, writeValue, location, BarrierType.NONE, false));
     }
 
     private static BarrierType getFieldLoadBarrierType(HotSpotResolvedJavaField loadField) {
@@ -778,45 +851,41 @@ public class HotSpotLoweringProvider implements LoweringProvider {
     }
 
     private static BarrierType getFieldStoreBarrierType(StoreFieldNode storeField) {
-        BarrierType barrierType = BarrierType.NONE;
         if (storeField.field().getKind() == Kind.Object) {
-            barrierType = BarrierType.IMPRECISE;
+            return BarrierType.IMPRECISE;
         }
-        return barrierType;
+        return BarrierType.NONE;
     }
 
     private static BarrierType getArrayStoreBarrierType(StoreIndexedNode store) {
-        BarrierType barrierType = BarrierType.NONE;
         if (store.elementKind() == Kind.Object) {
-            barrierType = BarrierType.PRECISE;
+            return BarrierType.PRECISE;
         }
-        return barrierType;
+        return BarrierType.NONE;
     }
 
     private static BarrierType getUnsafeStoreBarrierType(UnsafeStoreNode store) {
-        BarrierType barrierType = BarrierType.NONE;
         if (store.value().getKind() == Kind.Object) {
             ResolvedJavaType type = ObjectStamp.typeOrNull(store.object());
             if (type != null && !type.isArray()) {
-                barrierType = BarrierType.IMPRECISE;
+                return BarrierType.IMPRECISE;
             } else {
-                barrierType = BarrierType.PRECISE;
+                return BarrierType.PRECISE;
             }
         }
-        return barrierType;
+        return BarrierType.NONE;
     }
 
-    private static BarrierType getCompareAndSwapBarrier(CompareAndSwapNode cas) {
-        BarrierType barrierType = BarrierType.NONE;
+    private static BarrierType getCompareAndSwapBarrierType(CompareAndSwapNode cas) {
         if (cas.expected().getKind() == Kind.Object) {
             ResolvedJavaType type = ObjectStamp.typeOrNull(cas.object());
             if (type != null && !type.isArray()) {
-                barrierType = BarrierType.IMPRECISE;
+                return BarrierType.IMPRECISE;
             } else {
-                barrierType = BarrierType.PRECISE;
+                return BarrierType.PRECISE;
             }
         }
-        return barrierType;
+        return BarrierType.NONE;
     }
 
     protected static ConstantLocationNode createFieldLocation(StructuredGraph graph, HotSpotResolvedJavaField field, boolean initialization) {

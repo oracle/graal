@@ -41,7 +41,7 @@ public class AMD64HotSpotLoweringProvider extends HotSpotLoweringProvider {
 
     @Override
     public void initialize(HotSpotProviders providers, HotSpotVMConfig config) {
-        convertSnippets = new AMD64ConvertSnippets.Templates(providers, providers.getCodeCache().getTarget());
+        convertSnippets = new AMD64ConvertSnippets.Templates(providers, providers.getSnippetReflection(), providers.getCodeCache().getTarget());
         super.initialize(providers, config);
     }
 

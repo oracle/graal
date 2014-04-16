@@ -48,18 +48,25 @@ public class IntegerStamp extends PrimitiveStamp {
         this.upperBound = upperBound;
         this.downMask = downMask;
         this.upMask = upMask;
-        assert lowerBound <= upperBound : this;
         assert lowerBound >= defaultMinValue(bits) : this;
         assert upperBound <= defaultMaxValue(bits) : this;
         assert (downMask & defaultMask(bits)) == downMask : this;
         assert (upMask & defaultMask(bits)) == upMask : this;
-        assert (lowerBound & downMask) == downMask : this;
-        assert (upperBound & downMask) == downMask : this;
     }
 
     @Override
     public Stamp unrestricted() {
         return new IntegerStamp(getBits(), defaultMinValue(getBits()), defaultMaxValue(getBits()), 0, defaultMask(getBits()));
+    }
+
+    @Override
+    public Stamp illegal() {
+        return new IntegerStamp(getBits(), defaultMaxValue(getBits()), defaultMinValue(getBits()), defaultMask(getBits()), 0);
+    }
+
+    @Override
+    public boolean isLegal() {
+        return lowerBound <= upperBound;
     }
 
     @Override
@@ -193,9 +200,6 @@ public class IntegerStamp extends PrimitiveStamp {
         if (otherStamp == this) {
             return this;
         }
-        if (otherStamp instanceof IllegalStamp) {
-            return otherStamp.meet(this);
-        }
         if (!(otherStamp instanceof IntegerStamp)) {
             return StampFactory.illegal(Kind.Illegal);
         }
@@ -207,9 +211,6 @@ public class IntegerStamp extends PrimitiveStamp {
     public Stamp join(Stamp otherStamp) {
         if (otherStamp == this) {
             return this;
-        }
-        if (otherStamp instanceof IllegalStamp) {
-            return otherStamp.join(this);
         }
         if (!(otherStamp instanceof IntegerStamp)) {
             return StampFactory.illegal(Kind.Illegal);

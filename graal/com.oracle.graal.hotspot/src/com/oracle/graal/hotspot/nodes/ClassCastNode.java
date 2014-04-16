@@ -54,7 +54,7 @@ public class ClassCastNode extends MacroNode implements Canonicalizable {
         ValueNode javaClass = getJavaClass();
         if (javaClass.isConstant()) {
             ValueNode object = getObject();
-            Class c = (Class) javaClass.asConstant().asObject();
+            Class<?> c = (Class<?>) HotSpotObjectConstant.asObject(javaClass.asConstant());
             if (c != null && !c.isPrimitive()) {
                 HotSpotResolvedObjectType type = (HotSpotResolvedObjectType) HotSpotResolvedObjectType.fromClass(c);
                 CheckCastNode checkcast = graph().add(new CheckCastNode(type, object, null, false));

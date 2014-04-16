@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.api.meta.test;
 
-import static java.lang.Integer.*;
 import static java.lang.reflect.Modifier.*;
 import static org.junit.Assert.*;
 
@@ -40,7 +39,6 @@ import com.oracle.graal.api.meta.*;
 /**
  * Tests for {@link ResolvedJavaType}.
  */
-@SuppressWarnings("unused")
 public class TestResolvedJavaType extends TypeUniverse {
 
     public TestResolvedJavaType() {
@@ -48,7 +46,7 @@ public class TestResolvedJavaType extends TypeUniverse {
 
     @Test
     public void findInstanceFieldWithOffsetTest() {
-        for (Class c : classes) {
+        for (Class<?> c : classes) {
             ResolvedJavaType type = metaAccess.lookupJavaType(c);
             Set<Field> reflectionFields = getInstanceFields(c, true);
             for (Field f : reflectionFields) {
@@ -64,7 +62,7 @@ public class TestResolvedJavaType extends TypeUniverse {
 
     @Test
     public void isInterfaceTest() {
-        for (Class c : classes) {
+        for (Class<?> c : classes) {
             ResolvedJavaType type = metaAccess.lookupJavaType(c);
             boolean expected = c.isInterface();
             boolean actual = type.isInterface();
@@ -74,7 +72,7 @@ public class TestResolvedJavaType extends TypeUniverse {
 
     @Test
     public void isInstanceClassTest() {
-        for (Class c : classes) {
+        for (Class<?> c : classes) {
             ResolvedJavaType type = metaAccess.lookupJavaType(c);
             boolean expected = !c.isArray() && !c.isPrimitive() && !c.isInterface();
             boolean actual = type.isInstanceClass();
@@ -84,7 +82,7 @@ public class TestResolvedJavaType extends TypeUniverse {
 
     @Test
     public void isArrayTest() {
-        for (Class c : classes) {
+        for (Class<?> c : classes) {
             ResolvedJavaType type = metaAccess.lookupJavaType(c);
             boolean expected = c.isArray();
             boolean actual = type.isArray();
@@ -94,7 +92,7 @@ public class TestResolvedJavaType extends TypeUniverse {
 
     @Test
     public void getModifiersTest() {
-        for (Class c : classes) {
+        for (Class<?> c : classes) {
             ResolvedJavaType type = metaAccess.lookupJavaType(c);
             int expected = c.getModifiers();
             int actual = type.getModifiers();
@@ -104,7 +102,7 @@ public class TestResolvedJavaType extends TypeUniverse {
 
     @Test
     public void isAssignableFromTest() {
-        Class[] all = classes.toArray(new Class[classes.size()]);
+        Class<?>[] all = classes.toArray(new Class[classes.size()]);
         for (int i = 0; i < all.length; i++) {
             Class<?> c1 = all[i];
             for (int j = i; j < all.length; j++) {
@@ -125,7 +123,7 @@ public class TestResolvedJavaType extends TypeUniverse {
     public void isInstanceTest() {
         for (Constant c : constants) {
             if (c.getKind() == Kind.Object && !c.isNull()) {
-                Object o = c.asObject();
+                Object o = snippetReflection.asObject(c);
                 Class<? extends Object> cls = o.getClass();
                 while (cls != null) {
                     ResolvedJavaType type = metaAccess.lookupJavaType(cls);
@@ -138,7 +136,7 @@ public class TestResolvedJavaType extends TypeUniverse {
         }
     }
 
-    private static Class asExactClass(Class c) {
+    private static Class<?> asExactClass(Class<?> c) {
         if (c.isArray()) {
             if (asExactClass(c.getComponentType()) != null) {
                 return c;
@@ -153,10 +151,10 @@ public class TestResolvedJavaType extends TypeUniverse {
 
     @Test
     public void asExactTypeTest() {
-        for (Class c : classes) {
+        for (Class<?> c : classes) {
             ResolvedJavaType type = metaAccess.lookupJavaType(c);
             ResolvedJavaType exactType = type.asExactType();
-            Class expected = asExactClass(c);
+            Class<?> expected = asExactClass(c);
             if (expected == null) {
                 assertTrue("exact(" + c.getName() + ") != null", exactType == null);
             } else {
@@ -168,9 +166,9 @@ public class TestResolvedJavaType extends TypeUniverse {
 
     @Test
     public void getSuperclassTest() {
-        for (Class c : classes) {
+        for (Class<?> c : classes) {
             ResolvedJavaType type = metaAccess.lookupJavaType(c);
-            Class expected = c.getSuperclass();
+            Class<?> expected = c.getSuperclass();
             ResolvedJavaType actual = type.getSuperclass();
             if (expected == null) {
                 assertTrue(actual == null);
@@ -183,9 +181,9 @@ public class TestResolvedJavaType extends TypeUniverse {
 
     @Test
     public void getInterfacesTest() {
-        for (Class c : classes) {
+        for (Class<?> c : classes) {
             ResolvedJavaType type = metaAccess.lookupJavaType(c);
-            Class[] expected = c.getInterfaces();
+            Class<?>[] expected = c.getInterfaces();
             ResolvedJavaType[] actual = type.getInterfaces();
             assertEquals(expected.length, actual.length);
             for (int i = 0; i < expected.length; i++) {
@@ -194,10 +192,10 @@ public class TestResolvedJavaType extends TypeUniverse {
         }
     }
 
-    public Class getSupertype(Class c) {
+    public Class<?> getSupertype(Class<?> c) {
         assert !c.isPrimitive();
         if (c.isArray()) {
-            Class componentType = c.getComponentType();
+            Class<?> componentType = c.getComponentType();
             if (componentType.isPrimitive() || componentType == Object.class) {
                 return Object.class;
             }
@@ -209,7 +207,7 @@ public class TestResolvedJavaType extends TypeUniverse {
         return c.getSuperclass();
     }
 
-    public Class findLeastCommonAncestor(Class<?> c1Initial, Class<?> c2Initial) {
+    public Class<?> findLeastCommonAncestor(Class<?> c1Initial, Class<?> c2Initial) {
         if (c1Initial.isPrimitive() || c2Initial.isPrimitive()) {
             return null;
         } else {
@@ -230,14 +228,14 @@ public class TestResolvedJavaType extends TypeUniverse {
 
     @Test
     public void findLeastCommonAncestorTest() {
-        Class[] all = classes.toArray(new Class[classes.size()]);
+        Class<?>[] all = classes.toArray(new Class[classes.size()]);
         for (int i = 0; i < all.length; i++) {
             Class<?> c1 = all[i];
             for (int j = i; j < all.length; j++) {
                 Class<?> c2 = all[j];
                 ResolvedJavaType t1 = metaAccess.lookupJavaType(c1);
                 ResolvedJavaType t2 = metaAccess.lookupJavaType(c2);
-                Class expected = findLeastCommonAncestor(c1, c2);
+                Class<?> expected = findLeastCommonAncestor(c1, c2);
                 ResolvedJavaType actual = t1.findLeastCommonAncestor(t2);
                 if (expected == null) {
                     assertTrue(actual == null);
@@ -270,7 +268,7 @@ public class TestResolvedJavaType extends TypeUniverse {
     abstract static class Abstract4 extends Concrete3 {
     }
 
-    void checkConcreteSubtype(ResolvedJavaType type, Class expected) {
+    void checkConcreteSubtype(ResolvedJavaType type, Class<?> expected) {
         ResolvedJavaType subtype = type.findUniqueConcreteSubtype();
         if (subtype == null) {
             // findUniqueConcreteSubtype() is conservative
@@ -325,9 +323,9 @@ public class TestResolvedJavaType extends TypeUniverse {
 
     @Test
     public void getComponentTypeTest() {
-        for (Class c : classes) {
+        for (Class<?> c : classes) {
             ResolvedJavaType type = metaAccess.lookupJavaType(c);
-            Class expected = c.getComponentType();
+            Class<?> expected = c.getComponentType();
             ResolvedJavaType actual = type.getComponentType();
             if (expected == null) {
                 assertNull(actual);
@@ -339,10 +337,10 @@ public class TestResolvedJavaType extends TypeUniverse {
 
     @Test
     public void getArrayClassTest() {
-        for (Class c : classes) {
+        for (Class<?> c : classes) {
             if (c != void.class) {
                 ResolvedJavaType type = metaAccess.lookupJavaType(c);
-                Class expected = getArrayClass(c);
+                Class<?> expected = getArrayClass(c);
                 ResolvedJavaType actual = type.getArrayClass();
                 assertTrue(actual.equals(metaAccess.lookupJavaType(expected)));
             }
@@ -383,14 +381,14 @@ public class TestResolvedJavaType extends TypeUniverse {
         return false;
     }
 
-    static final Map<Class, VTable> vtables = new HashMap<>();
+    static final Map<Class<?>, VTable> vtables = new HashMap<>();
 
     static class VTable {
 
         final Map<NameAndSignature, Method> methods = new HashMap<>();
     }
 
-    static synchronized VTable getVTable(Class c) {
+    static synchronized VTable getVTable(Class<?> c) {
         VTable vtable = vtables.get(c);
         if (vtable == null) {
             vtable = new VTable();
@@ -413,7 +411,7 @@ public class TestResolvedJavaType extends TypeUniverse {
         return vtable;
     }
 
-    static Set<Method> findDeclarations(Method impl, Class c) {
+    static Set<Method> findDeclarations(Method impl, Class<?> c) {
         Set<Method> declarations = new HashSet<>();
         NameAndSignature implSig = new NameAndSignature(impl);
         if (c != null) {
@@ -426,7 +424,7 @@ public class TestResolvedJavaType extends TypeUniverse {
             if (!c.isInterface()) {
                 declarations.addAll(findDeclarations(impl, c.getSuperclass()));
             }
-            for (Class i : c.getInterfaces()) {
+            for (Class<?> i : c.getInterfaces()) {
                 declarations.addAll(findDeclarations(impl, i));
             }
         }
@@ -440,7 +438,7 @@ public class TestResolvedJavaType extends TypeUniverse {
 
     @Test
     public void resolveMethodTest() {
-        for (Class c : classes) {
+        for (Class<?> c : classes) {
             if (c.isInterface() || c.isPrimitive()) {
                 ResolvedJavaType type = metaAccess.lookupJavaType(c);
                 for (Method m : c.getDeclaredMethods()) {
@@ -480,7 +478,7 @@ public class TestResolvedJavaType extends TypeUniverse {
         assertEquals(thisMethod, ucm);
     }
 
-    public static Set<Field> getInstanceFields(Class c, boolean includeSuperclasses) {
+    public static Set<Field> getInstanceFields(Class<?> c, boolean includeSuperclasses) {
         if (c.isArray() || c.isPrimitive() || c.isInterface()) {
             return Collections.emptySet();
         }
@@ -531,7 +529,7 @@ public class TestResolvedJavaType extends TypeUniverse {
 
     @Test
     public void getInstanceFieldsTest() {
-        for (Class c : classes) {
+        for (Class<?> c : classes) {
             ResolvedJavaType type = metaAccess.lookupJavaType(c);
             for (boolean includeSuperclasses : new boolean[]{true, false}) {
                 Set<Field> expected = getInstanceFields(c, includeSuperclasses);
@@ -554,7 +552,7 @@ public class TestResolvedJavaType extends TypeUniverse {
 
     @Test
     public void getDeclaredMethodsTest() {
-        for (Class c : classes) {
+        for (Class<?> c : classes) {
             ResolvedJavaType type = metaAccess.lookupJavaType(c);
             Method[] raw = c.getDeclaredMethods();
             Set<ResolvedJavaMethod> expected = new HashSet<>();
@@ -597,7 +595,7 @@ public class TestResolvedJavaType extends TypeUniverse {
 
     @Test
     public void getAnnotationTest() {
-        for (Class c : classes) {
+        for (Class<?> c : classes) {
             ResolvedJavaType type = metaAccess.lookupJavaType(c);
             for (Annotation a : c.getAnnotations()) {
                 assertEquals(a, type.getAnnotation(a.annotationType()));
@@ -607,11 +605,11 @@ public class TestResolvedJavaType extends TypeUniverse {
 
     @Test
     public void memberClassesTest() {
-        for (Class c : classes) {
+        for (Class<?> c : classes) {
             ResolvedJavaType type = metaAccess.lookupJavaType(c);
             assertEquals(c.isLocalClass(), type.isLocal());
             assertEquals(c.isMemberClass(), type.isMember());
-            Class enclc = c.getEnclosingClass();
+            Class<?> enclc = c.getEnclosingClass();
             ResolvedJavaType enclt = type.getEnclosingType();
             assertFalse(enclc == null ^ enclt == null);
             if (enclc != null) {
@@ -622,7 +620,7 @@ public class TestResolvedJavaType extends TypeUniverse {
 
     @Test
     public void classFilePathTest() {
-        for (Class c : classes) {
+        for (Class<?> c : classes) {
             ResolvedJavaType type = metaAccess.lookupJavaType(c);
             URL path = type.getClassFilePath();
             if (type.isPrimitive() || type.isArray()) {

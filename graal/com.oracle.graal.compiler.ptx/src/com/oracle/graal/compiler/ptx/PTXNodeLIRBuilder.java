@@ -33,7 +33,6 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.ptx.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.java.*;
 
 /**
  * This class implements the PTX specific portion of the LIR generator.
@@ -119,11 +118,6 @@ public class PTXNodeLIRBuilder extends NodeLIRBuilder {
     @Override
     protected void emitIndirectCall(IndirectCallTargetNode callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState callState) {
         throw GraalInternalError.unimplemented("PTXLIRGenerator.emitIndirectCall()");
-    }
-
-    @Override
-    public void visitCompareAndSwap(LoweredCompareAndSwapNode node, Value address) {
-        throw GraalInternalError.unimplemented("PTXLIRGenerator.visitCompareAndSwap()");
     }
 
     @Override

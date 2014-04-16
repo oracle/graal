@@ -36,7 +36,7 @@ import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.replacements.*;
-import com.oracle.graal.replacements.ReplacementsImpl.*;
+import com.oracle.graal.replacements.ReplacementsImpl.FrameStateProcessing;
 import com.oracle.graal.replacements.Snippet.SnippetInliningPolicy;
 import com.oracle.graal.word.*;
 import com.oracle.graal.word.nodes.*;
@@ -53,7 +53,7 @@ public class PointerTest extends GraalCompilerTest implements Snippets {
 
     public PointerTest() {
         target = getCodeCache().getTarget();
-        installer = new ReplacementsImpl(getProviders(), new Assumptions(false), getTarget());
+        installer = new ReplacementsImpl(getProviders(), getSnippetReflection(), new Assumptions(false), getTarget());
     }
 
     private static final ThreadLocal<SnippetInliningPolicy> inliningPolicy = new ThreadLocal<>();

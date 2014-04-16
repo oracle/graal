@@ -24,8 +24,8 @@
  */
 package com.oracle.graal.jtt.reflect;
 
-import com.oracle.graal.test.*;
 import com.oracle.graal.jtt.*;
+import com.oracle.graal.test.*;
 
 public class Class_newInstance03 extends JTTTest {
 

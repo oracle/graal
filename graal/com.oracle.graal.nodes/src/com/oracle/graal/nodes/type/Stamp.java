@@ -41,7 +41,7 @@ public abstract class Stamp {
     public abstract ResolvedJavaType javaType(MetaAccessProvider metaAccess);
 
     public boolean alwaysDistinct(Stamp other) {
-        return join(other) instanceof IllegalStamp;
+        return !join(other).isLegal();
     }
 
     /**
@@ -52,15 +52,15 @@ public abstract class Stamp {
     public abstract Kind getStackKind();
 
     /**
-     * Gets a platform dependend {@link PlatformKind} that can be used to store a value of this
+     * Gets a platform dependent {@link PlatformKind} that can be used to store a value of this
      * stamp.
      */
     public abstract PlatformKind getPlatformKind(LIRTypeTool tool);
 
     /**
      * Returns the union of this stamp and the given stamp. Typically used to create stamps for
-     * {@link PhiNode}s.
-     * 
+     * {@link ValuePhiNode}s.
+     *
      * @param other The stamp that will enlarge this stamp.
      * @return The union of this stamp and the given stamp.
      */
@@ -68,7 +68,7 @@ public abstract class Stamp {
 
     /**
      * Returns the intersection of this stamp and the given stamp.
-     * 
+     *
      * @param other The stamp that will tighten this stamp.
      * @return The intersection of this stamp and the given stamp.
      */
@@ -76,15 +76,17 @@ public abstract class Stamp {
 
     /**
      * Returns a stamp of the same kind, but allowing the full value range of the kind.
+     *
+     * {@link #unrestricted()} is the neutral element of the {@link #join(Stamp)} operation.
      */
     public abstract Stamp unrestricted();
 
     /**
-     * Returns an illegal stamp that has the same kind, but no valid values.
+     * Returns a stamp of the same kind, but with no allowed values.
+     *
+     * {@link #illegal()} is the neutral element of the {@link #meet(Stamp)} operation.
      */
-    public Stamp illegal() {
-        return StampFactory.illegal(getStackKind());
-    }
+    public abstract Stamp illegal();
 
     /**
      * Test whether two stamps have the same base type.
@@ -92,9 +94,14 @@ public abstract class Stamp {
     public abstract boolean isCompatible(Stamp other);
 
     /**
+     * Test whether this stamp has legal values.
+     */
+    public abstract boolean isLegal();
+
+    /**
      * If this stamp represents a single value, the methods returns this single value. It returns
      * null otherwise.
-     * 
+     *
      * @return the constant corresponding to the single value of this stamp and null if this stamp
      *         can represent less or more than one value.
      */

@@ -28,8 +28,10 @@ import java.util.*;
 
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.Graph.DuplicationReplacement;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Graph.Mark;
+import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.NodeClass.NodeClassIterator;
+import com.oracle.graal.graph.NodeClass.Position;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.VirtualState.NodeClosure;
 import com.oracle.graal.nodes.extended.*;
@@ -57,6 +59,12 @@ public class TailDuplicationPhase extends BasePhase<PhaseContext> {
 
     private final CanonicalizerPhase canonicalizer;
 
+    private static final class DummyAnchorNode extends FixedWithNextNode implements GuardingNode {
+        public DummyAnchorNode() {
+            super(StampFactory.forVoid());
+        }
+    }
+
     /**
      * This interface is used by tail duplication to let clients decide if tail duplication should
      * be performed.
@@ -67,7 +75,7 @@ public class TailDuplicationPhase extends BasePhase<PhaseContext> {
          * Queries if tail duplication should be performed at the given merge. If this method
          * returns true then the tail duplication will be performed, because all other checks have
          * happened before.
-         * 
+         *
          * @param merge The merge at which tail duplication can be performed.
          * @param fixedNodeCount The size of the set of fixed nodes that forms the base for the
          *            duplicated set of nodes.
@@ -162,7 +170,7 @@ public class TailDuplicationPhase extends BasePhase<PhaseContext> {
      * {@link MergeNode#stateAfter()}) then the decision callback is used to determine whether the
      * tail duplication should actually be performed. If replacements is non-null, then this list of
      * {@link PiNode}s is used to replace one value per merge end.
-     * 
+     *
      * @param merge The merge whose tail should be duplicated.
      * @param decision A callback that can make the final decision if tail duplication should occur
      *            or not.
@@ -210,7 +218,7 @@ public class TailDuplicationPhase extends BasePhase<PhaseContext> {
 
         /**
          * Initializes the tail duplication operation without actually performing any work.
-         * 
+         *
          * @param merge The merge whose tail should be duplicated.
          * @param replacements A list of replacement {@link PiNode}s, or null. If this is non-null,
          *            then the size of the list needs to match the number of end nodes at the merge.
@@ -232,7 +240,7 @@ public class TailDuplicationPhase extends BasePhase<PhaseContext> {
          * <li>Determines the complete set of duplicated nodes.</li>
          * <li>Performs the actual duplication.</li>
          * </ul>
-         * 
+         *
          * @param phaseContext
          */
         private void duplicate(PhaseContext phaseContext) {
@@ -240,7 +248,7 @@ public class TailDuplicationPhase extends BasePhase<PhaseContext> {
 
             Mark startMark = graph.getMark();
 
-            ValueAnchorNode anchor = addValueAnchor();
+            DummyAnchorNode anchor = addValueAnchor();
 
             // determine the fixed nodes that should be duplicated (currently: all nodes up until
             // the first control
@@ -283,11 +291,17 @@ public class TailDuplicationPhase extends BasePhase<PhaseContext> {
 
                 // re-wire the duplicated ValueAnchorNode to the predecessor of the corresponding
                 // EndNode
-                FixedNode anchorDuplicate = (FixedNode) duplicates.get(anchor);
-                ((FixedWithNextNode) forwardEnd.predecessor()).setNext(anchorDuplicate);
+                FixedWithNextNode anchorDuplicate = (FixedWithNextNode) duplicates.get(anchor);
                 // move dependencies on the ValueAnchorNode to the previous BeginNode
-                AbstractBeginNode prevBegin = AbstractBeginNode.prevBegin(anchorDuplicate);
-                anchorDuplicate.replaceAtUsages(prevBegin);
+                AbstractBeginNode prevBegin = AbstractBeginNode.prevBegin(forwardEnd);
+                anchorDuplicate.replaceAtUsages(InputType.Guard, prevBegin);
+                anchorDuplicate.replaceAtUsages(InputType.Anchor, prevBegin);
+                assert anchorDuplicate.usages().isEmpty();
+
+                FixedNode next = anchorDuplicate.next();
+                anchorDuplicate.setNext(null);
+                ((FixedWithNextNode) forwardEnd.predecessor()).setNext(next);
+                anchorDuplicate.safeDelete();
 
                 // re-wire the phi duplicates to the correct input
                 for (PhiNode phi : phiSnapshot) {
@@ -315,19 +329,14 @@ public class TailDuplicationPhase extends BasePhase<PhaseContext> {
         /**
          * Inserts a new ValueAnchorNode after the merge and transfers all dependency-usages (not
          * phis) to this ValueAnchorNode.
-         * 
+         *
          * @return The new {@link ValueAnchorNode} that was created.
          */
-        private ValueAnchorNode addValueAnchor() {
-            ValueAnchorNode anchor = graph.add(new ValueAnchorNode(null));
+        private DummyAnchorNode addValueAnchor() {
+            DummyAnchorNode anchor = graph.add(new DummyAnchorNode());
             graph.addAfterFixed(merge, anchor);
-            for (Node usage : merge.usages().snapshot()) {
-                if (usage instanceof PhiNode && ((PhiNode) usage).merge() == merge) {
-                    // nothing to do
-                } else {
-                    usage.replaceFirstInput(merge, anchor);
-                }
-            }
+            merge.replaceAtUsages(InputType.Guard, anchor);
+            merge.replaceAtUsages(InputType.Anchor, anchor);
             return anchor;
         }
 
@@ -335,7 +344,7 @@ public class TailDuplicationPhase extends BasePhase<PhaseContext> {
          * Given a set of fixed nodes, this method determines the set of fixed and floating nodes
          * that needs to be duplicated, i.e., all nodes that due to data flow and other dependencies
          * needs to be duplicated.
-         * 
+         *
          * @param fixedNodes The set of fixed nodes that should be duplicated.
          * @param stateAfter The frame state of the merge that follows the set of fixed nodes. All
          *            {@link ValueNode}s reachable from this state are considered to be reachable
@@ -427,7 +436,7 @@ public class TailDuplicationPhase extends BasePhase<PhaseContext> {
         /**
          * Creates a new merge and end node construct at the end of the duplicated area. While it is
          * useless in itself (merge with only one end) it simplifies the later duplication step.
-         * 
+         *
          * @param successor The successor of the duplicated set of nodes, i.e., the first node that
          *            should not be duplicated.
          * @param stateAfterMerge The frame state that should be used for the merge.
@@ -446,22 +455,18 @@ public class TailDuplicationPhase extends BasePhase<PhaseContext> {
         /**
          * Expands the set of nodes to be duplicated by looking at a number of conditions:
          * <ul>
-         * <li>{@link ValueNode}s that have usages on the outside need to be replaced with phis for
-         * the outside usages.</li>
-         * <li>Non-{@link ValueNode} nodes that have outside usages (frame states, virtual object
-         * states, ...) need to be cloned immediately for the outside usages.</li>
-         * <li>Nodes that have a {@link StampFactory#extension()} or
-         * {@link StampFactory#condition()} stamp need to be cloned immediately for the outside
-         * usages.</li>
+         * <li>Inputs of type {@link InputType#Value} into the duplicated set will be rerouted to a
+         * new phi node.</li>
+         * <li>Inputs of type {@link InputType#Association}, {@link InputType#Condition} and
+         * {@link InputType#State} into the duplicated set will be rerouted to a duplicated version
+         * of the inside node.</li>
          * <li>Dependencies into the duplicated nodes will be replaced with dependencies on the
          * merge.</li>
-         * <li>Outside non-{@link ValueNode}s with usages within the duplicated set of nodes need to
-         * also be duplicated.</li>
-         * <li>Outside {@link ValueNode}s with {@link StampFactory#extension()} or
-         * {@link StampFactory#condition()} stamps that have usages within the duplicated set of
-         * nodes need to also be duplicated.</li>
+         * <li>Inputs of type {@link InputType#Association}, {@link InputType#Condition} and
+         * {@link InputType#State} to outside the duplicated set will cause the outside node to be
+         * pulled into the duplicated set.</li>
          * </ul>
-         * 
+         *
          * @param duplicatedNodes The set of duplicated nodes that will be modified (expanded).
          * @param newBottomMerge The merge that follows the duplicated set of nodes. It will be used
          *            for newly created phis and to as a target for dependencies that pointed into
@@ -472,91 +477,88 @@ public class TailDuplicationPhase extends BasePhase<PhaseContext> {
 
             while (!worklist.isEmpty()) {
                 Node duplicated = worklist.remove();
-                if (hasUsagesOutside(duplicated, duplicatedNodes)) {
-                    boolean cloneForOutsideUsages = false;
-                    if (duplicated instanceof ValueNode) {
-                        ValueNode node = (ValueNode) duplicated;
-                        if (node.stamp() == StampFactory.dependency()) {
-                            // re-route dependencies to the merge
-                            replaceUsagesOutside(node, newBottomMerge, duplicatedNodes);
-                            // TODO(ls) maybe introduce phis for dependencies
-                        } else if (node.stamp() == StampFactory.extension() || node.stamp() == StampFactory.condition()) {
-                            cloneForOutsideUsages = true;
-                        } else {
-                            // introduce a new phi
-                            PhiNode newPhi = bottomPhis.get(node);
-                            if (newPhi == null) {
-                                newPhi = graph.addWithoutUnique(new PhiNode(node.stamp().unrestricted(), newBottomMerge));
-                                bottomPhis.put(node, newPhi);
-                                newPhi.addInput(node);
+                processUsages(duplicated, duplicatedNodes, newBottomMerge, worklist);
+                processInputs(duplicated, duplicatedNodes, worklist);
+            }
+        }
+
+        private void processUsages(Node duplicated, HashSet<Node> duplicatedNodes, MergeNode newBottomMerge, Deque<Node> worklist) {
+            HashSet<Node> unique = new HashSet<>();
+            duplicated.usages().snapshotTo(unique);
+            Node newOutsideClone = null;
+            for (Node usage : unique) {
+                if (!duplicatedNodes.contains(usage)) {
+                    NodeClassIterator iter = usage.inputs().iterator();
+                    while (iter.hasNext()) {
+                        Position pos = iter.nextPosition();
+                        if (pos.get(usage) == duplicated) {
+                            switch (pos.getInputType(usage)) {
+                                case Extension:
+                                case Condition:
+                                case State:
+                                    // clone the offending node to the outside
+                                    if (newOutsideClone == null) {
+                                        newOutsideClone = duplicated.copyWithInputs();
+                                        // this might cause other nodes to have outside usages
+                                        for (Node input : newOutsideClone.inputs()) {
+                                            if (duplicatedNodes.contains(input)) {
+                                                worklist.add(input);
+                                            }
+                                        }
+                                    }
+                                    pos.set(usage, newOutsideClone);
+                                    break;
+                                case Guard:
+                                case Anchor:
+                                    // re-route dependencies to the merge
+                                    pos.set(usage, newBottomMerge);
+                                    break;
+                                case Value:
+                                    // introduce a new phi
+                                    ValueNode node = (ValueNode) duplicated;
+                                    PhiNode newPhi = bottomPhis.get(node);
+                                    if (newPhi == null) {
+                                        newPhi = graph.addWithoutUnique(new ValuePhiNode(node.stamp().unrestricted(), newBottomMerge));
+                                        bottomPhis.put(node, newPhi);
+                                        newPhi.addInput(node);
+                                    }
+                                    pos.set(usage, newPhi);
+                                    break;
+                                case Association:
+                                default:
+                                    throw GraalInternalError.shouldNotReachHere();
                             }
-                            replaceUsagesOutside(node, newPhi, duplicatedNodes);
                         }
-                    } else {
-                        cloneForOutsideUsages = true;
                     }
-                    if (cloneForOutsideUsages) {
-                        // clone the offending node to the outside
-                        Node newOutsideClone = duplicated.copyWithInputs();
-                        replaceUsagesOutside(duplicated, newOutsideClone, duplicatedNodes);
-                        // this might cause other nodes to have outside usages, we need to look at
-                        // those as well
-                        for (Node input : newOutsideClone.inputs()) {
-                            if (duplicatedNodes.contains(input)) {
+                }
+            }
+        }
+
+        private void processInputs(Node duplicated, HashSet<Node> duplicatedNodes, Deque<Node> worklist) {
+            // check if this node has an input that lies outside and cannot be shared
+            NodeClassIterator iter = duplicated.inputs().iterator();
+            while (iter.hasNext()) {
+                Position pos = iter.nextPosition();
+                Node input = pos.get(duplicated);
+                if (input != null && !duplicatedNodes.contains(input)) {
+                    switch (pos.getInputType(duplicated)) {
+                        case Extension:
+                        case Condition:
+                        case State:
+                            if (input != merge) {
+                                duplicatedNodes.add(input);
                                 worklist.add(input);
                             }
-                        }
+                            break;
+                        case Association:
+                        case Guard:
+                        case Anchor:
+                        case Value:
+                            // no change needed
+                            break;
+                        default:
+                            throw GraalInternalError.shouldNotReachHere();
                     }
-                }
-                // check if this node has an input that lies outside and cannot be shared
-                for (Node input : duplicated.inputs()) {
-                    if (!duplicatedNodes.contains(input)) {
-                        boolean duplicateInput = false;
-                        if (input instanceof VirtualState) {
-                            duplicateInput = true;
-                        } else if (input instanceof ValueNode) {
-                            Stamp inputStamp = ((ValueNode) input).stamp();
-                            if (inputStamp == StampFactory.extension() || inputStamp == StampFactory.condition()) {
-                                duplicateInput = true;
-                            }
-                        }
-                        if (duplicateInput) {
-                            duplicatedNodes.add(input);
-                            worklist.add(input);
-                        }
-                    }
-                }
-            }
-        }
-
-        /**
-         * Checks if the given node has usages that are not within the given set of nodes.
-         * 
-         * @param node The node whose usages are checked.
-         * @param nodeSet The set of nodes that are considered to be "within".
-         * @return true if the given node has usages on the outside, false otherwise.
-         */
-        private static boolean hasUsagesOutside(Node node, HashSet<Node> nodeSet) {
-            for (Node usage : node.usages()) {
-                if (!nodeSet.contains(usage)) {
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        /**
-         * Replaces the given node with the given replacement at all usages that are not within the
-         * given set of nodes.
-         * 
-         * @param node The node to be replaced at outside usages.
-         * @param replacement The node that replaced the given node at outside usages.
-         * @param nodeSet The set of nodes that are considered to be "within".
-         */
-        private static void replaceUsagesOutside(Node node, Node replacement, HashSet<Node> nodeSet) {
-            for (Node usage : node.usages().snapshot()) {
-                if (!nodeSet.contains(usage)) {
-                    usage.replaceFirstInput(node, replacement);
                 }
             }
         }

@@ -22,13 +22,26 @@
  */
 package com.oracle.graal.lir.ptx;
 
-import static com.oracle.graal.asm.ptx.PTXMacroAssembler.*;
 import static com.oracle.graal.api.code.ValueUtil.*;
-import static com.oracle.graal.lir.LIRValueUtil.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
+import static com.oracle.graal.lir.LIRValueUtil.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.ptx.*;
+import com.oracle.graal.asm.ptx.PTXMacroAssembler.Add;
+import com.oracle.graal.asm.ptx.PTXMacroAssembler.And;
+import com.oracle.graal.asm.ptx.PTXMacroAssembler.Cvt;
+import com.oracle.graal.asm.ptx.PTXMacroAssembler.Div;
+import com.oracle.graal.asm.ptx.PTXMacroAssembler.Mul;
+import com.oracle.graal.asm.ptx.PTXMacroAssembler.Neg;
+import com.oracle.graal.asm.ptx.PTXMacroAssembler.Not;
+import com.oracle.graal.asm.ptx.PTXMacroAssembler.Or;
+import com.oracle.graal.asm.ptx.PTXMacroAssembler.Rem;
+import com.oracle.graal.asm.ptx.PTXMacroAssembler.Shl;
+import com.oracle.graal.asm.ptx.PTXMacroAssembler.Shr;
+import com.oracle.graal.asm.ptx.PTXMacroAssembler.Sub;
+import com.oracle.graal.asm.ptx.PTXMacroAssembler.Ushr;
+import com.oracle.graal.asm.ptx.PTXMacroAssembler.Xor;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;

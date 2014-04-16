@@ -66,7 +66,7 @@ public class LoadExceptionObjectSnippets implements Snippets {
         private final SnippetInfo loadException = snippet(LoadExceptionObjectSnippets.class, "loadException");
 
         public Templates(HotSpotProviders providers, TargetDescription target) {
-            super(providers, target);
+            super(providers, providers.getSnippetReflection(), target);
         }
 
         public void lower(LoadExceptionObjectNode loadExceptionObject, HotSpotRegistersProvider registers, LoweringTool tool) {

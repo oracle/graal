@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,11 +35,14 @@ import com.oracle.graal.hotspot.HotSpotVMConfig.CompressEncoding;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.type.*;
 import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.StandardOp.SaveRegistersOp;
 import com.oracle.graal.lir.hsail.*;
+import com.oracle.graal.lir.hsail.HSAILControlFlow.CondMoveOp;
 import com.oracle.graal.lir.hsail.HSAILControlFlow.DeoptimizeOp;
 import com.oracle.graal.lir.hsail.HSAILControlFlow.ForeignCall1ArgOp;
 import com.oracle.graal.lir.hsail.HSAILControlFlow.ForeignCall2ArgOp;
 import com.oracle.graal.lir.hsail.HSAILControlFlow.ForeignCallNoArgOp;
+import com.oracle.graal.lir.hsail.HSAILMove.CompareAndSwapOp;
 import com.oracle.graal.lir.hsail.HSAILMove.LoadCompressedPointer;
 import com.oracle.graal.lir.hsail.HSAILMove.LoadOp;
 import com.oracle.graal.lir.hsail.HSAILMove.MoveFromRegOp;
@@ -48,6 +51,7 @@ import com.oracle.graal.lir.hsail.HSAILMove.StoreCompressedPointer;
 import com.oracle.graal.lir.hsail.HSAILMove.StoreConstantOp;
 import com.oracle.graal.lir.hsail.HSAILMove.StoreOp;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.phases.util.*;
 
@@ -151,8 +155,11 @@ public class HSAILHotSpotLIRGenerator extends HSAILLIRGenerator implements HotSp
             if (canStoreConstant(c, isCompressed)) {
                 if (isCompressed) {
                     if ((c.getKind() == Kind.Object) && c.isNull()) {
+                        // Constant value = c.isNull() ? c : compress(c, config.getOopEncoding());
                         append(new StoreConstantOp(Kind.Int, storeAddress, Constant.forInt(0), state));
                     } else if (c.getKind() == Kind.Long) {
+                        // It's always a good idea to directly store compressed constants since they
+                        // have to be materialized as 64 bits encoded otherwise.
                         Constant value = compress(c, config.getKlassEncoding());
                         append(new StoreConstantOp(Kind.Int, storeAddress, value, state));
                     } else {
@@ -177,6 +184,22 @@ public class HSAILHotSpotLIRGenerator extends HSAILLIRGenerator implements HotSp
         } else {
             append(new StoreOp(getMemoryKind(kind), storeAddress, input, state));
         }
+    }
+
+    public Value emitCompareAndSwap(Value address, Value expectedValue, Value newValue, Value trueValue, Value falseValue) {
+        PlatformKind kind = newValue.getPlatformKind();
+        assert kind == expectedValue.getPlatformKind();
+        Kind memKind = getMemoryKind(kind);
+
+        HSAILAddressValue addressValue = asAddressValue(address);
+        Variable expected = emitMove(expectedValue);
+        Variable casResult = newVariable(kind);
+        append(new CompareAndSwapOp(memKind, casResult, addressValue, expected, asAllocatable(newValue)));
+
+        assert trueValue.getPlatformKind() == falseValue.getPlatformKind();
+        Variable nodeResult = newVariable(trueValue.getPlatformKind());
+        append(new CondMoveOp(HSAILLIRGenerator.mapKindToCompareOp(memKind), casResult, expected, nodeResult, Condition.EQ, trueValue, falseValue));
+        return nodeResult;
     }
 
     @Override
@@ -252,33 +275,68 @@ public class HSAILHotSpotLIRGenerator extends HSAILLIRGenerator implements HotSp
      */
     protected static Constant compress(Constant c, CompressEncoding encoding) {
         if (c.getKind() == Kind.Long) {
-            return Constant.forIntegerKind(Kind.Int, (int) (((c.asLong() - encoding.base) >> encoding.shift) & 0xffffffffL), c.getPrimitiveAnnotation());
+            int compressedValue = (int) (((c.asLong() - encoding.base) >> encoding.shift) & 0xffffffffL);
+            if (c instanceof HotSpotMetaspaceConstant) {
+                return HotSpotMetaspaceConstant.forMetaspaceObject(Kind.Int, compressedValue, HotSpotMetaspaceConstant.getMetaspaceObject(c));
+            } else {
+                return Constant.forIntegerKind(Kind.Int, compressedValue);
+            }
         } else {
             throw GraalInternalError.shouldNotReachHere();
         }
     }
 
     public void emitTailcall(Value[] args, Value address) {
-        throw GraalInternalError.shouldNotReachHere("NYI");
+        throw GraalInternalError.unimplemented();
     }
 
     public void emitDeoptimizeCaller(DeoptimizationAction action, DeoptimizationReason reason) {
-        throw GraalInternalError.shouldNotReachHere("NYI");
+        throw GraalInternalError.unimplemented();
     }
 
     public StackSlot getLockSlot(int lockDepth) {
-        throw GraalInternalError.shouldNotReachHere("NYI");
+        throw GraalInternalError.unimplemented();
     }
 
-    public Value emitCompress(Value pointer, CompressEncoding encoding) {
+    @Override
+    public Value emitCompress(Value pointer, CompressEncoding encoding, boolean nonNull) {
         Variable result = newVariable(NarrowOopStamp.NarrowOop);
-        append(new HSAILMove.CompressPointer(result, newVariable(pointer.getPlatformKind()), asAllocatable(pointer), encoding.base, encoding.shift, encoding.alignment));
+        append(new HSAILMove.CompressPointer(result, newVariable(pointer.getPlatformKind()), asAllocatable(pointer), encoding.base, encoding.shift, encoding.alignment, nonNull));
         return result;
     }
 
-    public Value emitUncompress(Value pointer, CompressEncoding encoding) {
+    @Override
+    public Value emitUncompress(Value pointer, CompressEncoding encoding, boolean nonNull) {
         Variable result = newVariable(Kind.Object);
-        append(new HSAILMove.UncompressPointer(result, asAllocatable(pointer), encoding.base, encoding.shift, encoding.alignment));
+        append(new HSAILMove.UncompressPointer(result, asAllocatable(pointer), encoding.base, encoding.shift, encoding.alignment, nonNull));
         return result;
+    }
+
+    public void emitLeaveCurrentStackFrame() {
+        throw GraalInternalError.unimplemented();
+    }
+
+    public void emitLeaveDeoptimizedStackFrame(Value frameSize, Value initialInfo) {
+        throw GraalInternalError.unimplemented();
+    }
+
+    public void emitEnterUnpackFramesStackFrame(Value framePc, Value senderSp, Value senderFp) {
+        throw GraalInternalError.unimplemented();
+    }
+
+    public void emitLeaveUnpackFramesStackFrame() {
+        throw GraalInternalError.unimplemented();
+    }
+
+    public SaveRegistersOp emitSaveAllRegisters() {
+        throw GraalInternalError.unimplemented();
+    }
+
+    public void emitPushInterpreterFrame(Value frameSize, Value framePc, Value senderSp, Value initialInfo) {
+        throw GraalInternalError.unimplemented();
+    }
+
+    public Value emitUncommonTrapCall(Value trapRequest, SaveRegistersOp saveRegisterOp) {
+        throw GraalInternalError.unimplemented();
     }
 }

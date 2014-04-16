@@ -49,7 +49,6 @@ import com.oracle.graal.phases.util.*;
 import com.oracle.graal.truffle.phases.*;
 import com.oracle.graal.virtual.phases.ea.*;
 import com.oracle.truffle.api.*;
-import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
 
 /**
@@ -76,7 +75,7 @@ public final class TruffleCacheImpl implements TruffleCache {
         this.optimisticOptimizations = optimisticOptimizations;
         this.stringBuilderClass = providers.getMetaAccess().lookupJavaType(StringBuilder.class);
         try {
-            executeHelperMethod = providers.getMetaAccess().lookupJavaMethod(OptimizedCallTarget.class.getDeclaredMethod("executeHelper", PackedFrame.class, Arguments.class));
+            executeHelperMethod = providers.getMetaAccess().lookupJavaMethod(OptimizedCallTarget.class.getDeclaredMethod("executeHelper", Object[].class));
         } catch (NoSuchMethodException ex) {
             throw new RuntimeException(ex);
         }
@@ -89,9 +88,10 @@ public final class TruffleCacheImpl implements TruffleCache {
     }
 
     @SuppressWarnings("unused")
-    public StructuredGraph lookup(final ResolvedJavaMethod method, final NodeInputList<ValueNode> arguments, final Assumptions assumptions, final CanonicalizerPhase finalCanonicalizer) {
+    public StructuredGraph lookup(final ResolvedJavaMethod method, final NodeInputList<ValueNode> arguments, final Assumptions assumptions, final CanonicalizerPhase finalCanonicalizer,
+                    boolean ignoreSlowPath) {
 
-        if (method.getAnnotation(CompilerDirectives.SlowPath.class) != null) {
+        if (!ignoreSlowPath && method.getAnnotation(CompilerDirectives.SlowPath.class) != null) {
             return null;
         }
 
@@ -236,7 +236,7 @@ public final class TruffleCacheImpl implements TruffleCache {
     private void expandInvoke(MethodCallTargetNode methodCallTargetNode) {
         StructuredGraph inlineGraph = providers.getReplacements().getMethodSubstitution(methodCallTargetNode.targetMethod());
         if (inlineGraph == null) {
-            inlineGraph = TruffleCacheImpl.this.lookup(methodCallTargetNode.targetMethod(), methodCallTargetNode.arguments(), null, null);
+            inlineGraph = TruffleCacheImpl.this.lookup(methodCallTargetNode.targetMethod(), methodCallTargetNode.arguments(), null, null, false);
         }
         if (inlineGraph == this.markerGraph) {
             // Can happen for recursive calls.

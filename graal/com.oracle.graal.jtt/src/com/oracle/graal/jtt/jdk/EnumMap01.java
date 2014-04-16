@@ -24,8 +24,9 @@ package com.oracle.graal.jtt.jdk;
 
 import java.util.*;
 
-import com.oracle.graal.jtt.*;
 import org.junit.*;
+
+import com.oracle.graal.jtt.*;
 
 /*
  */

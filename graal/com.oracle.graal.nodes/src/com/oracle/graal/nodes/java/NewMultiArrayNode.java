@@ -50,7 +50,7 @@ public class NewMultiArrayNode extends DeoptimizingFixedWithNextNode implements 
 
     /**
      * Constructs a new NewMultiArrayNode.
-     * 
+     *
      * @param type the element type of the array
      * @param dimensions the node which produce the dimensions for this array
      */

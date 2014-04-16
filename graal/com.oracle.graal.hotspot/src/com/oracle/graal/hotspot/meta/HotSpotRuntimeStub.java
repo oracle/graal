@@ -56,10 +56,6 @@ public class HotSpotRuntimeStub extends HotSpotInstalledCode {
         return String.format("InstalledRuntimeStub[stub=%s, codeBlob=0x%x]", stub, getCodeBlob());
     }
 
-    public Object execute(Object arg1, Object arg2, Object arg3) throws InvalidInstalledCodeException {
-        throw new GraalInternalError("Cannot call stub %s", stub);
-    }
-
     public Object executeVarargs(Object... args) throws InvalidInstalledCodeException {
         throw new GraalInternalError("Cannot call stub %s", stub);
     }

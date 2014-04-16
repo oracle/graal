@@ -282,7 +282,7 @@ public class BinaryGraphPrinter implements GraphPrinter {
         } else if (object instanceof Enum<?>) {
             writeByte(POOL_ENUM);
             writePoolObject(object.getClass());
-            writeInt(((Enum) object).ordinal());
+            writeInt(((Enum<?>) object).ordinal());
         } else if (object instanceof JavaType) {
             JavaType type = (JavaType) object;
             writeByte(POOL_CLASS);

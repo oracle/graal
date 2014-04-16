@@ -29,7 +29,7 @@ import com.oracle.graal.nodes.spi.*;
 
 public final class LoopEndNode extends AbstractEndNode {
 
-    @Input(notDataflow = true) private LoopBeginNode loopBegin;
+    @Input(InputType.Association) private LoopBeginNode loopBegin;
     private boolean canSafepoint;
     private int endIndex;
 
@@ -80,7 +80,7 @@ public final class LoopEndNode extends AbstractEndNode {
      * Returns the 0-based index of this loop end. This is <b>not</b> the index into {@link PhiNode}
      * values at the loop begin. Use {@link MergeNode#phiPredecessorIndex(AbstractEndNode)} for this
      * purpose.
-     * 
+     *
      * @return The 0-based index of this loop end.
      */
     public int endIndex() {

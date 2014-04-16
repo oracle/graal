@@ -40,7 +40,7 @@ public class AbstractNewObjectNode extends DeoptimizingFixedWithNextNode impleme
 
     /**
      * Constructs a new AbstractNewObjectNode.
-     * 
+     *
      * @param stamp the stamp of the newly created object
      * @param fillContents determines if the object's contents should be initialized to zero/null.
      */

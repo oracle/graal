@@ -24,12 +24,10 @@ package com.oracle.graal.truffle;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.lir.asm.*;
-import com.oracle.truffle.api.*;
-import com.oracle.truffle.api.frame.*;
 
 /**
  * A service for creating a specialized {@link CompilationResultBuilder} used to inject code into
- * {@link OptimizedCallTarget#call(PackedFrame, Arguments)}.
+ * {@link OptimizedCallTarget#call(Object[])}.
  */
 public interface OptimizedCallTargetInstrumentationFactory extends CompilationResultBuilderFactory {
 

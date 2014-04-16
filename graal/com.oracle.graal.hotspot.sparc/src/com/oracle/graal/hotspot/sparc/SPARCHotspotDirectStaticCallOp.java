@@ -22,44 +22,32 @@
  */
 package com.oracle.graal.hotspot.sparc;
 
-import static com.oracle.graal.sparc.SPARC.*;
-import static com.oracle.graal.asm.sparc.SPARCMacroAssembler.*;
-
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.sparc.*;
-import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.HotSpotCodeCacheProvider.MarkId;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.sparc.SPARCCall.DirectCallOp;
-import com.oracle.graal.lir.sparc.*;
 import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
 
 /**
- * A direct call that complies with the conventions for such calls in HotSpot. In particular, for
- * calls using an inline cache, a MOVE instruction is emitted just prior to the aligned direct call.
+ * A direct call that complies with the conventions for such calls in HotSpot. It doesn't use an
+ * inline cache so it's just a patchable call site.
  */
 @Opcode("CALL_DIRECT")
 final class SPARCHotspotDirectStaticCallOp extends DirectCallOp {
 
-    private final Constant metaspaceMethod;
     private final InvokeKind invokeKind;
 
-    SPARCHotspotDirectStaticCallOp(ResolvedJavaMethod target, Value result, Value[] parameters, Value[] temps, LIRFrameState state, InvokeKind invokeKind, Constant metaspaceMethod) {
+    SPARCHotspotDirectStaticCallOp(ResolvedJavaMethod target, Value result, Value[] parameters, Value[] temps, LIRFrameState state, InvokeKind invokeKind) {
         super(target, result, parameters, temps, state);
         assert invokeKind == InvokeKind.Static || invokeKind == InvokeKind.Special;
-        this.metaspaceMethod = metaspaceMethod;
         this.invokeKind = invokeKind;
     }
 
     @Override
     public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
-        // The mark for an invocation that uses an inline cache must be placed at the
-        // instruction that loads the Klass from the inline cache.
-        SPARCMove.move(crb, masm, g5.asValue(Kind.Long), metaspaceMethod);
         MarkId.recordMark(crb, invokeKind == InvokeKind.Static ? MarkId.INVOKESTATIC : MarkId.INVOKESPECIAL);
-        // SPARCMove.move(crb, masm, g3.asValue(Kind.Long), Constant.LONG_0);
-        new Setx(HotSpotGraalRuntime.runtime().getConfig().nonOopBits, g3, true).emit(masm);
         super.emitCode(crb, masm);
     }
 }

@@ -23,15 +23,16 @@
 package com.oracle.graal.hotspot.hsail;
 
 import java.lang.reflect.*;
+import java.util.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.util.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.replacements.hsail.*;
-import java.util.HashSet;
 
 /**
  * The substitutions and snippets supported by HSAIL.
@@ -41,8 +42,8 @@ public class HSAILHotSpotReplacementsImpl extends ReplacementsImpl {
     private final Replacements host;
     private HashSet<ResolvedJavaMethod> ignoredResolvedMethods = new HashSet<>();
 
-    public HSAILHotSpotReplacementsImpl(Providers providers, Assumptions assumptions, TargetDescription target, Replacements host) {
-        super(providers, assumptions, target);
+    public HSAILHotSpotReplacementsImpl(Providers providers, SnippetReflectionProvider snippetReflection, Assumptions assumptions, TargetDescription target, Replacements host) {
+        super(providers, snippetReflection, assumptions, target);
         this.host = host;
     }
 

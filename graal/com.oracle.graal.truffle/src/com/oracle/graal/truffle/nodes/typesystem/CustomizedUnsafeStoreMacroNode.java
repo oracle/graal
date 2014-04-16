@@ -27,6 +27,7 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.truffle.nodes.*;
 import com.oracle.graal.truffle.nodes.asserts.*;
 import com.oracle.truffle.api.*;
 
@@ -53,12 +54,11 @@ public class CustomizedUnsafeStoreMacroNode extends NeverPartOfCompilationNode i
             ValueNode objectArgument = arguments.get(OBJECT_ARGUMENT_INDEX);
             ValueNode offsetArgument = arguments.get(OFFSET_ARGUMENT_INDEX);
             ValueNode valueArgument = arguments.get(VALUE_ARGUMENT_INDEX);
-            Object locationIdentityObject = locationArgument.asConstant().asObject();
             LocationIdentity locationIdentity;
-            if (locationIdentityObject == null) {
+            if (locationArgument.asConstant().isNull()) {
                 locationIdentity = LocationIdentity.ANY_LOCATION;
             } else {
-                locationIdentity = ObjectLocationIdentity.create(locationIdentityObject);
+                locationIdentity = ObjectLocationIdentity.create(locationArgument.asConstant());
             }
 
             UnsafeStoreNode unsafeStoreNode = graph().add(

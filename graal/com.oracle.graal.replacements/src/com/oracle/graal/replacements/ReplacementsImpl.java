@@ -39,6 +39,7 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.debug.internal.*;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.Graph.Mark;
 import com.oracle.graal.java.*;
 import com.oracle.graal.java.GraphBuilderPhase.Instance;
 import com.oracle.graal.nodes.*;
@@ -56,6 +57,7 @@ import com.oracle.graal.word.phases.*;
 public class ReplacementsImpl implements Replacements {
 
     protected final Providers providers;
+    protected final SnippetReflectionProvider snippetReflection;
     protected final TargetDescription target;
     protected final Assumptions assumptions;
 
@@ -71,8 +73,9 @@ public class ReplacementsImpl implements Replacements {
     private final Set<ResolvedJavaMethod> forcedSubstitutions;
     private final Map<Class<? extends SnippetTemplateCache>, SnippetTemplateCache> snippetTemplateCache;
 
-    public ReplacementsImpl(Providers providers, Assumptions assumptions, TargetDescription target) {
+    public ReplacementsImpl(Providers providers, SnippetReflectionProvider snippetReflection, Assumptions assumptions, TargetDescription target) {
         this.providers = providers.copyWith(this);
+        this.snippetReflection = snippetReflection;
         this.target = target;
         this.assumptions = assumptions;
         this.graphs = new ConcurrentHashMap<>();
@@ -121,7 +124,7 @@ public class ReplacementsImpl implements Replacements {
 
         // Do deferred intrinsification of node intrinsics
 
-        new NodeIntrinsificationPhase(providers).apply(specializedSnippet);
+        new NodeIntrinsificationPhase(providers, snippetReflection).apply(specializedSnippet);
         new CanonicalizerPhase(true).apply(specializedSnippet, new PhaseContext(providers, assumptions));
         NodeIntrinsificationVerificationPhase.verify(specializedSnippet);
     }
@@ -220,7 +223,7 @@ public class ReplacementsImpl implements Replacements {
 
     /**
      * Registers a method substitution.
-     * 
+     *
      * @param originalMember a method or constructor being substituted
      * @param substituteMethod the substitute method
      * @return the original method
@@ -232,7 +235,7 @@ public class ReplacementsImpl implements Replacements {
         if (originalMember instanceof Method) {
             original = metaAccess.lookupJavaMethod((Method) originalMember);
         } else {
-            original = metaAccess.lookupJavaConstructor((Constructor) originalMember);
+            original = metaAccess.lookupJavaConstructor((Constructor<?>) originalMember);
         }
         if (Debug.isLogEnabled()) {
             Debug.log("substitution: %s --> %s", MetaUtil.format("%H.%n(%p) %r", original), MetaUtil.format("%H.%n(%p) %r", substitute));
@@ -244,7 +247,7 @@ public class ReplacementsImpl implements Replacements {
 
     /**
      * Registers a macro substitution.
-     * 
+     *
      * @param originalMethod a method or constructor being substituted
      * @param macro the substitute macro node class
      * @return the original method
@@ -255,7 +258,7 @@ public class ReplacementsImpl implements Replacements {
         if (originalMethod instanceof Method) {
             originalJavaMethod = metaAccess.lookupJavaMethod((Method) originalMethod);
         } else {
-            originalJavaMethod = metaAccess.lookupJavaConstructor((Constructor) originalMethod);
+            originalJavaMethod = metaAccess.lookupJavaConstructor((Constructor<?>) originalMethod);
         }
         registeredMacroSubstitutions.put(originalJavaMethod, macro);
         return originalJavaMethod;
@@ -283,7 +286,7 @@ public class ReplacementsImpl implements Replacements {
 
     /**
      * Creates a preprocessed graph for a snippet or method substitution.
-     * 
+     *
      * @param method the snippet or method substitution for which a graph will be created
      * @param original the original method if {@code method} is a {@linkplain MethodSubstitution
      *            substitution} otherwise null
@@ -364,7 +367,7 @@ public class ReplacementsImpl implements Replacements {
          * Does final processing of a snippet graph.
          */
         protected void finalizeGraph(StructuredGraph graph) {
-            new NodeIntrinsificationPhase(providers).apply(graph);
+            new NodeIntrinsificationPhase(providers, snippetReflection).apply(graph);
             if (!SnippetTemplate.hasConstantParameter(method)) {
                 NodeIntrinsificationVerificationPhase.verify(graph);
             }
@@ -412,8 +415,8 @@ public class ReplacementsImpl implements Replacements {
             try (Scope s = Debug.scope("buildInitialGraph", graph)) {
                 MetaAccessProvider metaAccess = providers.getMetaAccess();
                 createGraphBuilder(metaAccess, GraphBuilderConfiguration.getSnippetDefault(), OptimisticOptimizations.NONE).apply(graph);
-                new WordTypeVerificationPhase(metaAccess, target.wordKind).apply(graph);
-                new WordTypeRewriterPhase(metaAccess, target.wordKind).apply(graph);
+                new WordTypeVerificationPhase(metaAccess, snippetReflection, target.wordKind).apply(graph);
+                new WordTypeRewriterPhase(metaAccess, snippetReflection, target.wordKind).apply(graph);
 
                 if (OptCanonicalizer.getValue()) {
                     new CanonicalizerPhase(true).apply(graph, new PhaseContext(providers, assumptions));
@@ -434,7 +437,7 @@ public class ReplacementsImpl implements Replacements {
 
         /**
          * Called after a graph is inlined.
-         * 
+         *
          * @param caller the graph into which {@code callee} was inlined
          * @param callee the graph that was inlined into {@code caller}
          * @param beforeInlineData value returned by {@link #beforeInline}.
@@ -449,7 +452,7 @@ public class ReplacementsImpl implements Replacements {
          * Called after all inlining for a given graph is complete.
          */
         protected void afterInlining(StructuredGraph graph) {
-            new NodeIntrinsificationPhase(providers).apply(graph);
+            new NodeIntrinsificationPhase(providers, snippetReflection).apply(graph);
             new DeadCodeEliminationPhase().apply(graph);
             if (OptCanonicalizer.getValue()) {
                 new CanonicalizerPhase(true).apply(graph, new PhaseContext(providers, assumptions));
@@ -458,17 +461,30 @@ public class ReplacementsImpl implements Replacements {
 
         private StructuredGraph buildGraph(final ResolvedJavaMethod methodToParse, final SnippetInliningPolicy policy, int inliningDepth) {
             assert inliningDepth < MAX_GRAPH_INLINING_DEPTH : "inlining limit exceeded";
-            assert isInlinableSnippet(methodToParse) : methodToParse;
+            assert isInlinable(methodToParse) : methodToParse;
             final StructuredGraph graph = buildInitialGraph(methodToParse);
             try (Scope s = Debug.scope("buildGraph", graph)) {
-
+                Set<MethodCallTargetNode> doNotInline = null;
                 for (MethodCallTargetNode callTarget : graph.getNodes(MethodCallTargetNode.class)) {
+                    if (doNotInline != null && doNotInline.contains(callTarget)) {
+                        continue;
+                    }
                     ResolvedJavaMethod callee = callTarget.targetMethod();
                     if (callee.equals(recursiveEntry)) {
-                        if (isInlinableSnippet(substitutedMethod)) {
+                        if (isInlinable(substitutedMethod)) {
                             final StructuredGraph originalGraph = buildInitialGraph(substitutedMethod);
+                            Mark mark = graph.getMark();
                             InliningUtil.inline(callTarget.invoke(), originalGraph, true);
-
+                            for (MethodCallTargetNode inlinedCallTarget : graph.getNewNodes(mark).filter(MethodCallTargetNode.class)) {
+                                if (doNotInline == null) {
+                                    doNotInline = new HashSet<>();
+                                }
+                                // We do not want to do further inlining (now) for calls
+                                // in the original method as this can cause unlimited
+                                // recursive inlining given an eager inlining policy such
+                                // as DefaultSnippetInliningPolicy.
+                                doNotInline.add(inlinedCallTarget);
+                            }
                             Debug.dump(graph, "after inlining %s", callee);
                             afterInline(graph, originalGraph, null);
                         }
@@ -514,8 +530,8 @@ public class ReplacementsImpl implements Replacements {
         }
     }
 
-    private static boolean isInlinableSnippet(final ResolvedJavaMethod methodToParse) {
-        return !Modifier.isAbstract(methodToParse.getModifiers()) && !Modifier.isNative(methodToParse.getModifiers());
+    private static boolean isInlinable(final ResolvedJavaMethod method) {
+        return !Modifier.isAbstract(method.getModifiers()) && !Modifier.isNative(method.getModifiers());
     }
 
     private static String originalName(Method substituteMethod, String methodSubstitution) {
@@ -528,12 +544,12 @@ public class ReplacementsImpl implements Replacements {
 
     /**
      * Resolves a name to a class.
-     * 
+     *
      * @param className the name of the class to resolve
      * @param optional if true, resolution failure returns null
      * @return the resolved class or null if resolution fails and {@code optional} is true
      */
-    static Class resolveType(String className, boolean optional) {
+    static Class<?> resolveType(String className, boolean optional) {
         try {
             // Need to use launcher class path to handle classes
             // that are not on the boot class path
@@ -547,7 +563,7 @@ public class ReplacementsImpl implements Replacements {
         }
     }
 
-    private static Class resolveType(JavaType type) {
+    private static Class<?> resolveType(JavaType type) {
         JavaType base = type;
         int dimensions = 0;
         while (base.getComponentType() != null) {
@@ -555,15 +571,15 @@ public class ReplacementsImpl implements Replacements {
             dimensions++;
         }
 
-        Class baseClass = base.getKind() != Kind.Object ? base.getKind().toJavaClass() : resolveType(toJavaName(base), false);
+        Class<?> baseClass = base.getKind() != Kind.Object ? base.getKind().toJavaClass() : resolveType(toJavaName(base), false);
         return dimensions == 0 ? baseClass : Array.newInstance(baseClass, new int[dimensions]).getClass();
     }
 
     static class JavaSignature {
-        final Class returnType;
-        final Class[] parameters;
+        final Class<?> returnType;
+        final Class<?>[] parameters;
 
-        public JavaSignature(Class returnType, Class[] parameters) {
+        public JavaSignature(Class<?> returnType, Class<?>[] parameters) {
             this.parameters = parameters;
             this.returnType = returnType;
         }
@@ -582,8 +598,8 @@ public class ReplacementsImpl implements Replacements {
     }
 
     private JavaSignature originalSignature(Method substituteMethod, String methodSubstitution, boolean isStatic) {
-        Class[] parameters;
-        Class returnType;
+        Class<?>[] parameters;
+        Class<?> returnType;
         if (methodSubstitution.isEmpty()) {
             parameters = substituteMethod.getParameterTypes();
             if (!isStatic) {

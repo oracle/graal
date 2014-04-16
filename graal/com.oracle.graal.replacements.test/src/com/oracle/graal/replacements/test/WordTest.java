@@ -29,7 +29,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.replacements.*;
-import com.oracle.graal.replacements.ReplacementsImpl.*;
+import com.oracle.graal.replacements.ReplacementsImpl.FrameStateProcessing;
 import com.oracle.graal.replacements.Snippet.SnippetInliningPolicy;
 import com.oracle.graal.test.*;
 import com.oracle.graal.word.*;
@@ -42,7 +42,7 @@ public class WordTest extends GraalCompilerTest implements Snippets {
     private final ReplacementsImpl installer;
 
     public WordTest() {
-        installer = new ReplacementsImpl(getProviders(), new Assumptions(false), getTarget());
+        installer = new ReplacementsImpl(getProviders(), getSnippetReflection(), new Assumptions(false), getTarget());
     }
 
     private static final ThreadLocal<SnippetInliningPolicy> inliningPolicy = new ThreadLocal<>();

@@ -23,6 +23,7 @@
 package com.oracle.graal.nodes;
 
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
@@ -32,7 +33,7 @@ import com.oracle.graal.nodes.type.*;
 public class InfopointNode extends FixedWithNextNode implements LIRLowerable, NodeWithState {
 
     public final InfopointReason reason;
-    @Input private FrameState state;
+    @Input(InputType.State) private FrameState state;
 
     public InfopointNode(InfopointReason reason, FrameState state) {
         super(StampFactory.forVoid());

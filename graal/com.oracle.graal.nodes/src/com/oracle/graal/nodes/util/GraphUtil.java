@@ -168,7 +168,7 @@ public class GraphUtil {
         if (proxyPoint instanceof LoopExitNode) {
             LoopExitNode exit = (LoopExitNode) proxyPoint;
             LoopBeginNode loopBegin = exit.loopBegin();
-            ValueNode vpnValue = vpn.value();
+            Node vpnValue = vpn.value();
             for (ValueNode v : loopBegin.stateAfter().values()) {
                 ValueNode v2 = v;
                 if (loopBegin.isPhiAtMerge(v2)) {
@@ -205,7 +205,7 @@ public class GraphUtil {
 
     /**
      * Gets an approximate source code location for a node if possible.
-     * 
+     *
      * @return the StackTraceElements if an approximate source location is found, null otherwise
      */
     public static StackTraceElement[] approxSourceStackTraceElement(Node node) {
@@ -235,7 +235,7 @@ public class GraphUtil {
 
     /**
      * Gets an approximate source code location for a node, encoded as an exception, if possible.
-     * 
+     *
      * @return the exception with the location
      */
     public static RuntimeException approxSourceException(Node node, Throwable cause) {
@@ -254,7 +254,7 @@ public class GraphUtil {
 
     /**
      * Gets an approximate source code location for a node if possible.
-     * 
+     *
      * @return a file name and source line number in stack trace format (e.g. "String.java:32") if
      *         an approximate source location is found, null otherwise
      */
@@ -271,7 +271,7 @@ public class GraphUtil {
 
     /**
      * Returns a string representation of the given collection of objects.
-     * 
+     *
      * @param objects The {@link Iterable} that will be used to iterate over the objects.
      * @return A string of the format "[a, b, ...]".
      */
@@ -290,14 +290,14 @@ public class GraphUtil {
 
     /**
      * Gets the original value by iterating through all {@link ValueProxy ValueProxies}.
-     * 
+     *
      * @param value The start value.
      * @return The first non-proxy value encountered.
      */
     public static ValueNode unproxify(ValueNode value) {
         ValueNode result = value;
         while (result instanceof ValueProxy) {
-            result = ((ValueProxy) result).getOriginalValue();
+            result = ((ValueProxy) result).getOriginalNode();
         }
         return result;
     }
@@ -306,14 +306,14 @@ public class GraphUtil {
      * Tries to find an original value of the given node by traversing through proxies and
      * unambiguous phis. Note that this method will perform an exhaustive search through phis. It is
      * intended to be used during graph building, when phi nodes aren't yet canonicalized.
-     * 
+     *
      * @param proxy The node whose original value should be determined.
      */
     public static ValueNode originalValue(ValueNode proxy) {
         ValueNode v = proxy;
         do {
             if (v instanceof ValueProxy) {
-                v = ((ValueProxy) v).getOriginalValue();
+                v = ((ValueProxy) v).getOriginalNode();
             } else if (v instanceof PhiNode) {
                 v = ((PhiNode) v).singleValue();
             } else {
@@ -339,7 +339,7 @@ public class GraphUtil {
             worklist.add(proxy);
             for (Node node : worklist) {
                 if (node instanceof ValueProxy) {
-                    ValueNode originalValue = ((ValueProxy) node).getOriginalValue();
+                    ValueNode originalValue = ((ValueProxy) node).getOriginalNode();
                     if (!process(originalValue, worklist)) {
                         return;
                     }
@@ -359,7 +359,7 @@ public class GraphUtil {
 
         /**
          * Process a node as part of this search.
-         * 
+         *
          * @param node the next node encountered in the search
          * @param worklist if non-null, {@code node} will be added to this list. Otherwise,
          *            {@code node} is treated as a candidate result.

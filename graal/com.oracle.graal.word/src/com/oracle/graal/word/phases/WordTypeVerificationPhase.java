@@ -25,6 +25,7 @@ package com.oracle.graal.word.phases;
 import java.lang.reflect.*;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.nodes.*;
@@ -44,8 +45,8 @@ public class WordTypeVerificationPhase extends Phase {
 
     private final WordTypeRewriterPhase wordAccess;
 
-    public WordTypeVerificationPhase(MetaAccessProvider metaAccess, Kind wordKind) {
-        this.wordAccess = new WordTypeRewriterPhase(metaAccess, wordKind);
+    public WordTypeVerificationPhase(MetaAccessProvider metaAccess, SnippetReflectionProvider snippetReflection, Kind wordKind) {
+        this.wordAccess = new WordTypeRewriterPhase(metaAccess, snippetReflection, wordKind);
     }
 
     @Override
@@ -90,9 +91,9 @@ public class WordTypeVerificationPhase extends Phase {
                     verify(!isWord(node) || ((ObjectEqualsNode) usage).y() != node, node, usage, "cannot use word type in comparison");
                 } else if (usage instanceof ArrayLengthNode) {
                     verify(!isWord(node) || ((ArrayLengthNode) usage).array() != node, node, usage, "cannot get array length from word value");
-                } else if (usage instanceof PhiNode) {
+                } else if (usage instanceof ValuePhiNode) {
                     if (!(node instanceof MergeNode)) {
-                        PhiNode phi = (PhiNode) usage;
+                        ValuePhiNode phi = (ValuePhiNode) usage;
                         for (ValueNode input : phi.values()) {
                             verify(isWord(node) == isWord(input), node, input, "cannot merge word and non-word values");
                         }

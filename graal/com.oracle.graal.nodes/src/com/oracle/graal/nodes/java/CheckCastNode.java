@@ -52,7 +52,7 @@ public final class CheckCastNode extends FixedWithNextNode implements Canonicali
 
     /**
      * Creates a new CheckCast instruction.
-     * 
+     *
      * @param type the type being cast to
      * @param object the instruction producing the object
      */
@@ -71,26 +71,26 @@ public final class CheckCastNode extends FixedWithNextNode implements Canonicali
 
     /**
      * Lowers a {@link CheckCastNode} to a {@link GuardingPiNode}. That is:
-     * 
+     *
      * <pre>
      * 1: A a = ...
      * 2: B b = (B) a;
      * </pre>
-     * 
+     *
      * is lowered to:
-     * 
+     *
      * <pre>
      * 1: A a = ...
      * 2: B b = guardingPi(a == null || a instanceof B, a, stamp(B))
      * </pre>
-     * 
+     *
      * or if a is known to be non-null:
-     * 
+     *
      * <pre>
      * 1: A a = ...
      * 2: B b = guardingPi(a instanceof B, a, stamp(B, non-null))
      * </pre>
-     * 
+     *
      * Note: we use {@link Graph#addWithoutUnique} as opposed to {@link Graph#unique} for the new
      * {@link InstanceOfNode} to maintain the invariant checked by
      * {@code LoweringPhase.checkUsagesAreScheduled()}.
@@ -201,7 +201,7 @@ public final class CheckCastNode extends FixedWithNextNode implements Canonicali
     }
 
     @Override
-    public ValueNode getOriginalValue() {
+    public ValueNode getOriginalNode() {
         return object;
     }
 }

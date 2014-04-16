@@ -26,34 +26,20 @@ import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 import static com.oracle.graal.nodes.GuardingPiNode.*;
 import static com.oracle.graal.nodes.extended.BranchProbabilityNode.*;
 import static com.oracle.graal.phases.GraalOptions.*;
-import static com.oracle.graal.replacements.SnippetTemplate.*;
 
 import java.lang.reflect.*;
 import java.util.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.debug.*;
-import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
-import com.oracle.graal.loop.phases.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
-import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.phases.common.*;
-import com.oracle.graal.phases.tiers.*;
-import com.oracle.graal.phases.util.*;
 import com.oracle.graal.replacements.*;
-import com.oracle.graal.replacements.Snippet.Fold;
-import com.oracle.graal.replacements.SnippetTemplate.AbstractTemplates;
-import com.oracle.graal.replacements.SnippetTemplate.Arguments;
-import com.oracle.graal.replacements.SnippetTemplate.SnippetInfo;
 import com.oracle.graal.word.*;
 
-@SuppressWarnings("unused")
 public class ArrayCopySnippets implements Snippets {
 
     private static final EnumMap<Kind, Method> arraycopyMethods = new EnumMap<>(Kind.class);

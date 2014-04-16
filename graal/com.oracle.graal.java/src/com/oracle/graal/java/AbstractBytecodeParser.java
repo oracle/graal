@@ -43,7 +43,7 @@ import com.oracle.graal.nodes.calc.FloatConvertNode.FloatConvert;
 import com.oracle.graal.options.*;
 import com.oracle.graal.phases.*;
 
-public abstract class AbstractBytecodeParser<T extends KindProvider, F extends AbstractFrameStateBuilder<T>> {
+public abstract class AbstractBytecodeParser<T extends KindProvider, F extends AbstractFrameStateBuilder<T, F>> {
 
     static class Options {
         // @formatter:off
@@ -505,11 +505,7 @@ public abstract class AbstractBytecodeParser<T extends KindProvider, F extends A
         frameState.storeLocal(index, append(genIntegerAdd(Kind.Int, x, y)));
     }
 
-    private void genGoto() {
-        appendGoto(createTarget(currentBlock.getSuccessors().get(0), frameState));
-        // assert currentBlock.numNormalSuccessors() == 1;
-        assert currentBlock.getSuccessors().size() == 1;
-    }
+    protected abstract void genGoto();
 
     protected abstract T genObjectEquals(T x, T y);
 
@@ -716,13 +712,6 @@ public abstract class AbstractBytecodeParser<T extends KindProvider, F extends A
 
     protected abstract void emitNullCheck(T receiver);
 
-    protected static final ArrayIndexOutOfBoundsException cachedArrayIndexOutOfBoundsException = new ArrayIndexOutOfBoundsException();
-    protected static final NullPointerException cachedNullPointerException = new NullPointerException();
-    static {
-        cachedArrayIndexOutOfBoundsException.setStackTrace(new StackTraceElement[0]);
-        cachedNullPointerException.setStackTrace(new StackTraceElement[0]);
-    }
-
     protected abstract void emitBoundsCheck(T index, T length);
 
     private static final DebugMetric EXPLICIT_EXCEPTIONS = Debug.metric("ExplicitExceptions");
@@ -834,7 +823,7 @@ public abstract class AbstractBytecodeParser<T extends KindProvider, F extends A
      *
      * @return an array of size successorCount with the accumulated probability for each successor.
      */
-    private static double[] successorProbabilites(int successorCount, int[] keySuccessors, double[] keyProbabilities) {
+    public static double[] successorProbabilites(int successorCount, int[] keySuccessors, double[] keyProbabilities) {
         double[] probability = new double[successorCount];
         for (int i = 0; i < keySuccessors.length; i++) {
             probability[keySuccessors[i]] += keyProbabilities[i];
@@ -884,17 +873,11 @@ public abstract class AbstractBytecodeParser<T extends KindProvider, F extends A
             }
         }
 
-        double[] successorProbabilities = successorProbabilites(actualSuccessors.size(), keySuccessors, keyProbabilities);
-        T switchNode = append(genIntegerSwitch(value, actualSuccessors.size(), keys, keyProbabilities, keySuccessors));
-        for (int i = 0; i < actualSuccessors.size(); i++) {
-            setBlockSuccessor(switchNode, i, createBlockTarget(successorProbabilities[i], actualSuccessors.get(i), frameState));
-        }
+        genIntegerSwitch(value, actualSuccessors, keys, keyProbabilities, keySuccessors);
 
     }
 
-    protected abstract void setBlockSuccessor(T switchNode, int i, T createBlockTarget);
-
-    protected abstract T genIntegerSwitch(T value, int size, int[] keys, double[] keyProbabilities, int[] keySuccessors);
+    protected abstract void genIntegerSwitch(T value, ArrayList<BciBlock> actualSuccessors, int[] keys, double[] keyProbabilities, int[] keySuccessors);
 
     private static class SuccessorInfo {
 
@@ -911,33 +894,11 @@ public abstract class AbstractBytecodeParser<T extends KindProvider, F extends A
 
     protected abstract T append(T v);
 
-    private boolean isNeverExecutedCode(double probability) {
+    protected boolean isNeverExecutedCode(double probability) {
         return probability == 0 && optimisticOpts.removeNeverExecutedCode() && entryBCI == StructuredGraph.INVOCATION_ENTRY_BCI;
     }
 
-    protected abstract T genDeoptimization();
-
-    protected T createTarget(double probability, BciBlock block, AbstractFrameStateBuilder<T> stateAfter) {
-        assert probability >= 0 && probability <= 1.01 : probability;
-        if (isNeverExecutedCode(probability)) {
-            return genDeoptimization();
-        } else {
-            assert block != null;
-            return createTarget(block, stateAfter);
-        }
-    }
-
-    protected abstract T createTarget(BciBlock trueBlock, AbstractFrameStateBuilder<T> state);
-
-    /**
-     * Returns a block begin node with the specified state. If the specified probability is 0, the
-     * block deoptimizes immediately.
-     */
-    protected abstract T createBlockTarget(double probability, BciBlock bciBlock, AbstractFrameStateBuilder<T> stateAfter);
-
     protected abstract void processBlock(BciBlock block);
-
-    protected abstract void appendGoto(T target);
 
     protected abstract void iterateBytecodesForBlock(BciBlock block);
 

@@ -37,8 +37,8 @@ import com.oracle.graal.lir.*;
  */
 public final class PTXFrameMap extends FrameMap {
 
-    public PTXFrameMap(CodeCacheProvider codeCache) {
-        super(codeCache);
+    public PTXFrameMap(CodeCacheProvider codeCache, RegisterConfig registerConfig) {
+        super(codeCache, registerConfig);
     }
 
     @Override

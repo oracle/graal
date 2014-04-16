@@ -59,7 +59,7 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
 
     /**
      * Gets the holder of a HotSpot metaspace method native object.
-     * 
+     *
      * @param metaspaceMethod a metaspace Method object
      * @return the {@link ResolvedJavaType} corresponding to the holder of the
      *         {@code metaspaceMethod}
@@ -74,7 +74,7 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
 
     /**
      * Gets the {@link ResolvedJavaMethod} for a HotSpot metaspace method native object.
-     * 
+     *
      * @param metaspaceMethod a metaspace Method object
      * @return the {@link ResolvedJavaMethod} corresponding to {@code metaspaceMethod}
      */
@@ -110,7 +110,7 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
     /**
      * Returns a pointer to this method's constant method data structure (
      * {@code Method::_constMethod}).
-     * 
+     *
      * @return pointer to this method's ConstMethod
      */
     private long getConstMethod() {
@@ -134,7 +134,7 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
 
     /**
      * Returns this method's flags ({@code Method::_flags}).
-     * 
+     *
      * @return flags of this method
      */
     private int getFlags() {
@@ -143,7 +143,7 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
 
     /**
      * Returns this method's constant method flags ({@code ConstMethod::_flags}).
-     * 
+     *
      * @return flags of this method's ConstMethod
      */
     private int getConstMethodFlags() {
@@ -159,7 +159,11 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
      * Gets the address of the C++ Method object for this method.
      */
     public Constant getMetaspaceMethodConstant() {
-        return Constant.forIntegerKind(getHostWordKind(), metaspaceMethod, this);
+        return HotSpotMetaspaceConstant.forMetaspaceObject(getHostWordKind(), metaspaceMethod, this);
+    }
+
+    public long getMetaspaceMethod() {
+        return metaspaceMethod;
     }
 
     @Override
@@ -183,7 +187,7 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
     @Override
     public boolean canBeStaticallyBound() {
         int modifiers = getModifiers();
-        return (Modifier.isFinal(modifiers) || Modifier.isPrivate(modifiers) || Modifier.isStatic(modifiers)) && !Modifier.isAbstract(modifiers);
+        return (Modifier.isFinal(modifiers) || Modifier.isPrivate(modifiers) || Modifier.isStatic(modifiers) || Modifier.isFinal(holder.getModifiers())) && !Modifier.isAbstract(modifiers);
     }
 
     @Override
@@ -248,7 +252,7 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
 
     /**
      * Returns true if this method has a {@code CallerSensitive} annotation.
-     * 
+     *
      * @return true if CallerSensitive annotation present, false otherwise
      */
     public boolean isCallerSensitive() {
@@ -257,7 +261,7 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
 
     /**
      * Returns true if this method has a {@code ForceInline} annotation.
-     * 
+     *
      * @return true if ForceInline annotation present, false otherwise
      */
     public boolean isForceInline() {
@@ -266,7 +270,7 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
 
     /**
      * Returns true if this method has a {@code DontInline} annotation.
-     * 
+     *
      * @return true if DontInline annotation present, false otherwise
      */
     public boolean isDontInline() {
@@ -283,7 +287,7 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
     /**
      * Returns true if this method is one of the special methods that is ignored by security stack
      * walks.
-     * 
+     *
      * @return true if special method ignored by security stack walks, false otherwise
      */
     public boolean ignoredBySecurityStackWalk() {
@@ -374,7 +378,7 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
 
     /**
      * Gets the value of {@code Method::_code}.
-     * 
+     *
      * @return the value of {@code Method::_code}
      */
     private long getCompiledCode() {
@@ -384,7 +388,7 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
 
     /**
      * Returns whether this method has compiled code.
-     * 
+     *
      * @return true if this method has compiled code, false otherwise
      */
     public boolean hasCompiledCode() {
@@ -451,7 +455,7 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
     @Override
     public Annotation[][] getParameterAnnotations() {
         if (isConstructor()) {
-            Constructor javaConstructor = toJavaConstructor();
+            Constructor<?> javaConstructor = toJavaConstructor();
             return javaConstructor == null ? null : javaConstructor.getParameterAnnotations();
         }
         Method javaMethod = toJava();
@@ -486,7 +490,7 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
     @Override
     public Type[] getGenericParameterTypes() {
         if (isConstructor()) {
-            Constructor javaConstructor = toJavaConstructor();
+            Constructor<?> javaConstructor = toJavaConstructor();
             return javaConstructor == null ? null : javaConstructor.getGenericParameterTypes();
         }
         Method javaMethod = toJava();
@@ -511,7 +515,7 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
         }
     }
 
-    private Constructor toJavaConstructor() {
+    private Constructor<?> toJavaConstructor() {
         try {
             return holder.mirror().getDeclaredConstructor(signatureToTypes());
         } catch (NoSuchMethodException e) {
@@ -589,7 +593,7 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
     /**
      * Returns the offset of this method into the v-table. The method must have a v-table entry as
      * indicated by {@link #isInVirtualMethodTable()}, otherwise an exception is thrown.
-     * 
+     *
      * @return the offset of this method into the v-table
      */
     public int vtableEntryOffset() {
@@ -608,17 +612,20 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
 
     /**
      * Returns this method's virtual table index.
-     * 
+     *
      * @return virtual table index
      */
     private int getVtableIndex() {
+        assert !Modifier.isInterface(holder.getModifiers());
         HotSpotVMConfig config = runtime().getConfig();
-        return unsafe.getInt(metaspaceMethod + config.methodVtableIndexOffset);
+        int result = unsafe.getInt(metaspaceMethod + config.methodVtableIndexOffset);
+        assert result >= config.nonvirtualVtableIndex : "must be linked";
+        return result;
     }
 
     public SpeculationLog getSpeculationLog() {
         if (speculationLog == null) {
-            speculationLog = new SpeculationLog();
+            speculationLog = new HotSpotSpeculationLog();
         }
         return speculationLog;
     }
@@ -636,13 +643,13 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
 
         Object[] objArguments = new Object[arguments.length];
         for (int i = 0; i < arguments.length; i++) {
-            objArguments[i] = arguments[i].asBoxedValue();
+            objArguments[i] = HotSpotObjectConstant.asBoxedValue(arguments[i]);
         }
-        Object objReceiver = receiver != null ? receiver.asObject() : null;
+        Object objReceiver = receiver != null ? HotSpotObjectConstant.asObject(receiver) : null;
 
         try {
             Object objResult = javaMethod.invoke(objReceiver, objArguments);
-            return javaMethod.getReturnType() == void.class ? null : Constant.forBoxed(getSignature().getReturnKind(), objResult);
+            return javaMethod.getReturnType() == void.class ? null : HotSpotObjectConstant.forBoxedValue(getSignature().getReturnKind(), objResult);
 
         } catch (IllegalAccessException | InvocationTargetException ex) {
             throw new IllegalArgumentException(ex);
@@ -652,18 +659,18 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
     @Override
     public Constant newInstance(Constant[] arguments) {
         assert isConstructor();
-        Constructor javaConstructor = toJavaConstructor();
+        Constructor<?> javaConstructor = toJavaConstructor();
         javaConstructor.setAccessible(true);
 
         Object[] objArguments = new Object[arguments.length];
         for (int i = 0; i < arguments.length; i++) {
-            objArguments[i] = arguments[i].asBoxedValue();
+            objArguments[i] = HotSpotObjectConstant.asBoxedValue(arguments[i]);
         }
 
         try {
             Object objResult = javaConstructor.newInstance(objArguments);
             assert objResult != null;
-            return Constant.forObject(objResult);
+            return HotSpotObjectConstant.forObject(objResult);
 
         } catch (IllegalAccessException | InvocationTargetException | InstantiationException ex) {
             throw new IllegalArgumentException(ex);
@@ -672,7 +679,7 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
 
     /**
      * Allocates a compile id for this method by asking the VM for one.
-     * 
+     *
      * @param entryBCI entry bci
      * @return compile id
      */

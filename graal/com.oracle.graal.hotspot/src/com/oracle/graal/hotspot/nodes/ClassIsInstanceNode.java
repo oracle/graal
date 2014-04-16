@@ -55,13 +55,13 @@ public class ClassIsInstanceNode extends MacroNode implements Canonicalizable {
         ValueNode javaClass = getJavaClass();
         if (javaClass.isConstant()) {
             ValueNode object = getObject();
-            Class c = (Class) javaClass.asConstant().asObject();
+            Class<?> c = (Class<?>) HotSpotObjectConstant.asObject(javaClass.asConstant());
             if (c != null) {
                 if (c.isPrimitive()) {
                     return ConstantNode.forBoolean(false, graph());
                 }
                 if (object.isConstant()) {
-                    Object o = object.asConstant().asObject();
+                    Object o = HotSpotObjectConstant.asObject(object.asConstant());
                     return ConstantNode.forBoolean(o != null && c.isInstance(o), graph());
                 }
                 HotSpotResolvedObjectType type = (HotSpotResolvedObjectType) HotSpotResolvedObjectType.fromClass(c);

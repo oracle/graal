@@ -23,7 +23,7 @@
 
 package com.oracle.graal.compiler.hsail.test;
 
-import org.junit.Test;
+import org.junit.*;
 
 /**
  * For globalsize 99999, deopt on many gids but then catch the exception in the run routine itself.

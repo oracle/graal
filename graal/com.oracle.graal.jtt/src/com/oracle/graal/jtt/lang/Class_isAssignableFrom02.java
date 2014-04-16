@@ -24,13 +24,14 @@
  */
 package com.oracle.graal.jtt.lang;
 
-import com.oracle.graal.jtt.*;
 import org.junit.*;
+
+import com.oracle.graal.jtt.*;
 
 public final class Class_isAssignableFrom02 extends JTTTest {
 
     public static boolean test(int i) {
-        Class source = Object.class;
+        Class<?> source = Object.class;
         if (i == 0) {
             source = int.class;
         }

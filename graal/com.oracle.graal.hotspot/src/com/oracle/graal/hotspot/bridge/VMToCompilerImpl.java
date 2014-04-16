@@ -144,8 +144,6 @@ public class VMToCompilerImpl implements VMToCompiler {
 
     public void startCompiler(boolean bootstrapEnabled) throws Throwable {
 
-        FastNodeClassRegistry.initialize();
-
         bootstrapRunning = bootstrapEnabled;
 
         if (LogFile.getValue() != null) {
@@ -250,7 +248,7 @@ public class VMToCompilerImpl implements VMToCompiler {
 
     /**
      * Take action related to entering a new execution phase.
-     * 
+     *
      * @param phase the execution phase being entered
      */
     protected void phaseTransition(String phase) {

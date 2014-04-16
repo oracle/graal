@@ -26,8 +26,9 @@ package com.oracle.graal.jtt.lang;
 
 import java.util.*;
 
-import com.oracle.graal.jtt.*;
 import org.junit.*;
+
+import com.oracle.graal.jtt.*;
 
 public final class ProcessEnvironment_init extends JTTTest {
 

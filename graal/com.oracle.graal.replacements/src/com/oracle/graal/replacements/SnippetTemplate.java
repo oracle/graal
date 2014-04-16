@@ -61,7 +61,7 @@ import com.oracle.graal.word.*;
 /**
  * A snippet template is a graph created by parsing a snippet method and then specialized by binding
  * constants to the snippet's {@link ConstantParameter} parameters.
- * 
+ *
  * Snippet templates can be managed in a cache maintained by {@link AbstractTemplates}.
  */
 public class SnippetTemplate {
@@ -79,14 +79,14 @@ public class SnippetTemplate {
 
         /**
          * Times instantiations of all templates derived form this snippet.
-         * 
+         *
          * @see SnippetTemplate#instantiationTimer
          */
         private final DebugTimer instantiationTimer;
 
         /**
          * Counts instantiations of all templates derived from this snippet.
-         * 
+         *
          * @see SnippetTemplate#instantiationCounter
          */
         private final DebugMetric instantiationCounter;
@@ -207,7 +207,7 @@ public class SnippetTemplate {
             return this;
         }
 
-        public Arguments addVarargs(String name, Class componentType, Stamp argStamp, Object value) {
+        public Arguments addVarargs(String name, Class<?> componentType, Stamp argStamp, Object value) {
             assert check(name, false, true);
             Varargs varargs = new Varargs(componentType, argStamp, value);
             values[nextParamIdx] = varargs;
@@ -276,17 +276,17 @@ public class SnippetTemplate {
      */
     static class Varargs {
 
-        protected final Class componentType;
+        protected final Class<?> componentType;
         protected final Stamp stamp;
         protected final Object value;
         protected final int length;
 
-        protected Varargs(Class componentType, Stamp stamp, Object value) {
+        protected Varargs(Class<?> componentType, Stamp stamp, Object value) {
             this.componentType = componentType;
             this.stamp = stamp;
             this.value = value;
             if (value instanceof List) {
-                this.length = ((List) value).size();
+                this.length = ((List<?>) value).size();
             } else {
                 this.length = Array.getLength(value);
             }
@@ -399,11 +399,13 @@ public class SnippetTemplate {
     public abstract static class AbstractTemplates implements SnippetTemplateCache {
 
         protected final Providers providers;
+        protected final SnippetReflectionProvider snippetReflection;
         protected final TargetDescription target;
         private final ConcurrentHashMap<CacheKey, SnippetTemplate> templates;
 
-        protected AbstractTemplates(Providers providers, TargetDescription target) {
+        protected AbstractTemplates(Providers providers, SnippetReflectionProvider snippetReflection, TargetDescription target) {
             this.providers = providers;
+            this.snippetReflection = snippetReflection;
             this.target = target;
             if (UseSnippetTemplateCache) {
                 this.templates = new ConcurrentHashMap<>();
@@ -419,11 +421,15 @@ public class SnippetTemplate {
          */
         protected SnippetInfo snippet(Class<? extends Snippets> declaringClass, String methodName) {
             Method found = null;
-            for (Method method : declaringClass.getDeclaredMethods()) {
-                if (method.getAnnotation(Snippet.class) != null && (methodName == null || method.getName().equals(methodName))) {
-                    assert found == null : "found more than one @" + Snippet.class.getSimpleName() + " method in " + declaringClass + (methodName == null ? "" : " named " + methodName);
-                    found = method;
+            Class<?> clazz = declaringClass;
+            while (clazz != Object.class) {
+                for (Method method : clazz.getDeclaredMethods()) {
+                    if (method.getAnnotation(Snippet.class) != null && (methodName == null || method.getName().equals(methodName))) {
+                        assert found == null : "found more than one @" + Snippet.class.getSimpleName() + " method in " + declaringClass + (methodName == null ? "" : " named " + methodName);
+                        found = method;
+                    }
                 }
+                clazz = clazz.getSuperclass();
             }
             assert found != null : "did not find @" + Snippet.class.getSimpleName() + " method in " + declaringClass + (methodName == null ? "" : " named " + methodName);
             ResolvedJavaMethod javaMethod = providers.getMetaAccess().lookupJavaMethod(found);
@@ -439,7 +445,7 @@ public class SnippetTemplate {
             if (template == null) {
                 SnippetTemplates.increment();
                 try (TimerCloseable a = SnippetTemplateCreationTime.start(); Scope s = Debug.scope("SnippetSpecialization", args.info.method)) {
-                    template = new SnippetTemplate(providers, args);
+                    template = new SnippetTemplate(providers, snippetReflection, args);
                     if (UseSnippetTemplateCache) {
                         templates.put(args.cacheKey, template);
                     }
@@ -466,10 +472,14 @@ public class SnippetTemplate {
         return false;
     }
 
+    private final SnippetReflectionProvider snippetReflection;
+
     /**
      * Creates a snippet template.
      */
-    protected SnippetTemplate(final Providers providers, Arguments args) {
+    protected SnippetTemplate(final Providers providers, SnippetReflectionProvider snippetReflection, Arguments args) {
+        this.snippetReflection = snippetReflection;
+
         StructuredGraph snippetGraph = providers.getReplacements().getSnippet(args.info.method);
         instantiationTimer = Debug.timer("SnippetTemplateInstantiationTime[%#s]", args);
         instantiationCounter = Debug.metric("SnippetTemplateInstantiationCount[%#s]", args);
@@ -498,7 +508,7 @@ public class SnippetTemplate {
                 if (arg instanceof Constant) {
                     constantArg = (Constant) arg;
                 } else {
-                    constantArg = Constant.forBoxed(kind, arg);
+                    constantArg = snippetReflection.forBoxed(kind, arg);
                 }
                 nodeReplacements.put(snippetGraph.getParameter(i), ConstantNode.forConstant(constantArg, metaAccess, snippetCopy));
             } else if (args.info.isVarargsParameter(i)) {
@@ -627,12 +637,24 @@ public class SnippetTemplate {
 
         new FloatingReadPhase(FloatingReadPhase.ExecutionMode.ANALYSIS_ONLY).apply(snippetCopy);
 
+        MemoryAnchorNode memoryAnchor = snippetCopy.add(new MemoryAnchorNode());
+        snippetCopy.start().replaceAtUsages(InputType.Memory, memoryAnchor);
+        if (memoryAnchor.usages().isEmpty()) {
+            memoryAnchor.safeDelete();
+        } else {
+            snippetCopy.addAfterFixed(snippetCopy.start(), memoryAnchor);
+        }
+
         this.snippet = snippetCopy;
+
+        Debug.dump(snippet, "SnippetTemplate after fixing memory anchoring");
+
         List<ReturnNode> returnNodes = new ArrayList<>(4);
         List<MemoryMapNode> memMaps = new ArrayList<>(4);
         StartNode entryPointNode = snippet.start();
         for (ReturnNode retNode : snippet.getNodes(ReturnNode.class)) {
             MemoryMapNode memMap = retNode.getMemoryMap();
+            memMap.replaceLastLocationAccess(snippetCopy.start(), memoryAnchor);
             memMaps.add(memMap);
             retNode.setMemoryMap(null);
             returnNodes.add(retNode);
@@ -686,9 +708,7 @@ public class SnippetTemplate {
             assert arg instanceof Constant : method + ": word constant parameters must be passed boxed in a Constant value: " + arg;
             return true;
         }
-        if (kind == Kind.Object) {
-            assert arg == null || type.isInstance(Constant.forObject(arg)) : method + ": wrong value type for " + name + ": expected " + type.getName() + ", got " + arg.getClass().getName();
-        } else {
+        if (kind != Kind.Object) {
             assert arg != null && kind.toBoxedJavaClass() == arg.getClass() : method + ": wrong value kind for " + name + ": expected " + kind + ", got " +
                             (arg == null ? "null" : arg.getClass().getSimpleName());
         }
@@ -750,21 +770,21 @@ public class SnippetTemplate {
 
     /**
      * Times instantiations of this template.
-     * 
+     *
      * @see SnippetInfo#instantiationTimer
      */
     private final DebugTimer instantiationTimer;
 
     /**
      * Counts instantiations of this template.
-     * 
+     *
      * @see SnippetInfo#instantiationCounter
      */
     private final DebugMetric instantiationCounter;
 
     /**
      * Gets the instantiation-time bindings to this template's parameters.
-     * 
+     *
      * @return the map that will be used to bind arguments to parameters when inlining this template
      */
     private IdentityHashMap<Node, Node> bind(StructuredGraph replaceeGraph, MetaAccessProvider metaAccess, Arguments args) {
@@ -787,10 +807,10 @@ public class SnippetTemplate {
                 ParameterNode[] params = (ParameterNode[]) parameter;
                 Varargs varargs = (Varargs) argument;
                 int length = params.length;
-                List list = null;
+                List<?> list = null;
                 Object array = null;
                 if (varargs.value instanceof List) {
-                    list = (List) varargs.value;
+                    list = (List<?>) varargs.value;
                     assert list.size() == length : length + " != " + list.size();
                 } else {
                     array = varargs.value;
@@ -821,26 +841,16 @@ public class SnippetTemplate {
      * Converts a Java boxed value to a {@link Constant} of the right kind. This adjusts for the
      * limitation that a {@link Local}'s kind is a {@linkplain Kind#getStackKind() stack kind} and
      * so cannot be used for re-boxing primitives smaller than an int.
-     * 
+     *
      * @param argument a Java boxed value
      * @param localKind the kind of the {@link Local} to which {@code argument} will be bound
      */
     protected Constant forBoxed(Object argument, Kind localKind) {
         assert localKind == localKind.getStackKind();
-        if (localKind == Kind.Int && !(argument instanceof Integer)) {
-            if (argument instanceof Boolean) {
-                return Constant.forBoxed(Kind.Boolean, argument);
-            }
-            if (argument instanceof Byte) {
-                return Constant.forBoxed(Kind.Byte, argument);
-            }
-            if (argument instanceof Short) {
-                return Constant.forBoxed(Kind.Short, argument);
-            }
-            assert argument instanceof Character;
-            return Constant.forBoxed(Kind.Char, argument);
+        if (localKind == Kind.Int) {
+            return Constant.forBoxedPrimitive(argument);
         }
-        return Constant.forBoxed(localKind, argument);
+        return snippetReflection.forBoxed(localKind, argument);
     }
 
     /**
@@ -929,7 +939,7 @@ public class SnippetTemplate {
             // check if some node in snippet graph also kills the same location
             LocationIdentity locationIdentity = ((MemoryCheckpoint.Single) replacee).getLocationIdentity();
             if (locationIdentity == ANY_LOCATION) {
-                assert !(memoryMap.getLastLocationAccess(ANY_LOCATION) instanceof StartNode) : replacee + " kills ANY_LOCATION, but snippet does not";
+                assert !(memoryMap.getLastLocationAccess(ANY_LOCATION) instanceof MemoryAnchorNode) : replacee + " kills ANY_LOCATION, but snippet does not";
             }
             assert kills.contains(locationIdentity) : replacee + " kills " + locationIdentity + ", but snippet doesn't contain a kill to this location";
             return true;
@@ -939,7 +949,7 @@ public class SnippetTemplate {
         Debug.log("WARNING: %s is not a MemoryCheckpoint, but the snippet graph contains kills (%s). You might want %s to be a MemoryCheckpoint", replacee, kills, replacee);
 
         // remove ANY_LOCATION if it's just a kill by the start node
-        if (memoryMap.getLastLocationAccess(ANY_LOCATION) instanceof StartNode) {
+        if (memoryMap.getLastLocationAccess(ANY_LOCATION) instanceof MemoryAnchorNode) {
             kills.remove(ANY_LOCATION);
         }
 
@@ -985,11 +995,16 @@ public class SnippetTemplate {
         public Set<LocationIdentity> getLocations() {
             return memoryMap.getLocations();
         }
+
+        @Override
+        public void replaceLastLocationAccess(MemoryNode oldNode, MemoryNode newNode) {
+            throw GraalInternalError.shouldNotReachHere();
+        }
     }
 
     /**
      * Replaces a given fixed node with this specialized snippet.
-     * 
+     *
      * @param metaAccess
      * @param replacee the node that will be replaced
      * @param replacer object that replaces the usages of {@code replacee}
@@ -1110,7 +1125,7 @@ public class SnippetTemplate {
     private void propagateStamp(Node node) {
         if (node instanceof PhiNode) {
             PhiNode phi = (PhiNode) node;
-            if (phi.inferPhiStamp()) {
+            if (phi.inferStamp()) {
                 for (Node usage : node.usages()) {
                     propagateStamp(usage);
                 }
@@ -1140,7 +1155,7 @@ public class SnippetTemplate {
 
     /**
      * Replaces a given floating node with this specialized snippet.
-     * 
+     *
      * @param metaAccess
      * @param replacee the node that will be replaced
      * @param replacer object that replaces the usages of {@code replacee}

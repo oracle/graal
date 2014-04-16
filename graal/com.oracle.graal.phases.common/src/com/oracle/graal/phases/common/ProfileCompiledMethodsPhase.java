@@ -43,11 +43,11 @@ import com.oracle.graal.phases.schedule.*;
  * for each node would be too costly, so this phase takes the compromise that it trusts split
  * probabilities, but not loop frequencies. This means that it will insert counters at the start of
  * a method and at each loop header.
- * 
+ *
  * A schedule is created so that floating nodes can also be taken into account. The weight of a node
  * is determined heuristically in the
  * {@link ProfileCompiledMethodsPhase#getNodeWeight(ScheduledNode)} method.
- * 
+ *
  * Additionally, there's a second counter that's only increased for code sections without invokes.
  */
 public class ProfileCompiledMethodsPhase extends Phase {
@@ -65,18 +65,18 @@ public class ProfileCompiledMethodsPhase extends Phase {
         schedule.apply(graph, false);
 
         ControlFlowGraph cfg = ControlFlowGraph.compute(graph, true, true, true, true);
-        for (Loop loop : cfg.getLoops()) {
-            double loopProbability = probabilities.get(loop.loopBegin());
+        for (Loop<Block> loop : cfg.getLoops()) {
+            double loopProbability = probabilities.get(loop.header.getBeginNode());
             if (loopProbability > (1D / Integer.MAX_VALUE)) {
-                addSectionCounters(loop.loopBegin(), loop.blocks, loop.children, schedule, probabilities);
+                addSectionCounters(loop.header.getBeginNode(), loop.blocks, loop.children, schedule, probabilities);
             }
         }
-        addSectionCounters(graph.start(), Arrays.asList(cfg.getBlocks()), Arrays.asList(cfg.getLoops()), schedule, probabilities);
+        addSectionCounters(graph.start(), Arrays.asList(cfg.getBlocks()), cfg.getLoops(), schedule, probabilities);
     }
 
-    private static void addSectionCounters(FixedWithNextNode start, Collection<Block> sectionBlocks, Collection<Loop> childLoops, SchedulePhase schedule, NodesToDoubles probabilities) {
+    private static void addSectionCounters(FixedWithNextNode start, Collection<Block> sectionBlocks, Collection<Loop<Block>> childLoops, SchedulePhase schedule, NodesToDoubles probabilities) {
         HashSet<Block> blocks = new HashSet<>(sectionBlocks);
-        for (Loop loop : childLoops) {
+        for (Loop<?> loop : childLoops) {
             blocks.removeAll(loop.blocks);
         }
         double weight = getSectionWeight(schedule, probabilities, blocks) / probabilities.get(start);

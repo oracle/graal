@@ -78,8 +78,20 @@ public abstract class UnsafeAccessNode extends FixedWithNextNode implements Cano
                 }
             }
         }
+        // Temporarily disable this as it appears to break truffle.
+        // ResolvedJavaType receiverType = ObjectStamp.typeOrNull(object());
+        // if (receiverType != null && receiverType.isArray()) {
+        // LocationIdentity identity =
+        // NamedLocationIdentity.getArrayLocation(receiverType.getComponentType().getKind());
+        // // Try to build a better location node
+        // ValueNode location = offset();
+        // return cloneAsArrayAccess(location, identity);
+        // }
+
         return this;
     }
 
     protected abstract ValueNode cloneAsFieldAccess(ResolvedJavaField field);
+
+    protected abstract ValueNode cloneAsArrayAccess(ValueNode location, LocationIdentity identity);
 }

@@ -152,7 +152,7 @@ public final class SchedulePhase extends Phase {
         }
 
         @Override
-        protected List<KillSet> processLoop(Loop loop, KillSet state) {
+        protected List<KillSet> processLoop(Loop<Block> loop, KillSet state) {
             LoopInfo<KillSet> info = ReentrantBlockIterator.processLoop(this, loop, cloneState(state));
 
             assert loop.header.getBeginNode() instanceof LoopBeginNode;
@@ -345,7 +345,7 @@ public final class SchedulePhase extends Phase {
             buf.format(", lastAccess: %s", frn.getLastLocationAccess());
             buf.format(", object: %s", frn.object());
         } else if (n instanceof GuardNode) {
-            buf.format(", guard: %s", ((GuardNode) n).getGuard());
+            buf.format(", anchor: %s", ((GuardNode) n).getAnchor());
         }
         Debug.log("%s", buf);
     }
@@ -649,7 +649,7 @@ public final class SchedulePhase extends Phase {
          * implies that the inputs' blocks have a total ordering via their dominance relation. So in
          * order to find the earliest block placement for this node we need to find the input block
          * that is dominated by all other input blocks.
-         * 
+         *
          * While iterating over the inputs a set of dominator blocks of the current earliest
          * placement is maintained. When the block of an input is not within this set, it becomes
          * the current earliest placement and the list of dominator blocks is updated.

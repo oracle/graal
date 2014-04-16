@@ -23,6 +23,7 @@
 package com.oracle.graal.hotspot.meta;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.phases.util.*;
@@ -36,13 +37,16 @@ public class HotSpotProviders extends Providers {
     private final HotSpotDisassemblerProvider disassembler;
     private final SuitesProvider suites;
     private final HotSpotRegistersProvider registers;
+    private final SnippetReflectionProvider snippetReflection;
 
     public HotSpotProviders(HotSpotMetaAccessProvider metaAccess, HotSpotCodeCacheProvider codeCache, ConstantReflectionProvider constantReflection, HotSpotForeignCallsProvider foreignCalls,
-                    LoweringProvider lowerer, Replacements replacements, HotSpotDisassemblerProvider disassembler, SuitesProvider suites, HotSpotRegistersProvider registers) {
+                    LoweringProvider lowerer, Replacements replacements, HotSpotDisassemblerProvider disassembler, SuitesProvider suites, HotSpotRegistersProvider registers,
+                    SnippetReflectionProvider snippetReflection) {
         super(metaAccess, codeCache, constantReflection, foreignCalls, lowerer, replacements);
         this.disassembler = disassembler;
         this.suites = suites;
         this.registers = registers;
+        this.snippetReflection = snippetReflection;
     }
 
     @Override
@@ -72,4 +76,7 @@ public class HotSpotProviders extends Providers {
         return registers;
     }
 
+    public SnippetReflectionProvider getSnippetReflection() {
+        return snippetReflection;
+    }
 }

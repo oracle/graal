@@ -59,18 +59,8 @@ public interface InstalledCode {
     void invalidate();
 
     /**
-     * Executes the installed code with three object arguments.
-     * 
-     * @param arg1 the first argument
-     * @param arg2 the second argument
-     * @param arg3 the third argument
-     * @return the value returned by the executed code
-     */
-    Object execute(Object arg1, Object arg2, Object arg3) throws InvalidInstalledCodeException;
-
-    /**
      * Executes the installed code with a variable number of arguments.
-     * 
+     *
      * @param args the array of object arguments
      * @return the value returned by the executed code
      */

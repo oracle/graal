@@ -24,9 +24,9 @@ package com.oracle.graal.compiler.hsail.test;
 
 import java.util.*;
 
-import com.oracle.graal.compiler.hsail.test.infra.GraalKernelTester;
-
 import org.junit.*;
+
+import com.oracle.graal.compiler.hsail.test.infra.*;
 
 /**
  * Tests the spilling of double variables into memory.

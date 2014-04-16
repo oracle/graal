@@ -102,7 +102,7 @@ public class MacroNode extends AbstractMemoryCheckpoint implements Lowerable, Me
 
     /**
      * Applies {@linkplain LoweringPhase lowering} to a replacement graph.
-     * 
+     *
      * @param replacementGraph a replacement (i.e., snippet or method substitution) graph
      */
     protected StructuredGraph lowerReplacement(final StructuredGraph replacementGraph, LoweringTool tool) {

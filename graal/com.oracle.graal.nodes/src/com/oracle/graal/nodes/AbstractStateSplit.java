@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.nodes;
 
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.type.*;
 
 /**
@@ -29,7 +30,7 @@ import com.oracle.graal.nodes.type.*;
  */
 public abstract class AbstractStateSplit extends FixedWithNextNode implements StateSplit {
 
-    @Input(notDataflow = true) private FrameState stateAfter;
+    @Input(InputType.State) private FrameState stateAfter;
 
     public FrameState stateAfter() {
         return stateAfter;

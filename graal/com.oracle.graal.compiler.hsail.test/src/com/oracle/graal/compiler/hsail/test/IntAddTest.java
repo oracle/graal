@@ -23,7 +23,7 @@
 
 package com.oracle.graal.compiler.hsail.test;
 
-import org.junit.Test;
+import org.junit.*;
 
 /**
  * Tests integer addition.

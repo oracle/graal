@@ -315,16 +315,19 @@ public abstract class LIRGenerator implements ArithmeticLIRGenerator, LIRGenerat
 
     public void append(LIRInstruction op) {
         if (printIRWithLIR && !TTY.isSuppressed()) {
-            // if (currentInstruction != null && lastInstructionPrinted != currentInstruction) {
-            // lastInstructionPrinted = currentInstruction;
-            // InstructionPrinter ip = new InstructionPrinter(TTY.out());
-            // ip.printInstructionListing(currentInstruction);
-            // }
             TTY.println(op.toStringWithIdPrefix());
             TTY.println();
         }
         assert LIRVerifier.verify(op);
         res.getLIR().getLIRforBlock(currentBlock).add(op);
+    }
+
+    public boolean hasBlockEnd(AbstractBlock<?> block) {
+        List<LIRInstruction> ops = getResult().getLIR().getLIRforBlock(block);
+        if (ops.size() == 0) {
+            return false;
+        }
+        return ops.get(ops.size() - 1) instanceof BlockEndOp;
     }
 
     public final void doBlockStart(AbstractBlock<?> block) {
@@ -364,13 +367,14 @@ public abstract class LIRGenerator implements ArithmeticLIRGenerator, LIRGenerat
 
     public abstract void emitJump(LabelRef label);
 
-    public abstract void emitCompareBranch(Value left, Value right, Condition cond, boolean unorderedIsTrue, LabelRef trueDestination, LabelRef falseDestination, double trueDestinationProbability);
+    public abstract void emitCompareBranch(PlatformKind cmpKind, Value left, Value right, Condition cond, boolean unorderedIsTrue, LabelRef trueDestination, LabelRef falseDestination,
+                    double trueDestinationProbability);
 
     public abstract void emitOverflowCheckBranch(LabelRef overflow, LabelRef noOverflow, double overflowProbability);
 
     public abstract void emitIntegerTestBranch(Value left, Value right, LabelRef trueDestination, LabelRef falseDestination, double trueSuccessorProbability);
 
-    public abstract Variable emitConditionalMove(Value leftVal, Value right, Condition cond, boolean unorderedIsTrue, Value trueValue, Value falseValue);
+    public abstract Variable emitConditionalMove(PlatformKind cmpKind, Value leftVal, Value right, Condition cond, boolean unorderedIsTrue, Value trueValue, Value falseValue);
 
     public abstract Variable emitIntegerTestMove(Value leftVal, Value right, Value trueValue, Value falseValue);
 

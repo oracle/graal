@@ -24,12 +24,16 @@ package com.oracle.graal.lir.sparc;
 
 import static com.oracle.graal.api.code.ValueUtil.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
-import static com.oracle.graal.asm.sparc.SPARCMacroAssembler.*;
 import static com.oracle.graal.sparc.SPARC.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.sparc.*;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Call;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Jmpl;
+import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Jmp;
+import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Nop;
+import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Sethix;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
 

@@ -56,8 +56,8 @@ public class DeoptimizationGroupingPhase extends BasePhase<MidTierContext> {
                     if (target instanceof AbstractDeoptimizeNode) {
                         merge = graph.add(new MergeNode());
                         EndNode firstEnd = graph.add(new EndNode());
-                        reasonActionPhi = graph.addWithoutUnique(new PhiNode(StampFactory.forKind(Kind.Int), merge));
-                        speculationPhi = graph.addWithoutUnique(new PhiNode(StampFactory.forKind(Kind.Object), merge));
+                        reasonActionPhi = graph.addWithoutUnique(new ValuePhiNode(StampFactory.forKind(Kind.Int), merge));
+                        speculationPhi = graph.addWithoutUnique(new ValuePhiNode(StampFactory.forKind(Kind.Object), merge));
                         merge.addForwardEnd(firstEnd);
                         reasonActionPhi.addInput(((AbstractDeoptimizeNode) target).getActionAndReason(context.getMetaAccess()));
                         speculationPhi.addInput(((AbstractDeoptimizeNode) target).getSpeculation(context.getMetaAccess()));
@@ -92,9 +92,9 @@ public class DeoptimizationGroupingPhase extends BasePhase<MidTierContext> {
 
     private static void exitLoops(AbstractDeoptimizeNode deopt, EndNode end, ControlFlowGraph cfg) {
         Block block = cfg.blockFor(deopt);
-        Loop loop = block.getLoop();
+        Loop<Block> loop = block.getLoop();
         while (loop != null) {
-            end.graph().addBeforeFixed(end, end.graph().add(new LoopExitNode(loop.loopBegin())));
+            end.graph().addBeforeFixed(end, end.graph().add(new LoopExitNode((LoopBeginNode) loop.header.getBeginNode())));
             loop = loop.parent;
         }
     }

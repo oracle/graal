@@ -29,17 +29,14 @@ import com.oracle.graal.api.code.CompilationResult.Mark;
 import com.oracle.graal.asm.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.meta.HotSpotCodeCacheProvider.MarkId;
+import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.truffle.*;
-import com.oracle.truffle.api.*;
-import com.oracle.truffle.api.frame.*;
 
 /**
- * Mechanism for injecting special code into
- * {@link OptimizedCallTarget#call(PackedFrame, Arguments)} .
+ * Mechanism for injecting special code into {@link OptimizedCallTarget#call(Object[])} .
  */
 public abstract class OptimizedCallTargetInstrumentation extends CompilationResultBuilder {
 
@@ -58,7 +55,7 @@ public abstract class OptimizedCallTargetInstrumentation extends CompilationResu
         return mark;
     }
 
-    protected static int getFieldOffset(String name, Class declaringClass) {
+    protected static int getFieldOffset(String name, Class<?> declaringClass) {
         try {
             declaringClass.getDeclaredField(name).setAccessible(true);
             Field field = declaringClass.getDeclaredField(name);

@@ -27,15 +27,13 @@ import static com.oracle.graal.api.code.ValueUtil.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.hsail.*;
-import com.oracle.graal.graph.GraalInternalError;
-import com.amd.okra.OkraUtil;
-import java.lang.reflect.Array;
 
 /**
  * This class contains routines to emit HSAIL assembly code.
  */
-public class HSAILAssembler extends AbstractHSAILAssembler {
+public abstract class HSAILAssembler extends AbstractHSAILAssembler {
 
     /**
      * Stack size in bytes (used to keep track of spilling).
@@ -86,35 +84,13 @@ public class HSAILAssembler extends AbstractHSAILAssembler {
      * references get updated by the GC whenever the GC moves an Object.
      *
      * @param a the destination register
-     * @param obj the Object being moved
+     * @param src the Object Constant being moved
      */
-    public final void mov(Register a, Object obj) {
-        String regName = "$d" + a.encoding();
-        // For a null object simply move 0x0 into the destination register.
-        if (obj == null) {
-            emitString("mov_b64 " + regName + ", 0x0;  // null object");
-        } else {
-            // Get a JNI reference handle to the object.
-            long refHandle = OkraUtil.getRefHandle(obj);
-            // Get the clasname of the object for emitting a comment.
-            Class<?> clazz = obj.getClass();
-            String className = clazz.getName();
-            String comment = "// handle for object of type " + className;
-            // If the object is an array note the array length in the comment.
-            if (className.startsWith("[")) {
-                comment += ", length " + Array.getLength(obj);
-            }
-            // First move the reference handle into a register.
-            emitString("mov_b64 " + regName + ", 0x" + Long.toHexString(refHandle) + ";    " + comment);
-            // Next load the Object addressed by this reference handle into the destination reg.
-            emitString("ld_global_u64 " + regName + ", [" + regName + "];");
-        }
-
-    }
+    public abstract void mov(Register a, Constant src);
 
     public final void emitMov(Kind kind, Value dst, Value src) {
         if (isRegister(dst) && isConstant(src) && kind.getStackKind() == Kind.Object) {
-            mov(asRegister(dst), (asConstant(src)).asObject());
+            mov(asRegister(dst), asConstant(src));
         } else {
             String argtype = getArgTypeFromKind(kind).substring(1);
             emitString("mov_b" + argtype + " " + mapRegOrConstToString(dst) + ", " + mapRegOrConstToString(src) + ";");
@@ -126,7 +102,7 @@ public class HSAILAssembler extends AbstractHSAILAssembler {
         if (reg instanceof RegisterValue) {
             storeValue = HSAIL.mapRegister(reg);
         } else if (reg instanceof Constant) {
-            storeValue = ((Constant) reg).asBoxedValue().toString();
+            storeValue = ((Constant) reg).toValueString();
         }
         emitString(instr + " " + storeValue + ", " + mapAddress(addr) + ";");
     }
@@ -312,14 +288,14 @@ public class HSAILAssembler extends AbstractHSAILAssembler {
      *            float compares.
      * @param isUnsignedCompare - flag specifying if this is a compare of unsigned values.
      */
-    public void emitCompare(Value src0, Value src1, String condition, boolean unordered, boolean isUnsignedCompare) {
+    public void emitCompare(Kind compareKind, Value src0, Value src1, String condition, boolean unordered, boolean isUnsignedCompare) {
         // Formulate the prefix of the instruction.
         // if unordered is true, it should be ignored unless the src type is f32 or f64
-        String argType = getArgTypeFromKind(src1.getKind().getStackKind());
+        String argType = getArgTypeFromKind(compareKind);
         String unorderedPrefix = (argType.startsWith("f") && unordered ? "u" : "");
         String prefix = "cmp_" + condition + unorderedPrefix + "_b1_" + (isUnsignedCompare ? getArgTypeForceUnsigned(src1) : argType);
         // Generate a comment for debugging purposes
-        String comment = (isConstant(src1) && (src1.getKind() == Kind.Object) && (asConstant(src1).asObject() == null) ? " // null test " : "");
+        String comment = (isConstant(src1) && (src1.getKind() == Kind.Object) && (asConstant(src1).isNull()) ? " // null test " : "");
         // Emit the instruction.
         emitString(prefix + " $c0, " + mapRegOrConstToString(src0) + ", " + mapRegOrConstToString(src1) + ";" + comment);
     }
@@ -366,8 +342,7 @@ public class HSAILAssembler extends AbstractHSAILAssembler {
                 case Long:
                     return "0x" + Long.toHexString(consrc.asLong());
                 case Object:
-                    Object obj = consrc.asObject();
-                    if (obj == null) {
+                    if (consrc.isNull()) {
                         return "0";
                     } else {
                         throw GraalInternalError.shouldNotReachHere("unknown type: " + src);
@@ -532,7 +507,7 @@ public class HSAILAssembler extends AbstractHSAILAssembler {
      */
     private void emitWithOptionalTestForNull(boolean testForNull, String mnemonic, Value result, Value... sources) {
         if (testForNull) {
-            emitCompare(result, Constant.forLong(0), "eq", false, true);
+            emitCompare(Kind.Long, result, Constant.forLong(0), "eq", false, true);
         }
         emitForceUnsigned(mnemonic, result, sources);
         if (testForNull) {
@@ -549,8 +524,8 @@ public class HSAILAssembler extends AbstractHSAILAssembler {
      * @param newValue the new value that will be written to the memory location if the cmpValue
      *            comparison matches
      */
-    public void emitAtomicCas(AllocatableValue result, HSAILAddress address, Value cmpValue, Value newValue) {
-        emitString(String.format("atomic_cas_global_b%d   %s, %s, %s, %s;", getArgSize(cmpValue), HSAIL.mapRegister(result), mapAddress(address), mapRegOrConstToString(cmpValue),
+    public void emitAtomicCas(Kind accessKind, AllocatableValue result, HSAILAddress address, Value cmpValue, Value newValue) {
+        emitString(String.format("atomic_cas_global_b%d   %s, %s, %s, %s;", getArgSizeFromKind(accessKind), HSAIL.mapRegister(result), mapAddress(address), mapRegOrConstToString(cmpValue),
                         mapRegOrConstToString(newValue)));
     }
 
@@ -559,10 +534,17 @@ public class HSAILAssembler extends AbstractHSAILAssembler {
      *
      * @param result result operand that gets the original contents of the memory location
      * @param address the memory location
-     * @param deltaValue the amount to add
+     * @param delta the amount to add
      */
-    public void emitAtomicAdd(AllocatableValue result, HSAILAddress address, Value deltaValue) {
-        emitString(String.format("atomic_add_global_u%d   %s, %s, %s;", getArgSize(result), HSAIL.mapRegister(result), mapAddress(address), mapRegOrConstToString(deltaValue)));
+    public void emitAtomicAdd(AllocatableValue result, HSAILAddress address, Value delta) {
+        // ensure result and delta agree (this should probably be at some higher level)
+        Value mydelta = delta;
+        if (!isConstant(delta) && (getArgSize(result) != getArgSize(delta))) {
+            emitConvert(result, delta, result.getKind(), delta.getKind());
+            mydelta = result;
+        }
+        String prefix = getArgTypeForceUnsigned(result);
+        emitString(String.format("atomic_add_global_%s   %s, %s, %s;", prefix, HSAIL.mapRegister(result), mapAddress(address), mapRegOrConstToString(mydelta)));
     }
 
     /**

@@ -23,6 +23,7 @@
 package com.oracle.graal.nodes.java;
 
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.type.*;
@@ -33,11 +34,12 @@ import com.oracle.graal.nodes.type.*;
  * The Java bytecode specification allows non-balanced locking. Graal does not handle such cases and
  * throws a {@link BailoutException} instead during graph building.
  */
+@NodeInfo(allowedUsageTypes = {InputType.Memory})
 public abstract class AccessMonitorNode extends AbstractMemoryCheckpoint implements MemoryCheckpoint, DeoptimizingNode.DeoptBefore, DeoptimizingNode.DeoptAfter {
 
-    @Input private FrameState stateBefore;
+    @Input(InputType.State) private FrameState stateBefore;
     @Input private ValueNode object;
-    @Input private MonitorIdNode monitorId;
+    @Input(InputType.Association) private MonitorIdNode monitorId;
 
     @Override
     public boolean canDeoptimize() {
@@ -64,7 +66,7 @@ public abstract class AccessMonitorNode extends AbstractMemoryCheckpoint impleme
 
     /**
      * Creates a new AccessMonitor instruction.
-     * 
+     *
      * @param object the instruction producing the object
      */
     public AccessMonitorNode(ValueNode object, MonitorIdNode monitorId) {

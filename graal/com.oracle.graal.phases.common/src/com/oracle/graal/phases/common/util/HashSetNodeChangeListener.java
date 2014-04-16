@@ -24,8 +24,8 @@ package com.oracle.graal.phases.common.util;
 
 import java.util.*;
 
+import com.oracle.graal.graph.Graph.NodeChangedListener;
 import com.oracle.graal.graph.*;
-import com.oracle.graal.graph.Graph.*;
 
 /**
  * A simple {@link NodeChangedListener} implementation that accumulates the changed nodes in a

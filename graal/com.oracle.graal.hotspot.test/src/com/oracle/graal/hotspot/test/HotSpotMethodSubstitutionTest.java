@@ -74,7 +74,7 @@ public class HotSpotMethodSubstitutionTest extends MethodSubstitutionTest {
         test("getSuperClass");
         test("getComponentType");
 
-        for (Class c : new Class[]{getClass(), Cloneable.class, int[].class, String[][].class}) {
+        for (Class<?> c : new Class[]{getClass(), Cloneable.class, int[].class, String[][].class}) {
             assertEquals(c.getModifiers(), ClassSubstitutions.getModifiers(c));
             assertEquals(c.isInterface(), ClassSubstitutions.isInterface(c));
             assertEquals(c.isArray(), ClassSubstitutions.isArray(c));

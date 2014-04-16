@@ -89,17 +89,17 @@ public final class MethodSubstitutionVerifier extends AbstractVerifier {
         }
 
         String originalName = originalName(substitutionMethod, annotation);
-        TypeMirror[] originalSignature = originalSignature(substitutionMethod, annotation);
+        TypeMirror[] originalSignature = originalSignature(originalType, substitutionMethod, annotation);
         if (originalSignature == null) {
             return;
         }
         ExecutableElement originalMethod = originalMethod(substitutionMethod, annotation, originalType, originalName, originalSignature);
         if (DEBUG && originalMethod != null) {
-            env.getMessager().printMessage(Kind.ERROR, String.format("Found original method %s in type %s.", originalMethod, findEnclosingClass(originalMethod)));
+            env.getMessager().printMessage(Kind.NOTE, String.format("Found original method %s in type %s.", originalMethod, findEnclosingClass(originalMethod)));
         }
     }
 
-    private TypeMirror[] originalSignature(ExecutableElement method, AnnotationMirror annotation) {
+    private TypeMirror[] originalSignature(TypeElement originalType, ExecutableElement method, AnnotationMirror annotation) {
         boolean isStatic = resolveAnnotationValue(Boolean.class, findAnnotationValue(annotation, ORIGINAL_IS_STATIC));
         AnnotationValue signatureValue = findAnnotationValue(annotation, ORIGINAL_SIGNATURE);
         String signatureString = resolveAnnotationValue(String.class, signatureValue);
@@ -113,7 +113,11 @@ public final class MethodSubstitutionVerifier extends AbstractVerifier {
                     env.getMessager().printMessage(Kind.ERROR, "Method signature must be a static method with the 'this' object as its first parameter", method, annotation);
                     return null;
                 } else {
-                    parameters.remove(0);
+                    TypeMirror thisParam = parameters.remove(0);
+                    if (!isSubtype(originalType.asType(), thisParam)) {
+                        Name thisName = method.getParameters().get(0).getSimpleName();
+                        env.getMessager().printMessage(Kind.ERROR, String.format("The type of %s must assignable from %s", thisName, originalType), method, annotation);
+                    }
                 }
             }
             parameters.add(0, method.getReturnType());
@@ -199,6 +203,26 @@ public final class MethodSubstitutionVerifier extends AbstractVerifier {
             substitution = env.getTypeUtils().erasure(substitution);
         }
         return env.getTypeUtils().isSameType(original, substitution);
+    }
+
+    /**
+     * Tests whether one type is a subtype of another. Any type is considered to be a subtype of
+     * itself.
+     *
+     * @param t1 the first type
+     * @param t2 the second type
+     * @return {@code true} if and only if the first type is a subtype of the second
+     */
+    private boolean isSubtype(TypeMirror t1, TypeMirror t2) {
+        TypeMirror t1Erased = t1;
+        TypeMirror t2Erased = t2;
+        if (needsErasure(t1Erased)) {
+            t1Erased = env.getTypeUtils().erasure(t1Erased);
+        }
+        if (needsErasure(t2Erased)) {
+            t2Erased = env.getTypeUtils().erasure(t2Erased);
+        }
+        return env.getTypeUtils().isSubtype(t1Erased, t2Erased);
     }
 
     private static boolean needsErasure(TypeMirror typeMirror) {

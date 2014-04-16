@@ -33,7 +33,7 @@ import com.oracle.graal.nodes.type.*;
 /**
  * Node for a {@linkplain ForeignCallDescriptor foreign} call from within a stub.
  */
-@NodeInfo(nameTemplate = "StubForeignCall#{p#descriptor/s}")
+@NodeInfo(nameTemplate = "StubForeignCall#{p#descriptor/s}", allowedUsageTypes = {InputType.Memory})
 public class StubForeignCallNode extends FixedWithNextNode implements LIRLowerable, MemoryCheckpoint.Multi {
 
     @Input private final NodeInputList<ValueNode> arguments;
@@ -68,7 +68,7 @@ public class StubForeignCallNode extends FixedWithNextNode implements LIRLowerab
     @Override
     public void generate(NodeLIRBuilderTool gen) {
         assert graph().start() instanceof StubStartNode;
-        ForeignCallLinkage linkage = gen.getLIRGeneratorTool().getForeignCalls().lookupForeignCall(descriptor);
+        ForeignCallLinkage linkage = foreignCalls.lookupForeignCall(descriptor);
         Value[] operands = operands(gen);
         Value result = gen.getLIRGeneratorTool().emitForeignCall(linkage, null, operands);
         if (result != null) {

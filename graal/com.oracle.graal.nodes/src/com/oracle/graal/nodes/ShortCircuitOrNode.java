@@ -27,8 +27,8 @@ import com.oracle.graal.graph.spi.*;
 
 public class ShortCircuitOrNode extends LogicNode implements IterableNodeType, Canonicalizable {
 
-    @Input private LogicNode x;
-    @Input private LogicNode y;
+    @Input(InputType.Condition) private LogicNode x;
+    @Input(InputType.Condition) private LogicNode y;
     private boolean xNegated;
     private boolean yNegated;
     private double shortCircuitProbability;

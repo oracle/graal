@@ -24,8 +24,9 @@
  */
 package com.oracle.graal.jtt.lang;
 
-import com.oracle.graal.jtt.*;
 import org.junit.*;
+
+import com.oracle.graal.jtt.*;
 
 public class Float_01 extends JTTTest {
 

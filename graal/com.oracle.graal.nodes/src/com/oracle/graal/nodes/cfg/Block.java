@@ -32,7 +32,7 @@ public final class Block extends AbstractBlockBase<Block> {
     protected final AbstractBeginNode beginNode;
 
     protected FixedNode endNode;
-    protected Loop loop;
+    protected Loop<Block> loop;
 
     protected List<Block> dominated;
     protected Block postdominator;
@@ -49,7 +49,7 @@ public final class Block extends AbstractBlockBase<Block> {
         return endNode;
     }
 
-    public Loop getLoop() {
+    public Loop<Block> getLoop() {
         return loop;
     }
 

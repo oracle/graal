@@ -42,7 +42,7 @@ public class HotSpotNmethodTest extends GraalCompilerTest {
         Assert.assertTrue(nmethod.isValid());
         Object result;
         try {
-            result = nmethod.execute(null, "b", "c");
+            result = nmethod.executeVarargs(null, "b", "c");
             assertEquals(43, result);
         } catch (InvalidInstalledCodeException e) {
             Assert.fail("Code was invalidated");
@@ -51,7 +51,7 @@ public class HotSpotNmethodTest extends GraalCompilerTest {
         nmethod.invalidate();
         Assert.assertFalse(nmethod.isValid());
         try {
-            result = nmethod.execute(null, null, null);
+            result = nmethod.executeVarargs(null, null, null);
             Assert.fail("Code was not invalidated");
         } catch (InvalidInstalledCodeException e) {
         }
@@ -65,7 +65,7 @@ public class HotSpotNmethodTest extends GraalCompilerTest {
         final HotSpotNmethod nmethod = (HotSpotNmethod) getCode(testJavaMethod, graph);
         Object result;
         try {
-            result = nmethod.execute(nmethod, null, null);
+            result = nmethod.executeVarargs(nmethod, null, null);
             assertEquals(43, result);
         } catch (InvalidInstalledCodeException e) {
             Assert.fail("Code was invalidated");
@@ -81,7 +81,7 @@ public class HotSpotNmethodTest extends GraalCompilerTest {
         Assert.assertTrue(nmethod.isValid());
         try {
             for (int i = 0; i < ITERATION_COUNT; ++i) {
-                nmethod.execute(null, "b", "c");
+                nmethod.executeVarargs(null, "b", "c");
             }
         } catch (InvalidInstalledCodeException e) {
             Assert.fail("Code was invalidated");

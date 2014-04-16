@@ -46,7 +46,7 @@ public class AssumptionPartialEvaluationTest extends PartialEvaluationTest {
         InstalledCode installedCode = assertPartialEvalEquals("constant42", rootNode);
         Assert.assertTrue(installedCode.isValid());
         try {
-            assertEquals(42, installedCode.execute(null, null, null));
+            assertEquals(42, installedCode.executeVarargs(null, null, null));
         } catch (InvalidInstalledCodeException e) {
             Assert.fail("Code must not have been invalidated.");
         }
@@ -65,7 +65,7 @@ public class AssumptionPartialEvaluationTest extends PartialEvaluationTest {
         Assert.assertFalse(installedCode.isValid());
 
         try {
-            installedCode.execute(null, null, null);
+            installedCode.executeVarargs(null, null, null);
             Assert.fail("Code must have been invalidated.");
         } catch (InvalidInstalledCodeException e) {
         }

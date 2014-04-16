@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.jtt.hotspot;
 
-import com.oracle.graal.test.*;
 import com.oracle.graal.jtt.*;
+import com.oracle.graal.test.*;
 
 /**
  * @bug 6196102

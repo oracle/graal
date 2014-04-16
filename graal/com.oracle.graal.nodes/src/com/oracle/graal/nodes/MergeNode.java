@@ -36,9 +36,10 @@ import com.oracle.graal.nodes.util.*;
 /**
  * Denotes the merging of multiple control-flow paths.
  */
+@NodeInfo(allowedUsageTypes = {InputType.Association})
 public class MergeNode extends BeginStateSplitNode implements IterableNodeType, LIRLowerable {
 
-    @Input(notDataflow = true) private final NodeInputList<AbstractEndNode> ends = new NodeInputList<>(this);
+    @Input(InputType.Association) private final NodeInputList<AbstractEndNode> ends = new NodeInputList<>(this);
 
     @Override
     public void generate(NodeLIRBuilderTool gen) {
@@ -68,7 +69,7 @@ public class MergeNode extends BeginStateSplitNode implements IterableNodeType, 
 
     /**
      * Determines if a given node is a phi whose {@linkplain PhiNode#merge() merge} is this node.
-     * 
+     *
      * @param value the instruction to test
      * @return {@code true} if {@code value} is a phi and its merge is {@code this}
      */
@@ -79,7 +80,7 @@ public class MergeNode extends BeginStateSplitNode implements IterableNodeType, 
     /**
      * Removes the given end from the merge, along with the entries corresponding to this end in the
      * phis connected to the merge.
-     * 
+     *
      * @param pred the end to remove
      */
     public void removeEnd(AbstractEndNode pred) {
@@ -210,7 +211,7 @@ public class MergeNode extends BeginStateSplitNode implements IterableNodeType, 
                 }
             }
 
-            PhiNode returnValuePhi = returnNode.result() == null || !isPhiAtMerge(returnNode.result()) ? null : (PhiNode) returnNode.result();
+            ValuePhiNode returnValuePhi = returnNode.result() == null || !isPhiAtMerge(returnNode.result()) ? null : (ValuePhiNode) returnNode.result();
             List<AbstractEndNode> endNodes = forwardEnds().snapshot();
             for (AbstractEndNode end : endNodes) {
                 ReturnNode newReturn = graph().add(new ReturnNode(returnValuePhi == null ? returnNode.result() : returnValuePhi.valueAt(end)));

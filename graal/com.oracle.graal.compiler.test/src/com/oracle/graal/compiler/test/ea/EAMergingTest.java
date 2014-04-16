@@ -34,7 +34,7 @@ public class EAMergingTest extends EATestBase {
     public void testSimpleMerge() {
         testEscapeAnalysis("simpleMergeSnippet", null, false);
         assertEquals(1, returnNodes.size());
-        assertTrue(returnNodes.get(0).result() instanceof PhiNode);
+        assertTrue(returnNodes.get(0).result() instanceof ValuePhiNode);
         PhiNode phi = (PhiNode) returnNodes.get(0).result();
         assertTrue(phi.valueAt(0) instanceof ParameterNode);
         assertTrue(phi.valueAt(1) instanceof ParameterNode);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,22 +23,26 @@
 package com.oracle.graal.nodes;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.nodes.type.*;
 
 /**
  * The {@code PhiNode} represents the merging of dataflow in the memory graph.
  */
+@NodeInfo(nameTemplate = "MemoryPhi({i#values}) {p#locationIdentity/s}", allowedUsageTypes = {InputType.Memory})
 public class MemoryPhiNode extends PhiNode implements MemoryNode {
 
-    private final LocationIdentity identity;
+    @Input(InputType.Memory) final NodeInputList<ValueNode> values = new NodeInputList<>(this);
+    private final LocationIdentity locationIdentity;
 
-    public MemoryPhiNode(MergeNode merge, LocationIdentity identity) {
-        super(PhiType.Memory, merge);
-        this.identity = identity;
+    public MemoryPhiNode(MergeNode merge, LocationIdentity locationIdentity) {
+        super(StampFactory.forVoid(), merge);
+        this.locationIdentity = locationIdentity;
     }
 
     public LocationIdentity getLocationIdentity() {
-        return identity;
+        return locationIdentity;
     }
 
     public MemoryCheckpoint asMemoryCheckpoint() {
@@ -47,5 +51,10 @@ public class MemoryPhiNode extends PhiNode implements MemoryNode {
 
     public MemoryPhiNode asMemoryPhi() {
         return this;
+    }
+
+    @Override
+    public NodeInputList<ValueNode> values() {
+        return values;
     }
 }

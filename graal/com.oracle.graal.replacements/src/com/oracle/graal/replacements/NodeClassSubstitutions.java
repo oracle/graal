@@ -22,15 +22,11 @@
  */
 package com.oracle.graal.replacements;
 
-import static com.oracle.graal.phases.GraalOptions.*;
-
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
-import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.replacements.nodes.*;
 
 /**
  * Substitutions for improving the performance of some critical methods in {@link NodeClass}
@@ -42,33 +38,13 @@ import com.oracle.graal.replacements.nodes.*;
 @ClassSubstitution(NodeClass.class)
 public class NodeClassSubstitutions {
 
-    /**
-     * A macro node for calls to {@link NodeClass#get(Class)}. It can use the compiler's knowledge
-     * about node classes to replace itself with a constant value for a constant {@link Class}
-     * parameter.
-     */
-    public static class NodeClassGetNode extends PureFunctionMacroNode {
-
-        public NodeClassGetNode(Invoke invoke) {
-            super(invoke);
-        }
-
-        @Override
-        protected Constant evaluate(Constant param, MetaAccessProvider metaAccess) {
-            return param.isNull() || ImmutableCode.getValue() ? null : Constant.forObject(NodeClass.get((Class<?>) param.asObject()));
-        }
-    }
-
-    @MacroSubstitution(isStatic = true, forced = true, macro = NodeClassGetNode.class)
-    private static native NodeClass get(Class<?> c);
-
     @MethodSubstitution
     private static Node getNode(Node node, long offset) {
         return PiNode.piCast(UnsafeLoadNode.load(node, offset, Kind.Object, LocationIdentity.ANY_LOCATION), Node.class);
     }
 
     @MethodSubstitution
-    private static NodeList getNodeList(Node node, long offset) {
+    private static NodeList<?> getNodeList(Node node, long offset) {
         return PiNode.piCast(UnsafeLoadNode.load(node, offset, Kind.Object, LocationIdentity.ANY_LOCATION), NodeList.class);
     }
 
@@ -78,7 +54,7 @@ public class NodeClassSubstitutions {
     }
 
     @MethodSubstitution
-    private static void putNodeList(Node node, long offset, NodeList value) {
+    private static void putNodeList(Node node, long offset, NodeList<?> value) {
         UnsafeStoreNode.store(node, offset, value, Kind.Object, LocationIdentity.ANY_LOCATION);
     }
 

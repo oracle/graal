@@ -136,6 +136,13 @@ public class GraphPrinterDumpHandler implements DebugDumpHandler {
                 printer = xmlPrinter;
             }
             TTY.println("Connected to the IGV on %s:%d", host, port);
+        } catch (ClosedByInterruptException | InterruptedIOException e) {
+            /*
+             * Interrupts should not count as errors because they may be caused by a cancelled Graal
+             * compilation. ClosedByInterruptException occurs if the SocketChannel could not be
+             * opened. InterruptedIOException occurs if new Socket(..) was interrupted.
+             */
+            printer = null;
         } catch (IOException e) {
             TTY.println("Could not connect to the IGV on %s:%d : %s", host, port, e);
             failuresCount++;

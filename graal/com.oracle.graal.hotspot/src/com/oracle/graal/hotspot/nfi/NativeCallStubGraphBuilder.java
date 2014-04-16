@@ -43,13 +43,13 @@ public class NativeCallStubGraphBuilder {
 
     /**
      * Creates a graph for a stub used to call a native function.
-     * 
+     *
      * @param functionPointer a native function pointer
      * @param returnType the type of the return value
      * @param argumentTypes the types of the arguments
      * @return the graph that represents the call stub
      */
-    public static StructuredGraph getGraph(HotSpotProviders providers, RawNativeCallNodeFactory factory, long functionPointer, Class returnType, Class... argumentTypes) {
+    public static StructuredGraph getGraph(HotSpotProviders providers, RawNativeCallNodeFactory factory, long functionPointer, Class<?> returnType, Class<?>... argumentTypes) {
         try {
             ResolvedJavaMethod method = providers.getMetaAccess().lookupJavaMethod(NativeCallStubGraphBuilder.class.getMethod("libCall", Object.class, Object.class, Object.class));
             StructuredGraph g = new StructuredGraph(method);
@@ -91,14 +91,14 @@ public class NativeCallStubGraphBuilder {
 
             ReturnNode returnNode = g.add(new ReturnNode(boxedResult));
             callNode.setNext(returnNode);
-            (new WordTypeRewriterPhase(providers.getMetaAccess(), Kind.Long)).apply(g);
+            (new WordTypeRewriterPhase(providers.getMetaAccess(), providers.getSnippetReflection(), Kind.Long)).apply(g);
             return g;
         } catch (NoSuchMethodException e) {
             throw GraalInternalError.shouldNotReachHere("Call Stub method not found");
         }
     }
 
-    private static FixedWithNextNode getParameters(StructuredGraph g, ParameterNode argumentsArray, int numArgs, Class[] argumentTypes, List<ValueNode> args, HotSpotProviders providers) {
+    private static FixedWithNextNode getParameters(StructuredGraph g, ParameterNode argumentsArray, int numArgs, Class<?>[] argumentTypes, List<ValueNode> args, HotSpotProviders providers) {
         assert numArgs == argumentTypes.length;
         FixedWithNextNode last = null;
         for (int i = 0; i < numArgs; i++) {
@@ -111,7 +111,7 @@ public class NativeCallStubGraphBuilder {
                 last.setNext(boxedElement);
                 last = boxedElement;
             }
-            Class type = argumentTypes[i];
+            Class<?> type = argumentTypes[i];
             Kind kind = getKind(type);
             if (kind == Kind.Object) {
                 // array value
@@ -140,8 +140,8 @@ public class NativeCallStubGraphBuilder {
         return last;
     }
 
-    public static Kind getElementKind(Class clazz) {
-        Class componentType = clazz.getComponentType();
+    public static Kind getElementKind(Class<?> clazz) {
+        Class<?> componentType = clazz.getComponentType();
         if (componentType == null) {
             throw new IllegalArgumentException("Parameter type not supported: " + clazz);
         }
@@ -151,7 +151,7 @@ public class NativeCallStubGraphBuilder {
         throw new IllegalArgumentException("Parameter type not supported: " + clazz);
     }
 
-    private static Kind getKind(Class clazz) {
+    private static Kind getKind(Class<?> clazz) {
         if (clazz == int.class || clazz == Integer.class) {
             return Kind.Int;
         } else if (clazz == long.class || clazz == Long.class) {

@@ -38,7 +38,6 @@ public class FloatStamp extends PrimitiveStamp {
 
     protected FloatStamp(int bits, double lowerBound, double upperBound, boolean nonNaN) {
         super(bits);
-        assert (!nonNaN && Double.isNaN(lowerBound) && Double.isNaN(upperBound)) || lowerBound <= upperBound;
         this.lowerBound = lowerBound;
         this.upperBound = upperBound;
         this.nonNaN = nonNaN;
@@ -47,6 +46,16 @@ public class FloatStamp extends PrimitiveStamp {
     @Override
     public Stamp unrestricted() {
         return new FloatStamp(getBits());
+    }
+
+    @Override
+    public Stamp illegal() {
+        return new FloatStamp(getBits(), Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY, true);
+    }
+
+    @Override
+    public boolean isLegal() {
+        return lowerBound <= upperBound || !nonNaN;
     }
 
     @Override
@@ -124,9 +133,6 @@ public class FloatStamp extends PrimitiveStamp {
         if (otherStamp == this) {
             return this;
         }
-        if (otherStamp instanceof IllegalStamp) {
-            return otherStamp.meet(this);
-        }
         if (!(otherStamp instanceof FloatStamp)) {
             return StampFactory.illegal(Kind.Illegal);
         }
@@ -149,9 +155,6 @@ public class FloatStamp extends PrimitiveStamp {
         if (otherStamp == this) {
             return this;
         }
-        if (otherStamp instanceof IllegalStamp) {
-            return otherStamp.join(this);
-        }
         if (!(otherStamp instanceof FloatStamp)) {
             return StampFactory.illegal(Kind.Illegal);
         }
@@ -164,8 +167,6 @@ public class FloatStamp extends PrimitiveStamp {
             return this;
         } else if (joinLowerBound == other.lowerBound && joinUpperBound == other.upperBound && joinNonNaN == other.nonNaN) {
             return other;
-        } else if (joinLowerBound > joinUpperBound) {
-            return illegal();
         } else {
             return new FloatStamp(getBits(), joinLowerBound, joinUpperBound, joinNonNaN);
         }

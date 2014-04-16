@@ -54,11 +54,11 @@ public class TruffleCompilerOptions {
     @Option(help = "Enable automatic inlining of call targets")
     public static final OptionValue<Boolean> TruffleFunctionInlining = new OptionValue<>(true);
     @Option(help = "Maximum number of Graal IR nodes during partial evaluation")
-    public static final OptionValue<Integer> TruffleGraphMaxNodes = new OptionValue<>(30000);
+    public static final OptionValue<Integer> TruffleGraphMaxNodes = new OptionValue<>(45000);
     @Option(help = "Stop inlining if caller's cumulative tree size would exceed this limit")
     public static final OptionValue<Integer> TruffleInliningMaxCallerSize = new OptionValue<>(2250);
     @Option(help = "Skip inlining candidate if its tree size exceeds this limit")
-    public static final OptionValue<Integer> TruffleInliningMaxCalleeSize = new OptionValue<>(350);
+    public static final OptionValue<Integer> TruffleInliningMaxCalleeSize = new OptionValue<>(500);
     @Option(help = "Call frequency relative to call target")
     public static final OptionValue<Double> TruffleInliningMinFrequency = new OptionValue<>(0.3);
     @Option(help = "Allow inlining of less hot candidates if tree size is small")
@@ -80,7 +80,7 @@ public class TruffleCompilerOptions {
 
     // tracing
     @Option(help = "")
-    public static final OptionValue<Boolean> TraceTruffleCompilation = new OptionValue<>(true);
+    public static final OptionValue<Boolean> TraceTruffleCompilation = new OptionValue<>(false);
     @Option(help = "")
     public static final OptionValue<Boolean> TraceTruffleCompilationDetails = new OptionValue<>(false);
     @Option(help = "")
@@ -99,10 +99,6 @@ public class TruffleCompilerOptions {
     public static final OptionValue<Boolean> TruffleCompilationExceptionsAreFatal = new OptionValue<>(true);
     @Option(help = "")
     public static final OptionValue<Boolean> TraceTruffleInlining = new OptionValue<>(false);
-    @Option(help = "")
-    public static final OptionValue<Boolean> TraceTruffleInliningTree = new OptionValue<>(false);
-    @Option(help = "")
-    public static final OptionValue<Boolean> TraceTruffleInliningDetails = new OptionValue<>(false);
     @Option(help = "")
     public static final OptionValue<Boolean> TraceTruffleSplitting = new OptionValue<>(false);
     @Option(help = "")

@@ -42,17 +42,17 @@ public class UnsafeSubstitutions {
 
     @MethodSubstitution(isStatic = false)
     public static boolean compareAndSwapObject(@SuppressWarnings("unused") final Object thisObj, Object o, long offset, Object expected, Object x) {
-        return CompareAndSwapNode.compareAndSwap(o, 0, offset, expected, x);
+        return CompareAndSwapNode.compareAndSwap(o, 0, offset, expected, x, Kind.Object);
     }
 
     @MethodSubstitution(isStatic = false)
     public static boolean compareAndSwapInt(@SuppressWarnings("unused") final Object thisObj, Object o, long offset, int expected, int x) {
-        return CompareAndSwapNode.compareAndSwap(o, 0, offset, expected, x);
+        return CompareAndSwapNode.compareAndSwap(o, 0, offset, expected, x, Kind.Int);
     }
 
     @MethodSubstitution(isStatic = false)
     public static boolean compareAndSwapLong(@SuppressWarnings("unused") final Object thisObj, Object o, long offset, long expected, long x) {
-        return CompareAndSwapNode.compareAndSwap(o, 0, offset, expected, x);
+        return CompareAndSwapNode.compareAndSwap(o, 0, offset, expected, x, Kind.Long);
     }
 
     @MethodSubstitution(isStatic = false)
@@ -387,7 +387,7 @@ public class UnsafeSubstitutions {
     }
 
     @MethodSubstitution(isStatic = false)
-    public static Object allocateInstance(final Unsafe thisObj, Class clazz) throws InstantiationException {
+    public static Object allocateInstance(final Unsafe thisObj, Class<?> clazz) throws InstantiationException {
         if (clazz.isPrimitive()) {
             throw new InstantiationException(clazz.getName());
         }

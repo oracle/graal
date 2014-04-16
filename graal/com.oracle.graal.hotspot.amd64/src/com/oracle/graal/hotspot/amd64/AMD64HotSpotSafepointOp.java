@@ -30,7 +30,7 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.amd64.*;
 import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.meta.HotSpotCodeCacheProvider.*;
+import com.oracle.graal.hotspot.meta.HotSpotCodeCacheProvider.MarkId;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.amd64.*;
 import com.oracle.graal.lir.asm.*;
@@ -77,7 +77,7 @@ public class AMD64HotSpotSafepointOp extends AMD64LIRInstruction {
         if (ImmutableCode.getValue()) {
             Kind hostWordKind = HotSpotGraalRuntime.getHostWordKind();
             int alignment = hostWordKind.getBitCount() / Byte.SIZE;
-            Constant pollingPageAddress = Constant.forIntegerKind(hostWordKind, config.safepointPollingAddress, null);
+            Constant pollingPageAddress = Constant.forIntegerKind(hostWordKind, config.safepointPollingAddress);
             // This move will be patched to load the safepoint page from a data segment
             // co-located with the immutable code.
             asm.movq(scratch, (AMD64Address) crb.recordDataReferenceInCode(pollingPageAddress, alignment));

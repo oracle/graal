@@ -22,10 +22,6 @@
  */
 package com.oracle.graal.truffle.nodes;
 
-import java.lang.reflect.*;
-
-import sun.misc.*;
-
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
@@ -52,13 +48,9 @@ public final class LoadIndexedFinalNode extends AccessIndexedNode implements Can
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        if (array().isConstant() && !array().isNullConstant() && index().isConstant()) {
-            Object array = array().asConstant().asObject();
-            long index = index().asConstant().asLong();
-            if (index >= 0 && index < Array.getLength(array)) {
-                int arrayBaseOffset = Unsafe.getUnsafe().arrayBaseOffset(array.getClass());
-                int arrayIndexScale = Unsafe.getUnsafe().arrayIndexScale(array.getClass());
-                Constant constant = tool.getConstantReflection().readUnsafeConstant(elementKind(), array().asConstant(), arrayBaseOffset + index * arrayIndexScale, elementKind() == Kind.Object);
+        if (array().isConstant() && index().isConstant()) {
+            Constant constant = tool.getConstantReflection().readArrayElement(array().asConstant(), index().asConstant().asInt());
+            if (constant != null) {
                 return ConstantNode.forConstant(constant, tool.getMetaAccess(), graph());
             }
         }

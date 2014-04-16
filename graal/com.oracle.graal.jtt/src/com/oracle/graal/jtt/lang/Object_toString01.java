@@ -24,8 +24,8 @@
  */
 package com.oracle.graal.jtt.lang;
 
-import com.oracle.graal.test.*;
 import com.oracle.graal.jtt.*;
+import com.oracle.graal.test.*;
 
 public class Object_toString01 extends JTTTest {
 

@@ -23,69 +23,30 @@
 
 package com.oracle.graal.hotspot.hsail;
 
-import sun.misc.*;
-
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.asm.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.hsail.*;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.HotSpotVMConfig.CompressEncoding;
+import com.oracle.graal.hotspot.hsail.nodes.*;
+import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.hsail.*;
-import com.oracle.graal.lir.hsail.HSAILControlFlow.CondMoveOp;
-import com.oracle.graal.lir.hsail.HSAILMove.CompareAndSwapCompressedOp;
+import com.oracle.graal.lir.hsail.HSAILMove.AtomicGetAndAddOp;
 import com.oracle.graal.lir.hsail.HSAILMove.CompareAndSwapOp;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.calc.*;
-import com.oracle.graal.nodes.java.*;
 
 /**
  * The HotSpot specific portion of the HSAIL LIR generator.
  */
-public class HSAILHotSpotNodeLIRBuilder extends HSAILNodeLIRBuilder {
+public class HSAILHotSpotNodeLIRBuilder extends HSAILNodeLIRBuilder implements HotSpotNodeLIRBuilder {
 
     public HSAILHotSpotNodeLIRBuilder(StructuredGraph graph, LIRGenerator lirGen) {
         super(graph, lirGen);
-    }
-
-    private HSAILHotSpotLIRGenerator getGen() {
-        return (HSAILHotSpotLIRGenerator) gen;
-    }
-
-    /**
-     * Appends either a {@link CompareAndSwapOp} or a {@link CompareAndSwapCompressedOp} depending
-     * on whether the memory location of a given {@link LoweredCompareAndSwapNode} contains a
-     * compressed oop. For the {@link CompareAndSwapCompressedOp} case, allocates a number of
-     * scratch registers. The result {@link #operand(ValueNode) operand} for {@code node} complies
-     * with the API for {@link Unsafe#compareAndSwapInt(Object, long, int, int)}.
-     *
-     * @param address the memory location targeted by the operation
-     */
-    @Override
-    public void visitCompareAndSwap(LoweredCompareAndSwapNode node, Value address) {
-        Kind kind = node.getNewValue().getKind();
-        assert kind == node.getExpectedValue().getKind();
-        Variable expected = gen.load(operand(node.getExpectedValue()));
-        Variable newValue = gen.load(operand(node.getNewValue()));
-        HSAILAddressValue addressValue = getGen().asAddressValue(address);
-        Variable casResult = newVariable(kind);
-        if (getGen().config.useCompressedOops && node.isCompressible()) {
-            // make 64-bit scratch variables for expected and new
-            Variable scratchExpected64 = newVariable(Kind.Long);
-            Variable scratchNewValue64 = newVariable(Kind.Long);
-            // make 32-bit scratch variables for expected and new and result
-            Variable scratchExpected32 = newVariable(Kind.Int);
-            Variable scratchNewValue32 = newVariable(Kind.Int);
-            Variable scratchCasResult32 = newVariable(Kind.Int);
-            append(new CompareAndSwapCompressedOp(casResult, addressValue, expected, newValue, scratchExpected64, scratchNewValue64, scratchExpected32, scratchNewValue32, scratchCasResult32,
-                            getGen().getNarrowOopBase(), getGen().getNarrowOopShift(), getGen().getLogMinObjectAlignment()));
-        } else {
-            append(new CompareAndSwapOp(casResult, addressValue, expected, newValue));
-        }
-        Variable nodeResult = newVariable(node.getKind());
-        append(new CondMoveOp(HSAILLIRGenerator.mapKindToCompareOp(kind), casResult, expected, nodeResult, Condition.EQ, Constant.INT_1, Constant.INT_0));
-        setResult(node, nodeResult);
     }
 
     @Override
@@ -97,14 +58,70 @@ public class HSAILHotSpotNodeLIRBuilder extends HSAILNodeLIRBuilder {
         }
     }
 
+    private HSAILHotSpotLIRGenerator getGen() {
+        return (HSAILHotSpotLIRGenerator) gen;
+    }
+
     /**
      * @return a compressed version of the incoming constant lifted from AMD64HotSpotLIRGenerator
      */
     protected static Constant compress(Constant c, CompressEncoding encoding) {
         if (c.getKind() == Kind.Long) {
-            return Constant.forIntegerKind(Kind.Int, (int) (((c.asLong() - encoding.base) >> encoding.shift) & 0xffffffffL), c.getPrimitiveAnnotation());
+            int compressedValue = (int) (((c.asLong() - encoding.base) >> encoding.shift) & 0xffffffffL);
+            if (c instanceof HotSpotMetaspaceConstant) {
+                return HotSpotMetaspaceConstant.forMetaspaceObject(Kind.Int, compressedValue, HotSpotMetaspaceConstant.getMetaspaceObject(c));
+            } else {
+                return Constant.forIntegerKind(Kind.Int, compressedValue);
+            }
         } else {
             throw GraalInternalError.shouldNotReachHere();
         }
+    }
+
+    public void visitAtomicGetAndAdd(LoweredAtomicGetAndAddNode node, Value address) {
+        Variable nodeResult = newVariable(node.getKind());
+        Value delta = getGen().loadNonConst(operand(node.getDelta()));
+        HSAILAddressValue addressValue = getGen().asAddressValue(address);
+        append(new AtomicGetAndAddOp(nodeResult, addressValue, delta));
+        setResult(node, nodeResult);
+    }
+
+    public void visitDirectCompareAndSwap(DirectCompareAndSwapNode x) {
+        Kind kind = x.newValue().getKind();
+        assert kind == x.expectedValue().getKind();
+
+        Variable expected = getGen().load(operand(x.expectedValue()));
+        Variable newVal = getGen().load(operand(x.newValue()));
+
+        int disp = 0;
+        HSAILAddressValue address;
+        Value index = operand(x.offset());
+        if (ValueUtil.isConstant(index) && NumUtil.isInt(ValueUtil.asConstant(index).asLong() + disp)) {
+            assert !getGen().getCodeCache().needsDataPatch(ValueUtil.asConstant(index));
+            disp += (int) ValueUtil.asConstant(index).asLong();
+            address = new HSAILAddressValue(kind, getGen().load(operand(x.object())), disp);
+        } else {
+            throw GraalInternalError.shouldNotReachHere("NYI");
+        }
+
+        Variable casResult = newVariable(kind);
+        append(new CompareAndSwapOp(kind, casResult, address, expected, newVal));
+
+        setResult(x, casResult);
+    }
+
+    @Override
+    public void emitPrefetchAllocate(ValueNode address, ValueNode distance) {
+        // nop
+    }
+
+    @Override
+    public void emitPatchReturnAddress(ValueNode address) {
+        throw GraalInternalError.unimplemented();
+    }
+
+    @Override
+    public void emitJumpToExceptionHandlerInCaller(ValueNode handlerInCallerPc, ValueNode exception, ValueNode exceptionPc) {
+        throw GraalInternalError.unimplemented();
     }
 }

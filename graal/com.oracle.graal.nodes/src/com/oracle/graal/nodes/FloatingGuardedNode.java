@@ -22,13 +22,14 @@
  */
 package com.oracle.graal.nodes;
 
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.type.*;
 
 public abstract class FloatingGuardedNode extends FloatingNode implements GuardedNode {
 
-    @Input private GuardingNode guard;
+    @Input(InputType.Guard) private GuardingNode guard;
 
     public FloatingGuardedNode(Stamp stamp) {
         super(stamp);
@@ -46,7 +47,7 @@ public abstract class FloatingGuardedNode extends FloatingNode implements Guarde
 
     @Override
     public void setGuard(GuardingNode guard) {
-        updateUsages(this.guard == null ? null : this.guard.asNode(), guard == null ? null : guard.asNode());
+        updateUsagesInterface(this.guard, guard);
         this.guard = guard;
     }
 }

@@ -31,10 +31,11 @@ import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.sparc.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.HotSpotVMConfig.*;
+import com.oracle.graal.hotspot.HotSpotVMConfig.CompressEncoding;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.stubs.*;
 import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.StandardOp.SaveRegistersOp;
 import com.oracle.graal.lir.sparc.*;
 import com.oracle.graal.lir.sparc.SPARCMove.LoadOp;
 import com.oracle.graal.lir.sparc.SPARCMove.StoreConstantOp;
@@ -80,18 +81,23 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
 
     @Override
     public Variable emitForeignCall(ForeignCallLinkage linkage, DeoptimizingNode info, Value... args) {
+        HotSpotForeignCallLinkage hotspotLinkage = (HotSpotForeignCallLinkage) linkage;
         Variable result;
+        DeoptimizingNode deoptInfo = null;
+        if (hotspotLinkage.canDeoptimize()) {
+            deoptInfo = info;
+            assert deoptInfo != null || getStub() != null;
+        }
 
-        if (linkage.canDeoptimize()) {
-            assert info != null || getStub() != null;
+        if (hotspotLinkage.needsJavaFrameAnchor()) {
             HotSpotRegistersProvider registers = getProviders().getRegisters();
             Register thread = registers.getThreadRegister();
             Register stackPointer = registers.getStackPointerRegister();
             append(new SPARCHotSpotCRuntimeCallPrologueOp(config.threadLastJavaSpOffset(), thread, stackPointer));
-            result = super.emitForeignCall(linkage, info, args);
+            result = super.emitForeignCall(hotspotLinkage, deoptInfo, args);
             append(new SPARCHotSpotCRuntimeCallEpilogueOp(config.threadLastJavaSpOffset(), config.threadLastJavaPcOffset(), config.threadJavaFrameAnchorFlagsOffset(), thread));
         } else {
-            result = super.emitForeignCall(linkage, null, args);
+            result = super.emitForeignCall(hotspotLinkage, deoptInfo, args);
         }
 
         return result;
@@ -228,6 +234,10 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
         }
     }
 
+    public Value emitCompareAndSwap(Value address, Value expectedValue, Value newValue, Value trueValue, Value falseValue) {
+        throw new InternalError("NYI");
+    }
+
     @Override
     public Value emitNot(Value input) {
         GraalInternalError.shouldNotReachHere("binary negation not implemented");
@@ -238,13 +248,50 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
         return deoptimizationRescueSlot;
     }
 
-    public Value emitCompress(Value pointer, CompressEncoding encoding) {
+    @Override
+    public Value emitCompress(Value pointer, CompressEncoding encoding, boolean nonNull) {
         // TODO
         throw GraalInternalError.unimplemented();
     }
 
-    public Value emitUncompress(Value pointer, CompressEncoding encoding) {
+    @Override
+    public Value emitUncompress(Value pointer, CompressEncoding encoding, boolean nonNull) {
         // TODO
+        throw GraalInternalError.unimplemented();
+    }
+
+    public SaveRegistersOp emitSaveAllRegisters() {
+        // TODO Auto-generated method stub
+        throw GraalInternalError.unimplemented();
+    }
+
+    public void emitLeaveCurrentStackFrame() {
+        // TODO Auto-generated method stub
+        throw GraalInternalError.unimplemented();
+    }
+
+    public void emitLeaveDeoptimizedStackFrame(Value frameSize, Value initialInfo) {
+        // TODO Auto-generated method stub
+        throw GraalInternalError.unimplemented();
+    }
+
+    public void emitEnterUnpackFramesStackFrame(Value framePc, Value senderSp, Value senderFp) {
+        // TODO Auto-generated method stub
+        throw GraalInternalError.unimplemented();
+    }
+
+    public void emitLeaveUnpackFramesStackFrame() {
+        // TODO Auto-generated method stub
+        throw GraalInternalError.unimplemented();
+    }
+
+    public void emitPushInterpreterFrame(Value frameSize, Value framePc, Value senderSp, Value initialInfo) {
+        // TODO Auto-generated method stub
+        throw GraalInternalError.unimplemented();
+    }
+
+    public Value emitUncommonTrapCall(Value trapRequest, SaveRegistersOp saveRegisterOp) {
+        // TODO Auto-generated method stub
         throw GraalInternalError.unimplemented();
     }
 }

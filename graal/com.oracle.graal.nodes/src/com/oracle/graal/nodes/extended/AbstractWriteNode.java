@@ -27,13 +27,14 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.type.*;
 
-public abstract class AbstractWriteNode extends FixedAccessNode implements StateSplit, MemoryCheckpoint.Single, MemoryAccess {
+@NodeInfo(allowedUsageTypes = {InputType.Memory})
+public abstract class AbstractWriteNode extends FixedAccessNode implements StateSplit, MemoryCheckpoint.Single, MemoryAccess, GuardingNode {
 
     @Input private ValueNode value;
-    @Input(notDataflow = true) private FrameState stateAfter;
-    private final boolean initialization;
+    @Input(InputType.State) private FrameState stateAfter;
+    @Input(InputType.Memory) private Node lastLocationAccess;
 
-    @Input private Node lastLocationAccess;
+    private final boolean initialization;
 
     public FrameState stateAfter() {
         return stateAfter;
@@ -70,6 +71,11 @@ public abstract class AbstractWriteNode extends FixedAccessNode implements State
         super(object, location, StampFactory.forVoid(), barrierType, compressible);
         this.value = value;
         this.initialization = initialization;
+    }
+
+    @Override
+    public boolean isAllowedUsageType(InputType type) {
+        return (type == InputType.Guard && getNullCheck()) ? true : super.isAllowedUsageType(type);
     }
 
     @Override

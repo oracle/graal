@@ -29,8 +29,8 @@ import java.lang.annotation.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
-import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.HeapAccess.BarrierType;
+import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 
 public abstract class Word implements Signed, Unsigned, Pointer {

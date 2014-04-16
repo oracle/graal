@@ -31,7 +31,7 @@ import com.oracle.graal.api.meta.*;
  * Manages a list of unique deoptimization reasons.
  * 
  */
-public final class SpeculationLog {
+public abstract class SpeculationLog {
     private volatile Object lastFailed;
     private volatile Collection<Object> speculations;
     private Set<Object> failedSpeculations;
@@ -54,7 +54,7 @@ public final class SpeculationLog {
         return true;
     }
 
-    public Constant speculate(Object reason) {
+    protected void addSpeculation(Object reason) {
         assert maySpeculate(reason);
         if (speculations == null) {
             synchronized (this) {
@@ -64,6 +64,7 @@ public final class SpeculationLog {
             }
         }
         speculations.add(reason);
-        return Constant.forObject(reason);
     }
+
+    public abstract Constant speculate(Object reason);
 }

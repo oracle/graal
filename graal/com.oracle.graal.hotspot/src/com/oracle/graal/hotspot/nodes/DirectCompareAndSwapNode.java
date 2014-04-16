@@ -25,6 +25,7 @@ package com.oracle.graal.hotspot.nodes;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.target.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
@@ -37,6 +38,7 @@ import com.oracle.graal.word.*;
  * {@linkplain #compareAndSwap(Object, long, Word, Word, LocationIdentity)} returns either the
  * expected value or the compared against value instead of a boolean.
  */
+@NodeInfo(allowedUsageTypes = {InputType.Memory})
 public class DirectCompareAndSwapNode extends FixedWithNextNode implements LIRGenLowerable, MemoryCheckpoint.Single {
 
     @Input private ValueNode object;
@@ -86,7 +88,7 @@ public class DirectCompareAndSwapNode extends FixedWithNextNode implements LIRGe
      * given offset. Iff they are same, {@code newValue} is placed into the location and the
      * {@code expectedValue} is returned. Otherwise, the actual value is returned. All of the above
      * is performed in one atomic hardware transaction.
-     * 
+     *
      * @param object the object containing a field to be atomically tested and updated
      * @param offset offset from {@code object} of the field
      * @param expectedValue if this value is currently in the field, perform the swap

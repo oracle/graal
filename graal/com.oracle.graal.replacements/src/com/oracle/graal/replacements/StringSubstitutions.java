@@ -30,7 +30,7 @@ import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.replacements.nodes.*;
 
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import edu.umd.cs.findbugs.annotations.*;
 
 /**
  * Substitutions for {@link java.lang.String} methods.
@@ -41,7 +41,7 @@ public class StringSubstitutions {
     /**
      * Offset of the {@link String#value} field.
      */
-    @SuppressWarnings("javadoc") private static final long valueOffset;
+    @java.lang.SuppressWarnings("javadoc") private static final long valueOffset;
 
     static {
         try {

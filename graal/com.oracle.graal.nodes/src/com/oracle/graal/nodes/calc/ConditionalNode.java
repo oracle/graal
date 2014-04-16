@@ -38,7 +38,7 @@ import com.oracle.graal.nodes.type.*;
  */
 public final class ConditionalNode extends BinaryNode implements Canonicalizable, LIRLowerable {
 
-    @Input private LogicNode condition;
+    @Input(InputType.Condition) private LogicNode condition;
 
     public LogicNode condition() {
         return condition;
@@ -128,7 +128,7 @@ public final class ConditionalNode extends BinaryNode implements Canonicalizable
     public static native boolean materializeCondition(@ConstantNodeParameter Condition condition, long x, long y);
 
     @NodeIntrinsic
-    public static boolean materializeIsInstance(Class mirror, Object object) {
+    public static boolean materializeIsInstance(Class<?> mirror, Object object) {
         return mirror.isInstance(object);
     }
 }

@@ -22,9 +22,9 @@
  */
 package com.oracle.graal.replacements.test;
 
-import com.oracle.graal.test.*;
 import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.nodes.java.*;
+import com.oracle.graal.test.*;
 
 /**
  * Tests for {@link InstanceOfDynamicNode}.
@@ -82,11 +82,11 @@ public class InstanceOfDynamicTest extends GraalCompilerTest {
         return o.getClass().getName().length();
     }
 
-    public static boolean isInstanceDynamic(Class c, Object o) {
+    public static boolean isInstanceDynamic(Class<?> c, Object o) {
         return c.isInstance(o);
     }
 
-    public static int isInstanceIntDynamic(Class c, Object o) {
+    public static int isInstanceIntDynamic(Class<?> c, Object o) {
         if (c.isInstance(o)) {
             return o.toString().length();
         }

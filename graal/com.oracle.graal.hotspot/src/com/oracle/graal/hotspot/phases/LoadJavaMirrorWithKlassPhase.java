@@ -54,9 +54,9 @@ public class LoadJavaMirrorWithKlassPhase extends BasePhase<PhaseContext> {
     }
 
     private FloatingReadNode getClassConstantReplacement(StructuredGraph graph, PhaseContext context, Constant constant) {
-        if (constant.getKind() == Kind.Object && constant.asObject() instanceof Class<?>) {
+        if (constant.getKind() == Kind.Object && HotSpotObjectConstant.asObject(constant) instanceof Class<?>) {
             MetaAccessProvider metaAccess = context.getMetaAccess();
-            ResolvedJavaType type = metaAccess.lookupJavaType((Class<?>) constant.asObject());
+            ResolvedJavaType type = metaAccess.lookupJavaType((Class<?>) HotSpotObjectConstant.asObject(constant));
             assert type instanceof HotSpotResolvedObjectType;
 
             Constant klass = ((HotSpotResolvedObjectType) type).klass();

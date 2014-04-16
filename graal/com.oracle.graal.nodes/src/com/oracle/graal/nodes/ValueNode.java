@@ -55,7 +55,7 @@ public abstract class ValueNode extends ScheduledNode implements StampProvider, 
      * Checks if the given stamp is different than the current one (
      * {@code newStamp.equals(oldStamp) == false}). If it is different then the new stamp will
      * become the current stamp for this node.
-     * 
+     *
      * @return true if the stamp has changed, false otherwise.
      */
     protected final boolean updateStamp(Stamp newStamp) {
@@ -72,7 +72,7 @@ public abstract class ValueNode extends ScheduledNode implements StampProvider, 
      * their stamp if their inputs change. A typical implementation will compute the stamp and pass
      * it to {@link #updateStamp(Stamp)}, whose return value can be used as the result of this
      * method.
-     * 
+     *
      * @return true if the stamp has changed, false otherwise.
      */
     public boolean inferStamp() {
@@ -85,7 +85,7 @@ public abstract class ValueNode extends ScheduledNode implements StampProvider, 
 
     /**
      * Checks whether this value is a constant (i.e. it is of type {@link ConstantNode}.
-     * 
+     *
      * @return {@code true} if this value is a constant
      */
     public final boolean isConstant() {
@@ -106,7 +106,7 @@ public abstract class ValueNode extends ScheduledNode implements StampProvider, 
 
     /**
      * Checks whether this value represents the null constant.
-     * 
+     *
      * @return {@code true} if this value represents the null constant
      */
     public final boolean isNullConstant() {
@@ -115,7 +115,7 @@ public abstract class ValueNode extends ScheduledNode implements StampProvider, 
 
     /**
      * Convert this value to a constant if it is a constant, otherwise return null.
-     * 
+     *
      * @return the {@link Constant} represented by this value if it is a constant; {@code null}
      *         otherwise
      */
@@ -128,5 +128,14 @@ public abstract class ValueNode extends ScheduledNode implements StampProvider, 
 
     public ValueNode asNode() {
         return this;
+    }
+
+    @Override
+    public boolean isAllowedUsageType(InputType type) {
+        if (getKind() != Kind.Void && type == InputType.Value) {
+            return true;
+        } else {
+            return super.isAllowedUsageType(type);
+        }
     }
 }

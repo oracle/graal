@@ -52,7 +52,7 @@ public interface LoweringTool {
      */
     FixedWithNextNode lastFixedNode();
 
-    GuardingNode getCurrentGuardAnchor();
+    AnchoringNode getCurrentGuardAnchor();
 
     /**
      * Marker interface lowering stages.

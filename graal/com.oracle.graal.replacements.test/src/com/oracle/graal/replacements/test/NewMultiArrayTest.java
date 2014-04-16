@@ -28,9 +28,9 @@ import java.util.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.test.*;
-import com.oracle.graal.test.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
+import com.oracle.graal.test.*;
 
 /**
  * Tests the lowering of the MULTIANEWARRAY instruction.
@@ -83,12 +83,12 @@ public class NewMultiArrayTest extends GraalCompilerTest {
 
     ResolvedJavaType arrayType;
     ResolvedJavaType bottomType;
-    Class bottomClass;
+    Class<?> bottomClass;
     int[] dimensions;
 
     @LongTest
     public void test1() {
-        for (Class clazz : new Class[]{byte.class, char.class, short.class, int.class, float.class, long.class, double.class, String.class}) {
+        for (Class<?> clazz : new Class[]{byte.class, char.class, short.class, int.class, float.class, long.class, double.class, String.class}) {
             bottomClass = clazz;
             bottomType = getMetaAccess().lookupJavaType(clazz);
             arrayType = bottomType;

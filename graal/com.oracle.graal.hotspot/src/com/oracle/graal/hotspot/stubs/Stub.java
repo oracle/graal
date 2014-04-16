@@ -24,6 +24,7 @@ package com.oracle.graal.hotspot.stubs;
 
 import static com.oracle.graal.compiler.GraalCompiler.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
+import static com.oracle.graal.phases.GraalOptions.*;
 
 import java.util.*;
 
@@ -41,6 +42,7 @@ import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.*;
+import com.oracle.graal.phases.schedule.*;
 
 //JaCoCo Exclude
 
@@ -108,6 +110,10 @@ public abstract class Stub {
         return linkage;
     }
 
+    public RegisterConfig getRegisterConfig() {
+        return null;
+    }
+
     /**
      * Gets the graph that from which the code for this stub will be compiled.
      */
@@ -145,9 +151,17 @@ public abstract class Stub {
                 CodeCacheProvider codeCache = providers.getCodeCache();
                 // The stub itself needs the incoming calling convention.
                 CallingConvention incomingCc = linkage.getIncomingCallingConvention();
-                final CompilationResult compResult = compileGraph(graph, Stub.this, incomingCc, getInstalledCodeOwner(), providers, backend, codeCache.getTarget(), null,
-                                providers.getSuites().getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL, getProfilingInfo(graph), null, providers.getSuites().getDefaultSuites(),
-                                new CompilationResult(), CompilationResultBuilderFactory.Default);
+                TargetDescription target = codeCache.getTarget();
+
+                final CompilationResult compResult = new CompilationResult();
+                try (Scope s0 = Debug.scope("StubCompilation", graph, providers.getCodeCache())) {
+                    Assumptions assumptions = new Assumptions(OptAssumptions.getValue());
+                    SchedulePhase schedule = emitFrontEnd(providers, target, graph, assumptions, null, providers.getSuites().getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL,
+                                    getProfilingInfo(graph), null, providers.getSuites().getDefaultSuites());
+                    emitBackEnd(graph, Stub.this, incomingCc, getInstalledCodeOwner(), backend, target, compResult, CompilationResultBuilderFactory.Default, assumptions, schedule, getRegisterConfig());
+                } catch (Throwable e) {
+                    throw Debug.handle(e);
+                }
 
                 assert destroyedRegisters != null;
                 try (Scope s = Debug.scope("CodeInstall")) {

@@ -54,7 +54,7 @@ public class InductionVariables {
             }
             ValueNode stride = addSub(backValue, phi);
             if (stride != null) {
-                BasicInductionVariable biv = new BasicInductionVariable(loop, phi, phi.valueAt(forwardEnd), stride, (IntegerArithmeticNode) backValue);
+                BasicInductionVariable biv = new BasicInductionVariable(loop, (ValuePhiNode) phi, phi.valueAt(forwardEnd), stride, (IntegerArithmeticNode) backValue);
                 ivs.put(phi, biv);
                 bivs.add(biv);
             }

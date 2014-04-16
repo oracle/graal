@@ -46,7 +46,7 @@ public class IdealGraphPrinter extends BasicIdealGraphPrinter implements GraphPr
 
     /**
      * Creates a new {@link IdealGraphPrinter} that writes to the specified output stream.
-     * 
+     *
      * @param tryToSchedule If false, no scheduling is done, which avoids exceptions for
      *            non-schedulable graphs.
      */

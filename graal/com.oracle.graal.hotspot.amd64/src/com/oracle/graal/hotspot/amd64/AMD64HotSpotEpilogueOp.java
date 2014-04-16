@@ -30,14 +30,13 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.amd64.*;
 import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.StandardOp.*;
 import com.oracle.graal.lir.amd64.*;
 import com.oracle.graal.lir.asm.*;
 
 /**
  * Superclass for operations that use the value of RBP saved in a method's prologue.
  */
-abstract class AMD64HotSpotEpilogueOp extends AMD64LIRInstruction implements BlockEndOp {
+abstract class AMD64HotSpotEpilogueOp extends AMD64LIRInstruction {
 
     /**
      * The type of location (i.e., stack or register) in which RBP is saved is not known until

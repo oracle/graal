@@ -26,6 +26,7 @@ import static com.oracle.graal.nodes.extended.BranchProbabilityNode.*;
 import static com.oracle.graal.replacements.SnippetTemplate.*;
 
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
@@ -49,7 +50,7 @@ public class AMD64ConvertSnippets implements Snippets {
      * conversion. If the float value is a NaN, infinity or if the result of the conversion is
      * larger than {@link Integer#MAX_VALUE} then CVTTSS2SI returns {@link Integer#MIN_VALUE} and
      * extra tests are required on the float value to return the correct int value.
-     * 
+     *
      * @param input the float being converted
      * @param result the result produced by the CVTTSS2SI instruction
      */
@@ -74,7 +75,7 @@ public class AMD64ConvertSnippets implements Snippets {
      * conversion. If the float value is a NaN or infinity then CVTTSS2SI returns
      * {@link Long#MIN_VALUE} and extra tests are required on the float value to return the correct
      * long value.
-     * 
+     *
      * @param input the float being converted
      * @param result the result produced by the CVTTSS2SI instruction
      */
@@ -99,7 +100,7 @@ public class AMD64ConvertSnippets implements Snippets {
      * conversion. If the double value is a NaN, infinity or if the result of the conversion is
      * larger than {@link Integer#MAX_VALUE} then CVTTSD2SI returns {@link Integer#MIN_VALUE} and
      * extra tests are required on the double value to return the correct int value.
-     * 
+     *
      * @param input the double being converted
      * @param result the result produced by the CVTTSS2SI instruction
      */
@@ -124,7 +125,7 @@ public class AMD64ConvertSnippets implements Snippets {
      * conversion. If the double value is a NaN, infinity or if the result of the conversion is
      * larger than {@link Long#MAX_VALUE} then CVTTSD2SI returns {@link Long#MIN_VALUE} and extra
      * tests are required on the double value to return the correct long value.
-     * 
+     *
      * @param input the double being converted
      * @param result the result produced by the CVTTSS2SI instruction
      */
@@ -149,8 +150,8 @@ public class AMD64ConvertSnippets implements Snippets {
         private final SnippetInfo d2i;
         private final SnippetInfo d2l;
 
-        public Templates(Providers providers, TargetDescription target) {
-            super(providers, target);
+        public Templates(Providers providers, SnippetReflectionProvider snippetReflection, TargetDescription target) {
+            super(providers, snippetReflection, target);
 
             f2i = snippet(AMD64ConvertSnippets.class, "f2i");
             f2l = snippet(AMD64ConvertSnippets.class, "f2l");

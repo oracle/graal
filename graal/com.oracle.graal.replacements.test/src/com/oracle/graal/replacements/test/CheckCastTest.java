@@ -23,9 +23,9 @@
 package com.oracle.graal.replacements.test;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.test.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
+import com.oracle.graal.test.*;
 
 /**
  * Tests the implementation of checkcast, allowing profiling information to be manually specified.

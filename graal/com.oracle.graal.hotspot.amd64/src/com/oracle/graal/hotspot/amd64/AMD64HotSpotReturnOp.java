@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,13 +29,14 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.amd64.*;
 import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.StandardOp.*;
 import com.oracle.graal.lir.asm.*;
 
 /**
  * Returns from a function.
  */
 @Opcode("RETURN")
-final class AMD64HotSpotReturnOp extends AMD64HotSpotEpilogueOp {
+final class AMD64HotSpotReturnOp extends AMD64HotSpotEpilogueOp implements BlockEndOp {
 
     @Use({REG, ILLEGAL}) protected Value value;
     private final boolean isStub;

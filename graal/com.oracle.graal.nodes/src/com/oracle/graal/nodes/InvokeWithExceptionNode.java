@@ -31,17 +31,17 @@ import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.util.*;
 
-@NodeInfo(nameTemplate = "Invoke!#{p#targetMethod/s}")
+@NodeInfo(nameTemplate = "Invoke!#{p#targetMethod/s}", allowedUsageTypes = {InputType.Memory})
 public class InvokeWithExceptionNode extends ControlSplitNode implements Invoke, MemoryCheckpoint.Single, LIRLowerable {
 
     private static final double EXCEPTION_PROBA = 1e-5;
 
     @Successor private AbstractBeginNode next;
     @Successor private DispatchBeginNode exceptionEdge;
-    @Input private CallTargetNode callTarget;
-    @Input private FrameState stateDuring;
-    @Input private FrameState stateAfter;
-    @Input private GuardingNode guard;
+    @Input(InputType.Extension) private CallTargetNode callTarget;
+    @Input(InputType.State) private FrameState stateDuring;
+    @Input(InputType.State) private FrameState stateAfter;
+    @Input(InputType.Guard) private GuardingNode guard;
     private final int bci;
     private boolean polymorphic;
     private boolean useForInlining;
@@ -236,7 +236,7 @@ public class InvokeWithExceptionNode extends ControlSplitNode implements Invoke,
 
     @Override
     public void setGuard(GuardingNode guard) {
-        updateUsages(this.guard == null ? null : this.guard.asNode(), guard == null ? null : guard.asNode());
+        updateUsagesInterface(this.guard, guard);
         this.guard = guard;
     }
 

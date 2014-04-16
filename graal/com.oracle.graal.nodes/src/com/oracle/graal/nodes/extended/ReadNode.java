@@ -33,7 +33,7 @@ import com.oracle.graal.nodes.virtual.*;
 /**
  * Reads an {@linkplain FixedAccessNode accessed} value.
  */
-public final class ReadNode extends FloatableAccessNode implements LIRLowerable, Canonicalizable, PiPushable, Virtualizable {
+public final class ReadNode extends FloatableAccessNode implements LIRLowerable, Canonicalizable, PiPushable, Virtualizable, GuardingNode {
 
     public ReadNode(ValueNode object, ValueNode location, Stamp stamp, BarrierType barrierType, boolean compressible) {
         super(object, location, stamp, barrierType, compressible);
@@ -62,7 +62,10 @@ public final class ReadNode extends FloatableAccessNode implements LIRLowerable,
     @Override
     public Node canonical(CanonicalizerTool tool) {
         if (object() instanceof PiNode && ((PiNode) object()).getGuard() == getGuard()) {
-            return graph().add(new ReadNode(((PiNode) object()).getOriginalValue(), location(), stamp(), getGuard(), getBarrierType(), isCompressible()));
+            ReadNode readNode = graph().add(new ReadNode(((PiNode) object()).getOriginalNode(), location(), stamp(), getGuard(), getBarrierType(), isCompressible()));
+            readNode.setNullCheck(getNullCheck());
+            readNode.setStateBefore(stateBefore());
+            return readNode;
         }
         return canonicalizeRead(this, location(), object(), tool, isCompressible());
     }
@@ -70,6 +73,11 @@ public final class ReadNode extends FloatableAccessNode implements LIRLowerable,
     @Override
     public FloatingAccessNode asFloatingNode(MemoryNode lastLocationAccess) {
         return graph().unique(new FloatingReadNode(object(), location(), lastLocationAccess, stamp(), getGuard(), getBarrierType(), isCompressible()));
+    }
+
+    @Override
+    public boolean isAllowedUsageType(InputType type) {
+        return (getNullCheck() && type == InputType.Guard) ? true : super.isAllowedUsageType(type);
     }
 
     public static ValueNode canonicalizeRead(ValueNode read, LocationNode location, ValueNode object, CanonicalizerTool tool, boolean compressible) {
@@ -85,26 +93,22 @@ public final class ReadNode extends FloatableAccessNode implements LIRLowerable,
             }
         }
         if (tool.canonicalizeReads()) {
-            if (metaAccess != null && object != null && object.isConstant()) {
+            if (metaAccess != null && object != null && object.isConstant() && !compressible) {
                 if ((location.getLocationIdentity() == LocationIdentity.FINAL_LOCATION || location.getLocationIdentity() == LocationIdentity.ARRAY_LENGTH_LOCATION) &&
                                 location instanceof ConstantLocationNode) {
                     long displacement = ((ConstantLocationNode) location).getDisplacement();
-                    Kind kind = location.getValueKind();
-                    if (object.getKind() == Kind.Object) {
-                        Object base = object.asConstant().asObject();
-                        if (base != null) {
-                            Constant constant = tool.getConstantReflection().readUnsafeConstant(kind, base, displacement, compressible);
-                            if (constant != null) {
-                                return ConstantNode.forConstant(constant, metaAccess, read.graph());
-                            }
+                    Constant base = object.asConstant();
+                    if (base != null) {
+                        Constant constant;
+                        if (read.stamp() instanceof PrimitiveStamp) {
+                            PrimitiveStamp stamp = (PrimitiveStamp) read.stamp();
+                            constant = tool.getConstantReflection().readRawConstant(stamp.getStackKind(), base, displacement, stamp.getBits());
+                        } else {
+                            assert read.stamp() instanceof ObjectStamp;
+                            constant = tool.getConstantReflection().readUnsafeConstant(Kind.Object, base, displacement);
                         }
-                    } else if (object.getKind().isNumericInteger()) {
-                        long base = object.asConstant().asLong();
-                        if (base != 0L) {
-                            Constant constant = tool.getConstantReflection().readUnsafeConstant(kind, null, base + displacement, compressible);
-                            if (constant != null) {
-                                return ConstantNode.forConstant(constant, metaAccess, read.graph());
-                            }
+                        if (constant != null) {
+                            return ConstantNode.forConstant(read.stamp(), constant, metaAccess, read.graph());
                         }
                     }
                 }
@@ -163,5 +167,9 @@ public final class ReadNode extends FloatableAccessNode implements LIRLowerable,
                 }
             }
         }
+    }
+
+    public boolean canNullCheck() {
+        return true;
     }
 }

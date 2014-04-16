@@ -35,7 +35,7 @@ import com.oracle.graal.nodes.type.*;
  */
 public final class FloatingReadNode extends FloatingAccessNode implements IterableNodeType, LIRLowerable, Canonicalizable {
 
-    @Input private MemoryNode lastLocationAccess;
+    @Input(InputType.Memory) private MemoryNode lastLocationAccess;
 
     public FloatingReadNode(ValueNode object, LocationNode location, MemoryNode lastLocationAccess, Stamp stamp) {
         this(object, location, lastLocationAccess, stamp, null, BarrierType.NONE, false);
@@ -69,14 +69,14 @@ public final class FloatingReadNode extends FloatingAccessNode implements Iterab
     @Override
     public Node canonical(CanonicalizerTool tool) {
         if (object() instanceof PiNode && ((PiNode) object()).getGuard() == getGuard()) {
-            return graph().unique(new FloatingReadNode(((PiNode) object()).getOriginalValue(), location(), getLastLocationAccess(), stamp(), getGuard(), getBarrierType(), isCompressible()));
+            return graph().unique(new FloatingReadNode(((PiNode) object()).getOriginalNode(), location(), getLastLocationAccess(), stamp(), getGuard(), getBarrierType(), isCompressible()));
         }
         return ReadNode.canonicalizeRead(this, location(), object(), tool, isCompressible());
     }
 
     @Override
     public FixedAccessNode asFixedNode() {
-        return graph().add(new ReadNode(object(), nullCheckLocation(), stamp(), getGuard(), getBarrierType(), isCompressible()));
+        return graph().add(new ReadNode(object(), accessLocation(), stamp(), getGuard(), getBarrierType(), isCompressible()));
     }
 
     @Override

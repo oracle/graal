@@ -22,10 +22,11 @@
  */
 package com.oracle.graal.hotspot.ptx;
 
+import java.util.*;
+
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
-import java.util.Arrays;
 
 public class PTXHotSpotCodeCacheProvider extends HotSpotCodeCacheProvider {
 

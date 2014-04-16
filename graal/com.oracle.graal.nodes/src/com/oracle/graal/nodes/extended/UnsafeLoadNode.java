@@ -25,6 +25,7 @@ package com.oracle.graal.nodes.extended;
 import static com.oracle.graal.graph.UnsafeAccess.*;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
@@ -35,7 +36,7 @@ import com.oracle.graal.nodes.type.*;
  * performed before the load.
  */
 public class UnsafeLoadNode extends UnsafeAccessNode implements Lowerable, Virtualizable {
-    @Input private LogicNode guardingCondition;
+    @Input(InputType.Condition) private LogicNode guardingCondition;
 
     public UnsafeLoadNode(ValueNode object, ValueNode offset, Kind accessKind, LocationIdentity locationIdentity) {
         this(object, offset, accessKind, locationIdentity, null);
@@ -76,6 +77,11 @@ public class UnsafeLoadNode extends UnsafeAccessNode implements Lowerable, Virtu
     @Override
     protected ValueNode cloneAsFieldAccess(ResolvedJavaField field) {
         return this.graph().add(new LoadFieldNode(object(), field));
+    }
+
+    @Override
+    protected ValueNode cloneAsArrayAccess(ValueNode location, LocationIdentity identity) {
+        return this.graph().add(new UnsafeLoadNode(object(), location, accessKind(), identity));
     }
 
     @SuppressWarnings({"unchecked", "unused"})

@@ -105,13 +105,21 @@ public final class CompressionNode extends FloatingNode implements LIRLowerable,
     @Override
     public void generate(NodeLIRBuilderTool gen) {
         HotSpotLIRGenerator hsGen = (HotSpotLIRGenerator) gen.getLIRGeneratorTool();
+        boolean nonNull;
+        if (input.stamp() instanceof ObjectStamp) {
+            nonNull = ObjectStamp.isObjectNonNull(input.stamp());
+        } else {
+            // metaspace pointers are never null
+            nonNull = true;
+        }
+
         Value result;
         switch (op) {
             case Compress:
-                result = hsGen.emitCompress(gen.operand(input), encoding);
+                result = hsGen.emitCompress(gen.operand(input), encoding, nonNull);
                 break;
             case Uncompress:
-                result = hsGen.emitUncompress(gen.operand(input), encoding);
+                result = hsGen.emitUncompress(gen.operand(input), encoding, nonNull);
                 break;
             default:
                 throw GraalInternalError.shouldNotReachHere();

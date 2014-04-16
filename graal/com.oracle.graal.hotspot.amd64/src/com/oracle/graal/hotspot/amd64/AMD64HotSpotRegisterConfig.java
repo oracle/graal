@@ -42,6 +42,8 @@ public class AMD64HotSpotRegisterConfig implements RegisterConfig {
 
     private final Register[] allocatable;
 
+    private final int maxFrameSize;
+
     /**
      * The same as {@link #allocatable}, except if parameter registers are removed with the
      * {@link GraalOptions#RegisterPressure} option. The caller saved registers always include all
@@ -54,6 +56,10 @@ public class AMD64HotSpotRegisterConfig implements RegisterConfig {
     private final HashMap<PlatformKind, Register[]> categorized = new HashMap<>();
 
     private final RegisterAttributes[] attributesMap;
+
+    public int getMaximumFrameSize() {
+        return maxFrameSize;
+    }
 
     @Override
     public Register[] getAllocatableRegisters() {
@@ -135,7 +141,13 @@ public class AMD64HotSpotRegisterConfig implements RegisterConfig {
     }
 
     public AMD64HotSpotRegisterConfig(Architecture architecture, HotSpotVMConfig config) {
+        this(architecture, config, initAllocatable(config.useCompressedOops));
+        assert callerSaved.length == allocatable.length || RegisterPressure.getValue() != null;
+    }
+
+    public AMD64HotSpotRegisterConfig(Architecture architecture, HotSpotVMConfig config, Register[] allocatable) {
         this.architecture = architecture;
+        this.maxFrameSize = config.maxFrameSize;
 
         if (config.windowsOs) {
             javaGeneralParameterRegisters = new Register[]{rdx, r8, r9, rdi, rsi, rcx};
@@ -146,14 +158,13 @@ public class AMD64HotSpotRegisterConfig implements RegisterConfig {
         }
 
         csl = null;
-        allocatable = initAllocatable(config.useCompressedOops);
+        this.allocatable = allocatable.clone();
         Set<Register> callerSaveSet = new HashSet<>();
         Collections.addAll(callerSaveSet, allocatable);
         Collections.addAll(callerSaveSet, xmmParameterRegisters);
         Collections.addAll(callerSaveSet, javaGeneralParameterRegisters);
         Collections.addAll(callerSaveSet, nativeGeneralParameterRegisters);
         callerSaved = callerSaveSet.toArray(new Register[callerSaveSet.size()]);
-        assert callerSaved.length == allocatable.length || RegisterPressure.getValue() != null;
 
         allAllocatableAreCallerSaved = true;
         attributesMap = RegisterAttributes.createMap(this, AMD64.allRegisters);

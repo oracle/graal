@@ -44,8 +44,9 @@ package com.oracle.graal.jtt.lang;
 
 import java.net.*;
 
-import com.oracle.graal.jtt.*;
 import org.junit.*;
+
+import com.oracle.graal.jtt.*;
 
 /*
  */

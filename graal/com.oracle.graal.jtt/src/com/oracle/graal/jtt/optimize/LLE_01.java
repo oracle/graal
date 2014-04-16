@@ -22,8 +22,9 @@
  */
 package com.oracle.graal.jtt.optimize;
 
-import com.oracle.graal.jtt.*;
 import org.junit.*;
+
+import com.oracle.graal.jtt.*;
 
 /*
  * Test case for local load elimination. It makes sure that the second field store is not eliminated, because

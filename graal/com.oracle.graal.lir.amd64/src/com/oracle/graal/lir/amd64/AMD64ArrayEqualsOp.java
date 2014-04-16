@@ -29,13 +29,13 @@ import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 import java.lang.reflect.*;
 
 import com.oracle.graal.amd64.*;
-import com.oracle.graal.amd64.AMD64.*;
+import com.oracle.graal.amd64.AMD64.CPUFeature;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
 import com.oracle.graal.asm.amd64.*;
 import com.oracle.graal.asm.amd64.AMD64Address.Scale;
-import com.oracle.graal.asm.amd64.AMD64Assembler.*;
+import com.oracle.graal.asm.amd64.AMD64Assembler.ConditionFlag;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.nodes.spi.*;

@@ -34,12 +34,12 @@ import com.oracle.graal.nodes.type.*;
 /**
  * A node that changes the type of its input, usually narrowing it. For example, a PiNode refines
  * the type of a receiver during type-guarded inlining to be the type tested by the guard.
- * 
+ *
  * In contrast to a {@link GuardedValueNode}, a PiNode is useless as soon as the type of its input
  * is as narrow or narrower than the PiNode's type. The PiNode, and therefore also the scheduling
  * restriction enforced by the anchor, will go away.
  */
-public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtualizable, IterableNodeType, GuardingNode, Canonicalizable, ValueProxy {
+public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtualizable, IterableNodeType, Canonicalizable, ValueProxy {
 
     @Input private ValueNode object;
 
@@ -94,7 +94,7 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
     }
 
     @Override
-    public ValueNode getOriginalValue() {
+    public ValueNode getOriginalNode() {
         return object;
     }
 
@@ -106,6 +106,10 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
 
     public static <T> T piCastExactNonNull(Object object, @ConstantNodeParameter Class<T> toType) {
         return piCast(object, toType, true, true);
+    }
+
+    public static <T> T piCastExact(Object object, @ConstantNodeParameter Class<T> toType) {
+        return piCast(object, toType, true, false);
     }
 
     public static <T> T piCast(Object object, @ConstantNodeParameter Class<T> toType) {

@@ -27,7 +27,7 @@ import java.util.*;
 import javax.annotation.processing.*;
 import javax.lang.model.element.*;
 import javax.lang.model.type.*;
-import javax.tools.Diagnostic.*;
+import javax.tools.Diagnostic.Kind;
 
 /**
  * Pretty much copied from HotSpotSignature but using a different method for resolving types. This

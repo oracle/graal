@@ -311,7 +311,7 @@ public final class CompileTheWorld {
         }
 
         println();
-        TTY.println("CompileTheWorld : Done (%d classes, %d methods, %d ms)", classFileCounter, compiledMethodsCounter, compileTime);
+        println("CompileTheWorld : Done (%d classes, %d methods, %d ms)", classFileCounter, compiledMethodsCounter, compileTime);
     }
 
     class CTWCompilationTask extends CompilationTask {

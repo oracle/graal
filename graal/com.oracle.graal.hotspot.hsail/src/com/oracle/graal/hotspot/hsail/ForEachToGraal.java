@@ -33,6 +33,7 @@ import com.oracle.graal.compiler.hsail.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.internal.*;
+import com.oracle.graal.gpu.*;
 import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hsail.*;
@@ -42,7 +43,6 @@ import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.util.*;
 import com.oracle.graal.printer.*;
-import com.oracle.graal.gpu.*;
 
 /**
  * Implements compile and dispatch of Java code containing lambda constructs. Currently only used by
@@ -62,7 +62,7 @@ public class ForEachToGraal implements CompileAndDispatch {
      * @param intConsumerClass a class implementing {@code java.util.function.IntConsumer}
      * @return a {@link HotSpotNmethod} handle to the compiled and installed kernel
      */
-    private static HotSpotNmethod getCompiledLambda(Class intConsumerClass) {
+    private static HotSpotNmethod getCompiledLambda(Class<?> intConsumerClass) {
         Method acceptMethod = null;
         for (Method m : intConsumerClass.getMethods()) {
             if (m.getName().equals("accept")) {

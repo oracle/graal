@@ -141,7 +141,7 @@ public class CompilerToVMImpl implements CompilerToVM {
     public native void invalidateInstalledCode(HotSpotInstalledCode hotspotInstalledCode);
 
     @Override
-    public native Object readUnsafeUncompressedPointer(Object o, long displacement);
+    public native Class<?> getJavaMirror(long metaspaceKlass);
 
     @Override
     public native long readUnsafeKlassPointer(Object o);
@@ -151,7 +151,7 @@ public class CompilerToVMImpl implements CompilerToVM {
 
     @Override
     public Object executeCompiledMethod(Object arg1, Object arg2, Object arg3, HotSpotInstalledCode hotspotInstalledCode) throws InvalidInstalledCodeException {
-        return executeCompiledMethodIntrinsic(arg1, arg2, arg3, hotspotInstalledCode);
+        return executeCompiledMethodVarargs(new Object[]{arg1, arg2, arg3}, hotspotInstalledCode);
     }
 
     public synchronized native void notifyCompilationStatistics(int id, HotSpotResolvedJavaMethod method, boolean osr, int processedBytecodes, long time, long timeUnitsPerSecond,
@@ -160,15 +160,6 @@ public class CompilerToVMImpl implements CompilerToVM {
     public synchronized native void printCompilationStatistics(boolean perCompiler, boolean aggregate);
 
     public native void resetCompilationStatistics();
-
-    /**
-     * Direct call to the given nmethod with three object arguments and an object return value. This
-     * method does not have an implementation on the C++ side, but its entry points (from
-     * interpreter and from compiled code) are directly pointing to a manually generated assembly
-     * stub that does the necessary argument shuffling and a tail call via an indirect jump to the
-     * verified entry point of the given native method.
-     */
-    public static native Object executeCompiledMethodIntrinsic(Object arg1, Object arg2, Object arg3, HotSpotInstalledCode hotspotInstalledCode) throws InvalidInstalledCodeException;
 
     public native long[] collectCounters();
 
@@ -184,4 +175,9 @@ public class CompilerToVMImpl implements CompilerToVM {
 
     public native boolean hasCompiledCodeForOSR(long metaspaceMethod, int entryBCI, int level);
 
+    public native HotSpotStackFrameReference getNextStackFrame(HotSpotStackFrameReference frame, long[] methods, int initialSkip);
+
+    public native void materializeVirtualObjects(HotSpotStackFrameReference stackFrame, boolean invalidate);
+
+    public native long getTimeStamp();
 }

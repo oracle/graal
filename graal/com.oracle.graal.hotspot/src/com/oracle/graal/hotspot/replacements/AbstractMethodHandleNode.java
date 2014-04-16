@@ -162,7 +162,7 @@ public abstract class AbstractMethodHandleNode extends MacroNode implements Cano
         Constant vmtarget = memberNameVmtargetField.readValue(memberName);
 
         // Create a method from the vmtarget pointer
-        Class<?> c = (Class<?>) clazz.asObject();
+        Class<?> c = (Class<?>) HotSpotObjectConstant.asObject(clazz);
         HotSpotResolvedObjectType holderClass = (HotSpotResolvedObjectType) HotSpotResolvedObjectType.fromClass(c);
         HotSpotResolvedJavaMethod targetMethod = HotSpotResolvedJavaMethod.fromMetaspace(vmtarget.asLong());
 

@@ -33,7 +33,9 @@ import sun.misc.*;
 import sun.reflect.*;
 
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.code.stack.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.graph.*;
@@ -48,7 +50,7 @@ import com.oracle.graal.runtime.*;
 /**
  * Singleton class holding the instance of the {@link GraalRuntime}.
  */
-public final class HotSpotGraalRuntime implements GraalRuntime, RuntimeProvider {
+public final class HotSpotGraalRuntime implements GraalRuntime, RuntimeProvider, StackIntrospection {
 
     private static final HotSpotGraalRuntime instance = new HotSpotGraalRuntime();
     static {
@@ -62,7 +64,7 @@ public final class HotSpotGraalRuntime implements GraalRuntime, RuntimeProvider 
     public static HotSpotGraalRuntime runtime() {
         SecurityManager sm = System.getSecurityManager();
         if (sm != null) {
-            Class cc = Reflection.getCallerClass();
+            Class<?> cc = Reflection.getCallerClass();
             if (cc != null && cc.getClassLoader() != null) {
                 sm.checkPermission(Graal.ACCESS_PERMISSION);
             }
@@ -153,7 +155,7 @@ public final class HotSpotGraalRuntime implements GraalRuntime, RuntimeProvider 
      * Checks that a factory overriding is valid. A factory B can only override/replace a factory A
      * if the B.getClass() is a subclass of A.getClass(). This models the assumption that B is
      * extends the behavior of A and has therefore understood the behavior expected of A.
-     * 
+     *
      * @param baseFactory
      * @param overridingFactory
      */
@@ -265,14 +267,12 @@ public final class HotSpotGraalRuntime implements GraalRuntime, RuntimeProvider 
 
     /**
      * Gets the Graal mirror for a {@link Class} object.
-     * 
+     *
      * @return the {@link HotSpotResolvedJavaType} corresponding to {@code javaClass}
      */
     public ResolvedJavaType fromClass(Class<?> javaClass) {
         return graalMirrors.get(javaClass);
     }
-
-    public static final String GRAAL_GPU_ISALIST_PROPERTY_NAME = "graal.gpu.isalist";
 
     /**
      * Gets the names of the supported GPU architectures for the purpose of finding the
@@ -320,7 +320,7 @@ public final class HotSpotGraalRuntime implements GraalRuntime, RuntimeProvider 
 
     /**
      * Converts a name to a Java type.
-     * 
+     *
      * @param name a well formed Java type in {@linkplain JavaType#getName() internal} format
      * @param accessingType the context of resolution (may be null)
      * @param resolve force resolution to a {@link ResolvedJavaType}. If true, this method will
@@ -364,6 +364,10 @@ public final class HotSpotGraalRuntime implements GraalRuntime, RuntimeProvider 
     public <T> T getCapability(Class<T> clazz) {
         if (clazz == RuntimeProvider.class) {
             return (T) this;
+        } else if (clazz == StackIntrospection.class) {
+            return (T) this;
+        } else if (clazz == SnippetReflectionProvider.class) {
+            return (T) getHostProviders().getSnippetReflection();
         }
         return null;
     }
@@ -383,7 +387,7 @@ public final class HotSpotGraalRuntime implements GraalRuntime, RuntimeProvider 
 
     /**
      * The offset from the origin of an array to the first element.
-     * 
+     *
      * @return the offset in bytes
      */
     public static int getArrayBaseOffset(Kind kind) {
@@ -413,7 +417,7 @@ public final class HotSpotGraalRuntime implements GraalRuntime, RuntimeProvider 
 
     /**
      * The scale used for the index when accessing elements of an array of this kind.
-     * 
+     *
      * @return the scale in order to convert the index into a byte offset
      */
     public static int getArrayIndexScale(Kind kind) {
@@ -438,6 +442,52 @@ public final class HotSpotGraalRuntime implements GraalRuntime, RuntimeProvider 
                 return Unsafe.ARRAY_OBJECT_INDEX_SCALE;
             default:
                 throw GraalInternalError.shouldNotReachHere();
+        }
+    }
+
+    public Iterable<InspectedFrame> getStackTrace(ResolvedJavaMethod[] initialMethods, ResolvedJavaMethod[] matchingMethods, int initialSkip) {
+        final long[] initialMetaMethods = toMeta(initialMethods);
+        final long[] matchingMetaMethods = toMeta(matchingMethods);
+        class StackFrameIterator implements Iterator<InspectedFrame> {
+
+            private HotSpotStackFrameReference current = compilerToVm.getNextStackFrame(null, initialMetaMethods, initialSkip);
+            // we don't want to read ahead if hasNext isn't called
+            private boolean advanced = true;
+
+            public boolean hasNext() {
+                update();
+                return current != null;
+            }
+
+            public InspectedFrame next() {
+                update();
+                advanced = false;
+                return current;
+            }
+
+            private void update() {
+                if (!advanced) {
+                    current = compilerToVm.getNextStackFrame(current, matchingMetaMethods, 0);
+                    advanced = true;
+                }
+            }
+        }
+        return new Iterable<InspectedFrame>() {
+            public Iterator<InspectedFrame> iterator() {
+                return new StackFrameIterator();
+            }
+        };
+    }
+
+    private static long[] toMeta(ResolvedJavaMethod[] methods) {
+        if (methods == null) {
+            return null;
+        } else {
+            long[] result = new long[methods.length];
+            for (int i = 0; i < result.length; i++) {
+                result[i] = ((HotSpotResolvedJavaMethod) methods[i]).getMetaspaceMethod();
+            }
+            return result;
         }
     }
 }

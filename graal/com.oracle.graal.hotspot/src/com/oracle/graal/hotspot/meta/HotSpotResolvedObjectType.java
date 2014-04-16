@@ -48,11 +48,6 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
      */
     private final Class<?> javaClass;
 
-    /**
-     * Used for implemented a lazy binding from a {@link Node} type to a {@link NodeClass} value.
-     */
-    private NodeClass nodeClass;
-
     private HashMap<Long, HotSpotResolvedJavaField> fieldCache;
     private HashMap<Long, HotSpotResolvedJavaMethod> methodCache;
     private HotSpotResolvedJavaField[] instanceFields;
@@ -62,7 +57,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
 
     /**
      * Gets the Graal mirror from a HotSpot metaspace Klass native object.
-     * 
+     *
      * @param metaspaceKlass a metaspace Klass object boxed in a {@link Constant}
      * @return the {@link ResolvedJavaType} corresponding to {@code klassConstant}
      */
@@ -73,26 +68,26 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
 
     /**
      * Gets the Graal mirror from a HotSpot metaspace Klass native object.
-     * 
+     *
      * @param metaspaceKlass a metaspace Klass object
      * @return the {@link ResolvedJavaType} corresponding to {@code metaspaceKlass}
      */
     public static ResolvedJavaType fromMetaspaceKlass(long metaspaceKlass) {
         assert metaspaceKlass != 0;
-        Class javaClass = (Class) runtime().getCompilerToVM().readUnsafeUncompressedPointer(null, metaspaceKlass + runtime().getConfig().classMirrorOffset);
+        Class<?> javaClass = runtime().getCompilerToVM().getJavaMirror(metaspaceKlass);
         assert javaClass != null;
         return fromClass(javaClass);
     }
 
     /**
      * Creates the Graal mirror for a {@link Class} object.
-     * 
+     *
      * <p>
      * <b>NOTE</b>: Creating an instance of this class does not install the mirror for the
      * {@link Class} type. Use {@link #fromClass(Class)}, {@link #fromMetaspaceKlass(Constant)} or
      * {@link #fromMetaspaceKlass(long)} instead.
      * </p>
-     * 
+     *
      * @param javaClass the Class to create the mirror for
      */
     public HotSpotResolvedObjectType(Class<?> javaClass) {
@@ -138,7 +133,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
 
     @Override
     public ResolvedJavaType getComponentType() {
-        Class javaComponentType = mirror().getComponentType();
+        Class<?> javaComponentType = mirror().getComponentType();
         return javaComponentType == null ? null : fromClass(javaComponentType);
     }
 
@@ -185,7 +180,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
     /**
      * Returns if type {@code type} is a leaf class. This is the case if the
      * {@code Klass::_subklass} field of the underlying class is zero.
-     * 
+     *
      * @return true if the type is a leaf class
      */
     private boolean isLeafClass() {
@@ -195,7 +190,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
     /**
      * Returns the {@code Klass::_subklass} field of the underlying metaspace klass for the given
      * type {@code type}.
-     * 
+     *
      * @return value of the subklass field as metaspace klass pointer
      */
     private long getSubklass() {
@@ -204,14 +199,14 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
 
     @Override
     public HotSpotResolvedObjectType getSuperclass() {
-        Class javaSuperclass = mirror().getSuperclass();
+        Class<?> javaSuperclass = mirror().getSuperclass();
         return javaSuperclass == null ? null : (HotSpotResolvedObjectType) fromClass(javaSuperclass);
     }
 
     @Override
     public ResolvedJavaType[] getInterfaces() {
         if (interfaces == null) {
-            Class[] javaInterfaces = mirror().getInterfaces();
+            Class<?>[] javaInterfaces = mirror().getInterfaces();
             ResolvedJavaType[] result = new ResolvedJavaType[javaInterfaces.length];
             for (int i = 0; i < javaInterfaces.length; i++) {
                 result[i] = fromClass(javaInterfaces[i]);
@@ -267,7 +262,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
     public Constant getEncoding(Representation r) {
         switch (r) {
             case JavaClass:
-                return Constant.forObject(mirror());
+                return HotSpotObjectConstant.forObject(mirror());
             case ObjectHub:
                 return klass();
             default:
@@ -312,7 +307,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
     /**
      * Returns the value of the state field {@code InstanceKlass::_init_state} of the metaspace
      * klass.
-     * 
+     *
      * @return state field value of this type
      */
     private int getState() {
@@ -330,7 +325,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
     @Override
     public boolean isInstance(Constant obj) {
         if (obj.getKind() == Kind.Object && !obj.isNull()) {
-            return mirror().isInstance(obj.asObject());
+            return mirror().isInstance(HotSpotObjectConstant.asObject(obj));
         }
         return false;
     }
@@ -476,7 +471,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
 
         /**
          * Creates a field info for the field in the fields array at index {@code index}.
-         * 
+         *
          * @param index index to the fields array
          */
         public FieldInfo(int index) {
@@ -484,8 +479,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
             // Get Klass::_fields
             final long metaspaceFields = unsafe.getAddress(metaspaceKlass() + config.instanceKlassFieldsOffset);
             assert config.fieldInfoFieldSlots == 6 : "revisit the field parsing code";
-            metaspaceData = metaspaceFields + config.arrayU2DataOffset + config.fieldInfoFieldSlots * 2 * index;  // TODO
-            // Short.BYTES
+            metaspaceData = metaspaceFields + config.arrayU2DataOffset + config.fieldInfoFieldSlots * Short.BYTES * index;
         }
 
         private int getAccessFlags() {
@@ -513,7 +507,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
          * on top an array of Java shorts.
          */
         private int readFieldSlot(int index) {
-            return unsafe.getChar(metaspaceData + 2 * index);  // TODO Short.BYTES
+            return unsafe.getChar(metaspaceData + Short.BYTES * index);
         }
 
         /**
@@ -578,8 +572,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
                     }
                 }
 
-                // TODO use in 1.8: fieldsArray.sort(new OffsetComparator());
-                Collections.sort(fieldsArray, new OffsetComparator());
+                fieldsArray.sort(new OffsetComparator());
 
                 HotSpotResolvedJavaField[] myFields = fieldsArray.toArray(new HotSpotResolvedJavaField[0]);
 
@@ -614,7 +607,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
     /**
      * Returns the actual field count of this class's internal {@code InstanceKlass::_fields} array
      * by walking the array and discounting the generic signature slots at the end of the array.
-     * 
+     *
      * <p>
      * See {@code FieldStreamBase::init_generic_signature_start_slot}
      */
@@ -663,7 +656,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
      * Gets the metaspace Klass boxed in a {@link Constant}.
      */
     public Constant klass() {
-        return Constant.forIntegerKind(runtime().getTarget().wordKind, metaspaceKlass(), this);
+        return HotSpotMetaspaceConstant.forMetaspaceObject(runtime().getTarget().wordKind, metaspaceKlass(), this);
     }
 
     public boolean isPrimaryType() {
@@ -719,7 +712,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
 
     @Override
     public ResolvedJavaMethod[] getDeclaredConstructors() {
-        Constructor[] constructors = mirror().getDeclaredConstructors();
+        Constructor<?>[] constructors = mirror().getDeclaredConstructors();
         ResolvedJavaMethod[] result = new ResolvedJavaMethod[constructors.length];
         for (int i = 0; i < constructors.length; i++) {
             result[i] = runtime().getHostProviders().getMetaAccess().lookupJavaConstructor(constructors[i]);
@@ -749,21 +742,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
 
     @Override
     public Constant newArray(int length) {
-        return Constant.forObject(Array.newInstance(mirror(), length));
-    }
-
-    /**
-     * @return the {@link NodeClass} value (which may be {@code null}) associated with this type
-     */
-    public NodeClass getNodeClass() {
-        return nodeClass;
-    }
-
-    /**
-     * Sets the {@link NodeClass} value associated with this type.
-     */
-    public void setNodeClass(NodeClass nodeClass) {
-        this.nodeClass = nodeClass;
+        return HotSpotObjectConstant.forObject(Array.newInstance(mirror(), length));
     }
 
     @Override

@@ -22,13 +22,17 @@
  */
 package com.oracle.graal.nodes;
 
+import static com.oracle.graal.graph.InputType.*;
+
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.type.*;
 
+@NodeInfo(allowedUsageTypes = {Condition})
 public abstract class LogicNode extends FloatingNode {
 
     public LogicNode() {
-        super(StampFactory.condition());
+        super(StampFactory.forVoid());
     }
 
     public static LogicNode and(LogicNode a, LogicNode b, double shortCircuitProbability) {

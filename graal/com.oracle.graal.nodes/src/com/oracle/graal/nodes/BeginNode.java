@@ -27,9 +27,6 @@ import com.oracle.graal.nodes.type.*;
 public final class BeginNode extends AbstractBeginNode {
 
     public BeginNode() {
-        super(StampFactory.dependency());
+        super(StampFactory.forVoid());
     }
-
-    @NodeIntrinsic
-    public static native BeginNode anchor();
 }

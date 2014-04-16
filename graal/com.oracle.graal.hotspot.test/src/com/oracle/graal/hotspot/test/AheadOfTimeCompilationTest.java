@@ -81,7 +81,7 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
         assertEquals(0, result.getNodes().filter(ReadNode.class).count());
     }
 
-    public static Class getClassObject() {
+    public static Class<AheadOfTimeCompilationTest> getClassObject() {
         return AheadOfTimeCompilationTest.class;
     }
 
@@ -104,7 +104,7 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
 
         NodeIterable<ConstantNode> filter = getConstantNodes(result);
         assertEquals(1, filter.count());
-        Object mirror = filter.first().asConstant().asObject();
+        Object mirror = HotSpotObjectConstant.asObject(filter.first().asConstant());
         assertEquals(Class.class, mirror.getClass());
         assertEquals(AheadOfTimeCompilationTest.class, mirror);
 
@@ -112,7 +112,7 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
         assertEquals(0, result.getNodes().filter(ReadNode.class).count());
     }
 
-    public static Class getPrimitiveClassObject() {
+    public static Class<Integer> getPrimitiveClassObject() {
         return int.class;
     }
 
@@ -132,7 +132,7 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
         StructuredGraph result = compile("getPrimitiveClassObject", false);
         NodeIterable<ConstantNode> filter = getConstantNodes(result);
         assertEquals(1, filter.count());
-        Object mirror = filter.first().asConstant().asObject();
+        Object mirror = HotSpotObjectConstant.asObject(filter.first().asConstant());
         assertEquals(Class.class, mirror.getClass());
         assertEquals(Integer.TYPE, mirror);
 
@@ -160,7 +160,7 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
 
         NodeIterable<ConstantNode> filter = getConstantNodes(result);
         assertEquals(1, filter.count());
-        Object mirror = filter.first().asConstant().asObject();
+        Object mirror = HotSpotObjectConstant.asObject(filter.first().asConstant());
         assertEquals(String.class, mirror.getClass());
         assertEquals("test string", mirror);
 
@@ -193,7 +193,7 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
         assertEquals(1, getConstantNodes(result).count());
         ConstantNode constant = getConstantNodes(result).first();
         assertEquals(Kind.Object, constant.getKind());
-        assertEquals(Boolean.TRUE, constant.asConstant().asObject());
+        assertEquals(Boolean.TRUE, HotSpotObjectConstant.asObject(constant.asConstant()));
     }
 
     private StructuredGraph compile(String test, boolean compileAOT) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -51,7 +51,8 @@ public class AMD64HotSpotForeignCallsProvider extends HotSpotHostForeignCallsPro
 
     @Override
     public void initialize(HotSpotProviders providers, HotSpotVMConfig config) {
-        Kind word = providers.getCodeCache().getTarget().wordKind;
+        TargetDescription target = providers.getCodeCache().getTarget();
+        Kind word = target.wordKind;
 
         // The calling convention for the exception handler stub is (only?) defined in
         // TemplateInterpreterGenerator::generate_throw_exception()
@@ -61,6 +62,8 @@ public class AMD64HotSpotForeignCallsProvider extends HotSpotHostForeignCallsPro
         CallingConvention exceptionCc = new CallingConvention(0, ILLEGAL, exception, exceptionPc);
         register(new HotSpotForeignCallLinkage(EXCEPTION_HANDLER, 0L, PRESERVES_REGISTERS, LEAF_NOFP, null, exceptionCc, NOT_REEXECUTABLE, ANY_LOCATION));
         register(new HotSpotForeignCallLinkage(EXCEPTION_HANDLER_IN_CALLER, JUMP_ADDRESS, PRESERVES_REGISTERS, LEAF_NOFP, exceptionCc, null, NOT_REEXECUTABLE, ANY_LOCATION));
+
+        link(new AMD64DeoptimizationStub(providers, target, registerStubCall(UNCOMMON_TRAP_HANDLER, REEXECUTABLE, LEAF, NO_LOCATIONS)));
 
         // When the java.ext.dirs property is modified then the crypto classes might not be found.
         // If that's the case we ignore the ClassNotFoundException and continue since we cannot

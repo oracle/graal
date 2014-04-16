@@ -31,6 +31,8 @@ import com.oracle.graal.compiler.amd64.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.data.*;
+import com.oracle.graal.hotspot.meta.*;
+import com.oracle.graal.hotspot.nodes.type.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.amd64.*;
 import com.oracle.graal.lir.amd64.AMD64ControlFlow.BranchOp;
@@ -63,9 +65,9 @@ public class AMD64HotSpotMemoryPeephole extends AMD64MemoryPeephole {
                 masm.cmpl(x.toAddress(), 0);
             } else {
                 if (y.getKind() == Kind.Object) {
-                    crb.recordInlineDataInCode(new OopData(0, constant.asObject(), true));
+                    crb.recordInlineDataInCode(new OopData(0, HotSpotObjectConstant.asObject(constant), true));
                 } else if (y.getKind() == Kind.Long) {
-                    crb.recordInlineDataInCode(new MetaspaceData(0, constant.asLong(), constant.getPrimitiveAnnotation(), true));
+                    crb.recordInlineDataInCode(new MetaspaceData(0, constant.asLong(), HotSpotMetaspaceConstant.getMetaspaceObject(constant), true));
                 } else {
                     throw GraalInternalError.shouldNotReachHere();
                 }
@@ -82,11 +84,21 @@ public class AMD64HotSpotMemoryPeephole extends AMD64MemoryPeephole {
     }
 
     @Override
+    protected Kind getMemoryKind(Access access) {
+        PlatformKind kind = gen.getLIRGenerator().getPlatformKind(access.asNode().stamp());
+        if (kind == NarrowOopStamp.NarrowOop) {
+            return Kind.Int;
+        } else {
+            return (Kind) kind;
+        }
+    }
+
+    @Override
     protected boolean emitCompareBranchMemory(ValueNode left, ValueNode right, Access access, Condition cond, boolean unorderedIsTrue, LabelRef trueLabel, LabelRef falseLabel,
                     double trueLabelProbability) {
         if (HotSpotGraalRuntime.runtime().getConfig().useCompressedOops) {
             ValueNode other = selectOtherInput(left, right, access);
-            Kind kind = access.nullCheckLocation().getValueKind();
+            Kind kind = getMemoryKind(access);
 
             if (other.isConstant() && kind == Kind.Object && access.isCompressible()) {
                 ensureEvaluated(other);

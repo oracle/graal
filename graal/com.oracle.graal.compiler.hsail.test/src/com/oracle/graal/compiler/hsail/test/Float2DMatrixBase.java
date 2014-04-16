@@ -23,7 +23,7 @@
 
 package com.oracle.graal.compiler.hsail.test;
 
-import com.oracle.graal.compiler.hsail.test.infra.GraalKernelTester;
+import com.oracle.graal.compiler.hsail.test.infra.*;
 
 /**
  * Base class used by other Float2DMatrix tests.

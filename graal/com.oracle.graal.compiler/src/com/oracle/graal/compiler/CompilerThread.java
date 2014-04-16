@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.compiler;
 
-import com.oracle.graal.compiler.CompilerThreadFactory.*;
+import com.oracle.graal.compiler.CompilerThreadFactory.DebugConfigAccess;
 import com.oracle.graal.debug.*;
 
 /**

@@ -54,35 +54,26 @@ public class UnsafeCastNode extends FloatingGuardedNode implements LIRLowerable,
     }
 
     @Override
-    public ValueNode getOriginalValue() {
+    public ValueNode getOriginalNode() {
         return object;
+    }
+
+    @Override
+    public boolean inferStamp() {
+        if (stamp() instanceof ObjectStamp && object.stamp() instanceof ObjectStamp) {
+            return updateStamp(((ObjectStamp) object.stamp()).castTo((ObjectStamp) stamp()));
+        }
+        return updateStamp(object.stamp().join(stamp()));
     }
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
         assert getKind() == Kind.Object && object.getKind() == Kind.Object;
-
-        ObjectStamp my = (ObjectStamp) stamp();
-        ObjectStamp other = (ObjectStamp) object.stamp();
-
-        if (my.type() == null || other.type() == null) {
+        if (stamp().equals(object.stamp())) {
+            return object;
+        } else {
             return this;
         }
-        if (my.isExactType() && !other.isExactType()) {
-            return this;
-        }
-        if (my.nonNull() && !other.nonNull()) {
-            return this;
-        }
-        if (!my.type().isAssignableFrom(other.type())) {
-            return this;
-        }
-        /*
-         * The unsafe cast does not add any new type information, so it can be removed. Note that
-         * this means that the unsafe cast cannot be used to "drop" type information (in which case
-         * it must not be canonicalized in any case).
-         */
-        return object;
     }
 
     @Override

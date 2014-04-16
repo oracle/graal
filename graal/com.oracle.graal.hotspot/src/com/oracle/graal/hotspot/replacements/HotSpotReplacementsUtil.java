@@ -80,6 +80,20 @@ public class HotSpotReplacementsUtil {
         return config().threadExceptionPcOffset;
     }
 
+    public static final LocationIdentity LAST_JAVA_PC_LOCATION = new NamedLocationIdentity("LastJavaPc");
+
+    @Fold
+    public static int threadLastJavaPcOffset() {
+        return config().threadLastJavaPcOffset();
+    }
+
+    public static final LocationIdentity LAST_JAVA_FP_LOCATION = new NamedLocationIdentity("LastJavaFp");
+
+    @Fold
+    public static int threadLastJavaFpOffset() {
+        return config().threadLastJavaFpOffset();
+    }
+
     public static final LocationIdentity TLAB_TOP_LOCATION = new NamedLocationIdentity("TlabTop");
 
     @Fold
@@ -111,6 +125,16 @@ public class HotSpotReplacementsUtil {
         return config().pendingExceptionOffset;
     }
 
+    public static final LocationIdentity PENDING_DEOPTIMIZATION_LOCATION = new NamedLocationIdentity("PendingDeoptimization");
+
+    /**
+     * @see HotSpotVMConfig#pendingDeoptimizationOffset
+     */
+    @Fold
+    private static int threadPendingDeoptimizationOffset() {
+        return config().pendingDeoptimizationOffset;
+    }
+
     public static final LocationIdentity OBJECT_RESULT_LOCATION = new NamedLocationIdentity("ObjectResult");
 
     @Fold
@@ -140,6 +164,14 @@ public class HotSpotReplacementsUtil {
         thread.writeWord(threadExceptionPcOffset(), value, EXCEPTION_PC_LOCATION);
     }
 
+    public static void writeLastJavaPc(Word thread, Word value) {
+        thread.writeWord(threadLastJavaPcOffset(), value, LAST_JAVA_PC_LOCATION);
+    }
+
+    public static void writeLastJavaFp(Word thread, Word value) {
+        thread.writeWord(threadLastJavaFpOffset(), value, LAST_JAVA_FP_LOCATION);
+    }
+
     public static Word readTlabTop(Word thread) {
         return thread.readWord(threadTlabTopOffset(), TLAB_TOP_LOCATION);
     }
@@ -164,7 +196,7 @@ public class HotSpotReplacementsUtil {
 
     /**
      * Clears the pending exception for the given thread.
-     * 
+     *
      * @return {@code true} if there was a pending exception
      */
     public static boolean clearPendingException(Word thread) {
@@ -174,8 +206,24 @@ public class HotSpotReplacementsUtil {
     }
 
     /**
-     * Gets and clears the object result from a runtime call stored in a thread local.
+     * Reads the pending deoptimization value for the given thread.
      * 
+     * @return {@code true} if there was a pending deoptimization
+     */
+    public static int readPendingDeoptimization(Word thread) {
+        return thread.readInt(threadPendingDeoptimizationOffset(), PENDING_DEOPTIMIZATION_LOCATION);
+    }
+
+    /**
+     * Writes the pending deoptimization value for the given thread.
+     */
+    public static void writePendingDeoptimization(Word thread, int value) {
+        thread.writeInt(threadPendingDeoptimizationOffset(), value, PENDING_DEOPTIMIZATION_LOCATION);
+    }
+
+    /**
+     * Gets and clears the object result from a runtime call stored in a thread local.
+     *
      * @return the object that was in the thread local
      */
     public static Object getAndClearObjectResult(Word thread) {
@@ -247,9 +295,9 @@ public class HotSpotReplacementsUtil {
 
     /**
      * Checks if class {@code klass} is an array.
-     * 
+     *
      * See: Klass::layout_helper_is_array
-     * 
+     *
      * @param klass the class to be checked
      * @return true if klass is an array, false otherwise
      */
@@ -299,13 +347,13 @@ public class HotSpotReplacementsUtil {
 
     /**
      * Mask for a biasable, locked or unlocked mark word.
-     * 
+     *
      * <pre>
      * +----------------------------------+-+-+
      * |                                 1|1|1|
      * +----------------------------------+-+-+
      * </pre>
-     * 
+     *
      */
     @Fold
     public static int biasedLockMaskInPlace() {
@@ -319,13 +367,13 @@ public class HotSpotReplacementsUtil {
 
     /**
      * Pattern for a biasable, unlocked mark word.
-     * 
+     *
      * <pre>
      * +----------------------------------+-+-+
      * |                                 1|0|1|
      * +----------------------------------+-+-+
      * </pre>
-     * 
+     *
      */
     @Fold
     public static int biasedLockPattern() {
@@ -467,7 +515,7 @@ public class HotSpotReplacementsUtil {
      * Loads the hub of an object (without null checking it first).
      */
     public static Word loadHub(Object object) {
-        return loadHubIntrinsic(object, getWordKind(), null);
+        return loadHubIntrinsic(object, getWordKind());
     }
 
     public static Object verifyOop(Object object) {
@@ -487,7 +535,7 @@ public class HotSpotReplacementsUtil {
 
     /**
      * Reads the value of a given register.
-     * 
+     *
      * @param register a register which must not be available to the register allocator
      * @return the value of {@code register} as a word
      */
@@ -498,6 +546,9 @@ public class HotSpotReplacementsUtil {
     @NodeIntrinsic(value = ReadRegisterNode.class, setStampFromReturnType = true)
     public static native Word registerAsWord(@ConstantNodeParameter Register register, @ConstantNodeParameter boolean directUse, @ConstantNodeParameter boolean incoming);
 
+    @NodeIntrinsic(value = WriteRegisterNode.class, setStampFromReturnType = true)
+    public static native void writeRegisterAsWord(@ConstantNodeParameter Register register, Word value);
+
     @SuppressWarnings("unused")
     @NodeIntrinsic(value = UnsafeLoadNode.class, setStampFromReturnType = true)
     private static Word loadWordFromObjectIntrinsic(Object object, long offset, @ConstantNodeParameter Kind wordKind, @ConstantNodeParameter LocationIdentity locationIdentity) {
@@ -507,6 +558,12 @@ public class HotSpotReplacementsUtil {
     @SuppressWarnings("unused")
     @NodeIntrinsic(value = LoadHubNode.class, setStampFromReturnType = true)
     public static Word loadHubIntrinsic(Object object, @ConstantNodeParameter Kind word, GuardingNode anchor) {
+        return Word.unsigned(unsafeReadKlassPointer(object));
+    }
+
+    @SuppressWarnings("unused")
+    @NodeIntrinsic(value = LoadHubNode.class, setStampFromReturnType = true)
+    public static Word loadHubIntrinsic(Object object, @ConstantNodeParameter Kind word) {
         return Word.unsigned(unsafeReadKlassPointer(object));
     }
 
@@ -548,6 +605,13 @@ public class HotSpotReplacementsUtil {
     @Fold
     public static int arrayKlassOffset() {
         return config().arrayKlassOffset;
+    }
+
+    public static final LocationIdentity KLASS_NODE_CLASS = new NamedLocationIdentity("KlassNodeClass");
+
+    @Fold
+    public static int klassNodeClassOffset() {
+        return config().klassNodeClassOffset;
     }
 
     @Fold

@@ -34,13 +34,14 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.meta.ProfilingInfo.TriState;
 import com.oracle.graal.hotspot.meta.*;
+import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.hotspot.replacements.TypeCheckSnippetUtils.Hints;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.options.*;
-import com.oracle.graal.phases.util.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.replacements.Snippet.ConstantParameter;
 import com.oracle.graal.replacements.Snippet.VarargsParameter;
@@ -52,7 +53,7 @@ import com.oracle.graal.word.*;
 /**
  * Snippets used for implementing the type test of an instanceof instruction. Since instanceof is a
  * floating node, it is lowered separately for each of its usages.
- * 
+ *
  * The type tests implemented are described in the paper <a
  * href="http://dl.acm.org/citation.cfm?id=583821"> Fast subtype checking in the HotSpot JVM</a> by
  * Cliff Click and John Rose.
@@ -75,7 +76,7 @@ public class InstanceOfSnippets implements Snippets {
     /**
      * A test against a set of hints derived from a profile with very close to 100% precise coverage
      * of seen types. This snippet deoptimizes on hint miss paths.
-     * 
+     *
      * @see #hintHitProbabilityThresholdForDeoptimizingSnippet()
      */
     @Snippet
@@ -90,7 +91,7 @@ public class InstanceOfSnippets implements Snippets {
             }
             return falseValue;
         }
-        BeginNode anchorNode = BeginNode.anchor();
+        GuardingNode anchorNode = SnippetAnchorNode.anchor();
         Word objectHub = loadHubIntrinsic(object, getWordKind(), anchorNode);
         // if we get an exact match: succeed immediately
         ExplodeLoopNode.explodeLoop();
@@ -119,7 +120,7 @@ public class InstanceOfSnippets implements Snippets {
             isNull.inc();
             return falseValue;
         }
-        BeginNode anchorNode = BeginNode.anchor();
+        GuardingNode anchorNode = SnippetAnchorNode.anchor();
         Word objectHub = loadHubIntrinsic(object, getWordKind(), anchorNode);
         if (probability(LIKELY_PROBABILITY, objectHub.notEqual(exactHub))) {
             exactMiss.inc();
@@ -138,7 +139,7 @@ public class InstanceOfSnippets implements Snippets {
             isNull.inc();
             return falseValue;
         }
-        BeginNode anchorNode = BeginNode.anchor();
+        GuardingNode anchorNode = SnippetAnchorNode.anchor();
         Word objectHub = loadHubIntrinsic(object, getWordKind(), anchorNode);
         if (probability(NOT_LIKELY_PROBABILITY, objectHub.readWord(superCheckOffset, LocationIdentity.FINAL_LOCATION).notEqual(hub))) {
             displayMiss.inc();
@@ -157,7 +158,7 @@ public class InstanceOfSnippets implements Snippets {
             isNull.inc();
             return falseValue;
         }
-        BeginNode anchorNode = BeginNode.anchor();
+        GuardingNode anchorNode = SnippetAnchorNode.anchor();
         Word objectHub = loadHubIntrinsic(object, getWordKind(), anchorNode);
         // if we get an exact match: succeed immediately
         ExplodeLoopNode.explodeLoop();
@@ -179,12 +180,12 @@ public class InstanceOfSnippets implements Snippets {
      * Type test used when the type being tested against is not known at compile time.
      */
     @Snippet
-    public static Object instanceofDynamic(Class mirror, Object object, Object trueValue, Object falseValue) {
+    public static Object instanceofDynamic(Class<?> mirror, Object object, Object trueValue, Object falseValue) {
         if (probability(NOT_FREQUENT_PROBABILITY, object == null)) {
             isNull.inc();
             return falseValue;
         }
-        BeginNode anchorNode = BeginNode.anchor();
+        GuardingNode anchorNode = SnippetAnchorNode.anchor();
         Word hub = loadWordFromObject(mirror, klassOffset());
         Word objectHub = loadHubIntrinsic(object, getWordKind(), anchorNode);
         if (hub.equal(0) || !checkUnknownSubType(hub, objectHub)) {
@@ -214,8 +215,8 @@ public class InstanceOfSnippets implements Snippets {
         private final SnippetInfo instanceofSecondary = snippet(InstanceOfSnippets.class, "instanceofSecondary");
         private final SnippetInfo instanceofDynamic = snippet(InstanceOfSnippets.class, "instanceofDynamic");
 
-        public Templates(Providers providers, TargetDescription target) {
-            super(providers, target);
+        public Templates(HotSpotProviders providers, TargetDescription target) {
+            super(providers, providers.getSnippetReflection(), target);
         }
 
         @Override

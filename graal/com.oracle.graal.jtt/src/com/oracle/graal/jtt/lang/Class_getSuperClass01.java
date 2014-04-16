@@ -24,13 +24,14 @@
  */
 package com.oracle.graal.jtt.lang;
 
-import com.oracle.graal.jtt.*;
 import org.junit.*;
+
+import com.oracle.graal.jtt.*;
 
 public final class Class_getSuperClass01 extends JTTTest {
 
     public static String test(int i) {
-        Class cl = Object.class;
+        Class<?> cl = Object.class;
         if (i == 0) {
             cl = int.class;
         } else if (i == 1) {

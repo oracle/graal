@@ -34,18 +34,16 @@ import com.oracle.truffle.api.frame.*;
  * and therefore is much faster. Should not be used during debugging as potential misuses of the
  * frame object would show up very late and would be hard to identify.
  */
-public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame, PackedFrame {
+public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame {
 
     private final FrameDescriptor descriptor;
-    private final PackedFrame caller;
-    private final Arguments arguments;
+    private final Object[] arguments;
     private Object[] locals;
     private long[] primitiveLocals;
     private byte[] tags;
 
-    public FrameWithoutBoxing(FrameDescriptor descriptor, PackedFrame caller, Arguments arguments) {
+    public FrameWithoutBoxing(FrameDescriptor descriptor, Object[] arguments) {
         this.descriptor = descriptor;
-        this.caller = caller;
         this.arguments = arguments;
         this.locals = new Object[descriptor.getSize()];
         Arrays.fill(locals, descriptor.getTypeConversion().getDefaultValue());
@@ -54,27 +52,12 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     }
 
     @Override
-    public <T extends Arguments> T getArguments(Class<T> clazz) {
-        return CompilerDirectives.unsafeCast(arguments, clazz, true, true);
-    }
-
-    @Override
-    public PackedFrame getCaller() {
-        return caller;
-    }
-
-    @Override
-    public PackedFrame pack() {
-        return this;
+    public Object[] getArguments() {
+        return CompilerDirectives.unsafeCast(arguments, Object[].class, true, true);
     }
 
     @Override
     public MaterializedFrame materialize() {
-        return this;
-    }
-
-    @Override
-    public VirtualFrame unpack() {
         return this;
     }
 

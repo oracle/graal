@@ -131,6 +131,9 @@ public class CFGPrinterObserver implements DebugDumpHandler {
         if (!checkMethodScope()) {
             return;
         }
+        if (curMethod instanceof ResolvedJavaMethod) {
+            cfgPrinter.method = (ResolvedJavaMethod) curMethod;
+        }
 
         if (object instanceof LIR) {
             cfgPrinter.lir = (LIR) object;

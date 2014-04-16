@@ -29,12 +29,12 @@ import com.oracle.graal.nodes.type.*;
 
 public class BasicInductionVariable extends InductionVariable {
 
-    private PhiNode phi;
+    private ValuePhiNode phi;
     private ValueNode init;
     private ValueNode rawStride;
     private IntegerArithmeticNode op;
 
-    public BasicInductionVariable(LoopEx loop, PhiNode phi, ValueNode init, ValueNode rawStride, IntegerArithmeticNode op) {
+    public BasicInductionVariable(LoopEx loop, ValuePhiNode phi, ValueNode init, ValueNode rawStride, IntegerArithmeticNode op) {
         super(loop);
         this.phi = phi;
         this.init = init;
@@ -71,7 +71,7 @@ public class BasicInductionVariable extends InductionVariable {
     }
 
     @Override
-    public PhiNode valueNode() {
+    public ValuePhiNode valueNode() {
         return phi;
     }
 

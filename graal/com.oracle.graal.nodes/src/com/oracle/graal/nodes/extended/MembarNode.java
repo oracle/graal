@@ -38,6 +38,7 @@ import com.oracle.graal.nodes.type.*;
 /**
  * Creates a memory barrier.
  */
+@NodeInfo(allowedUsageTypes = {InputType.Memory})
 public class MembarNode extends FixedWithNextNode implements LIRLowerable, MemoryCheckpoint.Single {
 
     private final int barriers;

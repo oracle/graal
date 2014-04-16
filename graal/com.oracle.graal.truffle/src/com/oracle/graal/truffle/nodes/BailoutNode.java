@@ -40,7 +40,7 @@ public class BailoutNode extends MacroNode implements Canonicalizable {
         ValueNode arg = arguments.get(0);
         String message = "";
         if (arg.isConstant()) {
-            message = (String) arg.asConstant().asObject();
+            message = arg.asConstant().toValueString();
         }
         throw new BailoutException(message);
     }

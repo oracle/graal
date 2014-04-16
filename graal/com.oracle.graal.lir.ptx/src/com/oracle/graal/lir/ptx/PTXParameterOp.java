@@ -23,11 +23,11 @@
 
 package com.oracle.graal.lir.ptx;
 
-import static com.oracle.graal.asm.ptx.PTXMacroAssembler.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.ptx.*;
+import com.oracle.graal.asm.ptx.PTXMacroAssembler.Param;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
 

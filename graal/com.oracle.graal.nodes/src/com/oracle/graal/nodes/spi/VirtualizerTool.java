@@ -41,10 +41,15 @@ import com.oracle.graal.nodes.virtual.*;
 public interface VirtualizerTool {
 
     /**
-     * @return the {@link MetaAccessProvider} associated with the current compilation, which might
-     *         be required for creating constants, etc.
+     * @return the {@link MetaAccessProvider} associated with the current compilation.
      */
     MetaAccessProvider getMetaAccessProvider();
+
+    /**
+     * @return the {@link ConstantReflectionProvider} associated with the current compilation, which
+     *         can be used to access {@link Constant}s.
+     */
+    ConstantReflectionProvider getConstantReflectionProvider();
 
     /**
      * @return the {@link Assumptions} associated with the current compilation, which can be used to

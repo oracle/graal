@@ -29,9 +29,10 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.VirtualState.NodeClosure;
 import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.phases.graph.*;
-import com.oracle.graal.phases.graph.ReentrantBlockIterator.*;
+import com.oracle.graal.phases.graph.ReentrantBlockIterator.BlockIteratorClosure;
 import com.oracle.graal.phases.schedule.*;
-import com.oracle.graal.phases.schedule.SchedulePhase.*;
+import com.oracle.graal.phases.schedule.SchedulePhase.MemoryScheduling;
+import com.oracle.graal.phases.schedule.SchedulePhase.SchedulingStrategy;
 
 public final class GraphOrder {
 
@@ -42,7 +43,7 @@ public final class GraphOrder {
      * Quick (and imprecise) assertion that there are no (invalid) cycles in the given graph. First,
      * an ordered list of all nodes in the graph (a total ordering) is created. A second run over
      * this list checks whether inputs are scheduled before their usages.
-     * 
+     *
      * @param graph the graph to be checked.
      * @throws AssertionError if a cycle was detected.
      */
@@ -60,13 +61,7 @@ public final class GraphOrder {
                         if (input instanceof FrameState && node instanceof StateSplit && input == ((StateSplit) node).stateAfter()) {
                             // nothing to do - after frame states are known, allowed cycles
                         } else {
-                            /*
-                             * TODO assertion does not hold for Substrate VM (in general for all
-                             * notDataflow inputs)
-                             * 
-                             * assert false : "unexpected cycle detected at input " + node + " -> "
-                             * + input;
-                             */
+                            assert false : "unexpected cycle detected at input " + node + " -> " + input;
                         }
                     }
                 }
@@ -132,7 +127,7 @@ public final class GraphOrder {
     /**
      * This method schedules the graph and makes sure that, for every node, all inputs are available
      * at the position where it is scheduled. This is a very expensive assertion.
-     * 
+     *
      * Also, this phase assumes ProxyNodes to exist at LoopExitNodes, so that it cannot be run after
      * phases that remove loop proxies or move proxies to BeginNodes.
      */
@@ -145,7 +140,7 @@ public final class GraphOrder {
             BlockIteratorClosure<NodeBitMap> closure = new BlockIteratorClosure<NodeBitMap>() {
 
                 @Override
-                protected List<NodeBitMap> processLoop(Loop loop, NodeBitMap initialState) {
+                protected List<NodeBitMap> processLoop(Loop<Block> loop, NodeBitMap initialState) {
                     return ReentrantBlockIterator.processLoop(this, loop, initialState).exitStates;
                 }
 

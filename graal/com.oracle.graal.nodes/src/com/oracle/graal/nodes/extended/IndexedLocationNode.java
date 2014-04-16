@@ -66,7 +66,7 @@ public final class IndexedLocationNode extends LocationNode implements Canonical
     }
 
     public IndexedLocationNode(LocationIdentity identity, Kind kind, long displacement, ValueNode index, int indexScaling) {
-        super(StampFactory.extension());
+        super(StampFactory.forVoid());
         assert kind != Kind.Illegal && kind != Kind.Void;
         this.valueKind = kind;
         this.locationIdentity = identity;
