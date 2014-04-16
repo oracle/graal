@@ -650,12 +650,7 @@ public final class SchedulePhase extends Phase {
          * implies that the inputs' blocks have a total ordering via their dominance relation. So in
          * order to find the earliest block placement for this node we need to find the input block
          * that is dominated by all other input blocks.
-         * 
-         * While iterating over the inputs a set of dominator blocks of the current earliest
-         * placement is maintained. When the block of an input is not within this set, it becomes
-         * the current earliest placement and the list of dominator blocks is updated.
          */
-        BitSet dominators = new BitSet(cfg.getBlocks().length);
 
         if (node.predecessor() != null) {
             throw new SchedulingError();
@@ -668,12 +663,24 @@ public final class SchedulePhase extends Phase {
             } else {
                 inputEarliest = earliestBlock(input);
             }
-            if (!dominators.get(inputEarliest.getId())) {
+            if (earliest == null) {
                 earliest = inputEarliest;
-                do {
-                    dominators.set(inputEarliest.getId());
-                    inputEarliest = inputEarliest.getDominator();
-                } while (inputEarliest != null && !dominators.get(inputEarliest.getId()));
+            } else if (earliest != inputEarliest) {
+                // Find out whether earliest or inputEarliest is earlier.
+                Block a = earliest.getDominator();
+                Block b = inputEarliest;
+                while (true) {
+                    if (a == inputEarliest || b == null) {
+                        // Nothing to change, the previous earliest block is still earliest.
+                        break;
+                    } else if (b == earliest || a == null) {
+                        // New earliest is the earliest.
+                        earliest = inputEarliest;
+                        break;
+                    }
+                    a = a.getDominator();
+                    b = b.getDominator();
+                }
             }
         }
         if (earliest == null) {
