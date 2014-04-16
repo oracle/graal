@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,7 @@ package com.oracle.graal.lir.amd64;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.asm.*;
 import com.oracle.graal.lir.*;
 
 /**
@@ -33,7 +34,7 @@ import com.oracle.graal.lir.*;
  *
  * <pre>
  *   Base       Contents
- *
+ * 
  *            :                                :  -----
  *   caller   | incoming overflow argument n   |    ^
  *   frame    :     ...                        :    | positive
@@ -88,8 +89,7 @@ public class AMD64FrameMap extends FrameMap {
 
     @Override
     protected int alignFrameSize(int size) {
-        int x = size + returnAddressSize() + (target.stackAlignment - 1);
-        return (x / target.stackAlignment) * target.stackAlignment - returnAddressSize();
+        return NumUtil.roundUp(size + returnAddressSize(), target.stackAlignment) - returnAddressSize();
     }
 
     @Override
