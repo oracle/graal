@@ -154,7 +154,7 @@ public abstract class HotSpotFrameInstance implements FrameInstance {
         public static final Method METHOD;
         static {
             try {
-                METHOD = RootCallTarget.class.getDeclaredMethod("callProxy", VirtualFrame.class);
+                METHOD = OptimizedCallTarget.class.getDeclaredMethod("callProxy", VirtualFrame.class);
             } catch (NoSuchMethodException | SecurityException e) {
                 throw new GraalInternalError(e);
             }

@@ -38,7 +38,7 @@ import com.oracle.truffle.api.nodes.*;
 /**
  * Call target that is optimized by Graal upon surpassing a specific invocation threshold.
  */
-public abstract class OptimizedCallTarget extends RootCallTarget implements LoopCountReceiver, ReplaceObserver {
+public abstract class OptimizedCallTarget extends InstalledCode implements RootCallTarget, LoopCountReceiver, ReplaceObserver {
 
     protected static final PrintStream OUT = TTY.out().out();
 
@@ -51,14 +51,31 @@ public abstract class OptimizedCallTarget extends RootCallTarget implements Loop
     private OptimizedCallTarget splitSource;
     private final AtomicInteger callSitesKnown = new AtomicInteger(0);
 
+    private final RootNode rootNode;
+
+    public final RootNode getRootNode() {
+        return rootNode;
+    }
+
     public OptimizedCallTarget(RootNode rootNode, int invokeCounter, int compilationThreshold, boolean compilationEnabled, CompilationPolicy compilationPolicy) {
-        super(rootNode);
+        this.rootNode = rootNode;
+        this.rootNode.adoptChildren();
+        this.rootNode.setCallTarget(this);
         this.installedCode = new InstalledCode();
         this.compilationEnabled = compilationEnabled;
         this.compilationPolicy = compilationPolicy;
         this.compilationProfile = new CompilationProfile(compilationThreshold, invokeCounter, rootNode.toString());
         if (TruffleCallTargetProfiling.getValue()) {
             registerCallTarget(this);
+        }
+    }
+
+    protected final Object callProxy(VirtualFrame frame) {
+        try {
+            return getRootNode().execute(frame);
+        } finally {
+            // this assertion is needed to keep the values from being cleared as non-live locals
+            assert frame != null && this != null;
         }
     }
 
@@ -84,7 +101,7 @@ public abstract class OptimizedCallTarget extends RootCallTarget implements Loop
 
     @Override
     public String toString() {
-        String superString = super.toString();
+        String superString = rootNode.toString();
         if (installedCode.isValid()) {
             superString += " <compiled>";
         }
