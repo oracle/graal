@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.loop;
 
+import com.oracle.graal.cfg.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Graph.DuplicationReplacement;
 import com.oracle.graal.graph.iterators.*;

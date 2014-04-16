@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes.cfg;
+package com.oracle.graal.cfg;
 
 import java.util.*;
 
@@ -31,13 +31,13 @@ public abstract class AbstractBlockBase<T extends AbstractBlock<T>> implements A
     protected List<T> predecessors;
     protected List<T> successors;
 
-    protected T dominator;
+    private T dominator;
 
     private boolean align;
     private int linearScanNumber;
 
     protected AbstractBlockBase() {
-        this.id = ControlFlowGraph.BLOCK_ID_INITIAL;
+        this.id = AbstractControlFlowGraph.BLOCK_ID_INITIAL;
         this.linearScanNumber = -1;
     }
 
@@ -53,12 +53,24 @@ public abstract class AbstractBlockBase<T extends AbstractBlock<T>> implements A
         return predecessors;
     }
 
+    public void setPredecessors(List<T> predecessors) {
+        this.predecessors = predecessors;
+    }
+
     public List<T> getSuccessors() {
         return successors;
     }
 
+    public void setSuccessors(List<T> successors) {
+        this.successors = successors;
+    }
+
     public T getDominator() {
         return dominator;
+    }
+
+    public void setDominator(T dominator) {
+        this.dominator = dominator;
     }
 
     @Override

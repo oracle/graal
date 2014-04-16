@@ -24,6 +24,8 @@ package com.oracle.graal.nodes.cfg;
 
 import java.util.*;
 
+import com.oracle.graal.cfg.*;
+
 public class CFGVerifier {
 
     public static boolean verify(ControlFlowGraph cfg) {

@@ -25,6 +25,7 @@ package com.oracle.graal.phases.common;
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.cfg.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.type.*;

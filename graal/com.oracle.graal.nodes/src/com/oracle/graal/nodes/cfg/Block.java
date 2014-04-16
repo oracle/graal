@@ -24,6 +24,7 @@ package com.oracle.graal.nodes.cfg;
 
 import java.util.*;
 
+import com.oracle.graal.cfg.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 
@@ -70,11 +71,11 @@ public final class Block extends AbstractBlockBase<Block> {
     }
 
     public Block getFirstPredecessor() {
-        return predecessors.get(0);
+        return getPredecessors().get(0);
     }
 
     public Block getFirstSuccessor() {
-        return successors.get(0);
+        return getSuccessors().get(0);
     }
 
     public Block getEarliestPostDominated() {
@@ -167,10 +168,10 @@ public final class Block extends AbstractBlockBase<Block> {
         if (block == this) {
             return true;
         }
-        if (dominator == null) {
+        if (getDominator() == null) {
             return false;
         }
-        return dominator.isDominatedBy(block);
+        return getDominator().isDominatedBy(block);
     }
 
 }

@@ -24,6 +24,7 @@ package com.oracle.graal.nodes.cfg;
 
 import java.util.*;
 
+import com.oracle.graal.cfg.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
@@ -117,9 +118,6 @@ public class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
         }
     }
 
-    protected static final int BLOCK_ID_INITIAL = -1;
-    protected static final int BLOCK_ID_VISITED = -2;
-
     private void identifyBlock(Block block) {
         Node cur = block.getBeginNode();
         Node last;
@@ -167,16 +165,16 @@ public class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
 
         do {
             Block block = stack.get(stack.size() - 1);
-            if (block.id == BLOCK_ID_INITIAL) {
+            if (block.getId() == BLOCK_ID_INITIAL) {
                 // First time we see this block: push all successors.
                 for (Node suxNode : block.getEndNode().cfgSuccessors()) {
                     Block suxBlock = blockFor(suxNode);
-                    if (suxBlock.id == BLOCK_ID_INITIAL) {
+                    if (suxBlock.getId() == BLOCK_ID_INITIAL) {
                         stack.add(suxBlock);
                     }
                 }
-                block.id = BLOCK_ID_VISITED;
-            } else if (block.id == BLOCK_ID_VISITED) {
+                block.setId(BLOCK_ID_VISITED);
+            } else if (block.getId() == BLOCK_ID_VISITED) {
                 // Second time we see this block: All successors have been processed, so add block
                 // to postorder list.
                 stack.remove(stack.size() - 1);
@@ -192,7 +190,7 @@ public class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
         reversePostOrder = new Block[numBlocks];
         for (int i = 0; i < numBlocks; i++) {
             Block block = postOrder.get(numBlocks - i - 1);
-            block.id = i;
+            block.setId(i);
             reversePostOrder[i] = block;
         }
     }
@@ -203,32 +201,32 @@ public class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
             List<Block> predecessors = new ArrayList<>(4);
             for (Node predNode : block.getBeginNode().cfgPredecessors()) {
                 Block predBlock = nodeToBlock.get(predNode);
-                if (predBlock.id >= 0) {
+                if (predBlock.getId() >= 0) {
                     predecessors.add(predBlock);
                 }
             }
             if (block.getBeginNode() instanceof LoopBeginNode) {
                 for (LoopEndNode predNode : ((LoopBeginNode) block.getBeginNode()).orderedLoopEnds()) {
                     Block predBlock = nodeToBlock.get(predNode);
-                    if (predBlock.id >= 0) {
+                    if (predBlock.getId() >= 0) {
                         predecessors.add(predBlock);
                     }
                 }
             }
-            block.predecessors = predecessors;
+            block.setPredecessors(predecessors);
 
             List<Block> successors = new ArrayList<>(4);
             for (Node suxNode : block.getEndNode().cfgSuccessors()) {
                 Block suxBlock = nodeToBlock.get(suxNode);
-                assert suxBlock.id >= 0;
+                assert suxBlock.getId() >= 0;
                 successors.add(suxBlock);
             }
             if (block.getEndNode() instanceof LoopEndNode) {
                 Block suxBlock = nodeToBlock.get(((LoopEndNode) block.getEndNode()).loopBegin());
-                assert suxBlock.id >= 0;
+                assert suxBlock.getId() >= 0;
                 successors.add(suxBlock);
             }
-            block.successors = successors;
+            block.setSuccessors(successors);
         }
     }
 
@@ -315,7 +313,7 @@ public class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
     }
 
     private static void setDominator(Block block, Block dominator) {
-        block.dominator = dominator;
+        block.setDominator(dominator);
         if (dominator.dominated == null) {
             dominator.dominated = new ArrayList<>();
         }

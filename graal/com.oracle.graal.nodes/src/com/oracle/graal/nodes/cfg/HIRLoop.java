@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.nodes.cfg;
 
+import com.oracle.graal.cfg.*;
 import com.oracle.graal.nodes.*;
 
 public class HIRLoop extends Loop<Block> {

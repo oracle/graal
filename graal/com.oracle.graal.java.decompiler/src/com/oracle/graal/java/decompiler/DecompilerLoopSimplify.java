@@ -25,6 +25,7 @@ package com.oracle.graal.java.decompiler;
 import java.io.*;
 import java.util.*;
 
+import com.oracle.graal.cfg.*;
 import com.oracle.graal.java.decompiler.block.*;
 import com.oracle.graal.nodes.cfg.*;
 
