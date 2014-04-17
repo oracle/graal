@@ -53,10 +53,6 @@ public final class HotSpotOptimizedCallTarget extends OptimizedCallTarget {
         return speculationLog;
     }
 
-    public boolean isOptimized() {
-        return isValid() || installedCodeTask != null;
-    }
-
     @Override
     public Object call(Object... args) {
         return callBoundary(args);
@@ -111,7 +107,6 @@ public final class HotSpotOptimizedCallTarget extends OptimizedCallTarget {
         Future<InstalledCode> task = this.installedCodeTask;
         if (task != null) {
             task.cancel(true);
-            this.installedCodeTask = null;
             logOptimizingUnqueued(this, oldNode, newNode, reason);
             compilationProfile.reportInvalidated();
         }
@@ -140,7 +135,7 @@ public final class HotSpotOptimizedCallTarget extends OptimizedCallTarget {
         Future<InstalledCode> codeTask = this.installedCodeTask;
         if (codeTask != null) {
             if (codeTask.isCancelled() || codeTask.isDone()) {
-                installedCodeTask = null;
+                // System.out.println("done or cancelled => set null " + codeTask.isCancelled());
                 return false;
             }
             return true;
@@ -160,23 +155,26 @@ public final class HotSpotOptimizedCallTarget extends OptimizedCallTarget {
         }
     }
 
-    private InstalledCode receiveInstalledCode() {
-        try {
-            return installedCodeTask.get();
-        } catch (InterruptedException | ExecutionException e) {
-            compilationEnabled = false;
-            logOptimizingFailed(this, e.getMessage());
-            if (e.getCause() instanceof BailoutException) {
-                // Bailout => move on.
-            } else {
-                if (TraceTruffleCompilationExceptions.getValue()) {
-                    e.printStackTrace(OUT);
-                }
-                if (TruffleCompilationExceptionsAreFatal.getValue()) {
-                    System.exit(-1);
-                }
+    @Override
+    public void exceptionWhileCompiling(Throwable t) {
+        compilationEnabled = false;
+        logOptimizingFailed(this, t.getMessage());
+        if (t instanceof BailoutException) {
+            // Bailout => move on.
+        } else {
+            if (TruffleCompilationExceptionsAreFatal.getValue()) {
+                t.printStackTrace(OUT);
+                System.exit(-1);
             }
-            return null;
+        }
+    }
+
+    private void receiveInstalledCode() {
+        try {
+            // Force task completion.
+            installedCodeTask.get();
+        } catch (InterruptedException | ExecutionException e) {
+            exceptionWhileCompiling(e.getCause());
         }
     }
 
