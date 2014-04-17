@@ -54,6 +54,8 @@ public class IntegerTestNode extends BinaryLogicNode implements Canonicalizable 
             IntegerStamp yStamp = (IntegerStamp) y().stamp();
             if ((xStamp.upMask() & yStamp.upMask()) == 0) {
                 return LogicConstantNode.tautology(graph());
+            } else if ((xStamp.downMask() & yStamp.downMask()) != 0) {
+                return LogicConstantNode.contradiction(graph());
             }
         }
         return this;
