@@ -27,10 +27,15 @@ import java.util.function.*;
 
 import org.junit.*;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.jtt.*;
+import com.oracle.graal.compiler.test.*;
+import com.oracle.graal.nodes.*;
+import com.oracle.graal.options.*;
+import com.oracle.graal.options.OptionValue.OverrideScope;
+import com.oracle.graal.phases.*;
 
-public class LambdaEagerTest extends JTTTest {
+public class LambdaEagerTest extends GraalCompilerTest {
 
     private static final EnumSet<DeoptimizationReason> UNRESOLVED_UNREACHED = EnumSet.of(DeoptimizationReason.Unresolved, DeoptimizationReason.UnreachedCode);
 
@@ -70,5 +75,12 @@ public class LambdaEagerTest extends JTTTest {
     public void testEagerResolveCapturing() {
         Result expected = new Result(0, null);
         testAgainstExpected(getMethod("capturing"), expected, UNRESOLVED_UNREACHED, 1, 2, 3);
+    }
+
+    @Override
+    protected InstalledCode getCode(ResolvedJavaMethod method, StructuredGraph graph, boolean forceCompile) {
+        try (OverrideScope scope = OptionValue.override(GraalOptions.InlineEverything, true)) {
+            return super.getCode(method, graph, forceCompile);
+        }
     }
 }
