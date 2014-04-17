@@ -228,7 +228,7 @@ public abstract class HotSpotCodeCacheProvider implements CodeCacheProvider {
         }
         CodeInstallResult result = runtime.getCompilerToVM().installCode(new HotSpotCompiledNmethod(target, hotspotMethod, compResult), installedCode, log);
         if (result != CodeInstallResult.OK) {
-            return null;
+            throw new BailoutException("Code installation failed: " + result);
         }
         return logOrDump(installedCode, compResult);
     }
