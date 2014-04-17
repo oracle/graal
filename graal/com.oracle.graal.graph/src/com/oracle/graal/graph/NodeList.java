@@ -257,7 +257,7 @@ public abstract class NodeList<T extends Node> extends AbstractList<T> implement
     }
 
     @Override
-    public void snapshotTo(Collection<T> to) {
+    public void snapshotTo(Collection<? super T> to) {
         for (int i = 0; i < size; i++) {
             to.add(get(i));
         }
