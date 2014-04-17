@@ -26,7 +26,7 @@ package com.oracle.graal.graph;
  * This error represents a failed verification of a node . It must only be used for conditions that
  * should never occur during normal operation.
  */
-public class VerificationError extends GraalInternalError {
+public class VerificationError extends GraalGraphInternalError {
 
     private static final long serialVersionUID = 8459607567446819822L;
 

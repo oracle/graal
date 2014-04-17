@@ -64,14 +64,14 @@ public class NewStringEqualsTest extends GraalKernelTester {
     }
 
     // NYI emitForeignCall charAlignedDisjointArraycopy
-    @Test(expected = com.oracle.graal.graph.GraalInternalError.class)
+    @Test(expected = com.oracle.graal.compiler.common.GraalInternalError.class)
     public void test() {
         try (DebugConfigScope s = disableIntercept()) {
             testGeneratedHsail();
         }
     }
 
-    @Test(expected = com.oracle.graal.graph.GraalInternalError.class)
+    @Test(expected = com.oracle.graal.compiler.common.GraalInternalError.class)
     public void testUsingLambdaMethod() {
         try (DebugConfigScope s = disableIntercept()) {
             testGeneratedHsailUsingLambdaMethod();

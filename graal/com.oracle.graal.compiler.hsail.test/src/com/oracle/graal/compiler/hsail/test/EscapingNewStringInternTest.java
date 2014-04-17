@@ -39,7 +39,7 @@ public class EscapingNewStringInternTest extends EscapingNewBase {
     }
 
     // at node: 12|Invoke#Direct#intern
-    @Test(expected = com.oracle.graal.graph.GraalInternalError.class)
+    @Test(expected = com.oracle.graal.compiler.common.GraalInternalError.class)
     public void test() {
         try (DebugConfigScope s = disableIntercept()) {
             testGeneratedHsail();

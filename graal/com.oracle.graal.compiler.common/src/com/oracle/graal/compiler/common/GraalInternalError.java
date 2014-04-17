@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.graph;
+package com.oracle.graal.compiler.common;
 
 import java.util.*;
 
@@ -30,8 +30,6 @@ import java.util.*;
 public class GraalInternalError extends Error {
 
     private static final long serialVersionUID = 8776065085829593278L;
-    private Node node;
-    private Graph graph;
     private final ArrayList<String> context = new ArrayList<>();
 
     public static RuntimeException unimplemented() {
@@ -55,7 +53,7 @@ public class GraalInternalError extends Error {
      * are stronger than assertions in that they are always checked. Error messages for guarantee
      * violations should clearly indicate the nature of the problem as well as a suggested solution
      * if possible.
-     * 
+     *
      * @param condition the condition to check
      * @param msg the message that will be associated with the error, in
      *            {@link String#format(String, Object...)} syntax
@@ -71,7 +69,7 @@ public class GraalInternalError extends Error {
      * This constructor creates a {@link GraalInternalError} with a message assembled via
      * {@link String#format(String, Object...)}. It always uses the ENGLISH locale in order to
      * always generate the same output.
-     * 
+     *
      * @param msg the message that will be associated with the error, in String.format syntax
      * @param args parameters to String.format - parameters that implement {@link Iterable} will be
      *            expanded into a [x, x, ...] representation.
@@ -82,11 +80,22 @@ public class GraalInternalError extends Error {
 
     /**
      * This constructor creates a {@link GraalInternalError} for a given causing Throwable instance.
-     * 
+     *
      * @param cause the original exception that contains additional information on this error
      */
     public GraalInternalError(Throwable cause) {
         super(cause);
+    }
+
+    /**
+     * This constructor creates a {@link GraalInternalError} from a given GraalInternalError
+     * instance.
+     *
+     * @param e the original GraalInternalError
+     */
+    public GraalInternalError(GraalInternalError e) {
+        super(e.getCause());
+        context.addAll(e.context);
     }
 
     @Override
@@ -124,45 +133,4 @@ public class GraalInternalError extends Error {
         return addContext(format("%s: %s", name, obj));
     }
 
-    /**
-     * Adds a graph to the context of this VerificationError. The first graph added via this method
-     * will be returned by {@link #graph()}.
-     * 
-     * @param newGraph the graph which is in a incorrect state, if the verification error was not
-     *            caused by a specific node
-     */
-    public GraalInternalError addContext(Graph newGraph) {
-        if (newGraph != this.graph) {
-            addContext("graph", newGraph);
-            if (this.graph == null) {
-                this.graph = newGraph;
-            }
-        }
-        return this;
-    }
-
-    /**
-     * Adds a node to the context of this VerificationError. The first node added via this method
-     * will be returned by {@link #node()}.
-     * 
-     * @param newNode the node which is in a incorrect state, if the verification error was caused
-     *            by a node
-     */
-    public GraalInternalError addContext(Node newNode) {
-        if (newNode != this.node) {
-            addContext("node", newNode);
-            if (this.node == null) {
-                this.node = newNode;
-            }
-        }
-        return this;
-    }
-
-    public Node node() {
-        return node;
-    }
-
-    public Graph graph() {
-        return graph;
-    }
 }

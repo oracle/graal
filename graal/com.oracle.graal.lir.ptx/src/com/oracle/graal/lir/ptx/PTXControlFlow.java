@@ -33,7 +33,7 @@ import com.oracle.graal.asm.ptx.PTXAssembler.Global;
 import com.oracle.graal.asm.ptx.PTXAssembler.Setp;
 import com.oracle.graal.asm.ptx.*;
 import com.oracle.graal.asm.ptx.PTXMacroAssembler.Mov;
-import com.oracle.graal.graph.*;
+import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.BlockEndOp;
 import com.oracle.graal.lir.SwitchStrategy.BaseSwitchClosure;

@@ -37,7 +37,7 @@ import com.oracle.graal.asm.sparc.SPARCAssembler.Srlx;
 import com.oracle.graal.asm.sparc.SPARCAssembler.Sub;
 import com.oracle.graal.asm.sparc.*;
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Mov;
-import com.oracle.graal.graph.*;
+import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.nodes.spi.*;

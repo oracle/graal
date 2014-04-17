@@ -42,7 +42,7 @@ import com.oracle.graal.asm.ptx.PTXMacroAssembler.Shr;
 import com.oracle.graal.asm.ptx.PTXMacroAssembler.Sub;
 import com.oracle.graal.asm.ptx.PTXMacroAssembler.Ushr;
 import com.oracle.graal.asm.ptx.PTXMacroAssembler.Xor;
-import com.oracle.graal.graph.*;
+import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
 

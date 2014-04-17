@@ -26,6 +26,7 @@ import static com.oracle.graal.phases.GraalOptions.*;
 
 import java.util.*;
 
+import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;

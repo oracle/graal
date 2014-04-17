@@ -31,6 +31,7 @@ import java.util.Map.Entry;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.compiler.gen.LIRGenerator.LoadConstant;
 import com.oracle.graal.compiler.target.*;
@@ -213,9 +214,9 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool {
                             try {
                                 doRoot((ValueNode) instr);
                             } catch (GraalInternalError e) {
-                                throw e.addContext(instr);
+                                throw GraalGraphInternalError.addContext(e, instr);
                             } catch (Throwable e) {
-                                throw new GraalInternalError(e).addContext(instr);
+                                throw new GraalGraphInternalError(e).addContext(instr);
                             }
                         }
                     }

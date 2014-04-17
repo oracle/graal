@@ -49,7 +49,7 @@ import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Clr;
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Mov;
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Setuw;
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Setx;
-import com.oracle.graal.graph.*;
+import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.ImplicitNullCheck;
 import com.oracle.graal.lir.StandardOp.MoveOp;

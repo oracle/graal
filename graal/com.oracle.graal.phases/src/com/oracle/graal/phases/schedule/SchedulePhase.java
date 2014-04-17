@@ -29,6 +29,7 @@ import static com.oracle.graal.phases.GraalOptions.*;
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
@@ -930,7 +931,7 @@ public final class SchedulePhase extends Phase {
             }
             if (canNotMove) {
                 if (b.getEndNode() instanceof ControlSplitNode) {
-                    throw new GraalInternalError("Schedule is not possible : needs to move a node after the last node of the block which can not be move").addContext(lastSorted).addContext(
+                    throw new GraalGraphInternalError("Schedule is not possible : needs to move a node after the last node of the block which can not be move").addContext(lastSorted).addContext(
                                     b.getEndNode());
                 }
 

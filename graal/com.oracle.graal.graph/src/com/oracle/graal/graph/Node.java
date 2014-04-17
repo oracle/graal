@@ -809,7 +809,7 @@ public abstract class Node implements Cloneable, Formattable {
         try {
             newNode = (Node) this.clone();
         } catch (CloneNotSupportedException e) {
-            throw new GraalInternalError(e).addContext(this);
+            throw new GraalGraphInternalError(e).addContext(this);
         }
         if (clearInputsAndSuccessors) {
             nodeClass.clearInputs(newNode);

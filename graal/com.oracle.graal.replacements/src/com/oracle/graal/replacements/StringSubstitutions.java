@@ -27,7 +27,7 @@ import static com.oracle.graal.graph.UnsafeAccess.*;
 import java.lang.reflect.*;
 
 import com.oracle.graal.api.replacements.*;
-import com.oracle.graal.graph.*;
+import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.replacements.nodes.*;
 
 import edu.umd.cs.findbugs.annotations.*;

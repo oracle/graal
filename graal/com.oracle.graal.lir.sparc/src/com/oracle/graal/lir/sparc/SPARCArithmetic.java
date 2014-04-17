@@ -56,7 +56,7 @@ import com.oracle.graal.asm.sparc.SPARCAssembler.Xor;
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Neg;
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Not;
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Signx;
-import com.oracle.graal.graph.*;
+import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.nodes.spi.*;

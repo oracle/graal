@@ -31,7 +31,7 @@ import com.oracle.graal.asm.ptx.PTXMacroAssembler.Ld;
 import com.oracle.graal.asm.ptx.PTXMacroAssembler.LoadAddr;
 import com.oracle.graal.asm.ptx.PTXMacroAssembler.LoadParam;
 import com.oracle.graal.asm.ptx.PTXMacroAssembler.St;
-import com.oracle.graal.graph.*;
+import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
 

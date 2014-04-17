@@ -94,14 +94,14 @@ public class VirtualCallTest extends GraalKernelTester {
     }
 
     // graal says not inlining getArea():float (0 bytes): no type profile exists
-    @Test(expected = com.oracle.graal.graph.GraalInternalError.class)
+    @Test(expected = com.oracle.graal.compiler.common.GraalInternalError.class)
     public void test() {
         try (DebugConfigScope s = disableIntercept()) {
             testGeneratedHsail();
         }
     }
 
-    @Test(expected = com.oracle.graal.graph.GraalInternalError.class)
+    @Test(expected = com.oracle.graal.compiler.common.GraalInternalError.class)
     public void testUsingLambdaMethod() {
         try (DebugConfigScope s = disableIntercept()) {
             testGeneratedHsailUsingLambdaMethod();

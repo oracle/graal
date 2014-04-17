@@ -27,7 +27,7 @@ import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 
 import java.io.*;
 
-import com.oracle.graal.graph.*;
+import com.oracle.graal.compiler.common.*;
 
 /**
  * Represents a metaspace {@code Symbol}.

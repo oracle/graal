@@ -60,7 +60,7 @@ public class SynchronizedMethodTest extends GraalKernelTester {
     }
 
     // cannot handle the BeginLockScope node
-    @Test(expected = com.oracle.graal.graph.GraalInternalError.class)
+    @Test(expected = com.oracle.graal.compiler.common.GraalInternalError.class)
     public void test() {
         try (DebugConfigScope s = disableIntercept()) {
             testGeneratedHsail();
@@ -68,7 +68,7 @@ public class SynchronizedMethodTest extends GraalKernelTester {
     }
 
     // cannot handle the BeginLockScope node
-    @Test(expected = com.oracle.graal.graph.GraalInternalError.class)
+    @Test(expected = com.oracle.graal.compiler.common.GraalInternalError.class)
     public void testUsingLambdaMethod() {
         try (DebugConfigScope s = disableIntercept()) {
             testGeneratedHsailUsingLambdaMethod();

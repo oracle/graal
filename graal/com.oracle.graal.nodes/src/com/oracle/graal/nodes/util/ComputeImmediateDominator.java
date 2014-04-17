@@ -24,6 +24,7 @@ package com.oracle.graal.nodes.util;
 
 import java.util.*;
 
+import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 
@@ -63,7 +64,7 @@ public final class ComputeImmediateDominator {
             }
             return dominator;
         } catch (Throwable t) {
-            throw new GraalInternalError(t).addContext("Could not find a dominator").addContext(dominated);
+            throw GraalGraphInternalError.addContext(new GraalInternalError(t).addContext("Could not find a dominator"), dominated);
         }
     }
 
