@@ -297,13 +297,13 @@ public class BinaryGraphPrinter implements GraphPrinter {
             Collection<Position> directInputPositions = nodeClass.getFirstLevelInputPositions();
             writeShort((char) directInputPositions.size());
             for (Position pos : directInputPositions) {
-                writeByte(pos.subIndex == NodeClass.NOT_ITERABLE ? 0 : 1);
+                writeByte(pos.getSubIndex() == NodeClass.NOT_ITERABLE ? 0 : 1);
                 writePoolObject(nodeClass.getName(pos));
             }
             Collection<Position> directSuccessorPositions = nodeClass.getFirstLevelSuccessorPositions();
             writeShort((char) directSuccessorPositions.size());
             for (Position pos : directSuccessorPositions) {
-                writeByte(pos.subIndex == NodeClass.NOT_ITERABLE ? 0 : 1);
+                writeByte(pos.getSubIndex() == NodeClass.NOT_ITERABLE ? 0 : 1);
                 writePoolObject(nodeClass.getName(pos));
             }
         } else if (object instanceof ResolvedJavaMethod) {
@@ -433,7 +433,7 @@ public class BinaryGraphPrinter implements GraphPrinter {
     private void writeEdges(Node node, Collection<Position> positions) throws IOException {
         NodeClass nodeClass = node.getNodeClass();
         for (Position pos : positions) {
-            if (pos.subIndex == NodeClass.NOT_ITERABLE) {
+            if (pos.getSubIndex() == NodeClass.NOT_ITERABLE) {
                 Node edge = nodeClass.get(node, pos);
                 writeNodeRef(edge);
             } else {

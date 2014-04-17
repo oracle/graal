@@ -380,12 +380,12 @@ class CFGPrinter extends CompilationPrinter {
                 continue;
             }
 
-            if (pos.index != lastIndex) {
+            if (pos.getIndex() != lastIndex) {
                 if (lastIndex != -1) {
                     out.print(suffix);
                 }
                 out.print(prefix).print(node.getNodeClass().getName(pos)).print(": ");
-                lastIndex = pos.index;
+                lastIndex = pos.getIndex();
             }
             out.print(nodeToString(node.getNodeClass().get(node, pos))).print(" ");
         }
