@@ -82,15 +82,12 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
     @TruffleCallBoundary
     private Object callBoundary(Object[] args) {
         if (CompilerDirectives.inInterpreter()) {
-            return compiledCallFallback(args);
+            // We are called and we are still in Truffle interpreter mode.
+            interpreterCall();
         } else {
             // We come here from compiled code (i.e., we have been inlined).
-            return executeHelper(args);
         }
-    }
-
-    private Object compiledCallFallback(Object[] args) {
-        return interpreterCall(args);
+        return executeHelper(args);
     }
 
     @Override
@@ -115,7 +112,7 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
         }
     }
 
-    private Object interpreterCall(Object[] args) {
+    private void interpreterCall() {
         CompilerAsserts.neverPartOfCompilation();
         compilationProfile.reportInterpreterCall();
         if (TruffleCallTargetProfiling.getValue()) {
@@ -124,11 +121,7 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
 
         if (compilationPolicy.shouldCompile(compilationProfile)) {
             compile();
-            if (isValid()) {
-                return call(args);
-            }
         }
-        return executeHelper(args);
     }
 
     public void compile() {
