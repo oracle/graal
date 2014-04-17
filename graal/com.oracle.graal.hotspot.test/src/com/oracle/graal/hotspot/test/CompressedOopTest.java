@@ -200,7 +200,7 @@ public class CompressedOopTest extends GraalCompilerTest {
         while (j < objects.length) {
             if (!installedBenchmarkCode.isValid()) {
                 // This can get invalidated due to lack of MDO update
-                installedBenchmarkCode = getInstalledCode("queueTest");
+                installedBenchmarkCode = getInstalledCode("queueTest", Object.class, Object.class);
             }
             installedBenchmarkCode.executeVarargs(q, objects[j]);
             j++;
