@@ -294,7 +294,7 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
         assert hsailCode.getDataReferences().isEmpty();
 
         // from host code
-        result.setFrameSize(hostCode.getFrameSize());
+        result.setTotalFrameSize(hostCode.getTotalFrameSize());
         result.setCustomStackAreaOffset(hostCode.getCustomStackAreaOffset());
         result.setRegisterRestoreEpilogueOffset(hostCode.getRegisterRestoreEpilogueOffset());
         result.setTargetCode(hostCode.getTargetCode(), hostCode.getTargetCodeSize());
@@ -432,7 +432,7 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
         // save lirGen for later use by setHostGraph
         CompilationResultBuilder crb = new HSAILCompilationResultBuilder(getCodeCache(), getForeignCalls(), frameMap, masm, frameContext, compilationResult,
                         (HSAILHotSpotLIRGenerationResult) lirGenRes);
-        crb.setFrameSize(frameMap.frameSize());
+        crb.setTotalFrameSize(frameMap.totalFrameSize());
         return crb;
     }
 
