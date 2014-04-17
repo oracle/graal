@@ -88,8 +88,8 @@ public class CompilationResultBuilder {
         assert frameContext != null;
     }
 
-    public void setFrameSize(int frameSize) {
-        compilationResult.setFrameSize(frameSize);
+    public void setTotalFrameSize(int frameSize) {
+        compilationResult.setTotalFrameSize(frameSize);
     }
 
     private static final CompilationResult.Mark[] NO_REFS = {};

@@ -816,7 +816,7 @@ public final class NodeClass extends FieldIntrospection {
     }
 
     public boolean valueEqual(Node a, Node b) {
-        if (!canGVN || a.getClass() != b.getClass()) {
+        if (a.getClass() != b.getClass()) {
             return a == b;
         }
         for (int i = 0; i < dataOffsets.length; ++i) {

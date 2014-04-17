@@ -339,7 +339,7 @@ public class PTXHotSpotBackend extends HotSpotBackend {
         Assembler masm = createAssembler(frameMap);
         PTXFrameContext frameContext = new PTXFrameContext();
         CompilationResultBuilder crb = factory.createBuilder(getCodeCache(), getForeignCalls(), frameMap, masm, frameContext, compilationResult);
-        crb.setFrameSize(0);
+        crb.setTotalFrameSize(0);
         return crb;
     }
 

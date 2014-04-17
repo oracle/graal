@@ -1013,11 +1013,13 @@ public class HotSpotVMConfig extends CompilerObject {
     @HotSpotVMField(name = "ThreadShadow::_pending_failed_speculation", type = "oop", get = HotSpotVMField.Type.OFFSET) @Stable public int pendingFailedSpeculationOffset;
 
     @HotSpotVMFlag(name = "UseHSAILDeoptimization") @Stable public boolean useHSAILDeoptimization;
+    @HotSpotVMFlag(name = "UseHSAILSafepoints") @Stable public boolean useHSAILSafepoints;
 
     /**
      * Offsets of Hsail deoptimization fields (defined in gpu_hsail.hpp). Used to propagate
      * exceptions from Hsail back to C++ runtime.
      */
+    @HotSpotVMField(name = "Hsail::HSAILDeoptimizationInfo::_notice_safepoints", type = "jint*", get = HotSpotVMField.Type.OFFSET) @Stable public int hsailNoticeSafepointsOffset;
     @HotSpotVMField(name = "Hsail::HSAILDeoptimizationInfo::_deopt_save_states[0]", type = "Hsail::HSAILKernelDeoptimization", get = HotSpotVMField.Type.OFFSET) @Stable public int hsailSaveStatesOffset0;
     @HotSpotVMField(name = "Hsail::HSAILDeoptimizationInfo::_deopt_save_states[1]", type = "Hsail::HSAILKernelDeoptimization", get = HotSpotVMField.Type.OFFSET) @Stable public int hsailSaveStatesOffset1;
     @HotSpotVMField(name = "Hsail::HSAILDeoptimizationInfo::_deopt_occurred", type = "jint", get = HotSpotVMField.Type.OFFSET) @Stable public int hsailDeoptOccurredOffset;
