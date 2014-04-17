@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.nodes.type;
 
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.nodes.*;
 
 /**

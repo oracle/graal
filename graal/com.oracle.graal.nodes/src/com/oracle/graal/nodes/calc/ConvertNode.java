@@ -24,8 +24,8 @@ package com.oracle.graal.nodes.calc;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.type.*;
 
 /**
  * Represents a conversion between primitive types.

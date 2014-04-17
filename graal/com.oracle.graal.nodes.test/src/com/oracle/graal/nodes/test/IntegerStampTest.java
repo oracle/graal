@@ -27,6 +27,7 @@ import static org.junit.Assert.*;
 import org.junit.*;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.type.*;
 

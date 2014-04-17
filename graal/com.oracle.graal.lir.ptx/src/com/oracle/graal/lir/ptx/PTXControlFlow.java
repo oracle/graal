@@ -22,9 +22,9 @@
  */
 package com.oracle.graal.lir.ptx;
 
+import static com.oracle.graal.compiler.common.calc.Condition.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 import static com.oracle.graal.lir.LIRValueUtil.*;
-import static com.oracle.graal.nodes.calc.Condition.*;
 
 import com.oracle.graal.api.code.CompilationResult.JumpTable;
 import com.oracle.graal.api.meta.*;
@@ -34,11 +34,11 @@ import com.oracle.graal.asm.ptx.PTXAssembler.Setp;
 import com.oracle.graal.asm.ptx.*;
 import com.oracle.graal.asm.ptx.PTXMacroAssembler.Mov;
 import com.oracle.graal.compiler.common.*;
+import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.BlockEndOp;
 import com.oracle.graal.lir.SwitchStrategy.BaseSwitchClosure;
 import com.oracle.graal.lir.asm.*;
-import com.oracle.graal.nodes.calc.*;
 
 public class PTXControlFlow {
 

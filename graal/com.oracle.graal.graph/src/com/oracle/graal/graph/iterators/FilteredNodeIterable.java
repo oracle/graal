@@ -30,7 +30,6 @@ public class FilteredNodeIterable<T extends Node> implements NodeIterable<T> {
 
     protected final NodeIterable<T> nodeIterable;
     protected NodePredicate predicate = NodePredicates.alwaysTrue();
-    protected NodePredicate until = NodePredicates.isNull();
 
     public FilteredNodeIterable(NodeIterable<T> nodeIterable) {
         this.nodeIterable = nodeIterable;
@@ -47,18 +46,6 @@ public class FilteredNodeIterable<T extends Node> implements NodeIterable<T> {
     }
 
     @Override
-    public NodeIterable<T> until(final T u) {
-        until = until.or(NodePredicates.equals(u));
-        return this;
-    }
-
-    @Override
-    public NodeIterable<T> until(final Class<? extends T> clazz) {
-        until = until.or(NodePredicates.isA(clazz));
-        return this;
-    }
-
-    @Override
     public FilteredNodeIterable<T> nonNull() {
         this.predicate = this.predicate.and(NodePredicates.isNotNull());
         return this;
@@ -68,13 +55,12 @@ public class FilteredNodeIterable<T extends Node> implements NodeIterable<T> {
     public DistinctFilteredNodeIterable<T> distinct() {
         DistinctFilteredNodeIterable<T> distinct = new DistinctFilteredNodeIterable<>(nodeIterable);
         distinct.predicate = predicate;
-        distinct.until = until;
         return distinct;
     }
 
     @Override
     public Iterator<T> iterator() {
-        return new PredicatedProxyNodeIterator<>(until, nodeIterable.iterator(), predicate);
+        return new PredicatedProxyNodeIterator<>(nodeIterable.iterator(), predicate);
     }
 
     @SuppressWarnings("unchecked")

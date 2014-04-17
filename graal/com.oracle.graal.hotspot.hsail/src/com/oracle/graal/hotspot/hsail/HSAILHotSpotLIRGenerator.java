@@ -28,6 +28,7 @@ import static com.oracle.graal.api.code.ValueUtil.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
+import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.hsail.*;
 import com.oracle.graal.hotspot.*;
@@ -51,7 +52,6 @@ import com.oracle.graal.lir.hsail.HSAILMove.StoreCompressedPointer;
 import com.oracle.graal.lir.hsail.HSAILMove.StoreConstantOp;
 import com.oracle.graal.lir.hsail.HSAILMove.StoreOp;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.phases.util.*;
 

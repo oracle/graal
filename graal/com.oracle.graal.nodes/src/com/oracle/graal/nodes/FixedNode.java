@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.nodes;
 
-import com.oracle.graal.nodes.type.*;
+import com.oracle.graal.compiler.common.type.*;
 
 public abstract class FixedNode extends ValueNode {
 

@@ -501,7 +501,7 @@ public class HotSpotConstantPool extends CompilerObject implements ConstantPool 
                 break;
             case Bytecodes.INVOKEDYNAMIC:
                 // invokedynamic instructions point to a constant pool cache entry.
-                index = decodeConstantPoolCacheIndex(cpi);
+                index = decodeConstantPoolCacheIndex(cpi) + runtime().getConfig().constantPoolCpCacheIndexTag;
                 index = runtime().getCompilerToVM().constantPoolRemapInstructionOperandFromCache(metaspaceConstantPool, index);
                 break;
             default:
@@ -517,13 +517,7 @@ public class HotSpotConstantPool extends CompilerObject implements ConstantPool 
                 index = getUncachedKlassRefIndexAt(index);
                 tag = getTagAt(index);
                 assert tag == JVM_CONSTANT.Class || tag == JVM_CONSTANT.UnresolvedClass || tag == JVM_CONSTANT.UnresolvedClassInError : tag;
-                break;
-            default:
-                // nothing
-                break;
-        }
-
-        switch (tag) {
+                // fall-through
             case Class:
             case UnresolvedClass:
             case UnresolvedClassInError:
@@ -533,6 +527,9 @@ public class HotSpotConstantPool extends CompilerObject implements ConstantPool 
                 if (!klass.isPrimitive() && !klass.isArray()) {
                     unsafe.ensureClassInitialized(klass);
                 }
+                break;
+            case InvokeDynamic:
+                runtime().getCompilerToVM().resolveInvokeDynamic(metaspaceConstantPool, cpi);
                 break;
             default:
                 // nothing

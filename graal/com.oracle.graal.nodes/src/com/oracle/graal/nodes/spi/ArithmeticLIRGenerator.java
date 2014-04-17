@@ -23,9 +23,9 @@
 package com.oracle.graal.nodes.spi;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.FloatConvertNode.FloatConvert;
-import com.oracle.graal.nodes.type.*;
 
 /**
  * This interface can be used to generate LIR for arithmetic operations.

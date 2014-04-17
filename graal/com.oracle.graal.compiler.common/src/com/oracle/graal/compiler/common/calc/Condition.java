@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes.calc;
+package com.oracle.graal.compiler.common.calc;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
@@ -115,7 +115,7 @@ public enum Condition {
     /**
      * Given a condition and its negation, this method returns true for one of the two and false for
      * the other one. This can be used to keep comparisons in a canonical form.
-     * 
+     *
      * @return true if this condition is considered to be the canonical form, false otherwise.
      */
     public boolean isCanonical() {
@@ -206,7 +206,7 @@ public enum Condition {
 
     /**
      * Negate this conditional.
-     * 
+     *
      * @return the condition that represents the negation
      */
     public final Condition negate() {
@@ -266,7 +266,7 @@ public enum Condition {
 
     /**
      * Mirror this conditional (i.e. commute "a op b" to "b op' a")
-     * 
+     *
      * @return the condition representing the equivalent commuted operation
      */
     public final Condition mirror() {
@@ -305,7 +305,7 @@ public enum Condition {
 
     /**
      * Checks if this conditional operation is commutative.
-     * 
+     *
      * @return {@code true} if this operation is commutative
      */
     public final boolean isCommutative() {
@@ -314,7 +314,7 @@ public enum Condition {
 
     /**
      * Attempts to fold a comparison between two constants and return the result.
-     * 
+     *
      * @param lt the constant on the left side of the comparison
      * @param rt the constant on the right side of the comparison
      * @param constantReflection needed to compare constants
@@ -328,7 +328,7 @@ public enum Condition {
 
     /**
      * Attempts to fold a comparison between two constants and return the result.
-     * 
+     *
      * @param lt the constant on the left side of the comparison
      * @param rt the constant on the right side of the comparison
      * @param constantReflection needed to compare constants

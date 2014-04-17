@@ -28,8 +28,8 @@ import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.ptx.*;
 import com.oracle.graal.asm.ptx.PTXAssembler.Setp;
+import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.lir.asm.*;
-import com.oracle.graal.nodes.calc.*;
 
 public class PTXTestOp extends PTXLIRInstruction {
 

@@ -23,6 +23,7 @@
 package com.oracle.graal.nodes;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.extended.*;
@@ -77,7 +78,7 @@ public class GuardedValueNode extends FloatingGuardedNode implements LIRLowerabl
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        if (getGuard() == graph().start()) {
+        if (getGuard() == graph().start() || getGuard() == null) {
             if (stamp().equals(object().stamp())) {
                 return object();
             } else {

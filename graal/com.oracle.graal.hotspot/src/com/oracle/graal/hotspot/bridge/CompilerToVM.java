@@ -351,4 +351,6 @@ public interface CompilerToVM {
      *            invalidated.
      */
     void materializeVirtualObjects(HotSpotStackFrameReference stackFrame, boolean invalidate);
+
+    void resolveInvokeDynamic(long metaspaceConstantPool, int index);
 }

@@ -29,9 +29,9 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Graph.DuplicationReplacement;
 import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.VirtualState.VirtualClosure;
 import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.java.*;
+import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.virtual.*;
 
 public abstract class LoopFragment {
@@ -165,11 +165,9 @@ public abstract class LoopFragment {
                 if (n instanceof Invoke) {
                     nodes.mark(((Invoke) n).callTarget());
                 }
-                if (n instanceof StateSplit) {
-                    FrameState stateAfter = ((StateSplit) n).stateAfter();
-                    if (stateAfter != null) {
-                        nodes.mark(stateAfter);
-                    }
+                if (n instanceof NodeWithState) {
+                    NodeWithState withState = (NodeWithState) n;
+                    withState.states().forEach(state -> state.applyToVirtual(node -> nodes.mark(node)));
                 }
                 nodes.mark(n);
             }
@@ -181,14 +179,7 @@ public abstract class LoopFragment {
 
             FrameState stateAfter = earlyExit.stateAfter();
             if (stateAfter != null) {
-                nodes.mark(stateAfter);
-                stateAfter.applyToVirtual(new VirtualClosure() {
-
-                    @Override
-                    public void apply(VirtualState node) {
-                        nodes.mark(node);
-                    }
-                });
+                stateAfter.applyToVirtual(node -> nodes.mark(node));
             }
             nodes.mark(earlyExit);
             for (ProxyNode proxy : earlyExit.proxies()) {
@@ -345,16 +336,8 @@ public abstract class LoopFragment {
                  *
                  * We now update the original fragment's nodes accordingly:
                  */
-                state.applyToVirtual(new VirtualClosure() {
-                    public void apply(VirtualState node) {
-                        original.nodes.clear(node);
-                    }
-                });
-                exitState.applyToVirtual(new VirtualClosure() {
-                    public void apply(VirtualState node) {
-                        original.nodes.mark(node);
-                    }
-                });
+                state.applyToVirtual(node -> original.nodes.clear(node));
+                exitState.applyToVirtual(node -> original.nodes.mark(node));
             }
             FrameState finalExitState = exitState;
 
