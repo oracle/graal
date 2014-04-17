@@ -56,14 +56,14 @@ public class LongAdderTest extends GraalKernelTester {
     }
 
     // cannot handle node: CurrentJavaThread
-    @Test(expected = com.oracle.graal.graph.GraalInternalError.class)
+    @Test(expected = com.oracle.graal.compiler.common.GraalInternalError.class)
     public void test() {
         try (DebugConfigScope dcs = setConfig(new DelegatingDebugConfig().disable(INTERCEPT))) {
             testGeneratedHsail();
         }
     }
 
-    @Test(expected = com.oracle.graal.graph.GraalInternalError.class)
+    @Test(expected = com.oracle.graal.compiler.common.GraalInternalError.class)
     public void testUsingLambdaMethod() {
         try (DebugConfigScope dcs = setConfig(new DelegatingDebugConfig().disable(INTERCEPT))) {
             testGeneratedHsailUsingLambdaMethod();

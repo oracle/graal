@@ -23,7 +23,7 @@
 package com.oracle.graal.lir;
 
 import com.oracle.graal.asm.*;
-import com.oracle.graal.cfg.*;
+import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.lir.StandardOp.BranchOp;
 import com.oracle.graal.lir.StandardOp.JumpOp;
 import com.oracle.graal.nodes.cfg.*;

@@ -51,7 +51,7 @@ public class EscapingNewStringConcatTest extends EscapingNewBase {
     }
 
     // Node implementing Lowerable not handled in HSAIL Backend: 6274|MonitorEnter
-    @Test(expected = com.oracle.graal.graph.GraalInternalError.class)
+    @Test(expected = com.oracle.graal.compiler.common.GraalInternalError.class)
     public void test() {
         try (DebugConfigScope s = disableIntercept()) {
             testGeneratedHsail();

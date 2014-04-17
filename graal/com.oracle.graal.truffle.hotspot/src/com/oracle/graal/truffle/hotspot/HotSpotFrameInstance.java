@@ -25,7 +25,7 @@ package com.oracle.graal.truffle.hotspot;
 import java.lang.reflect.*;
 
 import com.oracle.graal.api.code.stack.*;
-import com.oracle.graal.graph.*;
+import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.truffle.*;
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.CompilerDirectives.SlowPath;

@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.cfg;
+package com.oracle.graal.compiler.common.cfg;
 
 import java.util.*;
 

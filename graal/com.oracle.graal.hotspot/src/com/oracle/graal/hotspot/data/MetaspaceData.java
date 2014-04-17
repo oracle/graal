@@ -26,7 +26,7 @@ import java.nio.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.graph.*;
+import com.oracle.graal.compiler.common.*;
 
 /**
  * A data item that represents a metaspace pointer.

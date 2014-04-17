@@ -24,7 +24,8 @@ package com.oracle.graal.phases.util;
 
 import java.util.*;
 
-import com.oracle.graal.cfg.*;
+import com.oracle.graal.compiler.common.*;
+import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.VirtualState.NodeClosure;
@@ -120,8 +121,7 @@ public final class GraphOrder {
                 }
             }
         } catch (GraalInternalError e) {
-            e.addContext(node);
-            throw e;
+            throw GraalGraphInternalError.transformAndAddContext(e, node);
         }
     }
 

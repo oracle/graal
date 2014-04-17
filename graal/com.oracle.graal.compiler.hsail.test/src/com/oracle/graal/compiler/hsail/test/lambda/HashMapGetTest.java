@@ -91,14 +91,14 @@ public class HashMapGetTest extends GraalKernelTester {
     // ForeignCall to Invoke#Direct#get
     // not inlining HashMapGetTest.lambda$38@15: java.util.HashMap.get(Object):Object (20 bytes): no
     // type profile exists
-    @Test(expected = com.oracle.graal.graph.GraalInternalError.class)
+    @Test(expected = com.oracle.graal.compiler.common.GraalInternalError.class)
     public void test() {
         try (DebugConfigScope s = disableIntercept()) {
             testGeneratedHsail();
         }
     }
 
-    @Test(expected = com.oracle.graal.graph.GraalInternalError.class)
+    @Test(expected = com.oracle.graal.compiler.common.GraalInternalError.class)
     public void testUsingLambdaMethod() {
         try (DebugConfigScope s = disableIntercept()) {
             testGeneratedHsailUsingLambdaMethod();

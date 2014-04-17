@@ -27,7 +27,7 @@ import static com.oracle.graal.graph.UnsafeAccess.*;
 import java.lang.reflect.*;
 import java.util.*;
 
-import com.oracle.graal.graph.*;
+import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.hotspot.bridge.*;
 import com.oracle.graal.hotspot.meta.*;
 

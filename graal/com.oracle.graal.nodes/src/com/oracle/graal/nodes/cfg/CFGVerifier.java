@@ -24,7 +24,7 @@ package com.oracle.graal.nodes.cfg;
 
 import java.util.*;
 
-import com.oracle.graal.cfg.*;
+import com.oracle.graal.compiler.common.cfg.*;
 
 public class CFGVerifier {
 

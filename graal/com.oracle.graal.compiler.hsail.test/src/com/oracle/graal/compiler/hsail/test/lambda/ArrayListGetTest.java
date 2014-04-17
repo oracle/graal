@@ -59,7 +59,7 @@ public class ArrayListGetTest extends GraalKernelTester {
     }
 
     // NYI emitForeignCall charAlignedDisjointArraycopy
-    @Test(expected = com.oracle.graal.graph.GraalInternalError.class)
+    @Test(expected = com.oracle.graal.compiler.common.GraalInternalError.class)
     public void testUsingLambdaMethod() {
         try (DebugConfigScope s = disableIntercept()) {
             testGeneratedHsailUsingLambdaMethod();
