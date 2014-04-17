@@ -28,4 +28,10 @@ import com.oracle.truffle.api.*;
 public interface GraalTruffleRuntime extends TruffleRuntime {
 
     Replacements getReplacements();
+
+    void compile(OptimizedCallTarget optimizedCallTarget, boolean mayBeAsynchronous);
+
+    boolean cancelInstalledTask(OptimizedCallTarget optimizedCallTarget);
+
+    boolean isCompiling(OptimizedCallTarget optimizedCallTarget);
 }

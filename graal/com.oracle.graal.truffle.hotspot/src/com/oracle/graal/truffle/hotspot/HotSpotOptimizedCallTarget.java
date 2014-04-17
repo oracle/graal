@@ -26,8 +26,6 @@ import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 import static com.oracle.graal.truffle.TruffleCompilerOptions.*;
 import static com.oracle.graal.truffle.OptimizedCallTargetLog.*;
 
-import java.util.concurrent.*;
-
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.truffle.*;
@@ -39,13 +37,12 @@ import com.oracle.truffle.api.nodes.*;
  */
 public final class HotSpotOptimizedCallTarget extends OptimizedCallTarget {
 
-    protected final TruffleCompiler compiler;
-    private Future<InstalledCode> installedCodeTask;
+    protected final GraalTruffleRuntime runtime;
     private SpeculationLog speculationLog = new HotSpotSpeculationLog();
 
-    HotSpotOptimizedCallTarget(RootNode rootNode, TruffleCompiler compiler, int invokeCounter, int compilationThreshold, boolean compilationEnabled) {
+    HotSpotOptimizedCallTarget(RootNode rootNode, GraalTruffleRuntime runtime, int invokeCounter, int compilationThreshold, boolean compilationEnabled) {
         super(rootNode, invokeCounter, compilationThreshold, compilationEnabled, TruffleUseTimeForCompilationDecision.getValue() ? new TimedCompilationPolicy() : new DefaultCompilationPolicy());
-        this.compiler = compiler;
+        this.runtime = runtime;
     }
 
     @Override
@@ -104,9 +101,7 @@ public final class HotSpotOptimizedCallTarget extends OptimizedCallTarget {
     }
 
     private void cancelInstalledTask(Node oldNode, Node newNode, CharSequence reason) {
-        Future<InstalledCode> task = this.installedCodeTask;
-        if (task != null) {
-            task.cancel(true);
+        if (this.runtime.cancelInstalledTask(this)) {
             logOptimizingUnqueued(this, oldNode, newNode, reason);
             compilationProfile.reportInvalidated();
         }
@@ -131,51 +126,30 @@ public final class HotSpotOptimizedCallTarget extends OptimizedCallTarget {
         return executeHelper(args);
     }
 
-    private boolean isCompiling() {
-        Future<InstalledCode> codeTask = this.installedCodeTask;
-        if (codeTask != null) {
-            if (codeTask.isCancelled() || codeTask.isDone()) {
-                // System.out.println("done or cancelled => set null " + codeTask.isCancelled());
-                return false;
-            }
-            return true;
-        }
-        return false;
-    }
-
     @Override
     public void compile() {
-        if (!isCompiling()) {
+        if (!runtime.isCompiling(this)) {
             performInlining();
             logOptimizingQueued(this);
-            this.installedCodeTask = compiler.compile(this);
-            if (!TruffleBackgroundCompilation.getValue()) {
-                receiveInstalledCode();
-            }
+            runtime.compile(this, TruffleBackgroundCompilation.getValue());
         }
     }
 
     @Override
-    public void exceptionWhileCompiling(Throwable t) {
-        compilationEnabled = false;
-        logOptimizingFailed(this, t.getMessage());
-        if (t instanceof BailoutException) {
-            // Bailout => move on.
+    public void compilationFinished(Throwable t) {
+        if (t == null) {
+            // Compilation was successful.
         } else {
-            if (TruffleCompilationExceptionsAreFatal.getValue()) {
-                t.printStackTrace(OUT);
-                System.exit(-1);
+            compilationEnabled = false;
+            logOptimizingFailed(this, t.getMessage());
+            if (t instanceof BailoutException) {
+                // Bailout => move on.
+            } else {
+                if (TruffleCompilationExceptionsAreFatal.getValue()) {
+                    t.printStackTrace(OUT);
+                    System.exit(-1);
+                }
             }
         }
     }
-
-    private void receiveInstalledCode() {
-        try {
-            // Force task completion.
-            installedCodeTask.get();
-        } catch (InterruptedException | ExecutionException e) {
-            exceptionWhileCompiling(e.getCause());
-        }
-    }
-
 }

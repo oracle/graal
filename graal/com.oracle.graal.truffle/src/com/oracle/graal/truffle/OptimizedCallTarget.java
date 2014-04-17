@@ -188,6 +188,6 @@ public abstract class OptimizedCallTarget extends InstalledCode implements RootC
 
     }
 
-    public abstract void exceptionWhileCompiling(Throwable e);
+    public abstract void compilationFinished(Throwable e);
 
 }
