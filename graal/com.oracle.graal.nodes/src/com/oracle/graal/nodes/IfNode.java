@@ -158,6 +158,41 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
             this.safeDelete();
             return;
         }
+        if (trueSuccessor().usages().isEmpty() && falseSuccessor().usages().isEmpty()) {
+            // push similar nodes upwards through the if, thereby deduplicating them
+            do {
+                BeginNode trueSucc = trueSuccessor();
+                BeginNode falseSucc = falseSuccessor();
+                if (trueSucc.getClass() == BeginNode.class && falseSucc.getClass() == BeginNode.class && trueSucc.next() instanceof FixedWithNextNode && falseSucc.next() instanceof FixedWithNextNode) {
+                    FixedWithNextNode trueNext = (FixedWithNextNode) trueSucc.next();
+                    FixedWithNextNode falseNext = (FixedWithNextNode) falseSucc.next();
+                    NodeClass nodeClass = trueNext.getNodeClass();
+                    if (trueNext.getClass() == falseNext.getClass()) {
+                        if (nodeClass.inputsEqual(trueNext, falseNext) && nodeClass.valueEqual(trueNext, falseNext)) {
+                            falseNext.replaceAtUsages(trueNext);
+                            graph().removeFixed(falseNext);
+                            FixedNode next = trueNext.next();
+                            trueNext.setNext(null);
+                            trueNext.replaceAtPredecessor(next);
+                            graph().addBeforeFixed(this, trueNext);
+                            for (Node usage : trueNext.usages().snapshot()) {
+                                if (usage.getNodeClass().valueNumberable() && !usage.getNodeClass().isLeafNode()) {
+                                    Node newNode = graph().findDuplicate(usage);
+                                    if (newNode != null) {
+                                        usage.replaceAtUsages(newNode);
+                                        usage.safeDelete();
+                                    }
+                                }
+                                if (usage.isAlive()) {
+                                    tool.addToWorkList(usage);
+                                }
+                            }
+                            continue;
+                        }
+                    }
+                }
+            } while (false);
+        }
 
         if (condition() instanceof LogicConstantNode) {
             LogicConstantNode c = (LogicConstantNode) condition();
