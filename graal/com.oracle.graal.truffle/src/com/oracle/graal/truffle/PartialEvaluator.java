@@ -32,7 +32,6 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.api.runtime.*;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.debug.internal.*;
@@ -113,11 +112,6 @@ public class PartialEvaluator {
 
             // Intrinsify methods.
             new ReplaceIntrinsicsPhase(providers.getReplacements()).apply(graph);
-
-            NewFrameNode newFrameNode = graph.getNodes(NewFrameNode.class).first();
-            if (newFrameNode == null) {
-                throw GraalInternalError.shouldNotReachHere("frame not found");
-            }
 
             Debug.dump(graph, "Before inlining");
 

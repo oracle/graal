@@ -51,16 +51,23 @@ public final class OptimizedDirectCallNode extends DirectCallNode implements Mat
         if (CompilerDirectives.inInterpreter()) {
             onInterpreterCall();
         }
-        return callProxy(this, getCurrentCallTarget(), frame, arguments, inlined);
+        return callProxy(this, getCurrentCallTarget(), frame, arguments, inlined, true);
     }
 
-    public static Object callProxy(MaterializedFrameNotify notify, CallTarget callTarget, VirtualFrame frame, Object[] arguments, boolean inlined) {
+    public static Object callProxy(MaterializedFrameNotify notify, CallTarget callTarget, VirtualFrame frame, Object[] arguments, boolean inlined, boolean direct) {
         try {
             if (notify.getOutsideFrameAccess() != FrameAccess.NONE) {
                 CompilerDirectives.materialize(frame);
             }
             if (inlined) {
                 return ((OptimizedCallTarget) callTarget).callInlined(arguments);
+            } else if (direct) {
+                Object result = ((OptimizedCallTarget) callTarget).call(arguments);
+                Class<?> klass = ((OptimizedCallTarget) callTarget).getProfiledReturnType();
+                if (klass != null) {
+                    result = CompilerDirectives.unsafeCast(result, klass, true, true);
+                }
+                return result;
             } else {
                 return callTarget.call(arguments);
             }

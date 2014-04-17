@@ -31,7 +31,7 @@ import com.oracle.graal.phases.common.*;
 public interface TruffleCache {
 
     /**
-     * Creates the graph for the root method, i.e. {@link OptimizedCallTarget#executeHelper}.
+     * Creates the graph for the root method, i.e. {@link OptimizedCallTarget#callBoundary}.
      */
     StructuredGraph createRootGraph();
 

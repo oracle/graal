@@ -65,7 +65,7 @@ public final class TruffleCacheImpl implements TruffleCache {
     private final HashMap<List<Object>, Long> lastUsed = new HashMap<>();
     private final StructuredGraph markerGraph = new StructuredGraph();
     private final ResolvedJavaType stringBuilderClass;
-    private final ResolvedJavaMethod executeHelperMethod;
+    private final ResolvedJavaMethod callBoundaryMethod;
     private long counter;
 
     public TruffleCacheImpl(Providers providers, GraphBuilderConfiguration config, GraphBuilderConfiguration configForRootGraph, OptimisticOptimizations optimisticOptimizations) {
@@ -75,14 +75,14 @@ public final class TruffleCacheImpl implements TruffleCache {
         this.optimisticOptimizations = optimisticOptimizations;
         this.stringBuilderClass = providers.getMetaAccess().lookupJavaType(StringBuilder.class);
         try {
-            executeHelperMethod = providers.getMetaAccess().lookupJavaMethod(OptimizedCallTarget.class.getDeclaredMethod("executeHelper", Object[].class));
+            callBoundaryMethod = providers.getMetaAccess().lookupJavaMethod(OptimizedCallTarget.class.getDeclaredMethod("callRoot", Object[].class));
         } catch (NoSuchMethodException ex) {
             throw new RuntimeException(ex);
         }
     }
 
     public StructuredGraph createRootGraph() {
-        StructuredGraph graph = new StructuredGraph(executeHelperMethod);
+        StructuredGraph graph = new StructuredGraph(callBoundaryMethod);
         new GraphBuilderPhase.Instance(providers.getMetaAccess(), configForRootGraph, TruffleCompilerImpl.Optimizations).apply(graph);
         return graph;
     }
