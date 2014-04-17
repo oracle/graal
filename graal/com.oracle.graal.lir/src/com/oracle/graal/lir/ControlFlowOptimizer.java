@@ -27,7 +27,7 @@ import static com.oracle.graal.lir.LIR.*;
 import java.util.*;
 
 import com.oracle.graal.debug.*;
-import com.oracle.graal.cfg.*;
+import com.oracle.graal.compiler.common.cfg.*;
 
 /**
  * This class performs basic optimizations on the control flow graph after LIR generation.

@@ -24,7 +24,7 @@ package com.oracle.graal.loop;
 
 import java.util.*;
 
-import com.oracle.graal.cfg.*;
+import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.nodes.*;

@@ -20,41 +20,22 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+package com.oracle.graal.compiler.common.cfg;
 
-package com.oracle.graal.cfg;
+public class BlockMap<T> {
 
-import java.util.*;
+    private final T[] data;
 
-public abstract class Loop<T extends AbstractBlock<T>> {
-
-    public final Loop<T> parent;
-    public final List<Loop<T>> children;
-
-    public final int depth;
-    public final int index;
-    public final T header;
-    public final List<T> blocks;
-    public final List<T> exits;
-
-    protected Loop(Loop<T> parent, int index, T header) {
-        this.parent = parent;
-        if (parent != null) {
-            this.depth = parent.depth + 1;
-            parent.children.add(this);
-        } else {
-            this.depth = 1;
-        }
-        this.index = index;
-        this.header = header;
-        this.blocks = new ArrayList<>();
-        this.children = new ArrayList<>();
-        this.exits = new ArrayList<>();
+    @SuppressWarnings("unchecked")
+    public BlockMap(AbstractControlFlowGraph<?> cfg) {
+        data = (T[]) new Object[cfg.getBlocks().length];
     }
 
-    public abstract long numBackedges();
+    public T get(AbstractBlock<?> block) {
+        return data[block.getId()];
+    }
 
-    @Override
-    public String toString() {
-        return "loop " + index + " depth " + depth + (parent != null ? " outer " + parent.index : "");
+    public void put(AbstractBlock<?> block, T value) {
+        data[block.getId()] = value;
     }
 }
