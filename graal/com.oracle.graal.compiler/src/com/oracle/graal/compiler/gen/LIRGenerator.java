@@ -44,7 +44,6 @@ import com.oracle.graal.lir.StandardOp.LabelOp;
 import com.oracle.graal.lir.StandardOp.NoOp;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
-import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.options.*;
 import com.oracle.graal.phases.util.*;
@@ -94,14 +93,14 @@ public abstract class LIRGenerator implements ArithmeticLIRGenerator, LIRGenerat
          * The block that does or will contain {@link #op}. This is initially the block where the
          * first usage of the constant is seen during LIR generation.
          */
-        Block block;
+        AbstractBlock<?> block;
 
         /**
          * The variable into which the constant is loaded.
          */
         final Variable variable;
 
-        public LoadConstant(Variable variable, Block block, int index, LIRInstruction op) {
+        public LoadConstant(Variable variable, AbstractBlock<?> block, int index, LIRInstruction op) {
             this.variable = variable;
             this.block = block;
             this.index = index;
@@ -243,16 +242,6 @@ public abstract class LIRGenerator implements ArithmeticLIRGenerator, LIRGenerat
             return emitMove(value);
         }
         return value;
-    }
-
-    public LabelRef getLIRBlock(FixedNode b) {
-        assert res.getLIR().getControlFlowGraph() instanceof ControlFlowGraph;
-        Block result = ((ControlFlowGraph) res.getLIR().getControlFlowGraph()).blockFor(b);
-        int suxIndex = currentBlock.getSuccessors().indexOf(result);
-        assert suxIndex != -1 : "Block not in successor list of current block";
-
-        assert currentBlock instanceof Block;
-        return LabelRef.forSuccessor(res.getLIR(), currentBlock, suxIndex);
     }
 
     /**
@@ -488,7 +477,7 @@ public abstract class LIRGenerator implements ArithmeticLIRGenerator, LIRGenerat
 
                 // Move loads of constant outside of loops
                 if (OptScheduleOutOfLoops.getValue()) {
-                    Block outOfLoopDominator = lc.block;
+                    AbstractBlock<?> outOfLoopDominator = lc.block;
                     while (outOfLoopDominator.getLoop() != null) {
                         outOfLoopDominator = outOfLoopDominator.getDominator();
                     }
@@ -514,7 +503,7 @@ public abstract class LIRGenerator implements ArithmeticLIRGenerator, LIRGenerat
             int groupBegin = 0;
             while (true) {
                 int groupEnd = groupBegin + 1;
-                Block block = groupedByBlock[groupBegin].block;
+                AbstractBlock<?> block = groupedByBlock[groupBegin].block;
                 while (groupEnd < groupedByBlock.length && groupedByBlock[groupEnd].block == block) {
                     groupEnd++;
                 }

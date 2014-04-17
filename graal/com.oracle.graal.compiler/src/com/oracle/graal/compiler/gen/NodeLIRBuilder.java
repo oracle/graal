@@ -121,9 +121,9 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool {
                         int index = gen.getResult().getLIR().getLIRforBlock(gen.getCurrentBlock()).size();
                         loadedValue = gen.emitMove(value);
                         LIRInstruction op = gen.getResult().getLIR().getLIRforBlock(gen.getCurrentBlock()).get(index);
-                        gen.constantLoads.put(value, new LoadConstant(loadedValue, (Block) gen.getCurrentBlock(), index, op));
+                        gen.constantLoads.put(value, new LoadConstant(loadedValue, gen.getCurrentBlock(), index, op));
                     } else {
-                        Block dominator = ControlFlowGraph.commonDominator(load.block, (Block) gen.getCurrentBlock());
+                        AbstractBlock<?> dominator = ControlFlowGraph.commonDominator((Block) load.block, (Block) gen.getCurrentBlock());
                         loadedValue = load.variable;
                         if (dominator != load.block) {
                             load.unpin(gen.getResult().getLIR());
