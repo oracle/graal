@@ -95,7 +95,7 @@ public abstract class Stub {
 
     /**
      * Creates a new stub.
-     * 
+     *
      * @param linkage linkage details for a call to the stub
      */
     public Stub(HotSpotProviders providers, HotSpotForeignCallLinkage linkage) {
@@ -125,8 +125,7 @@ public abstract class Stub {
     }
 
     /**
-     * Gets the method the stub's code will be {@linkplain InstalledCode#getMethod() associated}
-     * with once installed. This may be null.
+     * Gets the method the stub's code will be associated with once installed. This may be null.
      */
     protected abstract ResolvedJavaMethod getInstalledCodeOwner();
 

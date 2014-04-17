@@ -27,6 +27,7 @@ import java.util.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.stack.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.cfg.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.stubs.*;
@@ -35,7 +36,6 @@ import com.oracle.graal.lir.LIRInstruction.ValueProcedure;
 import com.oracle.graal.lir.StandardOp.LabelOp;
 import com.oracle.graal.lir.StandardOp.SaveRegistersOp;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.word.*;
 

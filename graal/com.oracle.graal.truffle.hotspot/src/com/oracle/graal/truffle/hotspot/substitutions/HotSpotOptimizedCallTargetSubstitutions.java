@@ -23,20 +23,9 @@
 package com.oracle.graal.truffle.hotspot.substitutions;
 
 import com.oracle.graal.api.replacements.*;
-import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.truffle.*;
 import com.oracle.graal.truffle.hotspot.*;
-import com.oracle.graal.truffle.nodes.asserts.*;
 
 @ClassSubstitution(HotSpotOptimizedCallTarget.class)
 public class HotSpotOptimizedCallTargetSubstitutions {
 
-    @MacroSubstitution(macro = NeverInlineMacroNode.class, isStatic = false)
-    public static native Object callHelper(OptimizedCallTarget target, Object[] args);
-
-    @MacroSubstitution(macro = NeverInlineMacroNode.class, isStatic = false)
-    public static native Object interpreterCall(OptimizedCallTarget target, Object[] args);
-
-    @MacroSubstitution(macro = NeverInlineMacroNode.class, isStatic = false)
-    public static native Object compiledCodeInvalidated(OptimizedCallTarget target, Object[] args);
 }

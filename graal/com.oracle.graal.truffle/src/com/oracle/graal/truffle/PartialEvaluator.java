@@ -201,7 +201,7 @@ public class PartialEvaluator {
                         }
 
                         StructuredGraph inlineGraph = replacements.getMethodSubstitution(methodCallTargetNode.targetMethod());
-                        if (inlineGraph == null && !Modifier.isNative(methodCallTargetNode.targetMethod().getModifiers())) {
+                        if (inlineGraph == null && !Modifier.isNative(methodCallTargetNode.targetMethod().getModifiers()) && methodCallTargetNode.targetMethod().canBeInlined()) {
                             inlineGraph = parseGraph(methodCallTargetNode.targetMethod(), methodCallTargetNode.arguments(), assumptions, phaseContext, false);
                         }
 

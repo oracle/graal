@@ -225,7 +225,7 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend {
         Assembler masm = createAssembler(frameMap);
         HotSpotFrameContext frameContext = new HotSpotFrameContext(stub != null, omitFrame);
         CompilationResultBuilder crb = factory.createBuilder(getCodeCache(), getForeignCalls(), frameMap, masm, frameContext, compilationResult);
-        crb.setFrameSize(frameMap.frameSize());
+        crb.setTotalFrameSize(frameMap.totalFrameSize());
         StackSlot deoptimizationRescueSlot = gen.getDeoptimizationRescueSlot();
         if (deoptimizationRescueSlot != null && stub == null) {
             crb.compilationResult.setCustomStackAreaOffset(frameMap.offsetForStackSlot(deoptimizationRescueSlot));

@@ -29,6 +29,7 @@ import java.util.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.cfg.*;
 import com.oracle.graal.compiler.alloc.*;
 import com.oracle.graal.compiler.alloc.Interval.UsePosList;
 import com.oracle.graal.compiler.gen.*;

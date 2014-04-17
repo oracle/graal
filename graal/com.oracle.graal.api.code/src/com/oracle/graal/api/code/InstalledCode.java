@@ -22,41 +22,66 @@
  */
 package com.oracle.graal.api.code;
 
-import com.oracle.graal.api.meta.*;
-
 /**
  * Represents a compiled instance of a method. It may have been invalidated or removed in the
  * meantime.
  */
-public interface InstalledCode {
+public class InstalledCode {
 
     /**
-     * Returns the method (if any) to which the installed code belongs.
+     * Raw address of this code blob.
      */
-    ResolvedJavaMethod getMethod();
+    private long address;
+
+    /**
+     * Counts how often the address field was reassigned.
+     */
+    private long version;
+
+    /**
+     * @return the address of this code blob
+     */
+    public final long getAddress() {
+        return address;
+    }
+
+    /**
+     * @return the address of this code blob
+     */
+    public final long getVersion() {
+        return version;
+    }
 
     /**
      * Returns the start address of this installed code if it is {@linkplain #isValid() valid}, 0
      * otherwise.
      */
-    long getStart();
+    public long getStart() {
+        return 0;
+    }
 
     /**
      * Returns a copy of this installed code if it is {@linkplain #isValid() valid}, null otherwise.
      */
-    byte[] getCode();
+    public byte[] getCode() {
+        return null;
+    }
 
     /**
      * @return true if the code represented by this object is still valid, false otherwise (may
      *         happen due to deopt, etc.)
      */
-    boolean isValid();
+    public boolean isValid() {
+        return address != 0;
+    }
 
     /**
      * Invalidates this installed code such that any subsequent invocation will throw an
      * {@link InvalidInstalledCodeException}.
      */
-    void invalidate();
+    public void invalidate() {
+        throw new UnsupportedOperationException();
+    }
 
     /**
      * Executes the installed code with a variable number of arguments.
@@ -64,5 +89,8 @@ public interface InstalledCode {
      * @param args the array of object arguments
      * @return the value returned by the executed code
      */
-    Object executeVarargs(Object... args) throws InvalidInstalledCodeException;
+    @SuppressWarnings("unused")
+    public Object executeVarargs(Object... args) throws InvalidInstalledCodeException {
+        throw new UnsupportedOperationException();
+    }
 }

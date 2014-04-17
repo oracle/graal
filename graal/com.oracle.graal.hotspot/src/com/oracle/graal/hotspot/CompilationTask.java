@@ -312,7 +312,7 @@ public class CompilationTask implements Runnable, Comparable<Object> {
             }
 
             try (TimerCloseable b = CodeInstallationTime.start()) {
-                installedCode = installMethod(result);
+                installedCode = (HotSpotInstalledCode) installMethod(result);
                 if (!isOSR) {
                     ProfilingInfo profile = method.getProfilingInfo();
                     profile.setCompilerIRSize(StructuredGraph.class, graph.getNodeCount());
@@ -385,9 +385,9 @@ public class CompilationTask implements Runnable, Comparable<Object> {
                         MetaUtil.format("%H::%n(%p)", method), isOSR ? "@ " + entryBCI + " " : "", method.getCodeSize()));
     }
 
-    private HotSpotInstalledCode installMethod(final CompilationResult compResult) {
+    private InstalledCode installMethod(final CompilationResult compResult) {
         final HotSpotCodeCacheProvider codeCache = backend.getProviders().getCodeCache();
-        HotSpotInstalledCode installedCode = null;
+        InstalledCode installedCode = null;
         try (Scope s = Debug.scope("CodeInstall", new DebugDumpScope(String.valueOf(id), true), codeCache, method)) {
             installedCode = codeCache.installMethod(method, compResult);
         } catch (Throwable e) {

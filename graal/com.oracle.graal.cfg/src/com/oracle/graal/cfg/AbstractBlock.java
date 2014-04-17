@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,22 +20,39 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes.cfg;
+package com.oracle.graal.cfg;
 
-public class BlockMap<T> {
+import java.util.*;
 
-    private final T[] data;
+public interface AbstractBlock<T extends AbstractBlock<T>> {
 
-    @SuppressWarnings("unchecked")
-    public BlockMap(AbstractControlFlowGraph<?> cfg) {
-        data = (T[]) new Object[cfg.getBlocks().length];
-    }
+    int getId();
 
-    public T get(AbstractBlock<?> block) {
-        return data[block.getId()];
-    }
+    Loop<T> getLoop();
 
-    public void put(AbstractBlock<?> block, T value) {
-        data[block.getId()] = value;
-    }
+    int getLoopDepth();
+
+    boolean isLoopHeader();
+
+    boolean isLoopEnd();
+
+    boolean isExceptionEntry();
+
+    List<T> getPredecessors();
+
+    int getPredecessorCount();
+
+    List<T> getSuccessors();
+
+    int getSuccessorCount();
+
+    int getLinearScanNumber();
+
+    void setLinearScanNumber(int linearScanNumber);
+
+    boolean isAligned();
+
+    void setAlign(boolean align);
+
+    T getDominator();
 }

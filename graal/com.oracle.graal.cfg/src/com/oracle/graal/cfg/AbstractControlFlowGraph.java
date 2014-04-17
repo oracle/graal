@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,27 +20,18 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.meta;
+package com.oracle.graal.cfg;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.hotspot.*;
+import java.util.*;
 
-/**
- * HotSpot implementation of {@link DisassemblerProvider}.
- */
-public class HotSpotDisassemblerProvider implements DisassemblerProvider {
+public interface AbstractControlFlowGraph<T extends AbstractBlock<T>> {
 
-    protected final HotSpotGraalRuntime runtime;
+    static final int BLOCK_ID_INITIAL = -1;
+    static final int BLOCK_ID_VISITED = -2;
 
-    public HotSpotDisassemblerProvider(HotSpotGraalRuntime runtime) {
-        this.runtime = runtime;
-    }
+    T[] getBlocks();
 
-    public String disassemble(InstalledCode code) {
-        if (code.isValid()) {
-            long codeBlob = ((HotSpotInstalledCode) code).getAddress();
-            return runtime.getCompilerToVM().disassembleCodeBlob(codeBlob);
-        }
-        return null;
-    }
+    Collection<Loop<T>> getLoops();
+
+    T getStartBlock();
 }

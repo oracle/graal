@@ -25,6 +25,7 @@ package com.oracle.graal.alloc;
 
 import java.util.*;
 
+import com.oracle.graal.cfg.*;
 import com.oracle.graal.nodes.cfg.*;
 
 /**

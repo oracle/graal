@@ -675,7 +675,7 @@ public abstract class GraalCompilerTest extends GraalTest {
     }
 
     protected InstalledCode addMethod(final ResolvedJavaMethod method, final CompilationResult compResult) {
-        return getCodeCache().addMethod(method, compResult, null);
+        return getCodeCache().addMethod(method, compResult, null, null);
     }
 
     /**

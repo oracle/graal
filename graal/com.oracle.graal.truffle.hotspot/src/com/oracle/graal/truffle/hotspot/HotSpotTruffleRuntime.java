@@ -26,7 +26,6 @@ import static com.oracle.graal.api.code.CodeUtil.*;
 import static com.oracle.graal.compiler.GraalCompiler.*;
 import static com.oracle.graal.truffle.TruffleCompilerOptions.*;
 
-import java.lang.reflect.*;
 import java.util.*;
 
 import com.oracle.graal.api.code.*;
@@ -37,7 +36,6 @@ import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.nodes.*;
@@ -178,22 +176,16 @@ public final class HotSpotTruffleRuntime implements GraalTruffleRuntime {
     public static void installOptimizedCallTargetCallMethod() {
         Providers providers = getGraalProviders();
         MetaAccessProvider metaAccess = providers.getMetaAccess();
-        CodeCacheProvider codeCache = providers.getCodeCache();
-        ResolvedJavaMethod resolvedCallMethod = metaAccess.lookupJavaMethod(getCallMethod());
-        CompilationResult compResult = compileMethod(resolvedCallMethod);
-        try (Scope s = Debug.scope("CodeInstall", codeCache, resolvedCallMethod)) {
-            codeCache.setDefaultMethod(resolvedCallMethod, compResult);
+        ResolvedJavaType type = metaAccess.lookupJavaType(HotSpotOptimizedCallTarget.class);
+        for (ResolvedJavaMethod method : type.getDeclaredMethods()) {
+            if (method.getAnnotation(TruffleCallBoundary.class) != null) {
+                CompilationResult compResult = compileMethod(method);
+                CodeCacheProvider codeCache = providers.getCodeCache();
+                try (Scope s = Debug.scope("CodeInstall", codeCache, method)) {
+                    codeCache.setDefaultMethod(method, compResult);
+                }
+            }
         }
-    }
-
-    private static Method getCallMethod() {
-        Method method;
-        try {
-            method = HotSpotOptimizedCallTarget.class.getDeclaredMethod("call", new Class[]{Object[].class});
-        } catch (NoSuchMethodException | SecurityException e) {
-            throw GraalInternalError.shouldNotReachHere();
-        }
-        return method;
     }
 
     private static CompilationResultBuilderFactory getOptimizedCallTargetInstrumentationFactory(String arch, ResolvedJavaMethod method) {

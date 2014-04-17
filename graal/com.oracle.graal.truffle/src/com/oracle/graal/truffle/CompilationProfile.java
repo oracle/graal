@@ -59,6 +59,11 @@ public class CompilationProfile {
         this.name = name;
     }
 
+    @Override
+    public String toString() {
+        return String.format("CompilationProfile(callCount=%d/%d, callAndLoopCount=%d/%d)", callCount, compilationCallThreshold, callAndLoopCount, compilationCallAndLoopThreshold);
+    }
+
     public Map<String, Object> getDebugProperties() {
         Map<String, Object> properties = new LinkedHashMap<>();
         String callsThreshold = String.format("%7d/%5d", getCallCount(), getCompilationCallThreshold());

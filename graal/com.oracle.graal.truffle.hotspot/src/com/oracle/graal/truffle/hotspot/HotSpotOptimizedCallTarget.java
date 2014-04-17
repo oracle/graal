@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.truffle.hotspot;
 
+import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 import static com.oracle.graal.truffle.TruffleCompilerOptions.*;
 import static com.oracle.graal.truffle.OptimizedCallTargetLog.*;
 
@@ -53,31 +54,29 @@ public final class HotSpotOptimizedCallTarget extends OptimizedCallTarget {
     }
 
     public boolean isOptimized() {
-        return installedCode != null || installedCodeTask != null;
+        return isValid() || installedCodeTask != null;
     }
 
-    @CompilerDirectives.SlowPath
     @Override
-    public Object call(Object[] args) {
-        return CompilerDirectives.inInterpreter() ? callHelper(args) : executeHelper(args);
+    public Object call(Object... args) {
+        return callBoundary(args);
     }
 
-    private Object callHelper(Object[] args) {
-        if (installedCode != null && installedCode.isValid()) {
+    @TruffleCallBoundary
+    private Object callBoundary(Object[] args) {
+        if (CompilerDirectives.inInterpreter()) {
+            return compiledCallFallback(args);
+        } else {
+            // We come here from compiled code (i.e., we have been inlined).
+            return executeHelper(args);
+        }
+    }
+
+    private Object compiledCallFallback(Object[] args) {
+        if (isValid()) {
             reinstallCallMethodShortcut();
         }
-        if (TruffleCallTargetProfiling.getValue()) {
-            callCount++;
-        }
-        if (CompilerDirectives.injectBranchProbability(CompilerDirectives.FASTPATH_PROBABILITY, installedCode != null)) {
-            try {
-                return installedCode.executeVarargs(new Object[]{this, args});
-            } catch (InvalidInstalledCodeException ex) {
-                return compiledCodeInvalidated(args);
-            }
-        } else {
-            return interpreterCall(args);
-        }
+        return interpreterCall(args);
     }
 
     private static void reinstallCallMethodShortcut() {
@@ -87,17 +86,21 @@ public final class HotSpotOptimizedCallTarget extends OptimizedCallTarget {
         HotSpotTruffleRuntime.installOptimizedCallTargetCallMethod();
     }
 
-    private Object compiledCodeInvalidated(Object[] args) {
-        invalidate(null, null, "Compiled code invalidated");
-        return call(args);
+    @Override
+    public void invalidate() {
+        runtime().getCompilerToVM().invalidateInstalledCode(this);
+    }
+
+    @Override
+    public Object executeVarargs(Object... args) throws InvalidInstalledCodeException {
+        return runtime().getCompilerToVM().executeCompiledMethodVarargs(args, this);
     }
 
     @Override
     protected void invalidate(Node oldNode, Node newNode, CharSequence reason) {
-        InstalledCode m = this.installedCode;
-        if (m != null) {
+        if (isValid()) {
             CompilerAsserts.neverPartOfCompilation();
-            installedCode = null;
+            invalidate();
             compilationProfile.reportInvalidated();
             logOptimizedInvalidated(this, oldNode, newNode, reason);
         }
@@ -117,15 +120,16 @@ public final class HotSpotOptimizedCallTarget extends OptimizedCallTarget {
     private Object interpreterCall(Object[] args) {
         CompilerAsserts.neverPartOfCompilation();
         compilationProfile.reportInterpreterCall();
+        if (TruffleCallTargetProfiling.getValue()) {
+            callCount++;
+        }
 
         if (compilationEnabled && compilationPolicy.shouldCompile(compilationProfile)) {
-            InstalledCode code = compile();
-            if (code != null && code.isValid()) {
-                this.installedCode = code;
+            compile();
+            if (isValid()) {
                 try {
-                    return code.executeVarargs(new Object[]{this, args});
+                    return executeVarargs(new Object[]{this, args});
                 } catch (InvalidInstalledCodeException ex) {
-                    return compiledCodeInvalidated(args);
                 }
             }
         }
@@ -135,7 +139,7 @@ public final class HotSpotOptimizedCallTarget extends OptimizedCallTarget {
     private boolean isCompiling() {
         Future<InstalledCode> codeTask = this.installedCodeTask;
         if (codeTask != null) {
-            if (codeTask.isCancelled()) {
+            if (codeTask.isCancelled() || codeTask.isDone()) {
                 installedCodeTask = null;
                 return false;
             }
@@ -145,20 +149,14 @@ public final class HotSpotOptimizedCallTarget extends OptimizedCallTarget {
     }
 
     @Override
-    public InstalledCode compile() {
-        if (isCompiling()) {
-            if (installedCodeTask.isDone()) {
-                return receiveInstalledCode();
-            }
-            return null;
-        } else {
+    public void compile() {
+        if (!isCompiling()) {
             performInlining();
             logOptimizingQueued(this);
             this.installedCodeTask = compiler.compile(this);
             if (!TruffleBackgroundCompilation.getValue()) {
-                return receiveInstalledCode();
+                receiveInstalledCode();
             }
-            return null;
         }
     }
 

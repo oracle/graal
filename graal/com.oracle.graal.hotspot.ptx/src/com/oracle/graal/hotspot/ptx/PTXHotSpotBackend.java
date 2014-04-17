@@ -36,6 +36,7 @@ import com.oracle.graal.api.code.CallingConvention.Type;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
 import com.oracle.graal.asm.ptx.*;
+import com.oracle.graal.cfg.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
@@ -52,7 +53,6 @@ import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.ptx.*;
 import com.oracle.graal.lir.ptx.PTXMemOp.LoadReturnAddrOp;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.tiers.*;
@@ -339,7 +339,7 @@ public class PTXHotSpotBackend extends HotSpotBackend {
         Assembler masm = createAssembler(frameMap);
         PTXFrameContext frameContext = new PTXFrameContext();
         CompilationResultBuilder crb = factory.createBuilder(getCodeCache(), getForeignCalls(), frameMap, masm, frameContext, compilationResult);
-        crb.setFrameSize(0);
+        crb.setTotalFrameSize(0);
         return crb;
     }
 

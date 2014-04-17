@@ -20,39 +20,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes.cfg;
+package com.oracle.graal.truffle;
 
-import java.util.*;
+import java.lang.annotation.*;
 
-public interface AbstractBlock<T extends AbstractBlock<T>> {
+@Retention(RetentionPolicy.RUNTIME)
+@Target(ElementType.METHOD)
+public @interface TruffleCallBoundary {
 
-    int getId();
-
-    Loop<T> getLoop();
-
-    int getLoopDepth();
-
-    boolean isLoopHeader();
-
-    boolean isLoopEnd();
-
-    boolean isExceptionEntry();
-
-    List<T> getPredecessors();
-
-    int getPredecessorCount();
-
-    List<T> getSuccessors();
-
-    int getSuccessorCount();
-
-    int getLinearScanNumber();
-
-    void setLinearScanNumber(int linearScanNumber);
-
-    boolean isAligned();
-
-    void setAlign(boolean align);
-
-    T getDominator();
 }

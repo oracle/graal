@@ -196,7 +196,7 @@ public abstract class HotSpotCodeCacheProvider implements CodeCacheProvider {
         return runtime.getConfig().runtimeCallStackSize;
     }
 
-    public HotSpotInstalledCode logOrDump(HotSpotInstalledCode installedCode, CompilationResult compResult) {
+    public InstalledCode logOrDump(InstalledCode installedCode, CompilationResult compResult) {
         if (Debug.isDumpEnabled()) {
             Debug.dump(new Object[]{compResult, installedCode}, "After code installation");
         }
@@ -206,7 +206,7 @@ public abstract class HotSpotCodeCacheProvider implements CodeCacheProvider {
         return installedCode;
     }
 
-    public HotSpotInstalledCode installMethod(HotSpotResolvedJavaMethod method, CompilationResult compResult) {
+    public InstalledCode installMethod(HotSpotResolvedJavaMethod method, CompilationResult compResult) {
         if (compResult.getId() == -1) {
             compResult.setId(method.allocateCompileId(compResult.getEntryBCI()));
         }
@@ -216,17 +216,21 @@ public abstract class HotSpotCodeCacheProvider implements CodeCacheProvider {
     }
 
     @Override
-    public InstalledCode addMethod(ResolvedJavaMethod method, CompilationResult compResult, SpeculationLog log) {
+    public InstalledCode addMethod(ResolvedJavaMethod method, CompilationResult compResult, SpeculationLog log, InstalledCode predefinedInstalledCode) {
         HotSpotResolvedJavaMethod hotspotMethod = (HotSpotResolvedJavaMethod) method;
         if (compResult.getId() == -1) {
             compResult.setId(hotspotMethod.allocateCompileId(compResult.getEntryBCI()));
         }
-        HotSpotInstalledCode code = new HotSpotNmethod(hotspotMethod, compResult.getName(), false);
-        CodeInstallResult result = runtime.getCompilerToVM().installCode(new HotSpotCompiledNmethod(target, hotspotMethod, compResult), code, log);
+        InstalledCode installedCode = predefinedInstalledCode;
+        if (installedCode == null) {
+            HotSpotInstalledCode code = new HotSpotNmethod(hotspotMethod, compResult.getName(), false);
+            installedCode = code;
+        }
+        CodeInstallResult result = runtime.getCompilerToVM().installCode(new HotSpotCompiledNmethod(target, hotspotMethod, compResult), installedCode, log);
         if (result != CodeInstallResult.OK) {
             return null;
         }
-        return logOrDump(code, compResult);
+        return logOrDump(installedCode, compResult);
     }
 
     @Override
@@ -273,7 +277,7 @@ public abstract class HotSpotCodeCacheProvider implements CodeCacheProvider {
 
     public String disassemble(InstalledCode code) {
         if (code.isValid()) {
-            long codeBlob = ((HotSpotInstalledCode) code).getCodeBlob();
+            long codeBlob = ((HotSpotInstalledCode) code).getAddress();
             return runtime.getCompilerToVM().disassembleCodeBlob(codeBlob);
         }
         return null;

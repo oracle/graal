@@ -33,17 +33,15 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.debug.*;
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.frame.*;
-import com.oracle.truffle.api.impl.*;
 import com.oracle.truffle.api.nodes.*;
 
 /**
  * Call target that is optimized by Graal upon surpassing a specific invocation threshold.
  */
-public abstract class OptimizedCallTarget extends DefaultCallTarget implements LoopCountReceiver, ReplaceObserver {
+public abstract class OptimizedCallTarget extends InstalledCode implements RootCallTarget, LoopCountReceiver, ReplaceObserver {
 
     protected static final PrintStream OUT = TTY.out().out();
 
-    protected InstalledCode installedCode;
     protected boolean compilationEnabled;
     protected int callCount;
     protected boolean inliningPerformed;
@@ -52,13 +50,30 @@ public abstract class OptimizedCallTarget extends DefaultCallTarget implements L
     private OptimizedCallTarget splitSource;
     private final AtomicInteger callSitesKnown = new AtomicInteger(0);
 
+    private final RootNode rootNode;
+
+    public final RootNode getRootNode() {
+        return rootNode;
+    }
+
     public OptimizedCallTarget(RootNode rootNode, int invokeCounter, int compilationThreshold, boolean compilationEnabled, CompilationPolicy compilationPolicy) {
-        super(rootNode);
+        this.rootNode = rootNode;
+        this.rootNode.adoptChildren();
+        this.rootNode.setCallTarget(this);
         this.compilationEnabled = compilationEnabled;
         this.compilationPolicy = compilationPolicy;
         this.compilationProfile = new CompilationProfile(compilationThreshold, invokeCounter, rootNode.toString());
         if (TruffleCallTargetProfiling.getValue()) {
             registerCallTarget(this);
+        }
+    }
+
+    protected final Object callProxy(VirtualFrame frame) {
+        try {
+            return getRootNode().execute(frame);
+        } finally {
+            // this assertion is needed to keep the values from being cleared as non-live locals
+            assert frame != null && this != null;
         }
     }
 
@@ -84,8 +99,8 @@ public abstract class OptimizedCallTarget extends DefaultCallTarget implements L
 
     @Override
     public String toString() {
-        String superString = super.toString();
-        if (installedCode != null) {
+        String superString = rootNode.toString();
+        if (isValid()) {
             superString += " <compiled>";
         }
         if (splitSource != null) {
@@ -99,9 +114,9 @@ public abstract class OptimizedCallTarget extends DefaultCallTarget implements L
     }
 
     @Override
-    public abstract Object call(Object[] args);
+    public abstract Object call(Object... args);
 
-    public abstract InstalledCode compile();
+    public abstract void compile();
 
     public final Object callInlined(Object[] arguments) {
         if (CompilerDirectives.inInterpreter()) {

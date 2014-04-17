@@ -25,7 +25,6 @@ package com.oracle.graal.compiler.hsail;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.gen.*;
-import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.hsail.*;
@@ -60,11 +59,6 @@ public abstract class HSAILNodeLIRBuilder extends NodeLIRBuilder {
     @Override
     public void visitBreakpointNode(BreakpointNode node) {
         throw GraalInternalError.unimplemented();
-    }
-
-    @Override
-    public void visitSafepointNode(SafepointNode i) {
-        Debug.log("visitSafePointNode unimplemented");
     }
 
     @Override
