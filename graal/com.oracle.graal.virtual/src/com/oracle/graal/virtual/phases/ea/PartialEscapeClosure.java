@@ -133,78 +133,75 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
     }
 
     private void processNodeWithState(NodeWithState nodeWithState, final BlockT state, final GraphEffectList effects) {
-        for (Node input : nodeWithState.asNode().inputs()) {
-            if (input instanceof FrameState) {
-                FrameState frameState = (FrameState) input;
-                if (frameState.usages().count() > 1) {
-                    FrameState copy = (FrameState) frameState.copyWithInputs();
-                    nodeWithState.asNode().replaceFirstInput(frameState, copy);
-                    frameState = copy;
-                }
-                final Set<ObjectState> virtual = new ArraySet<>();
-                frameState.applyToNonVirtual(new NodeClosure<ValueNode>() {
+        for (FrameState frameState : nodeWithState.states()) {
+            if (frameState.usages().count() > 1) {
+                FrameState copy = (FrameState) frameState.copyWithInputs();
+                nodeWithState.asNode().replaceFirstInput(frameState, copy);
+                frameState = copy;
+            }
+            final Set<ObjectState> virtual = new ArraySet<>();
+            frameState.applyToNonVirtual(new NodeClosure<ValueNode>() {
 
-                    @Override
-                    public void apply(Node usage, ValueNode value) {
-                        ObjectState valueObj = getObjectState(state, value);
+                @Override
+                public void apply(Node usage, ValueNode value) {
+                    ObjectState valueObj = getObjectState(state, value);
+                    if (valueObj != null) {
+                        virtual.add(valueObj);
+                        effects.replaceFirstInput(usage, value, valueObj.virtual);
+                    } else if (value instanceof VirtualObjectNode) {
+                        ObjectState virtualObj = null;
+                        for (ObjectState obj : state.getStates()) {
+                            if (value == obj.virtual) {
+                                virtualObj = obj;
+                                break;
+                            }
+                        }
+                        if (virtualObj != null) {
+                            virtual.add(virtualObj);
+                        }
+                    }
+                }
+            });
+            for (ObjectState obj : state.getStates()) {
+                if (obj.isVirtual() && obj.hasLocks()) {
+                    virtual.add(obj);
+                }
+            }
+
+            ArrayDeque<ObjectState> queue = new ArrayDeque<>(virtual);
+            while (!queue.isEmpty()) {
+                ObjectState obj = queue.removeLast();
+                if (obj.isVirtual()) {
+                    for (ValueNode field : obj.getEntries()) {
+                        if (field instanceof VirtualObjectNode) {
+                            ObjectState fieldObj = state.getObjectState((VirtualObjectNode) field);
+                            if (fieldObj.isVirtual() && !virtual.contains(fieldObj)) {
+                                virtual.add(fieldObj);
+                                queue.addLast(fieldObj);
+                            }
+                        }
+                    }
+                }
+            }
+            for (ObjectState obj : virtual) {
+                EscapeObjectState v;
+                if (obj.isVirtual()) {
+                    ValueNode[] fieldState = obj.getEntries().clone();
+                    for (int i = 0; i < fieldState.length; i++) {
+                        ObjectState valueObj = getObjectState(state, fieldState[i]);
                         if (valueObj != null) {
-                            virtual.add(valueObj);
-                            effects.replaceFirstInput(usage, value, valueObj.virtual);
-                        } else if (value instanceof VirtualObjectNode) {
-                            ObjectState virtualObj = null;
-                            for (ObjectState obj : state.getStates()) {
-                                if (value == obj.virtual) {
-                                    virtualObj = obj;
-                                    break;
-                                }
-                            }
-                            if (virtualObj != null) {
-                                virtual.add(virtualObj);
+                            if (valueObj.isVirtual()) {
+                                fieldState[i] = valueObj.virtual;
+                            } else {
+                                fieldState[i] = valueObj.getMaterializedValue();
                             }
                         }
                     }
-                });
-                for (ObjectState obj : state.getStates()) {
-                    if (obj.isVirtual() && obj.hasLocks()) {
-                        virtual.add(obj);
-                    }
+                    v = new VirtualObjectState(obj.virtual, fieldState);
+                } else {
+                    v = new MaterializedObjectState(obj.virtual, obj.getMaterializedValue());
                 }
-
-                ArrayDeque<ObjectState> queue = new ArrayDeque<>(virtual);
-                while (!queue.isEmpty()) {
-                    ObjectState obj = queue.removeLast();
-                    if (obj.isVirtual()) {
-                        for (ValueNode field : obj.getEntries()) {
-                            if (field instanceof VirtualObjectNode) {
-                                ObjectState fieldObj = state.getObjectState((VirtualObjectNode) field);
-                                if (fieldObj.isVirtual() && !virtual.contains(fieldObj)) {
-                                    virtual.add(fieldObj);
-                                    queue.addLast(fieldObj);
-                                }
-                            }
-                        }
-                    }
-                }
-                for (ObjectState obj : virtual) {
-                    EscapeObjectState v;
-                    if (obj.isVirtual()) {
-                        ValueNode[] fieldState = obj.getEntries().clone();
-                        for (int i = 0; i < fieldState.length; i++) {
-                            ObjectState valueObj = getObjectState(state, fieldState[i]);
-                            if (valueObj != null) {
-                                if (valueObj.isVirtual()) {
-                                    fieldState[i] = valueObj.virtual;
-                                } else {
-                                    fieldState[i] = valueObj.getMaterializedValue();
-                                }
-                            }
-                        }
-                        v = new VirtualObjectState(obj.virtual, fieldState);
-                    } else {
-                        v = new MaterializedObjectState(obj.virtual, obj.getMaterializedValue());
-                    }
-                    effects.addVirtualMapping(frameState, v);
-                }
+                effects.addVirtualMapping(frameState, v);
             }
         }
     }

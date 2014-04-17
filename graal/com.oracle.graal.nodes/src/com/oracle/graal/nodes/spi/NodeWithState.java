@@ -23,6 +23,7 @@
 package com.oracle.graal.nodes.spi;
 
 import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.nodes.*;
 
 /**
@@ -31,4 +32,8 @@ import com.oracle.graal.nodes.*;
 public interface NodeWithState {
 
     Node asNode();
+
+    default NodeIterable<FrameState> states() {
+        return asNode().inputs().filter(FrameState.class);
+    }
 }
