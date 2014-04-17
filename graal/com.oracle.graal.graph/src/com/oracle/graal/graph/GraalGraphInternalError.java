@@ -25,7 +25,7 @@ package com.oracle.graal.graph;
 import com.oracle.graal.compiler.common.*;
 
 /**
- * This error represents a conditions that should never occur during normal operation.
+ * This error is the graph/node aware extension of GraalInternalError.
  */
 public class GraalGraphInternalError extends GraalInternalError {
 
@@ -105,13 +105,13 @@ public class GraalGraphInternalError extends GraalInternalError {
     }
 
     /**
-     * Adds a graph to the context of the given GraalInternalError.
+     * Transform a GraalInternalError into a GraalGraphInternalError and add a graph to the context.
      *
      * @param e the previous error
      * @param newGraph the graph which is in a incorrect state, if the verification error was not
      *            caused by a specific node
      */
-    public static GraalGraphInternalError addContext(GraalInternalError e, Graph newGraph) {
+    public static GraalGraphInternalError transformAndAddContext(GraalInternalError e, Graph newGraph) {
         GraalGraphInternalError graphError;
         if (e instanceof GraalGraphInternalError) {
             graphError = (GraalGraphInternalError) e;
@@ -122,13 +122,13 @@ public class GraalGraphInternalError extends GraalInternalError {
     }
 
     /**
-     * Adds a node to the context of the given GraalInternalError.
+     * Transform a GraalInternalError into a GraalGraphInternalError and add a node to the context.
      *
      * @param e the previous error
      * @param newNode the node which is in a incorrect state, if the verification error was caused
      *            by a node
      */
-    public static GraalGraphInternalError addContext(GraalInternalError e, Node newNode) {
+    public static GraalGraphInternalError transformAndAddContext(GraalInternalError e, Node newNode) {
         GraalGraphInternalError graphError;
         if (e instanceof GraalGraphInternalError) {
             graphError = (GraalGraphInternalError) e;

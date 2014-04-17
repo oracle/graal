@@ -64,7 +64,7 @@ public final class ComputeImmediateDominator {
             }
             return dominator;
         } catch (Throwable t) {
-            throw GraalGraphInternalError.addContext(new GraalInternalError(t).addContext("Could not find a dominator"), dominated);
+            throw GraalGraphInternalError.transformAndAddContext(new GraalInternalError(t).addContext("Could not find a dominator"), dominated);
         }
     }
 

@@ -840,7 +840,7 @@ public class Graph {
                     throw new GraalInternalError(t);
                 }
             } catch (GraalInternalError e) {
-                throw GraalGraphInternalError.addContext(e, node).addContext(this);
+                throw GraalGraphInternalError.transformAndAddContext(e, node).addContext(this);
             }
         }
         return true;

@@ -121,7 +121,7 @@ public final class GraphOrder {
                 }
             }
         } catch (GraalInternalError e) {
-            throw GraalGraphInternalError.addContext(e, node);
+            throw GraalGraphInternalError.transformAndAddContext(e, node);
         }
     }
 

@@ -214,7 +214,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool {
                             try {
                                 doRoot((ValueNode) instr);
                             } catch (GraalInternalError e) {
-                                throw GraalGraphInternalError.addContext(e, instr);
+                                throw GraalGraphInternalError.transformAndAddContext(e, instr);
                             } catch (Throwable e) {
                                 throw new GraalGraphInternalError(e).addContext(instr);
                             }
