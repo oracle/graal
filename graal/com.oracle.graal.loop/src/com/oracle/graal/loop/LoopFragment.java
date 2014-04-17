@@ -31,6 +31,7 @@ import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.java.*;
+import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.virtual.*;
 
 public abstract class LoopFragment {
@@ -164,11 +165,9 @@ public abstract class LoopFragment {
                 if (n instanceof Invoke) {
                     nodes.mark(((Invoke) n).callTarget());
                 }
-                if (n instanceof StateSplit) {
-                    FrameState stateAfter = ((StateSplit) n).stateAfter();
-                    if (stateAfter != null) {
-                        stateAfter.applyToVirtual(node -> nodes.mark(node));
-                    }
+                if (n instanceof NodeWithState) {
+                    NodeWithState withState = (NodeWithState) n;
+                    withState.states().forEach(state -> state.applyToVirtual(node -> nodes.mark(node)));
                 }
                 nodes.mark(n);
             }
@@ -334,7 +333,7 @@ public abstract class LoopFragment {
                  * VirtualState nodes contained in the old exit's state may be shared by other
                  * dominated VirtualStates. Those dominated virtual states need to see the
                  * proxy->phi update that are applied below.
-                 * 
+                 *
                  * We now update the original fragment's nodes accordingly:
                  */
                 state.applyToVirtual(node -> original.nodes.clear(node));
