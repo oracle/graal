@@ -180,4 +180,6 @@ public class CompilerToVMImpl implements CompilerToVM {
     public native void materializeVirtualObjects(HotSpotStackFrameReference stackFrame, boolean invalidate);
 
     public native long getTimeStamp();
+
+    public native void resolveInvokeDynamic(long metaspaceConstantPool, int index);
 }
