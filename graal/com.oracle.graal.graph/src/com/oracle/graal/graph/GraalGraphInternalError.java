@@ -29,7 +29,7 @@ import com.oracle.graal.compiler.common.*;
  */
 public class GraalGraphInternalError extends GraalInternalError {
 
-    private static final long serialVersionUID = 8776065085829593278L;
+    private static final long serialVersionUID = -989290015525497919L;
     private Node node;
     private Graph graph;
 

@@ -29,7 +29,7 @@ import java.util.*;
  */
 public class GraalInternalError extends Error {
 
-    private static final long serialVersionUID = 8776065085829593278L;
+    private static final long serialVersionUID = 531632331813456233L;
     private final ArrayList<String> context = new ArrayList<>();
 
     public static RuntimeException unimplemented() {
