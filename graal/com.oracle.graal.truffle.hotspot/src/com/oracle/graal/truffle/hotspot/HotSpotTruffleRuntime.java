@@ -38,6 +38,7 @@ import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
+import com.oracle.graal.hotspot.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.nodes.*;
@@ -103,7 +104,13 @@ public final class HotSpotTruffleRuntime implements GraalTruffleRuntime {
     }
 
     public RootCallTarget createCallTarget(RootNode rootNode) {
-        return new HotSpotOptimizedCallTarget(rootNode, this, TruffleMinInvokeThreshold.getValue(), TruffleCompilationThreshold.getValue(), acceptForCompilation(rootNode));
+        CompilationPolicy compilationPolicy;
+        if (acceptForCompilation(rootNode)) {
+            compilationPolicy = new CounterBasedCompilationPolicy();
+        } else {
+            compilationPolicy = new InterpreterOnlyCompilationPolicy();
+        }
+        return new HotSpotOptimizedCallTarget(rootNode, this, TruffleMinInvokeThreshold.getValue(), TruffleCompilationThreshold.getValue(), compilationPolicy);
     }
 
     public DirectCallNode createDirectCallNode(CallTarget target) {
@@ -323,5 +330,9 @@ public final class HotSpotTruffleRuntime implements GraalTruffleRuntime {
             return true;
         }
         return false;
+    }
+
+    public void invalidateInstalledCode(OptimizedCallTarget optimizedCallTarget) {
+        HotSpotGraalRuntime.runtime().getCompilerToVM().invalidateInstalledCode(optimizedCallTarget);
     }
 }

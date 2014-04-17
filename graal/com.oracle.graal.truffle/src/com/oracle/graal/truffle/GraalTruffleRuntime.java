@@ -34,4 +34,6 @@ public interface GraalTruffleRuntime extends TruffleRuntime {
     boolean cancelInstalledTask(OptimizedCallTarget optimizedCallTarget);
 
     boolean isCompiling(OptimizedCallTarget optimizedCallTarget);
+
+    void invalidateInstalledCode(OptimizedCallTarget optimizedCallTarget);
 }

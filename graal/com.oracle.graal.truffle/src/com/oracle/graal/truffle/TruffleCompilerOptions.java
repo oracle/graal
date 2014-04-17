@@ -72,8 +72,6 @@ public class TruffleCompilerOptions {
     @Option(help = "Enable asynchronous truffle compilation in background thread")
     public static final OptionValue<Boolean> TruffleBackgroundCompilation = new OptionValue<>(true);
     @Option(help = "")
-    public static final OptionValue<Boolean> TruffleUseTimeForCompilationDecision = new OptionValue<>(false);
-    @Option(help = "")
     public static final OptionValue<Integer> TruffleCompilationDecisionTime = new OptionValue<>(100);
     @Option(help = "")
     public static final OptionValue<Boolean> TruffleCompilationDecisionTimePrintFail = new OptionValue<>(false);

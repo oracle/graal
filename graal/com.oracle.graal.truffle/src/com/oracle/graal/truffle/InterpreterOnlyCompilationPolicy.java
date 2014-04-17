@@ -22,10 +22,13 @@
  */
 package com.oracle.graal.truffle;
 
-public class DefaultCompilationPolicy implements CompilationPolicy {
+public class InterpreterOnlyCompilationPolicy implements CompilationPolicy {
 
     public boolean shouldCompile(CompilationProfile profile) {
-        return profile.getCallCount() >= profile.getCompilationCallThreshold() && profile.getCallAndLoopCount() >= profile.getCompilationCallAndLoopThreshold();
+        return false;
+    }
+
+    public void recordCompilationFailure(Throwable t) {
     }
 
 }

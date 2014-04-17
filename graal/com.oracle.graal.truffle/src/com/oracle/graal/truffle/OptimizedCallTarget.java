@@ -42,7 +42,6 @@ public abstract class OptimizedCallTarget extends InstalledCode implements RootC
 
     protected static final PrintStream OUT = TTY.out().out();
 
-    protected boolean compilationEnabled;
     protected int callCount;
     protected boolean inliningPerformed;
     protected final CompilationProfile compilationProfile;
@@ -56,11 +55,10 @@ public abstract class OptimizedCallTarget extends InstalledCode implements RootC
         return rootNode;
     }
 
-    public OptimizedCallTarget(RootNode rootNode, int invokeCounter, int compilationThreshold, boolean compilationEnabled, CompilationPolicy compilationPolicy) {
+    public OptimizedCallTarget(RootNode rootNode, int invokeCounter, int compilationThreshold, CompilationPolicy compilationPolicy) {
         this.rootNode = rootNode;
         this.rootNode.adoptChildren();
         this.rootNode.setCallTarget(this);
-        this.compilationEnabled = compilationEnabled;
         this.compilationPolicy = compilationPolicy;
         this.compilationProfile = new CompilationProfile(compilationThreshold, invokeCounter, rootNode.toString());
         if (TruffleCallTargetProfiling.getValue()) {

@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.truffle.hotspot;
 
-import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 import static com.oracle.graal.truffle.TruffleCompilerOptions.*;
 import static com.oracle.graal.truffle.OptimizedCallTargetLog.*;
 
@@ -40,8 +39,8 @@ public final class HotSpotOptimizedCallTarget extends OptimizedCallTarget {
     protected final GraalTruffleRuntime runtime;
     private SpeculationLog speculationLog = new HotSpotSpeculationLog();
 
-    HotSpotOptimizedCallTarget(RootNode rootNode, GraalTruffleRuntime runtime, int invokeCounter, int compilationThreshold, boolean compilationEnabled) {
-        super(rootNode, invokeCounter, compilationThreshold, compilationEnabled, TruffleUseTimeForCompilationDecision.getValue() ? new TimedCompilationPolicy() : new DefaultCompilationPolicy());
+    HotSpotOptimizedCallTarget(RootNode rootNode, GraalTruffleRuntime runtime, int invokeCounter, int compilationThreshold, CompilationPolicy compilationPolicy) {
+        super(rootNode, invokeCounter, compilationThreshold, compilationPolicy);
         this.runtime = runtime;
     }
 
@@ -81,12 +80,7 @@ public final class HotSpotOptimizedCallTarget extends OptimizedCallTarget {
 
     @Override
     public void invalidate() {
-        runtime().getCompilerToVM().invalidateInstalledCode(this);
-    }
-
-    @Override
-    public Object executeVarargs(Object... args) throws InvalidInstalledCodeException {
-        return runtime().getCompilerToVM().executeCompiledMethodVarargs(args, this);
+        this.runtime.invalidateInstalledCode(this);
     }
 
     @Override
@@ -114,13 +108,10 @@ public final class HotSpotOptimizedCallTarget extends OptimizedCallTarget {
             callCount++;
         }
 
-        if (compilationEnabled && compilationPolicy.shouldCompile(compilationProfile)) {
+        if (compilationPolicy.shouldCompile(compilationProfile)) {
             compile();
             if (isValid()) {
-                try {
-                    return executeVarargs(new Object[]{this, args});
-                } catch (InvalidInstalledCodeException ex) {
-                }
+                return call(args);
             }
         }
         return executeHelper(args);
@@ -140,7 +131,7 @@ public final class HotSpotOptimizedCallTarget extends OptimizedCallTarget {
         if (t == null) {
             // Compilation was successful.
         } else {
-            compilationEnabled = false;
+            compilationPolicy.recordCompilationFailure(t);
             logOptimizingFailed(this, t.getMessage());
             if (t instanceof BailoutException) {
                 // Bailout => move on.

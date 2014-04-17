@@ -22,30 +22,16 @@
  */
 package com.oracle.graal.truffle;
 
-import static com.oracle.graal.truffle.TruffleCompilerOptions.*;
+public class CounterBasedCompilationPolicy implements CompilationPolicy {
 
-import java.io.*;
+    private boolean compilationFailed;
 
-public class TimedCompilationPolicy extends DefaultCompilationPolicy {
-
-    @Override
     public boolean shouldCompile(CompilationProfile profile) {
-        if (super.shouldCompile(profile)) {
-            long timestamp = System.nanoTime();
-            long prevTimestamp = profile.getPreviousTimestamp();
-            long timespan = (timestamp - prevTimestamp);
-            if (timespan < (TruffleCompilationDecisionTime.getValue())) {
-                return true;
-            }
-            // TODO shouldCompile should not modify the compilation profile
-            // maybe introduce another method?
-            profile.reportTiminingFailed(timestamp);
-            if (TruffleCompilationDecisionTimePrintFail.getValue()) {
-                PrintStream out = System.out;
-                out.println(profile.getName() + ": timespan  " + (timespan / 1000000) + " ms  larger than threshold");
-            }
-        }
-        return false;
+        return !compilationFailed && profile.getCallCount() >= profile.getCompilationCallThreshold() && profile.getCallAndLoopCount() >= profile.getCompilationCallAndLoopThreshold();
+    }
+
+    public void recordCompilationFailure(Throwable t) {
+        compilationFailed = true;
     }
 
 }
