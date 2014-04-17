@@ -132,6 +132,10 @@ public class MergeNode extends BeginStateSplitNode implements IterableNodeType, 
         return super.anchored().filter(n -> !isPhiAtMerge(n));
     }
 
+    /**
+     * This simplify method can deal with a null value for tool, so that it can be used outside of
+     * canonicalization.
+     */
     @Override
     public void simplify(SimplifierTool tool) {
         FixedNode next = next();
@@ -180,7 +184,9 @@ public class MergeNode extends BeginStateSplitNode implements IterableNodeType, 
                 this.removeEnd(end);
                 end.replaceAtPredecessor(newEnd);
                 end.safeDelete();
-                tool.addToWorkList(newEnd.predecessor()); // ?
+                if (tool != null) {
+                    tool.addToWorkList(newEnd.predecessor());
+                }
             }
             graph().reduceTrivialMerge(this);
         } else if (next instanceof ReturnNode) {
