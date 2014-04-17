@@ -20,11 +20,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes.type;
+package com.oracle.graal.compiler.common.type;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.compiler.common.spi.*;
 
 /**
  * A stamp is the basis for a type system over the nodes in a graph.
@@ -64,6 +63,7 @@ public abstract class Stamp {
      * @param other The stamp that will enlarge this stamp.
      * @return The union of this stamp and the given stamp.
      */
+    @SuppressWarnings("javadoc")
     public abstract Stamp meet(Stamp other);
 
     /**

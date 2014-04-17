@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.nodes;
 
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
-import com.oracle.graal.nodes.type.*;
 
 /**
  * The {@code ControlSplitNode} is a base class for all instructions that split the control flow

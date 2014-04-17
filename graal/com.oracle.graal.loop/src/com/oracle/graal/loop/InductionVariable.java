@@ -23,8 +23,8 @@
 package com.oracle.graal.loop;
 
 import com.oracle.graal.compiler.common.*;
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.type.*;
 
 /**
  * This class describes a value node that is an induction variable in a counted loop.

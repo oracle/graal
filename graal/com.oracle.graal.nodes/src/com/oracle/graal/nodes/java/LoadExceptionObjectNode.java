@@ -23,9 +23,9 @@
 package com.oracle.graal.nodes.java;
 
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
 
 /**
  * Loads an exception object passed by the runtime from a callee to an exception handler in a

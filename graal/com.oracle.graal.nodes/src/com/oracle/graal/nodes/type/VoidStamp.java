@@ -24,7 +24,8 @@ package com.oracle.graal.nodes.type;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
-import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.compiler.common.spi.*;
+import com.oracle.graal.compiler.common.type.*;
 
 /**
  * Singleton stamp representing the value of type {@code void}.
