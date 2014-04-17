@@ -90,7 +90,9 @@ public abstract class EffectsPhase<PhaseContextT extends PhaseContext> extends B
                         listener.getChangedNodes().add(node);
                     }
                 }
-                canonicalizer.applyIncremental(graph, context, listener.getChangedNodes());
+                if (canonicalizer != null) {
+                    canonicalizer.applyIncremental(graph, context, listener.getChangedNodes());
+                }
             }
             changed = true;
         }
