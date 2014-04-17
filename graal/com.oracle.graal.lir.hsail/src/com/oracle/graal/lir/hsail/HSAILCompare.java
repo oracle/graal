@@ -27,9 +27,9 @@ import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.hsail.*;
 import com.oracle.graal.compiler.common.*;
+import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
-import com.oracle.graal.nodes.calc.*;
 
 /**
  * Implementation of compare operations.

@@ -34,6 +34,7 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.amd64.*;
 import com.oracle.graal.compiler.common.*;
+import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.HotSpotVMConfig.CompressEncoding;
@@ -55,7 +56,6 @@ import com.oracle.graal.lir.amd64.AMD64Move.MoveToRegOp;
 import com.oracle.graal.lir.amd64.AMD64Move.StoreConstantOp;
 import com.oracle.graal.lir.amd64.AMD64Move.StoreOp;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 
 /**

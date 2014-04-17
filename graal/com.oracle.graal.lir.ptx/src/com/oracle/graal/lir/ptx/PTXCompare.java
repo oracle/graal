@@ -29,9 +29,9 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.ptx.*;
 import com.oracle.graal.asm.ptx.PTXAssembler.Setp;
 import com.oracle.graal.compiler.common.*;
+import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
-import com.oracle.graal.nodes.calc.*;
 
 public enum PTXCompare {
     ICMP,

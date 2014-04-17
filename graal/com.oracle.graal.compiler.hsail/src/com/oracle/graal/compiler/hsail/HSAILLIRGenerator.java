@@ -32,6 +32,7 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
 import com.oracle.graal.compiler.common.*;
+import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.JumpOp;
@@ -51,7 +52,6 @@ import com.oracle.graal.lir.hsail.HSAILMove.MembarOp;
 import com.oracle.graal.lir.hsail.HSAILMove.MoveFromRegOp;
 import com.oracle.graal.lir.hsail.HSAILMove.MoveToRegOp;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.calc.FloatConvertNode.FloatConvert;
 import com.oracle.graal.phases.util.*;
 

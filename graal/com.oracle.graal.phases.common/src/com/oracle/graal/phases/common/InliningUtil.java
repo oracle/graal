@@ -37,6 +37,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.meta.JavaTypeProfile.ProfiledType;
 import com.oracle.graal.api.meta.ResolvedJavaType.Representation;
 import com.oracle.graal.compiler.common.*;
+import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
