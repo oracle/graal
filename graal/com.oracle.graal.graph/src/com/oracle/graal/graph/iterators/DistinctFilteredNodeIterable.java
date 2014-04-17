@@ -39,6 +39,6 @@ public class DistinctFilteredNodeIterable<T extends Node> extends FilteredNodeIt
 
     @Override
     public Iterator<T> iterator() {
-        return new DistinctPredicatedProxyNodeIterator<>(until, nodeIterable.iterator(), predicate);
+        return new DistinctPredicatedProxyNodeIterator<>(nodeIterable.iterator(), predicate);
     }
 }

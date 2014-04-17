@@ -28,14 +28,6 @@ import com.oracle.graal.graph.*;
 
 public interface NodeIterable<T extends Node> extends Iterable<T> {
 
-    default NodeIterable<T> until(final T u) {
-        return new FilteredNodeIterable<>(this).until(u);
-    }
-
-    default NodeIterable<T> until(final Class<? extends T> clazz) {
-        return new FilteredNodeIterable<>(this).until(clazz);
-    }
-
     @SuppressWarnings("unchecked")
     default <F extends T> NodeIterable<F> filter(Class<F> clazz) {
         return (NodeIterable<F>) new FilteredNodeIterable<>(this).and(NodePredicates.isA(clazz));

@@ -30,8 +30,8 @@ public class DistinctPredicatedProxyNodeIterator<T extends Node> extends Predica
 
     private NodeBitMap visited;
 
-    public DistinctPredicatedProxyNodeIterator(NodePredicate until, Iterator<T> iterator, NodePredicate predicate) {
-        super(until, iterator, predicate);
+    public DistinctPredicatedProxyNodeIterator(Iterator<T> iterator, NodePredicate predicate) {
+        super(iterator, predicate);
     }
 
     @Override
