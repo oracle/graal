@@ -169,7 +169,7 @@ public abstract class GraalCompilerTest extends GraalTest {
     protected void assertEquals(StructuredGraph expected, StructuredGraph graph, boolean excludeVirtual, boolean checkConstants) {
         String expectedString = getCanonicalGraphString(expected, excludeVirtual, checkConstants);
         String actualString = getCanonicalGraphString(graph, excludeVirtual, checkConstants);
-        String mismatchString = "mismatch in graphs:\n========= expected =========\n" + expectedString + "\n\n========= actual =========\n" + actualString;
+        String mismatchString = "mismatch in graphs:\n========= expected (" + expected + ") =========\n" + expectedString + "\n\n========= actual (" + graph + ") =========\n" + actualString;
 
         if (!excludeVirtual && getNodeCountExcludingUnusedConstants(expected) != getNodeCountExcludingUnusedConstants(graph)) {
             Debug.dump(expected, "Node count not matching - expected");
