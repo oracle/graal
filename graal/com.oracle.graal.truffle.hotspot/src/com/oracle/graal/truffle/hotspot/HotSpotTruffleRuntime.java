@@ -315,7 +315,7 @@ public final class HotSpotTruffleRuntime implements GraalTruffleRuntime {
     public boolean cancelInstalledTask(OptimizedCallTarget optimizedCallTarget) {
         Future<?> codeTask = this.compilations.get(optimizedCallTarget);
         if (codeTask != null && isCompiling(optimizedCallTarget)) {
-            this.compilations.remove(codeTask);
+            this.compilations.remove(optimizedCallTarget);
             return codeTask.cancel(true);
         }
         return false;
