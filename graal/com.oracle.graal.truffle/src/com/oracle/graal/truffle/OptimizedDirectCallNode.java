@@ -62,12 +62,7 @@ public final class OptimizedDirectCallNode extends DirectCallNode implements Mat
             if (inlined) {
                 return ((OptimizedCallTarget) callTarget).callInlined(arguments);
             } else if (direct) {
-                Object result = ((OptimizedCallTarget) callTarget).call(arguments);
-                Class<?> klass = ((OptimizedCallTarget) callTarget).getProfiledReturnType();
-                if (klass != null) {
-                    result = CompilerDirectives.unsafeCast(result, klass, true, true);
-                }
-                return result;
+                return ((OptimizedCallTarget) callTarget).callDirect(arguments);
             } else {
                 return callTarget.call(arguments);
             }

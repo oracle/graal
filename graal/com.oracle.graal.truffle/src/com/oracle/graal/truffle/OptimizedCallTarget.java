@@ -60,17 +60,6 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
         return rootNode;
     }
 
-    public Class<?> getProfiledReturnType() {
-        Class<?> result = profiledReturnType;
-        if (result != null) {
-            try {
-                profiledReturnTypeAssumption.check();
-            } catch (InvalidAssumptionException e) {
-            }
-        }
-        return result;
-    }
-
     public OptimizedCallTarget(RootNode rootNode, GraalTruffleRuntime runtime, int invokeCounter, int compilationThreshold, CompilationPolicy compilationPolicy, SpeculationLog speculationLog) {
         this.runtime = runtime;
         this.speculationLog = speculationLog;
@@ -91,6 +80,15 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
     @Override
     public Object call(Object... args) {
         return callBoundary(args);
+    }
+
+    public Object callDirect(Object... args) {
+        Object result = callBoundary(args);
+        Class<?> klass = profiledReturnType;
+        if (klass != null && profiledReturnTypeAssumption.isValid()) {
+            result = CompilerDirectives.unsafeCast(result, klass, true, true);
+        }
+        return result;
     }
 
     @TruffleCallBoundary
