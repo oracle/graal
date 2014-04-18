@@ -94,7 +94,7 @@ public class GraalInternalError extends Error {
      * @param e the original GraalInternalError
      */
     public GraalInternalError(GraalInternalError e) {
-        super(e.getCause());
+        super(e);
         context.addAll(e.context);
     }
 
