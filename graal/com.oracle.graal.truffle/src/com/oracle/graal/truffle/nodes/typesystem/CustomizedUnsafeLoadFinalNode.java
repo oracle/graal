@@ -89,7 +89,7 @@ public class CustomizedUnsafeLoadFinalNode extends FixedWithNextNode implements 
     public void lower(LoweringTool tool) {
         CompareNode compare = CompareNode.createCompareNode(graph(), Condition.EQ, condition, ConstantNode.forBoolean(true, graph()));
         LocationIdentity locationIdentity;
-        if (location.asConstant().isNull()) {
+        if (!location.isConstant() || location.asConstant().isNull()) {
             locationIdentity = LocationIdentity.ANY_LOCATION;
         } else {
             locationIdentity = ObjectLocationIdentity.create(location.asConstant());
