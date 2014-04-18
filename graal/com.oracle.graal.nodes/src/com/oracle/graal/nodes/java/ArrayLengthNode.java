@@ -63,11 +63,16 @@ public final class ArrayLengthNode extends FixedWithNextNode implements Canonica
     public static ValueNode readArrayLength(StructuredGraph graph, ValueNode originalArray, ConstantReflectionProvider constantReflection) {
         ArrayLengthProvider foundArrayLengthProvider = null;
         ValueNode result = originalArray;
-        while (result instanceof ValueProxy) {
+        while (true) {
             if (result instanceof ArrayLengthProvider) {
                 foundArrayLengthProvider = (ArrayLengthProvider) result;
+                break;
             }
-            result = ((ValueProxy) result).getOriginalNode();
+            if (result instanceof ValueProxy) {
+                result = ((ValueProxy) result).getOriginalNode();
+            } else {
+                break;
+            }
         }
 
         if (foundArrayLengthProvider != null) {
