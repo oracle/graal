@@ -51,6 +51,7 @@ import com.oracle.graal.lir.LIRInstruction.ValueProcedure;
 import com.oracle.graal.lir.StandardOp.LabelOp;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.ptx.*;
+import com.oracle.graal.lir.ptx.PTXControlFlow.PTXPredicatedLIRInstruction;
 import com.oracle.graal.lir.ptx.PTXMemOp.LoadReturnAddrOp;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.*;
@@ -409,12 +410,20 @@ public class PTXHotSpotBackend extends HotSpotBackend {
         assert codeCacheOwner != null : lir + " is not associated with a method";
 
         RegisterAnalysis registerAnalysis = new RegisterAnalysis();
+        // Assume no predicate registers are used
+        int maxPredRegNum = -1;
 
         for (AbstractBlock<?> b : lir.codeEmittingOrder()) {
             for (LIRInstruction op : lir.getLIRforBlock(b)) {
                 if (op instanceof LabelOp) {
                     // Don't consider this as a definition
                 } else {
+                    if (op instanceof PTXPredicatedLIRInstruction) {
+                        // Update maximum predicate register number if op uses a larger number
+                        int opPredRegNum = ((PTXPredicatedLIRInstruction) op).getPredRegNum();
+                        maxPredRegNum = (opPredRegNum > maxPredRegNum) ? opPredRegNum : maxPredRegNum;
+                    }
+                    // Record registers used in the kernel
                     registerAnalysis.op = op;
                     op.forEachTemp(registerAnalysis);
                     op.forEachOutput(registerAnalysis);
@@ -422,13 +431,13 @@ public class PTXHotSpotBackend extends HotSpotBackend {
             }
         }
 
+        // Emit register declarations
         Assembler asm = crb.asm;
         registerAnalysis.emitDeclarations(asm);
 
         // emit predicate register declaration
-        int maxPredRegNum = lir.numVariables();
-        if (maxPredRegNum > 0) {
-            asm.emitString(".reg .pred %p<" + maxPredRegNum + ">;");
+        if (maxPredRegNum > -1) {
+            asm.emitString(".reg .pred %p<" + ++maxPredRegNum + ">;");
         }
     }
 

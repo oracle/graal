@@ -42,6 +42,18 @@ import com.oracle.graal.lir.asm.*;
 
 public class PTXControlFlow {
 
+    public static abstract class PTXPredicatedLIRInstruction extends PTXLIRInstruction {
+        private int predRegNum;
+
+        PTXPredicatedLIRInstruction(int regNum) {
+            predRegNum = regNum;
+        }
+
+        public int getPredRegNum() {
+            return predRegNum;
+        }
+    }
+
     public static class ReturnOp extends PTXLIRInstruction {
 
         @Use({REG, ILLEGAL}) protected Value x;
@@ -69,26 +81,25 @@ public class PTXControlFlow {
         }
     }
 
-    public static class BranchOp extends PTXLIRInstruction implements StandardOp.BranchOp {
+    public static class BranchOp extends PTXPredicatedLIRInstruction implements StandardOp.BranchOp {
 
         protected final Condition condition;
         protected final LabelRef trueDestination;
         protected final LabelRef falseDestination;
-        protected int predRegNum;
 
         public BranchOp(Condition condition, LabelRef trueDestination, LabelRef falseDestination, int predReg) {
+            super(predReg);
             this.condition = condition;
             this.trueDestination = trueDestination;
             this.falseDestination = falseDestination;
-            this.predRegNum = predReg;
         }
 
         @Override
         public void emitCode(CompilationResultBuilder crb, PTXMacroAssembler masm) {
             if (crb.isSuccessorEdge(trueDestination)) {
-                masm.bra(masm.nameOf(falseDestination.label()), predRegNum, false);
+                masm.bra(masm.nameOf(falseDestination.label()), getPredRegNum(), false);
             } else {
-                masm.bra(masm.nameOf(trueDestination.label()), predRegNum, true);
+                masm.bra(masm.nameOf(trueDestination.label()), getPredRegNum(), true);
                 if (!crb.isSuccessorEdge(falseDestination)) {
                     masm.jmp(falseDestination.label());
                 }
@@ -96,49 +107,47 @@ public class PTXControlFlow {
         }
     }
 
-    public static class CondMoveOp extends PTXLIRInstruction {
+    public static class CondMoveOp extends PTXPredicatedLIRInstruction {
 
         @Def({REG, HINT}) protected Value result;
         @Alive({REG}) protected Value trueValue;
         @Use({REG, STACK, CONST}) protected Value falseValue;
         private final Condition condition;
-        private final int predicate;
 
         public CondMoveOp(Variable result, Condition condition, Variable trueValue, Value falseValue, int predicateRegister) {
+            super(predicateRegister);
             this.result = result;
             this.condition = condition;
             this.trueValue = trueValue;
             this.falseValue = falseValue;
-            this.predicate = predicateRegister;
         }
 
         @Override
         public void emitCode(CompilationResultBuilder crb, PTXMacroAssembler masm) {
-            cmove(crb, masm, result, false, condition, false, trueValue, falseValue, predicate);
+            cmove(crb, masm, result, false, condition, false, trueValue, falseValue, getPredRegNum());
         }
     }
 
-    public static class FloatCondMoveOp extends PTXLIRInstruction {
+    public static class FloatCondMoveOp extends PTXPredicatedLIRInstruction {
 
         @Def({REG}) protected Value result;
         @Alive({REG}) protected Value trueValue;
         @Alive({REG}) protected Value falseValue;
         private final Condition condition;
         private final boolean unorderedIsTrue;
-        private final int predicate;
 
         public FloatCondMoveOp(Variable result, Condition condition, boolean unorderedIsTrue, Variable trueValue, Variable falseValue, int predicateRegister) {
+            super(predicateRegister);
             this.result = result;
             this.condition = condition;
             this.unorderedIsTrue = unorderedIsTrue;
             this.trueValue = trueValue;
             this.falseValue = falseValue;
-            this.predicate = predicateRegister;
         }
 
         @Override
         public void emitCode(CompilationResultBuilder crb, PTXMacroAssembler masm) {
-            cmove(crb, masm, result, true, condition, unorderedIsTrue, trueValue, falseValue, predicate);
+            cmove(crb, masm, result, true, condition, unorderedIsTrue, trueValue, falseValue, getPredRegNum());
         }
     }
 
@@ -193,7 +202,7 @@ public class PTXControlFlow {
         }
     }
 
-    public static class StrategySwitchOp extends PTXLIRInstruction implements BlockEndOp {
+    public static class StrategySwitchOp extends PTXPredicatedLIRInstruction implements BlockEndOp {
 
         @Use({CONST}) protected Constant[] keyConstants;
         private final LabelRef[] keyTargets;
@@ -201,10 +210,9 @@ public class PTXControlFlow {
         @Alive({REG}) protected Value key;
         @Temp({REG, ILLEGAL}) protected Value scratch;
         private final SwitchStrategy strategy;
-        // Number of predicate register that would be set by this instruction.
-        protected int predRegNum;
 
         public StrategySwitchOp(SwitchStrategy strategy, LabelRef[] keyTargets, LabelRef defaultTarget, Value key, Value scratch, int predReg) {
+            super(predReg);
             this.strategy = strategy;
             this.keyConstants = strategy.keyConstants;
             this.keyTargets = keyTargets;
@@ -214,7 +222,6 @@ public class PTXControlFlow {
             assert keyConstants.length == keyTargets.length;
             assert keyConstants.length == strategy.keyProbabilities.length;
             assert (scratch.getKind() == Kind.Illegal) == (key.getKind() == Kind.Int || key.getKind() == Kind.Long);
-            predRegNum = predReg;
         }
 
         @Override
@@ -228,40 +235,38 @@ public class PTXControlFlow {
                             if (crb.codeCache.needsDataPatch(keyConstants[index])) {
                                 crb.recordInlineDataInCode(keyConstants[index]);
                             }
-                            new Setp(EQ, keyConstants[index], key, predRegNum).emit(masm);
+                            new Setp(EQ, keyConstants[index], key, getPredRegNum()).emit(masm);
                             break;
                         case Object:
                             assert condition == Condition.EQ || condition == Condition.NE;
                             PTXMove.move(crb, masm, scratch, keyConstants[index]);
-                            new Setp(condition, scratch, key, predRegNum).emit(masm);
+                            new Setp(condition, scratch, key, getPredRegNum()).emit(masm);
                             break;
                         default:
                             throw new GraalInternalError("switch only supported for int, long and object");
                     }
-                    masm.bra(masm.nameOf(target), predRegNum, true);
+                    masm.bra(masm.nameOf(target), getPredRegNum(), true);
                 }
             };
             strategy.run(closure);
         }
     }
 
-    public static class TableSwitchOp extends PTXLIRInstruction implements BlockEndOp {
+    public static class TableSwitchOp extends PTXPredicatedLIRInstruction implements BlockEndOp {
 
         private final int lowKey;
         private final LabelRef defaultTarget;
         private final LabelRef[] targets;
         @Alive protected Value index;
         @Temp protected Value scratch;
-        // Number of predicate register that would be set by this instruction.
-        protected int predRegNum;
 
         public TableSwitchOp(final int lowKey, final LabelRef defaultTarget, final LabelRef[] targets, Variable index, Variable scratch, int predReg) {
+            super(predReg);
             this.lowKey = lowKey;
             this.defaultTarget = defaultTarget;
             this.targets = targets;
             this.index = index;
             this.scratch = scratch;
-            predRegNum = predReg;
         }
 
         @Override
@@ -272,14 +277,14 @@ public class PTXControlFlow {
             if (lowKey != 0) {
                 // subtract the low value from the switch value
                 // new Sub(value, value, lowKey).emit(masm);
-                new Setp(GT, index, Constant.forInt(highKey - lowKey), predRegNum).emit(masm);
+                new Setp(GT, index, Constant.forInt(highKey - lowKey), getPredRegNum()).emit(masm);
             } else {
-                new Setp(GT, index, Constant.forInt(highKey), predRegNum).emit(masm);
+                new Setp(GT, index, Constant.forInt(highKey), getPredRegNum()).emit(masm);
             }
 
             // Jump to default target if index is not within the jump table
             if (defaultTarget != null) {
-                masm.bra(masm.nameOf(defaultTarget.label()), predRegNum, true);
+                masm.bra(masm.nameOf(defaultTarget.label()), getPredRegNum(), true);
             }
 
             // address of jump table
