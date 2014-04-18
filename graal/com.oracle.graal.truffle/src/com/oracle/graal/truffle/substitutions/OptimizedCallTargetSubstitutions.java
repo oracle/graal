@@ -23,6 +23,8 @@
 package com.oracle.graal.truffle.substitutions;
 
 import com.oracle.graal.api.replacements.*;
+import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.truffle.*;
 import com.oracle.graal.truffle.nodes.frame.*;
 import com.oracle.truffle.api.frame.*;
@@ -33,5 +35,10 @@ public class OptimizedCallTargetSubstitutions {
     @MethodSubstitution
     private static FrameWithoutBoxing createFrame(FrameDescriptor descriptor, Object[] args) {
         return NewFrameNode.allocate(FrameWithoutBoxing.class, descriptor, args);
+    }
+
+    @MethodSubstitution
+    private static Object castArrayFixedLength(Object[] args, int length) {
+        return PiArrayNode.piArrayCast(args, length, StampFactory.forNodeIntrinsic());
     }
 }

@@ -51,6 +51,8 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
     protected final CompilationPolicy compilationPolicy;
     private OptimizedCallTarget splitSource;
     private final AtomicInteger callSitesKnown = new AtomicInteger(0);
+    @CompilationFinal private Class<?>[] profiledArgumentTypes;
+    @CompilationFinal private Assumption profiledArgumentTypesAssumption;
     @CompilationFinal private Class<?> profiledReturnType;
     @CompilationFinal private Assumption profiledReturnTypeAssumption;
 
@@ -83,9 +85,21 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
     }
 
     public Object callDirect(Object... args) {
+        if (profiledArgumentTypesAssumption == null) {
+            CompilerDirectives.transferToInterpreter();
+            profiledArgumentTypesAssumption = Truffle.getRuntime().createAssumption("Profiled Argument Types");
+            profiledArgumentTypes = new Class<?>[args.length];
+        } else if (profiledArgumentTypes != null) {
+            if (profiledArgumentTypes.length != args.length) {
+                CompilerDirectives.transferToInterpreter();
+                profiledArgumentTypesAssumption.invalidate();
+                profiledArgumentTypes = null;
+            }
+        }
+
         Object result = callBoundary(args);
         Class<?> klass = profiledReturnType;
-        if (klass != null && profiledReturnTypeAssumption.isValid()) {
+        if (klass != null && CompilerDirectives.inCompiledCode() && profiledReturnTypeAssumption.isValid()) {
             result = CompilerDirectives.unsafeCast(result, klass, true, true);
         }
         return result;
@@ -247,7 +261,13 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
         }
     }
 
-    public final Object callRoot(Object[] args) {
+    public final Object callRoot(Object[] originalArguments) {
+
+        Object[] args = originalArguments;
+        if (this.profiledArgumentTypesAssumption != null && CompilerDirectives.inCompiledCode() && profiledArgumentTypesAssumption.isValid()) {
+            args = CompilerDirectives.unsafeCast(castArrayFixedLength(args, profiledArgumentTypes.length), Object[].class, true, true);
+        }
+
         VirtualFrame frame = createFrame(getRootNode().getFrameDescriptor(), args);
         Object result = callProxy(frame);
 
@@ -267,6 +287,10 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
         }
 
         return result;
+    }
+
+    private static Object castArrayFixedLength(Object[] args, @SuppressWarnings("unused") int length) {
+        return args;
     }
 
     public static FrameWithoutBoxing createFrame(FrameDescriptor descriptor, Object[] args) {
