@@ -130,13 +130,17 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
 
     private void interpreterCall() {
         CompilerAsserts.neverPartOfCompilation();
-        compilationProfile.reportInterpreterCall();
-        if (TruffleCallTargetProfiling.getValue()) {
-            callCount++;
-        }
-
-        if (compilationPolicy.shouldCompile(compilationProfile)) {
-            compile();
+        if (this.isValid()) {
+            // Stubs were deoptimized => reinstall.
+            this.runtime.reinstallStubs();
+        } else {
+            compilationProfile.reportInterpreterCall();
+            if (TruffleCallTargetProfiling.getValue()) {
+                callCount++;
+            }
+            if (compilationPolicy.shouldCompile(compilationProfile)) {
+                compile();
+            }
         }
     }
 
@@ -251,9 +255,11 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
 
         // Profile call return type
         if (profiledReturnTypeAssumption == null) {
-            CompilerDirectives.transferToInterpreter();
-            profiledReturnType = result.getClass();
-            profiledReturnTypeAssumption = Truffle.getRuntime().createAssumption("Profiled Return Type");
+            if (TruffleReturnTypeSpeculation.getValue()) {
+                CompilerDirectives.transferToInterpreter();
+                profiledReturnType = result.getClass();
+                profiledReturnTypeAssumption = Truffle.getRuntime().createAssumption("Profiled Return Type");
+            }
         } else if (profiledReturnType != null) {
             if (result == null || profiledReturnType != result.getClass()) {
                 CompilerDirectives.transferToInterpreter();

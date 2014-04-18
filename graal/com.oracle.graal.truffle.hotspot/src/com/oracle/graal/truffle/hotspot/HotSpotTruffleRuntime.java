@@ -336,4 +336,8 @@ public final class HotSpotTruffleRuntime implements GraalTruffleRuntime {
     public void invalidateInstalledCode(OptimizedCallTarget optimizedCallTarget) {
         HotSpotGraalRuntime.runtime().getCompilerToVM().invalidateInstalledCode(optimizedCallTarget);
     }
+
+    public void reinstallStubs() {
+        installOptimizedCallTargetCallMethod();
+    }
 }
