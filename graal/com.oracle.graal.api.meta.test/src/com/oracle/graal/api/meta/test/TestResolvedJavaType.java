@@ -431,20 +431,21 @@ public class TestResolvedJavaType extends TypeUniverse {
         return declarations;
     }
 
-    private static void checkResolveMethod(ResolvedJavaType type, ResolvedJavaMethod decl, ResolvedJavaMethod expected) {
-        ResolvedJavaMethod impl = type.resolveMethod(decl);
+    private static void checkResolveMethod(ResolvedJavaType type, ResolvedJavaType context, ResolvedJavaMethod decl, ResolvedJavaMethod expected) {
+        ResolvedJavaMethod impl = type.resolveMethod(decl, context);
         assertEquals(expected, impl);
     }
 
     @Test
     public void resolveMethodTest() {
+        ResolvedJavaType context = metaAccess.lookupJavaType(TestResolvedJavaType.class);
         for (Class<?> c : classes) {
             if (c.isInterface() || c.isPrimitive()) {
                 ResolvedJavaType type = metaAccess.lookupJavaType(c);
                 for (Method m : c.getDeclaredMethods()) {
                     if (JAVA_VERSION <= 1.7D || (!isStatic(m.getModifiers()) && !isPrivate(m.getModifiers()))) {
                         ResolvedJavaMethod resolved = metaAccess.lookupJavaMethod(m);
-                        ResolvedJavaMethod impl = type.resolveMethod(resolved);
+                        ResolvedJavaMethod impl = type.resolveMethod(resolved, context);
                         ResolvedJavaMethod expected = resolved.isDefault() ? resolved : null;
                         assertEquals(m.toString(), expected, impl);
                     } else {
@@ -458,12 +459,14 @@ public class TestResolvedJavaType extends TypeUniverse {
                     Set<Method> decls = findDeclarations(impl, c);
                     for (Method decl : decls) {
                         ResolvedJavaMethod m = metaAccess.lookupJavaMethod(decl);
-                        ResolvedJavaMethod i = metaAccess.lookupJavaMethod(impl);
-                        checkResolveMethod(type, m, i);
+                        if (m.isPublic()) {
+                            ResolvedJavaMethod i = metaAccess.lookupJavaMethod(impl);
+                            checkResolveMethod(type, context, m, i);
+                        }
                     }
                 }
                 for (Method m : c.getDeclaredMethods()) {
-                    ResolvedJavaMethod impl = type.resolveMethod(metaAccess.lookupJavaMethod(m));
+                    ResolvedJavaMethod impl = type.resolveMethod(metaAccess.lookupJavaMethod(m), context);
                     ResolvedJavaMethod expected = isAbstract(m.getModifiers()) ? null : impl;
                     assertEquals(type + " " + m.toString(), expected, impl);
                 }

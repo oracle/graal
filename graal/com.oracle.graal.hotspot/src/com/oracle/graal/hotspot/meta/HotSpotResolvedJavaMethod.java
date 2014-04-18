@@ -604,7 +604,9 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
 
     @Override
     public boolean isInVirtualMethodTable() {
-        return getVtableIndex() >= 0;
+        // TODO (gd) this should probably take a ResolvedJavaType as argument so that we can take
+        // advantage of miranda & default methods.
+        return !holder.isInterface() && getVtableIndex() >= 0;
     }
 
     /**
@@ -613,7 +615,7 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
      * @return virtual table index
      */
     private int getVtableIndex() {
-        assert !holder.isInterface();
+        assert !holder.isInterface() : this;
         HotSpotVMConfig config = runtime().getConfig();
         int result = unsafe.getInt(metaspaceMethod + config.methodVtableIndexOffset);
         assert result >= config.nonvirtualVtableIndex : "must be linked";

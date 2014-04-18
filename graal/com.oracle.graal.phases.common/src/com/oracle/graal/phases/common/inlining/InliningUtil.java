@@ -276,6 +276,7 @@ public class InliningUtil {
             // Don't inline if receiver is known to be null
             return null;
         }
+        ResolvedJavaType contextType = invoke.getContextType();
         if (receiverStamp.type() != null) {
             // the invoke target might be more specific than the holder (happens after inlining:
             // parameters lose their declared type...)
@@ -284,7 +285,7 @@ public class InliningUtil {
                 holder = receiverType;
                 if (receiverStamp.isExactType()) {
                     assert targetMethod.getDeclaringClass().isAssignableFrom(holder) : holder + " subtype of " + targetMethod.getDeclaringClass() + " for " + targetMethod;
-                    ResolvedJavaMethod resolvedMethod = holder.resolveMethod(targetMethod);
+                    ResolvedJavaMethod resolvedMethod = holder.resolveMethod(targetMethod, contextType);
                     if (resolvedMethod != null) {
                         return getExactInlineInfo(data, invoke, replacements, optimisticOpts, resolvedMethod);
                     }
@@ -294,7 +295,7 @@ public class InliningUtil {
 
         if (holder.isArray()) {
             // arrays can be treated as Objects
-            ResolvedJavaMethod resolvedMethod = holder.resolveMethod(targetMethod);
+            ResolvedJavaMethod resolvedMethod = holder.resolveMethod(targetMethod, contextType);
             if (resolvedMethod != null) {
                 return getExactInlineInfo(data, invoke, replacements, optimisticOpts, resolvedMethod);
             }
@@ -303,7 +304,7 @@ public class InliningUtil {
         if (assumptions.useOptimisticAssumptions()) {
             ResolvedJavaType uniqueSubtype = holder.findUniqueConcreteSubtype();
             if (uniqueSubtype != null) {
-                ResolvedJavaMethod resolvedMethod = uniqueSubtype.resolveMethod(targetMethod);
+                ResolvedJavaMethod resolvedMethod = uniqueSubtype.resolveMethod(targetMethod, contextType);
                 if (resolvedMethod != null) {
                     return getAssumptionInlineInfo(data, invoke, replacements, optimisticOpts, resolvedMethod, new Assumptions.ConcreteSubtype(holder, uniqueSubtype));
                 }
@@ -351,7 +352,7 @@ public class InliningUtil {
         if (ptypes == null || ptypes.length <= 0) {
             return logNotInlinedMethodAndReturnNull(invoke, data.inliningDepth(), targetMethod, "no types in profile");
         }
-
+        ResolvedJavaType contextType = invoke.getContextType();
         double notRecordedTypeProbability = typeProfile.getNotRecordedProbability();
         if (ptypes.length == 1 && notRecordedTypeProbability == 0) {
             if (!optimisticOpts.inlineMonomorphicCalls()) {
@@ -360,7 +361,7 @@ public class InliningUtil {
 
             ResolvedJavaType type = ptypes[0].getType();
             assert type.isArray() || !type.isAbstract();
-            ResolvedJavaMethod concrete = type.resolveMethod(targetMethod);
+            ResolvedJavaMethod concrete = type.resolveMethod(targetMethod, contextType);
             if (!checkTargetConditions(data, replacements, invoke, concrete, optimisticOpts)) {
                 return null;
             }
@@ -382,7 +383,7 @@ public class InliningUtil {
             ArrayList<ResolvedJavaMethod> concreteMethods = new ArrayList<>();
             ArrayList<Double> concreteMethodsProbabilities = new ArrayList<>();
             for (int i = 0; i < ptypes.length; i++) {
-                ResolvedJavaMethod concrete = ptypes[i].getType().resolveMethod(targetMethod);
+                ResolvedJavaMethod concrete = ptypes[i].getType().resolveMethod(targetMethod, contextType);
                 if (concrete == null) {
                     return logNotInlinedMethodAndReturnNull(invoke, data.inliningDepth(), targetMethod, "could not resolve method");
                 }
@@ -426,7 +427,7 @@ public class InliningUtil {
             ArrayList<ProfiledType> usedTypes = new ArrayList<>();
             ArrayList<Integer> typesToConcretes = new ArrayList<>();
             for (ProfiledType type : ptypes) {
-                ResolvedJavaMethod concrete = type.getType().resolveMethod(targetMethod);
+                ResolvedJavaMethod concrete = type.getType().resolveMethod(targetMethod, contextType);
                 int index = concreteMethods.indexOf(concrete);
                 if (index == -1) {
                     notRecordedTypeProbability += type.getProbability();

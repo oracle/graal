@@ -594,7 +594,7 @@ public class FlowSensitiveReduction extends FixedGuardReduction {
         if (type == null) {
             return;
         }
-        ResolvedJavaMethod method = type.resolveMethod(callTarget.targetMethod());
+        ResolvedJavaMethod method = type.resolveMethod(callTarget.targetMethod(), invoke.getContextType());
         if (method == null) {
             return;
         }

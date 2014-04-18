@@ -25,6 +25,7 @@ package com.oracle.graal.hotspot.meta;
 import static com.oracle.graal.api.meta.MetaUtil.*;
 import static com.oracle.graal.compiler.common.UnsafeAccess.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
+
 import java.lang.annotation.*;
 import java.lang.reflect.*;
 import java.net.*;
@@ -354,13 +355,17 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
     }
 
     @Override
-    public ResolvedJavaMethod resolveMethod(ResolvedJavaMethod method) {
-        assert method instanceof HotSpotMethod;
-        if (!method.isAbstract() && method.getDeclaringClass().equals(this)) {
+    public ResolvedJavaMethod resolveMethod(ResolvedJavaMethod method, ResolvedJavaType callerType) {
+        assert !callerType.isArray();
+        if (!method.isAbstract() && method.getDeclaringClass().equals(this) && method.isPublic()) {
             return method;
         }
-
-        final long resolvedMetaspaceMethod = runtime().getCompilerToVM().resolveMethod(metaspaceKlass(), method.getName(), ((HotSpotSignature) method.getSignature()).getMethodDescriptor());
+        if (!method.getDeclaringClass().isAssignableFrom(this)) {
+            return null;
+        }
+        HotSpotResolvedJavaMethod hotSpotMethod = (HotSpotResolvedJavaMethod) method;
+        HotSpotResolvedObjectType hotSpotCallerType = (HotSpotResolvedObjectType) callerType;
+        final long resolvedMetaspaceMethod = runtime().getCompilerToVM().resolveMethod(metaspaceKlass(), hotSpotMethod.getMetaspaceMethod(), hotSpotCallerType.metaspaceKlass());
         if (resolvedMetaspaceMethod == 0) {
             return null;
         }

@@ -99,7 +99,7 @@ public class CompilerToVMImpl implements CompilerToVM {
     public native void initializeConfiguration(HotSpotVMConfig config);
 
     @Override
-    public native long resolveMethod(long metaspaceKlass, String name, String signature);
+    public native long resolveMethod(long metaspaceKlassExactReceiver, long metaspaceMethod, long metaspaceKlassCaller);
 
     @Override
     public native boolean hasFinalizableSubclass(long metaspaceKlass);
