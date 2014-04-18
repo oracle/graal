@@ -54,31 +54,37 @@ public final class FrameState extends VirtualState implements IterableNodeType {
     /**
      * This BCI should be used for frame states that are built for code with no meaningful BCI.
      */
-    public static final int UNKNOWN_BCI = -4;
+    public static final int UNKNOWN_BCI = -5;
+
+    /**
+     * The BCI for the exception unwind block, i.e., the block containing the {@link UnwindNode}.
+     * This block and node is synthetic and has no representation in bytecode.
+     */
+    public static final int UNWIND_BCI = -1;
 
     /**
      * When a node whose frame state has this BCI value is inlined, its frame state will be replaced
      * with the frame state before the inlined invoke node.
      */
-    public static final int BEFORE_BCI = -1;
+    public static final int BEFORE_BCI = -2;
 
     /**
      * When a node whose frame state has this BCI value is inlined, its frame state will be replaced
      * with the frame state {@linkplain Invoke#stateAfter() after} the inlined invoke node.
      */
-    public static final int AFTER_BCI = -2;
+    public static final int AFTER_BCI = -3;
 
     /**
      * When a node whose frame state has this BCI value is inlined, its frame state will be replaced
      * with the frame state at the exception edge of the inlined invoke node.
      */
-    public static final int AFTER_EXCEPTION_BCI = -3;
+    public static final int AFTER_EXCEPTION_BCI = -4;
 
     /**
      * This BCI should be used for frame states that cannot be the target of a deoptimization, like
      * snippet frame states.
      */
-    public static final int INVALID_FRAMESTATE_BCI = -5;
+    public static final int INVALID_FRAMESTATE_BCI = -6;
 
     @Input(InputType.State) private FrameState outerFrameState;
 

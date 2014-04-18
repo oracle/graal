@@ -284,12 +284,12 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             protected void finishPrepare(FixedWithNextNode startInstr) {
             }
 
-            private BciBlock unwindBlock(int bci) {
+            private BciBlock unwindBlock() {
                 if (unwindBlock == null) {
                     unwindBlock = new ExceptionDispatchBlock();
                     unwindBlock.startBci = -1;
                     unwindBlock.endBci = -1;
-                    unwindBlock.deoptBci = bci;
+                    unwindBlock.deoptBci = FrameState.UNWIND_BCI;
                     unwindBlock.setId(Integer.MAX_VALUE);
                 }
                 return unwindBlock;
@@ -419,7 +419,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                  * unwind immediately.
                  */
                 if (bci != currentBlock.endBci || dispatchBlock == null) {
-                    dispatchBlock = unwindBlock(bci);
+                    dispatchBlock = unwindBlock();
                 }
 
                 HIRFrameStateBuilder dispatchState = frameState.copy();
@@ -1188,7 +1188,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     ResolvedJavaType resolvedCatchType = (ResolvedJavaType) catchType;
                     for (ResolvedJavaType skippedType : graphBuilderConfig.getSkippedExceptionTypes()) {
                         if (skippedType.isAssignableFrom(resolvedCatchType)) {
-                            BciBlock nextBlock = block.getSuccessorCount() == 1 ? unwindBlock(block.deoptBci) : block.getSuccessor(1);
+                            BciBlock nextBlock = block.getSuccessorCount() == 1 ? unwindBlock() : block.getSuccessor(1);
                             ValueNode exception = frameState.stackAt(0);
                             FixedNode trueSuccessor = currentGraph.add(new DeoptimizeNode(InvalidateReprofile, UnreachedCode));
                             FixedNode nextDispatch = createTarget(nextBlock, frameState);
@@ -1199,7 +1199,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 }
 
                 if (initialized) {
-                    BciBlock nextBlock = block.getSuccessorCount() == 1 ? unwindBlock(block.deoptBci) : block.getSuccessor(1);
+                    BciBlock nextBlock = block.getSuccessorCount() == 1 ? unwindBlock() : block.getSuccessor(1);
                     ValueNode exception = frameState.stackAt(0);
                     CheckCastNode checkCast = currentGraph.add(new CheckCastNode((ResolvedJavaType) catchType, exception, null, false));
                     frameState.apop();
