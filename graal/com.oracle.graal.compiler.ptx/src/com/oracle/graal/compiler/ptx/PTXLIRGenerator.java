@@ -830,13 +830,12 @@ public class PTXLIRGenerator extends LIRGenerator {
 
     @Override
     public void emitReturn(Value input) {
-        AllocatableValue operand = Value.ILLEGAL;
         if (input != null) {
-            operand = resultOperandFor(input.getKind());
+            AllocatableValue operand = resultOperandFor(input.getKind());
             // Load the global memory address from return parameter
             Variable loadVar = emitLoadReturnAddress(operand.getKind(), operand, null);
-            // Store result in global memory whose location is loadVar
-            emitStoreReturnValue(operand.getKind(), loadVar, operand, null);
+            // Store input in global memory whose location is loadVar
+            emitStoreReturnValue(operand.getKind(), loadVar, input, null);
         }
         emitReturnNoVal();
     }
