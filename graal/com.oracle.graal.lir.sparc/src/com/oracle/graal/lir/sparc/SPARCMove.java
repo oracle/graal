@@ -190,20 +190,28 @@ public class SPARCMove {
     public static class LoadAddressOp extends SPARCLIRInstruction {
 
         @Def({REG}) protected AllocatableValue result;
-        @Use({COMPOSITE, UNINITIALIZED}) protected SPARCAddressValue address;
+        @Use({COMPOSITE, UNINITIALIZED}) protected SPARCAddressValue addressValue;
+        protected SPARCAddress address;
 
         public LoadAddressOp(AllocatableValue result, SPARCAddressValue address) {
+            this.result = result;
+            this.addressValue = address;
+        }
+
+        public LoadAddressOp(AllocatableValue result, SPARCAddress address) {
             this.result = result;
             this.address = address;
         }
 
         @Override
         public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
-            SPARCAddress addr = address.toAddress();
-            if (addr.hasIndex()) {
-                new Add(addr.getBase(), addr.getIndex(), asLongReg(result)).emit(masm);
+            if (address == null) {
+                address = addressValue.toAddress();
+            }
+            if (address.hasIndex()) {
+                new Add(address.getBase(), address.getIndex(), asLongReg(result)).emit(masm);
             } else {
-                new Add(addr.getBase(), addr.getDisplacement(), asLongReg(result)).emit(masm);
+                new Add(address.getBase(), address.getDisplacement(), asLongReg(result)).emit(masm);
             }
         }
     }
@@ -472,6 +480,18 @@ public class SPARCMove {
                         new Setx(input.asLong(), asRegister(result)).emit(masm);
                     }
                 }
+                break;
+            }
+            case Double: {
+                // This is *not* the same as 'constant == 0.0d' in the case where constant is -0.0d
+                assert !crb.codeCache.needsDataPatch(input);
+                new Setx(Double.doubleToRawLongBits(input.asDouble()), asDoubleReg(result)).emit(masm);
+                break;
+            }
+            case Float: {
+                // This is *not* the same as 'constant == 0.0d' in the case where constant is -0.0d
+                assert !crb.codeCache.needsDataPatch(input);
+                new Setx(Double.doubleToRawLongBits(input.asFloat()), asFloatReg(result)).emit(masm);
                 break;
             }
             case Object: {

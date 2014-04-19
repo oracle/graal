@@ -131,7 +131,8 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
 
     @Override
     public void emitData(AllocatableValue dst, byte[] data) {
-        throw GraalInternalError.unimplemented();
+        // throw GraalInternalError.unimplemented();
+        append(new SPARCConstDataOp(dst, data));
     }
 
     @Override

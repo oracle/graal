@@ -37,7 +37,7 @@ public abstract class SPARCAssembler extends Assembler {
 
     /**
      * Constructs an assembler for the SPARC architecture.
-     * 
+     *
      * @param registerConfig the register configuration used to bind {@link Register#Frame} and
      *            {@link Register#CallerFrame} to physical registers. This value can be null if this
      *            assembler instance will not be used to assemble instructions using these logical
@@ -50,7 +50,7 @@ public abstract class SPARCAssembler extends Assembler {
     // @formatter:off
     /**
      * Instruction format for sethi.
-     * 
+     *
      * | 00  |  rd    | op2 |               imm22                     |
      * |31 30|29    25|24 22|21                                      0|
      */
@@ -123,7 +123,7 @@ public abstract class SPARCAssembler extends Assembler {
     // @formatter:off
     /**
      * Instruction format for branches.
-     * 
+     *
      * | 00  |a | cond | op2 |             disp22                      |
      * |31 30|29|28  25|24 22|21                                      0|
      */
@@ -142,7 +142,7 @@ public abstract class SPARCAssembler extends Assembler {
     // @formatter:off
     /**
      * Instruction format for conditional branches.
-     * 
+     *
      * | 00  |a | cond | op2 |cc1|cc0|p |             disp19           |
      * |31 30|29|28  25|24 22|21 |20 |19|                             0|
      */
@@ -330,7 +330,7 @@ public abstract class SPARCAssembler extends Assembler {
     // @formatter:off
     /**
      * Instruction format for calls.
-     * 
+     *
      * | 01  |                      disp30                             |
      * |31 30|29                                                      0|
      */
@@ -457,7 +457,7 @@ public abstract class SPARCAssembler extends Assembler {
     // @formatter:off
     /**
      * Instruction format for Arithmetic, Logical, Moves, Tcc, Prefetch, and Misc.
-     * 
+     *
      * | 10  |   rd   |   op3   |   rs1   | i|     imm_asi   |   rs2   |
      * | 10  |   rd   |   op3   |   rs1   | i|          simm13         |
      * | 10  |   rd   |   op3   |   rs1   | i| x|            |   rs2   |
@@ -594,7 +594,7 @@ public abstract class SPARCAssembler extends Assembler {
     // @formatter:off
     /**
      * Instruction format for Loads, Stores and Misc.
-     * 
+     *
      * | 11  |   rd   |   op3   |   rs1   | i|   imm_asi   |   rs2   |
      * | 11  |   rd   |   op3   |   rs1   | i|        simm13         |
      * |31 30|29    25|24     19|18     14|13|12          5|4       0|
@@ -749,7 +749,7 @@ public abstract class SPARCAssembler extends Assembler {
     // @formatter:off
     /**
      * Instruction format for Movcc.
-     * 
+     *
      * | 10  |   rd   |   op3   |cc2|   cond  | i|cc1|cc0|      -      |   rs2   |
      * | 10  |   rd   |   op3   |cc2|   cond  | i|cc1|cc0|        simm11         |
      * |31 30|29    25|24     19| 18|17     14|13| 12| 11|10          5|4       0|
@@ -1278,10 +1278,18 @@ public abstract class SPARCAssembler extends Assembler {
         }
     }
 
+    /**
+     * Condition Codes to use for instruction
+     */
     public enum CC {
         // @formatter:off
-
+        /**
+         * Condition is considered as 32bit operation condition
+         */
         Icc(0b00, "icc"),
+        /**
+         * Condition is considered as 64bit operation condition
+         */
         Xcc(0b10, "xcc"),
         Ptrcc(getHostWordKind() == Kind.Long ? Xcc.getValue() : Icc.getValue(), "ptrcc"),
         Fcc0(0b00, "fcc0"),
@@ -1402,6 +1410,9 @@ public abstract class SPARCAssembler extends Assembler {
         }
     }
 
+    /**
+     * Represents the <b>Address Space Identifier</b> defined in the SPARC architec
+     */
     public enum Asi {
         // @formatter:off
 
@@ -1906,6 +1917,9 @@ public abstract class SPARCAssembler extends Assembler {
         }
     }
 
+    /**
+     * Compare and Branch if Carry Clear ( Greater not C Than or Equal, Unsigned )
+     */
     public static class Cwbcc extends Fmt00e {
 
         public Cwbcc(SPARCAssembler asm, Register src1, Register src2, int simm10) {
@@ -1917,6 +1931,9 @@ public abstract class SPARCAssembler extends Assembler {
         }
     }
 
+    /**
+     * Compare and Branch if Carry Set (Less Than, Unsigned)
+     */
     public static class Cwbcs extends Fmt00e {
 
         public Cwbcs(SPARCAssembler asm, Register src1, Register src2, int simm10) {
@@ -1928,6 +1945,9 @@ public abstract class SPARCAssembler extends Assembler {
         }
     }
 
+    /**
+     * Compare and Branch if Equal
+     */
     public static class Cwbe extends Fmt00e {
 
         public Cwbe(SPARCAssembler asm, Register src1, Register src2, int simm10) {
@@ -1939,6 +1959,9 @@ public abstract class SPARCAssembler extends Assembler {
         }
     }
 
+    /**
+     * Compare and Branch if Greater
+     */
     public static class Cwbg extends Fmt00e {
 
         public Cwbg(SPARCAssembler asm, Register src1, Register src2, int simm10) {
@@ -1950,6 +1973,9 @@ public abstract class SPARCAssembler extends Assembler {
         }
     }
 
+    /**
+     * Compare and Branch if Greater or Equal
+     */
     public static class Cwbge extends Fmt00e {
 
         public Cwbge(SPARCAssembler asm, Register src1, Register src2, int simm10) {
@@ -1961,6 +1987,9 @@ public abstract class SPARCAssembler extends Assembler {
         }
     }
 
+    /**
+     * Compare and Branch if Greater Unsigned
+     */
     public static class Cwbgu extends Fmt00e {
 
         public Cwbgu(SPARCAssembler asm, Register src1, Register src2, int simm10) {
@@ -1972,6 +2001,9 @@ public abstract class SPARCAssembler extends Assembler {
         }
     }
 
+    /**
+     * Compare and Branch if Less
+     */
     public static class Cwbl extends Fmt00e {
 
         public Cwbl(SPARCAssembler asm, Register src1, Register src2, int simm10) {
@@ -1983,6 +2015,9 @@ public abstract class SPARCAssembler extends Assembler {
         }
     }
 
+    /**
+     * Compare and Branch if Less or Equal
+     */
     public static class Cwble extends Fmt00e {
 
         public Cwble(SPARCAssembler asm, Register src1, Register src2, int simm10) {
@@ -1994,6 +2029,9 @@ public abstract class SPARCAssembler extends Assembler {
         }
     }
 
+    /**
+     * Compare and Branch if Less or Equal Unsigned
+     */
     public static class Cwbleu extends Fmt00e {
 
         public Cwbleu(SPARCAssembler asm, Register src1, Register src2, int simm10) {
@@ -2005,6 +2043,9 @@ public abstract class SPARCAssembler extends Assembler {
         }
     }
 
+    /**
+     * Compare and Branch if Not Equal
+     */
     public static class Cwbne extends Fmt00e {
 
         public Cwbne(SPARCAssembler asm, Register src1, Register src2, int simm10) {
@@ -2016,6 +2057,9 @@ public abstract class SPARCAssembler extends Assembler {
         }
     }
 
+    /**
+     * Compare and Branch if Negative
+     */
     public static class Cwbneg extends Fmt00e {
 
         public Cwbneg(SPARCAssembler asm, Register src1, Register src2, int simm10) {
@@ -2027,6 +2071,9 @@ public abstract class SPARCAssembler extends Assembler {
         }
     }
 
+    /**
+     * Compare and Branch if Positive
+     */
     public static class Cwbpos extends Fmt00e {
 
         public Cwbpos(SPARCAssembler asm, Register src1, Register src2, int simm10) {
@@ -2038,6 +2085,9 @@ public abstract class SPARCAssembler extends Assembler {
         }
     }
 
+    /**
+     * Compare and Branch if Overflow Clear
+     */
     public static class Cwbvc extends Fmt00e {
 
         public Cwbvc(SPARCAssembler asm, Register src1, Register src2, int simm10) {
@@ -2049,6 +2099,9 @@ public abstract class SPARCAssembler extends Assembler {
         }
     }
 
+    /**
+     * Compare and Branch if Overflow Set
+     */
     public static class Cwbvs extends Fmt00e {
 
         public Cwbvs(SPARCAssembler asm, Register src1, Register src2, int simm10) {
@@ -2340,6 +2393,9 @@ public abstract class SPARCAssembler extends Assembler {
         }
     }
 
+    /**
+     * Floating-point multiply-add single (fused)
+     */
     public static class Fmadds extends Fmt5a {
 
         public Fmadds(SPARCAssembler asm, Register src1, Register src2, Register src3, Register dst) {
@@ -2347,6 +2403,9 @@ public abstract class SPARCAssembler extends Assembler {
         }
     }
 
+    /**
+     * Floating-point multiply-add double (fused)
+     */
     public static class Fmaddd extends Fmt5a {
 
         public Fmaddd(SPARCAssembler asm, Register src1, Register src2, Register src3, Register dst) {
@@ -2354,6 +2413,9 @@ public abstract class SPARCAssembler extends Assembler {
         }
     }
 
+    /**
+     * 16-bit partitioned average
+     */
     public static class Fmean16 extends Fmt3p {
 
         public Fmean16(Register src1, Register src2, Register dst) {
@@ -2551,6 +2613,9 @@ public abstract class SPARCAssembler extends Assembler {
         }
     }
 
+    /**
+     * Convert Double to 32-bit Integer
+     */
     public static class Fdtoi extends Fmt3n {
 
         public Fdtoi(SPARCAssembler masm, Register src2, Register dst) {
@@ -2558,6 +2623,9 @@ public abstract class SPARCAssembler extends Assembler {
         }
     }
 
+    /**
+     * Flush register windows
+     */
     public static class Flushw extends Fmt10 {
 
         public Flushw() {
