@@ -905,13 +905,4 @@ public class PTXLIRGenerator extends LIRGenerator {
         throw GraalInternalError.unimplemented();
     }
 
-    public Value emitAtomicReadAndAdd(Value address, Value delta) {
-        // TODO Auto-generated method stub
-        throw GraalInternalError.unimplemented();
-    }
-
-    public Value emitAtomicReadAndWrite(Value address, Value newValue) {
-        // TODO Auto-generated method stub
-        throw GraalInternalError.unimplemented();
-    }
 }

@@ -24,6 +24,7 @@ package com.oracle.graal.nodes.spi;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 
@@ -43,9 +44,25 @@ public interface LIRGeneratorTool extends ArithmeticLIRGenerator {
 
     Value emitCompareAndSwap(Value address, Value expectedValue, Value newValue, Value trueValue, Value falseValue);
 
-    Value emitAtomicReadAndAdd(Value address, Value delta);
+    /**
+     * Emit an atomic read-and-add instruction.
+     *
+     * @param address address of the value to be read and written
+     * @param delta the value to be added
+     */
+    default Value emitAtomicReadAndAdd(Value address, Value delta) {
+        throw GraalInternalError.unimplemented();
+    }
 
-    Value emitAtomicReadAndWrite(Value address, Value newValue);
+    /**
+     * Emit an atomic read-and-write instruction.
+     *
+     * @param address address of the value to be read and written
+     * @param newValue the new value to be written
+     */
+    default Value emitAtomicReadAndWrite(Value address, Value newValue) {
+        throw GraalInternalError.unimplemented();
+    }
 
     void emitDeoptimize(Value actionAndReason, Value failedSpeculation, DeoptimizingNode deopting);
 

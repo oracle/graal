@@ -239,16 +239,6 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
         throw GraalInternalError.unimplemented();
     }
 
-    public Value emitAtomicReadAndAdd(Value address, Value delta) {
-        // TODO Auto-generated method stub
-        throw GraalInternalError.unimplemented();
-    }
-
-    public Value emitAtomicReadAndWrite(Value address, Value newValue) {
-        // TODO Auto-generated method stub
-        throw GraalInternalError.unimplemented();
-    }
-
     @Override
     public Value emitNot(Value input) {
         GraalInternalError.shouldNotReachHere("binary negation not implemented");

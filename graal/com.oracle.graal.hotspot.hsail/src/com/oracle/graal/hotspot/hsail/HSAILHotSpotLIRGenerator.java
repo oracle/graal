@@ -200,11 +200,6 @@ public class HSAILHotSpotLIRGenerator extends HSAILLIRGenerator implements HotSp
         return result;
     }
 
-    public Value emitAtomicReadAndWrite(Value address, Value newValue) {
-        // TODO Auto-generated method stub
-        throw GraalInternalError.unimplemented();
-    }
-
     @Override
     public void emitDeoptimize(Value actionAndReason, Value failedSpeculation, DeoptimizingNode deopting) {
         emitDeoptimizeInner(actionAndReason, state(deopting), "emitDeoptimize");
