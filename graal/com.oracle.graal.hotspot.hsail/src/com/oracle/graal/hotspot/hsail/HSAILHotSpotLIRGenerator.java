@@ -24,6 +24,8 @@
 package com.oracle.graal.hotspot.hsail;
 
 import static com.oracle.graal.api.code.ValueUtil.*;
+import static com.oracle.graal.lir.hsail.HSAILControlFlow.*;
+import static com.oracle.graal.lir.hsail.HSAILMove.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
@@ -38,19 +40,6 @@ import com.oracle.graal.hotspot.nodes.type.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.SaveRegistersOp;
 import com.oracle.graal.lir.hsail.*;
-import com.oracle.graal.lir.hsail.HSAILControlFlow.CondMoveOp;
-import com.oracle.graal.lir.hsail.HSAILControlFlow.DeoptimizeOp;
-import com.oracle.graal.lir.hsail.HSAILControlFlow.ForeignCall1ArgOp;
-import com.oracle.graal.lir.hsail.HSAILControlFlow.ForeignCall2ArgOp;
-import com.oracle.graal.lir.hsail.HSAILControlFlow.ForeignCallNoArgOp;
-import com.oracle.graal.lir.hsail.HSAILMove.CompareAndSwapOp;
-import com.oracle.graal.lir.hsail.HSAILMove.LoadCompressedPointer;
-import com.oracle.graal.lir.hsail.HSAILMove.LoadOp;
-import com.oracle.graal.lir.hsail.HSAILMove.MoveFromRegOp;
-import com.oracle.graal.lir.hsail.HSAILMove.MoveToRegOp;
-import com.oracle.graal.lir.hsail.HSAILMove.StoreCompressedPointer;
-import com.oracle.graal.lir.hsail.HSAILMove.StoreConstantOp;
-import com.oracle.graal.lir.hsail.HSAILMove.StoreOp;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.phases.util.*;
@@ -200,6 +189,20 @@ public class HSAILHotSpotLIRGenerator extends HSAILLIRGenerator implements HotSp
         Variable nodeResult = newVariable(trueValue.getPlatformKind());
         append(new CondMoveOp(HSAILLIRGenerator.mapKindToCompareOp(memKind), casResult, expected, nodeResult, Condition.EQ, trueValue, falseValue));
         return nodeResult;
+    }
+
+    public Value emitAtomicReadAndAdd(Value address, Value delta) {
+        PlatformKind kind = delta.getPlatformKind();
+        Kind memKind = getMemoryKind(kind);
+        Variable result = newVariable(kind);
+        HSAILAddressValue addressValue = asAddressValue(address);
+        append(new HSAILMove.AtomicReadAndAddOp(memKind, result, addressValue, asAllocatable(delta)));
+        return result;
+    }
+
+    public Value emitAtomicReadAndWrite(Value address, Value newValue) {
+        // TODO Auto-generated method stub
+        throw GraalInternalError.unimplemented();
     }
 
     @Override

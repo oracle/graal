@@ -2512,6 +2512,32 @@ public class AMD64Assembler extends Assembler {
         emitInt(imm32);
     }
 
+    public final void xaddl(AMD64Address dst, Register src) {
+        prefix(dst, src);
+        emitByte(0x0F);
+        emitByte(0xC1);
+        emitOperandHelper(src, dst);
+    }
+
+    public final void xaddq(AMD64Address dst, Register src) {
+        prefixq(dst, src);
+        emitByte(0x0F);
+        emitByte(0xC1);
+        emitOperandHelper(src, dst);
+    }
+
+    public final void xchgl(Register dst, AMD64Address src) {
+        prefix(src, dst);
+        emitByte(0x87);
+        emitOperandHelper(dst, src);
+    }
+
+    public final void xchgq(Register dst, AMD64Address src) {
+        prefixq(src, dst);
+        emitByte(0x87);
+        emitOperandHelper(dst, src);
+    }
+
     public final void xorq(Register dst, int imm32) {
         emitArithImm32q(6, dst, imm32);
     }

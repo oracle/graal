@@ -235,7 +235,18 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
     }
 
     public Value emitCompareAndSwap(Value address, Value expectedValue, Value newValue, Value trueValue, Value falseValue) {
-        throw new InternalError("NYI");
+        // TODO Auto-generated method stub
+        throw GraalInternalError.unimplemented();
+    }
+
+    public Value emitAtomicReadAndAdd(Value address, Value delta) {
+        // TODO Auto-generated method stub
+        throw GraalInternalError.unimplemented();
+    }
+
+    public Value emitAtomicReadAndWrite(Value address, Value newValue) {
+        // TODO Auto-generated method stub
+        throw GraalInternalError.unimplemented();
     }
 
     @Override

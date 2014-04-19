@@ -112,6 +112,8 @@ public class HotSpotLoweringProvider implements LoweringProvider {
             lowerStoreFieldNode((StoreFieldNode) n, tool);
         } else if (n instanceof CompareAndSwapNode) {
             lowerCompareAndSwapNode((CompareAndSwapNode) n);
+        } else if (n instanceof AtomicReadAndWriteNode) {
+            lowerAtomicReadAndWriteNode((AtomicReadAndWriteNode) n);
         } else if (n instanceof LoadIndexedNode) {
             lowerLoadIndexedNode((LoadIndexedNode) n, tool);
         } else if (n instanceof StoreIndexedNode) {
@@ -383,6 +385,22 @@ public class HotSpotLoweringProvider implements LoweringProvider {
         LoweredCompareAndSwapNode atomicNode = graph.add(new LoweredCompareAndSwapNode(cas.object(), location, expectedValue, newValue, getCompareAndSwapBarrierType(cas), false));
         atomicNode.setStateAfter(cas.stateAfter());
         graph.replaceFixedWithFixed(cas, atomicNode);
+    }
+
+    private void lowerAtomicReadAndWriteNode(AtomicReadAndWriteNode n) {
+        StructuredGraph graph = n.graph();
+        Kind valueKind = n.getValueKind();
+        LocationNode location = IndexedLocationNode.create(n.getLocationIdentity(), valueKind, 0, n.offset(), graph, 1);
+
+        ValueNode newValue = implicitStoreConvert(graph, valueKind, n.newValue());
+
+        LoweredAtomicReadAndWriteNode memoryRead = graph.add(new LoweredAtomicReadAndWriteNode(n.object(), location, newValue, getAtomicReadAndWriteBarrierType(n), false));
+        memoryRead.setStateAfter(n.stateAfter());
+
+        ValueNode readValue = implicitLoadConvert(graph, valueKind, memoryRead);
+
+        n.replaceAtUsages(readValue);
+        graph.replaceFixedWithFixed(n, memoryRead);
     }
 
     private void lowerLoadIndexedNode(LoadIndexedNode loadIndexed, LoweringTool tool) {
@@ -881,6 +899,18 @@ public class HotSpotLoweringProvider implements LoweringProvider {
     private static BarrierType getCompareAndSwapBarrierType(CompareAndSwapNode cas) {
         if (cas.expected().getKind() == Kind.Object) {
             ResolvedJavaType type = ObjectStamp.typeOrNull(cas.object());
+            if (type != null && !type.isArray()) {
+                return BarrierType.IMPRECISE;
+            } else {
+                return BarrierType.PRECISE;
+            }
+        }
+        return BarrierType.NONE;
+    }
+
+    private static BarrierType getAtomicReadAndWriteBarrierType(AtomicReadAndWriteNode n) {
+        if (n.newValue().getKind() == Kind.Object) {
+            ResolvedJavaType type = ObjectStamp.typeOrNull(n.object());
             if (type != null && !type.isArray()) {
                 return BarrierType.IMPRECISE;
             } else {

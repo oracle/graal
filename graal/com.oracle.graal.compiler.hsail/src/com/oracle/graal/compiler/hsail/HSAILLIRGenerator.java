@@ -148,8 +148,7 @@ public abstract class HSAILLIRGenerator extends LIRGenerator {
                 finalDisp += asConstant(index).asLong() * scale;
             } else {
                 Value indexRegister;
-                Value convertedIndex;
-                convertedIndex = this.emitSignExtend(index, 32, 64);
+                Value convertedIndex = index.getKind() == Kind.Long ? index : this.emitSignExtend(index, 32, 64);
                 if (scale != 1) {
                     indexRegister = emitUMul(convertedIndex, Constant.forInt(scale));
                 } else {

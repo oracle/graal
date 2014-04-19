@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,23 +20,30 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.hsail.nodes;
+package com.oracle.graal.nodes.java;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
-import com.oracle.graal.hotspot.hsail.*;
+
+import sun.misc.*;
 
 /**
- * Represents the lowered version of an atomic get-and-add operation{@code AtomicGetAndAddNode}.
+ * Represents the lowered version of an atomic read-and-write operation like
+ * {@link Unsafe#getAndSetInt(Object, long, int)} .
  */
-public class LoweredAtomicGetAndAddNode extends FixedAccessNode implements StateSplit, LIRLowerable, MemoryCheckpoint.Single {
+@NodeInfo(allowedUsageTypes = {InputType.Memory})
+public class LoweredAtomicReadAndWriteNode extends FixedAccessNode implements StateSplit, LIRLowerable, MemoryCheckpoint.Single {
 
-    @Input private ValueNode delta;
+    @Input private ValueNode newValue;
     @Input(InputType.State) private FrameState stateAfter;
+
+    public LoweredAtomicReadAndWriteNode(ValueNode object, LocationNode location, ValueNode newValue, BarrierType barrierType, boolean compressible) {
+        super(object, location, newValue.stamp(), barrierType, compressible);
+        this.newValue = newValue;
+    }
 
     public FrameState stateAfter() {
         return stateAfter;
@@ -52,39 +59,26 @@ public class LoweredAtomicGetAndAddNode extends FixedAccessNode implements State
         return true;
     }
 
-    public ValueNode getDelta() {
-        return delta;
-    }
-
-    public LoweredAtomicGetAndAddNode(ValueNode object, LocationNode location, ValueNode delta, BarrierType barrierType, boolean compressible) {
-        super(object, location, StampFactory.forKind(Kind.Long.getStackKind()), barrierType, compressible);
-        this.delta = delta;
-    }
-
-    @Override
     public LocationIdentity getLocationIdentity() {
         return location().getLocationIdentity();
     }
 
-    @Override
-    public boolean canNullCheck() {
-        return false;
-    }
-
-    @Override
     public void generate(NodeLIRBuilderTool gen) {
-        HSAILHotSpotNodeLIRBuilder hsailGen = (HSAILHotSpotNodeLIRBuilder) gen;
-        hsailGen.visitAtomicGetAndAdd(this, location().generateAddress(gen, gen.getLIRGeneratorTool(), gen.operand(object())));
+        Value address = location().generateAddress(gen, gen.getLIRGeneratorTool(), gen.operand(object()));
+        Value result = gen.getLIRGeneratorTool().emitAtomicReadAndWrite(address, gen.operand(newValue));
+        gen.setResult(this, result);
     }
 
-    @Override
     public MemoryCheckpoint asMemoryCheckpoint() {
         return this;
     }
 
-    @Override
     public MemoryPhiNode asMemoryPhi() {
         return null;
+    }
+
+    public boolean canNullCheck() {
+        return false;
     }
 
 }

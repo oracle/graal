@@ -25,6 +25,7 @@ package com.oracle.graal.compiler.sparc;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.lir.sparc.*;
 import com.oracle.graal.lir.sparc.SPARCMove.NullCheckOp;
@@ -64,6 +65,7 @@ public abstract class SPARCNodeLIRBuilder extends NodeLIRBuilder {
 
     @Override
     public void visitInfopointNode(InfopointNode i) {
-        throw new InternalError("NYI");
+        // TODO Auto-generated method stub
+        throw GraalInternalError.unimplemented();
     }
 }

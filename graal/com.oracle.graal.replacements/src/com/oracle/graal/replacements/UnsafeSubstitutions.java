@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -399,4 +399,47 @@ public class UnsafeSubstitutions {
         }
         return DynamicNewInstanceNode.allocateInstance(clazz, true);
     }
+
+    /**
+     * Guard for {@link Unsafe#getAndSetInt} method family.
+     */
+    public static class GetAndSetGuard implements SubstitutionGuard {
+        public boolean execute() {
+            // FIXME should return whether the current compilation target supports these
+            String arch = System.getProperty("os.arch");
+            switch (arch) {
+                case "amd64":
+                case "x86_64":
+                    return true;
+                default:
+                    return false;
+            }
+        }
+    }
+
+    @MethodSubstitution(isStatic = false, guard = GetAndSetGuard.class)
+    public static int getAndAddInt(@SuppressWarnings("unused") final Object thisObj, Object o, long offset, int delta) {
+        return AtomicReadAndAddNode.getAndAddInt(o, offset, delta, LocationIdentity.ANY_LOCATION);
+    }
+
+    @MethodSubstitution(isStatic = false, guard = GetAndSetGuard.class)
+    public static long getAndAddLong(@SuppressWarnings("unused") final Object thisObj, Object o, long offset, long delta) {
+        return AtomicReadAndAddNode.getAndAddLong(o, offset, delta, LocationIdentity.ANY_LOCATION);
+    }
+
+    @MethodSubstitution(isStatic = false, guard = GetAndSetGuard.class)
+    public static int getAndSetInt(@SuppressWarnings("unused") final Object thisObj, Object o, long offset, int newValue) {
+        return AtomicReadAndWriteNode.getAndSetInt(o, offset, newValue, Kind.Int, LocationIdentity.ANY_LOCATION);
+    }
+
+    @MethodSubstitution(isStatic = false, guard = GetAndSetGuard.class)
+    public static long getAndSetLong(@SuppressWarnings("unused") final Object thisObj, Object o, long offset, long newValue) {
+        return AtomicReadAndWriteNode.getAndSetLong(o, offset, newValue, Kind.Long, LocationIdentity.ANY_LOCATION);
+    }
+
+    @MethodSubstitution(isStatic = false, guard = GetAndSetGuard.class)
+    public static Object getAndSetObject(@SuppressWarnings("unused") final Object thisObj, Object o, long offset, Object newValue) {
+        return AtomicReadAndWriteNode.getAndSetObject(o, offset, newValue, Kind.Object, LocationIdentity.ANY_LOCATION);
+    }
+
 }

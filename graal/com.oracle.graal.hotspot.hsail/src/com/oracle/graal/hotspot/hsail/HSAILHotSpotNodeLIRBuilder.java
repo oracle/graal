@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,12 +32,10 @@ import com.oracle.graal.compiler.hsail.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.HotSpotVMConfig.CompressEncoding;
-import com.oracle.graal.hotspot.hsail.nodes.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.hsail.*;
-import com.oracle.graal.lir.hsail.HSAILMove.AtomicGetAndAddOp;
 import com.oracle.graal.lir.hsail.HSAILMove.CompareAndSwapOp;
 import com.oracle.graal.nodes.*;
 
@@ -77,14 +75,6 @@ public class HSAILHotSpotNodeLIRBuilder extends HSAILNodeLIRBuilder implements H
         } else {
             throw GraalInternalError.shouldNotReachHere();
         }
-    }
-
-    public void visitAtomicGetAndAdd(LoweredAtomicGetAndAddNode node, Value address) {
-        Variable nodeResult = newVariable(node.getKind());
-        Value delta = getGen().loadNonConst(operand(node.getDelta()));
-        HSAILAddressValue addressValue = getGen().asAddressValue(address);
-        append(new AtomicGetAndAddOp(nodeResult, addressValue, delta));
-        setResult(node, nodeResult);
     }
 
     public void visitDirectCompareAndSwap(DirectCompareAndSwapNode x) {

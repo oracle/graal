@@ -43,6 +43,10 @@ public interface LIRGeneratorTool extends ArithmeticLIRGenerator {
 
     Value emitCompareAndSwap(Value address, Value expectedValue, Value newValue, Value trueValue, Value falseValue);
 
+    Value emitAtomicReadAndAdd(Value address, Value delta);
+
+    Value emitAtomicReadAndWrite(Value address, Value newValue);
+
     void emitDeoptimize(Value actionAndReason, Value failedSpeculation, DeoptimizingNode deopting);
 
     Value emitForeignCall(ForeignCallLinkage linkage, DeoptimizingNode info, Value... args);

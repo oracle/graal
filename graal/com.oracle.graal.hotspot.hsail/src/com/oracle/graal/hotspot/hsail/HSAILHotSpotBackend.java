@@ -62,7 +62,7 @@ import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.hsail.*;
 import com.oracle.graal.lir.hsail.HSAILControlFlow.DeoptimizingOp;
-import com.oracle.graal.lir.hsail.HSAILMove.AtomicGetAndAddOp;
+import com.oracle.graal.lir.hsail.HSAILMove.AtomicReadAndAddOp;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.StructuredGraph.GuardsStage;
 import com.oracle.graal.nodes.calc.*;
@@ -451,7 +451,7 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
         boolean usesThreadRegister = false;
         search: for (AbstractBlock<?> b : lir.linearScanOrder()) {
             for (LIRInstruction op : lir.getLIRforBlock(b)) {
-                if (op instanceof AtomicGetAndAddOp && ((AtomicGetAndAddOp) op).getAddress().toAddress().getBase().equals(HSAIL.threadRegister)) {
+                if (op instanceof AtomicReadAndAddOp) {
                     usesThreadRegister = true;
                     assert useHSAILDeoptimization : "cannot use thread register if HSAIL deopt support is disabled";
                     break search;

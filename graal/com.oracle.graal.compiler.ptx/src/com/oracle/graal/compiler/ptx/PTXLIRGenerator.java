@@ -376,7 +376,6 @@ public class PTXLIRGenerator extends LIRGenerator {
 
     @Override
     public Variable emitIntegerTestMove(Value left, Value right, Value trueValue, Value falseValue) {
-
         emitIntegerTest(left, right);
         Variable result = newVariable(trueValue.getKind());
         append(new CondMoveOp(result, Condition.EQ, load(trueValue), loadNonConst(falseValue), nextPredRegNum));
@@ -386,7 +385,6 @@ public class PTXLIRGenerator extends LIRGenerator {
     }
 
     private void emitIntegerTest(Value a, Value b) {
-
         assert a.getKind().isNumericInteger();
 
         if (LIRValueUtil.isVariable(b)) {
@@ -555,7 +553,6 @@ public class PTXLIRGenerator extends LIRGenerator {
             case Long:
                 append(new Op2Stack(LAND, result, a, loadNonConst(b)));
                 break;
-
             default:
                 throw GraalInternalError.shouldNotReachHere("missing: " + a.getKind());
         }
@@ -873,7 +870,6 @@ public class PTXLIRGenerator extends LIRGenerator {
     }
 
     public Variable emitLoadReturnAddress(Kind kind, Value address, DeoptimizingNode deopting) {
-
         PTXAddressValue loadAddress = asAddress(address);
         Variable result;
         switch (kind) {
@@ -885,7 +881,6 @@ public class PTXLIRGenerator extends LIRGenerator {
                 break;
             default:
                 result = newVariable(kind);
-
         }
         append(new LoadReturnAddrOp(kind, result, loadAddress, deopting != null ? state(deopting) : null));
 
@@ -893,7 +888,6 @@ public class PTXLIRGenerator extends LIRGenerator {
     }
 
     public void emitStoreReturnValue(Kind kind, Value address, Value inputVal, DeoptimizingNode deopting) {
-
         PTXAddressValue storeAddress = asAddress(address);
         Variable input = load(inputVal);
         append(new StoreReturnValOp(kind, storeAddress, input, deopting != null ? state(deopting) : null));
@@ -908,6 +902,16 @@ public class PTXLIRGenerator extends LIRGenerator {
     }
 
     public Value emitCompareAndSwap(Value address, Value expectedValue, Value newValue, Value trueValue, Value falseValue) {
-        throw GraalInternalError.unimplemented("PTXLIRGenerator.emitCompareAndSwap()");
+        throw GraalInternalError.unimplemented();
+    }
+
+    public Value emitAtomicReadAndAdd(Value address, Value delta) {
+        // TODO Auto-generated method stub
+        throw GraalInternalError.unimplemented();
+    }
+
+    public Value emitAtomicReadAndWrite(Value address, Value newValue) {
+        // TODO Auto-generated method stub
+        throw GraalInternalError.unimplemented();
     }
 }

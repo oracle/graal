@@ -446,6 +446,39 @@ public class HSAILMove {
         }
     }
 
+    @Opcode("ATOMIC_READ_AND_ADD")
+    public static class AtomicReadAndAddOp extends HSAILLIRInstruction {
+
+        private final Kind accessKind;
+
+        @Def protected AllocatableValue result;
+        @Use({COMPOSITE}) protected HSAILAddressValue address;
+        @Use({REG, CONST}) protected Value delta;
+
+        public AtomicReadAndAddOp(Kind accessKind, AllocatableValue result, HSAILAddressValue address, Value delta) {
+            this.accessKind = accessKind;
+            this.result = result;
+            this.address = address;
+            this.delta = delta;
+        }
+
+        public HSAILAddressValue getAddress() {
+            return address;
+        }
+
+        @Override
+        public void emitCode(CompilationResultBuilder crb, HSAILAssembler masm) {
+            switch (accessKind) {
+                case Int:
+                case Long:
+                    masm.emitAtomicAdd(result, address.toAddress(), delta);
+                    break;
+                default:
+                    throw GraalInternalError.shouldNotReachHere();
+            }
+        }
+    }
+
     public static class NullCheckOp extends HSAILLIRInstruction {
 
         @Use protected Value input;
@@ -486,29 +519,6 @@ public class HSAILMove {
             }
         } else {
             throw GraalInternalError.shouldNotReachHere();
-        }
-    }
-
-    @Opcode("ATOMICADD")
-    public static class AtomicGetAndAddOp extends HSAILLIRInstruction {
-
-        @Def protected AllocatableValue result;
-        @Use({COMPOSITE}) protected HSAILAddressValue address;
-        @Use({REG, CONST}) protected Value delta;
-
-        public AtomicGetAndAddOp(AllocatableValue result, HSAILAddressValue address, Value delta) {
-            this.result = result;
-            this.address = address;
-            this.delta = delta;
-        }
-
-        public HSAILAddressValue getAddress() {
-            return address;
-        }
-
-        @Override
-        public void emitCode(CompilationResultBuilder crb, HSAILAssembler masm) {
-            masm.emitAtomicAdd(result, address.toAddress(), delta);
         }
     }
 
