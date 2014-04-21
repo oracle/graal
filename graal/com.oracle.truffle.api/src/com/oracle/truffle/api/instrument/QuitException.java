@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,15 +22,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.nodes.instrument;
+package com.oracle.truffle.api.instrument;
+
+import com.oracle.truffle.api.nodes.*;
 
 /**
- * Marker interface for all Truffle <strong>instrumentation nodes</strong>: nodes that are do not
- * appear in Truffle ASTs as part of a language's execution semantics.
- * <p>
- * In documentation related to instrumentation nodes, these are distinguished by referring to all
- * other nodes (i.e. ones that <em>do</em> implement language semantics) as <em>AST nodes</em>.
+ * Controls breaking out of all executions and ending Truffle execution.
  */
-public interface InstrumentationNode {
+public final class QuitException extends ControlFlowException {
 
+    private static final long serialVersionUID = -4301115629772778413L;
 }

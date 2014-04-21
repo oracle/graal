@@ -22,25 +22,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.nodes.instrument;
-
-import java.util.*;
-
-import com.oracle.truffle.api.nodes.*;
+package com.oracle.truffle.api.instrument;
 
 /**
- * A kind of {@link Node} that can be marked as belong to 0 or more {@linkplain NodePhylum phyla}.
+ * A receiver of Truffle AST {@link ExecutionEvents}, propagated from a {@link Probe} to which the
+ * instrument is attached.
+ * <p>
+ * <strong>Disclaimer:</strong> experimental interface under development.
  */
-public interface PhylumMarked {
+public interface Instrument extends ExecutionEvents {
 
     /**
-     * Is this proxy tagged as belonging to a particular category of language constructs?
+     * @return the {@link Probe} to which this instrument is attached.
      */
-    boolean isMarkedAs(NodePhylum phylum);
-
-    /**
-     * In which categories is this node tagged (<em>empty set</em> if none).
-     */
-    Set<NodePhylum> getPhylumMarks();
+    Probe getProbe();
 
 }

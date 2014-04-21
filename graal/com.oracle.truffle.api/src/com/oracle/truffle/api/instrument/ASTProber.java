@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,25 +22,23 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.nodes.instrument;
-
-import com.oracle.truffle.api.nodes.*;
+package com.oracle.truffle.api.instrument;
 
 /**
- * Implements the instrumentation of a Truffle AST node and returning either:
- * <ul>
- * <li>the node itself, or</li>
- * <li>a newly created {@linkplain InstrumentationProxyNode proxy node} that holds the instrumented
- * node as its {@linkplain com.oracle.truffle.api.nodes.Node.Child child}.</li>
- * </ul>
+ * Implementation of a policy for <em>instrumenting</em> Truffle ASTs with {@link Probe}s at
+ * particular nodes by inserting node {@link Wrapper}s.
+ * <p>
+ * <strong>Disclaimer:</strong> experimental interface under development.
  */
-public interface NodeInstrumenter {
+public interface ASTProber {
+
+    // TODO (mlvdv) This is a provisional interface, more of a marker really
+    // TODO (mlvdv) AST probing should eventually be done with visitors.
+
+    void addNodeProber(ASTNodeProber nodeProber);
 
     /**
-     * Wraps a {@linkplain InstrumentationProxyNode proxy node} around a node (if not already
-     * wrapped), marks the location with a {@linkplain NodePhylum phylum (category)} for user
-     * interaction, and passes along any characteristics of the particular node that are important
-     * for instrumentation (e.g. the function/method name at a call).
+     * Gets a prober that applies all added {@link ASTNodeProber}s.
      */
-    Node instrumentAs(Node node, NodePhylum phylum, Object... args);
+    ASTNodeProber getCombinedNodeProber();
 }

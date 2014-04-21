@@ -22,14 +22,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.debug;
+package com.oracle.truffle.api.instrument;
 
-import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.*;
+import com.oracle.truffle.api.instrument.impl.*;
 
-/**
- * Controls breaking out of all executions and ending Truffle execution.
- */
-public final class QuitException extends ControlFlowException {
+public class InstrumentationFactory {
 
-    private static final long serialVersionUID = -4301115629772778413L;
+    public static Instrumentation create(ExecutionContext context) {
+        return new InstrumentationImpl(context);
+    }
+
 }

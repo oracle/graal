@@ -22,17 +22,29 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.nodes.instrument;
+package com.oracle.truffle.api.instrument;
 
-import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.frame.*;
 
 /**
- * A no-op node instrumenter; always returns the node unproxied and unmodified.
+ * Visualization services for guest language and Truffle information.
  */
-public class DefaultNodeInstrumenter implements NodeInstrumenter {
+public interface Visualizer {
 
-    public Node instrumentAs(Node node, NodePhylum phylum, Object... args) {
-        return node;
-    }
+    /**
+     * Gets a printer for Truffle ASTs, possibly specialized to be helpful for a specific guest
+     * language implementation.
+     */
+    ASTPrinter getASTPrinter();
+
+    /**
+     * Converts a value in the guest language to a display string.
+     */
+    String displayValue(Object value);
+
+    /**
+     * Converts a slot identifier in the guest language to a display string.
+     */
+    String displayIdentifier(FrameSlot slot);
 
 }

@@ -22,51 +22,45 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.debug;
+package com.oracle.truffle.api.instrument;
+
+import java.util.*;
 
 import com.oracle.truffle.api.*;
-import com.oracle.truffle.api.frame.*;
-import com.oracle.truffle.api.nodes.*;
-import com.oracle.truffle.api.nodes.instrument.*;
+import com.oracle.truffle.api.source.*;
 
-/**
- * Access to the suite of facilities available when debugging is enabled.
- */
-public interface DebugContext {
+public interface Instrumentation {
 
     /**
-     * Access to the Truffle execution context being debugged.
+     * Adds a new specification for how to instrument ASTs.
      */
-    ExecutionContext getContext();
+    void addNodeProber(ASTNodeProber nodeProber);
 
     /**
-     * Access to the appropriate implementation of AST node instrumentation.
+     * Registers a tool interested in being notified about the insertion of a newly created
+     * {@link Probe} into a Truffle AST.
      */
-    NodeInstrumenter getNodeInstrumenter();
+    void addProbeListener(ProbeListener listener);
 
     /**
-     * Access to the management of breakpoints, notifications, etc.
+     * Return the (possibly newly created) {@link Probe} uniquely associated with a particular
+     * source code location. A newly created probe carries no tags.
+     *
+     * @param eventListener an optional listener for certain instrumentation-related events
+     * @return a probe uniquely associated with an extent of guest language source code.
      */
-    DebugManager getDebugManager();
+    Probe getProbe(SourceSection sourceSection, InstrumentEventListener eventListener);
 
     /**
-     * Gets a printer for Truffle ASTs helpful for debugging guest language implementations.
+     * Returns all existing probes with specific tag, or all probes if {@code tag = null}; empty
+     * collection if no probes found.
      */
-    ASTPrinter getASTPrinter();
+    Collection<Probe> findProbesTaggedAs(PhylumTag tag);
 
     /**
-     * Converts a value in the guest language to a display string.
+     * Returns all existing probes with first character on a specified line; empty collection if no
+     * probes found.
      */
-    String displayValue(Object value);
-
-    /**
-     * Converts a slot identifier in the guest language to a display string.
-     */
-    String displayIdentifier(FrameSlot slot);
-
-    /**
-     * Invokes appropriate debugging action when Truffle execution halts.
-     */
-    void executionHalted(Node node, VirtualFrame frame);
+    Collection<Probe> findProbesByLine(SourceLineLocation lineLocation);
 
 }

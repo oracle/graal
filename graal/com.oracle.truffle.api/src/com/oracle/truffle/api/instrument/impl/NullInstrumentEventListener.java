@@ -22,45 +22,36 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api;
+package com.oracle.truffle.api.instrument.impl;
 
+import com.oracle.truffle.api.*;
+import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.instrument.*;
-import com.oracle.truffle.api.source.*;
+import com.oracle.truffle.api.nodes.*;
 
 /**
- * Access to information and basic services in the runtime context for a Truffle-implemented guest
- * language.
- * <p>
- * <strong>Disclaimer:</strong> this interface is under development and will change.
+ * Minimal, mostly no-op implementation of instrumentation services.
  */
-public interface ExecutionContext {
+public final class NullInstrumentEventListener implements InstrumentEventListener {
 
-    /**
-     * Gets the name of the language, possibly with version number. in short enough form that it
-     * might be used for an interactive prompt.
-     */
-    String getLanguageShortName();
+    public static final InstrumentEventListener INSTANCE = new NullInstrumentEventListener();
 
-    /**
-     * Gets access to source management services.
-     */
-    SourceManager getSourceManager();
+    private NullInstrumentEventListener() {
+    }
 
-    /**
-     * Gets access to AST instrumentation services.
-     */
-    Instrumentation instrumentation();
+    public void callEntering(Node astNode, String name) {
+    }
 
-    /**
-     * Access to information visualization services for the specific language.
-     */
-    Visualizer visualizer();
+    public void callReturned(Node astNode, String name) {
+    }
 
-    /**
-     * Add instrumentation to subsequently constructed Truffle ASTs for the guest language; every
-     * one added will have the opportunity to add instrumentation.
-     *
-     * @throws IllegalArgumentException if prober not usable for the guest language.
-     */
-    void addNodeProber(ASTNodeProber nodeProber);
+    public void haltedAt(Node astNode, MaterializedFrame frame) {
+    }
+
+    public void loadStarting(Source source) {
+    }
+
+    public void loadEnding(Source source) {
+    }
+
 }
