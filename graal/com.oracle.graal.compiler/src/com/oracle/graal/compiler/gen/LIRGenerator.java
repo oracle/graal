@@ -46,7 +46,6 @@ import com.oracle.graal.lir.StandardOp.NoOp;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.options.*;
-import com.oracle.graal.phases.util.*;
 
 /**
  * This class traverses the HIR instructions and generates LIR instructions from them.
@@ -62,7 +61,7 @@ public abstract class LIRGenerator implements ArithmeticLIRGenerator, LIRGenerat
         // @formatter:on
     }
 
-    private final Providers providers;
+    private final LIRProviders providers;
     private final CallingConvention cc;
 
     private DebugInfoBuilder debugInfoBuilder;
@@ -163,7 +162,7 @@ public abstract class LIRGenerator implements ArithmeticLIRGenerator, LIRGenerat
      */
     public abstract boolean canStoreConstant(Constant c, boolean isCompressed);
 
-    public LIRGenerator(Providers providers, CallingConvention cc, LIRGenerationResult res) {
+    public LIRGenerator(LIRProviders providers, CallingConvention cc, LIRGenerationResult res) {
         this.res = res;
         this.providers = providers;
         this.cc = cc;
@@ -184,7 +183,7 @@ public abstract class LIRGenerator implements ArithmeticLIRGenerator, LIRGenerat
         return getCodeCache().getTarget();
     }
 
-    public Providers getProviders() {
+    public LIRProviders getProviders() {
         return providers;
     }
 
