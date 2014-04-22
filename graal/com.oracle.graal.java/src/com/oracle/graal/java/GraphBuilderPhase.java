@@ -290,7 +290,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     unwindBlock = new ExceptionDispatchBlock();
                     unwindBlock.startBci = -1;
                     unwindBlock.endBci = -1;
-                    unwindBlock.deoptBci = BytecodeFrame.UNWIND_BCI;
+                    unwindBlock.deoptBci = Modifier.isSynchronized(method.getModifiers()) ? BytecodeFrame.UNWIND_BCI : BytecodeFrame.AFTER_EXCEPTION_BCI;
                     unwindBlock.setId(Integer.MAX_VALUE);
                 }
                 return unwindBlock;
