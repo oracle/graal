@@ -1399,19 +1399,8 @@ public class InliningUtil {
         } else {
             if (unwindNode != null) {
                 UnwindNode unwindDuplicate = (UnwindNode) duplicates.get(unwindNode);
-                MonitorExitNode monitorExit = findPrecedingMonitorExit(unwindDuplicate);
-                DeoptimizeNode deoptimizeNode = new DeoptimizeNode(DeoptimizationAction.InvalidateRecompile, DeoptimizationReason.NotCompiledExceptionHandler);
-                unwindDuplicate.replaceAndDelete(graph.add(deoptimizeNode));
-                // move the deopt upwards if there is a monitor exit that tries to use the
-                // "after exception" frame state
-                // (because there is no "after exception" frame state!)
-                if (monitorExit != null) {
-                    if (monitorExit.stateAfter() != null && monitorExit.stateAfter().bci == BytecodeFrame.AFTER_EXCEPTION_BCI) {
-                        FrameState monitorFrameState = monitorExit.stateAfter();
-                        graph.removeFixed(monitorExit);
-                        monitorFrameState.safeDelete();
-                    }
-                }
+                DeoptimizeNode deoptimizeNode = graph.add(new DeoptimizeNode(DeoptimizationAction.InvalidateRecompile, DeoptimizationReason.NotCompiledExceptionHandler));
+                unwindDuplicate.replaceAndDelete(deoptimizeNode);
             }
         }
 
@@ -1420,22 +1409,25 @@ public class InliningUtil {
             int callerLockDepth = stateAfter.nestedLockDepth();
             for (FrameState original : inlineGraph.getNodes(FrameState.class)) {
                 FrameState frameState = (FrameState) duplicates.get(original);
-                if (frameState != null) {
+                if (frameState != null && frameState.isAlive()) {
                     assert frameState.bci != BytecodeFrame.BEFORE_BCI : frameState;
                     if (frameState.bci == BytecodeFrame.AFTER_BCI) {
                         frameState.replaceAndDelete(returnKind == Kind.Void ? stateAfter : stateAfter.duplicateModified(stateAfter.bci, stateAfter.rethrowException(), returnKind,
                                         frameState.stackAt(0)));
-                    } else if (frameState.bci == BytecodeFrame.AFTER_EXCEPTION_BCI) {
-                        if (frameState.isAlive()) {
-                            assert stateAtExceptionEdge != null;
+                    } else if (frameState.bci == BytecodeFrame.AFTER_EXCEPTION_BCI || (frameState.bci == BytecodeFrame.UNWIND_BCI && !frameState.method().isSynchronized())) {
+                        if (stateAtExceptionEdge != null) {
                             frameState.replaceAndDelete(stateAtExceptionEdge);
                         } else {
-                            assert stateAtExceptionEdge == null;
+                            handleMissingAfterExceptionFrameState(frameState);
                         }
+                    } else if (frameState.bci == BytecodeFrame.UNWIND_BCI) {
+                        handleMissingAfterExceptionFrameState(frameState);
                     } else {
                         // only handle the outermost frame states
                         if (frameState.outerFrameState() == null) {
                             assert frameState.bci == BytecodeFrame.INVALID_FRAMESTATE_BCI || frameState.method().equals(inlineGraph.method());
+                            assert frameState.bci != BytecodeFrame.AFTER_EXCEPTION_BCI && frameState.bci != BytecodeFrame.BEFORE_BCI && frameState.bci != BytecodeFrame.AFTER_EXCEPTION_BCI &&
+                                            frameState.bci != BytecodeFrame.UNWIND_BCI : frameState.bci;
                             if (outerFrameState == null) {
                                 outerFrameState = stateAfter.duplicateModified(invoke.bci(), stateAfter.rethrowException(), invokeNode.getKind());
                                 outerFrameState.setDuringCall(true);
@@ -1480,6 +1472,39 @@ public class InliningUtil {
         GraphUtil.killCFG(invokeNode);
 
         return duplicates;
+    }
+
+    protected static void handleMissingAfterExceptionFrameState(FrameState nonReplacableFrameState) {
+        Graph graph = nonReplacableFrameState.graph();
+        NodeWorkList workList = graph.createNodeWorkList();
+        workList.add(nonReplacableFrameState);
+        for (Node node : workList) {
+            FrameState fs = (FrameState) node;
+            for (Node usage : fs.usages().snapshot()) {
+                if (!usage.isAlive()) {
+                    continue;
+                }
+                if (usage instanceof FrameState) {
+                    workList.add(usage);
+                } else {
+                    StateSplit stateSplit = (StateSplit) usage;
+                    FixedNode fixedStateSplit = stateSplit.asNode();
+                    if (fixedStateSplit instanceof MergeNode) {
+                        MergeNode merge = (MergeNode) fixedStateSplit;
+                        while (merge.isAlive()) {
+                            AbstractEndNode end = merge.forwardEnds().first();
+                            DeoptimizeNode deoptimizeNode = graph.add(new DeoptimizeNode(DeoptimizationAction.InvalidateRecompile, DeoptimizationReason.NotCompiledExceptionHandler));
+                            end.replaceAtPredecessor(deoptimizeNode);
+                            GraphUtil.killCFG(end);
+                        }
+                    } else {
+                        DeoptimizeNode deoptimizeNode = graph.add(new DeoptimizeNode(DeoptimizationAction.InvalidateRecompile, DeoptimizationReason.NotCompiledExceptionHandler));
+                        fixedStateSplit.replaceAtPredecessor(deoptimizeNode);
+                        GraphUtil.killCFG(fixedStateSplit);
+                    }
+                }
+            }
+        }
     }
 
     public static ValueNode mergeReturns(MergeNode merge, List<? extends ReturnNode> returnNodes) {
