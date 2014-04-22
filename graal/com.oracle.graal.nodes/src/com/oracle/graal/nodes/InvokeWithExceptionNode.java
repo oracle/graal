@@ -223,13 +223,6 @@ public class InvokeWithExceptionNode extends ControlSplitNode implements Invoke,
     }
 
     @Override
-    public void computeStateDuring(FrameState tempStateAfter) {
-        FrameState newStateDuring = tempStateAfter.duplicateModified(bci(), tempStateAfter.rethrowException(), getKind());
-        newStateDuring.setDuringCall(true);
-        setStateDuring(newStateDuring);
-    }
-
-    @Override
     public GuardingNode getGuard() {
         return guard;
     }
