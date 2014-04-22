@@ -36,7 +36,6 @@ import com.oracle.graal.asm.sparc.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.JumpOp;
 import com.oracle.graal.lir.gen.*;
@@ -60,7 +59,6 @@ import com.oracle.graal.lir.sparc.SPARCMove.MembarOp;
 import com.oracle.graal.lir.sparc.SPARCMove.MoveFromRegOp;
 import com.oracle.graal.lir.sparc.SPARCMove.MoveToRegOp;
 import com.oracle.graal.lir.sparc.SPARCMove.StackLoadAddressOp;
-import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.util.*;
 
 /**
@@ -593,7 +591,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Value emitDiv(Value a, Value b, DeoptimizingNode deopting) {
+    public Value emitDiv(Value a, Value b, LIRFrameState state) {
         Variable result = newVariable(a.getKind());
         switch (a.getKind().getStackKind()) {
             case Int:
@@ -615,8 +613,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Value emitRem(Value a, Value b, DeoptimizingNode deopting) {
-        LIRFrameState state = state(deopting);
+    public Value emitRem(Value a, Value b, LIRFrameState state) {
         Variable result = newVariable(a.getKind());
         switch (a.getKind().getStackKind()) {
             case Int:
@@ -632,7 +629,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Value emitUDiv(Value a, Value b, DeoptimizingNode deopting) {
+    public Value emitUDiv(Value a, Value b, LIRFrameState state) {
         // LIRFrameState state = state(deopting);
         switch (a.getKind().getStackKind()) {
             case Int:
@@ -647,7 +644,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Value emitURem(Value a, Value b, DeoptimizingNode deopting) {
+    public Value emitURem(Value a, Value b, LIRFrameState state) {
         // LIRFrameState state = state(deopting);
         switch (a.getKind().getStackKind()) {
             case Int:
@@ -917,7 +914,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public void emitDeoptimize(Value actionAndReason, Value speculation, DeoptimizingNode deopting) {
+    public void emitDeoptimize(Value actionAndReason, Value speculation, LIRFrameState state) {
         append(new ReturnOp(Value.ILLEGAL));
     }
 

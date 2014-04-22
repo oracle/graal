@@ -25,8 +25,7 @@ package com.oracle.graal.lir.gen;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.lir.*;
 
 public interface LIRGeneratorTool extends ArithmeticLIRGenerator {
 
@@ -38,9 +37,9 @@ public interface LIRGeneratorTool extends ArithmeticLIRGenerator {
 
     ForeignCallsProvider getForeignCalls();
 
-    Value emitLoad(PlatformKind kind, Value address, Access access);
+    Value emitLoad(PlatformKind kind, Value address, LIRFrameState state);
 
-    void emitStore(PlatformKind kind, Value address, Value input, Access access);
+    void emitStore(PlatformKind kind, Value address, Value input, LIRFrameState state);
 
     Value emitCompareAndSwap(Value address, Value expectedValue, Value newValue, Value trueValue, Value falseValue);
 
@@ -64,9 +63,9 @@ public interface LIRGeneratorTool extends ArithmeticLIRGenerator {
         throw GraalInternalError.unimplemented();
     }
 
-    void emitDeoptimize(Value actionAndReason, Value failedSpeculation, DeoptimizingNode deopting);
+    void emitDeoptimize(Value actionAndReason, Value failedSpeculation, LIRFrameState state);
 
-    Value emitForeignCall(ForeignCallLinkage linkage, DeoptimizingNode info, Value... args);
+    Value emitForeignCall(ForeignCallLinkage linkage, LIRFrameState state, Value... args);
 
     /**
      * Checks whether the supplied constant can be used without loading it into a register for most

@@ -26,12 +26,16 @@ import java.util.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 
 public interface NodeLIRBuilderTool extends NodeMappableLIRBuilder {
+
+    // TODO (je) remove and move into the Node
+    LIRFrameState state(DeoptimizingNode deopt);
 
     void emitNullCheck(ValueNode v, DeoptimizingNode deopting);
 

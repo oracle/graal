@@ -74,7 +74,7 @@ public abstract class AMD64NodeLIRBuilder extends NodeLIRBuilder {
                 if (((fixedWithNextNode instanceof IntegerDivNode) || (fixedWithNextNode instanceof IntegerRemNode)) && fixedWithNextNode.getClass() != divRem.getClass()) {
                     FixedBinaryNode otherDivRem = (FixedBinaryNode) fixedWithNextNode;
                     if (otherDivRem.x() == divRem.x() && otherDivRem.y() == divRem.y() && !hasOperand(otherDivRem)) {
-                        Value[] results = ((AMD64LIRGenerator) gen).emitIntegerDivRem(operand(divRem.x()), operand(divRem.y()), (DeoptimizingNode) valueNode);
+                        Value[] results = ((AMD64LIRGenerator) gen).emitIntegerDivRem(operand(divRem.x()), operand(divRem.y()), state((DeoptimizingNode) valueNode));
                         if (divRem instanceof IntegerDivNode) {
                             setResult(divRem, results[0]);
                             setResult(otherDivRem, results[1]);

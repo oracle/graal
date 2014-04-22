@@ -59,7 +59,7 @@ public class NewInstanceStubCall extends DeoptimizingStubCall implements LIRLowe
     @Override
     public void generate(NodeLIRBuilderTool gen) {
         ForeignCallLinkage linkage = gen.getLIRGeneratorTool().getForeignCalls().lookupForeignCall(NEW_INSTANCE);
-        Value result = gen.getLIRGeneratorTool().emitForeignCall(linkage, this, gen.operand(hub));
+        Value result = gen.getLIRGeneratorTool().emitForeignCall(linkage, gen.state(this), gen.operand(hub));
         gen.setResult(this, result);
     }
 

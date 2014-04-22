@@ -25,15 +25,13 @@ package com.oracle.graal.lir.gen;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.nodes.*;
+import com.oracle.graal.lir.*;
 
 /**
  * This interface can be used to generate LIR for arithmetic operations.
  */
 public interface ArithmeticLIRGenerator {
-    /**
-     * TODO remove reference to {@link Stamp}.
-     */
+
     PlatformKind getPlatformKind(Stamp stamp);
 
     Value emitNegate(Value input);
@@ -44,25 +42,13 @@ public interface ArithmeticLIRGenerator {
 
     Value emitMul(Value a, Value b);
 
-    /**
-     * TODO remove {@link DeoptimizeNode}.
-     */
-    Value emitDiv(Value a, Value b, DeoptimizingNode deopting);
+    Value emitDiv(Value a, Value b, LIRFrameState state);
 
-    /**
-     * TODO remove {@link DeoptimizeNode}.
-     */
-    Value emitRem(Value a, Value b, DeoptimizingNode deopting);
+    Value emitRem(Value a, Value b, LIRFrameState state);
 
-    /**
-     * TODO remove {@link DeoptimizeNode}.
-     */
-    Value emitUDiv(Value a, Value b, DeoptimizingNode deopting);
+    Value emitUDiv(Value a, Value b, LIRFrameState state);
 
-    /**
-     * TODO remove {@link DeoptimizeNode}.
-     */
-    Value emitURem(Value a, Value b, DeoptimizingNode deopting);
+    Value emitURem(Value a, Value b, LIRFrameState state);
 
     Value emitNot(Value input);
 

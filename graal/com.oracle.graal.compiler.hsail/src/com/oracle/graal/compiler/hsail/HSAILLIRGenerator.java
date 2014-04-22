@@ -51,7 +51,6 @@ import com.oracle.graal.lir.hsail.HSAILMove.LeaOp;
 import com.oracle.graal.lir.hsail.HSAILMove.MembarOp;
 import com.oracle.graal.lir.hsail.HSAILMove.MoveFromRegOp;
 import com.oracle.graal.lir.hsail.HSAILMove.MoveToRegOp;
-import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.util.*;
 
 /**
@@ -415,7 +414,7 @@ public abstract class HSAILLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Value emitDiv(Value a, Value b, DeoptimizingNode deopting) {
+    public Value emitDiv(Value a, Value b, LIRFrameState state) {
         Variable result = newVariable(a.getKind());
         switch (a.getKind()) {
             case Int:
@@ -438,7 +437,7 @@ public abstract class HSAILLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Value emitRem(Value a, Value b, DeoptimizingNode deopting) {
+    public Value emitRem(Value a, Value b, LIRFrameState state) {
         Variable result = newVariable(a.getKind());
         switch (a.getKind()) {
             case Int:
@@ -460,12 +459,12 @@ public abstract class HSAILLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Variable emitUDiv(Value a, Value b, DeoptimizingNode deopting) {
+    public Variable emitUDiv(Value a, Value b, LIRFrameState state) {
         throw GraalInternalError.unimplemented();
     }
 
     @Override
-    public Variable emitURem(Value a, Value b, DeoptimizingNode deopting) {
+    public Variable emitURem(Value a, Value b, LIRFrameState state) {
         throw GraalInternalError.unimplemented();
     }
 
@@ -683,7 +682,7 @@ public abstract class HSAILLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public void emitDeoptimize(Value actionAndReason, Value speculation, DeoptimizingNode deopting) {
+    public void emitDeoptimize(Value actionAndReason, Value speculation, LIRFrameState state) {
         append(new ReturnOp(Value.ILLEGAL));
     }
 

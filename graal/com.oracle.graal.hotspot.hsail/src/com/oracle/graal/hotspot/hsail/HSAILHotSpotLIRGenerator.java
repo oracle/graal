@@ -24,8 +24,6 @@
 package com.oracle.graal.hotspot.hsail;
 
 import static com.oracle.graal.api.code.ValueUtil.*;
-import static com.oracle.graal.lir.hsail.HSAILControlFlow.*;
-import static com.oracle.graal.lir.hsail.HSAILMove.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
@@ -40,7 +38,19 @@ import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.SaveRegistersOp;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.hsail.*;
-import com.oracle.graal.nodes.*;
+import com.oracle.graal.lir.hsail.HSAILControlFlow.CondMoveOp;
+import com.oracle.graal.lir.hsail.HSAILControlFlow.DeoptimizeOp;
+import com.oracle.graal.lir.hsail.HSAILControlFlow.ForeignCall1ArgOp;
+import com.oracle.graal.lir.hsail.HSAILControlFlow.ForeignCall2ArgOp;
+import com.oracle.graal.lir.hsail.HSAILControlFlow.ForeignCallNoArgOp;
+import com.oracle.graal.lir.hsail.HSAILMove.CompareAndSwapOp;
+import com.oracle.graal.lir.hsail.HSAILMove.LoadCompressedPointer;
+import com.oracle.graal.lir.hsail.HSAILMove.LoadOp;
+import com.oracle.graal.lir.hsail.HSAILMove.MoveFromRegOp;
+import com.oracle.graal.lir.hsail.HSAILMove.MoveToRegOp;
+import com.oracle.graal.lir.hsail.HSAILMove.StoreCompressedPointer;
+import com.oracle.graal.lir.hsail.HSAILMove.StoreConstantOp;
+import com.oracle.graal.lir.hsail.HSAILMove.StoreOp;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.phases.util.*;
 
@@ -110,17 +120,13 @@ public class HSAILHotSpotLIRGenerator extends HSAILLIRGenerator implements HotSp
     }
 
     @Override
-    public Variable emitLoad(PlatformKind kind, Value address, Access access) {
+    public Variable emitLoad(PlatformKind kind, Value address, LIRFrameState state) {
         HSAILAddressValue loadAddress = asAddressValue(address);
         Variable result = newVariable(kind);
-        LIRFrameState state = null;
-        if (access instanceof DeoptimizingNode) {
-            state = state((DeoptimizingNode) access);
-        }
-        if (isCompressCandidate(access) && config.useCompressedOops && kind == Kind.Object) {
+        if (isCompressCandidate(null) && config.useCompressedOops && kind == Kind.Object) {
             Variable scratch = newVariable(Kind.Long);
             append(new LoadCompressedPointer(Kind.Object, result, scratch, loadAddress, state, getNarrowOopBase(), getNarrowOopShift(), getLogMinObjectAlignment()));
-        } else if (isCompressCandidate(access) && config.useCompressedClassPointers && kind == Kind.Long) {
+        } else if (isCompressCandidate(null) && config.useCompressedClassPointers && kind == Kind.Long) {
             Variable scratch = newVariable(Kind.Long);
             append(new LoadCompressedPointer(Kind.Object, result, scratch, loadAddress, state, getNarrowKlassBase(), getNarrowKlassShift(), getLogKlassAlignment()));
         } else if (kind == NarrowOopStamp.NarrowOop) {
@@ -132,13 +138,9 @@ public class HSAILHotSpotLIRGenerator extends HSAILLIRGenerator implements HotSp
     }
 
     @Override
-    public void emitStore(PlatformKind kind, Value address, Value inputVal, Access access) {
+    public void emitStore(PlatformKind kind, Value address, Value inputVal, LIRFrameState state) {
         HSAILAddressValue storeAddress = asAddressValue(address);
-        LIRFrameState state = null;
-        if (access instanceof DeoptimizingNode) {
-            state = state((DeoptimizingNode) access);
-        }
-        boolean isCompressed = isCompressedOperation(kind, access);
+        boolean isCompressed = isCompressedOperation(kind, null);
         if (isConstant(inputVal)) {
             Constant c = asConstant(inputVal);
             if (canStoreConstant(c, isCompressed)) {
@@ -152,7 +154,7 @@ public class HSAILHotSpotLIRGenerator extends HSAILLIRGenerator implements HotSp
                         Constant value = compress(c, config.getKlassEncoding());
                         append(new StoreConstantOp(Kind.Int, storeAddress, value, state));
                     } else {
-                        throw GraalInternalError.shouldNotReachHere("can't handle: " + access);
+                        throw GraalInternalError.shouldNotReachHere("can't handle");
                     }
                     return;
                 } else {
@@ -162,10 +164,10 @@ public class HSAILHotSpotLIRGenerator extends HSAILLIRGenerator implements HotSp
             }
         }
         Variable input = load(inputVal);
-        if (isCompressCandidate(access) && config.useCompressedOops && kind == Kind.Object) {
+        if (isCompressCandidate(null) && config.useCompressedOops && kind == Kind.Object) {
             Variable scratch = newVariable(Kind.Long);
             append(new StoreCompressedPointer(Kind.Object, storeAddress, input, scratch, state, getNarrowOopBase(), getNarrowOopShift(), getLogMinObjectAlignment()));
-        } else if (isCompressCandidate(access) && config.useCompressedClassPointers && kind == Kind.Long) {
+        } else if (isCompressCandidate(null) && config.useCompressedClassPointers && kind == Kind.Long) {
             Variable scratch = newVariable(Kind.Long);
             append(new StoreCompressedPointer(Kind.Object, storeAddress, input, scratch, state, getNarrowKlassBase(), getNarrowKlassShift(), getLogKlassAlignment()));
         } else if (kind == NarrowOopStamp.NarrowOop) {
@@ -201,8 +203,8 @@ public class HSAILHotSpotLIRGenerator extends HSAILLIRGenerator implements HotSp
     }
 
     @Override
-    public void emitDeoptimize(Value actionAndReason, Value failedSpeculation, DeoptimizingNode deopting) {
-        emitDeoptimizeInner(actionAndReason, state(deopting), "emitDeoptimize");
+    public void emitDeoptimize(Value actionAndReason, Value failedSpeculation, LIRFrameState state) {
+        emitDeoptimizeInner(actionAndReason, state, "emitDeoptimize");
     }
 
     /***
@@ -220,7 +222,7 @@ public class HSAILHotSpotLIRGenerator extends HSAILLIRGenerator implements HotSp
      * emitting a comment as to what Foreign call they would have made.
      */
     @Override
-    public Variable emitForeignCall(ForeignCallLinkage linkage, DeoptimizingNode info, Value... args) {
+    public Variable emitForeignCall(ForeignCallLinkage linkage, LIRFrameState state, Value... args) {
         Variable result = newVariable(Kind.Object);  // linkage.getDescriptor().getResultType());
 
         // to make the LIRVerifier happy, we move any constants into registers

@@ -72,7 +72,7 @@ public class UnsignedDivNode extends FixedBinaryNode implements Canonicalizable,
 
     @Override
     public void generate(NodeLIRBuilderTool gen) {
-        gen.setResult(this, gen.getLIRGeneratorTool().emitUDiv(gen.operand(x()), gen.operand(y()), this));
+        gen.setResult(this, gen.getLIRGeneratorTool().emitUDiv(gen.operand(x()), gen.operand(y()), gen.state(this)));
     }
 
     @Override

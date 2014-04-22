@@ -44,7 +44,8 @@ import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.type.*;
 import com.oracle.graal.hotspot.stubs.*;
 import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.StandardOp.*;
+import com.oracle.graal.lir.StandardOp.NoOp;
+import com.oracle.graal.lir.StandardOp.SaveRegistersOp;
 import com.oracle.graal.lir.amd64.*;
 import com.oracle.graal.lir.amd64.AMD64ControlFlow.CondMoveOp;
 import com.oracle.graal.lir.amd64.AMD64Move.CompareAndSwapOp;
@@ -55,7 +56,6 @@ import com.oracle.graal.lir.amd64.AMD64Move.MoveToRegOp;
 import com.oracle.graal.lir.amd64.AMD64Move.StoreConstantOp;
 import com.oracle.graal.lir.amd64.AMD64Move.StoreOp;
 import com.oracle.graal.lir.gen.*;
-import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 
 /**
@@ -256,7 +256,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     }
 
     @Override
-    public Variable emitForeignCall(ForeignCallLinkage linkage, DeoptimizingNode info, Value... args) {
+    public Variable emitForeignCall(ForeignCallLinkage linkage, LIRFrameState state, Value... args) {
         HotSpotForeignCallLinkage hotspotLinkage = (HotSpotForeignCallLinkage) linkage;
         boolean destroysRegisters = hotspotLinkage.destroysRegisters();
 
@@ -271,9 +271,10 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         }
 
         Variable result;
-        DeoptimizingNode deoptInfo = null;
+        // TODO (je) check if we can remove this
+        LIRFrameState deoptInfo = null;
         if (hotspotLinkage.canDeoptimize()) {
-            deoptInfo = info;
+            deoptInfo = state;
             assert deoptInfo != null || getStub() != null;
             assert hotspotLinkage.needsJavaFrameAnchor();
         }
@@ -382,9 +383,9 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     }
 
     @Override
-    public void emitDeoptimize(Value actionAndReason, Value speculation, DeoptimizingNode deopting) {
+    public void emitDeoptimize(Value actionAndReason, Value speculation, LIRFrameState state) {
         moveDeoptValuesToThread(actionAndReason, speculation);
-        append(new AMD64DeoptimizeOp(state(deopting)));
+        append(new AMD64DeoptimizeOp(state));
     }
 
     @Override
@@ -455,13 +456,9 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     }
 
     @Override
-    public Variable emitLoad(PlatformKind kind, Value address, Access access) {
+    public Variable emitLoad(PlatformKind kind, Value address, LIRFrameState state) {
         AMD64AddressValue loadAddress = asAddressValue(address);
         Variable result = newVariable(toStackKind(kind));
-        LIRFrameState state = null;
-        if (access instanceof DeoptimizingNode) {
-            state = state((DeoptimizingNode) access);
-        }
         /**
          * Currently, the (de)compression of pointers applies conditionally to some objects (oops,
          * kind==Object) and some addresses (klass pointers, kind==Long). Initially, the input
@@ -469,14 +466,14 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
          * candidate. Consequently, depending on the appropriate kind, the specific (de)compression
          * functions are being called.
          */
-        if (isCompressedOperation(kind, access)) {
+        if (isCompressedOperation(kind, null)) {
             if (kind == Kind.Object) {
                 append(new LoadCompressedPointer(Kind.Object, result, getProviders().getRegisters().getHeapBaseRegister().asValue(), loadAddress, state, config.getOopEncoding()));
             } else if (kind == Kind.Long) {
                 Variable scratch = config.getKlassEncoding().base != 0 ? newVariable(Kind.Long) : null;
                 append(new LoadCompressedPointer(Kind.Long, result, scratch, loadAddress, state, config.getKlassEncoding()));
             } else {
-                throw GraalInternalError.shouldNotReachHere("can't handle: " + access);
+                throw GraalInternalError.shouldNotReachHere("can't handle");
             }
         } else {
             append(new LoadOp(getMemoryKind(kind), result, loadAddress, state));
@@ -485,13 +482,9 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     }
 
     @Override
-    public void emitStore(PlatformKind kind, Value address, Value inputVal, Access access) {
+    public void emitStore(PlatformKind kind, Value address, Value inputVal, LIRFrameState state) {
         AMD64AddressValue storeAddress = asAddressValue(address);
-        LIRFrameState state = null;
-        if (access instanceof DeoptimizingNode) {
-            state = state((DeoptimizingNode) access);
-        }
-        boolean isCompressed = isCompressedOperation(kind, access);
+        boolean isCompressed = isCompressedOperation(kind, null);
         if (isConstant(inputVal)) {
             Constant c = asConstant(inputVal);
             if (canStoreConstant(c, isCompressed)) {
@@ -504,7 +497,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
                         Constant value = compress(c, config.getKlassEncoding());
                         append(new StoreCompressedConstantOp(Kind.Long, storeAddress, value, state));
                     } else {
-                        throw GraalInternalError.shouldNotReachHere("can't handle: " + access);
+                        throw GraalInternalError.shouldNotReachHere("can't handle");
                     }
                     return;
                 } else {

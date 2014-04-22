@@ -40,7 +40,6 @@ import com.oracle.graal.lir.sparc.*;
 import com.oracle.graal.lir.sparc.SPARCMove.LoadOp;
 import com.oracle.graal.lir.sparc.SPARCMove.StoreConstantOp;
 import com.oracle.graal.lir.sparc.SPARCMove.StoreOp;
-import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 
 public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSpotLIRGenerator {
@@ -91,12 +90,13 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
     }
 
     @Override
-    public Variable emitForeignCall(ForeignCallLinkage linkage, DeoptimizingNode info, Value... args) {
+    public Variable emitForeignCall(ForeignCallLinkage linkage, LIRFrameState state, Value... args) {
         HotSpotForeignCallLinkage hotspotLinkage = (HotSpotForeignCallLinkage) linkage;
         Variable result;
-        DeoptimizingNode deoptInfo = null;
+        // TODO (je) check if this can be removed
+        LIRFrameState deoptInfo = null;
         if (hotspotLinkage.canDeoptimize()) {
-            deoptInfo = info;
+            deoptInfo = state;
             assert deoptInfo != null || getStub() != null;
         }
 
@@ -153,9 +153,9 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
     }
 
     @Override
-    public void emitDeoptimize(Value actionAndReason, Value speculation, DeoptimizingNode deopting) {
+    public void emitDeoptimize(Value actionAndReason, Value speculation, LIRFrameState state) {
         moveDeoptValuesToThread(actionAndReason, speculation);
-        append(new SPARCDeoptimizeOp(state(deopting)));
+        append(new SPARCDeoptimizeOp(state));
     }
 
     @Override
@@ -169,14 +169,10 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
     }
 
     @Override
-    public Variable emitLoad(PlatformKind kind, Value address, Access access) {
+    public Variable emitLoad(PlatformKind kind, Value address, LIRFrameState state) {
         SPARCAddressValue loadAddress = asAddressValue(address);
         Variable result = newVariable(kind);
-        LIRFrameState state = null;
-        if (access instanceof DeoptimizingNode) {
-            state = state((DeoptimizingNode) access);
-        }
-        if (isCompressCandidate(access)) {
+        if (isCompressCandidate(null)) {
             if (config.useCompressedOops && kind == Kind.Object) {
                 // append(new LoadCompressedPointer(kind, result, loadAddress, access != null ?
                 // state(access) :
@@ -199,19 +195,15 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
     }
 
     @Override
-    public void emitStore(PlatformKind kind, Value address, Value inputVal, Access access) {
+    public void emitStore(PlatformKind kind, Value address, Value inputVal, LIRFrameState state) {
         SPARCAddressValue storeAddress = asAddressValue(address);
-        LIRFrameState state = null;
-        if (access instanceof DeoptimizingNode) {
-            state = state((DeoptimizingNode) access);
-        }
         if (isConstant(inputVal)) {
             Constant c = asConstant(inputVal);
-            if (canStoreConstant(c, isCompressCandidate(access))) {
+            if (canStoreConstant(c, isCompressCandidate(null))) {
                 if (inputVal.getKind() == Kind.Object) {
-                    append(new StoreConstantOp((Kind) kind, storeAddress, c, state, config.useCompressedOops && isCompressCandidate(access)));
+                    append(new StoreConstantOp((Kind) kind, storeAddress, c, state, config.useCompressedOops && isCompressCandidate(null)));
                 } else if (inputVal.getKind() == Kind.Long) {
-                    append(new StoreConstantOp((Kind) kind, storeAddress, c, state, config.useCompressedClassPointers && isCompressCandidate(access)));
+                    append(new StoreConstantOp((Kind) kind, storeAddress, c, state, config.useCompressedClassPointers && isCompressCandidate(null)));
                 } else {
                     append(new StoreConstantOp((Kind) kind, storeAddress, c, state, false));
                 }
@@ -219,7 +211,7 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
             }
         }
         Variable input = load(inputVal);
-        if (isCompressCandidate(access)) {
+        if (isCompressCandidate(null)) {
             if (config.useCompressedOops && kind == Kind.Object) {
                 // if (input.getKind() == Kind.Object) {
                 // Variable scratch = newVariable(Kind.Long);

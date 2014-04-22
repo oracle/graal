@@ -35,7 +35,6 @@ import com.oracle.graal.asm.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.JumpOp;
 import com.oracle.graal.lir.gen.*;
@@ -60,8 +59,6 @@ import com.oracle.graal.lir.ptx.PTXMemOp.StoreOp;
 import com.oracle.graal.lir.ptx.PTXMemOp.StoreReturnValOp;
 import com.oracle.graal.lir.ptx.PTXMove.MoveFromRegOp;
 import com.oracle.graal.lir.ptx.PTXMove.MoveToRegOp;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.phases.util.*;
 
 /**
@@ -232,25 +229,17 @@ public class PTXLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Variable emitLoad(PlatformKind kind, Value address, Access access) {
+    public Variable emitLoad(PlatformKind kind, Value address, LIRFrameState state) {
         PTXAddressValue loadAddress = asAddress(address);
         Variable result = newVariable(kind);
-        LIRFrameState state = null;
-        if (access instanceof DeoptimizingNode) {
-            state = state((DeoptimizingNode) access);
-        }
         append(new LoadOp((Kind) kind, result, loadAddress, state));
         return result;
     }
 
     @Override
-    public void emitStore(PlatformKind kind, Value address, Value inputVal, Access access) {
+    public void emitStore(PlatformKind kind, Value address, Value inputVal, LIRFrameState state) {
         PTXAddressValue storeAddress = asAddress(address);
         Variable input = load(inputVal);
-        LIRFrameState state = null;
-        if (access instanceof DeoptimizingNode) {
-            state = state((DeoptimizingNode) access);
-        }
         append(new StoreOp((Kind) kind, storeAddress, input, state));
     }
 
@@ -496,7 +485,7 @@ public class PTXLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Value emitDiv(Value a, Value b, DeoptimizingNode deopting) {
+    public Value emitDiv(Value a, Value b, LIRFrameState state) {
         Variable result = newVariable(a.getKind());
         switch (a.getKind()) {
             case Int:
@@ -518,7 +507,7 @@ public class PTXLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Value emitRem(Value a, Value b, DeoptimizingNode deopting) {
+    public Value emitRem(Value a, Value b, LIRFrameState state) {
         Variable result = newVariable(a.getKind());
         switch (a.getKind()) {
             case Int:
@@ -534,12 +523,12 @@ public class PTXLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Variable emitUDiv(Value a, Value b, DeoptimizingNode deopting) {
+    public Variable emitUDiv(Value a, Value b, LIRFrameState state) {
         throw GraalInternalError.unimplemented("PTXLIRGenerator.emitUDiv()");
     }
 
     @Override
-    public Variable emitURem(Value a, Value b, DeoptimizingNode deopting) {
+    public Variable emitURem(Value a, Value b, LIRFrameState state) {
         throw GraalInternalError.unimplemented("PTXLIRGenerator.emitURem()");
     }
 
@@ -751,7 +740,7 @@ public class PTXLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public void emitDeoptimize(Value actionAndReason, Value speculation, DeoptimizingNode deopting) {
+    public void emitDeoptimize(Value actionAndReason, Value speculation, LIRFrameState state) {
         append(new ReturnOp(Value.ILLEGAL));
     }
 
@@ -860,16 +849,16 @@ public class PTXLIRGenerator extends LIRGenerator {
         throw GraalInternalError.unimplemented("PTXLIRGenerator.emitUnwind()");
     }
 
-    public Variable emitLoadParam(Kind kind, Value address, DeoptimizingNode deopting) {
+    public Variable emitLoadParam(Kind kind, Value address, LIRFrameState state) {
 
         PTXAddressValue loadAddress = asAddress(address);
         Variable result = newVariable(kind);
-        append(new LoadParamOp(kind, result, loadAddress, deopting != null ? state(deopting) : null));
+        append(new LoadParamOp(kind, result, loadAddress, state));
 
         return result;
     }
 
-    public Variable emitLoadReturnAddress(Kind kind, Value address, DeoptimizingNode deopting) {
+    public Variable emitLoadReturnAddress(Kind kind, Value address, LIRFrameState state) {
         PTXAddressValue loadAddress = asAddress(address);
         Variable result;
         switch (kind) {
@@ -882,15 +871,15 @@ public class PTXLIRGenerator extends LIRGenerator {
             default:
                 result = newVariable(kind);
         }
-        append(new LoadReturnAddrOp(kind, result, loadAddress, deopting != null ? state(deopting) : null));
+        append(new LoadReturnAddrOp(kind, result, loadAddress, state));
 
         return result;
     }
 
-    public void emitStoreReturnValue(Kind kind, Value address, Value inputVal, DeoptimizingNode deopting) {
+    public void emitStoreReturnValue(Kind kind, Value address, Value inputVal, LIRFrameState state) {
         PTXAddressValue storeAddress = asAddress(address);
         Variable input = load(inputVal);
-        append(new StoreReturnValOp(kind, storeAddress, input, deopting != null ? state(deopting) : null));
+        append(new StoreReturnValOp(kind, storeAddress, input, state));
     }
 
     @Override

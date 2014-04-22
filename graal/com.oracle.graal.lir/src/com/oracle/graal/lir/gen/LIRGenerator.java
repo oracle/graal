@@ -43,8 +43,6 @@ import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.BlockEndOp;
 import com.oracle.graal.lir.StandardOp.LabelOp;
 import com.oracle.graal.lir.StandardOp.NoOp;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.options.*;
 
 /**
@@ -356,11 +354,11 @@ public abstract class LIRGenerator implements ArithmeticLIRGenerator, LIRGenerat
     }
 
     @Override
-    public Variable emitForeignCall(ForeignCallLinkage linkage, DeoptimizingNode info, Value... args) {
+    public Variable emitForeignCall(ForeignCallLinkage linkage, LIRFrameState frameState, Value... args) {
         LIRFrameState state = null;
         if (linkage.canDeoptimize()) {
-            if (info != null) {
-                state = stateFor(getFrameState(info));
+            if (frameState != null) {
+                state = frameState;
             } else {
                 assert needOnlyOopMaps();
                 state = new LIRFrameState(null, null, null);
