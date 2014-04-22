@@ -57,7 +57,7 @@ public class BaselineCompiler {
         ConstantPool constantPool = method.getConstantPool();
         TTY.Filter filter = new TTY.Filter(PrintFilter.getValue(), method);
 
-        LIRFrameStateBuilder frameState = new LIRFrameStateBuilder(method);
+        BaselineFrameStateBuilder frameState = new BaselineFrameStateBuilder(method);
 
         BaselineBytecodeParser parser = new BaselineBytecodeParser(metaAccess, method, graphBuilderConfig, optimisticOpts, frameState, stream, profilingInfo, constantPool, entryBCI, backend);
 

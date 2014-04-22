@@ -26,16 +26,16 @@ package com.oracle.graal.baseline;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.java.*;
 
-public class LIRFrameStateBuilder extends AbstractFrameStateBuilder<Value, LIRFrameStateBuilder> {
+public class BaselineFrameStateBuilder extends AbstractFrameStateBuilder<Value, BaselineFrameStateBuilder> {
 
     private static final Value[] EMPTY_ARRAY = new Value[0];
 
-    public LIRFrameStateBuilder(ResolvedJavaMethod method) {
+    public BaselineFrameStateBuilder(ResolvedJavaMethod method) {
         // we always need at least one stack slot (for exceptions)
         super(method, new Value[method.getMaxLocals()], new Value[Math.max(1, method.getMaxStackSize())], EMPTY_ARRAY);
     }
 
-    protected LIRFrameStateBuilder(LIRFrameStateBuilder other) {
+    protected BaselineFrameStateBuilder(BaselineFrameStateBuilder other) {
         super(other);
     }
 
@@ -68,8 +68,8 @@ public class LIRFrameStateBuilder extends AbstractFrameStateBuilder<Value, LIRFr
     }
 
     @Override
-    public LIRFrameStateBuilder copy() {
-        return new LIRFrameStateBuilder(this);
+    public BaselineFrameStateBuilder copy() {
+        return new BaselineFrameStateBuilder(this);
     }
 
     private static boolean isCompatible(Value x, Value y) {
@@ -84,7 +84,7 @@ public class LIRFrameStateBuilder extends AbstractFrameStateBuilder<Value, LIRFr
     }
 
     @Override
-    public boolean isCompatibleWith(LIRFrameStateBuilder other) {
+    public boolean isCompatibleWith(BaselineFrameStateBuilder other) {
         assert method.equals(other.method) && localsSize() == other.localsSize() : "Can only compare frame states of the same method";
 
         if (stackSize() != other.stackSize()) {
