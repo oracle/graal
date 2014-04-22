@@ -28,6 +28,7 @@ import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 
 import java.lang.annotation.*;
 import java.lang.reflect.*;
+import java.util.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
@@ -55,7 +56,6 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
     private final HotSpotSignature signature;
     private HotSpotMethodData methodData;
     private byte[] code;
-    private SpeculationLog speculationLog;
 
     /**
      * Gets the holder of a HotSpot metaspace method native object.
@@ -623,11 +623,33 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
         return result;
     }
 
-    public SpeculationLog getSpeculationLog() {
-        if (speculationLog == null) {
-            speculationLog = new HotSpotSpeculationLog();
+    /**
+     * The {@link SpeculationLog} for methods compiled by Graal hang off this per-declaring-type
+     * {@link ClassValue}. The raw Method* value is safe to use as a key in the map as a) it is
+     * never moves and b) we never read from it.
+     * <p>
+     * One implication is that we will preserve {@link SpeculationLog}s for methods that have been
+     * redefined via class redefinition. It's tempting to periodically flush such logs but we cannot
+     * read the JVM_ACC_IS_OBSOLETE bit (or anything else) via the raw pointer as obsoleted methods
+     * are subject to clean up and deletion (see InstanceKlass::purge_previous_versions_internal).
+     */
+    private static final ClassValue<Map<Long, SpeculationLog>> SpeculationLogs = new ClassValue<Map<Long, SpeculationLog>>() {
+        @Override
+        protected Map<Long, SpeculationLog> computeValue(java.lang.Class<?> type) {
+            return new HashMap<>(4);
         }
-        return speculationLog;
+    };
+
+    public SpeculationLog getSpeculationLog() {
+        Map<Long, SpeculationLog> map = SpeculationLogs.get(holder.mirror());
+        synchronized (map) {
+            SpeculationLog log = map.get(this.metaspaceMethod);
+            if (log == null) {
+                log = new HotSpotSpeculationLog();
+                map.put(metaspaceMethod, log);
+            }
+            return log;
+        }
     }
 
     public int intrinsicId() {
