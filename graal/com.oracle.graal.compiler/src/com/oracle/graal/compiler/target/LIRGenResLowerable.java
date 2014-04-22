@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.compiler.target;
 
-import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodes.spi.*;
 
 /**

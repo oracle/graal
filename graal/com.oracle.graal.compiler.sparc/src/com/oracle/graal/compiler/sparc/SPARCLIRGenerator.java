@@ -39,6 +39,7 @@ import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.JumpOp;
+import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.sparc.*;
 import com.oracle.graal.lir.sparc.SPARCArithmetic.BinaryCommutative;
 import com.oracle.graal.lir.sparc.SPARCArithmetic.BinaryRegConst;

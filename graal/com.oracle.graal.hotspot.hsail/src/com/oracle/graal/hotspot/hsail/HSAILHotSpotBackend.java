@@ -61,6 +61,7 @@ import com.oracle.graal.hsail.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
+import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.hsail.*;
 import com.oracle.graal.lir.hsail.HSAILControlFlow.DeoptimizingOp;
 import com.oracle.graal.lir.hsail.HSAILMove.AtomicReadAndAddOp;

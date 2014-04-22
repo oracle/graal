@@ -23,8 +23,8 @@
 package com.oracle.graal.hotspot.sparc;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.hotspot.stubs.*;
+import com.oracle.graal.lir.gen.*;
 
 public interface SPARCHotSpotLIRGenerationResult extends LIRGenerationResult {
 

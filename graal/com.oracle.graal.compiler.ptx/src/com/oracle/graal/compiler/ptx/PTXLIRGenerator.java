@@ -38,6 +38,7 @@ import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.JumpOp;
+import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.ptx.*;
 import com.oracle.graal.lir.ptx.PTXArithmetic.ConvertOp;
 import com.oracle.graal.lir.ptx.PTXArithmetic.Op1Stack;

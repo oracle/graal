@@ -24,8 +24,8 @@ package com.oracle.graal.hotspot.hsail;
 
 import java.util.*;
 
-import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.hsail.HSAILControlFlow.DeoptimizingOp;
 
 public class HSAILHotSpotLIRGenerationResult extends LIRGenerationResultBase {
