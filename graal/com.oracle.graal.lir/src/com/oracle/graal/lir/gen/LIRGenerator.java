@@ -59,7 +59,7 @@ public abstract class LIRGenerator implements ArithmeticLIRGenerator, LIRGenerat
         // @formatter:on
     }
 
-    private final LIRProviders providers;
+    private final CodeGenProviders providers;
     private final CallingConvention cc;
 
     protected AbstractBlock<?> currentBlock;
@@ -169,7 +169,7 @@ public abstract class LIRGenerator implements ArithmeticLIRGenerator, LIRGenerat
      */
     public abstract boolean canStoreConstant(Constant c, boolean isCompressed);
 
-    public LIRGenerator(LIRProviders providers, CallingConvention cc, LIRGenerationResult res) {
+    public LIRGenerator(CodeGenProviders providers, CallingConvention cc, LIRGenerationResult res) {
         this.res = res;
         this.providers = providers;
         this.cc = cc;
@@ -190,7 +190,7 @@ public abstract class LIRGenerator implements ArithmeticLIRGenerator, LIRGenerat
         return getCodeCache().getTarget();
     }
 
-    public LIRProviders getProviders() {
+    public CodeGenProviders getProviders() {
         return providers;
     }
 

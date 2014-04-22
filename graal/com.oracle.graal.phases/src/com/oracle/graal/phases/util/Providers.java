@@ -31,7 +31,7 @@ import com.oracle.graal.phases.tiers.*;
 /**
  * A set of providers, some of which may not be present (i.e., null).
  */
-public class Providers implements LIRProviders {
+public class Providers implements CodeGenProviders {
 
     private final MetaAccessProvider metaAccess;
     private final CodeCacheProvider codeCache;

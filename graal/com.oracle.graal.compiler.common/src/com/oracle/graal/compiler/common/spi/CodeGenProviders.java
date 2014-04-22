@@ -29,7 +29,7 @@ import com.oracle.graal.api.meta.*;
  * A set of providers which are required for LIR and/or code generation. Some may not be present
  * (i.e., null).
  */
-public interface LIRProviders {
+public interface CodeGenProviders {
 
     MetaAccessProvider getMetaAccess();
 
