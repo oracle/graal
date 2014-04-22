@@ -367,6 +367,19 @@ public final class FrameState extends VirtualState implements IterableNodeType {
                 properties.put("sourceLine", ste.getLineNumber());
             }
         }
+        if (bci == BytecodeFrame.AFTER_BCI) {
+            properties.put("bci", "AFTER_BCI");
+        } else if (bci == BytecodeFrame.AFTER_EXCEPTION_BCI) {
+            properties.put("bci", "AFTER_EXCEPTION_BCI");
+        } else if (bci == BytecodeFrame.INVALID_FRAMESTATE_BCI) {
+            properties.put("bci", "INVALID_FRAMESTATE_BCI");
+        } else if (bci == BytecodeFrame.BEFORE_BCI) {
+            properties.put("bci", "BEFORE_BCI");
+        } else if (bci == BytecodeFrame.UNKNOWN_BCI) {
+            properties.put("bci", "UNKNOWN_BCI");
+        } else if (bci == BytecodeFrame.UNWIND_BCI) {
+            properties.put("bci", "UNWIND_BCI");
+        }
         properties.put("locksSize", values.size() - stackSize - localsSize);
         return properties;
     }
