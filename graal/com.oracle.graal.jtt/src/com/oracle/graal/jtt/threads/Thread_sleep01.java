@@ -35,17 +35,17 @@ public final class Thread_sleep01 extends JTTTest {
         return System.currentTimeMillis() - before >= i;
     }
 
-    @LongTest
+    @LongTest(timeout = 20000)
     public void run0() throws Throwable {
         runTest("test", 10);
     }
 
-    @LongTest
+    @LongTest(timeout = 20000)
     public void run1() throws Throwable {
         runTest("test", 20);
     }
 
-    @LongTest
+    @LongTest(timeout = 20000)
     public void run2() throws Throwable {
         runTest("test", 100);
     }
