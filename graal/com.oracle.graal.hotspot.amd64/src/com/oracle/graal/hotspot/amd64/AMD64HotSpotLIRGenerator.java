@@ -37,9 +37,6 @@ import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.HotSpotVMConfig.CompressEncoding;
-import com.oracle.graal.hotspot.amd64.AMD64HotSpotMove.LoadCompressedPointer;
-import com.oracle.graal.hotspot.amd64.AMD64HotSpotMove.StoreCompressedConstantOp;
-import com.oracle.graal.hotspot.amd64.AMD64HotSpotMove.StoreCompressedPointer;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.type.*;
 import com.oracle.graal.hotspot.stubs.*;
@@ -56,7 +53,6 @@ import com.oracle.graal.lir.amd64.AMD64Move.MoveToRegOp;
 import com.oracle.graal.lir.amd64.AMD64Move.StoreConstantOp;
 import com.oracle.graal.lir.amd64.AMD64Move.StoreOp;
 import com.oracle.graal.lir.gen.*;
-import com.oracle.graal.nodes.extended.*;
 
 /**
  * LIR generator specialized for AMD64 HotSpot.
@@ -409,13 +405,6 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     }
 
     /**
-     * Returns whether or not the input access should be (de)compressed.
-     */
-    private boolean isCompressedOperation(PlatformKind kind, Access access) {
-        return access != null && access.isCompressible() && ((kind == Kind.Long && config.useCompressedClassPointers) || (kind == Kind.Object && config.useCompressedOops));
-    }
-
-    /**
      * @return a compressed version of the incoming constant
      */
     protected static Constant compress(Constant c, CompressEncoding encoding) {
@@ -459,74 +448,22 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     public Variable emitLoad(PlatformKind kind, Value address, LIRFrameState state) {
         AMD64AddressValue loadAddress = asAddressValue(address);
         Variable result = newVariable(toStackKind(kind));
-        /**
-         * Currently, the (de)compression of pointers applies conditionally to some objects (oops,
-         * kind==Object) and some addresses (klass pointers, kind==Long). Initially, the input
-         * operation is checked to discover if it has been tagged as a potential "compression"
-         * candidate. Consequently, depending on the appropriate kind, the specific (de)compression
-         * functions are being called.
-         */
-        if (isCompressedOperation(kind, null)) {
-            if (kind == Kind.Object) {
-                append(new LoadCompressedPointer(Kind.Object, result, getProviders().getRegisters().getHeapBaseRegister().asValue(), loadAddress, state, config.getOopEncoding()));
-            } else if (kind == Kind.Long) {
-                Variable scratch = config.getKlassEncoding().base != 0 ? newVariable(Kind.Long) : null;
-                append(new LoadCompressedPointer(Kind.Long, result, scratch, loadAddress, state, config.getKlassEncoding()));
-            } else {
-                throw GraalInternalError.shouldNotReachHere("can't handle");
-            }
-        } else {
-            append(new LoadOp(getMemoryKind(kind), result, loadAddress, state));
-        }
+        append(new LoadOp(getMemoryKind(kind), result, loadAddress, state));
         return result;
     }
 
     @Override
     public void emitStore(PlatformKind kind, Value address, Value inputVal, LIRFrameState state) {
         AMD64AddressValue storeAddress = asAddressValue(address);
-        boolean isCompressed = isCompressedOperation(kind, null);
         if (isConstant(inputVal)) {
             Constant c = asConstant(inputVal);
-            if (canStoreConstant(c, isCompressed)) {
-                if (isCompressed) {
-                    if (c.getKind() == Kind.Object) {
-                        append(new StoreCompressedConstantOp(Kind.Object, storeAddress, c, state));
-                    } else if (c.getKind() == Kind.Long) {
-                        // It's always a good idea to directly store compressed constants since they
-                        // have to be materialized as 64 bits encoded otherwise.
-                        Constant value = compress(c, config.getKlassEncoding());
-                        append(new StoreCompressedConstantOp(Kind.Long, storeAddress, value, state));
-                    } else {
-                        throw GraalInternalError.shouldNotReachHere("can't handle");
-                    }
-                    return;
-                } else {
-                    append(new StoreConstantOp(getMemoryKind(kind), storeAddress, c, state));
-                    return;
-                }
+            if (canStoreConstant(c, false)) {
+                append(new StoreConstantOp(getMemoryKind(kind), storeAddress, c, state));
+                return;
             }
         }
         Variable input = load(inputVal);
-        if (isCompressed) {
-            if (kind == Kind.Object) {
-                if (input.getKind() == Kind.Object) {
-                    Variable scratch = newVariable(Kind.Long);
-                    Register heapBaseReg = getProviders().getRegisters().getHeapBaseRegister();
-                    append(new StoreCompressedPointer(Kind.Object, storeAddress, input, scratch, state, config.getOopEncoding(), heapBaseReg));
-                } else {
-                    // the input oop is already compressed
-                    append(new StoreOp(input.getKind(), storeAddress, input, state));
-                }
-            } else if (kind == Kind.Long) {
-                Variable scratch = newVariable(Kind.Long);
-                Register heapBaseReg = getProviders().getRegisters().getHeapBaseRegister();
-                append(new StoreCompressedPointer(Kind.Long, storeAddress, input, scratch, state, config.getKlassEncoding(), heapBaseReg));
-            } else {
-                append(new StoreOp(getMemoryKind(kind), storeAddress, input, state));
-            }
-        } else {
-            append(new StoreOp(getMemoryKind(kind), storeAddress, input, state));
-        }
+        append(new StoreOp(getMemoryKind(kind), storeAddress, input, state));
     }
 
     @Override

@@ -44,14 +44,11 @@ import com.oracle.graal.lir.hsail.HSAILControlFlow.ForeignCall1ArgOp;
 import com.oracle.graal.lir.hsail.HSAILControlFlow.ForeignCall2ArgOp;
 import com.oracle.graal.lir.hsail.HSAILControlFlow.ForeignCallNoArgOp;
 import com.oracle.graal.lir.hsail.HSAILMove.CompareAndSwapOp;
-import com.oracle.graal.lir.hsail.HSAILMove.LoadCompressedPointer;
 import com.oracle.graal.lir.hsail.HSAILMove.LoadOp;
 import com.oracle.graal.lir.hsail.HSAILMove.MoveFromRegOp;
 import com.oracle.graal.lir.hsail.HSAILMove.MoveToRegOp;
-import com.oracle.graal.lir.hsail.HSAILMove.StoreCompressedPointer;
 import com.oracle.graal.lir.hsail.HSAILMove.StoreConstantOp;
 import com.oracle.graal.lir.hsail.HSAILMove.StoreOp;
-import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.phases.util.*;
 
 /**
@@ -95,20 +92,9 @@ public class HSAILHotSpotLIRGenerator extends HSAILLIRGenerator implements HotSp
         return config.narrowKlassBase;
     }
 
-    private static boolean isCompressCandidate(Access access) {
-        return access != null && access.isCompressible();
-    }
-
     @Override
     public boolean canStoreConstant(Constant c, boolean isCompressed) {
         return true;
-    }
-
-    /**
-     * Returns whether or not the input access should be (de)compressed.
-     */
-    private boolean isCompressedOperation(PlatformKind kind, Access access) {
-        return access != null && access.isCompressible() && ((kind == Kind.Long && config.useCompressedClassPointers) || (kind == Kind.Object && config.useCompressedOops));
     }
 
     private static Kind getMemoryKind(PlatformKind kind) {
@@ -123,13 +109,7 @@ public class HSAILHotSpotLIRGenerator extends HSAILLIRGenerator implements HotSp
     public Variable emitLoad(PlatformKind kind, Value address, LIRFrameState state) {
         HSAILAddressValue loadAddress = asAddressValue(address);
         Variable result = newVariable(kind);
-        if (isCompressCandidate(null) && config.useCompressedOops && kind == Kind.Object) {
-            Variable scratch = newVariable(Kind.Long);
-            append(new LoadCompressedPointer(Kind.Object, result, scratch, loadAddress, state, getNarrowOopBase(), getNarrowOopShift(), getLogMinObjectAlignment()));
-        } else if (isCompressCandidate(null) && config.useCompressedClassPointers && kind == Kind.Long) {
-            Variable scratch = newVariable(Kind.Long);
-            append(new LoadCompressedPointer(Kind.Object, result, scratch, loadAddress, state, getNarrowKlassBase(), getNarrowKlassShift(), getLogKlassAlignment()));
-        } else if (kind == NarrowOopStamp.NarrowOop) {
+        if (kind == NarrowOopStamp.NarrowOop) {
             append(new LoadOp(Kind.Int, result, loadAddress, state));
         } else {
             append(new LoadOp(getMemoryKind(kind), result, loadAddress, state));
@@ -140,37 +120,15 @@ public class HSAILHotSpotLIRGenerator extends HSAILLIRGenerator implements HotSp
     @Override
     public void emitStore(PlatformKind kind, Value address, Value inputVal, LIRFrameState state) {
         HSAILAddressValue storeAddress = asAddressValue(address);
-        boolean isCompressed = isCompressedOperation(kind, null);
         if (isConstant(inputVal)) {
             Constant c = asConstant(inputVal);
-            if (canStoreConstant(c, isCompressed)) {
-                if (isCompressed) {
-                    if ((c.getKind() == Kind.Object) && c.isNull()) {
-                        // Constant value = c.isNull() ? c : compress(c, config.getOopEncoding());
-                        append(new StoreConstantOp(Kind.Int, storeAddress, Constant.forInt(0), state));
-                    } else if (c.getKind() == Kind.Long) {
-                        // It's always a good idea to directly store compressed constants since they
-                        // have to be materialized as 64 bits encoded otherwise.
-                        Constant value = compress(c, config.getKlassEncoding());
-                        append(new StoreConstantOp(Kind.Int, storeAddress, value, state));
-                    } else {
-                        throw GraalInternalError.shouldNotReachHere("can't handle");
-                    }
-                    return;
-                } else {
-                    append(new StoreConstantOp(getMemoryKind(kind), storeAddress, c, state));
-                    return;
-                }
+            if (canStoreConstant(c, false)) {
+                append(new StoreConstantOp(getMemoryKind(kind), storeAddress, c, state));
+                return;
             }
         }
         Variable input = load(inputVal);
-        if (isCompressCandidate(null) && config.useCompressedOops && kind == Kind.Object) {
-            Variable scratch = newVariable(Kind.Long);
-            append(new StoreCompressedPointer(Kind.Object, storeAddress, input, scratch, state, getNarrowOopBase(), getNarrowOopShift(), getLogMinObjectAlignment()));
-        } else if (isCompressCandidate(null) && config.useCompressedClassPointers && kind == Kind.Long) {
-            Variable scratch = newVariable(Kind.Long);
-            append(new StoreCompressedPointer(Kind.Object, storeAddress, input, scratch, state, getNarrowKlassBase(), getNarrowKlassShift(), getLogKlassAlignment()));
-        } else if (kind == NarrowOopStamp.NarrowOop) {
+        if (kind == NarrowOopStamp.NarrowOop) {
             append(new StoreOp(Kind.Int, storeAddress, input, state));
         } else {
             append(new StoreOp(getMemoryKind(kind), storeAddress, input, state));
