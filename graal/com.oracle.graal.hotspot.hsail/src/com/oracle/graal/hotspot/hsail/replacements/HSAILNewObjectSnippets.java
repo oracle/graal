@@ -23,11 +23,11 @@
 package com.oracle.graal.hotspot.hsail.replacements;
 
 import static com.oracle.graal.api.code.UnsignedMath.*;
+import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.hotspot.hsail.replacements.HSAILHotSpotReplacementsUtil.*;
 import static com.oracle.graal.hotspot.hsail.replacements.HSAILNewObjectSnippets.Options.*;
 import static com.oracle.graal.nodes.PiArrayNode.*;
 import static com.oracle.graal.nodes.extended.BranchProbabilityNode.*;
-import static com.oracle.graal.phases.GraalOptions.*;
 import static com.oracle.graal.replacements.SnippetTemplate.*;
 
 import com.oracle.graal.api.code.*;

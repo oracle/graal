@@ -48,7 +48,6 @@ import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.virtual.*;
-import com.oracle.graal.phases.*;
 
 /**
  * This class traverses the HIR instructions and generates LIR instructions from them.

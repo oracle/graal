@@ -22,9 +22,9 @@
  */
 package com.oracle.graal.hotspot;
 
+import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.graph.UnsafeAccess.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.Options.*;
-import static com.oracle.graal.phases.GraalOptions.*;
 
 import java.lang.reflect.*;
 import java.util.*;

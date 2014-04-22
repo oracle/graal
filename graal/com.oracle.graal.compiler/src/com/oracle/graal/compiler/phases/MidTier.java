@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.compiler.phases;
 
-import static com.oracle.graal.phases.GraalOptions.*;
+import static com.oracle.graal.compiler.common.GraalOptions.*;
 
 import com.oracle.graal.loop.phases.*;
 import com.oracle.graal.nodes.spi.*;

@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.truffle;
 
-import static com.oracle.graal.phases.GraalOptions.*;
+import static com.oracle.graal.compiler.common.GraalOptions.*;
 
 import java.lang.reflect.*;
 import java.util.*;

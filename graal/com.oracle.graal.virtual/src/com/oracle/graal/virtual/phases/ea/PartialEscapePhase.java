@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.virtual.phases.ea;
 
-import static com.oracle.graal.phases.GraalOptions.*;
+import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.virtual.phases.ea.PartialEscapePhase.Options.*;
 
 import java.util.*;
