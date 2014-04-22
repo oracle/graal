@@ -38,7 +38,7 @@ import com.oracle.graal.asm.amd64.AMD64Address.Scale;
 import com.oracle.graal.asm.amd64.AMD64Assembler.ConditionFlag;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
-import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.lir.gen.*;
 
 /**
  * Emits code which compares two arrays of the same length. If the CPU supports any vector

@@ -59,7 +59,7 @@ import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Signx;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
-import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.lir.gen.*;
 
 public enum SPARCArithmetic {
     // @formatter:off
