@@ -227,10 +227,35 @@ public abstract class Node implements Cloneable, Formattable {
         }
     }
 
+    class NodeUsageWithModCountIterator extends NodeUsageIterator {
+
+        private final int expectedModCount = usageModCount();
+
+        @Override
+        public boolean hasNext() {
+            if (expectedModCount != usageModCount()) {
+                throw new ConcurrentModificationException();
+            }
+            return super.hasNext();
+        }
+
+        @Override
+        public Node next() {
+            if (expectedModCount != usageModCount()) {
+                throw new ConcurrentModificationException();
+            }
+            return super.next();
+        }
+    }
+
     class NodeUsageIterable implements NodeIterable<Node> {
 
         public NodeUsageIterator iterator() {
-            return new NodeUsageIterator();
+            if (MODIFICATION_COUNTS_ENABLED) {
+                return new NodeUsageWithModCountIterator();
+            } else {
+                return new NodeUsageIterator();
+            }
         }
 
         @Override
