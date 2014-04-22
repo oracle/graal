@@ -121,7 +121,7 @@ public class BaselineBytecodeParser extends AbstractBytecodeParser<Value, LIRFra
             // add loops ? how do we add looks when we haven't parsed the bytecode?
 
             // create the control flow graph
-            LIRControlFlowGraph cfg = new LIRControlFlowGraph(blockMap);
+            BaselineControlFlowGraph cfg = new BaselineControlFlowGraph(blockMap);
 
             BlocksToDoubles blockProbabilities = new BlocksToDoubles(blockMap.blocks.size());
             for (BciBlock b : blockMap.blocks) {

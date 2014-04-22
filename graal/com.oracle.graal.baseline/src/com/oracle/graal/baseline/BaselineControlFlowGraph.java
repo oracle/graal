@@ -29,13 +29,13 @@ import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.java.BciBlockMapping.BciBlock;
 
-public class LIRControlFlowGraph implements AbstractControlFlowGraph<BciBlock> {
+public class BaselineControlFlowGraph implements AbstractControlFlowGraph<BciBlock> {
 
     private BciBlock[] blocks;
     private Collection<Loop<BciBlock>> loops;
     private BitSet visited;
 
-    public LIRControlFlowGraph(BciBlockMapping blockMap) {
+    public BaselineControlFlowGraph(BciBlockMapping blockMap) {
         blocks = blockMap.blocks.toArray(new BciBlock[0]);
         loops = new ArrayList<>();
         computeLoopInformation();
