@@ -20,14 +20,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes.type;
-
-import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.nodes.*;
+package com.oracle.graal.compiler.common.type;
 
 /**
  * Describes the possible values of a {@link ValueNode} that produces a primitive value as result.
  */
+@SuppressWarnings("javadoc")
 public abstract class PrimitiveStamp extends Stamp {
 
     private final int bits;

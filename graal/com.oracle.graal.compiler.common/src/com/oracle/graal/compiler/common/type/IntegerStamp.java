@@ -20,15 +20,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes.type;
+package com.oracle.graal.compiler.common.type;
 
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.spi.*;
-import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.nodes.*;
 
 /**
  * Describes the possible values of a {@link ValueNode} that produces an int or long result.
@@ -36,6 +34,7 @@ import com.oracle.graal.nodes.*;
  * The description consists of (inclusive) lower and upper bounds and up (may be set) and down
  * (always set) bit-masks.
  */
+@SuppressWarnings("javadoc")
 public class IntegerStamp extends PrimitiveStamp {
 
     private final long lowerBound;

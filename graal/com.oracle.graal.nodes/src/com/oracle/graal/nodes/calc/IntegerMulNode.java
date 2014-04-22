@@ -30,7 +30,6 @@ import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
 
 @NodeInfo(shortName = "*")
 public class IntegerMulNode extends IntegerArithmeticNode implements Canonicalizable, NarrowableArithmeticNode {

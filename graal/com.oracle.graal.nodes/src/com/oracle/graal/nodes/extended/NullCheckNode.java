@@ -22,9 +22,9 @@
  */
 package com.oracle.graal.nodes.extended;
 
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
 
 public class NullCheckNode extends DeoptimizingFixedWithNextNode implements LIRLowerable {
 

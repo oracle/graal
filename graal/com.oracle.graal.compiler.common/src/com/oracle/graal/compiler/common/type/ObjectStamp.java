@@ -20,14 +20,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes.type;
+package com.oracle.graal.compiler.common.type;
 
 import java.lang.reflect.*;
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.spi.*;
-import com.oracle.graal.compiler.common.type.*;
 
 public class ObjectStamp extends Stamp {
 

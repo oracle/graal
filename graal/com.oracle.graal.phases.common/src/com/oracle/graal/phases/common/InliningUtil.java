@@ -25,7 +25,7 @@ package com.oracle.graal.phases.common;
 import static com.oracle.graal.api.meta.DeoptimizationAction.*;
 import static com.oracle.graal.api.meta.DeoptimizationReason.*;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
-import static com.oracle.graal.nodes.type.StampFactory.*;
+import static com.oracle.graal.compiler.common.type.StampFactory.*;
 import static java.lang.reflect.Modifier.*;
 
 import java.lang.reflect.*;

@@ -24,9 +24,9 @@ package com.oracle.graal.nodes;
 
 import static com.oracle.graal.graph.InputType.*;
 
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.calc.*;
-import com.oracle.graal.nodes.type.*;
 
 @NodeInfo(allowedUsageTypes = {Condition})
 public abstract class LogicNode extends FloatingNode {

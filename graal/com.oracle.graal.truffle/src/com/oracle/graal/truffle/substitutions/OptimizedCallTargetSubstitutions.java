@@ -23,8 +23,8 @@
 package com.oracle.graal.truffle.substitutions;
 
 import com.oracle.graal.api.replacements.*;
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.truffle.*;
 import com.oracle.graal.truffle.nodes.frame.*;
 import com.oracle.truffle.api.frame.*;
