@@ -1406,7 +1406,7 @@ public class InliningUtil {
                 // "after exception" frame state
                 // (because there is no "after exception" frame state!)
                 if (monitorExit != null) {
-                    if (monitorExit.stateAfter() != null && monitorExit.stateAfter().bci == FrameState.AFTER_EXCEPTION_BCI) {
+                    if (monitorExit.stateAfter() != null && monitorExit.stateAfter().bci == BytecodeFrame.AFTER_EXCEPTION_BCI) {
                         FrameState monitorFrameState = monitorExit.stateAfter();
                         graph.removeFixed(monitorExit);
                         monitorFrameState.safeDelete();
@@ -1421,11 +1421,11 @@ public class InliningUtil {
             for (FrameState original : inlineGraph.getNodes(FrameState.class)) {
                 FrameState frameState = (FrameState) duplicates.get(original);
                 if (frameState != null) {
-                    assert frameState.bci != FrameState.BEFORE_BCI : frameState;
-                    if (frameState.bci == FrameState.AFTER_BCI) {
+                    assert frameState.bci != BytecodeFrame.BEFORE_BCI : frameState;
+                    if (frameState.bci == BytecodeFrame.AFTER_BCI) {
                         frameState.replaceAndDelete(returnKind == Kind.Void ? stateAfter : stateAfter.duplicateModified(stateAfter.bci, stateAfter.rethrowException(), returnKind,
                                         frameState.stackAt(0)));
-                    } else if (frameState.bci == FrameState.AFTER_EXCEPTION_BCI) {
+                    } else if (frameState.bci == BytecodeFrame.AFTER_EXCEPTION_BCI) {
                         if (frameState.isAlive()) {
                             assert stateAtExceptionEdge != null;
                             frameState.replaceAndDelete(stateAtExceptionEdge);
@@ -1435,7 +1435,7 @@ public class InliningUtil {
                     } else {
                         // only handle the outermost frame states
                         if (frameState.outerFrameState() == null) {
-                            assert frameState.bci == FrameState.INVALID_FRAMESTATE_BCI || frameState.method().equals(inlineGraph.method());
+                            assert frameState.bci == BytecodeFrame.INVALID_FRAMESTATE_BCI || frameState.method().equals(inlineGraph.method());
                             if (outerFrameState == null) {
                                 outerFrameState = stateAfter.duplicateModified(invoke.bci(), stateAfter.rethrowException(), invokeNode.getKind());
                                 outerFrameState.setDuringCall(true);
@@ -1507,7 +1507,7 @@ public class InliningUtil {
         for (Node node : duplicates.values()) {
             if (node instanceof FrameState) {
                 FrameState frameState = (FrameState) node;
-                assert frameState.bci == FrameState.AFTER_BCI || frameState.bci == FrameState.INVALID_FRAMESTATE_BCI : node.toString(Verbosity.Debugger);
+                assert frameState.bci == BytecodeFrame.AFTER_BCI || frameState.bci == BytecodeFrame.INVALID_FRAMESTATE_BCI : node.toString(Verbosity.Debugger);
             }
         }
         return true;

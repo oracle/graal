@@ -222,7 +222,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     lastInstr = currentGraph.start();
                     if (isSynchronized(method.getModifiers())) {
                         // add a monitor enter to the start block
-                        currentGraph.start().setStateAfter(frameState.create(FrameState.BEFORE_BCI));
+                        currentGraph.start().setStateAfter(frameState.create(BytecodeFrame.BEFORE_BCI));
                         methodSynchronizedObject = synchronizedObject(frameState, method);
                         lastInstr = genMonitorEnter(methodSynchronizedObject);
                     }
@@ -290,7 +290,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     unwindBlock = new ExceptionDispatchBlock();
                     unwindBlock.startBci = -1;
                     unwindBlock.endBci = -1;
-                    unwindBlock.deoptBci = FrameState.UNWIND_BCI;
+                    unwindBlock.deoptBci = BytecodeFrame.UNWIND_BCI;
                     unwindBlock.setId(Integer.MAX_VALUE);
                 }
                 return unwindBlock;
@@ -410,7 +410,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             }
 
             private DispatchBeginNode handleException(ValueNode exceptionObject, int bci) {
-                assert bci == FrameState.BEFORE_BCI || bci == bci() : "invalid bci";
+                assert bci == BytecodeFrame.BEFORE_BCI || bci == bci() : "invalid bci";
                 Debug.log("Creating exception dispatch edges at %d, exception object=%s, exception seen=%s", bci, exceptionObject, profilingInfo.getExceptionSeen(bci));
 
                 BciBlock dispatchBlock = currentBlock.exceptionDispatchBlock();
@@ -817,7 +817,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     append(new InfopointNode(InfopointReason.METHOD_END, frameState.create(bci())));
                 }
 
-                synchronizedEpilogue(FrameState.AFTER_BCI, x);
+                synchronizedEpilogue(BytecodeFrame.AFTER_BCI, x);
                 if (frameState.lockDepth() != 0) {
                     throw new BailoutException("unbalanced monitors");
                 }
@@ -1157,7 +1157,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 assert frameState.stackSize() == 1 : frameState;
                 ValueNode exception = frameState.apop();
                 append(new FixedGuardNode(currentGraph.unique(new IsNullNode(exception)), NullCheckException, InvalidateReprofile, true));
-                synchronizedEpilogue(FrameState.AFTER_EXCEPTION_BCI, null);
+                synchronizedEpilogue(BytecodeFrame.AFTER_EXCEPTION_BCI, null);
                 append(new UnwindNode(exception));
             }
 

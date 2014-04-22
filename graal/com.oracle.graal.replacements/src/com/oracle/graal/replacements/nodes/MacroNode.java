@@ -24,6 +24,7 @@ package com.oracle.graal.replacements.nodes;
 
 import static java.lang.reflect.Modifier.*;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.debug.*;
@@ -89,7 +90,7 @@ public class MacroNode extends AbstractMemoryCheckpoint implements Lowerable, Me
         StructuredGraph methodSubstitution = tool.getReplacements().getMethodSubstitution(getTargetMethod());
         if (methodSubstitution != null) {
             methodSubstitution = methodSubstitution.copy();
-            if (stateAfter() == null || stateAfter().bci == FrameState.AFTER_BCI) {
+            if (stateAfter() == null || stateAfter().bci == BytecodeFrame.AFTER_BCI) {
                 /*
                  * handles the case of a MacroNode inside a snippet used for another MacroNode
                  * lowering
@@ -173,7 +174,7 @@ public class MacroNode extends AbstractMemoryCheckpoint implements Lowerable, Me
             if (!call.targetMethod().equals(getTargetMethod())) {
                 throw new GraalInternalError("unexpected invoke %s in snippet", getClass().getSimpleName());
             }
-            assert invoke.stateAfter().bci == FrameState.AFTER_BCI;
+            assert invoke.stateAfter().bci == BytecodeFrame.AFTER_BCI;
             // Here we need to fix the bci of the invoke
             InvokeNode newInvoke = snippetGraph.add(new InvokeNode(invoke.callTarget(), getBci()));
             newInvoke.setStateAfter(invoke.stateAfter());

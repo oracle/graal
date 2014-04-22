@@ -96,7 +96,7 @@ public class GraphKit {
     }
 
     public InvokeNode createInvoke(Class<?> declaringClass, String name, ValueNode... args) {
-        return createInvoke(declaringClass, name, InvokeKind.Static, null, FrameState.UNKNOWN_BCI, args);
+        return createInvoke(declaringClass, name, InvokeKind.Static, null, BytecodeFrame.UNKNOWN_BCI, args);
     }
 
     /**

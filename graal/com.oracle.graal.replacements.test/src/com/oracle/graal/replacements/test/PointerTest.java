@@ -139,7 +139,7 @@ public class PointerTest extends GraalCompilerTest implements Snippets {
 
         JavaWriteNode write = (JavaWriteNode) cast.next();
         Assert.assertEquals(graph.getParameter(2), write.value());
-        Assert.assertEquals(FrameState.AFTER_BCI, write.stateAfter().bci);
+        Assert.assertEquals(BytecodeFrame.AFTER_BCI, write.stateAfter().bci);
 
         Assert.assertEquals(cast, write.object());
         Assert.assertEquals(graph.getParameter(0), cast.getInput());
