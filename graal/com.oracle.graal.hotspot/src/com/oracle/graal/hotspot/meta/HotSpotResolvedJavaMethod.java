@@ -487,6 +487,10 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
         return ((getModifiers() & mask) == Modifier.PUBLIC) && getDeclaringClass().isInterface();
     }
 
+    public boolean isSynchronized() {
+        return Modifier.isSynchronized(getModifiers());
+    }
+
     @Override
     public Type[] getGenericParameterTypes() {
         if (isConstructor()) {
