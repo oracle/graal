@@ -64,6 +64,7 @@ import com.oracle.graal.nodes.extended.*;
 public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSpotLIRGenerator {
 
     final HotSpotVMConfig config;
+    private HotSpotLockStack lockStack;
 
     protected AMD64HotSpotLIRGenerator(HotSpotProviders providers, HotSpotVMConfig config, CallingConvention cc, LIRGenerationResult lirGenRes) {
         super(providers, cc, lirGenRes);
@@ -130,7 +131,17 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
 
     @Override
     public StackSlot getLockSlot(int lockDepth) {
-        return ((HotSpotDebugInfoBuilder) getDebugInfoBuilder()).lockStack().makeLockSlot(lockDepth);
+        return getLockStack().makeLockSlot(lockDepth);
+    }
+
+    private HotSpotLockStack getLockStack() {
+        assert lockStack != null;
+        return lockStack;
+    }
+
+    protected void setLockStack(HotSpotLockStack lockStack) {
+        assert this.lockStack == null;
+        this.lockStack = lockStack;
     }
 
     private Register findPollOnReturnScratchRegister() {

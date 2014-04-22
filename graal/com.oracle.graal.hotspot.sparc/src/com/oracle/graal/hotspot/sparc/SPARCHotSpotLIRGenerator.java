@@ -46,6 +46,7 @@ import com.oracle.graal.nodes.extended.*;
 public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSpotLIRGenerator {
 
     final HotSpotVMConfig config;
+    private HotSpotLockStack lockStack;
 
     public SPARCHotSpotLIRGenerator(HotSpotProviders providers, HotSpotVMConfig config, CallingConvention cc, LIRGenerationResult lirGenRes) {
         super(providers, cc, lirGenRes);
@@ -66,7 +67,17 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
 
     @Override
     public StackSlot getLockSlot(int lockDepth) {
-        return ((HotSpotDebugInfoBuilder) getDebugInfoBuilder()).lockStack().makeLockSlot(lockDepth);
+        return getLockStack().makeLockSlot(lockDepth);
+    }
+
+    private HotSpotLockStack getLockStack() {
+        assert lockStack != null;
+        return lockStack;
+    }
+
+    protected void setLockStack(HotSpotLockStack lockStack) {
+        assert this.lockStack == null;
+        this.lockStack = lockStack;
     }
 
     @Override

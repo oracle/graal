@@ -454,6 +454,7 @@ public abstract class LIRGenerator implements ArithmeticLIRGenerator, LIRGenerat
         return cc;
     }
 
+    @Deprecated
     public DebugInfoBuilder getDebugInfoBuilder() {
         assert debugInfoBuilder != null;
         return debugInfoBuilder;

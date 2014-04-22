@@ -46,6 +46,9 @@ public class SPARCHotSpotNodeLIRBuilder extends SPARCNodeLIRBuilder implements H
 
     public SPARCHotSpotNodeLIRBuilder(StructuredGraph graph, LIRGenerator lirGen) {
         super(graph, lirGen);
+        assert gen instanceof SPARCHotSpotLIRGenerator;
+        assert getDebugInfoBuilder() instanceof HotSpotDebugInfoBuilder;
+        ((SPARCHotSpotLIRGenerator) gen).setLockStack(((HotSpotDebugInfoBuilder) getDebugInfoBuilder()).lockStack());
     }
 
     @Override
