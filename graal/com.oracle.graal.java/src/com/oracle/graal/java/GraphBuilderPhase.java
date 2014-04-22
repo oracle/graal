@@ -1155,7 +1155,6 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             private void createUnwind() {
                 assert frameState.stackSize() == 1 : frameState;
                 ValueNode exception = frameState.apop();
-                append(new FixedGuardNode(currentGraph.unique(new IsNullNode(exception)), NullCheckException, InvalidateReprofile, true));
                 synchronizedEpilogue(BytecodeFrame.AFTER_EXCEPTION_BCI, null);
                 append(new UnwindNode(exception));
             }
