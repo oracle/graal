@@ -170,7 +170,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     }
 
     @Override
-    protected boolean needOnlyOopMaps() {
+    public boolean needOnlyOopMaps() {
         // Stubs only need oop maps
         return ((AMD64HotSpotLIRGenerationResult) getResult()).getStub() != null;
     }

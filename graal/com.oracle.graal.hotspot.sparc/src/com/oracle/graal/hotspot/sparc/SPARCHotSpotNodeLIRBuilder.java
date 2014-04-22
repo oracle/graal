@@ -37,6 +37,7 @@ import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.sparc.*;
 import com.oracle.graal.lir.sparc.SPARCMove.CompareAndSwapOp;
 import com.oracle.graal.nodes.*;

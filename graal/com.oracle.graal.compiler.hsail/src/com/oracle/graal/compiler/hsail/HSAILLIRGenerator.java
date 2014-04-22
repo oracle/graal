@@ -33,7 +33,6 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.calc.*;
-import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.JumpOp;
 import com.oracle.graal.lir.gen.*;
@@ -831,7 +830,7 @@ public abstract class HSAILLIRGenerator extends LIRGenerator {
      * Graal generates for any switch construct appearing in Java bytecode.
      */
     @Override
-    protected void emitStrategySwitch(Constant[] keyConstants, double[] keyProbabilities, LabelRef[] keyTargets, LabelRef defaultTarget, Variable value) {
+    public void emitStrategySwitch(Constant[] keyConstants, double[] keyProbabilities, LabelRef[] keyTargets, LabelRef defaultTarget, Variable value) {
         emitStrategySwitch(new SwitchStrategy.SequentialStrategy(keyProbabilities, keyConstants), value, keyTargets, defaultTarget);
     }
 
@@ -856,7 +855,7 @@ public abstract class HSAILLIRGenerator extends LIRGenerator {
      * @param key the key that is compared against the key constants in the case statements.
      */
     @Override
-    protected void emitStrategySwitch(SwitchStrategy strategy, Variable key, LabelRef[] keyTargets, LabelRef defaultTarget) {
+    public void emitStrategySwitch(SwitchStrategy strategy, Variable key, LabelRef[] keyTargets, LabelRef defaultTarget) {
         if ((key.getKind() == Kind.Int) || (key.getKind() == Kind.Long)) {
             // Append the LIR instruction for generating compare and branch instructions.
             append(new StrategySwitchOp(strategy, keyTargets, defaultTarget, key));

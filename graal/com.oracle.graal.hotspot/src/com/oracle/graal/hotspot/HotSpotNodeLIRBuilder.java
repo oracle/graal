@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.hotspot;
 
-import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.hotspot.nodes.*;
+import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 

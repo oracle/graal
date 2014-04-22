@@ -81,7 +81,7 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
     }
 
     @Override
-    protected boolean needOnlyOopMaps() {
+    public boolean needOnlyOopMaps() {
         // Stubs only need oop maps
         return getStub() != null;
     }

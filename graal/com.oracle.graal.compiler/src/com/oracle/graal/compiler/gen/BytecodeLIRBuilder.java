@@ -26,6 +26,7 @@ import java.lang.reflect.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.lir.gen.*;
 
 public class BytecodeLIRBuilder {
     protected final LIRGenerator gen;

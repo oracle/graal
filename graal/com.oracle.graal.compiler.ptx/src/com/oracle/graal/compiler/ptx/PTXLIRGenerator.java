@@ -842,7 +842,7 @@ public class PTXLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    protected void emitStrategySwitch(SwitchStrategy strategy, Variable key, LabelRef[] keyTargets, LabelRef defaultTarget) {
+    public void emitStrategySwitch(SwitchStrategy strategy, Variable key, LabelRef[] keyTargets, LabelRef defaultTarget) {
         boolean needsTemp = key.getKind() == Kind.Object;
         append(new StrategySwitchOp(strategy, keyTargets, defaultTarget, key, needsTemp ? newVariable(key.getKind()) : Value.ILLEGAL, nextPredRegNum++));
     }

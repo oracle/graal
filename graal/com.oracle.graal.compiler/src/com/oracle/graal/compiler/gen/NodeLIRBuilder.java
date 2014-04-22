@@ -35,13 +35,14 @@ import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.compiler.gen.LIRGenerator.LoadConstant;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.JumpOp;
+import com.oracle.graal.lir.gen.*;
+import com.oracle.graal.lir.gen.LIRGenerator.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.cfg.*;
@@ -66,7 +67,6 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool {
         this.gen = gen;
         this.nodeOperands = graph.createNodeMap();
         this.debugInfoBuilder = createDebugInfoBuilder(nodeOperands);
-        gen.setDebugInfoBuilder(debugInfoBuilder);
     }
 
     @SuppressWarnings("hiding")
@@ -112,25 +112,25 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool {
                     return setResult(node, value);
                 } else {
                     Variable loadedValue;
-                    if (gen.constantLoads == null) {
-                        gen.constantLoads = new HashMap<>();
+                    if (gen.getConstantLoads() == null) {
+                        gen.setConstantLoads(new HashMap<>());
                     }
-                    LoadConstant load = gen.constantLoads.get(value);
+                    LoadConstant load = gen.getConstantLoads().get(value);
                     assert gen.getCurrentBlock() instanceof Block;
                     if (load == null) {
                         int index = gen.getResult().getLIR().getLIRforBlock(gen.getCurrentBlock()).size();
                         loadedValue = gen.emitMove(value);
                         LIRInstruction op = gen.getResult().getLIR().getLIRforBlock(gen.getCurrentBlock()).get(index);
-                        gen.constantLoads.put(value, new LoadConstant(loadedValue, gen.getCurrentBlock(), index, op));
+                        gen.getConstantLoads().put(value, new LoadConstant(loadedValue, gen.getCurrentBlock(), index, op));
                     } else {
-                        AbstractBlock<?> dominator = ControlFlowGraph.commonDominator((Block) load.block, (Block) gen.getCurrentBlock());
-                        loadedValue = load.variable;
-                        if (dominator != load.block) {
+                        AbstractBlock<?> dominator = ControlFlowGraph.commonDominator((Block) load.getBlock(), (Block) gen.getCurrentBlock());
+                        loadedValue = load.getVariable();
+                        if (dominator != load.getBlock()) {
                             load.unpin(gen.getResult().getLIR());
                         } else {
-                            assert load.block != gen.getCurrentBlock() || load.index < gen.getResult().getLIR().getLIRforBlock(gen.getCurrentBlock()).size();
+                            assert load.getBlock() != gen.getCurrentBlock() || load.getIndex() < gen.getResult().getLIR().getLIRforBlock(gen.getCurrentBlock()).size();
                         }
-                        load.block = dominator;
+                        load.setBlock(dominator);
                     }
                     return loadedValue;
                 }

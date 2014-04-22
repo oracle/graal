@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.gen;
+package com.oracle.graal.lir.gen;
 
 import static com.oracle.graal.api.code.ValueUtil.*;
 import static com.oracle.graal.api.meta.Value.*;
@@ -43,7 +43,6 @@ import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.BlockEndOp;
 import com.oracle.graal.lir.StandardOp.LabelOp;
 import com.oracle.graal.lir.StandardOp.NoOp;
-import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.options.*;
@@ -64,8 +63,6 @@ public abstract class LIRGenerator implements ArithmeticLIRGenerator, LIRGenerat
 
     private final LIRProviders providers;
     private final CallingConvention cc;
-
-    private DebugInfoBuilder debugInfoBuilder;
 
     protected AbstractBlock<?> currentBlock;
     public final int traceLevel;
@@ -138,20 +135,31 @@ public abstract class LIRGenerator implements ArithmeticLIRGenerator, LIRGenerat
                 index = -1;
             }
         }
+
+        public AbstractBlock<?> getBlock() {
+            return block;
+        }
+
+        public void setBlock(AbstractBlock<?> block) {
+            this.block = block;
+        }
+
+        public Variable getVariable() {
+            return variable;
+        }
+
+        public int getIndex() {
+            return index;
+        }
+
+        public void setIndex(int index) {
+            this.index = index;
+        }
     }
 
-    Map<Constant, LoadConstant> constantLoads;
+    private Map<Constant, LoadConstant> constantLoads;
 
     private LIRGenerationResult res;
-
-    /**
-     * Set this before using the LIRGenerator.
-     *
-     * TODO this should be removed
-     */
-    void setDebugInfoBuilder(DebugInfoBuilder builder) {
-        debugInfoBuilder = builder;
-    }
 
     /**
      * Checks whether the supplied constant can be used without loading it into a register for store
@@ -247,7 +255,7 @@ public abstract class LIRGenerator implements ArithmeticLIRGenerator, LIRGenerat
     /**
      * Determines if only oop maps are required for the code generated from the LIR.
      */
-    protected boolean needOnlyOopMaps() {
+    public boolean needOnlyOopMaps() {
         return false;
     }
 
@@ -380,7 +388,7 @@ public abstract class LIRGenerator implements ArithmeticLIRGenerator, LIRGenerat
         }
     }
 
-    protected void emitStrategySwitch(Constant[] keyConstants, double[] keyProbabilities, LabelRef[] keyTargets, LabelRef defaultTarget, Variable value) {
+    public void emitStrategySwitch(Constant[] keyConstants, double[] keyProbabilities, LabelRef[] keyTargets, LabelRef defaultTarget, Variable value) {
         int keyCount = keyConstants.length;
         SwitchStrategy strategy = SwitchStrategy.getBestStrategy(keyProbabilities, keyConstants, keyTargets);
         long valueRange = keyConstants[keyCount - 1].asLong() - keyConstants[0].asLong() + 1;
@@ -407,18 +415,12 @@ public abstract class LIRGenerator implements ArithmeticLIRGenerator, LIRGenerat
         }
     }
 
-    protected abstract void emitStrategySwitch(SwitchStrategy strategy, Variable key, LabelRef[] keyTargets, LabelRef defaultTarget);
+    public abstract void emitStrategySwitch(SwitchStrategy strategy, Variable key, LabelRef[] keyTargets, LabelRef defaultTarget);
 
     protected abstract void emitTableSwitch(int lowKey, LabelRef defaultTarget, LabelRef[] targets, Value key);
 
     public CallingConvention getCallingConvention() {
         return cc;
-    }
-
-    @Deprecated
-    public DebugInfoBuilder getDebugInfoBuilder() {
-        assert debugInfoBuilder != null;
-        return debugInfoBuilder;
     }
 
     @Override
@@ -586,5 +588,13 @@ public abstract class LIRGenerator implements ArithmeticLIRGenerator, LIRGenerat
 
     public LIRGenerationResult getResult() {
         return res;
+    }
+
+    public Map<Constant, LoadConstant> getConstantLoads() {
+        return constantLoads;
+    }
+
+    public void setConstantLoads(Map<Constant, LoadConstant> constantLoads) {
+        this.constantLoads = constantLoads;
     }
 }

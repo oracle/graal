@@ -29,6 +29,7 @@ import static com.oracle.graal.lir.LIRValueUtil.*;
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodes.*;
 
 /**
