@@ -61,9 +61,9 @@ public final class ObjectEqualsNode extends CompareNode implements Virtualizable
             return LogicConstantNode.tautology(graph());
         }
 
-        if (ObjectStamp.isObjectAlwaysNull(x())) {
+        if (StampTool.isObjectAlwaysNull(x())) {
             return graph().unique(new IsNullNode(y()));
-        } else if (ObjectStamp.isObjectAlwaysNull(y())) {
+        } else if (StampTool.isObjectAlwaysNull(y())) {
             return graph().unique(new IsNullNode(x()));
         }
         if (x().stamp().alwaysDistinct(y().stamp())) {

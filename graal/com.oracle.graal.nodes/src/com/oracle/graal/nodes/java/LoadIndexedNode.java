@@ -45,7 +45,7 @@ public final class LoadIndexedNode extends AccessIndexedNode implements Virtuali
     }
 
     private static Stamp createStamp(ValueNode array, Kind kind) {
-        ResolvedJavaType type = ObjectStamp.typeOrNull(array);
+        ResolvedJavaType type = StampTool.typeOrNull(array);
         if (kind == Kind.Object && type != null) {
             return StampFactory.declared(type.getComponentType());
         } else {

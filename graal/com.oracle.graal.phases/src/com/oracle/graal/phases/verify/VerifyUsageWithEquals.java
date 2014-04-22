@@ -45,7 +45,7 @@ public class VerifyUsageWithEquals extends VerifyPhase<PhaseContext> {
     private boolean isAssignableType(ValueNode node, MetaAccessProvider metaAccess) {
         if (node.stamp() instanceof ObjectStamp) {
             ResolvedJavaType valueType = metaAccess.lookupJavaType(klass);
-            ResolvedJavaType nodeType = ObjectStamp.typeOrNull(node);
+            ResolvedJavaType nodeType = StampTool.typeOrNull(node);
 
             if (nodeType != null && valueType.isAssignableFrom(nodeType)) {
                 return true;

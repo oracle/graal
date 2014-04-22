@@ -68,7 +68,7 @@ public final class IsNullNode extends LogicNode implements Canonicalizable, LIRL
             assert constant.getKind() == Kind.Object;
             return LogicConstantNode.forBoolean(constant.isNull(), graph());
         }
-        if (ObjectStamp.isObjectNonNull(object.stamp())) {
+        if (StampTool.isObjectNonNull(object.stamp())) {
             return LogicConstantNode.contradiction(graph());
         }
         return this;

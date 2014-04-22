@@ -77,7 +77,7 @@ public class BoxNode extends FloatingNode implements VirtualizableAllocation, Lo
     @Override
     public void virtualize(VirtualizerTool tool) {
         ValueNode v = tool.getReplacedValue(getValue());
-        ResolvedJavaType type = ObjectStamp.typeOrNull(stamp());
+        ResolvedJavaType type = StampTool.typeOrNull(stamp());
 
         VirtualBoxingNode newVirtual = new VirtualBoxingNode(type, boxingKind);
         assert newVirtual.getFields().length == 1;

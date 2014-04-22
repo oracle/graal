@@ -67,7 +67,7 @@ public abstract class UnsafeAccessNode extends FixedWithNextNode implements Cano
             long constantOffset = offset().asConstant().asLong();
 
             // Try to canonicalize to a field access.
-            ResolvedJavaType receiverType = ObjectStamp.typeOrNull(object());
+            ResolvedJavaType receiverType = StampTool.typeOrNull(object());
             if (receiverType != null) {
                 ResolvedJavaField field = receiverType.findInstanceFieldWithOffset(constantOffset);
                 // No need for checking that the receiver is non-null. The field access includes
@@ -80,7 +80,7 @@ public abstract class UnsafeAccessNode extends FixedWithNextNode implements Cano
             }
         }
         // Temporarily disable this as it appears to break truffle.
-        // ResolvedJavaType receiverType = ObjectStamp.typeOrNull(object());
+        // ResolvedJavaType receiverType = StampTool.typeOrNull(object());
         // if (receiverType != null && receiverType.isArray()) {
         // LocationIdentity identity =
         // NamedLocationIdentity.getArrayLocation(receiverType.getComponentType().getKind());

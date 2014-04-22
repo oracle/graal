@@ -59,7 +59,7 @@ public final class LoadIndexedFinalNode extends AccessIndexedNode implements Can
     }
 
     private static Stamp createStamp(ValueNode array, Kind kind) {
-        ResolvedJavaType type = ObjectStamp.typeOrNull(array);
+        ResolvedJavaType type = StampTool.typeOrNull(array);
         if (kind == Kind.Object && type != null) {
             return StampFactory.declared(type.getComponentType());
         } else {

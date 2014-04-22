@@ -54,7 +54,7 @@ public class NewArrayNode extends AbstractNewArrayNode implements VirtualizableA
      * @return the element type of the array
      */
     public ResolvedJavaType elementType() {
-        return ObjectStamp.typeOrNull(this).getComponentType();
+        return StampTool.typeOrNull(this).getComponentType();
     }
 
     @Override

@@ -636,7 +636,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
             @Override
             protected void emitNullCheck(ValueNode receiver) {
-                if (ObjectStamp.isObjectNonNull(receiver.stamp())) {
+                if (StampTool.isObjectNonNull(receiver.stamp())) {
                     return;
                 }
                 BlockPlaceholderNode trueSucc = currentGraph.add(new BlockPlaceholderNode(this));

@@ -1521,7 +1521,7 @@ public class InliningUtil {
         assert !callTarget.isStatic() : callTarget.targetMethod();
         StructuredGraph graph = callTarget.graph();
         ValueNode firstParam = callTarget.arguments().get(0);
-        if (firstParam.getKind() == Kind.Object && !ObjectStamp.isObjectNonNull(firstParam)) {
+        if (firstParam.getKind() == Kind.Object && !StampTool.isObjectNonNull(firstParam)) {
             IsNullNode condition = graph.unique(new IsNullNode(firstParam));
             Stamp stamp = firstParam.stamp().join(objectNonNull());
             GuardingPiNode nonNullReceiver = graph.add(new GuardingPiNode(firstParam, condition, true, NullCheckException, InvalidateReprofile, stamp));

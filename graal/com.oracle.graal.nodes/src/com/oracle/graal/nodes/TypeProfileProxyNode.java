@@ -75,7 +75,7 @@ public final class TypeProfileProxyNode extends FloatingNode implements Canonica
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        if (ObjectStamp.isExactType(object)) {
+        if (StampTool.isExactType(object)) {
             // The profile is useless - we know the type!
             return object;
         } else if (object instanceof TypeProfileProxyNode) {
@@ -96,8 +96,8 @@ public final class TypeProfileProxyNode extends FloatingNode implements Canonica
                 Debug.log("Improved profile via other profile.");
                 return TypeProfileProxyNode.create(object, newProfile);
             }
-        } else if (ObjectStamp.typeOrNull(object) != null) {
-            ResolvedJavaType type = ObjectStamp.typeOrNull(object);
+        } else if (StampTool.typeOrNull(object) != null) {
+            ResolvedJavaType type = StampTool.typeOrNull(object);
             ResolvedJavaType uniqueConcrete = type.findUniqueConcreteSubtype();
             if (uniqueConcrete != null) {
                 // Profile is useless => remove.
@@ -109,7 +109,7 @@ public final class TypeProfileProxyNode extends FloatingNode implements Canonica
                 return this;
             }
             lastCheckedType = type;
-            JavaTypeProfile newProfile = this.profile.restrict(type, ObjectStamp.isObjectNonNull(object));
+            JavaTypeProfile newProfile = this.profile.restrict(type, StampTool.isObjectNonNull(object));
             if (newProfile != this.profile) {
                 Debug.log("Improved profile via static type information.");
                 if (newProfile.getTypes().length == 0) {

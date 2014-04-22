@@ -67,8 +67,8 @@ public class ObjectGetClassNode extends MacroNode implements Virtualizable, Cano
         if (usages().isEmpty()) {
             return null;
         } else {
-            if (ObjectStamp.isExactType(getObject())) {
-                ResolvedJavaType type = ObjectStamp.typeOrNull(getObject());
+            if (StampTool.isExactType(getObject())) {
+                ResolvedJavaType type = StampTool.typeOrNull(getObject());
                 Constant clazz = type.getEncoding(Representation.JavaClass);
                 return ConstantNode.forConstant(clazz, tool.getMetaAccess(), graph());
             }

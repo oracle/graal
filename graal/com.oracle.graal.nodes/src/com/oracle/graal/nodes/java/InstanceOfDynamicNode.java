@@ -47,8 +47,8 @@ public final class InstanceOfDynamicNode extends LogicNode implements Canonicali
         this.mirror = mirror;
         this.object = object;
         assert mirror.getKind() == Kind.Object : mirror.getKind();
-        assert ObjectStamp.isExactType(mirror);
-        assert ObjectStamp.typeOrNull(mirror).getName().equals("Ljava/lang/Class;");
+        assert StampTool.isExactType(mirror);
+        assert StampTool.typeOrNull(mirror).getName().equals("Ljava/lang/Class;");
     }
 
     @Override

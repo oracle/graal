@@ -152,7 +152,7 @@ public class ConditionalEliminationPhase extends Phase {
                         break;
                     }
                 }
-                if (type != null && type != ObjectStamp.typeOrNull(node)) {
+                if (type != null && type != StampTool.typeOrNull(node)) {
                     newKnownTypes.put(node, type);
                 }
             }
@@ -235,15 +235,15 @@ public class ConditionalEliminationPhase extends Phase {
 
         public ResolvedJavaType getNodeType(ValueNode node) {
             ResolvedJavaType result = knownTypes.get(GraphUtil.unproxify(node));
-            return result == null ? ObjectStamp.typeOrNull(node) : result;
+            return result == null ? StampTool.typeOrNull(node) : result;
         }
 
         public boolean isNull(ValueNode value) {
-            return ObjectStamp.isObjectAlwaysNull(value) || knownNull.contains(GraphUtil.unproxify(value));
+            return StampTool.isObjectAlwaysNull(value) || knownNull.contains(GraphUtil.unproxify(value));
         }
 
         public boolean isNonNull(ValueNode value) {
-            return ObjectStamp.isObjectNonNull(value) || knownNonNull.contains(GraphUtil.unproxify(value));
+            return StampTool.isObjectNonNull(value) || knownNonNull.contains(GraphUtil.unproxify(value));
         }
 
         @Override
@@ -812,7 +812,7 @@ public class ConditionalEliminationPhase extends Phase {
                     ValueNode receiver = callTarget.receiver();
                     if (receiver != null && (callTarget.invokeKind() == InvokeKind.Interface || callTarget.invokeKind() == InvokeKind.Virtual)) {
                         ResolvedJavaType type = state.getNodeType(receiver);
-                        if (!Objects.equals(type, ObjectStamp.typeOrNull(receiver))) {
+                        if (!Objects.equals(type, StampTool.typeOrNull(receiver))) {
                             ResolvedJavaMethod method = type.resolveMethod(callTarget.targetMethod());
                             if (method != null) {
                                 if (method.canBeStaticallyBound() || Modifier.isFinal(type.getModifiers())) {

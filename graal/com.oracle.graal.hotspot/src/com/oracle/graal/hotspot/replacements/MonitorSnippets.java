@@ -457,7 +457,7 @@ public class MonitorSnippets implements Snippets {
         }
 
         static boolean isTracingEnabledForType(ValueNode object) {
-            ResolvedJavaType type = ObjectStamp.typeOrNull(object.stamp());
+            ResolvedJavaType type = StampTool.typeOrNull(object.stamp());
             if (TRACE_TYPE_FILTER == null) {
                 return false;
             } else {

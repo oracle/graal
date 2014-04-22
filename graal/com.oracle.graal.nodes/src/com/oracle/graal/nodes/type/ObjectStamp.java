@@ -28,7 +28,6 @@ import java.util.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.spi.*;
 import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.nodes.*;
 
 public class ObjectStamp extends Stamp {
 
@@ -297,109 +296,4 @@ public class ObjectStamp extends Stamp {
         return true;
     }
 
-    /**
-     * Checks whether this {@link ValueNode} represents a {@linkplain Stamp#isLegal() legal} Object
-     * value which is known to be always null.
-     *
-     * @param node the node to check
-     * @return true if this node represents a legal object value which is known to be always null
-     */
-    public static boolean isObjectAlwaysNull(ValueNode node) {
-        return isObjectAlwaysNull(node.stamp());
-    }
-
-    /**
-     * Checks whether this {@link Stamp} represents a {@linkplain Stamp#isLegal() legal} Object
-     * stamp whose values are known to be always null.
-     *
-     * @param stamp the stamp to check
-     * @return true if this stamp represents a legal object stamp whose values are known to be
-     *         always null
-     */
-    public static boolean isObjectAlwaysNull(Stamp stamp) {
-        if (stamp instanceof ObjectStamp && stamp.isLegal()) {
-            return ((ObjectStamp) stamp).alwaysNull();
-        }
-        return false;
-    }
-
-    /**
-     * Checks whether this {@link ValueNode} represents a {@linkplain Stamp#isLegal() legal} Object
-     * value which is known to never be null.
-     *
-     * @param node the node to check
-     * @return true if this node represents a legal object value which is known to never be null
-     */
-    public static boolean isObjectNonNull(ValueNode node) {
-        return isObjectNonNull(node.stamp());
-    }
-
-    /**
-     * Checks whether this {@link Stamp} represents a {@linkplain Stamp#isLegal() legal} Object
-     * stamp whose values known to be always null.
-     *
-     * @param stamp the stamp to check
-     * @return true if this stamp represents a legal object stamp whose values are known to be
-     *         always null
-     */
-    public static boolean isObjectNonNull(Stamp stamp) {
-        if (stamp instanceof ObjectStamp && stamp.isLegal()) {
-            return ((ObjectStamp) stamp).nonNull();
-        }
-        return false;
-    }
-
-    /**
-     * Returns the {@linkplain ResolvedJavaType java type} this {@linkplain ValueNode} has if it is
-     * a {@linkplain Stamp#isLegal() legal} Object value.
-     *
-     * @param node the node to check
-     * @return the javat type this value has if it is a legal Object type, null otherwise
-     */
-    public static ResolvedJavaType typeOrNull(ValueNode node) {
-        return typeOrNull(node.stamp());
-    }
-
-    /**
-     * Returns the {@linkplain ResolvedJavaType java type} this {@linkplain Stamp} has if it is a
-     * {@linkplain Stamp#isLegal() legal} Object stamp.
-     *
-     * @param stamp the stamp to check
-     * @return the java type this stamp has if it is a legal Object stamp, null otherwise
-     */
-    public static ResolvedJavaType typeOrNull(Stamp stamp) {
-        if (stamp instanceof ObjectStamp && stamp.isLegal()) {
-            return ((ObjectStamp) stamp).type();
-        }
-        return null;
-    }
-
-    /**
-     * Checks whether this {@link ValueNode} represents a {@linkplain Stamp#isLegal() legal} Object
-     * value whose java type is known exactly. If this method returns true then the
-     * {@linkplain ResolvedJavaType java type} returned by {@link #typeOrNull(ValueNode)} is the
-     * concrete dynamic/runtime java type of this value.
-     *
-     * @param node the node to check
-     * @return true if this node represents a legal object value whose java type is known exactly
-     */
-    public static boolean isExactType(ValueNode node) {
-        return isExactType(node.stamp());
-    }
-
-    /**
-     * Checks whether this {@link Stamp} represents a {@linkplain Stamp#isLegal() legal} Object
-     * stamp whose {@linkplain ResolvedJavaType java type} is known exactly. If this method returns
-     * true then the java type returned by {@link #typeOrNull(Stamp)} is the only concrete
-     * dynamic/runtime java type possible for values of this stamp.
-     *
-     * @param stamp the stamp to check
-     * @return true if this node represents a legal object stamp whose java type is known exactly
-     */
-    public static boolean isExactType(Stamp stamp) {
-        if (stamp instanceof ObjectStamp && stamp.isLegal()) {
-            return ((ObjectStamp) stamp).isExactType();
-        }
-        return false;
-    }
 }

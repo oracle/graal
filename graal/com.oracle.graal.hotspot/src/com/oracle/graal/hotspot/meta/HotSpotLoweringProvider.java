@@ -223,7 +223,7 @@ public class HotSpotLoweringProvider implements LoweringProvider {
             NodeInputList<ValueNode> parameters = callTarget.arguments();
             ValueNode receiver = parameters.size() <= 0 ? null : parameters.get(0);
             GuardingNode receiverNullCheck = null;
-            if (!callTarget.isStatic() && receiver.stamp() instanceof ObjectStamp && !ObjectStamp.isObjectNonNull(receiver)) {
+            if (!callTarget.isStatic() && receiver.stamp() instanceof ObjectStamp && !StampTool.isObjectNonNull(receiver)) {
                 receiverNullCheck = createNullCheck(receiver, invoke.asNode(), tool);
                 invoke.setGuard(receiverNullCheck);
             }
@@ -429,10 +429,10 @@ public class HotSpotLoweringProvider implements LoweringProvider {
 
         CheckCastNode checkcastNode = null;
         CheckCastDynamicNode checkcastDynamicNode = null;
-        if (elementKind == Kind.Object && !ObjectStamp.isObjectAlwaysNull(value)) {
+        if (elementKind == Kind.Object && !StampTool.isObjectAlwaysNull(value)) {
             // Store check!
-            ResolvedJavaType arrayType = ObjectStamp.typeOrNull(array);
-            if (arrayType != null && ObjectStamp.isExactType(array)) {
+            ResolvedJavaType arrayType = StampTool.typeOrNull(array);
+            if (arrayType != null && StampTool.isExactType(array)) {
                 ResolvedJavaType elementType = arrayType.getComponentType();
                 if (!MetaUtil.isJavaLangObject(elementType)) {
                     checkcastNode = graph.add(new CheckCastNode(elementType, value, null, true));
@@ -807,8 +807,8 @@ public class HotSpotLoweringProvider implements LoweringProvider {
 
     private static boolean addReadBarrier(UnsafeLoadNode load) {
         if (useG1GC() && load.graph().getGuardsStage() == StructuredGraph.GuardsStage.FIXED_DEOPTS && load.object().getKind() == Kind.Object && load.accessKind() == Kind.Object &&
-                        !ObjectStamp.isObjectAlwaysNull(load.object())) {
-            ResolvedJavaType type = ObjectStamp.typeOrNull(load.object());
+                        !StampTool.isObjectAlwaysNull(load.object())) {
+            ResolvedJavaType type = StampTool.typeOrNull(load.object());
             if (type != null && !type.isArray()) {
                 return true;
             }
@@ -886,7 +886,7 @@ public class HotSpotLoweringProvider implements LoweringProvider {
 
     private static BarrierType getUnsafeStoreBarrierType(UnsafeStoreNode store) {
         if (store.value().getKind() == Kind.Object) {
-            ResolvedJavaType type = ObjectStamp.typeOrNull(store.object());
+            ResolvedJavaType type = StampTool.typeOrNull(store.object());
             if (type != null && !type.isArray()) {
                 return BarrierType.IMPRECISE;
             } else {
@@ -898,7 +898,7 @@ public class HotSpotLoweringProvider implements LoweringProvider {
 
     private static BarrierType getCompareAndSwapBarrierType(CompareAndSwapNode cas) {
         if (cas.expected().getKind() == Kind.Object) {
-            ResolvedJavaType type = ObjectStamp.typeOrNull(cas.object());
+            ResolvedJavaType type = StampTool.typeOrNull(cas.object());
             if (type != null && !type.isArray()) {
                 return BarrierType.IMPRECISE;
             } else {
@@ -910,7 +910,7 @@ public class HotSpotLoweringProvider implements LoweringProvider {
 
     private static BarrierType getAtomicReadAndWriteBarrierType(AtomicReadAndWriteNode n) {
         if (n.newValue().getKind() == Kind.Object) {
-            ResolvedJavaType type = ObjectStamp.typeOrNull(n.object());
+            ResolvedJavaType type = StampTool.typeOrNull(n.object());
             if (type != null && !type.isArray()) {
                 return BarrierType.IMPRECISE;
             } else {
@@ -1003,7 +1003,7 @@ public class HotSpotLoweringProvider implements LoweringProvider {
     }
 
     private static GuardingNode createNullCheck(ValueNode object, FixedNode before, LoweringTool tool) {
-        if (ObjectStamp.isObjectNonNull(object)) {
+        if (StampTool.isObjectNonNull(object)) {
             return null;
         }
         return tool.createGuard(before, before.graph().unique(new IsNullNode(object)), DeoptimizationReason.NullCheckException, DeoptimizationAction.InvalidateReprofile, true);

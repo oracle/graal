@@ -144,7 +144,7 @@ public class WordTypeRewriterPhase extends Phase {
      * own and not in the stamp, {@link #changeToWord} does not perform all necessary changes.
      */
     protected void rewriteAccessIndexed(StructuredGraph graph, AccessIndexedNode node) {
-        ResolvedJavaType arrayType = ObjectStamp.typeOrNull(node.array());
+        ResolvedJavaType arrayType = StampTool.typeOrNull(node.array());
         /*
          * There are cases where the array does not have a known type yet, i.e., the type is null.
          * In that case we assume it is not a word type.
@@ -403,7 +403,7 @@ public class WordTypeRewriterPhase extends Phase {
     }
 
     protected boolean isWord(ValueNode node) {
-        return isWord(ObjectStamp.typeOrNull(node));
+        return isWord(StampTool.typeOrNull(node));
     }
 
     protected boolean isWord(ResolvedJavaType type) {

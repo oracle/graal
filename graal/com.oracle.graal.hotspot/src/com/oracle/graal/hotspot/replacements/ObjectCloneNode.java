@@ -60,7 +60,7 @@ public class ObjectCloneNode extends MacroNode implements VirtualizableAllocatio
             return null;
         }
 
-        ResolvedJavaType type = ObjectStamp.typeOrNull(getObject());
+        ResolvedJavaType type = StampTool.typeOrNull(getObject());
         if (type != null) {
             if (type.isArray()) {
                 Method method = ObjectCloneSnippets.arrayCloneMethods.get(type.getComponentType().getKind());
@@ -106,7 +106,7 @@ public class ObjectCloneNode extends MacroNode implements VirtualizableAllocatio
     /*
      * Looks at the given stamp and determines if it is an exact type (or can be assumed to be an
      * exact type) and if it is a cloneable type.
-     * 
+     *
      * If yes, then the exact type is returned, otherwise it returns null.
      */
     private static ResolvedJavaType getConcreteType(Stamp stamp, Assumptions assumptions, MetaAccessProvider metaAccess) {

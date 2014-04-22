@@ -107,7 +107,7 @@ public final class CheckCastNode extends FixedWithNextNode implements Canonicali
             // This is a check cast that will always fail
             condition = LogicConstantNode.contradiction(graph());
             stamp = StampFactory.declared(type);
-        } else if (ObjectStamp.isObjectNonNull(object)) {
+        } else if (StampTool.isObjectNonNull(object)) {
             condition = graph().addWithoutUnique(new InstanceOfNode(type, object, profile));
         } else {
             if (profile != null && profile.getNullSeen() == TriState.FALSE) {
@@ -142,7 +142,7 @@ public final class CheckCastNode extends FixedWithNextNode implements Canonicali
     public Node canonical(CanonicalizerTool tool) {
         assert object() != null : this;
 
-        ResolvedJavaType objectType = ObjectStamp.typeOrNull(object());
+        ResolvedJavaType objectType = StampTool.typeOrNull(object());
         if (objectType != null && type.isAssignableFrom(objectType)) {
             // we don't have to check for null types here because they will also pass the
             // checkcast.
@@ -161,7 +161,7 @@ public final class CheckCastNode extends FixedWithNextNode implements Canonicali
             }
         }
 
-        if (ObjectStamp.isObjectAlwaysNull(object())) {
+        if (StampTool.isObjectAlwaysNull(object())) {
             return object();
         }
         if (tool.assumptions() != null && tool.assumptions().useOptimisticAssumptions()) {
