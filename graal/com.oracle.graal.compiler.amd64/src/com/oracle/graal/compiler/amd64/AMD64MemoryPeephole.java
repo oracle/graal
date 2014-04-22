@@ -71,7 +71,7 @@ public class AMD64MemoryPeephole implements MemoryArithmeticLIRLowerer {
 
     protected LIRFrameState getState(Access access) {
         if (access instanceof DeoptimizingNode) {
-            return gen.getLIRGenerator().state((DeoptimizingNode) access);
+            return gen.state((DeoptimizingNode) access);
         }
         return null;
     }

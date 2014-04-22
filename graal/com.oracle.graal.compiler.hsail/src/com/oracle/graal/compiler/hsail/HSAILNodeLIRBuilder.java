@@ -66,7 +66,7 @@ public abstract class HSAILNodeLIRBuilder extends NodeLIRBuilder {
         assert v.stamp() instanceof ObjectStamp;
         Variable obj = newVariable(Kind.Object);
         gen.emitMove(obj, operand(v));
-        append(new HSAILMove.NullCheckOp(obj, gen.state(deopting)));
+        append(new HSAILMove.NullCheckOp(obj, state(deopting)));
     }
 
     @Override

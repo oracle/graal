@@ -110,7 +110,7 @@ public class AMD64HotSpotNodeLIRBuilder extends AMD64NodeLIRBuilder implements H
 
     @Override
     public void visitSafepointNode(SafepointNode i) {
-        LIRFrameState info = gen.state(i);
+        LIRFrameState info = state(i);
         append(new AMD64HotSpotSafepointOp(info, getGen().config, this));
     }
 

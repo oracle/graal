@@ -63,7 +63,7 @@ public class SPARCHotSpotNodeLIRBuilder extends SPARCNodeLIRBuilder implements H
 
     @Override
     public void visitSafepointNode(SafepointNode i) {
-        LIRFrameState info = gen.state(i);
+        LIRFrameState info = state(i);
         append(new SPARCHotSpotSafepointOp(info, getGen().config, gen));
     }
 

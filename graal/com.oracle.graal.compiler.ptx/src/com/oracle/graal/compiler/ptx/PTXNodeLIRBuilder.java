@@ -135,7 +135,7 @@ public class PTXNodeLIRBuilder extends NodeLIRBuilder {
     @Override
     public void emitNullCheck(ValueNode v, DeoptimizingNode deopting) {
         assert v.getKind() == Kind.Object;
-        append(new PTXMove.NullCheckOp(gen.load(operand(v)), gen.state(deopting)));
+        append(new PTXMove.NullCheckOp(gen.load(operand(v)), state(deopting)));
     }
 
     @Override

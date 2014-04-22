@@ -568,7 +568,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool {
         if (x instanceof InvokeWithExceptionNode) {
             exceptionEdge = getLIRBlock(((InvokeWithExceptionNode) x).exceptionEdge());
         }
-        LIRFrameState callState = gen.stateWithExceptionEdge(x, exceptionEdge);
+        LIRFrameState callState = stateWithExceptionEdge(x, exceptionEdge);
 
         Value result = invokeCc.getReturn();
         if (callTarget instanceof DirectCallTargetNode) {
@@ -659,6 +659,45 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool {
     public DebugInfoBuilder getDebugInfoBuilder() {
         assert debugInfoBuilder != null;
         return debugInfoBuilder;
+    }
+
+    private static FrameState getFrameState(DeoptimizingNode deopt) {
+        if (deopt instanceof DeoptimizingNode.DeoptBefore) {
+            assert !(deopt instanceof DeoptimizingNode.DeoptDuring || deopt instanceof DeoptimizingNode.DeoptAfter);
+            return ((DeoptimizingNode.DeoptBefore) deopt).stateBefore();
+        } else if (deopt instanceof DeoptimizingNode.DeoptDuring) {
+            assert !(deopt instanceof DeoptimizingNode.DeoptAfter);
+            return ((DeoptimizingNode.DeoptDuring) deopt).stateDuring();
+        } else {
+            assert deopt instanceof DeoptimizingNode.DeoptAfter;
+            return ((DeoptimizingNode.DeoptAfter) deopt).stateAfter();
+        }
+    }
+
+    public LIRFrameState state(DeoptimizingNode deopt) {
+        if (!deopt.canDeoptimize()) {
+            return null;
+        }
+        return stateFor(getFrameState(deopt));
+    }
+
+    public LIRFrameState stateWithExceptionEdge(DeoptimizingNode deopt, LabelRef exceptionEdge) {
+        if (!deopt.canDeoptimize()) {
+            return null;
+        }
+        return stateForWithExceptionEdge(getFrameState(deopt), exceptionEdge);
+    }
+
+    public LIRFrameState stateFor(FrameState state) {
+        return stateForWithExceptionEdge(state, null);
+    }
+
+    public LIRFrameState stateForWithExceptionEdge(FrameState state, LabelRef exceptionEdge) {
+        if (gen.needOnlyOopMaps()) {
+            return new LIRFrameState(null, null, null);
+        }
+        assert state != null;
+        return getDebugInfoBuilder().build(state, exceptionEdge);
     }
 
     public void emitOverflowCheckBranch(BeginNode overflowSuccessor, BeginNode next, double probability) {
