@@ -26,6 +26,8 @@ import java.lang.reflect.*;
 import java.util.*;
 import java.util.concurrent.*;
 
+import com.oracle.graal.compiler.common.*;
+
 public abstract class FieldIntrospection extends UnsafeAccess {
 
     /**

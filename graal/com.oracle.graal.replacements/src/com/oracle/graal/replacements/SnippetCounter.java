@@ -24,7 +24,7 @@ package com.oracle.graal.replacements;
 
 //JaCoCo Exclude
 
-import static com.oracle.graal.graph.UnsafeAccess.*;
+import static com.oracle.graal.compiler.common.UnsafeAccess.*;
 
 import java.io.*;
 import java.util.*;

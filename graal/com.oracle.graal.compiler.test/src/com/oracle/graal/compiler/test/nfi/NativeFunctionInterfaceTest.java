@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.compiler.test.nfi;
 
-import static com.oracle.graal.graph.UnsafeAccess.*;
+import static com.oracle.graal.compiler.common.UnsafeAccess.*;
 import static java.io.File.*;
 import static java.lang.System.*;
 import static org.junit.Assert.*;
