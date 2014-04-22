@@ -20,13 +20,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.graph;
+package com.oracle.graal.compiler.common;
 
 import java.lang.reflect.*;
 import java.util.*;
 import java.util.concurrent.*;
-
-import com.oracle.graal.compiler.common.*;
 
 public abstract class FieldIntrospection extends UnsafeAccess {
 
@@ -49,13 +47,17 @@ public abstract class FieldIntrospection extends UnsafeAccess {
 
     protected static final ConcurrentHashMap<Class<?>, FieldIntrospection> allClasses = new ConcurrentHashMap<>();
 
-    protected final Class<?> clazz;
+    private final Class<?> clazz;
     protected long[] dataOffsets;
     protected Map<Long, String> fieldNames;
     protected Map<Long, Class<?>> fieldTypes;
 
     public FieldIntrospection(Class<?> clazz) {
         this.clazz = clazz;
+    }
+
+    public Class<?> getClazz() {
+        return clazz;
     }
 
     public static void rescanAllFieldOffsets(CalcOffset calc) {
@@ -80,7 +82,7 @@ public abstract class FieldIntrospection extends UnsafeAccess {
             this.calc = calc;
         }
 
-        protected void scan(Class<?> clazz) {
+        public void scan(Class<?> clazz) {
             Class<?> currentClazz = clazz;
             do {
                 for (Field field : currentClazz.getDeclaredFields()) {

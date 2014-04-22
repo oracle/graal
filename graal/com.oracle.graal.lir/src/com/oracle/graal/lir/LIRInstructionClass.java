@@ -118,7 +118,7 @@ public class LIRInstructionClass extends LIRIntrospection {
     @Override
     protected void rescanFieldOffsets(CalcOffset calc) {
         InstructionFieldScanner scanner = new InstructionFieldScanner(calc);
-        scanner.scan(clazz);
+        scanner.scan(getClazz());
 
         OperandModeAnnotation mode = scanner.valueAnnotations.get(LIRInstruction.Use.class);
         copyInto(useOffsets, sortedLongCopy(mode.scalarOffsets, mode.arrayOffsets));
@@ -177,7 +177,7 @@ public class LIRInstructionClass extends LIRIntrospection {
         }
 
         @Override
-        protected void scan(Class<?> clazz) {
+        public void scan(Class<?> clazz) {
             if (clazz.getAnnotation(Opcode.class) != null) {
                 opcodeConstant = clazz.getAnnotation(Opcode.class).value();
             }
@@ -213,7 +213,7 @@ public class LIRInstructionClass extends LIRIntrospection {
     @Override
     public String toString() {
         StringBuilder str = new StringBuilder();
-        str.append(getClass().getSimpleName()).append(" ").append(clazz.getSimpleName()).append(" use[");
+        str.append(getClass().getSimpleName()).append(" ").append(getClazz().getSimpleName()).append(" use[");
         for (int i = 0; i < useOffsets.length; i++) {
             str.append(i == 0 ? "" : ", ").append(useOffsets[i]);
         }

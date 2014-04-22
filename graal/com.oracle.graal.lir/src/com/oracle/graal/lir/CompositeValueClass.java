@@ -86,7 +86,7 @@ public class CompositeValueClass extends LIRIntrospection {
     @Override
     protected void rescanFieldOffsets(CalcOffset calc) {
         ValueFieldScanner scanner = new ValueFieldScanner(calc);
-        scanner.scan(clazz);
+        scanner.scan(getClazz());
 
         OperandModeAnnotation mode = scanner.valueAnnotations.get(CompositeValue.Component.class);
         copyInto(componentOffsets, sortedLongCopy(mode.scalarOffsets, mode.arrayOffsets));
@@ -108,7 +108,7 @@ public class CompositeValueClass extends LIRIntrospection {
         }
 
         @Override
-        protected void scan(Class<?> clazz) {
+        public void scan(Class<?> clazz) {
             super.scan(clazz);
         }
 
@@ -127,7 +127,7 @@ public class CompositeValueClass extends LIRIntrospection {
     @Override
     public String toString() {
         StringBuilder str = new StringBuilder();
-        str.append(getClass().getSimpleName()).append(" ").append(clazz.getSimpleName()).append(" component[");
+        str.append(getClass().getSimpleName()).append(" ").append(getClazz().getSimpleName()).append(" component[");
         for (int i = 0; i < componentOffsets.length; i++) {
             str.append(i == 0 ? "" : ", ").append(componentOffsets[i]);
         }

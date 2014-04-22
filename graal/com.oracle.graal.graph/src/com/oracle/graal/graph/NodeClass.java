@@ -179,10 +179,10 @@ public final class NodeClass extends FieldIntrospection {
             this.iterableId = nextIterableId++;
             List<NodeClass> existingClasses = new LinkedList<>();
             for (FieldIntrospection nodeClass : allClasses.values()) {
-                if (clazz.isAssignableFrom(nodeClass.clazz)) {
+                if (clazz.isAssignableFrom(nodeClass.getClazz())) {
                     existingClasses.add((NodeClass) nodeClass);
                 }
-                if (nodeClass.clazz.isAssignableFrom(clazz) && IterableNodeType.class.isAssignableFrom(nodeClass.clazz)) {
+                if (nodeClass.getClazz().isAssignableFrom(clazz) && IterableNodeType.class.isAssignableFrom(nodeClass.getClazz())) {
                     NodeClass superNodeClass = (NodeClass) nodeClass;
                     superNodeClass.iterableIds = Arrays.copyOf(superNodeClass.iterableIds, superNodeClass.iterableIds.length + 1);
                     superNodeClass.iterableIds[superNodeClass.iterableIds.length - 1] = this.iterableId;
@@ -207,7 +207,7 @@ public final class NodeClass extends FieldIntrospection {
     @Override
     protected void rescanFieldOffsets(CalcOffset calc) {
         FieldScanner scanner = new FieldScanner(calc);
-        scanner.scan(clazz);
+        scanner.scan(getClazz());
         assert directInputCount == scanner.inputOffsets.size();
         copyInto(inputOffsets, sortedLongCopy(scanner.inputOffsets, scanner.inputListOffsets));
         assert directSuccessorCount == scanner.successorOffsets.size();
@@ -324,7 +324,7 @@ public final class NodeClass extends FieldIntrospection {
     @Override
     public String toString() {
         StringBuilder str = new StringBuilder();
-        str.append("NodeClass ").append(clazz.getSimpleName()).append(" [");
+        str.append("NodeClass ").append(getClazz().getSimpleName()).append(" [");
         for (int i = 0; i < inputOffsets.length; i++) {
             str.append(i == 0 ? "" : ", ").append(inputOffsets[i]);
         }
@@ -972,7 +972,7 @@ public final class NodeClass extends FieldIntrospection {
         int index = startIndex;
         while (index < inputOffsets.length) {
             NodeList<Node> list = getNodeList(node, inputOffsets[index]);
-            assert list != null : clazz;
+            assert list != null : getClazz();
             putNodeList(node, inputOffsets[index], updateInputListCopy(list, node, duplicationReplacement));
             index++;
         }
@@ -982,7 +982,7 @@ public final class NodeClass extends FieldIntrospection {
         int index = startIndex;
         while (index < successorOffsets.length) {
             NodeList<Node> list = getNodeList(node, successorOffsets[index]);
-            assert list != null : clazz;
+            assert list != null : getClazz();
             putNodeList(node, successorOffsets[index], updateSuccListCopy(list, node, duplicationReplacement));
             index++;
         }
@@ -1039,7 +1039,7 @@ public final class NodeClass extends FieldIntrospection {
     }
 
     public NodeClassIterable getInputIterable(final Node node) {
-        assert clazz.isInstance(node);
+        assert getClazz().isInstance(node);
         return new NodeClassIterable() {
 
             @Override
@@ -1059,7 +1059,7 @@ public final class NodeClass extends FieldIntrospection {
     }
 
     public NodeClassIterable getSuccessorIterable(final Node node) {
-        assert clazz.isInstance(node);
+        assert getClazz().isInstance(node);
         return new NodeClassIterable() {
 
             @Override
@@ -1092,7 +1092,7 @@ public final class NodeClass extends FieldIntrospection {
         }
         while (index < inputOffsets.length) {
             NodeList<Node> list = getNodeList(node, inputOffsets[index]);
-            assert list != null : clazz;
+            assert list != null : getClazz();
             if (list.replaceFirst(old, other)) {
                 return true;
             }
@@ -1115,7 +1115,7 @@ public final class NodeClass extends FieldIntrospection {
         }
         while (index < successorOffsets.length) {
             NodeList<Node> list = getNodeList(node, successorOffsets[index]);
-            assert list != null : clazz + " " + successorOffsets[index] + " " + node;
+            assert list != null : getClazz() + " " + successorOffsets[index] + " " + node;
             if (list.replaceFirst(old, other)) {
                 return true;
             }
@@ -1172,7 +1172,7 @@ public final class NodeClass extends FieldIntrospection {
      * @param newNode the node to which the inputs should be copied.
      */
     public void copyInputs(Node node, Node newNode) {
-        assert node.getClass() == clazz && newNode.getClass() == clazz;
+        assert node.getClass() == getClazz() && newNode.getClass() == getClazz();
 
         int index = 0;
         while (index < directInputCount) {
@@ -1194,7 +1194,7 @@ public final class NodeClass extends FieldIntrospection {
      * @param newNode the node to which the successors should be copied.
      */
     public void copySuccessors(Node node, Node newNode) {
-        assert node.getClass() == clazz && newNode.getClass() == clazz;
+        assert node.getClass() == getClazz() && newNode.getClass() == getClazz();
 
         int index = 0;
         while (index < directSuccessorCount) {
@@ -1213,7 +1213,7 @@ public final class NodeClass extends FieldIntrospection {
     }
 
     public boolean inputsEqual(Node node, Node other) {
-        assert node.getClass() == clazz && other.getClass() == clazz;
+        assert node.getClass() == getClazz() && other.getClass() == getClazz();
         int index = 0;
         while (index < directInputCount) {
             if (getNode(other, inputOffsets[index]) != getNode(node, inputOffsets[index])) {
@@ -1232,7 +1232,7 @@ public final class NodeClass extends FieldIntrospection {
     }
 
     public boolean successorsEqual(Node node, Node other) {
-        assert node.getClass() == clazz && other.getClass() == clazz;
+        assert node.getClass() == getClazz() && other.getClass() == getClazz();
         int index = 0;
         while (index < directSuccessorCount) {
             if (getNode(other, successorOffsets[index]) != getNode(node, successorOffsets[index])) {
@@ -1251,7 +1251,7 @@ public final class NodeClass extends FieldIntrospection {
     }
 
     public boolean inputContains(Node node, Node other) {
-        assert node.getClass() == clazz;
+        assert node.getClass() == getClazz();
 
         int index = 0;
         while (index < directInputCount) {
@@ -1271,7 +1271,7 @@ public final class NodeClass extends FieldIntrospection {
     }
 
     public boolean successorContains(Node node, Node other) {
-        assert node.getClass() == clazz;
+        assert node.getClass() == getClazz();
 
         int index = 0;
         while (index < directSuccessorCount) {
@@ -1353,7 +1353,7 @@ public final class NodeClass extends FieldIntrospection {
     }
 
     public Class<?> getJavaClass() {
-        return clazz;
+        return getClazz();
     }
 
     /**
