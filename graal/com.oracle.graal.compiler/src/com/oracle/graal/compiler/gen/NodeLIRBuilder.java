@@ -171,7 +171,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool {
     }
 
     public final void append(LIRInstruction op) {
-        if (gen.printIRWithLIR && !TTY.isSuppressed()) {
+        if (Options.PrintIRWithLIR.getValue() && !TTY.isSuppressed()) {
             if (currentInstruction != null && lastInstructionPrinted != currentInstruction) {
                 lastInstructionPrinted = currentInstruction;
                 InstructionPrinter ip = new InstructionPrinter(TTY.out());
@@ -195,7 +195,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool {
         int instructionsFolded = 0;
         for (int i = 0; i < nodes.size(); i++) {
             Node instr = nodes.get(i);
-            if (gen.traceLevel >= 3) {
+            if (Options.TraceLIRGeneratorLevel.getValue() >= 3) {
                 TTY.println("LIRGen for " + instr);
             }
             if (instructionsFolded > 0) {
@@ -393,7 +393,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool {
     protected abstract boolean peephole(ValueNode valueNode);
 
     private void doRoot(ValueNode instr) {
-        if (gen.traceLevel >= 2) {
+        if (Options.TraceLIRGeneratorLevel.getValue() >= 2) {
             TTY.println("Emitting LIR for instruction " + instr);
         }
         currentInstruction = instr;
@@ -460,7 +460,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool {
     }
 
     private void moveToPhi(MergeNode merge, AbstractEndNode pred) {
-        if (gen.traceLevel >= 1) {
+        if (Options.TraceLIRGeneratorLevel.getValue() >= 1) {
             TTY.println("MOVE TO PHI from " + pred + " to " + merge);
         }
         PhiResolver resolver = new PhiResolver(gen);
