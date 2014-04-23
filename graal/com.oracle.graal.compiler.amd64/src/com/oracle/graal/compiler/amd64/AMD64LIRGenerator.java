@@ -53,6 +53,7 @@ import com.oracle.graal.lir.amd64.AMD64Arithmetic.FPDivRemOp;
 import com.oracle.graal.lir.amd64.AMD64Arithmetic.Unary1Op;
 import com.oracle.graal.lir.amd64.AMD64Arithmetic.Unary2MemoryOp;
 import com.oracle.graal.lir.amd64.AMD64Arithmetic.Unary2Op;
+import com.oracle.graal.lir.amd64.AMD64Arithmetic.Unary2RegOp;
 import com.oracle.graal.lir.amd64.AMD64Compare.CompareMemoryOp;
 import com.oracle.graal.lir.amd64.AMD64Compare.CompareOp;
 import com.oracle.graal.lir.amd64.AMD64ControlFlow.BranchOp;
@@ -765,9 +766,9 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         }
     }
 
-    private AllocatableValue emitConvert1Op(PlatformKind kind, AMD64Arithmetic op, AllocatableValue input) {
+    private AllocatableValue emitConvert2RegOp(PlatformKind kind, AMD64Arithmetic op, AllocatableValue input) {
         Variable result = newVariable(kind);
-        append(new Unary1Op(op, result, input));
+        append(new Unary2RegOp(op, result, input));
         return result;
     }
 
@@ -850,7 +851,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     public Value emitNarrow(Value inputVal, int bits) {
         if (inputVal.getKind() == Kind.Long && bits <= 32) {
             // TODO make it possible to reinterpret Long as Int in LIR without move
-            return emitConvert1Op(Kind.Int, L2I, asAllocatable(inputVal));
+            return emitConvert2RegOp(Kind.Int, L2I, asAllocatable(inputVal));
         } else {
             return inputVal;
         }
