@@ -1408,11 +1408,26 @@ public class InliningUtil {
                 if (frameState != null && frameState.isAlive()) {
                     assert frameState.bci != BytecodeFrame.BEFORE_BCI : frameState;
                     if (frameState.bci == BytecodeFrame.AFTER_BCI) {
-                        frameState.replaceAndDelete(returnKind == Kind.Void ? stateAfter : stateAfter.duplicateModified(stateAfter.bci, stateAfter.rethrowException(), returnKind,
-                                        frameState.stackAt(0)));
+                        /*
+                         * pop return kind from invoke's stateAfter and replace with this
+                         * frameState's return value (top of stack)
+                         */
+                        Node otherFrameState = stateAfter;
+                        if (returnKind != Kind.Void && frameState.stackSize() > 0) {
+                            otherFrameState = stateAfter.duplicateModified(returnKind, frameState.stackAt(0));
+                        }
+                        frameState.replaceAndDelete(otherFrameState);
                     } else if (frameState.bci == BytecodeFrame.AFTER_EXCEPTION_BCI || (frameState.bci == BytecodeFrame.UNWIND_BCI && !frameState.method().isSynchronized())) {
                         if (stateAtExceptionEdge != null) {
-                            frameState.replaceAndDelete(stateAtExceptionEdge);
+                            /*
+                             * pop exception object from invoke's stateAfter and replace with this
+                             * frameState's exception object (top of stack)
+                             */
+                            Node newFrameState = stateAtExceptionEdge;
+                            if (frameState.stackSize() > 0 && stateAtExceptionEdge.stackAt(0) != frameState.stackAt(0)) {
+                                newFrameState = stateAtExceptionEdge.duplicateModified(Kind.Object, frameState.stackAt(0));
+                            }
+                            frameState.replaceAndDelete(newFrameState);
                         } else {
                             handleMissingAfterExceptionFrameState(frameState);
                         }
