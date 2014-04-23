@@ -26,9 +26,9 @@ package com.oracle.graal.baseline;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.java.BciBlockMapping.BciBlock;
 
-public class LIRLoop extends Loop<BciBlock> {
+public class BaselineLoop extends Loop<BciBlock> {
 
-    protected LIRLoop(Loop<BciBlock> parent, int index, BciBlock header) {
+    protected BaselineLoop(Loop<BciBlock> parent, int index, BciBlock header) {
         super(parent, index, header);
     }
 

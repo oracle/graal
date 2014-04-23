@@ -58,21 +58,21 @@ public class BaselineControlFlowGraph implements AbstractControlFlowGraph<BciBlo
 
     private void computeLoopInformation() {
         visited = new BitSet(blocks.length);
-        Deque<LIRLoop> stack = new ArrayDeque<>();
+        Deque<BaselineLoop> stack = new ArrayDeque<>();
         for (int i = blocks.length - 1; i >= 0; i--) {
             BciBlock block = blocks[i];
             calcLoop(block, stack);
         }
     }
 
-    private void calcLoop(BciBlock block, Deque<LIRLoop> stack) {
+    private void calcLoop(BciBlock block, Deque<BaselineLoop> stack) {
         if (visited.get(block.getId())) {
             return;
         }
         visited.set(block.getId());
         if (block.isLoopEnd()) {
             BciBlock loopHeader = getLoopHeader(block);
-            LIRLoop l = new LIRLoop(stack.peek(), loops.size(), loopHeader);
+            BaselineLoop l = new BaselineLoop(stack.peek(), loops.size(), loopHeader);
             loops.add(l);
             stack.push(l);
         }
