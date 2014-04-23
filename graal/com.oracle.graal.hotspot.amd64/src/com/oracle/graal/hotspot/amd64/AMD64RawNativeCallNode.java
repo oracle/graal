@@ -27,12 +27,11 @@ import com.oracle.graal.api.code.CallingConvention.Type;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.amd64.*;
 import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 
-public class AMD64RawNativeCallNode extends FixedWithNextNode implements LIRGenLowerable {
+public class AMD64RawNativeCallNode extends FixedWithNextNode implements LIRLowerable {
 
     private final Constant functionPointer;
     @Input private final NodeInputList<ValueNode> args;

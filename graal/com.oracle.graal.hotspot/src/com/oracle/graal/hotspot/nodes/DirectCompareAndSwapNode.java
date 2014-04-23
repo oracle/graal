@@ -23,7 +23,6 @@
 package com.oracle.graal.hotspot.nodes;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.nodes.*;
@@ -39,7 +38,7 @@ import com.oracle.graal.word.*;
  * expected value or the compared against value instead of a boolean.
  */
 @NodeInfo(allowedUsageTypes = {InputType.Memory})
-public class DirectCompareAndSwapNode extends FixedWithNextNode implements LIRGenLowerable, MemoryCheckpoint.Single {
+public class DirectCompareAndSwapNode extends FixedWithNextNode implements LIRLowerable, MemoryCheckpoint.Single {
 
     @Input private ValueNode object;
     @Input private ValueNode offset;

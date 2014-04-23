@@ -24,7 +24,6 @@ package com.oracle.graal.replacements.nodes;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.lir.*;
@@ -35,7 +34,7 @@ import com.oracle.graal.nodes.util.*;
 /**
  * Compares two arrays with the same length.
  */
-public class ArrayEqualsNode extends FixedWithNextNode implements LIRGenLowerable, Canonicalizable, Virtualizable {
+public class ArrayEqualsNode extends FixedWithNextNode implements LIRLowerable, Canonicalizable, Virtualizable {
 
     /** {@link Kind} of the arrays to compare. */
     private final Kind kind;

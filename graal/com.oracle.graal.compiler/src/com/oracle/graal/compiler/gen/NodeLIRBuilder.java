@@ -407,12 +407,10 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool {
         if (Debug.isLogEnabled() && node.stamp() instanceof IllegalStamp) {
             Debug.log("This node has invalid type, we are emitting dead code(?): %s", node);
         }
-        if (node instanceof LIRGenLowerable) {
-            ((LIRGenLowerable) node).generate(this);
+        if (node instanceof LIRLowerable) {
+            ((LIRLowerable) node).generate(this);
         } else if (node instanceof LIRGenResLowerable) {
             ((LIRGenResLowerable) node).generate(this, gen.getResult());
-        } else if (node instanceof LIRLowerable) {
-            ((LIRLowerable) node).generate(this);
         } else if (node instanceof ArithmeticLIRLowerable) {
             ((ArithmeticLIRLowerable) node).generate(this, gen);
         } else {

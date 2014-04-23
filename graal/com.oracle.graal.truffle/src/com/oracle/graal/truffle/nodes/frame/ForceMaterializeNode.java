@@ -23,11 +23,10 @@
 package com.oracle.graal.truffle.nodes.frame;
 
 import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 
-public class ForceMaterializeNode extends FixedWithNextNode implements LIRGenLowerable {
+public class ForceMaterializeNode extends FixedWithNextNode implements LIRLowerable {
 
     @Input private ValueNode object;
 

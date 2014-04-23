@@ -23,7 +23,6 @@
 package com.oracle.graal.hotspot.nodes;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.word.*;
@@ -31,7 +30,7 @@ import com.oracle.graal.word.*;
 /**
  * Converts a compile-time constant Java string into a C string installed with the generated code.
  */
-public final class CStringNode extends FloatingNode implements LIRGenLowerable {
+public final class CStringNode extends FloatingNode implements LIRLowerable {
 
     private final String string;
 
