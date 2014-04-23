@@ -28,7 +28,7 @@ import javax.lang.model.element.*;
 import javax.lang.model.type.*;
 import javax.lang.model.util.*;
 
-import com.oracle.truffle.dsl.processor.ast.CodeTypeMirror.*;
+import com.oracle.truffle.dsl.processor.ast.CodeTypeMirror.DeclaredCodeTypeMirror;
 
 public class CodeTypeElement extends CodeElement<Element> implements TypeElement {
 

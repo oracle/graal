@@ -24,22 +24,63 @@
  */
 package com.oracle.truffle.api.impl;
 
+import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.frame.*;
+import com.oracle.truffle.api.nodes.*;
 
 /**
- * This is an implementation-specific class. Do not use or instantiate it. Instead, use
- * {@link Frame#pack()} to create a {@link PackedFrame}.
+ * This is runtime specific API. Do not use in a guest language.
  */
-final class DefaultPackedFrame implements PackedFrame {
+public final class DefaultDirectCallNode extends DirectCallNode {
 
-    private final DefaultVirtualFrame wrapped;
+    private boolean inliningForced;
 
-    DefaultPackedFrame(DefaultVirtualFrame wrapped) {
-        this.wrapped = wrapped;
+    public DefaultDirectCallNode(CallTarget target) {
+        super(target);
     }
 
     @Override
-    public VirtualFrame unpack() {
-        return wrapped;
+    public Object call(VirtualFrame frame, Object[] arguments) {
+        return getCurrentCallTarget().call(arguments);
+    }
+
+    @Override
+    public void forceInlining() {
+        inliningForced = true;
+    }
+
+    @Override
+    public boolean isInliningForced() {
+        return inliningForced;
+    }
+
+    @Override
+    public CallTarget getSplitCallTarget() {
+        return null;
+    }
+
+    @Override
+    public boolean split() {
+        return false;
+    }
+
+    @Override
+    public boolean isInlined() {
+        return false;
+    }
+
+    @Override
+    public boolean isSplittable() {
+        return false;
+    }
+
+    @Override
+    public boolean isInlinable() {
+        return false;
+    }
+
+    @Override
+    public String toString() {
+        return (getParent() != null ? getParent().toString() : super.toString()) + " call " + getCurrentCallTarget().toString();
     }
 }

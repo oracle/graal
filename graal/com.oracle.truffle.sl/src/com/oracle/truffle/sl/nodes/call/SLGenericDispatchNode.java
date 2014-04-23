@@ -22,7 +22,9 @@
  */
 package com.oracle.truffle.sl.nodes.call;
 
+import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.frame.*;
+import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.sl.runtime.*;
 
 /**
@@ -31,12 +33,20 @@ import com.oracle.truffle.sl.runtime.*;
  */
 final class SLGenericDispatchNode extends SLAbstractDispatchNode {
 
+    /**
+     * {@link IndirectCallNode} is part of the Truffle API and handles all the steps necessary for
+     * calling a megamorphic call-site. The Graal specific version of this node performs additional
+     * optimizations for the fast access of the SimpleLanguage stack trace.
+     */
+    @Child private IndirectCallNode callNode = Truffle.getRuntime().createIndirectCallNode();
+
     @Override
-    protected Object executeDispatch(VirtualFrame frame, SLFunction function, SLArguments arguments) {
+    protected Object executeDispatch(VirtualFrame frame, SLFunction function, Object[] arguments) {
         /*
          * SL has a quite simple call lookup: just ask the function for the current call target, and
          * call it.
          */
-        return function.getCallTarget().call(frame.pack(), arguments);
+        return callNode.call(frame, function.getCallTarget(), arguments);
     }
+
 }

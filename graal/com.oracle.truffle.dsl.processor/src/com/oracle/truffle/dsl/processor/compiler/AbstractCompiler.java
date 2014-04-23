@@ -32,7 +32,7 @@ public abstract class AbstractCompiler implements Compiler {
         return method.invoke(o);
     }
 
-    protected static Object method(Object o, String methodName, Class[] paramTypes, Object... values) throws Exception {
+    protected static Object method(Object o, String methodName, Class<?>[] paramTypes, Object... values) throws Exception {
         Method method = o.getClass().getMethod(methodName, paramTypes);
         method.setAccessible(true);
         return method.invoke(o, values);

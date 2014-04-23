@@ -31,7 +31,7 @@ import com.oracle.truffle.api.*;
  * instance of {@link Source}, suitable for hash table keys with equality defined in terms of
  * content.
  */
-public class SourceLineLocation implements Comparable {
+public class SourceLineLocation implements Comparable<Object> {
 
     private final Source source;
     private final int line;

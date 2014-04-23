@@ -34,7 +34,8 @@ import com.oracle.truffle.dsl.processor.typesystem.*;
 public class NodeChildData extends MessageContainer {
 
     public enum Cardinality {
-        ONE, MANY;
+        ONE,
+        MANY;
 
         public boolean isMany() {
             return this == MANY;

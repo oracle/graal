@@ -25,5 +25,12 @@
 package com.oracle.truffle.api.frame;
 
 public enum FrameSlotKind {
-    Object, Illegal, Long, Int, Double, Float, Boolean, Byte;
+    Object,
+    Illegal,
+    Long,
+    Int,
+    Double,
+    Float,
+    Boolean,
+    Byte;
 }

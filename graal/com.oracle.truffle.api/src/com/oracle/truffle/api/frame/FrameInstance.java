@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,18 +24,25 @@
  */
 package com.oracle.truffle.api.frame;
 
-/**
- * Represents a packed frame that represents a virtual frame. A packed frame instance can be
- * retrieved with the {@link VirtualFrame#pack()} method. It can be converted back into a virtual
- * frame using {@link PackedFrame#unpack()}. Instances of this type must not be stored in a field or
- * cast to {@link java.lang.Object}.
- */
-public interface PackedFrame {
+import com.oracle.truffle.api.*;
+import com.oracle.truffle.api.nodes.*;
 
-    /**
-     * Unpacks this frame and converts it back to a virtual frame.
-     * 
-     * @return the virtual frame that was the content of this packed frame
-     */
-    Frame unpack();
+public interface FrameInstance {
+
+    public static enum FrameAccess {
+        NONE,
+        READ_ONLY,
+        READ_WRITE,
+        MATERIALIZE
+    }
+
+    Frame getFrame(FrameAccess access, boolean slowPath);
+
+    boolean isVirtualFrame();
+
+    DirectCallNode getCallNode();
+
+    CallTarget getCallTarget();
+
+    CallTarget getTargetCallTarget();
 }

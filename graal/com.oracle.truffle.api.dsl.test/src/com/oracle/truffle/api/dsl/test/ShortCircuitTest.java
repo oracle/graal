@@ -32,7 +32,6 @@ import com.oracle.truffle.api.dsl.test.ShortCircuitTestFactory.DoubleChildNodeFa
 import com.oracle.truffle.api.dsl.test.ShortCircuitTestFactory.SingleChildNodeFactory;
 import com.oracle.truffle.api.dsl.test.ShortCircuitTestFactory.VarArgsNodeFactory;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ArgumentNode;
-import com.oracle.truffle.api.dsl.test.TypeSystemTest.TestArguments;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
 
 public class ShortCircuitTest {
@@ -42,7 +41,7 @@ public class ShortCircuitTest {
         ArgumentNode arg0 = new ArgumentNode(0);
         CallTarget callTarget = TestHelper.createCallTarget(SingleChildNodeFactory.create(arg0));
         SingleChildNode.needsChild = true;
-        assertEquals(42, callTarget.call(new TestArguments(42)));
+        assertEquals(42, callTarget.call(new Object[]{42}));
         assertEquals(1, arg0.getInvocationCount());
     }
 
@@ -51,7 +50,7 @@ public class ShortCircuitTest {
         ArgumentNode arg0 = new ArgumentNode(0);
         CallTarget callTarget = TestHelper.createCallTarget(SingleChildNodeFactory.create(arg0));
         SingleChildNode.needsChild = false;
-        assertEquals(0, callTarget.call(new TestArguments(42)));
+        assertEquals(0, callTarget.call(new Object[]{42}));
         assertEquals(0, arg0.getInvocationCount());
     }
 
@@ -78,7 +77,7 @@ public class ShortCircuitTest {
         ArgumentNode arg0 = new ArgumentNode(0);
         ArgumentNode arg1 = new ArgumentNode(1);
         CallTarget callTarget = TestHelper.createCallTarget(DoubleChildNodeFactory.create(arg0, arg1));
-        assertEquals(42, callTarget.call(new TestArguments(41, 42)));
+        assertEquals(42, callTarget.call(new Object[]{41, 42}));
         assertEquals(1, arg1.getInvocationCount());
     }
 
@@ -87,7 +86,7 @@ public class ShortCircuitTest {
         ArgumentNode arg0 = new ArgumentNode(0);
         ArgumentNode arg1 = new ArgumentNode(1);
         CallTarget callTarget = TestHelper.createCallTarget(DoubleChildNodeFactory.create(arg0, arg1));
-        assertEquals(0, callTarget.call(new TestArguments(42, 42)));
+        assertEquals(0, callTarget.call(new Object[]{42, 42}));
         assertEquals(0, arg1.getInvocationCount());
     }
 
@@ -112,7 +111,7 @@ public class ShortCircuitTest {
         ArgumentNode arg0 = new ArgumentNode(0);
         ArgumentNode arg1 = new ArgumentNode(1);
         CallTarget callTarget = TestHelper.createCallTarget(VarArgsNodeFactory.create(new ValueNode[]{arg0, arg1}));
-        assertEquals(42, callTarget.call(new TestArguments(41, 42)));
+        assertEquals(42, callTarget.call(new Object[]{41, 42}));
         assertEquals(1, arg1.getInvocationCount());
     }
 
@@ -121,7 +120,7 @@ public class ShortCircuitTest {
         ArgumentNode arg0 = new ArgumentNode(0);
         ArgumentNode arg1 = new ArgumentNode(1);
         CallTarget callTarget = TestHelper.createCallTarget(VarArgsNodeFactory.create(new ValueNode[]{arg0, arg1}));
-        assertEquals(0, callTarget.call(new TestArguments(42, 42)));
+        assertEquals(0, callTarget.call(new Object[]{42, 42}));
         assertEquals(0, arg1.getInvocationCount());
     }
 

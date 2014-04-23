@@ -25,7 +25,7 @@
 package com.oracle.truffle.api.utilities;
 
 import com.oracle.truffle.api.*;
-import com.oracle.truffle.api.CompilerDirectives.*;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 
 /**
  * Utility class to speculate on branches to be never visited. If the {@link #enter()} method is
@@ -42,6 +42,11 @@ public final class BranchProfile {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             visited = true;
         }
+    }
+
+    @Override
+    public String toString() {
+        return String.format("%s(%s)@%x", getClass().getSimpleName(), visited ? "visited" : "not-visited", hashCode());
     }
 
 }

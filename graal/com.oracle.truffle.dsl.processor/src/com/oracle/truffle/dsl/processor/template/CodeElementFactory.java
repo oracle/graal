@@ -44,7 +44,7 @@ public abstract class CodeElementFactory<M> {
     protected void createChildren(M m) {
     }
 
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings({"unchecked", "rawtypes"})
     public CodeElement<?> process(CodeElement parent, M m) {
         model = m;
         element = (CodeElement<? super Element>) create(model);
@@ -57,6 +57,7 @@ public abstract class CodeElementFactory<M> {
         return element;
     }
 
+    @SuppressWarnings("rawtypes")
     public CodeElement getElement() {
         return element;
     }

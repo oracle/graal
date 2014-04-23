@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,54 +22,30 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.impl;
+package com.oracle.truffle.api.nodes;
 
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.frame.*;
-import com.oracle.truffle.api.nodes.*;
 
-public class DefaultCallNode extends CallNode {
+/**
+ * Represents an indirect call to a {@link CallTarget}. Indirect calls are calls for which the
+ * {@link CallTarget} may change dynamically for each consecutive call. This part of the Truffle API
+ * enables the runtime system to perform additional optimizations on indirect calls.
+ *
+ * Please note: This class is not intended to be sub classed by guest language implementations.
+ *
+ * @see DirectCallNode for faster calls with a constantly known {@link CallTarget}.
+ */
+public abstract class IndirectCallNode extends Node {
 
-    public DefaultCallNode(CallTarget target) {
-        super(target);
-    }
+    /**
+     * Performs an indirect call to the given {@link CallTarget} target with the provided arguments.
+     *
+     * @param frame the caller frame
+     * @param target the {@link CallTarget} to call
+     * @param arguments the arguments to provide
+     * @return the return value of the call
+     */
+    public abstract Object call(VirtualFrame frame, CallTarget target, Object[] arguments);
 
-    @Override
-    public Object call(PackedFrame caller, Arguments arguments) {
-        return getCallTarget().call(caller, arguments);
-    }
-
-    @Override
-    public void inline() {
-    }
-
-    @Override
-    public CallTarget getSplitCallTarget() {
-        return null;
-    }
-
-    @Override
-    public boolean split() {
-        return false;
-    }
-
-    @Override
-    public boolean isSplittable() {
-        return false;
-    }
-
-    @Override
-    public boolean isInlined() {
-        return false;
-    }
-
-    @Override
-    public boolean isInlinable() {
-        return false;
-    }
-
-    @Override
-    public String toString() {
-        return getParent() != null ? getParent().toString() : super.toString();
-    }
 }

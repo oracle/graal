@@ -32,7 +32,7 @@ import com.oracle.truffle.api.nodes.*;
 
 /**
  * <h3>Creating an Array of Children Nodes</h3>
- * 
+ *
  * <p>
  * An array of children nodes can be used as a field in a parent node. The field has to be annotated
  * with {@link com.oracle.truffle.api.nodes.Node.Children} and must be declared private and final.
@@ -41,7 +41,7 @@ import com.oracle.truffle.api.nodes.*;
  * its first values, it must never be changed. It is only possible to call {@link Node#replace} on a
  * child node.
  * </p>
- * 
+ *
  * <p>
  * The next part of the Truffle API introduction is at
  * {@link com.oracle.truffle.api.test.FinalFieldTest}.

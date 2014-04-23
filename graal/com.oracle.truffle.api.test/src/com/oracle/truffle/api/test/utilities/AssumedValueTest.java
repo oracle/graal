@@ -23,6 +23,7 @@
 package com.oracle.truffle.api.test.utilities;
 
 import static org.junit.Assert.*;
+
 import org.junit.*;
 
 import com.oracle.truffle.api.utilities.*;

@@ -38,10 +38,10 @@ public final class SLIfNode extends SLStatementNode {
      */
     @Child private SLExpressionNode conditionNode;
 
-    /** Statement (or {@SLBlockNode block}) executed when the condition is true. */
+    /** Statement (or {@link SLBlockNode block}) executed when the condition is true. */
     @Child private SLStatementNode thenPartNode;
 
-    /** Statement (or {@SLBlockNode block}) executed when the condition is false. */
+    /** Statement (or {@link SLBlockNode block}) executed when the condition is false. */
     @Child private SLStatementNode elsePartNode;
 
     /**

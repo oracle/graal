@@ -40,7 +40,7 @@ final class SLUninitializedDispatchNode extends SLAbstractDispatchNode {
      * {@link SLGenericDispatchNode}.
      */
     @Override
-    protected Object executeDispatch(VirtualFrame frame, SLFunction function, SLArguments arguments) {
+    protected Object executeDispatch(VirtualFrame frame, SLFunction function, Object[] arguments) {
         /* The following code modifies the AST, so compiled code must be invalidated. */
         CompilerDirectives.transferToInterpreterAndInvalidate();
 

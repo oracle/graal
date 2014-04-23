@@ -113,24 +113,6 @@ public class TypeSystemTest {
         }
     }
 
-    public static class TestArguments extends Arguments {
-
-        private final Object[] values;
-
-        public TestArguments(Object... values) {
-            this.values = values;
-        }
-
-        public Object[] getValues() {
-            return values;
-        }
-
-        public Object get(int index) {
-            return values[index];
-        }
-
-    }
-
     public static class ArgumentNode extends ValueNode {
 
         private int invocationCount;
@@ -147,13 +129,13 @@ public class TypeSystemTest {
         @Override
         public Object execute(VirtualFrame frame) {
             invocationCount++;
-            return frame.getArguments(TestArguments.class).get(index);
+            return frame.getArguments()[index];
         }
 
         @Override
         public int executeInt(VirtualFrame frame) throws UnexpectedResultException {
             // avoid casts for some tests
-            Object o = frame.getArguments(TestArguments.class).get(index);
+            Object o = frame.getArguments()[index];
             if (o instanceof Integer) {
                 return (int) o;
             }

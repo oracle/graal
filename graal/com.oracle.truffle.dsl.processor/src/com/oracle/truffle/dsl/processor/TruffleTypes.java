@@ -29,7 +29,8 @@ import javax.lang.model.type.*;
 import javax.tools.Diagnostic.Kind;
 
 import com.oracle.truffle.api.*;
-import com.oracle.truffle.api.CompilerDirectives.*;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.SlowPath;
 import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
@@ -111,7 +112,7 @@ public final class TruffleTypes {
         return nodeCost;
     }
 
-    private DeclaredType getRequired(ProcessorContext context, Class clazz) {
+    private DeclaredType getRequired(ProcessorContext context, Class<?> clazz) {
         TypeMirror type = context.getType(clazz);
         if (type == null) {
             errors.add(String.format("Could not find required type: %s", clazz.getSimpleName()));

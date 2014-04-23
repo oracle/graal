@@ -20,32 +20,26 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.sl.runtime;
+package com.oracle.truffle.sl.builtins;
 
 import com.oracle.truffle.api.*;
+import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.frame.*;
-import com.oracle.truffle.sl.nodes.call.*;
-import com.oracle.truffle.sl.nodes.local.*;
+import com.oracle.truffle.api.frame.FrameInstance.FrameAccess;
+import com.oracle.truffle.api.nodes.*;
 
 /**
- * Encapsulation of SL function arguments, as required by the Truffle API. An instance of this class
- * is allocated by the caller, and read by the callee.
+ * This builtin sets the variable named "hello" in the caller frame to the string "world".
  */
-public final class SLArguments extends Arguments {
+@NodeInfo(shortName = "helloEqualsWorld")
+public abstract class SLHelloEqualsWorldBuiltin extends SLBuiltinNode {
 
-    private final Object[] argumentValues;
-
-    /**
-     * Used by the caller, i.e., the {@link SLInvokeNode node that performs a function call}.
-     */
-    public SLArguments(Object[] arguments) {
-        this.argumentValues = arguments;
-    }
-
-    /**
-     * Used by the callee, i.e., the {@link SLReadArgumentNode note that reads a function argument}.
-     */
-    public static Object[] getFromFrame(VirtualFrame frame) {
-        return frame.getArguments(SLArguments.class).argumentValues;
+    @Specialization
+    public String change() {
+        FrameInstance frameInstance = Truffle.getRuntime().getStackTrace().iterator().next();
+        Frame frame = frameInstance.getFrame(FrameAccess.READ_WRITE, false);
+        FrameSlot slot = frame.getFrameDescriptor().findOrAddFrameSlot("hello");
+        frame.setObject(slot, "world");
+        return "world";
     }
 }

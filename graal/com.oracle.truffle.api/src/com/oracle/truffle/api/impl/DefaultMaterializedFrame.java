@@ -29,10 +29,10 @@ import com.oracle.truffle.api.frame.*;
 
 /**
  * This is an implementation-specific class. Do not use or instantiate it. Instead, use
- * {@link TruffleRuntime#createMaterializedFrame(Arguments)} or {@link Frame#materialize()} to
- * create a {@link MaterializedFrame}.
+ * {@link TruffleRuntime#createMaterializedFrame(Object[])} or {@link Frame#materialize()} to create
+ * a {@link MaterializedFrame}.
  */
-final class DefaultMaterializedFrame implements MaterializedFrame, PackedFrame {
+final class DefaultMaterializedFrame implements MaterializedFrame {
 
     private final DefaultVirtualFrame wrapped;
 
@@ -41,8 +41,8 @@ final class DefaultMaterializedFrame implements MaterializedFrame, PackedFrame {
     }
 
     @Override
-    public <T extends Arguments> T getArguments(Class<T> clazz) {
-        return wrapped.getArguments(clazz);
+    public Object[] getArguments() {
+        return wrapped.getArguments();
     }
 
     @Override
@@ -121,17 +121,7 @@ final class DefaultMaterializedFrame implements MaterializedFrame, PackedFrame {
     }
 
     @Override
-    public PackedFrame pack() {
-        return this;
-    }
-
-    @Override
     public MaterializedFrame materialize() {
-        return this;
-    }
-
-    @Override
-    public Frame unpack() {
         return this;
     }
 

@@ -30,13 +30,13 @@ import com.oracle.truffle.api.nodes.*;
 
 /**
  * <h3>Specializing Frame Slot Types</h3>
- * 
+ *
  * <p>
  * Dynamically typed languages can speculate on the type of a frame slot and only fall back at run
  * time to a more generic type if necessary. The new type of a frame slot can be set using the
  * {@link FrameSlot#setKind(FrameSlotKind)} method.
  * </p>
- * 
+ *
  * <p>
  * The next part of the Truffle API introduction is at
  * {@link com.oracle.truffle.api.test.ReturnTypeSpecializationTest}.

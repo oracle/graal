@@ -38,7 +38,7 @@ public interface NodeFactory<T> {
      * Instantiates the node using the arguments array. The arguments length and types must suffice
      * one of the returned signatures in {@link #getNodeSignatures()}. If the arguments array does
      * not suffice one of the node signatures an {@link IllegalArgumentException} is thrown.
-     * 
+     *
      * @param arguments the argument values
      * @return the instantiated node
      * @throws IllegalArgumentException

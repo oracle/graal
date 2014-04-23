@@ -49,5 +49,5 @@ public abstract class SLAbstractDispatchNode extends Node {
 
     protected static final int INLINE_CACHE_SIZE = 2;
 
-    protected abstract Object executeDispatch(VirtualFrame frame, SLFunction function, SLArguments arguments);
+    protected abstract Object executeDispatch(VirtualFrame frame, SLFunction function, Object[] arguments);
 }

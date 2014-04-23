@@ -22,7 +22,6 @@
  */
 package com.oracle.truffle.sl.nodes.local;
 
-import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.utilities.*;
 import com.oracle.truffle.sl.nodes.*;
@@ -30,9 +29,7 @@ import com.oracle.truffle.sl.parser.*;
 import com.oracle.truffle.sl.runtime.*;
 
 /**
- * Reads a function argument. Arguments are passed in as a {@link SLArguments} object, which
- * encapsulates an {@link SLArguments#getFromFrame Object[] array}. Language-defined subclasses of
- * {@link Arguments} are the standard Truffle way to pass values between functions.
+ * Reads a function argument. Arguments are passed in as an object array.
  * <p>
  * Arguments are not type-specialized. To ensure that repeated accesses within a method are
  * specialized and can, e.g., be accessed without unboxing, all arguments are loaded into local
@@ -55,7 +52,7 @@ public class SLReadArgumentNode extends SLExpressionNode {
 
     @Override
     public Object executeGeneric(VirtualFrame frame) {
-        Object[] args = SLArguments.getFromFrame(frame);
+        Object[] args = frame.getArguments();
         if (index < args.length) {
             return args[index];
         } else {

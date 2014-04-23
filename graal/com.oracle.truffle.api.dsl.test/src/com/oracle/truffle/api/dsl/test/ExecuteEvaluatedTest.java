@@ -39,7 +39,6 @@ import com.oracle.truffle.api.dsl.test.ExecuteEvaluatedTestFactory.UseDoubleEval
 import com.oracle.truffle.api.dsl.test.ExecuteEvaluatedTestFactory.UseEvaluatedNodeFactory;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ArgumentNode;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ChildrenNode;
-import com.oracle.truffle.api.dsl.test.TypeSystemTest.TestArguments;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.TestRootNode;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
 import com.oracle.truffle.api.frame.*;
@@ -52,7 +51,7 @@ public class ExecuteEvaluatedTest {
         ArgumentNode arg0 = new ArgumentNode(0);
         CallTarget callTarget = TestHelper.createCallTarget(UseEvaluatedNodeFactory.create(arg0, EvaluatedNodeFactory.create(null)));
 
-        Assert.assertEquals(43, callTarget.call(new TestArguments(42)));
+        Assert.assertEquals(43, callTarget.call(new Object[]{42}));
         Assert.assertEquals(1, arg0.getInvocationCount());
     }
 
@@ -85,7 +84,7 @@ public class ExecuteEvaluatedTest {
         ArgumentNode arg1 = new ArgumentNode(1);
         CallTarget callTarget = TestHelper.createCallTarget(UseDoubleEvaluatedNodeFactory.create(arg0, arg1, DoubleEvaluatedNodeFactory.create(null, null)));
 
-        Assert.assertEquals(85, callTarget.call(new TestArguments(42, 43)));
+        Assert.assertEquals(85, callTarget.call(new Object[]{42, 43}));
         Assert.assertEquals(1, arg0.getInvocationCount());
         Assert.assertEquals(1, arg1.getInvocationCount());
     }

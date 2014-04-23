@@ -70,9 +70,8 @@ public final class SLInvokeNode extends SLExpressionNode {
         for (int i = 0; i < argumentNodes.length; i++) {
             argumentValues[i] = argumentNodes[i].executeGeneric(frame);
         }
-        SLArguments arguments = new SLArguments(argumentValues);
 
-        return dispatchNode.executeDispatch(frame, function, arguments);
+        return dispatchNode.executeDispatch(frame, function, argumentValues);
     }
 
     private SLFunction evaluateFunction(VirtualFrame frame) {

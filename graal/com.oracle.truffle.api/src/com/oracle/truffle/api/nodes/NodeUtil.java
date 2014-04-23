@@ -636,8 +636,8 @@ public final class NodeUtil {
                 nodeCount++;
             }
 
-            if (visitInlinedCallNodes && node instanceof CallNode) {
-                CallNode call = (CallNode) node;
+            if (visitInlinedCallNodes && node instanceof DirectCallNode) {
+                DirectCallNode call = (DirectCallNode) node;
                 if (call.isInlined()) {
                     Node target = ((RootCallTarget) call.getCurrentCallTarget()).getRootNode();
                     if (target != null) {
@@ -649,39 +649,6 @@ public final class NodeUtil {
             return true;
         }
 
-    }
-
-    public static void printInliningTree(final PrintStream stream, RootNode root) {
-        printRootNode(stream, 0, root);
-        root.accept(new NodeVisitor() {
-            int depth = 1;
-
-            public boolean visit(Node node) {
-                if (node instanceof CallNode) {
-                    CallNode callNode = ((CallNode) node);
-                    RootNode inlinedRoot = callNode.getCurrentRootNode();
-                    if (inlinedRoot != null && callNode.isInlined()) {
-                        depth++;
-                        printRootNode(stream, depth * 2, inlinedRoot);
-                        inlinedRoot.accept(this);
-                        depth--;
-                    }
-                }
-                return true;
-            }
-        });
-    }
-
-    private static void printRootNode(PrintStream stream, int indent, RootNode root) {
-        for (int i = 0; i < indent; i++) {
-            stream.print(" ");
-        }
-        stream.print(root.toString());
-        stream.print(" (");
-        stream.print(countNodes(root));
-        stream.print("/");
-        stream.print(countNodes(root, null, true));
-        stream.println(")");
     }
 
     public static String printCompactTreeToString(Node node) {
@@ -796,7 +763,7 @@ public final class NodeUtil {
     /**
      * Prints a human readable form of a {@link Node} AST to the given {@link PrintStream}. This
      * print method does not check for cycles in the node structure.
-     * 
+     *
      * @param out the stream to print to.
      * @param node the root node to write
      */

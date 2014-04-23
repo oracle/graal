@@ -22,28 +22,20 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api;
+package com.oracle.truffle.api.impl;
+
+import com.oracle.truffle.api.*;
+import com.oracle.truffle.api.frame.*;
+import com.oracle.truffle.api.nodes.*;
 
 /**
- * Base class for arguments passed to guest language methods via the
- * {@link CallTarget#call(com.oracle.truffle.api.frame.PackedFrame, Arguments)} method. A guest
- * language create a subclass with immutable fields representing the arguments passed to a guest
- * language method. The {@link Arguments} object must be created immediately before a method call
- * and it must not be stored in a field or cast to {@link java.lang.Object}.
+ * This is runtime specific API. Do not use in a guest language.
  */
-public class Arguments {
+final class DefaultIndirectCallNode extends IndirectCallNode {
 
-    /**
-     * Constant that can be used as an argument to
-     * {@link CallTarget#call(com.oracle.truffle.api.frame.PackedFrame, Arguments)} in case no
-     * arguments should be supplied.
-     */
-    public static final Arguments EMPTY_ARGUMENTS = new Arguments();
-
-    /**
-     * Constructs an empty {@link Arguments} instance. Guest languages should create a subclass to
-     * specify their own arguments.
-     */
-    protected Arguments() {
+    @Override
+    public Object call(VirtualFrame frame, CallTarget target, Object[] arguments) {
+        return target.call(arguments);
     }
+
 }

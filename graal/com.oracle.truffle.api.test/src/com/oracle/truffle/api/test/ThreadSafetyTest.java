@@ -24,7 +24,6 @@ package com.oracle.truffle.api.test;
 
 import static org.junit.Assert.*;
 
-import java.io.*;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.*;
@@ -50,7 +49,7 @@ public class ThreadSafetyTest {
         RecursiveCallNode callNode = new RecursiveCallNode(new ConstNode(42));
         TestRootNode rootNode2 = new TestRootNode(new RewritingNode(new RewritingNode(new RewritingNode(new RewritingNode(new RewritingNode(callNode))))));
         final CallTarget target2 = runtime.createCallTarget(rootNode2);
-        callNode.setCallNode(runtime.createCallNode(target2));
+        callNode.setCallNode(runtime.createDirectCallNode(target2));
         NodeUtil.verify(rootNode2);
 
         testTarget(target1, 47, 1_000_000);
@@ -64,27 +63,19 @@ public class ThreadSafetyTest {
             executorService.submit(new Runnable() {
                 public void run() {
                     try {
-                        Object result = target.call(new TestArguments(5));
+                        Object result = target.call(new Object[]{5});
                         assertEquals(expectedResult, result);
                         ai.incrementAndGet();
                     } catch (Throwable t) {
-                        PrintStream out = System.out;
-                        out.println(t);
+                        t.printStackTrace(System.out);
                     }
                 }
             });
         }
         executorService.shutdown();
-        executorService.awaitTermination(30, TimeUnit.SECONDS);
+        executorService.awaitTermination(90, TimeUnit.SECONDS);
+        assertTrue("test did not terminate", executorService.isTerminated());
         assertEquals(numberOfIterations, ai.get());
-    }
-
-    static class TestArguments extends Arguments {
-        final int arg;
-
-        public TestArguments(int arg) {
-            this.arg = arg;
-        }
     }
 
     static class TestRootNode extends RootNode {
@@ -172,7 +163,7 @@ public class ThreadSafetyTest {
     }
 
     static class RecursiveCallNode extends ValueNode {
-        @Child CallNode callNode;
+        @Child DirectCallNode callNode;
         @Child private ValueNode valueNode;
 
         RecursiveCallNode(ValueNode value) {
@@ -181,15 +172,15 @@ public class ThreadSafetyTest {
 
         @Override
         int execute(VirtualFrame frame) {
-            int arg = frame.getArguments(TestArguments.class).arg;
+            int arg = (Integer) frame.getArguments()[0];
             if (arg > 0) {
-                return (int) callNode.call(frame.pack(), new TestArguments(arg - 1));
+                return (int) callNode.call(frame, new Object[]{(arg - 1)});
             } else {
                 return valueNode.execute(frame);
             }
         }
 
-        void setCallNode(CallNode callNode) {
+        void setCallNode(DirectCallNode callNode) {
             this.callNode = insert(callNode);
         }
     }

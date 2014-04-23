@@ -48,7 +48,7 @@ import com.oracle.truffle.sl.runtime.*;
  * available for the types encountered at run time, a type error is reported and execution is
  * stopped. For example, {@code 4 - "2"} results in a type error because subtraction is only defined
  * for numbers.
- * 
+ *
  * <p>
  * <b>Types:</b>
  * <ul>
@@ -64,7 +64,7 @@ import com.oracle.truffle.sl.runtime.*;
  * </ul>
  * The class {@link SLTypes} lists these types for the Truffle DSL, i.e., for type-specialized
  * operations that are specified using Truffle DSL annotations.
- * 
+ *
  * <p>
  * <b>Language concepts:</b>
  * <ul>
@@ -72,8 +72,8 @@ import com.oracle.truffle.sl.runtime.*;
  * and {@link SLFunctionLiteralNode functions}.
  * <li>Basic arithmetic, logical, and comparison operations: {@link SLAddNode +}, {@link SLSubNode
  * -}, {@link SLMulNode *}, {@link SLDivNode /}, {@link SLLogicalAndNode logical and},
- * {@link SLLogicalOrNode logical or}, {@link SLEqualNode ==}, !=, {@link SLLessThanNode <},
- * {@link SLLessOrEqualNode <=}, >, >=.
+ * {@link SLLogicalOrNode logical or}, {@link SLEqualNode ==}, !=, {@link SLLessThanNode &lt;},
+ * {@link SLLessOrEqualNode &le;}, &gt;, &ge;.
  * <li>Local variables: local variables must be defined (via a {@link SLWriteLocalVariableNode
  * write}) before they can be used (by a {@link SLReadLocalVariableNode read}). Local variables are
  * not visible outside of the block where they were first defined.
@@ -83,7 +83,7 @@ import com.oracle.truffle.sl.runtime.*;
  * <li>Function calls: {@link SLInvokeNode invocations} are efficiently implemented with
  * {@link SLAbstractDispatchNode polymorphic inline caches}.
  * </ul>
- * 
+ *
  * <p>
  * <b>Syntax and parsing:</b><br>
  * The syntax is described as an attributed grammar. The {@link Parser} and {@link Scanner} are
@@ -93,7 +93,7 @@ import com.oracle.truffle.sl.runtime.*;
  * calls to the {@link SLNodeFactory} that performs the actual node creation. All functions found in
  * the SL source are added to the {@link SLFunctionRegistry}, which is accessible from the
  * {@link SLContext}.
- * 
+ *
  * <p>
  * <b>Builtin functions:</b><br>
  * Library functions that are available to every SL source without prior definition are called
@@ -163,7 +163,7 @@ public class SLMain {
                 long start = System.nanoTime();
                 /* Call the main entry point, without any arguments. */
                 try {
-                    Object result = main.getCallTarget().call(null, new SLArguments(new Object[0]));
+                    Object result = main.getCallTarget().call();
                     if (result != SLNull.SINGLETON) {
                         context.getOutput().println(result);
                     }

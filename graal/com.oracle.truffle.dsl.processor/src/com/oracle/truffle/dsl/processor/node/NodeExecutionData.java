@@ -24,7 +24,7 @@ package com.oracle.truffle.dsl.processor.node;
 
 import javax.lang.model.type.*;
 
-import com.oracle.truffle.dsl.processor.node.NodeChildData.*;
+import com.oracle.truffle.dsl.processor.node.NodeChildData.Cardinality;
 
 public class NodeExecutionData {
 

@@ -23,5 +23,13 @@
 package com.oracle.truffle.dsl.processor.ast;
 
 public enum CodeTreeKind {
-    STATIC_FIELD_REFERENCE, STATIC_METHOD_REFERENCE, GROUP, COMMA_GROUP, REMOVE_LAST, INDENT, STRING, NEW_LINE, TYPE;
+    STATIC_FIELD_REFERENCE,
+    STATIC_METHOD_REFERENCE,
+    GROUP,
+    COMMA_GROUP,
+    REMOVE_LAST,
+    INDENT,
+    STRING,
+    NEW_LINE,
+    TYPE;
 }

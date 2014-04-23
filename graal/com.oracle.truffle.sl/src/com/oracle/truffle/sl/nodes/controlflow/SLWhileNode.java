@@ -39,7 +39,7 @@ public final class SLWhileNode extends SLStatementNode {
      */
     @Child private SLExpressionNode conditionNode;
 
-    /** Statement (or {@SLBlockNode block}) executed as long as the condition is true. */
+    /** Statement (or {@link SLBlockNode block}) executed as long as the condition is true. */
     @Child private SLStatementNode bodyNode;
 
     /**
