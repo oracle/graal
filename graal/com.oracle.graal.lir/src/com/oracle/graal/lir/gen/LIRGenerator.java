@@ -48,7 +48,7 @@ import com.oracle.graal.options.*;
 /**
  * This class traverses the HIR instructions and generates LIR instructions from them.
  */
-public abstract class LIRGenerator implements ArithmeticLIRGenerator, LIRGeneratorTool, PlatformKindTool {
+public abstract class LIRGenerator implements LIRGeneratorTool, PlatformKindTool {
 
     public static class Options {
         // @formatter:off
@@ -62,9 +62,7 @@ public abstract class LIRGenerator implements ArithmeticLIRGenerator, LIRGenerat
     private final CodeGenProviders providers;
     private final CallingConvention cc;
 
-    protected AbstractBlock<?> currentBlock;
-    public final int traceLevel;
-    public final boolean printIRWithLIR;
+    private AbstractBlock<?> currentBlock;
 
     /**
      * Handle for an operation that loads a constant into a variable. The operation starts in the
@@ -173,8 +171,6 @@ public abstract class LIRGenerator implements ArithmeticLIRGenerator, LIRGenerat
         this.res = res;
         this.providers = providers;
         this.cc = cc;
-        this.traceLevel = Options.TraceLIRGeneratorLevel.getValue();
-        this.printIRWithLIR = Options.PrintIRWithLIR.getValue();
     }
 
     /**
@@ -272,7 +268,7 @@ public abstract class LIRGenerator implements ArithmeticLIRGenerator, LIRGenerat
     }
 
     public void append(LIRInstruction op) {
-        if (printIRWithLIR && !TTY.isSuppressed()) {
+        if (Options.PrintIRWithLIR.getValue() && !TTY.isSuppressed()) {
             TTY.println(op.toStringWithIdPrefix());
             TTY.println();
         }
@@ -289,7 +285,7 @@ public abstract class LIRGenerator implements ArithmeticLIRGenerator, LIRGenerat
     }
 
     public final void doBlockStart(AbstractBlock<?> block) {
-        if (printIRWithLIR) {
+        if (Options.PrintIRWithLIR.getValue()) {
             TTY.print(block.toString());
         }
 
@@ -301,20 +297,20 @@ public abstract class LIRGenerator implements ArithmeticLIRGenerator, LIRGenerat
 
         append(new LabelOp(new Label(block.getId()), block.isAligned()));
 
-        if (traceLevel >= 1) {
+        if (Options.TraceLIRGeneratorLevel.getValue() >= 1) {
             TTY.println("BEGIN Generating LIR for block B" + block.getId());
         }
     }
 
     public final void doBlockEnd(AbstractBlock<?> block) {
 
-        if (traceLevel >= 1) {
+        if (Options.TraceLIRGeneratorLevel.getValue() >= 1) {
             TTY.println("END Generating LIR for block B" + block.getId());
         }
 
         currentBlock = null;
 
-        if (printIRWithLIR) {
+        if (Options.PrintIRWithLIR.getValue()) {
             TTY.println();
         }
     }

@@ -50,7 +50,7 @@ import com.oracle.graal.phases.*;
 
 public class BaselineBytecodeParser extends AbstractBytecodeParser<Value, BaselineFrameStateBuilder> implements BytecodeParserTool {
     private Backend backend;
-    protected LIRGenerator gen;
+    protected LIRGeneratorTool gen;
     private LIRGenerationResult lirGenRes;
     private BytecodeLIRBuilder lirBuilder;
     @SuppressWarnings("unused") private BciBlock[] loopHeaders;
