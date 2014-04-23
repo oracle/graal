@@ -174,28 +174,30 @@ public class InliningPhase extends AbstractInliningPhase {
         Mark markBeforeInlining = callerGraph.getMark();
         InlineInfo callee = calleeInfo.callee();
         try {
-            List<Node> invokeUsages = callee.invoke().asNode().usages().snapshot();
-            callee.inline(new Providers(context), callerAssumptions);
-            callerAssumptions.record(calleeInfo.assumptions());
-            metricInliningRuns.increment();
-            Debug.dump(callerGraph, "after %s", callee);
+            try (Scope scope = Debug.scope("doInline", callerGraph)) {
+                List<Node> invokeUsages = callee.invoke().asNode().usages().snapshot();
+                callee.inline(new Providers(context), callerAssumptions);
+                callerAssumptions.record(calleeInfo.assumptions());
+                metricInliningRuns.increment();
+                Debug.dump(callerGraph, "after %s", callee);
 
-            if (OptCanonicalizer.getValue()) {
-                Mark markBeforeCanonicalization = callerGraph.getMark();
-                canonicalizer.applyIncremental(callerGraph, context, invokeUsages, markBeforeInlining);
+                if (OptCanonicalizer.getValue()) {
+                    Mark markBeforeCanonicalization = callerGraph.getMark();
+                    canonicalizer.applyIncremental(callerGraph, context, invokeUsages, markBeforeInlining);
 
-                // process invokes that are possibly created during canonicalization
-                for (Node newNode : callerGraph.getNewNodes(markBeforeCanonicalization)) {
-                    if (newNode instanceof Invoke) {
-                        callerGraphInfo.pushInvoke((Invoke) newNode);
+                    // process invokes that are possibly created during canonicalization
+                    for (Node newNode : callerGraph.getNewNodes(markBeforeCanonicalization)) {
+                        if (newNode instanceof Invoke) {
+                            callerGraphInfo.pushInvoke((Invoke) newNode);
+                        }
                     }
                 }
+
+                callerGraphInfo.computeProbabilities();
+
+                inliningCount++;
+                metricInliningPerformed.increment();
             }
-
-            callerGraphInfo.computeProbabilities();
-
-            inliningCount++;
-            metricInliningPerformed.increment();
         } catch (BailoutException bailout) {
             throw bailout;
         } catch (AssertionError | RuntimeException e) {
