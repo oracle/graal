@@ -137,6 +137,11 @@ public class GraphUtil {
     }
 
     public static void removeFixedWithUnusedInputs(FixedWithNextNode fixed) {
+        if (fixed instanceof StateSplit) {
+            FrameState stateAfter = ((StateSplit) fixed).stateAfter();
+            ((StateSplit) fixed).setStateAfter(null);
+            killWithUnusedFloatingInputs(stateAfter);
+        }
         FixedNode next = fixed.next();
         fixed.setNext(null);
         fixed.replaceAtPredecessor(next);
