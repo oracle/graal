@@ -37,7 +37,7 @@ import com.oracle.graal.nodes.*;
  */
 public abstract class SPARCNodeLIRBuilder extends NodeLIRBuilder {
 
-    public SPARCNodeLIRBuilder(StructuredGraph graph, LIRGenerator lirGen) {
+    public SPARCNodeLIRBuilder(StructuredGraph graph, LIRGeneratorTool lirGen) {
         super(graph, lirGen);
     }
 

@@ -63,7 +63,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool {
     private ValueNode currentInstruction;
     private ValueNode lastInstructionPrinted; // Debugging only
 
-    public NodeLIRBuilder(StructuredGraph graph, LIRGenerator gen) {
+    public NodeLIRBuilder(StructuredGraph graph, LIRGeneratorTool gen) {
         this.gen = gen;
         this.nodeOperands = graph.createNodeMap();
         this.debugInfoBuilder = createDebugInfoBuilder(nodeOperands);

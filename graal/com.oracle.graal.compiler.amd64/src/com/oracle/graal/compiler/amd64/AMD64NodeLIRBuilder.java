@@ -36,7 +36,7 @@ import com.oracle.graal.nodes.spi.*;
 
 public abstract class AMD64NodeLIRBuilder extends NodeLIRBuilder {
 
-    public AMD64NodeLIRBuilder(StructuredGraph graph, LIRGenerator gen) {
+    public AMD64NodeLIRBuilder(StructuredGraph graph, LIRGeneratorTool gen) {
         super(graph, gen);
     }
 

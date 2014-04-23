@@ -33,7 +33,7 @@ import com.oracle.graal.lir.gen.*;
 
 public class AMD64HotSpotBytecodeLIRBuilder extends BytecodeLIRBuilder {
 
-    public AMD64HotSpotBytecodeLIRBuilder(LIRGenerator gen, BytecodeParserTool parser) {
+    public AMD64HotSpotBytecodeLIRBuilder(LIRGeneratorTool gen, BytecodeParserTool parser) {
         super(gen, parser);
     }
 

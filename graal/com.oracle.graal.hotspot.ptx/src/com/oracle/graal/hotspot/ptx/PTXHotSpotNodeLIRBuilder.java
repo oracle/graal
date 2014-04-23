@@ -35,7 +35,7 @@ import com.oracle.graal.nodes.*;
  */
 public class PTXHotSpotNodeLIRBuilder extends PTXNodeLIRBuilder implements HotSpotNodeLIRBuilder {
 
-    protected PTXHotSpotNodeLIRBuilder(StructuredGraph graph, LIRGenerator lirGen) {
+    protected PTXHotSpotNodeLIRBuilder(StructuredGraph graph, LIRGeneratorTool lirGen) {
         super(graph, lirGen);
     }
 

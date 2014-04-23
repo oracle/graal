@@ -27,10 +27,10 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.lir.gen.*;
 
 public class BytecodeLIRBuilder {
-    protected final LIRGenerator gen;
+    protected final LIRGeneratorTool gen;
     protected final BytecodeParserTool parser;
 
-    public BytecodeLIRBuilder(LIRGenerator gen, BytecodeParserTool parser) {
+    public BytecodeLIRBuilder(LIRGeneratorTool gen, BytecodeParserTool parser) {
         this.gen = gen;
         this.parser = parser;
     }
