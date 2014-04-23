@@ -79,15 +79,15 @@ public abstract class UnsafeAccessNode extends FixedWithNextNode implements Cano
                 }
             }
         }
-        // Temporarily disable this as it appears to break truffle.
-        // ResolvedJavaType receiverType = StampTool.typeOrNull(object());
-        // if (receiverType != null && receiverType.isArray()) {
-        // LocationIdentity identity =
-        // NamedLocationIdentity.getArrayLocation(receiverType.getComponentType().getKind());
-        // // Try to build a better location node
-        // ValueNode location = offset();
-        // return cloneAsArrayAccess(location, identity);
-        // }
+        if (this.getLocationIdentity() == LocationIdentity.ANY_LOCATION) {
+            ResolvedJavaType receiverType = StampTool.typeOrNull(object());
+            // Try to build a better location identity.
+            if (receiverType != null && receiverType.isArray()) {
+                LocationIdentity identity = NamedLocationIdentity.getArrayLocation(receiverType.getComponentType().getKind());
+                assert !graph().isAfterFloatingReadPhase() : "cannot add more precise memory location after floating read phase";
+                return cloneAsArrayAccess(offset(), identity);
+            }
+        }
 
         return this;
     }
