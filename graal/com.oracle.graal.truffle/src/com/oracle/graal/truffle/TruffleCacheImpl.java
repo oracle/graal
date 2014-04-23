@@ -81,8 +81,8 @@ public final class TruffleCacheImpl implements TruffleCache {
         }
     }
 
-    public StructuredGraph createRootGraph() {
-        StructuredGraph graph = new StructuredGraph(callBoundaryMethod);
+    public StructuredGraph createRootGraph(String name) {
+        StructuredGraph graph = new StructuredGraph(name, callBoundaryMethod);
         new GraphBuilderPhase.Instance(providers.getMetaAccess(), configForRootGraph, TruffleCompilerImpl.Optimizations).apply(graph);
         return graph;
     }

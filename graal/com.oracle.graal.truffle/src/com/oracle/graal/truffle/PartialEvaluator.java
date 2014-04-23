@@ -87,7 +87,7 @@ public class PartialEvaluator {
             constantReceivers = new HashSet<>();
         }
 
-        final StructuredGraph graph = truffleCache.createRootGraph();
+        final StructuredGraph graph = truffleCache.createRootGraph(callTarget.toString());
         assert graph != null : "no graph for root method";
 
         try (Scope s = Debug.scope("CreateGraph", graph); Indent indent = Debug.logAndIndent("createGraph %s", graph.method())) {
