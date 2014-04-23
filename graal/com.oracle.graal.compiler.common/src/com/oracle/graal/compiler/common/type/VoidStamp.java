@@ -45,7 +45,7 @@ public final class VoidStamp extends Stamp {
     }
 
     @Override
-    public PlatformKind getPlatformKind(LIRTypeTool tool) {
+    public PlatformKind getPlatformKind(PlatformKindTool tool) {
         throw GraalInternalError.shouldNotReachHere("void stamp has no value");
     }
 

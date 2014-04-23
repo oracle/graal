@@ -40,7 +40,7 @@ public final class IllegalStamp extends Stamp {
     }
 
     @Override
-    public PlatformKind getPlatformKind(LIRTypeTool tool) {
+    public PlatformKind getPlatformKind(PlatformKindTool tool) {
         throw GraalInternalError.shouldNotReachHere("illegal stamp should not reach backend");
     }
 

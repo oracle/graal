@@ -76,7 +76,7 @@ public class NarrowOopStamp extends ObjectStamp {
     }
 
     @Override
-    public PlatformKind getPlatformKind(LIRTypeTool tool) {
+    public PlatformKind getPlatformKind(PlatformKindTool tool) {
         return NarrowOop;
     }
 

@@ -63,7 +63,7 @@ public class ObjectStamp extends Stamp {
     }
 
     @Override
-    public PlatformKind getPlatformKind(LIRTypeTool tool) {
+    public PlatformKind getPlatformKind(PlatformKindTool tool) {
         return tool.getObjectKind();
     }
 

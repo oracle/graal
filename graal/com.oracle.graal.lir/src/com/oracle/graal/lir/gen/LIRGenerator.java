@@ -48,7 +48,7 @@ import com.oracle.graal.options.*;
 /**
  * This class traverses the HIR instructions and generates LIR instructions from them.
  */
-public abstract class LIRGenerator implements ArithmeticLIRGenerator, LIRGeneratorTool, LIRTypeTool {
+public abstract class LIRGenerator implements ArithmeticLIRGenerator, LIRGeneratorTool, PlatformKindTool {
 
     public static class Options {
         // @formatter:off

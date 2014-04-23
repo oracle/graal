@@ -27,7 +27,7 @@ import com.oracle.graal.api.meta.*;
 /**
  * This interface can be used to access platform and VM specific kinds.
  */
-public interface LIRTypeTool {
+public interface PlatformKindTool {
 
     PlatformKind getIntegerKind(int bits);
 

@@ -68,7 +68,7 @@ public class FloatStamp extends PrimitiveStamp {
     }
 
     @Override
-    public PlatformKind getPlatformKind(LIRTypeTool tool) {
+    public PlatformKind getPlatformKind(PlatformKindTool tool) {
         return tool.getFloatingKind(getBits());
     }
 
