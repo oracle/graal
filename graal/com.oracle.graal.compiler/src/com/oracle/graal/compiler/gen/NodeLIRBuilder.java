@@ -35,14 +35,14 @@ import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.JumpOp;
 import com.oracle.graal.lir.gen.*;
-import com.oracle.graal.lir.gen.LIRGenerator.*;
+import com.oracle.graal.lir.gen.LIRGenerator.LoadConstant;
+import com.oracle.graal.lir.gen.LIRGenerator.Options;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.cfg.*;
@@ -409,8 +409,6 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool {
         }
         if (node instanceof LIRLowerable) {
             ((LIRLowerable) node).generate(this);
-        } else if (node instanceof LIRGenResLowerable) {
-            ((LIRGenResLowerable) node).generate(this, gen.getResult());
         } else if (node instanceof ArithmeticLIRLowerable) {
             ((ArithmeticLIRLowerable) node).generate(this, gen);
         } else {
