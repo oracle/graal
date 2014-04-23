@@ -191,8 +191,12 @@ public abstract class Node implements Cloneable {
         if (newChild == this) {
             throw new IllegalStateException("The parent of a node can never be the node itself.");
         }
+        boolean isInserted = newChild.parent == null;
         newChild.parent = this;
         newChild.adoptHelper();
+        if (isInserted) {
+            newChild.onAdopt();
+        }
     }
 
     private void adoptHelper() {
@@ -209,8 +213,12 @@ public abstract class Node implements Cloneable {
         if (newChild == this) {
             throw new IllegalStateException("The parent of a node can never be the node itself.");
         }
+        boolean isInserted = newChild.parent == null;
         newChild.parent = this;
         newChild.adoptUnadoptedHelper();
+        if (isInserted) {
+            newChild.onAdopt();
+        }
     }
 
     private void adoptUnadoptedHelper() {
@@ -354,6 +362,16 @@ public abstract class Node implements Cloneable {
 
         PrintStream out = System.out;
         out.printf("[truffle]   rewrite %-50s |From %-40s |To %-40s |Reason %s.%n", this.toString(), formatNodeInfo(this), formatNodeInfo(newNode), reason);
+    }
+
+    /**
+     * Subclasses of {@link Node} can implement this method to execute extra functionality when a
+     * node is effectively inserted into the AST. The {@code onAdopt} callback is called after the
+     * node has been effectively inserted, and it is guaranteed to be called only once for any given
+     * node.
+     */
+    protected void onAdopt() {
+        // empty default
     }
 
     private static String formatNodeInfo(Node node) {
