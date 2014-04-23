@@ -676,7 +676,7 @@ public abstract class Node implements Cloneable, Formattable {
             NodeClassIterator iter = usage.inputs().iterator();
             while (iter.hasNext()) {
                 Position pos = iter.nextPosition();
-                if (pos.getInputType(usage) == type) {
+                if (pos.getInputType(usage) == type && pos.get(usage) == this) {
                     pos.set(usage, other);
                 }
             }
