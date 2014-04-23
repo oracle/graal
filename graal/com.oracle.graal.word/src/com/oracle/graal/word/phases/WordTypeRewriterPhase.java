@@ -234,7 +234,7 @@ public class WordTypeRewriterPhase extends Phase {
             case WRITE:
             case INITIALIZE: {
                 assert arguments.size() == 3 || arguments.size() == 4;
-                Kind writeKind = asKind(targetMethod.getSignature().getParameterType(Modifier.isStatic(targetMethod.getModifiers()) ? 2 : 1, targetMethod.getDeclaringClass()));
+                Kind writeKind = asKind(targetMethod.getSignature().getParameterType(targetMethod.isStatic() ? 2 : 1, targetMethod.getDeclaringClass()));
                 LocationNode location;
                 if (arguments.size() == 3) {
                     location = makeLocation(graph, arguments.get(1), writeKind, LocationIdentity.ANY_LOCATION);

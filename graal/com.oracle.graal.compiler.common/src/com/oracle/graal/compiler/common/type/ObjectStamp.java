@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.compiler.common.type;
 
-import java.lang.reflect.*;
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
@@ -249,7 +248,7 @@ public class ObjectStamp extends Stamp {
     }
 
     public static boolean isConcreteType(ResolvedJavaType type) {
-        return !(Modifier.isAbstract(type.getModifiers()) && !type.isArray());
+        return !(type.isAbstract() && !type.isArray());
     }
 
     private static ResolvedJavaType meetTypes(ResolvedJavaType a, ResolvedJavaType b) {

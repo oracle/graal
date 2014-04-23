@@ -186,8 +186,7 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
 
     @Override
     public boolean canBeStaticallyBound() {
-        int modifiers = getModifiers();
-        return (Modifier.isFinal(modifiers) || Modifier.isPrivate(modifiers) || Modifier.isStatic(modifiers) || Modifier.isFinal(holder.getModifiers())) && !Modifier.isAbstract(modifiers);
+        return (isFinal() || isPrivate() || isStatic() || holder.isFinal()) && !isAbstract();
     }
 
     @Override
@@ -314,18 +313,17 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
 
     @Override
     public boolean isClassInitializer() {
-        return "<clinit>".equals(name) && Modifier.isStatic(getModifiers());
+        return "<clinit>".equals(name) && isStatic();
     }
 
     @Override
     public boolean isConstructor() {
-        return "<init>".equals(name) && !Modifier.isStatic(getModifiers());
+        return "<init>".equals(name) && !isStatic();
     }
 
     @Override
     public int getMaxLocals() {
-        int modifiers = getModifiers();
-        if (Modifier.isAbstract(modifiers) || Modifier.isNative(modifiers)) {
+        if (isAbstract() || isNative()) {
             return 0;
         }
         HotSpotVMConfig config = runtime().getConfig();
@@ -334,8 +332,7 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
 
     @Override
     public int getMaxStackSize() {
-        int modifiers = getModifiers();
-        if (Modifier.isAbstract(modifiers) || Modifier.isNative(modifiers)) {
+        if (isAbstract() || isNative()) {
             return 0;
         }
         HotSpotVMConfig config = runtime().getConfig();
@@ -487,10 +484,6 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
         return ((getModifiers() & mask) == Modifier.PUBLIC) && getDeclaringClass().isInterface();
     }
 
-    public boolean isSynchronized() {
-        return Modifier.isSynchronized(getModifiers());
-    }
-
     @Override
     public Type[] getGenericParameterTypes() {
         if (isConstructor()) {
@@ -620,7 +613,7 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
      * @return virtual table index
      */
     private int getVtableIndex() {
-        assert !Modifier.isInterface(holder.getModifiers());
+        assert !holder.isInterface();
         HotSpotVMConfig config = runtime().getConfig();
         int result = unsafe.getInt(metaspaceMethod + config.methodVtableIndexOffset);
         assert result >= config.nonvirtualVtableIndex : "must be linked";

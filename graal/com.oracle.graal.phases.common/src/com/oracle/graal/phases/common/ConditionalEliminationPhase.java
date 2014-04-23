@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.phases.common;
 
-import java.lang.reflect.*;
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
@@ -815,7 +814,7 @@ public class ConditionalEliminationPhase extends Phase {
                         if (!Objects.equals(type, StampTool.typeOrNull(receiver))) {
                             ResolvedJavaMethod method = type.resolveMethod(callTarget.targetMethod());
                             if (method != null) {
-                                if (method.canBeStaticallyBound() || Modifier.isFinal(type.getModifiers())) {
+                                if (method.canBeStaticallyBound() || type.isFinal()) {
                                     callTarget.setInvokeKind(InvokeKind.Special);
                                     callTarget.setTargetMethod(method);
                                 }

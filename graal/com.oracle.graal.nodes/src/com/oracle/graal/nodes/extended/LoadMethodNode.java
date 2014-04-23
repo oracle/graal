@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.nodes.extended;
 
-import java.lang.reflect.*;
-
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.nodes.*;
@@ -45,8 +43,8 @@ public final class LoadMethodNode extends FixedWithNextNode implements Lowerable
         super(kind == Kind.Object ? StampFactory.objectNonNull() : StampFactory.forKind(kind));
         this.hub = hub;
         this.method = method;
-        assert !Modifier.isAbstract(method.getModifiers()) : "Cannot load abstract method from a hub";
-        assert !Modifier.isStatic(method.getModifiers()) : "Cannot load a static method from a hub";
+        assert !method.isAbstract() : "Cannot load abstract method from a hub";
+        assert !method.isStatic() : "Cannot load a static method from a hub";
         assert method.isInVirtualMethodTable();
     }
 

@@ -25,7 +25,6 @@ package com.oracle.graal.replacements;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.replacements.SnippetTemplate.*;
 
-import java.lang.reflect.*;
 import java.util.*;
 
 import com.oracle.graal.api.code.*;
@@ -57,7 +56,7 @@ public class BoxingSnippets implements Snippets {
 
         @Override
         public boolean shouldInline(ResolvedJavaMethod method, ResolvedJavaMethod caller) {
-            if (Modifier.isNative(method.getModifiers())) {
+            if (method.isNative()) {
                 return false;
             }
             if (method.getAnnotation(Fold.class) != null) {

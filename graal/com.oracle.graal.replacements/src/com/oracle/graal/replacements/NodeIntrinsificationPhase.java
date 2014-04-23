@@ -81,7 +81,7 @@ public class NodeIntrinsificationPhase extends Phase {
         NodeIntrinsic intrinsic = getIntrinsic(target);
         if (intrinsic != null) {
             assert target.getAnnotation(Fold.class) == null;
-            assert Modifier.isStatic(target.getModifiers()) : "node intrinsic must be static: " + target;
+            assert target.isStatic() : "node intrinsic must be static: " + target;
 
             ResolvedJavaType[] parameterTypes = resolveJavaTypes(signatureToTypes(target), declaringClass);
 

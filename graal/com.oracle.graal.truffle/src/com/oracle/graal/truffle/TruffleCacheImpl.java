@@ -24,7 +24,6 @@ package com.oracle.graal.truffle;
 
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 
-import java.lang.reflect.*;
 import java.util.*;
 import java.util.Map.Entry;
 
@@ -265,7 +264,7 @@ public final class TruffleCacheImpl implements TruffleCache {
 
     private boolean shouldInline(final MethodCallTargetNode methodCallTargetNode) {
         boolean result = (methodCallTargetNode.invokeKind() == InvokeKind.Special || methodCallTargetNode.invokeKind() == InvokeKind.Static) && methodCallTargetNode.targetMethod().canBeInlined() &&
-                        !Modifier.isNative(methodCallTargetNode.targetMethod().getModifiers()) && methodCallTargetNode.targetMethod().getAnnotation(ExplodeLoop.class) == null &&
+                        !methodCallTargetNode.targetMethod().isNative() && methodCallTargetNode.targetMethod().getAnnotation(ExplodeLoop.class) == null &&
                         methodCallTargetNode.targetMethod().getAnnotation(CompilerDirectives.SlowPath.class) == null &&
                         !methodCallTargetNode.targetMethod().getDeclaringClass().equals(stringBuilderClass);
         return result;

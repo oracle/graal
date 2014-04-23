@@ -31,8 +31,6 @@ import static com.oracle.graal.hotspot.ptx.PTXHotSpotBackend.*;
 import static com.oracle.graal.hotspot.ptx.PTXWrapperBuilder.LaunchArg.*;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 import static com.oracle.graal.nodes.ConstantNode.*;
-import static java.lang.reflect.Modifier.*;
-
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
@@ -61,8 +59,8 @@ import com.oracle.graal.word.*;
  * <li>PINNED: a buffer into which the address of pinned objects is saved.</li>
  * <li>OBJECT_OFFSETS: the offsets of the object values in PARAMS.</li>
  * </ul>
- * 
- * 
+ *
+ *
  * The PARAMS buffer is the {@code CU_LAUNCH_PARAM_BUFFER_POINTER} buffer passed in the
  * {@code extra} argument to the {@code cuLaunchKernel} function. This buffer contains the
  * parameters to the call. The buffer is word aligned and each parameter is aligned in the buffer
@@ -74,13 +72,13 @@ import com.oracle.graal.word.*;
  * The object pointers in PARAMS are specified by OBJECT_OFFSETS.
  * <p>
  * As a concrete example, for a kernel whose Java method signature is:
- * 
+ *
  * <pre>
  *     static int kernel(int p1, short p2, Object p3, long p4)
  * </pre>
- * 
+ *
  * the graph created is shown below as psuedo-code:
- * 
+ *
  * <pre>
  *     int kernel_wrapper(int p1, short p2, oop p3, long p4) {
  *         address kernelAddr = kernel.start;
@@ -121,7 +119,7 @@ public class PTXWrapperBuilder extends GraphKit {
     /**
      * The size of the buffer holding the kernel parameters and the extra word for storing the
      * pointer to device memory for the return value.
-     * 
+     *
      * @see LaunchArg#ParametersAndReturnValueBufferSize
      */
     int bufSize;
@@ -152,7 +150,7 @@ public class PTXWrapperBuilder extends GraphKit {
 
     /**
      * Creates the graph implementing the CPU to GPU transition.
-     * 
+     *
      * @param method a method that has been compiled to GPU binary code
      * @param kernel the installed GPU binary for {@code method}
      * @see PTXWrapperBuilder
@@ -163,7 +161,7 @@ public class PTXWrapperBuilder extends GraphKit {
         int intSize = Integer.SIZE / Byte.SIZE;
         Kind wordKind = providers.getCodeCache().getTarget().wordKind;
         Signature sig = method.getSignature();
-        boolean isStatic = isStatic(method.getModifiers());
+        boolean isStatic = method.isStatic();
         int sigCount = sig.getParameterCount(false);
         javaParameters = new ParameterNode[(!isStatic ? 1 : 0) + sigCount];
         javaParameterOffsetsInKernelParametersBuffer = new int[javaParameters.length];
@@ -300,7 +298,7 @@ public class PTXWrapperBuilder extends GraphKit {
 
     /**
      * Computes offset and size of space in PARAMS for a Java parameter.
-     * 
+     *
      * @param kind the kind of the parameter
      * @param javaParametersIndex the index of the Java parameter
      */

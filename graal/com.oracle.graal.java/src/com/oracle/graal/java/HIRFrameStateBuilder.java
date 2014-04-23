@@ -23,8 +23,6 @@
 package com.oracle.graal.java;
 
 import static com.oracle.graal.graph.iterators.NodePredicates.*;
-import static java.lang.reflect.Modifier.*;
-
 import java.util.*;
 
 import com.oracle.graal.api.code.*;
@@ -55,7 +53,7 @@ public class HIRFrameStateBuilder extends AbstractFrameStateBuilder<ValueNode, H
 
         int javaIndex = 0;
         int index = 0;
-        if (!isStatic(method.getModifiers())) {
+        if (!method.isStatic()) {
             // add the receiver
             ParameterNode receiver = graph.unique(new ParameterNode(javaIndex, StampFactory.declaredNonNull(method.getDeclaringClass())));
             storeLocal(javaIndex, receiver);

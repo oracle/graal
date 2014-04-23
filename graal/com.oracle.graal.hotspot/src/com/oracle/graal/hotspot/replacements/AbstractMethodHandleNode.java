@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.hotspot.replacements;
 
-import java.lang.reflect.*;
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
@@ -173,7 +172,7 @@ public abstract class AbstractMethodHandleNode extends MacroNode implements Cano
         // to a direct call we must cast the receiver and arguments to its
         // actual types.
         HotSpotSignature signature = targetMethod.getSignature();
-        final boolean isStatic = Modifier.isStatic(targetMethod.getModifiers());
+        final boolean isStatic = targetMethod.isStatic();
         final int receiverSkip = isStatic ? 0 : 1;
 
         // Cast receiver to its type.
@@ -240,7 +239,7 @@ public abstract class AbstractMethodHandleNode extends MacroNode implements Cano
      * @return invoke node for the member name target
      */
     private InvokeNode createTargetInvokeNode(ResolvedJavaMethod targetMethod) {
-        InvokeKind invokeKind = Modifier.isStatic(targetMethod.getModifiers()) ? InvokeKind.Static : InvokeKind.Special;
+        InvokeKind invokeKind = targetMethod.isStatic() ? InvokeKind.Static : InvokeKind.Special;
         JavaType returnType = targetMethod.getSignature().getReturnType(null);
 
         // MethodHandleLinkTo* nodes have a trailing MemberName argument which

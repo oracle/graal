@@ -26,8 +26,6 @@ import static com.oracle.graal.amd64.AMD64.*;
 import static com.oracle.graal.api.code.CallingConvention.Type.*;
 import static com.oracle.graal.api.code.ValueUtil.*;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
-import static java.lang.reflect.Modifier.*;
-
 import java.util.*;
 
 import sun.misc.*;
@@ -265,7 +263,7 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend {
      */
     public void emitCodePrefix(ResolvedJavaMethod installedCodeOwner, CompilationResultBuilder crb, AMD64MacroAssembler asm, RegisterConfig regConfig, HotSpotVMConfig config, Label verifiedEntry) {
         HotSpotProviders providers = getProviders();
-        if (installedCodeOwner != null && !isStatic(installedCodeOwner.getModifiers())) {
+        if (installedCodeOwner != null && !installedCodeOwner.isStatic()) {
             MarkId.recordMark(crb, MarkId.UNVERIFIED_ENTRY);
             CallingConvention cc = regConfig.getCallingConvention(JavaCallee, null, new JavaType[]{providers.getMetaAccess().lookupJavaType(Object.class)}, getTarget(), false);
             Register inlineCacheKlass = rax; // see definition of IC_Klass in

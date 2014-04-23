@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.replacements.nodes;
 
-import static java.lang.reflect.Modifier.*;
-
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
@@ -137,7 +135,7 @@ public class MacroNode extends AbstractMemoryCheckpoint implements Lowerable, Me
         if (replacementGraph != null) {
             // Pull out the receiver null check so that a replaced
             // receiver can be lowered if necessary
-            if (!isStatic(targetMethod.getModifiers())) {
+            if (!targetMethod.isStatic()) {
                 ValueNode nonNullReceiver = InliningUtil.nonNullReceiver(invoke);
                 if (nonNullReceiver instanceof Lowerable) {
                     ((Lowerable) nonNullReceiver).lower(tool);

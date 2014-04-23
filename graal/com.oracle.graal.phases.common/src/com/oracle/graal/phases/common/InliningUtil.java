@@ -26,9 +26,6 @@ import static com.oracle.graal.api.meta.DeoptimizationAction.*;
 import static com.oracle.graal.api.meta.DeoptimizationReason.*;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.compiler.common.type.StampFactory.*;
-import static java.lang.reflect.Modifier.*;
-
-import java.lang.reflect.*;
 import java.util.*;
 
 import com.oracle.graal.api.code.*;
@@ -140,13 +137,12 @@ public class InliningUtil {
      */
     private static void printInlining(final ResolvedJavaMethod method, final Invoke invoke, final int inliningDepth, final boolean success, final String msg, final Object... args) {
         if (HotSpotPrintInlining.getValue()) {
-            final int mod = method.getModifiers();
             // 1234567
             TTY.print("        ");     // print timestamp
             // 1234
             TTY.print("     ");        // print compilation number
             // % s ! b n
-            TTY.print("%c%c%c%c%c ", ' ', Modifier.isSynchronized(mod) ? 's' : ' ', ' ', ' ', Modifier.isNative(mod) ? 'n' : ' ');
+            TTY.print("%c%c%c%c%c ", ' ', method.isSynchronized() ? 's' : ' ', ' ', ' ', method.isNative() ? 'n' : ' ');
             TTY.print("     ");        // more indent
             TTY.print("    ");         // initial inlining indent
             for (int i = 0; i < inliningDepth; i++) {
@@ -435,7 +431,7 @@ public class InliningUtil {
             super(invoke);
             this.concrete = concrete;
             this.type = type;
-            assert type.isArray() || !isAbstract(type.getModifiers()) : type;
+            assert type.isArray() || !type.isAbstract() : type;
         }
 
         @Override
@@ -1114,7 +1110,7 @@ public class InliningUtil {
 
     private static InlineInfo getAssumptionInlineInfo(InliningData data, Invoke invoke, Replacements replacements, OptimisticOptimizations optimisticOpts, ResolvedJavaMethod concrete,
                     Assumption takenAssumption) {
-        assert !Modifier.isAbstract(concrete.getModifiers());
+        assert !concrete.isAbstract();
         if (!checkTargetConditions(data, replacements, invoke, concrete, optimisticOpts)) {
             return null;
         }
@@ -1122,7 +1118,7 @@ public class InliningUtil {
     }
 
     private static InlineInfo getExactInlineInfo(InliningData data, Invoke invoke, Replacements replacements, OptimisticOptimizations optimisticOpts, ResolvedJavaMethod targetMethod) {
-        assert !Modifier.isAbstract(targetMethod.getModifiers());
+        assert !targetMethod.isAbstract();
         if (!checkTargetConditions(data, replacements, invoke, targetMethod, optimisticOpts)) {
             return null;
         }
@@ -1152,7 +1148,7 @@ public class InliningUtil {
             }
 
             ResolvedJavaType type = ptypes[0].getType();
-            assert type.isArray() || !isAbstract(type.getModifiers());
+            assert type.isArray() || !type.isAbstract();
             ResolvedJavaMethod concrete = type.resolveMethod(targetMethod);
             if (!checkTargetConditions(data, replacements, invoke, concrete, optimisticOpts)) {
                 return null;
@@ -1224,7 +1220,7 @@ public class InliningUtil {
                 if (index == -1) {
                     notRecordedTypeProbability += type.getProbability();
                 } else {
-                    assert type.getType().isArray() || !isAbstract(type.getType().getModifiers()) : type + " " + concrete;
+                    assert type.getType().isArray() || !type.getType().isAbstract() : type + " " + concrete;
                     usedTypes.add(type);
                     typesToConcretes.add(index);
                 }
@@ -1277,9 +1273,9 @@ public class InliningUtil {
     private static boolean checkTargetConditions(InliningData data, Replacements replacements, Invoke invoke, ResolvedJavaMethod method, OptimisticOptimizations optimisticOpts) {
         if (method == null) {
             return logNotInlinedMethodAndReturnFalse(invoke, data.inliningDepth(), method, "the method is not resolved");
-        } else if (Modifier.isNative(method.getModifiers()) && (!Intrinsify.getValue() || !InliningUtil.canIntrinsify(replacements, method))) {
+        } else if (method.isNative() && (!Intrinsify.getValue() || !InliningUtil.canIntrinsify(replacements, method))) {
             return logNotInlinedMethodAndReturnFalse(invoke, data.inliningDepth(), method, "it is a non-intrinsic native method");
-        } else if (Modifier.isAbstract(method.getModifiers())) {
+        } else if (method.isAbstract()) {
             return logNotInlinedMethodAndReturnFalse(invoke, data.inliningDepth(), method, "it is an abstract method");
         } else if (!method.getDeclaringClass().isInitialized()) {
             return logNotInlinedMethodAndReturnFalse(invoke, data.inliningDepth(), method, "the method's class is not initialized");

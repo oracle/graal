@@ -32,7 +32,6 @@ import static com.oracle.graal.phases.common.InliningUtil.*;
 
 import java.io.*;
 import java.lang.management.*;
-import java.lang.reflect.*;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.*;
@@ -364,7 +363,6 @@ public class CompilationTask implements Runnable, Comparable<Object> {
      */
     private void printCompilation() {
         final boolean isOSR = entryBCI != StructuredGraph.INVOCATION_ENTRY_BCI;
-        final int mod = method.getModifiers();
         String compilerName = "";
         if (HotSpotCIPrintCompilerName.getValue()) {
             compilerName = "Graal:";
@@ -381,9 +379,9 @@ public class CompilationTask implements Runnable, Comparable<Object> {
             compLevelString = "";
         }
         boolean hasExceptionHandlers = method.getExceptionHandlers().length > 0;
-        TTY.println(String.format("%s%7d %4d %c%c%c%c%c %s      %s %s(%d bytes)", compilerName, backend.getRuntime().compilerToVm.getTimeStamp(), id, isOSR ? '%' : ' ',
-                        Modifier.isSynchronized(mod) ? 's' : ' ', hasExceptionHandlers ? '!' : ' ', blocking ? 'b' : ' ', Modifier.isNative(mod) ? 'n' : ' ', compLevelString,
-                        MetaUtil.format("%H::%n(%p)", method), isOSR ? "@ " + entryBCI + " " : "", method.getCodeSize()));
+        TTY.println(String.format("%s%7d %4d %c%c%c%c%c %s      %s %s(%d bytes)", compilerName, backend.getRuntime().compilerToVm.getTimeStamp(), id, isOSR ? '%' : ' ', method.isSynchronized() ? 's'
+                        : ' ', hasExceptionHandlers ? '!' : ' ', blocking ? 'b' : ' ', method.isNative() ? 'n' : ' ', compLevelString, MetaUtil.format("%H::%n(%p)", method), isOSR ? "@ " + entryBCI +
+                        " " : "", method.getCodeSize()));
     }
 
     private InstalledCode installMethod(final CompilationResult compResult) {

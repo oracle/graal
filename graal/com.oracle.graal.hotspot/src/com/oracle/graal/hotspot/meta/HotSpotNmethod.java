@@ -24,8 +24,6 @@ package com.oracle.graal.hotspot.meta;
 
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 
-import java.lang.reflect.*;
-
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 
@@ -84,10 +82,10 @@ public final class HotSpotNmethod extends HotSpotInstalledCode {
     }
 
     protected boolean checkThreeObjectArgs() {
-        assert method.getSignature().getParameterCount(!Modifier.isStatic(method.getModifiers())) == 3;
+        assert method.getSignature().getParameterCount(!method.isStatic()) == 3;
         assert method.getSignature().getParameterKind(0) == Kind.Object;
         assert method.getSignature().getParameterKind(1) == Kind.Object;
-        assert !Modifier.isStatic(method.getModifiers()) || method.getSignature().getParameterKind(2) == Kind.Object;
+        assert !method.isStatic() || method.getSignature().getParameterKind(2) == Kind.Object;
         return true;
     }
 

@@ -469,7 +469,7 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
         // We're subtracting 1 because we're not making the final gid as a parameter.
 
         int nonConstantParamCount = sigParamCount - 1;
-        boolean isStatic = (Modifier.isStatic(method.getModifiers()));
+        boolean isStatic = (method.isStatic());
         // Determine if this is an object lambda.
         boolean isObjectLambda = true;
 

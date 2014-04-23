@@ -24,8 +24,6 @@ package com.oracle.graal.nodes.java;
 
 import static com.oracle.graal.graph.iterators.NodePredicates.*;
 
-import java.lang.reflect.*;
-
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
@@ -99,7 +97,7 @@ public final class LoadFieldNode extends AccessFieldNode implements Canonicaliza
     }
 
     private PhiNode asPhi(MetaAccessProvider metaAccess) {
-        if (!isStatic() && Modifier.isFinal(field.getModifiers()) && object() instanceof ValuePhiNode && ((ValuePhiNode) object()).values().filter(isNotA(ConstantNode.class)).isEmpty()) {
+        if (!isStatic() && field.isFinal() && object() instanceof ValuePhiNode && ((ValuePhiNode) object()).values().filter(isNotA(ConstantNode.class)).isEmpty()) {
             PhiNode phi = (PhiNode) object();
             Constant[] constants = new Constant[phi.valueCount()];
             for (int i = 0; i < phi.valueCount(); i++) {
