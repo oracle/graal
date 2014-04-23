@@ -94,7 +94,7 @@ public final class TruffleInliningHandler {
         int deepNodeCount;
         TruffleInliningResult recursiveResult;
         boolean recursiveCall = false;
-        if (depth > MAXIMUM_RECURSIVE_DEPTH) {
+        if (target.inliningPerformed || depth > MAXIMUM_RECURSIVE_DEPTH) {
             deepNodeCount = OptimizedCallUtils.countNonTrivialNodes(target, true);
             recursiveResult = null;
         } else {
