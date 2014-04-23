@@ -82,7 +82,7 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend {
     }
 
     @Override
-    public NodeLIRBuilderTool newNodeLIRGenerator(StructuredGraph graph, LIRGeneratorTool lirGen) {
+    public NodeLIRBuilderTool newNodeLIRBuilder(StructuredGraph graph, LIRGeneratorTool lirGen) {
         return new AMD64HotSpotNodeLIRBuilder(graph, lirGen);
     }
 

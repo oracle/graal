@@ -386,7 +386,7 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
     }
 
     @Override
-    public NodeLIRBuilderTool newNodeLIRGenerator(StructuredGraph graph, LIRGeneratorTool lirGen) {
+    public NodeLIRBuilderTool newNodeLIRBuilder(StructuredGraph graph, LIRGeneratorTool lirGen) {
         return new HSAILHotSpotNodeLIRBuilder(graph, lirGen);
     }
 

@@ -361,7 +361,7 @@ public class PTXHotSpotBackend extends HotSpotBackend {
     }
 
     @Override
-    public NodeLIRBuilderTool newNodeLIRGenerator(StructuredGraph graph, LIRGeneratorTool lirGen) {
+    public NodeLIRBuilderTool newNodeLIRBuilder(StructuredGraph graph, LIRGeneratorTool lirGen) {
         return new PTXHotSpotNodeLIRBuilder(graph, lirGen);
     }
 

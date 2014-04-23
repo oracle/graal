@@ -83,7 +83,7 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
     }
 
     @Override
-    public NodeLIRBuilderTool newNodeLIRGenerator(StructuredGraph graph, LIRGeneratorTool lirGen) {
+    public NodeLIRBuilderTool newNodeLIRBuilder(StructuredGraph graph, LIRGeneratorTool lirGen) {
         return new SPARCHotSpotNodeLIRBuilder(graph, lirGen);
     }
 

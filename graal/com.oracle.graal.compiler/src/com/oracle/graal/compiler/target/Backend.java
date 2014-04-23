@@ -77,7 +77,7 @@ public abstract class Backend {
 
     public abstract LIRGenerationResult newLIRGenerationResult(LIR lir, FrameMap frameMap, Object stub);
 
-    public abstract NodeLIRBuilderTool newNodeLIRGenerator(StructuredGraph graph, LIRGeneratorTool lirGen);
+    public abstract NodeLIRBuilderTool newNodeLIRBuilder(StructuredGraph graph, LIRGeneratorTool lirGen);
 
     /**
      * @param gen the LIRGenerator the BytecodeLIRBuilder should use
