@@ -52,7 +52,7 @@ import com.oracle.graal.test.*;
  */
 public class CheckGraalInvariants extends GraalTest {
 
-    @LongTest
+    @Test
     public void test() {
         RuntimeProvider rt = Graal.getRequiredCapability(RuntimeProvider.class);
         Providers providers = rt.getHostBackend().getProviders();

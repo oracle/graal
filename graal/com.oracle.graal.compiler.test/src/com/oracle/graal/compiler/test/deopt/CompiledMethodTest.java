@@ -32,7 +32,6 @@ import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.tiers.*;
-import com.oracle.graal.test.*;
 
 /**
  * In the following tests, the usages of local variable "a" are replaced with the integer constant
@@ -51,7 +50,7 @@ public class CompiledMethodTest extends GraalCompilerTest {
         return f1 + " " + arg1 + " " + arg2 + " " + arg3;
     }
 
-    @LongTest
+    @Test
     public void test1() {
         Method method = getMethod("testMethod");
         final StructuredGraph graph = parse(method);
@@ -74,7 +73,7 @@ public class CompiledMethodTest extends GraalCompilerTest {
         }
     }
 
-    @LongTest
+    @Test
     public void test3() {
         Method method = getMethod("testMethod");
         final StructuredGraph graph = parse(method);
@@ -88,7 +87,7 @@ public class CompiledMethodTest extends GraalCompilerTest {
         }
     }
 
-    @LongTest
+    @Test
     public void test4() {
         Method method = getMethod("testMethodVirtual");
         final StructuredGraph graph = parse(method);
