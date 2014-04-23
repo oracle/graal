@@ -23,13 +23,13 @@
 package com.oracle.graal.hotspot.nodes;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
+import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.word.*;
 
 /**
@@ -79,7 +79,7 @@ public class DirectCompareAndSwapNode extends FixedWithNextNode implements LIRGe
     }
 
     @Override
-    public void generate(NodeLIRBuilder gen) {
+    public void generate(NodeLIRBuilderTool gen) {
         ((HotSpotNodeLIRBuilder) gen).visitDirectCompareAndSwap(this);
     }
 

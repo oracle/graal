@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.compiler.target;
 
-import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.nodes.spi.*;
 
 /**
@@ -30,5 +29,5 @@ import com.oracle.graal.nodes.spi.*;
  */
 public interface LIRGenLowerable {
 
-    void generate(NodeLIRBuilder generator);
+    void generate(NodeLIRBuilderTool generator);
 }

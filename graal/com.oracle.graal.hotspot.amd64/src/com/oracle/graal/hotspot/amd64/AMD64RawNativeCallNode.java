@@ -27,10 +27,10 @@ import com.oracle.graal.api.code.CallingConvention.Type;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.amd64.*;
 import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.spi.*;
 
 public class AMD64RawNativeCallNode extends FixedWithNextNode implements LIRGenLowerable {
 
@@ -44,7 +44,7 @@ public class AMD64RawNativeCallNode extends FixedWithNextNode implements LIRGenL
     }
 
     @Override
-    public void generate(NodeLIRBuilder generator) {
+    public void generate(NodeLIRBuilderTool generator) {
         AMD64NodeLIRBuilder gen = (AMD64NodeLIRBuilder) generator;
         Value[] parameter = new Value[args.count()];
         JavaType[] parameterTypes = new JavaType[args.count()];

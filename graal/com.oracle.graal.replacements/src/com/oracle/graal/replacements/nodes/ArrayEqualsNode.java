@@ -24,7 +24,6 @@ package com.oracle.graal.replacements.nodes;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
@@ -131,7 +130,7 @@ public class ArrayEqualsNode extends FixedWithNextNode implements LIRGenLowerabl
     public static native boolean equals(double[] array1, double[] array2, int length);
 
     @Override
-    public void generate(NodeLIRBuilder gen) {
+    public void generate(NodeLIRBuilderTool gen) {
         Variable result = gen.newVariable(Kind.Int);
         gen.emitArrayEquals(kind, result, gen.operand(array1), gen.operand(array2), gen.operand(length));
         gen.setResult(this, result);

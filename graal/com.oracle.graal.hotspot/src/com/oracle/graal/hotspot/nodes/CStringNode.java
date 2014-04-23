@@ -23,7 +23,6 @@
 package com.oracle.graal.hotspot.nodes;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
@@ -41,7 +40,7 @@ public final class CStringNode extends FloatingNode implements LIRGenLowerable {
         this.string = string;
     }
 
-    public void generate(NodeLIRBuilder gen) {
+    public void generate(NodeLIRBuilderTool gen) {
         gen.setResult(this, emitCString(gen, string));
     }
 
