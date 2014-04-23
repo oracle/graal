@@ -55,7 +55,7 @@ public class AMD64RawNativeCallNode extends FixedWithNextNode implements LIRGenL
         ResolvedJavaType returnType = stamp().javaType(gen.getLIRGeneratorTool().getMetaAccess());
         CallingConvention cc = generator.getLIRGeneratorTool().getCodeCache().getRegisterConfig().getCallingConvention(Type.NativeCall, returnType, parameterTypes,
                         generator.getLIRGeneratorTool().target(), false);
-        ((AMD64LIRGenerator) gen.getLIRGeneratorTool()).emitCCall(functionPointer.asLong(), cc, parameter, countFloatingTypeArguments(args));
+        gen.getLIRGeneratorTool().emitCCall(functionPointer.asLong(), cc, parameter, countFloatingTypeArguments(args));
         if (this.getKind() != Kind.Void) {
             generator.setResult(this, gen.getLIRGeneratorTool().emitMove(cc.getReturn()));
         }

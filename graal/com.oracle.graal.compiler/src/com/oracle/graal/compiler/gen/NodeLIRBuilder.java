@@ -58,7 +58,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool {
     private final NodeMap<Value> nodeOperands;
     private final DebugInfoBuilder debugInfoBuilder;
 
-    protected final LIRGenerator gen;
+    protected final LIRGeneratorTool gen;
 
     private ValueNode currentInstruction;
     private ValueNode lastInstructionPrinted; // Debugging only
@@ -725,11 +725,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool {
     }
 
     @Override
-    public LIRGenerator getLIRGeneratorTool() {
-        return gen;
-    }
-
-    public LIRGenerator getLIRGenerator() {
+    public LIRGeneratorTool getLIRGeneratorTool() {
         return gen;
     }
 }

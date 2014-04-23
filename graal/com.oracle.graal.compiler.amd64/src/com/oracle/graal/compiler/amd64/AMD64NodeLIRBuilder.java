@@ -108,7 +108,7 @@ public abstract class AMD64NodeLIRBuilder extends NodeLIRBuilder {
     }
 
     @Override
-    public AMD64LIRGenerator getLIRGenerator() {
+    public AMD64LIRGenerator getLIRGeneratorTool() {
         return (AMD64LIRGenerator) gen;
     }
 }
