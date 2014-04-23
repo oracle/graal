@@ -26,10 +26,12 @@ import java.util.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
+import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.extended.*;
 
 public interface NodeLIRBuilderTool extends NodeMappableLIRBuilder {
@@ -69,4 +71,14 @@ public interface NodeLIRBuilderTool extends NodeMappableLIRBuilder {
     Value[] visitInvokeArguments(CallingConvention cc, Collection<ValueNode> arguments);
 
     MemoryArithmeticLIRLowerer getMemoryLowerer();
+
+    Variable newVariable(Kind kind);
+
+    void emitArrayEquals(Kind kind, Variable result, Value array1, Value array2, Value length);
+
+    void emitBitCount(Variable result, Value operand);
+
+    void emitBitScanForward(Variable result, Value operand);
+
+    void doBlock(Block block, StructuredGraph graph, BlockMap<List<ScheduledNode>> blockMap);
 }

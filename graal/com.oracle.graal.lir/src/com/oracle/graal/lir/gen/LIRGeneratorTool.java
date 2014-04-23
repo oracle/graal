@@ -22,12 +22,20 @@
  */
 package com.oracle.graal.lir.gen;
 
+import java.util.*;
+
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
+import com.oracle.graal.compiler.common.calc.*;
+import com.oracle.graal.compiler.common.cfg.*;
+import com.oracle.graal.compiler.common.spi.*;
 import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.gen.LIRGenerator.*;
 
 public interface LIRGeneratorTool extends ArithmeticLIRGenerator {
+
+    CodeGenProviders getProviders();
 
     TargetDescription target();
 
@@ -36,6 +44,20 @@ public interface LIRGeneratorTool extends ArithmeticLIRGenerator {
     CodeCacheProvider getCodeCache();
 
     ForeignCallsProvider getForeignCalls();
+
+    AbstractBlock<?> getCurrentBlock();
+
+    LIRGenerationResult getResult();
+
+    boolean hasBlockEnd(AbstractBlock<?> block);
+
+    void doBlockStart(AbstractBlock<?> block);
+
+    void doBlockEnd(AbstractBlock<?> block);
+
+    Map<Constant, LoadConstant> getConstantLoads();
+
+    void setConstantLoads(Map<Constant, LoadConstant> constantLoads);
 
     Value emitLoad(PlatformKind kind, Value address, LIRFrameState state);
 
@@ -65,7 +87,7 @@ public interface LIRGeneratorTool extends ArithmeticLIRGenerator {
 
     void emitDeoptimize(Value actionAndReason, Value failedSpeculation, LIRFrameState state);
 
-    Value emitForeignCall(ForeignCallLinkage linkage, LIRFrameState state, Value... args);
+    Variable emitForeignCall(ForeignCallLinkage linkage, LIRFrameState state, Value... args);
 
     /**
      * Checks whether the supplied constant can be used without loading it into a register for most
@@ -81,9 +103,9 @@ public interface LIRGeneratorTool extends ArithmeticLIRGenerator {
 
     RegisterAttributes attributes(Register register);
 
-    AllocatableValue newVariable(PlatformKind kind);
+    Variable newVariable(PlatformKind kind);
 
-    AllocatableValue emitMove(Value input);
+    Variable emitMove(Value input);
 
     void emitMove(AllocatableValue dst, Value src);
 
@@ -116,4 +138,62 @@ public interface LIRGeneratorTool extends ArithmeticLIRGenerator {
      * correct location.
      */
     void emitReturn(Value input);
+
+    AllocatableValue asAllocatable(Value value);
+
+    Variable load(Value value);
+
+    Value loadNonConst(Value value);
+
+    /**
+     * Returns true if the redundant move elimination optimization should be done after register
+     * allocation.
+     */
+    boolean canEliminateRedundantMoves();
+
+    /**
+     * Determines if only oop maps are required for the code generated from the LIR.
+     */
+    boolean needOnlyOopMaps();
+
+    /**
+     * Gets the ABI specific operand used to return a value of a given kind from a method.
+     *
+     * @param kind the kind of value being returned
+     * @return the operand representing the ABI defined location used return a value of kind
+     *         {@code kind}
+     */
+    AllocatableValue resultOperandFor(Kind kind);
+
+    void append(LIRInstruction op);
+
+    void emitJump(LabelRef label);
+
+    void emitCompareBranch(PlatformKind cmpKind, Value left, Value right, Condition cond, boolean unorderedIsTrue, LabelRef trueDestination, LabelRef falseDestination,
+                    double trueDestinationProbability);
+
+    void emitOverflowCheckBranch(LabelRef overflow, LabelRef noOverflow, double overflowProbability);
+
+    void emitIntegerTestBranch(Value left, Value right, LabelRef trueDestination, LabelRef falseDestination, double trueSuccessorProbability);
+
+    Variable emitConditionalMove(PlatformKind cmpKind, Value leftVal, Value right, Condition cond, boolean unorderedIsTrue, Value trueValue, Value falseValue);
+
+    Variable emitIntegerTestMove(Value leftVal, Value right, Value trueValue, Value falseValue);
+
+    void emitStrategySwitch(Constant[] keyConstants, double[] keyProbabilities, LabelRef[] keyTargets, LabelRef defaultTarget, Variable value);
+
+    void emitStrategySwitch(SwitchStrategy strategy, Variable key, LabelRef[] keyTargets, LabelRef defaultTarget);
+
+    CallingConvention getCallingConvention();
+
+    void emitBitCount(Variable result, Value operand);
+
+    void emitBitScanForward(Variable result, Value operand);
+
+    void emitBitScanReverse(Variable result, Value operand);
+
+    void emitByteSwap(Variable result, Value operand);
+
+    void emitArrayEquals(Kind kind, Variable result, Value array1, Value array2, Value length);
+
 }

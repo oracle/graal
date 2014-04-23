@@ -22,8 +22,9 @@
  */
 package com.oracle.graal.jtt.hotpath;
 
+import org.junit.*;
+
 import com.oracle.graal.jtt.*;
-import com.oracle.graal.test.*;
 
 /*
  */
@@ -37,27 +38,27 @@ public class HP_allocate01 extends JTTTest {
         return sum;
     }
 
-    @LongTest
+    @Test
     public void run0() throws Throwable {
         runTest("test", 0);
     }
 
-    @LongTest
+    @Test
     public void run1() throws Throwable {
         runTest("test", 1);
     }
 
-    @LongTest
+    @Test
     public void run2() throws Throwable {
         runTest("test", 2);
     }
 
-    @LongTest
+    @Test
     public void run3() throws Throwable {
         runTest("test", 3);
     }
 
-    @LongTest
+    @Test
     public void run4() throws Throwable {
         runTest("test", 80);
     }

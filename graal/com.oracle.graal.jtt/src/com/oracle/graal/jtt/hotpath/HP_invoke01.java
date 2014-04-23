@@ -24,8 +24,9 @@
 
 package com.oracle.graal.jtt.hotpath;
 
+import org.junit.*;
+
 import com.oracle.graal.jtt.*;
-import com.oracle.graal.test.*;
 
 /*
  */
@@ -104,12 +105,12 @@ public class HP_invoke01 extends JTTTest {
         }
     }
 
-    @LongTest
+    @Test
     public void run0() throws Throwable {
         runTest("test", 40);
     }
 
-    @LongTest
+    @Test
     public void run1() throws Throwable {
         runTest("test", 80);
     }

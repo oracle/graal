@@ -56,7 +56,7 @@ public class PTXNodeLIRBuilder extends NodeLIRBuilder {
         }
     }
 
-    public PTXNodeLIRBuilder(StructuredGraph graph, LIRGenerator lirGen) {
+    public PTXNodeLIRBuilder(StructuredGraph graph, LIRGeneratorTool lirGen) {
         super(graph, lirGen);
     }
 

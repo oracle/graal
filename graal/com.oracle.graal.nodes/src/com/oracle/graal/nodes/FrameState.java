@@ -220,6 +220,19 @@ public final class FrameState extends VirtualState implements IterableNodeType {
      * correctly in slot encoding: a long or double will be followed by a null slot.
      */
     public FrameState duplicateModified(int newBci, boolean newRethrowException, Kind popKind, ValueNode... pushedValues) {
+        return duplicateModified(newBci, method, newRethrowException, popKind, pushedValues);
+    }
+
+    /**
+     * Creates a copy of this frame state with one stack element of type popKind popped from the
+     * stack and the values in pushedValues pushed on the stack. The pushedValues will be formatted
+     * correctly in slot encoding: a long or double will be followed by a null slot.
+     */
+    public FrameState duplicateModified(Kind popKind, ValueNode... pushedValues) {
+        return duplicateModified(bci, method, rethrowException, popKind, pushedValues);
+    }
+
+    private FrameState duplicateModified(int newBci, ResolvedJavaMethod newMethod, boolean newRethrowException, Kind popKind, ValueNode... pushedValues) {
         ArrayList<ValueNode> copy = new ArrayList<>(values.subList(0, localsSize + stackSize));
         if (popKind != Kind.Void) {
             if (stackAt(stackSize() - 1) == null) {
@@ -238,7 +251,7 @@ public final class FrameState extends VirtualState implements IterableNodeType {
         int newStackSize = copy.size() - localsSize;
         copy.addAll(values.subList(localsSize + stackSize, values.size()));
 
-        FrameState other = graph().add(new FrameState(method, newBci, copy, localsSize, newStackSize, newRethrowException, false, monitorIds, virtualObjectMappings));
+        FrameState other = graph().add(new FrameState(newMethod, newBci, copy, localsSize, newStackSize, newRethrowException, false, monitorIds, virtualObjectMappings));
         other.setOuterFrameState(outerFrameState());
         return other;
     }

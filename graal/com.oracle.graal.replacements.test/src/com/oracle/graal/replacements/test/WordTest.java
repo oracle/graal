@@ -24,6 +24,8 @@ package com.oracle.graal.replacements.test;
 
 import java.lang.reflect.*;
 
+import org.junit.*;
+
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.test.*;
@@ -31,7 +33,6 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.replacements.ReplacementsImpl.FrameStateProcessing;
 import com.oracle.graal.replacements.Snippet.SnippetInliningPolicy;
-import com.oracle.graal.test.*;
 import com.oracle.graal.word.*;
 
 /**
@@ -53,7 +54,7 @@ public class WordTest extends GraalCompilerTest implements Snippets {
         return installer.makeGraph(resolvedMethod, null, resolvedMethod, inliningPolicy.get(), FrameStateProcessing.CollapseFrameForSingleSideEffect);
     }
 
-    @LongTest
+    @Test
     public void construction() {
         long[] words = new long[]{Long.MIN_VALUE, Long.MIN_VALUE + 1, -1L, 0L, 1L, Long.MAX_VALUE - 1, Long.MAX_VALUE, Integer.MAX_VALUE - 1L, Integer.MAX_VALUE, Integer.MAX_VALUE + 1L,
                         Integer.MIN_VALUE - 1L, Integer.MIN_VALUE, Integer.MIN_VALUE + 1L};
@@ -65,7 +66,7 @@ public class WordTest extends GraalCompilerTest implements Snippets {
         }
     }
 
-    @LongTest
+    @Test
     public void testArithmetic() {
         long[] words = new long[]{Long.MIN_VALUE, Long.MIN_VALUE + 1, -1L, 0L, 1L, Long.MAX_VALUE - 1, Long.MAX_VALUE, Integer.MAX_VALUE - 1L, Integer.MAX_VALUE, Integer.MAX_VALUE + 1L,
                         Integer.MIN_VALUE - 1L, Integer.MIN_VALUE, Integer.MIN_VALUE + 1L};
@@ -102,7 +103,7 @@ public class WordTest extends GraalCompilerTest implements Snippets {
         }
     }
 
-    @LongTest
+    @Test
     public void testCompare() {
         long[] words = new long[]{Long.MIN_VALUE, Long.MIN_VALUE + 1, -1L, 0L, 1L, Long.MAX_VALUE - 1, Long.MAX_VALUE};
         for (long word1 : words) {

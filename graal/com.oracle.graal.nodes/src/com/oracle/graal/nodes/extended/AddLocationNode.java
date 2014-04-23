@@ -38,8 +38,8 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo(nameTemplate = "AddLoc {p#locationIdentity/s}")
 public final class AddLocationNode extends LocationNode implements Canonicalizable {
 
-    @Input private ValueNode x;
-    @Input private ValueNode y;
+    @Input(InputType.Association) private ValueNode x;
+    @Input(InputType.Association) private ValueNode y;
 
     protected LocationNode getX() {
         return (LocationNode) x;

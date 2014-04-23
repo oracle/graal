@@ -48,6 +48,7 @@ import com.oracle.graal.lir.amd64.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.spi.*;
 
 /**
  * HotSpot AMD64 specific backend.
@@ -71,7 +72,7 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend {
     }
 
     @Override
-    public LIRGenerator newLIRGenerator(CallingConvention cc, LIRGenerationResult lirGenRes) {
+    public LIRGeneratorTool newLIRGenerator(CallingConvention cc, LIRGenerationResult lirGenRes) {
         return new AMD64HotSpotLIRGenerator(getProviders(), getRuntime().getConfig(), cc, lirGenRes);
     }
 
@@ -81,12 +82,12 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend {
     }
 
     @Override
-    public NodeLIRBuilder newNodeLIRGenerator(StructuredGraph graph, LIRGenerator lirGen) {
+    public NodeLIRBuilderTool newNodeLIRBuilder(StructuredGraph graph, LIRGeneratorTool lirGen) {
         return new AMD64HotSpotNodeLIRBuilder(graph, lirGen);
     }
 
     @Override
-    public BytecodeLIRBuilder newBytecodeLIRBuilder(LIRGenerator gen, BytecodeParserTool parser) {
+    public BytecodeLIRBuilder newBytecodeLIRBuilder(LIRGeneratorTool gen, BytecodeParserTool parser) {
         return new AMD64HotSpotBytecodeLIRBuilder(gen, parser);
 
     }

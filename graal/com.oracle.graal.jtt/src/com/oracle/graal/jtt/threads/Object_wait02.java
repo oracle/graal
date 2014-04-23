@@ -24,8 +24,9 @@
  */
 package com.oracle.graal.jtt.threads;
 
+import org.junit.*;
+
 import com.oracle.graal.jtt.*;
-import com.oracle.graal.test.*;
 
 public class Object_wait02 extends JTTTest implements Runnable {
 
@@ -57,17 +58,17 @@ public class Object_wait02 extends JTTTest implements Runnable {
         }
     }
 
-    @LongTest(timeout = 20000)
+    @Test(timeout = 20000)
     public void run0() throws Throwable {
         runTest("test", 0);
     }
 
-    @LongTest(timeout = 20000)
+    @Test(timeout = 20000)
     public void run1() throws Throwable {
         runTest("test", 1);
     }
 
-    @LongTest(timeout = 20000)
+    @Test(timeout = 20000)
     public void run2() throws Throwable {
         runTest("test", 2);
     }

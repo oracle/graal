@@ -49,7 +49,6 @@ import com.oracle.graal.asm.hsail.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.gpu.*;
@@ -70,6 +69,7 @@ import com.oracle.graal.nodes.StructuredGraph.GuardsStage;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
+import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.options.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.tiers.*;
@@ -376,7 +376,7 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
     }
 
     @Override
-    public LIRGenerator newLIRGenerator(CallingConvention cc, LIRGenerationResult lirGenRes) {
+    public LIRGeneratorTool newLIRGenerator(CallingConvention cc, LIRGenerationResult lirGenRes) {
         return new HSAILHotSpotLIRGenerator(getProviders(), getRuntime().getConfig(), cc, lirGenRes);
     }
 
@@ -386,7 +386,7 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
     }
 
     @Override
-    public NodeLIRBuilder newNodeLIRGenerator(StructuredGraph graph, LIRGenerator lirGen) {
+    public NodeLIRBuilderTool newNodeLIRBuilder(StructuredGraph graph, LIRGeneratorTool lirGen) {
         return new HSAILHotSpotNodeLIRBuilder(graph, lirGen);
     }
 

@@ -85,7 +85,7 @@ public class AMD64HotSpotMemoryPeephole extends AMD64MemoryPeephole {
 
     @Override
     protected Kind getMemoryKind(Access access) {
-        PlatformKind kind = gen.getLIRGenerator().getPlatformKind(access.asNode().stamp());
+        PlatformKind kind = gen.getLIRGeneratorTool().getPlatformKind(access.asNode().stamp());
         if (kind == NarrowOopStamp.NarrowOop) {
             return Kind.Int;
         } else {

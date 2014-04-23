@@ -22,8 +22,9 @@
  */
 package com.oracle.graal.jtt.micro;
 
+import org.junit.*;
+
 import com.oracle.graal.jtt.*;
-import com.oracle.graal.test.*;
 
 /*
  */
@@ -58,7 +59,7 @@ public class StrangeFrames extends JTTTest {
         Object c = b;
     }
 
-    @LongTest
+    @Test
     public void run0() throws Throwable {
         runTest("test", 0);
     }

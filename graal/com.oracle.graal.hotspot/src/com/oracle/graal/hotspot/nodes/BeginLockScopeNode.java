@@ -24,12 +24,11 @@ package com.oracle.graal.hotspot.nodes;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.gen.*;
-import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.word.*;
 
 /**
@@ -39,7 +38,7 @@ import com.oracle.graal.word.*;
  * check on the object.
  */
 @NodeInfo(allowedUsageTypes = {InputType.Memory})
-public final class BeginLockScopeNode extends AbstractMemoryCheckpoint implements LIRGenLowerable, MonitorEnter, MemoryCheckpoint.Single {
+public final class BeginLockScopeNode extends AbstractMemoryCheckpoint implements LIRLowerable, MonitorEnter, MemoryCheckpoint.Single {
 
     private int lockDepth;
 
@@ -59,7 +58,7 @@ public final class BeginLockScopeNode extends AbstractMemoryCheckpoint implement
     }
 
     @Override
-    public void generate(NodeLIRBuilder gen) {
+    public void generate(NodeLIRBuilderTool gen) {
         assert lockDepth != -1;
         HotSpotLIRGenerator hsGen = (HotSpotLIRGenerator) gen.getLIRGeneratorTool();
         StackSlot slot = hsGen.getLockSlot(lockDepth);
