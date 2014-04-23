@@ -30,6 +30,7 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.VirtualState.NodeClosure;
 import com.oracle.graal.nodes.cfg.*;
+import com.oracle.graal.nodes.virtual.*;
 import com.oracle.graal.phases.graph.*;
 import com.oracle.graal.phases.graph.ReentrantBlockIterator.BlockIteratorClosure;
 import com.oracle.graal.phases.schedule.*;
@@ -164,7 +165,8 @@ public final class GraphOrder {
                         if (pendingStateAfter != null && node instanceof FixedNode) {
                             pendingStateAfter.applyToNonVirtual(new NodeClosure<Node>() {
                                 public void apply(Node usage, Node nonVirtualNode) {
-                                    assert currentState.isMarked(nonVirtualNode) : nonVirtualNode + " not available at virtualstate " + usage + " before " + node + " in block " + block + " \n" + list;
+                                    assert currentState.isMarked(nonVirtualNode) || nonVirtualNode instanceof VirtualObjectNode : nonVirtualNode + " not available at virtualstate " + usage +
+                                                    " before " + node + " in block " + block + " \n" + list;
                                 }
                             });
                             pendingStateAfter = null;
@@ -199,7 +201,7 @@ public final class GraphOrder {
                                             assert currentState.isMarked(nonVirtual) : nonVirtual + " not available at " + node + " in block " + block + "\n" + list;
                                         });
                                     } else {
-                                        assert currentState.isMarked(input) : input + " not available at " + node + " in block " + block + "\n" + list;
+                                        assert currentState.isMarked(input) || input instanceof VirtualObjectNode : input + " not available at " + node + " in block " + block + "\n" + list;
                                     }
                                 }
                             }
