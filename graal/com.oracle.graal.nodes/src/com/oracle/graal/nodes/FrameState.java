@@ -51,41 +51,6 @@ public final class FrameState extends VirtualState implements IterableNodeType {
 
     private boolean duringCall;
 
-    /**
-     * This BCI should be used for frame states that are built for code with no meaningful BCI.
-     */
-    public static final int UNKNOWN_BCI = -5;
-
-    /**
-     * The BCI for the exception unwind block, i.e., the block containing the {@link UnwindNode}.
-     * This block and node is synthetic and has no representation in bytecode.
-     */
-    public static final int UNWIND_BCI = -1;
-
-    /**
-     * When a node whose frame state has this BCI value is inlined, its frame state will be replaced
-     * with the frame state before the inlined invoke node.
-     */
-    public static final int BEFORE_BCI = -2;
-
-    /**
-     * When a node whose frame state has this BCI value is inlined, its frame state will be replaced
-     * with the frame state {@linkplain Invoke#stateAfter() after} the inlined invoke node.
-     */
-    public static final int AFTER_BCI = -3;
-
-    /**
-     * When a node whose frame state has this BCI value is inlined, its frame state will be replaced
-     * with the frame state at the exception edge of the inlined invoke node.
-     */
-    public static final int AFTER_EXCEPTION_BCI = -4;
-
-    /**
-     * This BCI should be used for frame states that cannot be the target of a deoptimization, like
-     * snippet frame states.
-     */
-    public static final int INVALID_FRAMESTATE_BCI = -6;
-
     @Input(InputType.State) private FrameState outerFrameState;
 
     /**
@@ -141,7 +106,8 @@ public final class FrameState extends VirtualState implements IterableNodeType {
      */
     public FrameState(int bci) {
         this(null, bci, Collections.<ValueNode> emptyList(), 0, 0, false, false, Collections.<MonitorIdNode> emptyList(), Collections.<EscapeObjectState> emptyList());
-        assert bci == BEFORE_BCI || bci == AFTER_BCI || bci == AFTER_EXCEPTION_BCI || bci == UNKNOWN_BCI || bci == INVALID_FRAMESTATE_BCI;
+        assert bci == BytecodeFrame.BEFORE_BCI || bci == BytecodeFrame.AFTER_BCI || bci == BytecodeFrame.AFTER_EXCEPTION_BCI || bci == BytecodeFrame.UNKNOWN_BCI ||
+                        bci == BytecodeFrame.INVALID_FRAMESTATE_BCI;
     }
 
     public FrameState(ResolvedJavaMethod method, int bci, ValueNode[] locals, List<ValueNode> stack, ValueNode[] locks, MonitorIdNode[] monitorIds, boolean rethrowException, boolean duringCall) {
@@ -400,6 +366,19 @@ public final class FrameState extends VirtualState implements IterableNodeType {
                 properties.put("sourceFile", ste.getFileName());
                 properties.put("sourceLine", ste.getLineNumber());
             }
+        }
+        if (bci == BytecodeFrame.AFTER_BCI) {
+            properties.put("bci", "AFTER_BCI");
+        } else if (bci == BytecodeFrame.AFTER_EXCEPTION_BCI) {
+            properties.put("bci", "AFTER_EXCEPTION_BCI");
+        } else if (bci == BytecodeFrame.INVALID_FRAMESTATE_BCI) {
+            properties.put("bci", "INVALID_FRAMESTATE_BCI");
+        } else if (bci == BytecodeFrame.BEFORE_BCI) {
+            properties.put("bci", "BEFORE_BCI");
+        } else if (bci == BytecodeFrame.UNKNOWN_BCI) {
+            properties.put("bci", "UNKNOWN_BCI");
+        } else if (bci == BytecodeFrame.UNWIND_BCI) {
+            properties.put("bci", "UNWIND_BCI");
         }
         properties.put("locksSize", values.size() - stackSize - localsSize);
         return properties;

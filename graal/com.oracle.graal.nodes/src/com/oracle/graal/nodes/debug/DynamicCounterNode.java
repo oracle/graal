@@ -22,9 +22,9 @@
  */
 package com.oracle.graal.nodes.debug;
 
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
 
 /**
  * This node can be used to add a counter to the code that will estimate the dynamic number of calls

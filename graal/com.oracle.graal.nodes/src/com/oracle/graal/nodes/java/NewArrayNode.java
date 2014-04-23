@@ -25,6 +25,7 @@ package com.oracle.graal.nodes.java;
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
@@ -54,7 +55,7 @@ public class NewArrayNode extends AbstractNewArrayNode implements VirtualizableA
      * @return the element type of the array
      */
     public ResolvedJavaType elementType() {
-        return ObjectStamp.typeOrNull(this).getComponentType();
+        return StampTool.typeOrNull(this).getComponentType();
     }
 
     @Override

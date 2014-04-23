@@ -529,6 +529,9 @@ public class HotSpotConstantPool extends CompilerObject implements ConstantPool 
                 }
                 break;
             case InvokeDynamic:
+                if (!isInvokedynamicIndex(cpi)) {
+                    throw new IllegalArgumentException("InvokeDynamic entries must be accessed");
+                }
                 runtime().getCompilerToVM().resolveInvokeDynamic(metaspaceConstantPool, cpi);
                 break;
             default:

@@ -128,6 +128,18 @@ public class TestResolvedJavaMethod extends MethodUniverse {
     }
 
     @Test
+    public void isSynchronizedTest() {
+        for (Map.Entry<Method, ResolvedJavaMethod> e : methods.entrySet()) {
+            ResolvedJavaMethod m = e.getValue();
+            assertEquals(Modifier.isSynchronized(e.getKey().getModifiers()), m.isSynchronized());
+        }
+        for (Map.Entry<Constructor<?>, ResolvedJavaMethod> e : constructors.entrySet()) {
+            ResolvedJavaMethod m = e.getValue();
+            assertEquals(Modifier.isSynchronized(e.getKey().getModifiers()), m.isSynchronized());
+        }
+    }
+
+    @Test
     public void canBeStaticallyBoundTest() {
         for (Map.Entry<Method, ResolvedJavaMethod> e : methods.entrySet()) {
             ResolvedJavaMethod m = e.getValue();

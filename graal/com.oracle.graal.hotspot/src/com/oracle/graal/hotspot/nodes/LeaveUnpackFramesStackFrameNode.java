@@ -22,11 +22,11 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.stubs.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
 
 /**
  * Emits code to leave a low-level stack frame specifically to call out to the C++ method

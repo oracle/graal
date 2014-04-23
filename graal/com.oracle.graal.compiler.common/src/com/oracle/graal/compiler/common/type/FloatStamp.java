@@ -20,12 +20,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes.type;
+package com.oracle.graal.compiler.common.type;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.spi.*;
-import com.oracle.graal.compiler.common.type.*;
 
 public class FloatStamp extends PrimitiveStamp {
 
@@ -37,7 +36,7 @@ public class FloatStamp extends PrimitiveStamp {
         this(bits, Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY, false);
     }
 
-    protected FloatStamp(int bits, double lowerBound, double upperBound, boolean nonNaN) {
+    public FloatStamp(int bits, double lowerBound, double upperBound, boolean nonNaN) {
         super(bits);
         this.lowerBound = lowerBound;
         this.upperBound = upperBound;

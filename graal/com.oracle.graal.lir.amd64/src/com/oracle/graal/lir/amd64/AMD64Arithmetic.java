@@ -82,6 +82,27 @@ public enum AMD64Arithmetic {
     }
 
     /**
+     * Unary operation with separate source and destination operand but register only.
+     */
+    public static class Unary2RegOp extends AMD64LIRInstruction {
+
+        @Opcode private final AMD64Arithmetic opcode;
+        @Def({REG}) protected AllocatableValue result;
+        @Use({REG}) protected AllocatableValue x;
+
+        public Unary2RegOp(AMD64Arithmetic opcode, AllocatableValue result, AllocatableValue x) {
+            this.opcode = opcode;
+            this.result = result;
+            this.x = x;
+        }
+
+        @Override
+        public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
+            emit(crb, masm, opcode, result, x, null);
+        }
+    }
+
+    /**
      * Unary operation with single operand for source and destination.
      */
     public static class Unary1Op extends AMD64LIRInstruction {
@@ -431,9 +452,6 @@ public enum AMD64Arithmetic {
             case LNOT:
                 masm.notq(asLongReg(result));
                 break;
-            case L2I:
-                masm.andl(asIntReg(result), 0xFFFFFFFF);
-                break;
             default:
                 throw GraalInternalError.shouldNotReachHere();
         }
@@ -567,6 +585,9 @@ public enum AMD64Arithmetic {
                     break;
                 case I2L:
                     masm.movslq(asLongReg(dst), asIntReg(src));
+                    break;
+                case L2I:
+                    masm.movl(asIntReg(dst), asLongReg(src));
                     break;
                 case F2D:
                     masm.cvtss2sd(asDoubleReg(dst), asFloatReg(src));

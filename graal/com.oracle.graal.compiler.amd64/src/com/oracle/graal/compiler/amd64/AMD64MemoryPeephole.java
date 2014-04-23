@@ -23,9 +23,9 @@
 
 package com.oracle.graal.compiler.amd64;
 
+import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.lir.amd64.AMD64Arithmetic.*;
 import static com.oracle.graal.nodes.ConstantNode.*;
-import static com.oracle.graal.phases.GraalOptions.*;
 
 import java.util.*;
 
@@ -44,7 +44,6 @@ import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.calc.FloatConvertNode.FloatConvert;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
 
 public class AMD64MemoryPeephole implements MemoryArithmeticLIRLowerer {
     protected final AMD64NodeLIRBuilder gen;

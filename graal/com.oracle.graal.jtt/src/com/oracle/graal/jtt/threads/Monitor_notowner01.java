@@ -62,7 +62,7 @@ public class Monitor_notowner01 extends JTTTest {
         }
     }
 
-    @LongTest
+    @LongTest(timeout = 20000)
     public void run0() throws Throwable {
         runTest("test");
     }

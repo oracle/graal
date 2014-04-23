@@ -43,15 +43,16 @@ import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.phases.util.*;
 import com.oracle.graal.phases.verify.*;
 import com.oracle.graal.runtime.*;
+import com.oracle.graal.test.*;
 
 /**
  * Checks that all classes in graal.jar (which must be on the class path) comply with global
  * invariants such as using {@link Object#equals(Object)} to compare certain types instead of
  * identity comparisons.
  */
-public class CheckGraalInvariants {
+public class CheckGraalInvariants extends GraalTest {
 
-    @Test
+    @LongTest
     public void test() {
         RuntimeProvider rt = Graal.getRequiredCapability(RuntimeProvider.class);
         Providers providers = rt.getHostBackend().getProviders();

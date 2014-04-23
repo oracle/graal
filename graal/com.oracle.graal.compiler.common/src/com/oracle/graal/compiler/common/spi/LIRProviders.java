@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,25 +20,23 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.truffle.substitutions;
+package com.oracle.graal.compiler.common.spi;
 
-import com.oracle.graal.api.replacements.*;
-import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.truffle.*;
-import com.oracle.graal.truffle.nodes.frame.*;
-import com.oracle.truffle.api.frame.*;
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
 
-@ClassSubstitution(OptimizedCallTarget.class)
-public class OptimizedCallTargetSubstitutions {
+/**
+ * A set of providers which are required for LIR and/or code generation. Some may not be present
+ * (i.e., null).
+ */
+public interface LIRProviders {
 
-    @MethodSubstitution
-    private static FrameWithoutBoxing createFrame(FrameDescriptor descriptor, Object[] args) {
-        return NewFrameNode.allocate(FrameWithoutBoxing.class, descriptor, args);
-    }
+    MetaAccessProvider getMetaAccess();
 
-    @MethodSubstitution
-    private static Object castArrayFixedLength(Object[] args, int length) {
-        return PiArrayNode.piArrayCast(args, length, StampFactory.forNodeIntrinsic());
-    }
+    CodeCacheProvider getCodeCache();
+
+    ForeignCallsProvider getForeignCalls();
+
+    ConstantReflectionProvider getConstantReflection();
+
 }

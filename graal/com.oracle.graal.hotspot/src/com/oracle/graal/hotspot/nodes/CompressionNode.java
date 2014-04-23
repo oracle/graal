@@ -109,7 +109,7 @@ public final class CompressionNode extends FloatingNode implements LIRLowerable,
         HotSpotLIRGenerator hsGen = (HotSpotLIRGenerator) gen.getLIRGeneratorTool();
         boolean nonNull;
         if (input.stamp() instanceof ObjectStamp) {
-            nonNull = ObjectStamp.isObjectNonNull(input.stamp());
+            nonNull = StampTool.isObjectNonNull(input.stamp());
         } else {
             // metaspace pointers are never null
             nonNull = true;

@@ -23,8 +23,8 @@
 package com.oracle.graal.phases.schedule;
 
 import static com.oracle.graal.api.meta.LocationIdentity.*;
+import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.nodes.cfg.ControlFlowGraph.*;
-import static com.oracle.graal.phases.GraalOptions.*;
 
 import java.util.*;
 

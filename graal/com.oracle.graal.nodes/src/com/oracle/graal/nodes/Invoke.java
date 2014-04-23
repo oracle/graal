@@ -78,4 +78,11 @@ public interface Invoke extends StateSplit, Lowerable, DeoptimizingNode.DeoptDur
     default ResolvedJavaType getContextType() {
         return getContextMethod().getDeclaringClass();
     }
+
+    @Override
+    default void computeStateDuring(FrameState stateAfter) {
+        FrameState newStateDuring = stateAfter.duplicateModified(bci(), stateAfter.rethrowException(), asNode().getKind());
+        newStateDuring.setDuringCall(true);
+        setStateDuring(newStateDuring);
+    }
 }

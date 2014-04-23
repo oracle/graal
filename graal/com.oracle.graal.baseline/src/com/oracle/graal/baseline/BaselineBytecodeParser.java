@@ -22,8 +22,7 @@
  */
 package com.oracle.graal.baseline;
 
-import static com.oracle.graal.phases.GraalOptions.*;
-import static java.lang.reflect.Modifier.*;
+import static com.oracle.graal.compiler.common.GraalOptions.*;
 
 import java.util.*;
 
@@ -106,7 +105,7 @@ public class BaselineBytecodeParser extends AbstractBytecodeParser<Value, LIRFra
                 }
             }
 
-            if (isSynchronized(method.getModifiers())) {
+            if (method.isSynchronized()) {
                 throw GraalInternalError.unimplemented("Handle synchronized methods");
             }
 

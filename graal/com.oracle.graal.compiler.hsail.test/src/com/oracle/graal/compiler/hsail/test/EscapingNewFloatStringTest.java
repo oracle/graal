@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.compiler.hsail.test;
 
+import org.junit.*;
+
 /**
  * Tests creating a new String from a float.
  */
@@ -35,8 +37,8 @@ public class EscapingNewFloatStringTest extends EscapingNewBase {
         myOutArray[gid] = Float.toString(gid * 2.22f);
     }
 
-    // problems runs out of memory space while inlining
-    // @Test
+    @Ignore("problems runs out of memory space while inlining")
+    @Test
     public void test() {
         testGeneratedHsail();
     }

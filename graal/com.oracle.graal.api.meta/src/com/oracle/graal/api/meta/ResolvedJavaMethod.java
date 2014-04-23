@@ -115,6 +115,8 @@ public interface ResolvedJavaMethod extends JavaMethod, InvokeTarget {
      */
     boolean canBeStaticallyBound();
 
+    boolean isSynchronized();
+
     /**
      * Returns the list of exception handlers for this method.
      */

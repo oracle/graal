@@ -20,9 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes.type;
-
-import com.oracle.graal.compiler.common.type.*;
+package com.oracle.graal.compiler.common.type;
 
 public interface StampProvider {
 

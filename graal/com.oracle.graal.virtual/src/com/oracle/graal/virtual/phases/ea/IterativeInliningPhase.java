@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.virtual.phases.ea;
 
+import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.debug.Debug.*;
-import static com.oracle.graal.phases.GraalOptions.*;
 
 import java.util.*;
 

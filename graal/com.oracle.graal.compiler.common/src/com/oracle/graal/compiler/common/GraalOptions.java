@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.phases;
+package com.oracle.graal.compiler.common;
 
 import com.oracle.graal.options.*;
 
@@ -35,11 +35,11 @@ public final class GraalOptions {
     @Option(help = "Enable use of compiler intrinsics")
     public static final OptionValue<Boolean> Intrinsify = new OptionValue<>(true);
     @Option(help = "Enable inlining of monomorphic calls")
-    static final OptionValue<Boolean> InlineMonomorphicCalls = new OptionValue<>(true);
+    public static final OptionValue<Boolean> InlineMonomorphicCalls = new OptionValue<>(true);
     @Option(help = "Enable inlining of polymorphic calls")
-    static final OptionValue<Boolean> InlinePolymorphicCalls = new OptionValue<>(true);
+    public static final OptionValue<Boolean> InlinePolymorphicCalls = new OptionValue<>(true);
     @Option(help = "Enable inlining of megamorphic calls")
-    static final OptionValue<Boolean> InlineMegamorphicCalls = new OptionValue<>(true);
+    public static final OptionValue<Boolean> InlineMegamorphicCalls = new OptionValue<>(true);
     @Option(help = "")
     public static final OptionValue<Double> MegamorphicInliningMinMethodProbability = new OptionValue<>(0.33D);
     @Option(help = "")
@@ -191,20 +191,20 @@ public final class GraalOptions {
     @Option(help = "")
     public static final OptionValue<Boolean> UseProfilingInformation = new OptionValue<>(true);
     @Option(help = "")
-           static final OptionValue<Boolean> RemoveNeverExecutedCode = new OptionValue<>(true);
-           @Option(help = "")
-           static final OptionValue<Boolean> UseExceptionProbability = new OptionValue<>(true);
-           @Option(help = "")
-           static final OptionValue<Boolean> UseExceptionProbabilityForOperations = new OptionValue<>(true);
-           @Option(help = "")
+    public static final OptionValue<Boolean> RemoveNeverExecutedCode = new OptionValue<>(true);
+    @Option(help = "")
+    public static final OptionValue<Boolean> UseExceptionProbability = new OptionValue<>(true);
+    @Option(help = "")
+    public static final OptionValue<Boolean> UseExceptionProbabilityForOperations = new OptionValue<>(true);
+    @Option(help = "")
     public static final OptionValue<Boolean> OmitHotExceptionStacktrace = new OptionValue<>(false);
     @Option(help = "")
     public static final OptionValue<Boolean> GenSafepoints = new OptionValue<>(true);
     @Option(help = "")
     public static final OptionValue<Boolean> GenLoopSafepoints = new OptionValue<>(true);
     @Option(help = "")
-           static final OptionValue<Boolean> UseTypeCheckHints = new OptionValue<>(true);
-           @Option(help = "")
+    public static final OptionValue<Boolean> UseTypeCheckHints = new OptionValue<>(true);
+    @Option(help = "")
     public static final OptionValue<Boolean> InlineVTableStubs = new OptionValue<>(true);
     @Option(help = "")
     public static final OptionValue<Boolean> AlwaysInlineVTableStubs = new OptionValue<>(false);

@@ -20,15 +20,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes.type;
+package com.oracle.graal.compiler.common.type;
 
 import java.lang.reflect.*;
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.spi.*;
-import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.nodes.*;
 
 public class ObjectStamp extends Stamp {
 
@@ -297,41 +295,4 @@ public class ObjectStamp extends Stamp {
         return true;
     }
 
-    public static boolean isObjectAlwaysNull(ValueNode node) {
-        return isObjectAlwaysNull(node.stamp());
-    }
-
-    public static boolean isObjectAlwaysNull(Stamp stamp) {
-        return (stamp instanceof ObjectStamp && ((ObjectStamp) stamp).isLegal() && ((ObjectStamp) stamp).alwaysNull());
-    }
-
-    public static boolean isObjectNonNull(ValueNode node) {
-        return isObjectNonNull(node.stamp());
-    }
-
-    public static boolean isObjectNonNull(Stamp stamp) {
-        return stamp instanceof ObjectStamp && ((ObjectStamp) stamp).isLegal() && ((ObjectStamp) stamp).nonNull();
-    }
-
-    public static ResolvedJavaType typeOrNull(ValueNode node) {
-        return typeOrNull(node.stamp());
-    }
-
-    public static ResolvedJavaType typeOrNull(Stamp stamp) {
-        if (stamp instanceof ObjectStamp) {
-            return ((ObjectStamp) stamp).type();
-        }
-        return null;
-    }
-
-    public static boolean isExactType(ValueNode node) {
-        return isExactType(node.stamp());
-    }
-
-    public static boolean isExactType(Stamp stamp) {
-        if (stamp instanceof ObjectStamp) {
-            return ((ObjectStamp) stamp).isExactType();
-        }
-        return false;
-    }
 }
