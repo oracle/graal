@@ -87,9 +87,8 @@ public class StaticIntSpillTest extends GraalKernelTester {
         dispatchMethodKernel(size, out, in);
     }
 
-    // Marked to only run on hardware until simulator spill bug is fixed.
-    @Ignore
     @Test
+    @Ignore("until stack slots are supported in deopt")
     public void test() {
         testGeneratedHsail();
     }

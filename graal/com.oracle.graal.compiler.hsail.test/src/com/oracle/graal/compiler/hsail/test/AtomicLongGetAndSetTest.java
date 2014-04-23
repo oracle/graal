@@ -30,13 +30,13 @@ import org.junit.*;
 import com.oracle.graal.compiler.hsail.test.infra.*;
 
 /**
- * Tests {@link AtomicInteger#getAndAdd(int)} which tests HSAIL atomic_add codegen.
+ * Tests {@link AtomicLong#getAndSet(long)} which tests HSAIL atomic_exch codegen.
  */
-public class AtomicIntGetAndAddTest extends GraalKernelTester {
+public class AtomicLongGetAndSetTest extends GraalKernelTester {
 
-    static final int NUM = 20;
-    @Result public int[] outArray = new int[NUM];
-    AtomicInteger atomicInt = new AtomicInteger();
+    static final int NUM = 1000;
+    @Result public long[] outArray = new long[NUM];
+    AtomicLong atomicLong = new AtomicLong(Long.MAX_VALUE);
 
     void setupArrays() {
         for (int i = 0; i < NUM; i++) {
@@ -49,6 +49,12 @@ public class AtomicIntGetAndAddTest extends GraalKernelTester {
         setupArrays();
 
         dispatchMethodKernel(NUM);
+        // to complete the circle, replace the initial get value with that of the last executor
+        for (int i = 0; i < NUM; i++) {
+            if (outArray[i] == Long.MAX_VALUE) {
+                outArray[i] = atomicLong.get();
+            }
+        }
 
         // note: the actual order of entries in outArray is not predictable
         // thus we sort before we compare results
@@ -56,7 +62,7 @@ public class AtomicIntGetAndAddTest extends GraalKernelTester {
     }
 
     public void run(int gid) {
-        outArray[gid] = atomicInt.getAndAdd(0x7);
+        outArray[gid] = atomicLong.getAndSet(gid);
     }
 
     @Test

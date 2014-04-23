@@ -96,7 +96,6 @@ public class AtomicReferenceGetAndSetTest extends GraalKernelTester {
     }
 
     @Test
-    @Ignore
     public void test() {
         testGeneratedHsail();
     }

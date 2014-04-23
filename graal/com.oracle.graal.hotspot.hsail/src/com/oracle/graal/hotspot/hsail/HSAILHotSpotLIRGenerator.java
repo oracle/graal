@@ -151,12 +151,23 @@ public class HSAILHotSpotLIRGenerator extends HSAILLIRGenerator implements HotSp
         return nodeResult;
     }
 
+    @Override
     public Value emitAtomicReadAndAdd(Value address, Value delta) {
         PlatformKind kind = delta.getPlatformKind();
         Kind memKind = getMemoryKind(kind);
         Variable result = newVariable(kind);
         HSAILAddressValue addressValue = asAddressValue(address);
         append(new HSAILMove.AtomicReadAndAddOp(memKind, result, addressValue, asAllocatable(delta)));
+        return result;
+    }
+
+    @Override
+    public Value emitAtomicReadAndWrite(Value address, Value newValue) {
+        PlatformKind kind = newValue.getPlatformKind();
+        Kind memKind = getMemoryKind(kind);
+        Variable result = newVariable(kind);
+        HSAILAddressValue addressValue = asAddressValue(address);
+        append(new HSAILMove.AtomicReadAndWriteOp(memKind, result, addressValue, asAllocatable(newValue)));
         return result;
     }
 
