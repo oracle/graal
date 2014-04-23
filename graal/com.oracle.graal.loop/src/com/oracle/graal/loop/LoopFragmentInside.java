@@ -114,7 +114,7 @@ public class LoopFragmentInside extends LoopFragment {
                 FrameState exitState = exit.stateAfter();
                 if (exitState != null) {
                     exitState.applyToVirtual(v -> {
-                        if (v.usages().filter(n -> nodes.isMarked(n) && !(n instanceof VirtualState && exitState.isPartOfThisState((VirtualState) n))).isEmpty()) {
+                        if (v.usages().filter(n -> nodes.isMarked(n) && n != exit).isEmpty()) {
                             nodes.clear(v);
                         }
                     });
