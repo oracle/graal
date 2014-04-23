@@ -1494,7 +1494,10 @@ public class InliningUtil {
                             GraphUtil.killCFG(end);
                         }
                     } else {
-                        DeoptimizeNode deoptimizeNode = graph.add(new DeoptimizeNode(DeoptimizationAction.InvalidateRecompile, DeoptimizationReason.NotCompiledExceptionHandler));
+                        FixedNode deoptimizeNode = graph.add(new DeoptimizeNode(DeoptimizationAction.InvalidateRecompile, DeoptimizationReason.NotCompiledExceptionHandler));
+                        if (fixedStateSplit instanceof BeginNode) {
+                            deoptimizeNode = BeginNode.begin(deoptimizeNode);
+                        }
                         fixedStateSplit.replaceAtPredecessor(deoptimizeNode);
                         GraphUtil.killCFG(fixedStateSplit);
                     }
