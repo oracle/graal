@@ -39,7 +39,6 @@ import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.java.BciBlockMapping.BciBlock;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.calc.FloatConvertNode.FloatConvert;
 import com.oracle.graal.options.*;
 import com.oracle.graal.phases.*;
 
