@@ -184,7 +184,6 @@ public abstract class Node implements Cloneable, Formattable {
 
     class NodeUsageIterator implements Iterator<Node> {
 
-        private final int expectedModCount = usageModCount();
         int index = -1;
         Node current;
 
@@ -207,12 +206,10 @@ public abstract class Node implements Cloneable, Formattable {
         }
 
         public boolean hasNext() {
-            assert expectedModCount == usageModCount();
             return current != null;
         }
 
         public Node next() {
-            assert expectedModCount == usageModCount();
             Node result = current;
             if (result == null) {
                 throw new NoSuchElementException();
