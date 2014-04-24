@@ -93,6 +93,10 @@ public final class CompressionNode extends FloatingNode implements LIRLowerable,
         throw GraalInternalError.shouldNotReachHere();
     }
 
+    public ValueNode getInput() {
+        return input;
+    }
+
     @Override
     public Node canonical(CanonicalizerTool tool) {
         if (input instanceof CompressionNode) {

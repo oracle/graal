@@ -23,6 +23,7 @@
 package com.oracle.graal.compiler.gen;
 
 import static com.oracle.graal.api.code.ValueUtil.*;
+import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.lir.LIR.*;
 import static com.oracle.graal.nodes.ConstantNode.*;
 
@@ -35,6 +36,7 @@ import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.compiler.match.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.graph.*;
@@ -63,10 +65,13 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool {
     private ValueNode currentInstruction;
     private ValueNode lastInstructionPrinted; // Debugging only
 
+    private Map<Class<? extends ValueNode>, List<MatchStatement>> matchRules;
+
     public NodeLIRBuilder(StructuredGraph graph, LIRGeneratorTool gen) {
         this.gen = gen;
         this.nodeOperands = graph.createNodeMap();
         this.debugInfoBuilder = createDebugInfoBuilder(nodeOperands);
+        matchRules = MatchRuleRegistry.lookup(getClass());
     }
 
     @SuppressWarnings("hiding")
@@ -153,11 +158,23 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool {
     @Override
     public Value setResult(ValueNode x, Value operand) {
         assert (!isRegister(operand) || !gen.attributes(asRegister(operand)).isAllocatable());
-        assert nodeOperands == null || nodeOperands.get(x) == null : "operand cannot be set twice";
+        assert nodeOperands != null && (nodeOperands.get(x) == null || nodeOperands.get(x) instanceof ComplexMatchValue) : "operand cannot be set twice";
         assert operand != null && isLegal(operand) : "operand must be legal";
         assert !(x instanceof VirtualObjectNode);
         nodeOperands.set(x, operand);
         return operand;
+    }
+
+    /**
+     * Used by the {@link MatchStatement} machinery to override the generation LIR for some
+     * ValueNodes.
+     */
+    public void setMatchResult(ValueNode x, Value operand) {
+        assert operand.equals(Value.INTERIOR_MATCH) || operand instanceof ComplexMatchValue;
+        assert operand instanceof ComplexMatchValue || x.usages().count() == 1 : "interior matches must be single user";
+        assert nodeOperands != null && nodeOperands.get(x) == null : "operand cannot be set twice";
+        assert !(x instanceof VirtualObjectNode);
+        nodeOperands.set(x, operand);
     }
 
     public LabelRef getLIRBlock(FixedNode b) {
@@ -192,6 +209,13 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool {
         }
 
         List<ScheduledNode> nodes = blockMap.get(block);
+
+        if (MatchExpressions.getValue()) {
+            // Allow NodeLIRBuilder subclass to specialize code generation of any interesting groups
+            // of instructions
+            matchComplexExpressions(nodes);
+        }
+
         int instructionsFolded = 0;
         for (int i = 0; i < nodes.size(); i++) {
             Node instr = nodes.get(i);
@@ -207,7 +231,8 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool {
 
             } else if (instr instanceof ValueNode) {
                 ValueNode valueNode = (ValueNode) instr;
-                if (!hasOperand(valueNode)) {
+                Value operand = getOperand(valueNode);
+                if (operand == null) {
                     if (!peephole(valueNode)) {
                         instructionsFolded = maybeFoldMemory(nodes, i, valueNode);
                         if (instructionsFolded == 0) {
@@ -219,6 +244,16 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool {
                                 throw new GraalGraphInternalError(e).addContext(instr);
                             }
                         }
+                    }
+                } else if (Value.INTERIOR_MATCH.equals(operand)) {
+                    // Doesn't need to be evaluated
+                    Debug.log("interior match for %s", valueNode);
+                } else if (operand instanceof ComplexMatchValue) {
+                    Debug.log("complex match for %s", valueNode);
+                    ComplexMatchValue match = (ComplexMatchValue) operand;
+                    operand = match.evaluate(this);
+                    if (operand != null) {
+                        setResult(valueNode, operand);
                     }
                 } else {
                     // There can be cases in which the result of an instruction is already set
@@ -242,6 +277,31 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool {
 
         assert verifyBlock(gen.getResult().getLIR(), block);
         gen.doBlockEnd(block);
+    }
+
+    protected void matchComplexExpressions(List<ScheduledNode> nodes) {
+        if (matchRules != null) {
+            try (Scope s = Debug.scope("MatchComplexExpressions")) {
+                // Match the nodes in backwards order to encourage longer matches.
+                for (int index = nodes.size() - 1; index >= 0; index--) {
+                    ScheduledNode snode = nodes.get(index);
+                    if (!(snode instanceof ValueNode)) {
+                        continue;
+                    }
+                    ValueNode node = (ValueNode) snode;
+                    // See if this node is the root of any MatchStatements
+                    List<MatchStatement> statements = matchRules.get(node.getClass());
+                    if (statements != null) {
+                        for (MatchStatement statement : statements) {
+                            if (statement.generate(this, node, nodes)) {
+                                // Found a match so skip to the next
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     private static final DebugMetric MemoryFoldSuccess = Debug.metric("MemoryFoldSuccess");

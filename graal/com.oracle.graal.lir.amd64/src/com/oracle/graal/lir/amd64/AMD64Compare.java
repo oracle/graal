@@ -132,6 +132,9 @@ public enum AMD64Compare {
                     default:
                         throw GraalInternalError.shouldNotReachHere();
                 }
+
+            } else {
+                throw GraalInternalError.shouldNotReachHere();
             }
         }
 

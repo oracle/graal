@@ -32,7 +32,9 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
 import com.oracle.graal.asm.amd64.AMD64Address.Scale;
 import com.oracle.graal.compiler.amd64.*;
+import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.gen.*;
+import com.oracle.graal.compiler.match.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
@@ -45,12 +47,46 @@ import com.oracle.graal.lir.amd64.*;
 import com.oracle.graal.lir.amd64.AMD64Move.CompareAndSwapOp;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.calc.*;
+import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
 
 /**
  * LIR generator specialized for AMD64 HotSpot.
  */
+@MatchableNodeImport({"com.oracle.graal.hotspot.nodes.HotSpotMatchableNodes"})
 public class AMD64HotSpotNodeLIRBuilder extends AMD64NodeLIRBuilder implements HotSpotNodeLIRBuilder {
+
+    private static ValueNode filterCompression(ValueNode node) {
+        ValueNode result = node;
+        while (result instanceof CompressionNode) {
+            result = ((CompressionNode) result).getInput();
+        }
+        return result;
+    }
+
+    private void emitCompareCompressedMemory(IfNode ifNode, ValueNode value, Access access, CompareNode compare) {
+        Condition cond = compare.condition();
+        LabelRef trueLabel = getLIRBlock(ifNode.trueSuccessor());
+        LabelRef falseLabel = getLIRBlock(ifNode.falseSuccessor());
+        double trueLabelProbability = ifNode.probability(ifNode.trueSuccessor());
+        Value left;
+        Value right;
+        if (access == filterCompression(compare.x())) {
+            if (value.isConstant()) {
+                left = value.asConstant();
+            } else {
+                left = gen.loadNonConst(operand(value));
+            }
+            right = makeAddress(access);
+        } else {
+            assert access == filterCompression(compare.y());
+            left = makeAddress(access);
+            right = gen.loadNonConst(operand(value));
+            cond = cond.mirror();
+        }
+        getGen().emitCompareBranchMemoryCompressed(left, right, cond, trueLabel, falseLabel, trueLabelProbability, getState(access));
+    }
 
     public AMD64HotSpotNodeLIRBuilder(StructuredGraph graph, LIRGeneratorTool gen) {
         super(graph, gen);
@@ -200,5 +236,41 @@ public class AMD64HotSpotNodeLIRBuilder extends AMD64NodeLIRBuilder implements H
         Variable result = newVariable(x.getKind());
         gen.emitMove(result, raxLocal);
         setResult(x, result);
+    }
+
+    /**
+     * Helper class to convert the NodeLIRBuilder into the current subclass.
+     */
+    static abstract class AMD64HotSpotMatchGenerator implements MatchGenerator {
+        public AMD64HotSpotMatchGenerator() {
+        }
+
+        public ComplexMatchResult match(NodeLIRBuilder gen) {
+            return match((AMD64HotSpotNodeLIRBuilder) gen);
+        }
+
+        abstract public ComplexMatchResult match(AMD64HotSpotNodeLIRBuilder gen);
+    }
+
+    @MatchRule("(If (ObjectEquals=compare Constant=value (Compression Read=access)))")
+    @MatchRule("(If (ObjectEquals=compare Constant=value (Compression FloatingRead=access)))")
+    @MatchRule("(If (ObjectEquals=compare (Compression value) (Compression Read=access)))")
+    @MatchRule("(If (ObjectEquals=compare (Compression value) (Compression FloatingRead=access)))")
+    public static class IfCompareMemory extends AMD64HotSpotMatchGenerator {
+        IfNode root;
+        Access access;
+        ValueNode value;
+        CompareNode compare;
+
+        @Override
+        public ComplexMatchResult match(AMD64HotSpotNodeLIRBuilder gen) {
+            if (HotSpotGraalRuntime.runtime().getConfig().useCompressedOops) {
+                return builder -> {
+                    gen.emitCompareCompressedMemory(root, value, access, compare);
+                    return null;
+                };
+            }
+            return null;
+        }
     }
 }

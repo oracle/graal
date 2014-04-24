@@ -263,6 +263,25 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         }
     }
 
+    public void emitCompareBranchMemory(Kind cmpKind, Value left, AMD64AddressValue right, LIRFrameState state, Condition cond, boolean unorderedIsTrue, LabelRef trueLabel, LabelRef falseLabel,
+                    double trueLabelProbability) {
+        boolean mirrored = emitCompareMemory(cmpKind, left, right, state);
+        Condition finalCondition = mirrored ? cond.mirror() : cond;
+        switch (left.getKind().getStackKind()) {
+            case Int:
+            case Long:
+            case Object:
+                append(new BranchOp(finalCondition, trueLabel, falseLabel, trueLabelProbability));
+                break;
+            case Float:
+            case Double:
+                append(new FloatBranchOp(finalCondition, unorderedIsTrue, trueLabel, falseLabel, trueLabelProbability));
+                break;
+            default:
+                throw GraalInternalError.shouldNotReachHere("" + left.getKind());
+        }
+    }
+
     @Override
     public void emitOverflowCheckBranch(LabelRef overflow, LabelRef noOverflow, double overflowProbability) {
         append(new BranchOp(ConditionFlag.Overflow, overflow, noOverflow, overflowProbability));
@@ -341,6 +360,26 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
             default:
                 throw GraalInternalError.shouldNotReachHere();
         }
+    }
+
+    /**
+     * This method emits the compare against memory instruction, and may reorder the operands. It
+     * returns true if it did so.
+     *
+     * @param b the right operand of the comparison
+     * @return true if the left and right operands were switched, false otherwise
+     */
+    private boolean emitCompareMemory(Kind cmpKind, Value a, AMD64AddressValue b, LIRFrameState state) {
+        boolean mirrored;
+        if (LIRValueUtil.isVariable(a)) {
+            Variable left = load(a);
+            emitCompareRegMemoryOp(cmpKind, left, b, state);
+            mirrored = false;
+        } else {
+            emitCompareMemoryConOp(cmpKind, b, a, state);
+            mirrored = true;
+        }
+        return mirrored;
     }
 
     protected void emitCompareMemoryConOp(Kind kind, AMD64AddressValue address, Value value, LIRFrameState state) {
@@ -756,6 +795,28 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
                 return emitShift(IUSHR, a, b);
             case Long:
                 return emitShift(LUSHR, a, b);
+            default:
+                throw GraalInternalError.shouldNotReachHere();
+        }
+    }
+
+    public Variable emitRol(Value a, Value b) {
+        switch (a.getKind().getStackKind()) {
+            case Int:
+                return emitShift(IROL, a, b);
+            case Long:
+                return emitShift(LROL, a, b);
+            default:
+                throw GraalInternalError.shouldNotReachHere();
+        }
+    }
+
+    public Variable emitRor(Value a, Value b) {
+        switch (a.getKind().getStackKind()) {
+            case Int:
+                return emitShift(IROR, a, b);
+            case Long:
+                return emitShift(LROR, a, b);
             default:
                 throw GraalInternalError.shouldNotReachHere();
         }
