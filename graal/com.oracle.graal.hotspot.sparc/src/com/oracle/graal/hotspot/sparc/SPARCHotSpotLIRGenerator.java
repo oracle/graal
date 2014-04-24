@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,8 @@ package com.oracle.graal.hotspot.sparc;
 
 import static com.oracle.graal.api.code.ValueUtil.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
+import static com.oracle.graal.hotspot.nodes.UncommonTrapCallNode.*;
+import static com.oracle.graal.sparc.SPARC.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
@@ -264,38 +266,78 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
         throw GraalInternalError.unimplemented();
     }
 
+    /**
+     * @param savedRegisters the registers saved by this operation which may be subject to pruning
+     * @param savedRegisterLocations the slots to which the registers are saved
+     * @param supportsRemove determines if registers can be pruned
+     */
+    protected SPARCSaveRegistersOp emitSaveRegisters(Register[] savedRegisters, StackSlot[] savedRegisterLocations, boolean supportsRemove) {
+        SPARCSaveRegistersOp save = new SPARCSaveRegistersOp(savedRegisters, savedRegisterLocations, supportsRemove);
+        append(save);
+        return save;
+    }
+
     public SaveRegistersOp emitSaveAllRegisters() {
-        // TODO Auto-generated method stub
-        throw GraalInternalError.unimplemented();
+        // We save all registers that were not saved by the save instruction.
+        // @formatter:off
+        Register[] savedRegisters = {
+                        // CPU
+                        g1, g3, g4, g5,
+                        // FPU
+                        f0,  f1,  f2,  f3,  f4,  f5,  f6,  f7,
+                        f8,  f9,  f10, f11, f12, f13, f14, f15,
+                        f16, f17, f18, f19, f20, f21, f22, f23,
+                        f24, f25, f26, f27, f28, f29, f30, f31
+        };
+        // @formatter:on
+        StackSlot[] savedRegisterLocations = new StackSlot[savedRegisters.length];
+        for (int i = 0; i < savedRegisters.length; i++) {
+            PlatformKind kind = target().arch.getLargestStorableKind(savedRegisters[i].getRegisterCategory());
+            assert kind != Kind.Illegal;
+            StackSlot spillSlot = getResult().getFrameMap().allocateSpillSlot(kind);
+            savedRegisterLocations[i] = spillSlot;
+        }
+        return emitSaveRegisters(savedRegisters, savedRegisterLocations, false);
     }
 
     public void emitLeaveCurrentStackFrame() {
-        // TODO Auto-generated method stub
-        throw GraalInternalError.unimplemented();
+        append(new SPARCHotSpotLeaveCurrentStackFrameOp());
     }
 
     public void emitLeaveDeoptimizedStackFrame(Value frameSize, Value initialInfo) {
-        // TODO Auto-generated method stub
-        throw GraalInternalError.unimplemented();
+        append(new SPARCHotSpotLeaveDeoptimizedStackFrameOp());
     }
 
     public void emitEnterUnpackFramesStackFrame(Value framePc, Value senderSp, Value senderFp) {
-        // TODO Auto-generated method stub
-        throw GraalInternalError.unimplemented();
+        Register thread = getProviders().getRegisters().getThreadRegister();
+        Variable framePcVariable = load(framePc);
+        Variable senderSpVariable = load(senderSp);
+        Variable scratchVariable = newVariable(getHostWordKind());
+        append(new SPARCHotSpotEnterUnpackFramesStackFrameOp(thread, config.threadLastJavaSpOffset(), config.threadLastJavaPcOffset(), framePcVariable, senderSpVariable, scratchVariable));
     }
 
     public void emitLeaveUnpackFramesStackFrame() {
-        // TODO Auto-generated method stub
-        throw GraalInternalError.unimplemented();
+        Register thread = getProviders().getRegisters().getThreadRegister();
+        append(new SPARCHotSpotLeaveUnpackFramesStackFrameOp(thread, config.threadLastJavaSpOffset(), config.threadLastJavaPcOffset(), config.threadJavaFrameAnchorFlagsOffset()));
     }
 
     public void emitPushInterpreterFrame(Value frameSize, Value framePc, Value senderSp, Value initialInfo) {
-        // TODO Auto-generated method stub
-        throw GraalInternalError.unimplemented();
+        Variable frameSizeVariable = load(frameSize);
+        Variable framePcVariable = load(framePc);
+        Variable senderSpVariable = load(senderSp);
+        Variable initialInfoVariable = load(initialInfo);
+        append(new SPARCHotSpotPushInterpreterFrameOp(frameSizeVariable, framePcVariable, senderSpVariable, initialInfoVariable));
     }
 
     public Value emitUncommonTrapCall(Value trapRequest, SaveRegistersOp saveRegisterOp) {
-        // TODO Auto-generated method stub
-        throw GraalInternalError.unimplemented();
+        ForeignCallLinkage linkage = getForeignCalls().lookupForeignCall(UNCOMMON_TRAP);
+
+        Register threadRegister = getProviders().getRegisters().getThreadRegister();
+        Register stackPointerRegister = getProviders().getRegisters().getStackPointerRegister();
+        append(new SPARCHotSpotCRuntimeCallPrologueOp(config.threadLastJavaSpOffset(), threadRegister, stackPointerRegister));
+        Variable result = super.emitForeignCall(linkage, null, threadRegister.asValue(Kind.Long), trapRequest);
+        append(new SPARCHotSpotCRuntimeCallEpilogueOp(config.threadLastJavaSpOffset(), config.threadLastJavaPcOffset(), config.threadJavaFrameAnchorFlagsOffset(), threadRegister));
+
+        return result;
     }
 }

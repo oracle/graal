@@ -37,7 +37,7 @@ public abstract class SPARCAssembler extends Assembler {
 
     /**
      * Constructs an assembler for the SPARC architecture.
-     * 
+     *
      * @param registerConfig the register configuration used to bind {@link Register#Frame} and
      *            {@link Register#CallerFrame} to physical registers. This value can be null if this
      *            assembler instance will not be used to assemble instructions using these logical
@@ -50,7 +50,7 @@ public abstract class SPARCAssembler extends Assembler {
     // @formatter:off
     /**
      * Instruction format for sethi.
-     * 
+     *
      * | 00  |  rd    | op2 |               imm22                     |
      * |31 30|29    25|24 22|21                                      0|
      */
@@ -123,7 +123,7 @@ public abstract class SPARCAssembler extends Assembler {
     // @formatter:off
     /**
      * Instruction format for branches.
-     * 
+     *
      * | 00  |a | cond | op2 |             disp22                      |
      * |31 30|29|28  25|24 22|21                                      0|
      */
@@ -142,7 +142,7 @@ public abstract class SPARCAssembler extends Assembler {
     // @formatter:off
     /**
      * Instruction format for conditional branches.
-     * 
+     *
      * | 00  |a | cond | op2 |cc1|cc0|p |             disp19           |
      * |31 30|29|28  25|24 22|21 |20 |19|                             0|
      */
@@ -330,7 +330,7 @@ public abstract class SPARCAssembler extends Assembler {
     // @formatter:off
     /**
      * Instruction format for calls.
-     * 
+     *
      * | 01  |                      disp30                             |
      * |31 30|29                                                      0|
      */
@@ -457,7 +457,7 @@ public abstract class SPARCAssembler extends Assembler {
     // @formatter:off
     /**
      * Instruction format for Arithmetic, Logical, Moves, Tcc, Prefetch, and Misc.
-     * 
+     *
      * | 10  |   rd   |   op3   |   rs1   | i|     imm_asi   |   rs2   |
      * | 10  |   rd   |   op3   |   rs1   | i|          simm13         |
      * | 10  |   rd   |   op3   |   rs1   | i| x|            |   rs2   |
@@ -594,7 +594,7 @@ public abstract class SPARCAssembler extends Assembler {
     // @formatter:off
     /**
      * Instruction format for Loads, Stores and Misc.
-     * 
+     *
      * | 11  |   rd   |   op3   |   rs1   | i|   imm_asi   |   rs2   |
      * | 11  |   rd   |   op3   |   rs1   | i|        simm13         |
      * |31 30|29    25|24     19|18     14|13|12          5|4       0|
@@ -749,7 +749,7 @@ public abstract class SPARCAssembler extends Assembler {
     // @formatter:off
     /**
      * Instruction format for Movcc.
-     * 
+     *
      * | 10  |   rd   |   op3   |cc2|   cond  | i|cc1|cc0|      -      |   rs2   |
      * | 10  |   rd   |   op3   |cc2|   cond  | i|cc1|cc0|        simm11         |
      * |31 30|29    25|24     19| 18|17     14|13| 12| 11|10          5|4       0|
@@ -1007,7 +1007,7 @@ public abstract class SPARCAssembler extends Assembler {
         Wrreg(0x30, "wrreg"),
         Saved(0x31, "saved"),
 
-        Fpop1(0x34, "fpop1"),
+        Fpop1(0b11_0100, "fpop1"),
         Fpop2(0x35, "fpop2"),
         Impdep1(0x36, "impdep1"),
         Impdep2(0x37, "impdep2"),
@@ -1036,14 +1036,14 @@ public abstract class SPARCAssembler extends Assembler {
         Ldx(0b001011, "ldx"),
         Stx(0b001110, "stx"),
 
-        Ldf(0x20, "ldf"),
+        Ldf(0b100000, "ldf"),
         Ldfsr(0x21, "ldfsr"),
         Ldaf(0x22, "ldaf"),
-        Lddf(0x23, "lddf"),
-        Stf(0x24, "stf"),
+        Lddf(0b100011, "lddf"),
+        Stf(0b100100, "stf"),
         Stfsr(0x25, "stfsr"),
         Staf(0x26, "staf"),
-        Stdf(0x27, "stdf");
+        Stdf(0b100111, "stdf");
 
         // @formatter:on
 
@@ -1092,9 +1092,9 @@ public abstract class SPARCAssembler extends Assembler {
     public enum Opfs {
         // @formatter:off
 
-        Fmovs(0x01, "fmovs"),
-        Fmovd(0x02, "fmovd"),
-        Fmovq(0x03, "fmovq"),
+        Fmovs(0b0_0000_0001, "fmovs"),
+        Fmovd(0b0_0000_0010, "fmovd"),
+        Fmovq(0b0_0000_0011, "fmovq"),
         Fnegs(0x05, "fnegs"),
         Fnegd(0x06, "fnegd"),
         Fnegq(0x07, "fnegq"),
@@ -2376,6 +2376,20 @@ public abstract class SPARCAssembler extends Assembler {
         }
     }
 
+    public static class Fmovs extends Fmt3p {
+
+        public Fmovs(Register src, Register dst) {
+            super(Ops.ArithOp, Op3s.Fpop1, Opfs.Fmovs, g0, src, dst);
+        }
+    }
+
+    public static class Fmovd extends Fmt3p {
+
+        public Fmovd(Register src, Register dst) {
+            super(Ops.ArithOp, Op3s.Fpop1, Opfs.Fmovd, g0, src, dst);
+        }
+    }
+
     public static class Fmuls extends Fmt3p {
 
         public Fmuls(Register src1, Register src2, Register dst) {
@@ -3171,6 +3185,20 @@ public abstract class SPARCAssembler extends Assembler {
 
         public Stb(Register dst, SPARCAddress addr) {
             super(Op3s.Stb, addr, dst);
+        }
+    }
+
+    public static class Stdf extends Fmt11 {
+
+        public Stdf(Register dst, SPARCAddress src) {
+            super(Op3s.Stdf, src, dst);
+        }
+    }
+
+    public static class Stf extends Fmt11 {
+
+        public Stf(Register dst, SPARCAddress src) {
+            super(Op3s.Stf, src, dst);
         }
     }
 

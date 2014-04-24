@@ -68,7 +68,7 @@ public enum SPARCArithmetic {
     FADD, FSUB, FMUL, FDIV, FREM, FAND, FOR, FXOR,
     DADD, DSUB, DMUL, DDIV, DREM, DAND, DOR, DXOR,
     INEG, LNEG, FNEG, DNEG, INOT, LNOT,
-    I2L, L2I, I2B, I2C, I2S,
+    L2I, B2I, S2I, B2L, S2L, I2L,
     F2D, D2F,
     I2F, I2D, F2I, D2I,
     L2F, L2D, F2L, D2L,
@@ -572,11 +572,11 @@ public enum SPARCArithmetic {
                 case L2I:
                     new Signx(asLongReg(src), asIntReg(dst)).emit(masm);
                     break;
-                case I2B:
+                case B2I:
                     new Sll(asIntReg(src), 24, asIntReg(dst)).emit(masm);
                     new Srl(asIntReg(dst), 24, asIntReg(dst)).emit(masm);
                     break;
-                case I2C:
+                case S2I:
                     new Sll(asIntReg(src), 16, asIntReg(dst)).emit(masm);
                     new Srl(asIntReg(dst), 16, asIntReg(dst)).emit(masm);
                     break;

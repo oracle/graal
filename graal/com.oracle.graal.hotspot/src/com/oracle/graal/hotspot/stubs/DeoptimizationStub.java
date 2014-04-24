@@ -126,8 +126,8 @@ public class DeoptimizationStub extends SnippetStub {
         // Pop all the frames we must move/replace.
         //
         // Frame picture (youngest to oldest)
-        // 1: self-frame (no frame link)
-        // 2: deoptimizing frame (no frame link)
+        // 1: self-frame
+        // 2: deoptimizing frame
         // 3: caller of deoptimizing frame (could be compiled/interpreted).
 
         // Pop self-frame.
@@ -136,7 +136,7 @@ public class DeoptimizationStub extends SnippetStub {
         // Load the initial info we should save (e.g. frame pointer).
         final Word initialInfo = unrollBlock.readWord(deoptimizationUnrollBlockInitialInfoOffset());
 
-        // Pop deoptimized frame
+        // Pop deoptimized frame.
         final int sizeOfDeoptimizedFrame = unrollBlock.readInt(deoptimizationUnrollBlockSizeOfDeoptimizedFrameOffset());
         LeaveDeoptimizedStackFrameNode.leaveDeoptimizedStackFrame(sizeOfDeoptimizedFrame, initialInfo);
 
@@ -144,13 +144,15 @@ public class DeoptimizationStub extends SnippetStub {
          * Stack bang to make sure there's enough room for the interpreter frames. Bang stack for
          * total size of the interpreter frames plus shadow page size. Bang one page at a time
          * because large sizes can bang beyond yellow and red zones.
+         *
+         * @deprecated This code should go away as soon as JDK-8032410 hits the Graal repository.
          */
         final int totalFrameSizes = unrollBlock.readInt(deoptimizationUnrollBlockTotalFrameSizesOffset());
         final int bangPages = NumUtil.roundUp(totalFrameSizes, pageSize()) / pageSize() + stackShadowPages();
         Word stackPointer = readRegister(stackPointerRegister);
 
         for (int i = 1; i < bangPages; i++) {
-            stackPointer.writeInt(-(i * pageSize()), i);
+            stackPointer.writeInt((-i * pageSize()) + stackBias(), 0);
         }
 
         // Load number of interpreter frames.
@@ -219,6 +221,19 @@ public class DeoptimizationStub extends SnippetStub {
     @Fold
     private static int stackShadowPages() {
         return config().useStackBanging ? config().stackShadowPages : 0;
+    }
+
+    /**
+     * Returns the stack bias for the host architecture.
+     *
+     * @deprecated This method should go away as soon as JDK-8032410 hits the Graal repository.
+     *
+     * @return stack bias
+     */
+    @Deprecated
+    @Fold
+    private static int stackBias() {
+        return config().stackBias;
     }
 
     @Fold

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,32 +23,14 @@
 package com.oracle.graal.lir.sparc;
 
 import static com.oracle.graal.api.code.ValueUtil.*;
+import static com.oracle.graal.asm.sparc.SPARCMacroAssembler.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 import static com.oracle.graal.sparc.SPARC.*;
 
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.code.CompilationResult.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.sparc.*;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Add;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Lddf;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Ldf;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Ldsb;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Ldsh;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Ldsw;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Lduh;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Ldx;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Membar;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Rdpc;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Stb;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Sth;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Stw;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Stx;
-import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Cas;
-import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Casx;
-import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Clr;
-import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Mov;
-import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Setuw;
-import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Setx;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.ImplicitNullCheck;
@@ -154,32 +136,33 @@ public class SPARCMove {
 
         @Override
         public void emitMemAccess(SPARCMacroAssembler masm) {
-            SPARCAddress addr = address.toAddress();
+            final SPARCAddress addr = address.toAddress();
+            final Register dst = asRegister(result);
             switch (kind) {
                 case Boolean:
                 case Byte:
-                    new Ldsb(addr, asRegister(result)).emit(masm);
+                    new Ldsb(addr, dst).emit(masm);
                     break;
                 case Short:
-                    new Ldsh(addr, asRegister(result)).emit(masm);
+                    new Ldsh(addr, dst).emit(masm);
                     break;
                 case Char:
-                    new Lduh(addr, asRegister(result)).emit(masm);
+                    new Lduh(addr, dst).emit(masm);
                     break;
                 case Int:
-                    new Ldsw(addr, asRegister(result)).emit(masm);
+                    new Ldsw(addr, dst).emit(masm);
                     break;
                 case Long:
-                    new Ldx(addr, asRegister(result)).emit(masm);
+                    new Ldx(addr, dst).emit(masm);
                     break;
                 case Float:
-                    new Ldf(addr, asRegister(result)).emit(masm);
+                    new Ldf(addr, dst).emit(masm);
                     break;
                 case Double:
-                    new Lddf(addr, asRegister(result)).emit(masm);
+                    new Lddf(addr, dst).emit(masm);
                     break;
                 case Object:
-                    new Ldx(addr, asRegister(result)).emit(masm);
+                    new Ldx(addr, dst).emit(masm);
                     break;
                 default:
                     throw GraalInternalError.shouldNotReachHere();
@@ -205,6 +188,26 @@ public class SPARCMove {
             } else {
                 new Add(addr.getBase(), addr.getDisplacement(), asLongReg(result)).emit(masm);
             }
+        }
+    }
+
+    public static class LoadDataAddressOp extends SPARCLIRInstruction {
+
+        @Def({REG}) protected AllocatableValue result;
+        private final byte[] data;
+
+        public LoadDataAddressOp(AllocatableValue result, byte[] data) {
+            this.result = result;
+            this.data = data;
+        }
+
+        @Override
+        public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
+            RawData rawData = new RawData(data, 16);
+            SPARCAddress addr = (SPARCAddress) crb.recordDataReferenceInCode(rawData);
+            assert addr == masm.getPlaceholder();
+            final boolean forceRelocatable = true;
+            new Setx(0, asRegister(result), forceRelocatable).emit(masm);
         }
     }
 
@@ -395,19 +398,25 @@ public class SPARCMove {
     }
 
     private static void reg2reg(SPARCAssembler masm, Value result, Value input) {
-        if (asRegister(input).equals(asRegister(result))) {
+        final Register src = asRegister(input);
+        final Register dst = asRegister(result);
+        if (src.equals(dst)) {
             return;
         }
         switch (input.getKind()) {
             case Int:
             case Long:
             case Object:
-                new Mov(asRegister(input), asRegister(result)).emit(masm);
+                new Mov(src, dst).emit(masm);
                 break;
             case Float:
+                new Fmovs(src, dst).emit(masm);
+                break;
             case Double:
+                new Fmovd(src, dst).emit(masm);
+                break;
             default:
-                throw GraalInternalError.shouldNotReachHere("missing: " + input.getKind());
+                throw GraalInternalError.shouldNotReachHere();
         }
     }
 
@@ -423,7 +432,11 @@ public class SPARCMove {
                 new Stx(src, dst).emit(masm);
                 break;
             case Float:
+                new Stf(src, dst).emit(masm);
+                break;
             case Double:
+                new Stdf(src, dst).emit(masm);
+                break;
             default:
                 throw GraalInternalError.shouldNotReachHere();
         }
@@ -461,7 +474,7 @@ public class SPARCMove {
                     }
                 }
                 break;
-            case Long: {
+            case Long:
                 if (crb.codeCache.needsDataPatch(input)) {
                     crb.recordInlineDataInCode(input);
                     new Setx(input.asLong(), asRegister(result), true).emit(masm);
@@ -473,8 +486,10 @@ public class SPARCMove {
                     }
                 }
                 break;
-            }
-            case Object: {
+            case Float:
+                new Ldf((SPARCAddress) crb.asFloatConstRef(input), asFloatReg(result)).emit(masm);
+                break;
+            case Object:
                 if (input.isNull()) {
                     new Clr(asRegister(result)).emit(masm);
                 } else if (crb.target.inlineObjects) {
@@ -488,7 +503,6 @@ public class SPARCMove {
                     throw GraalInternalError.shouldNotReachHere("the patched offset might be too big for the load");
                 }
                 break;
-            }
             default:
                 throw GraalInternalError.shouldNotReachHere("missing: " + input.getKind());
         }

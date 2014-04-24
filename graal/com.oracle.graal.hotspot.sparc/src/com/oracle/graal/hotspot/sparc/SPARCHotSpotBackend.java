@@ -83,6 +83,11 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
     }
 
     @Override
+    public LIRGenerationResult newLIRGenerationResult(LIR lir, FrameMap frameMap, Object stub) {
+        return new SPARCHotSpotLIRGenerationResult(lir, frameMap, stub);
+    }
+
+    @Override
     public NodeLIRBuilderTool newNodeLIRBuilder(StructuredGraph graph, LIRGeneratorTool lirGen) {
         return new SPARCHotSpotNodeLIRBuilder(graph, lirGen);
     }
@@ -187,11 +192,6 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
         }
 
         return crb;
-    }
-
-    @Override
-    public LIRGenerationResult newLIRGenerationResult(LIR lir, FrameMap frameMap, Object stub) {
-        return new LIRGenerationResultBase(lir, frameMap);
     }
 
     @Override

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,35 +24,26 @@ package com.oracle.graal.hotspot.sparc;
 
 import static com.oracle.graal.sparc.SPARC.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.asm.sparc.*;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Add;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Stx;
-import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Mov;
+import com.oracle.graal.asm.sparc.SPARCMacroAssembler.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
-import com.oracle.graal.lir.sparc.*;
 
-@Opcode("CRUNTIME_CALL_PROLOGUE")
-final class SPARCHotSpotCRuntimeCallPrologueOp extends SPARCLIRInstruction {
-
-    private final int threadLastJavaSpOffset;
-    private final Register thread;
-    private final Register stackPointer;
-
-    public SPARCHotSpotCRuntimeCallPrologueOp(int threadLastJavaSpOffset, Register thread, Register stackPointer) {
-        this.threadLastJavaSpOffset = threadLastJavaSpOffset;
-        this.thread = thread;
-        this.stackPointer = stackPointer;
-    }
+/**
+ * Pops the current frame off the stack.
+ */
+@Opcode("LEAVE_CURRENT_STACK_FRAME")
+final class SPARCHotSpotLeaveCurrentStackFrameOp extends SPARCHotSpotEpilogueOp {
 
     @Override
     public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
-        // Save last Java frame.
-        new Add(stackPointer, STACK_BIAS, g4).emit(masm);
-        new Stx(g4, new SPARCAddress(thread, threadLastJavaSpOffset)).emit(masm);
+        // Save O registers over restore.
+        new Mov(o0, i0).emit(masm);
+        new Mov(o1, i1).emit(masm);
+        new Mov(o2, i2).emit(masm);
+        new Mov(o3, i3).emit(masm);
+        new Mov(o4, i4).emit(masm);
 
-        // Save the thread register when calling out to the runtime.
-        new Mov(thread, l7).emit(masm);
+        leaveFrame(crb);
     }
 }
