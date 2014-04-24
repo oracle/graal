@@ -302,9 +302,8 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
         for (CodeAnnotation annotation : hostCode.getAnnotations()) {
             result.addAnnotation(annotation);
         }
-        CompilationResult.Mark[] noMarks = {};
         for (Mark mark : hostCode.getMarks()) {
-            result.recordMark(mark.pcOffset, mark.id, noMarks);
+            result.recordMark(mark.pcOffset, mark.id);
         }
         for (ExceptionHandler handler : hostCode.getExceptionHandlers()) {
             result.recordExceptionHandler(handler.pcOffset, handler.handlerPos);
