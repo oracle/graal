@@ -23,9 +23,11 @@
 package com.oracle.graal.replacements;
 
 import static com.oracle.graal.api.meta.LocationIdentity.*;
+
 import static com.oracle.graal.api.meta.MetaUtil.*;
 import static com.oracle.graal.debug.Debug.*;
 import static java.util.FormattableFlags.*;
+import static com.oracle.graal.compiler.common.GraalOptions.*;
 
 import java.io.*;
 import java.lang.reflect.*;
@@ -40,8 +42,8 @@ import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.debug.internal.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Graph.Mark;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.loop.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.StructuredGraph.GuardsStage;
@@ -965,7 +967,15 @@ public class SnippetTemplate {
          * if no FloatingReadNode is reading from this location, the kill to this location is fine.
          */
         for (FloatingReadNode frn : replacee.graph().getNodes(FloatingReadNode.class)) {
-            assert !(kills.contains(frn.location().getLocationIdentity())) : frn + " reads from " + frn.location().getLocationIdentity() + " but " + replacee + " does not kill this location";
+            LocationIdentity locationIdentity = frn.location().getLocationIdentity();
+            if (SnippetCounters.getValue()) {
+                // accesses to snippet counters are artificially introduced and violate the memory
+                // semantics.
+                if (locationIdentity == SnippetCounter.SNIPPET_COUNTER_LOCATION) {
+                    continue;
+                }
+            }
+            assert !kills.contains(locationIdentity) : frn + " reads from location \"" + locationIdentity + "\" but " + replacee + " does not kill this location";
         }
         return true;
     }
