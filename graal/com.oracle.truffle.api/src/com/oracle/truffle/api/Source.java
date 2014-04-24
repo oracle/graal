@@ -34,10 +34,19 @@ public interface Source {
     /**
      * Returns the name of this resource holding a guest language program. An example would be the
      * name of a guest language source code file.
-     * 
+     *
      * @return the name of the guest language program
      */
     String getName();
+
+    /**
+     * Returns a short version of the name of the resource holding a guest language program (as
+     * described in @getName). For example, this could be just the name of the file, rather than a
+     * full path.
+     *
+     * @return the short name of the guest language program
+     */
+    String getShortName();
 
     /**
      * The normalized, canonical name of the file.

@@ -31,21 +31,21 @@ public interface SourceSection {
 
     /**
      * Returns the object representing the source program that contains this section.
-     * 
+     *
      * @return the source object
      */
     Source getSource();
 
     /**
      * Returns 1-based line number of the first character in this source section (inclusive).
-     * 
+     *
      * @return the starting line number
      */
     int getStartLine();
 
     /**
      * Returns the 1-based column number of the first character in this source section (inclusive).
-     * 
+     *
      * @return the starting column number
      */
     int getStartColumn();
@@ -55,7 +55,7 @@ public interface SourceSection {
      * <p>
      * The complete text of the source that contains this section can be retrieved via
      * {@link Source#getCode()}.
-     * 
+     *
      * @return the starting character index
      */
     int getCharIndex();
@@ -65,7 +65,7 @@ public interface SourceSection {
      * <p>
      * The complete text of the source that contains this section can be retrieved via
      * {@link Source#getCode()}.
-     * 
+     *
      * @return the number of characters in the section
      */
     int getCharLength();
@@ -73,42 +73,54 @@ public interface SourceSection {
     /**
      * Returns the index of the text position immediately following the last character in the
      * section.
-     * 
+     *
      * @return the end position of the section
      */
     int getCharEndIndex();
 
     /**
      * Returns the identifier of this source section that is used for printing the section.
-     * 
+     *
      * @return the identifier of the section
      */
     String getIdentifier();
 
     /**
      * Returns text of the code represented by this source section.
-     * 
+     *
      * @return the code as a String object
      */
     String getCode();
+
+    /**
+     * Returns a short description of the source section, using just the file name, rather than its
+     * full path.
+     *
+     * @return a short description of the source section
+     */
+    String getShortDescription();
 
     /**
      * Singleton instance with no content.
      */
     SourceSection NULL = new NullSourceSection() {
 
+        @Override
         public Source getSource() {
             return null;
         }
 
+        @Override
         public int getStartLine() {
             return 0;
         }
 
+        @Override
         public int getStartColumn() {
             return 0;
         }
 
+        @Override
         public int getCharIndex() {
             return 0;
         }
@@ -118,16 +130,24 @@ public interface SourceSection {
             return 0;
         }
 
+        @Override
         public int getCharEndIndex() {
             return 0;
         }
 
+        @Override
         public String getIdentifier() {
             return null;
         }
 
+        @Override
         public String getCode() {
             return null;
+        }
+
+        @Override
+        public String getShortDescription() {
+            return "short";
         }
 
     };
