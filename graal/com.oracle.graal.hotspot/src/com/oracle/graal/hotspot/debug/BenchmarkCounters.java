@@ -289,25 +289,30 @@ public class BenchmarkCounters {
         final class BenchmarkCountersOutputStream extends CallbackOutputStream {
 
             private long startTime;
+            private boolean running;
             private boolean waitingForEnd;
 
             private BenchmarkCountersOutputStream(PrintStream delegate, String start, String end) {
-                super(delegate, new String[]{start, end, "\n"});
+                super(delegate, new String[]{"\n", end, start});
             }
 
             @Override
             protected void patternFound(int index) {
                 switch (index) {
-                    case 0:
+                    case 2:
                         startTime = System.nanoTime();
                         BenchmarkCounters.clear(compilerToVM.collectCounters());
+                        running = true;
                         break;
                     case 1:
-                        waitingForEnd = true;
+                        if (running) {
+                            waitingForEnd = true;
+                        }
                         break;
-                    case 2:
+                    case 0:
                         if (waitingForEnd) {
                             waitingForEnd = false;
+                            running = false;
                             BenchmarkCounters.dump(delegate, (System.nanoTime() - startTime) / 1000000000d, compilerToVM.collectCounters(), 100);
                         }
                         break;
@@ -371,7 +376,8 @@ public class BenchmarkCounters {
 
     public static void lower(DynamicCounterNode counter, HotSpotRegistersProvider registers, HotSpotVMConfig config, Kind wordKind) {
         StructuredGraph graph = counter.graph();
-        if (excludedClassPrefix == null || (counter.graph().method() != null && !counter.graph().method().getDeclaringClass().getName().startsWith(excludedClassPrefix))) {
+        if (excludedClassPrefix == null || counter.graph().name != null ||
+                        (counter.graph().method() != null && !counter.graph().method().getDeclaringClass().getName().startsWith(excludedClassPrefix))) {
 
             ReadRegisterNode thread = graph.add(new ReadRegisterNode(registers.getThreadRegister(), wordKind, true, false));
 
