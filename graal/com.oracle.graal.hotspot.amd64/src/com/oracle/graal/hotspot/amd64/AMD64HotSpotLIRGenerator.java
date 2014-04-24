@@ -286,7 +286,8 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
             result = super.emitForeignCall(hotspotLinkage, deoptInfo, args);
             append(new AMD64HotSpotCRuntimeCallEpilogueOp(config.threadLastJavaSpOffset(), config.threadLastJavaFpOffset(), thread));
         } else {
-            result = super.emitForeignCall(hotspotLinkage, deoptInfo, args);
+            assert deoptInfo == null;
+            result = super.emitForeignCall(hotspotLinkage, null, args);
         }
 
         if (destroysRegisters) {
