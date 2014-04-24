@@ -22,6 +22,10 @@
  */
 package com.oracle.graal.compiler.test;
 
+import static org.junit.Assert.assertTrue;
+
+import java.util.*;
+
 import org.junit.*;
 
 import com.oracle.graal.debug.*;
@@ -72,6 +76,14 @@ public class SimpleCFGTest extends GraalCompilerTest {
         assertEquals(blocks[2], cfg.blockFor(falseEnd));
         assertEquals(blocks[3], cfg.blockFor(merge));
         assertEquals(blocks[3], cfg.blockFor(returnNode));
+
+        // check postOrder
+        Iterator<Block> it = cfg.postOrder().iterator();
+        for (int i = blocks.length - 1; i >= 0; i--) {
+            assertTrue(it.hasNext());
+            Block b = it.next();
+            assertEquals(blocks[i], b);
+        }
 
         // check dominators
         assertDominator(blocks[0], null);
