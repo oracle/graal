@@ -24,11 +24,12 @@ package com.oracle.graal.nodes.spi;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.replacements.*;
 
 /**
  * Interface for service providers that register replacements with the compiler.
  */
 public interface ReplacementsProvider {
 
-    void registerReplacements(MetaAccessProvider metaAccess, LoweringProvider lowerer, Replacements replacements, TargetDescription target);
+    void registerReplacements(MetaAccessProvider metaAccess, LoweringProvider lowerer, SnippetReflectionProvider snippetReflection, Replacements replacements, TargetDescription target);
 }

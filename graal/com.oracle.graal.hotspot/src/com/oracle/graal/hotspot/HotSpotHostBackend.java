@@ -63,7 +63,7 @@ public abstract class HotSpotHostBackend extends HotSpotBackend implements HostB
             try (Scope s = Debug.scope("RegisterReplacements", new DebugDumpScope("RegisterReplacements"))) {
                 ServiceLoader<ReplacementsProvider> sl = ServiceLoader.loadInstalled(ReplacementsProvider.class);
                 for (ReplacementsProvider replacementsProvider : sl) {
-                    replacementsProvider.registerReplacements(providers.getMetaAccess(), lowerer, replacements, providers.getCodeCache().getTarget());
+                    replacementsProvider.registerReplacements(providers.getMetaAccess(), lowerer, providers.getSnippetReflection(), replacements, providers.getCodeCache().getTarget());
                 }
                 if (BootstrapReplacements.getValue()) {
                     for (ResolvedJavaMethod method : replacements.getAllReplacements()) {
