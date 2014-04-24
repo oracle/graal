@@ -340,7 +340,6 @@ public abstract class Node implements Cloneable {
     }
 
     private void traceRewrite(Node newNode, CharSequence reason) {
-
         if (TruffleOptions.TraceRewritesFilterFromCost != null) {
             if (filterByKind(this, TruffleOptions.TraceRewritesFilterFromCost)) {
                 return;
@@ -360,8 +359,11 @@ public abstract class Node implements Cloneable {
             return;
         }
 
+        final SourceSection reportedSourceSection = getEncapsulatingSourceSection();
+
         PrintStream out = System.out;
-        out.printf("[truffle]   rewrite %-50s |From %-40s |To %-40s |Reason %s.%n", this.toString(), formatNodeInfo(this), formatNodeInfo(newNode), reason);
+        out.printf("[truffle]   rewrite %-50s |From %-40s |To %-40s |Reason %s%s%n", this.toString(), formatNodeInfo(this), formatNodeInfo(newNode), reason != null && reason.length() > 0 ? reason
+                        : "unknown", reportedSourceSection != null ? " at " + reportedSourceSection.getShortDescription() : "");
     }
 
     /**
