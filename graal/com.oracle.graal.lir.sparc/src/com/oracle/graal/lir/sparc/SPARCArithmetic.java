@@ -539,6 +539,17 @@ public enum SPARCArithmetic {
         } else {
             switch (opcode) {
                 case LREM:
+                    new Sdivx(asLongReg(src1), asLongReg(src2), asLongReg(scratch1)).emit(masm);
+                    exceptionOffset = masm.position();
+                    new Mulx(asLongReg(scratch1), asLongReg(src2), asLongReg(scratch2)).emit(masm);
+                    new Sub(asLongReg(src1), asLongReg(scratch2), asLongReg(dst)).emit(masm);
+                    break;
+                case IREM:
+                    new Sdivx(asIntReg(src1), asIntReg(src2), asIntReg(scratch1)).emit(masm);
+                    exceptionOffset = masm.position();
+                    new Mulx(asIntReg(scratch1), asIntReg(src2), asIntReg(scratch2)).emit(masm);
+                    new Sub(asIntReg(src1), asIntReg(scratch2), asIntReg(dst)).emit(masm);
+                    break;
                 case LUREM:
                     throw GraalInternalError.unimplemented();
                 default:
@@ -559,6 +570,9 @@ public enum SPARCArithmetic {
             switch (opcode) {
                 case INEG:
                     new Neg(asIntReg(src), asIntReg(dst)).emit(masm);
+                    break;
+                case LNEG:
+                    new Neg(asLongReg(src), asLongReg(dst)).emit(masm);
                     break;
                 case INOT:
                     new Not(asIntReg(src), asIntReg(dst)).emit(masm);

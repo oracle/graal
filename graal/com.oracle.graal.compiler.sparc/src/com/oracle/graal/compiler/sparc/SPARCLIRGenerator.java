@@ -33,9 +33,11 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
 import com.oracle.graal.asm.sparc.*;
+import com.oracle.graal.asm.sparc.SPARCAssembler.CC;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.gen.*;
+import com.oracle.graal.debug.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.JumpOp;
 import com.oracle.graal.lir.sparc.*;
@@ -282,23 +284,38 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
     @Override
     public Variable emitConditionalMove(PlatformKind cmpKind, Value left, Value right, Condition cond, boolean unorderedIsTrue, Value trueValue, Value falseValue) {
         boolean mirrored = emitCompare(left, right);
+        // TTY.print(String.format("Cond: l: %s r: %s cond: %s, mirrored: %b\n", left, right, cond,
+// mirrored));
         Condition finalCondition = mirrored ? cond.mirror() : cond;
+        CC cCode = getCCodeForKind(left.getKind());
 
         Variable result = newVariable(trueValue.getKind());
         switch (left.getKind().getStackKind()) {
             case Int:
             case Long:
             case Object:
-                append(new CondMoveOp(result, finalCondition, load(trueValue), loadNonConst(falseValue)));
+                append(new CondMoveOp(result, finalCondition, cCode, load(trueValue), loadNonConst(falseValue)));
                 break;
             case Float:
             case Double:
-                append(new FloatCondMoveOp(result, finalCondition, unorderedIsTrue, load(trueValue), load(falseValue)));
+                append(new FloatCondMoveOp(result, finalCondition, cCode, unorderedIsTrue, load(trueValue), load(falseValue)));
                 break;
             default:
                 throw GraalInternalError.shouldNotReachHere("" + left.getKind());
         }
         return result;
+    }
+
+    private static CC getCCodeForKind(Kind kind) {
+        switch (kind) {
+            case Int:
+                return CC.Icc;
+            case Long:
+                return CC.Xcc;
+            case Float:
+                return CC.Fcc0;
+        }
+        throw GraalInternalError.shouldNotReachHere("" + kind);
     }
 
     /**
@@ -348,7 +365,8 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
     public Variable emitIntegerTestMove(Value left, Value right, Value trueValue, Value falseValue) {
         emitIntegerTest(left, right);
         Variable result = newVariable(trueValue.getKind());
-        append(new CondMoveOp(result, Condition.EQ, load(trueValue), loadNonConst(falseValue)));
+        CC cCode = getCCodeForKind(left.getKind());
+        append(new CondMoveOp(result, Condition.EQ, cCode, load(trueValue), loadNonConst(falseValue)));
         return result;
     }
 
@@ -459,6 +477,9 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
         switch (input.getKind().getStackKind()) {
             case Int:
                 append(new Op1Stack(INEG, result, input));
+                break;
+            case Long:
+                append(new Op1Stack(LNEG, result, input));
                 break;
             case Float:
                 append(new Op1Stack(FNEG, result, input));
