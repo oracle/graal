@@ -95,8 +95,8 @@ public final class FrameState extends VirtualState implements IterableNodeType {
         this.virtualObjectMappings = new NodeInputList<>(this, virtualObjectMappings);
         this.rethrowException = rethrowException;
         this.duringCall = duringCall;
-        assert !rethrowException || stackSize == 1 : "must have exception on top of the stack";
-        assert values.size() - localsSize - stackSize == monitorIds.size();
+        assert !this.rethrowException || this.stackSize == 1 : "must have exception on top of the stack";
+        assert this.locksSize() == this.monitorIds.size();
     }
 
     /**
@@ -399,7 +399,7 @@ public final class FrameState extends VirtualState implements IterableNodeType {
 
     @Override
     public boolean verify() {
-        assertTrue(values.size() - localsSize - stackSize == monitorIds.size(), "mismatch in number of locks");
+        assertTrue(locksSize() == monitorIds.size(), "mismatch in number of locks");
         for (ValueNode value : values) {
             assertTrue(value == null || !value.isDeleted(), "frame state must not contain deleted nodes");
             assertTrue(value == null || value instanceof VirtualObjectNode || (value.getKind() != Kind.Void), "unexpected value: %s", value);

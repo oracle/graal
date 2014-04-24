@@ -117,6 +117,15 @@ public class DebugInfoBuilder {
 
     protected BytecodeFrame computeFrameForState(FrameState state) {
         try {
+            assert state.bci != BytecodeFrame.INVALID_FRAMESTATE_BCI;
+            assert state.bci != BytecodeFrame.UNKNOWN_BCI;
+            assert state.bci != BytecodeFrame.BEFORE_BCI || state.locksSize() == 0;
+            assert state.bci != BytecodeFrame.AFTER_BCI || state.locksSize() == 0;
+            assert state.bci != BytecodeFrame.AFTER_EXCEPTION_BCI || state.locksSize() == 0;
+            assert !(state.method().isSynchronized() && state.bci != BytecodeFrame.BEFORE_BCI && state.bci != BytecodeFrame.AFTER_BCI && state.bci != BytecodeFrame.AFTER_EXCEPTION_BCI) ||
+                            state.locksSize() > 0;
+            assert state.verify();
+
             int numLocals = state.localsSize();
             int numStack = state.stackSize();
             int numLocks = state.locksSize();

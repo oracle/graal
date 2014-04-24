@@ -1439,47 +1439,43 @@ public class InliningUtil {
     }
 
     protected static void processFrameStates(Invoke invoke, StructuredGraph inlineGraph, Map<Node, Node> duplicates, FrameState stateAtExceptionEdge) {
-        FrameState stateAfter = invoke.stateAfter();
+        FrameState stateAtReturn = invoke.stateAfter();
         FrameState outerFrameState = null;
         Kind invokeReturnKind = invoke.asNode().getKind();
         for (FrameState original : inlineGraph.getNodes(FrameState.class)) {
             FrameState frameState = (FrameState) duplicates.get(original);
             if (frameState != null && frameState.isAlive()) {
-                assert frameState.bci != BytecodeFrame.BEFORE_BCI : frameState;
                 if (frameState.bci == BytecodeFrame.AFTER_BCI) {
                     /*
                      * pop return kind from invoke's stateAfter and replace with this frameState's
                      * return value (top of stack)
                      */
-                    Node otherFrameState = stateAfter;
-                    if (invokeReturnKind != Kind.Void && frameState.stackSize() > 0) {
-                        otherFrameState = stateAfter.duplicateModified(invokeReturnKind, frameState.stackAt(0));
+                    FrameState stateAfterReturn = stateAtReturn;
+                    if (invokeReturnKind != Kind.Void && frameState.stackSize() > 0 && stateAfterReturn.stackAt(0) != frameState.stackAt(0)) {
+                        stateAfterReturn = stateAtReturn.duplicateModified(invokeReturnKind, frameState.stackAt(0));
                     }
-                    frameState.replaceAndDelete(otherFrameState);
-                } else if (frameState.bci == BytecodeFrame.AFTER_EXCEPTION_BCI || (frameState.bci == BytecodeFrame.UNWIND_BCI && !frameState.method().isSynchronized())) {
-                    if (stateAtExceptionEdge != null) {
-                        /*
-                         * pop exception object from invoke's stateAfter and replace with this
-                         * frameState's exception object (top of stack)
-                         */
-                        Node newFrameState = stateAtExceptionEdge;
-                        if (frameState.stackSize() > 0 && stateAtExceptionEdge.stackAt(0) != frameState.stackAt(0)) {
-                            newFrameState = stateAtExceptionEdge.duplicateModified(Kind.Object, frameState.stackAt(0));
-                        }
-                        frameState.replaceAndDelete(newFrameState);
-                    } else {
-                        handleMissingAfterExceptionFrameState(frameState);
+                    frameState.replaceAndDelete(stateAfterReturn);
+                } else if (stateAtExceptionEdge != null && isStateAfterException(frameState)) {
+                    /*
+                     * pop exception object from invoke's stateAfter and replace with this
+                     * frameState's exception object (top of stack)
+                     */
+                    FrameState stateAfterException = stateAtExceptionEdge;
+                    if (frameState.stackSize() > 0 && stateAtExceptionEdge.stackAt(0) != frameState.stackAt(0)) {
+                        stateAfterException = stateAtExceptionEdge.duplicateModified(Kind.Object, frameState.stackAt(0));
                     }
-                } else if (frameState.bci == BytecodeFrame.UNWIND_BCI) {
+                    frameState.replaceAndDelete(stateAfterException);
+                } else if (frameState.bci == BytecodeFrame.UNWIND_BCI || frameState.bci == BytecodeFrame.AFTER_EXCEPTION_BCI) {
                     handleMissingAfterExceptionFrameState(frameState);
                 } else {
                     // only handle the outermost frame states
                     if (frameState.outerFrameState() == null) {
+                        assert frameState.bci != BytecodeFrame.BEFORE_BCI : frameState;
                         assert frameState.bci == BytecodeFrame.INVALID_FRAMESTATE_BCI || frameState.method().equals(inlineGraph.method());
                         assert frameState.bci != BytecodeFrame.AFTER_EXCEPTION_BCI && frameState.bci != BytecodeFrame.BEFORE_BCI && frameState.bci != BytecodeFrame.AFTER_EXCEPTION_BCI &&
                                         frameState.bci != BytecodeFrame.UNWIND_BCI : frameState.bci;
                         if (outerFrameState == null) {
-                            outerFrameState = stateAfter.duplicateModified(invoke.bci(), stateAfter.rethrowException(), invoke.asNode().getKind());
+                            outerFrameState = stateAtReturn.duplicateModified(invoke.bci(), stateAtReturn.rethrowException(), invokeReturnKind);
                             outerFrameState.setDuringCall(true);
                         }
                         frameState.setOuterFrameState(outerFrameState);
@@ -1489,10 +1485,14 @@ public class InliningUtil {
         }
     }
 
-    protected static void handleMissingAfterExceptionFrameState(FrameState nonReplacableFrameState) {
-        Graph graph = nonReplacableFrameState.graph();
+    private static boolean isStateAfterException(FrameState frameState) {
+        return frameState.bci == BytecodeFrame.AFTER_EXCEPTION_BCI || (frameState.bci == BytecodeFrame.UNWIND_BCI && !frameState.method().isSynchronized());
+    }
+
+    protected static void handleMissingAfterExceptionFrameState(FrameState nonReplaceableFrameState) {
+        Graph graph = nonReplaceableFrameState.graph();
         NodeWorkList workList = graph.createNodeWorkList();
-        workList.add(nonReplacableFrameState);
+        workList.add(nonReplaceableFrameState);
         for (Node node : workList) {
             FrameState fs = (FrameState) node;
             for (Node usage : fs.usages().snapshot()) {

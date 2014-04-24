@@ -326,6 +326,7 @@ public class HIRFrameStateBuilder extends AbstractFrameStateBuilder<ValueNode, H
         } finally {
             lockedObjects = lockedObjects.length == 1 ? EMPTY_ARRAY : Arrays.copyOf(lockedObjects, lockedObjects.length - 1);
             monitorIds = monitorIds.length == 1 ? EMPTY_MONITOR_ARRAY : Arrays.copyOf(monitorIds, monitorIds.length - 1);
+            assert lockedObjects.length == monitorIds.length;
         }
     }
 
