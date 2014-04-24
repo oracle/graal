@@ -23,18 +23,20 @@
 package com.oracle.graal.nodes.calc;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.meta.ProfilingInfo.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.util.*;
 
 @NodeInfo(shortName = "|<|")
 public final class IntegerBelowThanNode extends CompareNode {
 
     /**
      * Constructs a new unsigned integer comparison node.
-     * 
+     *
      * @param x the instruction producing the first input to the instruction
      * @param y the instruction that produces the second input to this instruction
      */
@@ -55,28 +57,33 @@ public final class IntegerBelowThanNode extends CompareNode {
     }
 
     @Override
-    public Node canonical(CanonicalizerTool tool) {
-        if (x() == y()) {
-            return LogicConstantNode.contradiction(graph());
-        } else {
-            if (x().isConstant() && x().asConstant().asLong() == 0) {
-                // 0 |<| y is the same as 0 != y
-                return graph().unique(new LogicNegationNode(CompareNode.createCompareNode(graph(), Condition.EQ, x(), y())));
-            }
-
-            if (x().stamp() instanceof IntegerStamp && y().stamp() instanceof IntegerStamp) {
-                IntegerStamp xStamp = (IntegerStamp) x().stamp();
-                IntegerStamp yStamp = (IntegerStamp) y().stamp();
-                if (yStamp.isPositive()) {
-                    if (xStamp.isPositive() && xStamp.upperBound() < yStamp.lowerBound()) {
-                        return LogicConstantNode.tautology(graph());
-                    } else if (xStamp.isStrictlyNegative() || xStamp.lowerBound() >= yStamp.upperBound()) {
-                        return LogicConstantNode.contradiction(graph());
-                    }
+    public TriState evaluate(ConstantReflectionProvider constantReflection, ValueNode forX, ValueNode forY) {
+        if (GraphUtil.unproxify(forX) == GraphUtil.unproxify(forY)) {
+            return TriState.FALSE;
+        } else if (forX.stamp() instanceof IntegerStamp && forY.stamp() instanceof IntegerStamp) {
+            IntegerStamp xStamp = (IntegerStamp) forX.stamp();
+            IntegerStamp yStamp = (IntegerStamp) forY.stamp();
+            if (yStamp.isPositive()) {
+                if (xStamp.isPositive() && xStamp.upperBound() < yStamp.lowerBound()) {
+                    return TriState.TRUE;
+                } else if (xStamp.isStrictlyNegative() || xStamp.lowerBound() >= yStamp.upperBound()) {
+                    return TriState.FALSE;
                 }
             }
         }
+        return super.evaluate(constantReflection, forX, forY);
+    }
 
-        return super.canonical(tool);
+    @Override
+    public Node canonical(CanonicalizerTool tool) {
+        Node result = super.canonical(tool);
+        if (result != this) {
+            return result;
+        }
+        if (x().isConstant() && x().asConstant().asLong() == 0) {
+            // 0 |<| y is the same as 0 != y
+            return graph().unique(new LogicNegationNode(CompareNode.createCompareNode(graph(), Condition.EQ, x(), y())));
+        }
+        return this;
     }
 }

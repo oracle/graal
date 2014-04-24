@@ -22,9 +22,9 @@
  */
 package com.oracle.graal.nodes.calc;
 
+import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.meta.ProfilingInfo.TriState;
 import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.graph.*;
-import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
 
 /**
@@ -32,7 +32,7 @@ import com.oracle.graal.nodes.*;
  * expression "(x &amp; y) == 0", meaning that it will return true if (and only if) no bit is set in
  * both x and y.
  */
-public class IntegerTestNode extends BinaryOpLogicNode implements Canonicalizable {
+public class IntegerTestNode extends BinaryOpLogicNode {
 
     /**
      * Constructs a new Test instruction.
@@ -45,19 +45,19 @@ public class IntegerTestNode extends BinaryOpLogicNode implements Canonicalizabl
     }
 
     @Override
-    public Node canonical(CanonicalizerTool tool) {
-        if (x().isConstant() && y().isConstant()) {
-            return LogicConstantNode.forBoolean((x().asConstant().asLong() & y().asConstant().asLong()) == 0, graph());
+    public TriState evaluate(ConstantReflectionProvider constantReflection, ValueNode forX, ValueNode forY) {
+        if (forX.isConstant() && forY.isConstant()) {
+            return TriState.get((forX.asConstant().asLong() & forY.asConstant().asLong()) == 0);
         }
         if (x().stamp() instanceof IntegerStamp && y().stamp() instanceof IntegerStamp) {
-            IntegerStamp xStamp = (IntegerStamp) x().stamp();
-            IntegerStamp yStamp = (IntegerStamp) y().stamp();
+            IntegerStamp xStamp = (IntegerStamp) forX.stamp();
+            IntegerStamp yStamp = (IntegerStamp) forY.stamp();
             if ((xStamp.upMask() & yStamp.upMask()) == 0) {
-                return LogicConstantNode.tautology(graph());
+                return TriState.TRUE;
             } else if ((xStamp.downMask() & yStamp.downMask()) != 0) {
-                return LogicConstantNode.contradiction(graph());
+                return TriState.FALSE;
             }
         }
-        return this;
+        return TriState.UNKNOWN;
     }
 }

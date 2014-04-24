@@ -22,10 +22,14 @@
  */
 package com.oracle.graal.nodes;
 
+import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.meta.ProfilingInfo.*;
+import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 
-public abstract class BinaryOpLogicNode extends LogicNode implements LIRLowerable, MemoryArithmeticLIRLowerable {
+public abstract class BinaryOpLogicNode extends LogicNode implements LIRLowerable, MemoryArithmeticLIRLowerable, Canonicalizable {
 
     @Input private ValueNode x;
     @Input private ValueNode y;
@@ -54,10 +58,23 @@ public abstract class BinaryOpLogicNode extends LogicNode implements LIRLowerabl
         this.y = y;
     }
 
+    public abstract TriState evaluate(ConstantReflectionProvider constantReflection, ValueNode forX, ValueNode forY);
+
     @Override
     public boolean verify() {
         assertTrue(x.stamp().isCompatible(y.stamp()), "stamps not compatible: %s, %s", x.stamp(), y.stamp());
         return super.verify();
+    }
+
+    @Override
+    public Node canonical(CanonicalizerTool tool) {
+        switch (evaluate(tool.getConstantReflection(), x(), y())) {
+            case FALSE:
+                return LogicConstantNode.contradiction(graph());
+            case TRUE:
+                return LogicConstantNode.tautology(graph());
+        }
+        return this;
     }
 
     @Override

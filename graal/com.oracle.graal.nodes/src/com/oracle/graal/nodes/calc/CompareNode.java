@@ -23,6 +23,7 @@
 package com.oracle.graal.nodes.calc;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.meta.ProfilingInfo.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.graph.*;
@@ -35,7 +36,7 @@ import com.oracle.graal.nodes.*;
  * Compare should probably be made a value (so that it can be canonicalized for example) and in later stages some Compare usage should be transformed
  * into variants that do not materialize the value (CompareIf, CompareGuard...)
  */
-public abstract class CompareNode extends BinaryOpLogicNode implements Canonicalizable {
+public abstract class CompareNode extends BinaryOpLogicNode {
 
     /**
      * Constructs a new Compare instruction.
@@ -90,9 +91,18 @@ public abstract class CompareNode extends BinaryOpLogicNode implements Canonical
     }
 
     @Override
+    public TriState evaluate(ConstantReflectionProvider constantReflection, ValueNode forX, ValueNode forY) {
+        if (x().isConstant() && y().isConstant()) {
+            return TriState.get(condition().foldCondition(x().asConstant(), y().asConstant(), constantReflection, unorderedIsTrue()));
+        }
+        return TriState.UNKNOWN;
+    }
+
+    @Override
     public Node canonical(CanonicalizerTool tool) {
-        if (x().isConstant() && y().isConstant() && tool.getMetaAccess() != null) {
-            return LogicConstantNode.forBoolean(condition().foldCondition(x().asConstant(), y().asConstant(), tool.getConstantReflection(), unorderedIsTrue()), graph());
+        Node result = super.canonical(tool);
+        if (result != this) {
+            return result;
         }
         if (x().isConstant()) {
             if (y() instanceof ConditionalNode) {

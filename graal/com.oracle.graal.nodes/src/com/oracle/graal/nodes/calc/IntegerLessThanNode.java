@@ -23,18 +23,20 @@
 package com.oracle.graal.nodes.calc;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.meta.ProfilingInfo.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.util.*;
 
 @NodeInfo(shortName = "<")
 public final class IntegerLessThanNode extends CompareNode {
 
     /**
      * Constructs a new integer comparison node.
-     * 
+     *
      * @param x the instruction producing the first input to the instruction
      * @param y the instruction that produces the second input to this instruction
      */
@@ -71,22 +73,32 @@ public final class IntegerLessThanNode extends CompareNode {
     }
 
     @Override
+    public TriState evaluate(ConstantReflectionProvider constantReflection, ValueNode forX, ValueNode forY) {
+        if (GraphUtil.unproxify(forX) == GraphUtil.unproxify(forY)) {
+            return TriState.FALSE;
+        } else if (forX.stamp() instanceof IntegerStamp && forY.stamp() instanceof IntegerStamp) {
+            IntegerStamp xStamp = (IntegerStamp) forX.stamp();
+            IntegerStamp yStamp = (IntegerStamp) forY.stamp();
+            if (xStamp.upperBound() < yStamp.lowerBound()) {
+                return TriState.TRUE;
+            } else if (xStamp.lowerBound() >= yStamp.upperBound()) {
+                return TriState.FALSE;
+            }
+        }
+        return super.evaluate(constantReflection, forX, forY);
+    }
+
+    @Override
     public Node canonical(CanonicalizerTool tool) {
-        if (x() == y()) {
-            return LogicConstantNode.contradiction(graph());
+        Node result = super.canonical(tool);
+        if (result != this) {
+            return result;
         }
         if (x().stamp() instanceof IntegerStamp && y().stamp() instanceof IntegerStamp) {
-            IntegerStamp xStamp = (IntegerStamp) x().stamp();
-            IntegerStamp yStamp = (IntegerStamp) y().stamp();
-            if (xStamp.upperBound() < yStamp.lowerBound()) {
-                return LogicConstantNode.tautology(graph());
-            } else if (xStamp.lowerBound() >= yStamp.upperBound()) {
-                return LogicConstantNode.contradiction(graph());
-            }
-            if (IntegerStamp.sameSign(xStamp, yStamp)) {
+            if (IntegerStamp.sameSign((IntegerStamp) x().stamp(), (IntegerStamp) y().stamp())) {
                 return graph().unique(new IntegerBelowThanNode(x(), y()));
             }
         }
-        return super.canonical(tool);
+        return this;
     }
 }
