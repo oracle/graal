@@ -506,22 +506,22 @@ public class StampTool {
     }
 
     /**
-     * Returns the {@linkplain ResolvedJavaType java type} this {@linkplain ValueNode} has if it is
+     * Returns the {@linkplain ResolvedJavaType Java type} this {@linkplain ValueNode} has if it is
      * a {@linkplain Stamp#isLegal() legal} Object value.
      *
      * @param node the node to check
-     * @return the javat type this value has if it is a legal Object type, null otherwise
+     * @return the Java type this value has if it is a legal Object type, null otherwise
      */
     public static ResolvedJavaType typeOrNull(ValueNode node) {
         return typeOrNull(node.stamp());
     }
 
     /**
-     * Returns the {@linkplain ResolvedJavaType java type} this {@linkplain Stamp} has if it is a
+     * Returns the {@linkplain ResolvedJavaType Java type} this {@linkplain Stamp} has if it is a
      * {@linkplain Stamp#isLegal() legal} Object stamp.
      *
      * @param stamp the stamp to check
-     * @return the java type this stamp has if it is a legal Object stamp, null otherwise
+     * @return the Java type this stamp has if it is a legal Object stamp, null otherwise
      */
     public static ResolvedJavaType typeOrNull(Stamp stamp) {
         if (stamp instanceof ObjectStamp && stamp.isLegal()) {
@@ -532,12 +532,12 @@ public class StampTool {
 
     /**
      * Checks whether this {@link ValueNode} represents a {@linkplain Stamp#isLegal() legal} Object
-     * value whose java type is known exactly. If this method returns true then the
-     * {@linkplain ResolvedJavaType java type} returned by {@link #typeOrNull(ValueNode)} is the
-     * concrete dynamic/runtime java type of this value.
+     * value whose Java type is known exactly. If this method returns true then the
+     * {@linkplain ResolvedJavaType Java type} returned by {@link #typeOrNull(ValueNode)} is the
+     * concrete dynamic/runtime Java type of this value.
      *
      * @param node the node to check
-     * @return true if this node represents a legal object value whose java type is known exactly
+     * @return true if this node represents a legal object value whose Java type is known exactly
      */
     public static boolean isExactType(ValueNode node) {
         return isExactType(node.stamp());
@@ -545,12 +545,12 @@ public class StampTool {
 
     /**
      * Checks whether this {@link Stamp} represents a {@linkplain Stamp#isLegal() legal} Object
-     * stamp whose {@linkplain ResolvedJavaType java type} is known exactly. If this method returns
-     * true then the java type returned by {@link #typeOrNull(Stamp)} is the only concrete
-     * dynamic/runtime java type possible for values of this stamp.
+     * stamp whose {@linkplain ResolvedJavaType Java type} is known exactly. If this method returns
+     * true then the Java type returned by {@link #typeOrNull(Stamp)} is the only concrete
+     * dynamic/runtime Java type possible for values of this stamp.
      *
      * @param stamp the stamp to check
-     * @return true if this node represents a legal object stamp whose java type is known exactly
+     * @return true if this node represents a legal object stamp whose Java type is known exactly
      */
     public static boolean isExactType(Stamp stamp) {
         if (stamp instanceof ObjectStamp && stamp.isLegal()) {
