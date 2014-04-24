@@ -25,7 +25,7 @@ package com.oracle.graal.nodes;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 
-public abstract class BinaryLogicNode extends LogicNode implements LIRLowerable, MemoryArithmeticLIRLowerable {
+public abstract class BinaryOpLogicNode extends LogicNode implements LIRLowerable, MemoryArithmeticLIRLowerable {
 
     @Input private ValueNode x;
     @Input private ValueNode y;
@@ -48,7 +48,7 @@ public abstract class BinaryLogicNode extends LogicNode implements LIRLowerable,
         this.y = y;
     }
 
-    public BinaryLogicNode(ValueNode x, ValueNode y) {
+    public BinaryOpLogicNode(ValueNode x, ValueNode y) {
         assert x != null && y != null && x.getKind() == y.getKind();
         this.x = x;
         this.y = y;

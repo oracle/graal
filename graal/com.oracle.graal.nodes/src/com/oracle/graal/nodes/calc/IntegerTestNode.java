@@ -32,7 +32,7 @@ import com.oracle.graal.nodes.*;
  * expression "(x &amp; y) == 0", meaning that it will return true if (and only if) no bit is set in
  * both x and y.
  */
-public class IntegerTestNode extends BinaryLogicNode implements Canonicalizable {
+public class IntegerTestNode extends BinaryOpLogicNode implements Canonicalizable {
 
     /**
      * Constructs a new Test instruction.

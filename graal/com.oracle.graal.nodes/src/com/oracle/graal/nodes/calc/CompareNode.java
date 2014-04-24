@@ -35,7 +35,7 @@ import com.oracle.graal.nodes.*;
  * Compare should probably be made a value (so that it can be canonicalized for example) and in later stages some Compare usage should be transformed
  * into variants that do not materialize the value (CompareIf, CompareGuard...)
  */
-public abstract class CompareNode extends BinaryLogicNode implements Canonicalizable {
+public abstract class CompareNode extends BinaryOpLogicNode implements Canonicalizable {
 
     /**
      * Constructs a new Compare instruction.
