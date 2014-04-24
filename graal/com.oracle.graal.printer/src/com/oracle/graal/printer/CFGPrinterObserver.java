@@ -174,7 +174,7 @@ public class CFGPrinterObserver implements DebugDumpHandler {
                 StructuredGraph graph = (StructuredGraph) object;
                 cfgPrinter.cfg = ControlFlowGraph.compute(graph, true, true, true, false);
             }
-            cfgPrinter.printCFG(message, Arrays.asList(cfgPrinter.cfg.getBlocks()), true);
+            cfgPrinter.printCFG(message, cfgPrinter.cfg.getBlocks(), true);
 
         } else if (object instanceof CompilationResult) {
             final CompilationResult compResult = (CompilationResult) object;

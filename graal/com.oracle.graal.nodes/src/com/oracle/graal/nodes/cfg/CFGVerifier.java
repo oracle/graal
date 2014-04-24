@@ -31,7 +31,7 @@ public class CFGVerifier {
     public static boolean verify(ControlFlowGraph cfg) {
         for (Block block : cfg.getBlocks()) {
             assert block.getId() >= 0;
-            assert cfg.getBlocks()[block.getId()] == block;
+            assert cfg.getBlocks().get(block.getId()) == block;
 
             for (Block pred : block.getPredecessors()) {
                 assert pred.getSuccessors().contains(block);

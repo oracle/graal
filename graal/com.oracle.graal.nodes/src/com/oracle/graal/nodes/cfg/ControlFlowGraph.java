@@ -35,7 +35,7 @@ public class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
     public final StructuredGraph graph;
 
     private final NodeMap<Block> nodeToBlock;
-    private Block[] reversePostOrder;
+    private List<Block> reversePostOrder;
     private List<Loop<Block>> loops;
 
     public static ControlFlowGraph compute(StructuredGraph graph, boolean connectBlocks, boolean computeLoops, boolean computeDominators, boolean computePostdominators) {
@@ -64,12 +64,12 @@ public class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
         this.nodeToBlock = graph.createNodeMap(true);
     }
 
-    public Block[] getBlocks() {
+    public List<Block> getBlocks() {
         return reversePostOrder;
     }
 
     public Block getStartBlock() {
-        return reversePostOrder[0];
+        return reversePostOrder.get(0);
     }
 
     public Iterable<Block> postOrder() {
@@ -79,16 +79,16 @@ public class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
             public Iterator<Block> iterator() {
                 return new Iterator<Block>() {
 
-                    private int nextIndex = reversePostOrder.length - 1;
+                    private ListIterator<Block> it = reversePostOrder.listIterator(reversePostOrder.size());
 
                     @Override
                     public boolean hasNext() {
-                        return nextIndex >= 0;
+                        return it.hasPrevious();
                     }
 
                     @Override
                     public Block next() {
-                        return reversePostOrder[nextIndex--];
+                        return it.previous();
                     }
 
                     @Override
@@ -188,11 +188,11 @@ public class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
         // Compute reverse postorder and number blocks.
         assert postOrder.size() <= numBlocks : "some blocks originally created can be unreachable, so actual block list can be shorter";
         numBlocks = postOrder.size();
-        reversePostOrder = new Block[numBlocks];
+        reversePostOrder = new ArrayList<>(numBlocks);
         for (int i = 0; i < numBlocks; i++) {
             Block block = postOrder.get(numBlocks - i - 1);
             block.setId(i);
-            reversePostOrder[i] = block;
+            reversePostOrder.add(block);
         }
     }
 
@@ -307,9 +307,9 @@ public class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
     }
 
     private void computeDominators() {
-        assert reversePostOrder[0].getPredecessorCount() == 0 : "start block has no predecessor and therefore no dominator";
-        for (int i = 1; i < reversePostOrder.length; i++) {
-            Block block = reversePostOrder[i];
+        assert reversePostOrder.get(0).getPredecessorCount() == 0 : "start block has no predecessor and therefore no dominator";
+        for (int i = 1; i < reversePostOrder.size(); i++) {
+            Block block = reversePostOrder.get(i);
             assert block.getPredecessorCount() > 0;
             Block dominator = null;
             for (Block pred : block.getPredecessors()) {

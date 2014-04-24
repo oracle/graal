@@ -31,17 +31,17 @@ import com.oracle.graal.java.BciBlockMapping.BciBlock;
 
 public class BaselineControlFlowGraph implements AbstractControlFlowGraph<BciBlock> {
 
-    private BciBlock[] blocks;
+    private List<BciBlock> blocks;
     private Collection<Loop<BciBlock>> loops;
     private BitSet visited;
 
     public BaselineControlFlowGraph(BciBlockMapping blockMap) {
-        blocks = blockMap.blocks.toArray(new BciBlock[0]);
+        blocks = blockMap.blocks;
         loops = new ArrayList<>();
         computeLoopInformation();
     }
 
-    public BciBlock[] getBlocks() {
+    public List<BciBlock> getBlocks() {
         return blocks;
     }
 
@@ -50,17 +50,17 @@ public class BaselineControlFlowGraph implements AbstractControlFlowGraph<BciBlo
     }
 
     public BciBlock getStartBlock() {
-        if (blocks.length > 0) {
-            return blocks[0];
+        if (!blocks.isEmpty()) {
+            return blocks.get(0);
         }
         return null;
     }
 
     private void computeLoopInformation() {
-        visited = new BitSet(blocks.length);
+        visited = new BitSet(blocks.size());
         Deque<BaselineLoop> stack = new ArrayDeque<>();
-        for (int i = blocks.length - 1; i >= 0; i--) {
-            BciBlock block = blocks[i];
+        for (int i = blocks.size() - 1; i >= 0; i--) {
+            BciBlock block = blocks.get(i);
             calcLoop(block, stack);
         }
     }

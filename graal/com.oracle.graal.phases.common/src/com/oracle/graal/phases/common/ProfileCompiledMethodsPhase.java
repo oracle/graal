@@ -79,7 +79,7 @@ public class ProfileCompiledMethodsPhase extends Phase {
         while (current.next() instanceof FixedWithNextNode) {
             current = (FixedWithNextNode) current.next();
         }
-        addSectionCounters(current, Arrays.asList(cfg.getBlocks()), cfg.getLoops(), schedule, probabilities);
+        addSectionCounters(current, cfg.getBlocks(), cfg.getLoops(), schedule, probabilities);
 
         if (WITH_INVOKES) {
             for (Node node : graph.getNodes()) {
