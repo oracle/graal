@@ -72,7 +72,14 @@ public class ProfileCompiledMethodsPhase extends Phase {
                 addSectionCounters(loop.header.getBeginNode(), loop.blocks, loop.children, schedule, probabilities);
             }
         }
-        addSectionCounters(graph.start(), Arrays.asList(cfg.getBlocks()), cfg.getLoops(), schedule, probabilities);
+        // don't put the counter increase directly after the start (problems with OSR)
+        FixedWithNextNode current = graph.start();
+        while (current.next() instanceof FixedWithNextNode) {
+            current = (FixedWithNextNode) current.next();
+        }
+        if (graph.getEntryBCI() != -1) {
+            addSectionCounters(current, Arrays.asList(cfg.getBlocks()), cfg.getLoops(), schedule, probabilities);
+        }
     }
 
     private static void addSectionCounters(FixedWithNextNode start, Collection<Block> sectionBlocks, Collection<Loop<Block>> childLoops, SchedulePhase schedule, NodesToDoubles probabilities) {
