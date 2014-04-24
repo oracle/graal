@@ -8,6 +8,7 @@
 * Added graal.version system property to Graal enabled VM builds.
 * Transitioned to JDK 8 as minimum JDK level for Graal.
 * Added support for stack introspection.
+* New MatchRule facility to convert multiple HIR nodes into specialized LIR
 * ...
 
 ### Truffle
