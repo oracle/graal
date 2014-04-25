@@ -51,6 +51,18 @@ public class GuardingPiNode extends FixedWithNextNode implements Lowerable, Virt
         return condition;
     }
 
+    public boolean isNegated() {
+        return negated;
+    }
+
+    public DeoptimizationReason getReason() {
+        return reason;
+    }
+
+    public DeoptimizationAction getAction() {
+        return action;
+    }
+
     /**
      * Constructor for {@link #guardingNonNull(Object)} node intrinsic.
      */

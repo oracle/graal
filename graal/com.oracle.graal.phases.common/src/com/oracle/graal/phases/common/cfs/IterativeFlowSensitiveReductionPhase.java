@@ -20,38 +20,54 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.phases.common;
+package com.oracle.graal.phases.common.cfs;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.*;
+import com.oracle.graal.phases.common.CanonicalizerPhase;
 import com.oracle.graal.phases.common.util.*;
 import com.oracle.graal.phases.tiers.*;
 
-public class IterativeConditionalEliminationPhase extends BasePhase<PhaseContext> {
+public class IterativeFlowSensitiveReductionPhase extends BasePhase<PhaseContext> {
 
     private static final int MAX_ITERATIONS = 256;
 
     private final CanonicalizerPhase canonicalizer;
 
-    public IterativeConditionalEliminationPhase(CanonicalizerPhase canonicalizer) {
+    public IterativeFlowSensitiveReductionPhase(CanonicalizerPhase canonicalizer) {
         this.canonicalizer = canonicalizer;
     }
 
+    public static class CountingListener extends HashSetNodeChangeListener {
+
+        public int count;
+
+        @Override
+        public void nodeChanged(Node node) {
+            super.nodeChanged(node);
+        }
+
+    }
+
+    // private Histogram histogram = new Histogram("FSR-");
+
     @Override
     protected void run(StructuredGraph graph, PhaseContext context) {
-        ConditionalEliminationPhase eliminate = new ConditionalEliminationPhase(context.getMetaAccess());
-        HashSetNodeChangeListener listener = new HashSetNodeChangeListener();
-        int count = 0;
+        FlowSensitiveReductionPhase eliminate = new FlowSensitiveReductionPhase(context.getMetaAccess());
+        CountingListener listener = new CountingListener();
+        int count = 1;
         while (true) {
+            listener.count = count;
             graph.trackInputChange(listener);
             graph.trackUsagesDroppedZero(listener);
-            eliminate.apply(graph);
+            eliminate.apply(graph, context);
             graph.stopTrackingInputChange();
             graph.stopTrackingUsagesDroppedZero();
             if (listener.getChangedNodes().isEmpty()) {
+                // histogram.tick(count);
                 break;
             }
             for (Node node : graph.getNodes()) {
@@ -62,8 +78,13 @@ public class IterativeConditionalEliminationPhase extends BasePhase<PhaseContext
             canonicalizer.applyIncremental(graph, context, listener.getChangedNodes());
             listener.getChangedNodes().clear();
             if (++count > MAX_ITERATIONS) {
-                throw new BailoutException("Number of iterations in ConditionalEliminationPhase phase exceeds " + MAX_ITERATIONS);
+                // System.out.println("Bailing out IterativeFlowSensitiveReductionPhase for graph: "
+                // + graph);
+                // FlowUtil.visualize(graph, "Bailout");
+                throw new BailoutException("Number of iterations in FlowSensitiveReductionPhase exceeds " + MAX_ITERATIONS);
             }
         }
+        // histogram.print();
     }
+
 }
