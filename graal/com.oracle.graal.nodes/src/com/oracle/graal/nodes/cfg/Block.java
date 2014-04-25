@@ -68,7 +68,7 @@ public final class Block extends AbstractBlockBase<Block> {
 
     public boolean isExceptionEntry() {
         Node predecessor = getBeginNode().predecessor();
-        return predecessor != null && predecessor instanceof InvokeWithExceptionNode && getBeginNode() != ((InvokeWithExceptionNode) predecessor).exceptionEdge();
+        return predecessor != null && predecessor instanceof InvokeWithExceptionNode && getBeginNode() == ((InvokeWithExceptionNode) predecessor).exceptionEdge();
     }
 
     public Block getFirstPredecessor() {
