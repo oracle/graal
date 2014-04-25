@@ -255,6 +255,9 @@ public abstract class HSAILAssembler extends AbstractHSAILAssembler {
             case Byte:
                 prefix = "s8";
                 break;
+            case Boolean:
+                prefix = "u8";
+                break;
             default:
                 throw GraalInternalError.shouldNotReachHere();
         }
