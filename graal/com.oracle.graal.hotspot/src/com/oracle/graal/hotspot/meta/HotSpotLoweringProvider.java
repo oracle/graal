@@ -192,8 +192,10 @@ public class HotSpotLoweringProvider implements LoweringProvider {
             if (graph.getGuardsStage() == StructuredGraph.GuardsStage.AFTER_FSA) {
                 newObjectSnippets.lower((NewMultiArrayNode) n, tool);
             }
-        } else if (n instanceof LoadExceptionObjectNode) {
-            exceptionObjectSnippets.lower((LoadExceptionObjectNode) n, registers, tool);
+        } else if (n instanceof ExceptionObjectNode) {
+            if (graph.getGuardsStage() == StructuredGraph.GuardsStage.FIXED_DEOPTS) {
+                lowerExceptionObjectNode((ExceptionObjectNode) n, tool);
+            }
         } else if (n instanceof IntegerDivNode || n instanceof IntegerRemNode || n instanceof UnsignedDivNode || n instanceof UnsignedRemNode) {
             // Nothing to do for division nodes. The HotSpot signal handler catches divisions by
             // zero and the MIN_VALUE / -1 cases.
@@ -730,6 +732,19 @@ public class HotSpotLoweringProvider implements LoweringProvider {
                 graph.replaceFixedWithFixed(node, foreignCallNode);
             }
         }
+    }
+
+    private void lowerExceptionObjectNode(ExceptionObjectNode n, LoweringTool tool) {
+        LocationIdentity locationsKilledByInvoke = ((InvokeWithExceptionNode) n.predecessor()).getLocationIdentity();
+        BeginNode entry = n.graph().add(new KillingBeginNode(locationsKilledByInvoke));
+        LoadExceptionObjectNode loadException = n.graph().add(new LoadExceptionObjectNode(StampFactory.declaredNonNull(metaAccess.lookupJavaType(Throwable.class))));
+
+        loadException.setStateAfter(n.stateAfter());
+        n.replaceAtUsages(InputType.Value, loadException);
+        n.graph().replaceFixedWithFixed(n, entry);
+        entry.graph().addAfterFixed(entry, loadException);
+
+        exceptionObjectSnippets.lower(loadException, registers, tool);
     }
 
     protected static void finishAllocatedObjects(LoweringTool tool, CommitAllocationNode commit, ValueNode[] allocations) {

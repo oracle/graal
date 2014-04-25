@@ -25,8 +25,8 @@ package com.oracle.graal.nodes.cfg;
 import java.util.*;
 
 import com.oracle.graal.compiler.common.cfg.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.java.*;
 
 public final class Block extends AbstractBlockBase<Block> {
 
@@ -67,7 +67,8 @@ public final class Block extends AbstractBlockBase<Block> {
     }
 
     public boolean isExceptionEntry() {
-        return getBeginNode() instanceof ExceptionObjectNode;
+        Node predecessor = getBeginNode().predecessor();
+        return predecessor != null && predecessor instanceof InvokeWithExceptionNode && getBeginNode() != ((InvokeWithExceptionNode) predecessor).exceptionEdge();
     }
 
     public Block getFirstPredecessor() {
