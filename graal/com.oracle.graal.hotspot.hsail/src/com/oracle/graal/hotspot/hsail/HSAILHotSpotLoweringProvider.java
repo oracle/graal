@@ -35,7 +35,7 @@ import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 
-public class HSAILHotSpotLoweringProvider extends HotSpotLoweringProvider {
+public class HSAILHotSpotLoweringProvider extends DefaultHotSpotLoweringProvider {
 
     abstract static class LoweringStrategy {
         abstract void lower(Node n, LoweringTool tool);

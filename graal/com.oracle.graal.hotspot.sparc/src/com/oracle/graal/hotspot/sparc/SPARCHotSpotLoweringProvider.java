@@ -30,7 +30,7 @@ import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
 
-public class SPARCHotSpotLoweringProvider extends HotSpotLoweringProvider {
+public class SPARCHotSpotLoweringProvider extends DefaultHotSpotLoweringProvider {
 
     public SPARCHotSpotLoweringProvider(HotSpotGraalRuntime runtime, MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls, HotSpotRegistersProvider registers) {
         super(runtime, metaAccess, foreignCalls, registers);
