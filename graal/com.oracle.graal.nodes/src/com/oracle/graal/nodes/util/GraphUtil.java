@@ -331,6 +331,14 @@ public class GraphUtil {
         return v;
     }
 
+    public static boolean tryKillUnused(Node node) {
+        if (node.isAlive() && isFloatingNode().apply(node) && node.recordsUsages() && node.usages().isEmpty()) {
+            killWithUnusedFloatingInputs(node);
+            return true;
+        }
+        return false;
+    }
+
     /**
      * Exhaustive search for {@link GraphUtil#originalValue(ValueNode)} when a simple search fails.
      * This can happen in the presence of complicated phi/proxy/phi constructs.
