@@ -155,7 +155,7 @@ public class MergeNode extends BeginStateSplitNode implements IterableNodeType, 
                 return;
             }
             for (PhiNode phi : phis()) {
-                if (phi.usages().filter(isNotA(FrameState.class)).and(node -> !merge.isPhiAtMerge(node)).isNotEmpty()) {
+                if (phi.usages().filter(isNotA(VirtualState.class)).and(node -> !merge.isPhiAtMerge(node)).isNotEmpty()) {
                     return;
                 }
             }
