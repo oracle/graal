@@ -107,7 +107,8 @@ public class GuardNode extends FloatingAnchoredNode implements Canonicalizable, 
         } else if (condition() instanceof LogicConstantNode) {
             LogicConstantNode c = (LogicConstantNode) condition();
             if (c.getValue() != negated) {
-                return graph().start();
+                this.replaceAtUsages(null);
+                return null;
             }
         }
         return this;
