@@ -395,7 +395,8 @@ public class HSAILMove {
 
         @Override
         public void emitCode(CompilationResultBuilder crb, HSAILAssembler masm) {
-            throw new InternalError("NYI");
+            HSAILAddress addr = address.toAddress();
+            masm.emitLea(result, addr);
         }
     }
 
