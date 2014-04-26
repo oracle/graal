@@ -43,7 +43,6 @@ import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
-import com.oracle.graal.phases.common.cfs.FlowSensitiveReductionPhase;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.phases.util.*;
 import com.oracle.graal.truffle.phases.*;
@@ -164,8 +163,8 @@ public final class TruffleCacheImpl implements TruffleCache {
                 partialEscapePhase.apply(graph, phaseContext);
 
                 // Conditional elimination.
-                FlowSensitiveReductionPhase flowSensitiveReductionPhase = new FlowSensitiveReductionPhase(phaseContext.getMetaAccess());
-                flowSensitiveReductionPhase.apply(graph, phaseContext);
+                ConditionalEliminationPhase conditionalEliminationPhase = new ConditionalEliminationPhase(phaseContext.getMetaAccess());
+                conditionalEliminationPhase.apply(graph);
 
                 // Canonicalize / constant propagate.
                 canonicalizerPhase.apply(graph, phaseContext);
