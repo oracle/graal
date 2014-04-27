@@ -49,7 +49,7 @@ import java.util.ArrayList;
  * This class makes available little more than a few fields and a few utility methods used
  * throughout the remaining components making up control-flow sensitive reductions.
  * </p>
- * */
+ */
 public abstract class BaseReduction extends PostOrderNodeIterator<State> {
 
     protected static final DebugMetric metricCheckCastRemoved = Debug.metric("CheckCastRemoved");
@@ -70,7 +70,7 @@ public abstract class BaseReduction extends PostOrderNodeIterator<State> {
      *
      * @see State#impossiblePath()
      * @see com.oracle.graal.phases.common.cfs.FlowSensitiveReduction#finished()
-     * */
+     */
     public static class PostponedDeopt {
 
         private final boolean goesBeforeFixed;
@@ -105,7 +105,7 @@ public abstract class BaseReduction extends PostOrderNodeIterator<State> {
          * argument, will be done once we're done traversing the graph.
          *
          * @see #finished()
-         * */
+         */
         void addDeoptBefore(FixedWithNextNode fixed, DeoptimizationReason deoptReason) {
             add(new PostponedDeopt(true, fixed, deoptReason));
         }
@@ -115,7 +115,7 @@ public abstract class BaseReduction extends PostOrderNodeIterator<State> {
          * argument, will be done once we're done traversing the graph.
          *
          * @see #finished()
-         * */
+         */
         void addDeoptAfter(FixedWithNextNode fixed, DeoptimizationReason deoptReason) {
             add(new PostponedDeopt(false, fixed, deoptReason));
         }
@@ -131,7 +131,7 @@ public abstract class BaseReduction extends PostOrderNodeIterator<State> {
      * Doing so, in turn, requires this subclass of
      * {@link com.oracle.graal.graph.spi.CanonicalizerTool}.
      * </p>
-     * */
+     */
     public final class Tool implements CanonicalizerTool {
 
         private final PhaseContext context;
@@ -159,7 +159,7 @@ public abstract class BaseReduction extends PostOrderNodeIterator<State> {
          * Postpone
          * {@link com.oracle.graal.nodes.util.GraphUtil#tryKillUnused(com.oracle.graal.graph.Node)}
          * until {@link FlowSensitiveReduction#finished()} for the reasons covered there.
-         * */
+         */
         @Override
         public void removeIfUnused(Node node) {
             // GraphUtil.tryKillUnused(node);
@@ -207,7 +207,7 @@ public abstract class BaseReduction extends PostOrderNodeIterator<State> {
      * reported as such.
      * </p>
      *
-     * */
+     */
     protected static boolean precisionLoss(ValueNode input, ValueNode output) {
         ObjectStamp inputStamp = (ObjectStamp) input.stamp();
         ObjectStamp outputStamp = (ObjectStamp) output.stamp();

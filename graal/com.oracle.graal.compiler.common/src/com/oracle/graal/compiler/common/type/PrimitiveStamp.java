@@ -23,9 +23,8 @@
 package com.oracle.graal.compiler.common.type;
 
 /**
- * Describes the possible values of a {@link ValueNode} that produces a primitive value as result.
+ * Type describing primitive values.
  */
-@SuppressWarnings("javadoc")
 public abstract class PrimitiveStamp extends Stamp {
 
     private final int bits;

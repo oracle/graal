@@ -42,7 +42,7 @@ import static com.oracle.graal.nodes.extended.BranchProbabilityNode.NOT_FREQUENT
  * </p>
  *
  * @see #visitCheckCastNode(com.oracle.graal.nodes.java.CheckCastNode)
- * */
+ */
 public abstract class CheckCastReduction extends GuardingPiReduction {
 
     public CheckCastReduction(FixedNode start, State initialState, PhaseContext context) {
@@ -67,7 +67,7 @@ public abstract class CheckCastReduction extends GuardingPiReduction {
      * <p>
      * Precondition: the inputs (ie, object) hasn't been deverbosified yet.
      * </p>
-     * */
+     */
     protected final void visitCheckCastNode(CheckCastNode checkCast) {
 
         /*
@@ -139,7 +139,7 @@ public abstract class CheckCastReduction extends GuardingPiReduction {
      * @see #lowerCheckCastAnchorFriendlyWay(com.oracle.graal.nodes.java.CheckCastNode,
      *      com.oracle.graal.nodes.ValueNode)
      *
-     * */
+     */
     private void visitCheckCastNodeLackingWitness(CheckCastNode checkCast) {
         final ValueNode subject = checkCast.object();
         final ResolvedJavaType toType = checkCast.type();
@@ -170,7 +170,7 @@ public abstract class CheckCastReduction extends GuardingPiReduction {
      *
      * @see #visitCheckCastNode(com.oracle.graal.nodes.java.CheckCastNode)
      *
-     * */
+     */
     public void lowerCheckCastAnchorFriendlyWay(CheckCastNode checkCast, ValueNode subject) {
         ValueNode originalCheckCastObject = checkCast.object();
 
@@ -268,7 +268,7 @@ public abstract class CheckCastReduction extends GuardingPiReduction {
 
     /**
      * Porcelain method.
-     * */
+     */
     public static boolean isTypeOfWitnessBetter(Witness w, ObjectStamp stamp) {
         if (w == null) {
             return false;
@@ -281,7 +281,7 @@ public abstract class CheckCastReduction extends GuardingPiReduction {
      * Please note in this method "subject" refers to the downcasted input to the checkCast.
      *
      * @see #visitCheckCastNode(com.oracle.graal.nodes.java.CheckCastNode)
-     * */
+     */
     private void visitCheckCastNodeWithWitness(CheckCastNode checkCast) {
 
         final ResolvedJavaType toType = checkCast.type();

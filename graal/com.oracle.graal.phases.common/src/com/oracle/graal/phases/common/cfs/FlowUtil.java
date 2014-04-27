@@ -61,7 +61,7 @@ public class FlowUtil {
 
     /**
      * @return whether the first argument is strictly more precise than the second.
-     * */
+     */
     public static boolean isMorePrecise(ResolvedJavaType a, ResolvedJavaType b) {
         if (a == null) {
             return false;
@@ -132,7 +132,7 @@ public class FlowUtil {
      * An IllegalStamp should never happen. In contrast, !isLegal() values could happen due to dead
      * code not yet removed, or upon some non-sideeffecting instructions floating out of a dead
      * branch.
-     * */
+     */
     public static boolean isLegalObjectStamp(Stamp s) {
         return isObjectStamp(s) && s.isLegal();
     }
@@ -162,7 +162,7 @@ public class FlowUtil {
      * a score of 1. In all other cases (non-comparable, or supertype) the score is -1.
      *
      * @return whether the first argument is strictly more precise than the second.
-     * */
+     */
     public static boolean isMorePrecise(ObjectStamp a, ObjectStamp b) {
         int d0 = MINUS(a.alwaysNull(), b.alwaysNull());
         if (d0 == -1) {
@@ -234,7 +234,7 @@ public class FlowUtil {
     /**
      * Returns (preserving order) the ValueNodes without duplicates found among the argument's
      * direct inputs.
-     * */
+     */
     @SuppressWarnings("unchecked")
     public static List<ValueNode> distinctValueAndConditionInputs(Node n) {
         ArrayList<ValueNode> result = null;
@@ -275,7 +275,7 @@ public class FlowUtil {
      * Start situation: the parent node has <code>oldInput</code> among its (direct) inputs. After
      * this method has run, all such occurrences have been replaced with <code>newInput</code>. In
      * case that makes <code>oldInput</code> disconnected, it is removed from the graph.
-     * */
+     */
     public static void replaceInPlace(Node parent, Node oldInput, Node newInput) {
         assert parent != null;
         assert parent.inputs().contains(oldInput);

@@ -31,7 +31,7 @@ import com.oracle.graal.nodes.java.InstanceOfNode;
 
 /**
  * @see #extract(com.oracle.graal.nodes.LogicNode)
- * */
+ */
 class CastCheckExtractor {
 
     public final ResolvedJavaType type;
@@ -57,7 +57,7 @@ class CastCheckExtractor {
     /**
      * This method detects whether the argument realizes the CheckCast pattern. If so, distills and
      * returns the essentials of such check, otherwise returns null.
-     * */
+     */
     static CastCheckExtractor extract(LogicNode cond) {
         if (!(cond instanceof ShortCircuitOrNode)) {
             return null;
@@ -76,7 +76,7 @@ class CastCheckExtractor {
 
     /**
      * Porcelain method.
-     * */
+     */
     public static boolean isInstanceOfCheckOn(LogicNode cond, ValueNode subject) {
         if (!(cond instanceof InstanceOfNode)) {
             return false;

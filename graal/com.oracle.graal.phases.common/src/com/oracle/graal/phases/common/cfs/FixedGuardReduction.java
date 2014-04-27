@@ -35,7 +35,7 @@ import com.oracle.graal.phases.tiers.PhaseContext;
  * </p>
  * 
  * @see #visitFixedGuardNode(com.oracle.graal.nodes.FixedGuardNode)
- * */
+ */
 public abstract class FixedGuardReduction extends CheckCastReduction {
 
     public FixedGuardReduction(FixedNode start, State initialState, PhaseContext context) {
@@ -190,7 +190,7 @@ public abstract class FixedGuardReduction extends CheckCastReduction {
 
     /**
      * Porcelain method.
-     * */
+     */
     private void markFixedGuardNodeAlwaysFails(FixedGuardNode f) {
         metricFixedGuardNodeRemoved.increment();
         state.impossiblePath();
@@ -204,7 +204,7 @@ public abstract class FixedGuardReduction extends CheckCastReduction {
      * <p>
      * The `replacement` guard must be such that it implies the `old` guard.
      * </p>
-     * */
+     */
     private void removeFixedGuardNode(FixedGuardNode old, GuardingNode replacement) {
         if (replacement == null) {
             return;

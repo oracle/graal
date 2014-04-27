@@ -39,7 +39,7 @@ import com.oracle.graal.phases.tiers.PhaseContext;
  * </p>
  * 
  * @see #visitGuardingPiNode(com.oracle.graal.nodes.GuardingPiNode)
- * */
+ */
 public abstract class GuardingPiReduction extends BaseReduction {
 
     public GuardingPiReduction(FixedNode start, State initialState, PhaseContext context) {
@@ -75,7 +75,7 @@ public abstract class GuardingPiReduction extends BaseReduction {
      * Precondition: the condition hasn't been deverbosified yet.
      * </p>
      * 
-     * */
+     */
     protected final void visitGuardingPiNode(GuardingPiNode envelope) {
 
         if (!FlowUtil.hasLegalObjectStamp(envelope)) {
@@ -181,7 +181,7 @@ public abstract class GuardingPiReduction extends BaseReduction {
      * 
      * @see #visitGuardingPiNode(com.oracle.graal.nodes.GuardingPiNode)
      * 
-     * */
+     */
     private boolean tryRemoveGuardingPiNode(GuardingPiNode envelope) {
 
         LogicNode cond = envelope.condition();
@@ -251,7 +251,7 @@ public abstract class GuardingPiReduction extends BaseReduction {
      * non-null.
      * 
      * @see #tryRemoveGuardingPiNode(com.oracle.graal.nodes.GuardingPiNode)
-     * */
+     */
     private boolean tryRemoveGuardingPiNodeNonNullCond(GuardingPiNode envelope) {
 
         ValueNode payload = envelope.object();
@@ -306,7 +306,7 @@ public abstract class GuardingPiReduction extends BaseReduction {
      * 
      * @see #tryRemoveGuardingPiNode(com.oracle.graal.nodes.GuardingPiNode)
      * 
-     * */
+     */
     private boolean tryRemoveGuardingPiNodeCheckCastCond(GuardingPiNode envelope, ResolvedJavaType toType) {
         assert toType != null;
         ValueNode payload = envelope.object();
@@ -353,7 +353,7 @@ public abstract class GuardingPiReduction extends BaseReduction {
 
     /**
      * Porcelain method.
-     * */
+     */
     private void removeGuardingPiNode(GuardingPiNode envelope, ValueNode replacement) {
         assert !precisionLoss(envelope, replacement);
         metricGuardingPiNodeRemoved.increment();

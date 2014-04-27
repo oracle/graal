@@ -27,7 +27,7 @@ import com.oracle.graal.api.meta.*;
 public interface StackIntrospection {
 
     /**
-     * Accesses the current stack, returning a collection of {@long InspectedFrame}s that can be
+     * Accesses the current stack, returning a collection of {@link InspectedFrame}s that can be
      * used to inspect the stack frames' contents.
      *
      * @param initialMethods if this is non-{@code null}, then the stack trace will start at these

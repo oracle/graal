@@ -61,7 +61,7 @@ import static com.oracle.graal.api.meta.DeoptimizationReason.*;
  * @see com.oracle.graal.phases.common.cfs.GuardingPiReduction
  * @see com.oracle.graal.phases.common.cfs.FixedGuardReduction
  *
- * */
+ */
 public class FlowSensitiveReduction extends FixedGuardReduction {
 
     public FlowSensitiveReduction(FixedNode start, State initialState, PhaseContext context) {
@@ -111,7 +111,7 @@ public class FlowSensitiveReduction extends FixedGuardReduction {
      * Checking if they aren't in use, proceeding to remove them in that case.
      * </p>
      *
-     * */
+     */
     @Override
     public void finished() {
         if (!postponedDeopts.isEmpty()) {
@@ -177,7 +177,7 @@ public class FlowSensitiveReduction extends FixedGuardReduction {
      * TODO When tracking integer-stamps, the state at each successor of a TypeSwitchNode should
      * track an integer-stamp for the LoadHubNode (meet over the constants leading to that
      * successor). However, are LoadHubNode-s shared frequently enough?
-     * */
+     */
     private void registerTypeSwitchNode(TypeSwitchNode typeSwitch, BeginNode begin) {
         if (typeSwitch.value() instanceof LoadHubNode) {
             LoadHubNode loadHub = (LoadHubNode) typeSwitch.value();
@@ -252,7 +252,7 @@ public class FlowSensitiveReduction extends FixedGuardReduction {
      * </p>
      *
      * @return whether any reduction was performed on the inputs of the arguments.
-     * */
+     */
     public boolean deverbosifyInputsInPlace(ValueNode parent) {
         boolean changed = false;
         for (ValueNode i : FlowUtil.distinctValueAndConditionInputs(parent)) {
@@ -276,7 +276,7 @@ public class FlowSensitiveReduction extends FixedGuardReduction {
      * @return the original parent if no updated took place, a copy-on-write version of it
      *         otherwise.
      *
-     * */
+     */
     private MethodCallTargetNode deverbosifyInputsCopyOnWrite(MethodCallTargetNode parent) {
         MethodCallTargetNode changed = null;
         for (ValueNode i : FlowUtil.distinctValueAndConditionInputs(parent)) {
@@ -442,7 +442,7 @@ public class FlowSensitiveReduction extends FixedGuardReduction {
      * <p>
      * Precondition: the input (ie, object) hasn't been deverbosified yet.
      * </p>
-     * */
+     */
     private void visitNullCheckNode(NullCheckNode ncn) {
         ValueNode object = ncn.getObject();
         if (state.isNull(object)) {
@@ -471,7 +471,7 @@ public class FlowSensitiveReduction extends FixedGuardReduction {
      * <p>
      * Precondition: inputs haven't been deverbosified yet.
      * </p>
-     * */
+     */
     private void visitAbstractEndNode(AbstractEndNode endNode) {
         MergeNode merge = endNode.merge();
         for (PhiNode phi : merge.phis()) {
@@ -498,7 +498,7 @@ public class FlowSensitiveReduction extends FixedGuardReduction {
      * <p>
      * Precondition: inputs haven't been deverbosified yet.
      * </p>
-     * */
+     */
     private void visitInvoke(Invoke invoke) {
         if (invoke.asNode().stamp() instanceof IllegalStamp) {
             return; // just to be safe

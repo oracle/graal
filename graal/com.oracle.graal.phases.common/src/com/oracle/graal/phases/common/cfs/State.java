@@ -80,7 +80,7 @@ public final class State extends MergeableState<State> implements Cloneable {
      * </ul>
      * </p>
      *
-     * */
+     */
     int versionNr = 0;
 
     boolean isUnreachable = false;
@@ -91,7 +91,7 @@ public final class State extends MergeableState<State> implements Cloneable {
      * detect an "impossible path" could be shaved off.
      *
      * @see com.oracle.graal.phases.common.cfs.BaseReduction.PostponedDeopt
-     * */
+     */
     void impossiblePath() {
         isUnreachable = true;
         metricImpossiblePathDetected.increment();
@@ -115,7 +115,7 @@ public final class State extends MergeableState<State> implements Cloneable {
      * {@link EquationalReasoner#downcasted(com.oracle.graal.nodes.ValueNode) downcasted()}
      * </p>
      *
-     * */
+     */
     private IdentityHashMap<ValueNode, Witness> typeRefinements;
 
     IdentityHashMap<ValueNode, GuardingNode> knownNull;
@@ -143,7 +143,7 @@ public final class State extends MergeableState<State> implements Cloneable {
 
     /**
      * @return A new list containing only those states that are reachable.
-     * */
+     */
     private static ArrayList<State> reachableStates(List<State> states) {
         ArrayList<State> result = new ArrayList<>(states);
         Iterator<State> iter = result.iterator();
@@ -592,7 +592,7 @@ public final class State extends MergeableState<State> implements Cloneable {
      * case the state should be marked unreachable), the caller must take care of that.
      * </p>
      *
-     * */
+     */
     private void addFactPrimordial(LogicNode condition, IdentityHashMap<LogicNode, GuardingNode> to, GuardingNode anchor) {
         assert condition != null;
         if (!to.containsKey(condition)) {
@@ -608,7 +608,7 @@ public final class State extends MergeableState<State> implements Cloneable {
      * <li>track set-representative for equality classes determined by (chained) IntegerTestNode</li>
      * </ul>
      *
-     * */
+     */
     public void addFact(boolean isTrue, LogicNode condition, GuardingNode anchor) {
         assert anchor != null;
         assert !isUnreachable;
@@ -781,7 +781,7 @@ public final class State extends MergeableState<State> implements Cloneable {
     /**
      *
      * @return true iff `value` may lose dependency not covered by `anchor`.
-     * */
+     */
     public static boolean isDependencyTainted(ValueNode value, GuardingNode anchor) {
         if (value instanceof ValueProxy) {
             if (value instanceof GuardedNode) {

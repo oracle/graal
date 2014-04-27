@@ -111,7 +111,7 @@ public final class EquationalReasoner {
      * {@link #added} grows during a run of
      * {@link com.oracle.graal.phases.common.cfs.FlowSensitiveReductionPhase
      * FlowSensitiveReductionPhase}, and doesn't survive across runs.
-     * */
+     */
     public void forceState(State s) {
         state = s;
         substs.clear();
@@ -285,7 +285,7 @@ public final class EquationalReasoner {
      * Usage: must be called only from {@link #deverbosify(com.oracle.graal.graph.Node)
      * deverbosify(Node)}.</li>
      * </ul>
-     * */
+     */
     public Node deverbosifyFloatingNode(final FloatingNode n) {
 
         assert n != null : "Should have been caught in deverbosify()";
@@ -360,7 +360,7 @@ public final class EquationalReasoner {
      * pre-image and image differ.
      *
      * @return the image of the substitution (ie, the second argument) unmodified.
-     * */
+     */
     private <M extends ValueNode> M rememberSubstitution(ValueNode from, M to) {
         assert from != null && to != null;
         if (from == to) {
@@ -597,7 +597,7 @@ public final class EquationalReasoner {
      * {@link com.oracle.graal.phases.common.cfs.FlowSensitiveReductionPhase} that assert no
      * type-precision gets lost. Thus the need to fix-up on our own, as done here.
      * </p>
-     * */
+     */
     private static void fixupTypeProfileStamp(ValueNode object) {
         if (!(object instanceof TypeProfileProxyNode)) {
             return;
@@ -625,7 +625,7 @@ public final class EquationalReasoner {
      * <p>
      * The resulting node might not have been in the graph already.
      * </p>
-     * */
+     */
     private PiNode wrapInPiNode(ValueNode payload, GuardingNode anchor, ObjectStamp newStamp, boolean remember) {
         try (Debug.Scope s = Debug.scope("Downcast", payload)) {
             assert payload != anchor : payload.graph().toString();
@@ -782,7 +782,7 @@ public final class EquationalReasoner {
      * </p>
      *
      * @see #downcastedValueProxy
-     * */
+     */
     public ValueNode downcastedGuardingPiNode(GuardingPiNode envelope, Witness w) {
         assert envelope != w.guard().asNode() : "The stamp of " + envelope + " would lead to downcasting with that very same GuardingPiNode as guard.";
         return downcastedUtil(envelope, w);
@@ -814,7 +814,7 @@ public final class EquationalReasoner {
      * </p>
      *
      * @see #downcastedValueProxy
-     * */
+     */
     private ValueNode downcastedPiNodeOrPiArrayNode(PiNode envelope, Witness w) {
         return downcastedUtil(envelope, w);
     }
@@ -830,7 +830,7 @@ public final class EquationalReasoner {
      * </p>
      *
      * @see #downcastedValueProxy
-     * */
+     */
     private ValueNode downcastedTypeProfileProxyNode(TypeProfileProxyNode envelope) {
         ValueNode payload = envelope.getOriginalNode();
         ValueNode d = downcasted(payload);
@@ -859,7 +859,7 @@ public final class EquationalReasoner {
      * Re-wrap the checkCast in a type-refining {@link com.oracle.graal.nodes.PiNode PiNode} only if
      * the downcasted scrutinee does not conform to the checkCast's target-type.
      * </p>
-     * */
+     */
     private ValueNode downcastedCheckCastNode(CheckCastNode checkCast, Witness w) {
 
         final ResolvedJavaType toType = checkCast.type();
@@ -899,7 +899,7 @@ public final class EquationalReasoner {
      * to hold an updated stamp) provided the argument's stamp can be strictly refined, and returns
      * it.
      * </p>
-     * */
+     */
     private ValueNode downcastedUtil(ValueNode subject, Witness w) {
 
         ObjectStamp originalStamp = (ObjectStamp) subject.stamp();
