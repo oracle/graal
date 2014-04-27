@@ -31,6 +31,7 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.common.*;
+import com.oracle.graal.phases.common.cfs.IterativeFlowSensitiveReductionPhase;
 import com.oracle.graal.phases.tiers.*;
 
 public class IterativeInliningPhase extends AbstractInliningPhase {
@@ -70,9 +71,14 @@ public class IterativeInliningPhase extends AbstractInliningPhase {
 
                 new DeadCodeEliminationPhase().apply(graph);
 
-                if (ConditionalElimination.getValue() && OptCanonicalizer.getValue()) {
+                boolean reduceOrEliminate = FlowSensitiveReduction.getValue() || ConditionalElimination.getValue();
+                if (reduceOrEliminate && OptCanonicalizer.getValue()) {
                     canonicalizer.apply(graph, context);
-                    new IterativeConditionalEliminationPhase(canonicalizer).apply(graph, context);
+                    if (FlowSensitiveReduction.getValue()) {
+                        new IterativeFlowSensitiveReductionPhase(canonicalizer).apply(graph, context);
+                    } else {
+                        new IterativeConditionalEliminationPhase(canonicalizer).apply(graph, context);
+                    }
                 }
                 if (!progress) {
                     break;
