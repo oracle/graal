@@ -346,7 +346,7 @@ public final class State extends MergeableState<State> implements Cloneable {
     }
 
     /**
-     * @retun null if no type-witness available for the argument, the witness otherwise.
+     * @return null if no type-witness available for the argument, the witness otherwise.
      */
     public Witness typeInfo(ValueNode object) {
         assert FlowUtil.hasLegalObjectStamp(object);
@@ -354,7 +354,7 @@ public final class State extends MergeableState<State> implements Cloneable {
     }
 
     /**
-     * @retun true iff the argument is known to stand for null.
+     * @return true iff the argument is known to stand for null.
      */
     public boolean isNull(ValueNode object) {
         assert FlowUtil.hasLegalObjectStamp(object);
@@ -377,7 +377,7 @@ public final class State extends MergeableState<State> implements Cloneable {
      * is-non-null set.
      * </p>
      *
-     * @retun true iff the argument is known to stand for non-null.
+     * @return true iff the argument is known to stand for non-null.
      */
     public boolean isNonNull(ValueNode object) {
         assert FlowUtil.hasLegalObjectStamp(object);
@@ -389,7 +389,7 @@ public final class State extends MergeableState<State> implements Cloneable {
     }
 
     /**
-     * @retun true iff the argument is known to stand for an object conforming to the given type.
+     * @return true iff the argument is known to stand for an object conforming to the given type.
      */
     public boolean knownToConform(ValueNode object, ResolvedJavaType to) {
         assert FlowUtil.hasLegalObjectStamp(object);
@@ -411,8 +411,8 @@ public final class State extends MergeableState<State> implements Cloneable {
     }
 
     /**
-     * @retun true iff the argument is known to stand for an object that definitely does not conform
-     *        to the given type.
+     * @return true iff the argument is known to stand for an object that definitely does not
+     *         conform to the given type.
      */
     public boolean knownNotToConform(ValueNode object, ResolvedJavaType to) {
         assert FlowUtil.hasLegalObjectStamp(object);
@@ -454,7 +454,7 @@ public final class State extends MergeableState<State> implements Cloneable {
      *    final: exact non-interface reference-type
      *    non-f: non-exact non-interface reference-type
      *
-     * @retun true iff the first argument is known not to conform to the second argument.
+     * @return true iff the first argument is known not to conform to the second argument.
      */
     // @formatter:on
     public static boolean knownNotToConform(ResolvedJavaType a, ResolvedJavaType b) {

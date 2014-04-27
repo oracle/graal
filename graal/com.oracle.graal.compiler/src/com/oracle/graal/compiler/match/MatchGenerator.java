@@ -26,10 +26,11 @@ import com.oracle.graal.compiler.gen.*;
 
 /**
  * Code generator for complex match patterns.
- *
- * @returns null if the match can't be generated or a {@link ComplexMatchResult} that can be
- *          evaluated during LIR generation to produce the final LIR value.
  */
 public interface MatchGenerator {
+    /**
+     * @returns null if the match can't be generated or a {@link ComplexMatchResult} that can be
+     *          evaluated during LIR generation to produce the final LIR value.
+     */
     ComplexMatchResult match(NodeLIRBuilder gen);
 }
