@@ -29,7 +29,7 @@ package com.oracle.truffle.sl.runtime;
  * there is always the danger of a spurious {@link NullPointerException}. Representing the guest
  * language {@code null} as a singleton, as in {@link #SINGLETON this class}, is the recommended
  * practice.
- * */
+ */
 public final class SLNull {
 
     /**
