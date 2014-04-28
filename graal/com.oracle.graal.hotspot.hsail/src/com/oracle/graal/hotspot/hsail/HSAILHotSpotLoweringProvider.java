@@ -37,7 +37,7 @@ import com.oracle.graal.hotspot.hsail.replacements.*;
 
 import java.util.HashMap;
 
-public class HSAILHotSpotLoweringProvider extends HotSpotLoweringProvider {
+public class HSAILHotSpotLoweringProvider extends DefaultHotSpotLoweringProvider {
 
     private HSAILNewObjectSnippets.Templates hsailNewObjectSnippets;
 
