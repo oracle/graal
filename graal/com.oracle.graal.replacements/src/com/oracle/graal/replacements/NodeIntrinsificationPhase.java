@@ -42,7 +42,6 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
-import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.util.*;
@@ -82,7 +81,7 @@ public class NodeIntrinsificationPhase extends Phase {
         NodeIntrinsic intrinsic = getIntrinsic(target);
         if (intrinsic != null) {
             assert target.getAnnotation(Fold.class) == null;
-            assert Modifier.isStatic(target.getModifiers()) : "node intrinsic must be static: " + target;
+            assert target.isStatic() : "node intrinsic must be static: " + target;
 
             ResolvedJavaType[] parameterTypes = resolveJavaTypes(signatureToTypes(target), declaringClass);
 

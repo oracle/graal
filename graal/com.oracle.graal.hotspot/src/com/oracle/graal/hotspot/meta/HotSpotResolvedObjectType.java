@@ -23,10 +23,8 @@
 package com.oracle.graal.hotspot.meta;
 
 import static com.oracle.graal.api.meta.MetaUtil.*;
-import static com.oracle.graal.graph.UnsafeAccess.*;
+import static com.oracle.graal.compiler.common.UnsafeAccess.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
-import static java.lang.reflect.Modifier.*;
-
 import java.lang.annotation.*;
 import java.lang.reflect.*;
 import java.net.*;
@@ -141,7 +139,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
     public ResolvedJavaType findUniqueConcreteSubtype() {
         HotSpotVMConfig config = runtime().getConfig();
         if (isArray()) {
-            return isFinal(getElementalType(this).getModifiers()) ? this : null;
+            return getElementalType(this).isFinal() ? this : null;
         } else if (isInterface()) {
             final long implementorMetaspaceKlass = runtime().getCompilerToVM().getKlassImplementor(metaspaceKlass());
 
@@ -157,20 +155,20 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
              * than one implementors (see: InstanceKlass::add_implementor). The isInterface check
              * takes care of this fact since this class is an interface.
              */
-            if (isAbstract(type.getModifiers()) || type.isInterface() || !type.isLeafClass()) {
+            if (type.isAbstract() || type.isInterface() || !type.isLeafClass()) {
                 return null;
             }
             return type;
         } else {
             HotSpotResolvedObjectType type = this;
-            while (isAbstract(type.getModifiers())) {
+            while (type.isAbstract()) {
                 long subklass = type.getSubklass();
                 if (subklass == 0 || unsafeReadWord(subklass + config.nextSiblingOffset) != 0) {
                     return null;
                 }
                 type = (HotSpotResolvedObjectType) fromMetaspaceKlass(subklass);
             }
-            if (isAbstract(type.getModifiers()) || type.isInterface() || !type.isLeafClass()) {
+            if (type.isAbstract() || type.isInterface() || !type.isLeafClass()) {
                 return null;
             }
             return type;
@@ -255,7 +253,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
         if (isArray()) {
             return getComponentType().asExactType() != null ? this : null;
         }
-        return isFinal(getModifiers()) ? this : null;
+        return isFinal() ? this : null;
     }
 
     @Override
@@ -358,7 +356,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
     @Override
     public ResolvedJavaMethod resolveMethod(ResolvedJavaMethod method) {
         assert method instanceof HotSpotMethod;
-        if (!isAbstract(method.getModifiers()) && method.getDeclaringClass().equals(this)) {
+        if (!method.isAbstract() && method.getDeclaringClass().equals(this)) {
             return method;
         }
 
@@ -367,7 +365,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
             return null;
         }
         HotSpotResolvedJavaMethod resolvedMethod = HotSpotResolvedJavaMethod.fromMetaspace(resolvedMetaspaceMethod);
-        if (isAbstract(resolvedMethod.getModifiers())) {
+        if (resolvedMethod.isAbstract()) {
             return null;
         }
         return resolvedMethod;

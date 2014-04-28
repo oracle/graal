@@ -54,7 +54,7 @@ public abstract class Stamp {
      * Gets a platform dependent {@link PlatformKind} that can be used to store a value of this
      * stamp.
      */
-    public abstract PlatformKind getPlatformKind(LIRTypeTool tool);
+    public abstract PlatformKind getPlatformKind(PlatformKindTool tool);
 
     /**
      * Returns the union of this stamp and the given stamp. Typically used to create stamps for

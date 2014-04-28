@@ -57,7 +57,7 @@ public final class ReadNode extends FloatableAccessNode implements LIRLowerable,
     public void generate(NodeLIRBuilderTool gen) {
         Value address = location().generateAddress(gen, gen.getLIRGeneratorTool(), gen.operand(object()));
         PlatformKind readKind = gen.getLIRGeneratorTool().getPlatformKind(stamp());
-        gen.setResult(this, gen.getLIRGeneratorTool().emitLoad(readKind, address, this));
+        gen.setResult(this, gen.getLIRGeneratorTool().emitLoad(readKind, address, gen.state(this)));
     }
 
     @Override
@@ -144,7 +144,7 @@ public final class ReadNode extends FloatableAccessNode implements LIRLowerable,
         }
 
         ObjectStamp valueStamp = (ObjectStamp) parent.object().stamp();
-        ResolvedJavaType valueType = ObjectStamp.typeOrNull(valueStamp);
+        ResolvedJavaType valueType = StampTool.typeOrNull(valueStamp);
         if (valueType != null && field.getDeclaringClass().isAssignableFrom(valueType)) {
             if (piStamp.nonNull() == valueStamp.nonNull() && piStamp.alwaysNull() == valueStamp.alwaysNull()) {
                 replaceFirstInput(parent, parent.object());

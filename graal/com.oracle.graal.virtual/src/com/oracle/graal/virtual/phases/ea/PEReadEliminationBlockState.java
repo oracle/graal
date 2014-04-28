@@ -34,10 +34,10 @@ public class PEReadEliminationBlockState extends PartialEscapeBlockState<PEReadE
 
     static class ReadCacheEntry {
 
-        public final ResolvedJavaField identity;
+        public final LocationIdentity identity;
         public final ValueNode object;
 
-        public ReadCacheEntry(ResolvedJavaField identity, ValueNode object) {
+        public ReadCacheEntry(LocationIdentity identity, ValueNode object) {
             this.identity = identity;
             this.object = object;
         }
@@ -95,7 +95,7 @@ public class PEReadEliminationBlockState extends PartialEscapeBlockState<PEReadE
         return super.equivalentTo(other);
     }
 
-    public void addReadCache(ValueNode object, ResolvedJavaField identity, ValueNode value, PartialEscapeClosure<?> closure) {
+    public void addReadCache(ValueNode object, LocationIdentity identity, ValueNode value, PartialEscapeClosure<?> closure) {
         ValueNode cacheObject;
         ObjectState obj = closure.getObjectState(this, object);
         if (obj != null) {
@@ -107,7 +107,7 @@ public class PEReadEliminationBlockState extends PartialEscapeBlockState<PEReadE
         readCache.put(new ReadCacheEntry(identity, cacheObject), value);
     }
 
-    public ValueNode getReadCache(ValueNode object, ResolvedJavaField identity, PartialEscapeClosure<?> closure) {
+    public ValueNode getReadCache(ValueNode object, LocationIdentity identity, PartialEscapeClosure<?> closure) {
         ValueNode cacheObject;
         ObjectState obj = closure.getObjectState(this, object);
         if (obj != null) {

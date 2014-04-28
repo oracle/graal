@@ -22,10 +22,10 @@
  */
 package com.oracle.graal.nodes.java;
 
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
 
 /**
  * This node describes one locking scope; it ties the monitor enter, monitor exit and the frame

@@ -22,23 +22,16 @@
  */
 package com.oracle.graal.compiler.test;
 
-import static com.oracle.graal.nodes.ConstantNode.*;
-import static com.oracle.graal.nodes.extended.BranchProbabilityNode.*;
-import static org.junit.Assert.*;
-
 import org.junit.*;
 
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.calc.*;
-import com.oracle.graal.nodes.java.*;
-import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.tiers.*;
 
 /**
- * Collection of tests for {@link ConditionalEliminationPhase} including those that triggered bugs
- * in this phase.
+ * Collection of tests for {@link com.oracle.graal.phases.common.ConditionalEliminationPhase}
+ * including those that triggered bugs in this phase.
  */
 public class ConditionalEliminationTest extends GraalCompilerTest {
 
@@ -88,174 +81,6 @@ public class ConditionalEliminationTest extends GraalCompilerTest {
         } while (true);
     }
 
-    /**
-     * This test presents a code pattern that triggered a bug where a (non-eliminated) checkcast
-     * caused an enclosing instanceof (for the same object and target type) to be incorrectly
-     * eliminated.
-     */
-    @Test
-    public void testReanchoringIssue() {
-        Entry end = new Entry("end");
-        EntryWithNext e1 = new EntryWithNext("e1", end);
-        EntryWithNext e2 = new EntryWithNext("e2", e1);
-
-        test("search", e2, "e3", new Entry("e4"));
-    }
-
-    @SuppressWarnings("unused")
-    public static int testNullnessSnippet(Object a, Object b) {
-        if (a == null) {
-            if (a == b) {
-                if (b == null) {
-                    return 1;
-                } else {
-                    return -2;
-                }
-            } else {
-                if (b == null) {
-                    return -3;
-                } else {
-                    return 4;
-                }
-            }
-        } else {
-            if (a == b) {
-                if (b == null) {
-                    return -5;
-                } else {
-                    return 6;
-                }
-            } else {
-                if (b == null) {
-                    return 7;
-                } else {
-                    return 8;
-                }
-            }
-        }
-    }
-
-    @Test
-    public void testNullness() {
-        test("testNullnessSnippet", null, null);
-        test("testNullnessSnippet", null, new Object());
-        test("testNullnessSnippet", new Object(), null);
-        test("testNullnessSnippet", new Object(), new Object());
-
-        StructuredGraph graph = parse("testNullnessSnippet");
-        new ConditionalEliminationPhase(getMetaAccess()).apply(graph);
-        new CanonicalizerPhase(true).apply(graph, new PhaseContext(getProviders(), null));
-        for (ConstantNode constant : getConstantNodes(graph)) {
-            if (ConstantNodeRecordsUsages || !constant.gatherUsages(graph).isEmpty()) {
-                assertTrue("unexpected constant: " + constant, constant.asConstant().isNull() || constant.asConstant().asInt() > 0);
-            }
-        }
-    }
-
-    @SuppressWarnings("unused")
-    public static int testDisjunctionSnippet(Object a) {
-        try {
-            if (a instanceof Integer) {
-                if (a == null) {
-                    return -1;
-                } else {
-                    return 2;
-                }
-            } else {
-                return 3;
-            }
-        } finally {
-            field = null;
-        }
-    }
-
-    @Test
-    public void testDisjunction() {
-        StructuredGraph graph = parse("testDisjunctionSnippet");
-        new CanonicalizerPhase(true).apply(graph, new PhaseContext(getProviders(), null));
-        IfNode ifNode = (IfNode) graph.start().next();
-        InstanceOfNode instanceOf = (InstanceOfNode) ifNode.condition();
-        IsNullNode x = graph.unique(new IsNullNode(graph.getParameter(0)));
-        InstanceOfNode y = instanceOf;
-        ShortCircuitOrNode disjunction = graph.unique(new ShortCircuitOrNode(x, false, y, false, NOT_FREQUENT_PROBABILITY));
-        LogicNegationNode negation = graph.unique(new LogicNegationNode(disjunction));
-        ifNode.setCondition(negation);
-        new CanonicalizerPhase(true).apply(graph, new PhaseContext(getProviders(), null));
-        new ConditionalEliminationPhase(getMetaAccess()).apply(graph);
-        new CanonicalizerPhase(true).apply(graph, new PhaseContext(getProviders(), null));
-        for (ConstantNode constant : getConstantNodes(graph)) {
-            if (ConstantNodeRecordsUsages || !constant.gatherUsages(graph).isEmpty()) {
-                assertTrue("unexpected constant: " + constant, constant.asConstant().isNull() || constant.asConstant().asInt() > 0);
-            }
-        }
-    }
-
-    public static int testInvokeSnippet(Number n) {
-        if (n instanceof Integer) {
-            return n.intValue();
-        } else {
-            return 1;
-        }
-    }
-
-    @Test
-    public void testInvoke() {
-        test("testInvokeSnippet", new Integer(16));
-        StructuredGraph graph = parse("testInvokeSnippet");
-        new CanonicalizerPhase(true).apply(graph, new PhaseContext(getProviders(), null));
-        new ConditionalEliminationPhase(getMetaAccess()).apply(graph);
-
-        InvokeNode invoke = graph.getNodes().filter(InvokeNode.class).first();
-        assertEquals(InvokeKind.Special, ((MethodCallTargetNode) invoke.callTarget()).invokeKind());
-    }
-
-    public static void testTypeMergingSnippet(Object o, boolean b) {
-        if (b) {
-            if (!(o instanceof Double)) {
-                return;
-            }
-        } else {
-            if (!(o instanceof Integer)) {
-                return;
-            }
-        }
-
-        /*
-         * For this test the conditional elimination has to correctly merge the type information it
-         * has about o, so that it can remove the check on Number.
-         */
-        if (!(o instanceof Number)) {
-            field = o;
-        }
-    }
-
-    @Test
-    public void testTypeMerging() {
-        StructuredGraph graph = parse("testTypeMergingSnippet");
-        new CanonicalizerPhase(true).apply(graph, new PhaseContext(getProviders(), null));
-        new ConditionalEliminationPhase(getMetaAccess()).apply(graph);
-        new CanonicalizerPhase(true).apply(graph, new PhaseContext(getProviders(), null));
-
-        assertEquals(0, graph.getNodes().filter(StoreFieldNode.class).count());
-    }
-
-    public static String testInstanceOfCheckCastSnippet(Object e) {
-        if (e instanceof Entry) {
-            return ((Entry) e).name;
-        }
-        return null;
-    }
-
-    @Test
-    public void testInstanceOfCheckCast() {
-        StructuredGraph graph = parse("testInstanceOfCheckCastSnippet");
-        new CanonicalizerPhase(true).apply(graph, new PhaseContext(getProviders(), null));
-        new ConditionalEliminationPhase(getMetaAccess()).apply(graph);
-        new CanonicalizerPhase(true).apply(graph, new PhaseContext(getProviders(), null));
-
-        assertEquals(0, graph.getNodes().filter(CheckCastNode.class).count());
-    }
-
     public static int testRedundantComparesSnippet(int[] array) {
         if (array == null) {
             return 0;
@@ -272,39 +97,17 @@ public class ConditionalEliminationTest extends GraalCompilerTest {
         new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.HIGH_TIER).apply(graph, context);
         canonicalizer.apply(graph, context);
         new FloatingReadPhase().apply(graph);
-        new ConditionalEliminationPhase(getMetaAccess()).apply(graph);
+        new ConditionalEliminationPhase(getMetaAccess()).apply(graph, context);
         canonicalizer.apply(graph, context);
 
         assertEquals(1, graph.getNodes().filter(GuardNode.class).count());
     }
 
-    public static int testDuplicateNullChecksSnippet(Object a) {
-        if (a == null) {
-            return 2;
+    public static String testInstanceOfCheckCastSnippet(Object e) {
+        if (e instanceof Entry) {
+            return ((Entry) e).name;
         }
-        try {
-            return ((Integer) a).intValue();
-        } catch (ClassCastException e) {
-            return 0;
-        }
-    }
-
-    @Test
-    @Ignore
-    public void testDuplicateNullChecks() {
-        // This tests whether explicit null checks properly eliminate later null guards. Currently
-        // it's failing.
-        StructuredGraph graph = parse("testDuplicateNullChecksSnippet");
-        CanonicalizerPhase canonicalizer = new CanonicalizerPhase(true);
-        PhaseContext context = new PhaseContext(getProviders(), null);
-
-        new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.HIGH_TIER).apply(graph, context);
-        canonicalizer.apply(graph, context);
-        new FloatingReadPhase().apply(graph);
-        new ConditionalEliminationPhase(getMetaAccess()).apply(graph);
-        canonicalizer.apply(graph, context);
-
-        assertEquals(1, graph.getNodes().filter(GuardNode.class).count());
+        return null;
     }
 
     @Test
@@ -317,9 +120,10 @@ public class ConditionalEliminationTest extends GraalCompilerTest {
 
         new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.HIGH_TIER).apply(graph, context);
         canonicalizer.apply(graph, context);
-        new ConditionalEliminationPhase(getMetaAccess()).apply(graph);
+        new ConditionalEliminationPhase(getMetaAccess()).apply(graph, context);
         canonicalizer.apply(graph, context);
 
         assertEquals(0, graph.getNodes().filter(GuardNode.class).count());
     }
+
 }

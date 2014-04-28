@@ -22,9 +22,9 @@
  */
 package com.oracle.graal.hotspot;
 
+import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 import static com.oracle.graal.nodes.StructuredGraph.*;
-import static com.oracle.graal.phases.GraalOptions.*;
 
 import java.io.*;
 import java.lang.reflect.*;

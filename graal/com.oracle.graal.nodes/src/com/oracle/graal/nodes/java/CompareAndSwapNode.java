@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,14 +22,14 @@
  */
 package com.oracle.graal.nodes.java;
 
-import static com.oracle.graal.graph.UnsafeAccess.*;
+import static com.oracle.graal.compiler.common.UnsafeAccess.*;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
 
 /**
  * Represents an atomic compare-and-swap operation The result is a boolean that contains whether the
@@ -45,6 +45,19 @@ public class CompareAndSwapNode extends AbstractMemoryCheckpoint implements Lowe
 
     private final Kind valueKind;
     private final int displacement;
+    private final LocationIdentity locationIdentity;
+
+    public CompareAndSwapNode(ValueNode object, int displacement, ValueNode offset, ValueNode expected, ValueNode newValue, Kind valueKind, LocationIdentity locationIdentity) {
+        super(StampFactory.forKind(Kind.Boolean.getStackKind()));
+        assert expected.stamp().isCompatible(newValue.stamp());
+        this.object = object;
+        this.offset = offset;
+        this.expected = expected;
+        this.newValue = newValue;
+        this.displacement = displacement;
+        this.valueKind = valueKind;
+        this.locationIdentity = locationIdentity;
+    }
 
     public ValueNode object() {
         return object;
@@ -70,20 +83,9 @@ public class CompareAndSwapNode extends AbstractMemoryCheckpoint implements Lowe
         return valueKind;
     }
 
-    public CompareAndSwapNode(ValueNode object, int displacement, ValueNode offset, ValueNode expected, ValueNode newValue, Kind valueKind) {
-        super(StampFactory.forKind(Kind.Boolean.getStackKind()));
-        assert expected.stamp().isCompatible(newValue.stamp());
-        this.object = object;
-        this.offset = offset;
-        this.expected = expected;
-        this.newValue = newValue;
-        this.displacement = displacement;
-        this.valueKind = valueKind;
-    }
-
     @Override
     public LocationIdentity getLocationIdentity() {
-        return LocationIdentity.ANY_LOCATION;
+        return locationIdentity;
     }
 
     @Override
@@ -94,19 +96,19 @@ public class CompareAndSwapNode extends AbstractMemoryCheckpoint implements Lowe
     // specialized on value type until boxing/unboxing is sorted out in intrinsification
     @NodeIntrinsic
     public static boolean compareAndSwap(Object object, @ConstantNodeParameter int displacement, long offset, Object expected, Object newValue,
-                    @SuppressWarnings("unused") @ConstantNodeParameter Kind valueKind) {
+                    @SuppressWarnings("unused") @ConstantNodeParameter Kind valueKind, @SuppressWarnings("unused") @ConstantNodeParameter LocationIdentity locationIdentity) {
         return unsafe.compareAndSwapObject(object, displacement + offset, expected, newValue);
     }
 
     @NodeIntrinsic
     public static boolean compareAndSwap(Object object, @ConstantNodeParameter int displacement, long offset, long expected, long newValue,
-                    @SuppressWarnings("unused") @ConstantNodeParameter Kind valueKind) {
+                    @SuppressWarnings("unused") @ConstantNodeParameter Kind valueKind, @SuppressWarnings("unused") @ConstantNodeParameter LocationIdentity locationIdentity) {
         return unsafe.compareAndSwapLong(object, displacement + offset, expected, newValue);
     }
 
     @NodeIntrinsic
     public static boolean compareAndSwap(Object object, @ConstantNodeParameter int displacement, long offset, int expected, int newValue,
-                    @SuppressWarnings("unused") @ConstantNodeParameter Kind valueKind) {
+                    @SuppressWarnings("unused") @ConstantNodeParameter Kind valueKind, @SuppressWarnings("unused") @ConstantNodeParameter LocationIdentity locationIdentity) {
         return unsafe.compareAndSwapInt(object, displacement + offset, expected, newValue);
     }
 }

@@ -23,8 +23,8 @@
 package com.oracle.graal.phases.schedule;
 
 import static com.oracle.graal.api.meta.LocationIdentity.*;
+import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.nodes.cfg.ControlFlowGraph.*;
-import static com.oracle.graal.phases.GraalOptions.*;
 
 import java.util.*;
 
@@ -986,13 +986,21 @@ public final class SchedulePhase extends Phase {
             stateAfter = ((StateSplit) i).stateAfter();
         }
 
+        if (i instanceof LoopExitNode) {
+            for (ProxyNode proxy : ((LoopExitNode) i).proxies()) {
+                addToLatestSorting(b, proxy, sortedInstructions, visited, reads, beforeLastLocation);
+            }
+        }
+
         for (Node input : i.inputs()) {
             if (input instanceof FrameState) {
                 if (input != stateAfter) {
                     addUnscheduledToLatestSorting(b, (FrameState) input, sortedInstructions, visited, reads, beforeLastLocation);
                 }
             } else {
-                addToLatestSorting(b, (ScheduledNode) input, sortedInstructions, visited, reads, beforeLastLocation);
+                if (!(i instanceof ProxyNode && input instanceof LoopExitNode)) {
+                    addToLatestSorting(b, (ScheduledNode) input, sortedInstructions, visited, reads, beforeLastLocation);
+                }
             }
         }
 

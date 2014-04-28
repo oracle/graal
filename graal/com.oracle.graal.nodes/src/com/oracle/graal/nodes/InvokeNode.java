@@ -185,13 +185,6 @@ public final class InvokeNode extends AbstractMemoryCheckpoint implements Invoke
     }
 
     @Override
-    public void computeStateDuring(FrameState stateAfter) {
-        FrameState newStateDuring = stateAfter.duplicateModified(bci(), stateAfter.rethrowException(), getKind());
-        newStateDuring.setDuringCall(true);
-        setStateDuring(newStateDuring);
-    }
-
-    @Override
     public GuardingNode getGuard() {
         return guard;
     }

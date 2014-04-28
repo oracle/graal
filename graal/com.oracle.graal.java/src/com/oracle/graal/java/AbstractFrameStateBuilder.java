@@ -69,6 +69,12 @@ public abstract class AbstractFrameStateBuilder<T extends KindProvider, S extend
     public abstract boolean isCompatibleWith(S other);
 
     public void clearNonLiveLocals(BciBlock block, LocalLiveness liveness, boolean liveIn) {
+        /*
+         * (lstadler) if somebody is tempted to remove/disable this clearing code: it's possible to
+         * remove it for normal compilations, but not for OSR compilations - otherwise dead object
+         * slots at the OSR entry aren't cleared. it is also not enough to rely on PiNodes with
+         * Kind.Illegal, because the conflicting branch might not have been parsed.
+         */
         if (liveness == null) {
             return;
         }

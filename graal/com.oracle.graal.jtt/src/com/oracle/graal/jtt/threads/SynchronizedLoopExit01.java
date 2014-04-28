@@ -30,9 +30,9 @@ import com.oracle.graal.jtt.*;
 
 /**
  * Inspired by {@code com.sun.media.sound.DirectAudioDevice$DirectDL.drain()}.
- * 
+ *
  * Two loop exits hold a monitor while merging.
- * 
+ *
  */
 public final class SynchronizedLoopExit01 extends JTTTest {
 
@@ -53,7 +53,7 @@ public final class SynchronizedLoopExit01 extends JTTTest {
         return b;
     }
 
-    @Test
+    @Test(timeout = 20000)
     public void run0() throws Throwable {
         runTest("test");
     }

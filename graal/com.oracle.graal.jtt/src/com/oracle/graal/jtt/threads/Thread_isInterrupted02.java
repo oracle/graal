@@ -26,8 +26,9 @@
 
 package com.oracle.graal.jtt.threads;
 
+import org.junit.*;
+
 import com.oracle.graal.jtt.*;
-import com.oracle.graal.test.*;
 
 //Test all, mainly monitors
 public class Thread_isInterrupted02 extends JTTTest {
@@ -85,12 +86,12 @@ public class Thread_isInterrupted02 extends JTTTest {
         }
     }
 
-    @LongTest
+    @Test(timeout = 20000)
     public void run0() throws Throwable {
         runTest("test", 0, 0);
     }
 
-    @LongTest
+    @Test(timeout = 20000)
     public void run1() throws Throwable {
         runTest("test", 1, 500);
     }

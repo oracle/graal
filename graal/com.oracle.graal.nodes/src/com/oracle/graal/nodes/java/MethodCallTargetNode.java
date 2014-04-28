@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.nodes.java;
 
-import java.lang.reflect.*;
-
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
@@ -109,12 +107,12 @@ public class MethodCallTargetNode extends CallTargetNode implements IterableNode
             assertTrue(n instanceof Invoke, "call target can only be used from an invoke (%s)", n);
         }
         if (invokeKind == InvokeKind.Special || invokeKind == InvokeKind.Static) {
-            assertFalse(Modifier.isAbstract(targetMethod.getModifiers()), "special calls or static calls are only allowed for concrete methods (%s)", targetMethod);
+            assertFalse(targetMethod.isAbstract(), "special calls or static calls are only allowed for concrete methods (%s)", targetMethod);
         }
         if (invokeKind == InvokeKind.Static) {
-            assertTrue(Modifier.isStatic(targetMethod.getModifiers()), "static calls are only allowed for static methods (%s)", targetMethod);
+            assertTrue(targetMethod.isStatic(), "static calls are only allowed for static methods (%s)", targetMethod);
         } else {
-            assertFalse(Modifier.isStatic(targetMethod.getModifiers()), "static calls are only allowed for non-static methods (%s)", targetMethod);
+            assertFalse(targetMethod.isStatic(), "static calls are only allowed for non-static methods (%s)", targetMethod);
         }
         return super.verify();
     }
@@ -143,11 +141,11 @@ public class MethodCallTargetNode extends CallTargetNode implements IterableNode
 
             // check if the type of the receiver can narrow the result
             ValueNode receiver = receiver();
-            ResolvedJavaType type = ObjectStamp.typeOrNull(receiver);
+            ResolvedJavaType type = StampTool.typeOrNull(receiver);
             if (type != null) {
                 // either the holder class is exact, or the receiver object has an exact type
                 ResolvedJavaMethod resolvedMethod = type.resolveMethod(targetMethod);
-                if (resolvedMethod != null && (resolvedMethod.canBeStaticallyBound() || ObjectStamp.isExactType(receiver))) {
+                if (resolvedMethod != null && (resolvedMethod.canBeStaticallyBound() || StampTool.isExactType(receiver))) {
                     invokeKind = InvokeKind.Special;
                     targetMethod = resolvedMethod;
                     return this;

@@ -26,12 +26,12 @@ import static com.oracle.graal.api.code.MemoryBarriers.*;
 import static com.oracle.graal.api.meta.DeoptimizationAction.*;
 import static com.oracle.graal.api.meta.DeoptimizationReason.*;
 import static com.oracle.graal.api.meta.LocationIdentity.*;
+import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 import static com.oracle.graal.hotspot.meta.HotSpotForeignCallsProviderImpl.*;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 import static com.oracle.graal.hotspot.replacements.NewObjectSnippets.*;
 import static com.oracle.graal.nodes.java.ArrayLengthNode.*;
-import static com.oracle.graal.phases.GraalOptions.*;
 
 import java.util.*;
 
@@ -112,6 +112,8 @@ public class HotSpotLoweringProvider implements LoweringProvider {
             lowerStoreFieldNode((StoreFieldNode) n, tool);
         } else if (n instanceof CompareAndSwapNode) {
             lowerCompareAndSwapNode((CompareAndSwapNode) n);
+        } else if (n instanceof AtomicReadAndWriteNode) {
+            lowerAtomicReadAndWriteNode((AtomicReadAndWriteNode) n);
         } else if (n instanceof LoadIndexedNode) {
             lowerLoadIndexedNode((LoadIndexedNode) n, tool);
         } else if (n instanceof StoreIndexedNode) {
@@ -190,8 +192,10 @@ public class HotSpotLoweringProvider implements LoweringProvider {
             if (graph.getGuardsStage() == StructuredGraph.GuardsStage.AFTER_FSA) {
                 newObjectSnippets.lower((NewMultiArrayNode) n, tool);
             }
-        } else if (n instanceof LoadExceptionObjectNode) {
-            exceptionObjectSnippets.lower((LoadExceptionObjectNode) n, registers, tool);
+        } else if (n instanceof ExceptionObjectNode) {
+            if (graph.getGuardsStage() == StructuredGraph.GuardsStage.FIXED_DEOPTS) {
+                lowerExceptionObjectNode((ExceptionObjectNode) n, tool);
+            }
         } else if (n instanceof IntegerDivNode || n instanceof IntegerRemNode || n instanceof UnsignedDivNode || n instanceof UnsignedRemNode) {
             // Nothing to do for division nodes. The HotSpot signal handler catches divisions by
             // zero and the MIN_VALUE / -1 cases.
@@ -221,7 +225,7 @@ public class HotSpotLoweringProvider implements LoweringProvider {
             NodeInputList<ValueNode> parameters = callTarget.arguments();
             ValueNode receiver = parameters.size() <= 0 ? null : parameters.get(0);
             GuardingNode receiverNullCheck = null;
-            if (!callTarget.isStatic() && receiver.stamp() instanceof ObjectStamp && !ObjectStamp.isObjectNonNull(receiver)) {
+            if (!callTarget.isStatic() && receiver.stamp() instanceof ObjectStamp && !StampTool.isObjectNonNull(receiver)) {
                 receiverNullCheck = createNullCheck(receiver, invoke.asNode(), tool);
                 invoke.setGuard(receiverNullCheck);
             }
@@ -385,6 +389,22 @@ public class HotSpotLoweringProvider implements LoweringProvider {
         graph.replaceFixedWithFixed(cas, atomicNode);
     }
 
+    private void lowerAtomicReadAndWriteNode(AtomicReadAndWriteNode n) {
+        StructuredGraph graph = n.graph();
+        Kind valueKind = n.getValueKind();
+        LocationNode location = IndexedLocationNode.create(n.getLocationIdentity(), valueKind, 0, n.offset(), graph, 1);
+
+        ValueNode newValue = implicitStoreConvert(graph, valueKind, n.newValue());
+
+        LoweredAtomicReadAndWriteNode memoryRead = graph.add(new LoweredAtomicReadAndWriteNode(n.object(), location, newValue, getAtomicReadAndWriteBarrierType(n), false));
+        memoryRead.setStateAfter(n.stateAfter());
+
+        ValueNode readValue = implicitLoadConvert(graph, valueKind, memoryRead);
+
+        n.replaceAtUsages(readValue);
+        graph.replaceFixedWithFixed(n, memoryRead);
+    }
+
     private void lowerLoadIndexedNode(LoadIndexedNode loadIndexed, LoweringTool tool) {
         StructuredGraph graph = loadIndexed.graph();
         Kind elementKind = loadIndexed.elementKind();
@@ -411,10 +431,10 @@ public class HotSpotLoweringProvider implements LoweringProvider {
 
         CheckCastNode checkcastNode = null;
         CheckCastDynamicNode checkcastDynamicNode = null;
-        if (elementKind == Kind.Object && !ObjectStamp.isObjectAlwaysNull(value)) {
+        if (elementKind == Kind.Object && !StampTool.isObjectAlwaysNull(value)) {
             // Store check!
-            ResolvedJavaType arrayType = ObjectStamp.typeOrNull(array);
-            if (arrayType != null && ObjectStamp.isExactType(array)) {
+            ResolvedJavaType arrayType = StampTool.typeOrNull(array);
+            if (arrayType != null && StampTool.isExactType(array)) {
                 ResolvedJavaType elementType = arrayType.getComponentType();
                 if (!MetaUtil.isJavaLangObject(elementType)) {
                     checkcastNode = graph.add(new CheckCastNode(elementType, value, null, true));
@@ -714,6 +734,19 @@ public class HotSpotLoweringProvider implements LoweringProvider {
         }
     }
 
+    private void lowerExceptionObjectNode(ExceptionObjectNode n, LoweringTool tool) {
+        LocationIdentity locationsKilledByInvoke = ((InvokeWithExceptionNode) n.predecessor()).getLocationIdentity();
+        BeginNode entry = n.graph().add(new KillingBeginNode(locationsKilledByInvoke));
+        LoadExceptionObjectNode loadException = n.graph().add(new LoadExceptionObjectNode(StampFactory.declaredNonNull(metaAccess.lookupJavaType(Throwable.class))));
+
+        loadException.setStateAfter(n.stateAfter());
+        n.replaceAtUsages(InputType.Value, loadException);
+        n.graph().replaceFixedWithFixed(n, entry);
+        entry.graph().addAfterFixed(entry, loadException);
+
+        exceptionObjectSnippets.lower(loadException, registers, tool);
+    }
+
     protected static void finishAllocatedObjects(LoweringTool tool, CommitAllocationNode commit, ValueNode[] allocations) {
         StructuredGraph graph = commit.graph();
         for (int objIndex = 0; objIndex < commit.getVirtualObjects().size(); objIndex++) {
@@ -789,8 +822,8 @@ public class HotSpotLoweringProvider implements LoweringProvider {
 
     private static boolean addReadBarrier(UnsafeLoadNode load) {
         if (useG1GC() && load.graph().getGuardsStage() == StructuredGraph.GuardsStage.FIXED_DEOPTS && load.object().getKind() == Kind.Object && load.accessKind() == Kind.Object &&
-                        !ObjectStamp.isObjectAlwaysNull(load.object())) {
-            ResolvedJavaType type = ObjectStamp.typeOrNull(load.object());
+                        !StampTool.isObjectAlwaysNull(load.object())) {
+            ResolvedJavaType type = StampTool.typeOrNull(load.object());
             if (type != null && !type.isArray()) {
                 return true;
             }
@@ -868,7 +901,7 @@ public class HotSpotLoweringProvider implements LoweringProvider {
 
     private static BarrierType getUnsafeStoreBarrierType(UnsafeStoreNode store) {
         if (store.value().getKind() == Kind.Object) {
-            ResolvedJavaType type = ObjectStamp.typeOrNull(store.object());
+            ResolvedJavaType type = StampTool.typeOrNull(store.object());
             if (type != null && !type.isArray()) {
                 return BarrierType.IMPRECISE;
             } else {
@@ -880,7 +913,19 @@ public class HotSpotLoweringProvider implements LoweringProvider {
 
     private static BarrierType getCompareAndSwapBarrierType(CompareAndSwapNode cas) {
         if (cas.expected().getKind() == Kind.Object) {
-            ResolvedJavaType type = ObjectStamp.typeOrNull(cas.object());
+            ResolvedJavaType type = StampTool.typeOrNull(cas.object());
+            if (type != null && !type.isArray()) {
+                return BarrierType.IMPRECISE;
+            } else {
+                return BarrierType.PRECISE;
+            }
+        }
+        return BarrierType.NONE;
+    }
+
+    private static BarrierType getAtomicReadAndWriteBarrierType(AtomicReadAndWriteNode n) {
+        if (n.newValue().getKind() == Kind.Object) {
+            ResolvedJavaType type = StampTool.typeOrNull(n.object());
             if (type != null && !type.isArray()) {
                 return BarrierType.IMPRECISE;
             } else {
@@ -973,7 +1018,7 @@ public class HotSpotLoweringProvider implements LoweringProvider {
     }
 
     private static GuardingNode createNullCheck(ValueNode object, FixedNode before, LoweringTool tool) {
-        if (ObjectStamp.isObjectNonNull(object)) {
+        if (StampTool.isObjectNonNull(object)) {
             return null;
         }
         return tool.createGuard(before, before.graph().unique(new IsNullNode(object)), DeoptimizationReason.NullCheckException, DeoptimizationAction.InvalidateReprofile, true);

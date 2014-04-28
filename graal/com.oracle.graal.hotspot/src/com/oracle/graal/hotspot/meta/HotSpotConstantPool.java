@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.hotspot.meta;
 
-import static com.oracle.graal.graph.UnsafeAccess.*;
+import static com.oracle.graal.compiler.common.UnsafeAccess.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 
 import java.lang.invoke.*;
@@ -529,6 +529,9 @@ public class HotSpotConstantPool extends CompilerObject implements ConstantPool 
                 }
                 break;
             case InvokeDynamic:
+                if (!isInvokedynamicIndex(cpi)) {
+                    throw new IllegalArgumentException("InvokeDynamic entries must be accessed");
+                }
                 runtime().getCompilerToVM().resolveInvokeDynamic(metaspaceConstantPool, cpi);
                 break;
             default:

@@ -88,13 +88,12 @@ public abstract class HotSpotFrameInstance implements FrameInstance {
 
     public abstract CallTarget getTargetCallTarget();
 
-    public DirectCallNode getCallNode() {
+    public Node getCallNode() {
         Object receiver = stackFrame.getLocal(getNotifyIndex());
-        if (receiver instanceof DirectCallNode) {
-            return (DirectCallNode) receiver;
-        } else {
-            return null;
+        if (receiver instanceof DirectCallNode || receiver instanceof IndirectCallNode) {
+            return (Node) receiver;
         }
+        return null;
     }
 
     /**

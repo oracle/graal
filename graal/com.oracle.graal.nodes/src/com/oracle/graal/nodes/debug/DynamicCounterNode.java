@@ -22,15 +22,15 @@
  */
 package com.oracle.graal.nodes.debug;
 
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
 
 /**
  * This node can be used to add a counter to the code that will estimate the dynamic number of calls
  * by adding an increment to the compiled code. This should of course only be used for
  * debugging/testing purposes.
- * 
+ *
  * A unique counter will be created for each unique name passed to the constructor. Depending on the
  * value of withContext, the name of the root method is added to the counter's name.
  */

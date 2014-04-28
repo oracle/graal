@@ -286,4 +286,8 @@ public abstract class HotSpotCodeCacheProvider implements CodeCacheProvider {
     public String disassemble(ResolvedJavaMethod method) {
         return new BytecodeDisassembler().disassemble(method);
     }
+
+    public SpeculationLog createSpeculationLog() {
+        return new HotSpotSpeculationLog();
+    }
 }

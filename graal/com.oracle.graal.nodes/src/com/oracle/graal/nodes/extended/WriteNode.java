@@ -54,7 +54,7 @@ public final class WriteNode extends AbstractWriteNode implements LIRLowerable, 
             v = gen.operand(value());
         }
         PlatformKind writeKind = gen.getLIRGeneratorTool().getPlatformKind(value().stamp());
-        gen.getLIRGeneratorTool().emitStore(writeKind, address, v, this);
+        gen.getLIRGeneratorTool().emitStore(writeKind, address, v, gen.state(this));
     }
 
     @Override

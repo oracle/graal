@@ -30,11 +30,6 @@ import com.oracle.graal.sparc.*;
 
 public class SPARCAddress extends AbstractAddress {
 
-    /**
-     * Stack bias for stack and frame pointer loads.
-     */
-    private static final int STACK_BIAS = 0x7ff;
-
     private final Register base;
     private final Register index;
     private final int displacement;
@@ -42,7 +37,7 @@ public class SPARCAddress extends AbstractAddress {
     /**
      * Creates an {@link SPARCAddress} with given base register, no scaling and a given
      * displacement.
-     * 
+     *
      * @param base the base register
      * @param displacement the displacement
      */
@@ -54,7 +49,7 @@ public class SPARCAddress extends AbstractAddress {
 
     /**
      * Creates an {@link SPARCAddress} with given base register, no scaling and a given index.
-     * 
+     *
      * @param base the base register
      * @param index the index register
      */
@@ -113,7 +108,7 @@ public class SPARCAddress extends AbstractAddress {
     /**
      * This method adds the stack-bias to the displacement if the base register is either
      * {@link SPARC#sp} or {@link SPARC#fp}.
-     * 
+     *
      * @return Optional additive displacement.
      */
     public int getDisplacement() {

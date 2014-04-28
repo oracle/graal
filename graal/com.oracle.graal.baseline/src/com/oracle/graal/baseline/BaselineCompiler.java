@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.baseline;
 
-import static com.oracle.graal.phases.GraalOptions.*;
+import static com.oracle.graal.compiler.common.GraalOptions.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
@@ -57,7 +57,7 @@ public class BaselineCompiler {
         ConstantPool constantPool = method.getConstantPool();
         TTY.Filter filter = new TTY.Filter(PrintFilter.getValue(), method);
 
-        LIRFrameStateBuilder frameState = new LIRFrameStateBuilder(method);
+        BaselineFrameStateBuilder frameState = new BaselineFrameStateBuilder(method);
 
         BaselineBytecodeParser parser = new BaselineBytecodeParser(metaAccess, method, graphBuilderConfig, optimisticOpts, frameState, stream, profilingInfo, constantPool, entryBCI, backend);
 

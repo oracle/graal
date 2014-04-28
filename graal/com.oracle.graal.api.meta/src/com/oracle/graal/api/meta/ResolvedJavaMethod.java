@@ -29,7 +29,7 @@ import java.lang.reflect.*;
  * Represents a resolved Java method. Methods, like fields and types, are resolved through
  * {@link ConstantPool constant pools}.
  */
-public interface ResolvedJavaMethod extends JavaMethod, InvokeTarget {
+public interface ResolvedJavaMethod extends JavaMethod, InvokeTarget, ModifiersProvider {
 
     /**
      * Returns the bytecode of this method, if the method has code. The returned byte array does not
@@ -69,10 +69,10 @@ public interface ResolvedJavaMethod extends JavaMethod, InvokeTarget {
     int getMaxStackSize();
 
     /**
-     * Returns the Java language modifiers for this method, as an integer. The {@link Modifier}
-     * class should be used to decode the modifiers. Only the
-     * {@linkplain Modifier#methodModifiers() method flags} specified in the JVM specification will
-     * be included in the returned mask.
+     * {@inheritDoc}
+     * <p>
+     * Only the {@linkplain Modifier#methodModifiers() method flags} specified in the JVM
+     * specification will be included in the returned mask.
      */
     int getModifiers();
 

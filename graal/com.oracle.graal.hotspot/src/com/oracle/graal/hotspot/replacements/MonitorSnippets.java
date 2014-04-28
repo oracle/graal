@@ -457,7 +457,7 @@ public class MonitorSnippets implements Snippets {
         }
 
         static boolean isTracingEnabledForType(ValueNode object) {
-            ResolvedJavaType type = ObjectStamp.typeOrNull(object.stamp());
+            ResolvedJavaType type = StampTool.typeOrNull(object.stamp());
             if (TRACE_TYPE_FILTER == null) {
                 return false;
             } else {
@@ -511,7 +511,7 @@ public class MonitorSnippets implements Snippets {
                         callTarget = graph.add(new MethodCallTargetNode(InvokeKind.Static, checkCounter.getMethod(), new ValueNode[]{errMsg}, returnType));
                         invoke = graph.add(new InvokeNode(callTarget, 0));
                         List<ValueNode> stack = Collections.emptyList();
-                        FrameState stateAfter = new FrameState(graph.method(), FrameState.AFTER_BCI, new ValueNode[0], stack, new ValueNode[0], new MonitorIdNode[0], false, false);
+                        FrameState stateAfter = new FrameState(graph.method(), BytecodeFrame.AFTER_BCI, new ValueNode[0], stack, new ValueNode[0], new MonitorIdNode[0], false, false);
                         invoke.setStateAfter(graph.add(stateAfter));
                         graph.addBeforeFixed(ret, invoke);
 

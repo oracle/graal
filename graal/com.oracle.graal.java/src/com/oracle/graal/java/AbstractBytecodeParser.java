@@ -25,8 +25,6 @@ package com.oracle.graal.java;
 
 import static com.oracle.graal.api.code.TypeCheckHints.*;
 import static com.oracle.graal.bytecode.Bytecodes.*;
-import static java.lang.reflect.Modifier.*;
-
 import java.util.*;
 
 import com.oracle.graal.api.code.*;
@@ -39,7 +37,6 @@ import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.java.BciBlockMapping.BciBlock;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.calc.FloatConvertNode.FloatConvert;
 import com.oracle.graal.options.*;
 import com.oracle.graal.phases.*;
 
@@ -327,7 +324,7 @@ public abstract class AbstractBytecodeParser<T extends KindProvider, F extends A
     private void genArithmeticOp(Kind result, int opcode) {
         T y = frameState.pop(result);
         T x = frameState.pop(result);
-        boolean isStrictFP = isStrict(method.getModifiers());
+        boolean isStrictFP = method.isStrict();
         T v;
         switch (opcode) {
             case IADD:

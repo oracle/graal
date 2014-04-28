@@ -28,8 +28,7 @@ import java.util.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.gen.*;
-import com.oracle.graal.compiler.target.*;
+import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.word.*;
@@ -38,7 +37,7 @@ import com.oracle.graal.word.*;
  * Intrinsic for allocating an on-stack array of integers to hold the dimensions of a multianewarray
  * instruction.
  */
-public final class DimensionsNode extends FixedWithNextNode implements LIRGenResLowerable {
+public final class DimensionsNode extends FixedWithNextNode implements LIRLowerable {
 
     private final int rank;
 
@@ -48,12 +47,13 @@ public final class DimensionsNode extends FixedWithNextNode implements LIRGenRes
     }
 
     @Override
-    public void generate(NodeLIRBuilderTool gen, LIRGenerationResult res) {
+    public void generate(NodeLIRBuilderTool gen) {
+        LIRGeneratorTool lirGen = gen.getLIRGeneratorTool();
         int size = rank * 4;
-        int wordSize = gen.getLIRGeneratorTool().target().wordSize;
+        int wordSize = lirGen.target().wordSize;
         int slots = roundUp(size, wordSize) / wordSize;
-        StackSlot array = res.getFrameMap().allocateStackSlots(slots, new BitSet(0), null);
-        Value result = gen.getLIRGeneratorTool().emitAddress(array);
+        StackSlot array = lirGen.getResult().getFrameMap().allocateStackSlots(slots, new BitSet(0), null);
+        Value result = lirGen.emitAddress(array);
         gen.setResult(this, result);
     }
 

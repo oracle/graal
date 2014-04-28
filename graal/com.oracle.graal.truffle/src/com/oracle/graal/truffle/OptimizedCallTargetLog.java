@@ -171,7 +171,7 @@ public final class OptimizedCallTargetLog {
                     }
                     if (node instanceof DirectCallNode) {
                         DirectCallNode callNode = (DirectCallNode) node;
-                        if (callNode.isInliningForced()) {
+                        if (callNode.isInlined()) {
                             callNode.getCurrentRootNode().accept(this);
                         }
                     }

@@ -83,6 +83,17 @@ public class PEReadEliminationClosure extends PartialEscapeClosure<PEReadElimina
                 } else {
                     processIdentity(state, ANY_LOCATION);
                 }
+            } else if (node instanceof ArrayLengthNode) {
+                ArrayLengthNode length = (ArrayLengthNode) node;
+                ValueNode array = GraphUtil.unproxify(length.array());
+                ValueNode cachedValue = state.getReadCache(array, ARRAY_LENGTH_LOCATION, this);
+                if (cachedValue != null) {
+                    effects.replaceAtUsages(length, cachedValue);
+                    addScalarAlias(length, cachedValue);
+                    deleted = true;
+                } else {
+                    state.addReadCache(array, ARRAY_LENGTH_LOCATION, length, this);
+                }
             } else if (node instanceof MemoryCheckpoint.Single) {
                 METRIC_MEMORYCHECKPOINT.increment();
                 LocationIdentity identity = ((MemoryCheckpoint.Single) node).getLocationIdentity();
@@ -183,7 +194,7 @@ public class PEReadEliminationClosure extends PartialEscapeClosure<PEReadElimina
             }
         }
 
-        private void mergeReadCachePhi(PhiNode phi, ResolvedJavaField identity, List<PEReadEliminationBlockState> states) {
+        private void mergeReadCachePhi(PhiNode phi, LocationIdentity identity, List<PEReadEliminationBlockState> states) {
             ValueNode[] values = new ValueNode[phi.valueCount()];
             for (int i = 0; i < phi.valueCount(); i++) {
                 ValueNode value = states.get(i).getReadCache(phi.valueAt(i), identity, PEReadEliminationClosure.this);

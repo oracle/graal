@@ -55,7 +55,7 @@ public interface NodeIterable<T extends Node> extends Iterable<T> {
         return list;
     }
 
-    default void snapshotTo(Collection<T> to) {
+    default void snapshotTo(Collection<? super T> to) {
         for (T n : this) {
             to.add(n);
         }

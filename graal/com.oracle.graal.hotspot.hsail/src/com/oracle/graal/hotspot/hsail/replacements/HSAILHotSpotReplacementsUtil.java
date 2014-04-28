@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,11 +24,11 @@ package com.oracle.graal.hotspot.hsail.replacements;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.replacements.Snippet.Fold;
 import com.oracle.graal.word.*;
 import com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil;
 import com.oracle.graal.hotspot.meta.*;
-import com.oracle.graal.hotspot.hsail.nodes.*;
 
 //JaCoCo Exclude
 
@@ -56,7 +56,7 @@ public class HSAILHotSpotReplacementsUtil extends HotSpotReplacementsUtil {
     }
 
     public static Word atomicGetAndAddTlabTop(Word thread, int size) {
-        return Word.unsigned(AtomicGetAndAddNode.atomicGetAndAdd(thread.rawValue(), threadTlabTopOffset(), TLAB_TOP_LOCATION, size));
+        return Word.unsigned(AtomicReadAndAddNode.getAndAddLong(null, thread.rawValue() + threadTlabTopOffset(), size, TLAB_TOP_LOCATION));
     }
 
     public static final LocationIdentity TLAB_PFTOP_LOCATION = new NamedLocationIdentity("TlabPfTop");

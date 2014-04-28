@@ -51,7 +51,7 @@ public class UnsafeCastNode extends FloatingGuardedNode implements LIRLowerable,
     }
 
     public UnsafeCastNode(ValueNode object, ResolvedJavaType toType, boolean exactType, boolean nonNull) {
-        this(object, toType.getKind() == Kind.Object ? StampFactory.object(toType, exactType, nonNull || ObjectStamp.isObjectNonNull(object.stamp())) : StampFactory.forKind(toType.getKind()));
+        this(object, toType.getKind() == Kind.Object ? StampFactory.object(toType, exactType, nonNull || StampTool.isObjectNonNull(object.stamp())) : StampFactory.forKind(toType.getKind()));
     }
 
     @Override
@@ -80,7 +80,7 @@ public class UnsafeCastNode extends FloatingGuardedNode implements LIRLowerable,
     @Override
     public void virtualize(VirtualizerTool tool) {
         State state = tool.getObjectState(object);
-        if (state != null && state.getState() == EscapeState.Virtual && ObjectStamp.typeOrNull(this) != null && ObjectStamp.typeOrNull(this).isAssignableFrom(state.getVirtualObject().type())) {
+        if (state != null && state.getState() == EscapeState.Virtual && StampTool.typeOrNull(this) != null && StampTool.typeOrNull(this).isAssignableFrom(state.getVirtualObject().type())) {
             tool.replaceWithVirtual(state.getVirtualObject());
         }
     }

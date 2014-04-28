@@ -23,20 +23,18 @@
 package com.oracle.graal.replacements.nodes;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.gen.*;
-import com.oracle.graal.compiler.target.*;
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.util.*;
 
 /**
  * Compares two arrays with the same length.
  */
-public class ArrayEqualsNode extends FixedWithNextNode implements LIRGenLowerable, Canonicalizable, Virtualizable {
+public class ArrayEqualsNode extends FixedWithNextNode implements LIRLowerable, Canonicalizable, Virtualizable {
 
     /** {@link Kind} of the arrays to compare. */
     private final Kind kind;
@@ -131,7 +129,7 @@ public class ArrayEqualsNode extends FixedWithNextNode implements LIRGenLowerabl
     public static native boolean equals(double[] array1, double[] array2, int length);
 
     @Override
-    public void generate(NodeLIRBuilder gen) {
+    public void generate(NodeLIRBuilderTool gen) {
         Variable result = gen.newVariable(Kind.Int);
         gen.emitArrayEquals(kind, result, gen.operand(array1), gen.operand(array2), gen.operand(length));
         gen.setResult(this, result);

@@ -22,10 +22,10 @@
  */
 package com.oracle.graal.hotspot.replacements;
 
+import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 import static com.oracle.graal.nodes.GuardingPiNode.*;
 import static com.oracle.graal.nodes.extended.BranchProbabilityNode.*;
-import static com.oracle.graal.phases.GraalOptions.*;
 
 import java.lang.reflect.*;
 import java.util.*;

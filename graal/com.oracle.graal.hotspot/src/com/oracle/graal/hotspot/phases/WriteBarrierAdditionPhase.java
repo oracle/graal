@@ -75,12 +75,12 @@ public class WriteBarrierAdditionPhase extends Phase {
     }
 
     protected void addG1PostWriteBarrier(FixedAccessNode node, ValueNode object, ValueNode value, LocationNode location, boolean precise, StructuredGraph graph) {
-        final boolean alwaysNull = ObjectStamp.isObjectAlwaysNull(value);
+        final boolean alwaysNull = StampTool.isObjectAlwaysNull(value);
         graph.addAfterFixed(node, graph.add(new G1PostWriteBarrier(object, value, location, precise, alwaysNull)));
     }
 
     protected void addSerialPostWriteBarrier(FixedAccessNode node, ValueNode object, ValueNode value, LocationNode location, boolean precise, StructuredGraph graph) {
-        final boolean alwaysNull = ObjectStamp.isObjectAlwaysNull(value);
+        final boolean alwaysNull = StampTool.isObjectAlwaysNull(value);
         final LocationNode loc = (precise ? location : null);
         graph.addAfterFixed(node, graph.add(new SerialWriteBarrier(object, loc, precise, alwaysNull)));
     }

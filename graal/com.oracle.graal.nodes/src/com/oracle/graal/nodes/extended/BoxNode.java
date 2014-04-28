@@ -25,6 +25,7 @@ package com.oracle.graal.nodes.extended;
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
@@ -77,7 +78,7 @@ public class BoxNode extends FloatingNode implements VirtualizableAllocation, Lo
     @Override
     public void virtualize(VirtualizerTool tool) {
         ValueNode v = tool.getReplacedValue(getValue());
-        ResolvedJavaType type = ObjectStamp.typeOrNull(stamp());
+        ResolvedJavaType type = StampTool.typeOrNull(stamp());
 
         VirtualBoxingNode newVirtual = new VirtualBoxingNode(type, boxingKind);
         assert newVirtual.getFields().length == 1;

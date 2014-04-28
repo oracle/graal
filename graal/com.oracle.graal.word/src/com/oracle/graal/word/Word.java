@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.word;
 
-import static com.oracle.graal.graph.UnsafeAccess.*;
+import static com.oracle.graal.compiler.common.UnsafeAccess.*;
 
 import java.lang.annotation.*;
 

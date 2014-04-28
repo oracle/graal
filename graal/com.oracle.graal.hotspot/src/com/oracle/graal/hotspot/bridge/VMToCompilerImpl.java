@@ -345,7 +345,7 @@ public class VMToCompilerImpl implements VMToCompiler {
 
     private void enqueue(Method m) throws Throwable {
         JavaMethod javaMethod = runtime.getHostProviders().getMetaAccess().lookupJavaMethod(m);
-        assert !Modifier.isAbstract(((HotSpotResolvedJavaMethod) javaMethod).getModifiers()) && !Modifier.isNative(((HotSpotResolvedJavaMethod) javaMethod).getModifiers()) : javaMethod;
+        assert !((HotSpotResolvedJavaMethod) javaMethod).isAbstract() && !((HotSpotResolvedJavaMethod) javaMethod).isNative() : javaMethod;
         compileMethod((HotSpotResolvedJavaMethod) javaMethod, StructuredGraph.INVOCATION_ENTRY_BCI, false);
     }
 

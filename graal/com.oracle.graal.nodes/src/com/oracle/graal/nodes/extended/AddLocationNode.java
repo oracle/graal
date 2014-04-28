@@ -23,12 +23,13 @@
 package com.oracle.graal.nodes.extended;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
+import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
 
 /**
  * Location node that is the sum of two other location nodes. Can represent locations in the form of
@@ -37,8 +38,8 @@ import com.oracle.graal.nodes.type.*;
 @NodeInfo(nameTemplate = "AddLoc {p#locationIdentity/s}")
 public final class AddLocationNode extends LocationNode implements Canonicalizable {
 
-    @Input private ValueNode x;
-    @Input private ValueNode y;
+    @Input(InputType.Association) private ValueNode x;
+    @Input(InputType.Association) private ValueNode y;
 
     protected LocationNode getX() {
         return (LocationNode) x;

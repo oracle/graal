@@ -24,11 +24,10 @@ package com.oracle.graal.hotspot;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.hotspot.HotSpotVMConfig.CompressEncoding;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.lir.StandardOp.SaveRegistersOp;
-import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.lir.gen.*;
 
 /**
  * This interface defines the contract a HotSpot backend LIR generator needs to fulfill in addition

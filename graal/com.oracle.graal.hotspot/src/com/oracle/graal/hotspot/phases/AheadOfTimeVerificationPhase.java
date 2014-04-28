@@ -66,7 +66,7 @@ public class AheadOfTimeVerificationPhase extends VerifyPhase<PhaseContext> {
         if (!isObject(node)) {
             return false;
         }
-        return "Ljava/lang/invoke/DirectMethodHandle;".equals(ObjectStamp.typeOrNull(node).getName());
+        return "Ljava/lang/invoke/DirectMethodHandle;".equals(StampTool.typeOrNull(node).getName());
     }
 
     @SuppressFBWarnings(value = "ES_COMPARING_STRINGS_WITH_EQ", justification = "reference equality is what we want")
