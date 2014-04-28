@@ -23,9 +23,11 @@
 
 package com.oracle.graal.compiler.hsail.test.lambda;
 
-import com.oracle.graal.compiler.hsail.test.infra.GraalKernelTester;
-import org.junit.Test;
-import java.util.Arrays;
+import java.util.*;
+
+import org.junit.*;
+
+import com.oracle.graal.compiler.hsail.test.infra.*;
 
 /**
  * Tests non-escaping object creation and calling a method on it.
@@ -72,12 +74,14 @@ public class NonEscapingNewObjWithArrayTest extends GraalKernelTester {
     }
 
     // NYI emitForeignCall floatArraycopy
-    @Test(expected = com.oracle.graal.graph.GraalInternalError.class)
+    @Ignore
+    @Test
     public void test() {
         testGeneratedHsail();
     }
 
-    @Test(expected = com.oracle.graal.graph.GraalInternalError.class)
+    @Ignore
+    @Test
     public void testUsingLambdaMethod() {
         testGeneratedHsailUsingLambdaMethod();
     }

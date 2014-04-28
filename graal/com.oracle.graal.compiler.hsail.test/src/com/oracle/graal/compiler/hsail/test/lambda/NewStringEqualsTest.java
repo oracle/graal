@@ -23,8 +23,9 @@
 
 package com.oracle.graal.compiler.hsail.test.lambda;
 
-import com.oracle.graal.compiler.hsail.test.infra.GraalKernelTester;
-import org.junit.Test;
+import org.junit.*;
+
+import com.oracle.graal.compiler.hsail.test.infra.*;
 
 /**
  * Tests creating a String and calling .equals() on it.
@@ -60,12 +61,14 @@ public class NewStringEqualsTest extends GraalKernelTester {
     }
 
     // NYI emitForeignCall charAlignedDisjointArraycopy
-    @Test(expected = com.oracle.graal.graph.GraalInternalError.class)
+    @Ignore
+    @Test
     public void test() {
         testGeneratedHsail();
     }
 
-    @Test(expected = com.oracle.graal.graph.GraalInternalError.class)
+    @Ignore
+    @Test
     public void testUsingLambdaMethod() {
         testGeneratedHsailUsingLambdaMethod();
     }
