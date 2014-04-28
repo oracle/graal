@@ -579,13 +579,27 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                 } else {
                     // all inputs are virtual: check if they're compatible and without identity
                     boolean compatible = true;
+                    boolean hasIdentity = false;
                     ObjectState firstObj = objStates[0];
                     for (int i = 0; i < objStates.length; i++) {
                         ObjectState obj = objStates[i];
-                        boolean hasIdentity = obj.virtual.hasIdentity() && mergedVirtualObjects.contains(obj.virtual);
-                        if (hasIdentity || !firstObj.virtual.type().equals(obj.virtual.type()) || firstObj.virtual.entryCount() != obj.virtual.entryCount() || !firstObj.locksEqual(obj)) {
+                        hasIdentity |= obj.virtual.hasIdentity();
+                        boolean identitySurvives = obj.virtual.hasIdentity() && mergedVirtualObjects.contains(obj.virtual);
+                        if (identitySurvives || !firstObj.virtual.type().equals(obj.virtual.type()) || firstObj.virtual.entryCount() != obj.virtual.entryCount() || !firstObj.locksEqual(obj)) {
                             compatible = false;
                             break;
+                        }
+                    }
+                    if (compatible && hasIdentity) {
+                        // we still need to check whether this value is referenced by any other phi
+                        outer: for (PhiNode otherPhi : merge.phis().filter(otherPhi -> otherPhi != phi)) {
+                            for (int i = 0; i < objStates.length; i++) {
+                                ObjectState otherPhiValueState = getObjectState(states.get(i), otherPhi.valueAt(i));
+                                if (Arrays.asList(objStates).contains(otherPhiValueState)) {
+                                    compatible = false;
+                                    break outer;
+                                }
+                            }
                         }
                     }
 
