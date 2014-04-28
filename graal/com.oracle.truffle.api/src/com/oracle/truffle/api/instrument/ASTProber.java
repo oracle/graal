@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,25 +22,23 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.nodes.instrument;
-
-import java.util.*;
-
-import com.oracle.truffle.api.nodes.*;
+package com.oracle.truffle.api.instrument;
 
 /**
- * A kind of {@link Node} that can be marked as belong to 0 or more {@linkplain NodePhylum phyla}.
+ * Implementation of a policy for <em>instrumenting</em> Truffle ASTs with {@link Probe}s at
+ * particular nodes by inserting node {@link Wrapper}s.
+ * <p>
+ * <strong>Disclaimer:</strong> experimental interface under development.
  */
-public interface PhylumMarked {
+public interface ASTProber {
+
+    // TODO (mlvdv) This is a provisional interface, more of a marker really
+    // TODO (mlvdv) AST probing should eventually be done with visitors.
+
+    void addNodeProber(ASTNodeProber nodeProber);
 
     /**
-     * Is this proxy tagged as belonging to a particular category of language constructs?
+     * Gets a prober that applies all added {@link ASTNodeProber}s.
      */
-    boolean isMarkedAs(NodePhylum phylum);
-
-    /**
-     * In which categories is this node tagged (<em>empty set</em> if none).
-     */
-    Set<NodePhylum> getPhylumMarks();
-
+    ASTNodeProber getCombinedNodeProber();
 }

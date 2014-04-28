@@ -22,32 +22,46 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.nodes.instrument;
+package com.oracle.truffle.api.instrument;
 
+import com.oracle.truffle.api.*;
+import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
-import com.oracle.truffle.api.nodes.instrument.InstrumentationProbeNode.ProbeChain;
 
 /**
- * Interface implemented by language-specific Truffle <strong>proxy nodes</strong>: nodes that do
- * not participate in the language's execution semantics, but which are inserted into an AST so that
- * tools (e.g. tracers, analyzers, debuggers) can be notified of AST interpretation events and
- * possibly intervene.
- * <p>
- * Language-specific proxy nodes call notification methods on an attached {@linkplain ProbeChain
- * probe chain} which passes along {@linkplain InstrumentationProbeEvents events} to any
- * {@linkplain InstrumentationProbeNode probes} that might have been attached.
+ * A client of the instrumentation framework that requests event notifications from the language
+ * engine.
  */
-public interface InstrumentationProxyNode extends InstrumentationNode, PhylumMarked {
+public interface InstrumentEventListener {
 
     /**
-     * Gets the non-instrumentation node being proxied.
+     * The guest language runtime is starting to load a source. Care should be taken to ensure that
+     * under any circumstance there is always a following call to {@link #loadEnding(Source)} with
+     * the same argument.
      */
-    Node getChild();
+    void loadStarting(Source source);
 
     /**
-     * Gets the chain of probes to which events at this node are delegated. Note that a chain of
-     * probes may be used by more than one proxy.
+     * The guest language runtime has finished loading a source. Care should be taken to ensure that
+     * under any circumstance there is always a prior call to {@link #loadStarting(Source)} with the
+     * same argument.
      */
-    ProbeChain getProbeChain();
+    void loadEnding(Source source);
+
+    /**
+     * A guest language call is about to be executed.
+     */
+    void callEntering(Node astNode, String name);
+
+    /**
+     * A guest language call has just completed.
+     */
+    void callReturned(Node astNode, String name);
+
+    /**
+     * An opportunity for instrumentation to interact with Truffle AST execution halted at some
+     * node.
+     */
+    void haltedAt(Node astNode, MaterializedFrame frame);
 
 }

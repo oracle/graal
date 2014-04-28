@@ -22,14 +22,29 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.debug;
+package com.oracle.truffle.api.instrument;
 
-import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.frame.*;
 
 /**
- * Controls breaking out of all executions and ending Truffle execution.
+ * Visualization services for guest language and Truffle information.
  */
-public final class QuitException extends ControlFlowException {
+public interface Visualizer {
 
-    private static final long serialVersionUID = -4301115629772778413L;
+    /**
+     * Gets a printer for Truffle ASTs, possibly specialized to be helpful for a specific guest
+     * language implementation.
+     */
+    ASTPrinter getASTPrinter();
+
+    /**
+     * Converts a value in the guest language to a display string.
+     */
+    String displayValue(Object value);
+
+    /**
+     * Converts a slot identifier in the guest language to a display string.
+     */
+    String displayIdentifier(FrameSlot slot);
+
 }

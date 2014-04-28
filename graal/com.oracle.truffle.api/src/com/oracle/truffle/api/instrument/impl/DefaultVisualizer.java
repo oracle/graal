@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,38 +22,29 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.impl;
+package com.oracle.truffle.api.instrument.impl;
 
-import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.frame.*;
-import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.instrument.*;
 
-/**
- * This is an implementation-specific class. Do not use or instantiate it. Instead, use
- * {@link TruffleRuntime#createCallTarget(RootNode)} to create a {@link RootCallTarget}.
- */
-public class DefaultCallTarget implements RootCallTarget {
+public class DefaultVisualizer implements Visualizer {
 
-    private final RootNode rootNode;
+    private final ASTPrinter astPrinter;
 
-    public DefaultCallTarget(RootNode function) {
-        this.rootNode = function;
-        this.rootNode.adoptChildren();
-        this.rootNode.setCallTarget(this);
+    public DefaultVisualizer() {
+        this.astPrinter = new DefaultASTPrinter();
     }
 
-    @Override
-    public String toString() {
-        return rootNode.toString();
+    public ASTPrinter getASTPrinter() {
+        return astPrinter;
     }
 
-    public final RootNode getRootNode() {
-        return rootNode;
+    public String displayValue(Object value) {
+        return value.toString();
     }
 
-    @Override
-    public Object call(Object... args) {
-        VirtualFrame frame = new DefaultVirtualFrame(getRootNode().getFrameDescriptor(), args);
-        return getRootNode().execute(frame);
+    public String displayIdentifier(FrameSlot slot) {
+        return slot.getIdentifier().toString();
     }
+
 }

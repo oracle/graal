@@ -636,8 +636,8 @@ public final class NodeUtil {
                 nodeCount++;
             }
 
-            if (visitInlinedCallNodes && node instanceof CallNode) {
-                CallNode call = (CallNode) node;
+            if (visitInlinedCallNodes && node instanceof DirectCallNode) {
+                DirectCallNode call = (DirectCallNode) node;
                 if (call.isInlined()) {
                     Node target = ((RootCallTarget) call.getCurrentCallTarget()).getRootNode();
                     if (target != null) {
@@ -763,7 +763,7 @@ public final class NodeUtil {
     /**
      * Prints a human readable form of a {@link Node} AST to the given {@link PrintStream}. This
      * print method does not check for cycles in the node structure.
-     * 
+     *
      * @param out the stream to print to.
      * @param node the root node to write
      */

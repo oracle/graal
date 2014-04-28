@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,38 +22,26 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.impl;
+package com.oracle.truffle.api.instrument;
 
-import com.oracle.truffle.api.*;
-import com.oracle.truffle.api.frame.*;
-import com.oracle.truffle.api.nodes.*;
+import java.util.*;
 
 /**
- * This is an implementation-specific class. Do not use or instantiate it. Instead, use
- * {@link TruffleRuntime#createCallTarget(RootNode)} to create a {@link RootCallTarget}.
+ * Information about a guest language program element that can be marked as belonging to 0 or more
+ * {@linkplain PhylumTag tags}.
+ * <p>
+ * <strong>Disclaimer:</strong> experimental interface under development.
  */
-public class DefaultCallTarget implements RootCallTarget {
+public interface PhylumTagged {
 
-    private final RootNode rootNode;
+    /**
+     * Is this node tagged as belonging to a particular category of language constructs?
+     */
+    boolean isTaggedAs(PhylumTag tag);
 
-    public DefaultCallTarget(RootNode function) {
-        this.rootNode = function;
-        this.rootNode.adoptChildren();
-        this.rootNode.setCallTarget(this);
-    }
+    /**
+     * In which categories has this node been tagged (<em>empty set</em> if none).
+     */
+    Set<PhylumTag> getPhylumTags();
 
-    @Override
-    public String toString() {
-        return rootNode.toString();
-    }
-
-    public final RootNode getRootNode() {
-        return rootNode;
-    }
-
-    @Override
-    public Object call(Object... args) {
-        VirtualFrame frame = new DefaultVirtualFrame(getRootNode().getFrameDescriptor(), args);
-        return getRootNode().execute(frame);
-    }
 }

@@ -22,13 +22,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.impl;
+package com.oracle.truffle.api.instrument;
 
-import com.oracle.truffle.api.frame.FrameInstance.*;
+import com.oracle.truffle.api.*;
+import com.oracle.truffle.api.instrument.impl.*;
 
-public interface MaterializedFrameNotify {
+public class InstrumentationFactory {
 
-    FrameAccess getOutsideFrameAccess();
+    public static Instrumentation create(ExecutionContext context) {
+        return new InstrumentationImpl(context);
+    }
 
-    void setOutsideFrameAccess(FrameAccess outsideFrameAccess);
 }

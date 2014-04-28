@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,14 +22,36 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.debug;
+package com.oracle.truffle.api.instrument;
 
 import com.oracle.truffle.api.nodes.*;
 
 /**
- * Controls breaking out of an execution context, such as a shell or eval.
+ * A node that can be inserted into a Truffle AST in order to attach <em>instrumentation</em> at a
+ * particular node.
+ * <p>
+ * A wrapper <em>decorates</em> an AST node (its <em>child</em>) by acting as a transparent
+ * <em>proxy</em> for the child with respect to Truffle execution semantics.
+ * <p>
+ * A wrapper is also expected to notify its associated {@link Probe} when certain
+ * {@link ExecutionEvents} occur at the wrapper during program execution.
+ * <p>
+ * The wrapper's {@link Probe} is shared by every copy of the wrapper made when the AST is copied.
+ * <p>
+ * Wrappers methods must be amenable to Truffle/Graal inlining.
+ * <p>
+ * <strong>Disclaimer:</strong> experimental interface under development.
  */
-public final class KillException extends ControlFlowException {
+public interface Wrapper extends PhylumTagged {
 
-    private static final long serialVersionUID = 3163641880088766957L;
+    /**
+     * Gets the AST node being instrumented, which should never be an instance of {@link Wrapper}.
+     */
+    Node getChild();
+
+    /**
+     * Gets the {@link Probe} to which events occurring at this wrapper's child are propagated.
+     */
+    Probe getProbe();
+
 }

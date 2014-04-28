@@ -40,7 +40,7 @@ public interface FrameInstance {
 
     boolean isVirtualFrame();
 
-    CallNode getCallNode();
+    Node getCallNode();
 
     CallTarget getCallTarget();
 }

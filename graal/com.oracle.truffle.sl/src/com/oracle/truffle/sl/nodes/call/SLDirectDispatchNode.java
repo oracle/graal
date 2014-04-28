@@ -36,11 +36,11 @@ final class SLDirectDispatchNode extends SLAbstractDispatchNode {
     private final SLFunction cachedFunction;
 
     /**
-     * {@link CallNode} is part of the Truffle API and handles all the steps necessary for method
-     * inlining: if the call is executed frequently and the callee is small, then the call is
+     * {@link DirectCallNode} is part of the Truffle API and handles all the steps necessary for
+     * method inlining: if the call is executed frequently and the callee is small, then the call is
      * inlined, i.e., the call node is replaced with a copy of the callee's AST.
      */
-    @Child private CallNode callCachedTargetNode;
+    @Child private DirectCallNode callCachedTargetNode;
 
     /** Assumption that the {@link #callCachedTargetNode} is still valid. */
     private final Assumption cachedTargetStable;
@@ -53,7 +53,7 @@ final class SLDirectDispatchNode extends SLAbstractDispatchNode {
 
     protected SLDirectDispatchNode(SLAbstractDispatchNode next, SLFunction cachedFunction) {
         this.cachedFunction = cachedFunction;
-        this.callCachedTargetNode = Truffle.getRuntime().createCallNode(cachedFunction.getCallTarget());
+        this.callCachedTargetNode = Truffle.getRuntime().createDirectCallNode(cachedFunction.getCallTarget());
         this.cachedTargetStable = cachedFunction.getCallTargetStable();
         this.nextNode = next;
     }

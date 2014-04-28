@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,15 +22,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.nodes.instrument;
+package com.oracle.truffle.api.instrument;
 
 /**
- * Marker interface for all Truffle <strong>instrumentation nodes</strong>: nodes that are do not
- * appear in Truffle ASTs as part of a language's execution semantics.
+ * A receiver of Truffle AST {@link ExecutionEvents}, propagated from a {@link Probe} to which the
+ * instrument is attached.
  * <p>
- * In documentation related to instrumentation nodes, these are distinguished by referring to all
- * other nodes (i.e. ones that <em>do</em> implement language semantics) as <em>AST nodes</em>.
+ * <strong>Disclaimer:</strong> experimental interface under development.
  */
-public interface InstrumentationNode {
+public interface Instrument extends ExecutionEvents {
+
+    /**
+     * @return the {@link Probe} to which this instrument is attached.
+     */
+    Probe getProbe();
 
 }

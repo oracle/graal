@@ -53,8 +53,12 @@ public final class DefaultTruffleRuntime implements TruffleRuntime {
         return new DefaultCallTarget(rootNode);
     }
 
-    public CallNode createCallNode(CallTarget target) {
-        return new DefaultCallNode(target);
+    public DirectCallNode createDirectCallNode(CallTarget target) {
+        return new DefaultDirectCallNode(target);
+    }
+
+    public IndirectCallNode createIndirectCallNode() {
+        return new DefaultIndirectCallNode();
     }
 
     @Override

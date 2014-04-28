@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,25 +22,30 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.nodes.instrument;
+package com.oracle.truffle.api.nodes;
 
-import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.*;
+import com.oracle.truffle.api.frame.*;
 
 /**
- * Implements the instrumentation of a Truffle AST node and returning either:
- * <ul>
- * <li>the node itself, or</li>
- * <li>a newly created {@linkplain InstrumentationProxyNode proxy node} that holds the instrumented
- * node as its {@linkplain com.oracle.truffle.api.nodes.Node.Child child}.</li>
- * </ul>
+ * Represents an indirect call to a {@link CallTarget}. Indirect calls are calls for which the
+ * {@link CallTarget} may change dynamically for each consecutive call. This part of the Truffle API
+ * enables the runtime system to perform additional optimizations on indirect calls.
+ *
+ * Please note: This class is not intended to be sub classed by guest language implementations.
+ *
+ * @see DirectCallNode for faster calls with a constantly known {@link CallTarget}.
  */
-public interface NodeInstrumenter {
+public abstract class IndirectCallNode extends Node {
 
     /**
-     * Wraps a {@linkplain InstrumentationProxyNode proxy node} around a node (if not already
-     * wrapped), marks the location with a {@linkplain NodePhylum phylum (category)} for user
-     * interaction, and passes along any characteristics of the particular node that are important
-     * for instrumentation (e.g. the function/method name at a call).
+     * Performs an indirect call to the given {@link CallTarget} target with the provided arguments.
+     *
+     * @param frame the caller frame
+     * @param target the {@link CallTarget} to call
+     * @param arguments the arguments to provide
+     * @return the return value of the call
      */
-    Node instrumentAs(Node node, NodePhylum phylum, Object... args);
+    public abstract Object call(VirtualFrame frame, CallTarget target, Object[] arguments);
+
 }

@@ -45,13 +45,17 @@ public abstract class SLStackTraceBuiltin extends SLBuiltinNode {
     @SlowPath
     private static String createStackTrace() {
         StringBuilder str = new StringBuilder();
-        for (FrameInstance frame : Truffle.getRuntime().getStackTrace()) {
-            dumpFrame(str, frame.getCallNode().getRootNode(), frame.getFrame(FrameAccess.READ_ONLY, true), frame.isVirtualFrame());
+        Iterable<FrameInstance> frames = Truffle.getRuntime().getStackTrace();
+
+        if (frames != null) {
+            for (FrameInstance frame : frames) {
+                dumpFrame(str, frame.getCallTarget(), frame.getFrame(FrameAccess.READ_ONLY, true), frame.isVirtualFrame());
+            }
         }
         return str.toString();
     }
 
-    private static void dumpFrame(StringBuilder str, RootNode rootNode, Frame frame, boolean isVirtual) {
+    private static void dumpFrame(StringBuilder str, CallTarget rootNode, Frame frame, boolean isVirtual) {
         if (str.length() > 0) {
             str.append("\n");
         }

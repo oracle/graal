@@ -25,7 +25,6 @@
 package com.oracle.truffle.api;
 
 import com.oracle.truffle.api.frame.*;
-import com.oracle.truffle.api.impl.*;
 import com.oracle.truffle.api.nodes.*;
 
 /**
@@ -51,7 +50,20 @@ public interface TruffleRuntime {
      */
     RootCallTarget createCallTarget(RootNode rootNode);
 
-    CallNode createCallNode(CallTarget target);
+    /**
+     * Creates a new runtime specific version of {@link DirectCallNode}.
+     *
+     * @param target the direct {@link CallTarget} to call
+     * @return the new call node
+     */
+    DirectCallNode createDirectCallNode(CallTarget target);
+
+    /**
+     * Creates a new runtime specific version of {@link IndirectCallNode}.
+     *
+     * @return the new call node
+     */
+    IndirectCallNode createIndirectCallNode();
 
     /**
      * Creates a new assumption object that can be checked and invalidated.
@@ -94,9 +106,7 @@ public interface TruffleRuntime {
 
     /**
      * Accesses the current stack, i.e., the contents of the {@link Frame}s and the associated
-     * {@link CallTarget}s. For this functionality to work each call needs to go through
-     * {@link DefaultCallNode#callProxy(MaterializedFrameNotify, CallTarget, VirtualFrame, Object[])}
-     * instead of calling {@link CallTarget#call(Object[])} directly.
+     * {@link CallTarget}s.
      *
      * @return a lazy collection of {@link FrameInstance}.
      */
@@ -107,4 +117,5 @@ public interface TruffleRuntime {
      * important to note that this {@link FrameInstance} supports only slow path access.
      */
     FrameInstance getCurrentFrame();
+
 }

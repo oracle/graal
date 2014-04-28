@@ -25,48 +25,33 @@
 package com.oracle.truffle.api.impl;
 
 import com.oracle.truffle.api.*;
-import com.oracle.truffle.api.CompilerDirectives.*;
 import com.oracle.truffle.api.frame.*;
-import com.oracle.truffle.api.frame.FrameInstance.*;
 import com.oracle.truffle.api.nodes.*;
 
-public class DefaultCallNode extends CallNode implements MaterializedFrameNotify {
+/**
+ * This is runtime specific API. Do not use in a guest language.
+ */
+public final class DefaultDirectCallNode extends DirectCallNode {
 
-    @CompilationFinal private FrameAccess outsideFrameAccess = FrameAccess.NONE;
+    private boolean inliningForced;
 
-    public DefaultCallNode(CallTarget target) {
+    public DefaultDirectCallNode(CallTarget target) {
         super(target);
     }
 
     @Override
     public Object call(VirtualFrame frame, Object[] arguments) {
-        return callProxy(this, getCurrentCallTarget(), frame, arguments);
-    }
-
-    public static Object callProxy(MaterializedFrameNotify notify, CallTarget callTarget, VirtualFrame frame, Object[] arguments) {
-        try {
-            if (notify.getOutsideFrameAccess() != FrameAccess.NONE) {
-                CompilerDirectives.materialize(frame);
-            }
-            return callTarget.call(arguments);
-        } finally {
-            // this assertion is needed to keep the values from being cleared as non-live locals
-            assert notify != null & callTarget != null & frame != null;
-        }
+        return getCurrentCallTarget().call(arguments);
     }
 
     @Override
-    public FrameAccess getOutsideFrameAccess() {
-        return outsideFrameAccess;
+    public void forceInlining() {
+        inliningForced = true;
     }
 
     @Override
-    public void setOutsideFrameAccess(FrameAccess outsideFrameAccess) {
-        this.outsideFrameAccess = outsideFrameAccess;
-    }
-
-    @Override
-    public void inline() {
+    public boolean isInliningForced() {
+        return inliningForced;
     }
 
     @Override
@@ -80,12 +65,12 @@ public class DefaultCallNode extends CallNode implements MaterializedFrameNotify
     }
 
     @Override
-    public boolean isSplittable() {
+    public boolean isInlined() {
         return false;
     }
 
     @Override
-    public boolean isInlined() {
+    public boolean isSplittable() {
         return false;
     }
 

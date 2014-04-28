@@ -24,11 +24,12 @@
  */
 package com.oracle.truffle.api;
 
-import com.oracle.truffle.api.debug.*;
+import com.oracle.truffle.api.instrument.*;
 import com.oracle.truffle.api.source.*;
 
 /**
- * Information about the runtime context of a Truffle program.
+ * Access to information and basic services in the runtime context for a Truffle-implemented guest
+ * language.
  * <p>
  * <strong>Disclaimer:</strong> this interface is under development and will change.
  */
@@ -46,8 +47,20 @@ public interface ExecutionContext {
     SourceManager getSourceManager();
 
     /**
-     * Gets access to debugging services. Returns an inert instance if no services installed.
+     * Gets access to AST instrumentation services.
      */
-    DebugContext getDebugContext();
+    Instrumentation instrumentation();
 
+    /**
+     * Access to information visualization services for the specific language.
+     */
+    Visualizer visualizer();
+
+    /**
+     * Add instrumentation to subsequently constructed Truffle ASTs for the guest language; every
+     * one added will have the opportunity to add instrumentation.
+     *
+     * @throws IllegalArgumentException if prober not usable for the guest language.
+     */
+    void addNodeProber(ASTNodeProber nodeProber);
 }

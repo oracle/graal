@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,38 +22,36 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.impl;
+package com.oracle.truffle.api.instrument.impl;
 
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.frame.*;
+import com.oracle.truffle.api.instrument.*;
 import com.oracle.truffle.api.nodes.*;
 
 /**
- * This is an implementation-specific class. Do not use or instantiate it. Instead, use
- * {@link TruffleRuntime#createCallTarget(RootNode)} to create a {@link RootCallTarget}.
+ * Minimal, mostly no-op implementation of instrumentation services.
  */
-public class DefaultCallTarget implements RootCallTarget {
+public final class NullInstrumentEventListener implements InstrumentEventListener {
 
-    private final RootNode rootNode;
+    public static final InstrumentEventListener INSTANCE = new NullInstrumentEventListener();
 
-    public DefaultCallTarget(RootNode function) {
-        this.rootNode = function;
-        this.rootNode.adoptChildren();
-        this.rootNode.setCallTarget(this);
+    private NullInstrumentEventListener() {
     }
 
-    @Override
-    public String toString() {
-        return rootNode.toString();
+    public void callEntering(Node astNode, String name) {
     }
 
-    public final RootNode getRootNode() {
-        return rootNode;
+    public void callReturned(Node astNode, String name) {
     }
 
-    @Override
-    public Object call(Object... args) {
-        VirtualFrame frame = new DefaultVirtualFrame(getRootNode().getFrameDescriptor(), args);
-        return getRootNode().execute(frame);
+    public void haltedAt(Node astNode, MaterializedFrame frame) {
     }
+
+    public void loadStarting(Source source) {
+    }
+
+    public void loadEnding(Source source) {
+    }
+
 }

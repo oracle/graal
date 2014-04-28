@@ -29,31 +29,13 @@ import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
 
 /**
- * This is an implementation-specific class. Do not use or instantiate it. Instead, use
- * {@link TruffleRuntime#createCallTarget(RootNode)} to create a {@link RootCallTarget}.
+ * This is runtime specific API. Do not use in a guest language.
  */
-public class DefaultCallTarget implements RootCallTarget {
-
-    private final RootNode rootNode;
-
-    public DefaultCallTarget(RootNode function) {
-        this.rootNode = function;
-        this.rootNode.adoptChildren();
-        this.rootNode.setCallTarget(this);
-    }
+final class DefaultIndirectCallNode extends IndirectCallNode {
 
     @Override
-    public String toString() {
-        return rootNode.toString();
+    public Object call(VirtualFrame frame, CallTarget target, Object[] arguments) {
+        return target.call(arguments);
     }
 
-    public final RootNode getRootNode() {
-        return rootNode;
-    }
-
-    @Override
-    public Object call(Object... args) {
-        VirtualFrame frame = new DefaultVirtualFrame(getRootNode().getFrameDescriptor(), args);
-        return getRootNode().execute(frame);
-    }
 }

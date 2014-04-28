@@ -22,17 +22,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.nodes.instrument;
+package com.oracle.truffle.api.instrument;
 
 import com.oracle.truffle.api.nodes.*;
 
 /**
- * A no-op node instrumenter; always returns the node unproxied and unmodified.
+ * Controls breaking out of all executions and ending Truffle execution.
  */
-public class DefaultNodeInstrumenter implements NodeInstrumenter {
+public final class QuitException extends ControlFlowException {
 
-    public Node instrumentAs(Node node, NodePhylum phylum, Object... args) {
-        return node;
-    }
-
+    private static final long serialVersionUID = -4301115629772778413L;
 }
