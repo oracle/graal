@@ -514,6 +514,7 @@ public final class State extends MergeableState<State> implements Cloneable {
         if (isDependencyTainted(object, anchor)) {
             return false;
         }
+        assert anchor instanceof FixedNode;
         ResolvedJavaType stampType = StampTool.typeOrNull(object);
         if (stampType != null && !stampType.isInterface()) {
             return trackIO(object, stampType, anchor);
@@ -548,6 +549,7 @@ public final class State extends MergeableState<State> implements Cloneable {
         if (isDependencyTainted(object, anchor)) {
             return false;
         }
+        assert anchor instanceof FixedNode;
         Witness w = getOrElseAddTypeInfo(object);
         if (w.trackCC(observed, anchor)) {
             versionNr++;
@@ -573,6 +575,7 @@ public final class State extends MergeableState<State> implements Cloneable {
         if (isDependencyTainted(object, anchor)) {
             return false;
         }
+        assert anchor instanceof FixedNode;
         Witness w = getOrElseAddTypeInfo(object);
         if (w.trackIO(observed, anchor)) {
             versionNr++;
@@ -611,6 +614,7 @@ public final class State extends MergeableState<State> implements Cloneable {
      */
     public void addFact(boolean isTrue, LogicNode condition, GuardingNode anchor) {
         assert anchor != null;
+        assert anchor instanceof FixedNode;
         assert !isUnreachable;
 
         if (condition instanceof LogicConstantNode) {
@@ -699,6 +703,7 @@ public final class State extends MergeableState<State> implements Cloneable {
         if (isDependencyTainted(equals.y(), anchor)) {
             return;
         }
+        assert anchor instanceof FixedNode;
         ValueNode x = GraphUtil.unproxify(equals.x());
         ValueNode y = GraphUtil.unproxify(equals.y());
         if (isTrue) {
@@ -757,6 +762,7 @@ public final class State extends MergeableState<State> implements Cloneable {
         if (isDependencyTainted(value, anchor)) {
             return;
         }
+        assert anchor instanceof FixedNode;
         ValueNode original = GraphUtil.unproxify(value);
         boolean wasNull = isNull(original);
         boolean wasNonNull = isNonNull(original);
