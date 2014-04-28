@@ -23,12 +23,13 @@
 package com.oracle.graal.nodes.calc;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
+import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
 
 @NodeInfo(shortName = "+")
 public final class FloatAddNode extends FloatArithmeticNode implements Canonicalizable {
@@ -65,20 +66,20 @@ public final class FloatAddNode extends FloatArithmeticNode implements Canonical
     }
 
     @Override
-    public void generate(NodeLIRBuilderTool gen) {
-        Value op1 = gen.operand(x());
-        Value op2 = gen.operand(y());
-        if (!y().isConstant() && !livesLonger(this, y(), gen)) {
+    public void generate(NodeMappableLIRBuilder builder, ArithmeticLIRGenerator gen) {
+        Value op1 = builder.operand(x());
+        Value op2 = builder.operand(y());
+        if (!y().isConstant() && !livesLonger(this, y(), builder)) {
             Value op = op1;
             op1 = op2;
             op2 = op;
         }
-        gen.setResult(this, gen.getLIRGeneratorTool().emitAdd(op1, op2));
+        builder.setResult(this, gen.emitAdd(op1, op2));
     }
 
-    public static boolean livesLonger(ValueNode after, ValueNode value, NodeLIRBuilderTool gen) {
+    public static boolean livesLonger(ValueNode after, ValueNode value, NodeMappableLIRBuilder builder) {
         for (Node usage : value.usages()) {
-            if (usage != after && usage instanceof ValueNode && gen.hasOperand(((ValueNode) usage))) {
+            if (usage != after && usage instanceof ValueNode && builder.hasOperand(((ValueNode) usage))) {
                 return true;
             }
         }

@@ -23,31 +23,31 @@
 package com.oracle.graal.nodes.java;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.meta.ProfilingInfo.TriState;
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
 
 /**
  * The {@code InstanceOfNode} represents an instanceof test.
  */
-public final class InstanceOfNode extends LogicNode implements Canonicalizable, Lowerable, Virtualizable {
+public final class InstanceOfNode extends UnaryOpLogicNode implements Canonicalizable, Lowerable, Virtualizable {
 
-    @Input private ValueNode object;
     private final ResolvedJavaType type;
     private JavaTypeProfile profile;
 
     /**
      * Constructs a new InstanceOfNode.
-     * 
+     *
      * @param type the target type of the instanceof check
      * @param object the object being tested by the instanceof
      */
     public InstanceOfNode(ResolvedJavaType type, ValueNode object, JavaTypeProfile profile) {
+        super(object);
         this.type = type;
-        this.object = object;
         this.profile = profile;
         assert type != null;
     }
@@ -59,13 +59,39 @@ public final class InstanceOfNode extends LogicNode implements Canonicalizable, 
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        Stamp stamp = object().stamp();
+        switch (evaluate(object())) {
+            case FALSE:
+                return LogicConstantNode.contradiction(graph());
+            case TRUE:
+                return LogicConstantNode.tautology(graph());
+            case UNKNOWN:
+                Stamp stamp = object().stamp();
+                if (stamp instanceof ObjectStamp) {
+                    ObjectStamp objectStamp = (ObjectStamp) stamp;
+                    ResolvedJavaType stampType = objectStamp.type();
+                    if (stampType != null && type().isAssignableFrom(stampType)) {
+                        if (!objectStamp.nonNull()) {
+                            // the instanceof matches if the object is non-null, so return true
+                            // depending on the null-ness.
+                            IsNullNode isNull = graph().unique(new IsNullNode(object()));
+                            return graph().unique(new LogicNegationNode(isNull));
+                        }
+                    }
+                }
+                return this;
+        }
+        return this;
+    }
+
+    @Override
+    public TriState evaluate(ValueNode forObject) {
+        Stamp stamp = forObject.stamp();
         if (!(stamp instanceof ObjectStamp)) {
-            return this;
+            return TriState.UNKNOWN;
         }
         ObjectStamp objectStamp = (ObjectStamp) stamp;
         if (objectStamp.alwaysNull()) {
-            return LogicConstantNode.contradiction(graph());
+            return TriState.FALSE;
         }
 
         ResolvedJavaType stampType = objectStamp.type();
@@ -74,34 +100,25 @@ public final class InstanceOfNode extends LogicNode implements Canonicalizable, 
             if (subType) {
                 if (objectStamp.nonNull()) {
                     // the instanceOf matches, so return true
-                    return LogicConstantNode.tautology(graph());
-                } else {
-                    // the instanceof matches if the object is non-null, so return true depending on
-                    // the null-ness.
-                    IsNullNode isNull = graph().unique(new IsNullNode(object()));
-                    return graph().unique(new LogicNegationNode(isNull));
+                    return TriState.TRUE;
                 }
             } else {
                 if (objectStamp.isExactType()) {
                     // since this type check failed for an exact type we know that it can never
                     // succeed at run time. we also don't care about null values, since they will
                     // also make the check fail.
-                    return LogicConstantNode.contradiction(graph());
+                    return TriState.FALSE;
                 } else {
                     boolean superType = stampType.isAssignableFrom(type());
                     if (!superType && !stampType.isInterface() && !type().isInterface()) {
-                        return LogicConstantNode.contradiction(graph());
+                        return TriState.FALSE;
                     }
                     // since the subtype comparison was only performed on a declared type we don't
                     // really know if it might be true at run time...
                 }
             }
         }
-        return this;
-    }
-
-    public ValueNode object() {
-        return object;
+        return TriState.UNKNOWN;
     }
 
     /**
@@ -121,7 +138,7 @@ public final class InstanceOfNode extends LogicNode implements Canonicalizable, 
 
     @Override
     public void virtualize(VirtualizerTool tool) {
-        State state = tool.getObjectState(object);
+        State state = tool.getObjectState(object());
         if (state != null) {
             tool.replaceWithValue(LogicConstantNode.forBoolean(type().isAssignableFrom(state.getVirtualObject().type()), graph()));
         }

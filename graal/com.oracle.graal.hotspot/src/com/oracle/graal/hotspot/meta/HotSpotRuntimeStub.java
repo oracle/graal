@@ -24,15 +24,13 @@ package com.oracle.graal.hotspot.meta;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.graph.*;
+import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.hotspot.stubs.*;
 
 /**
  * Implementation of {@link InstalledCode} for code installed as a RuntimeStub.
  */
 public class HotSpotRuntimeStub extends HotSpotInstalledCode {
-
-    private static final long serialVersionUID = -6388648408298441748L;
 
     private final Stub stub;
 
@@ -44,18 +42,21 @@ public class HotSpotRuntimeStub extends HotSpotInstalledCode {
         return null;
     }
 
+    @Override
     public boolean isValid() {
         return true;
     }
 
+    @Override
     public void invalidate() {
     }
 
     @Override
     public String toString() {
-        return String.format("InstalledRuntimeStub[stub=%s, codeBlob=0x%x]", stub, getCodeBlob());
+        return String.format("InstalledRuntimeStub[stub=%s, codeBlob=0x%x]", stub, getAddress());
     }
 
+    @Override
     public Object executeVarargs(Object... args) throws InvalidInstalledCodeException {
         throw new GraalInternalError("Cannot call stub %s", stub);
     }

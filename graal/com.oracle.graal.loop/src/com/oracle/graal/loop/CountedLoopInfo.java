@@ -25,11 +25,11 @@ package com.oracle.graal.loop;
 import static com.oracle.graal.nodes.calc.IntegerArithmeticNode.*;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.loop.InductionVariable.Direction;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
-import com.oracle.graal.nodes.type.*;
 
 public class CountedLoopInfo {
 
@@ -37,9 +37,9 @@ public class CountedLoopInfo {
     private InductionVariable iv;
     private ValueNode end;
     private boolean oneOff;
-    private AbstractBeginNode body;
+    private BeginNode body;
 
-    CountedLoopInfo(LoopEx loop, InductionVariable iv, ValueNode end, boolean oneOff, AbstractBeginNode body) {
+    CountedLoopInfo(LoopEx loop, InductionVariable iv, ValueNode end, boolean oneOff, BeginNode body) {
         this.loop = loop;
         this.iv = iv;
         this.end = end;
@@ -117,7 +117,7 @@ public class CountedLoopInfo {
         return oneOff;
     }
 
-    public AbstractBeginNode getBody() {
+    public BeginNode getBody() {
         return body;
     }
 
@@ -143,14 +143,14 @@ public class CountedLoopInfo {
         CompareNode cond; // we use a negated guard with a < condition to achieve a >=
         ConstantNode one = ConstantNode.forIntegerStamp(stamp, 1, graph);
         if (iv.direction() == Direction.Up) {
-            IntegerArithmeticNode v1 = sub(graph, ConstantNode.forIntegerStamp(stamp, IntegerStamp.defaultMaxValue(stamp.getBits(), stamp.isUnsigned()), graph), sub(graph, iv.strideNode(), one));
+            IntegerArithmeticNode v1 = sub(graph, ConstantNode.forIntegerStamp(stamp, IntegerStamp.defaultMaxValue(stamp.getBits()), graph), sub(graph, iv.strideNode(), one));
             if (oneOff) {
                 v1 = sub(graph, v1, one);
             }
             cond = graph.unique(new IntegerLessThanNode(v1, end));
         } else {
             assert iv.direction() == Direction.Down;
-            IntegerArithmeticNode v1 = add(graph, ConstantNode.forIntegerStamp(stamp, IntegerStamp.defaultMinValue(stamp.getBits(), stamp.isUnsigned()), graph), sub(graph, one, iv.strideNode()));
+            IntegerArithmeticNode v1 = add(graph, ConstantNode.forIntegerStamp(stamp, IntegerStamp.defaultMinValue(stamp.getBits()), graph), sub(graph, one, iv.strideNode()));
             if (oneOff) {
                 v1 = add(graph, v1, one);
             }

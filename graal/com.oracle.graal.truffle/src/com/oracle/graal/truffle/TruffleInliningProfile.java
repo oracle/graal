@@ -24,32 +24,39 @@ package com.oracle.graal.truffle;
 
 import java.util.*;
 
-public class TruffleInliningProfile implements Comparable<TruffleInliningProfile> {
+public class TruffleInliningProfile {
 
-    private final TruffleCallPath callPath;
-
+    private final OptimizedDirectCallNode callNode;
     private final int nodeCount;
     private final int deepNodeCount;
     private final int callSites;
     private final double frequency;
     private final boolean forced;
+    private final boolean recursiveCall;
     private final TruffleInliningResult recursiveResult;
 
     private String failedReason;
     private int queryIndex = -1;
     private double score;
 
-    public TruffleInliningProfile(TruffleCallPath callPath, int callSites, int nodeCount, int deepNodeCount, double frequency, boolean forced, TruffleInliningResult recursiveResult) {
-        if (callPath.isRoot()) {
-            throw new IllegalArgumentException("Root call path not profilable.");
-        }
+    public TruffleInliningProfile(OptimizedDirectCallNode callNode, int callSites, int nodeCount, int deepNodeCount, double frequency, boolean forced, boolean recursiveCall,
+                    TruffleInliningResult recursiveResult) {
+        this.callNode = callNode;
         this.callSites = callSites;
-        this.callPath = callPath;
         this.nodeCount = nodeCount;
         this.deepNodeCount = deepNodeCount;
         this.frequency = frequency;
+        this.recursiveCall = recursiveCall;
         this.forced = forced;
         this.recursiveResult = recursiveResult;
+    }
+
+    public boolean isRecursiveCall() {
+        return recursiveCall;
+    }
+
+    public OptimizedDirectCallNode getCallNode() {
+        return callNode;
     }
 
     public int getCallSites() {
@@ -100,21 +107,12 @@ public class TruffleInliningProfile implements Comparable<TruffleInliningProfile
         return deepNodeCount;
     }
 
-    public TruffleCallPath getCallPath() {
-        return callPath;
-    }
-
-    public int compareTo(TruffleInliningProfile o) {
-        return callPath.compareTo(o.callPath);
-    }
-
     public Map<String, Object> getDebugProperties() {
         Map<String, Object> properties = new LinkedHashMap<>();
-        properties.put("callSites", callSites);
-        properties.put("nodeCount", nodeCount);
+        properties.put("nodeCount", String.format("%5d/%5d", deepNodeCount, nodeCount));
         properties.put("frequency", frequency);
-        properties.put("score", score);
-        properties.put(String.format("index=%3d, force=%s", queryIndex, (forced ? "Y" : "N")), "");
+        properties.put("score", String.format("%8.4f", getScore()));
+        properties.put(String.format("index=%3d, force=%s, callSites=%2d", queryIndex, (forced ? "Y" : "N"), callSites), "");
         properties.put("reason", failedReason);
         return properties;
     }

@@ -38,7 +38,6 @@ public class GraphUtil {
 
         @Override
         public final boolean apply(Node n) {
-            // isA(FloatingNode.class).or(VirtualState.class).or(CallTargetNode.class)
             return n instanceof FloatingNode || n instanceof VirtualState || n instanceof CallTargetNode;
         }
     };
@@ -138,6 +137,11 @@ public class GraphUtil {
     }
 
     public static void removeFixedWithUnusedInputs(FixedWithNextNode fixed) {
+        if (fixed instanceof StateSplit) {
+            FrameState stateAfter = ((StateSplit) fixed).stateAfter();
+            ((StateSplit) fixed).setStateAfter(null);
+            killWithUnusedFloatingInputs(stateAfter);
+        }
         FixedNode next = fixed.next();
         fixed.setNext(null);
         fixed.replaceAtPredecessor(next);
@@ -164,7 +168,7 @@ public class GraphUtil {
     }
 
     public static void checkRedundantProxy(ProxyNode vpn) {
-        AbstractBeginNode proxyPoint = vpn.proxyPoint();
+        BeginNode proxyPoint = vpn.proxyPoint();
         if (proxyPoint instanceof LoopExitNode) {
             LoopExitNode exit = (LoopExitNode) proxyPoint;
             LoopBeginNode loopBegin = exit.loopBegin();
@@ -325,6 +329,14 @@ public class GraphUtil {
             v = new OriginalValueSearch(proxy).result;
         }
         return v;
+    }
+
+    public static boolean tryKillUnused(Node node) {
+        if (node.isAlive() && isFloatingNode().apply(node) && node.recordsUsages() && node.usages().isEmpty()) {
+            killWithUnusedFloatingInputs(node);
+            return true;
+        }
+        return false;
     }
 
     /**

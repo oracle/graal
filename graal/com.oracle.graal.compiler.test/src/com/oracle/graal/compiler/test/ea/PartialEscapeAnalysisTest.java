@@ -120,6 +120,7 @@ public class PartialEscapeAnalysisTest extends EATestBase {
     }
 
     @Test
+    @Ignore
     public void testCache() {
         testPartialEscapeAnalysis("testCacheSnippet", 0.75, 1);
     }

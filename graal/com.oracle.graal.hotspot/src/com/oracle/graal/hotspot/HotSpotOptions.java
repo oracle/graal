@@ -33,8 +33,8 @@ import java.nio.charset.*;
 import java.nio.file.*;
 import java.util.*;
 
+import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.debug.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.logging.*;
 import com.oracle.graal.options.*;
 import com.oracle.graal.phases.common.*;

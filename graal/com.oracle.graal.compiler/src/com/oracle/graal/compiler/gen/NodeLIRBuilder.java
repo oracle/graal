@@ -23,6 +23,7 @@
 package com.oracle.graal.compiler.gen;
 
 import static com.oracle.graal.api.code.ValueUtil.*;
+import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.lir.LIR.*;
 import static com.oracle.graal.nodes.ConstantNode.*;
 
@@ -31,21 +32,25 @@ import java.util.Map.Entry;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.gen.LIRGenerator.LoadConstant;
-import com.oracle.graal.compiler.target.*;
+import com.oracle.graal.compiler.common.*;
+import com.oracle.graal.compiler.common.calc.*;
+import com.oracle.graal.compiler.common.cfg.*;
+import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.compiler.match.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.JumpOp;
+import com.oracle.graal.lir.gen.*;
+import com.oracle.graal.lir.gen.LIRGenerator.LoadConstant;
+import com.oracle.graal.lir.gen.LIRGenerator.Options;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.virtual.*;
-import com.oracle.graal.phases.*;
 
 /**
  * This class traverses the HIR instructions and generates LIR instructions from them.
@@ -55,16 +60,18 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool {
     private final NodeMap<Value> nodeOperands;
     private final DebugInfoBuilder debugInfoBuilder;
 
-    protected final LIRGenerator gen;
+    protected final LIRGeneratorTool gen;
 
     private ValueNode currentInstruction;
     private ValueNode lastInstructionPrinted; // Debugging only
 
-    public NodeLIRBuilder(StructuredGraph graph, LIRGenerator gen) {
+    private Map<Class<? extends ValueNode>, List<MatchStatement>> matchRules;
+
+    public NodeLIRBuilder(StructuredGraph graph, LIRGeneratorTool gen) {
         this.gen = gen;
         this.nodeOperands = graph.createNodeMap();
         this.debugInfoBuilder = createDebugInfoBuilder(nodeOperands);
-        gen.setDebugInfoBuilder(debugInfoBuilder);
+        matchRules = MatchRuleRegistry.lookup(getClass());
     }
 
     @SuppressWarnings("hiding")
@@ -110,25 +117,25 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool {
                     return setResult(node, value);
                 } else {
                     Variable loadedValue;
-                    if (gen.constantLoads == null) {
-                        gen.constantLoads = new HashMap<>();
+                    if (gen.getConstantLoads() == null) {
+                        gen.setConstantLoads(new HashMap<>());
                     }
-                    LoadConstant load = gen.constantLoads.get(value);
+                    LoadConstant load = gen.getConstantLoads().get(value);
                     assert gen.getCurrentBlock() instanceof Block;
                     if (load == null) {
                         int index = gen.getResult().getLIR().getLIRforBlock(gen.getCurrentBlock()).size();
                         loadedValue = gen.emitMove(value);
                         LIRInstruction op = gen.getResult().getLIR().getLIRforBlock(gen.getCurrentBlock()).get(index);
-                        gen.constantLoads.put(value, new LoadConstant(loadedValue, (Block) gen.getCurrentBlock(), index, op));
+                        gen.getConstantLoads().put(value, new LoadConstant(loadedValue, gen.getCurrentBlock(), index, op));
                     } else {
-                        Block dominator = ControlFlowGraph.commonDominator(load.block, (Block) gen.getCurrentBlock());
-                        loadedValue = load.variable;
-                        if (dominator != load.block) {
+                        AbstractBlock<?> dominator = ControlFlowGraph.commonDominator((Block) load.getBlock(), (Block) gen.getCurrentBlock());
+                        loadedValue = load.getVariable();
+                        if (dominator != load.getBlock()) {
                             load.unpin(gen.getResult().getLIR());
                         } else {
-                            assert load.block != gen.getCurrentBlock() || load.index < gen.getResult().getLIR().getLIRforBlock(gen.getCurrentBlock()).size();
+                            assert load.getBlock() != gen.getCurrentBlock() || load.getIndex() < gen.getResult().getLIR().getLIRforBlock(gen.getCurrentBlock()).size();
                         }
-                        load.block = dominator;
+                        load.setBlock(dominator);
                     }
                     return loadedValue;
                 }
@@ -151,11 +158,23 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool {
     @Override
     public Value setResult(ValueNode x, Value operand) {
         assert (!isRegister(operand) || !gen.attributes(asRegister(operand)).isAllocatable());
-        assert nodeOperands == null || nodeOperands.get(x) == null : "operand cannot be set twice";
+        assert nodeOperands != null && (nodeOperands.get(x) == null || nodeOperands.get(x) instanceof ComplexMatchValue) : "operand cannot be set twice";
         assert operand != null && isLegal(operand) : "operand must be legal";
         assert !(x instanceof VirtualObjectNode);
         nodeOperands.set(x, operand);
         return operand;
+    }
+
+    /**
+     * Used by the {@link MatchStatement} machinery to override the generation LIR for some
+     * ValueNodes.
+     */
+    public void setMatchResult(ValueNode x, Value operand) {
+        assert operand.equals(Value.INTERIOR_MATCH) || operand instanceof ComplexMatchValue;
+        assert operand instanceof ComplexMatchValue || x.usages().count() == 1 : "interior matches must be single user";
+        assert nodeOperands != null && nodeOperands.get(x) == null : "operand cannot be set twice";
+        assert !(x instanceof VirtualObjectNode);
+        nodeOperands.set(x, operand);
     }
 
     public LabelRef getLIRBlock(FixedNode b) {
@@ -169,7 +188,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool {
     }
 
     public final void append(LIRInstruction op) {
-        if (gen.printIRWithLIR && !TTY.isSuppressed()) {
+        if (Options.PrintIRWithLIR.getValue() && !TTY.isSuppressed()) {
             if (currentInstruction != null && lastInstructionPrinted != currentInstruction) {
                 lastInstructionPrinted = currentInstruction;
                 InstructionPrinter ip = new InstructionPrinter(TTY.out());
@@ -190,10 +209,17 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool {
         }
 
         List<ScheduledNode> nodes = blockMap.get(block);
+
+        if (MatchExpressions.getValue()) {
+            // Allow NodeLIRBuilder subclass to specialize code generation of any interesting groups
+            // of instructions
+            matchComplexExpressions(nodes);
+        }
+
         int instructionsFolded = 0;
         for (int i = 0; i < nodes.size(); i++) {
             Node instr = nodes.get(i);
-            if (gen.traceLevel >= 3) {
+            if (Options.TraceLIRGeneratorLevel.getValue() >= 3) {
                 TTY.println("LIRGen for " + instr);
             }
             if (instructionsFolded > 0) {
@@ -205,18 +231,29 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool {
 
             } else if (instr instanceof ValueNode) {
                 ValueNode valueNode = (ValueNode) instr;
-                if (!hasOperand(valueNode)) {
+                Value operand = getOperand(valueNode);
+                if (operand == null) {
                     if (!peephole(valueNode)) {
                         instructionsFolded = maybeFoldMemory(nodes, i, valueNode);
                         if (instructionsFolded == 0) {
                             try {
                                 doRoot((ValueNode) instr);
                             } catch (GraalInternalError e) {
-                                throw e.addContext(instr);
+                                throw GraalGraphInternalError.transformAndAddContext(e, instr);
                             } catch (Throwable e) {
-                                throw new GraalInternalError(e).addContext(instr);
+                                throw new GraalGraphInternalError(e).addContext(instr);
                             }
                         }
+                    }
+                } else if (Value.INTERIOR_MATCH.equals(operand)) {
+                    // Doesn't need to be evaluated
+                    Debug.log("interior match for %s", valueNode);
+                } else if (operand instanceof ComplexMatchValue) {
+                    Debug.log("complex match for %s", valueNode);
+                    ComplexMatchValue match = (ComplexMatchValue) operand;
+                    operand = match.evaluate(this);
+                    if (operand != null) {
+                        setResult(valueNode, operand);
                     }
                 } else {
                     // There can be cases in which the result of an instruction is already set
@@ -240,6 +277,31 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool {
 
         assert verifyBlock(gen.getResult().getLIR(), block);
         gen.doBlockEnd(block);
+    }
+
+    protected void matchComplexExpressions(List<ScheduledNode> nodes) {
+        if (matchRules != null) {
+            try (Scope s = Debug.scope("MatchComplexExpressions")) {
+                // Match the nodes in backwards order to encourage longer matches.
+                for (int index = nodes.size() - 1; index >= 0; index--) {
+                    ScheduledNode snode = nodes.get(index);
+                    if (!(snode instanceof ValueNode)) {
+                        continue;
+                    }
+                    ValueNode node = (ValueNode) snode;
+                    // See if this node is the root of any MatchStatements
+                    List<MatchStatement> statements = matchRules.get(node.getClass());
+                    if (statements != null) {
+                        for (MatchStatement statement : statements) {
+                            if (statement.generate(this, node, nodes)) {
+                                // Found a match so skip to the next
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     private static final DebugMetric MemoryFoldSuccess = Debug.metric("MemoryFoldSuccess");
@@ -391,7 +453,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool {
     protected abstract boolean peephole(ValueNode valueNode);
 
     private void doRoot(ValueNode instr) {
-        if (gen.traceLevel >= 2) {
+        if (Options.TraceLIRGeneratorLevel.getValue() >= 2) {
             TTY.println("Emitting LIR for instruction " + instr);
         }
         currentInstruction = instr;
@@ -405,14 +467,10 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool {
         if (Debug.isLogEnabled() && node.stamp() instanceof IllegalStamp) {
             Debug.log("This node has invalid type, we are emitting dead code(?): %s", node);
         }
-        if (node instanceof LIRGenLowerable) {
-            ((LIRGenLowerable) node).generate(this);
-        } else if (node instanceof LIRGenResLowerable) {
-            ((LIRGenResLowerable) node).generate(this, gen.getResult());
-        } else if (node instanceof LIRLowerable) {
+        if (node instanceof LIRLowerable) {
             ((LIRLowerable) node).generate(this);
         } else if (node instanceof ArithmeticLIRLowerable) {
-            ((ArithmeticLIRLowerable) node).generate(this);
+            ((ArithmeticLIRLowerable) node).generate(this, gen);
         } else {
             throw GraalInternalError.shouldNotReachHere("node is not LIRLowerable: " + node);
         }
@@ -458,7 +516,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool {
     }
 
     private void moveToPhi(MergeNode merge, AbstractEndNode pred) {
-        if (gen.traceLevel >= 1) {
+        if (Options.TraceLIRGeneratorLevel.getValue() >= 1) {
             TTY.println("MOVE TO PHI from " + pred + " to " + merge);
         }
         PhiResolver resolver = new PhiResolver(gen);
@@ -566,7 +624,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool {
         if (x instanceof InvokeWithExceptionNode) {
             exceptionEdge = getLIRBlock(((InvokeWithExceptionNode) x).exceptionEdge());
         }
-        LIRFrameState callState = gen.stateWithExceptionEdge(x, exceptionEdge);
+        LIRFrameState callState = stateWithExceptionEdge(x, exceptionEdge);
 
         Value result = invokeCc.getReturn();
         if (callTarget instanceof DirectCallTargetNode) {
@@ -659,7 +717,46 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool {
         return debugInfoBuilder;
     }
 
-    public void emitOverflowCheckBranch(AbstractBeginNode overflowSuccessor, AbstractBeginNode next, double probability) {
+    private static FrameState getFrameState(DeoptimizingNode deopt) {
+        if (deopt instanceof DeoptimizingNode.DeoptBefore) {
+            assert !(deopt instanceof DeoptimizingNode.DeoptDuring || deopt instanceof DeoptimizingNode.DeoptAfter);
+            return ((DeoptimizingNode.DeoptBefore) deopt).stateBefore();
+        } else if (deopt instanceof DeoptimizingNode.DeoptDuring) {
+            assert !(deopt instanceof DeoptimizingNode.DeoptAfter);
+            return ((DeoptimizingNode.DeoptDuring) deopt).stateDuring();
+        } else {
+            assert deopt instanceof DeoptimizingNode.DeoptAfter;
+            return ((DeoptimizingNode.DeoptAfter) deopt).stateAfter();
+        }
+    }
+
+    public LIRFrameState state(DeoptimizingNode deopt) {
+        if (!deopt.canDeoptimize()) {
+            return null;
+        }
+        return stateFor(getFrameState(deopt));
+    }
+
+    public LIRFrameState stateWithExceptionEdge(DeoptimizingNode deopt, LabelRef exceptionEdge) {
+        if (!deopt.canDeoptimize()) {
+            return null;
+        }
+        return stateForWithExceptionEdge(getFrameState(deopt), exceptionEdge);
+    }
+
+    public LIRFrameState stateFor(FrameState state) {
+        return stateForWithExceptionEdge(state, null);
+    }
+
+    public LIRFrameState stateForWithExceptionEdge(FrameState state, LabelRef exceptionEdge) {
+        if (gen.needOnlyOopMaps()) {
+            return new LIRFrameState(null, null, null);
+        }
+        assert state != null;
+        return getDebugInfoBuilder().build(state, exceptionEdge);
+    }
+
+    public void emitOverflowCheckBranch(BeginNode overflowSuccessor, BeginNode next, double probability) {
         gen.emitOverflowCheckBranch(getLIRBlock(overflowSuccessor), getLIRBlock(next), probability);
     }
 
@@ -684,11 +781,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool {
     }
 
     @Override
-    public LIRGenerator getLIRGeneratorTool() {
-        return gen;
-    }
-
-    public LIRGenerator getLIRGenerator() {
+    public LIRGeneratorTool getLIRGeneratorTool() {
         return gen;
     }
 }

@@ -28,7 +28,6 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.util.*;
 import com.oracle.graal.runtime.*;
 import com.oracle.graal.truffle.*;
-import com.oracle.graal.truffle.hotspot.substitutions.*;
 
 public final class HotSpotTruffleReplacements extends TruffleReplacements {
 
@@ -40,11 +39,5 @@ public final class HotSpotTruffleReplacements extends TruffleReplacements {
         Providers providers = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend().getProviders();
         SnippetReflectionProvider snippetReflection = Graal.getRequiredCapability(SnippetReflectionProvider.class);
         return new HotSpotTruffleReplacements(providers, snippetReflection);
-    }
-
-    @Override
-    protected void registerTruffleSubstitutions() {
-        super.registerTruffleSubstitutions();
-        registerSubstitutions(HotSpotOptimizedCallTargetSubstitutions.class);
     }
 }

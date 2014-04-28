@@ -23,10 +23,7 @@
 
 package com.oracle.graal.compiler.hsail.test;
 
-import static org.junit.Assume.*;
-
 import org.junit.*;
-
 import com.oracle.graal.compiler.hsail.test.infra.*;
 
 /**
@@ -82,7 +79,6 @@ public class StaticMandelTest extends GraalKernelTester {
 
     @Test
     public void test() {
-        assumeTrue(runningOnSimulator());
         testGeneratedHsail();
     }
 }

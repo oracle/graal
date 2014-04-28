@@ -64,7 +64,8 @@ public class PartialEvaluationTest extends GraalCompilerTest {
     protected InstalledCode assertPartialEvalEquals(String methodName, RootNode root, Object[] arguments) {
         Assumptions assumptions = new Assumptions(true);
         StructuredGraph actual = partialEval(root, arguments, assumptions, true);
-        InstalledCode result = truffleCompiler.compileMethodHelper(actual, assumptions, root.toString(), getSpeculationLog());
+        InstalledCode result = new InstalledCode();
+        truffleCompiler.compileMethodHelper(actual, assumptions, root.toString(), getSpeculationLog(), result);
         StructuredGraph expected = parseForComparison(methodName);
         removeFrameStates(actual);
         Assert.assertEquals(getCanonicalGraphString(expected, true, true), getCanonicalGraphString(actual, true, true));

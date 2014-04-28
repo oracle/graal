@@ -23,6 +23,7 @@
 package com.oracle.graal.nodes;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.calc.*;
@@ -48,6 +49,18 @@ public class GuardingPiNode extends FixedWithNextNode implements Lowerable, Virt
 
     public LogicNode condition() {
         return condition;
+    }
+
+    public boolean isNegated() {
+        return negated;
+    }
+
+    public DeoptimizationReason getReason() {
+        return reason;
+    }
+
+    public DeoptimizationAction getAction() {
+        return action;
     }
 
     /**
@@ -87,7 +100,7 @@ public class GuardingPiNode extends FixedWithNextNode implements Lowerable, Virt
     @Override
     public void virtualize(VirtualizerTool tool) {
         State state = tool.getObjectState(object);
-        if (state != null && state.getState() == EscapeState.Virtual && ObjectStamp.typeOrNull(this) != null && ObjectStamp.typeOrNull(this).isAssignableFrom(state.getVirtualObject().type())) {
+        if (state != null && state.getState() == EscapeState.Virtual && StampTool.typeOrNull(this) != null && StampTool.typeOrNull(this).isAssignableFrom(state.getVirtualObject().type())) {
             tool.replaceWithVirtual(state.getVirtualObject());
         }
     }

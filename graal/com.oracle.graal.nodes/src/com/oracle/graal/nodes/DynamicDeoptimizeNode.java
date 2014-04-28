@@ -55,7 +55,7 @@ public class DynamicDeoptimizeNode extends AbstractDeoptimizeNode implements LIR
     }
 
     public void generate(NodeLIRBuilderTool generator) {
-        generator.getLIRGeneratorTool().emitDeoptimize(generator.operand(actionAndReason), generator.operand(speculation), this);
+        generator.getLIRGeneratorTool().emitDeoptimize(generator.operand(actionAndReason), generator.operand(speculation), generator.state(this));
     }
 
     @Override

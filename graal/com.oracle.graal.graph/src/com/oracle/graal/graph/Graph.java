@@ -24,6 +24,7 @@ package com.oracle.graal.graph;
 
 import java.util.*;
 
+import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.GraphEvent.NodeEvent;
 import com.oracle.graal.graph.Node.ValueNumberable;
@@ -525,7 +526,7 @@ public class Graph {
      */
     public NodeIterable<Node> getNewNodes(Mark mark) {
         final int index = mark.getValue();
-        return new AbstractNodeIterable<Node>() {
+        return new NodeIterable<Node>() {
 
             @Override
             public Iterator<Node> iterator() {
@@ -540,7 +541,7 @@ public class Graph {
      * @return an {@link Iterable} providing all the live nodes.
      */
     public NodeIterable<Node> getNodes() {
-        return new AbstractNodeIterable<Node>() {
+        return new NodeIterable<Node>() {
 
             @Override
             public Iterator<Node> iterator() {
@@ -714,7 +715,7 @@ public class Graph {
      */
     public <T extends Node & IterableNodeType> NodeIterable<T> getNodes(final Class<T> type) {
         final NodeClass nodeClass = NodeClass.get(type);
-        return new AbstractNodeIterable<T>() {
+        return new NodeIterable<T>() {
 
             @Override
             public Iterator<T> iterator() {
@@ -839,7 +840,7 @@ public class Graph {
                     throw new GraalInternalError(t);
                 }
             } catch (GraalInternalError e) {
-                throw e.addContext(node).addContext(this);
+                throw GraalGraphInternalError.transformAndAddContext(e, node).addContext(this);
             }
         }
         return true;

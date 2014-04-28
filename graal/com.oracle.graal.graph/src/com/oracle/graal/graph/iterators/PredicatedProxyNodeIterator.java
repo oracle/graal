@@ -30,10 +30,8 @@ public class PredicatedProxyNodeIterator<T extends Node> extends NodeIterator<T>
 
     private final Iterator<T> iterator;
     private final NodePredicate predicate;
-    private final NodePredicate until;
 
-    public PredicatedProxyNodeIterator(NodePredicate until, Iterator<T> iterator, NodePredicate predicate) {
-        this.until = until;
+    public PredicatedProxyNodeIterator(Iterator<T> iterator, NodePredicate predicate) {
         this.iterator = iterator;
         this.predicate = predicate;
     }
@@ -43,7 +41,7 @@ public class PredicatedProxyNodeIterator<T extends Node> extends NodeIterator<T>
         while ((current == null || !current.isAlive() || !predicate.apply(current)) && iterator.hasNext()) {
             current = iterator.next();
         }
-        if (current != null && (!current.isAlive() || !predicate.apply(current) || until.apply(current))) {
+        if (current != null && (!current.isAlive() || !predicate.apply(current))) {
             current = null;
         }
     }

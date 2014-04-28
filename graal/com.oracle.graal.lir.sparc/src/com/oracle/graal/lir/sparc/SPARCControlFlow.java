@@ -48,12 +48,12 @@ import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Cmp;
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Jmp;
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Nop;
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Ret;
-import com.oracle.graal.graph.*;
+import com.oracle.graal.compiler.common.*;
+import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.BlockEndOp;
 import com.oracle.graal.lir.SwitchStrategy.BaseSwitchClosure;
 import com.oracle.graal.lir.asm.*;
-import com.oracle.graal.nodes.calc.*;
 
 public class SPARCControlFlow {
 
@@ -270,13 +270,16 @@ public class SPARCControlFlow {
     @Opcode("CMOVE")
     public static class CondMoveOp extends SPARCLIRInstruction {
 
+        private final Kind kind;
+
         @Def({REG, HINT}) protected Value result;
         @Alive({REG}) protected Value trueValue;
         @Use({REG, STACK, CONST}) protected Value falseValue;
 
         private final ConditionFlag condition;
 
-        public CondMoveOp(Variable result, Condition condition, Variable trueValue, Value falseValue) {
+        public CondMoveOp(Kind kind, Variable result, Condition condition, Variable trueValue, Value falseValue) {
+            this.kind = kind;
             this.result = result;
             this.condition = intCond(condition);
             this.trueValue = trueValue;
@@ -285,20 +288,28 @@ public class SPARCControlFlow {
 
         @Override
         public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
-            cmove(crb, masm, result, false, condition, false, trueValue, falseValue);
+            // check that we don't overwrite an input operand before it is used.
+            assert !result.equals(trueValue);
+
+            SPARCMove.move(crb, masm, result, falseValue);
+            cmove(crb, masm, kind, result, condition, trueValue);
         }
     }
 
     @Opcode("CMOVE")
     public static class FloatCondMoveOp extends SPARCLIRInstruction {
 
+        private final Kind kind;
+
         @Def({REG}) protected Value result;
         @Alive({REG}) protected Value trueValue;
         @Alive({REG}) protected Value falseValue;
+
         private final ConditionFlag condition;
         private final boolean unorderedIsTrue;
 
-        public FloatCondMoveOp(Variable result, Condition condition, boolean unorderedIsTrue, Variable trueValue, Variable falseValue) {
+        public FloatCondMoveOp(Kind kind, Variable result, Condition condition, boolean unorderedIsTrue, Variable trueValue, Variable falseValue) {
+            this.kind = kind;
             this.result = result;
             this.condition = floatCond(condition);
             this.unorderedIsTrue = unorderedIsTrue;
@@ -308,18 +319,12 @@ public class SPARCControlFlow {
 
         @Override
         public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
-            cmove(crb, masm, result, true, condition, unorderedIsTrue, trueValue, falseValue);
-        }
-    }
+            // check that we don't overwrite an input operand before it is used.
+            assert !result.equals(trueValue);
 
-    private static void cmove(CompilationResultBuilder crb, SPARCMacroAssembler masm, Value result, boolean isFloat, ConditionFlag condition, boolean unorderedIsTrue, Value trueValue, Value falseValue) {
-        // check that we don't overwrite an input operand before it is used.
-        assert !result.equals(trueValue);
+            SPARCMove.move(crb, masm, result, falseValue);
+            cmove(crb, masm, kind, result, condition, trueValue);
 
-        SPARCMove.move(crb, masm, result, falseValue);
-        cmove(crb, masm, result, condition, trueValue);
-
-        if (isFloat) {
             if (unorderedIsTrue && !trueOnUnordered(condition)) {
                 // cmove(crb, masm, result, ConditionFlag.Parity, trueValue);
                 throw GraalInternalError.unimplemented();
@@ -330,18 +335,20 @@ public class SPARCControlFlow {
         }
     }
 
-    private static void cmove(CompilationResultBuilder crb, SPARCMacroAssembler masm, Value result, ConditionFlag cond, Value other) {
+    private static void cmove(CompilationResultBuilder crb, SPARCMacroAssembler masm, Kind kind, Value result, ConditionFlag cond, Value other) {
         if (!isRegister(other)) {
             SPARCMove.move(crb, masm, result, other);
-            throw new InternalError("result should be scratch");
+            throw GraalInternalError.shouldNotReachHere("result should be scratch");
         }
         assert !asRegister(other).equals(asRegister(result)) : "other already overwritten by previous move";
-        switch (other.getKind()) {
+        switch (kind) {
             case Int:
-                // XXX CC depends on compare
                 new Movcc(cond, CC.Icc, asRegister(other), asRegister(result)).emit(masm);
                 break;
             case Long:
+            case Object:
+                new Movcc(cond, CC.Xcc, asRegister(other), asRegister(result)).emit(masm);
+                break;
             default:
                 throw GraalInternalError.shouldNotReachHere();
         }

@@ -23,8 +23,6 @@
 
 package com.oracle.graal.compiler.hsail.test;
 
-import static org.junit.Assume.*;
-
 import org.junit.*;
 
 /**
@@ -84,7 +82,6 @@ public class StaticMandelBoundsCheckTest extends SingleExceptionTestBase {
 
     @Test
     public void test() {
-        assumeTrue(runningOnSimulator());
         testGeneratedHsail();
     }
 }

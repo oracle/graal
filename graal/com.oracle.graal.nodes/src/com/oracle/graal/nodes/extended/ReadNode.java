@@ -23,6 +23,7 @@
 package com.oracle.graal.nodes.extended;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
@@ -54,15 +55,18 @@ public final class ReadNode extends FloatableAccessNode implements LIRLowerable,
 
     @Override
     public void generate(NodeLIRBuilderTool gen) {
-        Value address = location().generateAddress(gen, gen.operand(object()));
+        Value address = location().generateAddress(gen, gen.getLIRGeneratorTool(), gen.operand(object()));
         PlatformKind readKind = gen.getLIRGeneratorTool().getPlatformKind(stamp());
-        gen.setResult(this, gen.getLIRGeneratorTool().emitLoad(readKind, address, this));
+        gen.setResult(this, gen.getLIRGeneratorTool().emitLoad(readKind, address, gen.state(this)));
     }
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
         if (object() instanceof PiNode && ((PiNode) object()).getGuard() == getGuard()) {
-            return graph().add(new ReadNode(((PiNode) object()).getOriginalNode(), location(), stamp(), getGuard(), getBarrierType(), isCompressible()));
+            ReadNode readNode = graph().add(new ReadNode(((PiNode) object()).getOriginalNode(), location(), stamp(), getGuard(), getBarrierType(), isCompressible()));
+            readNode.setNullCheck(getNullCheck());
+            readNode.setStateBefore(stateBefore());
+            return readNode;
         }
         return canonicalizeRead(this, location(), object(), tool, isCompressible());
     }
@@ -140,7 +144,7 @@ public final class ReadNode extends FloatableAccessNode implements LIRLowerable,
         }
 
         ObjectStamp valueStamp = (ObjectStamp) parent.object().stamp();
-        ResolvedJavaType valueType = ObjectStamp.typeOrNull(valueStamp);
+        ResolvedJavaType valueType = StampTool.typeOrNull(valueStamp);
         if (valueType != null && field.getDeclaringClass().isAssignableFrom(valueType)) {
             if (piStamp.nonNull() == valueStamp.nonNull() && piStamp.alwaysNull() == valueStamp.alwaysNull()) {
                 replaceFirstInput(parent, parent.object());

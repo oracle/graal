@@ -22,18 +22,19 @@
  */
 package com.oracle.graal.hotspot.meta;
 
-import static com.oracle.graal.graph.UnsafeAccess.*;
+import static com.oracle.graal.compiler.common.GraalOptions.*;
+import static com.oracle.graal.compiler.common.UnsafeAccess.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
-import static com.oracle.graal.phases.GraalOptions.*;
 
 import java.lang.annotation.*;
 import java.lang.reflect.*;
+import java.util.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.meta.ProfilingInfo.TriState;
+import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.debug.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.debug.*;
 import com.oracle.graal.nodes.*;
@@ -55,7 +56,6 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
     private final HotSpotSignature signature;
     private HotSpotMethodData methodData;
     private byte[] code;
-    private SpeculationLog speculationLog;
 
     /**
      * Gets the holder of a HotSpot metaspace method native object.
@@ -162,6 +162,10 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
         return HotSpotMetaspaceConstant.forMetaspaceObject(getHostWordKind(), metaspaceMethod, this);
     }
 
+    public long getMetaspaceMethod() {
+        return metaspaceMethod;
+    }
+
     @Override
     public Constant getEncoding() {
         return getMetaspaceMethodConstant();
@@ -182,8 +186,7 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
 
     @Override
     public boolean canBeStaticallyBound() {
-        int modifiers = getModifiers();
-        return (Modifier.isFinal(modifiers) || Modifier.isPrivate(modifiers) || Modifier.isStatic(modifiers)) && !Modifier.isAbstract(modifiers);
+        return (isFinal() || isPrivate() || isStatic() || holder.isFinal()) && !isAbstract();
     }
 
     @Override
@@ -310,18 +313,17 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
 
     @Override
     public boolean isClassInitializer() {
-        return "<clinit>".equals(name) && Modifier.isStatic(getModifiers());
+        return "<clinit>".equals(name) && isStatic();
     }
 
     @Override
     public boolean isConstructor() {
-        return "<init>".equals(name) && !Modifier.isStatic(getModifiers());
+        return "<init>".equals(name) && !isStatic();
     }
 
     @Override
     public int getMaxLocals() {
-        int modifiers = getModifiers();
-        if (Modifier.isAbstract(modifiers) || Modifier.isNative(modifiers)) {
+        if (isAbstract() || isNative()) {
             return 0;
         }
         HotSpotVMConfig config = runtime().getConfig();
@@ -330,8 +332,7 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
 
     @Override
     public int getMaxStackSize() {
-        int modifiers = getModifiers();
-        if (Modifier.isAbstract(modifiers) || Modifier.isNative(modifiers)) {
+        if (isAbstract() || isNative()) {
             return 0;
         }
         HotSpotVMConfig config = runtime().getConfig();
@@ -612,15 +613,40 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
      * @return virtual table index
      */
     private int getVtableIndex() {
+        assert !holder.isInterface();
         HotSpotVMConfig config = runtime().getConfig();
-        return unsafe.getInt(metaspaceMethod + config.methodVtableIndexOffset);
+        int result = unsafe.getInt(metaspaceMethod + config.methodVtableIndexOffset);
+        assert result >= config.nonvirtualVtableIndex : "must be linked";
+        return result;
     }
 
-    public SpeculationLog getSpeculationLog() {
-        if (speculationLog == null) {
-            speculationLog = new HotSpotSpeculationLog();
+    /**
+     * The {@link SpeculationLog} for methods compiled by Graal hang off this per-declaring-type
+     * {@link ClassValue}. The raw Method* value is safe to use as a key in the map as a) it is
+     * never moves and b) we never read from it.
+     * <p>
+     * One implication is that we will preserve {@link SpeculationLog}s for methods that have been
+     * redefined via class redefinition. It's tempting to periodically flush such logs but we cannot
+     * read the JVM_ACC_IS_OBSOLETE bit (or anything else) via the raw pointer as obsoleted methods
+     * are subject to clean up and deletion (see InstanceKlass::purge_previous_versions_internal).
+     */
+    private static final ClassValue<Map<Long, SpeculationLog>> SpeculationLogs = new ClassValue<Map<Long, SpeculationLog>>() {
+        @Override
+        protected Map<Long, SpeculationLog> computeValue(java.lang.Class<?> type) {
+            return new HashMap<>(4);
         }
-        return speculationLog;
+    };
+
+    public SpeculationLog getSpeculationLog() {
+        Map<Long, SpeculationLog> map = SpeculationLogs.get(holder.mirror());
+        synchronized (map) {
+            SpeculationLog log = map.get(this.metaspaceMethod);
+            if (log == null) {
+                log = new HotSpotSpeculationLog();
+                map.put(metaspaceMethod, log);
+            }
+            return log;
+        }
     }
 
     public int intrinsicId() {

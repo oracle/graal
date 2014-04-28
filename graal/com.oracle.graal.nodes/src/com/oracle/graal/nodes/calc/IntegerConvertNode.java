@@ -23,10 +23,10 @@
 package com.oracle.graal.nodes.calc;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
 
 /**
  * An {@code IntegerConvert} converts an integer to an integer of different width.
@@ -67,7 +67,7 @@ public abstract class IntegerConvertNode extends ConvertNode implements Arithmet
                 return getInput();
             } else if (getInput().isConstant()) {
                 Constant ret = evalConst(getInput().asConstant());
-                return ConstantNode.forIntegerBits(resultBits, false, ret.asLong(), graph());
+                return ConstantNode.forIntegerBits(resultBits, ret.asLong(), graph());
             }
         }
 
@@ -86,19 +86,11 @@ public abstract class IntegerConvertNode extends ConvertNode implements Arithmet
             result = graph.unique(new NarrowNode(input, toStamp.getBits()));
         } else {
             // toStamp.getBits() > fromStamp.getBits()
-            if (fromStamp.isUnsigned()) {
-                result = graph.unique(new ZeroExtendNode(input, toStamp.getBits()));
-            } else {
-                result = graph.unique(new SignExtendNode(input, toStamp.getBits()));
-            }
+            result = graph.unique(new SignExtendNode(input, toStamp.getBits()));
         }
 
         IntegerStamp resultStamp = (IntegerStamp) result.stamp();
         assert toStamp.getBits() == resultStamp.getBits();
-        if (toStamp.isUnsigned() == resultStamp.isUnsigned()) {
-            return result;
-        } else {
-            return graph.unique(new ReinterpretNode(toStamp, result));
-        }
+        return result;
     }
 }

@@ -22,10 +22,11 @@
  */
 package com.oracle.graal.hotspot.replacements;
 
-import java.lang.reflect.*;
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.*;
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.hotspot.meta.*;
@@ -52,7 +53,7 @@ public abstract class AbstractMethodHandleNode extends MacroNode implements Cano
 
     /**
      * Search for an instance field with the given name in a class.
-     * 
+     *
      * @param className name of the class to search in
      * @param fieldName name of the field to be searched
      * @return resolved java field
@@ -99,7 +100,7 @@ public abstract class AbstractMethodHandleNode extends MacroNode implements Cano
 
     /**
      * Get the receiver of a MethodHandle.invokeBasic call.
-     * 
+     *
      * @return the receiver argument node
      */
     private ValueNode getReceiver() {
@@ -108,7 +109,7 @@ public abstract class AbstractMethodHandleNode extends MacroNode implements Cano
 
     /**
      * Get the MemberName argument of a MethodHandle.linkTo* call.
-     * 
+     *
      * @return the MemberName argument node (which is the last argument)
      */
     private ValueNode getMemberName() {
@@ -118,7 +119,7 @@ public abstract class AbstractMethodHandleNode extends MacroNode implements Cano
     /**
      * Used from {@link MethodHandleInvokeBasicNode} to get the target {@link InvokeNode} if the
      * method handle receiver is constant.
-     * 
+     *
      * @return invoke node for the {@link java.lang.invoke.MethodHandle} target
      */
     protected InvokeNode getInvokeBasicTarget() {
@@ -137,7 +138,7 @@ public abstract class AbstractMethodHandleNode extends MacroNode implements Cano
      * Used from {@link MethodHandleLinkToStaticNode}, {@link MethodHandleLinkToSpecialNode},
      * {@link MethodHandleLinkToVirtualNode}, and {@link MethodHandleLinkToInterfaceNode} to get the
      * target {@link InvokeNode} if the member name argument is constant.
-     * 
+     *
      * @return invoke node for the member name target
      */
     protected InvokeNode getLinkToTarget() {
@@ -152,7 +153,7 @@ public abstract class AbstractMethodHandleNode extends MacroNode implements Cano
     /**
      * Helper function to get the {@link InvokeNode} for the vmtarget of a
      * java.lang.invoke.MemberName.
-     * 
+     *
      * @param memberName constant member name node
      * @return invoke node for the member name target
      */
@@ -171,7 +172,7 @@ public abstract class AbstractMethodHandleNode extends MacroNode implements Cano
         // to a direct call we must cast the receiver and arguments to its
         // actual types.
         HotSpotSignature signature = targetMethod.getSignature();
-        final boolean isStatic = Modifier.isStatic(targetMethod.getModifiers());
+        final boolean isStatic = targetMethod.isStatic();
         final int receiverSkip = isStatic ? 0 : 1;
 
         // Cast receiver to its type.
@@ -188,7 +189,7 @@ public abstract class AbstractMethodHandleNode extends MacroNode implements Cano
 
         // Try to get the most accurate receiver type
         if (this instanceof MethodHandleLinkToVirtualNode || this instanceof MethodHandleLinkToInterfaceNode) {
-            ResolvedJavaType receiverType = ObjectStamp.typeOrNull(getReceiver().stamp());
+            ResolvedJavaType receiverType = StampTool.typeOrNull(getReceiver().stamp());
             if (receiverType != null) {
                 ResolvedJavaMethod concreteMethod = receiverType.findUniqueConcreteMethod(targetMethod);
                 if (concreteMethod != null) {
@@ -212,7 +213,7 @@ public abstract class AbstractMethodHandleNode extends MacroNode implements Cano
     /**
      * Inserts a node to cast the argument at index to the given type if the given type is more
      * concrete than the argument type.
-     * 
+     *
      * @param index of the argument to be cast
      * @param type the type the argument should be cast to
      */
@@ -221,7 +222,7 @@ public abstract class AbstractMethodHandleNode extends MacroNode implements Cano
             ResolvedJavaType targetType = (ResolvedJavaType) type;
             if (!targetType.isPrimitive()) {
                 ValueNode argument = arguments.get(index);
-                ResolvedJavaType argumentType = ObjectStamp.typeOrNull(argument.stamp());
+                ResolvedJavaType argumentType = StampTool.typeOrNull(argument.stamp());
                 if (argumentType == null || (argumentType.isAssignableFrom(targetType) && !argumentType.equals(targetType))) {
                     PiNode piNode = graph().unique(new PiNode(argument, StampFactory.declared(targetType)));
                     arguments.set(index, piNode);
@@ -233,12 +234,12 @@ public abstract class AbstractMethodHandleNode extends MacroNode implements Cano
     /**
      * Creates an {@link InvokeNode} for the given target method. The {@link CallTargetNode} passed
      * to the InvokeNode is in fact a {@link SelfReplacingMethodCallTargetNode}.
-     * 
+     *
      * @param targetMethod the method the be called
      * @return invoke node for the member name target
      */
     private InvokeNode createTargetInvokeNode(ResolvedJavaMethod targetMethod) {
-        InvokeKind invokeKind = Modifier.isStatic(targetMethod.getModifiers()) ? InvokeKind.Static : InvokeKind.Special;
+        InvokeKind invokeKind = targetMethod.isStatic() ? InvokeKind.Static : InvokeKind.Special;
         JavaType returnType = targetMethod.getSignature().getReturnType(null);
 
         // MethodHandleLinkTo* nodes have a trailing MemberName argument which

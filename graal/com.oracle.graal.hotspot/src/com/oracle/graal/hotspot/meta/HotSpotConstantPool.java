@@ -22,14 +22,14 @@
  */
 package com.oracle.graal.hotspot.meta;
 
-import static com.oracle.graal.graph.UnsafeAccess.*;
+import static com.oracle.graal.compiler.common.UnsafeAccess.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 
 import java.lang.invoke.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.bytecode.*;
-import com.oracle.graal.graph.*;
+import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.hotspot.*;
 
 /**
@@ -501,7 +501,7 @@ public class HotSpotConstantPool extends CompilerObject implements ConstantPool 
                 break;
             case Bytecodes.INVOKEDYNAMIC:
                 // invokedynamic instructions point to a constant pool cache entry.
-                index = decodeConstantPoolCacheIndex(cpi);
+                index = decodeConstantPoolCacheIndex(cpi) + runtime().getConfig().constantPoolCpCacheIndexTag;
                 index = runtime().getCompilerToVM().constantPoolRemapInstructionOperandFromCache(metaspaceConstantPool, index);
                 break;
             default:
@@ -517,13 +517,7 @@ public class HotSpotConstantPool extends CompilerObject implements ConstantPool 
                 index = getUncachedKlassRefIndexAt(index);
                 tag = getTagAt(index);
                 assert tag == JVM_CONSTANT.Class || tag == JVM_CONSTANT.UnresolvedClass || tag == JVM_CONSTANT.UnresolvedClassInError : tag;
-                break;
-            default:
-                // nothing
-                break;
-        }
-
-        switch (tag) {
+                // fall-through
             case Class:
             case UnresolvedClass:
             case UnresolvedClassInError:
@@ -533,6 +527,12 @@ public class HotSpotConstantPool extends CompilerObject implements ConstantPool 
                 if (!klass.isPrimitive() && !klass.isArray()) {
                     unsafe.ensureClassInitialized(klass);
                 }
+                break;
+            case InvokeDynamic:
+                if (!isInvokedynamicIndex(cpi)) {
+                    throw new IllegalArgumentException("InvokeDynamic entries must be accessed");
+                }
+                runtime().getCompilerToVM().resolveInvokeDynamic(metaspaceConstantPool, cpi);
                 break;
             default:
                 // nothing

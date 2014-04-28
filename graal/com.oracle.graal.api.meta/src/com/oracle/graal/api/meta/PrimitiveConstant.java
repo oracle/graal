@@ -104,7 +104,7 @@ public class PrimitiveConstant extends Constant {
             case Double:
                 return Double.valueOf(asDouble());
             default:
-                throw new IllegalArgumentException();
+                throw new IllegalArgumentException("unexpected kind " + getKind());
         }
     }
 

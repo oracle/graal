@@ -24,19 +24,18 @@ package com.oracle.graal.hotspot.nodes;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.gen.*;
-import com.oracle.graal.compiler.target.*;
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.stubs.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.type.*;
+import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.word.*;
 
 /**
  * A call to the {@link NewArrayStub}.
  */
-public class NewArrayStubCall extends DeoptimizingStubCall implements LIRGenLowerable {
+public class NewArrayStubCall extends DeoptimizingStubCall implements LIRLowerable {
 
     private static final Stamp defaultStamp = StampFactory.objectNonNull();
 
@@ -61,9 +60,9 @@ public class NewArrayStubCall extends DeoptimizingStubCall implements LIRGenLowe
     }
 
     @Override
-    public void generate(NodeLIRBuilder gen) {
+    public void generate(NodeLIRBuilderTool gen) {
         ForeignCallLinkage linkage = gen.getLIRGeneratorTool().getForeignCalls().lookupForeignCall(NEW_ARRAY);
-        Variable result = gen.getLIRGenerator().emitForeignCall(linkage, this, gen.operand(hub), gen.operand(length));
+        Variable result = gen.getLIRGeneratorTool().emitForeignCall(linkage, gen.state(this), gen.operand(hub), gen.operand(length));
         gen.setResult(this, result);
     }
 

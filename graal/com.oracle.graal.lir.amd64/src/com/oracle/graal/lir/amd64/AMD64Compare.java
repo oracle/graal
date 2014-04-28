@@ -28,7 +28,7 @@ import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
 import com.oracle.graal.asm.amd64.*;
-import com.oracle.graal.graph.*;
+import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.amd64.AMD64Move.MemOp;
 import com.oracle.graal.lir.asm.*;
@@ -132,6 +132,9 @@ public enum AMD64Compare {
                     default:
                         throw GraalInternalError.shouldNotReachHere();
                 }
+
+            } else {
+                throw GraalInternalError.shouldNotReachHere();
             }
         }
 

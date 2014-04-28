@@ -30,7 +30,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
 import com.oracle.graal.asm.amd64.*;
 import com.oracle.graal.asm.amd64.AMD64Assembler.ConditionFlag;
-import com.oracle.graal.graph.*;
+import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.amd64.AMD64Move.MemOp;
 import com.oracle.graal.lir.asm.*;
@@ -39,8 +39,8 @@ public enum AMD64Arithmetic {
 
     // @formatter:off
 
-    IADD, ISUB, IMUL, IDIV, IDIVREM, IREM, IUDIV, IUREM, IAND, IOR, IXOR, ISHL, ISHR, IUSHR,
-    LADD, LSUB, LMUL, LDIV, LDIVREM, LREM, LUDIV, LUREM, LAND, LOR, LXOR, LSHL, LSHR, LUSHR,
+    IADD, ISUB, IMUL, IDIV, IDIVREM, IREM, IUDIV, IUREM, IAND, IOR, IXOR, ISHL, ISHR, IUSHR, IROL, IROR,
+    LADD, LSUB, LMUL, LDIV, LDIVREM, LREM, LUDIV, LUREM, LAND, LOR, LXOR, LSHL, LSHR, LUSHR, LROL, LROR,
     FADD, FSUB, FMUL, FDIV, FREM, FAND, FOR, FXOR,
     DADD, DSUB, DMUL, DDIV, DREM, DAND, DOR, DXOR,
     INEG, LNEG, INOT, LNOT,
@@ -70,6 +70,27 @@ public enum AMD64Arithmetic {
         @Use({REG, STACK}) protected AllocatableValue x;
 
         public Unary2Op(AMD64Arithmetic opcode, AllocatableValue result, AllocatableValue x) {
+            this.opcode = opcode;
+            this.result = result;
+            this.x = x;
+        }
+
+        @Override
+        public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
+            emit(crb, masm, opcode, result, x, null);
+        }
+    }
+
+    /**
+     * Unary operation with separate source and destination operand but register only.
+     */
+    public static class Unary2RegOp extends AMD64LIRInstruction {
+
+        @Opcode private final AMD64Arithmetic opcode;
+        @Def({REG}) protected AllocatableValue result;
+        @Use({REG}) protected AllocatableValue x;
+
+        public Unary2RegOp(AMD64Arithmetic opcode, AllocatableValue result, AllocatableValue x) {
             this.opcode = opcode;
             this.result = result;
             this.x = x;
@@ -431,9 +452,6 @@ public enum AMD64Arithmetic {
             case LNOT:
                 masm.notq(asLongReg(result));
                 break;
-            case L2I:
-                masm.andl(asIntReg(result), 0xFFFFFFFF);
-                break;
             default:
                 throw GraalInternalError.shouldNotReachHere();
         }
@@ -473,6 +491,14 @@ public enum AMD64Arithmetic {
                     assert asIntReg(src).equals(AMD64.rcx);
                     masm.shrl(asIntReg(dst));
                     break;
+                case IROL:
+                    assert asIntReg(src).equals(AMD64.rcx);
+                    masm.roll(asIntReg(dst));
+                    break;
+                case IROR:
+                    assert asIntReg(src).equals(AMD64.rcx);
+                    masm.roll(asIntReg(dst));
+                    break;
 
                 case LADD:
                     masm.addq(asLongReg(dst), asLongReg(src));
@@ -503,6 +529,14 @@ public enum AMD64Arithmetic {
                 case LUSHR:
                     assert asIntReg(src).equals(AMD64.rcx);
                     masm.shrq(asLongReg(dst));
+                    break;
+                case LROL:
+                    assert asIntReg(src).equals(AMD64.rcx);
+                    masm.rolq(asLongReg(dst));
+                    break;
+                case LROR:
+                    assert asIntReg(src).equals(AMD64.rcx);
+                    masm.rorq(asLongReg(dst));
                     break;
 
                 case FADD:
@@ -567,6 +601,9 @@ public enum AMD64Arithmetic {
                     break;
                 case I2L:
                     masm.movslq(asLongReg(dst), asIntReg(src));
+                    break;
+                case L2I:
+                    masm.movl(asIntReg(dst), asLongReg(src));
                     break;
                 case F2D:
                     masm.cvtss2sd(asDoubleReg(dst), asFloatReg(src));
@@ -674,6 +711,12 @@ public enum AMD64Arithmetic {
                 case IUSHR:
                     masm.shrl(asIntReg(dst), crb.asIntConst(src) & 31);
                     break;
+                case IROL:
+                    masm.roll(asIntReg(dst), crb.asIntConst(src) & 31);
+                    break;
+                case IROR:
+                    masm.rorl(asIntReg(dst), crb.asIntConst(src) & 31);
+                    break;
 
                 case LADD:
                     masm.addq(asLongReg(dst), crb.asIntConst(src));
@@ -701,6 +744,12 @@ public enum AMD64Arithmetic {
                     break;
                 case LUSHR:
                     masm.shrq(asLongReg(dst), crb.asIntConst(src) & 63);
+                    break;
+                case LROL:
+                    masm.rolq(asLongReg(dst), crb.asIntConst(src) & 31);
+                    break;
+                case LROR:
+                    masm.rorq(asLongReg(dst), crb.asIntConst(src) & 31);
                     break;
 
                 case FADD:

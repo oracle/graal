@@ -22,11 +22,11 @@
  */
 package com.oracle.graal.nodes.java;
 
-import java.lang.reflect.*;
+import static com.oracle.graal.graph.iterators.NodePredicates.*;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
-import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
@@ -60,7 +60,7 @@ public final class LoadFieldNode extends AccessFieldNode implements Canonicaliza
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        if (usages().isEmpty() && !isVolatile() && (isStatic() || ObjectStamp.isObjectNonNull(object().stamp()))) {
+        if (usages().isEmpty() && !isVolatile() && (isStatic() || StampTool.isObjectNonNull(object().stamp()))) {
             return null;
         }
         MetaAccessProvider metaAccess = tool.getMetaAccess();
@@ -97,7 +97,7 @@ public final class LoadFieldNode extends AccessFieldNode implements Canonicaliza
     }
 
     private PhiNode asPhi(MetaAccessProvider metaAccess) {
-        if (!isStatic() && Modifier.isFinal(field.getModifiers()) && object() instanceof ValuePhiNode && ((ValuePhiNode) object()).values().filter(NodePredicates.isNotA(ConstantNode.class)).isEmpty()) {
+        if (!isStatic() && field.isFinal() && object() instanceof ValuePhiNode && ((ValuePhiNode) object()).values().filter(isNotA(ConstantNode.class)).isEmpty()) {
             PhiNode phi = (PhiNode) object();
             Constant[] constants = new Constant[phi.valueCount()];
             for (int i = 0; i < phi.valueCount(); i++) {

@@ -27,13 +27,10 @@ import java.util.concurrent.atomic.*;
 
 import org.junit.*;
 
-import sun.misc.*;
-
 import com.oracle.graal.compiler.hsail.test.infra.*;
 
 /**
- * Tests {@link AtomicInteger#getAndAdd(int)} which indirectly tests
- * {@link Unsafe#compareAndSwapInt(Object, long, int, int)}.
+ * Tests {@link AtomicInteger#getAndAdd(int)} which tests HSAIL atomic_add codegen.
  */
 public class AtomicIntGetAndAddTest extends GraalKernelTester {
 

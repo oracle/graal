@@ -26,9 +26,9 @@ import java.util.*;
 
 import com.oracle.graal.api.code.CallingConvention.Type;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
-import com.oracle.graal.nodes.type.*;
 
 public class HotSpotDirectCallTargetNode extends DirectCallTargetNode {
 

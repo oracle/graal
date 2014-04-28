@@ -25,7 +25,7 @@ package com.oracle.graal.hotspot.bridge;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.graph.*;
+import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 
@@ -226,7 +226,7 @@ public interface CompilerToVM {
      * @param code the details of the installed CodeBlob are written to this object
      * @return the outcome of the installation as a {@link CodeInstallResult}.
      */
-    CodeInstallResult installCode(HotSpotCompiledCode compiledCode, HotSpotInstalledCode code, SpeculationLog speculationLog);
+    CodeInstallResult installCode(HotSpotCompiledCode compiledCode, InstalledCode code, SpeculationLog speculationLog);
 
     /**
      * Notifies the VM of statistics for a completed compilation.
@@ -240,7 +240,7 @@ public interface CompilerToVM {
      * @param timeUnitsPerSecond the granularity of the units for the {@code time} value
      * @param installedCode the nmethod installed as a result of the compilation
      */
-    void notifyCompilationStatistics(int id, HotSpotResolvedJavaMethod method, boolean osr, int processedBytecodes, long time, long timeUnitsPerSecond, HotSpotInstalledCode installedCode);
+    void notifyCompilationStatistics(int id, HotSpotResolvedJavaMethod method, boolean osr, int processedBytecodes, long time, long timeUnitsPerSecond, InstalledCode installedCode);
 
     void printCompilationStatistics(boolean perCompiler, boolean aggregate);
 
@@ -270,9 +270,9 @@ public interface CompilerToVM {
 
     StackTraceElement getStackTraceElement(long metaspaceMethod, int bci);
 
-    Object executeCompiledMethod(Object arg1, Object arg2, Object arg3, HotSpotInstalledCode hotspotInstalledCode) throws InvalidInstalledCodeException;
+    Object executeCompiledMethod(Object arg1, Object arg2, Object arg3, InstalledCode hotspotInstalledCode) throws InvalidInstalledCodeException;
 
-    Object executeCompiledMethodVarargs(Object[] args, HotSpotInstalledCode hotspotInstalledCode) throws InvalidInstalledCodeException;
+    Object executeCompiledMethodVarargs(Object[] args, InstalledCode hotspotInstalledCode) throws InvalidInstalledCodeException;
 
     long[] getLineNumberTable(long metaspaceMethod);
 
@@ -283,8 +283,6 @@ public interface CompilerToVM {
     String getFileName(HotSpotResolvedJavaType method);
 
     Class<?> getJavaMirror(long metaspaceKlass);
-
-    void setNodeClass(Class<?> c, NodeClass nodeClass);
 
     long readUnsafeKlassPointer(Object o);
 
@@ -297,7 +295,7 @@ public interface CompilerToVM {
      */
     void reprofile(long metaspaceMethod);
 
-    void invalidateInstalledCode(HotSpotInstalledCode hotspotInstalledCode);
+    void invalidateInstalledCode(InstalledCode hotspotInstalledCode);
 
     /**
      * Collects the current values of all Graal benchmark counters, summed up over all threads.
@@ -339,10 +337,11 @@ public interface CompilerToVM {
      * Looks for the next Java stack frame with the given method.
      *
      * @param frame the starting point of the search, where {@code null} refers to the topmost frame
-     * @param method the method to look for, where {@code null} means that any frame is returned
+     * @param methods the metaspace methods to look for, where {@code null} means that any frame is
+     *            returned
      * @return the frame, or {@code null} if the end of the stack was reached during the search
      */
-    HotSpotStackFrameReference getNextStackFrame(HotSpotStackFrameReference frame, HotSpotResolvedJavaMethod method);
+    HotSpotStackFrameReference getNextStackFrame(HotSpotStackFrameReference frame, long[] methods, int initialSkip);
 
     /**
      * Materialized all virtual objects within the given stack frame and update the locals within
@@ -352,4 +351,6 @@ public interface CompilerToVM {
      *            invalidated.
      */
     void materializeVirtualObjects(HotSpotStackFrameReference stackFrame, boolean invalidate);
+
+    void resolveInvokeDynamic(long metaspaceConstantPool, int index);
 }

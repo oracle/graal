@@ -23,11 +23,11 @@
 package com.oracle.graal.nodes.extended;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
 
 /**
  * A floating read of a value from memory specified in terms of an object base and an object
@@ -61,9 +61,9 @@ public final class FloatingReadNode extends FloatingAccessNode implements Iterab
 
     @Override
     public void generate(NodeLIRBuilderTool gen) {
-        Value address = location().generateAddress(gen, gen.operand(object()));
+        Value address = location().generateAddress(gen, gen.getLIRGeneratorTool(), gen.operand(object()));
         PlatformKind readKind = gen.getLIRGeneratorTool().getPlatformKind(stamp());
-        gen.setResult(this, gen.getLIRGeneratorTool().emitLoad(readKind, address, this));
+        gen.setResult(this, gen.getLIRGeneratorTool().emitLoad(readKind, address, null));
     }
 
     @Override

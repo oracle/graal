@@ -29,12 +29,13 @@ import java.lang.reflect.*;
  * Represents a reference to a resolved Java field. Fields, like methods and types, are resolved
  * through {@link ConstantPool constant pools}.
  */
-public interface ResolvedJavaField extends JavaField, LocationIdentity {
+public interface ResolvedJavaField extends JavaField, LocationIdentity, ModifiersProvider {
 
     /**
-     * Returns the Java language modifiers for this field, as an integer. The {@link Modifier} class
-     * should be used to decode the modifiers. Only the {@linkplain Modifier#fieldModifiers() field
-     * flags} specified in the JVM specification will be included in the returned mask.
+     * {@inheritDoc}
+     * <p>
+     * Only the {@linkplain Modifier#fieldModifiers() field flags} specified in the JVM
+     * specification will be included in the returned mask.
      */
     int getModifiers();
 
@@ -53,7 +54,7 @@ public interface ResolvedJavaField extends JavaField, LocationIdentity {
      * Gets the constant value of this field. Note that a {@code static final} field may not be
      * considered constant if its declaring class is not yet initialized or if it is a well known
      * field that can be updated via other means (e.g., {@link System#setOut(java.io.PrintStream)}).
-     * 
+     *
      * @param receiver object from which this field's value is to be read. This value is ignored if
      *            this field is static.
      * @return the constant value of this field or {@code null} if this field is not considered
@@ -65,7 +66,7 @@ public interface ResolvedJavaField extends JavaField, LocationIdentity {
      * Gets the current value of this field for a given object, if available. There is no guarantee
      * that the same value will be returned by this method for a field unless the field is
      * considered to be {@linkplain #readConstantValue(Constant) constant} by the runtime.
-     * 
+     *
      * @param receiver object from which this field's value is to be read. This value is ignored if
      *            this field is static.
      * @return the value of this field or {@code null} if the value is not available (e.g., because
@@ -82,7 +83,7 @@ public interface ResolvedJavaField extends JavaField, LocationIdentity {
     /**
      * Returns the annotation for the specified type of this field, if such an annotation is
      * present.
-     * 
+     *
      * @param annotationClass the Class object corresponding to the annotation type
      * @return this element's annotation for the specified annotation type if present on this field,
      *         else {@code null}

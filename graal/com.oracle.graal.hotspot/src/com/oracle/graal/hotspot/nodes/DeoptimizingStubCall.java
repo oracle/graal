@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.type.*;
 
 public class DeoptimizingStubCall extends DeoptimizingFixedWithNextNode {
 

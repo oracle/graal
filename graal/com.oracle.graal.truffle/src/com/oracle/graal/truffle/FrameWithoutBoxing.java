@@ -45,10 +45,11 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     public FrameWithoutBoxing(FrameDescriptor descriptor, Object[] arguments) {
         this.descriptor = descriptor;
         this.arguments = arguments;
-        this.locals = new Object[descriptor.getSize()];
+        int size = descriptor.getSize();
+        this.locals = new Object[size];
         Arrays.fill(locals, descriptor.getTypeConversion().getDefaultValue());
-        this.primitiveLocals = new long[descriptor.getSize()];
-        this.tags = new byte[descriptor.getSize()];
+        this.primitiveLocals = new long[size];
+        this.tags = new byte[size];
     }
 
     @Override

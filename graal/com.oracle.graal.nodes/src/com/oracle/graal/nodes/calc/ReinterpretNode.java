@@ -23,12 +23,14 @@
 package com.oracle.graal.nodes.calc;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.*;
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
+import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
 
 /**
  * The {@code ReinterpretNode} class represents a reinterpreting conversion that changes the stamp
@@ -102,9 +104,9 @@ public class ReinterpretNode extends FloatingNode implements Canonicalizable, Ar
     }
 
     @Override
-    public void generate(NodeLIRBuilderTool gen) {
-        PlatformKind kind = gen.getLIRGeneratorTool().getPlatformKind(stamp());
-        gen.setResult(this, gen.getLIRGeneratorTool().emitReinterpret(kind, gen.operand(value())));
+    public void generate(NodeMappableLIRBuilder builder, ArithmeticLIRGenerator gen) {
+        PlatformKind kind = gen.getPlatformKind(stamp());
+        builder.setResult(this, gen.emitReinterpret(kind, builder.operand(value())));
     }
 
     @Override

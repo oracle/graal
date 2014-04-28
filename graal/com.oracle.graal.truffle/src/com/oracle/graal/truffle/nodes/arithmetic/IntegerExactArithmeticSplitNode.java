@@ -23,19 +23,19 @@
 package com.oracle.graal.truffle.nodes.arithmetic;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
 
 public abstract class IntegerExactArithmeticSplitNode extends ControlSplitNode implements LIRLowerable {
 
-    @Successor private AbstractBeginNode overflowSuccessor;
-    @Successor private AbstractBeginNode next;
+    @Successor private BeginNode overflowSuccessor;
+    @Successor private BeginNode next;
     @Input private ValueNode x;
     @Input private ValueNode y;
 
-    public IntegerExactArithmeticSplitNode(Stamp stamp, ValueNode x, ValueNode y, AbstractBeginNode next, AbstractBeginNode overflowSuccessor) {
+    public IntegerExactArithmeticSplitNode(Stamp stamp, ValueNode x, ValueNode y, BeginNode next, BeginNode overflowSuccessor) {
         super(stamp);
         this.x = x;
         this.y = y;
@@ -44,20 +44,20 @@ public abstract class IntegerExactArithmeticSplitNode extends ControlSplitNode i
     }
 
     @Override
-    public double probability(AbstractBeginNode successor) {
+    public double probability(BeginNode successor) {
         return successor == next ? 1 : 0;
     }
 
     @Override
-    public void setProbability(AbstractBeginNode successor, double value) {
+    public void setProbability(BeginNode successor, double value) {
         assert probability(successor) == value;
     }
 
-    public AbstractBeginNode getNext() {
+    public BeginNode getNext() {
         return next;
     }
 
-    public AbstractBeginNode getOverflowSuccessor() {
+    public BeginNode getOverflowSuccessor() {
         return overflowSuccessor;
     }
 

@@ -23,18 +23,16 @@
 package com.oracle.graal.java;
 
 import static com.oracle.graal.graph.iterators.NodePredicates.*;
-import static java.lang.reflect.Modifier.*;
-
 import java.util.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.Node.Verbosity;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.java.*;
-import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.util.*;
 
 public class HIRFrameStateBuilder extends AbstractFrameStateBuilder<ValueNode, HIRFrameStateBuilder> {
@@ -55,7 +53,7 @@ public class HIRFrameStateBuilder extends AbstractFrameStateBuilder<ValueNode, H
 
         int javaIndex = 0;
         int index = 0;
-        if (!isStatic(method.getModifiers())) {
+        if (!method.isStatic()) {
             // add the receiver
             ParameterNode receiver = graph.unique(new ParameterNode(javaIndex, StampFactory.declaredNonNull(method.getDeclaringClass())));
             storeLocal(javaIndex, receiver);
@@ -259,7 +257,7 @@ public class HIRFrameStateBuilder extends AbstractFrameStateBuilder<ValueNode, H
         }
     }
 
-    public void insertProxies(AbstractBeginNode begin) {
+    public void insertProxies(BeginNode begin) {
         for (int i = 0; i < localsSize(); i++) {
             ValueNode value = localAt(i);
             if (value != null) {
@@ -328,6 +326,7 @@ public class HIRFrameStateBuilder extends AbstractFrameStateBuilder<ValueNode, H
         } finally {
             lockedObjects = lockedObjects.length == 1 ? EMPTY_ARRAY : Arrays.copyOf(lockedObjects, lockedObjects.length - 1);
             monitorIds = monitorIds.length == 1 ? EMPTY_MONITOR_ARRAY : Arrays.copyOf(monitorIds, monitorIds.length - 1);
+            assert lockedObjects.length == monitorIds.length;
         }
     }
 

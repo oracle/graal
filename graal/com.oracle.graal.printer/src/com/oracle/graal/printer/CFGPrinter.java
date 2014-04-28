@@ -31,6 +31,7 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.alloc.*;
 import com.oracle.graal.compiler.alloc.Interval.UsePosList;
+import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Node.Verbosity;
@@ -379,12 +380,12 @@ class CFGPrinter extends CompilationPrinter {
                 continue;
             }
 
-            if (pos.index != lastIndex) {
+            if (pos.getIndex() != lastIndex) {
                 if (lastIndex != -1) {
                     out.print(suffix);
                 }
                 out.print(prefix).print(node.getNodeClass().getName(pos)).print(": ");
-                lastIndex = pos.index;
+                lastIndex = pos.getIndex();
             }
             out.print(nodeToString(node.getNodeClass().get(node, pos))).print(" ");
         }
@@ -488,7 +489,7 @@ class CFGPrinter extends CompilationPrinter {
             return "-";
         }
         String prefix;
-        if (node instanceof AbstractBeginNode && (lir == null && schedule == null)) {
+        if (node instanceof BeginNode && (lir == null && schedule == null)) {
             prefix = "B";
         } else if (node instanceof ValueNode) {
             ValueNode value = (ValueNode) node;

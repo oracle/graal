@@ -24,12 +24,13 @@ package com.oracle.graal.nodes.calc;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
+import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
 
 @NodeInfo(shortName = "*")
 public class IntegerMulNode extends IntegerArithmeticNode implements Canonicalizable, NarrowableArithmeticNode {
@@ -75,15 +76,15 @@ public class IntegerMulNode extends IntegerArithmeticNode implements Canonicaliz
     }
 
     @Override
-    public void generate(NodeLIRBuilderTool gen) {
-        Value op1 = gen.operand(x());
-        Value op2 = gen.operand(y());
-        if (!y().isConstant() && !FloatAddNode.livesLonger(this, y(), gen)) {
+    public void generate(NodeMappableLIRBuilder builder, ArithmeticLIRGenerator gen) {
+        Value op1 = builder.operand(x());
+        Value op2 = builder.operand(y());
+        if (!y().isConstant() && !FloatAddNode.livesLonger(this, y(), builder)) {
             Value op = op1;
             op1 = op2;
             op2 = op;
         }
-        gen.setResult(this, gen.getLIRGeneratorTool().emitMul(op1, op2));
+        builder.setResult(this, gen.emitMul(op1, op2));
     }
 
     @Override

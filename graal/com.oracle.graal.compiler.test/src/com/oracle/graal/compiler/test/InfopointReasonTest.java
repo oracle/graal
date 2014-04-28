@@ -39,7 +39,6 @@ import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.tiers.*;
-import com.oracle.graal.test.*;
 
 /**
  * Test that infopoints in {@link CompilationResult}s have correctly assigned reasons.
@@ -72,7 +71,7 @@ public class InfopointReasonTest extends GraalCompilerTest {
         }
     }
 
-    @LongTest
+    @Test
     public void lineInfopoints() {
         final Method method = getMethod("testMethod");
         final StructuredGraph graph = parseDebug(method);

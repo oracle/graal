@@ -22,10 +22,10 @@
  */
 package com.oracle.graal.phases.common;
 
-import java.lang.reflect.*;
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.graph.*;
@@ -151,7 +151,7 @@ public class ConditionalEliminationPhase extends Phase {
                         break;
                     }
                 }
-                if (type != null && type != ObjectStamp.typeOrNull(node)) {
+                if (type != null && type != StampTool.typeOrNull(node)) {
                     newKnownTypes.put(node, type);
                 }
             }
@@ -234,15 +234,15 @@ public class ConditionalEliminationPhase extends Phase {
 
         public ResolvedJavaType getNodeType(ValueNode node) {
             ResolvedJavaType result = knownTypes.get(GraphUtil.unproxify(node));
-            return result == null ? ObjectStamp.typeOrNull(node) : result;
+            return result == null ? StampTool.typeOrNull(node) : result;
         }
 
         public boolean isNull(ValueNode value) {
-            return ObjectStamp.isObjectAlwaysNull(value) || knownNull.contains(GraphUtil.unproxify(value));
+            return StampTool.isObjectAlwaysNull(value) || knownNull.contains(GraphUtil.unproxify(value));
         }
 
         public boolean isNonNull(ValueNode value) {
-            return ObjectStamp.isObjectNonNull(value) || knownNonNull.contains(GraphUtil.unproxify(value));
+            return StampTool.isObjectNonNull(value) || knownNonNull.contains(GraphUtil.unproxify(value));
         }
 
         @Override
@@ -407,7 +407,7 @@ public class ConditionalEliminationPhase extends Phase {
             }
         }
 
-        private void registerControlSplitInfo(Node pred, AbstractBeginNode begin) {
+        private void registerControlSplitInfo(Node pred, BeginNode begin) {
             assert pred != null && begin != null;
             if (begin instanceof LoopExitNode) {
                 state.clear();
@@ -656,8 +656,8 @@ public class ConditionalEliminationPhase extends Phase {
 
         @Override
         protected void node(FixedNode node) {
-            if (node instanceof AbstractBeginNode) {
-                AbstractBeginNode begin = (AbstractBeginNode) node;
+            if (node instanceof BeginNode) {
+                BeginNode begin = (BeginNode) node;
                 Node pred = node.predecessor();
 
                 if (pred != null) {
@@ -742,7 +742,7 @@ public class ConditionalEliminationPhase extends Phase {
 
                 LogicNode replacement = null;
                 ValueNode replacementAnchor = null;
-                AbstractBeginNode survivingSuccessor = null;
+                BeginNode survivingSuccessor = null;
                 if (state.trueConditions.containsKey(compare)) {
                     replacement = trueConstant;
                     replacementAnchor = state.trueConditions.get(compare);
@@ -764,7 +764,7 @@ public class ConditionalEliminationPhase extends Phase {
                 }
 
                 if (replacement != null) {
-                    if (!(replacementAnchor instanceof AbstractBeginNode)) {
+                    if (!(replacementAnchor instanceof BeginNode)) {
                         ValueAnchorNode anchor = graph.add(new ValueAnchorNode(replacementAnchor));
                         graph.addBeforeFixed(ifNode, anchor);
                     }
@@ -811,10 +811,10 @@ public class ConditionalEliminationPhase extends Phase {
                     ValueNode receiver = callTarget.receiver();
                     if (receiver != null && (callTarget.invokeKind() == InvokeKind.Interface || callTarget.invokeKind() == InvokeKind.Virtual)) {
                         ResolvedJavaType type = state.getNodeType(receiver);
-                        if (!Objects.equals(type, ObjectStamp.typeOrNull(receiver))) {
+                        if (!Objects.equals(type, StampTool.typeOrNull(receiver))) {
                             ResolvedJavaMethod method = type.resolveMethod(callTarget.targetMethod());
                             if (method != null) {
-                                if (Modifier.isFinal(method.getModifiers()) || Modifier.isFinal(type.getModifiers())) {
+                                if (method.canBeStaticallyBound() || type.isFinal()) {
                                     callTarget.setInvokeKind(InvokeKind.Special);
                                     callTarget.setTargetMethod(method);
                                 }

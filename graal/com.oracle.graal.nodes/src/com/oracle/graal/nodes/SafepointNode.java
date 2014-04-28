@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.nodes;
 
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
 
 /**
  * Marks a position in the graph where a safepoint should be emitted.

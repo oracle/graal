@@ -25,9 +25,7 @@ package com.oracle.graal.hotspot.amd64;
 import static com.oracle.graal.amd64.AMD64.*;
 import static com.oracle.graal.api.code.CallingConvention.Type.*;
 import static com.oracle.graal.api.code.ValueUtil.*;
-import static com.oracle.graal.phases.GraalOptions.*;
-import static java.lang.reflect.Modifier.*;
-
+import static com.oracle.graal.compiler.common.GraalOptions.*;
 import java.util.*;
 
 import sun.misc.*;
@@ -48,7 +46,9 @@ import com.oracle.graal.hotspot.stubs.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.amd64.*;
 import com.oracle.graal.lir.asm.*;
+import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.spi.*;
 
 /**
  * HotSpot AMD64 specific backend.
@@ -72,7 +72,7 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend {
     }
 
     @Override
-    public LIRGenerator newLIRGenerator(CallingConvention cc, LIRGenerationResult lirGenRes) {
+    public LIRGeneratorTool newLIRGenerator(CallingConvention cc, LIRGenerationResult lirGenRes) {
         return new AMD64HotSpotLIRGenerator(getProviders(), getRuntime().getConfig(), cc, lirGenRes);
     }
 
@@ -82,12 +82,12 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend {
     }
 
     @Override
-    public NodeLIRBuilder newNodeLIRGenerator(StructuredGraph graph, LIRGenerator lirGen) {
+    public NodeLIRBuilderTool newNodeLIRBuilder(StructuredGraph graph, LIRGeneratorTool lirGen) {
         return new AMD64HotSpotNodeLIRBuilder(graph, lirGen);
     }
 
     @Override
-    public BytecodeLIRBuilder newBytecodeLIRBuilder(LIRGenerator gen, BytecodeParserTool parser) {
+    public BytecodeLIRBuilder newBytecodeLIRBuilder(LIRGeneratorTool gen, BytecodeParserTool parser) {
         return new AMD64HotSpotBytecodeLIRBuilder(gen, parser);
 
     }
@@ -225,7 +225,7 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend {
         Assembler masm = createAssembler(frameMap);
         HotSpotFrameContext frameContext = new HotSpotFrameContext(stub != null, omitFrame);
         CompilationResultBuilder crb = factory.createBuilder(getCodeCache(), getForeignCalls(), frameMap, masm, frameContext, compilationResult);
-        crb.setFrameSize(frameMap.frameSize());
+        crb.setTotalFrameSize(frameMap.totalFrameSize());
         StackSlot deoptimizationRescueSlot = gen.getDeoptimizationRescueSlot();
         if (deoptimizationRescueSlot != null && stub == null) {
             crb.compilationResult.setCustomStackAreaOffset(frameMap.offsetForStackSlot(deoptimizationRescueSlot));
@@ -264,7 +264,7 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend {
      */
     public void emitCodePrefix(ResolvedJavaMethod installedCodeOwner, CompilationResultBuilder crb, AMD64MacroAssembler asm, RegisterConfig regConfig, HotSpotVMConfig config, Label verifiedEntry) {
         HotSpotProviders providers = getProviders();
-        if (installedCodeOwner != null && !isStatic(installedCodeOwner.getModifiers())) {
+        if (installedCodeOwner != null && !installedCodeOwner.isStatic()) {
             MarkId.recordMark(crb, MarkId.UNVERIFIED_ENTRY);
             CallingConvention cc = regConfig.getCallingConvention(JavaCallee, null, new JavaType[]{providers.getMetaAccess().lookupJavaType(Object.class)}, getTarget(), false);
             Register inlineCacheKlass = rax; // see definition of IC_Klass in

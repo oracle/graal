@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -48,9 +48,8 @@ final class SPARCHotSpotCRuntimeCallPrologueOp extends SPARCLIRInstruction {
 
     @Override
     public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
-
         // Save last Java frame.
-        new Add(stackPointer, new SPARCAddress(stackPointer, 0).getDisplacement(), g4).emit(masm);
+        new Add(stackPointer, STACK_BIAS, g4).emit(masm);
         new Stx(g4, new SPARCAddress(thread, threadLastJavaSpOffset)).emit(masm);
 
         // Save the thread register when calling out to the runtime.

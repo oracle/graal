@@ -22,14 +22,15 @@
  */
 package com.oracle.graal.replacements.nodes;
 
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
 
 @NodeInfo(allowedUsageTypes = {InputType.Memory})
-public class MemoryAnchorNode extends FixedWithNextNode implements LIRLowerable, MemoryNode {
+public class MemoryAnchorNode extends FixedWithNextNode implements LIRLowerable, MemoryNode, Canonicalizable {
 
     public MemoryAnchorNode() {
         super(StampFactory.forVoid());
@@ -37,6 +38,11 @@ public class MemoryAnchorNode extends FixedWithNextNode implements LIRLowerable,
 
     public void generate(NodeLIRBuilderTool generator) {
         // Nothing to emit, since this node is used for structural purposes only.
+    }
+
+    @Override
+    public Node canonical(CanonicalizerTool tool) {
+        return usages().isEmpty() ? null : this;
     }
 
     public MemoryCheckpoint asMemoryCheckpoint() {

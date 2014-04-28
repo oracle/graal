@@ -23,6 +23,7 @@
 package com.oracle.graal.truffle.nodes.arithmetic;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
@@ -77,7 +78,7 @@ public class IntegerAddExactNode extends IntegerAddNode implements Canonicalizab
     }
 
     @Override
-    public IntegerExactArithmeticSplitNode createSplit(AbstractBeginNode next, AbstractBeginNode deopt) {
+    public IntegerExactArithmeticSplitNode createSplit(BeginNode next, BeginNode deopt) {
         return graph().add(new IntegerAddExactSplitNode(stamp(), x(), y(), next, deopt));
     }
 

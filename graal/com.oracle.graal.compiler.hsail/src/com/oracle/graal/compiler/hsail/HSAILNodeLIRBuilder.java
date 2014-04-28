@@ -24,20 +24,20 @@
 package com.oracle.graal.compiler.hsail;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.*;
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.compiler.gen.*;
-import com.oracle.graal.debug.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.hsail.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.type.*;
 
 /**
  * This class implements the HSAIL specific portion of the LIR generator.
  */
 public abstract class HSAILNodeLIRBuilder extends NodeLIRBuilder {
 
-    public HSAILNodeLIRBuilder(StructuredGraph graph, LIRGenerator lirGen) {
+    public HSAILNodeLIRBuilder(StructuredGraph graph, LIRGeneratorTool lirGen) {
         super(graph, lirGen);
     }
 
@@ -63,20 +63,16 @@ public abstract class HSAILNodeLIRBuilder extends NodeLIRBuilder {
     }
 
     @Override
-    public void visitSafepointNode(SafepointNode i) {
-        Debug.log("visitSafePointNode unimplemented");
-    }
-
-    @Override
     public void emitNullCheck(ValueNode v, DeoptimizingNode deopting) {
         assert v.stamp() instanceof ObjectStamp;
         Variable obj = newVariable(Kind.Object);
         gen.emitMove(obj, operand(v));
-        append(new HSAILMove.NullCheckOp(obj, gen.state(deopting)));
+        append(new HSAILMove.NullCheckOp(obj, state(deopting)));
     }
 
     @Override
     public void visitInfopointNode(InfopointNode i) {
+        // TODO Auto-generated method stub
         throw GraalInternalError.unimplemented();
     }
 }

@@ -23,8 +23,8 @@
 package com.oracle.graal.nodes.extended;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.type.*;
 
 /**
  * An {@link FixedAccessNode} that can be converted to a {@link FloatingAccessNode}.

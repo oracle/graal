@@ -191,7 +191,7 @@ public class FloatingReadPhase extends Phase {
         }
 
         @Override
-        protected Set<LocationIdentity> afterSplit(AbstractBeginNode node, Set<LocationIdentity> oldState) {
+        protected Set<LocationIdentity> afterSplit(BeginNode node, Set<LocationIdentity> oldState) {
             return new HashSet<>(oldState);
         }
 
@@ -292,7 +292,7 @@ public class FloatingReadPhase extends Phase {
         }
 
         @Override
-        protected MemoryMapImpl afterSplit(AbstractBeginNode node, MemoryMapImpl oldState) {
+        protected MemoryMapImpl afterSplit(BeginNode node, MemoryMapImpl oldState) {
             MemoryMapImpl result = new MemoryMapImpl(oldState);
             if (node.predecessor() instanceof InvokeWithExceptionNode) {
                 /*

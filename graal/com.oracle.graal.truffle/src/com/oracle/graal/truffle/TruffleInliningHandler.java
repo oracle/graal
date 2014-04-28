@@ -24,164 +24,103 @@ package com.oracle.graal.truffle;
 
 import java.util.*;
 
-import com.oracle.graal.truffle.OptimizedCallUtils.InlinedCallVisitor;
 import com.oracle.truffle.api.nodes.*;
 
 public final class TruffleInliningHandler {
 
-    private final ProfileScoreComparator inliningOrder = new ProfileScoreComparator();
-
-    private final OptimizedCallTarget callTarget;
+    private static final int MAXIMUM_RECURSIVE_DEPTH = 15;
+    private static final ProfileScoreComparator INLINING_SCORE = new ProfileScoreComparator();
     private final TruffleInliningPolicy policy;
-    private final Map<TruffleCallPath, TruffleInliningProfile> profiles;
-    private final Map<OptimizedCallTarget, TruffleInliningResult> inliningResultCache;
+    private final Map<OptimizedCallTarget, TruffleInliningResult> resultCache;
 
-    public TruffleInliningHandler(OptimizedCallTarget callTarget, TruffleInliningPolicy policy, Map<OptimizedCallTarget, TruffleInliningResult> inliningResultCache) {
-        this.callTarget = callTarget;
+    public TruffleInliningHandler(TruffleInliningPolicy policy) {
         this.policy = policy;
-        this.profiles = new HashMap<>();
-        this.inliningResultCache = inliningResultCache;
+        this.resultCache = new HashMap<>();
     }
 
-    public TruffleInliningResult inline(int originalTotalNodeCount) {
-        Set<TruffleCallPath> inlinedPathes = new HashSet<>();
-        TruffleInliningResult result = new TruffleInliningResult(callTarget, inlinedPathes);
-        TruffleCallPath startPath = new TruffleCallPath(callTarget);
-
-        PriorityQueue<TruffleInliningProfile> queue = new PriorityQueue<>(10, inliningOrder);
-        queueCallSitesForInlining(result, startPath, queue);
-
-        int budget = TruffleCompilerOptions.TruffleInliningMaxCallerSize.getValue() - originalTotalNodeCount;
-        int index = 0;
-        while (!queue.isEmpty()) {
-            TruffleInliningProfile profile = queue.poll();
-            profile.setQueryIndex(index);
-            budget = tryInline(queue, result, inlinedPathes, profile, budget);
-            profiles.put(profile.getCallPath(), profile);
-            index++;
+    public TruffleInliningResult decideInlining(OptimizedCallTarget target, int depth) {
+        if (resultCache.containsKey(target)) {
+            return resultCache.get(target);
         }
+        resultCache.put(target, null);
+        TruffleInliningResult result = decideInliningImpl(target, depth);
+        resultCache.put(target, result);
         return result;
     }
 
-    private int tryInline(PriorityQueue<TruffleInliningProfile> queue, TruffleInliningResult result, Set<TruffleCallPath> inlinedPathes, TruffleInliningProfile profile, int budget) {
-
-        if (policy.isAllowed(result, profile, budget)) {
-            int remainingBudget;
-            inlinedPathes.add(profile.getCallPath());
-            if (policy.isAllowedDeep(result, profile, budget)) {
-                if (profile.getRecursiveResult() != null) {
-                    TruffleInliningResult inliningResult = profile.getRecursiveResult();
-                    for (TruffleCallPath recursiveInlinedPath : inliningResult) {
-                        inlinedPathes.add(profile.getCallPath().append(recursiveInlinedPath));
-                    }
-                }
-                remainingBudget = budget - profile.getDeepNodeCount();
-            } else {
-                remainingBudget = budget - profile.getNodeCount();
+    private TruffleInliningResult decideInliningImpl(OptimizedCallTarget target, int depth) {
+        List<TruffleInliningProfile> profiles = lookupProfiles(target, depth);
+        Set<TruffleInliningProfile> inlined = new HashSet<>();
+        Collections.sort(profiles, INLINING_SCORE);
+        int budget = TruffleCompilerOptions.TruffleInliningMaxCallerSize.getValue() - OptimizedCallUtils.countNonTrivialNodes(target, true);
+        int index = 0;
+        for (TruffleInliningProfile profile : profiles) {
+            profile.setQueryIndex(index++);
+            if (policy.isAllowed(profile, budget)) {
+                inlined.add(profile);
+                budget -= profile.getDeepNodeCount();
             }
-
-            queueCallSitesForInlining(result, profile.getCallPath(), queue);
-            return remainingBudget;
         }
 
-        return budget;
+        int deepNodeCount = TruffleCompilerOptions.TruffleInliningMaxCallerSize.getValue() - budget;
+        return new TruffleInliningResult(target, profiles, inlined, deepNodeCount);
+    }
+
+    private List<TruffleInliningProfile> lookupProfiles(final OptimizedCallTarget target, int depth) {
+        final List<OptimizedDirectCallNode> callNodes = new ArrayList<>();
+        target.getRootNode().accept(new NodeVisitor() {
+            public boolean visit(Node node) {
+                if (node instanceof OptimizedDirectCallNode) {
+                    callNodes.add((OptimizedDirectCallNode) node);
+                }
+                return true;
+            }
+        });
+        final List<TruffleInliningProfile> profiles = new ArrayList<>();
+        for (OptimizedDirectCallNode callNode : callNodes) {
+            profiles.add(lookupProfile(target, callNode, depth));
+        }
+        return profiles;
+    }
+
+    public TruffleInliningProfile lookupProfile(OptimizedCallTarget parentTarget, OptimizedDirectCallNode ocn, int depth) {
+        OptimizedCallTarget target = ocn.getCurrentCallTarget();
+
+        int callSites = ocn.getCurrentCallTarget().getKnownCallSiteCount();
+        int nodeCount = OptimizedCallUtils.countNonTrivialNodes(target, false);
+        double frequency = calculateFrequency(parentTarget, ocn);
+        boolean forced = ocn.isInliningForced();
+
+        int deepNodeCount;
+        TruffleInliningResult recursiveResult;
+        boolean recursiveCall = false;
+        if (target.inliningPerformed || depth > MAXIMUM_RECURSIVE_DEPTH) {
+            deepNodeCount = OptimizedCallUtils.countNonTrivialNodes(target, true);
+            recursiveResult = null;
+        } else {
+            recursiveResult = decideInlining(ocn.getCurrentCallTarget(), depth + 1);
+            if (recursiveResult == null) {
+                recursiveCall = true;
+                deepNodeCount = Integer.MAX_VALUE;
+            } else {
+                deepNodeCount = recursiveResult.getNodeCount();
+            }
+        }
+
+        TruffleInliningProfile profile = new TruffleInliningProfile(ocn, callSites, nodeCount, deepNodeCount, frequency, forced, recursiveCall, recursiveResult);
+        profile.setScore(policy.calculateScore(profile));
+        return profile;
     }
 
     public TruffleInliningPolicy getPolicy() {
         return policy;
     }
 
-    public Map<TruffleCallPath, TruffleInliningProfile> getProfiles() {
-        return profiles;
+    private static double calculateFrequency(OptimizedCallTarget target, OptimizedDirectCallNode ocn) {
+        return (double) Math.max(1, ocn.getCallCount()) / (double) Math.max(1, target.getCompilationProfile().getCallCount());
     }
 
-    private void queueCallSitesForInlining(final TruffleInliningResult currentDecision, TruffleCallPath fromPath, final Collection<TruffleInliningProfile> queue) {
-        fromPath.getCallTarget().getRootNode().accept(new InlinedCallVisitor(currentDecision, fromPath) {
-            @Override
-            public boolean visit(TruffleCallPath path, Node node) {
-                if (node instanceof OptimizedCallNode) {
-                    if (!currentDecision.isInlined(path)) {
-                        addToQueue(queue, currentDecision, path);
-                    }
-                }
-                return true;
-            }
-        });
-    }
-
-    private void addToQueue(final Collection<TruffleInliningProfile> queue, final TruffleInliningResult currentDecision, TruffleCallPath path) {
-        queue.add(lookupProfile(currentDecision, path));
-    }
-
-    public List<TruffleInliningProfile> lookupProfiles(final TruffleInliningResult currentDecision, TruffleCallPath fromPath) {
-        final List<TruffleInliningProfile> pathes = new ArrayList<>();
-        fromPath.getCallTarget().getRootNode().accept(new InlinedCallVisitor(currentDecision, fromPath) {
-            @Override
-            public boolean visit(TruffleCallPath path, Node node) {
-                if (node instanceof OptimizedCallNode) {
-                    pathes.add(lookupProfile(currentDecision, path));
-                }
-                return true;
-            }
-        });
-        return pathes;
-    }
-
-    public TruffleInliningProfile lookupProfile(TruffleInliningResult state, TruffleCallPath callPath) {
-        TruffleInliningProfile profile = profiles.get(callPath);
-        if (profile != null) {
-            return profile;
-        }
-
-        int callSites = callPath.getCallTarget().getKnownCallSiteCount();
-        int nodeCount = OptimizedCallUtils.countNonTrivialNodes(state, callPath);
-        double frequency = calculatePathFrequency(callPath);
-        boolean forced = callPath.getCallNode().isInlined();
-        TruffleInliningResult recursiveResult = lookupChildResult(callPath, nodeCount);
-        int deepNodeCount = OptimizedCallUtils.countNonTrivialNodes(recursiveResult, new TruffleCallPath(callPath.getCallTarget()));
-
-        profile = new TruffleInliningProfile(callPath, callSites, nodeCount, deepNodeCount, frequency, forced, recursiveResult);
-        profile.setScore(policy.calculateScore(profile));
-        profiles.put(callPath, profile);
-
-        return profile;
-    }
-
-    private TruffleInliningResult lookupChildResult(TruffleCallPath callPath, int nodeCount) {
-        OptimizedCallTarget target = callPath.getCallTarget();
-
-        TruffleInliningResult recursiveResult = target.getInliningResult();
-
-        if (recursiveResult == null) {
-            recursiveResult = inliningResultCache.get(callPath.getCallTarget());
-
-            if (recursiveResult == null) {
-                if (inliningResultCache.containsKey(target)) {
-                    // cancel on recursion
-                    return new TruffleInliningResult(target, new HashSet<TruffleCallPath>());
-                }
-                inliningResultCache.put(target, null);
-                TruffleInliningHandler handler = new TruffleInliningHandler(target, policy, inliningResultCache);
-                recursiveResult = handler.inline(nodeCount);
-                inliningResultCache.put(callPath.getCallTarget(), recursiveResult);
-            }
-        }
-        return recursiveResult;
-    }
-
-    private static double calculatePathFrequency(TruffleCallPath callPath) {
-        int parentCallCount = -1;
-        double f = 1.0d;
-        for (TruffleCallPath path : callPath.toList()) {
-            if (parentCallCount != -1) {
-                f *= path.getCallNode().getCallCount() / (double) parentCallCount;
-            }
-            parentCallCount = path.getCallTarget().getCompilationProfile().getCallCount();
-        }
-        return f;
-    }
-
-    private final class ProfileScoreComparator implements Comparator<TruffleInliningProfile> {
+    private final static class ProfileScoreComparator implements Comparator<TruffleInliningProfile> {
 
         public int compare(TruffleInliningProfile o1, TruffleInliningProfile o2) {
             return Double.compare(o2.getScore(), o1.getScore());

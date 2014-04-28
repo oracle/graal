@@ -23,11 +23,12 @@
 package com.oracle.graal.nodes.calc;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
+import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
 
 @NodeInfo(shortName = ">>")
 public final class RightShiftNode extends ShiftNode implements Canonicalizable {
@@ -98,7 +99,7 @@ public final class RightShiftNode extends ShiftNode implements Canonicalizable {
     }
 
     @Override
-    public void generate(NodeLIRBuilderTool gen) {
-        gen.setResult(this, gen.getLIRGeneratorTool().emitShr(gen.operand(x()), gen.operand(y())));
+    public void generate(NodeMappableLIRBuilder builder, ArithmeticLIRGenerator gen) {
+        builder.setResult(this, gen.emitShr(builder.operand(x()), builder.operand(y())));
     }
 }

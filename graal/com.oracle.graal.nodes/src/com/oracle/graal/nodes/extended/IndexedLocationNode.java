@@ -23,11 +23,12 @@
 package com.oracle.graal.nodes.extended;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
+import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
 
 /**
  * Location node that has a displacement and a scaled index. Can represent locations in the form of
@@ -96,7 +97,7 @@ public final class IndexedLocationNode extends LocationNode implements Canonical
     }
 
     @Override
-    public Value generateAddress(NodeLIRBuilderTool gen, Value base) {
-        return gen.getLIRGeneratorTool().emitAddress(base, displacement, gen.operand(getIndex()), getIndexScaling());
+    public Value generateAddress(NodeMappableLIRBuilder builder, LIRGeneratorTool gen, Value base) {
+        return gen.emitAddress(base, displacement, builder.operand(getIndex()), getIndexScaling());
     }
 }

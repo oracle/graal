@@ -223,7 +223,7 @@ public class ComputeProbabilityClosure {
         }
 
         @Override
-        public void afterSplit(AbstractBeginNode node) {
+        public void afterSplit(BeginNode node) {
             assert node.predecessor() != null;
             Node pred = node.predecessor();
             ControlSplitNode x = (ControlSplitNode) pred;

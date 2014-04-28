@@ -35,10 +35,11 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.alloc.Interval.RegisterBinding;
 import com.oracle.graal.compiler.alloc.Interval.RegisterPriority;
 import com.oracle.graal.compiler.alloc.Interval.SpillState;
+import com.oracle.graal.compiler.common.*;
+import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
@@ -46,7 +47,6 @@ import com.oracle.graal.lir.LIRInstruction.StateProcedure;
 import com.oracle.graal.lir.LIRInstruction.ValueProcedure;
 import com.oracle.graal.lir.StandardOp.MoveOp;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.phases.util.*;
 
 /**
@@ -335,7 +335,7 @@ public final class LinearScan {
     }
 
     int numLoops() {
-        return ir.getControlFlowGraph().getLoops().length;
+        return ir.getControlFlowGraph().getLoops().size();
     }
 
     boolean isIntervalInLoop(int interval, int loop) {

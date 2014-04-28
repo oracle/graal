@@ -25,11 +25,11 @@ package com.oracle.graal.nodes;
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.util.*;
 
 /**
@@ -182,13 +182,6 @@ public final class InvokeNode extends AbstractMemoryCheckpoint implements Invoke
     public void setStateDuring(FrameState stateDuring) {
         updateUsages(this.stateDuring, stateDuring);
         this.stateDuring = stateDuring;
-    }
-
-    @Override
-    public void computeStateDuring(FrameState stateAfter) {
-        FrameState newStateDuring = stateAfter.duplicateModified(bci(), stateAfter.rethrowException(), getKind());
-        newStateDuring.setDuringCall(true);
-        setStateDuring(newStateDuring);
     }
 
     @Override

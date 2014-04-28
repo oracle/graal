@@ -23,11 +23,11 @@
 package com.oracle.graal.nodes;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Node.ValueNumberable;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
-import com.oracle.graal.nodes.type.*;
 
 /**
  * A proxy is inserted at loop exits for any value that is created inside the loop (i.e. was not
@@ -35,9 +35,9 @@ import com.oracle.graal.nodes.type.*;
  */
 public abstract class ProxyNode extends FloatingNode implements IterableNodeType, ValueNumberable {
 
-    @Input(InputType.Association) private AbstractBeginNode proxyPoint;
+    @Input(InputType.Association) private BeginNode proxyPoint;
 
-    public ProxyNode(Stamp stamp, AbstractBeginNode proxyPoint) {
+    public ProxyNode(Stamp stamp, BeginNode proxyPoint) {
         super(stamp);
         assert proxyPoint != null;
         this.proxyPoint = proxyPoint;
@@ -45,7 +45,7 @@ public abstract class ProxyNode extends FloatingNode implements IterableNodeType
 
     public abstract ValueNode value();
 
-    public AbstractBeginNode proxyPoint() {
+    public BeginNode proxyPoint() {
         return proxyPoint;
     }
 
@@ -57,15 +57,15 @@ public abstract class ProxyNode extends FloatingNode implements IterableNodeType
         return super.verify();
     }
 
-    public static MemoryProxyNode forMemory(MemoryNode value, AbstractBeginNode exit, LocationIdentity location, StructuredGraph graph) {
+    public static MemoryProxyNode forMemory(MemoryNode value, BeginNode exit, LocationIdentity location, StructuredGraph graph) {
         return graph.unique(new MemoryProxyNode(value, exit, location));
     }
 
-    public static ValueProxyNode forValue(ValueNode value, AbstractBeginNode exit, StructuredGraph graph) {
+    public static ValueProxyNode forValue(ValueNode value, BeginNode exit, StructuredGraph graph) {
         return graph.unique(new ValueProxyNode(value, exit));
     }
 
-    public static GuardProxyNode forGuard(GuardingNode value, AbstractBeginNode exit, StructuredGraph graph) {
+    public static GuardProxyNode forGuard(GuardingNode value, BeginNode exit, StructuredGraph graph) {
         return graph.unique(new GuardProxyNode(value, exit));
     }
 }

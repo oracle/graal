@@ -138,7 +138,11 @@ public abstract class Constant extends Value {
     public abstract double asDouble();
 
     public String toValueString() {
-        return getKind().format(asBoxedPrimitive());
+        if (getKind() == Kind.Illegal) {
+            return "illegal";
+        } else {
+            return getKind().format(asBoxedPrimitive());
+        }
     }
 
     @Override

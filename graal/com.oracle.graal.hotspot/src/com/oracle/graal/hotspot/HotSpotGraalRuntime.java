@@ -22,9 +22,9 @@
  */
 package com.oracle.graal.hotspot;
 
-import static com.oracle.graal.graph.UnsafeAccess.*;
+import static com.oracle.graal.compiler.common.GraalOptions.*;
+import static com.oracle.graal.compiler.common.UnsafeAccess.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.Options.*;
-import static com.oracle.graal.phases.GraalOptions.*;
 
 import java.lang.reflect.*;
 import java.util.*;
@@ -37,8 +37,8 @@ import com.oracle.graal.api.code.stack.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.api.runtime.*;
+import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.target.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.bridge.*;
 import com.oracle.graal.hotspot.logging.*;
 import com.oracle.graal.hotspot.meta.*;
@@ -445,10 +445,12 @@ public final class HotSpotGraalRuntime implements GraalRuntime, RuntimeProvider,
         }
     }
 
-    public Iterable<InspectedFrame> getStackTrace(final ResolvedJavaMethod initialMethod, final ResolvedJavaMethod matchingMethod) {
+    public Iterable<InspectedFrame> getStackTrace(ResolvedJavaMethod[] initialMethods, ResolvedJavaMethod[] matchingMethods, int initialSkip) {
+        final long[] initialMetaMethods = toMeta(initialMethods);
+        final long[] matchingMetaMethods = toMeta(matchingMethods);
         class StackFrameIterator implements Iterator<InspectedFrame> {
 
-            private HotSpotStackFrameReference current = compilerToVm.getNextStackFrame(null, (HotSpotResolvedJavaMethod) initialMethod);
+            private HotSpotStackFrameReference current = compilerToVm.getNextStackFrame(null, initialMetaMethods, initialSkip);
             // we don't want to read ahead if hasNext isn't called
             private boolean advanced = true;
 
@@ -465,7 +467,7 @@ public final class HotSpotGraalRuntime implements GraalRuntime, RuntimeProvider,
 
             private void update() {
                 if (!advanced) {
-                    current = compilerToVm.getNextStackFrame(current, (HotSpotResolvedJavaMethod) matchingMethod);
+                    current = compilerToVm.getNextStackFrame(current, matchingMetaMethods, 0);
                     advanced = true;
                 }
             }
@@ -475,5 +477,17 @@ public final class HotSpotGraalRuntime implements GraalRuntime, RuntimeProvider,
                 return new StackFrameIterator();
             }
         };
+    }
+
+    private static long[] toMeta(ResolvedJavaMethod[] methods) {
+        if (methods == null) {
+            return null;
+        } else {
+            long[] result = new long[methods.length];
+            for (int i = 0; i < result.length; i++) {
+                result[i] = ((HotSpotResolvedJavaMethod) methods[i]).getMetaspaceMethod();
+            }
+            return result;
+        }
     }
 }

@@ -27,8 +27,8 @@ package com.oracle.graal.compiler.hsail.test.infra;
  * This class extends KernelTester and provides a base class
  * for which the HSAIL code comes from the Graal compiler.
  */
+import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
-import static com.oracle.graal.phases.GraalOptions.*;
 import static org.junit.Assume.*;
 
 import java.io.*;
@@ -38,16 +38,15 @@ import org.junit.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.gpu.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.hsail.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hsail.*;
 import com.oracle.graal.options.*;
 import com.oracle.graal.options.OptionValue.OverrideScope;
-import com.oracle.graal.phases.*;
 
 public abstract class GraalKernelTester extends KernelTester {
 
@@ -103,6 +102,40 @@ public abstract class GraalKernelTester extends KernelTester {
         return (canGenerateCalls && canExecuteCalls);
     }
 
+    private static boolean supportsObjectAllocation() {
+        return true;
+    }
+
+    /**
+     * Determines if the runtime supports object allocation in HSAIL code.
+     */
+    public boolean canHandleObjectAllocation() {
+        return supportsObjectAllocation() && canDeoptimize();
+    }
+
+    /**
+     * Determines if the runtime supports deoptimization in HSAIL code.
+     */
+    public boolean canDeoptimize() {
+        return getHSAILBackend().getRuntime().getConfig().useHSAILDeoptimization;
+    }
+
+    /**
+     * Determines if the runtime supports {@link VirtualObject}s in {@link DebugInfo} associated
+     * with HSAIL code.
+     */
+    public boolean canHandleDeoptVirtualObjects() {
+        return false;
+    }
+
+    /**
+     * Determines if the runtime supports {@link StackSlot}s in {@link DebugInfo} associated with
+     * HSAIL code.
+     */
+    public boolean canHandleDeoptStackSlots() {
+        return false;
+    }
+
     /**
      * Determines if the runtime has the capabilities required by this test.
      */
@@ -156,8 +189,8 @@ public abstract class GraalKernelTester extends KernelTester {
     @Override
     public void testGeneratedHsailUsingLambdaMethod() {
         try (OverrideScope s = getOverrideScope()) {
+            assumeTrue(supportsRequiredCapabilities());
             super.testGeneratedHsailUsingLambdaMethod();
         }
     }
-
 }

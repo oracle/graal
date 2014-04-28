@@ -25,6 +25,8 @@ package com.oracle.graal.nodes.type;
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 
 /**
@@ -36,9 +38,9 @@ public class StampTool {
         if (stamp instanceof IntegerStamp) {
             IntegerStamp integerStamp = (IntegerStamp) stamp;
             int bits = integerStamp.getBits();
-            if (integerStamp.lowerBound() != IntegerStamp.defaultMinValue(bits, false)) {
+            if (integerStamp.lowerBound() != IntegerStamp.defaultMinValue(bits)) {
                 // TODO(ls) check if the mask calculation is correct...
-                return StampFactory.forInteger(bits, false, -integerStamp.upperBound(), -integerStamp.lowerBound());
+                return StampFactory.forInteger(bits, -integerStamp.upperBound(), -integerStamp.lowerBound());
             }
         } else if (stamp instanceof FloatStamp) {
             FloatStamp floatStamp = (FloatStamp) stamp;
@@ -53,8 +55,7 @@ public class StampTool {
             IntegerStamp integerStamp = (IntegerStamp) stamp;
             int bits = integerStamp.getBits();
             long defaultMask = IntegerStamp.defaultMask(bits);
-            return new IntegerStamp(bits, integerStamp.isUnsigned(), ~integerStamp.upperBound(), ~integerStamp.lowerBound(), (~integerStamp.upMask()) & defaultMask, (~integerStamp.downMask()) &
-                            defaultMask);
+            return new IntegerStamp(bits, ~integerStamp.upperBound(), ~integerStamp.lowerBound(), (~integerStamp.upMask()) & defaultMask, (~integerStamp.downMask()) & defaultMask);
         }
         return stamp.unrestricted();
     }
@@ -95,45 +96,36 @@ public class StampTool {
     }
 
     public static Stamp div(IntegerStamp stamp1, IntegerStamp stamp2) {
-        assert stamp1.getBits() == stamp2.getBits() && stamp1.isUnsigned() == stamp2.isUnsigned();
+        assert stamp1.getBits() == stamp2.getBits();
         if (stamp2.isStrictlyPositive()) {
             long lowerBound = stamp1.lowerBound() / stamp2.lowerBound();
             long upperBound = stamp1.upperBound() / stamp2.lowerBound();
-            return StampFactory.forInteger(stamp1.getBits(), stamp1.isUnsigned(), lowerBound, upperBound);
+            return StampFactory.forInteger(stamp1.getBits(), lowerBound, upperBound);
         }
         return stamp1.unrestricted();
     }
 
-    private static boolean addOverflowsPositively(long x, long y, int bits, boolean unsigned) {
+    private static boolean addOverflowsPositively(long x, long y, int bits) {
         long result = x + y;
         if (bits == 64) {
-            if (unsigned) {
-                return ((x | y) & ~result) < 0;
-            } else {
-                return (~x & ~y & result) < 0;
-            }
+            return (~x & ~y & result) < 0;
         } else {
-            return result > IntegerStamp.defaultMaxValue(bits, unsigned);
+            return result > IntegerStamp.defaultMaxValue(bits);
         }
     }
 
-    private static boolean addOverflowsNegatively(long x, long y, int bits, boolean unsigned) {
-        if (unsigned) {
-            return false;
-        }
-
+    private static boolean addOverflowsNegatively(long x, long y, int bits) {
         long result = x + y;
         if (bits == 64) {
             return (x & y & ~result) < 0;
         } else {
-            return result < IntegerStamp.defaultMinValue(bits, unsigned);
+            return result < IntegerStamp.defaultMinValue(bits);
         }
     }
 
     public static IntegerStamp add(IntegerStamp stamp1, IntegerStamp stamp2) {
         int bits = stamp1.getBits();
-        boolean unsigned = stamp1.isUnsigned();
-        assert bits == stamp2.getBits() && unsigned == stamp2.isUnsigned();
+        assert bits == stamp2.getBits();
 
         if (stamp1.isUnrestricted()) {
             return stamp1;
@@ -151,30 +143,23 @@ public class StampTool {
 
         long lowerBound;
         long upperBound;
-        boolean lowerOverflowsPositively = addOverflowsPositively(stamp1.lowerBound(), stamp2.lowerBound(), bits, unsigned);
-        boolean upperOverflowsPositively = addOverflowsPositively(stamp1.upperBound(), stamp2.upperBound(), bits, unsigned);
-        boolean lowerOverflowsNegatively = addOverflowsNegatively(stamp1.lowerBound(), stamp2.lowerBound(), bits, unsigned);
-        boolean upperOverflowsNegatively = addOverflowsNegatively(stamp1.upperBound(), stamp2.upperBound(), bits, unsigned);
+        boolean lowerOverflowsPositively = addOverflowsPositively(stamp1.lowerBound(), stamp2.lowerBound(), bits);
+        boolean upperOverflowsPositively = addOverflowsPositively(stamp1.upperBound(), stamp2.upperBound(), bits);
+        boolean lowerOverflowsNegatively = addOverflowsNegatively(stamp1.lowerBound(), stamp2.lowerBound(), bits);
+        boolean upperOverflowsNegatively = addOverflowsNegatively(stamp1.upperBound(), stamp2.upperBound(), bits);
         if ((lowerOverflowsNegatively && !upperOverflowsNegatively) || (!lowerOverflowsPositively && upperOverflowsPositively)) {
-            lowerBound = IntegerStamp.defaultMinValue(bits, unsigned);
-            upperBound = IntegerStamp.defaultMaxValue(bits, unsigned);
+            lowerBound = IntegerStamp.defaultMinValue(bits);
+            upperBound = IntegerStamp.defaultMaxValue(bits);
         } else {
-            lowerBound = (stamp1.lowerBound() + stamp2.lowerBound()) & defaultMask;
-            upperBound = (stamp1.upperBound() + stamp2.upperBound()) & defaultMask;
-            if (!unsigned) {
-                lowerBound = SignExtendNode.signExtend(lowerBound, bits);
-                upperBound = SignExtendNode.signExtend(upperBound, bits);
-            }
+            lowerBound = SignExtendNode.signExtend((stamp1.lowerBound() + stamp2.lowerBound()) & defaultMask, bits);
+            upperBound = SignExtendNode.signExtend((stamp1.upperBound() + stamp2.upperBound()) & defaultMask, bits);
         }
-        IntegerStamp limit = StampFactory.forInteger(bits, unsigned, lowerBound, upperBound);
+        IntegerStamp limit = StampFactory.forInteger(bits, lowerBound, upperBound);
         newUpMask &= limit.upMask();
-        upperBound &= newUpMask;
-        if (!unsigned) {
-            upperBound = SignExtendNode.signExtend(upperBound, bits);
-        }
+        upperBound = SignExtendNode.signExtend(upperBound & newUpMask, bits);
         newDownMask |= limit.downMask();
         lowerBound |= newDownMask;
-        return new IntegerStamp(bits, unsigned, lowerBound, upperBound, newDownMask, newUpMask);
+        return new IntegerStamp(bits, lowerBound, upperBound, newDownMask, newUpMask);
     }
 
     public static Stamp sub(IntegerStamp stamp1, IntegerStamp stamp2) {
@@ -195,11 +180,11 @@ public class StampTool {
             upperBound = upMask;
         } else {
             lowerBound = downMask | (-1L << (bits - 1));
-            upperBound = IntegerStamp.defaultMaxValue(bits, false) & upMask;
+            upperBound = IntegerStamp.defaultMaxValue(bits) & upMask;
         }
         lowerBound = IntegerConvertNode.convert(lowerBound, bits, false);
         upperBound = IntegerConvertNode.convert(upperBound, bits, false);
-        return new IntegerStamp(bits, false, lowerBound, upperBound, downMask, upMask);
+        return new IntegerStamp(bits, lowerBound, upperBound, downMask, upMask);
     }
 
     public static Stamp and(Stamp stamp1, Stamp stamp2) {
@@ -265,7 +250,7 @@ public class StampTool {
                     lowerBound = value.lowerBound() >>> shiftCount;
                     upperBound = value.upperBound() >>> shiftCount;
                 }
-                return new IntegerStamp(bits, value.isUnsigned(), lowerBound, upperBound, downMask, upMask);
+                return new IntegerStamp(bits, lowerBound, upperBound, downMask, upMask);
             }
         }
         long mask = IntegerStamp.upMaskFor(bits, value.lowerBound(), value.upperBound());
@@ -312,17 +297,7 @@ public class StampTool {
             long downMask = SignExtendNode.signExtend(inputStamp.downMask(), inputBits) & defaultMask;
             long upMask = SignExtendNode.signExtend(inputStamp.upMask(), inputBits) & defaultMask;
 
-            long lowerBound;
-            long upperBound;
-            if (inputStamp.isUnsigned()) {
-                lowerBound = SignExtendNode.signExtend(inputStamp.lowerBound(), inputBits) & defaultMask;
-                upperBound = SignExtendNode.signExtend(inputStamp.upperBound(), inputBits) & defaultMask;
-            } else {
-                lowerBound = inputStamp.lowerBound();
-                upperBound = inputStamp.upperBound();
-            }
-
-            return new IntegerStamp(resultBits, inputStamp.isUnsigned(), lowerBound, upperBound, downMask, upMask);
+            return new IntegerStamp(resultBits, inputStamp.lowerBound(), inputStamp.upperBound(), downMask, upMask);
         } else {
             return input.illegal();
         }
@@ -346,7 +321,7 @@ public class StampTool {
             long lowerBound = ZeroExtendNode.zeroExtend(inputStamp.lowerBound(), inputBits);
             long upperBound = ZeroExtendNode.zeroExtend(inputStamp.upperBound(), inputBits);
 
-            return new IntegerStamp(resultBits, inputStamp.isUnsigned(), lowerBound, upperBound, downMask, upMask);
+            return new IntegerStamp(resultBits, lowerBound, upperBound, downMask, upMask);
         } else {
             return input.illegal();
         }
@@ -355,7 +330,6 @@ public class StampTool {
     public static Stamp narrowingConversion(Stamp input, int resultBits) {
         if (input instanceof IntegerStamp) {
             IntegerStamp inputStamp = (IntegerStamp) input;
-            boolean unsigned = inputStamp.isUnsigned();
             int inputBits = inputStamp.getBits();
             assert resultBits <= inputBits;
             if (resultBits == inputBits) {
@@ -363,28 +337,24 @@ public class StampTool {
             }
 
             final long upperBound;
-            if (inputStamp.lowerBound() < IntegerStamp.defaultMinValue(resultBits, unsigned)) {
-                upperBound = IntegerStamp.defaultMaxValue(resultBits, unsigned);
+            if (inputStamp.lowerBound() < IntegerStamp.defaultMinValue(resultBits)) {
+                upperBound = IntegerStamp.defaultMaxValue(resultBits);
             } else {
-                upperBound = saturate(inputStamp.upperBound(), resultBits, unsigned);
+                upperBound = saturate(inputStamp.upperBound(), resultBits);
             }
             final long lowerBound;
-            if (inputStamp.upperBound() > IntegerStamp.defaultMaxValue(resultBits, unsigned)) {
-                lowerBound = IntegerStamp.defaultMinValue(resultBits, unsigned);
+            if (inputStamp.upperBound() > IntegerStamp.defaultMaxValue(resultBits)) {
+                lowerBound = IntegerStamp.defaultMinValue(resultBits);
             } else {
-                lowerBound = saturate(inputStamp.lowerBound(), resultBits, unsigned);
+                lowerBound = saturate(inputStamp.lowerBound(), resultBits);
             }
 
             long defaultMask = IntegerStamp.defaultMask(resultBits);
             long newDownMask = inputStamp.downMask() & defaultMask;
             long newUpMask = inputStamp.upMask() & defaultMask;
-            long newLowerBound = (lowerBound | newDownMask) & newUpMask;
-            long newUpperBound = (upperBound | newDownMask) & newUpMask;
-            if (!unsigned) {
-                newLowerBound = SignExtendNode.signExtend(newLowerBound, resultBits);
-                newUpperBound = SignExtendNode.signExtend(newUpperBound, resultBits);
-            }
-            return new IntegerStamp(resultBits, unsigned, newLowerBound, newUpperBound, newDownMask, newUpMask);
+            long newLowerBound = SignExtendNode.signExtend((lowerBound | newDownMask) & newUpMask, resultBits);
+            long newUpperBound = SignExtendNode.signExtend((upperBound | newDownMask) & newUpMask, resultBits);
+            return new IntegerStamp(resultBits, newLowerBound, newUpperBound, newDownMask, newUpMask);
         } else {
             return input.illegal();
         }
@@ -409,7 +379,7 @@ public class StampTool {
         long intMask = IntegerStamp.defaultMask(32);
         long newUpMask = signExtend(fromStamp.upMask() & defaultMask, toKind) & intMask;
         long newDownMask = signExtend(fromStamp.downMask() & defaultMask, toKind) & intMask;
-        return new IntegerStamp(toKind.getStackKind().getBitCount(), false, (int) ((lowerBound | newDownMask) & newUpMask), (int) ((upperBound | newDownMask) & newUpMask), newDownMask, newUpMask);
+        return new IntegerStamp(toKind.getStackKind().getBitCount(), (int) ((lowerBound | newDownMask) & newUpMask), (int) ((upperBound | newDownMask) & newUpMask), newDownMask, newUpMask);
     }
 
     private static long signExtend(long value, Kind valueKind) {
@@ -420,13 +390,13 @@ public class StampTool {
         }
     }
 
-    private static long saturate(long v, int bits, boolean unsigned) {
+    private static long saturate(long v, int bits) {
         if (bits < 64) {
-            long max = IntegerStamp.defaultMaxValue(bits, unsigned);
+            long max = IntegerStamp.defaultMaxValue(bits);
             if (v > max) {
                 return max;
             }
-            long min = IntegerStamp.defaultMinValue(bits, unsigned);
+            long min = IntegerStamp.defaultMinValue(bits);
             if (v < min) {
                 return min;
             }
@@ -471,15 +441,121 @@ public class StampTool {
                 }
                 // If the test succeeds then this proves that n is at greater than c so the bounds
                 // are [c+1..-n.upperBound)].
-                return StampFactory.forInteger(x.getBits(), false, x.lowerBound() + 1, y.upperBound());
+                return StampFactory.forInteger(x.getBits(), x.lowerBound() + 1, y.upperBound());
             }
             return null;
         }
         // n <| c, where c is a strictly positive constant
         if (y.lowerBound() == y.upperBound() && y.isStrictlyPositive()) {
             // The test proves that n is positive and less than c, [0..c-1]
-            return StampFactory.forInteger(y.getBits(), false, 0, y.lowerBound() - 1);
+            return StampFactory.forInteger(y.getBits(), 0, y.lowerBound() - 1);
         }
         return null;
+    }
+
+    /**
+     * Checks whether this {@link ValueNode} represents a {@linkplain Stamp#isLegal() legal} Object
+     * value which is known to be always null.
+     *
+     * @param node the node to check
+     * @return true if this node represents a legal object value which is known to be always null
+     */
+    public static boolean isObjectAlwaysNull(ValueNode node) {
+        return isObjectAlwaysNull(node.stamp());
+    }
+
+    /**
+     * Checks whether this {@link Stamp} represents a {@linkplain Stamp#isLegal() legal} Object
+     * stamp whose values are known to be always null.
+     *
+     * @param stamp the stamp to check
+     * @return true if this stamp represents a legal object stamp whose values are known to be
+     *         always null
+     */
+    public static boolean isObjectAlwaysNull(Stamp stamp) {
+        if (stamp instanceof ObjectStamp && stamp.isLegal()) {
+            return ((ObjectStamp) stamp).alwaysNull();
+        }
+        return false;
+    }
+
+    /**
+     * Checks whether this {@link ValueNode} represents a {@linkplain Stamp#isLegal() legal} Object
+     * value which is known to never be null.
+     *
+     * @param node the node to check
+     * @return true if this node represents a legal object value which is known to never be null
+     */
+    public static boolean isObjectNonNull(ValueNode node) {
+        return isObjectNonNull(node.stamp());
+    }
+
+    /**
+     * Checks whether this {@link Stamp} represents a {@linkplain Stamp#isLegal() legal} Object
+     * stamp whose values known to be always null.
+     *
+     * @param stamp the stamp to check
+     * @return true if this stamp represents a legal object stamp whose values are known to be
+     *         always null
+     */
+    public static boolean isObjectNonNull(Stamp stamp) {
+        if (stamp instanceof ObjectStamp && stamp.isLegal()) {
+            return ((ObjectStamp) stamp).nonNull();
+        }
+        return false;
+    }
+
+    /**
+     * Returns the {@linkplain ResolvedJavaType Java type} this {@linkplain ValueNode} has if it is
+     * a {@linkplain Stamp#isLegal() legal} Object value.
+     *
+     * @param node the node to check
+     * @return the Java type this value has if it is a legal Object type, null otherwise
+     */
+    public static ResolvedJavaType typeOrNull(ValueNode node) {
+        return typeOrNull(node.stamp());
+    }
+
+    /**
+     * Returns the {@linkplain ResolvedJavaType Java type} this {@linkplain Stamp} has if it is a
+     * {@linkplain Stamp#isLegal() legal} Object stamp.
+     *
+     * @param stamp the stamp to check
+     * @return the Java type this stamp has if it is a legal Object stamp, null otherwise
+     */
+    public static ResolvedJavaType typeOrNull(Stamp stamp) {
+        if (stamp instanceof ObjectStamp && stamp.isLegal()) {
+            return ((ObjectStamp) stamp).type();
+        }
+        return null;
+    }
+
+    /**
+     * Checks whether this {@link ValueNode} represents a {@linkplain Stamp#isLegal() legal} Object
+     * value whose Java type is known exactly. If this method returns true then the
+     * {@linkplain ResolvedJavaType Java type} returned by {@link #typeOrNull(ValueNode)} is the
+     * concrete dynamic/runtime Java type of this value.
+     *
+     * @param node the node to check
+     * @return true if this node represents a legal object value whose Java type is known exactly
+     */
+    public static boolean isExactType(ValueNode node) {
+        return isExactType(node.stamp());
+    }
+
+    /**
+     * Checks whether this {@link Stamp} represents a {@linkplain Stamp#isLegal() legal} Object
+     * stamp whose {@linkplain ResolvedJavaType Java type} is known exactly. If this method returns
+     * true then the Java type returned by {@link #typeOrNull(Stamp)} is the only concrete
+     * dynamic/runtime Java type possible for values of this stamp.
+     *
+     * @param stamp the stamp to check
+     * @return true if this node represents a legal object stamp whose Java type is known exactly
+     */
+    public static boolean isExactType(Stamp stamp) {
+        if (stamp instanceof ObjectStamp && stamp.isLegal()) {
+            return ((ObjectStamp) stamp).isExactType();
+        }
+        return false;
     }
 }

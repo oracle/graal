@@ -22,10 +22,12 @@
  */
 package com.oracle.graal.phases.common;
 
-import static com.oracle.graal.phases.GraalOptions.*;
+import static com.oracle.graal.compiler.common.GraalOptions.*;
 
 import java.util.*;
 
+import com.oracle.graal.compiler.common.*;
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.Graph.DuplicationReplacement;
 import com.oracle.graal.graph.Graph.Mark;
@@ -37,7 +39,6 @@ import com.oracle.graal.nodes.VirtualState.NodeClosure;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.nodes.virtual.*;
 import com.oracle.graal.phases.*;
@@ -293,7 +294,7 @@ public class TailDuplicationPhase extends BasePhase<PhaseContext> {
                 // EndNode
                 FixedWithNextNode anchorDuplicate = (FixedWithNextNode) duplicates.get(anchor);
                 // move dependencies on the ValueAnchorNode to the previous BeginNode
-                AbstractBeginNode prevBegin = AbstractBeginNode.prevBegin(forwardEnd);
+                BeginNode prevBegin = BeginNode.prevBegin(forwardEnd);
                 anchorDuplicate.replaceAtUsages(InputType.Guard, prevBegin);
                 anchorDuplicate.replaceAtUsages(InputType.Anchor, prevBegin);
                 assert anchorDuplicate.usages().isEmpty();

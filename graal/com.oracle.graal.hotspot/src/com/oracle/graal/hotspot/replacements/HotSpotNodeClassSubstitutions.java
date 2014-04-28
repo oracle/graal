@@ -22,9 +22,7 @@
  */
 package com.oracle.graal.hotspot.replacements;
 
-import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
-import static com.oracle.graal.nodes.PiNode.*;
-import static com.oracle.graal.phases.GraalOptions.*;
+import static com.oracle.graal.compiler.common.GraalOptions.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
@@ -33,7 +31,6 @@ import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.replacements.nodes.*;
-import com.oracle.graal.word.*;
 
 /**
  * Substitutions for improving the performance of {@link NodeClass#get}.
@@ -61,15 +58,12 @@ public class HotSpotNodeClassSubstitutions {
         }
     }
 
+    /**
+     * NOTE: A {@link MethodSubstitution} similar to
+     * {@link HotSpotNodeSubstitutions#getNodeClass(Node)} is not possible here because there is no
+     * guarantee that {@code c} is initialized (accessing a Class literal in Java is not a class
+     * initialization barrier).
+     */
     @MacroSubstitution(isStatic = true, forced = true, macro = NodeClassGetNode.class)
-    @MethodSubstitution(isStatic = true)
-    public static NodeClass get(Class<?> c) {
-        Word klass = loadWordFromObject(c, klassOffset());
-        NodeClass nc = piCastExact(klass.readObject(Word.signed(klassNodeClassOffset()), KLASS_NODE_CLASS), NodeClass.class);
-        if (nc != null) {
-            return nc;
-        }
-        return get(c);
-
-    }
+    public static native NodeClass get(Class<?> c);
 }

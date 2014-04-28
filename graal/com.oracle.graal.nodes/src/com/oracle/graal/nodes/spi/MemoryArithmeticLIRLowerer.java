@@ -25,10 +25,10 @@ package com.oracle.graal.nodes.spi;
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.calc.*;
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.calc.FloatConvertNode.FloatConvert;
 import com.oracle.graal.nodes.extended.*;
-import com.oracle.graal.nodes.type.*;
 
 /**
  * This interface can be used to generate LIR for arithmetic operations where one of the operations

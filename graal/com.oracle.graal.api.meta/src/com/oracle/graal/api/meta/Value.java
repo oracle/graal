@@ -40,12 +40,30 @@ public abstract class Value implements Serializable, KindProvider {
         }
     };
 
+    /**
+     * This is the Value of a node which was matched as part of a complex match. The value isn't
+     * actually useable but this marks it as having been evaluated.
+     */
+    @SuppressWarnings("serial") public static Value INTERIOR_MATCH = new Value(Kind.Illegal) {
+
+        @Override
+        public String toString() {
+            return "INTERIOR_MATCH";
+        }
+
+        @Override
+        public boolean equals(Object other) {
+            // This class is a singleton
+            return other != null && getClass() == other.getClass();
+        }
+    };
+
     private final Kind kind;
     private final PlatformKind platformKind;
 
     /**
      * Initializes a new value of the specified kind.
-     * 
+     *
      * @param platformKind the kind
      */
     protected Value(PlatformKind platformKind) {

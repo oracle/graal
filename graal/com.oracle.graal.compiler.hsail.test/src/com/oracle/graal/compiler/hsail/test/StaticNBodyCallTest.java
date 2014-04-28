@@ -23,8 +23,6 @@
 
 package com.oracle.graal.compiler.hsail.test;
 
-import static org.junit.Assume.*;
-
 import org.junit.*;
 
 /**
@@ -39,7 +37,6 @@ public class StaticNBodyCallTest extends StaticNBodyTest {
 
     @Override
     public void runTest() {
-        assumeTrue(aggressiveInliningEnabled() || canHandleHSAILMethodCalls());
         super.runTest();
     }
 

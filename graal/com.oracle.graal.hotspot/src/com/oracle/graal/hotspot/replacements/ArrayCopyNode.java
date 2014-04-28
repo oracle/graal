@@ -26,6 +26,7 @@ import static com.oracle.graal.compiler.GraalCompiler.*;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.loop.phases.*;
@@ -33,7 +34,6 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.virtual.*;
-import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.replacements.nodes.*;
@@ -69,8 +69,8 @@ public class ArrayCopyNode extends MacroNode implements Virtualizable, Lowerable
     }
 
     private StructuredGraph selectSnippet(LoweringTool tool, final Replacements replacements) {
-        ResolvedJavaType srcType = ObjectStamp.typeOrNull(getSource().stamp());
-        ResolvedJavaType destType = ObjectStamp.typeOrNull(getDestination().stamp());
+        ResolvedJavaType srcType = StampTool.typeOrNull(getSource().stamp());
+        ResolvedJavaType destType = StampTool.typeOrNull(getDestination().stamp());
 
         if (srcType == null || !srcType.isArray() || destType == null || !destType.isArray()) {
             return null;
@@ -143,13 +143,13 @@ public class ArrayCopyNode extends MacroNode implements Virtualizable, Lowerable
      * Returns true if this copy doesn't require store checks. Trivially true for primitive arrays.
      */
     private boolean isExact() {
-        ResolvedJavaType srcType = ObjectStamp.typeOrNull(getSource().stamp());
+        ResolvedJavaType srcType = StampTool.typeOrNull(getSource().stamp());
         if (srcType.getComponentType().getKind().isPrimitive() || getSource() == getDestination()) {
             return true;
         }
 
-        ResolvedJavaType destType = ObjectStamp.typeOrNull(getDestination().stamp());
-        if (ObjectStamp.isExactType(getDestination().stamp())) {
+        ResolvedJavaType destType = StampTool.typeOrNull(getDestination().stamp());
+        if (StampTool.isExactType(getDestination().stamp())) {
             if (destType != null && destType.isAssignableFrom(srcType)) {
                 return true;
             }
@@ -171,10 +171,10 @@ public class ArrayCopyNode extends MacroNode implements Virtualizable, Lowerable
                     if (state.getState() == EscapeState.Virtual) {
                         type = state.getVirtualObject().type();
                     } else {
-                        type = ObjectStamp.typeOrNull(state.getMaterializedValue());
+                        type = StampTool.typeOrNull(state.getMaterializedValue());
                     }
                 } else {
-                    type = ObjectStamp.typeOrNull(entry);
+                    type = StampTool.typeOrNull(entry);
                 }
                 if (type == null || !destComponentType.isAssignableFrom(type)) {
                     return false;

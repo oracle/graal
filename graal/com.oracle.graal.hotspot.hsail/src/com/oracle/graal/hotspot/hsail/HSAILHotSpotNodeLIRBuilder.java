@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,21 +23,28 @@
 
 package com.oracle.graal.hotspot.hsail;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.gen.*;
+import com.oracle.graal.asm.*;
+import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.hsail.*;
-import com.oracle.graal.graph.*;
+import com.oracle.graal.debug.*;
+import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.HotSpotVMConfig.CompressEncoding;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.*;
+import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.gen.*;
+import com.oracle.graal.lir.hsail.*;
+import com.oracle.graal.lir.hsail.HSAILMove.CompareAndSwapOp;
 import com.oracle.graal.nodes.*;
 
 /**
  * The HotSpot specific portion of the HSAIL LIR generator.
  */
-public class HSAILHotSpotNodeLIRBuilder extends HSAILNodeLIRBuilder {
+public class HSAILHotSpotNodeLIRBuilder extends HSAILNodeLIRBuilder implements HotSpotNodeLIRBuilder {
 
-    public HSAILHotSpotNodeLIRBuilder(StructuredGraph graph, LIRGenerator lirGen) {
+    public HSAILHotSpotNodeLIRBuilder(StructuredGraph graph, LIRGeneratorTool lirGen) {
         super(graph, lirGen);
     }
 
@@ -48,6 +55,10 @@ public class HSAILHotSpotNodeLIRBuilder extends HSAILNodeLIRBuilder {
         } else {
             super.emitNode(node);
         }
+    }
+
+    private HSAILHotSpotLIRGenerator getGen() {
+        return (HSAILHotSpotLIRGenerator) gen;
     }
 
     /**
@@ -64,5 +75,57 @@ public class HSAILHotSpotNodeLIRBuilder extends HSAILNodeLIRBuilder {
         } else {
             throw GraalInternalError.shouldNotReachHere();
         }
+    }
+
+    public void visitDirectCompareAndSwap(DirectCompareAndSwapNode x) {
+        Kind kind = x.newValue().getKind();
+        assert kind == x.expectedValue().getKind();
+
+        Variable expected = getGen().load(operand(x.expectedValue()));
+        Variable newVal = getGen().load(operand(x.newValue()));
+
+        int disp = 0;
+        HSAILAddressValue address;
+        Value index = operand(x.offset());
+        if (ValueUtil.isConstant(index) && NumUtil.isInt(ValueUtil.asConstant(index).asLong() + disp)) {
+            assert !getGen().getCodeCache().needsDataPatch(ValueUtil.asConstant(index));
+            disp += (int) ValueUtil.asConstant(index).asLong();
+            address = new HSAILAddressValue(kind, getGen().load(operand(x.object())), disp);
+        } else {
+            throw GraalInternalError.shouldNotReachHere("NYI");
+        }
+
+        Variable casResult = newVariable(kind);
+        append(new CompareAndSwapOp(kind, casResult, address, expected, newVal));
+
+        setResult(x, casResult);
+    }
+
+    @Override
+    public void visitSafepointNode(SafepointNode i) {
+        HotSpotVMConfig config = getGen().config;
+        if (config.useHSAILSafepoints == true) {
+            LIRFrameState info = state(i);
+            HSAILHotSpotSafepointOp safepoint = new HSAILHotSpotSafepointOp(info, config, this);
+            ((HSAILHotSpotLIRGenerationResult) getGen().getResult()).addDeopt(safepoint);
+            append(safepoint);
+        } else {
+            Debug.log("HSAIL safepoints turned off");
+        }
+    }
+
+    @Override
+    public void emitPrefetchAllocate(ValueNode address, ValueNode distance) {
+        // nop
+    }
+
+    @Override
+    public void emitPatchReturnAddress(ValueNode address) {
+        throw GraalInternalError.unimplemented();
+    }
+
+    @Override
+    public void emitJumpToExceptionHandlerInCaller(ValueNode handlerInCallerPc, ValueNode exception, ValueNode exceptionPc) {
+        throw GraalInternalError.unimplemented();
     }
 }

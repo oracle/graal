@@ -22,9 +22,9 @@
  */
 package com.oracle.graal.nodes.extended;
 
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.type.*;
 
 @NodeInfo(nameTemplate = "OSRLocal({p#index})")
 public class OSRLocalNode extends AbstractLocalNode implements IterableNodeType {

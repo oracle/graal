@@ -27,7 +27,7 @@ import static com.oracle.graal.lir.LIR.*;
 import java.util.*;
 
 import com.oracle.graal.debug.*;
-import com.oracle.graal.nodes.cfg.*;
+import com.oracle.graal.compiler.common.cfg.*;
 
 /**
  * This class performs basic optimizations on the control flow graph after LIR generation.
@@ -49,7 +49,7 @@ public final class ControlFlowOptimizer {
     /**
      * Checks whether a block can be deleted. Only blocks with exactly one successor and an
      * unconditional branch to this successor are eligable.
-     * 
+     *
      * @param block the block checked for deletion
      * @return whether the block can be deleted
      */

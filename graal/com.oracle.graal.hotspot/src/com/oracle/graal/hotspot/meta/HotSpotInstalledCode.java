@@ -22,45 +22,32 @@
  */
 package com.oracle.graal.hotspot.meta;
 
-import static com.oracle.graal.graph.UnsafeAccess.*;
+import static com.oracle.graal.compiler.common.UnsafeAccess.*;
 import sun.misc.*;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.hotspot.*;
+
+import edu.umd.cs.findbugs.annotations.*;
 
 /**
  * Implementation of {@link InstalledCode} for HotSpot.
  */
-public abstract class HotSpotInstalledCode extends CompilerObject implements InstalledCode {
-
-    private static final long serialVersionUID = 156632908220561612L;
-
-    /**
-     * Raw address of this code blob.
-     */
-    private long codeBlob;
+public abstract class HotSpotInstalledCode extends InstalledCode {
 
     /**
      * Total size of the code blob.
      */
-    private int size;
+    @SuppressFBWarnings(value = "UWF_UNWRITTEN_FIELD", justification = "field is set by the native part") private int size;
 
     /**
      * Start address of the code.
      */
-    private long codeStart;
+    @SuppressFBWarnings(value = "UWF_UNWRITTEN_FIELD", justification = "field is set by the native part") private long codeStart;
 
     /**
      * Size of the code.
      */
-    private int codeSize;
-
-    /**
-     * @return the address of this code blob
-     */
-    public long getCodeBlob() {
-        return codeBlob;
-    }
+    @SuppressFBWarnings(value = "UWF_UNWRITTEN_FIELD", justification = "field is set by the native part") private int codeSize;
 
     /**
      * @return the total size of this code blob
@@ -77,13 +64,14 @@ public abstract class HotSpotInstalledCode extends CompilerObject implements Ins
             return null;
         }
         byte[] blob = new byte[size];
-        unsafe.copyMemory(null, codeBlob, blob, Unsafe.ARRAY_BYTE_BASE_OFFSET, size);
+        unsafe.copyMemory(null, getAddress(), blob, Unsafe.ARRAY_BYTE_BASE_OFFSET, size);
         return blob;
     }
 
     @Override
     public abstract String toString();
 
+    @Override
     public long getStart() {
         return codeStart;
     }
@@ -92,6 +80,7 @@ public abstract class HotSpotInstalledCode extends CompilerObject implements Ins
         return codeSize;
     }
 
+    @Override
     public byte[] getCode() {
         if (!isValid()) {
             return null;

@@ -40,8 +40,10 @@ import javax.tools.*;
  *
  * <pre>
  * ServiceLoader&lt;Options&gt; sl = ServiceLoader.loadInstalled(Options.class);
- * for (OptionDescriptor desc : sl) {
- *     // use desc
+ * for (Options opts : sl) {
+ *     for (OptionDescriptor desc : sl) {
+ *         // use desc
+ *     }
  * }
  * </pre>
  */

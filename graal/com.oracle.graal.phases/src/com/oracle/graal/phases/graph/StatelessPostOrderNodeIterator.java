@@ -36,7 +36,7 @@ import com.oracle.graal.nodes.*;
 public abstract class StatelessPostOrderNodeIterator {
 
     private final NodeBitMap visitedEnds;
-    private final Deque<AbstractBeginNode> nodeQueue;
+    private final Deque<BeginNode> nodeQueue;
     private final FixedNode start;
 
     public StatelessPostOrderNodeIterator(FixedNode start) {
@@ -76,7 +76,7 @@ public abstract class StatelessPostOrderNodeIterator {
                 controlSplit((ControlSplitNode) current);
                 for (Node node : current.successors()) {
                     if (node != null) {
-                        nodeQueue.addFirst((AbstractBeginNode) node);
+                        nodeQueue.addFirst((BeginNode) node);
                     }
                 }
                 current = nodeQueue.pollFirst();

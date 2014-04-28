@@ -24,23 +24,23 @@ package com.oracle.graal.hotspot.hsail;
 
 import java.util.*;
 
-import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.hsail.HSAILControlFlow.DeoptimizeOp;
+import com.oracle.graal.lir.gen.*;
+import com.oracle.graal.lir.hsail.HSAILControlFlow.DeoptimizingOp;
 
 public class HSAILHotSpotLIRGenerationResult extends LIRGenerationResultBase {
 
-    private List<DeoptimizeOp> deopts = new ArrayList<>();
+    private List<DeoptimizingOp> deopts = new ArrayList<>();
 
     public HSAILHotSpotLIRGenerationResult(LIR lir, FrameMap frameMap) {
         super(lir, frameMap);
     }
 
-    public List<DeoptimizeOp> getDeopts() {
+    public List<DeoptimizingOp> getDeopts() {
         return deopts;
     }
 
-    public void addDeopt(DeoptimizeOp deopt) {
+    public void addDeopt(DeoptimizingOp deopt) {
         deopts.add(deopt);
     }
 

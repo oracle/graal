@@ -25,9 +25,9 @@ package com.oracle.graal.lir;
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.lir.LIRInstruction.StateProcedure;
 import com.oracle.graal.lir.StandardOp.BlockEndOp;
-import com.oracle.graal.nodes.cfg.*;
 
 /**
  * This class implements the overall container for the LIR graph and directs its construction,
@@ -105,7 +105,7 @@ public class LIR {
 
     /**
      * Gets the linear scan ordering of blocks as a list.
-     * 
+     *
      * @return the blocks in linear scan order
      */
     public List<? extends AbstractBlock<?>> linearScanOrder() {

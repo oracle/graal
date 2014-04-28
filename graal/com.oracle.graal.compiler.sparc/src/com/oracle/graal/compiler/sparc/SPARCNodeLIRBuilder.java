@@ -25,7 +25,9 @@ package com.oracle.graal.compiler.sparc;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.gen.*;
+import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.sparc.*;
 import com.oracle.graal.lir.sparc.SPARCMove.NullCheckOp;
 import com.oracle.graal.nodes.*;
@@ -35,7 +37,7 @@ import com.oracle.graal.nodes.*;
  */
 public abstract class SPARCNodeLIRBuilder extends NodeLIRBuilder {
 
-    public SPARCNodeLIRBuilder(StructuredGraph graph, LIRGenerator lirGen) {
+    public SPARCNodeLIRBuilder(StructuredGraph graph, LIRGeneratorTool lirGen) {
         super(graph, lirGen);
     }
 
@@ -59,11 +61,12 @@ public abstract class SPARCNodeLIRBuilder extends NodeLIRBuilder {
     @Override
     public void emitNullCheck(ValueNode v, DeoptimizingNode deopting) {
         assert v.getKind() == Kind.Object;
-        append(new NullCheckOp(gen.load(operand(v)), gen.state(deopting)));
+        append(new NullCheckOp(gen.load(operand(v)), state(deopting)));
     }
 
     @Override
     public void visitInfopointNode(InfopointNode i) {
-        throw new InternalError("NYI");
+        // TODO Auto-generated method stub
+        throw GraalInternalError.unimplemented();
     }
 }

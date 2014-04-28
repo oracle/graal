@@ -51,35 +51,6 @@ public final class FrameState extends VirtualState implements IterableNodeType {
 
     private boolean duringCall;
 
-    /**
-     * This BCI should be used for frame states that are built for code with no meaningful BCI.
-     */
-    public static final int UNKNOWN_BCI = -4;
-
-    /**
-     * When a node whose frame state has this BCI value is inlined, its frame state will be replaced
-     * with the frame state before the inlined invoke node.
-     */
-    public static final int BEFORE_BCI = -1;
-
-    /**
-     * When a node whose frame state has this BCI value is inlined, its frame state will be replaced
-     * with the frame state {@linkplain Invoke#stateAfter() after} the inlined invoke node.
-     */
-    public static final int AFTER_BCI = -2;
-
-    /**
-     * When a node whose frame state has this BCI value is inlined, its frame state will be replaced
-     * with the frame state at the exception edge of the inlined invoke node.
-     */
-    public static final int AFTER_EXCEPTION_BCI = -3;
-
-    /**
-     * This BCI should be used for frame states that cannot be the target of a deoptimization, like
-     * snippet frame states.
-     */
-    public static final int INVALID_FRAMESTATE_BCI = -5;
-
     @Input(InputType.State) private FrameState outerFrameState;
 
     /**
@@ -124,8 +95,8 @@ public final class FrameState extends VirtualState implements IterableNodeType {
         this.virtualObjectMappings = new NodeInputList<>(this, virtualObjectMappings);
         this.rethrowException = rethrowException;
         this.duringCall = duringCall;
-        assert !rethrowException || stackSize == 1 : "must have exception on top of the stack";
-        assert values.size() - localsSize - stackSize == monitorIds.size();
+        assert !this.rethrowException || this.stackSize == 1 : "must have exception on top of the stack";
+        assert this.locksSize() == this.monitorIds.size();
     }
 
     /**
@@ -135,7 +106,8 @@ public final class FrameState extends VirtualState implements IterableNodeType {
      */
     public FrameState(int bci) {
         this(null, bci, Collections.<ValueNode> emptyList(), 0, 0, false, false, Collections.<MonitorIdNode> emptyList(), Collections.<EscapeObjectState> emptyList());
-        assert bci == BEFORE_BCI || bci == AFTER_BCI || bci == AFTER_EXCEPTION_BCI || bci == UNKNOWN_BCI || bci == INVALID_FRAMESTATE_BCI;
+        assert bci == BytecodeFrame.BEFORE_BCI || bci == BytecodeFrame.AFTER_BCI || bci == BytecodeFrame.AFTER_EXCEPTION_BCI || bci == BytecodeFrame.UNKNOWN_BCI ||
+                        bci == BytecodeFrame.INVALID_FRAMESTATE_BCI;
     }
 
     public FrameState(ResolvedJavaMethod method, int bci, ValueNode[] locals, List<ValueNode> stack, ValueNode[] locks, MonitorIdNode[] monitorIds, boolean rethrowException, boolean duringCall) {
@@ -248,6 +220,19 @@ public final class FrameState extends VirtualState implements IterableNodeType {
      * correctly in slot encoding: a long or double will be followed by a null slot.
      */
     public FrameState duplicateModified(int newBci, boolean newRethrowException, Kind popKind, ValueNode... pushedValues) {
+        return duplicateModified(newBci, method, newRethrowException, popKind, pushedValues);
+    }
+
+    /**
+     * Creates a copy of this frame state with one stack element of type popKind popped from the
+     * stack and the values in pushedValues pushed on the stack. The pushedValues will be formatted
+     * correctly in slot encoding: a long or double will be followed by a null slot.
+     */
+    public FrameState duplicateModified(Kind popKind, ValueNode... pushedValues) {
+        return duplicateModified(bci, method, rethrowException, popKind, pushedValues);
+    }
+
+    private FrameState duplicateModified(int newBci, ResolvedJavaMethod newMethod, boolean newRethrowException, Kind popKind, ValueNode... pushedValues) {
         ArrayList<ValueNode> copy = new ArrayList<>(values.subList(0, localsSize + stackSize));
         if (popKind != Kind.Void) {
             if (stackAt(stackSize() - 1) == null) {
@@ -266,7 +251,7 @@ public final class FrameState extends VirtualState implements IterableNodeType {
         int newStackSize = copy.size() - localsSize;
         copy.addAll(values.subList(localsSize + stackSize, values.size()));
 
-        FrameState other = graph().add(new FrameState(method, newBci, copy, localsSize, newStackSize, newRethrowException, false, monitorIds, virtualObjectMappings));
+        FrameState other = graph().add(new FrameState(newMethod, newBci, copy, localsSize, newStackSize, newRethrowException, false, monitorIds, virtualObjectMappings));
         other.setOuterFrameState(outerFrameState());
         return other;
     }
@@ -395,13 +380,26 @@ public final class FrameState extends VirtualState implements IterableNodeType {
                 properties.put("sourceLine", ste.getLineNumber());
             }
         }
+        if (bci == BytecodeFrame.AFTER_BCI) {
+            properties.put("bci", "AFTER_BCI");
+        } else if (bci == BytecodeFrame.AFTER_EXCEPTION_BCI) {
+            properties.put("bci", "AFTER_EXCEPTION_BCI");
+        } else if (bci == BytecodeFrame.INVALID_FRAMESTATE_BCI) {
+            properties.put("bci", "INVALID_FRAMESTATE_BCI");
+        } else if (bci == BytecodeFrame.BEFORE_BCI) {
+            properties.put("bci", "BEFORE_BCI");
+        } else if (bci == BytecodeFrame.UNKNOWN_BCI) {
+            properties.put("bci", "UNKNOWN_BCI");
+        } else if (bci == BytecodeFrame.UNWIND_BCI) {
+            properties.put("bci", "UNWIND_BCI");
+        }
         properties.put("locksSize", values.size() - stackSize - localsSize);
         return properties;
     }
 
     @Override
     public boolean verify() {
-        assertTrue(values.size() - localsSize - stackSize == monitorIds.size(), "mismatch in number of locks");
+        assertTrue(locksSize() == monitorIds.size(), "mismatch in number of locks");
         for (ValueNode value : values) {
             assertTrue(value == null || !value.isDeleted(), "frame state must not contain deleted nodes");
             assertTrue(value == null || value instanceof VirtualObjectNode || (value.getKind() != Kind.Void), "unexpected value: %s", value);

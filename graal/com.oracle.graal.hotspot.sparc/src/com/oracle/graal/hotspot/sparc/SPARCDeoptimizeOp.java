@@ -49,6 +49,6 @@ final class SPARCDeoptimizeOp extends SPARCLIRInstruction implements BlockEndOp 
         // [Deopt Handler Code]
         // 0xffffffff749bb60c: call 0xffffffff748da540 ; {runtime_call}
         // 0xffffffff749bb610: nop
-        SPARCCall.directCall(crb, masm, crb.foreignCalls.lookupForeignCall(UNCOMMON_TRAP), null, false, info);
+        SPARCCall.directCall(crb, masm, crb.foreignCalls.lookupForeignCall(UNCOMMON_TRAP_HANDLER), null, false, info);
     }
 }

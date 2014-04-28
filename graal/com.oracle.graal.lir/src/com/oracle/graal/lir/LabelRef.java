@@ -23,14 +23,14 @@
 package com.oracle.graal.lir;
 
 import com.oracle.graal.asm.*;
+import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.lir.StandardOp.BranchOp;
 import com.oracle.graal.lir.StandardOp.JumpOp;
-import com.oracle.graal.nodes.cfg.*;
 
 /**
  * LIR instructions such as {@link JumpOp} and {@link BranchOp} need to reference their target
- * {@link Block}. However, direct references are not possible since the control flow graph (and
- * therefore successors lists) can be changed by optimizations - and fixing the instructions is
+ * {@link AbstractBlock}. However, direct references are not possible since the control flow graph
+ * (and therefore successors lists) can be changed by optimizations - and fixing the instructions is
  * error prone. Therefore, we represent an edge to block B from block A via the tuple {@code (A,
  * successor-index-of-B)}. That is, indirectly by storing the index into the successor list of A.
  * Note therefore that the successor list cannot be re-ordered.

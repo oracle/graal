@@ -23,6 +23,7 @@
 package com.oracle.graal.truffle.nodes;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
@@ -58,7 +59,7 @@ public final class LoadIndexedFinalNode extends AccessIndexedNode implements Can
     }
 
     private static Stamp createStamp(ValueNode array, Kind kind) {
-        ResolvedJavaType type = ObjectStamp.typeOrNull(array);
+        ResolvedJavaType type = StampTool.typeOrNull(array);
         if (kind == Kind.Object && type != null) {
             return StampFactory.declared(type.getComponentType());
         } else {

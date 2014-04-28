@@ -24,7 +24,6 @@ package com.oracle.graal.hotspot.test;
 
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 import static com.oracle.graal.hotspot.meta.HotSpotResolvedObjectType.*;
-import static java.lang.reflect.Modifier.*;
 
 import java.lang.reflect.*;
 
@@ -79,7 +78,7 @@ public class HotSpotResolvedJavaFieldTest {
     public void testIsInObject() {
         for (Field f : String.class.getDeclaredFields()) {
             HotSpotResolvedJavaField rf = (HotSpotResolvedJavaField) runtime().getHostProviders().getMetaAccess().lookupJavaField(f);
-            Assert.assertEquals(rf.toString(), rf.isInObject("a string"), !isStatic(rf.getModifiers()));
+            Assert.assertEquals(rf.toString(), rf.isInObject("a string"), !rf.isStatic());
         }
     }
 }

@@ -124,26 +124,18 @@ public class MergeNode extends BeginStateSplitNode implements IterableNodeType, 
     }
 
     public NodeIterable<PhiNode> phis() {
-        return this.usages().filter(PhiNode.class).filter(new NodePredicate() {
-
-            @Override
-            public boolean apply(Node n) {
-                return ((PhiNode) n).merge() == MergeNode.this;
-            }
-        });
+        return this.usages().filter(PhiNode.class).filter(this::isPhiAtMerge);
     }
 
     @Override
     public NodeIterable<Node> anchored() {
-        return super.anchored().filter(isNotA(PhiNode.class).or(new NodePredicate() {
-
-            @Override
-            public boolean apply(Node n) {
-                return ((PhiNode) n).merge() != MergeNode.this;
-            }
-        }));
+        return super.anchored().filter(n -> !isPhiAtMerge(n));
     }
 
+    /**
+     * This simplify method can deal with a null value for tool, so that it can be used outside of
+     * canonicalization.
+     */
     @Override
     public void simplify(SimplifierTool tool) {
         FixedNode next = next();
@@ -163,10 +155,8 @@ public class MergeNode extends BeginStateSplitNode implements IterableNodeType, 
                 return;
             }
             for (PhiNode phi : phis()) {
-                for (Node usage : phi.usages().filter(isNotA(FrameState.class))) {
-                    if (!merge.isPhiAtMerge(usage)) {
-                        return;
-                    }
+                if (phi.usages().filter(isNotA(VirtualState.class)).and(node -> !merge.isPhiAtMerge(node)).isNotEmpty()) {
+                    return;
                 }
             }
             Debug.log("Split %s into ends for %s.", this, merge);
@@ -194,7 +184,9 @@ public class MergeNode extends BeginStateSplitNode implements IterableNodeType, 
                 this.removeEnd(end);
                 end.replaceAtPredecessor(newEnd);
                 end.safeDelete();
-                tool.addToWorkList(newEnd.predecessor()); // ?
+                if (tool != null) {
+                    tool.addToWorkList(newEnd.predecessor());
+                }
             }
             graph().reduceTrivialMerge(this);
         } else if (next instanceof ReturnNode) {

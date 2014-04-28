@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.truffle.hotspot;
 
-import com.oracle.graal.graph.*;
+import com.oracle.graal.compiler.common.*;
 import com.oracle.truffle.api.frame.*;
 
 class ReadOnlyFrame implements Frame {

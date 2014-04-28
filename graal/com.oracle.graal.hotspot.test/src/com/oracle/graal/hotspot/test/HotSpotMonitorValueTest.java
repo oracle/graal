@@ -33,8 +33,8 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.CompilationResult.Call;
 import com.oracle.graal.api.code.CompilationResult.Infopoint;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.test.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.meta.*;
 
 public class HotSpotMonitorValueTest extends GraalCompilerTest {

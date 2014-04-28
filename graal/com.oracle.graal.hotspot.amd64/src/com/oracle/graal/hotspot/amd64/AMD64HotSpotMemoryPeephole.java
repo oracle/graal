@@ -23,21 +23,15 @@
 
 package com.oracle.graal.hotspot.amd64;
 
-import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
-
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.asm.amd64.*;
 import com.oracle.graal.compiler.amd64.*;
-import com.oracle.graal.graph.*;
+import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.data.*;
-import com.oracle.graal.hotspot.meta.*;
+import com.oracle.graal.hotspot.amd64.AMD64HotSpotLIRGenerator.CompareMemoryCompressedOp;
+import com.oracle.graal.hotspot.nodes.type.*;
 import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.amd64.*;
 import com.oracle.graal.lir.amd64.AMD64ControlFlow.BranchOp;
-import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 
 /**
@@ -45,41 +39,18 @@ import com.oracle.graal.nodes.extended.*;
  */
 
 public class AMD64HotSpotMemoryPeephole extends AMD64MemoryPeephole {
-    public static class CompareMemoryCompressedOp extends AMD64LIRInstruction {
-        @Alive({COMPOSITE}) protected AMD64AddressValue x;
-        @Use({CONST}) protected Value y;
-        @State protected LIRFrameState state;
-
-        public CompareMemoryCompressedOp(AMD64AddressValue x, Constant y, LIRFrameState state) {
-            assert HotSpotGraalRuntime.runtime().getConfig().useCompressedOops;
-            this.x = x;
-            this.y = y;
-            this.state = state;
-        }
-
-        @Override
-        public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-            Constant constant = (Constant) y;
-            if (constant.isNull()) {
-                masm.cmpl(x.toAddress(), 0);
-            } else {
-                if (y.getKind() == Kind.Object) {
-                    crb.recordInlineDataInCode(new OopData(0, HotSpotObjectConstant.asObject(constant), true));
-                } else if (y.getKind() == Kind.Long) {
-                    crb.recordInlineDataInCode(new MetaspaceData(0, constant.asLong(), HotSpotMetaspaceConstant.getMetaspaceObject(constant), true));
-                } else {
-                    throw GraalInternalError.shouldNotReachHere();
-                }
-                if (state != null) {
-                    crb.recordImplicitException(masm.position(), state);
-                }
-                masm.cmpl(x.toAddress(), 0xdeaddead);
-            }
-        }
-    }
-
     AMD64HotSpotMemoryPeephole(AMD64NodeLIRBuilder gen) {
         super(gen);
+    }
+
+    @Override
+    protected Kind getMemoryKind(Access access) {
+        PlatformKind kind = gen.getLIRGeneratorTool().getPlatformKind(access.asNode().stamp());
+        if (kind == NarrowOopStamp.NarrowOop) {
+            return Kind.Int;
+        } else {
+            return (Kind) kind;
+        }
     }
 
     @Override
@@ -87,7 +58,7 @@ public class AMD64HotSpotMemoryPeephole extends AMD64MemoryPeephole {
                     double trueLabelProbability) {
         if (HotSpotGraalRuntime.runtime().getConfig().useCompressedOops) {
             ValueNode other = selectOtherInput(left, right, access);
-            Kind kind = access.accessLocation().getValueKind();
+            Kind kind = getMemoryKind(access);
 
             if (other.isConstant() && kind == Kind.Object && access.isCompressible()) {
                 ensureEvaluated(other);

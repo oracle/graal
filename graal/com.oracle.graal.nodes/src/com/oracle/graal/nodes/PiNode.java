@@ -25,6 +25,7 @@ package com.oracle.graal.nodes;
 //JaCoCo Exclude
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.extended.*;
@@ -58,7 +59,7 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
     }
 
     public PiNode(ValueNode object, ResolvedJavaType toType, boolean exactType, boolean nonNull) {
-        this(object, StampFactory.object(toType, exactType, nonNull || ObjectStamp.isObjectNonNull(object.stamp())));
+        this(object, StampFactory.object(toType, exactType, nonNull || StampTool.isObjectNonNull(object.stamp())));
     }
 
     @Override
@@ -79,7 +80,7 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
     @Override
     public void virtualize(VirtualizerTool tool) {
         State state = tool.getObjectState(object);
-        if (state != null && state.getState() == EscapeState.Virtual && ObjectStamp.typeOrNull(this) != null && ObjectStamp.typeOrNull(this).isAssignableFrom(state.getVirtualObject().type())) {
+        if (state != null && state.getState() == EscapeState.Virtual && StampTool.typeOrNull(this) != null && StampTool.typeOrNull(this).isAssignableFrom(state.getVirtualObject().type())) {
             tool.replaceWithVirtual(state.getVirtualObject());
         }
     }

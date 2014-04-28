@@ -36,11 +36,11 @@ import com.oracle.graal.api.code.CallingConvention.Type;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
 import com.oracle.graal.asm.ptx.*;
-import com.oracle.graal.compiler.gen.*;
+import com.oracle.graal.compiler.common.*;
+import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.gpu.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.lir.*;
@@ -49,10 +49,12 @@ import com.oracle.graal.lir.LIRInstruction.OperandMode;
 import com.oracle.graal.lir.LIRInstruction.ValueProcedure;
 import com.oracle.graal.lir.StandardOp.LabelOp;
 import com.oracle.graal.lir.asm.*;
+import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.ptx.*;
+import com.oracle.graal.lir.ptx.PTXControlFlow.PTXPredicatedLIRInstruction;
 import com.oracle.graal.lir.ptx.PTXMemOp.LoadReturnAddrOp;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.cfg.*;
+import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.tiers.*;
@@ -339,7 +341,7 @@ public class PTXHotSpotBackend extends HotSpotBackend {
         Assembler masm = createAssembler(frameMap);
         PTXFrameContext frameContext = new PTXFrameContext();
         CompilationResultBuilder crb = factory.createBuilder(getCodeCache(), getForeignCalls(), frameMap, masm, frameContext, compilationResult);
-        crb.setFrameSize(0);
+        crb.setTotalFrameSize(0);
         return crb;
     }
 
@@ -354,12 +356,12 @@ public class PTXHotSpotBackend extends HotSpotBackend {
     }
 
     @Override
-    public LIRGenerator newLIRGenerator(CallingConvention cc, LIRGenerationResult lirGenRes) {
+    public LIRGeneratorTool newLIRGenerator(CallingConvention cc, LIRGenerationResult lirGenRes) {
         return new PTXHotSpotLIRGenerator(getProviders(), getRuntime().getConfig(), cc, lirGenRes);
     }
 
     @Override
-    public NodeLIRBuilder newNodeLIRGenerator(StructuredGraph graph, LIRGenerator lirGen) {
+    public NodeLIRBuilderTool newNodeLIRBuilder(StructuredGraph graph, LIRGeneratorTool lirGen) {
         return new PTXHotSpotNodeLIRBuilder(graph, lirGen);
     }
 
@@ -409,12 +411,20 @@ public class PTXHotSpotBackend extends HotSpotBackend {
         assert codeCacheOwner != null : lir + " is not associated with a method";
 
         RegisterAnalysis registerAnalysis = new RegisterAnalysis();
+        // Assume no predicate registers are used
+        int maxPredRegNum = -1;
 
         for (AbstractBlock<?> b : lir.codeEmittingOrder()) {
             for (LIRInstruction op : lir.getLIRforBlock(b)) {
                 if (op instanceof LabelOp) {
                     // Don't consider this as a definition
                 } else {
+                    if (op instanceof PTXPredicatedLIRInstruction) {
+                        // Update maximum predicate register number if op uses a larger number
+                        int opPredRegNum = ((PTXPredicatedLIRInstruction) op).getPredRegNum();
+                        maxPredRegNum = (opPredRegNum > maxPredRegNum) ? opPredRegNum : maxPredRegNum;
+                    }
+                    // Record registers used in the kernel
                     registerAnalysis.op = op;
                     op.forEachTemp(registerAnalysis);
                     op.forEachOutput(registerAnalysis);
@@ -422,13 +432,13 @@ public class PTXHotSpotBackend extends HotSpotBackend {
             }
         }
 
+        // Emit register declarations
         Assembler asm = crb.asm;
         registerAnalysis.emitDeclarations(asm);
 
         // emit predicate register declaration
-        int maxPredRegNum = lir.numVariables();
-        if (maxPredRegNum > 0) {
-            asm.emitString(".reg .pred %p<" + maxPredRegNum + ">;");
+        if (maxPredRegNum > -1) {
+            asm.emitString(".reg .pred %p<" + ++maxPredRegNum + ">;");
         }
     }
 

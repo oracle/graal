@@ -23,7 +23,7 @@
 /**
  * Package that defines the interface between a Java application that wants to install code and the runtime.
  * The runtime provides in implementation of the {@link com.oracle.graal.api.code.CodeCacheProvider} interface.
- * The method {@link com.oracle.graal.api.code.CodeCacheProvider#addMethod(com.oracle.graal.api.meta.ResolvedJavaMethod, CompilationResult, SpeculationLog)}
+ * The method {@link com.oracle.graal.api.code.CodeCacheProvider#addMethod(com.oracle.graal.api.meta.ResolvedJavaMethod, CompilationResult, SpeculationLog, InstalledCode)}
  * can be used to install code for a given method.
  */
 package com.oracle.graal.api.code;

@@ -34,10 +34,10 @@ import com.oracle.graal.compiler.alloc.Interval.RegisterBinding;
 import com.oracle.graal.compiler.alloc.Interval.RegisterPriority;
 import com.oracle.graal.compiler.alloc.Interval.SpillState;
 import com.oracle.graal.compiler.alloc.Interval.State;
+import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.MoveOp;
-import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.phases.util.*;
 
 /**

@@ -96,7 +96,7 @@ public class GraphKit {
     }
 
     public InvokeNode createInvoke(Class<?> declaringClass, String name, ValueNode... args) {
-        return createInvoke(declaringClass, name, InvokeKind.Static, null, FrameState.UNKNOWN_BCI, args);
+        return createInvoke(declaringClass, name, InvokeKind.Static, null, BytecodeFrame.UNKNOWN_BCI, args);
     }
 
     /**
@@ -125,7 +125,7 @@ public class GraphKit {
      * arguments.
      */
     public InvokeNode createInvoke(ResolvedJavaMethod method, InvokeKind invokeKind, HIRFrameStateBuilder frameStateBuilder, int bci, ValueNode... args) {
-        assert Modifier.isStatic(method.getModifiers()) == (invokeKind == InvokeKind.Static);
+        assert method.isStatic() == (invokeKind == InvokeKind.Static);
         Signature signature = method.getSignature();
         JavaType returnType = signature.getReturnType(null);
         assert checkArgs(method, args);
@@ -157,7 +157,7 @@ public class GraphKit {
      */
     public boolean checkArgs(ResolvedJavaMethod method, ValueNode... args) {
         Signature signature = method.getSignature();
-        boolean isStatic = Modifier.isStatic(method.getModifiers());
+        boolean isStatic = method.isStatic();
         if (signature.getParameterCount(!isStatic) != args.length) {
             throw new AssertionError(graph + ": wrong number of arguments to " + method);
         }

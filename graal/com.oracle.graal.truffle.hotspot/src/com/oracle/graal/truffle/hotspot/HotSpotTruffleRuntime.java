@@ -26,18 +26,20 @@ import static com.oracle.graal.api.code.CodeUtil.*;
 import static com.oracle.graal.compiler.GraalCompiler.*;
 import static com.oracle.graal.truffle.TruffleCompilerOptions.*;
 
-import java.lang.reflect.*;
 import java.util.*;
+import java.util.concurrent.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.CallingConvention.Type;
 import com.oracle.graal.api.code.stack.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.runtime.*;
+import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
-import com.oracle.graal.graph.*;
+import com.oracle.graal.hotspot.*;
+import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.nodes.*;
@@ -46,6 +48,7 @@ import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.phases.util.*;
+import com.oracle.graal.printer.*;
 import com.oracle.graal.runtime.*;
 import com.oracle.graal.truffle.*;
 import com.oracle.truffle.api.*;
@@ -63,14 +66,38 @@ public final class HotSpotTruffleRuntime implements GraalTruffleRuntime {
         return new HotSpotTruffleRuntime();
     }
 
-    private TruffleCompiler truffleCompiler;
+    private TruffleCompilerImpl truffleCompiler;
     private Replacements truffleReplacements;
     private StackIntrospection stackIntrospection;
     private ArrayList<String> includes;
     private ArrayList<String> excludes;
+    private Map<OptimizedCallTarget, Future<?>> compilations = new IdentityHashMap<>();
+    private final ThreadPoolExecutor compileQueue;
+
+    private final ResolvedJavaMethod[] callNodeMethod;
+    private final ResolvedJavaMethod[] callTargetMethod;
+    private final ResolvedJavaMethod[] anyFrameMethod;
 
     private HotSpotTruffleRuntime() {
         installOptimizedCallTargetCallMethod();
+
+        callNodeMethod = new ResolvedJavaMethod[]{getGraalProviders().getMetaAccess().lookupJavaMethod(HotSpotFrameInstance.CallNodeFrame.METHOD)};
+        callTargetMethod = new ResolvedJavaMethod[]{getGraalProviders().getMetaAccess().lookupJavaMethod(HotSpotFrameInstance.CallTargetFrame.METHOD)};
+        anyFrameMethod = new ResolvedJavaMethod[]{callNodeMethod[0], callTargetMethod[0]};
+
+        // Create compilation queue.
+        CompilerThreadFactory factory = new CompilerThreadFactory("TruffleCompilerThread", new CompilerThreadFactory.DebugConfigAccess() {
+            public GraalDebugConfig getDebugConfig() {
+                if (Debug.isEnabled()) {
+                    GraalDebugConfig debugConfig = DebugEnvironment.initialize(TTY.out().out());
+                    debugConfig.dumpHandlers().add(new TruffleTreeDumpHandler());
+                    return debugConfig;
+                } else {
+                    return null;
+                }
+            }
+        });
+        compileQueue = new ThreadPoolExecutor(1, 1, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>(), factory);
     }
 
     public String getName() {
@@ -78,18 +105,25 @@ public final class HotSpotTruffleRuntime implements GraalTruffleRuntime {
     }
 
     public RootCallTarget createCallTarget(RootNode rootNode) {
-        if (truffleCompiler == null) {
-            truffleCompiler = new TruffleCompilerImpl();
+        CompilationPolicy compilationPolicy;
+        if (acceptForCompilation(rootNode)) {
+            compilationPolicy = new CounterBasedCompilationPolicy();
+        } else {
+            compilationPolicy = new InterpreterOnlyCompilationPolicy();
         }
-        return new HotSpotOptimizedCallTarget(rootNode, truffleCompiler, TruffleMinInvokeThreshold.getValue(), TruffleCompilationThreshold.getValue(), acceptForCompilation(rootNode));
+        return new OptimizedCallTarget(rootNode, this, TruffleMinInvokeThreshold.getValue(), TruffleCompilationThreshold.getValue(), compilationPolicy, new HotSpotSpeculationLog());
     }
 
-    public CallNode createCallNode(CallTarget target) {
+    public DirectCallNode createDirectCallNode(CallTarget target) {
         if (target instanceof OptimizedCallTarget) {
-            return OptimizedCallNode.create((OptimizedCallTarget) target);
+            return OptimizedDirectCallNode.create((OptimizedCallTarget) target);
         } else {
-            return new DefaultCallNode(target);
+            return new DefaultDirectCallNode(target);
         }
+    }
+
+    public IndirectCallNode createIndirectCallNode() {
+        return new OptimizedIndirectCallNode();
     }
 
     @Override
@@ -166,22 +200,16 @@ public final class HotSpotTruffleRuntime implements GraalTruffleRuntime {
     public static void installOptimizedCallTargetCallMethod() {
         Providers providers = getGraalProviders();
         MetaAccessProvider metaAccess = providers.getMetaAccess();
-        CodeCacheProvider codeCache = providers.getCodeCache();
-        ResolvedJavaMethod resolvedCallMethod = metaAccess.lookupJavaMethod(getCallMethod());
-        CompilationResult compResult = compileMethod(resolvedCallMethod);
-        try (Scope s = Debug.scope("CodeInstall", codeCache, resolvedCallMethod)) {
-            codeCache.setDefaultMethod(resolvedCallMethod, compResult);
+        ResolvedJavaType type = metaAccess.lookupJavaType(OptimizedCallTarget.class);
+        for (ResolvedJavaMethod method : type.getDeclaredMethods()) {
+            if (method.getAnnotation(TruffleCallBoundary.class) != null) {
+                CompilationResult compResult = compileMethod(method);
+                CodeCacheProvider codeCache = providers.getCodeCache();
+                try (Scope s = Debug.scope("CodeInstall", codeCache, method)) {
+                    codeCache.setDefaultMethod(method, compResult);
+                }
+            }
         }
-    }
-
-    private static Method getCallMethod() {
-        Method method;
-        try {
-            method = HotSpotOptimizedCallTarget.class.getDeclaredMethod("call", new Class[]{Object[].class});
-        } catch (NoSuchMethodException | SecurityException e) {
-            throw GraalInternalError.shouldNotReachHere();
-        }
-        return method;
     }
 
     private static CompilationResultBuilderFactory getOptimizedCallTargetInstrumentationFactory(String arch, ResolvedJavaMethod method) {
@@ -221,16 +249,24 @@ public final class HotSpotTruffleRuntime implements GraalTruffleRuntime {
         if (stackIntrospection == null) {
             stackIntrospection = Graal.getRequiredCapability(StackIntrospection.class);
         }
-        ResolvedJavaMethod method = getGraalProviders().getMetaAccess().lookupJavaMethod(HotSpotFrameInstance.NextFrame.METHOD);
-        final Iterator<InspectedFrame> frames = stackIntrospection.getStackTrace(method, method).iterator();
+        final Iterator<InspectedFrame> frames = stackIntrospection.getStackTrace(anyFrameMethod, anyFrameMethod, 1).iterator();
         class FrameIterator implements Iterator<FrameInstance> {
+
             public boolean hasNext() {
                 return frames.hasNext();
             }
 
             public FrameInstance next() {
                 InspectedFrame frame = frames.next();
-                return new HotSpotFrameInstance.NextFrame(frame);
+                if (frame.getMethod().equals(callNodeMethod[0])) {
+                    assert frames.hasNext();
+                    InspectedFrame calltarget2 = frames.next();
+                    assert calltarget2.getMethod().equals(callTargetMethod[0]);
+                    return new HotSpotFrameInstance.CallNodeFrame(frame);
+                } else {
+                    assert frame.getMethod().equals(callTargetMethod[0]);
+                    return new HotSpotFrameInstance.CallTargetFrame(frame, false);
+                }
             }
         }
         return new Iterable<FrameInstance>() {
@@ -244,13 +280,64 @@ public final class HotSpotTruffleRuntime implements GraalTruffleRuntime {
         if (stackIntrospection == null) {
             stackIntrospection = Graal.getRequiredCapability(StackIntrospection.class);
         }
-        ResolvedJavaMethod method = getGraalProviders().getMetaAccess().lookupJavaMethod(HotSpotFrameInstance.CurrentFrame.METHOD);
-        Iterator<InspectedFrame> frames = stackIntrospection.getStackTrace(method, method).iterator();
+        Iterator<InspectedFrame> frames = stackIntrospection.getStackTrace(callTargetMethod, callTargetMethod, 0).iterator();
         if (frames.hasNext()) {
-            return new HotSpotFrameInstance.CurrentFrame(frames.next());
+            return new HotSpotFrameInstance.CallTargetFrame(frames.next(), true);
         } else {
             System.out.println("no current frame found");
             return null;
         }
+    }
+
+    public void compile(OptimizedCallTarget optimizedCallTarget, boolean mayBeAsynchronous) {
+        if (truffleCompiler == null) {
+            truffleCompiler = new TruffleCompilerImpl();
+        }
+        Runnable r = new Runnable() {
+            @Override
+            public void run() {
+                try (Scope s = Debug.scope("Truffle", new TruffleDebugJavaMethod(optimizedCallTarget))) {
+                    truffleCompiler.compileMethodImpl(optimizedCallTarget);
+                    optimizedCallTarget.compilationFinished(null);
+                } catch (Throwable e) {
+                    optimizedCallTarget.compilationFinished(e);
+                }
+            }
+        };
+        if (mayBeAsynchronous) {
+            Future<?> future = compileQueue.submit(r);
+            this.compilations.put(optimizedCallTarget, future);
+        } else {
+            r.run();
+        }
+    }
+
+    public boolean cancelInstalledTask(OptimizedCallTarget optimizedCallTarget) {
+        Future<?> codeTask = this.compilations.get(optimizedCallTarget);
+        if (codeTask != null && isCompiling(optimizedCallTarget)) {
+            this.compilations.remove(optimizedCallTarget);
+            return codeTask.cancel(true);
+        }
+        return false;
+    }
+
+    public boolean isCompiling(OptimizedCallTarget optimizedCallTarget) {
+        Future<?> codeTask = this.compilations.get(optimizedCallTarget);
+        if (codeTask != null) {
+            if (codeTask.isCancelled() || codeTask.isDone()) {
+                this.compilations.remove(optimizedCallTarget);
+                return false;
+            }
+            return true;
+        }
+        return false;
+    }
+
+    public void invalidateInstalledCode(OptimizedCallTarget optimizedCallTarget) {
+        HotSpotGraalRuntime.runtime().getCompilerToVM().invalidateInstalledCode(optimizedCallTarget);
+    }
+
+    public void reinstallStubs() {
+        installOptimizedCallTargetCallMethod();
     }
 }

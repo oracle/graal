@@ -25,6 +25,7 @@ package com.oracle.graal.java.decompiler;
 import java.io.*;
 import java.util.*;
 
+import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.java.decompiler.block.*;
 import com.oracle.graal.nodes.cfg.*;
 
@@ -46,7 +47,7 @@ public class DecompilerLoopSimplify {
             cfgBlocks.remove(0);
             if (firstBlock.isLoopHeader()) {
                 DecompilerLoopBlock loopBlock = new DecompilerLoopBlock(firstBlock, decompiler, decompiler.getSchedule(), infoStream);
-                Loop loop = firstBlock.getLoop();
+                Loop<Block> loop = firstBlock.getLoop();
 
                 for (int i = 0; i < cfgBlocks.size(); i++) {
                     if (loop.blocks.contains(cfgBlocks.get(i)) && cfgBlocks.get(i) != firstBlock) {

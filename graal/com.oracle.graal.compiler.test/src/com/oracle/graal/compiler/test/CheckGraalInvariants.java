@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.compiler.test;
 
+import static com.oracle.graal.debug.DelegatingDebugConfig.Feature.*;
+
 import java.io.*;
 import java.lang.reflect.*;
 import java.util.*;
@@ -33,7 +35,6 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.debug.*;
-import com.oracle.graal.debug.internal.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.*;
@@ -42,13 +43,14 @@ import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.phases.util.*;
 import com.oracle.graal.phases.verify.*;
 import com.oracle.graal.runtime.*;
+import com.oracle.graal.test.*;
 
 /**
  * Checks that all classes in graal.jar (which must be on the class path) comply with global
  * invariants such as using {@link Object#equals(Object)} to compare certain types instead of
  * identity comparisons.
  */
-public class CheckGraalInvariants {
+public class CheckGraalInvariants extends GraalTest {
 
     @Test
     public void test() {
@@ -106,14 +108,7 @@ public class CheckGraalInvariants {
                         String methodName = className + "." + m.getName();
                         if (matches(filters, methodName)) {
                             StructuredGraph graph = new StructuredGraph(metaAccess.lookupJavaMethod(m));
-                            DebugConfig debugConfig = DebugScope.getConfig();
-                            DebugConfig noInterceptConfig = new DelegatingDebugConfig(debugConfig) {
-                                @Override
-                                public RuntimeException interceptException(Throwable e) {
-                                    return null;
-                                }
-                            };
-                            try (DebugConfigScope s = Debug.setConfig(noInterceptConfig)) {
+                            try (DebugConfigScope s = Debug.setConfig(new DelegatingDebugConfig().disable(INTERCEPT))) {
                                 graphBuilderSuite.apply(graph, context);
                                 checkGraph(context, graph);
                             } catch (VerificationError e) {

@@ -34,9 +34,9 @@ import java.util.concurrent.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.CompilerThreadFactory.DebugConfigAccess;
+import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.internal.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.CompilationTask.Enqueueing;
 import com.oracle.graal.hotspot.CompileTheWorld.Config;
@@ -142,11 +142,7 @@ public class VMToCompilerImpl implements VMToCompiler {
         this.runtime = runtime;
     }
 
-    public void startCompiler(boolean bootstrapEnabled, boolean hostedOnly) throws Throwable {
-
-        if (!hostedOnly) {
-            FastNodeClassRegistry.initialize(runtime.getCompilerToVM());
-        }
+    public void startCompiler(boolean bootstrapEnabled) throws Throwable {
 
         bootstrapRunning = bootstrapEnabled;
 
@@ -349,7 +345,7 @@ public class VMToCompilerImpl implements VMToCompiler {
 
     private void enqueue(Method m) throws Throwable {
         JavaMethod javaMethod = runtime.getHostProviders().getMetaAccess().lookupJavaMethod(m);
-        assert !Modifier.isAbstract(((HotSpotResolvedJavaMethod) javaMethod).getModifiers()) && !Modifier.isNative(((HotSpotResolvedJavaMethod) javaMethod).getModifiers()) : javaMethod;
+        assert !((HotSpotResolvedJavaMethod) javaMethod).isAbstract() && !((HotSpotResolvedJavaMethod) javaMethod).isNative() : javaMethod;
         compileMethod((HotSpotResolvedJavaMethod) javaMethod, StructuredGraph.INVOCATION_ENTRY_BCI, false);
     }
 

@@ -29,13 +29,13 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
 import com.oracle.graal.asm.hsail.*;
-import com.oracle.graal.graph.*;
+import com.oracle.graal.compiler.common.*;
+import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.hsail.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.BlockEndOp;
 import com.oracle.graal.lir.SwitchStrategy.BaseSwitchClosure;
 import com.oracle.graal.lir.asm.*;
-import com.oracle.graal.nodes.calc.*;
 
 /**
  * Implementation of control flow instructions.
@@ -129,11 +129,17 @@ public class HSAILControlFlow {
         }
     }
 
+    public interface DeoptimizingOp {
+        public LIRFrameState getFrameState();
+
+        public int getCodeBufferPos();
+    }
+
     /***
      * The ALIVE annotation is so we can get a scratch32 register that does not clobber
      * actionAndReason.
      */
-    public static class DeoptimizeOp extends ReturnOp {
+    public static class DeoptimizeOp extends ReturnOp implements DeoptimizingOp {
 
         @Alive({REG, CONST}) protected Value actionAndReason;
         @State protected LIRFrameState frameState;
@@ -173,6 +179,8 @@ public class HSAILControlFlow {
             // debugInfo)
             codeBufferPos = masm.position();
 
+            masm.emitComment("/* HSAIL Deoptimization pos=" + codeBufferPos + ", bci=" + frameState.debugInfo().getBytecodePosition().getBCI() + ", frameState=" + frameState + " */");
+
             // get the bitmap of $d regs that contain references
             ReferenceMap referenceMap = frameState.debugInfo().getReferenceMap();
             for (int dreg = HSAIL.d0.number; dreg <= HSAIL.d15.number; dreg++) {
@@ -181,14 +189,9 @@ public class HSAILControlFlow {
                 }
             }
 
-            // here we will by convention use some never-allocated registers to pass to the epilogue
-            // deopt code
-            // todo: define these in HSAIL.java
-            // we need to pass the actionAndReason and the codeBufferPos
-
-            AllocatableValue actionAndReasonReg = HSAIL.s32.asValue(Kind.Int);
-            AllocatableValue codeBufferOffsetReg = HSAIL.s33.asValue(Kind.Int);
-            AllocatableValue dregOopMapReg = HSAIL.s39.asValue(Kind.Int);
+            AllocatableValue actionAndReasonReg = HSAIL.actionAndReasonReg.asValue(Kind.Int);
+            AllocatableValue codeBufferOffsetReg = HSAIL.codeBufferOffsetReg.asValue(Kind.Int);
+            AllocatableValue dregOopMapReg = HSAIL.dregOopMapReg.asValue(Kind.Int);
             masm.emitMov(Kind.Int, actionAndReasonReg, actionAndReason);
             masm.emitMov(Kind.Int, codeBufferOffsetReg, Constant.forInt(codeBufferPos));
             masm.emitMov(Kind.Int, dregOopMapReg, Constant.forInt(dregOopMap));

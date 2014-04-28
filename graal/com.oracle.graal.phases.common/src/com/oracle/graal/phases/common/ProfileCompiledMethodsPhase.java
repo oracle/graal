@@ -24,6 +24,7 @@ package com.oracle.graal.phases.common;
 
 import java.util.*;
 
+import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
@@ -43,19 +44,22 @@ import com.oracle.graal.phases.schedule.*;
  * for each node would be too costly, so this phase takes the compromise that it trusts split
  * probabilities, but not loop frequencies. This means that it will insert counters at the start of
  * a method and at each loop header.
- * 
+ *
  * A schedule is created so that floating nodes can also be taken into account. The weight of a node
  * is determined heuristically in the
  * {@link ProfileCompiledMethodsPhase#getNodeWeight(ScheduledNode)} method.
- * 
+ *
  * Additionally, there's a second counter that's only increased for code sections without invokes.
  */
 public class ProfileCompiledMethodsPhase extends Phase {
 
     private static final String GROUP_NAME = "~profiled weight";
     private static final String GROUP_NAME_WITHOUT = "~profiled weight (invoke-free sections)";
+    private static final String GROUP_NAME_INVOKES = "~profiled invokes";
 
     private static final boolean WITH_SECTION_HEADER = false;
+    private static boolean WITH_INVOKE_FREE_SECTIONS = false;
+    private static boolean WITH_INVOKES = true;
 
     @Override
     protected void run(StructuredGraph graph) {
@@ -65,23 +69,38 @@ public class ProfileCompiledMethodsPhase extends Phase {
         schedule.apply(graph, false);
 
         ControlFlowGraph cfg = ControlFlowGraph.compute(graph, true, true, true, true);
-        for (Loop loop : cfg.getLoops()) {
-            double loopProbability = probabilities.get(loop.loopBegin());
+        for (Loop<Block> loop : cfg.getLoops()) {
+            double loopProbability = probabilities.get(loop.header.getBeginNode());
             if (loopProbability > (1D / Integer.MAX_VALUE)) {
-                addSectionCounters(loop.loopBegin(), loop.blocks, loop.children, schedule, probabilities);
+                addSectionCounters(loop.header.getBeginNode(), loop.blocks, loop.children, schedule, probabilities);
             }
         }
-        addSectionCounters(graph.start(), Arrays.asList(cfg.getBlocks()), Arrays.asList(cfg.getLoops()), schedule, probabilities);
+        // don't put the counter increase directly after the start (problems with OSR)
+        FixedWithNextNode current = graph.start();
+        while (current.next() instanceof FixedWithNextNode) {
+            current = (FixedWithNextNode) current.next();
+        }
+        addSectionCounters(current, Arrays.asList(cfg.getBlocks()), cfg.getLoops(), schedule, probabilities);
+
+        if (WITH_INVOKES) {
+            for (Node node : graph.getNodes()) {
+                if (node instanceof Invoke) {
+                    Invoke invoke = (Invoke) node;
+                    DynamicCounterNode.addCounterBefore(GROUP_NAME_INVOKES, invoke.callTarget().targetName(), 1, true, invoke.asNode());
+
+                }
+            }
+        }
     }
 
-    private static void addSectionCounters(FixedWithNextNode start, Collection<Block> sectionBlocks, Collection<Loop> childLoops, SchedulePhase schedule, NodesToDoubles probabilities) {
+    private static void addSectionCounters(FixedWithNextNode start, Collection<Block> sectionBlocks, Collection<Loop<Block>> childLoops, SchedulePhase schedule, NodesToDoubles probabilities) {
         HashSet<Block> blocks = new HashSet<>(sectionBlocks);
-        for (Loop loop : childLoops) {
+        for (Loop<?> loop : childLoops) {
             blocks.removeAll(loop.blocks);
         }
         double weight = getSectionWeight(schedule, probabilities, blocks) / probabilities.get(start);
         DynamicCounterNode.addCounterBefore(GROUP_NAME, sectionHead(start), (long) weight, true, start.next());
-        if (!hasInvoke(blocks)) {
+        if (WITH_INVOKE_FREE_SECTIONS && !hasInvoke(blocks)) {
             DynamicCounterNode.addCounterBefore(GROUP_NAME_WITHOUT, sectionHead(start), (long) weight, true, start.next());
         }
     }
@@ -108,7 +127,7 @@ public class ProfileCompiledMethodsPhase extends Phase {
     private static double getNodeWeight(ScheduledNode node) {
         if (node instanceof MergeNode) {
             return ((MergeNode) node).phiPredecessorCount();
-        } else if (node instanceof AbstractBeginNode || node instanceof AbstractEndNode || node instanceof MonitorIdNode || node instanceof ConstantNode || node instanceof ParameterNode ||
+        } else if (node instanceof BeginNode || node instanceof AbstractEndNode || node instanceof MonitorIdNode || node instanceof ConstantNode || node instanceof ParameterNode ||
                         node instanceof CallTargetNode || node instanceof ValueProxy || node instanceof VirtualObjectNode || node instanceof ReinterpretNode) {
             return 0;
         } else if (node instanceof AccessMonitorNode) {

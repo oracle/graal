@@ -178,7 +178,7 @@ public class LoopBeginNode extends MergeNode implements IterableNodeType, LIRLow
         // nothing yet
     }
 
-    public boolean isLoopExit(AbstractBeginNode begin) {
+    public boolean isLoopExit(BeginNode begin) {
         return begin instanceof LoopExitNode && ((LoopExitNode) begin).loopBegin() == this;
     }
 
@@ -200,5 +200,28 @@ public class LoopBeginNode extends MergeNode implements IterableNodeType, LIRLow
     public void setOverflowGuard(GuardingNode overflowGuard) {
         updateUsagesInterface(this.overflowGuard, overflowGuard);
         this.overflowGuard = overflowGuard;
+    }
+
+    /**
+     * Removes dead {@linkplain PhiNode phi nodes} hanging from this node.
+     *
+     * This method uses the heuristic that any node which not a phi node of this LoopBeginNode is
+     * alive. This allows the removal of dead phi loops.
+     */
+    public void removeDeadPhis() {
+        Set<PhiNode> alive = new HashSet<>();
+        for (PhiNode phi : phis()) {
+            NodePredicate isAlive = u -> !isPhiAtMerge(u) || alive.contains(u);
+            if (phi.usages().filter(isAlive).isNotEmpty()) {
+                alive.add(phi);
+                for (PhiNode keptAlive : phi.values().filter(PhiNode.class).filter(isAlive.negate())) {
+                    alive.add(keptAlive);
+                }
+            }
+        }
+        for (PhiNode phi : phis().filter(((NodePredicate) alive::contains).negate()).snapshot()) {
+            phi.replaceAtUsages(null);
+            phi.safeDelete();
+        }
     }
 }

@@ -37,7 +37,7 @@ public abstract class SingleExceptionTestBase extends GraalKernelTester {
 
     @Override
     protected boolean supportsRequiredCapabilities() {
-        return getHSAILBackend().getRuntime().getConfig().useHSAILDeoptimization;
+        return canDeoptimize();
     }
 
     void recordException(Exception e) {

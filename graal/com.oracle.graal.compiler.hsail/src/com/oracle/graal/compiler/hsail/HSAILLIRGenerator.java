@@ -31,10 +31,11 @@ import static com.oracle.graal.lir.hsail.HSAILCompare.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
-import com.oracle.graal.compiler.gen.*;
-import com.oracle.graal.graph.*;
+import com.oracle.graal.compiler.common.*;
+import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.JumpOp;
+import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.hsail.*;
 import com.oracle.graal.lir.hsail.HSAILArithmetic.ConvertOp;
 import com.oracle.graal.lir.hsail.HSAILArithmetic.Op1Stack;
@@ -50,9 +51,6 @@ import com.oracle.graal.lir.hsail.HSAILMove.LeaOp;
 import com.oracle.graal.lir.hsail.HSAILMove.MembarOp;
 import com.oracle.graal.lir.hsail.HSAILMove.MoveFromRegOp;
 import com.oracle.graal.lir.hsail.HSAILMove.MoveToRegOp;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.calc.*;
-import com.oracle.graal.nodes.calc.FloatConvertNode.FloatConvert;
 import com.oracle.graal.phases.util.*;
 
 /**
@@ -148,8 +146,7 @@ public abstract class HSAILLIRGenerator extends LIRGenerator {
                 finalDisp += asConstant(index).asLong() * scale;
             } else {
                 Value indexRegister;
-                Value convertedIndex;
-                convertedIndex = this.emitSignExtend(index, 32, 64);
+                Value convertedIndex = index.getKind() == Kind.Long ? index : this.emitSignExtend(index, 32, 64);
                 if (scale != 1) {
                     indexRegister = emitUMul(convertedIndex, Constant.forInt(scale));
                 } else {
@@ -221,7 +218,9 @@ public abstract class HSAILLIRGenerator extends LIRGenerator {
 
     @Override
     public void emitIntegerTestBranch(Value left, Value right, LabelRef trueDestination, LabelRef falseDestination, double trueDestinationProbability) {
-        throw GraalInternalError.unimplemented();
+        Variable result = emitAnd(left, right);
+        Variable dummyResult = newVariable(left.getKind());
+        append(new CompareBranchOp(mapKindToCompareOp(left.getKind()), Condition.EQ, result, Constant.forInt(0), dummyResult, dummyResult, trueDestination, falseDestination, false));
     }
 
     @Override
@@ -415,7 +414,7 @@ public abstract class HSAILLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Value emitDiv(Value a, Value b, DeoptimizingNode deopting) {
+    public Value emitDiv(Value a, Value b, LIRFrameState state) {
         Variable result = newVariable(a.getKind());
         switch (a.getKind()) {
             case Int:
@@ -438,7 +437,7 @@ public abstract class HSAILLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Value emitRem(Value a, Value b, DeoptimizingNode deopting) {
+    public Value emitRem(Value a, Value b, LIRFrameState state) {
         Variable result = newVariable(a.getKind());
         switch (a.getKind()) {
             case Int:
@@ -460,12 +459,12 @@ public abstract class HSAILLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Variable emitUDiv(Value a, Value b, DeoptimizingNode deopting) {
+    public Variable emitUDiv(Value a, Value b, LIRFrameState state) {
         throw GraalInternalError.unimplemented();
     }
 
     @Override
-    public Variable emitURem(Value a, Value b, DeoptimizingNode deopting) {
+    public Variable emitURem(Value a, Value b, LIRFrameState state) {
         throw GraalInternalError.unimplemented();
     }
 
@@ -683,7 +682,7 @@ public abstract class HSAILLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public void emitDeoptimize(Value actionAndReason, Value speculation, DeoptimizingNode deopting) {
+    public void emitDeoptimize(Value actionAndReason, Value speculation, LIRFrameState state) {
         append(new ReturnOp(Value.ILLEGAL));
     }
 
@@ -830,7 +829,7 @@ public abstract class HSAILLIRGenerator extends LIRGenerator {
      * Graal generates for any switch construct appearing in Java bytecode.
      */
     @Override
-    protected void emitStrategySwitch(Constant[] keyConstants, double[] keyProbabilities, LabelRef[] keyTargets, LabelRef defaultTarget, Variable value) {
+    public void emitStrategySwitch(Constant[] keyConstants, double[] keyProbabilities, LabelRef[] keyTargets, LabelRef defaultTarget, Variable value) {
         emitStrategySwitch(new SwitchStrategy.SequentialStrategy(keyProbabilities, keyConstants), value, keyTargets, defaultTarget);
     }
 
@@ -855,7 +854,7 @@ public abstract class HSAILLIRGenerator extends LIRGenerator {
      * @param key the key that is compared against the key constants in the case statements.
      */
     @Override
-    protected void emitStrategySwitch(SwitchStrategy strategy, Variable key, LabelRef[] keyTargets, LabelRef defaultTarget) {
+    public void emitStrategySwitch(SwitchStrategy strategy, Variable key, LabelRef[] keyTargets, LabelRef defaultTarget) {
         if ((key.getKind() == Kind.Int) || (key.getKind() == Kind.Long)) {
             // Append the LIR instruction for generating compare and branch instructions.
             append(new StrategySwitchOp(strategy, keyTargets, defaultTarget, key));

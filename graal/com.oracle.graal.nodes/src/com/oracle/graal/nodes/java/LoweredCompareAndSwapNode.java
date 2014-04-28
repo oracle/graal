@@ -23,11 +23,11 @@
 package com.oracle.graal.nodes.java;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
 
 /**
  * Represents the lowered version of an atomic compare-and-swap operation{@code CompareAndSwapNode}.
@@ -80,7 +80,7 @@ public class LoweredCompareAndSwapNode extends FixedAccessNode implements StateS
     @Override
     public void generate(NodeLIRBuilderTool gen) {
         assert getNewValue().stamp().isCompatible(getExpectedValue().stamp());
-        Value address = location().generateAddress(gen, gen.operand(object()));
+        Value address = location().generateAddress(gen, gen.getLIRGeneratorTool(), gen.operand(object()));
         Value result = gen.getLIRGeneratorTool().emitCompareAndSwap(address, gen.operand(getExpectedValue()), gen.operand(getNewValue()), Constant.INT_1, Constant.INT_0);
         gen.setResult(this, result);
     }

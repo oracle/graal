@@ -24,34 +24,49 @@ package com.oracle.graal.truffle;
 
 import java.util.*;
 
-public final class TruffleInliningResult implements Iterable<TruffleCallPath> {
+public final class TruffleInliningResult implements Iterable<TruffleInliningProfile> {
 
     private final OptimizedCallTarget callTarget;
-    private final Set<TruffleCallPath> inlinedPathes;
+    private final Map<OptimizedDirectCallNode, TruffleInliningProfile> profiles;
+    private final Set<TruffleInliningProfile> inlined;
+    private final int nodeCount;
 
-    public TruffleInliningResult(OptimizedCallTarget callTarget, Set<TruffleCallPath> pathes) {
+    public TruffleInliningResult(OptimizedCallTarget callTarget, List<TruffleInliningProfile> profiles, Set<TruffleInliningProfile> inlined, int nodeCount) {
         this.callTarget = callTarget;
-        this.inlinedPathes = pathes;
+        this.profiles = new HashMap<>();
+        for (TruffleInliningProfile profile : profiles) {
+            this.profiles.put(profile.getCallNode(), profile);
+        }
+        this.nodeCount = nodeCount;
+        this.inlined = inlined;
+    }
+
+    public Map<OptimizedDirectCallNode, TruffleInliningProfile> getProfiles() {
+        return profiles;
+    }
+
+    public int getNodeCount() {
+        return nodeCount;
     }
 
     public OptimizedCallTarget getCallTarget() {
         return callTarget;
     }
 
-    public boolean isInlined(TruffleCallPath path) {
-        return inlinedPathes.contains(path);
+    public boolean isInlined(OptimizedDirectCallNode path) {
+        return inlined.contains(profiles.get(path));
     }
 
     public int size() {
-        return inlinedPathes.size();
+        return inlined.size();
     }
 
-    public Iterator<TruffleCallPath> iterator() {
-        return Collections.unmodifiableSet(inlinedPathes).iterator();
+    public Iterator<TruffleInliningProfile> iterator() {
+        return Collections.unmodifiableSet(inlined).iterator();
     }
 
     @Override
     public String toString() {
-        return inlinedPathes.toString();
+        return inlined.toString();
     }
 }

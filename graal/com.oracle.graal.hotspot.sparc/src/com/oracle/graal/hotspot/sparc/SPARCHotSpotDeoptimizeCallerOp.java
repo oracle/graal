@@ -47,7 +47,7 @@ final class SPARCHotSpotDeoptimizeCallerOp extends SPARCHotSpotEpilogueOp {
         // HotSpotFrameContext frameContext = backend.new HotSpotFrameContext(isStub);
         // frameContext.enter(crb);
         Register scratch = g3;
-        SPARCCall.indirectJmp(crb, masm, scratch, crb.foreignCalls.lookupForeignCall(UNCOMMON_TRAP));
+        SPARCCall.indirectJmp(crb, masm, scratch, crb.foreignCalls.lookupForeignCall(UNCOMMON_TRAP_HANDLER));
 
         // frameContext.leave(crb);
     }

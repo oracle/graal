@@ -31,7 +31,7 @@ import java.net.*;
  * thereof. Types, like fields and methods, are resolved through {@link ConstantPool constant pools}
  * .
  */
-public interface ResolvedJavaType extends JavaType {
+public interface ResolvedJavaType extends JavaType, ModifiersProvider {
 
     /**
      * Represents each of the several different parts of the runtime representation of a type which
@@ -54,7 +54,7 @@ public interface ResolvedJavaType extends JavaType {
     /**
      * Gets the encoding of (that is, a constant representing the value of) the specified part of
      * this type.
-     * 
+     *
      * @param r the part of this type
      * @return a constant representing a reference to the specified part of this type
      */
@@ -62,7 +62,7 @@ public interface ResolvedJavaType extends JavaType {
 
     /**
      * Checks whether this type has a finalizer method.
-     * 
+     *
      * @return {@code true} if this class has a finalizer
      */
     boolean hasFinalizer();
@@ -70,51 +70,52 @@ public interface ResolvedJavaType extends JavaType {
     /**
      * Checks whether this type has any finalizable subclasses so far. Any decisions based on this
      * information require the registration of a dependency, since this information may change.
-     * 
+     *
      * @return {@code true} if this class has any subclasses with finalizers
      */
     boolean hasFinalizableSubclass();
 
     /**
      * Checks whether this type is an interface.
-     * 
+     *
      * @return {@code true} if this type is an interface
      */
     boolean isInterface();
 
     /**
      * Checks whether this type is an instance class.
-     * 
+     *
      * @return {@code true} if this type is an instance class
      */
     boolean isInstanceClass();
 
     /**
      * Checks whether this type is an array class.
-     * 
+     *
      * @return {@code true} if this type is an array class
      */
     boolean isArray();
 
     /**
      * Checks whether this type is primitive.
-     * 
+     *
      * @return {@code true} if this type is primitive
      */
     boolean isPrimitive();
 
     /**
-     * Returns the Java language modifiers for this type, as an integer. The {@link Modifier} class
-     * should be used to decode the modifiers. Only the flags specified in the JVM specification
-     * will be included in the returned mask. This method is identical to
-     * {@link Class#getModifiers()} in terms of the value return for this type.
+     * {@inheritDoc}
+     * <p>
+     * Only the flags specified in the JVM specification will be included in the returned mask. This
+     * method is identical to {@link Class#getModifiers()} in terms of the value return for this
+     * type.
      */
     int getModifiers();
 
     /**
      * Checks whether this type is initialized. If a type is initialized it implies that it was
      * {@link #isLinked() linked} and that the static initializer has run.
-     * 
+     *
      * @return {@code true} if this type is initialized
      */
     boolean isInitialized();
@@ -127,7 +128,7 @@ public interface ResolvedJavaType extends JavaType {
     /**
      * Checks whether this type is linked and verified. When a type is linked the static initializer
      * has not necessarily run. An {@link #isInitialized() initialized} type is always linked.
-     * 
+     *
      * @return {@code true} if this type is linked
      */
     boolean isLinked();
@@ -141,7 +142,7 @@ public interface ResolvedJavaType extends JavaType {
 
     /**
      * Checks whether the specified object is an instance of this type.
-     * 
+     *
      * @param obj the object to test
      * @return {@code true} if the object is an instance of this type
      */
@@ -150,7 +151,7 @@ public interface ResolvedJavaType extends JavaType {
     /**
      * Returns this type if it is an exact type otherwise returns null. This type is exact if it is
      * void, primitive, final, or an array of a final or primitive type.
-     * 
+     *
      * @return this type if it is exact; {@code null} otherwise
      */
     ResolvedJavaType asExactType();
@@ -172,7 +173,7 @@ public interface ResolvedJavaType extends JavaType {
     /**
      * Walks the class hierarchy upwards and returns the least common class that is a superclass of
      * both the current and the given type.
-     * 
+     *
      * @return the least common type that is a super type of both the current and the given type, or
      *         {@code null} if primitive types are involved.
      */
@@ -194,7 +195,7 @@ public interface ResolvedJavaType extends JavaType {
      * <p>
      * If the compiler uses the result of this method for its compilation, it must register an
      * assumption because dynamic class loading can invalidate the result of this method.
-     * 
+     *
      * @return the unique concrete subclass for this type as described above
      */
     ResolvedJavaType findUniqueConcreteSubtype();
@@ -208,7 +209,7 @@ public interface ResolvedJavaType extends JavaType {
      * This resolution process only searches "up" the class hierarchy of this type. A broader search
      * that also walks "down" the hierarchy is implemented by
      * {@link #findUniqueConcreteMethod(ResolvedJavaMethod)}.
-     * 
+     *
      * @param method the method to select the implementation of
      * @return the concrete method that would be selected at runtime, or {@code null} if there is no
      *         concrete implementation of {@code method} in this type or any of its superclasses
@@ -223,7 +224,7 @@ public interface ResolvedJavaType extends JavaType {
      * <p>
      * If the compiler uses the result of this method for its compilation, it must register an
      * assumption because dynamic class loading can invalidate the result of this method.
-     * 
+     *
      * @param method the method A for which a unique concrete target is searched
      * @return the unique concrete target or {@code null} if no such target exists or assumptions
      *         are not supported by this runtime
@@ -237,7 +238,7 @@ public interface ResolvedJavaType extends JavaType {
      * is, for a single JVM execution the same order is returned each time this method is called. It
      * is also the "natural" order, which means that the JVM would expect the fields in this order
      * if no specific order is given.
-     * 
+     *
      * @param includeSuperclasses if true, then instance fields for the complete hierarchy of this
      *            type are included in the result
      * @return an array of instance fields
@@ -247,7 +248,7 @@ public interface ResolvedJavaType extends JavaType {
     /**
      * Returns the annotation for the specified type of this class, if such an annotation is
      * present.
-     * 
+     *
      * @param annotationClass the Class object corresponding to the annotation type
      * @return this element's annotation for the specified annotation type if present on this class,
      *         else {@code null}
@@ -257,7 +258,7 @@ public interface ResolvedJavaType extends JavaType {
     /**
      * Returns the instance field of this class (or one of its super classes) at the given offset,
      * or {@code null} if there is no such field.
-     * 
+     *
      * @param offset the offset of the field to look for
      * @return the field with the given offset, or {@code null} if there is no such field.
      */

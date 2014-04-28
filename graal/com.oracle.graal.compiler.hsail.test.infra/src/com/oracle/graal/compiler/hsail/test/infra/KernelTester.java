@@ -416,9 +416,9 @@ public abstract class KernelTester {
     }
 
     /**
-     * The dispatchLambdaKernel dispatches the lambda version of a kernel where the "kernel" is for
-     * the xxx$$Lambda.accept method in the wrapper for the lambda. Note that the useLambdaMethod
-     * boolean provides a way of actually invoking dispatchLambdaMethodKernel from this API.
+     * Dispatches the lambda version of a kernel where the "kernel" is for the xxx$$Lambda.accept
+     * method in the wrapper for the lambda. Note that the useLambdaMethod boolean provides a way of
+     * actually invoking dispatchLambdaMethodKernel from this API.
      */
     public void dispatchLambdaKernel(int range, MyIntConsumer consumer) {
         if (useLambdaMethod) {

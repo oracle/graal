@@ -26,7 +26,7 @@ import java.util.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.nodes.type.*;
+import com.oracle.graal.compiler.common.type.*;
 
 public class IndirectCallTargetNode extends LoweredCallTargetNode {
 
@@ -43,6 +43,6 @@ public class IndirectCallTargetNode extends LoweredCallTargetNode {
 
     @Override
     public String targetName() {
-        return "Indirect#" + ((JavaMethod) target()).getName();
+        return MetaUtil.format("Indirect#%h.%n", target());
     }
 }

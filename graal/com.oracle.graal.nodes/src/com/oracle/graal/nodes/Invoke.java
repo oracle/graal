@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.nodes;
 
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
@@ -52,4 +53,36 @@ public interface Invoke extends StateSplit, Lowerable, DeoptimizingNode.DeoptDur
     boolean isPolymorphic();
 
     void setPolymorphic(boolean value);
+
+    /**
+     * Returns the {@linkplain ResolvedJavaMethod method} from which this invoke is executed. This
+     * is the caller method and in the case of inlining may be different from the method of the
+     * graph this node is in.
+     *
+     * @return the method from which this invoke is executed.
+     */
+    default ResolvedJavaMethod getContextMethod() {
+        FrameState state = stateAfter();
+        if (state == null) {
+            state = stateDuring();
+        }
+        return state.method();
+    }
+
+    /**
+     * Returns the {@linkplain ResolvedJavaType type} from which this invoke is executed. This is
+     * the declaring type of the caller method.
+     *
+     * @return the type from which this invoke is executed.
+     */
+    default ResolvedJavaType getContextType() {
+        return getContextMethod().getDeclaringClass();
+    }
+
+    @Override
+    default void computeStateDuring(FrameState stateAfter) {
+        FrameState newStateDuring = stateAfter.duplicateModified(bci(), stateAfter.rethrowException(), asNode().getKind());
+        newStateDuring.setDuringCall(true);
+        setStateDuring(newStateDuring);
+    }
 }

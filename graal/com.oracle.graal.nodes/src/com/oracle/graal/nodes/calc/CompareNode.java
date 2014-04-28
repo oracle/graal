@@ -23,11 +23,12 @@
 package com.oracle.graal.nodes.calc;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.meta.ProfilingInfo.*;
+import com.oracle.graal.compiler.common.*;
+import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.extended.*;
-import com.oracle.graal.nodes.spi.*;
 
 /* TODO (thomaswue/gdub) For high-level optimization purpose the compare node should be a boolean *value* (it is currently only a helper node)
  * But in the back-end the comparison should not always be materialized (for example in x86 the comparison result will not be in a register but in a flag)
@@ -35,48 +36,31 @@ import com.oracle.graal.nodes.spi.*;
  * Compare should probably be made a value (so that it can be canonicalized for example) and in later stages some Compare usage should be transformed
  * into variants that do not materialize the value (CompareIf, CompareGuard...)
  */
-public abstract class CompareNode extends LogicNode implements Canonicalizable, LIRLowerable, MemoryArithmeticLIRLowerable {
-
-    @Input private ValueNode x;
-    @Input private ValueNode y;
-
-    public ValueNode x() {
-        return x;
-    }
-
-    public ValueNode y() {
-        return y;
-    }
+public abstract class CompareNode extends BinaryOpLogicNode {
 
     /**
      * Constructs a new Compare instruction.
-     * 
+     *
      * @param x the instruction producing the first input to the instruction
      * @param y the instruction that produces the second input to this instruction
      */
     public CompareNode(ValueNode x, ValueNode y) {
-        assert x != null && y != null && x.getKind() == y.getKind();
-        this.x = x;
-        this.y = y;
+        super(x, y);
     }
 
     /**
      * Gets the condition (comparison operation) for this instruction.
-     * 
+     *
      * @return the condition
      */
     public abstract Condition condition();
 
     /**
      * Checks whether unordered inputs mean true or false (only applies to float operations).
-     * 
+     *
      * @return {@code true} if unordered inputs produce true
      */
     public abstract boolean unorderedIsTrue();
-
-    @Override
-    public void generate(NodeLIRBuilderTool gen) {
-    }
 
     private LogicNode optimizeConditional(Constant constant, ConditionalNode conditionalNode, ConstantReflectionProvider constantReflection, Condition cond) {
         Constant trueConstant = conditionalNode.trueValue().asConstant();
@@ -102,24 +86,23 @@ public abstract class CompareNode extends LogicNode implements Canonicalizable, 
         return this;
     }
 
-    protected void setX(ValueNode x) {
-        updateUsages(this.x, x);
-        this.x = x;
-    }
-
-    protected void setY(ValueNode y) {
-        updateUsages(this.y, y);
-        this.y = y;
-    }
-
     protected LogicNode optimizeNormalizeCmp(Constant constant, NormalizeCompareNode normalizeNode, boolean mirrored) {
         throw new GraalInternalError("NormalizeCompareNode connected to %s (%s %s %s)", this, constant, normalizeNode, mirrored);
     }
 
     @Override
+    public TriState evaluate(ConstantReflectionProvider constantReflection, ValueNode forX, ValueNode forY) {
+        if (x().isConstant() && y().isConstant()) {
+            return TriState.get(condition().foldCondition(x().asConstant(), y().asConstant(), constantReflection, unorderedIsTrue()));
+        }
+        return TriState.UNKNOWN;
+    }
+
+    @Override
     public Node canonical(CanonicalizerTool tool) {
-        if (x().isConstant() && y().isConstant() && tool.getMetaAccess() != null) {
-            return LogicConstantNode.forBoolean(condition().foldCondition(x().asConstant(), y().asConstant(), tool.getConstantReflection(), unorderedIsTrue()), graph());
+        Node result = super.canonical(tool);
+        if (result != this) {
+            return result;
         }
         if (x().isConstant()) {
             if (y() instanceof ConditionalNode) {
@@ -192,15 +175,5 @@ public abstract class CompareNode extends LogicNode implements Canonicalizable, 
         }
 
         return graph.unique(comparison);
-    }
-
-    public boolean generate(MemoryArithmeticLIRLowerer gen, Access access) {
-        return false;
-    }
-
-    @Override
-    public boolean verify() {
-        assertTrue(x.stamp().isCompatible(y.stamp()), "stamps not compatible: %s, %s", x.stamp(), y.stamp());
-        return super.verify();
     }
 }

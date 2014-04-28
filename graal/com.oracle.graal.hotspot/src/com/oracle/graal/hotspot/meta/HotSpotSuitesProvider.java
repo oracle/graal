@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.hotspot.meta;
 
-import static com.oracle.graal.phases.GraalOptions.*;
+import static com.oracle.graal.compiler.common.GraalOptions.*;
 
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.phases.*;

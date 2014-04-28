@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.loop;
 
-import static com.oracle.graal.phases.GraalOptions.*;
+import static com.oracle.graal.compiler.common.GraalOptions.*;
 
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
@@ -64,12 +64,12 @@ public abstract class LoopPolicies {
 
     public static boolean shouldUnswitch(LoopEx loop, ControlSplitNode controlSplit) {
         Block postDomBlock = loop.loopsData().controlFlowGraph().blockFor(controlSplit).getPostdominator();
-        AbstractBeginNode postDom = postDomBlock != null ? postDomBlock.getBeginNode() : null;
+        BeginNode postDom = postDomBlock != null ? postDomBlock.getBeginNode() : null;
         int loopTotal = loop.size();
         int inBranchTotal = 0;
         double maxProbability = 0;
         for (Node successor : controlSplit.successors()) {
-            AbstractBeginNode branch = (AbstractBeginNode) successor;
+            BeginNode branch = (BeginNode) successor;
             inBranchTotal += loop.nodesInLoopFrom(branch, postDom).cardinality(); // this may count
                                                                                   // twice because
                                                                                   // of fall-through

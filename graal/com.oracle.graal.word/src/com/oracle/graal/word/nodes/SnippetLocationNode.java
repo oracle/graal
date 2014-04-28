@@ -26,12 +26,14 @@ import static com.oracle.graal.api.meta.LocationIdentity.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
+import com.oracle.graal.compiler.common.*;
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
+import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
 
 /**
  * Location node that can be used inside a snippet without having the elements (including the
@@ -107,7 +109,7 @@ public final class SnippetLocationNode extends LocationNode implements Canonical
     }
 
     @Override
-    public Value generateAddress(NodeLIRBuilderTool gen, Value base) {
+    public Value generateAddress(NodeMappableLIRBuilder builder, LIRGeneratorTool gen, Value base) {
         throw new GraalInternalError("locationIdentity must be a constant so that this node can be canonicalized: " + locationIdentity);
     }
 

@@ -27,10 +27,11 @@ import java.lang.reflect.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.debug.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.ptx.*;
 import com.oracle.graal.nodes.*;
 
@@ -55,7 +56,7 @@ public class PTXNodeLIRBuilder extends NodeLIRBuilder {
         }
     }
 
-    public PTXNodeLIRBuilder(StructuredGraph graph, LIRGenerator lirGen) {
+    public PTXNodeLIRBuilder(StructuredGraph graph, LIRGeneratorTool lirGen) {
         super(graph, lirGen);
     }
 
@@ -135,7 +136,7 @@ public class PTXNodeLIRBuilder extends NodeLIRBuilder {
     @Override
     public void emitNullCheck(ValueNode v, DeoptimizingNode deopting) {
         assert v.getKind() == Kind.Object;
-        append(new PTXMove.NullCheckOp(gen.load(operand(v)), gen.state(deopting)));
+        append(new PTXMove.NullCheckOp(gen.load(operand(v)), state(deopting)));
     }
 
     @Override

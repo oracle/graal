@@ -26,11 +26,13 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.stack.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
+import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.gen.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
+import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.phases.util.*;
 
@@ -71,17 +73,17 @@ public abstract class Backend {
      */
     public abstract FrameMap newFrameMap(RegisterConfig registerConfig);
 
-    public abstract LIRGenerator newLIRGenerator(CallingConvention cc, LIRGenerationResult lirGenRes);
+    public abstract LIRGeneratorTool newLIRGenerator(CallingConvention cc, LIRGenerationResult lirGenRes);
 
     public abstract LIRGenerationResult newLIRGenerationResult(LIR lir, FrameMap frameMap, Object stub);
 
-    public abstract NodeLIRBuilder newNodeLIRGenerator(StructuredGraph graph, LIRGenerator lirGen);
+    public abstract NodeLIRBuilderTool newNodeLIRBuilder(StructuredGraph graph, LIRGeneratorTool lirGen);
 
     /**
      * @param gen the LIRGenerator the BytecodeLIRBuilder should use
      * @param parser the bytecode parser the BytecodeLIRBuilder should use
      */
-    public BytecodeLIRBuilder newBytecodeLIRBuilder(LIRGenerator gen, BytecodeParserTool parser) {
+    public BytecodeLIRBuilder newBytecodeLIRBuilder(LIRGeneratorTool gen, BytecodeParserTool parser) {
         throw GraalInternalError.unimplemented("Baseline compilation is not available for this Backend!");
     }
 
@@ -102,9 +104,8 @@ public abstract class Backend {
     /**
      * Emits the code for a given graph.
      *
-     * @param installedCodeOwner the method the compiled code will be
-     *            {@linkplain InstalledCode#getMethod() associated} with once installed. This
-     *            argument can be null.
+     * @param installedCodeOwner the method the compiled code will be associated with once
+     *            installed. This argument can be null.
      */
     public abstract void emitCode(CompilationResultBuilder crb, LIR lir, ResolvedJavaMethod installedCodeOwner);
 

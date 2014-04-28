@@ -184,12 +184,10 @@ public abstract class Node implements Cloneable, Formattable {
 
     class NodeUsageIterator implements Iterator<Node> {
 
-        private final int expectedModCount = usageModCount();
         int index = -1;
         Node current;
 
         private void advance() {
-            assert index == -1 || current != null;
             current = null;
             index++;
             if (index == 0) {
@@ -208,12 +206,10 @@ public abstract class Node implements Cloneable, Formattable {
         }
 
         public boolean hasNext() {
-            assert expectedModCount == usageModCount();
             return current != null;
         }
 
         public Node next() {
-            assert expectedModCount == usageModCount();
             Node result = current;
             if (result == null) {
                 throw new NoSuchElementException();
@@ -228,10 +224,35 @@ public abstract class Node implements Cloneable, Formattable {
         }
     }
 
-    class NodeUsageIterable extends AbstractNodeIterable<Node> {
+    class NodeUsageWithModCountIterator extends NodeUsageIterator {
+
+        private final int expectedModCount = usageModCount();
+
+        @Override
+        public boolean hasNext() {
+            if (expectedModCount != usageModCount()) {
+                throw new ConcurrentModificationException();
+            }
+            return super.hasNext();
+        }
+
+        @Override
+        public Node next() {
+            if (expectedModCount != usageModCount()) {
+                throw new ConcurrentModificationException();
+            }
+            return super.next();
+        }
+    }
+
+    class NodeUsageIterable implements NodeIterable<Node> {
 
         public NodeUsageIterator iterator() {
-            return new NodeUsageIterator();
+            if (MODIFICATION_COUNTS_ENABLED) {
+                return new NodeUsageWithModCountIterator();
+            } else {
+                return new NodeUsageIterator();
+            }
         }
 
         @Override
@@ -246,13 +267,7 @@ public abstract class Node implements Cloneable, Formattable {
 
         @Override
         public int count() {
-            if (usage0 == null) {
-                return 0;
-            }
-            if (usage1 == null) {
-                return 1;
-            }
-            return 2 + indexOfLastNonNull(extraUsages) + 1;
+            return usageCount();
         }
     }
 
@@ -349,6 +364,81 @@ public abstract class Node implements Cloneable, Formattable {
         }
     }
 
+    private int usageCount() {
+        if (usage0 == null) {
+            return 0;
+        }
+        if (usage1 == null) {
+            return 1;
+        }
+        return 2 + indexOfLastNonNull(extraUsages) + 1;
+    }
+
+    /**
+     * Remove all usages between {@code fromIndex} and {@code toIndex} (exclusive), also, if
+     * {@code toIndex} is a valid usage, it is moved to {@code fromIndex}.
+     *
+     * <p>
+     * Visually,
+     *
+     * <pre>
+     * {@code
+     * [1, 2, 3, 4, 5, 6, 7].removeUsagesAndShiftFirst(1, 2) == [1, 4, 6, 7, 5, null, null]}
+     * </pre>
+     *
+     *
+     * @param fromIndex the index of the first element to be removed
+     * @param toIndex the index after the last element to be removed
+     */
+    private void removeUsagesAndShiftFirst(int fromIndex, int toIndex) {
+        assert fromIndex < toIndex;
+        int firstNullIndex = usageCount();
+        assert toIndex <= firstNullIndex;
+        int i = fromIndex;
+        int limit = toIndex;
+        if (toIndex < firstNullIndex) {
+            // move usage at toIndex to fromIndex(!)
+            movUsageTo(toIndex, fromIndex);
+            limit++;
+            i++;
+        }
+        while (i < limit && firstNullIndex > limit) {
+            movUsageTo(firstNullIndex - 1, i);
+            firstNullIndex--;
+            i++;
+        }
+        while (i < limit) {
+            if (i == 0) {
+                usage0 = null;
+            } else if (i == 1) {
+                usage1 = null;
+            } else {
+                extraUsages[i - INLINE_USAGE_COUNT] = null;
+            }
+            i++;
+        }
+
+    }
+
+    private void movUsageTo(int usageIndex, int toIndex) {
+        assert usageIndex > toIndex;
+        if (toIndex == 0) {
+            if (usageIndex == 1) {
+                usage0 = usage1;
+                usage1 = null;
+            } else {
+                usage0 = extraUsages[usageIndex - INLINE_USAGE_COUNT];
+                extraUsages[usageIndex - INLINE_USAGE_COUNT] = null;
+            }
+        } else if (toIndex == 1) {
+            usage1 = extraUsages[usageIndex - INLINE_USAGE_COUNT];
+            extraUsages[usageIndex - INLINE_USAGE_COUNT] = null;
+        } else {
+            extraUsages[toIndex - INLINE_USAGE_COUNT] = extraUsages[usageIndex - INLINE_USAGE_COUNT];
+            extraUsages[usageIndex - INLINE_USAGE_COUNT] = null;
+        }
+    }
+
     /**
      * Removes a given node from this node's {@linkplain #usages() usages}.
      *
@@ -357,6 +447,7 @@ public abstract class Node implements Cloneable, Formattable {
      */
     private boolean removeUsage(Node node) {
         assert recordsUsages();
+        assert node != null;
         // It is critical that this method maintains the invariant that
         // the usage list has no null element preceding a non-null element
         incUsageModCount();
@@ -388,20 +479,19 @@ public abstract class Node implements Cloneable, Formattable {
             }
             return true;
         }
-        int lastNonNull = indexOfLastNonNull(extraUsages);
-        if (lastNonNull >= 0) {
-            for (int i = 0; i <= lastNonNull; ++i) {
-                Node n = extraUsages[i];
-                if (n == node) {
-                    if (i < lastNonNull) {
-                        extraUsages[i] = extraUsages[lastNonNull];
-                        extraUsages[lastNonNull] = null;
-                    } else {
-                        extraUsages[i] = null;
-                    }
-                    return true;
-                }
+        int matchIndex = -1;
+        int i = 0;
+        Node n;
+        while (i < extraUsages.length && (n = extraUsages[i]) != null) {
+            if (n == node) {
+                matchIndex = i;
             }
+            i++;
+        }
+        if (matchIndex >= 0) {
+            extraUsages[matchIndex] = extraUsages[i - 1];
+            extraUsages[i - 1] = null;
+            return true;
         }
         return false;
     }
@@ -543,13 +633,47 @@ public abstract class Node implements Cloneable, Formattable {
         clearUsages();
     }
 
+    public void replaceAtMatchingUsages(Node other, NodePredicate usagePredicate) {
+        assert checkReplaceWith(other);
+        NodeUsageIterator it = (NodeUsageIterator) usages().iterator();
+        int removeStart = -1;
+        while (it.hasNext()) {
+            Node usage = it.next();
+            if (usagePredicate.apply(usage)) {
+                if (removeStart < 0) {
+                    removeStart = it.index - 1;
+                }
+                boolean result = usage.getNodeClass().replaceFirstInput(usage, this, other);
+                assert assertTrue(result, "not found in inputs, usage: %s", usage);
+                if (other != null) {
+                    maybeNotifyChanged(usage);
+                    if (other.recordsUsages()) {
+                        other.addUsage(usage);
+                    }
+                }
+            } else {
+                if (removeStart >= 0) {
+                    int removeEndIndex = it.index - 1;
+                    removeUsagesAndShiftFirst(removeStart, removeEndIndex);
+                    it.index = removeStart;
+                    it.advance();
+                    removeStart = -1;
+                }
+            }
+        }
+        if (removeStart >= 0) {
+            int removeEndIndex = it.index;
+            removeUsagesAndShiftFirst(removeStart, removeEndIndex);
+        }
+    }
+
     public void replaceAtUsages(InputType type, Node other) {
         assert checkReplaceWith(other);
         for (Node usage : usages().snapshot()) {
             NodeClassIterator iter = usage.inputs().iterator();
             while (iter.hasNext()) {
                 Position pos = iter.nextPosition();
-                if (pos.getInputType(usage) == type) {
+                if (pos.getInputType(usage) == type && pos.get(usage) == this) {
                     pos.set(usage, other);
                 }
             }
@@ -707,7 +831,7 @@ public abstract class Node implements Cloneable, Formattable {
         try {
             newNode = (Node) this.clone();
         } catch (CloneNotSupportedException e) {
-            throw new GraalInternalError(e).addContext(this);
+            throw new GraalGraphInternalError(e).addContext(this);
         }
         if (clearInputsAndSuccessors) {
             nodeClass.clearInputs(newNode);

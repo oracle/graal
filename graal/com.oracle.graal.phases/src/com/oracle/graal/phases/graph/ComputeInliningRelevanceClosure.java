@@ -24,6 +24,7 @@ package com.oracle.graal.phases.graph;
 
 import java.util.*;
 
+import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.cfg.*;
@@ -105,26 +106,26 @@ public class ComputeInliningRelevanceClosure {
         private Scope[] computeScopes() {
             ControlFlowGraph cfg = ControlFlowGraph.compute(graph, true, true, false, false);
 
-            Loop[] loops = cfg.getLoops();
-            HashMap<Loop, Scope> processedScopes = new HashMap<>();
-            Scope[] result = new Scope[loops.length + 1];
+            List<Loop<Block>> loops = cfg.getLoops();
+            HashMap<Loop<Block>, Scope> processedScopes = new HashMap<>();
+            Scope[] result = new Scope[loops.size() + 1];
             Scope methodScope = new Scope(graph.start(), null);
             processedScopes.put(null, methodScope);
 
             result[0] = methodScope;
-            for (int i = 0; i < loops.length; i++) {
-                result[i + 1] = createScope(loops[i], processedScopes);
+            for (int i = 0; i < loops.size(); i++) {
+                result[i + 1] = createScope(loops.get(i), processedScopes);
             }
 
             return result;
         }
 
-        private Scope createScope(Loop loop, HashMap<Loop, Scope> processedLoops) {
+        private Scope createScope(Loop<Block> loop, HashMap<Loop<Block>, Scope> processedLoops) {
             Scope parent = processedLoops.get(loop.parent);
             if (parent == null) {
                 parent = createScope(loop.parent, processedLoops);
             }
-            Scope result = new Scope(loop.loopBegin(), parent);
+            Scope result = new Scope(loop.header.getBeginNode(), parent);
             processedLoops.put(loop, result);
             return result;
         }
@@ -171,7 +172,7 @@ public class ComputeInliningRelevanceClosure {
         int pathBeginCount = pathBeginNodes.size();
 
         for (Node sux : controlSplit.successors()) {
-            double probability = controlSplit.probability((AbstractBeginNode) sux);
+            double probability = controlSplit.probability((BeginNode) sux);
             if (probability > maxProbability) {
                 maxProbability = probability;
                 maxSux = sux;

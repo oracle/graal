@@ -23,10 +23,11 @@
 
 package com.oracle.graal.compiler.hsail.test;
 
+import static com.oracle.graal.debug.DelegatingDebugConfig.Feature.*;
+
 import org.junit.*;
 
 import com.oracle.graal.debug.*;
-import com.oracle.graal.debug.internal.*;
 
 /**
  * Tests the addition of elements from sixteen input arrays.
@@ -64,15 +65,7 @@ public class StaticMethod16InArraysTest extends StaticMethodTwoIntArrays {
     @Test(expected = java.lang.ClassCastException.class)
     @Ignore("until GPU backends can co-exist")
     public void test() {
-        DebugConfig debugConfig = DebugScope.getConfig();
-        DebugConfig noInterceptConfig = new DelegatingDebugConfig(debugConfig) {
-            @Override
-            public RuntimeException interceptException(Throwable e) {
-                return null;
-            }
-        };
-
-        try (DebugConfigScope s = Debug.setConfig(noInterceptConfig)) {
+        try (DebugConfigScope s = Debug.setConfig(new DelegatingDebugConfig().disable(INTERCEPT))) {
             testGeneratedHsail();
         }
     }

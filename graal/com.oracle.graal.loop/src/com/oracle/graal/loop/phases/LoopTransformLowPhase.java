@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.loop.phases;
 
-import static com.oracle.graal.phases.GraalOptions.*;
+import static com.oracle.graal.compiler.common.GraalOptions.*;
 
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
@@ -78,7 +78,7 @@ public class LoopTransformLowPhase extends Phase {
         sb.append(loop).append(" at ").append(controlSplit).append(" [");
         NodeClassIterator it = controlSplit.successors().iterator();
         while (it.hasNext()) {
-            sb.append(controlSplit.probability((AbstractBeginNode) it.next()));
+            sb.append(controlSplit.probability((BeginNode) it.next()));
             if (it.hasNext()) {
                 sb.append(", ");
             }

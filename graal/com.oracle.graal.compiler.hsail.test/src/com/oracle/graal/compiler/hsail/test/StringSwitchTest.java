@@ -23,11 +23,9 @@
 
 package com.oracle.graal.compiler.hsail.test;
 
-import static org.junit.Assume.*;
-
 import org.junit.*;
 
-import com.oracle.graal.compiler.hsail.test.infra.*;
+import com.oracle.graal.compiler.hsail.test.infra.GraalKernelTester;
 
 /**
  * Tests switch statement with String literal keys.
@@ -121,14 +119,8 @@ public class StringSwitchTest extends GraalKernelTester {
         }
     }
 
-    /**
-     * Tests the HSAIL code generated for this unit test by comparing the result of executing this
-     * code with the result of executing a sequential Java version of this unit test.
-     */
     @Test
     public void test() {
-        // This test is only run if inlining is enabled since it requires method call support.
-        assumeTrue(aggressiveInliningEnabled() || canHandleHSAILMethodCalls());
         super.testGeneratedHsail();
     }
 

@@ -24,9 +24,7 @@ package com.oracle.graal.truffle;
 
 public interface TruffleInliningPolicy {
 
-    boolean isAllowed(TruffleInliningResult state, TruffleInliningProfile profile, int nodeCountBudget);
-
-    boolean isAllowedDeep(TruffleInliningResult state, TruffleInliningProfile profile, int nodeCountBudget);
+    boolean isAllowed(TruffleInliningProfile profile, int currentBudgetLeft);
 
     double calculateScore(TruffleInliningProfile profile);
 

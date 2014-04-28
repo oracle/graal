@@ -24,24 +24,25 @@ package com.oracle.graal.nodes.cfg;
 
 import java.util.*;
 
+import com.oracle.graal.compiler.common.cfg.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.java.*;
 
 public final class Block extends AbstractBlockBase<Block> {
 
-    protected final AbstractBeginNode beginNode;
+    protected final BeginNode beginNode;
 
     protected FixedNode endNode;
-    protected Loop loop;
+    protected Loop<Block> loop;
 
     protected List<Block> dominated;
     protected Block postdominator;
 
-    protected Block(AbstractBeginNode node) {
+    protected Block(BeginNode node) {
         this.beginNode = node;
     }
 
-    public AbstractBeginNode getBeginNode() {
+    public BeginNode getBeginNode() {
         return beginNode;
     }
 
@@ -49,7 +50,7 @@ public final class Block extends AbstractBlockBase<Block> {
         return endNode;
     }
 
-    public Loop getLoop() {
+    public Loop<Block> getLoop() {
         return loop;
     }
 
@@ -66,15 +67,16 @@ public final class Block extends AbstractBlockBase<Block> {
     }
 
     public boolean isExceptionEntry() {
-        return getBeginNode() instanceof ExceptionObjectNode;
+        Node predecessor = getBeginNode().predecessor();
+        return predecessor != null && predecessor instanceof InvokeWithExceptionNode && getBeginNode() == ((InvokeWithExceptionNode) predecessor).exceptionEdge();
     }
 
     public Block getFirstPredecessor() {
-        return predecessors.get(0);
+        return getPredecessors().get(0);
     }
 
     public Block getFirstSuccessor() {
-        return successors.get(0);
+        return getSuccessors().get(0);
     }
 
     public Block getEarliestPostDominated() {
@@ -122,7 +124,7 @@ public final class Block extends AbstractBlockBase<Block> {
             } else {
                 cur = ((FixedWithNextNode) cur).next();
             }
-            assert !(cur instanceof AbstractBeginNode);
+            assert !(cur instanceof BeginNode);
             return result;
         }
 
@@ -167,10 +169,10 @@ public final class Block extends AbstractBlockBase<Block> {
         if (block == this) {
             return true;
         }
-        if (dominator == null) {
+        if (getDominator() == null) {
             return false;
         }
-        return dominator.isDominatedBy(block);
+        return getDominator().isDominatedBy(block);
     }
 
 }

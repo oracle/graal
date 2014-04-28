@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.nodes;
 
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
-import com.oracle.graal.nodes.type.*;
 
 /**
  * The {@code Parameter} instruction is a placeholder for an incoming argument to a function call.

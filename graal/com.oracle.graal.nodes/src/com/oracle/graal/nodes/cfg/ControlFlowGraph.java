@@ -24,6 +24,8 @@ package com.oracle.graal.nodes.cfg;
 
 import java.util.*;
 
+import com.oracle.graal.compiler.common.*;
+import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
@@ -34,7 +36,7 @@ public class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
 
     private final NodeMap<Block> nodeToBlock;
     private Block[] reversePostOrder;
-    private Loop[] loops;
+    private List<Loop<Block>> loops;
 
     public static ControlFlowGraph compute(StructuredGraph graph, boolean connectBlocks, boolean computeLoops, boolean computeDominators, boolean computePostdominators) {
         ControlFlowGraph cfg = new ControlFlowGraph(graph);
@@ -106,7 +108,7 @@ public class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
         return nodeToBlock.get(node);
     }
 
-    public Loop[] getLoops() {
+    public List<Loop<Block>> getLoops() {
         return loops;
     }
 
@@ -117,15 +119,12 @@ public class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
         }
     }
 
-    protected static final int BLOCK_ID_INITIAL = -1;
-    protected static final int BLOCK_ID_VISITED = -2;
-
     private void identifyBlock(Block block) {
         Node cur = block.getBeginNode();
         Node last;
 
         // assign proxies of a loop exit to this block
-        if (cur instanceof AbstractBeginNode) {
+        if (cur instanceof BeginNode) {
             for (Node usage : cur.usages()) {
                 if (usage instanceof ProxyNode) {
                     nodeToBlock.set(usage, block);
@@ -146,7 +145,7 @@ public class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
 
             last = cur;
             cur = cur.successors().first();
-        } while (cur != null && !(cur instanceof AbstractBeginNode));
+        } while (cur != null && !(cur instanceof BeginNode));
 
         block.endNode = (FixedNode) last;
     }
@@ -154,7 +153,7 @@ public class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
     private void identifyBlocks() {
         // Find all block headers
         int numBlocks = 0;
-        for (AbstractBeginNode begin : graph.getNodes(AbstractBeginNode.class)) {
+        for (BeginNode begin : graph.getNodes(BeginNode.class)) {
             Block block = new Block(begin);
             numBlocks++;
             identifyBlock(block);
@@ -167,16 +166,16 @@ public class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
 
         do {
             Block block = stack.get(stack.size() - 1);
-            if (block.id == BLOCK_ID_INITIAL) {
+            if (block.getId() == BLOCK_ID_INITIAL) {
                 // First time we see this block: push all successors.
                 for (Node suxNode : block.getEndNode().cfgSuccessors()) {
                     Block suxBlock = blockFor(suxNode);
-                    if (suxBlock.id == BLOCK_ID_INITIAL) {
+                    if (suxBlock.getId() == BLOCK_ID_INITIAL) {
                         stack.add(suxBlock);
                     }
                 }
-                block.id = BLOCK_ID_VISITED;
-            } else if (block.id == BLOCK_ID_VISITED) {
+                block.setId(BLOCK_ID_VISITED);
+            } else if (block.getId() == BLOCK_ID_VISITED) {
                 // Second time we see this block: All successors have been processed, so add block
                 // to postorder list.
                 stack.remove(stack.size() - 1);
@@ -192,7 +191,7 @@ public class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
         reversePostOrder = new Block[numBlocks];
         for (int i = 0; i < numBlocks; i++) {
             Block block = postOrder.get(numBlocks - i - 1);
-            block.id = i;
+            block.setId(i);
             reversePostOrder[i] = block;
         }
     }
@@ -203,42 +202,42 @@ public class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
             List<Block> predecessors = new ArrayList<>(4);
             for (Node predNode : block.getBeginNode().cfgPredecessors()) {
                 Block predBlock = nodeToBlock.get(predNode);
-                if (predBlock.id >= 0) {
+                if (predBlock.getId() >= 0) {
                     predecessors.add(predBlock);
                 }
             }
             if (block.getBeginNode() instanceof LoopBeginNode) {
                 for (LoopEndNode predNode : ((LoopBeginNode) block.getBeginNode()).orderedLoopEnds()) {
                     Block predBlock = nodeToBlock.get(predNode);
-                    if (predBlock.id >= 0) {
+                    if (predBlock.getId() >= 0) {
                         predecessors.add(predBlock);
                     }
                 }
             }
-            block.predecessors = predecessors;
+            block.setPredecessors(predecessors);
 
             List<Block> successors = new ArrayList<>(4);
             for (Node suxNode : block.getEndNode().cfgSuccessors()) {
                 Block suxBlock = nodeToBlock.get(suxNode);
-                assert suxBlock.id >= 0;
+                assert suxBlock.getId() >= 0;
                 successors.add(suxBlock);
             }
             if (block.getEndNode() instanceof LoopEndNode) {
                 Block suxBlock = nodeToBlock.get(((LoopEndNode) block.getEndNode()).loopBegin());
-                assert suxBlock.id >= 0;
+                assert suxBlock.getId() >= 0;
                 successors.add(suxBlock);
             }
-            block.successors = successors;
+            block.setSuccessors(successors);
         }
     }
 
     private void computeLoopInformation() {
-        ArrayList<Loop> loopsList = new ArrayList<>();
+        loops = new ArrayList<>();
         for (Block block : reversePostOrder) {
             Node beginNode = block.getBeginNode();
             if (beginNode instanceof LoopBeginNode) {
-                Loop loop = new Loop(block.getLoop(), loopsList.size(), block);
-                loopsList.add(loop);
+                Loop<Block> loop = new HIRLoop(block.getLoop(), loops.size(), block);
+                loops.add(loop);
 
                 LoopBeginNode loopBegin = (LoopBeginNode) beginNode;
                 for (LoopEndNode end : loopBegin.loopEnds()) {
@@ -256,7 +255,7 @@ public class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
                 for (Block b : loop.blocks) {
                     for (Block sux : b.getSuccessors()) {
                         if (sux.loop != loop) {
-                            AbstractBeginNode begin = sux.getBeginNode();
+                            BeginNode begin = sux.getBeginNode();
                             if (!(begin instanceof LoopExitNode && ((LoopExitNode) begin).loopBegin() == loopBegin)) {
                                 Debug.log("Unexpected loop exit with %s, including whole branch in the loop", sux);
                                 unexpected.add(sux);
@@ -269,10 +268,9 @@ public class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
                 }
             }
         }
-        loops = loopsList.toArray(new Loop[loopsList.size()]);
     }
 
-    private static void addBranchToLoop(Loop l, Block b) {
+    private static void addBranchToLoop(Loop<Block> l, Block b) {
         if (l.blocks.contains(b)) {
             return;
         }
@@ -283,7 +281,7 @@ public class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
         }
     }
 
-    private static void computeLoopBlocks(Block block, Loop loop) {
+    private static void computeLoopBlocks(Block block, Loop<Block> loop) {
         if (block.getLoop() == loop) {
             return;
         }
@@ -316,22 +314,22 @@ public class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
     }
 
     private static void setDominator(Block block, Block dominator) {
-        block.dominator = dominator;
+        block.setDominator(dominator);
         if (dominator.dominated == null) {
             dominator.dominated = new ArrayList<>();
         }
         dominator.dominated.add(block);
     }
 
-    public static Block commonDominator(Block a, Block b) {
+    public static <T extends AbstractBlock<T>> T commonDominator(T a, T b) {
         if (a == null) {
             return b;
         }
         if (b == null) {
             return a;
         }
-        Block iterA = a;
-        Block iterB = b;
+        T iterA = a;
+        T iterB = b;
         while (iterA != iterB) {
             if (iterA.getId() > iterB.getId()) {
                 iterA = iterA.getDominator();

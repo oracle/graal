@@ -24,11 +24,11 @@ package com.oracle.graal.nodes.calc;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
 
 @NodeInfo(shortName = "|/|")
 public class UnsignedDivNode extends FixedBinaryNode implements Canonicalizable, Lowerable, LIRLowerable {
@@ -72,7 +72,7 @@ public class UnsignedDivNode extends FixedBinaryNode implements Canonicalizable,
 
     @Override
     public void generate(NodeLIRBuilderTool gen) {
-        gen.setResult(this, gen.getLIRGeneratorTool().emitUDiv(gen.operand(x()), gen.operand(y()), this));
+        gen.setResult(this, gen.getLIRGeneratorTool().emitUDiv(gen.operand(x()), gen.operand(y()), gen.state(this)));
     }
 
     @Override

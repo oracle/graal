@@ -26,9 +26,9 @@ import java.util.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
-import com.oracle.graal.graph.*;
 
 public class HotSpotNativeFunctionHandle implements NativeFunctionHandle {
 
@@ -63,7 +63,7 @@ public class HotSpotNativeFunctionHandle implements NativeFunctionHandle {
         assert checkArgs(args);
         try {
             traceCall(args);
-            Object res = code.executeVarargs(args);
+            Object res = code.executeVarargs(args, null, null);
             traceResult(res);
             return res;
         } catch (InvalidInstalledCodeException e) {

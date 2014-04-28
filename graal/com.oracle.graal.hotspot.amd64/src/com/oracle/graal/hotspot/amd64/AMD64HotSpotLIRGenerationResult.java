@@ -25,10 +25,10 @@ package com.oracle.graal.hotspot.amd64;
 import java.util.*;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.hotspot.stubs.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.SaveRegistersOp;
+import com.oracle.graal.lir.gen.*;
 
 public class AMD64HotSpotLIRGenerationResult extends LIRGenerationResultBase {
 

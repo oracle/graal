@@ -23,9 +23,9 @@
 package com.oracle.graal.hotspot.nodes.type;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.spi.*;
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.hotspot.HotSpotVMConfig.CompressEncoding;
-import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
 
 public class NarrowOopStamp extends ObjectStamp {
 
@@ -76,7 +76,7 @@ public class NarrowOopStamp extends ObjectStamp {
     }
 
     @Override
-    public PlatformKind getPlatformKind(LIRTypeTool tool) {
+    public PlatformKind getPlatformKind(PlatformKindTool tool) {
         return NarrowOop;
     }
 

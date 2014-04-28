@@ -27,7 +27,6 @@ import java.util.*;
 import org.junit.*;
 
 import com.oracle.graal.compiler.test.*;
-import com.oracle.graal.test.*;
 
 /**
  * Tests the implementation of {@code NEW}.
@@ -57,12 +56,12 @@ public class NewInstanceTest extends GraalCompilerTest {
         }
     }
 
-    @LongTest
+    @Test
     public void test1() {
         test("newObject");
     }
 
-    @LongTest
+    @Test
     public void test2() {
         test("newObjectTwice");
     }
@@ -71,37 +70,37 @@ public class NewInstanceTest extends GraalCompilerTest {
         return new Object();
     }
 
-    @LongTest
+    @Test
     public void test3() {
         test("newObjectLoop", 100);
     }
 
-    @LongTest
+    @Test
     public void test4() {
         test("newBigObject");
     }
 
-    @LongTest
+    @Test
     public void test5() {
         test("newSomeObject");
     }
 
-    @LongTest
+    @Test
     public void test6() {
         test("newEmptyString");
     }
 
-    @LongTest
+    @Test
     public void test7() {
         test("newString", "value");
     }
 
-    @LongTest
+    @Test
     public void test8() {
         test("newHashMap", 31);
     }
 
-    @LongTest
+    @Test
     public void test9() {
         test("newRegression", true);
     }

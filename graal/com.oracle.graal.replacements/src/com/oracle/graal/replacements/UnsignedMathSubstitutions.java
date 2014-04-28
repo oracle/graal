@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.replacements;
 
-import static com.oracle.graal.nodes.calc.Condition.*;
+import static com.oracle.graal.compiler.common.calc.Condition.*;
 import static com.oracle.graal.nodes.calc.ConditionalNode.*;
 
 import com.oracle.graal.api.code.*;

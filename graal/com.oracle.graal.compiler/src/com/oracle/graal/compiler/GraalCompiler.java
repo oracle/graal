@@ -24,7 +24,7 @@ package com.oracle.graal.compiler;
 
 import static com.oracle.graal.compiler.GraalCompiler.Options.*;
 import static com.oracle.graal.compiler.MethodFilter.*;
-import static com.oracle.graal.phases.GraalOptions.*;
+import static com.oracle.graal.compiler.common.GraalOptions.*;
 
 import java.util.*;
 
@@ -34,15 +34,17 @@ import com.oracle.graal.api.code.CompilationResult.DataPatch;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.meta.ProfilingInfo.TriState;
 import com.oracle.graal.compiler.alloc.*;
-import com.oracle.graal.compiler.gen.*;
+import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.debug.internal.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
+import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.cfg.*;
+import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.options.*;
 import com.oracle.graal.phases.*;
@@ -127,9 +129,8 @@ public class GraalCompiler {
      *
      * @param graph the graph to be compiled
      * @param cc the calling convention for calls to the code compiled for {@code graph}
-     * @param installedCodeOwner the method the compiled code will be
-     *            {@linkplain InstalledCode#getMethod() associated} with once installed. This
-     *            argument can be null.
+     * @param installedCodeOwner the method the compiled code will be associated with once
+     *            installed. This argument can be null.
      * @return the result of the compilation
      */
     public static <T extends CompilationResult> T compileGraph(StructuredGraph graph, Object stub, CallingConvention cc, ResolvedJavaMethod installedCodeOwner, Providers providers, Backend backend,
@@ -207,7 +208,7 @@ public class GraalCompiler {
         }
     }
 
-    private static void emitBlock(NodeLIRBuilder nodeLirGen, LIRGenerationResult lirGenRes, Block b, StructuredGraph graph, BlockMap<List<ScheduledNode>> blockMap) {
+    private static void emitBlock(NodeLIRBuilderTool nodeLirGen, LIRGenerationResult lirGenRes, Block b, StructuredGraph graph, BlockMap<List<ScheduledNode>> blockMap) {
         if (lirGenRes.getLIR().getLIRforBlock(b) == null) {
             for (Block pred : b.getPredecessors()) {
                 if (!b.isLoopHeader() || !pred.isLoopEnd()) {
@@ -245,8 +246,8 @@ public class GraalCompiler {
         try (Scope ds = Debug.scope("BackEnd", lir)) {
             FrameMap frameMap = backend.newFrameMap(registerConfig);
             LIRGenerationResult lirGenRes = backend.newLIRGenerationResult(lir, frameMap, stub);
-            LIRGenerator lirGen = backend.newLIRGenerator(cc, lirGenRes);
-            NodeLIRBuilder nodeLirGen = backend.newNodeLIRGenerator(graph, lirGen);
+            LIRGeneratorTool lirGen = backend.newLIRGenerator(cc, lirGenRes);
+            NodeLIRBuilderTool nodeLirGen = backend.newNodeLIRBuilder(graph, lirGen);
 
             try (Scope s = Debug.scope("LIRGen", lirGen)) {
                 for (Block b : linearScanOrder) {

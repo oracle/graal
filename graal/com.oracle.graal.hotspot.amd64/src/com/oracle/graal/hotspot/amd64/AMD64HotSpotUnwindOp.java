@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,6 +31,7 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.asm.amd64.*;
 import com.oracle.graal.hotspot.stubs.*;
 import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.StandardOp.*;
 import com.oracle.graal.lir.amd64.*;
 import com.oracle.graal.lir.asm.*;
 
@@ -38,7 +39,7 @@ import com.oracle.graal.lir.asm.*;
  * Removes the current frame and jumps to the {@link UnwindExceptionToCallerStub}.
  */
 @Opcode("UNWIND")
-final class AMD64HotSpotUnwindOp extends AMD64HotSpotEpilogueOp {
+final class AMD64HotSpotUnwindOp extends AMD64HotSpotEpilogueOp implements BlockEndOp {
 
     @Use({REG}) protected RegisterValue exception;
 

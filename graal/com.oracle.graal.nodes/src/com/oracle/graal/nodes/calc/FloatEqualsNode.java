@@ -22,16 +22,20 @@
  */
 package com.oracle.graal.nodes.calc;
 
+import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.meta.ProfilingInfo.*;
+import com.oracle.graal.compiler.common.calc.*;
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.type.*;
+import com.oracle.graal.nodes.util.*;
 
 @NodeInfo(shortName = "==")
 public final class FloatEqualsNode extends CompareNode {
 
     /**
      * Constructs a new floating point equality comparison node.
-     * 
+     *
      * @param x the instruction producing the first input to the instruction
      * @param y the instruction that produces the second input to this instruction
      */
@@ -49,5 +53,19 @@ public final class FloatEqualsNode extends CompareNode {
     @Override
     public boolean unorderedIsTrue() {
         return false;
+    }
+
+    @Override
+    public TriState evaluate(ConstantReflectionProvider constantReflection, ValueNode forX, ValueNode forY) {
+        if (forX.stamp() instanceof FloatStamp && forY.stamp() instanceof FloatStamp) {
+            FloatStamp xStamp = (FloatStamp) forX.stamp();
+            FloatStamp yStamp = (FloatStamp) forY.stamp();
+            if (GraphUtil.unproxify(forX) == GraphUtil.unproxify(forY) && xStamp.isNonNaN() && yStamp.isNonNaN()) {
+                return TriState.TRUE;
+            } else if (xStamp.alwaysDistinct(yStamp)) {
+                return TriState.FALSE;
+            }
+        }
+        return super.evaluate(constantReflection, forX, forY);
     }
 }
