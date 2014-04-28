@@ -65,26 +65,33 @@ public class AMD64HotSpotNodeLIRBuilder extends AMD64NodeLIRBuilder implements H
         return result;
     }
 
-    private void emitCompareCompressedMemory(IfNode ifNode, ValueNode value, Access access, CompareNode compare) {
+    private void emitCompareCompressedMemory(IfNode ifNode, ValueNode valueNode, Access access, CompareNode compare) {
+        Value value;
+        // This works by embedding the compressed form for constants, so force a constant instead of
+        // respecting what operand() would return.
+        if (valueNode.isConstant()) {
+            value = valueNode.asConstant();
+        } else {
+            value = gen.load(operand(valueNode));
+        }
+        AMD64AddressValue address = makeAddress(access);
+
         Condition cond = compare.condition();
-        LabelRef trueLabel = getLIRBlock(ifNode.trueSuccessor());
-        LabelRef falseLabel = getLIRBlock(ifNode.falseSuccessor());
-        double trueLabelProbability = ifNode.probability(ifNode.trueSuccessor());
         Value left;
         Value right;
         if (access == filterCompression(compare.x())) {
-            if (value.isConstant()) {
-                left = value.asConstant();
-            } else {
-                left = gen.loadNonConst(operand(value));
-            }
-            right = makeAddress(access);
+            left = value;
+            right = address;
         } else {
             assert access == filterCompression(compare.y());
-            left = makeAddress(access);
-            right = gen.loadNonConst(operand(value));
+            left = address;
+            right = value;
             cond = cond.mirror();
         }
+
+        LabelRef trueLabel = getLIRBlock(ifNode.trueSuccessor());
+        LabelRef falseLabel = getLIRBlock(ifNode.falseSuccessor());
+        double trueLabelProbability = ifNode.probability(ifNode.trueSuccessor());
         getGen().emitCompareBranchMemoryCompressed(left, right, cond, trueLabel, falseLabel, trueLabelProbability, getState(access));
     }
 

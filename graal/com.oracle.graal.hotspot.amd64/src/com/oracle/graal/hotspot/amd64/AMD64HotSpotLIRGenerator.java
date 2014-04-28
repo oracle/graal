@@ -548,6 +548,14 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         return result;
     }
 
+    public static Register asNarrowReg(Value value) {
+        if (value.getPlatformKind() != NarrowOopStamp.NarrowOop) {
+            throw new InternalError("needed NarrowOop got: " + value.getKind());
+        } else {
+            return asRegister(value);
+        }
+    }
+
     public Value emitAtomicReadAndWrite(Value address, Value newValue) {
         PlatformKind kind = newValue.getPlatformKind();
         Kind memKind = getMemoryKind(kind);
@@ -570,6 +578,11 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         }
 
         @Override
+        protected void verify() {
+            assert y instanceof Constant || y.getPlatformKind() == NarrowOopStamp.NarrowOop;
+        }
+
+        @Override
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
             if (state != null) {
                 crb.recordImplicitException(masm.position(), state);
@@ -589,7 +602,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
                     masm.cmpl(x.toAddress(), 0xdeaddead);
                 }
             } else {
-                masm.cmpl(asRegister(y), x.toAddress());
+                masm.cmpl(asNarrowReg(y), x.toAddress());
             }
         }
     }
