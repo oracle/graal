@@ -23,13 +23,12 @@
 package com.oracle.graal.nodes;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.meta.ProfilingInfo.*;
+import com.oracle.graal.api.meta.ProfilingInfo.TriState;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
-import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 
-public abstract class BinaryOpLogicNode extends LogicNode implements LIRLowerable, MemoryArithmeticLIRLowerable, Canonicalizable {
+public abstract class BinaryOpLogicNode extends LogicNode implements LIRLowerable, Canonicalizable {
 
     @Input private ValueNode x;
     @Input private ValueNode y;
@@ -79,10 +78,5 @@ public abstract class BinaryOpLogicNode extends LogicNode implements LIRLowerabl
 
     @Override
     public void generate(NodeLIRBuilderTool gen) {
-    }
-
-    @Override
-    public boolean generate(MemoryArithmeticLIRLowerer gen, Access access) {
-        return false;
     }
 }

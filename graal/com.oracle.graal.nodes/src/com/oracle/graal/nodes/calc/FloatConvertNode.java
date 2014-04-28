@@ -30,14 +30,13 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 
 /**
  * A {@code FloatConvert} converts between integers and floating point numbers according to Java
  * semantics.
  */
-public class FloatConvertNode extends ConvertNode implements Canonicalizable, Lowerable, ArithmeticLIRLowerable, MemoryArithmeticLIRLowerable {
+public class FloatConvertNode extends ConvertNode implements Canonicalizable, Lowerable, ArithmeticLIRLowerable {
 
     private final FloatConvert op;
 
@@ -166,13 +165,5 @@ public class FloatConvertNode extends ConvertNode implements Canonicalizable, Lo
 
     public void generate(NodeMappableLIRBuilder builder, ArithmeticLIRGenerator gen) {
         builder.setResult(this, gen.emitFloatConvert(op, builder.operand(getInput())));
-    }
-
-    public boolean generate(MemoryArithmeticLIRLowerer gen, Access access) {
-        Value result = gen.emitFloatConvertMemory(getOp(), access);
-        if (result != null) {
-            gen.setResult(this, result);
-        }
-        return result != null;
     }
 }
