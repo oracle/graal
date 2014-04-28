@@ -23,6 +23,7 @@
 package com.oracle.graal.nodes.calc;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
@@ -61,6 +62,19 @@ public class ZeroExtendNode extends IntegerConvertNode {
     @Override
     public boolean isLossless() {
         return true;
+    }
+
+    @Override
+    public boolean preservesOrder(Condition op) {
+        switch (op) {
+            case GE:
+            case GT:
+            case LE:
+            case LT:
+                return false;
+            default:
+                return true;
+        }
     }
 
     @Override
