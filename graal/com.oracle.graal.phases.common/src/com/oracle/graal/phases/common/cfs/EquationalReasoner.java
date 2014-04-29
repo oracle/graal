@@ -547,7 +547,7 @@ public final class EquationalReasoner {
             return object;
         }
         if (StampTool.isObjectAlwaysNull(object.stamp())) {
-            return nonTrivialNull(object);
+            return object;
         }
 
         // ------------------------------------------
