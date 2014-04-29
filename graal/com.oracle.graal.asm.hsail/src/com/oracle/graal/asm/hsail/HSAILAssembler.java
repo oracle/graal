@@ -136,6 +136,11 @@ public abstract class HSAILAssembler extends AbstractHSAILAssembler {
         emitAddrOp("lda_global_u64", dest, addr);
     }
 
+    public final void emitLea(Value dest, HSAILAddress addr) {
+        String prefix = getArgType(dest);
+        emitString(String.format("add_%s %s, $%s, 0x%s;", prefix, HSAIL.mapRegister(dest), addr.getBase().name, Long.toHexString(addr.getDisplacement())));
+    }
+
     public final void emitLoadKernelArg(Value dest, String kernArgName, String argTypeStr) {
         emitString("ld_kernarg_" + argTypeStr + " " + HSAIL.mapRegister(dest) + ", [" + kernArgName + "];");
     }
@@ -249,6 +254,9 @@ public abstract class HSAILAssembler extends AbstractHSAILAssembler {
                 break;
             case Byte:
                 prefix = "s8";
+                break;
+            case Boolean:
+                prefix = "u8";
                 break;
             default:
                 throw GraalInternalError.shouldNotReachHere();
