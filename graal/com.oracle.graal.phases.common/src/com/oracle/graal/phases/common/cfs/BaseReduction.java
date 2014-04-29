@@ -208,7 +208,7 @@ public abstract class BaseReduction extends PostOrderNodeIterator<State> {
      * </p>
      *
      */
-    protected static boolean precisionLoss(ValueNode input, ValueNode output) {
+    public static boolean precisionLoss(ValueNode input, ValueNode output) {
         ObjectStamp inputStamp = (ObjectStamp) input.stamp();
         ObjectStamp outputStamp = (ObjectStamp) output.stamp();
         if (FlowUtil.isMorePrecise(inputStamp.type(), outputStamp.type())) {

@@ -299,9 +299,6 @@ public abstract class CheckCastReduction extends GuardingPiReduction {
         ObjectStamp subjectStamp = (ObjectStamp) subject.stamp();
         ResolvedJavaType subjectType = subjectStamp.type();
 
-        // TODO move this check to downcast()
-        assert !precisionLoss(checkCast.object(), subject);
-
         /*
          * At this point, two sources of (partial) information: the witness and the stamp of
          * subject. The latter might be more precise than the witness (eg, subject might be
