@@ -53,7 +53,7 @@ import com.oracle.graal.phases.tiers.*;
  * FloatingReadNodes depends solely on the scheduling algorithm. The FrameStates normally keep the
  * FloatingReadNodes above a certain point, so that they (most of the time...) magically do the
  * right thing.
- * 
+ *
  * The scheduling shouldn't depend on FrameStates, which is tested by this class.
  */
 public class MemoryScheduleTest extends GraphScheduleTest {
@@ -247,7 +247,7 @@ public class MemoryScheduleTest extends GraphScheduleTest {
     @Test
     public void testLoop5() {
         SchedulePhase schedule = getFinalSchedule("testLoop5Snippet", TestMode.WITHOUT_FRAMESTATES);
-        assertEquals(7, schedule.getCFG().getBlocks().length);
+        assertEquals(10, schedule.getCFG().getBlocks().length);
         assertReadWithinStartBlock(schedule, false);
         assertReadWithinAllReturnBlocks(schedule, false);
     }
@@ -266,7 +266,7 @@ public class MemoryScheduleTest extends GraphScheduleTest {
         StructuredGraph graph = schedule.getCFG().getStartBlock().getBeginNode().graph();
         assertEquals(1, graph.getNodes(ReturnNode.class).count());
         ReturnNode ret = graph.getNodes(ReturnNode.class).first();
-        assertTrue(ret.result() instanceof FloatingReadNode);
+        assertTrue(ret.result() + " should be a FloatingReadNode", ret.result() instanceof FloatingReadNode);
         assertEquals(schedule.getCFG().blockFor(ret), schedule.getCFG().blockFor(ret.result()));
         assertReadWithinAllReturnBlocks(schedule, true);
     }
@@ -585,7 +585,7 @@ public class MemoryScheduleTest extends GraphScheduleTest {
     private SchedulePhase getFinalSchedule(final String snippet, final TestMode mode, final MemoryScheduling memsched, final SchedulingStrategy schedulingStrategy) {
         final StructuredGraph graph = parse(snippet);
         try (Scope d = Debug.scope("FloatingReadTest", graph)) {
-            try (OverrideScope s = OptionValue.override(OptScheduleOutOfLoops, schedulingStrategy == SchedulingStrategy.LATEST_OUT_OF_LOOPS)) {
+            try (OverrideScope s = OptionValue.override(OptScheduleOutOfLoops, schedulingStrategy == SchedulingStrategy.LATEST_OUT_OF_LOOPS, OptImplicitNullChecks, false)) {
                 Assumptions assumptions = new Assumptions(false);
                 HighTierContext context = new HighTierContext(getProviders(), assumptions, null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL);
                 CanonicalizerPhase canonicalizer = new CanonicalizerPhase(true);
