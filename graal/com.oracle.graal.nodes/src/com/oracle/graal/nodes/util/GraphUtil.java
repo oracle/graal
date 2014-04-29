@@ -150,7 +150,9 @@ public class GraphUtil {
         if (fixed instanceof StateSplit) {
             FrameState stateAfter = ((StateSplit) fixed).stateAfter();
             ((StateSplit) fixed).setStateAfter(null);
-            killWithUnusedFloatingInputs(stateAfter);
+            if (stateAfter.usages().isEmpty()) {
+                killWithUnusedFloatingInputs(stateAfter);
+            }
         }
         FixedNode next = fixed.next();
         fixed.setNext(null);
