@@ -51,10 +51,10 @@ import java.util.Set;
  * This class implements a simple partial evaluator that recursively reduces a given
  * {@link com.oracle.graal.nodes.calc.FloatingNode} into a simpler one based on the current state.
  * Such evaluator comes handy when visiting a {@link com.oracle.graal.nodes.FixedNode} N, just
- * before updating the state for N. At the pre-state, an {@link EquationalReasoner}
- * can be used to reduce N's inputs (actually only those inputs of Value and
- * Condition {@link com.oracle.graal.graph.InputType InputType}). For an explanation of where it's
- * warranted to replace "old input" with "reduced input", see the inline comments in method
+ * before updating the state for N. At the pre-state, an {@link EquationalReasoner} can be used to
+ * reduce N's inputs (actually only those inputs of Value and Condition
+ * {@link com.oracle.graal.graph.InputType InputType}). For an explanation of where it's warranted
+ * to replace "old input" with "reduced input", see the inline comments in method
  * {@link EquationalReasoner#deverbosify(com.oracle.graal.graph.Node n) deverbosify(Node n)}
  * </p>
  *
