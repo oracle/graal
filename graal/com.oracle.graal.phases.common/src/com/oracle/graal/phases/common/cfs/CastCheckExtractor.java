@@ -42,7 +42,7 @@ class CastCheckExtractor {
         this.subject = subject;
     }
 
-    static CastCheckExtractor extractCastCheckInfo(LogicNode x, LogicNode y) {
+    private static CastCheckExtractor extractCastCheckInfo(LogicNode x, LogicNode y) {
         if (x instanceof IsNullNode) {
             IsNullNode isNull = (IsNullNode) x;
             ValueNode subject = isNull.object();
@@ -77,7 +77,7 @@ class CastCheckExtractor {
     /**
      * Porcelain method.
      */
-    public static boolean isInstanceOfCheckOn(LogicNode cond, ValueNode subject) {
+    static boolean isInstanceOfCheckOn(LogicNode cond, ValueNode subject) {
         if (!(cond instanceof InstanceOfNode)) {
             return false;
         }
