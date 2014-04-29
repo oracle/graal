@@ -896,13 +896,16 @@ public final class SchedulePhase extends Phase {
     private List<ScheduledNode> sortNodesWithinBlockLatest(Block b, NodeBitMap visited, NodeBitMap beforeLastLocation) {
         List<ScheduledNode> instructions = blockToNodesMap.get(b);
         List<ScheduledNode> sortedInstructions = new ArrayList<>(blockToNodesMap.get(b).size() + 2);
-        List<FloatingReadNode> reads = new ArrayList<>();
+        List<FloatingReadNode> reads = null;
 
         if (memsched == MemoryScheduling.OPTIMAL) {
             for (ScheduledNode i : instructions) {
                 if (i instanceof FloatingReadNode) {
                     FloatingReadNode frn = (FloatingReadNode) i;
                     if (frn.location().getLocationIdentity() != FINAL_LOCATION) {
+                        if (reads == null) {
+                            reads = new ArrayList<>();
+                        }
                         reads.add(frn);
                         if (nodesFor(b).contains(frn.getLastLocationAccess())) {
                             assert !beforeLastLocation.isMarked(frn);
@@ -915,7 +918,7 @@ public final class SchedulePhase extends Phase {
         for (ScheduledNode i : instructions) {
             addToLatestSorting(b, i, sortedInstructions, visited, reads, beforeLastLocation);
         }
-        assert reads.size() == 0 : "not all reads are scheduled";
+        assert reads == null || reads.size() == 0 : "not all reads are scheduled";
 
         // Make sure that last node gets really last (i.e. when a frame state successor hangs off
         // it).
@@ -946,7 +949,7 @@ public final class SchedulePhase extends Phase {
 
     private void processKillLocation(Block b, Node node, LocationIdentity identity, List<ScheduledNode> sortedInstructions, NodeBitMap visited, List<FloatingReadNode> reads,
                     NodeBitMap beforeLastLocation) {
-        for (FloatingReadNode frn : new ArrayList<>(reads)) { // TODO: change to iterator?
+        for (FloatingReadNode frn : new ArrayList<>(reads)) {
             LocationIdentity readLocation = frn.location().getLocationIdentity();
             assert readLocation != FINAL_LOCATION;
             if (frn.getLastLocationAccess() == node) {
@@ -1004,7 +1007,7 @@ public final class SchedulePhase extends Phase {
             }
         }
 
-        if (memsched == MemoryScheduling.OPTIMAL && reads.size() != 0) {
+        if (memsched == MemoryScheduling.OPTIMAL && reads != null) {
             if (i instanceof MemoryCheckpoint.Single) {
                 LocationIdentity identity = ((MemoryCheckpoint.Single) i).getLocationIdentity();
                 processKillLocation(b, i, identity, sortedInstructions, visited, reads, beforeLastLocation);
