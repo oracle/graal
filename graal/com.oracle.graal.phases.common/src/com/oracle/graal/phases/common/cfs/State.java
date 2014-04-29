@@ -685,16 +685,6 @@ public final class State extends MergeableState<State> implements Cloneable {
             } else {
                 trackIO(object, instanceOf.type(), anchor);
             }
-        } else {
-            if (knownToConform(object, instanceOf.type())) {
-                impossiblePath(); // TODO this used to be a bug
-                return;
-            }
-            if (instanceOf.type().isInterface()) {
-                if (!knownNotToConform(object, instanceOf.type())) {
-                    addFactPrimordial(instanceOf, falseFacts, anchor);
-                }
-            }
         }
     }
 
