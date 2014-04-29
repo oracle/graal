@@ -136,7 +136,7 @@ public class FlowSensitiveReduction extends FixedGuardReduction {
     }
 
     private static boolean isAliveWithoutUsages(FloatingNode node) {
-        return node.isAlive() && node.usages().isEmpty();
+        return node.isAlive() && FlowUtil.lacksUsages(node);
     }
 
     private void registerControlSplit(Node pred, BeginNode begin) {
