@@ -24,10 +24,18 @@
  */
 package com.oracle.truffle.api.instrument;
 
+import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.frame.*;
+import com.oracle.truffle.api.nodes.*;
 
 /**
- * Visualization services for guest language and Truffle information.
+ * Visualization services for the benefit of {@link Instrumentation}-based tools, possibly
+ * specialized for each guest language and possibly specialized for relevant information from the
+ * underlying Truffle implementation.
+ * <p>
+ * <strong>Disclaimer:</strong> experimental interface under development.
+ *
+ * @See Instrumentation
  */
 public interface Visualizer {
 
@@ -36,6 +44,21 @@ public interface Visualizer {
      * language implementation.
      */
     ASTPrinter getASTPrinter();
+
+    /**
+     * A short description of a source location in terms of source + line number.
+     */
+    String displaySourceLocation(Node node);
+
+    /**
+     * Describes the name of the method containing a node.
+     */
+    String displayMethodName(Node node);
+
+    /**
+     * The name of the method.
+     */
+    String displayCallTargetName(CallTarget callTarget);
 
     /**
      * Converts a value in the guest language to a display string.

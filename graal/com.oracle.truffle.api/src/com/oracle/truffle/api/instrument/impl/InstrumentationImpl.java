@@ -30,10 +30,6 @@ import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.instrument.*;
 import com.oracle.truffle.api.source.*;
 
-/**
- * @author mlvdv
- *
- */
 public final class InstrumentationImpl implements Instrumentation {
 
     private final ExecutionContext context;
@@ -80,7 +76,7 @@ public final class InstrumentationImpl implements Instrumentation {
         if (probe != null) {
             return probe;
         }
-        probe = InstrumentationNodeImpl.createProbe(this, sourceSection, eventListener);
+        probe = InstrumentationNode.createProbe(this, sourceSection, eventListener);
 
         // Register new probe by unique SourceSection
         srcToProbe.put(sourceSection, probe);

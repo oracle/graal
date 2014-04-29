@@ -49,12 +49,12 @@ public interface ExecutionContext {
     /**
      * Gets access to AST instrumentation services.
      */
-    Instrumentation instrumentation();
+    Instrumentation getInstrumentation();
 
     /**
      * Access to information visualization services for the specific language.
      */
-    Visualizer visualizer();
+    Visualizer getVisualizer();
 
     /**
      * Add instrumentation to subsequently constructed Truffle ASTs for the guest language; every

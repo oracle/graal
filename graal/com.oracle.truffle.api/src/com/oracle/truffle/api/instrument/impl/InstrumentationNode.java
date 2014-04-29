@@ -36,9 +36,9 @@ import com.oracle.truffle.api.nodes.*;
  * <p>
  * Coordinates propagation of Truffle AST {@link ExecutionEvents}.
  */
-public abstract class InstrumentationNodeImpl extends Node implements ExecutionEvents {
+public abstract class InstrumentationNode extends Node implements ExecutionEvents {
 
-    // TODO (mlvdv) This is a pretty awkward design.
+    // TODO (mlvdv) This is a pretty awkward design; it is a priority to revise it.
 
     /**
      * Creates a new {@link Probe}, presumed to be unique to a particular {@linkplain SourceSection}
@@ -54,23 +54,23 @@ public abstract class InstrumentationNodeImpl extends Node implements ExecutionE
     /**
      * Next in chain.
      */
-    @Child protected InstrumentationNodeImpl next;
+    @Child protected InstrumentationNode next;
 
-    protected InstrumentationNodeImpl() {
+    protected InstrumentationNode() {
     }
 
     /**
      * @return the instance of {@link Probe} to which this instrument is attached.
      */
     public Probe getProbe() {
-        final InstrumentationNodeImpl parent = (InstrumentationNodeImpl) getParent();
+        final InstrumentationNode parent = (InstrumentationNode) getParent();
         return parent == null ? null : parent.getProbe();
     }
 
     /**
      * Add a probe to the end of this probe chain.
      */
-    void internalAddInstrument(InstrumentationNodeImpl newInstrument) {
+    private void internalAddInstrument(Instrument newInstrument) {
         if (next == null) {
             this.next = insert(newInstrument);
         } else {
@@ -78,7 +78,7 @@ public abstract class InstrumentationNodeImpl extends Node implements ExecutionE
         }
     }
 
-    void internalRemoveInstrument(InstrumentationNodeImpl oldInstrument) {
+    private void internalRemoveInstrument(Instrument oldInstrument) {
         if (next == null) {
             throw new RuntimeException("Couldn't find probe to remove: " + oldInstrument);
         } else if (next == oldInstrument) {
@@ -98,7 +98,7 @@ public abstract class InstrumentationNodeImpl extends Node implements ExecutionE
      * has changed that requires deoptimization.
      */
     @CompilerDirectives.SlowPath
-    protected void notifyProbeChanged(InstrumentationNodeImpl instrument) {
+    protected void notifyProbeChanged(Instrument instrument) {
         final ProbeImpl probe = (ProbeImpl) getProbe();
         probe.notifyProbeChanged(instrument);
     }
@@ -188,7 +188,7 @@ public abstract class InstrumentationNodeImpl extends Node implements ExecutionE
     }
 
     /**
-     * Holder of a chain of {@linkplain InstrumentationNodeImpl instruments}: manages the
+     * Holder of a chain of {@linkplain InstrumentationNode instruments}: manages the
      * {@link Assumption} that none of the instruments have changed since last checked.
      * <p>
      * An instance is intended to be shared by every clone of the AST node with which it is
@@ -197,7 +197,7 @@ public abstract class InstrumentationNodeImpl extends Node implements ExecutionE
      * May be categorized by one or more {@linkplain PhylumTag tags}, signifying information useful
      * for instrumentation about its AST location(s).
      */
-    private static final class ProbeImpl extends InstrumentationNodeImpl implements Probe {
+    private static final class ProbeImpl extends InstrumentationNode implements Probe {
 
         final InstrumentationImpl instrumentation;
 
@@ -232,7 +232,7 @@ public abstract class InstrumentationNodeImpl extends Node implements ExecutionE
         }
 
         @Override
-        protected void notifyProbeChanged(InstrumentationNodeImpl instrument) {
+        protected void notifyProbeChanged(Instrument instrument) {
             probeUnchanged.invalidate();
             probeUnchanged = Truffle.getRuntime().createAssumption();
         }
@@ -273,16 +273,14 @@ public abstract class InstrumentationNodeImpl extends Node implements ExecutionE
         @CompilerDirectives.SlowPath
         public void addInstrument(Instrument instrument) {
             probeUnchanged.invalidate();
-            final InstrumentationNodeImpl instrumentImpl = (InstrumentationNodeImpl) instrument;
-            super.internalAddInstrument(instrumentImpl);
+            super.internalAddInstrument(instrument);
             probeUnchanged = Truffle.getRuntime().createAssumption();
         }
 
         @CompilerDirectives.SlowPath
         public void removeInstrument(Instrument instrument) {
             probeUnchanged.invalidate();
-            final InstrumentationNodeImpl instrumentImpl = (InstrumentationNodeImpl) instrument;
-            super.internalRemoveInstrument(instrumentImpl);
+            super.internalRemoveInstrument(instrument);
             probeUnchanged = Truffle.getRuntime().createAssumption();
         }
 

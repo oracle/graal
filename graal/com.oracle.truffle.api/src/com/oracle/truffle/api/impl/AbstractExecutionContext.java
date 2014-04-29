@@ -44,11 +44,11 @@ public abstract class AbstractExecutionContext implements ExecutionContext {
         return sourceManager;
     }
 
-    public final Instrumentation instrumentation() {
+    public final Instrumentation getInstrumentation() {
         return instrumentation;
     }
 
-    public Visualizer visualizer() {
+    public Visualizer getVisualizer() {
         return visualizer;
     }
 
