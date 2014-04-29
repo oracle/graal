@@ -288,7 +288,7 @@ public class DefaultHotSpotLoweringProvider implements HotSpotLoweringProvider {
         return stamp;
     }
 
-    private ValueNode implicitLoadConvert(StructuredGraph graph, Kind kind, ValueNode value) {
+    public ValueNode implicitLoadConvert(StructuredGraph graph, Kind kind, ValueNode value) {
         return implicitLoadConvert(graph, kind, value, true);
     }
 
@@ -334,7 +334,7 @@ public class DefaultHotSpotLoweringProvider implements HotSpotLoweringProvider {
         }
     }
 
-    private ValueNode implicitStoreConvert(StructuredGraph graph, Kind kind, ValueNode value) {
+    public ValueNode implicitStoreConvert(StructuredGraph graph, Kind kind, ValueNode value) {
         return implicitStoreConvert(graph, kind, value, true);
     }
 
