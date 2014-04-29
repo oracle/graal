@@ -26,6 +26,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.FloatingNode;
+import com.oracle.graal.nodes.calc.IsNullNode;
 import com.oracle.graal.nodes.extended.LoadHubNode;
 import com.oracle.graal.nodes.extended.NullCheckNode;
 import com.oracle.graal.nodes.java.*;
@@ -37,6 +38,7 @@ import com.oracle.graal.phases.tiers.PhaseContext;
 
 import java.lang.reflect.Modifier;
 
+import static com.oracle.graal.api.meta.DeoptimizationAction.InvalidateReprofile;
 import static com.oracle.graal.api.meta.DeoptimizationReason.*;
 
 /**
@@ -437,6 +439,8 @@ public class FlowSensitiveReduction extends FixedGuardReduction {
      * <ul>
      * <li>is known to be null, an unconditional deopt is added.</li>
      * <li>is known to be non-null, the NullCheckNode is removed.</li>
+     * <li>otherwise, the NullCheckNode is lowered to a FixedGuardNode which then allows using it as
+     * anchor for state-tracking.</li>
      * </ul>
      *
      * <p>
@@ -459,7 +463,17 @@ public class FlowSensitiveReduction extends FixedGuardReduction {
             graph.removeFixed(ncn);
             return;
         }
-        // TODO ANCHOR NEEDED: state.trackNN(object, ncn);
+        /*
+         * Lower the NullCheckNode to a FixedGuardNode which then allows using it as anchor for
+         * state-tracking. TODO the assumption here is that the code emitted for the resulting
+         * FixedGuardNode is as efficient as for NullCheckNode.
+         */
+        IsNullNode isNN = graph.unique(new IsNullNode(object));
+        reasoner.added.add(isNN);
+        FixedGuardNode nullCheck = graph.add(new FixedGuardNode(isNN, UnreachedCode, InvalidateReprofile, true));
+        graph.replaceFixedWithFixed(ncn, nullCheck);
+
+        state.trackNN(object, nullCheck);
     }
 
     /**
