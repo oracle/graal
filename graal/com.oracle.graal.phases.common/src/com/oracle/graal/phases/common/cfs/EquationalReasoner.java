@@ -581,7 +581,7 @@ public final class EquationalReasoner {
 
         ValueNode result;
         if (object instanceof ValueProxy) {
-            result = downcastedValueProxy((ValueProxy) object, w);
+            result = downcastValueProxy((ValueProxy) object, w);
         } else {
             result = downcastedUtil(object, w);
         }
@@ -733,7 +733,7 @@ public final class EquationalReasoner {
      *</p>
      */
     // @formatter:on
-    private ValueNode downcastedValueProxy(ValueProxy proxy, Witness w) {
+    private ValueNode downcastValueProxy(ValueProxy proxy, Witness w) {
         assert FlowUtil.hasLegalObjectStamp((ValueNode) proxy);
         assert FlowUtil.hasLegalObjectStamp((proxy).getOriginalNode());
         assert GraphUtil.unproxify((ValueNode) proxy) == GraphUtil.unproxify(proxy.getOriginalNode());
@@ -741,13 +741,13 @@ public final class EquationalReasoner {
         assert GraphUtil.unproxify((ValueNode) proxy) == GraphUtil.unproxify((proxy).getOriginalNode());
 
         if (proxy instanceof PiNode) {
-            return downcastedPiNodeOrPiArrayNode((PiNode) proxy, w);
+            return downcastPiNodeOrPiArrayNode((PiNode) proxy, w);
         } else if (proxy instanceof GuardingPiNode) {
-            return downcastedGuardingPiNode((GuardingPiNode) proxy, w);
+            return downcastGuardingPiNode((GuardingPiNode) proxy, w);
         } else if (proxy instanceof TypeProfileProxyNode) {
-            return downcastedTypeProfileProxyNode((TypeProfileProxyNode) proxy);
+            return downcastTypeProfileProxyNode((TypeProfileProxyNode) proxy);
         } else if (proxy instanceof CheckCastNode) {
-            return downcastedCheckCastNode((CheckCastNode) proxy, w);
+            return downcastCheckCastNode((CheckCastNode) proxy, w);
         } else if (proxy instanceof ProxyNode || proxy instanceof GuardedValueNode) {
             // TODO scaladacapo return downcastedUtil((ValueNode) proxy, w);
             return (ValueNode) proxy;
@@ -781,9 +781,9 @@ public final class EquationalReasoner {
      * GuardingPiNode is clear: devirtualizing the `intValue()` callsite.
      * </p>
      *
-     * @see #downcastedValueProxy
+     * @see #downcastValueProxy
      */
-    public ValueNode downcastedGuardingPiNode(GuardingPiNode envelope, Witness w) {
+    public ValueNode downcastGuardingPiNode(GuardingPiNode envelope, Witness w) {
         assert envelope != w.guard().asNode() : "The stamp of " + envelope + " would lead to downcasting with that very same GuardingPiNode as guard.";
         return downcastedUtil(envelope, w);
     }
@@ -813,9 +813,9 @@ public final class EquationalReasoner {
      * PiNode.canonical()} does). Not clear the benefits of duplicating that logic here.
      * </p>
      *
-     * @see #downcastedValueProxy
+     * @see #downcastValueProxy
      */
-    private ValueNode downcastedPiNodeOrPiArrayNode(PiNode envelope, Witness w) {
+    private ValueNode downcastPiNodeOrPiArrayNode(PiNode envelope, Witness w) {
         return downcastedUtil(envelope, w);
     }
 
@@ -829,9 +829,9 @@ public final class EquationalReasoner {
      * Otherwise returns the unmodified argument.
      * </p>
      *
-     * @see #downcastedValueProxy
+     * @see #downcastValueProxy
      */
-    private ValueNode downcastedTypeProfileProxyNode(TypeProfileProxyNode envelope) {
+    private ValueNode downcastTypeProfileProxyNode(TypeProfileProxyNode envelope) {
         ValueNode payload = envelope.getOriginalNode();
         ValueNode d = downcast(payload);
         if (payload != d) {
@@ -860,7 +860,7 @@ public final class EquationalReasoner {
      * the downcasted scrutinee does not conform to the checkCast's target-type.
      * </p>
      */
-    private ValueNode downcastedCheckCastNode(CheckCastNode checkCast, Witness w) {
+    private ValueNode downcastCheckCastNode(CheckCastNode checkCast, Witness w) {
 
         final ResolvedJavaType toType = checkCast.type();
 

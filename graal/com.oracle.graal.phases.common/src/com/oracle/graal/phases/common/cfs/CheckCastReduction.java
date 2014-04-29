@@ -60,7 +60,7 @@ public abstract class CheckCastReduction extends GuardingPiReduction {
      * This method turns non-redundant {@link com.oracle.graal.nodes.java.CheckCastNode}s into
      * {@link com.oracle.graal.nodes.GuardingPiNode}s. Once such lowering has been performed (during
      * run N of this phase) follow-up runs attempt to further simplify the resulting node, see
-     * {@link EquationalReasoner#downcastedGuardingPiNode(com.oracle.graal.nodes.GuardingPiNode, Witness)}
+     * {@link EquationalReasoner#downcastGuardingPiNode(com.oracle.graal.nodes.GuardingPiNode, Witness)}
      * and {@link #visitGuardingPiNode(com.oracle.graal.nodes.GuardingPiNode)}
      * </p>
      *
