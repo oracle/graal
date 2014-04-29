@@ -222,7 +222,7 @@ public abstract class GuardingPiReduction extends BaseReduction {
             assert io.type() != null;
             Witness w = state.typeInfo(payload);
             if (w != null && w.isNonNull() && isEqualOrMorePrecise(w.type(), io.type())) {
-                ValueNode d = reasoner.downcasted(payload);
+                ValueNode d = reasoner.downcast(payload);
                 removeGuardingPiNode(envelope, d);
                 return true;
             }
@@ -318,7 +318,7 @@ public abstract class GuardingPiReduction extends BaseReduction {
             warnAboutOutOfTheBlueGuardingPiNode(envelope);
         }
 
-        ValueNode d = reasoner.downcasted(payload);
+        ValueNode d = reasoner.downcast(payload);
         if (d == null) {
             return false;
         }

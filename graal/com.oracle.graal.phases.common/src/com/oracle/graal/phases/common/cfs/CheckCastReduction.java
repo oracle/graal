@@ -121,7 +121,7 @@ public abstract class CheckCastReduction extends GuardingPiReduction {
 
         if (w == null) {
             /*
-             * If there's no witness, attempting `downcasted(subject)` is futile.
+             * If there's no witness, attempting `downcast(subject)` is futile.
              */
             visitCheckCastNodeLackingWitness(checkCast);
             return;
@@ -146,7 +146,7 @@ public abstract class CheckCastReduction extends GuardingPiReduction {
         if (toType.isInterface()) {
             return;
         }
-        assert reasoner.downcasted(subject) == subject;
+        assert reasoner.downcast(subject) == subject;
         lowerCheckCastAnchorFriendlyWay(checkCast, subject);
     }
 
@@ -288,18 +288,18 @@ public abstract class CheckCastReduction extends GuardingPiReduction {
 
         ValueNode subject;
         if (checkCast.object() instanceof CheckCastNode) {
-            subject = reasoner.downcasted(checkCast);
+            subject = reasoner.downcast(checkCast);
             if (subject == checkCast) {
-                subject = reasoner.downcasted(checkCast.object());
+                subject = reasoner.downcast(checkCast.object());
             }
         } else {
-            subject = reasoner.downcasted(checkCast.object());
+            subject = reasoner.downcast(checkCast.object());
         }
 
         ObjectStamp subjectStamp = (ObjectStamp) subject.stamp();
         ResolvedJavaType subjectType = subjectStamp.type();
 
-        // TODO move this check to downcasted()
+        // TODO move this check to downcast()
         assert !precisionLoss(checkCast.object(), subject);
 
         /*
@@ -316,7 +316,7 @@ public abstract class CheckCastReduction extends GuardingPiReduction {
         }
 
         /*
-         * At this point, `downcasted()` might or might not have delivered a more precise value. If
+         * At this point, `downcast()` might or might not have delivered a more precise value. If
          * more precise, it wasn't precise enough to conform to `toType`. Even so, for the
          * `toType.isInterface()` case (dealt with below) we'll replace the checkCast's input with
          * that value (its class-stamp being more precise than the original).

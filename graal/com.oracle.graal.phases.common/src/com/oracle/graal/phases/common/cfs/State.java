@@ -112,7 +112,7 @@ public final class State extends MergeableState<State> implements Cloneable {
      * standardize on one of them, and drop the other? Because the {@link #typeRefinements} eagerly
      * aggregates information for easier querying afterwards, e.g. when producing a "downcasted"
      * value (which involves building a {@link com.oracle.graal.nodes.PiNode}, see
-     * {@link EquationalReasoner#downcasted(com.oracle.graal.nodes.ValueNode) downcasted()}
+     * {@link EquationalReasoner#downcast(com.oracle.graal.nodes.ValueNode) downcast()}
      * </p>
      *
      */
