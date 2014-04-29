@@ -197,18 +197,13 @@ public class FlowSensitiveReduction extends FixedGuardReduction {
                 // `begin` denotes the default case of the TypeSwitchNode
                 return;
             }
-            // preferable would be trackExact, but not there yet
-            state.addNullness(false, loadHub.object(), begin);
             if (state.knownNotToConform(loadHub.object(), type)) {
                 postponedDeopts.addDeoptAfter(begin, UnreachedCode);
                 state.impossiblePath();
                 return;
             }
-            if (type.isInterface()) {
-                state.trackNN(loadHub.object(), begin);
-            } else {
-                state.trackIO(loadHub.object(), type, begin);
-            }
+            // it's unwarranted to assume loadHub.object() to be non-null
+            // it also seems unwarranted state.trackCC(loadHub.object(), type, begin);
         }
     }
 
