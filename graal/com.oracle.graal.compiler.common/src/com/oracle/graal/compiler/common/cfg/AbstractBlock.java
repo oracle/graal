@@ -30,6 +30,8 @@ public interface AbstractBlock<T extends AbstractBlock<T>> {
 
     Loop<T> getLoop();
 
+    void setLoop(Loop<T> loop);
+
     int getLoopDepth();
 
     boolean isLoopHeader();

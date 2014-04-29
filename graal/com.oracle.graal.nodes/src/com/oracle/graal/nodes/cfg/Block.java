@@ -56,6 +56,10 @@ public final class Block extends AbstractBlockBase<Block> {
         return loop;
     }
 
+    public void setLoop(Loop<Block> loop) {
+        this.loop = loop;
+    }
+
     public int getLoopDepth() {
         return loop == null ? 0 : loop.getDepth();
     }

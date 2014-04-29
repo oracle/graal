@@ -154,6 +154,10 @@ public final class BciBlockMapping {
             return loop;
         }
 
+        public void setLoop(Loop<BciBlock> loop) {
+            this.loop = loop;
+        }
+
         public int getLoopDepth() {
             return Long.bitCount(loops);
         }
