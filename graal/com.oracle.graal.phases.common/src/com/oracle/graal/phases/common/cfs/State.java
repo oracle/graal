@@ -283,6 +283,8 @@ public final class State extends MergeableState<State> implements Cloneable {
         if (isUnreachable) {
             typeRefinements.clear();
             knownNull.clear();
+            trueFacts.clear();
+            falseFacts.clear();
             return true;
         }
 
@@ -789,6 +791,7 @@ public final class State extends MergeableState<State> implements Cloneable {
      * @return true iff `value` may lose dependency not covered by `anchor`.
      */
     public static boolean isDependencyTainted(ValueNode value, GuardingNode anchor) {
+        assert anchor instanceof FixedNode;
         if (value instanceof ValueProxy) {
             if (value instanceof GuardedNode) {
                 GuardedNode gn = (GuardedNode) value;
@@ -814,6 +817,8 @@ public final class State extends MergeableState<State> implements Cloneable {
         isUnreachable = false;
         typeRefinements.clear();
         knownNull.clear();
+        trueFacts.clear();
+        falseFacts.clear();
     }
 
 }
