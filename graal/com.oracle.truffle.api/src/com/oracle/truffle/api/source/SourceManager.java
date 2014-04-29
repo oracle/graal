@@ -70,7 +70,7 @@ public final class SourceManager {
     /**
      * Gets the canonical representation of a source file, whose contents will be read lazily and
      * then cached.
-     * 
+     *
      * @param reset forces any existing {@link Source} cache to be cleared, forcing a re-read
      */
     public Source get(String fileName, boolean reset) {
@@ -227,6 +227,11 @@ public final class SourceManager {
         }
 
         @Override
+        public String getShortName() {
+            return name;
+        }
+
+        @Override
         public String getCode() {
             return code;
         }
@@ -289,6 +294,11 @@ public final class SourceManager {
         @Override
         public String getName() {
             return name;
+        }
+
+        @Override
+        public String getShortName() {
+            return file.getName();
         }
 
         @Override
