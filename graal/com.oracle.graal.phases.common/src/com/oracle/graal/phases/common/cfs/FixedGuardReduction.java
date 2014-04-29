@@ -104,7 +104,7 @@ public abstract class FixedGuardReduction extends CheckCastReduction {
             final IsNullNode isNullNode = (IsNullNode) cond;
             if (isTrue) {
                 // grab an anchor attesting nullness
-                final GuardingNode replacement = reasoner.untrivialNullAnchor(isNullNode.object());
+                final GuardingNode replacement = reasoner.nonTrivialNullAnchor(isNullNode.object());
                 if (replacement != null) {
                     removeFixedGuardNode(f, replacement);
                     return;
@@ -152,7 +152,7 @@ public abstract class FixedGuardReduction extends CheckCastReduction {
             } else {
                 // grab an anchor attesting not-instanceof
                 // (1 of 2) attempt determining nullness
-                final GuardingNode nullGuard = reasoner.untrivialNullAnchor(iOf.object());
+                final GuardingNode nullGuard = reasoner.nonTrivialNullAnchor(iOf.object());
                 if (nullGuard != null) {
                     removeFixedGuardNode(f, nullGuard);
                     return;
