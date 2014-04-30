@@ -29,7 +29,6 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
-import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.truffle.nodes.asserts.*;
 import com.oracle.truffle.api.*;
 
@@ -62,7 +61,7 @@ public class UnsafeTypeCastMacroNode extends NeverPartOfCompilationNode implemen
             }
             Stamp stamp = StampFactory.declared(lookupJavaType, nonNullArgument.asConstant().asInt() != 0);
             ConditionAnchorNode valueAnchorNode = graph().add(new ConditionAnchorNode(CompareNode.createCompareNode(graph(), Condition.EQ, conditionArgument, ConstantNode.forBoolean(true, graph()))));
-            UnsafeCastNode piCast = graph().unique(new UnsafeCastNode(objectArgument, stamp, valueAnchorNode));
+            PiNode piCast = graph().unique(new PiNode(objectArgument, stamp, valueAnchorNode));
             this.replaceAtUsages(piCast);
             return valueAnchorNode;
         }
