@@ -34,7 +34,6 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.calc.*;
-import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.util.*;
@@ -43,7 +42,7 @@ import com.oracle.graal.nodes.util.*;
  * The {@code IfNode} represents a branch that can go one of two directions depending on the outcome
  * of a comparison.
  */
-public final class IfNode extends ControlSplitNode implements Simplifiable, LIRLowerable, MemoryArithmeticLIRLowerable {
+public final class IfNode extends ControlSplitNode implements Simplifiable, LIRLowerable {
 
     @Successor private BeginNode trueSuccessor;
     @Successor private BeginNode falseSuccessor;
@@ -129,11 +128,6 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
     @Override
     public void generate(NodeLIRBuilderTool gen) {
         gen.emitIf(this);
-    }
-
-    @Override
-    public boolean generate(MemoryArithmeticLIRLowerer gen, Access access) {
-        return gen.emitIfMemory(this, access);
     }
 
     @Override

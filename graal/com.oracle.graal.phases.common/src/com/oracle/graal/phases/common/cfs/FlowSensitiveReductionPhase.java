@@ -43,7 +43,9 @@ public class FlowSensitiveReductionPhase extends BasePhase<PhaseContext> {
     @Override
     protected final void run(StructuredGraph graph, PhaseContext context) {
         try (Debug.Scope s = Debug.scope("FlowSensitiveReduction")) {
+            Debug.dump(graph, "FlowSensitiveReduction initial");
             new FlowSensitiveReduction(graph.start(), new State(), context).apply();
+            Debug.dump(graph, "FlowSensitiveReduction done");
         } catch (Throwable e) {
             throw Debug.handle(e);
         }

@@ -118,7 +118,7 @@ public class Witness implements Cloneable {
 
     /**
      * Counterpart to {@link #asStamp()}
-     * */
+     */
     public Witness(ObjectStamp stamp, GuardingNode anchor) {
         assert stamp.isLegal();
         assert anchor != null;
@@ -381,7 +381,7 @@ public class Witness implements Cloneable {
     /**
      * Shallow cloning is enough because what's reachable from {@link Witness} is primitive or used
      * read-only when merging states.
-     * */
+     */
     @Override
     public Witness clone() {
         return new Witness(this);
@@ -389,14 +389,14 @@ public class Witness implements Cloneable {
 
     /**
      * @return null for a clueless method, non-null otherwise.
-     * */
+     */
     GuardingNode guard() {
         return gn;
     }
 
     /**
      * Merges another state into this one, by mutating this object, the other is left as is.
-     * */
+     */
     public void merge(Witness that, MergeNode merge) {
         assert this.repOK();
         assert that.repOK();

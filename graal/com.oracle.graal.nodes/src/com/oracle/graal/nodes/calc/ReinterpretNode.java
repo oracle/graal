@@ -29,7 +29,6 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 
 /**
@@ -37,7 +36,7 @@ import com.oracle.graal.nodes.spi.*;
  * of a primitive value to some other incompatible stamp. The new stamp must have the same width as
  * the old stamp.
  */
-public class ReinterpretNode extends FloatingNode implements Canonicalizable, ArithmeticLIRLowerable, MemoryArithmeticLIRLowerable {
+public class ReinterpretNode extends FloatingNode implements Canonicalizable, ArithmeticLIRLowerable {
 
     @Input private ValueNode value;
 
@@ -107,15 +106,6 @@ public class ReinterpretNode extends FloatingNode implements Canonicalizable, Ar
     public void generate(NodeMappableLIRBuilder builder, ArithmeticLIRGenerator gen) {
         PlatformKind kind = gen.getPlatformKind(stamp());
         builder.setResult(this, gen.emitReinterpret(kind, builder.operand(value())));
-    }
-
-    @Override
-    public boolean generate(MemoryArithmeticLIRLowerer gen, Access access) {
-        Value result = gen.emitReinterpretMemory(stamp(), access);
-        if (result != null) {
-            gen.setResult(this, result);
-        }
-        return result != null;
     }
 
     public static ValueNode reinterpret(Kind toKind, ValueNode value) {

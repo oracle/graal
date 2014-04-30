@@ -72,7 +72,7 @@ public abstract class BasePhase<C> {
         try (TimerCloseable a = phaseTimer.start(); Scope s = Debug.scope(getClass(), this)) {
             BasePhase.this.run(graph, context);
             phaseMetric.increment();
-            if (dumpGraph) {
+            if (dumpGraph && Debug.isDumpEnabled()) {
                 Debug.dump(graph, "After phase %s", getName());
             }
             assert graph.verify();
@@ -81,13 +81,17 @@ public abstract class BasePhase<C> {
         }
     }
 
+    protected CharSequence createName() {
+        String s = BasePhase.this.getClass().getSimpleName();
+        if (s.endsWith("Phase")) {
+            s = s.substring(0, s.length() - "Phase".length());
+        }
+        return s;
+    }
+
     public final CharSequence getName() {
         if (name == null) {
-            String s = BasePhase.this.getClass().getSimpleName();
-            if (s.endsWith("Phase")) {
-                s = s.substring(0, s.length() - "Phase".length());
-            }
-            name = s;
+            name = createName();
         }
         return name;
     }

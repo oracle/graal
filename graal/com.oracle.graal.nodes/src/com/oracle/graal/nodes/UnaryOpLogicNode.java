@@ -22,11 +22,10 @@
  */
 package com.oracle.graal.nodes;
 
-import com.oracle.graal.api.meta.ProfilingInfo.*;
-import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.api.meta.ProfilingInfo.TriState;
 import com.oracle.graal.nodes.spi.*;
 
-public abstract class UnaryOpLogicNode extends LogicNode implements LIRLowerable, MemoryArithmeticLIRLowerable {
+public abstract class UnaryOpLogicNode extends LogicNode implements LIRLowerable {
 
     @Input private ValueNode object;
 
@@ -48,10 +47,5 @@ public abstract class UnaryOpLogicNode extends LogicNode implements LIRLowerable
 
     @Override
     public void generate(NodeLIRBuilderTool gen) {
-    }
-
-    @Override
-    public boolean generate(MemoryArithmeticLIRLowerer gen, Access access) {
-        return false;
     }
 }

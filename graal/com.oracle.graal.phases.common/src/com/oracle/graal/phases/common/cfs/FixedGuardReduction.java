@@ -35,7 +35,7 @@ import com.oracle.graal.phases.tiers.PhaseContext;
  * </p>
  * 
  * @see #visitFixedGuardNode(com.oracle.graal.nodes.FixedGuardNode)
- * */
+ */
 public abstract class FixedGuardReduction extends CheckCastReduction {
 
     public FixedGuardReduction(FixedNode start, State initialState, PhaseContext context) {
@@ -104,7 +104,7 @@ public abstract class FixedGuardReduction extends CheckCastReduction {
             final IsNullNode isNullNode = (IsNullNode) cond;
             if (isTrue) {
                 // grab an anchor attesting nullness
-                final GuardingNode replacement = reasoner.untrivialNullAnchor(isNullNode.object());
+                final GuardingNode replacement = reasoner.nonTrivialNullAnchor(isNullNode.object());
                 if (replacement != null) {
                     removeFixedGuardNode(f, replacement);
                     return;
@@ -152,7 +152,7 @@ public abstract class FixedGuardReduction extends CheckCastReduction {
             } else {
                 // grab an anchor attesting not-instanceof
                 // (1 of 2) attempt determining nullness
-                final GuardingNode nullGuard = reasoner.untrivialNullAnchor(iOf.object());
+                final GuardingNode nullGuard = reasoner.nonTrivialNullAnchor(iOf.object());
                 if (nullGuard != null) {
                     removeFixedGuardNode(f, nullGuard);
                     return;
@@ -190,7 +190,7 @@ public abstract class FixedGuardReduction extends CheckCastReduction {
 
     /**
      * Porcelain method.
-     * */
+     */
     private void markFixedGuardNodeAlwaysFails(FixedGuardNode f) {
         metricFixedGuardNodeRemoved.increment();
         state.impossiblePath();
@@ -204,7 +204,7 @@ public abstract class FixedGuardReduction extends CheckCastReduction {
      * <p>
      * The `replacement` guard must be such that it implies the `old` guard.
      * </p>
-     * */
+     */
     private void removeFixedGuardNode(FixedGuardNode old, GuardingNode replacement) {
         if (replacement == null) {
             return;

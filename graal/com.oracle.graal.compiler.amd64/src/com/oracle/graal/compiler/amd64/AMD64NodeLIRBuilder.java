@@ -41,23 +41,11 @@ import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
-import com.oracle.graal.nodes.spi.*;
 
 public abstract class AMD64NodeLIRBuilder extends NodeLIRBuilder {
 
     public AMD64NodeLIRBuilder(StructuredGraph graph, LIRGeneratorTool gen) {
         super(graph, gen);
-    }
-
-    protected MemoryArithmeticLIRLowerer memoryPeephole;
-
-    @Override
-    public MemoryArithmeticLIRLowerer getMemoryLowerer() {
-        if (memoryPeephole == null) {
-            // Use the generic one
-            memoryPeephole = new AMD64MemoryPeephole(this);
-        }
-        return memoryPeephole;
     }
 
     @Override

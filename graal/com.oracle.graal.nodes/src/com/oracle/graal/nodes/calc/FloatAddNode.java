@@ -28,7 +28,6 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 
 @NodeInfo(shortName = "+")
@@ -84,14 +83,5 @@ public final class FloatAddNode extends FloatArithmeticNode implements Canonical
             }
         }
         return false;
-    }
-
-    @Override
-    public boolean generate(MemoryArithmeticLIRLowerer gen, Access access) {
-        Value result = gen.emitAddMemory(x(), y(), access);
-        if (result != null) {
-            gen.setResult(this, result);
-        }
-        return result != null;
     }
 }

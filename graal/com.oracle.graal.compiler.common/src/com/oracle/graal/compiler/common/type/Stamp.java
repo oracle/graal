@@ -26,7 +26,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.spi.*;
 
 /**
- * A stamp is the basis for a type system over the nodes in a graph.
+ * A stamp is the basis for a type system.
  */
 public abstract class Stamp {
 
@@ -57,13 +57,12 @@ public abstract class Stamp {
     public abstract PlatformKind getPlatformKind(PlatformKindTool tool);
 
     /**
-     * Returns the union of this stamp and the given stamp. Typically used to create stamps for
-     * {@link ValuePhiNode}s.
+     * Returns the union of this stamp and the given stamp. Typically used to create stamps for phi
+     * nodes.
      *
      * @param other The stamp that will enlarge this stamp.
      * @return The union of this stamp and the given stamp.
      */
-    @SuppressWarnings("javadoc")
     public abstract Stamp meet(Stamp other);
 
     /**

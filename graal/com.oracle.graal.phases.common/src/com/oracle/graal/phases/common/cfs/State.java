@@ -80,7 +80,7 @@ public final class State extends MergeableState<State> implements Cloneable {
      * </ul>
      * </p>
      *
-     * */
+     */
     int versionNr = 0;
 
     boolean isUnreachable = false;
@@ -91,7 +91,7 @@ public final class State extends MergeableState<State> implements Cloneable {
      * detect an "impossible path" could be shaved off.
      *
      * @see com.oracle.graal.phases.common.cfs.BaseReduction.PostponedDeopt
-     * */
+     */
     void impossiblePath() {
         isUnreachable = true;
         metricImpossiblePathDetected.increment();
@@ -112,10 +112,10 @@ public final class State extends MergeableState<State> implements Cloneable {
      * standardize on one of them, and drop the other? Because the {@link #typeRefinements} eagerly
      * aggregates information for easier querying afterwards, e.g. when producing a "downcasted"
      * value (which involves building a {@link com.oracle.graal.nodes.PiNode}, see
-     * {@link EquationalReasoner#downcasted(com.oracle.graal.nodes.ValueNode) downcasted()}
+     * {@link EquationalReasoner#downcast(com.oracle.graal.nodes.ValueNode) downcast()}
      * </p>
      *
-     * */
+     */
     private IdentityHashMap<ValueNode, Witness> typeRefinements;
 
     IdentityHashMap<ValueNode, GuardingNode> knownNull;
@@ -143,7 +143,7 @@ public final class State extends MergeableState<State> implements Cloneable {
 
     /**
      * @return A new list containing only those states that are reachable.
-     * */
+     */
     private static ArrayList<State> reachableStates(List<State> states) {
         ArrayList<State> result = new ArrayList<>(states);
         Iterator<State> iter = result.iterator();
@@ -275,14 +275,18 @@ public final class State extends MergeableState<State> implements Cloneable {
             return true;
         }
 
-        for (State state : withReachableStates) {
-            versionNr = Math.max(versionNr, state.versionNr) + 1;
-            isUnreachable &= state.isUnreachable;
+        for (State other : withReachableStates) {
+            versionNr = Math.max(versionNr, other.versionNr) + 1;
+            if (!other.isUnreachable) {
+                isUnreachable = false;
+            }
         }
 
         if (isUnreachable) {
             typeRefinements.clear();
             knownNull.clear();
+            trueFacts.clear();
+            falseFacts.clear();
             return true;
         }
 
@@ -346,7 +350,7 @@ public final class State extends MergeableState<State> implements Cloneable {
     }
 
     /**
-     * @retun null if no type-witness available for the argument, the witness otherwise.
+     * @return null if no type-witness available for the argument, the witness otherwise.
      */
     public Witness typeInfo(ValueNode object) {
         assert FlowUtil.hasLegalObjectStamp(object);
@@ -354,7 +358,7 @@ public final class State extends MergeableState<State> implements Cloneable {
     }
 
     /**
-     * @retun true iff the argument is known to stand for null.
+     * @return true iff the argument is known to stand for null.
      */
     public boolean isNull(ValueNode object) {
         assert FlowUtil.hasLegalObjectStamp(object);
@@ -377,7 +381,7 @@ public final class State extends MergeableState<State> implements Cloneable {
      * is-non-null set.
      * </p>
      *
-     * @retun true iff the argument is known to stand for non-null.
+     * @return true iff the argument is known to stand for non-null.
      */
     public boolean isNonNull(ValueNode object) {
         assert FlowUtil.hasLegalObjectStamp(object);
@@ -389,7 +393,7 @@ public final class State extends MergeableState<State> implements Cloneable {
     }
 
     /**
-     * @retun true iff the argument is known to stand for an object conforming to the given type.
+     * @return true iff the argument is known to stand for an object conforming to the given type.
      */
     public boolean knownToConform(ValueNode object, ResolvedJavaType to) {
         assert FlowUtil.hasLegalObjectStamp(object);
@@ -411,8 +415,8 @@ public final class State extends MergeableState<State> implements Cloneable {
     }
 
     /**
-     * @retun true iff the argument is known to stand for an object that definitely does not conform
-     *        to the given type.
+     * @return true iff the argument is known to stand for an object that definitely does not
+     *         conform to the given type.
      */
     public boolean knownNotToConform(ValueNode object, ResolvedJavaType to) {
         assert FlowUtil.hasLegalObjectStamp(object);
@@ -454,7 +458,7 @@ public final class State extends MergeableState<State> implements Cloneable {
      *    final: exact non-interface reference-type
      *    non-f: non-exact non-interface reference-type
      *
-     * @retun true iff the first argument is known not to conform to the second argument.
+     * @return true iff the first argument is known not to conform to the second argument.
      */
     // @formatter:on
     public static boolean knownNotToConform(ResolvedJavaType a, ResolvedJavaType b) {
@@ -514,6 +518,7 @@ public final class State extends MergeableState<State> implements Cloneable {
         if (isDependencyTainted(object, anchor)) {
             return false;
         }
+        assert anchor instanceof FixedNode;
         ResolvedJavaType stampType = StampTool.typeOrNull(object);
         if (stampType != null && !stampType.isInterface()) {
             return trackIO(object, stampType, anchor);
@@ -548,6 +553,7 @@ public final class State extends MergeableState<State> implements Cloneable {
         if (isDependencyTainted(object, anchor)) {
             return false;
         }
+        assert anchor instanceof FixedNode;
         Witness w = getOrElseAddTypeInfo(object);
         if (w.trackCC(observed, anchor)) {
             versionNr++;
@@ -573,6 +579,7 @@ public final class State extends MergeableState<State> implements Cloneable {
         if (isDependencyTainted(object, anchor)) {
             return false;
         }
+        assert anchor instanceof FixedNode;
         Witness w = getOrElseAddTypeInfo(object);
         if (w.trackIO(observed, anchor)) {
             versionNr++;
@@ -592,7 +599,7 @@ public final class State extends MergeableState<State> implements Cloneable {
      * case the state should be marked unreachable), the caller must take care of that.
      * </p>
      *
-     * */
+     */
     private void addFactPrimordial(LogicNode condition, IdentityHashMap<LogicNode, GuardingNode> to, GuardingNode anchor) {
         assert condition != null;
         if (!to.containsKey(condition)) {
@@ -608,9 +615,10 @@ public final class State extends MergeableState<State> implements Cloneable {
      * <li>track set-representative for equality classes determined by (chained) IntegerTestNode</li>
      * </ul>
      *
-     * */
+     */
     public void addFact(boolean isTrue, LogicNode condition, GuardingNode anchor) {
         assert anchor != null;
+        assert anchor instanceof FixedNode;
         assert !isUnreachable;
 
         if (condition instanceof LogicConstantNode) {
@@ -679,16 +687,6 @@ public final class State extends MergeableState<State> implements Cloneable {
             } else {
                 trackIO(object, instanceOf.type(), anchor);
             }
-        } else {
-            if (knownToConform(object, instanceOf.type())) {
-                impossiblePath(); // TODO this used to be a bug
-                return;
-            }
-            if (instanceOf.type().isInterface()) {
-                if (!knownNotToConform(object, instanceOf.type())) {
-                    addFactPrimordial(instanceOf, falseFacts, anchor);
-                }
-            }
         }
     }
 
@@ -699,6 +697,7 @@ public final class State extends MergeableState<State> implements Cloneable {
         if (isDependencyTainted(equals.y(), anchor)) {
             return;
         }
+        assert anchor instanceof FixedNode;
         ValueNode x = GraphUtil.unproxify(equals.x());
         ValueNode y = GraphUtil.unproxify(equals.y());
         if (isTrue) {
@@ -757,6 +756,7 @@ public final class State extends MergeableState<State> implements Cloneable {
         if (isDependencyTainted(value, anchor)) {
             return;
         }
+        assert anchor instanceof FixedNode;
         ValueNode original = GraphUtil.unproxify(value);
         boolean wasNull = isNull(original);
         boolean wasNonNull = isNonNull(original);
@@ -781,8 +781,9 @@ public final class State extends MergeableState<State> implements Cloneable {
     /**
      *
      * @return true iff `value` may lose dependency not covered by `anchor`.
-     * */
+     */
     public static boolean isDependencyTainted(ValueNode value, GuardingNode anchor) {
+        assert anchor instanceof FixedNode;
         if (value instanceof ValueProxy) {
             if (value instanceof GuardedNode) {
                 GuardedNode gn = (GuardedNode) value;
@@ -808,6 +809,8 @@ public final class State extends MergeableState<State> implements Cloneable {
         isUnreachable = false;
         typeRefinements.clear();
         knownNull.clear();
+        trueFacts.clear();
+        falseFacts.clear();
     }
 
 }

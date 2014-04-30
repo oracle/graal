@@ -42,7 +42,7 @@ import static com.oracle.graal.nodes.extended.BranchProbabilityNode.NOT_FREQUENT
  * </p>
  *
  * @see #visitCheckCastNode(com.oracle.graal.nodes.java.CheckCastNode)
- * */
+ */
 public abstract class CheckCastReduction extends GuardingPiReduction {
 
     public CheckCastReduction(FixedNode start, State initialState, PhaseContext context) {
@@ -60,14 +60,14 @@ public abstract class CheckCastReduction extends GuardingPiReduction {
      * This method turns non-redundant {@link com.oracle.graal.nodes.java.CheckCastNode}s into
      * {@link com.oracle.graal.nodes.GuardingPiNode}s. Once such lowering has been performed (during
      * run N of this phase) follow-up runs attempt to further simplify the resulting node, see
-     * {@link EquationalReasoner#downcastedGuardingPiNode(com.oracle.graal.nodes.GuardingPiNode, Witness)}
+     * {@link EquationalReasoner#downcastGuardingPiNode(com.oracle.graal.nodes.GuardingPiNode, Witness)}
      * and {@link #visitGuardingPiNode(com.oracle.graal.nodes.GuardingPiNode)}
      * </p>
      *
      * <p>
      * Precondition: the inputs (ie, object) hasn't been deverbosified yet.
      * </p>
-     * */
+     */
     protected final void visitCheckCastNode(CheckCastNode checkCast) {
 
         /*
@@ -109,7 +109,7 @@ public abstract class CheckCastReduction extends GuardingPiReduction {
          * others.
          */
 
-        PiNode untrivialNull = reasoner.untrivialNull(subject);
+        PiNode untrivialNull = reasoner.nonTrivialNull(subject);
         if (untrivialNull != null) {
             metricCheckCastRemoved.increment();
             checkCast.replaceAtUsages(untrivialNull);
@@ -121,7 +121,7 @@ public abstract class CheckCastReduction extends GuardingPiReduction {
 
         if (w == null) {
             /*
-             * If there's no witness, attempting `downcasted(subject)` is futile.
+             * If there's no witness, attempting `downcast(subject)` is futile.
              */
             visitCheckCastNodeLackingWitness(checkCast);
             return;
@@ -139,14 +139,14 @@ public abstract class CheckCastReduction extends GuardingPiReduction {
      * @see #lowerCheckCastAnchorFriendlyWay(com.oracle.graal.nodes.java.CheckCastNode,
      *      com.oracle.graal.nodes.ValueNode)
      *
-     * */
+     */
     private void visitCheckCastNodeLackingWitness(CheckCastNode checkCast) {
         final ValueNode subject = checkCast.object();
         final ResolvedJavaType toType = checkCast.type();
         if (toType.isInterface()) {
             return;
         }
-        assert reasoner.downcasted(subject) == subject;
+        assert reasoner.downcast(subject) == subject;
         lowerCheckCastAnchorFriendlyWay(checkCast, subject);
     }
 
@@ -170,7 +170,7 @@ public abstract class CheckCastReduction extends GuardingPiReduction {
      *
      * @see #visitCheckCastNode(com.oracle.graal.nodes.java.CheckCastNode)
      *
-     * */
+     */
     public void lowerCheckCastAnchorFriendlyWay(CheckCastNode checkCast, ValueNode subject) {
         ValueNode originalCheckCastObject = checkCast.object();
 
@@ -268,7 +268,7 @@ public abstract class CheckCastReduction extends GuardingPiReduction {
 
     /**
      * Porcelain method.
-     * */
+     */
     public static boolean isTypeOfWitnessBetter(Witness w, ObjectStamp stamp) {
         if (w == null) {
             return false;
@@ -281,26 +281,23 @@ public abstract class CheckCastReduction extends GuardingPiReduction {
      * Please note in this method "subject" refers to the downcasted input to the checkCast.
      *
      * @see #visitCheckCastNode(com.oracle.graal.nodes.java.CheckCastNode)
-     * */
+     */
     private void visitCheckCastNodeWithWitness(CheckCastNode checkCast) {
 
         final ResolvedJavaType toType = checkCast.type();
 
         ValueNode subject;
         if (checkCast.object() instanceof CheckCastNode) {
-            subject = reasoner.downcasted(checkCast);
+            subject = reasoner.downcast(checkCast);
             if (subject == checkCast) {
-                subject = reasoner.downcasted(checkCast.object());
+                subject = reasoner.downcast(checkCast.object());
             }
         } else {
-            subject = reasoner.downcasted(checkCast.object());
+            subject = reasoner.downcast(checkCast.object());
         }
 
         ObjectStamp subjectStamp = (ObjectStamp) subject.stamp();
         ResolvedJavaType subjectType = subjectStamp.type();
-
-        // TODO move this check to downcasted()
-        assert !precisionLoss(checkCast.object(), subject);
 
         /*
          * At this point, two sources of (partial) information: the witness and the stamp of
@@ -316,7 +313,7 @@ public abstract class CheckCastReduction extends GuardingPiReduction {
         }
 
         /*
-         * At this point, `downcasted()` might or might not have delivered a more precise value. If
+         * At this point, `downcast()` might or might not have delivered a more precise value. If
          * more precise, it wasn't precise enough to conform to `toType`. Even so, for the
          * `toType.isInterface()` case (dealt with below) we'll replace the checkCast's input with
          * that value (its class-stamp being more precise than the original).

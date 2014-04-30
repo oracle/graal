@@ -26,6 +26,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.FloatingNode;
+import com.oracle.graal.nodes.calc.IsNullNode;
 import com.oracle.graal.nodes.extended.LoadHubNode;
 import com.oracle.graal.nodes.extended.NullCheckNode;
 import com.oracle.graal.nodes.java.*;
@@ -37,6 +38,7 @@ import com.oracle.graal.phases.tiers.PhaseContext;
 
 import java.lang.reflect.Modifier;
 
+import static com.oracle.graal.api.meta.DeoptimizationAction.InvalidateReprofile;
 import static com.oracle.graal.api.meta.DeoptimizationReason.*;
 
 /**
@@ -61,7 +63,7 @@ import static com.oracle.graal.api.meta.DeoptimizationReason.*;
  * @see com.oracle.graal.phases.common.cfs.GuardingPiReduction
  * @see com.oracle.graal.phases.common.cfs.FixedGuardReduction
  *
- * */
+ */
 public class FlowSensitiveReduction extends FixedGuardReduction {
 
     public FlowSensitiveReduction(FixedNode start, State initialState, PhaseContext context) {
@@ -111,7 +113,7 @@ public class FlowSensitiveReduction extends FixedGuardReduction {
      * Checking if they aren't in use, proceeding to remove them in that case.
      * </p>
      *
-     * */
+     */
     @Override
     public void finished() {
         if (!postponedDeopts.isEmpty()) {
@@ -134,7 +136,7 @@ public class FlowSensitiveReduction extends FixedGuardReduction {
     }
 
     private static boolean isAliveWithoutUsages(FloatingNode node) {
-        return node.isAlive() && node.usages().isEmpty();
+        return node.isAlive() && FlowUtil.lacksUsages(node);
     }
 
     private void registerControlSplit(Node pred, BeginNode begin) {
@@ -177,7 +179,7 @@ public class FlowSensitiveReduction extends FixedGuardReduction {
      * TODO When tracking integer-stamps, the state at each successor of a TypeSwitchNode should
      * track an integer-stamp for the LoadHubNode (meet over the constants leading to that
      * successor). However, are LoadHubNode-s shared frequently enough?
-     * */
+     */
     private void registerTypeSwitchNode(TypeSwitchNode typeSwitch, BeginNode begin) {
         if (typeSwitch.value() instanceof LoadHubNode) {
             LoadHubNode loadHub = (LoadHubNode) typeSwitch.value();
@@ -195,18 +197,13 @@ public class FlowSensitiveReduction extends FixedGuardReduction {
                 // `begin` denotes the default case of the TypeSwitchNode
                 return;
             }
-            // preferable would be trackExact, but not there yet
-            state.addNullness(false, loadHub.object(), begin);
             if (state.knownNotToConform(loadHub.object(), type)) {
                 postponedDeopts.addDeoptAfter(begin, UnreachedCode);
                 state.impossiblePath();
                 return;
             }
-            if (type.isInterface()) {
-                state.trackNN(loadHub.object(), begin);
-            } else {
-                state.trackIO(loadHub.object(), type, begin);
-            }
+            // it's unwarranted to assume loadHub.object() to be non-null
+            // it also seems unwarranted state.trackCC(loadHub.object(), type, begin);
         }
     }
 
@@ -252,7 +249,7 @@ public class FlowSensitiveReduction extends FixedGuardReduction {
      * </p>
      *
      * @return whether any reduction was performed on the inputs of the arguments.
-     * */
+     */
     public boolean deverbosifyInputsInPlace(ValueNode parent) {
         boolean changed = false;
         for (ValueNode i : FlowUtil.distinctValueAndConditionInputs(parent)) {
@@ -276,7 +273,7 @@ public class FlowSensitiveReduction extends FixedGuardReduction {
      * @return the original parent if no updated took place, a copy-on-write version of it
      *         otherwise.
      *
-     * */
+     */
     private MethodCallTargetNode deverbosifyInputsCopyOnWrite(MethodCallTargetNode parent) {
         MethodCallTargetNode changed = null;
         for (ValueNode i : FlowUtil.distinctValueAndConditionInputs(parent)) {
@@ -437,12 +434,14 @@ public class FlowSensitiveReduction extends FixedGuardReduction {
      * <ul>
      * <li>is known to be null, an unconditional deopt is added.</li>
      * <li>is known to be non-null, the NullCheckNode is removed.</li>
+     * <li>otherwise, the NullCheckNode is lowered to a FixedGuardNode which then allows using it as
+     * anchor for state-tracking.</li>
      * </ul>
      *
      * <p>
      * Precondition: the input (ie, object) hasn't been deverbosified yet.
      * </p>
-     * */
+     */
     private void visitNullCheckNode(NullCheckNode ncn) {
         ValueNode object = ncn.getObject();
         if (state.isNull(object)) {
@@ -459,7 +458,17 @@ public class FlowSensitiveReduction extends FixedGuardReduction {
             graph.removeFixed(ncn);
             return;
         }
-        // TODO ANCHOR NEEDED: state.trackNN(object, ncn);
+        /*
+         * Lower the NullCheckNode to a FixedGuardNode which then allows using it as anchor for
+         * state-tracking. TODO the assumption here is that the code emitted for the resulting
+         * FixedGuardNode is as efficient as for NullCheckNode.
+         */
+        IsNullNode isNN = graph.unique(new IsNullNode(object));
+        reasoner.added.add(isNN);
+        FixedGuardNode nullCheck = graph.add(new FixedGuardNode(isNN, UnreachedCode, InvalidateReprofile, true));
+        graph.replaceFixedWithFixed(ncn, nullCheck);
+
+        state.trackNN(object, nullCheck);
     }
 
     /**
@@ -471,7 +480,7 @@ public class FlowSensitiveReduction extends FixedGuardReduction {
      * <p>
      * Precondition: inputs haven't been deverbosified yet.
      * </p>
-     * */
+     */
     private void visitAbstractEndNode(AbstractEndNode endNode) {
         MergeNode merge = endNode.merge();
         for (PhiNode phi : merge.phis()) {
@@ -498,7 +507,7 @@ public class FlowSensitiveReduction extends FixedGuardReduction {
      * <p>
      * Precondition: inputs haven't been deverbosified yet.
      * </p>
-     * */
+     */
     private void visitInvoke(Invoke invoke) {
         if (invoke.asNode().stamp() instanceof IllegalStamp) {
             return; // just to be safe

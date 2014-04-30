@@ -24,6 +24,7 @@ package com.oracle.graal.nodes.calc;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.nodes.*;
 
@@ -47,7 +48,22 @@ public abstract class ConvertNode extends FloatingNode implements ArithmeticOper
 
     public abstract Constant reverse(Constant c);
 
+    /**
+     * Check whether a conversion is lossless.
+     *
+     * @return true iff reverse(convert(c)) == c for all c
+     */
     public abstract boolean isLossless();
+
+    /**
+     * Check whether a conversion preserves comparison order.
+     *
+     * @param op a comparison operator
+     * @return true iff (c1 op c2) == (convert(c1) op convert(c2)) for all c1, c2
+     */
+    public boolean preservesOrder(Condition op) {
+        return isLossless();
+    }
 
     @Override
     public Constant evalConst(Constant... inputs) {

@@ -28,7 +28,6 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 
 @NodeInfo(shortName = "/")
@@ -60,14 +59,5 @@ public final class FloatDivNode extends FloatArithmeticNode implements Canonical
     @Override
     public void generate(NodeMappableLIRBuilder builder, ArithmeticLIRGenerator gen) {
         builder.setResult(this, gen.emitDiv(builder.operand(x()), builder.operand(y()), null));
-    }
-
-    @Override
-    public boolean generate(MemoryArithmeticLIRLowerer gen, Access access) {
-        Value result = gen.emitDivMemory(x(), y(), access);
-        if (result != null) {
-            gen.setResult(this, result);
-        }
-        return result != null;
     }
 }
