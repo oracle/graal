@@ -122,6 +122,24 @@ public class ObjectStampJoinTest extends GraalCompilerTest {
     }
 
     @Test
+    public void testJoin8() {
+        Stamp bExact = StampFactory.exactNonNull(getType(B.class));
+        Stamp dExact = StampFactory.exact(getType(D.class));
+        Stamp join = join(bExact, dExact);
+        Assert.assertFalse(join.isLegal());
+    }
+
+    @Test
+    public void testJoin9() {
+        Stamp bExact = StampFactory.exact(getType(B.class));
+        Stamp dExact = StampFactory.exact(getType(D.class));
+        Stamp join = join(bExact, dExact);
+        Assert.assertTrue(StampTool.isObjectAlwaysNull(join));
+        Assert.assertNull(StampTool.typeOrNull(join));
+        Assert.assertNull(StampTool.typeOrNull(join));
+    }
+
+    @Test
     public void testJoinInterface0() {
         Stamp a = StampFactory.declared(getType(A.class));
         Stamp b = StampFactory.declared(getType(I.class));
