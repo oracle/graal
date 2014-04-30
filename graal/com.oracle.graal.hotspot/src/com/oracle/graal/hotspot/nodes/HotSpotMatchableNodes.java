@@ -25,7 +25,7 @@ package com.oracle.graal.hotspot.nodes;
 import com.oracle.graal.compiler.match.*;
 import com.oracle.graal.nodes.*;
 
-@MatchableNode(shortName = "Compression", value = CompressionNode.class, inputs = 1, adapter = HotSpotMatchableNodes.CompressionNodeAdapter.class)
+@MatchableNode(nodeClass = CompressionNode.class, inputs = 1, adapter = HotSpotMatchableNodes.CompressionNodeAdapter.class)
 public class HotSpotMatchableNodes {
     public static class CompressionNodeAdapter extends MatchNodeAdapter {
         @Override

@@ -43,7 +43,7 @@ import com.oracle.graal.nodes.*;
  */
 
 @Retention(RetentionPolicy.RUNTIME)
-@Target(ElementType.TYPE)
+@Target(ElementType.METHOD)
 @Repeatable(value = MatchRules.class)
 public @interface MatchRule {
     String value();

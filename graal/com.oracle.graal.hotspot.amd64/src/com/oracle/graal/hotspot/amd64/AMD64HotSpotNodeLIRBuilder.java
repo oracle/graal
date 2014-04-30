@@ -244,39 +244,17 @@ public class AMD64HotSpotNodeLIRBuilder extends AMD64NodeLIRBuilder implements H
         setResult(x, result);
     }
 
-    /**
-     * Helper class to convert the NodeLIRBuilder into the current subclass.
-     */
-    static abstract class AMD64HotSpotMatchGenerator implements MatchGenerator {
-        public AMD64HotSpotMatchGenerator() {
-        }
-
-        public ComplexMatchResult match(NodeLIRBuilder gen) {
-            return match((AMD64HotSpotNodeLIRBuilder) gen);
-        }
-
-        abstract public ComplexMatchResult match(AMD64HotSpotNodeLIRBuilder gen);
-    }
-
     @MatchRule("(If (ObjectEquals=compare Constant=value (Compression Read=access)))")
     @MatchRule("(If (ObjectEquals=compare Constant=value (Compression FloatingRead=access)))")
     @MatchRule("(If (ObjectEquals=compare (Compression value) (Compression Read=access)))")
     @MatchRule("(If (ObjectEquals=compare (Compression value) (Compression FloatingRead=access)))")
-    public static class IfCompareMemory extends AMD64HotSpotMatchGenerator {
-        IfNode root;
-        Access access;
-        ValueNode value;
-        CompareNode compare;
-
-        @Override
-        public ComplexMatchResult match(AMD64HotSpotNodeLIRBuilder gen) {
-            if (HotSpotGraalRuntime.runtime().getConfig().useCompressedOops) {
-                return builder -> {
-                    gen.emitCompareCompressedMemory(root, value, access, compare);
-                    return null;
-                };
-            }
-            return null;
+    public ComplexMatchResult ifCompareCompressedMemory(IfNode root, CompareNode compare, ValueNode value, Access access) {
+        if (HotSpotGraalRuntime.runtime().getConfig().useCompressedOops) {
+            return builder -> {
+                emitCompareCompressedMemory(root, value, access, compare);
+                return null;
+            };
         }
+        return null;
     }
 }

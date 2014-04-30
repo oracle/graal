@@ -182,20 +182,16 @@ public abstract class AMD64NodeLIRBuilder extends NodeLIRBuilder {
                 // Only imm32 as long
                 return null;
             }
-            return new ComplexMatchResult() {
-                public Value evaluate(NodeLIRBuilder builder) {
-                    gen.append(new AMD64TestMemoryOp(kind, makeAddress(access), constant, getState(access)));
-                    gen.append(new BranchOp(Condition.EQ, trueLabel, falseLabel, trueLabelProbability));
-                    return null;
-                }
+            return builder -> {
+                gen.append(new AMD64TestMemoryOp(kind, makeAddress(access), constant, getState(access)));
+                gen.append(new BranchOp(Condition.EQ, trueLabel, falseLabel, trueLabelProbability));
+                return null;
             };
         } else {
-            return new ComplexMatchResult() {
-                public Value evaluate(NodeLIRBuilder builder) {
-                    gen.append(new AMD64TestMemoryOp(kind, makeAddress(access), operand(value), getState(access)));
-                    gen.append(new BranchOp(Condition.EQ, trueLabel, falseLabel, trueLabelProbability));
-                    return null;
-                }
+            return builder -> {
+                gen.append(new AMD64TestMemoryOp(kind, makeAddress(access), operand(value), getState(access)));
+                gen.append(new BranchOp(Condition.EQ, trueLabel, falseLabel, trueLabelProbability));
+                return null;
             };
         }
     }
@@ -320,8 +316,6 @@ public abstract class AMD64NodeLIRBuilder extends NodeLIRBuilder {
         throw GraalInternalError.shouldNotReachHere();
     }
 
-    static Object lock = new Object();
-
     private AMD64Arithmetic getOp(ValueNode operation, Access access) {
         Kind memoryKind = getMemoryKind(access);
         if (operation.getClass() == IntegerAddNode.class) {
@@ -391,17 +385,10 @@ public abstract class AMD64NodeLIRBuilder extends NodeLIRBuilder {
         return null;
     }
 
-    @MatchRule("(If (IntegerTest=compare Read=access value))")
-    @MatchRule("(If (IntegerTest=compare FloatingRead=access value))")
-    public static class IfIntegerTest extends AMD64MatchGenerator {
-        IfNode root;
-        Access access;
-        ValueNode value;
-
-        @Override
-        public ComplexMatchResult match(AMD64NodeLIRBuilder gen) {
-            return gen.emitIntegerTestBranchMemory(root, value, access);
-        }
+    @MatchRule("(If (IntegerTest Read=access value))")
+    @MatchRule("(If (IntegerTest FloatingRead=access value))")
+    public ComplexMatchResult integerTestBranchMemory(IfNode root, Access access, ValueNode value) {
+        return emitIntegerTestBranchMemory(root, value, access);
     }
 
     @MatchRule("(If (IntegerEquals=compare value Read=access))")
@@ -414,62 +401,32 @@ public abstract class AMD64NodeLIRBuilder extends NodeLIRBuilder {
     @MatchRule("(If (FloatEquals=compare value FloatingRead=access))")
     @MatchRule("(If (FloatLessThan=compare value Read=access))")
     @MatchRule("(If (FloatLessThan=compare value FloatingRead=access))")
-    public static class IfCompareMemory extends AMD64MatchGenerator {
-        IfNode root;
-        Access access;
-        ValueNode value;
-        CompareNode compare;
-
-        @Override
-        public ComplexMatchResult match(AMD64NodeLIRBuilder gen) {
-            return gen.emitCompareBranchMemory(root, compare, value, access);
-        }
+    public ComplexMatchResult ifCompareMemory(IfNode root, CompareNode compare, ValueNode value, Access access) {
+        return emitCompareBranchMemory(root, compare, value, access);
     }
 
     @MatchRule("(Or (LeftShift=lshift value Constant) (UnsignedRightShift=rshift value Constant))")
-    public static class RotateLeftConstant extends AMD64MatchGenerator {
-        LeftShiftNode lshift;
-        UnsignedRightShiftNode rshift;
-
-        @Override
-        public ComplexMatchResult match(AMD64NodeLIRBuilder gen) {
-            if ((lshift.getShiftAmountMask() & (lshift.y().asConstant().asInt() + rshift.y().asConstant().asInt())) == 0) {
-                return builder -> gen.getLIRGeneratorTool().emitRol(gen.operand(lshift.x()), gen.operand(lshift.y()));
-            }
-            return null;
+    public ComplexMatchResult rotateLeftConstant(LeftShiftNode lshift, UnsignedRightShiftNode rshift) {
+        if ((lshift.getShiftAmountMask() & (lshift.y().asConstant().asInt() + rshift.y().asConstant().asInt())) == 0) {
+            return builder -> getLIRGeneratorTool().emitRol(operand(lshift.x()), operand(lshift.y()));
         }
-
+        return null;
     }
 
-    @MatchRule("(Or (LeftShift=lshift value (IntegerSub Constant=delta shiftAmount)) (UnsignedRightShift value shiftAmount))")
-    public static class RotateRightVariable extends AMD64MatchGenerator {
-        ValueNode value;
-        ValueNode shiftAmount;
-        ConstantNode delta;
-
-        @Override
-        public ComplexMatchResult match(AMD64NodeLIRBuilder gen) {
-            if (delta.asConstant().asLong() == 0 || delta.asConstant().asLong() == 32) {
-                return builder -> gen.getLIRGeneratorTool().emitRor(gen.operand(value), gen.operand(shiftAmount));
-            }
-            return null;
+    @MatchRule("(Or (LeftShift value (IntegerSub Constant=delta shiftAmount)) (UnsignedRightShift value shiftAmount))")
+    public ComplexMatchResult rotateRightVariable(ValueNode value, ConstantNode delta, ValueNode shiftAmount) {
+        if (delta.asConstant().asLong() == 0 || delta.asConstant().asLong() == 32) {
+            return builder -> getLIRGeneratorTool().emitRor(operand(value), operand(shiftAmount));
         }
-
+        return null;
     }
 
     @MatchRule("(Or (LeftShift value shiftAmount) (UnsignedRightShift value (IntegerSub Constant=delta shiftAmount)))")
-    public static class RotateLeftVariable extends AMD64MatchGenerator {
-        ValueNode value;
-        ValueNode shiftAmount;
-        ConstantNode delta;
-
-        @Override
-        public ComplexMatchResult match(AMD64NodeLIRBuilder gen) {
-            if (delta.asConstant().asLong() == 0 || delta.asConstant().asLong() == 32) {
-                return builder -> gen.getLIRGeneratorTool().emitRol(gen.operand(value), gen.operand(shiftAmount));
-            }
-            return null;
+    public ComplexMatchResult rotateLeftVariable(ValueNode value, ValueNode shiftAmount, ConstantNode delta) {
+        if (delta.asConstant().asLong() == 0 || delta.asConstant().asLong() == 32) {
+            return builder -> getLIRGeneratorTool().emitRol(operand(value), operand(shiftAmount));
         }
+        return null;
     }
 
     @MatchRule("(IntegerAdd value Read=access)")
@@ -490,121 +447,61 @@ public abstract class AMD64NodeLIRBuilder extends NodeLIRBuilder {
     @MatchRule("(Or value FloatingRead=access)")
     @MatchRule("(Xor value FloatingRead=access)")
     @MatchRule("(And value FloatingRead=access)")
-    public static class BinaryRead extends AMD64MatchGenerator {
-        BinaryNode root;
-        Access access;
-        ValueNode value;
-
-        @Override
-        public ComplexMatchResult match(AMD64NodeLIRBuilder gen) {
-            AMD64Arithmetic op = gen.getOp(root, access);
-            if (op != null) {
-                return builder -> gen.getLIRGeneratorTool().emitBinaryMemory(op, gen.getMemoryKind(access), gen.getLIRGeneratorTool().asAllocatable(gen.operand(value)), gen.makeAddress(access),
-                                gen.getState(access));
-            }
-            return null;
+    public ComplexMatchResult binaryRead(BinaryNode root, ValueNode value, Access access) {
+        AMD64Arithmetic op = getOp(root, access);
+        if (op != null) {
+            return builder -> getLIRGeneratorTool().emitBinaryMemory(op, getMemoryKind(access), getLIRGeneratorTool().asAllocatable(operand(value)), makeAddress(access), getState(access));
         }
+        return null;
     }
 
     @MatchRule("(Write Narrow=narrow value)")
-    public static class WriteNarrow extends AMD64MatchGenerator {
-        WriteNode root;
-        NarrowNode narrow;
-
-        @Override
-        public ComplexMatchResult match(AMD64NodeLIRBuilder gen) {
-            return new ComplexMatchResult() {
-                @Override
-                public Value evaluate(NodeLIRBuilder builder) {
-                    PlatformKind writeKind = gen.getLIRGeneratorTool().getPlatformKind(root.value().stamp());
-                    Value address = root.location().generateAddress(builder, gen.getLIRGeneratorTool(), gen.operand(root.object()));
-                    Value v = gen.operand(narrow.getInput());
-                    gen.getLIRGeneratorTool().emitStore(writeKind, address, v, gen.state(root));
-                    return null;
-                }
-            };
-        }
+    public ComplexMatchResult writeNarrow(WriteNode root, NarrowNode narrow) {
+        return builder -> {
+            PlatformKind writeKind = getLIRGeneratorTool().getPlatformKind(root.value().stamp());
+            Value address = root.location().generateAddress(builder, getLIRGeneratorTool(), operand(root.object()));
+            Value v = operand(narrow.getInput());
+            getLIRGeneratorTool().emitStore(writeKind, address, v, state(root));
+            return null;
+        };
     }
 
     @MatchRule("(SignExtend Read=access)")
     @MatchRule("(SignExtend FloatingRead=access)")
-    public static class SignExtend extends AMD64MatchGenerator {
-        Access access;
-        SignExtendNode root;
-
-        @Override
-        public ComplexMatchResult match(AMD64NodeLIRBuilder gen) {
-            return gen.emitSignExtendMemory(access, root.getInputBits(), root.getResultBits());
-        }
-    }
-
-    static abstract class AMD64MatchGenerator implements MatchGenerator {
-        public AMD64MatchGenerator() {
-        }
-
-        public ComplexMatchResult match(NodeLIRBuilder gen) {
-            return match((AMD64NodeLIRBuilder) gen);
-        }
-
-        abstract public ComplexMatchResult match(AMD64NodeLIRBuilder gen);
+    public ComplexMatchResult signExtend(SignExtendNode root, Access access) {
+        return emitSignExtendMemory(access, root.getInputBits(), root.getResultBits());
     }
 
     @MatchRule("(ZeroExtend Read=access)")
     @MatchRule("(ZeroExtend FloatingRead=access)")
-    public static class ZeroExtend extends AMD64MatchGenerator {
-        Access access;
-        ZeroExtendNode root;
-
-        @Override
-        public ComplexMatchResult match(AMD64NodeLIRBuilder gen) {
-            Kind memoryKind = gen.getMemoryKind(access);
-            if (memoryKind.getBitCount() != root.getInputBits() && !memoryKind.isUnsigned()) {
-                /*
-                 * The memory being read from is signed and smaller than the result size so this is
-                 * a sign extension to inputBits followed by a zero extension to resultBits which
-                 * can't be expressed in a memory operation.
-                 */
-                return null;
-            }
-            return new ComplexMatchResult() {
-                public Value evaluate(NodeLIRBuilder unused) {
-                    return gen.getLIRGeneratorTool().emitZeroExtendMemory(memoryKind == Kind.Short ? Kind.Char : memoryKind, root.getResultBits(), gen.makeAddress(access), gen.getState(access));
-                }
-            };
+    public ComplexMatchResult zeroExtend(ZeroExtendNode root, Access access) {
+        Kind memoryKind = getMemoryKind(access);
+        if (memoryKind.getBitCount() != root.getInputBits() && !memoryKind.isUnsigned()) {
+            /*
+             * The memory being read from is signed and smaller than the result size so this is a
+             * sign extension to inputBits followed by a zero extension to resultBits which can't be
+             * expressed in a memory operation.
+             */
+            return null;
         }
+        return builder -> getLIRGeneratorTool().emitZeroExtendMemory(memoryKind == Kind.Short ? Kind.Char : memoryKind, root.getResultBits(), makeAddress(access), getState(access));
     }
 
     @MatchRule("(FloatConvert Read=access)")
     @MatchRule("(FloatConvert FloatingRead=access)")
-    public static class FloatConvert extends AMD64MatchGenerator {
-        Access access;
-        FloatConvertNode root;
+    public ComplexMatchResult floatConvert(FloatConvertNode root, Access access) {
+        return builder -> emitFloatConvertMemory(root, access);
 
-        @Override
-        public ComplexMatchResult match(AMD64NodeLIRBuilder gen) {
-            return new ComplexMatchResult() {
-                public Value evaluate(NodeLIRBuilder builder) {
-                    return gen.emitFloatConvertMemory(root, access);
-                }
-            };
-        }
     }
 
     @MatchRule("(Reinterpret Read=access)")
     @MatchRule("(Reinterpret FloatingRead=access)")
-    public static class Reinterpret extends AMD64MatchGenerator {
-        Access access;
-        ReinterpretNode root;
+    public ComplexMatchResult reinterpret(ReinterpretNode root, Access access) {
+        return builder -> {
+            PlatformKind kind = getLIRGeneratorTool().getPlatformKind(root.stamp());
+            return emitReinterpretMemory(kind, access);
+        };
 
-        @Override
-        public ComplexMatchResult match(AMD64NodeLIRBuilder gen) {
-            return new ComplexMatchResult() {
-                public Value evaluate(NodeLIRBuilder builder) {
-                    PlatformKind kind = gen.getLIRGeneratorTool().getPlatformKind(root.stamp());
-                    return gen.emitReinterpretMemory(kind, access);
-                }
-            };
-        }
     }
 
     @Override

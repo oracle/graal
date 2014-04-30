@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.compiler.match;
 
+import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.Node.Verbosity;
 import com.oracle.graal.nodes.*;
 
@@ -47,7 +48,9 @@ public class MatchPattern {
      */
     static class Result {
         final MatchResultCode code;
+
         final ScheduledNode node;
+
         final MatchPattern matcher;
 
         Result(MatchResultCode result, ScheduledNode node, MatchPattern matcher) {
@@ -56,29 +59,42 @@ public class MatchPattern {
             this.matcher = matcher;
         }
 
+        private static final DebugMetric MatchResult_WRONG_CLASS = Debug.metric("MatchResult_WRONG_CLASS");
+        private static final DebugMetric MatchResult_NAMED_VALUE_MISMATCH = Debug.metric("MatchResult_NAMED_VALUE_MISMATCH");
+        private static final DebugMetric MatchResult_TOO_MANY_USERS = Debug.metric("MatchResult_TOO_MANY_USERS");
+        private static final DebugMetric MatchResult_NOT_IN_BLOCK = Debug.metric("MatchResult_NOT_IN_BLOCK");
+        private static final DebugMetric MatchResult_NOT_SAFE = Debug.metric("MatchResult_NOT_SAFE");
+        private static final DebugMetric MatchResult_ALREADY_USED = Debug.metric("MatchResult_ALREADY_USED");
+
         static final Result OK = new Result(MatchResultCode.OK, null, null);
 
         static Result WRONG_CLASS(ValueNode node, MatchPattern matcher) {
+            MatchResult_WRONG_CLASS.increment();
             return new Result(MatchResultCode.WRONG_CLASS, node, matcher);
         }
 
         static Result NAMED_VALUE_MISMATCH(ValueNode node, MatchPattern matcher) {
+            MatchResult_NAMED_VALUE_MISMATCH.increment();
             return new Result(MatchResultCode.NAMED_VALUE_MISMATCH, node, matcher);
         }
 
         static Result TOO_MANY_USERS(ValueNode node, MatchPattern matcher) {
+            MatchResult_TOO_MANY_USERS.increment();
             return new Result(MatchResultCode.TOO_MANY_USERS, node, matcher);
         }
 
         static Result NOT_IN_BLOCK(ScheduledNode node, MatchPattern matcher) {
+            MatchResult_NOT_IN_BLOCK.increment();
             return new Result(MatchResultCode.NOT_IN_BLOCK, node, matcher);
         }
 
         static Result NOT_SAFE(ScheduledNode node, MatchPattern matcher) {
+            MatchResult_NOT_SAFE.increment();
             return new Result(MatchResultCode.NOT_SAFE, node, matcher);
         }
 
         static Result ALREADY_USED(ValueNode node, MatchPattern matcher) {
+            MatchResult_ALREADY_USED.increment();
             return new Result(MatchResultCode.ALREADY_USED, node, matcher);
         }
 
@@ -143,14 +159,32 @@ public class MatchPattern {
         return nodeClass;
     }
 
-    Result match(ValueNode node, MatchContext context) {
-        return matchTree(node, context, true);
-    }
-
-    private Result matchTree(ValueNode node, MatchContext context, boolean atRoot) {
-        Result result = Result.OK;
+    private Result matchType(ValueNode node) {
         if (nodeClass != null && node.getClass() != nodeClass) {
             return Result.WRONG_CLASS(node, this);
+        }
+        return Result.OK;
+    }
+
+    /**
+     * Match any named nodes and ensure that the consumed nodes can be safely merged.
+     *
+     * @param node
+     * @param context
+     * @return Result.OK is the pattern can be safely matched.
+     */
+    Result matchUsage(ValueNode node, MatchContext context) {
+        Result result = matchUsage(node, context, true);
+        if (result == Result.OK) {
+            result = context.validate();
+        }
+        return result;
+    }
+
+    private Result matchUsage(ValueNode node, MatchContext context, boolean atRoot) {
+        Result result = matchType(node);
+        if (result != Result.OK) {
+            return result;
         }
         if (singleUser && !atRoot) {
             result = context.consume(node);
@@ -164,9 +198,43 @@ public class MatchPattern {
         }
 
         if (first != null) {
-            result = first.matchTree(adapter.getFirstInput(node), context, false);
+            result = first.matchUsage(adapter.getFirstInput(node), context, false);
             if (result == Result.OK && second != null) {
-                result = second.matchTree(adapter.getSecondInput(node), context, false);
+                result = second.matchUsage(adapter.getSecondInput(node), context, false);
+            }
+        }
+
+        return result;
+    }
+
+    /**
+     * Recursively match the shape of the tree without worry about named values. Most matches fail
+     * at this point so it's performed first.
+     *
+     * @param node
+     * @param statement
+     * @return Result.OK if the shape of the pattern matches.
+     */
+    public Result matchShape(ValueNode node, MatchStatement statement) {
+        return matchShape(node, statement, true);
+    }
+
+    private Result matchShape(ValueNode node, MatchStatement statement, boolean atRoot) {
+        Result result = matchType(node);
+        if (result != Result.OK) {
+            return result;
+        }
+
+        if (singleUser && !atRoot) {
+            if (node.usages().count() > 1) {
+                return Result.TOO_MANY_USERS(node, statement.getPattern());
+            }
+        }
+
+        if (first != null) {
+            result = first.matchShape(adapter.getFirstInput(node), statement, false);
+            if (result == Result.OK && second != null) {
+                result = second.matchShape(adapter.getSecondInput(node), statement, false);
             }
         }
 
@@ -195,7 +263,8 @@ public class MatchPattern {
             String pre = first != null || second != null ? "(" : "";
             String post = first != null || second != null ? ")" : "";
             String nodeName = nodeClass.getSimpleName();
-            return pre + nodeName + (name != null ? "=\"" + name + "\"" : "") + (first != null ? (" " + first.toString()) : "") + (second != null ? (" " + second.toString()) : "") + post;
+            nodeName = nodeName.substring(0, nodeName.length() - 4);
+            return pre + nodeName + (name != null ? "=" + name : "") + (first != null ? (" " + first.toString()) : "") + (second != null ? (" " + second.toString()) : "") + post;
         }
     }
 }

@@ -70,6 +70,8 @@ public class GraalDebugConfig implements DebugConfig {
             return enabled;
         }
     };
+    @Option(help = "Enable more verbose log output when available")
+    public static final OptionValue<Boolean> LogVerbose = new OptionValue<>(false);
     // @formatter:on
 
     public static boolean areDebugScopePatternsEnabled() {
@@ -150,7 +152,7 @@ public class GraalDebugConfig implements DebugConfig {
 
     /**
      * Extracts a {@link JavaMethod} from an opaque debug context.
-     * 
+     *
      * @return the {@link JavaMethod} represented by {@code context} or null
      */
     public static JavaMethod asJavaMethod(Object context) {

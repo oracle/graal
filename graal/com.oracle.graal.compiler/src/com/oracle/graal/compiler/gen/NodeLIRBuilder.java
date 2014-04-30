@@ -170,7 +170,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool {
      * ValueNodes.
      */
     public void setMatchResult(ValueNode x, Value operand) {
-        assert operand.equals(Value.INTERIOR_MATCH) || operand instanceof ComplexMatchValue;
+        assert operand.equals(ComplexMatchValue.INTERIOR_MATCH) || operand instanceof ComplexMatchValue;
         assert operand instanceof ComplexMatchValue || x.usages().count() == 1 : "interior matches must be single user";
         assert nodeOperands != null && nodeOperands.get(x) == null : "operand cannot be set twice";
         assert !(x instanceof VirtualObjectNode);
@@ -237,7 +237,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool {
                             throw new GraalGraphInternalError(e).addContext(instr);
                         }
                     }
-                } else if (Value.INTERIOR_MATCH.equals(operand)) {
+                } else if (ComplexMatchValue.INTERIOR_MATCH.equals(operand)) {
                     // Doesn't need to be evaluated
                     Debug.log("interior match for %s", valueNode);
                 } else if (operand instanceof ComplexMatchValue) {
@@ -285,7 +285,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool {
                     List<MatchStatement> statements = matchRules.get(node.getClass());
                     if (statements != null) {
                         for (MatchStatement statement : statements) {
-                            if (statement.generate(this, node, nodes)) {
+                            if (statement.generate(this, index, node, nodes)) {
                                 // Found a match so skip to the next
                                 break;
                             }

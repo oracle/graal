@@ -31,10 +31,25 @@ import com.oracle.graal.compiler.gen.*;
  * usually occur here.
  */
 public class ComplexMatchValue extends Value {
-    /**
-     *
-     */
     private static final long serialVersionUID = -4734670273590368770L;
+
+    /**
+     * This is the Value of a node which was matched as part of a complex match. The value isn't
+     * actually useable but this marks it as having been evaluated.
+     */
+    @SuppressWarnings("serial") public static Value INTERIOR_MATCH = new Value(Kind.Illegal) {
+
+        @Override
+        public String toString() {
+            return "INTERIOR_MATCH";
+        }
+
+        @Override
+        public boolean equals(Object other) {
+            // This class is a singleton
+            return other != null && getClass() == other.getClass();
+        }
+    };
 
     final ComplexMatchResult result;
 

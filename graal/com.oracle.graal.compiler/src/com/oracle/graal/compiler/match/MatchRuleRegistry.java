@@ -22,9 +22,15 @@
  */
 package com.oracle.graal.compiler.match;
 
-import java.util.*;
+import static com.oracle.graal.compiler.GraalDebugConfig.*;
 
+import java.util.*;
+import java.util.Map.Entry;
+
+import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.gen.*;
+import com.oracle.graal.debug.*;
+import com.oracle.graal.debug.Debug.*;
 import com.oracle.graal.nodes.*;
 
 public class MatchRuleRegistry {
@@ -69,6 +75,18 @@ public class MatchRuleRegistry {
             registry.put(theClass, rules);
             assert registry.get(theClass) == rules;
             result = rules;
+
+            if (LogVerbose.getValue()) {
+                try (Scope s = Debug.scope("MatchComplexExpressions")) {
+                    Debug.log("Match rules for %s", theClass.getSimpleName());
+                    for (Entry<Class<? extends ValueNode>, List<MatchStatement>> entry : result.entrySet()) {
+                        Debug.log("  For node class: %s", entry.getKey());
+                        for (MatchStatement statement : entry.getValue()) {
+                            Debug.log("    %s", statement.getPattern());
+                        }
+                    }
+                }
+            }
         }
 
         if (result.size() == 0) {

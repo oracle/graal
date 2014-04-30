@@ -497,7 +497,7 @@ public enum AMD64Arithmetic {
                     break;
                 case IROR:
                     assert asIntReg(src).equals(AMD64.rcx);
-                    masm.roll(asIntReg(dst));
+                    masm.rorl(asIntReg(dst));
                     break;
 
                 case LADD:
