@@ -671,7 +671,7 @@ public class MatchProcessor extends AbstractProcessor {
                     map.put(topDeclaringType, info);
                 }
                 for (MatchRule matchRule : element.getAnnotationsByType(MatchRule.class)) {
-                    System.err.println(matchRule);
+                    // System.err.println(matchRule);
                     processMethodMatchRule((ExecutableElement) element, info, matchRule);
                 }
             } catch (Throwable t) {
