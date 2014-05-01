@@ -317,16 +317,16 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
     /**
      * <pre>
      * variant1 $condition != null
-     * 
+     *
      * $type $name = defaultValue($type);
      * if ($condition) {
      *     $name = $value;
      * }
-     * 
+     *
      * variant2 $condition != null
      * $type $name = $value;
      * </pre>
-     * 
+     *
      * .
      */
     private static CodeTree createLazyAssignment(CodeTreeBuilder parent, String name, TypeMirror type, CodeTree condition, CodeTree value) {
@@ -978,9 +978,8 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
 
         private List<CodeExecutableElement> createImplicitChildrenAccessors() {
             NodeData node = getModel().getNode();
-            // Map<NodeChildData, Set<TypeData>> expectTypes = new HashMap<>();
-            @SuppressWarnings("unchecked")
-            List<Set<TypeData>> expectTypes = Arrays.<Set<TypeData>> asList(new Set[node.getGenericSpecialization().getParameters().size()]);
+            List<Set<TypeData>> prototype = Collections.nCopies(node.getGenericSpecialization().getParameters().size(), null);
+            List<Set<TypeData>> expectTypes = new ArrayList<>(prototype);
 
             for (ExecutableTypeData executableType : node.getExecutableTypes()) {
                 for (int i = 0; i < executableType.getEvaluatedCount(); i++) {
@@ -998,8 +997,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
             }
 
             List<CodeExecutableElement> methods = new ArrayList<>();
-            @SuppressWarnings("unchecked")
-            List<Set<TypeData>> visitedList = Arrays.<Set<TypeData>> asList(new Set[node.getGenericSpecialization().getParameters().size()]);
+            List<Set<TypeData>> visitedList = new ArrayList<>(prototype);
             for (SpecializationData spec : node.getSpecializations()) {
                 int signatureIndex = -1;
                 for (ActualParameter param : spec.getParameters()) {
