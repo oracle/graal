@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,46 +22,56 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.stubs.*;
-import com.oracle.graal.lir.StandardOp.*;
+import com.oracle.graal.lir.StandardOp.SaveRegistersOp;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.word.*;
 
 /**
- * Emits code to enter a low-level stack frame specifically to call out to the C++ method
- * {@link DeoptimizationStub#UNPACK_FRAMES Deoptimization::unpack_frames}.
+ * A call to the runtime code {@code Deoptimization::fetch_unroll_info}.
  */
-public class EnterUnpackFramesStackFrameNode extends FixedWithNextNode implements LIRLowerable {
+@NodeInfo(allowedUsageTypes = {InputType.Memory})
+public class DeoptimizationFetchUnrollInfoCallNode extends FixedWithNextNode implements LIRLowerable, MemoryCheckpoint.Multi {
 
-    @Input private ValueNode framePc;
-    @Input private ValueNode senderSp;
-    @Input private ValueNode senderFp;
     @Input private SaveAllRegistersNode registerSaver;
+    private final ForeignCallsProvider foreignCalls;
+    public static final ForeignCallDescriptor FETCH_UNROLL_INFO = new ForeignCallDescriptor("fetchUnrollInfo", Word.class, Word.class);
 
-    public EnterUnpackFramesStackFrameNode(ValueNode framePc, ValueNode senderSp, ValueNode senderFp, ValueNode registerSaver) {
-        super(StampFactory.forVoid());
-        this.framePc = framePc;
-        this.senderSp = senderSp;
-        this.senderFp = senderFp;
+    public DeoptimizationFetchUnrollInfoCallNode(@InjectedNodeParameter ForeignCallsProvider foreignCalls, ValueNode registerSaver) {
+        super(StampFactory.forKind(Kind.fromJavaClass(FETCH_UNROLL_INFO.getResultType())));
         this.registerSaver = (SaveAllRegistersNode) registerSaver;
+        this.foreignCalls = foreignCalls;
     }
 
-    private SaveRegistersOp getSaveRegistersOp() {
+    @Override
+    public LocationIdentity[] getLocationIdentities() {
+        return foreignCalls.getKilledLocations(FETCH_UNROLL_INFO);
+    }
+
+    public SaveRegistersOp getSaveRegistersOp() {
         return registerSaver.getSaveRegistersOp();
     }
 
     @Override
     public void generate(NodeLIRBuilderTool gen) {
-        Value operandValue = gen.operand(framePc);
-        Value senderSpValue = gen.operand(senderSp);
-        Value senderFpValue = gen.operand(senderFp);
-        ((HotSpotLIRGenerator) gen.getLIRGeneratorTool()).emitEnterUnpackFramesStackFrame(operandValue, senderSpValue, senderFpValue, getSaveRegistersOp());
+        Value result = ((HotSpotLIRGenerator) gen.getLIRGeneratorTool()).emitDeoptimizationFetchUnrollInfoCall(getSaveRegistersOp());
+        gen.setResult(this, result);
     }
 
     @NodeIntrinsic
-    public static native void enterUnpackFramesStackFrame(Word framePc, Word senderSp, Word senderFp, long registerSaver);
+    public static native Word fetchUnrollInfo(long registerSaver);
+
+    public MemoryCheckpoint asMemoryCheckpoint() {
+        return null;
+    }
+
+    public MemoryPhiNode asMemoryPhi() {
+        return null;
+    }
 }

@@ -45,21 +45,11 @@ import com.oracle.graal.word.*;
 public abstract class HotSpotBackend extends Backend {
 
     /**
-     * Descriptor for {@link DeoptimizationStub}.
-     */
-    public static final ForeignCallDescriptor UNCOMMON_TRAP_HANDLER = new ForeignCallDescriptor("uncommonTrapHandler", void.class);
-
-    /**
      * Descriptor for {@link ExceptionHandlerStub}. This stub is called by the
      * {@linkplain HotSpotVMConfig#codeInstallerMarkIdExceptionHandlerEntry exception handler} in a
      * compiled method.
      */
     public static final ForeignCallDescriptor EXCEPTION_HANDLER = new ForeignCallDescriptor("exceptionHandler", void.class, Object.class, Word.class);
-
-    /**
-     * Descriptor for SharedRuntime::deopt_blob()-&gt;unpack().
-     */
-    public static final ForeignCallDescriptor DEOPT_HANDLER = new ForeignCallDescriptor("deoptHandler", void.class);
 
     /**
      * Descriptor for SharedRuntime::get_ic_miss_stub().

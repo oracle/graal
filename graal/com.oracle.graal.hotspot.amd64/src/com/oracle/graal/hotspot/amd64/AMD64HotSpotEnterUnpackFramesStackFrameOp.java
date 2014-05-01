@@ -31,6 +31,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.amd64.*;
 import com.oracle.graal.hotspot.stubs.*;
 import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.StandardOp.*;
 import com.oracle.graal.lir.amd64.*;
 import com.oracle.graal.lir.asm.*;
 
@@ -41,7 +42,7 @@ import com.oracle.graal.lir.asm.*;
 @Opcode("ENTER_UNPACK_FRAMES_STACK_FRAME")
 final class AMD64HotSpotEnterUnpackFramesStackFrameOp extends AMD64LIRInstruction {
 
-    private final Register thread;
+    private final Register threadRegister;
     private final int threadLastJavaSpOffset;
     private final int threadLastJavaPcOffset;
     private final int threadLastJavaFpOffset;
@@ -49,32 +50,51 @@ final class AMD64HotSpotEnterUnpackFramesStackFrameOp extends AMD64LIRInstructio
     @Alive(REG) AllocatableValue senderSp;
     @Alive(REG) AllocatableValue senderFp;
 
-    AMD64HotSpotEnterUnpackFramesStackFrameOp(Register thread, int threadLastJavaSpOffset, int threadLastJavaPcOffset, int threadLastJavaFpOffset, AllocatableValue framePc, AllocatableValue senderSp,
-                    AllocatableValue senderFp) {
-        this.thread = thread;
+    private final SaveRegistersOp saveRegisterOp;
+
+    AMD64HotSpotEnterUnpackFramesStackFrameOp(Register threadRegister, int threadLastJavaSpOffset, int threadLastJavaPcOffset, int threadLastJavaFpOffset, AllocatableValue framePc,
+                    AllocatableValue senderSp, AllocatableValue senderFp, SaveRegistersOp saveRegisterOp) {
+        this.threadRegister = threadRegister;
         this.threadLastJavaSpOffset = threadLastJavaSpOffset;
         this.threadLastJavaPcOffset = threadLastJavaPcOffset;
         this.threadLastJavaFpOffset = threadLastJavaFpOffset;
         this.framePc = framePc;
         this.senderSp = senderSp;
         this.senderFp = senderFp;
+        this.saveRegisterOp = saveRegisterOp;
     }
 
     @Override
     public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-        final int totalFrameSize = crb.frameMap.totalFrameSize();
+        FrameMap frameMap = crb.frameMap;
+        RegisterConfig registerConfig = frameMap.registerConfig;
+        RegisterSaveLayout registerSaveLayout = saveRegisterOp.getMap(frameMap);
+        Register stackPointerRegister = registerConfig.getFrameRegister();
+        final int totalFrameSize = frameMap.totalFrameSize();
+
+        // Push return address.
         masm.push(asRegister(framePc));
+
+        // Push base pointer.
         masm.push(asRegister(senderFp));
-        masm.movq(rbp, rsp);
+        masm.movq(rbp, stackPointerRegister);
 
         /*
          * Allocate a full sized frame. Since return address and base pointer are already in place
          * (see above) we allocate two words less.
          */
-        masm.decrementq(rsp, totalFrameSize - 2 * crb.target.wordSize);
+        masm.decrementq(stackPointerRegister, totalFrameSize - 2 * crb.target.wordSize);
+
+        // Save return registers after moving the frame.
+        final int stackSlotSize = frameMap.stackSlotSize();
+        Register integerResultRegister = registerConfig.getReturnRegister(Kind.Long);
+        masm.movptr(new AMD64Address(stackPointerRegister, registerSaveLayout.registerToSlot(integerResultRegister) * stackSlotSize), integerResultRegister);
+
+        Register floatResultRegister = registerConfig.getReturnRegister(Kind.Double);
+        masm.movdbl(new AMD64Address(stackPointerRegister, registerSaveLayout.registerToSlot(floatResultRegister) * stackSlotSize), floatResultRegister);
 
         // Set up last Java values.
-        masm.movq(new AMD64Address(thread, threadLastJavaSpOffset), rsp);
+        masm.movq(new AMD64Address(threadRegister, threadLastJavaSpOffset), stackPointerRegister);
 
         /*
          * Save the PC since it cannot easily be retrieved using the last Java SP after we aligned
@@ -82,12 +102,12 @@ final class AMD64HotSpotEnterUnpackFramesStackFrameOp extends AMD64LIRInstructio
          * blob.
          */
         masm.leaq(rax, new AMD64Address(rip, 0));
-        masm.movq(new AMD64Address(thread, threadLastJavaPcOffset), rax);
+        masm.movq(new AMD64Address(threadRegister, threadLastJavaPcOffset), rax);
 
         // Use BP because the frames look interpreted now.
-        masm.movq(new AMD64Address(thread, threadLastJavaFpOffset), rbp);
+        masm.movq(new AMD64Address(threadRegister, threadLastJavaFpOffset), rbp);
 
         // Align the stack for the following unpackFrames call.
-        masm.andq(rsp, -(crb.target.stackAlignment));
+        masm.andq(stackPointerRegister, -(crb.target.stackAlignment));
     }
 }

@@ -281,31 +281,8 @@ public class HSAILHotSpotLIRGenerator extends HSAILLIRGenerator implements HotSp
         return result;
     }
 
-    public void emitLeaveCurrentStackFrame() {
-        throw GraalInternalError.unimplemented();
-    }
-
-    public void emitLeaveDeoptimizedStackFrame(Value frameSize, Value initialInfo) {
-        throw GraalInternalError.unimplemented();
-    }
-
-    public void emitEnterUnpackFramesStackFrame(Value framePc, Value senderSp, Value senderFp) {
-        throw GraalInternalError.unimplemented();
-    }
-
-    public void emitLeaveUnpackFramesStackFrame() {
-        throw GraalInternalError.unimplemented();
-    }
-
     public SaveRegistersOp emitSaveAllRegisters() {
         throw GraalInternalError.unimplemented();
     }
 
-    public void emitPushInterpreterFrame(Value frameSize, Value framePc, Value senderSp, Value initialInfo) {
-        throw GraalInternalError.unimplemented();
-    }
-
-    public Value emitUncommonTrapCall(Value trapRequest, SaveRegistersOp saveRegisterOp) {
-        throw GraalInternalError.unimplemented();
-    }
 }

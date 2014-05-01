@@ -39,7 +39,7 @@ import com.oracle.graal.replacements.Snippet.*;
 import com.oracle.graal.word.*;
 
 /**
- * Deoptimization stub.
+ * Uncommon trap stub.
  *
  * This is the entry point for code which is returning to a de-optimized frame.
  *
@@ -75,11 +75,11 @@ import com.oracle.graal.word.*;
  * because we change the current stack layout and so the code is very sensitive to register
  * allocation.</b>
  */
-public class DeoptimizationStub extends SnippetStub {
+public class UncommonTrapStub extends SnippetStub {
 
     private final TargetDescription target;
 
-    public DeoptimizationStub(HotSpotProviders providers, TargetDescription target, HotSpotForeignCallLinkage linkage) {
+    public UncommonTrapStub(HotSpotProviders providers, TargetDescription target, HotSpotForeignCallLinkage linkage) {
         super(providers, target, linkage);
         this.target = target;
     }
@@ -102,15 +102,26 @@ public class DeoptimizationStub extends SnippetStub {
     }
 
     /**
-     * Deoptimization handler for normal deoptimization
-     * {@link HotSpotVMConfig#deoptimizationUnpackDeopt}.
+     * Uncommon trap handler.
+     *
+     * We save the argument return registers. We call the first C routine, fetch_unroll_info(). This
+     * routine captures the return values and returns a structure which describes the current frame
+     * size and the sizes of all replacement frames. The current frame is compiled code and may
+     * contain many inlined functions, each with their own JVM state. We pop the current frame, then
+     * push all the new frames. Then we call the C routine unpack_frames() to populate these frames.
+     * Finally unpack_frames() returns us the new target address. Notice that callee-save registers
+     * are BLOWN here; they have already been captured in the vframeArray at the time the return PC
+     * was patched.
      */
     @Snippet
-    private static void deoptimizationHandler(@ConstantParameter Register threadRegister, @ConstantParameter Register stackPointerRegister) {
+    private static void uncommonTrapHandler(@ConstantParameter Register threadRegister, @ConstantParameter Register stackPointerRegister) {
         final Word thread = registerAsWord(threadRegister);
         final long registerSaver = SaveAllRegistersNode.saveAllRegisters();
 
-        final Word unrollBlock = DeoptimizationFetchUnrollInfoCallNode.fetchUnrollInfo(registerSaver);
+        final int actionAndReason = readPendingDeoptimization(thread);
+        writePendingDeoptimization(thread, -1);
+
+        final Word unrollBlock = UncommonTrapCallNode.uncommonTrap(registerSaver, actionAndReason);
 
         // Pop all the frames we must move/replace.
         //
@@ -133,7 +144,7 @@ public class DeoptimizationStub extends SnippetStub {
          * Stack bang to make sure there's enough room for the interpreter frames. Bang stack for
          * total size of the interpreter frames plus shadow page size. Bang one page at a time
          * because large sizes can bang beyond yellow and red zones.
-         *
+         * 
          * @deprecated This code should go away as soon as JDK-8032410 hits the Graal repository.
          */
         final int totalFrameSizes = unrollBlock.readInt(deoptimizationUnrollBlockTotalFrameSizesOffset());
@@ -184,8 +195,8 @@ public class DeoptimizationStub extends SnippetStub {
         final Word senderFp = initialInfo;
         EnterUnpackFramesStackFrameNode.enterUnpackFramesStackFrame(framePc, senderSp, senderFp, registerSaver);
 
-        // Pass unpack deopt mode to unpack frames.
-        final int mode = deoptimizationUnpackDeopt();
+        // Pass uncommon trap mode to unpack frames.
+        final int mode = deoptimizationUnpackUncommonTrap();
         unpackFrames(UNPACK_FRAMES, thread, mode);
 
         LeaveUnpackFramesStackFrameNode.leaveUnpackFramesStackFrame(registerSaver);
@@ -270,11 +281,7 @@ public class DeoptimizationStub extends SnippetStub {
         return config().deoptimizationUnpackUncommonTrap;
     }
 
-    public static final ForeignCallDescriptor FETCH_UNROLL_INFO = descriptorFor(DeoptimizationStub.class, "fetchUnrollInfo");
-    public static final ForeignCallDescriptor UNPACK_FRAMES = descriptorFor(DeoptimizationStub.class, "unpackFrames");
-
-    @NodeIntrinsic(value = StubForeignCallNode.class, setStampFromReturnType = true)
-    public static native Word fetchUnrollInfo(@ConstantNodeParameter ForeignCallDescriptor fetchUnrollInfo, Word thread);
+    public static final ForeignCallDescriptor UNPACK_FRAMES = descriptorFor(UncommonTrapStub.class, "unpackFrames");
 
     @NodeIntrinsic(value = StubForeignCallNode.class, setStampFromReturnType = true)
     public static native int unpackFrames(@ConstantNodeParameter ForeignCallDescriptor unpackFrames, Word thread, int mode);

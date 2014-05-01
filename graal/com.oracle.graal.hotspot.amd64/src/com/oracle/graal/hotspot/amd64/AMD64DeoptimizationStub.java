@@ -35,7 +35,7 @@ final class AMD64DeoptimizationStub extends DeoptimizationStub {
 
     public AMD64DeoptimizationStub(HotSpotProviders providers, TargetDescription target, HotSpotForeignCallLinkage linkage) {
         super(providers, target, linkage);
-        registerConfig = new AMD64HotSpotRegisterConfig(target.arch, HotSpotGraalRuntime.runtime().getConfig(), new Register[]{rax, rbx, rcx, rdx, rsi, rdi, r8, r9, r10, r11, r13, r14});
+        registerConfig = new AMD64HotSpotRegisterConfig(target.arch, HotSpotGraalRuntime.runtime().getConfig(), new Register[]{rbx, rcx, rdx, rsi, rdi, r8, r9, r10, r11, r13, r14});
     }
 
     @Override

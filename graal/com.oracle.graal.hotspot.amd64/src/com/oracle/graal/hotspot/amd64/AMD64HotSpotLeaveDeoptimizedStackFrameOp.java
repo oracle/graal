@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,13 +26,14 @@ import static com.oracle.graal.api.code.ValueUtil.*;
 import static com.oracle.graal.amd64.AMD64.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.amd64.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
 
 /**
- * Pops the current frame off the stack including the return address.
+ * Pops a deoptimized stack frame off the stack including the return address.
  */
 @Opcode("LEAVE_DEOPTIMIZED_STACK_FRAME")
 final class AMD64HotSpotLeaveDeoptimizedStackFrameOp extends AMD64HotSpotEpilogueOp {
@@ -47,9 +48,13 @@ final class AMD64HotSpotLeaveDeoptimizedStackFrameOp extends AMD64HotSpotEpilogu
 
     @Override
     public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-        masm.addq(rsp, asRegister(frameSize));
-        // Restore the frame pointer before stack bang because if a stack overflow is thrown it
-        // needs to be pushed (and preserved).
+        Register stackPointer = crb.frameMap.registerConfig.getFrameRegister();
+        masm.addq(stackPointer, asRegister(frameSize));
+
+        /*
+         * Restore the frame pointer before stack bang because if a stack overflow is thrown it
+         * needs to be pushed (and preserved).
+         */
         masm.movq(rbp, asRegister(framePointer));
     }
 }

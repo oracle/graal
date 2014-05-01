@@ -27,7 +27,6 @@ import static com.oracle.graal.compiler.GraalDebugConfig.*;
 import java.util.*;
 import java.util.Map.Entry;
 
-import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.*;

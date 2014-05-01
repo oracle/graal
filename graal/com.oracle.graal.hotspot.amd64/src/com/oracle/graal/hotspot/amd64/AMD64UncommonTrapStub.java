@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,25 +22,25 @@
  */
 package com.oracle.graal.hotspot.amd64;
 
-import static com.oracle.graal.hotspot.HotSpotHostBackend.*;
+import static com.oracle.graal.amd64.AMD64.*;
 
-import com.oracle.graal.asm.amd64.*;
-import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.StandardOp.BlockEndOp;
-import com.oracle.graal.lir.amd64.*;
-import com.oracle.graal.lir.asm.*;
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.hotspot.*;
+import com.oracle.graal.hotspot.meta.*;
+import com.oracle.graal.hotspot.stubs.*;
 
-@Opcode("DEOPT")
-final class AMD64DeoptimizeOp extends AMD64LIRInstruction implements BlockEndOp {
+final class AMD64UncommonTrapStub extends UncommonTrapStub {
 
-    @State private LIRFrameState info;
+    private RegisterConfig registerConfig;
 
-    AMD64DeoptimizeOp(LIRFrameState info) {
-        this.info = info;
+    public AMD64UncommonTrapStub(HotSpotProviders providers, TargetDescription target, HotSpotForeignCallLinkage linkage) {
+        super(providers, target, linkage);
+        Register[] allocatable = new Register[]{rbx, rcx, rdx, rsi, rdi, r8, r9, r10, r11, r13, r14};
+        registerConfig = new AMD64HotSpotRegisterConfig(target.arch, HotSpotGraalRuntime.runtime().getConfig(), allocatable);
     }
 
     @Override
-    public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-        AMD64Call.directCall(crb, masm, crb.foreignCalls.lookupForeignCall(UNCOMMON_TRAP_HANDLER), null, false, info);
+    public RegisterConfig getRegisterConfig() {
+        return registerConfig;
     }
 }
