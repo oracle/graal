@@ -317,7 +317,7 @@ public final class CompileTheWorld {
     class CTWCompilationTask extends CompilationTask {
 
         CTWCompilationTask(HotSpotBackend backend, HotSpotResolvedJavaMethod method) {
-            super(backend, method, INVOCATION_ENTRY_BCI, false);
+            super(backend, method, INVOCATION_ENTRY_BCI, 0L, false);
         }
 
         /**

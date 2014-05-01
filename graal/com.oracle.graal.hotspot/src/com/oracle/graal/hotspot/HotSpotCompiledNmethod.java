@@ -34,11 +34,17 @@ public final class HotSpotCompiledNmethod extends HotSpotCompiledCode {
     public final HotSpotResolvedJavaMethod method;
     public final int entryBCI;
     public final int id;
+    public final long ctask;
 
     public HotSpotCompiledNmethod(TargetDescription target, HotSpotResolvedJavaMethod method, CompilationResult compResult) {
+        this(target, method, compResult, 0L);
+    }
+
+    public HotSpotCompiledNmethod(TargetDescription target, HotSpotResolvedJavaMethod method, CompilationResult compResult, long ctask) {
         super(target, compResult);
         this.method = method;
         this.entryBCI = compResult.getEntryBCI();
         this.id = compResult.getId();
+        this.ctask = ctask;
     }
 }
