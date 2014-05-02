@@ -24,19 +24,50 @@ package com.oracle.graal.hotspot.amd64;
 
 import static com.oracle.graal.amd64.AMD64.*;
 
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.amd64.*;
 import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.StandardOp.SaveRegistersOp;
 import com.oracle.graal.lir.asm.*;
 
 /**
- * Pops the current frame off the stack including the return address.
+ * Pops the current frame off the stack including the return address and restores the return
+ * registers stored on the stack.
  */
 @Opcode("LEAVE_CURRENT_STACK_FRAME")
 final class AMD64HotSpotLeaveCurrentStackFrameOp extends AMD64HotSpotEpilogueOp {
 
+    private final SaveRegistersOp saveRegisterOp;
+
+    public AMD64HotSpotLeaveCurrentStackFrameOp(SaveRegistersOp saveRegisterOp) {
+        this.saveRegisterOp = saveRegisterOp;
+    }
+
     @Override
     public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
+        FrameMap frameMap = crb.frameMap;
+        RegisterConfig registerConfig = frameMap.registerConfig;
+        RegisterSaveLayout registerSaveLayout = saveRegisterOp.getMap(frameMap);
+        Register stackPointer = registerConfig.getFrameRegister();
+
+        // Restore integer result register.
+        final int stackSlotSize = frameMap.stackSlotSize();
+        Register integerResultRegister = registerConfig.getReturnRegister(Kind.Long);
+        masm.movptr(integerResultRegister, new AMD64Address(stackPointer, registerSaveLayout.registerToSlot(integerResultRegister) * stackSlotSize));
+        masm.movptr(rdx, new AMD64Address(stackPointer, registerSaveLayout.registerToSlot(rdx) * stackSlotSize));
+
+        // Restore float result register.
+        Register floatResultRegister = registerConfig.getReturnRegister(Kind.Double);
+        masm.movdbl(floatResultRegister, new AMD64Address(stackPointer, registerSaveLayout.registerToSlot(floatResultRegister) * stackSlotSize));
+
+        /*
+         * All of the register save area will be popped of the stack. Only the return address
+         * remains.
+         */
         leaveFrameAndRestoreRbp(crb, masm);
-        masm.addq(rsp, crb.target.arch.getReturnAddressSize());
+
+        // Remove return address.
+        masm.addq(stackPointer, crb.target.arch.getReturnAddressSize());
     }
 }

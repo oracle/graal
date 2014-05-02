@@ -27,7 +27,7 @@ import java.lang.annotation.*;
 import com.oracle.graal.nodes.*;
 
 /**
- * Describes the properties of a node for use when building a {@link MatchPattern}s.
+ * Describes the properties of a node for use when building a {@link MatchPattern}.
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)
@@ -39,13 +39,7 @@ public @interface MatchableNode {
      * if they were directly on the node being described but that may complicate the annotation
      * processing.
      */
-    Class<? extends ValueNode> value();
-
-    /**
-     * The name used in match patterns. Defaults to class.getSimpleName() with the word Node removed
-     * from the end.
-     */
-    String shortName() default "";
+    Class<? extends ValueNode> nodeClass();
 
     /**
      * The number of matchable inputs, which may be less than the real number of inputs.

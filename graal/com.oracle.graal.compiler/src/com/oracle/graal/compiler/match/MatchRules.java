@@ -28,7 +28,7 @@ import java.lang.annotation.*;
  * The repeatable representation of {@link MatchRule}. Should never be used directly.
  */
 @Retention(RetentionPolicy.RUNTIME)
-@Target(ElementType.TYPE)
+@Target(ElementType.METHOD)
 public @interface MatchRules {
     MatchRule[] value();
 }

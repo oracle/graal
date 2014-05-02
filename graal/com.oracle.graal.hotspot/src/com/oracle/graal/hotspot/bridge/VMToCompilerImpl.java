@@ -192,55 +192,57 @@ public class VMToCompilerImpl implements VMToCompiler {
             }
         }
 
-        // Create compilation queue.
-        CompilerThreadFactory factory = new CompilerThreadFactory("GraalCompilerThread", new DebugConfigAccess() {
-            public GraalDebugConfig getDebugConfig() {
-                return Debug.isEnabled() ? DebugEnvironment.initialize(log) : null;
-            }
-        });
-        compileQueue = new Queue(factory);
+        if (runtime.getConfig().useGraalCompilationQueue) {
 
-        // Create queue status printing thread.
-        if (PrintQueue.getValue()) {
-            Thread t = new Thread() {
+            // Create compilation queue.
+            CompilerThreadFactory factory = new CompilerThreadFactory("GraalCompilerThread", new DebugConfigAccess() {
+                public GraalDebugConfig getDebugConfig() {
+                    return Debug.isEnabled() ? DebugEnvironment.initialize(log) : null;
+                }
+            });
+            compileQueue = new Queue(factory);
 
-                @Override
-                public void run() {
-                    while (true) {
-                        TTY.println(compileQueue.toString());
-                        try {
-                            Thread.sleep(1000);
-                        } catch (InterruptedException e) {
+            // Create queue status printing thread.
+            if (PrintQueue.getValue()) {
+                Thread t = new Thread() {
+
+                    @Override
+                    public void run() {
+                        while (true) {
+                            TTY.println(compileQueue.toString());
+                            try {
+                                Thread.sleep(1000);
+                            } catch (InterruptedException e) {
+                            }
                         }
                     }
-                }
-            };
-            t.setDaemon(true);
-            t.start();
-        }
-
-        if (PrintCompRate.getValue() != 0) {
-            if (runtime.getConfig().ciTime || runtime.getConfig().ciTimeEach) {
-                throw new GraalInternalError("PrintCompRate is incompatible with CITime and CITimeEach");
+                };
+                t.setDaemon(true);
+                t.start();
             }
-            Thread t = new Thread() {
 
-                @Override
-                public void run() {
-                    while (true) {
-                        runtime.getCompilerToVM().printCompilationStatistics(true, false);
-                        runtime.getCompilerToVM().resetCompilationStatistics();
-                        try {
-                            Thread.sleep(PrintCompRate.getValue());
-                        } catch (InterruptedException e) {
+            if (PrintCompRate.getValue() != 0) {
+                if (runtime.getConfig().ciTime || runtime.getConfig().ciTimeEach) {
+                    throw new GraalInternalError("PrintCompRate is incompatible with CITime and CITimeEach");
+                }
+                Thread t = new Thread() {
+
+                    @Override
+                    public void run() {
+                        while (true) {
+                            runtime.getCompilerToVM().printCompilationStatistics(true, false);
+                            runtime.getCompilerToVM().resetCompilationStatistics();
+                            try {
+                                Thread.sleep(PrintCompRate.getValue());
+                            } catch (InterruptedException e) {
+                            }
                         }
                     }
-                }
-            };
-            t.setDaemon(true);
-            t.start();
+                };
+                t.setDaemon(true);
+                t.start();
+            }
         }
-
         BenchmarkCounters.initialize(runtime.getCompilerToVM());
 
         compilerStartTime = System.nanoTime();
@@ -346,23 +348,24 @@ public class VMToCompilerImpl implements VMToCompiler {
     private void enqueue(Method m) throws Throwable {
         JavaMethod javaMethod = runtime.getHostProviders().getMetaAccess().lookupJavaMethod(m);
         assert !((HotSpotResolvedJavaMethod) javaMethod).isAbstract() && !((HotSpotResolvedJavaMethod) javaMethod).isNative() : javaMethod;
-        compileMethod((HotSpotResolvedJavaMethod) javaMethod, StructuredGraph.INVOCATION_ENTRY_BCI, false);
+        compileMethod((HotSpotResolvedJavaMethod) javaMethod, StructuredGraph.INVOCATION_ENTRY_BCI, 0L, false);
     }
 
     public void shutdownCompiler() throws Exception {
-        try (Enqueueing enqueueing = new Enqueueing()) {
-            // We have to use a privileged action here because shutting down the compiler might be
-            // called from user code which very likely contains unprivileged frames.
-            AccessController.doPrivileged(new PrivilegedExceptionAction<Void>() {
-                public Void run() throws Exception {
-                    if (compileQueue != null) {
-                        compileQueue.shutdown();
+        if (runtime.getConfig().useGraalCompilationQueue) {
+            try (Enqueueing enqueueing = new Enqueueing()) {
+                // We have to use a privileged action here because shutting down the compiler might
+                // be called from user code which very likely contains unprivileged frames.
+                AccessController.doPrivileged(new PrivilegedExceptionAction<Void>() {
+                    public Void run() throws Exception {
+                        if (compileQueue != null) {
+                            compileQueue.shutdown();
+                        }
+                        return null;
                     }
-                    return null;
-                }
-            });
+                });
+            }
         }
-
         printDebugValues(ResetDebugValuesAfterBootstrap.getValue() ? "application" : null, false);
         phaseTransition("final");
 
@@ -537,22 +540,34 @@ public class VMToCompilerImpl implements VMToCompiler {
     }
 
     @Override
-    public void compileMethod(long metaspaceMethod, final int entryBCI, final boolean blocking) {
+    public void compileMethod(long metaspaceMethod, final int entryBCI, long ctask, final boolean blocking) {
         final HotSpotResolvedJavaMethod method = HotSpotResolvedJavaMethod.fromMetaspace(metaspaceMethod);
-        // We have to use a privileged action here because compilations are enqueued from user code
-        // which very likely contains unprivileged frames.
-        AccessController.doPrivileged(new PrivilegedAction<Void>() {
-            public Void run() {
-                compileMethod(method, entryBCI, blocking);
-                return null;
-            }
-        });
+        if (ctask != 0L) {
+            // This is on a VM CompilerThread - no user frames exist
+            compileMethod(method, entryBCI, ctask, false);
+        } else {
+            // We have to use a privileged action here because compilations are
+            // enqueued from user code which very likely contains unprivileged frames.
+            AccessController.doPrivileged(new PrivilegedAction<Void>() {
+                public Void run() {
+                    compileMethod(method, entryBCI, 0L, blocking);
+                    return null;
+                }
+            });
+        }
     }
 
     /**
      * Compiles a method to machine code.
      */
-    void compileMethod(final HotSpotResolvedJavaMethod method, final int entryBCI, final boolean blocking) {
+    void compileMethod(final HotSpotResolvedJavaMethod method, final int entryBCI, long ctask, final boolean blocking) {
+        if (ctask != 0L) {
+            HotSpotBackend backend = runtime.getHostBackend();
+            CompilationTask task = new CompilationTask(backend, method, entryBCI, ctask, false);
+            task.runCompilation(false);
+            return;
+        }
+
         boolean osrCompilation = entryBCI != StructuredGraph.INVOCATION_ENTRY_BCI;
         if (osrCompilation && bootstrapRunning) {
             // no OSR compilations during bootstrap - the compiler is just too slow at this point,
@@ -575,7 +590,7 @@ public class VMToCompilerImpl implements VMToCompiler {
                 assert method.isQueuedForCompilation();
 
                 HotSpotBackend backend = runtime.getHostBackend();
-                CompilationTask task = new CompilationTask(backend, method, entryBCI, block);
+                CompilationTask task = new CompilationTask(backend, method, entryBCI, ctask, block);
 
                 try {
                     compileQueue.execute(task);

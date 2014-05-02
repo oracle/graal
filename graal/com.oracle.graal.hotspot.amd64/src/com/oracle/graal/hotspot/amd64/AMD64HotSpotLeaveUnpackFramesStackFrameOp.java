@@ -22,12 +22,12 @@
  */
 package com.oracle.graal.hotspot.amd64;
 
-import static com.oracle.graal.amd64.AMD64.*;
-
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.amd64.*;
 import com.oracle.graal.hotspot.stubs.*;
 import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.StandardOp.*;
 import com.oracle.graal.lir.amd64.*;
 import com.oracle.graal.lir.asm.*;
 
@@ -38,26 +38,42 @@ import com.oracle.graal.lir.asm.*;
 @Opcode("LEAVE_UNPACK_FRAMES_STACK_FRAME")
 final class AMD64HotSpotLeaveUnpackFramesStackFrameOp extends AMD64LIRInstruction {
 
-    private final Register thread;
+    private final Register threadRegister;
     private final int threadLastJavaSpOffset;
     private final int threadLastJavaPcOffset;
     private final int threadLastJavaFpOffset;
 
-    AMD64HotSpotLeaveUnpackFramesStackFrameOp(Register thread, int threadLastJavaSpOffset, int threadLastJavaPcOffset, int threadLastJavaFpOffset) {
-        this.thread = thread;
+    private final SaveRegistersOp saveRegisterOp;
+
+    AMD64HotSpotLeaveUnpackFramesStackFrameOp(Register threadRegister, int threadLastJavaSpOffset, int threadLastJavaPcOffset, int threadLastJavaFpOffset, SaveRegistersOp saveRegisterOp) {
+        this.threadRegister = threadRegister;
         this.threadLastJavaSpOffset = threadLastJavaSpOffset;
         this.threadLastJavaPcOffset = threadLastJavaPcOffset;
         this.threadLastJavaFpOffset = threadLastJavaFpOffset;
+        this.saveRegisterOp = saveRegisterOp;
     }
 
     @Override
     public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
+        FrameMap frameMap = crb.frameMap;
+        RegisterConfig registerConfig = frameMap.registerConfig;
+        RegisterSaveLayout registerSaveLayout = saveRegisterOp.getMap(frameMap);
+        Register stackPointerRegister = registerConfig.getFrameRegister();
+
         // Restore stack pointer.
-        masm.movq(rsp, new AMD64Address(thread, threadLastJavaSpOffset));
+        masm.movq(stackPointerRegister, new AMD64Address(threadRegister, threadLastJavaSpOffset));
 
         // Clear last Java frame values.
-        masm.movslq(new AMD64Address(thread, threadLastJavaSpOffset), 0);
-        masm.movslq(new AMD64Address(thread, threadLastJavaPcOffset), 0);
-        masm.movslq(new AMD64Address(thread, threadLastJavaFpOffset), 0);
+        masm.movslq(new AMD64Address(threadRegister, threadLastJavaSpOffset), 0);
+        masm.movslq(new AMD64Address(threadRegister, threadLastJavaPcOffset), 0);
+        masm.movslq(new AMD64Address(threadRegister, threadLastJavaFpOffset), 0);
+
+        // Restore return values.
+        final int stackSlotSize = frameMap.stackSlotSize();
+        Register integerResultRegister = registerConfig.getReturnRegister(Kind.Long);
+        masm.movptr(integerResultRegister, new AMD64Address(stackPointerRegister, registerSaveLayout.registerToSlot(integerResultRegister) * stackSlotSize));
+
+        Register floatResultRegister = registerConfig.getReturnRegister(Kind.Double);
+        masm.movdbl(floatResultRegister, new AMD64Address(stackPointerRegister, registerSaveLayout.registerToSlot(floatResultRegister) * stackSlotSize));
     }
 }

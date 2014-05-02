@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,16 +33,16 @@ public class RegisterSaveLayout {
     /**
      * Keys.
      */
-    private Register[] registers;
+    private final Register[] registers;
 
     /**
      * Slot indexes relative to stack pointer.
      */
-    private int[] slots;
+    private final int[] slots;
 
     /**
      * Creates a map from registers to frame slots.
-     * 
+     *
      * @param registers the keys in the map
      * @param slots frame slot index for each register in {@code registers}
      */
@@ -52,6 +52,21 @@ public class RegisterSaveLayout {
         this.slots = slots;
         assert registersToSlots(false).size() == registers.length : "non-unique registers";
         assert new HashSet<>(registersToSlots(false).values()).size() == slots.length : "non-unqiue slots";
+    }
+
+    /**
+     * Gets the frame slot index for a given register.
+     *
+     * @param register register to get the frame slot index for
+     * @return frame slot index
+     */
+    public int registerToSlot(Register register) {
+        for (int i = 0; i < registers.length; i++) {
+            if (register.equals(registers[i])) {
+                return slots[i];
+            }
+        }
+        throw new IllegalArgumentException(register + " not saved by this layout: " + this);
     }
 
     /**

@@ -33,8 +33,10 @@ public interface VMToCompiler {
     /**
      * Compiles a method to machine code. This method is called from the VM
      * (VMToCompiler::compileMethod).
+     *
+     * @param ctask the CompileTask pointer if this is a request from a HotSpot compiler thread
      */
-    void compileMethod(long metaspaceMethod, int entryBCI, boolean blocking);
+    void compileMethod(long metaspaceMethod, int entryBCI, long ctask, boolean blocking);
 
     void shutdownCompiler() throws Exception;
 

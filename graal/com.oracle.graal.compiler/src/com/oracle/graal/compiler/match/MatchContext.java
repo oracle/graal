@@ -22,10 +22,10 @@
  */
 package com.oracle.graal.compiler.match;
 
-import java.lang.reflect.*;
+import static com.oracle.graal.compiler.GraalDebugConfig.*;
+
 import java.util.*;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.match.MatchPattern.Result;
@@ -38,24 +38,41 @@ import com.oracle.graal.nodes.virtual.*;
  * Container for state captured during a match.
  */
 public class MatchContext {
-    private final ArrayList<ValueNode> consumed = new ArrayList<>();
-    private final List<ScheduledNode> nodes;
+
     private final ValueNode root;
-    private List<String> names;
-    private List<Class<? extends ValueNode>> types;
-    private List<ValueNode> values;
+
+    private final List<ScheduledNode> nodes;
+
     private final MatchStatement rule;
+
+    private Map<String, NamedNode> namedNodes;
+
+    private ArrayList<ValueNode> consumed;
+
     private int startIndex;
+
     private int endIndex;
+
     private final NodeLIRBuilder builder;
 
-    public MatchContext(NodeLIRBuilder builder, MatchStatement rule, ValueNode node, List<ScheduledNode> nodes) {
+    private static class NamedNode {
+        final Class<? extends ValueNode> type;
+        final ValueNode value;
+
+        NamedNode(Class<? extends ValueNode> type, ValueNode value) {
+            this.type = type;
+            this.value = value;
+        }
+    }
+
+    public MatchContext(NodeLIRBuilder builder, MatchStatement rule, int index, ValueNode node, List<ScheduledNode> nodes) {
         this.builder = builder;
         this.rule = rule;
         this.root = node;
         this.nodes = nodes;
-        // The root should be the last index since all the inputs must be scheduled before.
-        startIndex = endIndex = nodes.indexOf(node);
+        assert index == nodes.indexOf(node);
+        // The root should be the last index since all the inputs must be scheduled before it.
+        startIndex = endIndex = index;
     }
 
     public ValueNode getRoot() {
@@ -63,19 +80,16 @@ public class MatchContext {
     }
 
     public Result captureNamedValue(String name, Class<? extends ValueNode> type, ValueNode value) {
-        if (names == null) {
-            names = new ArrayList<>(2);
-            values = new ArrayList<>(2);
-            types = new ArrayList<>(2);
+        if (namedNodes == null) {
+            namedNodes = new HashMap<>(2);
         }
-        int index = names.indexOf(name);
-        if (index == -1) {
-            names.add(name);
-            values.add(value);
-            types.add(type);
+        NamedNode current = namedNodes.get(name);
+        if (current == null) {
+            current = new NamedNode(type, value);
+            namedNodes.put(name, current);
             return Result.OK;
         } else {
-            if (values.get(index) != value) {
+            if (current.value != value || current.type != type) {
                 return Result.NAMED_VALUE_MISMATCH(value, rule.getPattern());
             }
             return Result.OK;
@@ -85,59 +99,23 @@ public class MatchContext {
     public Result validate() {
         // Ensure that there's no unsafe work in between these operations.
         for (int i = startIndex; i <= endIndex; i++) {
-            ScheduledNode node = getNodes().get(i);
+            ScheduledNode node = nodes.get(i);
             if (node instanceof ConstantNode || node instanceof LocationNode || node instanceof VirtualObjectNode || node instanceof ParameterNode) {
                 // these can be evaluated lazily so don't worry about them. This should probably be
                 // captured by some interface that indicates that their generate method is empty.
                 continue;
-            } else if (!consumed.contains(node) && node != root) {
-                // This is too verbose for normal logging.
-                // Debug.log("unexpected node %s", node);
-                // for (int j = startIndex; j <= endIndex; j++) {
-                // ScheduledNode theNode = getNodes().get(j);
-                // Debug.log("%s(%s) %1s", (consumed.contains(theNode) || theNode == root) ? "*" :
-                // " ",
-                // theNode.usages().count(), theNode);
-                // }
+            } else if (consumed == null || !consumed.contains(node) && node != root) {
+                if (LogVerbose.getValue()) {
+                    Debug.log("unexpected node %s", node);
+                    for (int j = startIndex; j <= endIndex; j++) {
+                        ScheduledNode theNode = nodes.get(j);
+                        Debug.log("%s(%s) %1s", (consumed.contains(theNode) || theNode == root) ? "*" : " ", theNode.usages().count(), theNode);
+                    }
+                }
                 return Result.NOT_SAFE(node, rule.getPattern());
             }
         }
         return Result.OK;
-    }
-
-    /**
-     * Transfers the captured value into the MatchGenerator instance. The reflective information
-     * should really be generated and checking during construction of the MatchStatement but this is
-     * ok for now.
-     */
-    public void transferState(MatchGenerator generator) {
-        try {
-            for (int i = 0; i < names.size(); i++) {
-                String name = names.get(i);
-                try {
-                    Field field = generator.getClass().getDeclaredField(name);
-                    field.setAccessible(true);
-                    field.set(generator, values.get(i));
-                } catch (NoSuchFieldException e) {
-                    // Doesn't exist so the generator doesn't care about the value.
-                }
-            }
-        } catch (SecurityException | IllegalArgumentException | IllegalAccessException e) {
-            throw new GraalInternalError(e);
-        }
-        try {
-            Field field = generator.getClass().getDeclaredField("root");
-            field.setAccessible(true);
-            field.set(generator, getRoot());
-        } catch (NoSuchFieldException e) {
-            // Doesn't exist
-        } catch (SecurityException | IllegalAccessException | IllegalArgumentException e) {
-            throw new GraalInternalError(e);
-        }
-    }
-
-    public void setResult(ComplexMatchResult result) {
-        setResult(new ComplexMatchValue(result));
     }
 
     /**
@@ -146,16 +124,19 @@ public class MatchContext {
      *
      * @param result
      */
-    public void setResult(ComplexMatchValue result) {
+    public void setResult(ComplexMatchResult result) {
+        ComplexMatchValue value = new ComplexMatchValue(result);
         Debug.log("matched %s %s", rule.getName(), rule.getPattern());
-        // Debug.log("%s", rule.formatMatch(root));
-        for (ValueNode node : consumed) {
-            // All the interior nodes should be skipped during the normal doRoot calls in
-            // NodeLIRBuilder so mark them as interior matches. The root of the match will get a
-            // closure which will be evaluated to produce the final LIR.
-            getBuilder().setMatchResult(node, Value.INTERIOR_MATCH);
+        Debug.log("with nodes %s", rule.formatMatch(root));
+        if (consumed != null) {
+            for (ValueNode node : consumed) {
+                // All the interior nodes should be skipped during the normal doRoot calls in
+                // NodeLIRBuilder so mark them as interior matches. The root of the match will get a
+                // closure which will be evaluated to produce the final LIR.
+                builder.setMatchResult(node, ComplexMatchValue.INTERIOR_MATCH);
+            }
         }
-        getBuilder().setMatchResult(root, result);
+        builder.setMatchResult(root, value);
     }
 
     /**
@@ -164,28 +145,43 @@ public class MatchContext {
      * @return Result.OK if the node can be safely consumed.
      */
     public Result consume(ValueNode node) {
-        if (node.usages().count() != 1) {
-            return Result.TOO_MANY_USERS(node, rule.getPattern());
-        }
+        assert node.usages().count() <= 1 : "should have already been checked";
 
-        if (getBuilder().hasOperand(node)) {
+        if (builder.hasOperand(node)) {
             return Result.ALREADY_USED(node, rule.getPattern());
         }
 
-        int index = getNodes().indexOf(node);
+        int index = nodes.indexOf(node);
         if (index == -1) {
             return Result.NOT_IN_BLOCK(node, rule.getPattern());
         }
         startIndex = Math.min(startIndex, index);
+        if (consumed == null) {
+            consumed = new ArrayList<>(2);
+        }
         consumed.add(node);
         return Result.OK;
     }
 
-    private NodeLIRBuilder getBuilder() {
-        return builder;
+    /**
+     * Return the named node. It's an error if the
+     *
+     * @param name the name of a node in the match rule
+     * @return the matched node
+     * @throws GraalInternalError is the named node doesn't exist.
+     */
+    public ValueNode namedNode(String name) {
+        if (namedNodes != null) {
+            NamedNode value = namedNodes.get(name);
+            if (value != null) {
+                return value.value;
+            }
+        }
+        throw new GraalInternalError("missing node %s", name);
     }
 
-    private List<ScheduledNode> getNodes() {
-        return nodes;
+    @Override
+    public String toString() {
+        return String.format("%s %s (%d, %d) consumed %s", rule, root, startIndex, endIndex, consumed != null ? Arrays.toString(consumed.toArray()) : "");
     }
 }

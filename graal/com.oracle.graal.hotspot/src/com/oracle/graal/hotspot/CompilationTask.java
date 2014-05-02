@@ -26,6 +26,7 @@ import static com.oracle.graal.api.code.CallingConvention.Type.*;
 import static com.oracle.graal.api.code.CodeUtil.*;
 import static com.oracle.graal.compiler.GraalCompiler.*;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
+import static com.oracle.graal.compiler.common.UnsafeAccess.*;
 import static com.oracle.graal.hotspot.bridge.VMToCompilerImpl.*;
 import static com.oracle.graal.nodes.StructuredGraph.*;
 import static com.oracle.graal.phases.common.InliningUtil.*;
@@ -117,11 +118,23 @@ public class CompilationTask implements Runnable, Comparable<Object> {
      */
     private final com.sun.management.ThreadMXBean threadMXBean = (com.sun.management.ThreadMXBean) ManagementFactory.getThreadMXBean();
 
-    public CompilationTask(HotSpotBackend backend, HotSpotResolvedJavaMethod method, int entryBCI, boolean blocking) {
+    /**
+     * The address of the native CompileTask associated with this compilation. If 0L, then this
+     * compilation is being managed by a Graal compilation queue otherwise its managed by a native
+     * HotSpot compilation queue.
+     */
+    private final long ctask;
+
+    public CompilationTask(HotSpotBackend backend, HotSpotResolvedJavaMethod method, int entryBCI, long ctask, boolean blocking) {
         this.backend = backend;
         this.method = method;
         this.entryBCI = entryBCI;
-        this.id = method.allocateCompileId(entryBCI);
+        if (ctask == 0L) {
+            this.id = method.allocateCompileId(entryBCI);
+        } else {
+            this.id = unsafe.getInt(ctask + backend.getRuntime().getConfig().compileTaskCompileIdOffset);
+        }
+        this.ctask = ctask;
         this.blocking = blocking;
         this.taskId = uniqueTaskIds.incrementAndGet();
         this.status = new AtomicReference<>(CompilationStatus.Queued);
@@ -337,13 +350,17 @@ public class CompilationTask implements Runnable, Comparable<Object> {
                 System.exit(-1);
             }
         } finally {
+            int processedBytes = (int) (InlinedBytecodes.getCurrentValue() - previousInlinedBytecodes);
+            if (ctask != 0L) {
+                unsafe.putInt(ctask + config.compileTaskNumInlinedBytecodesOffset, processedBytes);
+            }
             if ((config.ciTime || config.ciTimeEach || PrintCompRate.getValue() != 0) && installedCode != null) {
-                long processedBytes = InlinedBytecodes.getCurrentValue() - previousInlinedBytecodes;
+
                 long time = CompilationTime.getCurrentValue() - previousCompilationTime;
                 TimeUnit timeUnit = CompilationTime.getTimeUnit();
                 long timeUnitsPerSecond = timeUnit.convert(1, TimeUnit.SECONDS);
                 CompilerToVM c2vm = backend.getRuntime().getCompilerToVM();
-                c2vm.notifyCompilationStatistics(id, method, entryBCI != INVOCATION_ENTRY_BCI, (int) processedBytes, time, timeUnitsPerSecond, installedCode);
+                c2vm.notifyCompilationStatistics(id, method, entryBCI != INVOCATION_ENTRY_BCI, processedBytes, time, timeUnitsPerSecond, installedCode);
             }
 
             if (clearFromCompilationQueue) {
@@ -388,7 +405,7 @@ public class CompilationTask implements Runnable, Comparable<Object> {
         final HotSpotCodeCacheProvider codeCache = backend.getProviders().getCodeCache();
         InstalledCode installedCode = null;
         try (Scope s = Debug.scope("CodeInstall", new DebugDumpScope(String.valueOf(id), true), codeCache, method)) {
-            installedCode = codeCache.installMethod(method, compResult);
+            installedCode = codeCache.installMethod(method, compResult, ctask);
         } catch (Throwable e) {
             throw Debug.handle(e);
         }

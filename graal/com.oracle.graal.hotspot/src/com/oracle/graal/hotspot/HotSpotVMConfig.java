@@ -170,7 +170,7 @@ public class HotSpotVMConfig extends CompilerObject {
                 String name = annotation.name();
                 Flags.Flag entry = flags.get(name);
                 if (entry == null) {
-                    if (!isRequired(currentArch, annotation.archs())) {
+                    if (annotation.optional() || !isRequired(currentArch, annotation.archs())) {
                         continue;
                     }
                     throw new IllegalArgumentException("flag not found: " + name);
@@ -716,6 +716,7 @@ public class HotSpotVMConfig extends CompilerObject {
     @HotSpotVMFlag(name = "CIPrintCompilerName") @Stable public boolean printCompilerName;
     @HotSpotVMFlag(name = "PrintInlining") @Stable public boolean printInlining;
     @HotSpotVMFlag(name = "GraalUseFastLocking") @Stable public boolean useFastLocking;
+    @HotSpotVMFlag(name = "UseGraalCompilationQueue", optional = true) @Stable public boolean useGraalCompilationQueue;
     @HotSpotVMFlag(name = "ForceUnreachable") @Stable public boolean forceUnreachable;
     @HotSpotVMFlag(name = "GPUOffload") @Stable public boolean gpuOffload;
     @HotSpotVMFlag(name = "TieredCompilation") @Stable public boolean tieredCompilation;
@@ -1067,6 +1068,9 @@ public class HotSpotVMConfig extends CompilerObject {
     @HotSpotVMConstant(name = "JVM_ACC_MONITOR_MATCH") @Stable public int jvmAccMonitorMatch;
     @HotSpotVMConstant(name = "JVM_ACC_HAS_MONITOR_BYTECODES") @Stable public int jvmAccHasMonitorBytecodes;
 
+    @HotSpotVMField(name = "CompileTask::_compile_id", type = "uint", get = HotSpotVMField.Type.OFFSET) @Stable public int compileTaskCompileIdOffset;
+    @HotSpotVMField(name = "CompileTask::_num_inlined_bytecodes", type = "int", get = HotSpotVMField.Type.OFFSET) @Stable public int compileTaskNumInlinedBytecodesOffset;
+
     /**
      * Value of Method::extra_stack_entries().
      */
@@ -1352,8 +1356,6 @@ public class HotSpotVMConfig extends CompilerObject {
     public long codeCacheHighBoundary() {
         return unsafe.getAddress(codeCacheHeap + codeHeapMemoryOffset + virtualSpaceHighBoundaryOffset);
     }
-
-    @Stable public long handleDeoptStub;
 
     @HotSpotVMField(name = "StubRoutines::_aescrypt_encryptBlock", type = "address", get = HotSpotVMField.Type.VALUE) @Stable public long aescryptEncryptBlockStub;
     @HotSpotVMField(name = "StubRoutines::_aescrypt_decryptBlock", type = "address", get = HotSpotVMField.Type.VALUE) @Stable public long aescryptDecryptBlockStub;

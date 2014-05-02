@@ -24,8 +24,10 @@ package com.oracle.graal.hotspot;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.hotspot.HotSpotVMConfig.CompressEncoding;
 import com.oracle.graal.hotspot.meta.*;
+import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.lir.StandardOp.SaveRegistersOp;
 import com.oracle.graal.lir.gen.*;
 
@@ -43,21 +45,87 @@ public interface HotSpotLIRGenerator extends LIRGeneratorTool {
      */
     void emitTailcall(Value[] args, Value address);
 
-    void emitLeaveCurrentStackFrame();
-
-    void emitLeaveDeoptimizedStackFrame(Value frameSize, Value initialInfo);
-
-    void emitEnterUnpackFramesStackFrame(Value framePc, Value senderSp, Value senderFp);
-
-    void emitLeaveUnpackFramesStackFrame();
-
-    SaveRegistersOp emitSaveAllRegisters();
-
     void emitDeoptimizeCaller(DeoptimizationAction action, DeoptimizationReason reason);
 
-    void emitPushInterpreterFrame(Value frameSize, Value framePc, Value senderSp, Value initialInfo);
+    /**
+     * Emits code for a {@link SaveAllRegistersNode}.
+     *
+     * @return a {@link SaveRegistersOp} operation
+     */
+    SaveRegistersOp emitSaveAllRegisters();
 
-    Value emitUncommonTrapCall(Value trapRequest, SaveRegistersOp saveRegisterOp);
+    /**
+     * Emits code for a {@link LeaveCurrentStackFrameNode}.
+     *
+     * @param saveRegisterOp saved registers
+     */
+    default void emitLeaveCurrentStackFrame(SaveRegistersOp saveRegisterOp) {
+        throw GraalInternalError.unimplemented();
+    }
+
+    /**
+     * Emits code for a {@link LeaveDeoptimizedStackFrameNode}.
+     *
+     * @param frameSize
+     * @param initialInfo
+     */
+    default void emitLeaveDeoptimizedStackFrame(Value frameSize, Value initialInfo) {
+        throw GraalInternalError.unimplemented();
+    }
+
+    /**
+     * Emits code for a {@link EnterUnpackFramesStackFrameNode}.
+     *
+     * @param framePc
+     * @param senderSp
+     * @param senderFp
+     * @param saveRegisterOp
+     */
+    default void emitEnterUnpackFramesStackFrame(Value framePc, Value senderSp, Value senderFp, SaveRegistersOp saveRegisterOp) {
+        throw GraalInternalError.unimplemented();
+    }
+
+    /**
+     * Emits code for a {@link LeaveUnpackFramesStackFrameNode}.
+     *
+     * @param saveRegisterOp
+     */
+    default void emitLeaveUnpackFramesStackFrame(SaveRegistersOp saveRegisterOp) {
+        throw GraalInternalError.unimplemented();
+    }
+
+    /**
+     * Emits code for a {@link PushInterpreterFrameNode}.
+     *
+     * @param frameSize
+     * @param framePc
+     * @param senderSp
+     * @param initialInfo
+     */
+    default void emitPushInterpreterFrame(Value frameSize, Value framePc, Value senderSp, Value initialInfo) {
+        throw GraalInternalError.unimplemented();
+    }
+
+    /**
+     * Emits code for a {@link UncommonTrapCallNode}.
+     *
+     * @param trapRequest
+     * @param saveRegisterOp
+     * @return a {@code Deoptimization::UnrollBlock} pointer
+     */
+    default Value emitUncommonTrapCall(Value trapRequest, SaveRegistersOp saveRegisterOp) {
+        throw GraalInternalError.unimplemented();
+    }
+
+    /**
+     * Emits code for a {@link DeoptimizationFetchUnrollInfoCallNode}.
+     *
+     * @param saveRegisterOp
+     * @return a {@code Deoptimization::UnrollBlock} pointer
+     */
+    default Value emitDeoptimizationFetchUnrollInfoCall(SaveRegistersOp saveRegisterOp) {
+        throw GraalInternalError.unimplemented();
+    }
 
     /**
      * Gets a stack slot for a lock at a given lock nesting depth.

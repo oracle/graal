@@ -31,12 +31,23 @@ import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.hotspot.meta.*;
+import com.oracle.graal.hotspot.stubs.*;
 import com.oracle.graal.nodes.spi.*;
 
 /**
  * Common functionality of HotSpot host backends.
  */
 public abstract class HotSpotHostBackend extends HotSpotBackend implements HostBackend {
+
+    /**
+     * Descriptor for {@link DeoptimizationStub#deoptimizationHandler}.
+     */
+    public static final ForeignCallDescriptor DEOPTIMIZATION_HANDLER = new ForeignCallDescriptor("deoptimizationHandler", void.class);
+
+    /**
+     * Descriptor for {@link UncommonTrapStub#uncommonTrapHandler}.
+     */
+    public static final ForeignCallDescriptor UNCOMMON_TRAP_HANDLER = new ForeignCallDescriptor("uncommonTrapHandler", void.class);
 
     /**
      * This will be 0 if stack banging is disabled.

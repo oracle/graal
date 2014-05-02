@@ -25,10 +25,10 @@ package com.oracle.graal.compiler.match;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.gen.*;
 
-/*
- * A closure that can be evaluated to produce the LIR for some complex match. Using a closure
- * allows normal evaluation in NodeLIRBuilder for all the simple nodes with the complex nodes
- * evaluated at the proper time.
+/**
+ * A closure that can be evaluated to produce the LIR for some complex match. Using a closure allows
+ * normal evaluation in NodeLIRBuilder for all the simple nodes with the complex nodes evaluated at
+ * the proper time.
  */
 public interface ComplexMatchResult {
     Value evaluate(NodeLIRBuilder gen);
