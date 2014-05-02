@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.hotspot.hsail;
 
-import static com.oracle.graal.api.code.ValueUtil.*;
-
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.hsail.*;
@@ -42,7 +40,6 @@ public class HSAILHotSpotSafepointOp extends HSAILLIRInstruction implements HSAI
     private Constant actionAndReason;
     @State protected LIRFrameState frameState;
     protected int codeBufferPos = -1;
-    protected int dregOopMap = 0;
     final int offsetToNoticeSafepoints;
 
     public HSAILHotSpotSafepointOp(LIRFrameState state, HotSpotVMConfig config, NodeLIRBuilderTool tool) {
@@ -77,23 +74,10 @@ public class HSAILHotSpotSafepointOp extends HSAILLIRInstruction implements HSAI
         masm.emitCompare(Kind.Int, scratch32, Constant.forInt(0), "eq", false, false);
         masm.cbr(afterSafepointLabel);
 
-        BytecodeFrame frame = frameState.debugInfo().frame();
-        for (int i = 0; i < frame.numLocals + frame.numStack; i++) {
-            Value val = frame.values[i];
-            if (isLegal(val) && isRegister(val)) {
-                Register reg = asRegister(val);
-                if (val.getKind() == Kind.Object) {
-                    dregOopMap |= 1 << (reg.encoding());
-                }
-            }
-        }
-
         AllocatableValue actionAndReasonReg = HSAIL.actionAndReasonReg.asValue(Kind.Int);
         AllocatableValue codeBufferOffsetReg = HSAIL.codeBufferOffsetReg.asValue(Kind.Int);
-        AllocatableValue dregOopMapReg = HSAIL.dregOopMapReg.asValue(Kind.Int);
         masm.emitMov(Kind.Int, actionAndReasonReg, actionAndReason);
         masm.emitMov(Kind.Int, codeBufferOffsetReg, Constant.forInt(codeBufferPos));
-        masm.emitMov(Kind.Int, dregOopMapReg, Constant.forInt(dregOopMap));
         masm.emitJumpToLabelName(masm.getDeoptLabelName());
 
         masm.emitString0(afterSafepointLabel + ":\n");

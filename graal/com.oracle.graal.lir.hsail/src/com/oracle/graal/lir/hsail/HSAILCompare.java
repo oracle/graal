@@ -50,8 +50,8 @@ public enum HSAILCompare {
     public static class CompareOp extends HSAILLIRInstruction {
 
         @Opcode private final HSAILCompare opcode;
-        @Use({REG, STACK, CONST}) protected Value x;
-        @Use({REG, STACK, CONST}) protected Value y;
+        @Use({REG, CONST}) protected Value x;
+        @Use({REG, CONST}) protected Value y;
         @Def({REG}) protected Value z;
         private final Condition condition;
         public boolean unordered = false;
