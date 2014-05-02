@@ -23,7 +23,6 @@
 package com.oracle.graal.replacements.test;
 
 import static org.junit.Assert.*;
-
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.compiler.test.*;
@@ -33,6 +32,7 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
+import com.oracle.graal.phases.common.inlining.*;
 import com.oracle.graal.phases.tiers.*;
 
 /**

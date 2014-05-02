@@ -20,12 +20,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.phases.common;
+package com.oracle.graal.phases.common.inlining;
 
 import static com.oracle.graal.compiler.common.GraalOptions.*;
-import static com.oracle.graal.phases.common.InliningPhase.Options.*;
+import static com.oracle.graal.phases.common.inlining.InliningPhase.Options.*;
 
 import java.util.*;
+import java.util.function.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
@@ -33,18 +34,18 @@ import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Graph.Mark;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.options.*;
-import com.oracle.graal.phases.common.InliningUtil.InlineInfo;
-import com.oracle.graal.phases.common.InliningUtil.Inlineable;
-import com.oracle.graal.phases.common.InliningUtil.InlineableGraph;
-import com.oracle.graal.phases.common.InliningUtil.InlineableMacroNode;
-import com.oracle.graal.phases.common.InliningUtil.InliningPolicy;
+import com.oracle.graal.phases.common.*;
+import com.oracle.graal.phases.common.inlining.InliningUtil.InlineInfo;
+import com.oracle.graal.phases.common.inlining.InliningUtil.Inlineable;
+import com.oracle.graal.phases.common.inlining.InliningUtil.InlineableGraph;
+import com.oracle.graal.phases.common.inlining.InliningUtil.InlineableMacroNode;
+import com.oracle.graal.phases.common.inlining.InliningUtil.InliningPolicy;
 import com.oracle.graal.phases.graph.*;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.phases.util.*;
@@ -95,12 +96,13 @@ public class InliningPhase extends AbstractInliningPhase {
     @Override
     protected void run(final StructuredGraph graph, final HighTierContext context) {
         final InliningData data = new InliningData(graph, context.getAssumptions());
+        ToDoubleFunction<FixedNode> probabilities = new FixedNodeProbabilityCache();
 
         while (data.hasUnprocessedGraphs()) {
             final MethodInvocation currentInvocation = data.currentInvocation();
             GraphInfo graphInfo = data.currentGraph();
             if (!currentInvocation.isRoot() &&
-                            !inliningPolicy.isWorthInlining(context.getReplacements(), currentInvocation.callee(), data.inliningDepth(), currentInvocation.probability(),
+                            !inliningPolicy.isWorthInlining(probabilities, context.getReplacements(), currentInvocation.callee(), data.inliningDepth(), currentInvocation.probability(),
                                             currentInvocation.relevance(), false)) {
                 int remainingGraphs = currentInvocation.totalGraphs() - currentInvocation.processedGraphs();
                 assert remainingGraphs > 0;
@@ -117,7 +119,7 @@ public class InliningPhase extends AbstractInliningPhase {
                         data.popInvocation();
                         final MethodInvocation parentInvoke = data.currentInvocation();
                         try (Scope s = Debug.scope("Inlining", data.inliningContext())) {
-                            tryToInline(data.currentGraph(), currentInvocation, parentInvoke, data.inliningDepth() + 1, context);
+                            tryToInline(probabilities, data.currentGraph(), currentInvocation, parentInvoke, data.inliningDepth() + 1, context);
                         } catch (Throwable e) {
                             throw Debug.handle(e);
                         }
@@ -157,11 +159,12 @@ public class InliningPhase extends AbstractInliningPhase {
         }
     }
 
-    private void tryToInline(GraphInfo callerGraphInfo, MethodInvocation calleeInfo, MethodInvocation parentInvocation, int inliningDepth, HighTierContext context) {
+    private void tryToInline(ToDoubleFunction<FixedNode> probabilities, GraphInfo callerGraphInfo, MethodInvocation calleeInfo, MethodInvocation parentInvocation, int inliningDepth,
+                    HighTierContext context) {
         InlineInfo callee = calleeInfo.callee();
         Assumptions callerAssumptions = parentInvocation.assumptions();
 
-        if (inliningPolicy.isWorthInlining(context.getReplacements(), callee, inliningDepth, calleeInfo.probability(), calleeInfo.relevance(), true)) {
+        if (inliningPolicy.isWorthInlining(probabilities, context.getReplacements(), callee, inliningDepth, calleeInfo.probability(), calleeInfo.relevance(), true)) {
             doInline(callerGraphInfo, calleeInfo, callerAssumptions, context);
         } else if (context.getOptimisticOptimizations().devirtualizeInvokes()) {
             callee.tryToDevirtualizeInvoke(context.getMetaAccess(), callerAssumptions);
@@ -378,15 +381,14 @@ public class InliningPhase extends AbstractInliningPhase {
             return nodes;
         }
 
-        protected static double determineInvokeProbability(InlineInfo info) {
+        protected static double determineInvokeProbability(ToDoubleFunction<FixedNode> probabilities, InlineInfo info) {
             double invokeProbability = 0;
             for (int i = 0; i < info.numberOfMethods(); i++) {
                 Inlineable callee = info.inlineableElementAt(i);
                 Iterable<Invoke> invokes = callee.getInvokes();
                 if (invokes.iterator().hasNext()) {
-                    NodesToDoubles nodeProbabilities = new ComputeProbabilityClosure(((InlineableGraph) callee).getGraph()).apply();
                     for (Invoke invoke : invokes) {
-                        invokeProbability += nodeProbabilities.get(invoke.asNode());
+                        invokeProbability += probabilities.applyAsDouble(invoke.asNode());
                     }
                 }
             }
@@ -410,7 +412,8 @@ public class InliningPhase extends AbstractInliningPhase {
         }
 
         @Override
-        public boolean isWorthInlining(Replacements replacements, InlineInfo info, int inliningDepth, double probability, double relevance, boolean fullyProcessed) {
+        public boolean isWorthInlining(ToDoubleFunction<FixedNode> probabilities, Replacements replacements, InlineInfo info, int inliningDepth, double probability, double relevance,
+                        boolean fullyProcessed) {
             if (InlineEverything.getValue()) {
                 return InliningUtil.logInlinedMethod(info, inliningDepth, fullyProcessed, "inline everything");
             }
@@ -442,7 +445,7 @@ public class InliningPhase extends AbstractInliningPhase {
              * useful to inline those methods but increases bootstrap time (maybe those methods are
              * also getting queued in the compilation queue concurrently)
              */
-            double invokes = determineInvokeProbability(info);
+            double invokes = determineInvokeProbability(probabilities, info);
             if (LimitInlinedInvokes.getValue() > 0 && fullyProcessed && invokes > LimitInlinedInvokes.getValue() * inliningBonus) {
                 return InliningUtil.logNotInlinedMethod(info, inliningDepth, "callee invoke probability is too high (invokeP=%f, relevance=%f, probability=%f, bonus=%f, nodes=%d)", invokes,
                                 relevance, probability, inliningBonus, nodes);
@@ -468,7 +471,8 @@ public class InliningPhase extends AbstractInliningPhase {
             return true;
         }
 
-        public boolean isWorthInlining(Replacements replacements, InlineInfo info, int inliningDepth, double probability, double relevance, boolean fullyProcessed) {
+        public boolean isWorthInlining(ToDoubleFunction<FixedNode> probabilities, Replacements replacements, InlineInfo info, int inliningDepth, double probability, double relevance,
+                        boolean fullyProcessed) {
             return true;
         }
     }
@@ -796,8 +800,8 @@ public class InliningPhase extends AbstractInliningPhase {
         private final double probability;
         private final double relevance;
 
-        private NodesToDoubles nodeProbabilities;
-        private NodesToDoubles nodeRelevance;
+        private final ToDoubleFunction<FixedNode> probabilities;
+        private final ComputeInliningRelevance computeInliningRelevance;
 
         public GraphInfo(StructuredGraph graph, LinkedList<Invoke> invokes, double probability, double relevance) {
             this.graph = graph;
@@ -805,8 +809,13 @@ public class InliningPhase extends AbstractInliningPhase {
             this.probability = probability;
             this.relevance = relevance;
 
-            if (graph != null) {
+            if (graph != null && (graph.hasNode(InvokeNode.class) || graph.hasNode(InvokeWithExceptionNode.class))) {
+                probabilities = new FixedNodeProbabilityCache();
+                computeInliningRelevance = new ComputeInliningRelevance(graph, probabilities);
                 computeProbabilities();
+            } else {
+                probabilities = null;
+                computeInliningRelevance = null;
             }
         }
 
@@ -838,16 +847,15 @@ public class InliningPhase extends AbstractInliningPhase {
         }
 
         public void computeProbabilities() {
-            nodeProbabilities = new ComputeProbabilityClosure(graph).apply();
-            nodeRelevance = new ComputeInliningRelevanceClosure(graph, nodeProbabilities).apply();
+            computeInliningRelevance.compute();
         }
 
         public double invokeProbability(Invoke invoke) {
-            return probability * nodeProbabilities.get(invoke.asNode());
+            return probability * probabilities.applyAsDouble(invoke.asNode());
         }
 
         public double invokeRelevance(Invoke invoke) {
-            return Math.min(CapInheritedRelevance.getValue(), relevance) * nodeRelevance.get(invoke.asNode());
+            return Math.min(CapInheritedRelevance.getValue(), relevance) * computeInliningRelevance.getRelevance(invoke);
         }
 
         @Override

@@ -55,4 +55,6 @@ public interface AbstractBlock<T extends AbstractBlock<T>> {
     void setAlign(boolean align);
 
     T getDominator();
+
+    double probability();
 }

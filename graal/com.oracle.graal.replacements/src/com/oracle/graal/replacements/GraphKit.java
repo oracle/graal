@@ -35,6 +35,7 @@ import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
 import com.oracle.graal.phases.common.*;
+import com.oracle.graal.phases.common.inlining.*;
 import com.oracle.graal.phases.util.*;
 import com.oracle.graal.replacements.ReplacementsImpl.FrameStateProcessing;
 import com.oracle.graal.word.phases.*;

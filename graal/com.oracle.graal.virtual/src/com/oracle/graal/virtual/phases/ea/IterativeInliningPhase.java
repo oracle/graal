@@ -31,7 +31,8 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.common.*;
-import com.oracle.graal.phases.common.cfs.IterativeFlowSensitiveReductionPhase;
+import com.oracle.graal.phases.common.cfs.*;
+import com.oracle.graal.phases.common.inlining.*;
 import com.oracle.graal.phases.tiers.*;
 
 public class IterativeInliningPhase extends AbstractInliningPhase {

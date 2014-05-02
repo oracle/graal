@@ -37,7 +37,7 @@ import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.hotspot.logging.*;
 import com.oracle.graal.options.*;
-import com.oracle.graal.phases.common.*;
+import com.oracle.graal.phases.common.inlining.*;
 
 /**
  * Called from {@code graalCompiler.cpp} to parse any Graal specific options. Such options are
@@ -113,7 +113,7 @@ public class HotSpotOptions {
 
     /**
      * Parses a given option value specification.
-     * 
+     *
      * @param option the specification of an option and its value
      * @param setter the object to notify of the parsed option and value. If null, the
      *            {@link OptionValue#setValue(Object)} method of the specified option is called
@@ -213,7 +213,7 @@ public class HotSpotOptions {
      * <p>
      * This method verifies that the named field exists and is of an expected type. However, it does
      * not verify that the timer or metric created has the same name of the field.
-     * 
+     *
      * @param c the class in which the field is declared
      * @param name the name of the field
      */
@@ -239,7 +239,7 @@ public class HotSpotOptions {
     /**
      * Called from VM code once all Graal command line options have been processed by
      * {@link #setOption(String)}.
-     * 
+     *
      * @param timeCompilations true if the CITime or CITimeEach HotSpot VM options are set
      */
     public static void finalizeOptions(boolean timeCompilations) {
@@ -255,7 +255,7 @@ public class HotSpotOptions {
 
     /**
      * Wraps some given text to one or more lines of a given maximum width.
-     * 
+     *
      * @param text text to wrap
      * @param width maximum width of an output line, exception for words in {@code text} longer than
      *            this value
@@ -314,7 +314,7 @@ public class HotSpotOptions {
 
     /**
      * Compute string similarity based on Dice's coefficient.
-     * 
+     *
      * Ported from str_similar() in globals.cpp.
      */
     static float stringSimiliarity(String str1, String str2) {

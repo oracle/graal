@@ -20,13 +20,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.phases.common;
+package com.oracle.graal.phases.common.inlining;
 
 import static com.oracle.graal.api.meta.DeoptimizationAction.*;
 import static com.oracle.graal.api.meta.DeoptimizationReason.*;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.compiler.common.type.StampFactory.*;
+
 import java.util.*;
+import java.util.function.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.Assumptions.Assumption;
@@ -50,7 +52,8 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.*;
-import com.oracle.graal.phases.common.InliningPhase.InliningData;
+import com.oracle.graal.phases.common.*;
+import com.oracle.graal.phases.common.inlining.InliningPhase.*;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.phases.util.*;
 
@@ -69,7 +72,7 @@ public class InliningUtil {
 
         boolean continueInlining(StructuredGraph graph);
 
-        boolean isWorthInlining(Replacements replacements, InlineInfo info, int inliningDepth, double probability, double relevance, boolean fullyProcessed);
+        boolean isWorthInlining(ToDoubleFunction<FixedNode> probabilities, Replacements replacements, InlineInfo info, int inliningDepth, double probability, double relevance, boolean fullyProcessed);
     }
 
     public interface Inlineable {

@@ -177,6 +177,10 @@ public final class BciBlockMapping {
         public BciBlock getPredecessor(int index) {
             return predecessors.get(index);
         }
+
+        public double probability() {
+            return 1D;
+        }
     }
 
     public static class ExceptionDispatchBlock extends BciBlock {

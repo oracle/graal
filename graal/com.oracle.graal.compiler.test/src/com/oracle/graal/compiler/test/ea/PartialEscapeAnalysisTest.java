@@ -23,6 +23,7 @@
 package com.oracle.graal.compiler.test.ea;
 
 import java.lang.ref.*;
+import java.util.function.*;
 
 import org.junit.*;
 
@@ -30,7 +31,6 @@ import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
-import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.nodes.virtual.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.graph.*;
@@ -186,11 +186,11 @@ public class PartialEscapeAnalysisTest extends EATestBase {
             Assert.assertTrue("partial escape analysis should have removed all NewInstanceNode allocations", graph.getNodes().filter(NewInstanceNode.class).isEmpty());
             Assert.assertTrue("partial escape analysis should have removed all NewArrayNode allocations", graph.getNodes().filter(NewArrayNode.class).isEmpty());
 
-            NodesToDoubles nodeProbabilities = new ComputeProbabilityClosure(graph).apply();
+            ToDoubleFunction<FixedNode> nodeProbabilities = new FixedNodeProbabilityCache();
             double probabilitySum = 0;
             int materializeCount = 0;
             for (CommitAllocationNode materialize : graph.getNodes().filter(CommitAllocationNode.class)) {
-                probabilitySum += nodeProbabilities.get(materialize) * materialize.getVirtualObjects().size();
+                probabilitySum += nodeProbabilities.applyAsDouble(materialize) * materialize.getVirtualObjects().size();
                 materializeCount += materialize.getVirtualObjects().size();
             }
             Assert.assertEquals("unexpected number of MaterializeObjectNodes", expectedCount, materializeCount);

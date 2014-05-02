@@ -23,7 +23,6 @@
 package com.oracle.graal.hotspot.test;
 
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
-
 import java.lang.ref.*;
 import java.lang.reflect.*;
 
@@ -44,6 +43,7 @@ import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
+import com.oracle.graal.phases.common.inlining.*;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.runtime.*;
 

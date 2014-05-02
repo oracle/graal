@@ -24,7 +24,6 @@ package com.oracle.graal.compiler.test;
 
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static org.junit.Assert.*;
-
 import java.util.*;
 
 import org.junit.*;
@@ -43,6 +42,7 @@ import com.oracle.graal.options.*;
 import com.oracle.graal.options.OptionValue.OverrideScope;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
+import com.oracle.graal.phases.common.inlining.*;
 import com.oracle.graal.phases.schedule.*;
 import com.oracle.graal.phases.schedule.SchedulePhase.MemoryScheduling;
 import com.oracle.graal.phases.schedule.SchedulePhase.SchedulingStrategy;

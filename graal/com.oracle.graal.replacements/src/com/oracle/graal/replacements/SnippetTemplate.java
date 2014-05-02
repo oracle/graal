@@ -23,7 +23,6 @@
 package com.oracle.graal.replacements;
 
 import static com.oracle.graal.api.meta.LocationIdentity.*;
-
 import static com.oracle.graal.api.meta.MetaUtil.*;
 import static com.oracle.graal.debug.Debug.*;
 import static java.util.FormattableFlags.*;
@@ -54,6 +53,7 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.common.FloatingReadPhase.MemoryMapImpl;
+import com.oracle.graal.phases.common.inlining.*;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.phases.util.*;
 import com.oracle.graal.replacements.Snippet.ConstantParameter;

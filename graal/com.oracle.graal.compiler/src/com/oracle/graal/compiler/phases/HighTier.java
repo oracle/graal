@@ -24,13 +24,13 @@ package com.oracle.graal.compiler.phases;
 
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.compiler.phases.HighTier.Options.*;
-
 import com.oracle.graal.loop.phases.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.options.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.common.cfs.IterativeFlowSensitiveReductionPhase;
+import com.oracle.graal.phases.common.inlining.*;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.virtual.phases.ea.*;
 

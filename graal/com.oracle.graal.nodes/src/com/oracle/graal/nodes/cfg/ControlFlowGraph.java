@@ -200,14 +200,21 @@ public class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
     private void connectBlocks() {
         for (Block block : reversePostOrder) {
             List<Block> predecessors = new ArrayList<>(4);
+            double probability = 0;
             for (Node predNode : block.getBeginNode().cfgPredecessors()) {
                 Block predBlock = nodeToBlock.get(predNode);
                 if (predBlock.getId() >= 0) {
                     predecessors.add(predBlock);
+                    probability += predBlock.probability;
                 }
             }
+            if (predecessors.size() == 1 && predecessors.get(0).getEndNode() instanceof ControlSplitNode) {
+                probability *= ((ControlSplitNode) predecessors.get(0).getEndNode()).probability(block.getBeginNode());
+            }
             if (block.getBeginNode() instanceof LoopBeginNode) {
-                for (LoopEndNode predNode : ((LoopBeginNode) block.getBeginNode()).orderedLoopEnds()) {
+                LoopBeginNode loopBegin = (LoopBeginNode) block.getBeginNode();
+                probability *= loopBegin.loopFrequency();
+                for (LoopEndNode predNode : loopBegin.orderedLoopEnds()) {
                     Block predBlock = nodeToBlock.get(predNode);
                     if (predBlock.getId() >= 0) {
                         predecessors.add(predBlock);
@@ -215,6 +222,7 @@ public class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
                 }
             }
             block.setPredecessors(predecessors);
+            block.setProbability(probability);
 
             List<Block> successors = new ArrayList<>(4);
             for (Node suxNode : block.getEndNode().cfgSuccessors()) {

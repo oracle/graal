@@ -107,7 +107,7 @@ public class MergeNode extends BeginStateSplitNode implements IterableNodeType, 
         ends.clear();
     }
 
-    public NodeIterable<AbstractEndNode> forwardEnds() {
+    public NodeInputList<AbstractEndNode> forwardEnds() {
         return ends;
     }
 
