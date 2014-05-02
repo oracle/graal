@@ -134,31 +134,6 @@ public abstract class Node implements Cloneable {
      * @param newChildren the array of new children whose parent should be updated
      * @return the array of new children
      */
-    @SuppressWarnings("static-method")
-    @Deprecated
-    protected final <T extends Node> T[] adoptChildren(final T[] newChildren) {
-        return newChildren;
-    }
-
-    /**
-     * Method that updates the link to the parent in the specified new child node to this node.
-     *
-     * @param newChild the new child whose parent should be updated
-     * @return the new child
-     */
-    @SuppressWarnings("static-method")
-    @Deprecated
-    protected final <T extends Node> T adoptChild(final T newChild) {
-        return newChild;
-    }
-
-    /**
-     * Method that updates the link to the parent in the array of specified new child nodes to this
-     * node.
-     *
-     * @param newChildren the array of new children whose parent should be updated
-     * @return the array of new children
-     */
     protected final <T extends Node> T[] insert(final T[] newChildren) {
         CompilerDirectives.transferToInterpreterAndInvalidate();
         assert newChildren != null;
