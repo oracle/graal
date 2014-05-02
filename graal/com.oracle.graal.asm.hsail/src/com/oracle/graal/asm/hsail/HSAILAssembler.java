@@ -190,16 +190,9 @@ public abstract class HSAILAssembler extends AbstractHSAILAssembler {
         emitString("st_spill_" + getArgTypeFromKind(kind) + " " + HSAIL.mapRegister(src) + ", " + mapStackSlot(dest, getArgSizeFromKind(kind)) + ";");
     }
 
-    /**
-     * The mapping to stack slots is always relative to the beginning of the spillseg.
-     * HSAIL.getStackOffset returns the positive version of the originally negative offset. Then we
-     * back up from that by the argSize in bytes. This ensures that slots of different size do not
-     * overlap, even though we have converted from negative to positive offsets.
-     */
     public static String mapStackSlot(Value reg, int argSize) {
-        long offset = HSAIL.getStackOffset(reg);
-        int argSizeBytes = argSize / 8;
-        return "[%spillseg]" + "[" + (offset - argSizeBytes) + "]";
+        long startOffset = HSAIL.getStackOffsetStart(reg, argSize);
+        return "[%spillseg]" + "[" + startOffset + "]";
     }
 
     public void cbr(String target1) {

@@ -136,7 +136,6 @@ public class HSAIL extends Architecture {
     public static final Register threadRegister = d20;
     public static final Register actionAndReasonReg = s32;
     public static final Register codeBufferOffsetReg = s33;
-    public static final Register dregOopMapReg = s39;
 
     // @formatter:off
     public static final Register[] cRegisters = {
@@ -178,10 +177,16 @@ public class HSAIL extends Architecture {
         return -(((StackSlot) reg).getRawOffset());
     }
 
-    public static String mapStackSlot(Value reg) {
-        StackSlot s = (StackSlot) reg;
-        long offset = -s.getRawOffset();
-        return "[%spillseg]" + "[" + offset + "]";
+    /**
+     * The mapping to stack slots is always relative to the beginning of the spillseg.
+     * {@link #getStackOffset(Value)} returns the positive version of the originally negative
+     * offset. Then we back up from that by {@code argSize} in bytes. This ensures that slots of
+     * different size do not overlap, even though we have converted from negative to positive
+     * offsets.
+     */
+    public static int getStackOffsetStart(Value reg, int argSize) {
+        int argSizeInBytes = argSize / 8;
+        return getStackOffset(reg) - argSizeInBytes;
     }
 
     public static String mapRegister(Value arg) {
