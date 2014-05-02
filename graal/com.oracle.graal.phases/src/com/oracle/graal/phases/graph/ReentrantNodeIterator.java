@@ -47,7 +47,7 @@ public final class ReentrantNodeIterator {
 
         /**
          * Determine whether iteration should continue in the current state.
-         * 
+         *
          * @param currentState
          */
         protected boolean continueIteration(StateT currentState) {
@@ -60,11 +60,7 @@ public final class ReentrantNodeIterator {
     }
 
     public static <StateT> LoopInfo<StateT> processLoop(NodeIteratorClosure<StateT> closure, LoopBeginNode loop, StateT initialState) {
-        HashSet<FixedNode> boundary = new HashSet<>();
-        for (LoopExitNode exit : loop.loopExits()) {
-            boundary.add(exit);
-        }
-        Map<FixedNode, StateT> blockEndStates = apply(closure, loop, initialState, boundary);
+        Map<FixedNode, StateT> blockEndStates = apply(closure, loop, initialState, loop);
 
         LoopInfo<StateT> info = new LoopInfo<>();
         for (LoopEndNode end : loop.loopEnds()) {
@@ -80,7 +76,11 @@ public final class ReentrantNodeIterator {
         return info;
     }
 
-    public static <StateT> Map<FixedNode, StateT> apply(NodeIteratorClosure<StateT> closure, FixedNode start, StateT initialState, Set<FixedNode> boundary) {
+    public static <StateT> Map<FixedNode, StateT> apply(NodeIteratorClosure<StateT> closure, FixedNode start, StateT initialState) {
+        return apply(closure, start, initialState, null);
+    }
+
+    private static <StateT> Map<FixedNode, StateT> apply(NodeIteratorClosure<StateT> closure, FixedNode start, StateT initialState, LoopBeginNode boundary) {
         Deque<BeginNode> nodeQueue = new ArrayDeque<>();
         IdentityHashMap<FixedNode, StateT> blockEndStates = new IdentityHashMap<>();
 
@@ -88,7 +88,7 @@ public final class ReentrantNodeIterator {
         FixedNode current = start;
         do {
             while (current instanceof FixedWithNextNode) {
-                if (boundary != null && boundary.contains(current)) {
+                if (boundary != null && current instanceof LoopExitNode && ((LoopExitNode) current).loopBegin() == boundary) {
                     blockEndStates.put(current, state);
                     current = null;
                 } else {

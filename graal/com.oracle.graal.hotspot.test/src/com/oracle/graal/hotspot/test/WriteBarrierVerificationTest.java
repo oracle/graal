@@ -693,7 +693,7 @@ public class WriteBarrierVerificationTest extends GraalCompilerTest {
             DebugConfig debugConfig = DebugScope.getConfig();
             DebugConfig fixedConfig = Debug.fixedConfig(false, false, false, false, debugConfig.dumpHandlers(), debugConfig.output());
             try (DebugConfigScope s = Debug.setConfig(fixedConfig)) {
-                ReentrantNodeIterator.apply(closure, graph.start(), false, null);
+                ReentrantNodeIterator.apply(closure, graph.start(), false);
                 new WriteBarrierVerificationPhase().apply(graph);
             } catch (AssertionError error) {
                 /*
