@@ -836,7 +836,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
             if (node.getSpecializations().isEmpty()) {
                 body.nullLiteral();
             } else {
-                body.startNew(nodeSpecializationClassName(node.getSpecializations().get(0)));
+                body.startCall(nodeSpecializationClassName(node.getSpecializations().get(0)), CREATE_SPECIALIZATION_NAME);
                 for (VariableElement var : method.getParameters()) {
                     body.string(var.getSimpleName().toString());
                 }
@@ -867,7 +867,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
             if (found == null) {
                 body.startThrow().startNew(getContext().getType(UnsupportedOperationException.class)).end().end();
             } else {
-                body.startReturn().startNew(nodeSpecializationClassName(found)).startGroup().cast(baseClassName(node)).string(THIS_NODE_LOCAL_VAR_NAME).end().end().end();
+                body.startReturn().startCall(nodeSpecializationClassName(found), CREATE_SPECIALIZATION_NAME).startGroup().cast(baseClassName(node)).string(THIS_NODE_LOCAL_VAR_NAME).end().end().end();
             }
             return method;
         }
@@ -2549,7 +2549,15 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
             }
 
             if (!specialization.isUninitialized() && specialization.getNode().needsRewrites(context)) {
-                clazz.add(createCreateSpecializationMethod(nodeGen.asType(), specialization));
+                clazz.add(createCopyConstructorFactoryMethod(nodeGen.asType(), specialization));
+            } else {
+                for (ExecutableElement constructor : ElementFilter.constructorsIn(clazz.getEnclosedElements())) {
+                    if (constructor.getParameters().size() == 1 && ((CodeVariableElement) constructor.getParameters().get(0)).getType().equals(nodeGen.asType())) {
+                        // skip copy constructor - not used
+                        continue;
+                    }
+                    clazz.add(createConstructorFactoryMethod(nodeGen.asType(), specialization, constructor));
+                }
             }
         }
 
@@ -2916,7 +2924,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
             return builder.getRoot();
         }
 
-        protected CodeExecutableElement createCreateSpecializationMethod(TypeMirror baseType, SpecializationData specialization) {
+        protected CodeExecutableElement createCopyConstructorFactoryMethod(TypeMirror baseType, SpecializationData specialization) {
             List<ActualParameter> implicitTypeParams = getImplicitTypeParameters(specialization);
             CodeVariableElement[] parameters = new CodeVariableElement[implicitTypeParams.size() + 1];
             int i = 0;
@@ -2933,6 +2941,20 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
             builder.string(baseName);
             for (ActualParameter param : implicitTypeParams) {
                 builder.string(implicitTypeName(param));
+            }
+            builder.end().end();
+            return method;
+        }
+
+        protected CodeExecutableElement createConstructorFactoryMethod(TypeMirror baseType, SpecializationData specialization, ExecutableElement constructor) {
+            List<? extends VariableElement> parameters = constructor.getParameters();
+            CodeExecutableElement method = new CodeExecutableElement(modifiers(STATIC), baseType, CREATE_SPECIALIZATION_NAME, parameters.toArray(new CodeVariableElement[parameters.size()]));
+            assert specialization != null;
+            CodeTreeBuilder builder = method.createBuilder();
+            builder.startReturn();
+            builder.startNew(getElement().asType());
+            for (VariableElement param : parameters) {
+                builder.string(((CodeVariableElement) param).getName());
             }
             builder.end().end();
             return method;
