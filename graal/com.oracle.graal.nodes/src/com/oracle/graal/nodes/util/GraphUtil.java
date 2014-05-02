@@ -409,4 +409,32 @@ public class GraphUtil {
             return true;
         }
     }
+
+    /**
+     * Returns an iterator that will return the given node followed by all its predecessors, up
+     * until the point where {@link Node#predecessor()} returns null;
+     *
+     * @param start the node at which to start iterating
+     */
+    public static NodeIterable<FixedNode> predecessorIterable(final FixedNode start) {
+        return new NodeIterable<FixedNode>() {
+            public Iterator<FixedNode> iterator() {
+                return new Iterator<FixedNode>() {
+                    public FixedNode current = start;
+
+                    public boolean hasNext() {
+                        return current != null;
+                    }
+
+                    public FixedNode next() {
+                        try {
+                            return current;
+                        } finally {
+                            current = (FixedNode) current.predecessor();
+                        }
+                    }
+                };
+            }
+        };
+    }
 }

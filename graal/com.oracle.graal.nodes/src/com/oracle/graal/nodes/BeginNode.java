@@ -32,6 +32,7 @@ import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.util.*;
 
 @NodeInfo(allowedUsageTypes = {InputType.Guard, InputType.Anchor})
 public class BeginNode extends FixedWithNextNode implements LIRLowerable, Simplifiable, GuardingNode, AnchoringNode, IterableNodeType {
@@ -69,12 +70,8 @@ public class BeginNode extends FixedWithNextNode implements LIRLowerable, Simpli
     }
 
     public static BeginNode prevBegin(FixedNode from) {
-        Node prevBegin = from;
-        while (prevBegin != null) {
-            if (prevBegin instanceof BeginNode) {
-                return (BeginNode) prevBegin;
-            }
-            prevBegin = prevBegin.predecessor();
+        for (BeginNode begin : GraphUtil.predecessorIterable(from).filter(BeginNode.class)) {
+            return begin;
         }
         return null;
     }
