@@ -34,6 +34,7 @@ import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.virtual.*;
 import com.oracle.graal.options.*;
+import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.graph.*;
 import com.oracle.graal.phases.schedule.*;
@@ -42,7 +43,6 @@ import com.oracle.graal.phases.tiers.*;
 public class PartialEscapePhase extends EffectsPhase<PhaseContext> {
 
     static class Options {
-
         //@formatter:off
         @Option(help = "")
         public static final OptionValue<Boolean> OptEarlyReadElimination = new OptionValue<>(true);
@@ -50,14 +50,28 @@ public class PartialEscapePhase extends EffectsPhase<PhaseContext> {
     }
 
     private final boolean readElimination;
+    private final BasePhase<PhaseContext> cleanupPhase;
 
     public PartialEscapePhase(boolean iterative, CanonicalizerPhase canonicalizer) {
-        this(iterative, OptEarlyReadElimination.getValue(), canonicalizer);
+        this(iterative, OptEarlyReadElimination.getValue(), canonicalizer, null);
     }
 
-    public PartialEscapePhase(boolean iterative, boolean readElimination, CanonicalizerPhase canonicalizer) {
+    public PartialEscapePhase(boolean iterative, CanonicalizerPhase canonicalizer, BasePhase<PhaseContext> cleanupPhase) {
+        this(iterative, OptEarlyReadElimination.getValue(), canonicalizer, cleanupPhase);
+    }
+
+    public PartialEscapePhase(boolean iterative, boolean readElimination, CanonicalizerPhase canonicalizer, BasePhase<PhaseContext> cleanupPhase) {
         super(iterative ? EscapeAnalysisIterations.getValue() : 1, canonicalizer);
         this.readElimination = readElimination;
+        this.cleanupPhase = cleanupPhase;
+    }
+
+    @Override
+    protected void postIteration(StructuredGraph graph, PhaseContext context, Set<Node> changedNodes) {
+        super.postIteration(graph, context, changedNodes);
+        if (cleanupPhase != null) {
+            cleanupPhase.apply(graph, context);
+        }
     }
 
     @Override
