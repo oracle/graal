@@ -24,8 +24,6 @@
  */
 package com.oracle.truffle.api.instrument.impl;
 
-import java.io.*;
-
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.instrument.*;
@@ -53,16 +51,7 @@ public class DefaultVisualizer implements Visualizer {
             section = node.getEncapsulatingSourceSection();
             estimated = true;
         }
-
-        String sourceString;
-        if (section == null || section.getSource() == null) {
-            sourceString = "<unknown source>";
-        } else {
-            String sourceName = new File(section.getSource().getName()).getName();
-            int startLine = section.getStartLine();
-            sourceString = String.format("%s:%d%s", sourceName, startLine, estimated ? "~" : "");
-        }
-        return sourceString;
+        return section.getShortDescription() + (estimated ? "~" : "");
     }
 
     public String displayMethodName(Node node) {
