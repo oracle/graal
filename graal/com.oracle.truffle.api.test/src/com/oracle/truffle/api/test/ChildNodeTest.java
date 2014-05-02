@@ -36,10 +36,8 @@ import com.oracle.truffle.api.nodes.Node.Child;
  *
  * <p>
  * Child nodes are stored in the class of the parent node in fields that are marked with the
- * {@link Child} annotation. Before such a field is assigned, {@link Node#adoptChild} must be
- * called. This method automatically establishes a link from the child to the parent. The
- * {@link Node#getParent()} method allows access to this field. Every node also provides the ability
- * to iterate over its children using {@link Node#getChildren()}.
+ * {@link Child} annotation. The {@link Node#getParent()} method allows access to this field. Every
+ * node also provides the ability to iterate over its children using {@link Node#getChildren()}.
  * </p>
  *
  * <p>
