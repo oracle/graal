@@ -2934,7 +2934,6 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
                 parameters[i++] = new CodeVariableElement(getContext().getType(Class.class), implicitTypeName(implicitTypeParam));
             }
             CodeExecutableElement method = new CodeExecutableElement(modifiers(STATIC), specialization.getNode().getNodeType(), CREATE_SPECIALIZATION_NAME, parameters);
-            assert specialization != null;
             CodeTreeBuilder builder = method.createBuilder();
             builder.startReturn();
             builder.startNew(getElement().asType());
@@ -2950,7 +2949,6 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
             List<? extends VariableElement> parameters = constructor.getParameters();
             CodeExecutableElement method = new CodeExecutableElement(modifiers(STATIC), specialization.getNode().getNodeType(), CREATE_SPECIALIZATION_NAME,
                             parameters.toArray(new CodeVariableElement[parameters.size()]));
-            assert specialization != null;
             CodeTreeBuilder builder = method.createBuilder();
             builder.startReturn();
             builder.startNew(getElement().asType());
