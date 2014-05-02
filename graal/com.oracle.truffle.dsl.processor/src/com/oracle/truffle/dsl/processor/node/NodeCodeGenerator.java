@@ -867,7 +867,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
             if (found == null) {
                 body.startThrow().startNew(getContext().getType(UnsupportedOperationException.class)).end().end();
             } else {
-                body.startReturn().startCall(nodeSpecializationClassName(found), CREATE_SPECIALIZATION_NAME).startGroup().cast(baseClassName(node)).string(THIS_NODE_LOCAL_VAR_NAME).end().end().end();
+                body.startReturn().startCall(nodeSpecializationClassName(found), CREATE_SPECIALIZATION_NAME).startGroup().string(THIS_NODE_LOCAL_VAR_NAME).end().end().end();
             }
             return method;
         }
@@ -1739,7 +1739,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
             } else {
                 replaceCall.startCall("replace");
             }
-            replaceCall.startGroup().startCall(className, CREATE_SPECIALIZATION_NAME).string(source);
+            replaceCall.startGroup().cast(baseClassName(current.getNode())).startCall(className, CREATE_SPECIALIZATION_NAME).string(source);
             for (ActualParameter param : current.getSignatureParameters()) {
                 NodeChildData child = param.getSpecification().getExecution().getChild();
                 List<TypeData> types = child.getNodeData().getTypeSystem().lookupSourceTypes(param.getTypeSystemType());
@@ -2556,7 +2556,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
                         // skip copy constructor - not used
                         continue;
                     }
-                    clazz.add(createConstructorFactoryMethod(nodeGen.asType(), specialization, constructor));
+                    clazz.add(createConstructorFactoryMethod(specialization, constructor));
                 }
             }
         }
@@ -2929,16 +2929,16 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
             CodeVariableElement[] parameters = new CodeVariableElement[implicitTypeParams.size() + 1];
             int i = 0;
             String baseName = "current";
-            parameters[i++] = new CodeVariableElement(baseType, baseName);
+            parameters[i++] = new CodeVariableElement(specialization.getNode().getNodeType(), baseName);
             for (ActualParameter implicitTypeParam : implicitTypeParams) {
                 parameters[i++] = new CodeVariableElement(getContext().getType(Class.class), implicitTypeName(implicitTypeParam));
             }
-            CodeExecutableElement method = new CodeExecutableElement(modifiers(STATIC), baseType, CREATE_SPECIALIZATION_NAME, parameters);
+            CodeExecutableElement method = new CodeExecutableElement(modifiers(STATIC), specialization.getNode().getNodeType(), CREATE_SPECIALIZATION_NAME, parameters);
             assert specialization != null;
             CodeTreeBuilder builder = method.createBuilder();
             builder.startReturn();
             builder.startNew(getElement().asType());
-            builder.string(baseName);
+            builder.startGroup().cast(baseType, CodeTreeBuilder.singleString(baseName)).end();
             for (ActualParameter param : implicitTypeParams) {
                 builder.string(implicitTypeName(param));
             }
@@ -2946,9 +2946,10 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
             return method;
         }
 
-        protected CodeExecutableElement createConstructorFactoryMethod(TypeMirror baseType, SpecializationData specialization, ExecutableElement constructor) {
+        protected CodeExecutableElement createConstructorFactoryMethod(SpecializationData specialization, ExecutableElement constructor) {
             List<? extends VariableElement> parameters = constructor.getParameters();
-            CodeExecutableElement method = new CodeExecutableElement(modifiers(STATIC), baseType, CREATE_SPECIALIZATION_NAME, parameters.toArray(new CodeVariableElement[parameters.size()]));
+            CodeExecutableElement method = new CodeExecutableElement(modifiers(STATIC), specialization.getNode().getNodeType(), CREATE_SPECIALIZATION_NAME,
+                            parameters.toArray(new CodeVariableElement[parameters.size()]));
             assert specialization != null;
             CodeTreeBuilder builder = method.createBuilder();
             builder.startReturn();
