@@ -23,6 +23,7 @@
 package com.oracle.graal.phases.common;
 
 import java.util.*;
+import java.util.function.*;
 
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.graph.*;
@@ -33,7 +34,6 @@ import com.oracle.graal.nodes.debug.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.nodes.virtual.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.graph.*;
@@ -63,14 +63,13 @@ public class ProfileCompiledMethodsPhase extends Phase {
 
     @Override
     protected void run(StructuredGraph graph) {
-        ComputeProbabilityClosure closure = new ComputeProbabilityClosure(graph);
-        NodesToDoubles probabilities = closure.apply();
+        ToDoubleFunction<FixedNode> probabilities = new FixedNodeProbabilityCache();
         SchedulePhase schedule = new SchedulePhase();
         schedule.apply(graph, false);
 
         ControlFlowGraph cfg = ControlFlowGraph.compute(graph, true, true, true, true);
         for (Loop<Block> loop : cfg.getLoops()) {
-            double loopProbability = probabilities.get(loop.header.getBeginNode());
+            double loopProbability = probabilities.applyAsDouble(loop.header.getBeginNode());
             if (loopProbability > (1D / Integer.MAX_VALUE)) {
                 addSectionCounters(loop.header.getBeginNode(), loop.blocks, loop.children, schedule, probabilities);
             }
@@ -93,12 +92,13 @@ public class ProfileCompiledMethodsPhase extends Phase {
         }
     }
 
-    private static void addSectionCounters(FixedWithNextNode start, Collection<Block> sectionBlocks, Collection<Loop<Block>> childLoops, SchedulePhase schedule, NodesToDoubles probabilities) {
+    private static void addSectionCounters(FixedWithNextNode start, Collection<Block> sectionBlocks, Collection<Loop<Block>> childLoops, SchedulePhase schedule,
+                    ToDoubleFunction<FixedNode> probabilities) {
         HashSet<Block> blocks = new HashSet<>(sectionBlocks);
         for (Loop<?> loop : childLoops) {
             blocks.removeAll(loop.blocks);
         }
-        double weight = getSectionWeight(schedule, probabilities, blocks) / probabilities.get(start);
+        double weight = getSectionWeight(schedule, probabilities, blocks) / probabilities.applyAsDouble(start);
         DynamicCounterNode.addCounterBefore(GROUP_NAME, sectionHead(start), (long) weight, true, start.next());
         if (WITH_INVOKE_FREE_SECTIONS && !hasInvoke(blocks)) {
             DynamicCounterNode.addCounterBefore(GROUP_NAME_WITHOUT, sectionHead(start), (long) weight, true, start.next());
@@ -113,10 +113,10 @@ public class ProfileCompiledMethodsPhase extends Phase {
         }
     }
 
-    private static double getSectionWeight(SchedulePhase schedule, NodesToDoubles probabilities, Collection<Block> blocks) {
+    private static double getSectionWeight(SchedulePhase schedule, ToDoubleFunction<FixedNode> probabilities, Collection<Block> blocks) {
         double count = 0;
         for (Block block : blocks) {
-            double blockProbability = probabilities.get(block.getBeginNode());
+            double blockProbability = probabilities.applyAsDouble(block.getBeginNode());
             for (ScheduledNode node : schedule.getBlockToNodesMap().get(block)) {
                 count += blockProbability * getNodeWeight(node);
             }

@@ -43,6 +43,10 @@ public class FlowSensitiveReductionPhase extends BasePhase<PhaseContext> {
     @Override
     protected final void run(StructuredGraph graph, PhaseContext context) {
         try (Debug.Scope s = Debug.scope("FlowSensitiveReduction")) {
+            if (graph.isOSR()) {
+                Debug.log("Skipping OSR method %s", graph.method() == null ? "" : MetaUtil.format("%H.%n", graph.method()));
+                return;
+            }
             Debug.dump(graph, "FlowSensitiveReduction initial");
             new FlowSensitiveReduction(graph.start(), new State(), context).apply();
             Debug.dump(graph, "FlowSensitiveReduction done");

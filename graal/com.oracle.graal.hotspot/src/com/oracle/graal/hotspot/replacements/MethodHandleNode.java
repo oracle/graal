@@ -22,14 +22,18 @@
  */
 package com.oracle.graal.hotspot.replacements;
 
+import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
+
+import java.lang.invoke.*;
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.replacements.*;
+import com.oracle.graal.api.replacements.MethodHandleAccessProvider.IntrinsicMethod;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
-import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
@@ -37,56 +41,26 @@ import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.replacements.nodes.*;
 
 /**
- * Common base class for method handle invoke nodes.
+ * Node for invocation methods defined on the class {@link MethodHandle}.
  */
-public abstract class AbstractMethodHandleNode extends MacroNode implements Canonicalizable {
+public class MethodHandleNode extends MacroNode implements Canonicalizable {
 
-    private static final ResolvedJavaField methodHandleFormField;
-    private static final ResolvedJavaField lambdaFormVmentryField;
-    private static final ResolvedJavaField memberNameClazzField;
-    private static final ResolvedJavaField memberNameVmtargetField;
+    /** The method that this node is representing. */
+    private final IntrinsicMethod intrinsicMethod;
 
     // Replacement method data
     private ResolvedJavaMethod replacementTargetMethod;
     private JavaType replacementReturnType;
     @Input private final NodeInputList<ValueNode> replacementArguments;
 
-    /**
-     * Search for an instance field with the given name in a class.
-     *
-     * @param className name of the class to search in
-     * @param fieldName name of the field to be searched
-     * @return resolved java field
-     * @throws ClassNotFoundException
-     */
-    private static ResolvedJavaField findFieldInClass(String className, String fieldName) throws ClassNotFoundException {
-        Class<?> clazz = Class.forName(className);
-        ResolvedJavaType type = HotSpotResolvedObjectType.fromClass(clazz);
-        ResolvedJavaField[] fields = type.getInstanceFields(false);
-        for (ResolvedJavaField field : fields) {
-            if (field.getName().equals(fieldName)) {
-                return field;
-            }
-        }
-        return null;
-    }
-
-    static {
-        try {
-            methodHandleFormField = findFieldInClass("java.lang.invoke.MethodHandle", "form");
-            lambdaFormVmentryField = findFieldInClass("java.lang.invoke.LambdaForm", "vmentry");
-            memberNameClazzField = findFieldInClass("java.lang.invoke.MemberName", "clazz");
-            memberNameVmtargetField = findFieldInClass("java.lang.invoke.MemberName", "vmtarget");
-        } catch (ClassNotFoundException | SecurityException ex) {
-            throw GraalInternalError.shouldNotReachHere();
-        }
-    }
-
-    public AbstractMethodHandleNode(Invoke invoke) {
+    public MethodHandleNode(Invoke invoke) {
         super(invoke);
 
+        MethodCallTargetNode callTarget = (MethodCallTargetNode) invoke.callTarget();
+        intrinsicMethod = lookupMethodHandleIntrinsic(callTarget.targetMethod());
+        assert intrinsicMethod != null;
+
         // See if we need to save some replacement method data.
-        CallTargetNode callTarget = invoke.callTarget();
         if (callTarget instanceof SelfReplacingMethodCallTargetNode) {
             SelfReplacingMethodCallTargetNode selfReplacingMethodCallTargetNode = (SelfReplacingMethodCallTargetNode) callTarget;
             replacementTargetMethod = selfReplacingMethodCallTargetNode.replacementTargetMethod();
@@ -96,6 +70,36 @@ public abstract class AbstractMethodHandleNode extends MacroNode implements Cano
             // NodeInputList can't be null.
             replacementArguments = new NodeInputList<>(this);
         }
+    }
+
+    /**
+     * Returns the method handle method intrinsic identifier for the provided method, or
+     * {@code null} if the method is not a method that can be handled by this class.
+     */
+    public static IntrinsicMethod lookupMethodHandleIntrinsic(ResolvedJavaMethod method) {
+        return methodHandleAccess().lookupMethodHandleIntrinsic(method);
+    }
+
+    @Override
+    public Node canonical(CanonicalizerTool tool) {
+        InvokeNode invoke;
+        switch (intrinsicMethod) {
+            case INVOKE_BASIC:
+                invoke = getInvokeBasicTarget();
+                break;
+            case LINK_TO_STATIC:
+            case LINK_TO_SPECIAL:
+            case LINK_TO_VIRTUAL:
+            case LINK_TO_INTERFACE:
+                invoke = getLinkToTarget();
+                break;
+            default:
+                throw GraalInternalError.shouldNotReachHere();
+        }
+        if (invoke != null) {
+            return invoke;
+        }
+        return this;
     }
 
     /**
@@ -117,78 +121,77 @@ public abstract class AbstractMethodHandleNode extends MacroNode implements Cano
     }
 
     /**
-     * Used from {@link MethodHandleInvokeBasicNode} to get the target {@link InvokeNode} if the
-     * method handle receiver is constant.
+     * Returns the {@link MethodHandleAccessProvider} that provides introspection of internal
+     * {@link MethodHandle} data.
+     */
+    private static MethodHandleAccessProvider methodHandleAccess() {
+        return runtime().getHostProviders().getMethodHandleAccess();
+    }
+
+    /**
+     * Used for the MethodHandle.invokeBasic method (the {@link IntrinsicMethod#INVOKE_BASIC }
+     * method) to get the target {@link InvokeNode} if the method handle receiver is constant.
      *
      * @return invoke node for the {@link java.lang.invoke.MethodHandle} target
      */
     protected InvokeNode getInvokeBasicTarget() {
         ValueNode methodHandleNode = getReceiver();
-        if (methodHandleNode.isConstant() && !methodHandleNode.isNullConstant()) {
-            // Get the data we need from MethodHandle.LambdaForm.MemberName
-            Constant methodHandle = methodHandleNode.asConstant();
-            Constant lambdaForm = methodHandleFormField.readValue(methodHandle);
-            Constant memberName = lambdaFormVmentryField.readValue(lambdaForm);
-            return getTargetInvokeNode(memberName);
+        if (methodHandleNode.isConstant()) {
+            return getTargetInvokeNode(methodHandleAccess().resolveInvokeBasicTarget(methodHandleNode.asConstant(), false));
         }
         return null;
     }
 
     /**
-     * Used from {@link MethodHandleLinkToStaticNode}, {@link MethodHandleLinkToSpecialNode},
-     * {@link MethodHandleLinkToVirtualNode}, and {@link MethodHandleLinkToInterfaceNode} to get the
-     * target {@link InvokeNode} if the member name argument is constant.
+     * Used for the MethodHandle.linkTo* methods (the {@link IntrinsicMethod#LINK_TO_STATIC},
+     * {@link IntrinsicMethod#LINK_TO_SPECIAL}, {@link IntrinsicMethod#LINK_TO_VIRTUAL}, and
+     * {@link IntrinsicMethod#LINK_TO_INTERFACE} methods) to get the target {@link InvokeNode} if
+     * the member name argument is constant.
      *
      * @return invoke node for the member name target
      */
     protected InvokeNode getLinkToTarget() {
         ValueNode memberNameNode = getMemberName();
-        if (memberNameNode.isConstant() && !memberNameNode.isNullConstant()) {
-            Constant memberName = memberNameNode.asConstant();
-            return getTargetInvokeNode(memberName);
+        if (memberNameNode.isConstant()) {
+            return getTargetInvokeNode(methodHandleAccess().resolveLinkToTarget(memberNameNode.asConstant()));
         }
         return null;
     }
 
     /**
-     * Helper function to get the {@link InvokeNode} for the vmtarget of a
+     * Helper function to get the {@link InvokeNode} for the targetMethod of a
      * java.lang.invoke.MemberName.
      *
-     * @param memberName constant member name node
+     * @param targetMethod the target, already loaded from the member name node
      * @return invoke node for the member name target
      */
-    private InvokeNode getTargetInvokeNode(Constant memberName) {
-        // Get the data we need from MemberName
-        Constant clazz = memberNameClazzField.readValue(memberName);
-        Constant vmtarget = memberNameVmtargetField.readValue(memberName);
-
-        // Create a method from the vmtarget pointer
-        Class<?> c = (Class<?>) HotSpotObjectConstant.asObject(clazz);
-        HotSpotResolvedObjectType holderClass = (HotSpotResolvedObjectType) HotSpotResolvedObjectType.fromClass(c);
-        HotSpotResolvedJavaMethod targetMethod = HotSpotResolvedJavaMethod.fromMetaspace(vmtarget.asLong());
+    private InvokeNode getTargetInvokeNode(ResolvedJavaMethod targetMethod) {
+        if (targetMethod == null) {
+            return null;
+        }
 
         // In lambda forms we erase signature types to avoid resolving issues
         // involving class loaders. When we optimize a method handle invoke
         // to a direct call we must cast the receiver and arguments to its
         // actual types.
-        HotSpotSignature signature = targetMethod.getSignature();
+        Signature signature = targetMethod.getSignature();
         final boolean isStatic = targetMethod.isStatic();
         final int receiverSkip = isStatic ? 0 : 1;
 
         // Cast receiver to its type.
         if (!isStatic) {
-            JavaType receiverType = holderClass;
+            JavaType receiverType = targetMethod.getDeclaringClass();
             maybeCastArgument(0, receiverType);
         }
 
         // Cast reference arguments to its type.
         for (int index = 0; index < signature.getParameterCount(false); index++) {
-            JavaType parameterType = signature.getParameterType(index, holderClass);
+            JavaType parameterType = signature.getParameterType(index, targetMethod.getDeclaringClass());
             maybeCastArgument(receiverSkip + index, parameterType);
         }
 
         // Try to get the most accurate receiver type
-        if (this instanceof MethodHandleLinkToVirtualNode || this instanceof MethodHandleLinkToInterfaceNode) {
+        if (intrinsicMethod == IntrinsicMethod.LINK_TO_VIRTUAL || intrinsicMethod == IntrinsicMethod.LINK_TO_INTERFACE) {
             ResolvedJavaType receiverType = StampTool.typeOrNull(getReceiver().stamp());
             if (receiverType != null) {
                 ResolvedJavaMethod concreteMethod = receiverType.findUniqueConcreteMethod(targetMethod);
@@ -202,7 +205,7 @@ public abstract class AbstractMethodHandleNode extends MacroNode implements Cano
             return createTargetInvokeNode(targetMethod);
         }
 
-        ResolvedJavaMethod concreteMethod = targetMethod.uniqueConcreteMethod();
+        ResolvedJavaMethod concreteMethod = targetMethod.getDeclaringClass().findUniqueConcreteMethod(targetMethod);
         if (concreteMethod != null) {
             return createTargetInvokeNode(concreteMethod);
         }
@@ -246,12 +249,18 @@ public abstract class AbstractMethodHandleNode extends MacroNode implements Cano
         // needs to be popped.
         ValueNode[] originalArguments = arguments.toArray(new ValueNode[arguments.size()]);
         ValueNode[] targetArguments;
-        if (this instanceof MethodHandleInvokeBasicNode) {
-            targetArguments = originalArguments;
-        } else {
-            assert this instanceof MethodHandleLinkToStaticNode || this instanceof MethodHandleLinkToSpecialNode || this instanceof MethodHandleLinkToVirtualNode ||
-                            this instanceof MethodHandleLinkToInterfaceNode : this;
-            targetArguments = Arrays.copyOfRange(originalArguments, 0, arguments.size() - 1);
+        switch (intrinsicMethod) {
+            case INVOKE_BASIC:
+                targetArguments = originalArguments;
+                break;
+            case LINK_TO_STATIC:
+            case LINK_TO_SPECIAL:
+            case LINK_TO_VIRTUAL:
+            case LINK_TO_INTERFACE:
+                targetArguments = Arrays.copyOfRange(originalArguments, 0, arguments.size() - 1);
+                break;
+            default:
+                throw GraalInternalError.shouldNotReachHere();
         }
 
         // If there is already replacement information, use that instead.

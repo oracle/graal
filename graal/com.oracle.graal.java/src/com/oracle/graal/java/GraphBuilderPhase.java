@@ -26,6 +26,7 @@ import static com.oracle.graal.api.meta.DeoptimizationAction.*;
 import static com.oracle.graal.api.meta.DeoptimizationReason.*;
 import static com.oracle.graal.bytecode.Bytecodes.*;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
+
 import java.util.*;
 
 import com.oracle.graal.api.code.*;
@@ -158,6 +159,8 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 filter.remove();
             }
             parser = null;
+
+            ComputeLoopFrequenciesClosure.compute(graph);
         }
 
         @Override

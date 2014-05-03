@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,30 +20,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.replacements;
-
-import java.lang.invoke.*;
-
-import com.oracle.graal.graph.*;
-import com.oracle.graal.graph.spi.*;
-import com.oracle.graal.nodes.*;
+package com.oracle.graal.compiler.hsail.test;
 
 /**
- * Macro node for {@link MethodHandle}{@code .linkToStatic(Object...)}.
+ * Base class for testing deopt with objects in stack slots.
  */
-public class MethodHandleLinkToStaticNode extends AbstractMethodHandleNode {
+public abstract class ObjSpillDeoptMostBase extends ObjSpillDeoptBase {
 
-    public MethodHandleLinkToStaticNode(Invoke invoke) {
-        super(invoke);
+    public void run(int gid) {
+        boolean causeDeopt = (gid % 500 != 1);
+        doCompute(gid, causeDeopt);
     }
-
-    @Override
-    public Node canonical(CanonicalizerTool tool) {
-        InvokeNode invoke = getLinkToTarget();
-        if (invoke != null) {
-            return invoke;
-        }
-        return this;
-    }
-
 }

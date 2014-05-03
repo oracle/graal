@@ -50,8 +50,18 @@ import com.oracle.graal.options.OptionValue.OverrideScope;
 
 public abstract class GraalKernelTester extends KernelTester {
 
+    private static boolean substitutionsInstalled;
+
+    private static synchronized void installSubstitutions() {
+        if (!substitutionsInstalled) {
+            getHSAILBackend().getProviders().getReplacements().registerSubstitutions(ForceDeoptSubstitutions.class);
+            substitutionsInstalled = true;
+        }
+    }
+
     public GraalKernelTester() {
         super(getHSAILBackend().isDeviceInitialized());
+        installSubstitutions();
     }
 
     protected static HSAILHotSpotBackend getHSAILBackend() {
@@ -193,4 +203,14 @@ public abstract class GraalKernelTester extends KernelTester {
             super.testGeneratedHsailUsingLambdaMethod();
         }
     }
+
+    // used for forcing a deoptimization
+    public static int forceDeopt(int x) {
+        return x * x;
+    }
+
+    public static double forceDeopt(double x) {
+        return x * x;
+    }
+
 }

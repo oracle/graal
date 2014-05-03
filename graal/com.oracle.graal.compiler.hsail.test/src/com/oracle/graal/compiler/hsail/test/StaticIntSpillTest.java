@@ -88,7 +88,6 @@ public class StaticIntSpillTest extends GraalKernelTester {
     }
 
     @Test
-    @Ignore("until stack slots are supported in deopt")
     public void test() {
         testGeneratedHsail();
     }

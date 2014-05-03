@@ -36,11 +36,11 @@ import com.oracle.graal.phases.graph.ReentrantNodeIterator.NodeIteratorClosure;
 /**
  * This phase ensures that there's a single {@linkplain BytecodeFrame#AFTER_BCI collapsed frame
  * state} per path.
- * 
+ *
  * Removes other frame states from {@linkplain StateSplit#hasSideEffect() non-side-effecting} nodes
  * in the graph, and replaces them with {@linkplain BytecodeFrame#INVALID_FRAMESTATE_BCI invalid
  * frame states}.
- * 
+ *
  * The invalid frame states ensure that no deoptimization to a snippet frame state will happen.
  */
 public class CollapseFrameForSingleSideEffectPhase extends Phase {
@@ -112,7 +112,7 @@ public class CollapseFrameForSingleSideEffectPhase extends Phase {
     @Override
     protected void run(StructuredGraph graph) {
         CollapseFrameForSingleSideEffectClosure closure = new CollapseFrameForSingleSideEffectClosure();
-        ReentrantNodeIterator.apply(closure, graph.start(), new IterationState(), null);
+        ReentrantNodeIterator.apply(closure, graph.start(), new IterationState());
         closure.finishProcessing(graph);
     }
 

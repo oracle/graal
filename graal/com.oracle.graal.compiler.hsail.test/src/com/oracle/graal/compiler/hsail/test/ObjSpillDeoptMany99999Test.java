@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,36 +20,22 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes.util;
+package com.oracle.graal.compiler.hsail.test;
 
-import java.util.*;
+import org.junit.*;
 
-import com.oracle.graal.nodes.*;
+/**
+ * Tests deopt with objects in stack slots, with many items deopting.
+ */
+public class ObjSpillDeoptMany99999Test extends ObjSpillDeoptManyBase {
 
-public class NodesToDoubles {
-
-    private final IdentityHashMap<FixedNode, Double> nodeProbabilities;
-
-    public NodesToDoubles(int numberOfNodes) {
-        this.nodeProbabilities = new IdentityHashMap<>(numberOfNodes);
+    @Override
+    int getSize() {
+        return 99999;
     }
 
-    public void put(FixedNode n, double value) {
-        assert value >= 0.0 : value;
-        nodeProbabilities.put(n, value);
-    }
-
-    public boolean contains(FixedNode n) {
-        return nodeProbabilities.containsKey(n);
-    }
-
-    public double get(FixedNode n) {
-        Double value = nodeProbabilities.get(n);
-        assert value != null;
-        return value;
-    }
-
-    public int getCount() {
-        return nodeProbabilities.size();
+    @Test
+    public void test() {
+        testGeneratedHsail();
     }
 }

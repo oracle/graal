@@ -146,7 +146,6 @@ public class HSAILControlFlow {
         protected MetaAccessProvider metaAccessProvider;
         protected String emitName;
         protected int codeBufferPos = -1;
-        protected int dregOopMap = 0;
 
         public DeoptimizeOp(Value actionAndReason, LIRFrameState frameState, String emitName, MetaAccessProvider metaAccessProvider) {
             super(Value.ILLEGAL);   // return with no ret value
@@ -181,20 +180,10 @@ public class HSAILControlFlow {
 
             masm.emitComment("/* HSAIL Deoptimization pos=" + codeBufferPos + ", bci=" + frameState.debugInfo().getBytecodePosition().getBCI() + ", frameState=" + frameState + " */");
 
-            // get the bitmap of $d regs that contain references
-            ReferenceMap referenceMap = frameState.debugInfo().getReferenceMap();
-            for (int dreg = HSAIL.d0.number; dreg <= HSAIL.d15.number; dreg++) {
-                if (referenceMap.getRegister(dreg) == Kind.Object) {
-                    dregOopMap |= 1 << (dreg - HSAIL.d0.number);
-                }
-            }
-
             AllocatableValue actionAndReasonReg = HSAIL.actionAndReasonReg.asValue(Kind.Int);
             AllocatableValue codeBufferOffsetReg = HSAIL.codeBufferOffsetReg.asValue(Kind.Int);
-            AllocatableValue dregOopMapReg = HSAIL.dregOopMapReg.asValue(Kind.Int);
             masm.emitMov(Kind.Int, actionAndReasonReg, actionAndReason);
             masm.emitMov(Kind.Int, codeBufferOffsetReg, Constant.forInt(codeBufferPos));
-            masm.emitMov(Kind.Int, dregOopMapReg, Constant.forInt(dregOopMap));
             masm.emitJumpToLabelName(masm.getDeoptLabelName());
 
             // now record the debuginfo
@@ -305,10 +294,10 @@ public class HSAILControlFlow {
 
         @Opcode protected final HSAILCompare opcode;
         @Def({REG, HINT}) protected Value result;
-        @Use({REG, STACK, CONST}) protected Value trueValue;
-        @Use({REG, STACK, CONST}) protected Value falseValue;
-        @Use({REG, STACK, CONST}) protected Value left;
-        @Use({REG, STACK, CONST}) protected Value right;
+        @Use({REG, CONST}) protected Value trueValue;
+        @Use({REG, CONST}) protected Value falseValue;
+        @Use({REG, CONST}) protected Value left;
+        @Use({REG, CONST}) protected Value right;
         protected final Condition condition;
 
         public CondMoveOp(HSAILCompare opcode, Variable left, Variable right, Variable result, Condition condition, Value trueValue, Value falseValue) {

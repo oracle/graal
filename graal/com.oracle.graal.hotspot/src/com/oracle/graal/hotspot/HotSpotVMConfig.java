@@ -1022,8 +1022,6 @@ public class HotSpotVMConfig extends CompilerObject {
      * exceptions from Hsail back to C++ runtime.
      */
     @HotSpotVMField(name = "Hsail::HSAILDeoptimizationInfo::_notice_safepoints", type = "jint*", get = HotSpotVMField.Type.OFFSET) @Stable public int hsailNoticeSafepointsOffset;
-    @HotSpotVMField(name = "Hsail::HSAILDeoptimizationInfo::_deopt_save_states[0]", type = "Hsail::HSAILKernelDeoptimization", get = HotSpotVMField.Type.OFFSET) @Stable public int hsailSaveStatesOffset0;
-    @HotSpotVMField(name = "Hsail::HSAILDeoptimizationInfo::_deopt_save_states[1]", type = "Hsail::HSAILKernelDeoptimization", get = HotSpotVMField.Type.OFFSET) @Stable public int hsailSaveStatesOffset1;
     @HotSpotVMField(name = "Hsail::HSAILDeoptimizationInfo::_deopt_occurred", type = "jint", get = HotSpotVMField.Type.OFFSET) @Stable public int hsailDeoptOccurredOffset;
     @HotSpotVMField(name = "Hsail::HSAILDeoptimizationInfo::_never_ran_array", type = "jboolean *", get = HotSpotVMField.Type.OFFSET) @Stable public int hsailNeverRanArrayOffset;
     @HotSpotVMField(name = "Hsail::HSAILDeoptimizationInfo::_deopt_next_index", type = "jint", get = HotSpotVMField.Type.OFFSET) @Stable public int hsailDeoptNextIndexOffset;
@@ -1035,7 +1033,10 @@ public class HotSpotVMConfig extends CompilerObject {
 
     @HotSpotVMField(name = "HSAILFrame::_pc_offset", type = "jint", get = HotSpotVMField.Type.OFFSET) @Stable public int hsailFramePcOffset;
     @HotSpotVMField(name = "HSAILFrame::_num_s_regs", type = "jbyte", get = HotSpotVMField.Type.OFFSET) @Stable public int hsailFrameNumSRegOffset;
-    @HotSpotVMField(name = "HSAILFrame::_save_area[0]", type = "jlong", get = HotSpotVMField.Type.OFFSET) @Stable public int hsailFrameSaveAreaOffset;
+    @HotSpotVMField(name = "HSAILFrame::_num_d_regs", type = "jbyte", get = HotSpotVMField.Type.OFFSET) @Stable public int hsailFrameNumDRegOffset;
+    @HotSpotVMConstant(name = "sizeof(HSAILFrame)") @Stable public int hsailFrameSaveAreaOffset;
+    @HotSpotVMConstant(name = "sizeof(Hsail::HSAILKernelDeoptimization)") @Stable public int hsailKernelDeoptimizationHeaderSize;
+    @HotSpotVMField(name = "Hsail::HSAILDeoptimizationInfo::_deopt_save_states[0]", type = "Hsail::HSAILKernelDeoptimization", get = HotSpotVMField.Type.OFFSET) @Stable public int hsailSaveStatesOffset0;
 
     /**
      * Mark word right shift to get identity hash code.

@@ -86,16 +86,14 @@ public class HotSpotReplacementsImpl extends ReplacementsImpl {
         HotSpotResolvedJavaMethod hsMethod = (HotSpotResolvedJavaMethod) method;
         int intrinsicId = hsMethod.intrinsicId();
         if (intrinsicId != 0) {
-            if (intrinsicId == config.vmIntrinsicInvokeBasic) {
-                return MethodHandleInvokeBasicNode.class;
-            } else if (intrinsicId == config.vmIntrinsicLinkToInterface) {
-                return MethodHandleLinkToInterfaceNode.class;
-            } else if (intrinsicId == config.vmIntrinsicLinkToSpecial) {
-                return MethodHandleLinkToSpecialNode.class;
-            } else if (intrinsicId == config.vmIntrinsicLinkToStatic) {
-                return MethodHandleLinkToStaticNode.class;
-            } else if (intrinsicId == config.vmIntrinsicLinkToVirtual) {
-                return MethodHandleLinkToVirtualNode.class;
+            /*
+             * The methods of MethodHandle that need substitution are signature-polymorphic, i.e.,
+             * the VM replicates them for every signature that they are actually used for.
+             * Therefore, we cannot use the usual annotation-driven mechanism to define the
+             * substitution.
+             */
+            if (MethodHandleNode.lookupMethodHandleIntrinsic(method) != null) {
+                return MethodHandleNode.class;
             }
         }
         return super.getMacroSubstitution(method);

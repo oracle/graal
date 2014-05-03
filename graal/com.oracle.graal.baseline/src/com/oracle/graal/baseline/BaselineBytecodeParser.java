@@ -45,7 +45,6 @@ import com.oracle.graal.java.BciBlockMapping.LocalLiveness;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.BlockEndOp;
 import com.oracle.graal.lir.gen.*;
-import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.phases.*;
 
 public class BaselineBytecodeParser extends AbstractBytecodeParser<Value, BaselineFrameStateBuilder> implements BytecodeParserTool {
@@ -123,14 +122,9 @@ public class BaselineBytecodeParser extends AbstractBytecodeParser<Value, Baseli
             // create the control flow graph
             BaselineControlFlowGraph cfg = new BaselineControlFlowGraph(blockMap);
 
-            BlocksToDoubles blockProbabilities = new BlocksToDoubles(blockMap.blocks.size());
-            for (BciBlock b : blockMap.blocks) {
-                blockProbabilities.put(b, 1);
-            }
-
             // create the LIR
-            List<? extends AbstractBlock<?>> linearScanOrder = ComputeBlockOrder.computeLinearScanOrder(blockMap.blocks.size(), blockMap.startBlock, blockProbabilities);
-            List<? extends AbstractBlock<?>> codeEmittingOrder = ComputeBlockOrder.computeCodeEmittingOrder(blockMap.blocks.size(), blockMap.startBlock, blockProbabilities);
+            List<? extends AbstractBlock<?>> linearScanOrder = ComputeBlockOrder.computeLinearScanOrder(blockMap.blocks.size(), blockMap.startBlock);
+            List<? extends AbstractBlock<?>> codeEmittingOrder = ComputeBlockOrder.computeCodeEmittingOrder(blockMap.blocks.size(), blockMap.startBlock);
             LIR lir = new LIR(cfg, linearScanOrder, codeEmittingOrder);
 
             FrameMap frameMap = backend.newFrameMap(null);

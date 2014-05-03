@@ -73,7 +73,8 @@ public class GraphUtil {
         if (merge != null) {
             merge.removeEnd(end);
             StructuredGraph graph = end.graph();
-            if (merge instanceof LoopBeginNode && merge.forwardEndCount() == 0) { // dead loop
+            if (merge instanceof LoopBeginNode && merge.forwardEndCount() == 0) {
+                // dead loop
                 for (PhiNode phi : merge.phis().snapshot()) {
                     propagateKill(phi);
                 }
@@ -93,13 +94,13 @@ public class GraphUtil {
             } else if (merge instanceof LoopBeginNode && ((LoopBeginNode) merge).loopEnds().isEmpty()) {
                 // not a loop anymore
                 if (tool != null) {
-                    merge.phis().forEach(phi -> phi.usages().forEach(usage -> tool.addToWorkList(usage)));
+                    merge.phis().forEach(phi -> phi.usages().forEach(tool::addToWorkList));
                 }
                 graph.reduceDegenerateLoopBegin((LoopBeginNode) merge);
             } else if (merge.phiPredecessorCount() == 1) {
                 // not a merge anymore
                 if (tool != null) {
-                    merge.phis().forEach(phi -> phi.usages().forEach(usage -> tool.addToWorkList(usage)));
+                    merge.phis().forEach(phi -> phi.usages().forEach(tool::addToWorkList));
                 }
                 graph.reduceTrivialMerge(merge);
             }
@@ -407,5 +408,33 @@ public class GraphUtil {
             }
             return true;
         }
+    }
+
+    /**
+     * Returns an iterator that will return the given node followed by all its predecessors, up
+     * until the point where {@link Node#predecessor()} returns null;
+     *
+     * @param start the node at which to start iterating
+     */
+    public static NodeIterable<FixedNode> predecessorIterable(final FixedNode start) {
+        return new NodeIterable<FixedNode>() {
+            public Iterator<FixedNode> iterator() {
+                return new Iterator<FixedNode>() {
+                    public FixedNode current = start;
+
+                    public boolean hasNext() {
+                        return current != null;
+                    }
+
+                    public FixedNode next() {
+                        try {
+                            return current;
+                        } finally {
+                            current = (FixedNode) current.predecessor();
+                        }
+                    }
+                };
+            }
+        };
     }
 }

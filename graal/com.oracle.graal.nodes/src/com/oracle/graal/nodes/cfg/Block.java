@@ -33,6 +33,8 @@ public final class Block extends AbstractBlockBase<Block> {
     protected final BeginNode beginNode;
 
     protected FixedNode endNode;
+
+    protected double probability;
     protected Loop<Block> loop;
 
     protected List<Block> dominated;
@@ -175,4 +177,11 @@ public final class Block extends AbstractBlockBase<Block> {
         return getDominator().isDominatedBy(block);
     }
 
+    public double probability() {
+        return probability;
+    }
+
+    public void setProbability(double probability) {
+        this.probability = probability;
+    }
 }

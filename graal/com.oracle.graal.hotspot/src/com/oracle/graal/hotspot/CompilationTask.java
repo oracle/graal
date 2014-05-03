@@ -29,7 +29,7 @@ import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.compiler.common.UnsafeAccess.*;
 import static com.oracle.graal.hotspot.bridge.VMToCompilerImpl.*;
 import static com.oracle.graal.nodes.StructuredGraph.*;
-import static com.oracle.graal.phases.common.InliningUtil.*;
+import static com.oracle.graal.phases.common.inlining.InliningUtil.*;
 
 import java.io.*;
 import java.lang.management.*;

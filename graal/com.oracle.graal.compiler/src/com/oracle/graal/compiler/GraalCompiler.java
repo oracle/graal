@@ -45,11 +45,9 @@ import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.options.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
-import com.oracle.graal.phases.graph.*;
 import com.oracle.graal.phases.schedule.*;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.phases.util.*;
@@ -230,10 +228,8 @@ public class GraalCompiler {
         List<Block> linearScanOrder = null;
         try (Scope ds = Debug.scope("MidEnd")) {
             try (Scope s = Debug.scope("ComputeLinearScanOrder")) {
-                NodesToDoubles nodeProbabilities = new ComputeProbabilityClosure(graph).apply();
-                BlocksToDoubles blockProbabilities = BlocksToDoubles.createFromNodeProbability(nodeProbabilities, schedule.getCFG());
-                codeEmittingOrder = ComputeBlockOrder.computeCodeEmittingOrder(blocks.length, startBlock, blockProbabilities);
-                linearScanOrder = ComputeBlockOrder.computeLinearScanOrder(blocks.length, startBlock, blockProbabilities);
+                codeEmittingOrder = ComputeBlockOrder.computeCodeEmittingOrder(blocks.length, startBlock);
+                linearScanOrder = ComputeBlockOrder.computeLinearScanOrder(blocks.length, startBlock);
 
                 lir = new LIR(schedule.getCFG(), linearScanOrder, codeEmittingOrder);
                 Debug.dump(lir, "After linear scan order");

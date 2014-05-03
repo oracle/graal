@@ -37,7 +37,12 @@ import com.oracle.graal.phases.tiers.PhaseContext;
  * This class implements control-flow sensitive reductions for
  * {@link com.oracle.graal.nodes.GuardingPiNode}.
  * </p>
- * 
+ *
+ * <p>
+ * The laundry-list of all flow-sensitive reductions is summarized in
+ * {@link com.oracle.graal.phases.common.cfs.FlowSensitiveReduction}
+ * </p>
+ *
  * @see #visitGuardingPiNode(com.oracle.graal.nodes.GuardingPiNode)
  */
 public abstract class GuardingPiReduction extends BaseReduction {
@@ -138,6 +143,12 @@ public abstract class GuardingPiReduction extends BaseReduction {
          */
         FixedGuardNode fixedGuard = graph.add(new FixedGuardNode(envelope.condition(), envelope.getReason(), envelope.getAction(), envelope.isNegated()));
         graph.addBeforeFixed(envelope, fixedGuard);
+
+        /*
+         * 
+         * TODO This lowering is currently performed unconditionally: it might occur no
+         * flow-sensitive reduction is enabled down the road
+         */
 
         if (!FlowUtil.lacksUsages(envelope)) {
             // not calling wrapInPiNode() because we don't want to rememberSubstitution()

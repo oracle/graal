@@ -23,7 +23,7 @@
 package com.oracle.graal.nodes.calc;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.meta.ProfilingInfo.*;
+import com.oracle.graal.api.meta.ProfilingInfo.TriState;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.graph.*;
@@ -92,8 +92,8 @@ public abstract class CompareNode extends BinaryOpLogicNode {
 
     @Override
     public TriState evaluate(ConstantReflectionProvider constantReflection, ValueNode forX, ValueNode forY) {
-        if (x().isConstant() && y().isConstant()) {
-            return TriState.get(condition().foldCondition(x().asConstant(), y().asConstant(), constantReflection, unorderedIsTrue()));
+        if (forX.isConstant() && forY.isConstant()) {
+            return TriState.get(condition().foldCondition(forX.asConstant(), forY.asConstant(), constantReflection, unorderedIsTrue()));
         }
         return TriState.UNKNOWN;
     }

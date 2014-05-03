@@ -23,10 +23,6 @@
 package com.oracle.graal.phases.common.cfs;
 
 import com.oracle.graal.api.meta.ResolvedJavaType;
-import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.DebugConfig;
-import com.oracle.graal.debug.DebugConfigScope;
-import com.oracle.graal.debug.internal.DebugScope;
 import com.oracle.graal.graph.InputType;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeClass;
@@ -288,30 +284,6 @@ public class FlowUtil {
             parent.replaceFirstInput(oldInput, newInput);
         } while (parent.inputs().contains(oldInput));
         // `oldInput` if unused wil be removed in finished()
-    }
-
-    public static StructuredGraph visualize(StructuredGraph graph, String title) {
-        DebugConfig debugConfig = DebugScope.getConfig();
-        DebugConfig fixedConfig = Debug.fixedConfig(false, true, false, false, debugConfig.dumpHandlers(), debugConfig.output());
-        try (DebugConfigScope s = Debug.setConfig(fixedConfig)) {
-            Debug.dump(graph, title);
-
-            return graph;
-        }
-    }
-
-    public static final String ANSI_RESET = "\u001B[0m";
-    public static final String ANSI_BLACK = "\u001B[30m";
-    public static final String ANSI_RED = "\u001B[31m";
-    public static final String ANSI_GREEN = "\u001B[32m";
-    public static final String ANSI_YELLOW = "\u001B[33m";
-    public static final String ANSI_BLUE = "\u001B[34m";
-    public static final String ANSI_PURPLE = "\u001B[35m";
-    public static final String ANSI_CYAN = "\u001B[36m";
-    public static final String ANSI_WHITE = "\u001B[37m";
-
-    public static void highlightInRed(String msg) {
-        System.out.println(ANSI_RED + msg + ANSI_RESET);
     }
 
 }

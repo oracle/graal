@@ -113,8 +113,8 @@ public class FloatingReadPhase extends Phase {
     @Override
     protected void run(StructuredGraph graph) {
         Map<LoopBeginNode, Set<LocationIdentity>> modifiedInLoops = new IdentityHashMap<>();
-        ReentrantNodeIterator.apply(new CollectMemoryCheckpointsClosure(modifiedInLoops), graph.start(), new HashSet<LocationIdentity>(), null);
-        ReentrantNodeIterator.apply(new FloatingReadClosure(modifiedInLoops, execmode), graph.start(), new MemoryMapImpl(graph.start()), null);
+        ReentrantNodeIterator.apply(new CollectMemoryCheckpointsClosure(modifiedInLoops), graph.start(), new HashSet<LocationIdentity>());
+        ReentrantNodeIterator.apply(new FloatingReadClosure(modifiedInLoops, execmode), graph.start(), new MemoryMapImpl(graph.start()));
         if (execmode == ExecutionMode.CREATE_FLOATING_READS) {
             assert !graph.isAfterFloatingReadPhase();
             graph.setAfterFloatingReadPhase(true);

@@ -24,11 +24,12 @@ package com.oracle.graal.loop;
 
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 
+import java.util.function.*;
+
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.cfg.*;
-import com.oracle.graal.nodes.util.*;
 
 public abstract class LoopPolicies {
 
@@ -37,12 +38,12 @@ public abstract class LoopPolicies {
     }
 
     // TODO (gd) change when inversion is available
-    public static boolean shouldPeel(LoopEx loop, NodesToDoubles probabilities) {
+    public static boolean shouldPeel(LoopEx loop, ToDoubleFunction<FixedNode> probabilities) {
         if (loop.detectCounted()) {
             return false;
         }
         LoopBeginNode loopBegin = loop.loopBegin();
-        double entryProbability = probabilities.get(loopBegin.forwardEnd());
+        double entryProbability = probabilities.applyAsDouble(loopBegin.forwardEnd());
         return entryProbability > MinimumPeelProbability.getValue() && loop.size() + loopBegin.graph().getNodeCount() < MaximumDesiredSize.getValue();
     }
 
@@ -70,10 +71,8 @@ public abstract class LoopPolicies {
         double maxProbability = 0;
         for (Node successor : controlSplit.successors()) {
             BeginNode branch = (BeginNode) successor;
-            inBranchTotal += loop.nodesInLoopFrom(branch, postDom).cardinality(); // this may count
-                                                                                  // twice because
-                                                                                  // of fall-through
-                                                                                  // in switches
+            // this may count twice because of fall-through in switches
+            inBranchTotal += loop.nodesInLoopFrom(branch, postDom).cardinality();
             double probability = controlSplit.probability(branch);
             if (probability > maxProbability) {
                 maxProbability = probability;

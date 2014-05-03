@@ -57,7 +57,8 @@ public class HSAILHotSpotBackendFactory implements HotSpotBackendFactory {
         Replacements replacements = new HSAILHotSpotReplacementsImpl(p, host.getSnippetReflection(), assumptions, codeCache.getTarget(), host.getReplacements());
         HotSpotDisassemblerProvider disassembler = host.getDisassembler();
         SuitesProvider suites = new HotSpotSuitesProvider(runtime);
-        HotSpotProviders providers = new HotSpotProviders(metaAccess, codeCache, constantReflection, foreignCalls, lowerer, replacements, disassembler, suites, registers, host.getSnippetReflection());
+        HotSpotProviders providers = new HotSpotProviders(metaAccess, codeCache, constantReflection, foreignCalls, lowerer, replacements, disassembler, suites, registers, host.getSnippetReflection(),
+                        host.getMethodHandleAccess());
 
         // pass registers info down to ReplacementsUtil (maybe a better way to do this?)
         HSAILHotSpotReplacementsUtil.initialize(providers.getRegisters());

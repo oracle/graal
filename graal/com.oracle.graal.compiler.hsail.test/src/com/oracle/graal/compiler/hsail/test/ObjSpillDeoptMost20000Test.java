@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,30 +20,22 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.replacements;
+package com.oracle.graal.compiler.hsail.test;
 
-import java.lang.invoke.*;
-
-import com.oracle.graal.graph.*;
-import com.oracle.graal.graph.spi.*;
-import com.oracle.graal.nodes.*;
+import org.junit.*;
 
 /**
- * Macro node for {@link MethodHandle}{@code .linkToInterface(Object...)}.
+ * Tests deopt with objects in stack slots, with most items deopting.
  */
-public class MethodHandleLinkToInterfaceNode extends AbstractMethodHandleNode {
-
-    public MethodHandleLinkToInterfaceNode(Invoke invoke) {
-        super(invoke);
-    }
+public class ObjSpillDeoptMost20000Test extends ObjSpillDeoptMostBase {
 
     @Override
-    public Node canonical(CanonicalizerTool tool) {
-        InvokeNode invoke = getLinkToTarget();
-        if (invoke != null) {
-            return invoke;
-        }
-        return this;
+    int getSize() {
+        return 20000;
     }
 
+    @Test
+    public void test() {
+        testGeneratedHsail();
+    }
 }

@@ -48,6 +48,7 @@ import com.oracle.graal.nodes.virtual.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.common.CanonicalizerPhase.CustomCanonicalizer;
+import com.oracle.graal.phases.common.inlining.*;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.phases.util.*;
 import com.oracle.graal.truffle.nodes.asserts.*;

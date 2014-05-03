@@ -113,13 +113,14 @@ public class StaticDoubleSpillTest extends GraalKernelTester {
          * argument).
          * 
          */
-        Arrays.fill(out, 0f);
-        Arrays.fill(in, 0f);
+        Arrays.fill(out, -1f);
+        for (int i = 0; i < size; i++) {
+            in[i] = i + 1;
+        }
         dispatchMethodKernel(size, out, in);
     }
 
     @Test
-    @Ignore("until stack slots are supported in deopt")
     public void test() {
         testGeneratedHsail();
     }
