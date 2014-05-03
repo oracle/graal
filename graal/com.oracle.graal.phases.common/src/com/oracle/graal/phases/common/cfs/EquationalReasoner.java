@@ -267,6 +267,10 @@ public final class EquationalReasoner {
         }
 
         if (FlowUtil.hasLegalObjectStamp(v)) {
+            if (state.isNull(v)) {
+                // it's ok to return nullConstant in deverbosify unlike in downcast
+                return nullConstant;
+            }
             return downcast(v);
         }
 
