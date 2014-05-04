@@ -50,10 +50,10 @@ import java.util.*;
  */
 public final class State extends MergeableState<State> implements Cloneable {
 
-    private static final DebugMetric metricTypeRegistered = Debug.metric("TypeRegistered");
-    private static final DebugMetric metricNullnessRegistered = Debug.metric("NullnessRegistered");
-    private static final DebugMetric metricObjectEqualsRegistered = Debug.metric("ObjectEqualsRegistered");
-    private static final DebugMetric metricImpossiblePathDetected = Debug.metric("ImpossiblePathDetected");
+    private static final DebugMetric metricTypeRegistered = Debug.metric("FSR-TypeRegistered");
+    private static final DebugMetric metricNullnessRegistered = Debug.metric("FSR-NullnessRegistered");
+    private static final DebugMetric metricObjectEqualsRegistered = Debug.metric("FSR-ObjectEqualsRegistered");
+    private static final DebugMetric metricImpossiblePathDetected = Debug.metric("FSR-ImpossiblePathDetected");
 
     /**
      * <p>

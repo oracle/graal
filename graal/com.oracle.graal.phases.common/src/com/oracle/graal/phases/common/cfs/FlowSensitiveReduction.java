@@ -54,6 +54,14 @@ import static com.oracle.graal.api.meta.DeoptimizationReason.*;
  * <ul>
  * <li>simplification of side-effects free expressions, via
  * {@link com.oracle.graal.phases.common.cfs.EquationalReasoner#deverbosify(com.oracle.graal.graph.Node)}
+ * <ul>
+ * <li>
+ * at certain {@link com.oracle.graal.nodes.FixedNode}, see
+ * {@link #deverbosifyInputsInPlace(com.oracle.graal.nodes.ValueNode)}</li>
+ * <li>
+ * including for devirtualization, see
+ * {@link #deverbosifyInputsCopyOnWrite(com.oracle.graal.nodes.java.MethodCallTargetNode)}</li>
+ * </ul>
  * </li>
  * <li>simplification of control-flow:
  * <ul>
@@ -74,6 +82,13 @@ import static com.oracle.graal.api.meta.DeoptimizationReason.*;
  * </ul>
  * </li>
  * </ol>
+ * </p>
+ *
+ * <p>
+ * Metrics for this phase are displayed starting with <code>FSR-</code>prefix, their counters are
+ * hosted in {@link com.oracle.graal.phases.common.cfs.BaseReduction},
+ * {@link com.oracle.graal.phases.common.cfs.EquationalReasoner} and
+ * {@link com.oracle.graal.phases.common.cfs.State}.
  * </p>
  *
  * @see com.oracle.graal.phases.common.cfs.CheckCastReduction

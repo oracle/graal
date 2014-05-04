@@ -65,11 +65,12 @@ import java.util.Set;
  */
 public final class EquationalReasoner {
 
-    private static final DebugMetric metricInstanceOfRemoved = Debug.metric("InstanceOfRemoved");
-    private static final DebugMetric metricNullCheckRemoved = Debug.metric("NullCheckRemoved");
-    private static final DebugMetric metricObjectEqualsRemoved = Debug.metric("ObjectEqualsRemoved");
-    private static final DebugMetric metricEquationalReasoning = Debug.metric("EquationalReasoning");
-    private static final DebugMetric metricDowncasting = Debug.metric("Downcasting");
+    private static final DebugMetric metricInstanceOfRemoved = Debug.metric("FSR-InstanceOfRemoved");
+    private static final DebugMetric metricNullCheckRemoved = Debug.metric("FSR-NullCheckRemoved");
+    private static final DebugMetric metricObjectEqualsRemoved = Debug.metric("FSR-ObjectEqualsRemoved");
+    private static final DebugMetric metricEquationalReasoning = Debug.metric("FSR-EquationalReasoning");
+    private static final DebugMetric metricDowncasting = Debug.metric("FSR-Downcasting");
+    private static final DebugMetric metricNullInserted = Debug.metric("FSR-NullInserted");
 
     private final StructuredGraph graph;
     private final CanonicalizerTool tool;
@@ -269,6 +270,7 @@ public final class EquationalReasoner {
         if (FlowUtil.hasLegalObjectStamp(v)) {
             if (state.isNull(v)) {
                 // it's ok to return nullConstant in deverbosify unlike in downcast
+                metricNullInserted.increment();
                 return nullConstant;
             }
             return downcast(v);
@@ -596,6 +598,7 @@ public final class EquationalReasoner {
 
         PiNode untrivialNull = nonTrivialNull(scrutinee);
         if (untrivialNull != null) {
+            metricNullInserted.increment();
             return untrivialNull;
         }
 
