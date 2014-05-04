@@ -489,7 +489,7 @@ public final class EquationalReasoner {
             return isNull;
         }
         ValueNode scrutinee = GraphUtil.unproxify(isNull.object());
-        GuardingNode evidence = nonTrivialNullAnchor(scrutinee);
+        GuardingNode evidence = state.nonTrivialNullAnchor(scrutinee);
         if (evidence != null) {
             metricNullCheckRemoved.increment();
             return trueConstant;
@@ -684,24 +684,6 @@ public final class EquationalReasoner {
     }
 
     /**
-     * <p>
-     * If the argument is known null due to its stamp, there's no need to have an anchor for that
-     * fact and this method returns null.
-     * </p>
-     *
-     * <p>
-     * Otherwise, if an anchor is found it is returned, null otherwise.
-     * </p>
-     */
-    public GuardingNode nonTrivialNullAnchor(ValueNode object) {
-        assert FlowUtil.hasLegalObjectStamp(object);
-        if (StampTool.isObjectAlwaysNull(object)) {
-            return null;
-        }
-        return state.knownNull.get(GraphUtil.unproxify(object));
-    }
-
-    /**
      *
      * This method returns:
      * <ul>
@@ -718,7 +700,7 @@ public final class EquationalReasoner {
      */
     public PiNode nonTrivialNull(ValueNode object) {
         assert FlowUtil.hasLegalObjectStamp(object);
-        GuardingNode anchor = nonTrivialNullAnchor(object);
+        GuardingNode anchor = state.nonTrivialNullAnchor(object);
         if (anchor == null) {
             return null;
         }
