@@ -422,7 +422,8 @@ public final class State extends MergeableState<State> implements Cloneable {
         assert FlowUtil.hasLegalObjectStamp(object);
         assert !to.isPrimitive();
         final ValueNode scrutinee = GraphUtil.unproxify(object);
-        if (isNull(scrutinee)) {
+        if (!isNonNull(scrutinee)) {
+            // unless `null` can be ruled out, a positive answer isn't safe
             return false;
         }
         ResolvedJavaType stampType = StampTool.typeOrNull(object);

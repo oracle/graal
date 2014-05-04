@@ -441,6 +441,8 @@ public final class EquationalReasoner {
                 return baseCaseIsNullNode((IsNullNode) condition);
             } else if (condition instanceof ObjectEqualsNode) {
                 return baseCaseObjectEqualsNode((ObjectEqualsNode) condition);
+            } else if (condition instanceof ShortCircuitOrNode) {
+                return baseCaseShortCircuitOrNode((ShortCircuitOrNode) condition);
             }
         }
         return condition;
@@ -512,6 +514,38 @@ public final class EquationalReasoner {
             return trueConstant;
         }
         return equals;
+    }
+
+    /**
+     * The following is tried:
+     *
+     * <ol>
+     * <li>
+     * A {@link com.oracle.graal.phases.common.cfs.Witness} that is at check-cast level level
+     * doesn't entail {@link com.oracle.graal.nodes.calc.IsNullNode} (on its own) nor
+     * {@link com.oracle.graal.nodes.java.InstanceOfNode} (also on its own) but of course it entails
+     * <code>(IsNull || IsInstanceOf)</code>. Good thing
+     * {@link com.oracle.graal.phases.common.cfs.CastCheckExtractor} detects that very pattern.</li>
+     * <li>
+     * Otherwise return the unmodified argument (later on,
+     * {@link #deverbosifyFloatingNode(com.oracle.graal.nodes.calc.FloatingNode)} will attempt to
+     * simplify the {@link com.oracle.graal.nodes.ShortCircuitOrNode}).</li>
+     * </ol>
+     *
+     * @return a {@link com.oracle.graal.nodes.LogicConstantNode}, in case a reduction was made;
+     *         otherwise the unmodified argument.
+     */
+    private LogicNode baseCaseShortCircuitOrNode(ShortCircuitOrNode orNode) {
+        CastCheckExtractor cast = CastCheckExtractor.extract(orNode);
+        if (cast != null) {
+            if (state.knownToConform(cast.subject, cast.type)) {
+                return trueConstant;
+            } else if (state.knownNotToConform(cast.subject, cast.type)) {
+                return falseConstant;
+            }
+            return orNode;
+        }
+        return orNode;
     }
 
     /**
