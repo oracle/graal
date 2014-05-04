@@ -135,7 +135,7 @@ public abstract class GraalKernelTester extends KernelTester {
      * with HSAIL code.
      */
     public boolean canHandleDeoptVirtualObjects() {
-        return false;
+        return true;
     }
 
     /**
