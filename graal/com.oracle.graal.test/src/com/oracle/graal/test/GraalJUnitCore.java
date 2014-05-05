@@ -47,17 +47,33 @@ public class GraalJUnitCore {
         system.out().println("JUnit version " + Version.id());
         List<Class<?>> classes = new ArrayList<>();
         List<Failure> missingClasses = new ArrayList<>();
+        boolean verbose = false;
         for (String each : args) {
-            try {
-                classes.add(Class.forName(each));
-            } catch (ClassNotFoundException e) {
-                system.out().println("Could not find class: " + each);
-                Description description = Description.createSuiteDescription(each);
-                Failure failure = new Failure(description, e);
-                missingClasses.add(failure);
+            if (each.charAt(0) == '-') {
+                // command line arguments
+                if (each.contentEquals("-JUnitVerbose")) {
+                    verbose = true;
+                } else {
+                    system.out().println("Unknown command line argument: " + each);
+                }
+
+            } else {
+                try {
+                    classes.add(Class.forName(each));
+                } catch (ClassNotFoundException e) {
+                    system.out().println("Could not find class: " + each);
+                    Description description = Description.createSuiteDescription(each);
+                    Failure failure = new Failure(description, e);
+                    missingClasses.add(failure);
+                }
             }
         }
-        GraalJUnitRunListener graalListener = new GraalTextListener(system);
+        GraalJUnitRunListener graalListener;
+        if (!verbose) {
+            graalListener = new GraalTextListener(system);
+        } else {
+            graalListener = new GraalVerboseTextListener(system);
+        }
         junitCore.addListener(GraalTextListener.createRunListener(graalListener));
         Result result = junitCore.run(classes.toArray(new Class[0]));
         for (Failure each : missingClasses) {
