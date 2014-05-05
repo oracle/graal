@@ -50,10 +50,10 @@ import java.util.*;
  */
 public final class State extends MergeableState<State> implements Cloneable {
 
-    private static final DebugMetric metricTypeRegistered = Debug.metric("TypeRegistered");
-    private static final DebugMetric metricNullnessRegistered = Debug.metric("NullnessRegistered");
-    private static final DebugMetric metricObjectEqualsRegistered = Debug.metric("ObjectEqualsRegistered");
-    private static final DebugMetric metricImpossiblePathDetected = Debug.metric("ImpossiblePathDetected");
+    private static final DebugMetric metricTypeRegistered = Debug.metric("FSR-TypeRegistered");
+    private static final DebugMetric metricNullnessRegistered = Debug.metric("FSR-NullnessRegistered");
+    private static final DebugMetric metricObjectEqualsRegistered = Debug.metric("FSR-ObjectEqualsRegistered");
+    private static final DebugMetric metricImpossiblePathDetected = Debug.metric("FSR-ImpossiblePathDetected");
 
     /**
      * <p>
@@ -139,6 +139,18 @@ public final class State extends MergeableState<State> implements Cloneable {
         this.knownNull = new IdentityHashMap<>(other.knownNull);
         this.trueFacts = new IdentityHashMap<>(other.trueFacts);
         this.falseFacts = new IdentityHashMap<>(other.falseFacts);
+    }
+
+    public boolean repOK() {
+        // trueFacts and falseFacts disjoint
+        for (LogicNode trueFact : trueFacts.keySet()) {
+            assert !falseFacts.containsKey(trueFact) : trueFact + " tracked as both true and false fact.";
+        }
+        // no scrutinee tracked as both known-null and known-non-null
+        for (ValueNode subject : knownNull.keySet()) {
+            assert !isNonNull(subject) : subject + " tracked as both known-null and known-non-null.";
+        }
+        return true;
     }
 
     /**
@@ -300,6 +312,9 @@ public final class State extends MergeableState<State> implements Cloneable {
 
         this.trueFacts = mergeTrueFacts(withReachableStates, merge);
         this.falseFacts = mergeFalseFacts(withReachableStates, merge);
+
+        assert repOK();
+
         return true;
     }
 
@@ -393,7 +408,8 @@ public final class State extends MergeableState<State> implements Cloneable {
     }
 
     /**
-     * @return true iff the argument is known to stand for an object conforming to the given type.
+     * @return true iff the argument definitely stands for an object-value that conforms to the
+     *         given type.
      */
     public boolean knownToConform(ValueNode object, ResolvedJavaType to) {
         assert FlowUtil.hasLegalObjectStamp(object);
@@ -415,14 +431,20 @@ public final class State extends MergeableState<State> implements Cloneable {
     }
 
     /**
-     * @return true iff the argument is known to stand for an object that definitely does not
-     *         conform to the given type.
+     * @return true iff the argument is known to stand for an object that is definitely non-null and
+     *         moreover does not conform to the given type.
      */
-    public boolean knownNotToConform(ValueNode object, ResolvedJavaType to) {
+    public boolean knownNotToPassCheckCast(ValueNode object, ResolvedJavaType to) {
         assert FlowUtil.hasLegalObjectStamp(object);
         assert !to.isPrimitive();
         final ValueNode scrutinee = GraphUtil.unproxify(object);
         if (isNull(scrutinee)) {
+            // known-null means it conforms to whatever `to`
+            // and thus passes the check-cast
+            return false;
+        }
+        if (!isNonNull(scrutinee)) {
+            // unless `null` can be ruled out, a positive answer isn't safe
             return false;
         }
         ResolvedJavaType stampType = StampTool.typeOrNull(object);
@@ -432,6 +454,34 @@ public final class State extends MergeableState<State> implements Cloneable {
         Witness w = typeInfo(scrutinee);
         boolean witnessAnswer = w != null && !w.cluelessAboutType() && knownNotToConform(w.type(), to);
         if (witnessAnswer) {
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * @return true iff the argument is known to stand for an object that definitely does not
+     *         conform to the given type (no matter whether the object turns out to be null or
+     *         non-null).
+     */
+    public boolean knownNotToPassInstanceOf(ValueNode object, ResolvedJavaType to) {
+        assert FlowUtil.hasLegalObjectStamp(object);
+        assert !to.isPrimitive();
+        final ValueNode scrutinee = GraphUtil.unproxify(object);
+        if (isNull(scrutinee)) {
+            return true;
+        }
+        ResolvedJavaType stampType = StampTool.typeOrNull(object);
+        if (stampType != null && knownNotToConform(stampType, to)) {
+            // object turns out to be null, positive answer is correct
+            // object turns out non-null, positive answer is also correct
+            return true;
+        }
+        Witness w = typeInfo(scrutinee);
+        boolean witnessAnswer = w != null && !w.cluelessAboutType() && knownNotToConform(w.type(), to);
+        if (witnessAnswer) {
+            // object turns out to be null, positive answer is correct
+            // object turns out non-null, positive answer is also correct
             return true;
         }
         return false;
@@ -526,6 +576,7 @@ public final class State extends MergeableState<State> implements Cloneable {
         Witness w = getOrElseAddTypeInfo(object);
         if (w.trackNN(anchor)) {
             versionNr++;
+            assert repOK();
             return true;
         }
         return false;
@@ -558,6 +609,7 @@ public final class State extends MergeableState<State> implements Cloneable {
         if (w.trackCC(observed, anchor)) {
             versionNr++;
             metricTypeRegistered.increment();
+            assert repOK();
             return true;
         }
         return false;
@@ -584,6 +636,7 @@ public final class State extends MergeableState<State> implements Cloneable {
         if (w.trackIO(observed, anchor)) {
             versionNr++;
             metricTypeRegistered.increment();
+            assert repOK();
             return true;
         }
         return false;
@@ -665,6 +718,7 @@ public final class State extends MergeableState<State> implements Cloneable {
         } else {
             addFactPrimordial(condition, isTrue ? trueFacts : falseFacts, anchor);
         }
+        assert repOK();
     }
 
     /**
@@ -675,7 +729,7 @@ public final class State extends MergeableState<State> implements Cloneable {
     private void addFactInstanceOf(boolean isTrue, InstanceOfNode instanceOf, GuardingNode anchor) {
         ValueNode object = instanceOf.object();
         if (isTrue) {
-            if (knownNotToConform(object, instanceOf.type())) {
+            if (knownNotToPassInstanceOf(object, instanceOf.type())) {
                 impossiblePath();
                 return;
             }
@@ -776,6 +830,7 @@ public final class State extends MergeableState<State> implements Cloneable {
                 trackNN(original, anchor);
             }
         }
+        assert repOK();
     }
 
     /**
@@ -811,6 +866,180 @@ public final class State extends MergeableState<State> implements Cloneable {
         knownNull.clear();
         trueFacts.clear();
         falseFacts.clear();
+    }
+
+    /**
+     * <p>
+     * If the argument is known null due to its stamp, there's no need to have an anchor for that
+     * fact and this method returns null.
+     * </p>
+     *
+     * <p>
+     * Otherwise, if an anchor is found it is returned, null otherwise.
+     * </p>
+     */
+    public GuardingNode nonTrivialNullAnchor(ValueNode object) {
+        assert FlowUtil.hasLegalObjectStamp(object);
+        if (StampTool.isObjectAlwaysNull(object)) {
+            return null;
+        }
+        return knownNull.get(GraphUtil.unproxify(object));
+    }
+
+    /**
+     * This method:
+     * <ul>
+     * <li>
+     * attempts to find an existing {@link com.oracle.graal.nodes.extended.GuardingNode} that
+     * implies the property stated by the arguments. If found, returns it as positive evidence.</li>
+     * <li>
+     * otherwise, if the property of interest is known not to hold, negative evidence is returned.</li>
+     * <li>
+     * otherwise, null is returned.</li>
+     * </ul>
+     */
+    public Evidence outcome(boolean isTrue, LogicNode cond) {
+
+        // attempt to find an anchor for the condition of interest, verbatim
+        if (isTrue) {
+            GuardingNode existingGuard = trueFacts.get(cond);
+            if (existingGuard != null) {
+                return new Evidence(existingGuard);
+            }
+            if (falseFacts.containsKey(cond)) {
+                return Evidence.COUNTEREXAMPLE;
+            }
+        } else {
+            GuardingNode existingGuard = falseFacts.get(cond);
+            if (existingGuard != null) {
+                return new Evidence(existingGuard);
+            }
+            if (trueFacts.containsKey(cond)) {
+                return Evidence.COUNTEREXAMPLE;
+            }
+        }
+
+        if (cond instanceof IsNullNode) {
+            return outcomeIsNullNode(isTrue, (IsNullNode) cond);
+        }
+
+        if (cond instanceof InstanceOfNode) {
+            return outcomeInstanceOfNode(isTrue, (InstanceOfNode) cond);
+        }
+
+        if (cond instanceof ShortCircuitOrNode) {
+            return outcomeShortCircuitOrNode(isTrue, (ShortCircuitOrNode) cond);
+        }
+
+        // can't produce evidence
+        return null;
+    }
+
+    /**
+     * Utility method for {@link #outcome(boolean, com.oracle.graal.nodes.LogicNode)}
+     */
+    private Evidence outcomeIsNullNode(boolean isTrue, IsNullNode isNullNode) {
+        if (isTrue) {
+            // grab an anchor attesting nullness
+            final GuardingNode replacement = nonTrivialNullAnchor(isNullNode.object());
+            if (replacement != null) {
+                return new Evidence(replacement);
+            }
+            if (isNonNull(isNullNode.object())) {
+                return Evidence.COUNTEREXAMPLE;
+            }
+        } else {
+            // grab an anchor attesting non-nullness
+            final Witness w = typeInfo(isNullNode.object());
+            if (w != null && w.isNonNull()) {
+                return new Evidence(w.guard());
+            }
+            if (isNull(isNullNode.object())) {
+                return Evidence.COUNTEREXAMPLE;
+            }
+        }
+        // can't produce evidence
+        return null;
+    }
+
+    /**
+     * Utility method for {@link #outcome(boolean, com.oracle.graal.nodes.LogicNode)}
+     */
+    private Evidence outcomeInstanceOfNode(boolean isTrue, InstanceOfNode iOf) {
+        final Witness w = typeInfo(iOf.object());
+        if (isTrue) {
+            if (isNull(iOf.object())) {
+                return Evidence.COUNTEREXAMPLE;
+            }
+            // grab an anchor attesting instanceof
+            if ((w != null) && (w.type() != null)) {
+                if (w.isNonNull()) {
+                    if (iOf.type().isAssignableFrom(w.type())) {
+                        return new Evidence(w.guard());
+                    }
+                }
+                if (State.knownNotToConform(w.type(), iOf.type())) {
+                    // null -> fails instanceof
+                    // non-null but non-conformant -> also fails instanceof
+                    return Evidence.COUNTEREXAMPLE;
+                }
+            }
+        } else {
+            // grab an anchor attesting not-instanceof
+            // (1 of 2) attempt determining nullness
+            final GuardingNode nullGuard = nonTrivialNullAnchor(iOf.object());
+            if (nullGuard != null) {
+                return new Evidence(nullGuard);
+            }
+            // (2 of 2) attempt determining known-not-to-conform
+            if (w != null && !w.cluelessAboutType()) {
+                if (State.knownNotToConform(w.type(), iOf.type())) {
+                    return new Evidence(w.guard());
+                }
+            }
+        }
+        // can't produce evidence
+        return null;
+    }
+
+    /**
+     * Utility method for {@link #outcome(boolean, com.oracle.graal.nodes.LogicNode)}
+     */
+    private Evidence outcomeShortCircuitOrNode(boolean isTrue, ShortCircuitOrNode orNode) {
+        if (!isTrue) {
+            // too tricky to reason about
+            return null;
+        }
+        CastCheckExtractor cce = CastCheckExtractor.extract(orNode);
+        if (cce != null) {
+            // grab an anchor attesting check-cast
+            Witness w = typeInfo(cce.subject);
+            if (w != null && w.type() != null) {
+                if (cce.type.isAssignableFrom(w.type())) {
+                    return new Evidence(w.guard());
+                }
+                if (isNonNull(cce.subject) && State.knownNotToConform(w.type(), cce.type)) {
+                    return Evidence.COUNTEREXAMPLE;
+                }
+            }
+        }
+        // search for positive-evidence for the first or-input
+        Evidence evidenceX = outcome(!orNode.isXNegated(), orNode.getX());
+        if (evidenceX != null && evidenceX.isPositive()) {
+            return evidenceX;
+        }
+        // search for positive-evidence for the second or-input
+        Evidence evidenceY = outcome(!orNode.isYNegated(), orNode.getY());
+        if (evidenceY != null && evidenceY.isPositive()) {
+            return evidenceY;
+        }
+        // check for contradictions on both or-inputs
+        if (evidenceX != null && evidenceY != null) {
+            assert evidenceX.isNegative() && evidenceY.isNegative();
+            return Evidence.COUNTEREXAMPLE;
+        }
+        // can't produce evidence
+        return null;
     }
 
 }

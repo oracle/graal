@@ -65,11 +65,12 @@ import java.util.Set;
  */
 public final class EquationalReasoner {
 
-    private static final DebugMetric metricInstanceOfRemoved = Debug.metric("InstanceOfRemoved");
-    private static final DebugMetric metricNullCheckRemoved = Debug.metric("NullCheckRemoved");
-    private static final DebugMetric metricObjectEqualsRemoved = Debug.metric("ObjectEqualsRemoved");
-    private static final DebugMetric metricEquationalReasoning = Debug.metric("EquationalReasoning");
-    private static final DebugMetric metricDowncasting = Debug.metric("Downcasting");
+    private static final DebugMetric metricInstanceOfRemoved = Debug.metric("FSR-InstanceOfRemoved");
+    private static final DebugMetric metricNullCheckRemoved = Debug.metric("FSR-NullCheckRemoved");
+    private static final DebugMetric metricObjectEqualsRemoved = Debug.metric("FSR-ObjectEqualsRemoved");
+    private static final DebugMetric metricEquationalReasoning = Debug.metric("FSR-EquationalReasoning");
+    private static final DebugMetric metricDowncasting = Debug.metric("FSR-Downcasting");
+    private static final DebugMetric metricNullInserted = Debug.metric("FSR-NullInserted");
 
     private final StructuredGraph graph;
     private final CanonicalizerTool tool;
@@ -114,6 +115,7 @@ public final class EquationalReasoner {
      */
     public void forceState(State s) {
         state = s;
+        assert state.repOK();
         substs.clear();
         added.clear();
         visited = null;
@@ -235,6 +237,17 @@ public final class EquationalReasoner {
             // picked cached substitution
             return result;
         }
+        if (FlowUtil.hasLegalObjectStamp(v) && state.isNull(v)) {
+            // it's ok to return nullConstant in deverbosify unlike in downcast
+            metricNullInserted.increment();
+            return nullConstant;
+        }
+        if (v instanceof ValueProxy) {
+            return v;
+        }
+        if (!(n instanceof FloatingNode)) {
+            return n;
+        }
         if ((visited != null && visited.contains(n)) || added.contains(v)) {
             return v;
         }
@@ -252,25 +265,13 @@ public final class EquationalReasoner {
          * Past this point, if we ever want `n` to be deverbosified, it must be looked-up by one of
          * the cases above. One sure way to achieve that is with `rememberSubstitution(old, new)`
          */
-        if (v instanceof ValueProxy) {
-            return downcast(v);
-        }
 
-        if (n instanceof FloatingNode) {
-            /*
-             * `deverbosifyFloatingNode()` will drill down over floating inputs, when that not
-             * possible anymore it resorts to calling `downcast()`. Thus it's ok to take the
-             * `deverbosifyFloatingNode()` route first, as no downcasting opportunity will be
-             * missed.
-             */
-            return deverbosifyFloatingNode((FloatingNode) n);
-        }
-
-        if (FlowUtil.hasLegalObjectStamp(v)) {
-            return downcast(v);
-        }
-
-        return n;
+        /*
+         * `deverbosifyFloatingNode()` will drill down over floating inputs, when that not possible
+         * anymore it resorts to calling `downcast()`. Thus it's ok to take the
+         * `deverbosifyFloatingNode()` route first, as no downcasting opportunity will be missed.
+         */
+        return deverbosifyFloatingNode((FloatingNode) n);
     }
 
     /**
@@ -334,16 +335,7 @@ public final class EquationalReasoner {
         }
         if (changed == null) {
             assert visited.contains(f) || added.contains(f);
-            if (FlowUtil.hasLegalObjectStamp(f)) {
-                /*
-                 * No input has changed doesn't imply there's no witness to refine the
-                 * floating-object value.
-                 */
-                ValueNode d = downcast(f);
-                return d;
-            } else {
-                return f;
-            }
+            return f;
         }
         FlowUtil.inferStampAndCheck(changed);
         added.add(changed);
@@ -441,6 +433,8 @@ public final class EquationalReasoner {
                 return baseCaseIsNullNode((IsNullNode) condition);
             } else if (condition instanceof ObjectEqualsNode) {
                 return baseCaseObjectEqualsNode((ObjectEqualsNode) condition);
+            } else if (condition instanceof ShortCircuitOrNode) {
+                return baseCaseShortCircuitOrNode((ShortCircuitOrNode) condition);
             }
         }
         return condition;
@@ -465,6 +459,11 @@ public final class EquationalReasoner {
         if (state.isNull(scrutinee)) {
             metricInstanceOfRemoved.increment();
             return falseConstant;
+        } else if (state.knownNotToPassInstanceOf(scrutinee, instanceOf.type())) {
+            // scrutinee turns out to be null -> falseConstant right answer
+            // scrutinee not null, but known-not-to-conform -> falseConstant
+            metricInstanceOfRemoved.increment();
+            return falseConstant;
         } else if (state.isNonNull(scrutinee) && state.knownToConform(scrutinee, instanceOf.type())) {
             metricInstanceOfRemoved.increment();
             return trueConstant;
@@ -477,21 +476,19 @@ public final class EquationalReasoner {
      *         performed; otherwise the unmodified argument.
      *
      */
-    private FloatingNode baseCaseIsNullNode(IsNullNode isNull) {
-        ValueNode object = isNull.object();
+    private FloatingNode baseCaseIsNullNode(IsNullNode isNu) {
+        ValueNode object = isNu.object();
         if (!FlowUtil.hasLegalObjectStamp(object)) {
-            return isNull;
+            return isNu;
         }
-        ValueNode scrutinee = GraphUtil.unproxify(isNull.object());
-        GuardingNode evidence = nonTrivialNullAnchor(scrutinee);
-        if (evidence != null) {
+        if (state.isNull(object)) {
             metricNullCheckRemoved.increment();
             return trueConstant;
-        } else if (state.isNonNull(scrutinee)) {
+        } else if (state.isNonNull(object)) {
             metricNullCheckRemoved.increment();
             return falseConstant;
         }
-        return isNull;
+        return isNu;
     }
 
     /**
@@ -512,6 +509,38 @@ public final class EquationalReasoner {
             return trueConstant;
         }
         return equals;
+    }
+
+    /**
+     * The following is tried:
+     *
+     * <ol>
+     * <li>
+     * A {@link com.oracle.graal.phases.common.cfs.Witness} that is at check-cast level level
+     * doesn't entail {@link com.oracle.graal.nodes.calc.IsNullNode} (on its own) nor
+     * {@link com.oracle.graal.nodes.java.InstanceOfNode} (also on its own) but of course it entails
+     * <code>(IsNull || IsInstanceOf)</code>. Good thing
+     * {@link com.oracle.graal.phases.common.cfs.CastCheckExtractor} detects that very pattern.</li>
+     * <li>
+     * Otherwise return the unmodified argument (later on,
+     * {@link #deverbosifyFloatingNode(com.oracle.graal.nodes.calc.FloatingNode)} will attempt to
+     * simplify the {@link com.oracle.graal.nodes.ShortCircuitOrNode}).</li>
+     * </ol>
+     *
+     * @return a {@link com.oracle.graal.nodes.LogicConstantNode}, in case a reduction was made;
+     *         otherwise the unmodified argument.
+     */
+    private LogicNode baseCaseShortCircuitOrNode(ShortCircuitOrNode orNode) {
+        CastCheckExtractor cast = CastCheckExtractor.extract(orNode);
+        if (cast != null) {
+            if (state.knownToConform(cast.subject, cast.type)) {
+                return trueConstant;
+            } else if (state.knownNotToPassCheckCast(cast.subject, cast.type)) {
+                return falseConstant;
+            }
+            return orNode;
+        }
+        return orNode;
     }
 
     /**
@@ -558,6 +587,7 @@ public final class EquationalReasoner {
 
         PiNode untrivialNull = nonTrivialNull(scrutinee);
         if (untrivialNull != null) {
+            metricNullInserted.increment();
             return untrivialNull;
         }
 
@@ -646,24 +676,6 @@ public final class EquationalReasoner {
     }
 
     /**
-     * <p>
-     * If the argument is known null due to its stamp, there's no need to have an anchor for that
-     * fact and this method returns null.
-     * </p>
-     *
-     * <p>
-     * Otherwise, if an anchor is found it is returned, null otherwise.
-     * </p>
-     */
-    public GuardingNode nonTrivialNullAnchor(ValueNode object) {
-        assert FlowUtil.hasLegalObjectStamp(object);
-        if (StampTool.isObjectAlwaysNull(object)) {
-            return null;
-        }
-        return state.knownNull.get(GraphUtil.unproxify(object));
-    }
-
-    /**
      *
      * This method returns:
      * <ul>
@@ -680,7 +692,7 @@ public final class EquationalReasoner {
      */
     public PiNode nonTrivialNull(ValueNode object) {
         assert FlowUtil.hasLegalObjectStamp(object);
-        GuardingNode anchor = nonTrivialNullAnchor(object);
+        GuardingNode anchor = state.nonTrivialNullAnchor(object);
         if (anchor == null) {
             return null;
         }

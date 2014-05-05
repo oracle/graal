@@ -54,6 +54,14 @@ import static com.oracle.graal.api.meta.DeoptimizationReason.*;
  * <ul>
  * <li>simplification of side-effects free expressions, via
  * {@link com.oracle.graal.phases.common.cfs.EquationalReasoner#deverbosify(com.oracle.graal.graph.Node)}
+ * <ul>
+ * <li>
+ * at certain {@link com.oracle.graal.nodes.FixedNode}, see
+ * {@link #deverbosifyInputsInPlace(com.oracle.graal.nodes.ValueNode)}</li>
+ * <li>
+ * including for devirtualization, see
+ * {@link #deverbosifyInputsCopyOnWrite(com.oracle.graal.nodes.java.MethodCallTargetNode)}</li>
+ * </ul>
  * </li>
  * <li>simplification of control-flow:
  * <ul>
@@ -74,6 +82,13 @@ import static com.oracle.graal.api.meta.DeoptimizationReason.*;
  * </ul>
  * </li>
  * </ol>
+ * </p>
+ *
+ * <p>
+ * Metrics for this phase are displayed starting with <code>FSR-</code>prefix, their counters are
+ * hosted in {@link com.oracle.graal.phases.common.cfs.BaseReduction},
+ * {@link com.oracle.graal.phases.common.cfs.EquationalReasoner} and
+ * {@link com.oracle.graal.phases.common.cfs.State}.
  * </p>
  *
  * @see com.oracle.graal.phases.common.cfs.CheckCastReduction
@@ -217,13 +232,8 @@ public class FlowSensitiveReduction extends FixedGuardReduction {
                 // `begin` denotes the default case of the TypeSwitchNode
                 return;
             }
-            if (state.knownNotToConform(loadHub.object(), type)) {
-                postponedDeopts.addDeoptAfter(begin, UnreachedCode);
-                state.impossiblePath();
-                return;
-            }
             // it's unwarranted to assume loadHub.object() to be non-null
-            // it also seems unwarranted state.trackCC(loadHub.object(), type, begin);
+            state.trackCC(loadHub.object(), type, begin);
         }
     }
 
@@ -295,9 +305,16 @@ public class FlowSensitiveReduction extends FixedGuardReduction {
      *
      */
     private MethodCallTargetNode deverbosifyInputsCopyOnWrite(MethodCallTargetNode parent) {
+        final MethodCallTargetNode.InvokeKind ik = parent.invokeKind();
+        final boolean shouldTryDevirt = (ik == MethodCallTargetNode.InvokeKind.Interface || ik == MethodCallTargetNode.InvokeKind.Virtual);
+        boolean shouldDowncastReceiver = shouldTryDevirt;
         MethodCallTargetNode changed = null;
         for (ValueNode i : FlowUtil.distinctValueAndConditionInputs(parent)) {
-            Node j = reasoner.deverbosify(i);
+            ValueNode j = (ValueNode) reasoner.deverbosify(i);
+            if (shouldDowncastReceiver) {
+                shouldDowncastReceiver = false;
+                j = reasoner.downcast(j);
+            }
             if (i != j) {
                 assert j != parent;
                 if (changed == null) {
