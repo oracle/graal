@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.compiler.match;
 
+import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
@@ -30,19 +31,19 @@ import com.oracle.graal.nodes.extended.*;
  * Helper class to describe the matchable nodes in the core Graal IR. These could possibly live in
  * their respective classes but for simplicity in the {@link MatchProcessor} they are grouped here.
  */
-@MatchableNode(nodeClass = ConstantNode.class, inputs = 0)
+@MatchableNode(nodeClass = ConstantNode.class, inputs = 0, shareable = true)
 @MatchableNode(nodeClass = FloatConvertNode.class, inputs = 1, adapter = GraalMatchableNodes.ConvertNodeAdapter.class)
 @MatchableNode(nodeClass = FloatSubNode.class, inputs = 2, adapter = GraalMatchableNodes.BinaryNodeAdapter.class)
-@MatchableNode(nodeClass = FloatingReadNode.class, inputs = 1, adapter = GraalMatchableNodes.ReadNodeAdapter.class)
+@MatchableNode(nodeClass = FloatingReadNode.class, inputs = 2, adapter = GraalMatchableNodes.AccessAdapter.class)
 @MatchableNode(nodeClass = IfNode.class, inputs = 1, adapter = GraalMatchableNodes.IfNodeAdapter.class)
 @MatchableNode(nodeClass = IntegerSubNode.class, inputs = 2, adapter = GraalMatchableNodes.BinaryNodeAdapter.class)
 @MatchableNode(nodeClass = LeftShiftNode.class, inputs = 2, adapter = GraalMatchableNodes.BinaryNodeAdapter.class)
 @MatchableNode(nodeClass = NarrowNode.class, inputs = 1, adapter = GraalMatchableNodes.ConvertNodeAdapter.class)
-@MatchableNode(nodeClass = ReadNode.class, inputs = 1, adapter = GraalMatchableNodes.ReadNodeAdapter.class)
+@MatchableNode(nodeClass = ReadNode.class, inputs = 2, adapter = GraalMatchableNodes.AccessAdapter.class)
 @MatchableNode(nodeClass = ReinterpretNode.class, inputs = 1, adapter = GraalMatchableNodes.ReinterpretNodeAdapter.class)
 @MatchableNode(nodeClass = SignExtendNode.class, inputs = 1, adapter = GraalMatchableNodes.ConvertNodeAdapter.class)
 @MatchableNode(nodeClass = UnsignedRightShiftNode.class, inputs = 2, adapter = GraalMatchableNodes.BinaryNodeAdapter.class)
-@MatchableNode(nodeClass = WriteNode.class, inputs = 2, adapter = GraalMatchableNodes.WriteNodeAdapter.class)
+@MatchableNode(nodeClass = WriteNode.class, inputs = 3, adapter = GraalMatchableNodes.WriteNodeAdapter.class)
 @MatchableNode(nodeClass = ZeroExtendNode.class, inputs = 1, adapter = GraalMatchableNodes.ConvertNodeAdapter.class)
 @MatchableNode(nodeClass = AndNode.class, inputs = 2, adapter = GraalMatchableNodes.BinaryNodeAdapter.class, commutative = true)
 @MatchableNode(nodeClass = FloatAddNode.class, inputs = 2, adapter = GraalMatchableNodes.BinaryNodeAdapter.class, commutative = true)
@@ -61,71 +62,87 @@ import com.oracle.graal.nodes.extended.*;
 public class GraalMatchableNodes {
     public static class BinaryNodeAdapter extends MatchNodeAdapter {
         @Override
-        protected ValueNode getFirstInput(ValueNode node) {
-            return ((BinaryNode) node).x();
-        }
-
-        @Override
-        protected ValueNode getSecondInput(ValueNode node) {
-            return ((BinaryNode) node).y();
+        public ValueNode getInput(int input, ValueNode node) {
+            if (input == 0) {
+                return ((BinaryNode) node).x();
+            }
+            if (input == 1) {
+                return ((BinaryNode) node).y();
+            }
+            throw GraalInternalError.shouldNotReachHere();
         }
     }
 
     public static class WriteNodeAdapter extends MatchNodeAdapter {
-
         @Override
-        protected ValueNode getFirstInput(ValueNode node) {
-            return ((WriteNode) node).object();
-        }
-
-        @Override
-        protected ValueNode getSecondInput(ValueNode node) {
-            return ((WriteNode) node).value();
+        public ValueNode getInput(int input, ValueNode node) {
+            if (input == 0) {
+                return ((WriteNode) node).object();
+            }
+            if (input == 1) {
+                return ((WriteNode) node).location();
+            }
+            if (input == 2) {
+                return ((WriteNode) node).value();
+            }
+            throw GraalInternalError.shouldNotReachHere();
         }
     }
 
     public static class ConvertNodeAdapter extends MatchNodeAdapter {
-
         @Override
-        protected ValueNode getFirstInput(ValueNode node) {
-            return ((ConvertNode) node).getInput();
+        public ValueNode getInput(int input, ValueNode node) {
+            if (input == 0) {
+                return ((ConvertNode) node).getInput();
+            }
+            throw GraalInternalError.shouldNotReachHere();
         }
     }
 
     public static class ReinterpretNodeAdapter extends MatchNodeAdapter {
-
         @Override
-        protected ValueNode getFirstInput(ValueNode node) {
-            return ((ReinterpretNode) node).value();
+        public ValueNode getInput(int input, ValueNode node) {
+            if (input == 0) {
+                return ((ReinterpretNode) node).value();
+            }
+            throw GraalInternalError.shouldNotReachHere();
         }
     }
 
     public static class IfNodeAdapter extends MatchNodeAdapter {
-
         @Override
-        protected ValueNode getFirstInput(ValueNode node) {
-            return ((IfNode) node).condition();
+        public ValueNode getInput(int input, ValueNode node) {
+            if (input == 0) {
+                return ((IfNode) node).condition();
+            }
+            throw GraalInternalError.shouldNotReachHere();
         }
     }
 
-    public static class ReadNodeAdapter extends MatchNodeAdapter {
+    public static class AccessAdapter extends MatchNodeAdapter {
 
         @Override
-        protected ValueNode getFirstInput(ValueNode node) {
-            return ((Access) node).object();
+        public ValueNode getInput(int input, ValueNode node) {
+            if (input == 0) {
+                return ((Access) node).object();
+            }
+            if (input == 1) {
+                return ((Access) node).accessLocation();
+            }
+            throw GraalInternalError.shouldNotReachHere();
         }
     }
 
     public static class BinaryOpLogicNodeAdapter extends MatchNodeAdapter {
-
         @Override
-        protected ValueNode getFirstInput(ValueNode node) {
-            return ((BinaryOpLogicNode) node).x();
-        }
-
-        @Override
-        protected ValueNode getSecondInput(ValueNode node) {
-            return ((BinaryOpLogicNode) node).y();
+        public ValueNode getInput(int input, ValueNode node) {
+            if (input == 0) {
+                return ((BinaryOpLogicNode) node).x();
+            }
+            if (input == 1) {
+                return ((BinaryOpLogicNode) node).y();
+            }
+            throw GraalInternalError.shouldNotReachHere();
         }
     }
 }

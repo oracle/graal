@@ -57,4 +57,9 @@ public @interface MatchableNode {
      * patterns to be automatically generated.
      */
     boolean commutative() default false;
+
+    /**
+     * Can a node with multiple users be safely match by a rule.
+     */
+    boolean shareable() default false;
 }

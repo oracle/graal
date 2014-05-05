@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.compiler.match;
 
+import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.nodes.*;
 
 /**
@@ -31,12 +32,7 @@ import com.oracle.graal.nodes.*;
  */
 public class MatchNodeAdapter {
     @SuppressWarnings("unused")
-    protected ValueNode getFirstInput(ValueNode node) {
-        throw new InternalError();
-    }
-
-    @SuppressWarnings("unused")
-    protected ValueNode getSecondInput(ValueNode node) {
-        throw new InternalError();
+    public ValueNode getInput(int input, ValueNode node) {
+        throw GraalInternalError.shouldNotReachHere();
     }
 }

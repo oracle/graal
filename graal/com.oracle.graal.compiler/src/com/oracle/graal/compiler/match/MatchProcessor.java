@@ -237,11 +237,11 @@ public class MatchProcessor extends AbstractProcessor {
          * Can multiple users of this node subsume it. Constants can be swallowed into a match even
          * if there are multiple users.
          */
-        final boolean cloneable;
+        final boolean shareable;
 
         final Set<Element> originatingElements = new HashSet<>();
 
-        TypeDescriptor(TypeMirror mirror, String shortName, String nodeClass, String nodePackage, int inputs, String adapter, boolean commutative) {
+        TypeDescriptor(TypeMirror mirror, String shortName, String nodeClass, String nodePackage, int inputs, String adapter, boolean commutative, boolean shareable) {
             this.mirror = mirror;
             this.shortName = shortName;
             this.nodeClass = nodeClass;
@@ -249,7 +249,7 @@ public class MatchProcessor extends AbstractProcessor {
             this.inputs = inputs;
             this.adapter = adapter;
             this.commutative = commutative;
-            this.cloneable = (nodePackage + "." + nodeClass).equals(ConstantNode.class.getName());
+            this.shareable = shareable;
             assert !commutative || inputs == 2;
         }
     }
@@ -270,8 +270,8 @@ public class MatchProcessor extends AbstractProcessor {
     private Map<ExecutableElement, MethodInvokerItem> invokers = new LinkedHashMap<>();
     private TypeDescriptor valueType;
 
-    private void declareType(TypeMirror mirror, String shortName, String nodeClass, String nodePackage, int inputs, String adapter, boolean commutative, Element element) {
-        TypeDescriptor descriptor = new TypeDescriptor(mirror, shortName, nodeClass, nodePackage, inputs, adapter, commutative);
+    private void declareType(TypeMirror mirror, String shortName, String nodeClass, String nodePackage, int inputs, String adapter, boolean commutative, boolean shareable, Element element) {
+        TypeDescriptor descriptor = new TypeDescriptor(mirror, shortName, nodeClass, nodePackage, inputs, adapter, commutative, shareable);
         descriptor.originatingElements.add(element);
         knownTypes.put(shortName, descriptor);
         if (!requiredPackages.contains(descriptor.nodePackage)) {
@@ -315,7 +315,15 @@ public class MatchProcessor extends AbstractProcessor {
             String prefix = formatPrefix();
             String suffix = formatSuffix();
             ArrayList<String> variants = new ArrayList<>();
-            if (inputs.length == 2) {
+            if (inputs.length == 3) {
+                for (String first : inputs[0].generateVariants()) {
+                    for (String second : inputs[1].generateVariants()) {
+                        for (String third : inputs[2].generateVariants()) {
+                            variants.add(prefix + ", " + first + ", " + second + ", " + third + suffix);
+                        }
+                    }
+                }
+            } else if (inputs.length == 2) {
                 // Generate this version and a swapped version
                 for (String first : inputs[0].generateVariants()) {
                     for (String second : inputs[1].generateVariants()) {
@@ -330,6 +338,7 @@ public class MatchProcessor extends AbstractProcessor {
                     variants.add(prefix + ", " + first + suffix);
                 }
             } else {
+                assert inputs.length == 0;
                 variants.add(prefix + suffix);
             }
             return variants;
@@ -349,9 +358,9 @@ public class MatchProcessor extends AbstractProcessor {
                     return ", true)";
                 } else {
                     if (nodeType.adapter != null) {
-                        return ", " + nodeType.adapter + "," + !nodeType.cloneable + ")";
+                        return ", " + nodeType.adapter + "," + !nodeType.shareable + ")";
                     }
-                    if (nodeType.cloneable) {
+                    if (nodeType.shareable) {
                         return ", false)";
                     }
                 }
@@ -561,7 +570,7 @@ public class MatchProcessor extends AbstractProcessor {
             // Define a TypeDescriptor the generic node but don't enter it into the nodeTypes table
             // since it shouldn't mentioned in match rules.
             TypeMirror mirror = processingEnv.getElementUtils().getTypeElement(ValueNode.class.getName()).asType();
-            valueType = new TypeDescriptor(mirror, "Value", ValueNode.class.getSimpleName(), ValueNode.class.getPackage().getName(), 0, null, false);
+            valueType = new TypeDescriptor(mirror, "Value", ValueNode.class.getSimpleName(), ValueNode.class.getPackage().getName(), 0, null, false, false);
 
             // Import default definitions
             processMatchableNode(processingEnv.getElementUtils().getTypeElement(GraalMatchableNodes.class.getName()));
@@ -644,7 +653,7 @@ public class MatchProcessor extends AbstractProcessor {
                         nodeAdapter = String.format("new %s()", nodeAdapterMirror.toString());
                     }
 
-                    declareType(nodeClassMirror, shortName, nodeClass, nodePackage, matchable.inputs(), nodeAdapter, matchable.commutative(), element);
+                    declareType(nodeClassMirror, shortName, nodeClass, nodePackage, matchable.inputs(), nodeAdapter, matchable.commutative(), matchable.shareable(), element);
                 }
             } catch (Throwable t) {
                 reportExceptionThrow(element, t);

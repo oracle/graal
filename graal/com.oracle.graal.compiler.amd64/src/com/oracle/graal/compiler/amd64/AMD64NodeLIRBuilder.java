@@ -455,7 +455,7 @@ public abstract class AMD64NodeLIRBuilder extends NodeLIRBuilder {
         return null;
     }
 
-    @MatchRule("(Write Narrow=narrow value)")
+    @MatchRule("(Write Narrow=narrow location value)")
     public ComplexMatchResult writeNarrow(WriteNode root, NarrowNode narrow) {
         return builder -> {
             PlatformKind writeKind = getLIRGeneratorTool().getPlatformKind(root.value().stamp());
