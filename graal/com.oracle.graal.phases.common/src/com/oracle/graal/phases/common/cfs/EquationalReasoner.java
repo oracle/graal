@@ -474,6 +474,11 @@ public final class EquationalReasoner {
         if (state.isNull(scrutinee)) {
             metricInstanceOfRemoved.increment();
             return falseConstant;
+        } else if (state.knownNotToPassInstanceOf(scrutinee, instanceOf.type())) {
+            // scrutinee turns out to be null -> falseConstant right answer
+            // scrutinee not null, but known-not-to-conform -> falseConstant
+            metricInstanceOfRemoved.increment();
+            return falseConstant;
         } else if (state.isNonNull(scrutinee) && state.knownToConform(scrutinee, instanceOf.type())) {
             metricInstanceOfRemoved.increment();
             return trueConstant;
@@ -547,7 +552,7 @@ public final class EquationalReasoner {
         if (cast != null) {
             if (state.knownToConform(cast.subject, cast.type)) {
                 return trueConstant;
-            } else if (state.knownNotToConform(cast.subject, cast.type)) {
+            } else if (state.knownNotToPassCheckCast(cast.subject, cast.type)) {
                 return falseConstant;
             }
             return orNode;

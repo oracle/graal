@@ -408,7 +408,8 @@ public final class State extends MergeableState<State> implements Cloneable {
     }
 
     /**
-     * @return true iff the argument is known to stand for an object conforming to the given type.
+     * @return true iff the argument definitely stands for an object-value that conforms to the
+     *         given type.
      */
     public boolean knownToConform(ValueNode object, ResolvedJavaType to) {
         assert FlowUtil.hasLegalObjectStamp(object);
@@ -430,15 +431,16 @@ public final class State extends MergeableState<State> implements Cloneable {
     }
 
     /**
-     * @return true iff the argument is known to stand for an object that definitely does not
-     *         conform to the given type.
+     * @return true iff the argument is known to stand for an object that is definitely non-null and
+     *         moreover does not conform to the given type.
      */
-    public boolean knownNotToConform(ValueNode object, ResolvedJavaType to) {
+    public boolean knownNotToPassCheckCast(ValueNode object, ResolvedJavaType to) {
         assert FlowUtil.hasLegalObjectStamp(object);
         assert !to.isPrimitive();
         final ValueNode scrutinee = GraphUtil.unproxify(object);
         if (isNull(scrutinee)) {
             // known-null means it conforms to whatever `to`
+            // and thus passes the check-cast
             return false;
         }
         if (!isNonNull(scrutinee)) {
@@ -452,6 +454,34 @@ public final class State extends MergeableState<State> implements Cloneable {
         Witness w = typeInfo(scrutinee);
         boolean witnessAnswer = w != null && !w.cluelessAboutType() && knownNotToConform(w.type(), to);
         if (witnessAnswer) {
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * @return true iff the argument is known to stand for an object that definitely does not
+     *         conform to the given type (no matter whether the object turns out to be null or
+     *         non-null).
+     */
+    public boolean knownNotToPassInstanceOf(ValueNode object, ResolvedJavaType to) {
+        assert FlowUtil.hasLegalObjectStamp(object);
+        assert !to.isPrimitive();
+        final ValueNode scrutinee = GraphUtil.unproxify(object);
+        if (isNull(scrutinee)) {
+            return true;
+        }
+        ResolvedJavaType stampType = StampTool.typeOrNull(object);
+        if (stampType != null && knownNotToConform(stampType, to)) {
+            // object turns out to be null, positive answer is correct
+            // object turns out non-null, positive answer is also correct
+            return true;
+        }
+        Witness w = typeInfo(scrutinee);
+        boolean witnessAnswer = w != null && !w.cluelessAboutType() && knownNotToConform(w.type(), to);
+        if (witnessAnswer) {
+            // object turns out to be null, positive answer is correct
+            // object turns out non-null, positive answer is also correct
             return true;
         }
         return false;
@@ -699,7 +729,7 @@ public final class State extends MergeableState<State> implements Cloneable {
     private void addFactInstanceOf(boolean isTrue, InstanceOfNode instanceOf, GuardingNode anchor) {
         ValueNode object = instanceOf.object();
         if (isTrue) {
-            if (knownNotToConform(object, instanceOf.type())) {
+            if (knownNotToPassInstanceOf(object, instanceOf.type())) {
                 impossiblePath();
                 return;
             }
