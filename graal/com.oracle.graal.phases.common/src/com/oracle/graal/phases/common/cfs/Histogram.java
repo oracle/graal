@@ -54,7 +54,7 @@ public class Histogram extends TreeMap<Integer, Integer> {
             int percentOut = (int) (numCases / casesTotal * 100);
             String msg = prefix + String.format("%d iters in %4d cases (%2d %%)", entry.getKey(), numCases, percentOut);
             if (entry.getKey() > 3) {
-                FlowUtil.highlightInRed(msg);
+                highlightInRed(msg);
             } else {
                 System.out.println(msg);
             }
@@ -65,6 +65,13 @@ public class Histogram extends TreeMap<Integer, Integer> {
     @Override
     public Histogram clone() {
         return (Histogram) super.clone();
+    }
+
+    public static final String ANSI_RESET = "\u001B[0m";
+    public static final String ANSI_RED = "\u001B[31m";
+
+    public static void highlightInRed(String msg) {
+        System.out.println(ANSI_RED + msg + ANSI_RESET);
     }
 
 }

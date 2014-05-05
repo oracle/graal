@@ -29,15 +29,16 @@ import org.junit.*;
 import com.oracle.graal.compiler.hsail.test.infra.*;
 
 /**
- * Tests the spilling of double variables into memory.
+ * Tests the spilling of double variables into memory with deopt
  */
-public class StaticDoubleSpillTest extends GraalKernelTester {
+public class StaticDoubleSpillBoundsCatchTest extends GraalKernelTester {
 
     static final int size = 100;
     private double[] in = new double[size * 400];
-    @Result private double[] out = new double[size * 400];
+    @Result public double[] out = new double[size * 400];
+    @Result public double[] aux = new double[size];
 
-    public static void run(double[] out, double[] in, int gid) {
+    public static void run(double[] out, double[] in, double[] aux, int gid) {
         int id = gid;
         int step = 20;
         double sum0;
@@ -62,28 +63,39 @@ public class StaticDoubleSpillTest extends GraalKernelTester {
         double sum19;
         sum0 = sum1 = sum2 = sum3 = sum4 = sum5 = sum6 = sum7 = sum8 = sum9 = 0;
         sum10 = sum11 = sum12 = sum13 = sum14 = sum15 = sum16 = sum17 = sum18 = sum19 = 0;
-        for (int i = 0; i < size; i += step) {
-            sum0 += in[i + 0];
-            sum1 += in[i + 1];
-            sum2 += in[i + 2];
-            sum3 += in[i + 3];
-            sum4 += in[i + 4];
-            sum5 += in[i + 5];
-            sum6 += in[i + 6];
-            sum7 += in[i + 7];
-            sum8 += in[i + 8];
-            sum9 += in[i + 9];
-            sum10 += in[i + 0];
-            sum11 += in[i + 1];
-            sum12 += in[i + 2];
-            sum13 += in[i + 3];
-            sum14 += in[i + 4];
-            sum15 += in[i + 5];
-            sum16 += in[i + 6];
-            sum17 += in[i + 7];
-            sum18 += in[i + 8];
-            sum19 += in[i + 9];
+        try {
+            for (int i = 0; i < size; i += step) {
+                sum0 += in[i + 0];
+                sum1 += in[i + 1];
+                sum2 += in[i + 2];
+                sum3 += in[i + 3];
+                sum4 += in[i + 4];
+                sum5 += in[i + 5];
+                sum6 += in[i + 6];
+                sum7 += in[i + 7];
+                sum8 += in[i + 8];
+                sum9 += in[i + 9];
+                sum10 += in[i + 0];
+                sum11 += in[i + 1];
+                sum12 += in[i + 2];
+                sum13 += in[i + 3];
+                sum14 += in[i + 4];
+                sum15 += in[i + 5];
+                sum16 += in[i + 6];
+                sum17 += in[i + 7];
+                sum18 += in[i + 8];
+                sum19 += in[i + 9];
+
+                if (id > size / 2) {
+                    aux[id + 10] += sum1 + sum2;
+                    // + sum3 + sum4 + sum5 + sum6 + sum7 + sum8 + sum9 + sum10 + sum11 + sum12 +
+                    // sum13 + sum14 + sum15 + sum16;
+                }
+            }
+        } catch (ArrayIndexOutOfBoundsException e) {
+            aux[id] += sum1 + sum2;
         }
+
         out[id * step + 0] = sum0;
         out[id * step + 1] = sum1;
         out[id * step + 2] = sum2;
@@ -114,10 +126,11 @@ public class StaticDoubleSpillTest extends GraalKernelTester {
          * 
          */
         Arrays.fill(out, -1f);
+        Arrays.fill(aux, 0f);
         for (int i = 0; i < size; i++) {
             in[i] = i + 1;
         }
-        dispatchMethodKernel(size, out, in);
+        dispatchMethodKernel(size, out, in, aux);
     }
 
     @Test

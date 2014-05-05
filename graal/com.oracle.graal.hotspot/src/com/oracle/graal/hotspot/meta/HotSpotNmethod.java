@@ -36,7 +36,7 @@ import com.oracle.graal.api.meta.*;
  * instance to be anything but weak. This is due to the fact that HotSpot does not treat nmethods as
  * strong GC roots.
  */
-public final class HotSpotNmethod extends HotSpotInstalledCode {
+public class HotSpotNmethod extends HotSpotInstalledCode {
 
     /**
      * This (indirect) Method* reference is safe since class redefinition preserves all methods

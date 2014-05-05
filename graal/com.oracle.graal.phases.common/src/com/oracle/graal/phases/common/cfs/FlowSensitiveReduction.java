@@ -43,20 +43,37 @@ import static com.oracle.graal.api.meta.DeoptimizationReason.*;
 
 /**
  * <p>
- * All control-flow-sensitive reductions follow the common pattern of
+ * In a nutshell, {@link com.oracle.graal.phases.common.cfs.FlowSensitiveReductionPhase} makes a
+ * single pass in dominator-based order over the graph:
+ * <ol>
+ * <li>collecting properties of interest at control-splits; as well as for check-casts,
+ * guarding-pis, null-checks, and fixed-guards. Such flow-sensitive information is tracked via a
+ * dedicated {@link com.oracle.graal.phases.common.cfs.State state instance} for each control-flow
+ * path.</li>
+ * <li>performing rewritings that are safe at specific program-points. This comprises:
  * <ul>
- * <li>Recognizing properties of interest (ie, LogicNode-s) at control-flow splits, as well as upon
- * check-casts and fixed-guards.</li>
- * <li>Using the information thus tracked to simplify
- * <ul>
- * <li>side-effects free expressions, via
+ * <li>simplification of side-effects free expressions, via
  * {@link com.oracle.graal.phases.common.cfs.EquationalReasoner#deverbosify(com.oracle.graal.graph.Node)}
  * </li>
- * <li>control-flow, eg. by eliminating redundant fixed-guards and check-casts, ie which are known
- * always to hold.</li>
+ * <li>simplification of control-flow:
+ * <ul>
+ * <li>
+ * by simplifying the input-condition to an {@link com.oracle.graal.nodes.IfNode}</li>
+ * <li>
+ * by eliminating redundant check-casts, guarding-pis, null-checks, and fixed-guards; where
+ * "redundancy" is determined using flow-sensitive information. In these cases, redundancy can be
+ * due to:
+ * <ul>
+ * <li>an equivalent, existing, guarding node is already in scope (thus, use it as replacement and
+ * remove the redundant one)</li>
+ * <li>"always fails" (thus, replace the node in question with <code>FixedGuardNode(false)</code>)</li>
  * </ul>
  * </li>
  * </ul>
+ * </li>
+ * </ul>
+ * </li>
+ * </ol>
  * </p>
  *
  * @see com.oracle.graal.phases.common.cfs.CheckCastReduction
@@ -145,6 +162,9 @@ public class FlowSensitiveReduction extends FixedGuardReduction {
 
         if (begin instanceof LoopExitNode) {
             state.clear();
+            /*
+             * TODO return or not? (by not returning we agree it's ok to update the state as below)
+             */
         }
 
         if (pred instanceof IfNode) {
@@ -253,7 +273,7 @@ public class FlowSensitiveReduction extends FixedGuardReduction {
     public boolean deverbosifyInputsInPlace(ValueNode parent) {
         boolean changed = false;
         for (ValueNode i : FlowUtil.distinctValueAndConditionInputs(parent)) {
-            assert !(i instanceof GuardNode) : "ConditionalElim shouldn't run in MidTier";
+            assert !(i instanceof GuardNode) : "This phase not intended to run during MidTier";
             ValueNode j = (ValueNode) reasoner.deverbosify(i);
             if (i != j) {
                 changed = true;
@@ -390,7 +410,7 @@ public class FlowSensitiveReduction extends FixedGuardReduction {
          * Step 5: After special-case handling, we do our best for those FixedNode-s
          * where the effort to reduce their inputs might pay off.
          *
-         * Why is this useful? For example, by the time the AbstractBeginNode for an If-branch
+         * Why is this useful? For example, by the time the BeginNode for an If-branch
          * is visited (in general a ControlSplitNode), the If-condition will have gone already
          * through simplification (and thus potentially have been reduced to a
          * LogicConstantNode).
@@ -407,8 +427,7 @@ public class FlowSensitiveReduction extends FixedGuardReduction {
             paysOffToReduce = true;
         }
 
-        // TODO comb the remaining FixedWithNextNode subclasses, pick those with good changes of
-        // paying-off
+        // TODO comb remaining FixedWithNextNode subclasses, pick those with chances of paying-off
 
         // TODO UnsafeLoadNode takes a condition
 
@@ -423,8 +442,7 @@ public class FlowSensitiveReduction extends FixedGuardReduction {
          */
 
         // TODO some nodes are GuardingNodes (eg, FixedAccessNode) we could use them to track state
-        // TODO others are additionally guarded (eg JavaReadNode), thus *their* guards could be
-        // simplified.
+        // TODO other nodes are guarded (eg JavaReadNode), thus *their* guards could be replaced.
 
     }
 
@@ -498,11 +516,29 @@ public class FlowSensitiveReduction extends FixedGuardReduction {
     }
 
     /**
-     * One or more arguments at `invoke` may have control-flow sensitive simplifications. In such
-     * case, a new {@link com.oracle.graal.nodes.java.MethodCallTargetNode MethodCallTargetNode} is
-     * prepared just for this callsite, consuming reduced arguments. This proves useful in
-     * connection with inlining, in order to specialize callees on the types of arguments other than
-     * the receiver (examples: multi-methods, the inlining problem, lambdas as arguments).
+     * <p>
+     * For one or more `invoke` arguments, flow-sensitive information may suggest their narrowing or
+     * simplification. In those cases, a new
+     * {@link com.oracle.graal.nodes.java.MethodCallTargetNode MethodCallTargetNode} is prepared
+     * just for this callsite, consuming reduced arguments.
+     * </p>
+     *
+     * <p>
+     * Specializing the {@link com.oracle.graal.nodes.java.MethodCallTargetNode
+     * MethodCallTargetNode} as described above may enable two optimizations:
+     * <ul>
+     * <li>
+     * devirtualization of an
+     * {@link com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind#Interface} or
+     * {@link com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind#Virtual} callsite
+     * (devirtualization made possible after narrowing the type of the receiver)</li>
+     * <li>
+     * (future work) actual-argument-aware inlining, ie, to specialize callees on the types of
+     * arguments other than the receiver (examples: multi-methods, the inlining problem, lambdas as
+     * arguments).</li>
+     *
+     * </ul>
+     * </p>
      *
      * <p>
      * Precondition: inputs haven't been deverbosified yet.

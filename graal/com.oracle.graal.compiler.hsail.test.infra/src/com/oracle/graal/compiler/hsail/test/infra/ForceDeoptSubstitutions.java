@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,30 +20,29 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.replacements;
+package com.oracle.graal.compiler.hsail.test.infra;
 
-import java.lang.invoke.*;
-
-import com.oracle.graal.graph.*;
-import com.oracle.graal.graph.spi.*;
+import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.api.meta.*;
 
-/**
- * Macro node for {@link MethodHandle}{@code .linkToStatic(Object...)}.
- */
-public class MethodHandleLinkToStaticNode extends AbstractMethodHandleNode {
+@ClassSubstitution(GraalKernelTester.class)
+class ForceDeoptSubstitutions {
 
-    public MethodHandleLinkToStaticNode(Invoke invoke) {
-        super(invoke);
+    /**
+     * Allows us to force a non-exception throwing deopt from java code.
+     */
+    @MethodSubstitution
+    public static int forceDeopt(int x) {
+        DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.RuntimeConstraint);
+        // will never get here but keep the compiler happy
+        return x * x;
     }
 
-    @Override
-    public Node canonical(CanonicalizerTool tool) {
-        InvokeNode invoke = getLinkToTarget();
-        if (invoke != null) {
-            return invoke;
-        }
-        return this;
+    @MethodSubstitution
+    public static double forceDeopt(double x) {
+        DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.RuntimeConstraint);
+        // will never get here but keep the compiler happy
+        return x * x;
     }
-
 }

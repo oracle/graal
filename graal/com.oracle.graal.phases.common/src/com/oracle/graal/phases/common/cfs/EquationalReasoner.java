@@ -219,7 +219,7 @@ public final class EquationalReasoner {
         if (n == null) {
             return null;
         }
-        assert !(n instanceof GuardNode) : "This phase not yet ready to run during MidTier";
+        assert !(n instanceof GuardNode) : "This phase not intended to run during MidTier";
         if (!(n instanceof ValueNode)) {
             return n;
         }

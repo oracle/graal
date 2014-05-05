@@ -44,11 +44,16 @@ import java.util.ArrayList;
  * disadvantages.
  * </p>
  *
- *
  * <p>
  * This class makes available little more than a few fields and a few utility methods used
  * throughout the remaining components making up control-flow sensitive reductions.
  * </p>
+ *
+ * <p>
+ * The laundry-list of all flow-sensitive reductions is summarized in
+ * {@link com.oracle.graal.phases.common.cfs.FlowSensitiveReduction}
+ * </p>
+ *
  */
 public abstract class BaseReduction extends PostOrderNodeIterator<State> {
 
@@ -83,6 +88,12 @@ public abstract class BaseReduction extends PostOrderNodeIterator<State> {
             this.deoptReason = deoptReason;
         }
 
+        /*
+         * TODO Actually, we want to emit instructions to signal "should-not-reach-here". An
+         * imperfect substitute (as done here) is emitting FixedGuard(false).
+         * "should-not-reach-here" would be better for the runtime error it raises, thus pointing to
+         * a bug in FlowSensitiveReduction (the code was reachable, after all).
+         */
         public void doRewrite(LogicNode falseConstant) {
             StructuredGraph graph = fixed.graph();
             // have to insert a FixedNode other than a ControlSinkNode
