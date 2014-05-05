@@ -57,10 +57,11 @@ import java.util.ArrayList;
  */
 public abstract class BaseReduction extends PostOrderNodeIterator<State> {
 
-    protected static final DebugMetric metricCheckCastRemoved = Debug.metric("CheckCastRemoved");
-    protected static final DebugMetric metricGuardingPiNodeRemoved = Debug.metric("GuardingPiNodeRemoved");
-    protected static final DebugMetric metricFixedGuardNodeRemoved = Debug.metric("FixedGuardNodeRemoved");
-    protected static final DebugMetric metricMethodResolved = Debug.metric("MethodResolved");
+    protected static final DebugMetric metricCheckCastRemoved = Debug.metric("FSR-CheckCastRemoved");
+    protected static final DebugMetric metricGuardingPiNodeRemoved = Debug.metric("FSR-GuardingPiNodeRemoved");
+    protected static final DebugMetric metricFixedGuardNodeRemoved = Debug.metric("FSR-FixedGuardNodeRemoved");
+    protected static final DebugMetric metricMethodResolved = Debug.metric("FSR-MethodResolved");
+    protected static final DebugMetric metricUnconditionalDeoptInserted = Debug.metric("FSR-UnconditionalDeoptInserted");
 
     /**
      * <p>
@@ -95,6 +96,7 @@ public abstract class BaseReduction extends PostOrderNodeIterator<State> {
          * a bug in FlowSensitiveReduction (the code was reachable, after all).
          */
         public void doRewrite(LogicNode falseConstant) {
+            metricUnconditionalDeoptInserted.increment();
             StructuredGraph graph = fixed.graph();
             // have to insert a FixedNode other than a ControlSinkNode
             FixedGuardNode buckStopsHere = graph.add(new FixedGuardNode(falseConstant, deoptReason, DeoptimizationAction.None));
