@@ -48,11 +48,14 @@ public class GraalJUnitCore {
         List<Class<?>> classes = new ArrayList<>();
         List<Failure> missingClasses = new ArrayList<>();
         boolean verbose = false;
+        boolean enableTiming = false;
         for (String each : args) {
             if (each.charAt(0) == '-') {
                 // command line arguments
                 if (each.contentEquals("-JUnitVerbose")) {
                     verbose = true;
+                } else if (each.contentEquals("-JUnitEnableTiming")) {
+                    enableTiming = true;
                 } else {
                     system.out().println("Unknown command line argument: " + each);
                 }
@@ -73,6 +76,9 @@ public class GraalJUnitCore {
             graalListener = new GraalTextListener(system);
         } else {
             graalListener = new GraalVerboseTextListener(system);
+        }
+        if (enableTiming) {
+            graalListener = new TimingDecorator(graalListener);
         }
         junitCore.addListener(GraalTextListener.createRunListener(graalListener));
         Result result = junitCore.run(classes.toArray(new Class[0]));
