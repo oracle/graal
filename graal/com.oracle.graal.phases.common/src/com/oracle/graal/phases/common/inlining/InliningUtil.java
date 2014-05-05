@@ -1293,17 +1293,6 @@ public class InliningUtil {
         }
     }
 
-    static MonitorExitNode findPrecedingMonitorExit(UnwindNode unwind) {
-        Node pred = unwind.predecessor();
-        while (pred != null) {
-            if (pred instanceof MonitorExitNode) {
-                return (MonitorExitNode) pred;
-            }
-            pred = pred.predecessor();
-        }
-        return null;
-    }
-
     /**
      * Performs an actual inlining, thereby replacing the given invoke with the given inlineGraph.
      *
