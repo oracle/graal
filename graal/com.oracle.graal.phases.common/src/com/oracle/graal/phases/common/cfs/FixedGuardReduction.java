@@ -23,9 +23,7 @@
 package com.oracle.graal.phases.common.cfs;
 
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.calc.IsNullNode;
 import com.oracle.graal.nodes.extended.GuardingNode;
-import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.phases.tiers.PhaseContext;
 
 /**
@@ -99,118 +97,33 @@ public abstract class FixedGuardReduction extends CheckCastReduction {
             return;
         }
 
-        /*
-         * Attempt to eliminate the current FixedGuardNode by using another GuardingNode already in
-         * scope and with equivalent condition.
-         */
+        final boolean isTrue = !f.isNegated();
+        final Evidence evidence = state.outcome(isTrue, f.condition());
 
-        GuardingNode existingGuard = f.isNegated() ? state.falseFacts.get(f.condition()) : state.trueFacts.get(f.condition());
-        if (existingGuard != null) {
-            // assert existingGuard instanceof FixedGuardNode;
-            metricFixedGuardNodeRemoved.increment();
-            f.replaceAtUsages(existingGuard.asNode());
-            graph.removeFixed(f);
+        // can't produce evidence, must be information gain
+        if (evidence == null) {
+            state.addFact(isTrue, f.condition(), f);
             return;
         }
 
-        final LogicNode cond = f.condition();
-        final boolean isTrue = !f.isNegated();
-
-        /*
-         * A FixedGuardNode can only be removed provided a replacement anchor is found (so called
-         * "evidence"), ie an anchor that amounts to the same combination of (negated, condition) as
-         * for the FixedGuardNode at hand. Just deverbosifying the condition in place isn't
-         * semantics-preserving.
-         */
-
-        // TODO what about isDependencyTainted
-
-        if (cond instanceof IsNullNode) {
-            final IsNullNode isNullNode = (IsNullNode) cond;
-            if (isTrue) {
-                // grab an anchor attesting nullness
-                final GuardingNode replacement = reasoner.nonTrivialNullAnchor(isNullNode.object());
-                if (replacement != null) {
-                    removeFixedGuardNode(f, replacement);
-                    return;
-                }
-                if (state.isNonNull(isNullNode.object())) {
-                    markFixedGuardNodeAlwaysFails(f);
-                    return;
-                }
-                // can't produce evidence, fall-through to addFact
-            } else {
-                // grab an anchor attesting non-nullness
-                final Witness w = state.typeInfo(isNullNode.object());
-                if (w != null && w.isNonNull()) {
-                    removeFixedGuardNode(f, w.guard());
-                    return;
-                }
-                if (state.isNull(isNullNode.object())) {
-                    markFixedGuardNodeAlwaysFails(f);
-                    return;
-                }
-                // can't produce evidence, fall-through to addFact
-            }
-        } else if (cond instanceof InstanceOfNode) {
-            final InstanceOfNode iOf = (InstanceOfNode) cond;
-            final Witness w = state.typeInfo(iOf.object());
-            if (isTrue) {
-                // grab an anchor attesting instanceof
-                if (w != null) {
-                    if (w.isNonNull() && w.type() != null) {
-                        if (iOf.type().isAssignableFrom(w.type())) {
-                            removeFixedGuardNode(f, w.guard());
-                            return;
-                        }
-                        if (State.knownNotToConform(w.type(), iOf.type())) {
-                            markFixedGuardNodeAlwaysFails(f);
-                            return;
-                        }
-                    }
-                }
-                if (state.isNull(iOf.object())) {
-                    markFixedGuardNodeAlwaysFails(f);
-                    return;
-                }
-                // can't produce evidence, fall-through to addFact
-            } else {
-                // grab an anchor attesting not-instanceof
-                // (1 of 2) attempt determining nullness
-                final GuardingNode nullGuard = reasoner.nonTrivialNullAnchor(iOf.object());
-                if (nullGuard != null) {
-                    removeFixedGuardNode(f, nullGuard);
-                    return;
-                }
-                // (2 of 2) attempt determining known-not-to-conform
-                if (w != null && !w.cluelessAboutType()) {
-                    if (State.knownNotToConform(w.type(), iOf.type())) {
-                        removeFixedGuardNode(f, w.guard());
-                        return;
-                    }
-                }
-                // can't produce evidence, fall-through to addFact
-            }
-        } else if (isTrue && cond instanceof ShortCircuitOrNode) {
-            CastCheckExtractor cce = CastCheckExtractor.extract(cond);
-            if (cce != null && !State.isDependencyTainted(cce.subject, f)) {
-                // grab an anchor attesting check-cast
-                Witness w = state.typeInfo(cce.subject);
-                if (w != null && w.type() != null) {
-                    if (cce.type.isAssignableFrom(w.type())) {
-                        removeFixedGuardNode(f, w.guard());
-                        return;
-                    }
-                    if (State.knownNotToConform(w.type(), cce.type)) {
-                        markFixedGuardNodeAlwaysFails(f);
-                        return;
-                    }
-                }
-            }
-            // can't produce evidence, fall-through to addFact
+        if (evidence.isPositive()) {
+            /*
+             * A FixedGuardNode can only be removed provided a replacement anchor is found (so
+             * called "evidence"), ie an anchor that amounts to the same combination of (negated,
+             * condition) as for the FixedGuardNode at hand. Just deverbosifying the condition in
+             * place isn't semantics-preserving.
+             * 
+             * Eliminate the current FixedGuardNode by using another GuardingNode already in scope,
+             * a GuardingNode that guards a condition that is at least as strong as that of the
+             * FixedGuardNode.
+             */
+            removeFixedGuardNode(f, evidence.success);
+            return;
         }
 
-        state.addFact(isTrue, cond, f);
+        assert evidence.isNegative();
+        markFixedGuardNodeAlwaysFails(f);
+
     }
 
     /**
@@ -232,9 +145,7 @@ public abstract class FixedGuardReduction extends CheckCastReduction {
      * </p>
      */
     private void removeFixedGuardNode(FixedGuardNode old, GuardingNode replacement) {
-        if (replacement == null) {
-            return;
-        }
+        assert replacement != null;
         metricFixedGuardNodeRemoved.increment();
         old.replaceAtUsages(replacement.asNode());
         graph.removeFixed(old);
