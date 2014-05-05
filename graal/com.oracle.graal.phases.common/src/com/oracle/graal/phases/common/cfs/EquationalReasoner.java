@@ -115,6 +115,7 @@ public final class EquationalReasoner {
      */
     public void forceState(State s) {
         state = s;
+        assert state.repOK();
         substs.clear();
         added.clear();
         visited = null;
