@@ -30,8 +30,7 @@ import java.util.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.gen.*;
-import com.oracle.graal.compiler.match.MatchPattern.MatchResultCode;
-import com.oracle.graal.compiler.match.MatchPattern.Result;
+import com.oracle.graal.compiler.match.MatchPattern.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Node.Verbosity;
@@ -99,7 +98,14 @@ public class MatchStatement {
                 if (value != null) {
                     context.setResult(value);
                     MatchStatementSuccess.increment();
+                    Debug.metric("MatchStatement[%s]", getName()).increment();
                     return true;
+                }
+                // The pattern matched but some other code generation constraint disallowed code
+                // generation for the pattern.
+                if (LogVerbose.getValue()) {
+                    Debug.log("while matching %s|%s %s %s returned null", context.getRoot().toString(Verbosity.Id), context.getRoot().getClass().getSimpleName(), getName(), generatorMethod.getName());
+                    Debug.log("with nodes %s", formatMatch(node));
                 }
             } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
                 throw new GraalInternalError(e);

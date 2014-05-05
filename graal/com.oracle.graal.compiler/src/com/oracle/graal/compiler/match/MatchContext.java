@@ -104,12 +104,12 @@ public class MatchContext {
                 // these can be evaluated lazily so don't worry about them. This should probably be
                 // captured by some interface that indicates that their generate method is empty.
                 continue;
-            } else if (consumed == null || !consumed.contains(node) && node != root) {
+            } else if ((consumed == null || !consumed.contains(node)) && node != root) {
                 if (LogVerbose.getValue()) {
                     Debug.log("unexpected node %s", node);
                     for (int j = startIndex; j <= endIndex; j++) {
                         ScheduledNode theNode = nodes.get(j);
-                        Debug.log("%s(%s) %1s", (consumed.contains(theNode) || theNode == root) ? "*" : " ", theNode.usages().count(), theNode);
+                        Debug.log("%s(%s) %1s", (consumed != null && consumed.contains(theNode) || theNode == root) ? "*" : " ", theNode.usages().count(), theNode);
                     }
                 }
                 return Result.NOT_SAFE(node, rule.getPattern());
@@ -147,14 +147,16 @@ public class MatchContext {
     public Result consume(ValueNode node) {
         assert node.usages().count() <= 1 : "should have already been checked";
 
-        if (builder.hasOperand(node)) {
-            return Result.ALREADY_USED(node, rule.getPattern());
-        }
-
+        // Check NOT_IN_BLOCK first since that usually implies ALREADY_USED
         int index = nodes.indexOf(node);
         if (index == -1) {
             return Result.NOT_IN_BLOCK(node, rule.getPattern());
         }
+
+        if (builder.hasOperand(node)) {
+            return Result.ALREADY_USED(node, rule.getPattern());
+        }
+
         startIndex = Math.min(startIndex, index);
         if (consumed == null) {
             consumed = new ArrayList<>(2);

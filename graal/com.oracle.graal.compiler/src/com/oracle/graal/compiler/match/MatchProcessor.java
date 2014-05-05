@@ -53,6 +53,9 @@ import com.oracle.graal.nodes.*;
 @SupportedAnnotationTypes({"com.oracle.graal.compiler.match.MatchRule", "com.oracle.graal.compiler.match.MatchRules", "com.oracle.graal.compiler.match.MatchableNode"})
 public class MatchProcessor extends AbstractProcessor {
 
+    public MatchProcessor() {
+    }
+
     @Override
     public SourceVersion getSupportedSourceVersion() {
         return SourceVersion.latest();
@@ -142,6 +145,7 @@ public class MatchProcessor extends AbstractProcessor {
                     next();
                     return descriptor;
                 }
+                throw new RuleParseError("Too many arguments to " + descriptor.nodeType.nodeClass);
             }
             throw new RuleParseError("Extra tokens following match pattern: " + peek(null));
         }
@@ -265,10 +269,15 @@ public class MatchProcessor extends AbstractProcessor {
     List<String> requiredPackages = new ArrayList<>();
 
     /**
-     * The automatically generated wrapper class for a method based MatchRule.
+     * The java.lang.reflect.Method for invoking a method based MatchRule.
      */
     private Map<ExecutableElement, MethodInvokerItem> invokers = new LinkedHashMap<>();
+
     private TypeDescriptor valueType;
+
+    private TypeMirror matchRulesTypeMirror;
+
+    private TypeMirror matchRuleTypeMirror;
 
     private void declareType(TypeMirror mirror, String shortName, String nodeClass, String nodePackage, int inputs, String adapter, boolean commutative, boolean shareable, Element element) {
         TypeDescriptor descriptor = new TypeDescriptor(mirror, shortName, nodeClass, nodePackage, inputs, adapter, commutative, shareable);
@@ -279,13 +288,10 @@ public class MatchProcessor extends AbstractProcessor {
         }
     }
 
-    private static String findPackage(Element type) {
-        Element enclosing = type.getEnclosingElement();
-        while (enclosing != null && enclosing.getKind() != ElementKind.PACKAGE) {
-            enclosing = enclosing.getEnclosingElement();
-        }
-        if (enclosing != null && enclosing.getKind() == ElementKind.PACKAGE) {
-            return ((PackageElement) enclosing).getQualifiedName().toString();
+    private String findPackage(Element type) {
+        PackageElement p = processingEnv.getElementUtils().getPackageOf(type);
+        if (p != null) {
+            return p.getQualifiedName().toString();
         }
         throw new GraalInternalError("can't find package for %s", type);
     }
@@ -373,7 +379,7 @@ public class MatchProcessor extends AbstractProcessor {
     /**
      * Strip the package off a class name leaving the full class name including any outer classes.
      */
-    static String fullClassName(Element element) {
+    private String fullClassName(Element element) {
         assert element.getKind() == ElementKind.CLASS || element.getKind() == ElementKind.INTERFACE : element;
         String pkg = findPackage(element);
         return ((TypeElement) element).getQualifiedName().toString().substring(pkg.length() + 1);
@@ -386,7 +392,7 @@ public class MatchProcessor extends AbstractProcessor {
         String matchStatementClassName = topDeclaringClass + "_" + MatchStatementSet.class.getSimpleName();
         Element[] originatingElements = info.originatingElements.toArray(new Element[info.originatingElements.size()]);
 
-        Types typeUtils = processingEnv.getTypeUtils();
+        Types typeUtils = typeUtils();
         Filer filer = processingEnv.getFiler();
         try (PrintWriter out = createSourceFile(pkg, matchStatementClassName, filer, originatingElements)) {
 
@@ -560,17 +566,28 @@ public class MatchProcessor extends AbstractProcessor {
         return topDeclaringType(enclosing);
     }
 
+    private AnnotationMirror findAnnotationMirror(Element element, TypeMirror typeMirror) {
+        for (AnnotationMirror mirror : element.getAnnotationMirrors()) {
+            if (typeUtils().isSameType(mirror.getAnnotationType(), typeMirror)) {
+                return mirror;
+            }
+        }
+        return null;
+    }
+
     @Override
     public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
         if (roundEnv.processingOver()) {
             return true;
         }
+        matchRulesTypeMirror = processingEnv.getElementUtils().getTypeElement(MatchRules.class.getCanonicalName()).asType();
+        matchRuleTypeMirror = processingEnv.getElementUtils().getTypeElement(MatchRule.class.getCanonicalName()).asType();
 
         try {
             // Define a TypeDescriptor the generic node but don't enter it into the nodeTypes table
             // since it shouldn't mentioned in match rules.
-            TypeMirror mirror = processingEnv.getElementUtils().getTypeElement(ValueNode.class.getName()).asType();
-            valueType = new TypeDescriptor(mirror, "Value", ValueNode.class.getSimpleName(), ValueNode.class.getPackage().getName(), 0, null, false, false);
+            TypeMirror valueTypeMirror = processingEnv.getElementUtils().getTypeElement(ValueNode.class.getName()).asType();
+            valueType = new TypeDescriptor(valueTypeMirror, "Value", ValueNode.class.getSimpleName(), ValueNode.class.getPackage().getName(), 0, null, false, false);
 
             // Import default definitions
             processMatchableNode(processingEnv.getElementUtils().getTypeElement(GraalMatchableNodes.class.getName()));
@@ -589,11 +606,12 @@ public class MatchProcessor extends AbstractProcessor {
             }
 
             Map<TypeElement, MatchRuleDescriptor> map = new HashMap<>();
+
             for (Element element : roundEnv.getElementsAnnotatedWith(MatchRule.class)) {
-                processMatchRule(map, element);
+                processMatchRule(map, element, findAnnotationMirror(element, matchRuleTypeMirror));
             }
             for (Element element : roundEnv.getElementsAnnotatedWith(MatchRules.class)) {
-                processMatchRule(map, element);
+                processMatchRule(map, element, findAnnotationMirror(element, matchRulesTypeMirror));
             }
 
             for (MatchRuleDescriptor info : map.values()) {
@@ -665,7 +683,7 @@ public class MatchProcessor extends AbstractProcessor {
         processingEnv.getMessager().printMessage(Kind.ERROR, "Exception throw during processing: " + t.toString() + " " + Arrays.toString(Arrays.copyOf(t.getStackTrace(), 2)), element);
     }
 
-    private void processMatchRule(Map<TypeElement, MatchRuleDescriptor> map, Element element) {
+    private void processMatchRule(Map<TypeElement, MatchRuleDescriptor> map, Element element, AnnotationMirror mirror) {
         if (!processedMatchRule.contains(element)) {
             try {
                 processedMatchRule.add(element);
@@ -679,9 +697,16 @@ public class MatchProcessor extends AbstractProcessor {
                     info = new MatchRuleDescriptor(topDeclaringType);
                     map.put(topDeclaringType, info);
                 }
-                for (MatchRule matchRule : element.getAnnotationsByType(MatchRule.class)) {
-                    // System.err.println(matchRule);
-                    processMethodMatchRule((ExecutableElement) element, info, matchRule);
+                if (typeUtils().isSameType(mirror.getAnnotationType(), matchRulesTypeMirror)) {
+                    List<AnnotationMirror> value = getAnnotationValueList(AnnotationMirror.class, mirror, "value");
+                    int i = 0;
+                    for (MatchRule matchRule : element.getAnnotationsByType(MatchRule.class)) {
+                        processMethodMatchRule((ExecutableElement) element, info, matchRule, value.get(i++));
+                    }
+                } else {
+                    for (MatchRule matchRule : element.getAnnotationsByType(MatchRule.class)) {
+                        processMethodMatchRule((ExecutableElement) element, info, matchRule, mirror);
+                    }
                 }
             } catch (Throwable t) {
                 reportExceptionThrow(element, t);
@@ -689,8 +714,12 @@ public class MatchProcessor extends AbstractProcessor {
         }
     }
 
-    private void processMethodMatchRule(ExecutableElement method, MatchRuleDescriptor info, MatchRule matchRule) {
-        Types typeUtils = processingEnv.getTypeUtils();
+    private Types typeUtils() {
+        return processingEnv.getTypeUtils();
+    }
+
+    private void processMethodMatchRule(ExecutableElement method, MatchRuleDescriptor info, MatchRule matchRule, AnnotationMirror mirror) {
+        Types typeUtils = typeUtils();
 
         if (!method.getModifiers().contains(Modifier.PUBLIC)) {
             String msg = String.format("MatchRule method %s must be public", method.getSimpleName());
@@ -775,7 +804,136 @@ public class MatchProcessor extends AbstractProcessor {
                 info.matchRules.add(new MatchRuleItem(match, invoker));
             }
         } catch (RuleParseError e) {
-            processingEnv.getMessager().printMessage(Kind.ERROR, e.getMessage(), method);
+            processingEnv.getMessager().printMessage(Kind.ERROR, e.getMessage(), method, mirror);
         }
+    }
+
+    // TODO borrowed from com.oracle.truffle.dsl.processor.Utils
+    @SuppressWarnings("unchecked")
+    private static <T> List<T> getAnnotationValueList(Class<T> expectedListType, AnnotationMirror mirror, String name) {
+        List<? extends AnnotationValue> values = getAnnotationValue(List.class, mirror, name);
+        List<T> result = new ArrayList<>();
+
+        if (values != null) {
+            for (AnnotationValue value : values) {
+                T annotationValue = resolveAnnotationValue(expectedListType, value);
+                if (annotationValue != null) {
+                    result.add(annotationValue);
+                }
+            }
+        }
+        return result;
+    }
+
+    private static <T> T getAnnotationValue(Class<T> expectedType, AnnotationMirror mirror, String name) {
+        return resolveAnnotationValue(expectedType, getAnnotationValue(mirror, name));
+    }
+
+    @SuppressWarnings({"unchecked"})
+    private static <T> T resolveAnnotationValue(Class<T> expectedType, AnnotationValue value) {
+        if (value == null) {
+            return null;
+        }
+
+        Object unboxedValue = value.accept(new AnnotationValueVisitorImpl(), null);
+        if (unboxedValue != null) {
+            if (expectedType == TypeMirror.class && unboxedValue instanceof String) {
+                return null;
+            }
+            if (!expectedType.isAssignableFrom(unboxedValue.getClass())) {
+                throw new ClassCastException(unboxedValue.getClass().getName() + " not assignable from " + expectedType.getName());
+            }
+        }
+        return (T) unboxedValue;
+    }
+
+    private static AnnotationValue getAnnotationValue(AnnotationMirror mirror, String name) {
+        ExecutableElement valueMethod = null;
+        for (ExecutableElement method : ElementFilter.methodsIn(mirror.getAnnotationType().asElement().getEnclosedElements())) {
+            if (method.getSimpleName().toString().equals(name)) {
+                valueMethod = method;
+                break;
+            }
+        }
+
+        if (valueMethod == null) {
+            return null;
+        }
+
+        AnnotationValue value = mirror.getElementValues().get(valueMethod);
+        if (value == null) {
+            value = valueMethod.getDefaultValue();
+        }
+
+        return value;
+    }
+
+    private static class AnnotationValueVisitorImpl extends AbstractAnnotationValueVisitor7<Object, Void> {
+
+        @Override
+        public Object visitBoolean(boolean b, Void p) {
+            return Boolean.valueOf(b);
+        }
+
+        @Override
+        public Object visitByte(byte b, Void p) {
+            return Byte.valueOf(b);
+        }
+
+        @Override
+        public Object visitChar(char c, Void p) {
+            return c;
+        }
+
+        @Override
+        public Object visitDouble(double d, Void p) {
+            return d;
+        }
+
+        @Override
+        public Object visitFloat(float f, Void p) {
+            return f;
+        }
+
+        @Override
+        public Object visitInt(int i, Void p) {
+            return i;
+        }
+
+        @Override
+        public Object visitLong(long i, Void p) {
+            return i;
+        }
+
+        @Override
+        public Object visitShort(short s, Void p) {
+            return s;
+        }
+
+        @Override
+        public Object visitString(String s, Void p) {
+            return s;
+        }
+
+        @Override
+        public Object visitType(TypeMirror t, Void p) {
+            return t;
+        }
+
+        @Override
+        public Object visitEnumConstant(VariableElement c, Void p) {
+            return c;
+        }
+
+        @Override
+        public Object visitAnnotation(AnnotationMirror a, Void p) {
+            return a;
+        }
+
+        @Override
+        public Object visitArray(List<? extends AnnotationValue> vals, Void p) {
+            return vals;
+        }
+
     }
 }

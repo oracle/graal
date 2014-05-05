@@ -29,7 +29,7 @@ import java.util.Map.Entry;
 
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.debug.*;
-import com.oracle.graal.debug.Debug.*;
+import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.nodes.*;
 
 public class MatchRuleRegistry {
