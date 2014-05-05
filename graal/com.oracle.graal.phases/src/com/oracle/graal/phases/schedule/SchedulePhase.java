@@ -157,8 +157,8 @@ public final class SchedulePhase extends Phase {
         protected List<KillSet> processLoop(Loop<Block> loop, KillSet state) {
             LoopInfo<KillSet> info = ReentrantBlockIterator.processLoop(this, loop, cloneState(state));
 
-            assert loop.header.getBeginNode() instanceof LoopBeginNode;
-            KillSet headerState = merge(loop.header, info.endStates);
+            assert loop.getHeader().getBeginNode() instanceof LoopBeginNode;
+            KillSet headerState = merge(loop.getHeader(), info.endStates);
 
             // second iteration, for propagating information to loop exits
             info = ReentrantBlockIterator.processLoop(this, loop, cloneState(headerState));

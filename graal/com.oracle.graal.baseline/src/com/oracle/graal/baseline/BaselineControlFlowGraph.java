@@ -78,7 +78,7 @@ public class BaselineControlFlowGraph implements AbstractControlFlowGraph<BciBlo
         }
         block.loop = stack.peek();
         if (block.isLoopHeader()) {
-            assert block.loop.header.equals(block);
+            assert block.loop.getHeader().equals(block);
             stack.pop();
         }
         for (BciBlock pred : block.getPredecessors()) {

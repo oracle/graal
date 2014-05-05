@@ -166,16 +166,16 @@ public final class ComputeBlockOrder {
             }
 
             Loop<T> loop = block.getLoop();
-            if (block.isLoopEnd() && skipLoopHeader(loop.header)) {
+            if (block.isLoopEnd() && skipLoopHeader(loop.getHeader())) {
 
                 // This is the only loop end of a skipped loop header.
                 // Add the header immediately afterwards.
-                addBlock(loop.header, order);
+                addBlock(loop.getHeader(), order);
 
                 // Make sure the loop successors of the loop header are aligned
                 // as they are the target
                 // of the backward jump.
-                for (T successor : loop.header.getSuccessors()) {
+                for (T successor : loop.getHeader().getSuccessors()) {
                     if (successor.getLoopDepth() == block.getLoopDepth()) {
                         successor.setAlign(true);
                     }

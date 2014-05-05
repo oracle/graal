@@ -702,7 +702,7 @@ public final class LinearScan {
                                     Debug.log("liveGen for operand %d", operandNum);
                                 }
                                 if (block.getLoop() != null) {
-                                    intervalInLoop.setBit(operandNum, block.getLoop().index);
+                                    intervalInLoop.setBit(operandNum, block.getLoop().getIndex());
                                 }
                             }
 
@@ -733,7 +733,7 @@ public final class LinearScan {
                                 liveKill.set(varNum);
                                 Debug.log("liveKill for operand %d", varNum);
                                 if (block.getLoop() != null) {
-                                    intervalInLoop.setBit(varNum, block.getLoop().index);
+                                    intervalInLoop.setBit(varNum, block.getLoop().getIndex());
                                 }
                             }
 
@@ -1185,7 +1185,7 @@ public final class LinearScan {
                         // interval is used anywhere inside this loop. It's possible
                         // that the block was part of a non-natural loop, so it might
                         // have an invalid loop index.
-                        if (block.isLoopEnd() && block.getLoop() != null && isIntervalInLoop(operandNum, block.getLoop().index)) {
+                        if (block.isLoopEnd() && block.getLoop() != null && isIntervalInLoop(operandNum, block.getLoop().getIndex())) {
                             intervalFor(operand).addUsePos(blockTo + 1, RegisterPriority.LiveAtLoopEnd);
                         }
                     }

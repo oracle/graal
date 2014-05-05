@@ -54,16 +54,16 @@ public final class ReentrantBlockIterator {
     }
 
     public static <StateT> LoopInfo<StateT> processLoop(BlockIteratorClosure<StateT> closure, Loop<Block> loop, StateT initialState) {
-        IdentityHashMap<FixedNode, StateT> blockEndStates = apply(closure, loop.header, initialState, new HashSet<>(loop.blocks));
+        IdentityHashMap<FixedNode, StateT> blockEndStates = apply(closure, loop.getHeader(), initialState, new HashSet<>(loop.getBlocks()));
 
         LoopInfo<StateT> info = new LoopInfo<>();
-        List<Block> predecessors = loop.header.getPredecessors();
+        List<Block> predecessors = loop.getHeader().getPredecessors();
         for (int i = 1; i < predecessors.size(); i++) {
             StateT endState = blockEndStates.get(predecessors.get(i).getEndNode());
             // make sure all end states are unique objects
             info.endStates.add(closure.cloneState(endState));
         }
-        for (Block loopExit : loop.exits) {
+        for (Block loopExit : loop.getExits()) {
             assert loopExit.getPredecessorCount() == 1;
             assert blockEndStates.containsKey(loopExit.getBeginNode());
             StateT exitState = blockEndStates.get(loopExit.getBeginNode());
@@ -103,14 +103,14 @@ public final class ReentrantBlockIterator {
                         } else {
                             // recurse into the loop
                             Loop<Block> loop = successor.getLoop();
-                            LoopBeginNode loopBegin = (LoopBeginNode) loop.header.getBeginNode();
+                            LoopBeginNode loopBegin = (LoopBeginNode) loop.getHeader().getBeginNode();
                             assert successor.getBeginNode() == loopBegin;
 
                             List<StateT> exitStates = closure.processLoop(loop, state);
 
                             int i = 0;
-                            assert loop.exits.size() == exitStates.size();
-                            for (Block exit : loop.exits) {
+                            assert loop.getExits().size() == exitStates.size();
+                            for (Block exit : loop.getExits()) {
                                 states.put(exit.getBeginNode(), exitStates.get(i++));
                                 blockQueue.addFirst(exit);
                             }

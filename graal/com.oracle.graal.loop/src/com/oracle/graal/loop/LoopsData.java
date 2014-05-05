@@ -68,7 +68,7 @@ public class LoopsData {
 
             @Override
             public int compare(LoopEx o1, LoopEx o2) {
-                return o1.lirLoop().depth - o2.lirLoop().depth;
+                return o1.lirLoop().getDepth() - o2.lirLoop().getDepth();
             }
         });
         return loops;
@@ -80,7 +80,7 @@ public class LoopsData {
 
             @Override
             public int compare(LoopEx o1, LoopEx o2) {
-                return o2.lirLoop().depth - o1.lirLoop().depth;
+                return o2.lirLoop().getDepth() - o1.lirLoop().getDepth();
             }
         });
         return loops;

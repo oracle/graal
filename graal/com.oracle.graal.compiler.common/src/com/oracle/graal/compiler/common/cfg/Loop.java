@@ -27,20 +27,20 @@ import java.util.*;
 
 public abstract class Loop<T extends AbstractBlock<T>> {
 
-    public final Loop<T> parent;
-    public final List<Loop<T>> children;
+    private final Loop<T> parent;
+    private final List<Loop<T>> children;
 
-    public final int depth;
-    public final int index;
-    public final T header;
-    public final List<T> blocks;
-    public final List<T> exits;
+    private final int depth;
+    private final int index;
+    private final T header;
+    private final List<T> blocks;
+    private final List<T> exits;
 
     protected Loop(Loop<T> parent, int index, T header) {
         this.parent = parent;
         if (parent != null) {
-            this.depth = parent.depth + 1;
-            parent.children.add(this);
+            this.depth = parent.getDepth() + 1;
+            parent.getChildren().add(this);
         } else {
             this.depth = 1;
         }
@@ -55,6 +55,34 @@ public abstract class Loop<T extends AbstractBlock<T>> {
 
     @Override
     public String toString() {
-        return "loop " + index + " depth " + depth + (parent != null ? " outer " + parent.index : "");
+        return "loop " + index + " depth " + getDepth() + (parent != null ? " outer " + parent.index : "");
+    }
+
+    public Loop<T> getParent() {
+        return parent;
+    }
+
+    public List<Loop<T>> getChildren() {
+        return children;
+    }
+
+    public int getDepth() {
+        return depth;
+    }
+
+    public int getIndex() {
+        return index;
+    }
+
+    public T getHeader() {
+        return header;
+    }
+
+    public List<T> getBlocks() {
+        return blocks;
+    }
+
+    public List<T> getExits() {
+        return exits;
     }
 }

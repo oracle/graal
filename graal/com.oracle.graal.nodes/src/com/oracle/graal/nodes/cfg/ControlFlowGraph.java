@@ -257,10 +257,10 @@ public class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
                     Block exitBlock = nodeToBlock.get(exit);
                     assert exitBlock.getPredecessorCount() == 1;
                     computeLoopBlocks(exitBlock.getFirstPredecessor(), loop);
-                    loop.exits.add(exitBlock);
+                    loop.getExits().add(exitBlock);
                 }
                 List<Block> unexpected = new LinkedList<>();
-                for (Block b : loop.blocks) {
+                for (Block b : loop.getBlocks()) {
                     for (Block sux : b.getSuccessors()) {
                         if (sux.loop != loop) {
                             BeginNode begin = sux.getBeginNode();
@@ -279,10 +279,10 @@ public class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
     }
 
     private static void addBranchToLoop(Loop<Block> l, Block b) {
-        if (l.blocks.contains(b)) {
+        if (l.getBlocks().contains(b)) {
             return;
         }
-        l.blocks.add(b);
+        l.getBlocks().add(b);
         b.loop = l;
         for (Block sux : b.getSuccessors()) {
             addBranchToLoop(l, sux);
@@ -293,13 +293,13 @@ public class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
         if (block.getLoop() == loop) {
             return;
         }
-        assert block.loop == loop.parent;
+        assert block.loop == loop.getParent();
         block.loop = loop;
 
-        assert !loop.blocks.contains(block);
-        loop.blocks.add(block);
+        assert !loop.getBlocks().contains(block);
+        loop.getBlocks().add(block);
 
-        if (block != loop.header) {
+        if (block != loop.getHeader()) {
             for (Block pred : block.getPredecessors()) {
                 computeLoopBlocks(pred, loop);
             }

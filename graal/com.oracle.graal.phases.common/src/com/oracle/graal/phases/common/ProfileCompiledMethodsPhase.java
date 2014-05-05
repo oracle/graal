@@ -69,9 +69,9 @@ public class ProfileCompiledMethodsPhase extends Phase {
 
         ControlFlowGraph cfg = ControlFlowGraph.compute(graph, true, true, true, true);
         for (Loop<Block> loop : cfg.getLoops()) {
-            double loopProbability = probabilities.applyAsDouble(loop.header.getBeginNode());
+            double loopProbability = probabilities.applyAsDouble(loop.getHeader().getBeginNode());
             if (loopProbability > (1D / Integer.MAX_VALUE)) {
-                addSectionCounters(loop.header.getBeginNode(), loop.blocks, loop.children, schedule, probabilities);
+                addSectionCounters(loop.getHeader().getBeginNode(), loop.getBlocks(), loop.getChildren(), schedule, probabilities);
             }
         }
         // don't put the counter increase directly after the start (problems with OSR)
@@ -96,7 +96,7 @@ public class ProfileCompiledMethodsPhase extends Phase {
                     ToDoubleFunction<FixedNode> probabilities) {
         HashSet<Block> blocks = new HashSet<>(sectionBlocks);
         for (Loop<?> loop : childLoops) {
-            blocks.removeAll(loop.blocks);
+            blocks.removeAll(loop.getBlocks());
         }
         double weight = getSectionWeight(schedule, probabilities, blocks) / probabilities.applyAsDouble(start);
         DynamicCounterNode.addCounterBefore(GROUP_NAME, sectionHead(start), (long) weight, true, start.next());

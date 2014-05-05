@@ -256,8 +256,8 @@ class CFGPrinter extends CompilationPrinter {
         out.println();
 
         if (block.getLoop() != null) {
-            out.print("loop_index ").println(block.getLoop().index);
-            out.print("loop_depth ").println(block.getLoop().depth);
+            out.print("loop_index ").println(block.getLoop().getIndex());
+            out.print("loop_depth ").println(block.getLoop().getDepth());
         }
     }
 

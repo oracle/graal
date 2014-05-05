@@ -297,7 +297,7 @@ public class PartialEvaluator {
 
             @Override
             public int compare(LoopEx o1, LoopEx o2) {
-                return o2.lirLoop().depth - o1.lirLoop().depth;
+                return o2.lirLoop().getDepth() - o1.lirLoop().getDepth();
             }
         });
         return sortedLoops;

@@ -95,8 +95,8 @@ public class DeoptimizationGroupingPhase extends BasePhase<MidTierContext> {
         Block block = cfg.blockFor(deopt);
         Loop<Block> loop = block.getLoop();
         while (loop != null) {
-            end.graph().addBeforeFixed(end, end.graph().add(new LoopExitNode((LoopBeginNode) loop.header.getBeginNode())));
-            loop = loop.parent;
+            end.graph().addBeforeFixed(end, end.graph().add(new LoopExitNode((LoopBeginNode) loop.getHeader().getBeginNode())));
+            loop = loop.getParent();
         }
     }
 }

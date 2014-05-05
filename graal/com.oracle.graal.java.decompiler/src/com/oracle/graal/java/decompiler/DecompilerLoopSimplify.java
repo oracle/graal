@@ -50,18 +50,18 @@ public class DecompilerLoopSimplify {
                 Loop<Block> loop = firstBlock.getLoop();
 
                 for (int i = 0; i < cfgBlocks.size(); i++) {
-                    if (loop.blocks.contains(cfgBlocks.get(i)) && cfgBlocks.get(i) != firstBlock) {
+                    if (loop.getBlocks().contains(cfgBlocks.get(i)) && cfgBlocks.get(i) != firstBlock) {
                         loopBlock.addBodyBlock(cfgBlocks.get(i));
                     }
                 }
 
                 // Asserting:
                 for (Block b : loopBlock.getBody()) {
-                    if (!loop.blocks.contains(b)) {
+                    if (!loop.getBlocks().contains(b)) {
                         throw new AssertionError();
                     }
                 }
-                for (Block b : loop.blocks) {
+                for (Block b : loop.getBlocks()) {
                     if (b != firstBlock && !loopBlock.getBody().contains(b)) {
                         throw new AssertionError();
                     }

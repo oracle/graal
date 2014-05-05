@@ -33,6 +33,6 @@ public class HIRLoop extends Loop<Block> {
 
     @Override
     public long numBackedges() {
-        return ((LoopBeginNode) header.getBeginNode()).loopEnds().count();
+        return ((LoopBeginNode) getHeader().getBeginNode()).loopEnds().count();
     }
 }

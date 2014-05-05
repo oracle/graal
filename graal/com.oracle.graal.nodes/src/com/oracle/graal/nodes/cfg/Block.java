@@ -57,7 +57,7 @@ public final class Block extends AbstractBlockBase<Block> {
     }
 
     public int getLoopDepth() {
-        return loop == null ? 0 : loop.depth;
+        return loop == null ? 0 : loop.getDepth();
     }
 
     public boolean isLoopHeader() {
