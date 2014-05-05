@@ -27,15 +27,18 @@ import java.lang.annotation.*;
 import com.oracle.graal.nodes.*;
 
 /**
- * This annotation declares a textual pattern for matching an HIR DAG. It's an s-expression with a
- * node followed by its inputs. Node types are always uppercase and lowercase words are the names of
- * nodes.
+ * This annotation declares a textual pattern for matching an HIR tree. The format is a LISP style
+ * s-expression with node types and/or names that are matched against the HIR. Node types are always
+ * uppercase and the names of nodes are always lowercase. Named nodes can be used to match trees
+ * where a node is used multiple times but only as an input to the full match.
  *
  * <pre>
- *   NAME := [a-z][a-zA-Z0-9]*
- *   NODETYPE := [A-Z][a-zA-Z0-9]*
- *   NODEORNAME :=  NODE [ = NAME ] | NAME
- *   EXPRESSION := ( NODEORNAME [ EXPRESSION | NODEORNAME [ EXPRESSION | NODEORNAME ] )
+ *   &lt;node-name&gt;    := [a-z][a-zA-Z0-9]*
+ *   &lt;node-type&gt;    := [A-Z][a-zA-Z0-9]*
+ *   &lt;node-spec&gt;    := &lt;node-type&gt; { '=' &lt;node-name&gt; }
+ *   &lt;node-or-name&gt; := &lt;node-spec&gt; | &lt;node-name&gt;
+ *   &lt;argument&gt;     := &lt;node-or-name&gt; | &lt;match-rule&gt;
+ *   &lt;match-rule&gt;   := '(' &lt;node-spec&gt; &lt;argument&gt;+ ')'
  * </pre>
  *
  * All matched nodes except the root of the match and {@link ConstantNode}s must have a single user.
