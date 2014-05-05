@@ -31,7 +31,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 
 @NodeInfo(shortName = "%")
-public final class FloatRemNode extends FloatArithmeticNode implements Canonicalizable {
+public class FloatRemNode extends FloatArithmeticNode implements Canonicalizable, Lowerable {
 
     public FloatRemNode(Stamp stamp, ValueNode x, ValueNode y, boolean isStrictFP) {
         super(stamp, x, y, isStrictFP);
@@ -54,6 +54,11 @@ public final class FloatRemNode extends FloatArithmeticNode implements Canonical
             return ConstantNode.forPrimitive(evalConst(x().asConstant(), y().asConstant()), graph());
         }
         return this;
+    }
+
+    @Override
+    public void lower(LoweringTool tool) {
+        tool.getLowerer().lower(this, tool);
     }
 
     @Override
