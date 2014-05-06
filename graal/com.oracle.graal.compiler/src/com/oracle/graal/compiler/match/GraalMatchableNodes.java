@@ -59,7 +59,19 @@ import com.oracle.graal.nodes.extended.*;
 @MatchableNode(nodeClass = ObjectEqualsNode.class, inputs = 2, adapter = GraalMatchableNodes.BinaryOpLogicNodeAdapter.class, commutative = true)
 @MatchableNode(nodeClass = OrNode.class, inputs = 2, adapter = GraalMatchableNodes.BinaryNodeAdapter.class, commutative = true)
 @MatchableNode(nodeClass = XorNode.class, inputs = 2, adapter = GraalMatchableNodes.BinaryNodeAdapter.class, commutative = true)
+@MatchableNode(nodeClass = PiNode.class, inputs = 1, adapter = GraalMatchableNodes.PiNodeAdapter.class)
+@MatchableNode(nodeClass = ConstantLocationNode.class, shareable = true)
 public class GraalMatchableNodes {
+    public static class PiNodeAdapter extends MatchNodeAdapter {
+        @Override
+        public ValueNode getInput(int input, ValueNode node) {
+            if (input == 0) {
+                return ((PiNode) node).object();
+            }
+            throw GraalInternalError.shouldNotReachHere();
+        }
+    }
+
     public static class BinaryNodeAdapter extends MatchNodeAdapter {
         @Override
         public ValueNode getInput(int input, ValueNode node) {

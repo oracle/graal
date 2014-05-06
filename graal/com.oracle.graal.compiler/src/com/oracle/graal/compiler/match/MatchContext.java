@@ -31,7 +31,7 @@ import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.match.MatchPattern.Result;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.virtual.*;
 
 /**
@@ -100,9 +100,9 @@ public class MatchContext {
         // Ensure that there's no unsafe work in between these operations.
         for (int i = startIndex; i <= endIndex; i++) {
             ScheduledNode node = nodes.get(i);
-            if (node instanceof ConstantNode || node instanceof LocationNode || node instanceof VirtualObjectNode || node instanceof ParameterNode) {
-                // these can be evaluated lazily so don't worry about them. This should probably be
-                // captured by some interface that indicates that their generate method is empty.
+            if (node instanceof VirtualObjectNode || node instanceof FloatingNode) {
+                // The order of evaluation of these nodes controlled by data dependence so they
+                // don't interfere with this match.
                 continue;
             } else if ((consumed == null || !consumed.contains(node)) && node != root) {
                 if (LogVerbose.getValue()) {

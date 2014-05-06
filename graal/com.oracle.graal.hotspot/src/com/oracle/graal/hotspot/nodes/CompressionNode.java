@@ -97,6 +97,10 @@ public final class CompressionNode extends FloatingNode implements LIRLowerable,
         return input;
     }
 
+    public CompressEncoding getEncoding() {
+        return encoding;
+    }
+
     @Override
     public Node canonical(CanonicalizerTool tool) {
         if (input instanceof CompressionNode) {

@@ -601,7 +601,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         }
     }
 
-    protected Value emitBinaryMemory(AMD64Arithmetic op, Kind kind, AllocatableValue a, AMD64AddressValue location, LIRFrameState state) {
+    public Value emitBinaryMemory(AMD64Arithmetic op, Kind kind, AllocatableValue a, AMD64AddressValue location, LIRFrameState state) {
         Variable result = newVariable(a.getKind());
         append(new BinaryMemory(op, kind, result, a, location, state));
         return result;
