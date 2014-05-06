@@ -31,7 +31,7 @@ import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.match.MatchPattern.Result;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.virtual.*;
 
 /**
@@ -100,16 +100,16 @@ public class MatchContext {
         // Ensure that there's no unsafe work in between these operations.
         for (int i = startIndex; i <= endIndex; i++) {
             ScheduledNode node = nodes.get(i);
-            if (node instanceof ConstantNode || node instanceof LocationNode || node instanceof VirtualObjectNode || node instanceof ParameterNode) {
-                // these can be evaluated lazily so don't worry about them. This should probably be
-                // captured by some interface that indicates that their generate method is empty.
+            if (node instanceof VirtualObjectNode || node instanceof FloatingNode) {
+                // The order of evaluation of these nodes controlled by data dependence so they
+                // don't interfere with this match.
                 continue;
-            } else if (consumed == null || !consumed.contains(node) && node != root) {
+            } else if ((consumed == null || !consumed.contains(node)) && node != root) {
                 if (LogVerbose.getValue()) {
                     Debug.log("unexpected node %s", node);
                     for (int j = startIndex; j <= endIndex; j++) {
                         ScheduledNode theNode = nodes.get(j);
-                        Debug.log("%s(%s) %1s", (consumed.contains(theNode) || theNode == root) ? "*" : " ", theNode.usages().count(), theNode);
+                        Debug.log("%s(%s) %1s", (consumed != null && consumed.contains(theNode) || theNode == root) ? "*" : " ", theNode.usages().count(), theNode);
                     }
                 }
                 return Result.NOT_SAFE(node, rule.getPattern());
@@ -147,14 +147,16 @@ public class MatchContext {
     public Result consume(ValueNode node) {
         assert node.usages().count() <= 1 : "should have already been checked";
 
-        if (builder.hasOperand(node)) {
-            return Result.ALREADY_USED(node, rule.getPattern());
-        }
-
+        // Check NOT_IN_BLOCK first since that usually implies ALREADY_USED
         int index = nodes.indexOf(node);
         if (index == -1) {
             return Result.NOT_IN_BLOCK(node, rule.getPattern());
         }
+
+        if (builder.hasOperand(node)) {
+            return Result.ALREADY_USED(node, rule.getPattern());
+        }
+
         startIndex = Math.min(startIndex, index);
         if (consumed == null) {
             consumed = new ArrayList<>(2);
