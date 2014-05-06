@@ -79,4 +79,9 @@ public class AMD64HotSpotBytecodeLIRBuilder extends BytecodeLIRBuilder {
         }
     }
 
+    @Override
+    public int getArrayLengthOffset() {
+        return getGen().config.arrayLengthOffset;
+    }
+
 }
