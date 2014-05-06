@@ -185,7 +185,8 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
                             boolean improvedStamp = tryInferStamp(valueNode);
                             Constant constant = valueNode.stamp().asConstant();
                             if (constant != null && !(node instanceof ConstantNode)) {
-                                performReplacement(valueNode, ConstantNode.forConstant(valueNode.stamp(), constant, context.getMetaAccess(), valueNode.graph()));
+                                valueNode.replaceAtUsages(ConstantNode.forConstant(valueNode.stamp(), constant, context.getMetaAccess(), valueNode.graph()));
+                                GraphUtil.tryKillUnused(valueNode);
                             } else if (improvedStamp) {
                                 // the improved stamp may enable additional canonicalization
                                 tryCanonicalize(valueNode, nodeClass);
