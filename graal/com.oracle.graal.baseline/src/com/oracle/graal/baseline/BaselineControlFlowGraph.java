@@ -24,8 +24,9 @@ package com.oracle.graal.baseline;
 
 import java.util.*;
 
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.cfg.*;
+import com.oracle.graal.debug.*;
+import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.java.*;
 import com.oracle.graal.java.BciBlockMapping.BciBlock;
 
@@ -33,12 +34,15 @@ public class BaselineControlFlowGraph implements AbstractControlFlowGraph<BciBlo
 
     private List<BciBlock> blocks;
     private Collection<Loop<BciBlock>> loops;
-    private BitSet visited;
 
     public static BaselineControlFlowGraph compute(BciBlockMapping blockMap) {
-        BaselineControlFlowGraph cfg = new BaselineControlFlowGraph(blockMap);
-        cfg.computeLoopInformation();
-        return cfg;
+        try (Scope ds = Debug.scope("BaselineCFG", blockMap)) {
+            BaselineControlFlowGraph cfg = new BaselineControlFlowGraph(blockMap);
+            cfg.computeLoopInformation(blockMap);
+            return cfg;
+        } catch (Throwable e) {
+            throw Debug.handle(e);
+        }
     }
 
     private BaselineControlFlowGraph(BciBlockMapping blockMap) {
@@ -61,44 +65,47 @@ public class BaselineControlFlowGraph implements AbstractControlFlowGraph<BciBlo
         return null;
     }
 
-    private void computeLoopInformation() {
-        visited = new BitSet(blocks.size());
-        Deque<BaselineLoop> stack = new ArrayDeque<>();
-        for (int i = blocks.size() - 1; i >= 0; i--) {
-            BciBlock block = blocks.get(i);
-            calcLoop(block, stack);
-        }
-    }
-
-    private void calcLoop(BciBlock block, Deque<BaselineLoop> stack) {
-        if (visited.get(block.getId())) {
-            return;
-        }
-        visited.set(block.getId());
-        if (block.isLoopEnd()) {
-            BciBlock loopHeader = getLoopHeader(block);
-            BaselineLoop l = new BaselineLoop(stack.peek(), loops.size(), loopHeader);
-            loops.add(l);
-            stack.push(l);
-        }
-        block.loop = stack.peek();
-        if (block.isLoopHeader()) {
-            assert block.loop.getHeader().equals(block);
-            stack.pop();
-        }
-        for (BciBlock pred : block.getPredecessors()) {
-            calcLoop(pred, stack);
-        }
-    }
-
-    private static BciBlock getLoopHeader(BciBlock block) {
-        assert block.isLoopEnd();
-        for (BciBlock sux : block.getSuccessors()) {
-            if (sux.isLoopHeader() && sux.getId() <= block.getId() && block.loops == sux.loops) {
-                return sux;
+    private void computeLoopInformation(BciBlockMapping blockMap) {
+        try (Indent indent = Debug.logAndIndent("computeLoopInformation")) {
+            for (BciBlock block : blocks) {
+                calcLoop(block, blockMap);
+                Debug.log("Block: %s, Loop: %s", block, block.getLoop());
             }
         }
-        throw GraalInternalError.shouldNotReachHere("No loop header found for " + block);
+    }
+
+    private Loop<BciBlock> getLoop(int index, BciBlockMapping blockMap) {
+        BciBlock header = blockMap.getLoopHeader(index);
+        assert header.getLoopDepth() > 0;
+        Loop<BciBlock> loop = header.getLoop();
+
+        if (loop == null) {
+            Loop<BciBlock> parent = null;
+
+            if (header.getLoopDepth() > 1) {
+                // Recursively create out loops.
+                Iterator<Integer> i = header.loopIdIterable().iterator();
+                assert i.hasNext() : "BciBlock.loopIdIterable() must return exactly BciBlock.getLoopDepth() elements!";
+                int outerLoopId = i.next();
+                assert index == outerLoopId : "The first loopId must be the id of the loop that is started by this header!";
+                assert i.hasNext() : "BciBlock.loopIdIterable() must return exactly BciBlock.getLoopDepth() elements!";
+                outerLoopId = i.next();
+                parent = getLoop(outerLoopId, blockMap);
+            }
+
+            loop = new BaselineLoop(parent, index, header);
+            loops.add(loop);
+            header.setLoop(loop);
+        }
+        return loop;
+    }
+
+    private void calcLoop(BciBlock block, BciBlockMapping blockMap) {
+        int loopId = block.getLoopId();
+        if (loopId != -1) {
+            block.setLoop(getLoop(loopId, blockMap));
+
+        }
     }
 
 }
