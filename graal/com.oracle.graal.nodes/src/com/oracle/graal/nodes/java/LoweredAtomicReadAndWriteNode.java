@@ -23,6 +23,7 @@
 package com.oracle.graal.nodes.java;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
@@ -41,7 +42,7 @@ public class LoweredAtomicReadAndWriteNode extends FixedAccessNode implements St
     @Input(InputType.State) private FrameState stateAfter;
 
     public LoweredAtomicReadAndWriteNode(ValueNode object, LocationNode location, ValueNode newValue, BarrierType barrierType, boolean compressible) {
-        super(object, location, newValue.stamp(), barrierType, compressible);
+        super(object, location, StampFactory.forKind(newValue.stamp().getStackKind()), barrierType, compressible);
         this.newValue = newValue;
     }
 
