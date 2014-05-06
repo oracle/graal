@@ -35,6 +35,7 @@ import com.oracle.graal.compiler.alloc.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.common.cfg.*;
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.debug.*;
@@ -494,8 +495,13 @@ public class BaselineBytecodeParser extends AbstractBytecodeParser<Value, Baseli
     }
 
     @Override
-    protected Value genArrayLength(Value x) {
-        // TODO Auto-generated method stub
+    protected Value genArrayLength(Value array) {
+        emitNullCheck(array);
+        long displacement = lirBuilder.getArrayLengthOffset();
+        Value address = gen.emitAddress(array, displacement, Value.ILLEGAL, 0);
+        PlatformKind readKind = gen.getPlatformKind(StampFactory.forKind(Kind.Int));
+        LIRFrameState state = null;
+        gen.emitLoad(readKind, address, state);
         throw GraalInternalError.unimplemented("Auto-generated method stub");
     }
 
