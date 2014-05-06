@@ -92,8 +92,14 @@ public class BaselineBytecodeParser extends AbstractBytecodeParser<Value, Baseli
 
         try (Indent indent = Debug.logAndIndent("build graph for %s", method)) {
 
-            // compute the block map, setup exception handlers and get the entrypoint(s)
-            BciBlockMapping blockMap = BciBlockMapping.create(method);
+            BciBlockMapping blockMap;
+            try (Scope ds = Debug.scope("BciBlockMapping")) {
+                // compute the block map, setup exception handlers and get the entrypoint(s)
+                blockMap = BciBlockMapping.create(method);
+            } catch (Throwable e) {
+                throw Debug.handle(e);
+            }
+
             loopHeaders = blockMap.loopHeaders;
             liveness = blockMap.liveness;
             blockVisited = new BciBlockBitMap(blockMap);
