@@ -124,6 +124,13 @@ public abstract class AbstractFrameStateBuilder<T extends KindProvider, S extend
     }
 
     /**
+     * @return the current lock depth
+     */
+    public int lockDepth() {
+        return lockedObjects.length;
+    }
+
+    /**
      * Gets the value in the local variables at the specified index, without any sanity checking.
      *
      * @param i the index into the locals
@@ -141,6 +148,16 @@ public abstract class AbstractFrameStateBuilder<T extends KindProvider, S extend
      */
     public T stackAt(int i) {
         return stack[i];
+    }
+
+    /**
+     * Gets the value in the lock at the specified index, without any sanity checking.
+     *
+     * @param i the index into the lock
+     * @return the instruction that produced the value for the specified lock
+     */
+    public T lockAt(int i) {
+        return lockedObjects[i];
     }
 
     /**
