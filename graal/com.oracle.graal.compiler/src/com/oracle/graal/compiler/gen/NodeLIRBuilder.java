@@ -56,6 +56,36 @@ import com.oracle.graal.nodes.virtual.*;
 /**
  * This class traverses the HIR instructions and generates LIR instructions from them.
  */
+@MatchableNode(nodeClass = ConstantNode.class, shareable = true)
+@MatchableNode(nodeClass = FloatConvertNode.class, inputs = {"input"})
+@MatchableNode(nodeClass = FloatSubNode.class, inputs = {"x", "y"})
+@MatchableNode(nodeClass = FloatingReadNode.class, inputs = {"object", "location"})
+@MatchableNode(nodeClass = IfNode.class, inputs = {"condition"})
+@MatchableNode(nodeClass = IntegerSubNode.class, inputs = {"x", "y"})
+@MatchableNode(nodeClass = LeftShiftNode.class, inputs = {"x", "y"})
+@MatchableNode(nodeClass = NarrowNode.class, inputs = {"input"})
+@MatchableNode(nodeClass = ReadNode.class, inputs = {"object", "location"})
+@MatchableNode(nodeClass = ReinterpretNode.class, inputs = {"value"})
+@MatchableNode(nodeClass = SignExtendNode.class, inputs = {"input"})
+@MatchableNode(nodeClass = UnsignedRightShiftNode.class, inputs = {"x", "y"})
+@MatchableNode(nodeClass = WriteNode.class, inputs = {"object", "location", "value"})
+@MatchableNode(nodeClass = ZeroExtendNode.class, inputs = {"input"})
+@MatchableNode(nodeClass = AndNode.class, inputs = {"x", "y"}, commutative = true)
+@MatchableNode(nodeClass = FloatAddNode.class, inputs = {"x", "y"}, commutative = true)
+@MatchableNode(nodeClass = FloatEqualsNode.class, inputs = {"x", "y"}, commutative = true)
+@MatchableNode(nodeClass = FloatLessThanNode.class, inputs = {"x", "y"}, commutative = true)
+@MatchableNode(nodeClass = FloatMulNode.class, inputs = {"x", "y"}, commutative = true)
+@MatchableNode(nodeClass = IntegerAddNode.class, inputs = {"x", "y"}, commutative = true)
+@MatchableNode(nodeClass = IntegerBelowThanNode.class, inputs = {"x", "y"}, commutative = true)
+@MatchableNode(nodeClass = IntegerEqualsNode.class, inputs = {"x", "y"}, commutative = true)
+@MatchableNode(nodeClass = IntegerLessThanNode.class, inputs = {"x", "y"}, commutative = true)
+@MatchableNode(nodeClass = IntegerMulNode.class, inputs = {"x", "y"}, commutative = true)
+@MatchableNode(nodeClass = IntegerTestNode.class, inputs = {"x", "y"}, commutative = true)
+@MatchableNode(nodeClass = ObjectEqualsNode.class, inputs = {"x", "y"}, commutative = true)
+@MatchableNode(nodeClass = OrNode.class, inputs = {"x", "y"}, commutative = true)
+@MatchableNode(nodeClass = XorNode.class, inputs = {"x", "y"}, commutative = true)
+@MatchableNode(nodeClass = PiNode.class, inputs = {"object"})
+@MatchableNode(nodeClass = ConstantLocationNode.class, shareable = true)
 public abstract class NodeLIRBuilder implements NodeLIRBuilderTool {
 
     private final NodeMap<Value> nodeOperands;

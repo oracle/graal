@@ -34,7 +34,7 @@ public interface MatchStatementSet {
     public Class<? extends NodeLIRBuilder> forClass();
 
     /**
-     * @return the {@link MatchStatement}s available with this {@link NodeLIRBuilder} subclass.
+     * @return the {@link MatchStatement}s available for this {@link NodeLIRBuilder} subclass.
      */
     public List<MatchStatement> statements();
 }

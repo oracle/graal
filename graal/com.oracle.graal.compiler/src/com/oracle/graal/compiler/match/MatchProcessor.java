@@ -50,7 +50,8 @@ import com.oracle.graal.nodes.*;
  *     }
  * </pre>
  */
-@SupportedAnnotationTypes({"com.oracle.graal.compiler.match.MatchRule", "com.oracle.graal.compiler.match.MatchRules", "com.oracle.graal.compiler.match.MatchableNode"})
+@SupportedAnnotationTypes({"com.oracle.graal.compiler.match.MatchRule", "com.oracle.graal.compiler.match.MatchRules", "com.oracle.graal.compiler.match.MatchableNode",
+                "com.oracle.graal.compiler.match.MatchableNodes"})
 public class MatchProcessor extends AbstractProcessor {
 
     public MatchProcessor() {
@@ -71,6 +72,8 @@ public class MatchProcessor extends AbstractProcessor {
             super(String.format(format, args));
         }
     }
+
+    private static Pattern tokenizer = Pattern.compile("\\s*([()=]|[A-Za-z][A-Za-z0-9]*)\\s*");
 
     private class RuleParser {
         private ArrayList<TypeDescriptor> capturedTypes = new ArrayList<>();
@@ -95,7 +98,7 @@ public class MatchProcessor extends AbstractProcessor {
                 m.region(m.end(), m.regionEnd());
             }
             if (end != m.regionEnd()) {
-                throw new RuleParseError("Unnexpected tokens :" + rule.substring(m.end(), m.regionEnd()));
+                throw new RuleParseError("Unexpected tokens :" + rule.substring(m.end(), m.regionEnd()));
             }
             tokens = list.toArray(new String[0]);
 
@@ -129,14 +132,14 @@ public class MatchProcessor extends AbstractProcessor {
             if (peek("(").equals("(")) {
                 next();
                 MatchDescriptor descriptor = parseType(true);
-                for (int n = 0; n < descriptor.nodeType.inputs; n++) {
+                for (int n = 0; n < descriptor.nodeType.inputs.length; n++) {
                     if (peek("(").equals("(")) {
                         descriptor.inputs[n] = parseExpression();
                     } else {
                         descriptor.inputs[n] = parseType(false);
                     }
                 }
-                for (int n = 0; n < descriptor.nodeType.inputs; n++) {
+                for (int n = 0; n < descriptor.nodeType.inputs.length; n++) {
                     if (descriptor.inputs[n] == null) {
                         throw new RuleParseError("not enough inputs for " + descriptor.name);
                     }
@@ -201,7 +204,63 @@ public class MatchProcessor extends AbstractProcessor {
         }
     }
 
-    static Pattern tokenizer = Pattern.compile("\\s*([()=]|[A-Za-z][A-Za-z0-9]*)\\s*");
+    /**
+     * Set to true to enable logging to a local file during annotation processing. There's no normal
+     * channel for any debug messages and debugging annotation processors requires some special
+     * setup.
+     */
+    private static final boolean DEBUG = false;
+
+    private static final String MATCHPROCESSOR_LOG = "/tmp/matchprocessor.log";
+
+    private static PrintWriter log;
+
+    /**
+     * Logging facility for the debugging the annotation processor.
+     */
+
+    private static synchronized PrintWriter getLog() {
+        if (log == null) {
+            try {
+                log = new PrintWriter(new FileWriter(MATCHPROCESSOR_LOG, true));
+            } catch (IOException e) {
+                // Do nothing
+            }
+        }
+        return log;
+    }
+
+    private static synchronized void logMessage(String format, Object... args) {
+        if (!DEBUG) {
+            return;
+        }
+        PrintWriter bw = getLog();
+        if (bw != null) {
+            bw.printf(format, args);
+            bw.flush();
+        }
+    }
+
+    private static synchronized void logException(Throwable t) {
+        if (!DEBUG) {
+            return;
+        }
+        PrintWriter bw = getLog();
+        if (bw != null) {
+            t.printStackTrace(bw);
+            bw.flush();
+        }
+    }
+
+    /**
+     * Bugs in an annotation processor can cause silent failure so try to report any exception
+     * throws as errors.
+     */
+    private void reportExceptionThrow(Element element, Throwable t) {
+        logMessage("throw for %s:\n", element);
+        logException(t);
+        processingEnv.getMessager().printMessage(Kind.ERROR, "Exception throw during processing: " + t.toString() + " " + Arrays.toString(Arrays.copyOf(t.getStackTrace(), 4)), element);
+    }
 
     static class TypeDescriptor {
         final TypeMirror mirror;
@@ -210,25 +269,21 @@ public class MatchProcessor extends AbstractProcessor {
          * The name uses in match expressions to refer to this type.
          */
         final String shortName;
+
         /**
-         * The {@link ValueNode} class represented by this type.
+         * The simple name of the {@link ValueNode} class represented by this type.
          */
         final String nodeClass;
 
         /**
-         * The {@link ValueNode} class represented by this type.
+         * The package of {@link ValueNode} class represented by this type.
          */
         final String nodePackage;
 
         /**
-         * Expected number of matchable inputs. Should be less <= 2 at the moment.
+         * The matchable inputs of the node.
          */
-        final int inputs;
-
-        /**
-         * An adapter class to read the proper matchable inputs of the class.
-         */
-        final String adapter;
+        final String[] inputs;
 
         /**
          * Should swapped variants of this match be generated. The user of the match is expected to
@@ -245,16 +300,15 @@ public class MatchProcessor extends AbstractProcessor {
 
         final Set<Element> originatingElements = new HashSet<>();
 
-        TypeDescriptor(TypeMirror mirror, String shortName, String nodeClass, String nodePackage, int inputs, String adapter, boolean commutative, boolean shareable) {
+        TypeDescriptor(TypeMirror mirror, String shortName, String nodeClass, String nodePackage, String[] inputs, boolean commutative, boolean shareable) {
             this.mirror = mirror;
             this.shortName = shortName;
             this.nodeClass = nodeClass;
             this.nodePackage = nodePackage;
             this.inputs = inputs;
-            this.adapter = adapter;
             this.commutative = commutative;
             this.shareable = shareable;
-            assert !commutative || inputs == 2;
+            assert !commutative || inputs.length == 2;
         }
     }
 
@@ -279,8 +333,12 @@ public class MatchProcessor extends AbstractProcessor {
 
     private TypeMirror matchRuleTypeMirror;
 
-    private void declareType(TypeMirror mirror, String shortName, String nodeClass, String nodePackage, int inputs, String adapter, boolean commutative, boolean shareable, Element element) {
-        TypeDescriptor descriptor = new TypeDescriptor(mirror, shortName, nodeClass, nodePackage, inputs, adapter, commutative, shareable);
+    private TypeMirror matchableNodeTypeMirror;
+
+    private TypeMirror matchableNodesTypeMirror;
+
+    private void declareType(TypeMirror mirror, String shortName, String nodeClass, String nodePackage, String[] inputs, boolean commutative, boolean shareable, Element element) {
+        TypeDescriptor descriptor = new TypeDescriptor(mirror, shortName, nodeClass, nodePackage, inputs, commutative, shareable);
         descriptor.originatingElements.add(element);
         knownTypes.put(shortName, descriptor);
         if (!requiredPackages.contains(descriptor.nodePackage)) {
@@ -305,10 +363,31 @@ public class MatchProcessor extends AbstractProcessor {
             this.nodeType = nodeType;
             this.name = name;
             if (forExpression) {
-                this.inputs = new MatchDescriptor[nodeType.inputs];
+                this.inputs = new MatchDescriptor[nodeType.inputs.length];
             } else {
                 this.inputs = new MatchDescriptor[0];
             }
+        }
+
+        List<String> recurseVariants(int index) {
+            if (inputs.length == 0) {
+                return new ArrayList<>();
+            }
+            List<String> currentVariants = inputs[index].generateVariants();
+            if (index == inputs.length - 1) {
+                return currentVariants;
+            }
+            List<String> subVariants = recurseVariants(index + 1);
+            List<String> result = new ArrayList<>();
+            for (String current : currentVariants) {
+                for (String sub : subVariants) {
+                    result.add(current + ", " + sub);
+                    if (nodeType.commutative) {
+                        result.add(sub + ", " + current);
+                    }
+                }
+            }
+            return result;
         }
 
         /**
@@ -321,32 +400,15 @@ public class MatchProcessor extends AbstractProcessor {
             String prefix = formatPrefix();
             String suffix = formatSuffix();
             ArrayList<String> variants = new ArrayList<>();
-            if (inputs.length == 3) {
-                for (String first : inputs[0].generateVariants()) {
-                    for (String second : inputs[1].generateVariants()) {
-                        for (String third : inputs[2].generateVariants()) {
-                            variants.add(prefix + ", " + first + ", " + second + ", " + third + suffix);
-                        }
-                    }
-                }
-            } else if (inputs.length == 2) {
-                // Generate this version and a swapped version
-                for (String first : inputs[0].generateVariants()) {
-                    for (String second : inputs[1].generateVariants()) {
-                        variants.add(prefix + ", " + first + ", " + second + suffix);
-                        if (nodeType.commutative) {
-                            variants.add(prefix + ", " + second + ", " + first + suffix);
-                        }
-                    }
-                }
-            } else if (inputs.length == 1) {
-                for (String first : inputs[0].generateVariants()) {
-                    variants.add(prefix + ", " + first + suffix);
+            if (inputs.length > 0) {
+                for (String var : recurseVariants(0)) {
+                    variants.add(prefix + ", " + var + suffix);
                 }
             } else {
                 assert inputs.length == 0;
                 variants.add(prefix + suffix);
             }
+
             return variants;
         }
 
@@ -360,11 +422,11 @@ public class MatchProcessor extends AbstractProcessor {
 
         private String formatSuffix() {
             if (nodeType != null) {
-                if (inputs.length != nodeType.inputs) {
+                if (inputs.length != nodeType.inputs.length) {
                     return ", true)";
                 } else {
-                    if (nodeType.adapter != null) {
-                        return ", " + nodeType.adapter + "," + !nodeType.shareable + ")";
+                    if (nodeType.inputs.length > 0) {
+                        return ", MatchPattern.findPositions(" + nodeType.nodeClass + ".class, new String[]{\"" + String.join("\", \"", nodeType.inputs) + "\"})," + !nodeType.shareable + ")";
                     }
                     if (nodeType.shareable) {
                         return ", false)";
@@ -580,32 +642,20 @@ public class MatchProcessor extends AbstractProcessor {
         if (roundEnv.processingOver()) {
             return true;
         }
+        logMessage("Starting round %s\n", roundEnv);
         matchRulesTypeMirror = processingEnv.getElementUtils().getTypeElement(MatchRules.class.getCanonicalName()).asType();
         matchRuleTypeMirror = processingEnv.getElementUtils().getTypeElement(MatchRule.class.getCanonicalName()).asType();
 
+        matchableNodeTypeMirror = processingEnv.getElementUtils().getTypeElement(MatchableNode.class.getCanonicalName()).asType();
+        matchableNodesTypeMirror = processingEnv.getElementUtils().getTypeElement(MatchableNodes.class.getCanonicalName()).asType();
+
         try {
-            // Define a TypeDescriptor the generic node but don't enter it into the nodeTypes table
-            // since it shouldn't mentioned in match rules.
+            // Define a TypeDescriptor for the generic node but don't enter it into the nodeTypes
+            // table since it shouldn't be mentioned in match rules.
             TypeMirror valueTypeMirror = processingEnv.getElementUtils().getTypeElement(ValueNode.class.getName()).asType();
-            valueType = new TypeDescriptor(valueTypeMirror, "Value", ValueNode.class.getSimpleName(), ValueNode.class.getPackage().getName(), 0, null, false, false);
+            valueType = new TypeDescriptor(valueTypeMirror, "Value", ValueNode.class.getSimpleName(), ValueNode.class.getPackage().getName(), new String[0], false, false);
 
-            // Import default definitions
-            processMatchableNode(processingEnv.getElementUtils().getTypeElement(GraalMatchableNodes.class.getName()));
-            for (Element element : roundEnv.getElementsAnnotatedWith(MatchableNodeImport.class)) {
-                // Import any other definitions required by this element
-                String[] imports = element.getAnnotation(MatchableNodeImport.class).value();
-                for (String m : imports) {
-                    TypeElement el = processingEnv.getElementUtils().getTypeElement(m);
-                    processMatchableNode(el);
-                }
-            }
-
-            // Process any local MatchableNode declarations
-            for (Element element : roundEnv.getElementsAnnotatedWith(MatchableNode.class)) {
-                processMatchableNode(element);
-            }
-
-            Map<TypeElement, MatchRuleDescriptor> map = new HashMap<>();
+            Map<TypeElement, MatchRuleDescriptor> map = new LinkedHashMap<>();
 
             for (Element element : roundEnv.getElementsAnnotatedWith(MatchRule.class)) {
                 processMatchRule(map, element, findAnnotationMirror(element, matchRuleTypeMirror));
@@ -632,46 +682,23 @@ public class MatchProcessor extends AbstractProcessor {
         if (!processedMatchableNode.contains(element)) {
             try {
                 processedMatchableNode.add(element);
+
+                AnnotationMirror mirror = findAnnotationMirror(element, matchableNodesTypeMirror);
+                if (mirror == null) {
+                    mirror = findAnnotationMirror(element, matchableNodeTypeMirror);
+                }
+                if (mirror == null) {
+                    return;
+                }
                 TypeElement topDeclaringType = topDeclaringType(element);
-                MatchableNode[] matchables = element.getAnnotationsByType(MatchableNode.class);
-                for (MatchableNode matchable : matchables) {
-                    String nodeClass;
-                    String nodePackage;
-                    TypeMirror nodeClassMirror = null;
-                    try {
-                        matchable.nodeClass();
-                    } catch (MirroredTypeException e) {
-                        nodeClassMirror = e.getTypeMirror();
-                    }
-                    if (nodeClassMirror == null) {
-                        throw new GraalInternalError("Can't get mirror for node class %s", element);
-                    }
-                    if (nodeClassMirror.toString().equals(MatchableNode.class.getName())) {
-                        nodeClass = topDeclaringType.getQualifiedName().toString();
-                    } else {
-                        nodeClass = nodeClassMirror.toString();
-                    }
-                    nodePackage = findPackage(processingEnv.getElementUtils().getTypeElement(nodeClass));
-                    assert nodeClass.startsWith(nodePackage);
-                    nodeClass = nodeClass.substring(nodePackage.length() + 1);
-                    assert nodeClass.endsWith("Node");
-                    String shortName = nodeClass.substring(0, nodeClass.length() - 4);
-
-                    TypeMirror nodeAdapterMirror = null;
-                    try {
-                        matchable.adapter();
-                    } catch (MirroredTypeException e) {
-                        nodeAdapterMirror = e.getTypeMirror();
-                    }
-                    if (nodeAdapterMirror == null) {
-                        throw new GraalInternalError("Can't get mirror for adapter %s", element);
-                    }
-                    String nodeAdapter = null;
-                    if (!nodeAdapterMirror.toString().equals(MatchableNode.class.getName())) {
-                        nodeAdapter = String.format("new %s()", nodeAdapterMirror.toString());
-                    }
-
-                    declareType(nodeClassMirror, shortName, nodeClass, nodePackage, matchable.inputs(), nodeAdapter, matchable.commutative(), matchable.shareable(), element);
+                List<AnnotationMirror> mirrors = null;
+                if (typeUtils().isSameType(mirror.getAnnotationType(), matchableNodesTypeMirror)) {
+                    // Unpack the mirrors for a repeatable annotation
+                    mirrors = getAnnotationValueList(AnnotationMirror.class, mirror, "value");
+                }
+                int i = 0;
+                for (MatchableNode matchableNode : element.getAnnotationsByType(MatchableNode.class)) {
+                    processMatchableNode(element, topDeclaringType, matchableNode, mirrors != null ? mirrors.get(i++) : mirror);
                 }
             } catch (Throwable t) {
                 reportExceptionThrow(element, t);
@@ -679,8 +706,52 @@ public class MatchProcessor extends AbstractProcessor {
         }
     }
 
-    private void reportExceptionThrow(Element element, Throwable t) {
-        processingEnv.getMessager().printMessage(Kind.ERROR, "Exception throw during processing: " + t.toString() + " " + Arrays.toString(Arrays.copyOf(t.getStackTrace(), 2)), element);
+    private void processMatchableNode(Element element, TypeElement topDeclaringType, MatchableNode matchable, AnnotationMirror mirror) throws GraalInternalError {
+        logMessage("processMatchableNode %s %s %s\n", topDeclaringType, element, matchable);
+        String nodeClass;
+        String nodePackage;
+        TypeMirror nodeClassMirror = null;
+        try {
+            matchable.nodeClass();
+        } catch (MirroredTypeException e) {
+            nodeClassMirror = e.getTypeMirror();
+        }
+        if (nodeClassMirror == null) {
+            throw new GraalInternalError("Can't get mirror for node class %s", element);
+        }
+        if (nodeClassMirror.toString().equals(MatchableNode.class.getName())) {
+            nodeClass = topDeclaringType.getQualifiedName().toString();
+        } else {
+            nodeClass = nodeClassMirror.toString();
+        }
+        nodePackage = findPackage(processingEnv.getElementUtils().getTypeElement(nodeClass));
+        assert nodeClass.startsWith(nodePackage);
+        nodeClass = nodeClass.substring(nodePackage.length() + 1);
+        assert nodeClass.endsWith("Node");
+        String shortName = nodeClass.substring(0, nodeClass.length() - 4);
+
+        Types typeUtils = processingEnv.getTypeUtils();
+        TypeElement nodeClassElement = (TypeElement) typeUtils.asElement(nodeClassMirror);
+        for (String input : matchable.inputs()) {
+            boolean ok = false;
+            TypeElement current = nodeClassElement;
+            while (!ok && current != null) {
+                for (Element fieldElement : ElementFilter.fieldsIn(current.getEnclosedElements())) {
+                    if (fieldElement.getSimpleName().toString().equals(input)) {
+                        ok = true;
+                        break;
+                    }
+                }
+                TypeMirror theSuper = current.getSuperclass();
+                current = (TypeElement) typeUtils.asElement(theSuper);
+            }
+            if (!ok) {
+                String msg = String.format("Input named \"%s\" doesn't exist in %s", input, nodeClassElement.getSimpleName());
+                processingEnv.getMessager().printMessage(Kind.ERROR, msg, element, mirror);
+            }
+        }
+
+        declareType(nodeClassMirror, shortName, nodeClass, nodePackage, matchable.inputs(), matchable.commutative(), matchable.shareable(), element);
     }
 
     private void processMatchRule(Map<TypeElement, MatchRuleDescriptor> map, Element element, AnnotationMirror mirror) {
@@ -691,26 +762,54 @@ public class MatchProcessor extends AbstractProcessor {
                 // The annotation element type should ensure this is true.
                 assert element instanceof ExecutableElement;
 
+                findMatchableNodes(element);
+
                 TypeElement topDeclaringType = topDeclaringType(element);
                 MatchRuleDescriptor info = map.get(topDeclaringType);
                 if (info == null) {
                     info = new MatchRuleDescriptor(topDeclaringType);
                     map.put(topDeclaringType, info);
                 }
+                List<AnnotationMirror> mirrors = null;
                 if (typeUtils().isSameType(mirror.getAnnotationType(), matchRulesTypeMirror)) {
-                    List<AnnotationMirror> value = getAnnotationValueList(AnnotationMirror.class, mirror, "value");
-                    int i = 0;
-                    for (MatchRule matchRule : element.getAnnotationsByType(MatchRule.class)) {
-                        processMethodMatchRule((ExecutableElement) element, info, matchRule, value.get(i++));
-                    }
-                } else {
-                    for (MatchRule matchRule : element.getAnnotationsByType(MatchRule.class)) {
-                        processMethodMatchRule((ExecutableElement) element, info, matchRule, mirror);
-                    }
+                    // Unpack the mirrors for a repeatable annotation
+                    mirrors = getAnnotationValueList(AnnotationMirror.class, mirror, "value");
+                }
+                int i = 0;
+                for (MatchRule matchRule : element.getAnnotationsByType(MatchRule.class)) {
+                    processMethodMatchRule((ExecutableElement) element, info, matchRule, mirrors != null ? mirrors.get(i++) : mirror);
                 }
             } catch (Throwable t) {
                 reportExceptionThrow(element, t);
             }
+        }
+    }
+
+    /**
+     * Search the super types of element for MatchableNode definitions. Any superclass or super
+     * interface can contain definitions of matchable nodes.
+     *
+     * @param element
+     */
+    private void findMatchableNodes(Element element) {
+        processMatchableNode(element);
+        Element enclosing = element.getEnclosingElement();
+        while (enclosing != null) {
+            if (enclosing.getKind() == ElementKind.CLASS || enclosing.getKind() == ElementKind.INTERFACE) {
+                TypeElement current = (TypeElement) enclosing;
+                while (current != null) {
+                    processMatchableNode(current);
+                    for (TypeMirror intf : current.getInterfaces()) {
+                        Element interfaceElement = typeUtils().asElement(intf);
+                        processMatchableNode(interfaceElement);
+                        // Recurse
+                        findMatchableNodes(interfaceElement);
+                    }
+                    TypeMirror theSuper = current.getSuperclass();
+                    current = (TypeElement) typeUtils().asElement(theSuper);
+                }
+            }
+            enclosing = enclosing.getEnclosingElement();
         }
     }
 
@@ -719,6 +818,8 @@ public class MatchProcessor extends AbstractProcessor {
     }
 
     private void processMethodMatchRule(ExecutableElement method, MatchRuleDescriptor info, MatchRule matchRule, AnnotationMirror mirror) {
+        logMessage("processMethodMatchRule %s %s\n", method, mirror);
+
         Types typeUtils = typeUtils();
 
         if (!method.getModifiers().contains(Modifier.PUBLIC)) {
