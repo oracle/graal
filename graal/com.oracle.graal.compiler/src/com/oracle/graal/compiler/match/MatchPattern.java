@@ -22,8 +22,10 @@
  */
 package com.oracle.graal.compiler.match;
 
+import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.Node.Verbosity;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 
 /**
@@ -124,17 +126,17 @@ public class MatchPattern {
     private final MatchPattern[] patterns;
 
     /**
-     * Helper class to visit the inputs.
+     * The inputs to match the patterns against.
      */
-    private final MatchNodeAdapter adapter;
-
-    private static final MatchPattern[] EMPTY_PATTERNS = new MatchPattern[0];
+    private final NodeClass.Position[] inputs;
 
     /**
      * Can there only be one user of the node. Constant nodes can be matched even if there are other
      * users.
      */
     private final boolean singleUser;
+
+    private static final MatchPattern[] EMPTY_PATTERNS = new MatchPattern[0];
 
     public MatchPattern(String name, boolean singleUser) {
         this(null, name, singleUser);
@@ -145,37 +147,28 @@ public class MatchPattern {
         this.name = name;
         this.singleUser = singleUser;
         this.patterns = EMPTY_PATTERNS;
-        this.adapter = null;
+        this.inputs = null;
     }
 
-    public MatchPattern(Class<? extends ValueNode> nodeClass, String name, MatchPattern first, MatchNodeAdapter adapter, boolean singleUser) {
+    private MatchPattern(Class<? extends ValueNode> nodeClass, String name, boolean singleUser, MatchPattern[] patterns, NodeClass.Position[] inputs) {
+        assert inputs == null || inputs.length == patterns.length;
         this.nodeClass = nodeClass;
         this.name = name;
         this.singleUser = singleUser;
-        this.patterns = new MatchPattern[1];
-        patterns[0] = first;
-        this.adapter = adapter;
+        this.patterns = patterns;
+        this.inputs = inputs;
     }
 
-    public MatchPattern(Class<? extends ValueNode> nodeClass, String name, MatchPattern first, MatchPattern second, MatchNodeAdapter adapter, boolean singleUser) {
-        this.nodeClass = nodeClass;
-        this.name = name;
-        this.singleUser = singleUser;
-        this.patterns = new MatchPattern[2];
-        patterns[0] = first;
-        patterns[1] = second;
-        this.adapter = adapter;
+    public MatchPattern(Class<? extends ValueNode> nodeClass, String name, MatchPattern first, NodeClass.Position[] inputs, boolean singleUser) {
+        this(nodeClass, name, singleUser, new MatchPattern[]{first}, inputs);
     }
 
-    public MatchPattern(Class<? extends ValueNode> nodeClass, String name, MatchPattern first, MatchPattern second, MatchPattern third, MatchNodeAdapter adapter, boolean singleUser) {
-        this.nodeClass = nodeClass;
-        this.name = name;
-        this.singleUser = singleUser;
-        this.patterns = new MatchPattern[3];
-        patterns[0] = first;
-        patterns[1] = second;
-        patterns[2] = third;
-        this.adapter = adapter;
+    public MatchPattern(Class<? extends ValueNode> nodeClass, String name, MatchPattern first, MatchPattern second, NodeClass.Position[] inputs, boolean singleUser) {
+        this(nodeClass, name, singleUser, new MatchPattern[]{first, second}, inputs);
+    }
+
+    public MatchPattern(Class<? extends ValueNode> nodeClass, String name, MatchPattern first, MatchPattern second, MatchPattern third, NodeClass.Position[] inputs, boolean singleUser) {
+        this(nodeClass, name, singleUser, new MatchPattern[]{first, second, third}, inputs);
     }
 
     Class<? extends ValueNode> nodeClass() {
@@ -204,6 +197,36 @@ public class MatchPattern {
         return result;
     }
 
+    /**
+     * Convert a list of field names into {@link com.oracle.graal.graph.NodeClass.Position} objects
+     * that can be used to read them during a match. The names should already have been confirmed to
+     * exist in the type.
+     *
+     * @param theClass
+     * @param names
+     * @return an array of Position objects corresponding to the named fields.
+     */
+    public static NodeClass.Position[] findPositions(Class<? extends ValueNode> theClass, String[] names) {
+        NodeClass.Position[] result = new NodeClass.Position[names.length];
+        NodeClass nodeClass = NodeClass.get(theClass);
+        for (int i = 0; i < names.length; i++) {
+            for (NodeClass.Position position : nodeClass.getFirstLevelInputPositions()) {
+                String name = nodeClass.getName(position);
+                if (name.endsWith("#NDF")) {
+                    name = name.substring(0, name.length() - 4);
+                }
+                if (name.equals(names[i])) {
+                    result[i] = position;
+                    break;
+                }
+            }
+            if (result[i] == null) {
+                throw new GraalInternalError("unknown field \"%s\" in class %s", names[i], theClass);
+            }
+        }
+        return result;
+    }
+
     private Result matchUsage(ValueNode node, MatchContext context, boolean atRoot) {
         Result result = matchType(node);
         if (result != Result.OK) {
@@ -221,7 +244,7 @@ public class MatchPattern {
         }
 
         for (int input = 0; input < patterns.length; input++) {
-            result = patterns[input].matchUsage(adapter.getInput(input, node), context, false);
+            result = patterns[input].matchUsage(getInput(input, node), context, false);
             if (result != Result.OK) {
                 return result;
             }
@@ -255,7 +278,7 @@ public class MatchPattern {
         }
 
         for (int input = 0; input < patterns.length; input++) {
-            result = patterns[input].matchShape(adapter.getInput(input, node), statement, false);
+            result = patterns[input].matchShape(getInput(input, node), statement, false);
             if (result != Result.OK) {
                 return result;
             }
@@ -279,11 +302,15 @@ public class MatchPattern {
             sb.append(result);
             for (int input = 0; input < patterns.length; input++) {
                 sb.append(" ");
-                sb.append(patterns[input].formatMatch(adapter.getInput(input, root)));
+                sb.append(patterns[input].formatMatch(getInput(input, root)));
             }
             sb.append(")");
             return sb.toString();
         }
+    }
+
+    private ValueNode getInput(int index, ValueNode node) {
+        return (ValueNode) inputs[index].get(node);
     }
 
     @Override

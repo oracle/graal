@@ -25,7 +25,7 @@ package com.oracle.graal.compiler.match;
 import java.lang.annotation.*;
 
 /**
- * The repeatable representation of {@link MatchableNode}. Should never be used directly.
+ * The repeatable representation of {@link MatchableNode}.
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)

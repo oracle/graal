@@ -55,7 +55,6 @@ import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
 /**
  * LIR generator specialized for AMD64 HotSpot.
  */
-@MatchableNodeImport({"com.oracle.graal.hotspot.nodes.HotSpotMatchableNodes"})
 public class AMD64HotSpotNodeLIRBuilder extends AMD64NodeLIRBuilder implements HotSpotNodeLIRBuilder {
 
     private static ValueNode filterCompression(ValueNode node) {
