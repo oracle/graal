@@ -65,7 +65,7 @@ public class LoweredAtomicReadAndWriteNode extends FixedAccessNode implements St
 
     public void generate(NodeLIRBuilderTool gen) {
         Value address = location().generateAddress(gen, gen.getLIRGeneratorTool(), gen.operand(object()));
-        Value result = gen.getLIRGeneratorTool().emitAtomicReadAndWrite(address, gen.operand(newValue));
+        Value result = gen.getLIRGeneratorTool().emitAtomicReadAndWrite(address, gen.operand(getNewValue()));
         gen.setResult(this, result);
     }
 
@@ -81,4 +81,7 @@ public class LoweredAtomicReadAndWriteNode extends FixedAccessNode implements St
         return false;
     }
 
+    public final ValueNode getNewValue() {
+        return newValue;
+    }
 }

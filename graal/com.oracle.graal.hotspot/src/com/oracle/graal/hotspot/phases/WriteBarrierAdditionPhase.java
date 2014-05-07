@@ -45,6 +45,9 @@ public class WriteBarrierAdditionPhase extends Phase {
                 addReadNodeBarriers((ReadNode) n, graph);
             } else if (n instanceof WriteNode) {
                 addWriteNodeBarriers((WriteNode) n, graph);
+            } else if (n instanceof LoweredAtomicReadAndWriteNode) {
+                LoweredAtomicReadAndWriteNode loweredAtomicReadAndWriteNode = (LoweredAtomicReadAndWriteNode) n;
+                addAtomicReadWriteNodeBarriers(loweredAtomicReadAndWriteNode, graph);
             } else if (n instanceof LoweredCompareAndSwapNode) {
                 addCASBarriers((LoweredCompareAndSwapNode) n, graph);
             } else if (n instanceof ArrayRangeWriteNode) {
@@ -104,6 +107,33 @@ public class WriteBarrierAdditionPhase extends Phase {
                 addG1PostWriteBarrier(node, node.object(), node.value(), node.location(), false, graph);
             } else {
                 addSerialPostWriteBarrier(node, node.object(), node.value(), node.location(), false, graph);
+            }
+        } else {
+            assert barrierType == BarrierType.NONE;
+        }
+    }
+
+    private void addAtomicReadWriteNodeBarriers(LoweredAtomicReadAndWriteNode loweredAtomicReadAndWriteNode, StructuredGraph graph) {
+        BarrierType barrierType = loweredAtomicReadAndWriteNode.getBarrierType();
+        if (barrierType == BarrierType.PRECISE) {
+            if (useG1GC()) {
+                addG1PreWriteBarrier(loweredAtomicReadAndWriteNode, loweredAtomicReadAndWriteNode.object(), null, loweredAtomicReadAndWriteNode.location(), true,
+                                loweredAtomicReadAndWriteNode.getNullCheck(), graph);
+                addG1PostWriteBarrier(loweredAtomicReadAndWriteNode, loweredAtomicReadAndWriteNode.object(), loweredAtomicReadAndWriteNode.getNewValue(), loweredAtomicReadAndWriteNode.location(),
+                                true, graph);
+            } else {
+                addSerialPostWriteBarrier(loweredAtomicReadAndWriteNode, loweredAtomicReadAndWriteNode.object(), loweredAtomicReadAndWriteNode.getNewValue(), loweredAtomicReadAndWriteNode.location(),
+                                true, graph);
+            }
+        } else if (barrierType == BarrierType.IMPRECISE) {
+            if (useG1GC()) {
+                addG1PreWriteBarrier(loweredAtomicReadAndWriteNode, loweredAtomicReadAndWriteNode.object(), null, loweredAtomicReadAndWriteNode.location(), true,
+                                loweredAtomicReadAndWriteNode.getNullCheck(), graph);
+                addG1PostWriteBarrier(loweredAtomicReadAndWriteNode, loweredAtomicReadAndWriteNode.object(), loweredAtomicReadAndWriteNode.getNewValue(), loweredAtomicReadAndWriteNode.location(),
+                                false, graph);
+            } else {
+                addSerialPostWriteBarrier(loweredAtomicReadAndWriteNode, loweredAtomicReadAndWriteNode.object(), loweredAtomicReadAndWriteNode.getNewValue(), loweredAtomicReadAndWriteNode.location(),
+                                false, graph);
             }
         } else {
             assert barrierType == BarrierType.NONE;
