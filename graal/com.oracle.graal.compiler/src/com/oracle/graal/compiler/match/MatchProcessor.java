@@ -36,6 +36,7 @@ import javax.tools.*;
 
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.gen.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 
 /**
@@ -189,6 +190,13 @@ public class MatchProcessor extends AbstractProcessor {
 
         List<String> generateVariants() {
             return matchDescriptor.generateVariants();
+        }
+
+        /**
+         * Recursively accumulate any required NodeClass.Position declarations.
+         */
+        void generatePositionDeclarations(Set<String> declarations) {
+            matchDescriptor.generatePositionDeclarations(declarations);
         }
 
         /**
@@ -369,6 +377,16 @@ public class MatchProcessor extends AbstractProcessor {
             }
         }
 
+        public void generatePositionDeclarations(Set<String> declarations) {
+            if (inputs.length == 0) {
+                return;
+            }
+            declarations.add(generatePositionDeclaration());
+            for (MatchDescriptor desc : inputs) {
+                desc.generatePositionDeclarations(declarations);
+            }
+        }
+
         List<String> recurseVariants(int index) {
             if (inputs.length == 0) {
                 return new ArrayList<>();
@@ -426,7 +444,7 @@ public class MatchProcessor extends AbstractProcessor {
                     return ", true)";
                 } else {
                     if (nodeType.inputs.length > 0) {
-                        return ", MatchPattern.findPositions(" + nodeType.nodeClass + ".class, new String[]{\"" + String.join("\", \"", nodeType.inputs) + "\"})," + !nodeType.shareable + ")";
+                        return ", " + nodeType.nodeClass + "_positions, " + !nodeType.shareable + ")";
                     }
                     if (nodeType.shareable) {
                         return ", false)";
@@ -436,6 +454,10 @@ public class MatchProcessor extends AbstractProcessor {
             return ")";
         }
 
+        String generatePositionDeclaration() {
+            return String.format("private static final NodeClass.Position[] %s_positions = MatchPattern.findPositions(%s.class, new String[]{\"%s\"});", nodeType.nodeClass, nodeType.nodeClass,
+                            String.join("\", \"", nodeType.inputs));
+        }
     }
 
     /**
@@ -468,11 +490,22 @@ public class MatchProcessor extends AbstractProcessor {
             out.println("import " + MatchStatementSet.class.getPackage().getName() + ".*;");
             out.println("import " + GraalInternalError.class.getName() + ";");
             out.println("import " + NodeLIRBuilder.class.getName() + ";");
+            out.println("import " + NodeClass.class.getName() + ";");
             for (String p : requiredPackages) {
                 out.println("import " + p + ".*;");
             }
             out.println("");
             out.println("public class " + matchStatementClassName + " implements " + MatchStatementSet.class.getSimpleName() + " {");
+
+            out.println();
+            out.println("    private static Method lookupMethod(Class<?> theClass, String name, Class<?>... args) {");
+            out.println("        try {");
+            out.println("            return theClass.getDeclaredMethod(name, args);");
+            out.println("        } catch (Exception e) {");
+            out.println("            throw new GraalInternalError(e);");
+            out.println("        }");
+            out.println("    }");
+            out.println();
 
             // Generate declarations for the reflective invocation of the code generation methods.
             for (MethodInvokerItem invoker : invokers.values()) {
@@ -490,21 +523,16 @@ public class MatchProcessor extends AbstractProcessor {
                         types.append(", ");
                     }
                 }
-                out.printf("        private static final String[] %s = new String[] {%s};\n", invoker.argumentsListName(), args);
-                out.printf("        private static final Method %s;\n", invoker.reflectiveMethodName());
-                out.printf("        static {\n");
-                out.printf("            Method result = null;\n");
-                out.printf("            try {\n");
-                out.printf("                result = %s.class.getDeclaredMethod(\"%s\", %s);\n", invoker.nodeLIRBuilderClass, invoker.methodName, types);
-                out.printf("             } catch (Exception e) {\n");
-                out.printf("                 throw new GraalInternalError(e);\n");
-                out.printf("             }\n");
-                out.printf("             %s = result;\n", invoker.reflectiveMethodName());
-                out.printf("        }\n");
-
+                out.printf("    private static final String[] %s = new String[] {%s};\n", invoker.argumentsListName(), args);
+                out.printf("    private static final Method %s = lookupMethod(%s.class, \"%s\", %s);\n", invoker.reflectiveMethodName(), invoker.nodeLIRBuilderClass, invoker.methodName, types);
                 out.println();
 
             }
+
+            for (String positionDeclaration : info.positionDeclarations) {
+                out.println("    " + positionDeclaration);
+            }
+            out.println();
 
             String desc = MatchStatement.class.getSimpleName();
             out.println("    // CheckStyle: stop line length check");
@@ -613,6 +641,7 @@ public class MatchProcessor extends AbstractProcessor {
         final TypeElement topDeclaringType;
         final List<MatchRuleItem> matchRules = new ArrayList<>();
         private final Set<Element> originatingElements = new HashSet<>();
+        public Set<String> positionDeclarations = new LinkedHashSet<>();
 
         public MatchRuleDescriptor(TypeElement topDeclaringType) {
             this.topDeclaringType = topDeclaringType;
@@ -899,6 +928,9 @@ public class MatchProcessor extends AbstractProcessor {
             }
 
             originatingElementsList.addAll(parser.originatingElements);
+
+            // Accumulate any position declarations.
+            parser.generatePositionDeclarations(info.positionDeclarations);
 
             List<String> matches = parser.generateVariants();
             for (String match : matches) {
