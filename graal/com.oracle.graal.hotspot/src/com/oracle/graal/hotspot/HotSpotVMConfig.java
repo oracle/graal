@@ -1029,12 +1029,11 @@ public class HotSpotVMConfig extends CompilerObject {
 
     @HotSpotVMField(name = "Hsail::HSAILKernelDeoptimization::_workitemid", type = "jint", get = HotSpotVMField.Type.OFFSET) @Stable public int hsailDeoptimizationWorkItem;
     @HotSpotVMField(name = "Hsail::HSAILKernelDeoptimization::_actionAndReason", type = "jint", get = HotSpotVMField.Type.OFFSET) @Stable public int hsailDeoptimizationReason;
-    @HotSpotVMField(name = "Hsail::HSAILKernelDeoptimization::_first_frame", type = "HSAILFrame", get = HotSpotVMField.Type.OFFSET) @Stable public int hsailDeoptimizationFrame;
 
     @HotSpotVMField(name = "HSAILFrame::_pc_offset", type = "jint", get = HotSpotVMField.Type.OFFSET) @Stable public int hsailFramePcOffset;
     @HotSpotVMField(name = "HSAILFrame::_num_s_regs", type = "jbyte", get = HotSpotVMField.Type.OFFSET) @Stable public int hsailFrameNumSRegOffset;
     @HotSpotVMField(name = "HSAILFrame::_num_d_regs", type = "jbyte", get = HotSpotVMField.Type.OFFSET) @Stable public int hsailFrameNumDRegOffset;
-    @HotSpotVMConstant(name = "sizeof(HSAILFrame)") @Stable public int hsailFrameSaveAreaOffset;
+    @HotSpotVMConstant(name = "sizeof(HSAILFrame)") @Stable public int hsailFrameHeaderSize;
     @HotSpotVMConstant(name = "sizeof(Hsail::HSAILKernelDeoptimization)") @Stable public int hsailKernelDeoptimizationHeaderSize;
     @HotSpotVMField(name = "Hsail::HSAILDeoptimizationInfo::_deopt_save_states[0]", type = "Hsail::HSAILKernelDeoptimization", get = HotSpotVMField.Type.OFFSET) @Stable public int hsailSaveStatesOffset0;
 

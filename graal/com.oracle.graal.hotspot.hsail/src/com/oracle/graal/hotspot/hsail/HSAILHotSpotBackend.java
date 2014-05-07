@@ -766,17 +766,16 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
             int numStackSlots = (numStackSlotBytes + 7) / 8;
 
             final int offsetToDeoptSaveStates = config.hsailSaveStatesOffset0;
-            final int sizeofKernelDeoptHeader = config.hsailKernelDeoptimizationHeaderSize;
             final int bytesPerSaveArea = 4 * numSRegs + 8 * numDRegs + 8 * numStackSlots;
-            final int sizeofKernelDeopt = sizeofKernelDeoptHeader + bytesPerSaveArea;
+            final int sizeofKernelDeopt = config.hsailKernelDeoptimizationHeaderSize + config.hsailFrameHeaderSize + bytesPerSaveArea;
             final int offsetToNeverRanArray = config.hsailNeverRanArrayOffset;
             final int offsetToDeoptNextIndex = config.hsailDeoptNextIndexOffset;
             final int offsetToDeoptimizationWorkItem = config.hsailDeoptimizationWorkItem;
             final int offsetToDeoptimizationReason = config.hsailDeoptimizationReason;
-            final int offsetToDeoptimizationFrame = config.hsailDeoptimizationFrame;
+            final int offsetToDeoptimizationFrame = config.hsailKernelDeoptimizationHeaderSize;
             final int offsetToFramePc = config.hsailFramePcOffset;
             final int offsetToNumSaves = config.hsailFrameNumSRegOffset;
-            final int offsetToSaveArea = config.hsailFrameSaveAreaOffset;
+            final int offsetToSaveArea = config.hsailFrameHeaderSize;
 
             AllocatableValue scratch64 = HSAIL.d16.asValue(wordKind);
             AllocatableValue cuSaveAreaPtr = HSAIL.d17.asValue(wordKind);
@@ -1149,10 +1148,10 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
         int longSize = providers.getCodeCache().getTarget().arch.getSizeInBytes(Kind.Long);
         int intSize = providers.getCodeCache().getTarget().arch.getSizeInBytes(Kind.Int);
         if (regNumber >= HSAIL.s0.number && regNumber <= HSAIL.s31.number) {
-            long offset = config.hsailFrameSaveAreaOffset + intSize * (regNumber - HSAIL.s0.number);
+            long offset = config.hsailFrameHeaderSize + intSize * (regNumber - HSAIL.s0.number);
             location = ConstantLocationNode.create(FINAL_LOCATION, valueKind, offset, hostGraph);
         } else if (regNumber >= HSAIL.d0.number && regNumber <= HSAIL.d15.number) {
-            long offset = config.hsailFrameSaveAreaOffset + intSize * numSRegs + longSize * (regNumber - HSAIL.d0.number);
+            long offset = config.hsailFrameHeaderSize + intSize * numSRegs + longSize * (regNumber - HSAIL.d0.number);
             location = ConstantLocationNode.create(FINAL_LOCATION, valueKind, offset, hostGraph);
         } else {
             throw GraalInternalError.shouldNotReachHere("unknown hsail register: " + regNumber);
@@ -1167,7 +1166,7 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
         if ((slotSizeInBits == 32) || (slotSizeInBits == 64)) {
             int longSize = providers.getCodeCache().getTarget().arch.getSizeInBytes(Kind.Long);
             int intSize = providers.getCodeCache().getTarget().arch.getSizeInBytes(Kind.Int);
-            long offset = config.hsailFrameSaveAreaOffset + (intSize * numSRegs) + (longSize * numDRegs) + HSAIL.getStackOffsetStart(slot, slotSizeInBits);
+            long offset = config.hsailFrameHeaderSize + (intSize * numSRegs) + (longSize * numDRegs) + HSAIL.getStackOffsetStart(slot, slotSizeInBits);
             LocationNode location = ConstantLocationNode.create(FINAL_LOCATION, valueKind, offset, hostGraph);
             ValueNode valueNode = hostGraph.unique(new FloatingReadNode(hsailFrame, location, null, StampFactory.forKind(valueKind)));
             return valueNode;
