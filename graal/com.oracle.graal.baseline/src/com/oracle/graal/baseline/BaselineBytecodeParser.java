@@ -484,8 +484,7 @@ public class BaselineBytecodeParser extends AbstractBytecodeParser<Value, Baseli
 
     @Override
     protected void emitNullCheck(Value receiver) {
-        // TODO Auto-generated method stub
-        throw GraalInternalError.unimplemented("Auto-generated method stub");
+        gen.emitNullCheck(receiver, createFrameState(frameState));
     }
 
     @Override
@@ -500,9 +499,33 @@ public class BaselineBytecodeParser extends AbstractBytecodeParser<Value, Baseli
         long displacement = lirBuilder.getArrayLengthOffset();
         Value address = gen.emitAddress(array, displacement, Value.ILLEGAL, 0);
         PlatformKind readKind = gen.getPlatformKind(StampFactory.forKind(Kind.Int));
-        LIRFrameState state = null;
-        gen.emitLoad(readKind, address, state);
-        throw GraalInternalError.unimplemented("Auto-generated method stub");
+        LIRFrameState state = createFrameState(frameState);
+        return gen.emitLoad(readKind, address, state);
+    }
+
+    private LIRFrameState createFrameState(BaselineFrameStateBuilder state) {
+        LabelRef exceptionEdge = null;
+        BytecodeFrame caller = null;
+        boolean duringCall = false;
+        int numLocals = state.localsSize();
+        int numStack = state.stackSize();
+        int numLocks = state.lockDepth();
+        Value[] values = new Value[numLocals + numStack + numLocks];
+
+        for (int i = 0; i < numLocals; i++) {
+            values[i] = state.localAt(i);
+        }
+
+        for (int i = 0; i < numStack; i++) {
+            values[numLocals + i] = state.stackAt(i);
+        }
+
+        for (int i = 0; i < numStack; i++) {
+            values[numLocals + numStack + i] = state.lockAt(i);
+        }
+
+        BytecodeFrame frame = new BytecodeFrame(caller, method, bci(), state.rethrowException(), duringCall, values, numLocals, numStack, numLocks);
+        return new LIRFrameState(frame, null, exceptionEdge);
     }
 
     @Override
