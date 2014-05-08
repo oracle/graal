@@ -29,7 +29,6 @@ import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.sparc.*;
-import com.oracle.graal.lir.sparc.SPARCMove.NullCheckOp;
 import com.oracle.graal.nodes.*;
 
 /**
@@ -56,12 +55,6 @@ public abstract class SPARCNodeLIRBuilder extends NodeLIRBuilder {
 
         Value[] parameters = visitInvokeArguments(gen.getResult().getFrameMap().registerConfig.getCallingConvention(CallingConvention.Type.JavaCall, null, sig, gen.target(), false), node.arguments());
         append(new SPARCBreakpointOp(parameters));
-    }
-
-    @Override
-    public void emitNullCheck(ValueNode v, DeoptimizingNode deopting) {
-        assert v.getKind() == Kind.Object;
-        append(new NullCheckOp(gen.load(operand(v)), state(deopting)));
     }
 
     @Override

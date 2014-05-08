@@ -41,7 +41,7 @@ public class NullCheckNode extends DeoptimizingFixedWithNextNode implements LIRL
 
     @Override
     public void generate(NodeLIRBuilderTool generator) {
-        generator.emitNullCheck(object, this);
+        generator.getLIRGeneratorTool().emitNullCheck(generator.operand(object), generator.state(this));
     }
 
     @Override

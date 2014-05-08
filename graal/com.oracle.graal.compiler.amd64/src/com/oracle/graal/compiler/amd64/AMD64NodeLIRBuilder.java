@@ -56,12 +56,6 @@ public abstract class AMD64NodeLIRBuilder extends NodeLIRBuilder {
     }
 
     @Override
-    public void emitNullCheck(ValueNode v, DeoptimizingNode deopt) {
-        assert v.getKind() == Kind.Object : v + " - " + v.stamp() + " @ " + deopt;
-        append(new AMD64Move.NullCheckOp(gen.load(operand(v)), state(deopt)));
-    }
-
-    @Override
     protected boolean peephole(ValueNode valueNode) {
         if ((valueNode instanceof IntegerDivNode) || (valueNode instanceof IntegerRemNode)) {
             FixedBinaryNode divRem = (FixedBinaryNode) valueNode;

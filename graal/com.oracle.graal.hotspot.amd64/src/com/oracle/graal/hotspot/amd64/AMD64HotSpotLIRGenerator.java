@@ -636,4 +636,9 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         Condition finalCondition = mirrored ? cond.mirror() : cond;
         append(new BranchOp(finalCondition, trueLabel, falseLabel, trueLabelProbability));
     }
+
+    public void emitNullCheck(Value address, LIRFrameState state) {
+        assert address.getKind() == Kind.Object : address + " - " + address.getKind() + " not an object!";
+        append(new AMD64Move.NullCheckOp(load(address), state));
+    }
 }

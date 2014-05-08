@@ -894,4 +894,9 @@ public class PTXLIRGenerator extends LIRGenerator {
         throw GraalInternalError.unimplemented();
     }
 
+    public void emitNullCheck(Value address, LIRFrameState state) {
+        assert address.getKind() == Kind.Object : address + " - " + address.getKind() + " not an object!";
+        append(new PTXMove.NullCheckOp(load(address), state));
+    }
+
 }

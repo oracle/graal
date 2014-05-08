@@ -25,11 +25,9 @@ package com.oracle.graal.compiler.hsail;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
-import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.gen.*;
-import com.oracle.graal.lir.hsail.*;
 import com.oracle.graal.nodes.*;
 
 /**
@@ -60,14 +58,6 @@ public abstract class HSAILNodeLIRBuilder extends NodeLIRBuilder {
     @Override
     public void visitBreakpointNode(BreakpointNode node) {
         throw GraalInternalError.unimplemented();
-    }
-
-    @Override
-    public void emitNullCheck(ValueNode v, DeoptimizingNode deopting) {
-        assert v.stamp() instanceof ObjectStamp;
-        Variable obj = newVariable(Kind.Object);
-        gen.emitMove(obj, operand(v));
-        append(new HSAILMove.NullCheckOp(obj, state(deopting)));
     }
 
     @Override

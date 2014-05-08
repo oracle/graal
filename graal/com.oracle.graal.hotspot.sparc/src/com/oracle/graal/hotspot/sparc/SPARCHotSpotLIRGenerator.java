@@ -40,6 +40,7 @@ import com.oracle.graal.lir.StandardOp.SaveRegistersOp;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.sparc.*;
 import com.oracle.graal.lir.sparc.SPARCMove.LoadOp;
+import com.oracle.graal.lir.sparc.SPARCMove.NullCheckOp;
 import com.oracle.graal.lir.sparc.SPARCMove.StoreConstantOp;
 import com.oracle.graal.lir.sparc.SPARCMove.StoreOp;
 import com.oracle.graal.nodes.extended.*;
@@ -339,5 +340,10 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
         append(new SPARCHotSpotCRuntimeCallEpilogueOp(config.threadLastJavaSpOffset(), config.threadLastJavaPcOffset(), config.threadJavaFrameAnchorFlagsOffset(), threadRegister));
 
         return result;
+    }
+
+    public void emitNullCheck(Value address, LIRFrameState state) {
+        assert address.getKind() == Kind.Object : address + " - " + address.getKind() + " not an object!";
+        append(new NullCheckOp(load(address), state));
     }
 }

@@ -39,8 +39,6 @@ public interface NodeLIRBuilderTool extends NodeMappableLIRBuilder {
     // TODO (je) remove and move into the Node
     LIRFrameState state(DeoptimizingNode deopt);
 
-    void emitNullCheck(ValueNode v, DeoptimizingNode deopting);
-
     void emitIf(IfNode i);
 
     void emitConditional(ConditionalNode i);

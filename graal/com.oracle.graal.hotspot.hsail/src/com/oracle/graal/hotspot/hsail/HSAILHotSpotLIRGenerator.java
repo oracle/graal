@@ -285,4 +285,11 @@ public class HSAILHotSpotLIRGenerator extends HSAILLIRGenerator implements HotSp
         throw GraalInternalError.unimplemented();
     }
 
+    public void emitNullCheck(Value address, LIRFrameState state) {
+        assert address.getKind() == Kind.Object : address + " - " + address.getKind() + " not an object!";
+        Variable obj = newVariable(Kind.Object);
+        emitMove(obj, address);
+        append(new HSAILMove.NullCheckOp(obj, state));
+    }
+
 }

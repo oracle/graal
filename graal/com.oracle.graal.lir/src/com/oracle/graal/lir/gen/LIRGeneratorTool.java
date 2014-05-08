@@ -63,6 +63,8 @@ public interface LIRGeneratorTool extends ArithmeticLIRGenerator {
 
     void emitStore(PlatformKind kind, Value address, Value input, LIRFrameState state);
 
+    void emitNullCheck(Value address, LIRFrameState state);
+
     Value emitCompareAndSwap(Value address, Value expectedValue, Value newValue, Value trueValue, Value falseValue);
 
     /**
