@@ -2,6 +2,15 @@
 
 ## `tip`
 ### Graal
+* ...
+
+### Truffle
+* ...
+
+## Version 0.3
+7-May-2014, [Repository Revision](http://hg.openjdk.java.net/graal/graal/rev/XXX)
+
+### Graal
 * Explicit support for oop compression/uncompression in high level graph.
 * LIRGenerator refactoring.
 * Explicit types for inputs (InputType enum).
