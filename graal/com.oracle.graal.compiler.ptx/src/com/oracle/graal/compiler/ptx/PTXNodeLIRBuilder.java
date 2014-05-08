@@ -40,11 +40,6 @@ import com.oracle.graal.nodes.*;
  */
 public class PTXNodeLIRBuilder extends NodeLIRBuilder {
 
-    // Number of the predicate register that can be used when needed.
-    // This value will be recorded and incremented in the LIR instruction
-    // that sets a predicate register. (e.g., CompareOp)
-    private int nextPredRegNum;
-
     public static final ForeignCallDescriptor ARITHMETIC_FREM = new ForeignCallDescriptor("arithmeticFrem", float.class, float.class, float.class);
     public static final ForeignCallDescriptor ARITHMETIC_DREM = new ForeignCallDescriptor("arithmeticDrem", double.class, double.class, double.class);
 
@@ -58,10 +53,6 @@ public class PTXNodeLIRBuilder extends NodeLIRBuilder {
 
     public PTXNodeLIRBuilder(StructuredGraph graph, LIRGeneratorTool lirGen) {
         super(graph, lirGen);
-    }
-
-    public int getNextPredRegNumber() {
-        return nextPredRegNum;
     }
 
     @Override
