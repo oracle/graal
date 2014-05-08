@@ -55,7 +55,6 @@ import com.oracle.graal.truffle.*;
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.CompilerDirectives.SlowPath;
 import com.oracle.truffle.api.frame.*;
-import com.oracle.truffle.api.impl.*;
 import com.oracle.truffle.api.nodes.*;
 
 /**
@@ -119,7 +118,7 @@ public final class HotSpotTruffleRuntime implements GraalTruffleRuntime {
         if (target instanceof OptimizedCallTarget) {
             return OptimizedDirectCallNode.create((OptimizedCallTarget) target);
         } else {
-            return new DefaultDirectCallNode(target);
+            throw new IllegalStateException(String.format("Unexpected call target class %s!", target.getClass()));
         }
     }
 
