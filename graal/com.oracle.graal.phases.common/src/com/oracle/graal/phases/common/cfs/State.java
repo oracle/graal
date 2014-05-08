@@ -22,24 +22,22 @@
  */
 package com.oracle.graal.phases.common.cfs;
 
-import com.oracle.graal.api.meta.Kind;
-import com.oracle.graal.api.meta.ResolvedJavaType;
-import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.DebugMetric;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.calc.IsNullNode;
-import com.oracle.graal.nodes.calc.ObjectEqualsNode;
-import com.oracle.graal.nodes.extended.GuardedNode;
-import com.oracle.graal.nodes.extended.GuardingNode;
-import com.oracle.graal.nodes.java.InstanceOfNode;
-import com.oracle.graal.nodes.spi.ValueProxy;
-import com.oracle.graal.compiler.common.type.ObjectStamp;
-import com.oracle.graal.nodes.type.StampTool;
-import com.oracle.graal.nodes.util.GraphUtil;
-import com.oracle.graal.phases.graph.MergeableState;
+import static com.oracle.graal.graph.util.CollectionsAccess.*;
 
-import java.lang.reflect.Modifier;
+import java.lang.reflect.*;
 import java.util.*;
+
+import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.debug.*;
+import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.calc.*;
+import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.nodes.java.*;
+import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.type.*;
+import com.oracle.graal.nodes.util.*;
+import com.oracle.graal.phases.graph.*;
 
 /**
  * A State instance is mutated in place as each FixedNode is visited in a basic block of
@@ -116,29 +114,29 @@ public final class State extends MergeableState<State> implements Cloneable {
      * </p>
      *
      */
-    private IdentityHashMap<ValueNode, Witness> typeRefinements;
+    private Map<ValueNode, Witness> typeRefinements;
 
-    IdentityHashMap<ValueNode, GuardingNode> knownNull;
-    IdentityHashMap<LogicNode, GuardingNode> trueFacts;
-    IdentityHashMap<LogicNode, GuardingNode> falseFacts;
+    Map<ValueNode, GuardingNode> knownNull;
+    Map<LogicNode, GuardingNode> trueFacts;
+    Map<LogicNode, GuardingNode> falseFacts;
 
     public State() {
-        this.typeRefinements = new IdentityHashMap<>();
-        this.knownNull = new IdentityHashMap<>();
-        this.trueFacts = new IdentityHashMap<>();
-        this.falseFacts = new IdentityHashMap<>();
+        this.typeRefinements = newNodeIdentityMap();
+        this.knownNull = newNodeIdentityMap();
+        this.trueFacts = newNodeIdentityMap();
+        this.falseFacts = newNodeIdentityMap();
     }
 
     public State(State other) {
         this.isUnreachable = other.isUnreachable;
         this.versionNr = other.versionNr;
-        this.typeRefinements = new IdentityHashMap<>();
+        this.typeRefinements = newNodeIdentityMap();
         for (Map.Entry<ValueNode, Witness> entry : other.typeRefinements.entrySet()) {
             this.typeRefinements.put(entry.getKey(), new Witness(entry.getValue()));
         }
-        this.knownNull = new IdentityHashMap<>(other.knownNull);
-        this.trueFacts = new IdentityHashMap<>(other.trueFacts);
-        this.falseFacts = new IdentityHashMap<>(other.falseFacts);
+        this.knownNull = newNodeIdentityMap(other.knownNull);
+        this.trueFacts = newNodeIdentityMap(other.trueFacts);
+        this.falseFacts = newNodeIdentityMap(other.falseFacts);
     }
 
     public boolean repOK() {
@@ -167,8 +165,8 @@ public final class State extends MergeableState<State> implements Cloneable {
         return result;
     }
 
-    private IdentityHashMap<ValueNode, Witness> mergeKnownTypes(MergeNode merge, ArrayList<State> withReachableStates) {
-        IdentityHashMap<ValueNode, Witness> newKnownTypes = new IdentityHashMap<>();
+    private Map<ValueNode, Witness> mergeKnownTypes(MergeNode merge, ArrayList<State> withReachableStates) {
+        Map<ValueNode, Witness> newKnownTypes = newNodeIdentityMap();
 
         for (Map.Entry<ValueNode, Witness> entry : typeRefinements.entrySet()) {
             ValueNode node = entry.getKey();
@@ -191,9 +189,9 @@ public final class State extends MergeableState<State> implements Cloneable {
         return newKnownTypes;
     }
 
-    private IdentityHashMap<ValueNode, GuardingNode> mergeKnownNull(MergeNode merge, ArrayList<State> withReachableStates) {
+    private Map<ValueNode, GuardingNode> mergeKnownNull(MergeNode merge, ArrayList<State> withReachableStates) {
         // newKnownNull starts empty
-        IdentityHashMap<ValueNode, GuardingNode> newKnownNull = new IdentityHashMap<>();
+        Map<ValueNode, GuardingNode> newKnownNull = newNodeIdentityMap();
         for (Map.Entry<ValueNode, GuardingNode> entry : knownNull.entrySet()) {
             ValueNode key = entry.getKey();
             GuardingNode newGN = entry.getValue();
@@ -233,7 +231,7 @@ public final class State extends MergeableState<State> implements Cloneable {
      * when merging type-witnesses and known-null maps.
      * </p>
      */
-    private void mergePhis(MergeNode merge, List<State> withStates, IdentityHashMap<ValueNode, Witness> newKnownPhiTypes, IdentityHashMap<ValueNode, GuardingNode> newKnownNullPhis) {
+    private void mergePhis(MergeNode merge, List<State> withStates, Map<ValueNode, Witness> newKnownPhiTypes, Map<ValueNode, GuardingNode> newKnownNullPhis) {
 
         if (merge instanceof LoopBeginNode) {
             return;
@@ -303,9 +301,9 @@ public final class State extends MergeableState<State> implements Cloneable {
         }
 
         // may also get updated in a moment, during processing of phi nodes.
-        IdentityHashMap<ValueNode, Witness> newKnownTypes = mergeKnownTypes(merge, withReachableStates);
+        Map<ValueNode, Witness> newKnownTypes = mergeKnownTypes(merge, withReachableStates);
         // may also get updated in a moment, during processing of phi nodes.
-        IdentityHashMap<ValueNode, GuardingNode> newKnownNull = mergeKnownNull(merge, withReachableStates);
+        Map<ValueNode, GuardingNode> newKnownNull = mergeKnownNull(merge, withReachableStates);
         mergePhis(merge, withStates, newKnownTypes, newKnownNull);
         this.typeRefinements = newKnownTypes;
         this.knownNull = newKnownNull;
@@ -318,8 +316,8 @@ public final class State extends MergeableState<State> implements Cloneable {
         return true;
     }
 
-    private IdentityHashMap<LogicNode, GuardingNode> mergeTrueFacts(ArrayList<State> withReachableStates, GuardingNode merge) {
-        IdentityHashMap<LogicNode, GuardingNode> newTrueConditions = new IdentityHashMap<>();
+    private Map<LogicNode, GuardingNode> mergeTrueFacts(ArrayList<State> withReachableStates, GuardingNode merge) {
+        Map<LogicNode, GuardingNode> newTrueConditions = newNodeIdentityMap();
         for (Map.Entry<LogicNode, GuardingNode> entry : trueFacts.entrySet()) {
             LogicNode check = entry.getKey();
             GuardingNode guard = entry.getValue();
@@ -341,8 +339,8 @@ public final class State extends MergeableState<State> implements Cloneable {
         return newTrueConditions;
     }
 
-    private IdentityHashMap<LogicNode, GuardingNode> mergeFalseFacts(ArrayList<State> withReachableStates, GuardingNode merge) {
-        IdentityHashMap<LogicNode, GuardingNode> newFalseConditions = new IdentityHashMap<>();
+    private Map<LogicNode, GuardingNode> mergeFalseFacts(ArrayList<State> withReachableStates, GuardingNode merge) {
+        Map<LogicNode, GuardingNode> newFalseConditions = newNodeIdentityMap();
         for (Map.Entry<LogicNode, GuardingNode> entry : falseFacts.entrySet()) {
             LogicNode check = entry.getKey();
             GuardingNode guard = entry.getValue();
@@ -653,7 +651,7 @@ public final class State extends MergeableState<State> implements Cloneable {
      * </p>
      *
      */
-    private void addFactPrimordial(LogicNode condition, IdentityHashMap<LogicNode, GuardingNode> to, GuardingNode anchor) {
+    private void addFactPrimordial(LogicNode condition, Map<LogicNode, GuardingNode> to, GuardingNode anchor) {
         assert condition != null;
         if (!to.containsKey(condition)) {
             versionNr++;

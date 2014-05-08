@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.phases.common;
 
+import static com.oracle.graal.graph.util.CollectionsAccess.*;
+
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
@@ -101,37 +103,37 @@ public class ConditionalEliminationPhase extends Phase {
 
     public static class State extends MergeableState<State> implements Cloneable {
 
-        private IdentityHashMap<ValueNode, ResolvedJavaType> knownTypes;
+        private Map<ValueNode, ResolvedJavaType> knownTypes;
         private HashSet<ValueNode> knownNonNull;
         private HashSet<ValueNode> knownNull;
-        private IdentityHashMap<LogicNode, ValueNode> trueConditions;
-        private IdentityHashMap<LogicNode, ValueNode> falseConditions;
-        private IdentityHashMap<ValueNode, GuardedStamp> valueConstraints;
+        private Map<LogicNode, ValueNode> trueConditions;
+        private Map<LogicNode, ValueNode> falseConditions;
+        private Map<ValueNode, GuardedStamp> valueConstraints;
 
         public State() {
-            this.knownTypes = new IdentityHashMap<>();
+            this.knownTypes = newNodeIdentityMap();
             this.knownNonNull = new HashSet<>();
             this.knownNull = new HashSet<>();
-            this.trueConditions = new IdentityHashMap<>();
-            this.falseConditions = new IdentityHashMap<>();
-            this.valueConstraints = new IdentityHashMap<>();
+            this.trueConditions = newNodeIdentityMap();
+            this.falseConditions = newNodeIdentityMap();
+            this.valueConstraints = newNodeIdentityMap();
         }
 
         public State(State other) {
-            this.knownTypes = new IdentityHashMap<>(other.knownTypes);
+            this.knownTypes = newNodeIdentityMap(other.knownTypes);
             this.knownNonNull = new HashSet<>(other.knownNonNull);
             this.knownNull = new HashSet<>(other.knownNull);
-            this.trueConditions = new IdentityHashMap<>(other.trueConditions);
-            this.falseConditions = new IdentityHashMap<>(other.falseConditions);
-            this.valueConstraints = new IdentityHashMap<>(other.valueConstraints);
+            this.trueConditions = newNodeIdentityMap(other.trueConditions);
+            this.falseConditions = newNodeIdentityMap(other.falseConditions);
+            this.valueConstraints = newNodeIdentityMap(other.valueConstraints);
         }
 
         @Override
         public boolean merge(MergeNode merge, List<State> withStates) {
-            IdentityHashMap<ValueNode, ResolvedJavaType> newKnownTypes = new IdentityHashMap<>();
-            IdentityHashMap<LogicNode, ValueNode> newTrueConditions = new IdentityHashMap<>();
-            IdentityHashMap<LogicNode, ValueNode> newFalseConditions = new IdentityHashMap<>();
-            IdentityHashMap<ValueNode, GuardedStamp> newValueConstraints = new IdentityHashMap<>();
+            Map<ValueNode, ResolvedJavaType> newKnownTypes = newNodeIdentityMap();
+            Map<LogicNode, ValueNode> newTrueConditions = newNodeIdentityMap();
+            Map<LogicNode, ValueNode> newFalseConditions = newNodeIdentityMap();
+            Map<ValueNode, GuardedStamp> newValueConstraints = newNodeIdentityMap();
 
             HashSet<ValueNode> newKnownNull = new HashSet<>(knownNull);
             HashSet<ValueNode> newKnownNonNull = new HashSet<>(knownNonNull);

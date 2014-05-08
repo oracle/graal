@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.phases.graph;
 
+import static com.oracle.graal.graph.util.CollectionsAccess.*;
+
 import java.util.*;
 
 import com.oracle.graal.compiler.common.cfg.*;
@@ -54,7 +56,7 @@ public final class ReentrantBlockIterator {
     }
 
     public static <StateT> LoopInfo<StateT> processLoop(BlockIteratorClosure<StateT> closure, Loop<Block> loop, StateT initialState) {
-        IdentityHashMap<FixedNode, StateT> blockEndStates = apply(closure, loop.getHeader(), initialState, new HashSet<>(loop.getBlocks()));
+        Map<FixedNode, StateT> blockEndStates = apply(closure, loop.getHeader(), initialState, new HashSet<>(loop.getBlocks()));
 
         LoopInfo<StateT> info = new LoopInfo<>();
         List<Block> predecessors = loop.getHeader().getPredecessors();
@@ -77,12 +79,12 @@ public final class ReentrantBlockIterator {
         apply(closure, start, closure.getInitialState(), null);
     }
 
-    public static <StateT> IdentityHashMap<FixedNode, StateT> apply(BlockIteratorClosure<StateT> closure, Block start, StateT initialState, Set<Block> boundary) {
+    public static <StateT> Map<FixedNode, StateT> apply(BlockIteratorClosure<StateT> closure, Block start, StateT initialState, Set<Block> boundary) {
         Deque<Block> blockQueue = new ArrayDeque<>();
         /*
          * States are stored on EndNodes before merges, and on BeginNodes after ControlSplitNodes.
          */
-        IdentityHashMap<FixedNode, StateT> states = new IdentityHashMap<>();
+        Map<FixedNode, StateT> states = newNodeIdentityMap();
 
         StateT state = initialState;
         Block current = start;

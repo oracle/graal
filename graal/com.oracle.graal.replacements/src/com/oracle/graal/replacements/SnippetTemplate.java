@@ -24,9 +24,10 @@ package com.oracle.graal.replacements;
 
 import static com.oracle.graal.api.meta.LocationIdentity.*;
 import static com.oracle.graal.api.meta.MetaUtil.*;
-import static com.oracle.graal.debug.Debug.*;
-import static java.util.FormattableFlags.*;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
+import static com.oracle.graal.debug.Debug.*;
+import static com.oracle.graal.graph.util.CollectionsAccess.*;
+import static java.util.FormattableFlags.*;
 
 import java.io.*;
 import java.lang.reflect.*;
@@ -494,7 +495,7 @@ public class SnippetTemplate {
 
         // Copy snippet graph, replacing constant parameters with given arguments
         final StructuredGraph snippetCopy = new StructuredGraph(snippetGraph.name, snippetGraph.method());
-        IdentityHashMap<Node, Node> nodeReplacements = new IdentityHashMap<>();
+        Map<Node, Node> nodeReplacements = newNodeIdentityMap();
         nodeReplacements.put(snippetGraph.start(), snippetCopy.start());
 
         MetaAccessProvider metaAccess = providers.getMetaAccess();
@@ -790,8 +791,8 @@ public class SnippetTemplate {
      *
      * @return the map that will be used to bind arguments to parameters when inlining this template
      */
-    private IdentityHashMap<Node, Node> bind(StructuredGraph replaceeGraph, MetaAccessProvider metaAccess, Arguments args) {
-        IdentityHashMap<Node, Node> replacements = new IdentityHashMap<>();
+    private Map<Node, Node> bind(StructuredGraph replaceeGraph, MetaAccessProvider metaAccess, Arguments args) {
+        Map<Node, Node> replacements = newNodeIdentityMap();
         assert args.info.getParameterCount() == parameters.length : "number of args (" + args.info.getParameterCount() + ") != number of parameters (" + parameters.length + ")";
         for (int i = 0; i < parameters.length; i++) {
             Object parameter = parameters[i];
@@ -1031,7 +1032,7 @@ public class SnippetTemplate {
             StartNode entryPointNode = snippet.start();
             FixedNode firstCFGNode = entryPointNode.next();
             StructuredGraph replaceeGraph = replacee.graph();
-            IdentityHashMap<Node, Node> replacements = bind(replaceeGraph, metaAccess, args);
+            Map<Node, Node> replacements = bind(replaceeGraph, metaAccess, args);
             replacements.put(entryPointNode, BeginNode.prevBegin(replacee));
             Map<Node, Node> duplicates = replaceeGraph.addDuplicates(nodes, snippet, snippet.getNodeCount(), replacements);
             Debug.dump(replaceeGraph, "After inlining snippet %s", snippet.method());
@@ -1184,7 +1185,7 @@ public class SnippetTemplate {
             StartNode entryPointNode = snippet.start();
             FixedNode firstCFGNode = entryPointNode.next();
             StructuredGraph replaceeGraph = replacee.graph();
-            IdentityHashMap<Node, Node> replacements = bind(replaceeGraph, metaAccess, args);
+            Map<Node, Node> replacements = bind(replaceeGraph, metaAccess, args);
             replacements.put(entryPointNode, tool.getCurrentGuardAnchor().asNode());
             Map<Node, Node> duplicates = replaceeGraph.addDuplicates(nodes, snippet, snippet.getNodeCount(), replacements);
             Debug.dump(replaceeGraph, "After inlining snippet %s", snippetCopy.method());

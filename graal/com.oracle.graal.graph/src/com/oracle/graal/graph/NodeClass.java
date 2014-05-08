@@ -23,6 +23,7 @@
 package com.oracle.graal.graph;
 
 import static com.oracle.graal.graph.Graph.*;
+import static com.oracle.graal.graph.util.CollectionsAccess.*;
 
 import java.lang.reflect.*;
 import java.util.*;
@@ -1371,12 +1372,13 @@ public final class NodeClass extends FieldIntrospection {
 
     static Map<Node, Node> addGraphDuplicate(final Graph graph, final Graph oldGraph, int estimatedNodeCount, Iterable<Node> nodes, final DuplicationReplacement replacements) {
         final Map<Node, Node> newNodes;
-        if (estimatedNodeCount > (oldGraph.getNodeCount() + oldGraph.getNodesDeletedSinceLastCompression() >> 4)) {
+        int denseThreshold = oldGraph.getNodeCount() + oldGraph.getNodesDeletedSinceLastCompression() >> 4;
+        if (estimatedNodeCount > denseThreshold) {
             // Use dense map
             newNodes = new NodeNodeMap(oldGraph);
         } else {
             // Use sparse map
-            newNodes = new IdentityHashMap<>();
+            newNodes = newIdentityMap();
         }
         createNodeDuplicates(graph, nodes, replacements, newNodes);
 

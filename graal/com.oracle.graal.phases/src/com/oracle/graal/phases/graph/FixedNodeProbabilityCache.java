@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.phases.graph;
 
+import static com.oracle.graal.graph.util.CollectionsAccess.*;
+
 import java.util.*;
 import java.util.function.*;
 
@@ -37,7 +39,7 @@ public class FixedNodeProbabilityCache implements ToDoubleFunction<FixedNode> {
 
     private static final DebugMetric metricComputeNodeProbability = Debug.metric("ComputeNodeProbability");
 
-    private final IdentityHashMap<FixedNode, Double> cache = new IdentityHashMap<>();
+    private final Map<FixedNode, Double> cache = newIdentityMap();
 
     public double applyAsDouble(FixedNode node) {
         metricComputeNodeProbability.increment();

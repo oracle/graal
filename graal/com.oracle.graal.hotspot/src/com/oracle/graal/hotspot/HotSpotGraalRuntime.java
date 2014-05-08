@@ -34,11 +34,13 @@ import sun.reflect.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.stack.*;
+import com.oracle.graal.api.collections.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.target.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.bridge.*;
 import com.oracle.graal.hotspot.logging.*;
 import com.oracle.graal.hotspot.meta.*;
@@ -359,11 +361,15 @@ public final class HotSpotGraalRuntime implements GraalRuntime, RuntimeProvider,
         return getClass().getSimpleName();
     }
 
+    private final NodeCollectionsProvider nodeCollectionsProvider = new DefaultNodeCollectionsProvider();
+
     @SuppressWarnings("unchecked")
     @Override
     public <T> T getCapability(Class<T> clazz) {
         if (clazz == RuntimeProvider.class) {
             return (T) this;
+        } else if (clazz == CollectionsProvider.class || clazz == NodeCollectionsProvider.class) {
+            return (T) nodeCollectionsProvider;
         } else if (clazz == StackIntrospection.class) {
             return (T) this;
         } else if (clazz == SnippetReflectionProvider.class) {

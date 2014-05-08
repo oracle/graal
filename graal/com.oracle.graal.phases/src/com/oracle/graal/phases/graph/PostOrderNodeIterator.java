@@ -25,6 +25,7 @@ package com.oracle.graal.phases.graph;
 import java.util.*;
 
 import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.util.*;
 import com.oracle.graal.nodes.*;
 
 /**
@@ -37,22 +38,23 @@ import com.oracle.graal.nodes.*;
  * <p>
  * While iterating it maintains a user-defined state by calling the methods available in
  * {@link MergeableState}.
- * 
+ *
  * @param <T> the type of {@link MergeableState} handled by this PostOrderNodeIterator
  */
 public abstract class PostOrderNodeIterator<T extends MergeableState<T>> {
 
     private final NodeBitMap visitedEnds;
     private final Deque<BeginNode> nodeQueue;
-    private final IdentityHashMap<FixedNode, T> nodeStates;
+    private final Map<FixedNode, T> nodeStates;
     private final FixedNode start;
 
     protected T state;
 
     public PostOrderNodeIterator(FixedNode start, T initialState) {
-        visitedEnds = start.graph().createNodeBitMap();
+        StructuredGraph graph = start.graph();
+        visitedEnds = graph.createNodeBitMap();
         nodeQueue = new ArrayDeque<>();
-        nodeStates = new IdentityHashMap<>();
+        nodeStates = CollectionsAccess.newNodeIdentityMap();
         this.start = start;
         this.state = initialState;
     }

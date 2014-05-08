@@ -24,6 +24,7 @@ package com.oracle.graal.truffle.hotspot;
 
 import static com.oracle.graal.api.code.CodeUtil.*;
 import static com.oracle.graal.compiler.GraalCompiler.*;
+import static com.oracle.graal.graph.util.CollectionsAccess.*;
 import static com.oracle.graal.truffle.TruffleCompilerOptions.*;
 
 import java.util.*;
@@ -71,7 +72,7 @@ public final class HotSpotTruffleRuntime implements GraalTruffleRuntime {
     private StackIntrospection stackIntrospection;
     private ArrayList<String> includes;
     private ArrayList<String> excludes;
-    private Map<OptimizedCallTarget, Future<?>> compilations = new IdentityHashMap<>();
+    private Map<OptimizedCallTarget, Future<?>> compilations = newIdentityMap();
     private final ThreadPoolExecutor compileQueue;
 
     private final ResolvedJavaMethod[] callNodeMethod;

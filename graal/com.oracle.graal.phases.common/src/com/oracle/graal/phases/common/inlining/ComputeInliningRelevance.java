@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.phases.common.inlining;
 
+import static com.oracle.graal.graph.util.CollectionsAccess.*;
+
 import java.util.*;
 import java.util.function.*;
 
@@ -46,7 +48,7 @@ public class ComputeInliningRelevance {
      * Node relevances are pre-computed for all invokes if the graph contains loops. If there are no
      * loops, the computation happens lazily based on {@link #rootScope}.
      */
-    private IdentityHashMap<FixedNode, Double> nodeRelevances;
+    private Map<FixedNode, Double> nodeRelevances;
     /**
      * This scope is non-null if (and only if) there are no loops in the graph. In this case, the
      * root scope is used to compute invoke relevances on the fly.
@@ -69,10 +71,10 @@ public class ComputeInliningRelevance {
             rootScope = new Scope(graph.start(), null);
         } else {
             if (nodeRelevances == null) {
-                nodeRelevances = new IdentityHashMap<>(EXPECTED_MIN_INVOKE_COUNT + graph.getNodeCount() / EXPECTED_INVOKE_RATIO);
+                nodeRelevances = newNodeIdentityMap(EXPECTED_MIN_INVOKE_COUNT + graph.getNodeCount() / EXPECTED_INVOKE_RATIO);
             }
             NodeWorkList workList = graph.createNodeWorkList();
-            IdentityHashMap<LoopBeginNode, Scope> loops = new IdentityHashMap<>(EXPECTED_LOOP_COUNT);
+            Map<LoopBeginNode, Scope> loops = newNodeIdentityMap(EXPECTED_LOOP_COUNT);
 
             loops.put(null, new Scope(graph.start(), null));
             for (LoopBeginNode loopBegin : graph.getNodes(LoopBeginNode.class)) {
@@ -97,7 +99,7 @@ public class ComputeInliningRelevance {
      * Determines the parent of the given loop and creates a {@link Scope} object for each one. This
      * method will call itself recursively if no {@link Scope} for the parent loop exists.
      */
-    private Scope createLoopScope(LoopBeginNode loopBegin, IdentityHashMap<LoopBeginNode, Scope> loops) {
+    private Scope createLoopScope(LoopBeginNode loopBegin, Map<LoopBeginNode, Scope> loops) {
         Scope scope = loops.get(loopBegin);
         if (scope == null) {
             final Scope parent;

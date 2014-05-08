@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.compiler.gen;
 
+import static com.oracle.graal.graph.util.CollectionsAccess.*;
+
 import java.util.*;
 import java.util.Map.Entry;
 
@@ -46,8 +48,8 @@ public class DebugInfoBuilder {
         this.nodeOperands = nodeOperands;
     }
 
-    protected final HashMap<VirtualObjectNode, VirtualObject> virtualObjects = new HashMap<>();
-    protected final IdentityHashMap<VirtualObjectNode, EscapeObjectState> objectStates = new IdentityHashMap<>();
+    protected final Map<VirtualObjectNode, VirtualObject> virtualObjects = new HashMap<>();
+    protected final Map<VirtualObjectNode, EscapeObjectState> objectStates = newNodeIdentityMap();
 
     public LIRFrameState build(FrameState topState, LabelRef exceptionEdge) {
         assert virtualObjects.size() == 0;
@@ -76,7 +78,7 @@ public class DebugInfoBuilder {
             boolean changed;
             do {
                 changed = false;
-                IdentityHashMap<VirtualObjectNode, VirtualObject> virtualObjectsCopy = new IdentityHashMap<>(virtualObjects);
+                Map<VirtualObjectNode, VirtualObject> virtualObjectsCopy = newIdentityMap(virtualObjects);
                 for (Entry<VirtualObjectNode, VirtualObject> entry : virtualObjectsCopy.entrySet()) {
                     if (entry.getValue().getValues() == null) {
                         VirtualObjectNode vobj = entry.getKey();
