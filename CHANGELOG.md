@@ -13,7 +13,7 @@
 
 ### Truffle
 * The method `CallTarget#call` takes now a variable number of Object arguments.
-* Support for collecting stack traces and for accessing the current frame in slow paths.
+* Support for collecting stack traces and for accessing the current frame in slow paths (see `TruffleRuntime#getStackTrace`).
 * Renamed `CallNode` to `DirectCallNode`.
 * Renamed `TruffleRuntime#createCallNode` to `TruffleRuntime#createDirectCallNode`.
 * Added `IndirectCallNode` for calls with a changing `CallTarget`.
