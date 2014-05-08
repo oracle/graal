@@ -478,6 +478,14 @@ public class BaselineBytecodeParser extends AbstractBytecodeParser<Value, Baseli
 
     @Override
     protected Value genLoadField(Value receiver, ResolvedJavaField field) {
+        if (field.isStatic()) {
+            Value classRef = lirBuilder.getClassConstant(field.getDeclaringClass());
+            long displacement = lirBuilder.getFieldOffset(field);
+            Value address = gen.emitAddress(classRef, displacement, Value.ILLEGAL, 0);
+            PlatformKind readKind = gen.getPlatformKind(StampFactory.forKind(field.getKind()));
+            LIRFrameState state = createFrameState(frameState);
+            return gen.emitLoad(readKind, address, state);
+        }
         // TODO Auto-generated method stub
         throw GraalInternalError.unimplemented("Auto-generated method stub");
     }
