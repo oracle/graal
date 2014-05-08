@@ -47,7 +47,22 @@ public class ExceptionObjectNode extends DispatchBeginNode implements Lowerable,
 
     @Override
     public void lower(LoweringTool tool) {
-        tool.getLowerer().lower(this, tool);
+        if (graph().getGuardsStage() == StructuredGraph.GuardsStage.FIXED_DEOPTS) {
+            /*
+             * Now the lowering to BeginNode+LoadExceptionNode can be performed, since no more
+             * deopts can float in between the begin node and the load exception node.
+             */
+            LocationIdentity locationsKilledByInvoke = ((InvokeWithExceptionNode) predecessor()).getLocationIdentity();
+            BeginNode entry = graph().add(new KillingBeginNode(locationsKilledByInvoke));
+            LoadExceptionObjectNode loadException = graph().add(new LoadExceptionObjectNode(StampFactory.declaredNonNull(tool.getMetaAccess().lookupJavaType(Throwable.class))));
+
+            loadException.setStateAfter(stateAfter());
+            replaceAtUsages(InputType.Value, loadException);
+            graph().replaceFixedWithFixed(this, entry);
+            entry.graph().addAfterFixed(entry, loadException);
+
+            loadException.lower(tool);
+        }
     }
 
     @Override
