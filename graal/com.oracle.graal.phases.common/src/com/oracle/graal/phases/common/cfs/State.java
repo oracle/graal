@@ -97,32 +97,26 @@ public final class State extends MergeableState<State> implements Cloneable {
 
     /**
      * <p>
-     * This map semantically tracks "facts" (ie, properties valid for the program-point the state
-     * refers to) as opposed to floating-guard-dependent properties. The
-     * {@link com.oracle.graal.nodes.extended.GuardingNode} being tracked comes handy at
-     * {@link com.oracle.graal.phases.common.cfs.FlowSensitiveReduction#visitFixedGuardNode(com.oracle.graal.nodes.FixedGuardNode)}
-     * .
+     * This map tracks properties about reference-values, ie combinations of: definitely-null,
+     * known-to-be-non-null, seen-type.
      * </p>
      *
      * <p>
-     * On a related note, {@link #typeRefinements} also captures information the way
-     * {@link #trueFacts} and {@link #falseFacts} do, including "witnessing" guards. Why not just
-     * standardize on one of them, and drop the other? Because the {@link #typeRefinements} eagerly
-     * aggregates information for easier querying afterwards, e.g. when producing a "downcasted"
-     * value (which involves building a {@link com.oracle.graal.nodes.PiNode}, see
-     * {@link EquationalReasoner#downcast(com.oracle.graal.nodes.ValueNode) downcast()}
+     * In contrast to {@link #trueFacts} and {@link #falseFacts}, this map can answer queries even
+     * though the exact {@link LogicNode} standing for such query hasn't been tracked. For example,
+     * queries about subtyping. Additionally, a {@link Witness} can combine separate pieces of
+     * information more flexibly, eg, two separate observations about non-null and check-cast are
+     * promoted to an instance-of witness.
      * </p>
      *
      */
     private Map<ValueNode, Witness> typeRefinements;
 
-    Map<ValueNode, GuardingNode> knownNull;
     Map<LogicNode, GuardingNode> trueFacts;
     Map<LogicNode, GuardingNode> falseFacts;
 
     public State() {
         this.typeRefinements = newNodeIdentityMap();
-        this.knownNull = newNodeIdentityMap();
         this.trueFacts = newNodeIdentityMap();
         this.falseFacts = newNodeIdentityMap();
     }
@@ -134,7 +128,6 @@ public final class State extends MergeableState<State> implements Cloneable {
         for (Map.Entry<ValueNode, Witness> entry : other.typeRefinements.entrySet()) {
             this.typeRefinements.put(entry.getKey(), new Witness(entry.getValue()));
         }
-        this.knownNull = newNodeIdentityMap(other.knownNull);
         this.trueFacts = newNodeIdentityMap(other.trueFacts);
         this.falseFacts = newNodeIdentityMap(other.falseFacts);
     }
@@ -143,10 +136,6 @@ public final class State extends MergeableState<State> implements Cloneable {
         // trueFacts and falseFacts disjoint
         for (LogicNode trueFact : trueFacts.keySet()) {
             assert !falseFacts.containsKey(trueFact) : trueFact + " tracked as both true and false fact.";
-        }
-        // no scrutinee tracked as both known-null and known-non-null
-        for (ValueNode subject : knownNull.keySet()) {
-            assert !isNonNull(subject) : subject + " tracked as both known-null and known-non-null.";
         }
         return true;
     }
@@ -189,31 +178,6 @@ public final class State extends MergeableState<State> implements Cloneable {
         return newKnownTypes;
     }
 
-    private Map<ValueNode, GuardingNode> mergeKnownNull(MergeNode merge, ArrayList<State> withReachableStates) {
-        // newKnownNull starts empty
-        Map<ValueNode, GuardingNode> newKnownNull = newNodeIdentityMap();
-        for (Map.Entry<ValueNode, GuardingNode> entry : knownNull.entrySet()) {
-            ValueNode key = entry.getKey();
-            GuardingNode newGN = entry.getValue();
-            boolean missing = false;
-
-            for (State other : withReachableStates) {
-                GuardingNode otherGuard = other.knownNull.get(key);
-                if (otherGuard == null) {
-                    missing = true;
-                    break;
-                }
-                if (otherGuard != newGN) {
-                    newGN = merge;
-                }
-            }
-            if (!missing) {
-                newKnownNull.put(key, newGN);
-            }
-        }
-        return newKnownNull;
-    }
-
     /**
      * <p>
      * This method handles phis, by adding to the resulting state any information that can be gained
@@ -231,7 +195,7 @@ public final class State extends MergeableState<State> implements Cloneable {
      * when merging type-witnesses and known-null maps.
      * </p>
      */
-    private void mergePhis(MergeNode merge, List<State> withStates, Map<ValueNode, Witness> newKnownPhiTypes, Map<ValueNode, GuardingNode> newKnownNullPhis) {
+    private void mergePhis(MergeNode merge, List<State> withStates, Map<ValueNode, Witness> newKnownPhiTypes) {
 
         if (merge instanceof LoopBeginNode) {
             return;
@@ -254,19 +218,20 @@ public final class State extends MergeableState<State> implements Cloneable {
                 ObjectStamp phiStamp = (ObjectStamp) phi.stamp();
                 ObjectStamp nonPollutedStamp = (ObjectStamp) StampTool.meet(reachingValues);
                 Witness w = new Witness(nonPollutedStamp, merge);
-                if (FlowUtil.isMorePrecise(w.type(), phiStamp.type())) {
+                if (w.isNull() && !phiStamp.alwaysNull()) {
+                    // precision gain: null
+                    newKnownPhiTypes.put(phi, w);
+                } else if (FlowUtil.isMorePrecise(w.type(), phiStamp.type())) {
                     // precision gain regarding type
                     newKnownPhiTypes.put(phi, w);
                     // confirm no precision loss regarding nullness
                     assert implies(phiStamp.nonNull(), w.isNonNull());
+                    assert implies(phiStamp.alwaysNull(), w.isNull());
                 } else if (w.isNonNull() && !phiStamp.nonNull()) {
-                    // precision gain regarding nullness
+                    // precision gain: non-null
                     newKnownPhiTypes.put(phi, w);
                     // confirm no precision loss regarding type
                     assert !FlowUtil.isMorePrecise(phiStamp.type(), w.type());
-                }
-                if (nonPollutedStamp.alwaysNull()) {
-                    newKnownNullPhis.put(phi, merge);
                 }
             }
         }
@@ -294,7 +259,6 @@ public final class State extends MergeableState<State> implements Cloneable {
 
         if (isUnreachable) {
             typeRefinements.clear();
-            knownNull.clear();
             trueFacts.clear();
             falseFacts.clear();
             return true;
@@ -303,10 +267,8 @@ public final class State extends MergeableState<State> implements Cloneable {
         // may also get updated in a moment, during processing of phi nodes.
         Map<ValueNode, Witness> newKnownTypes = mergeKnownTypes(merge, withReachableStates);
         // may also get updated in a moment, during processing of phi nodes.
-        Map<ValueNode, GuardingNode> newKnownNull = mergeKnownNull(merge, withReachableStates);
-        mergePhis(merge, withStates, newKnownTypes, newKnownNull);
+        mergePhis(merge, withStates, newKnownTypes);
         this.typeRefinements = newKnownTypes;
-        this.knownNull = newKnownNull;
 
         this.trueFacts = mergeTrueFacts(withReachableStates, merge);
         this.falseFacts = mergeFalseFacts(withReachableStates, merge);
@@ -375,7 +337,12 @@ public final class State extends MergeableState<State> implements Cloneable {
      */
     public boolean isNull(ValueNode object) {
         assert FlowUtil.hasLegalObjectStamp(object);
-        return StampTool.isObjectAlwaysNull(object) || knownNull.containsKey(GraphUtil.unproxify(object));
+        if (StampTool.isObjectAlwaysNull(object)) {
+            return true;
+        }
+        ValueNode scrutinee = GraphUtil.unproxify(object);
+        Witness w = typeRefinements.get(scrutinee);
+        return (w != null) && w.isNull();
     }
 
     /**
@@ -809,23 +776,24 @@ public final class State extends MergeableState<State> implements Cloneable {
             return;
         }
         assert anchor instanceof FixedNode;
-        ValueNode original = GraphUtil.unproxify(value);
-        boolean wasNull = isNull(original);
-        boolean wasNonNull = isNonNull(original);
+        ValueNode scrutinee = GraphUtil.unproxify(value);
+        boolean wasNull = isNull(scrutinee);
+        boolean wasNonNull = isNonNull(scrutinee);
         if (isNull) {
             if (wasNonNull) {
                 impossiblePath();
             } else {
                 metricNullnessRegistered.increment();
                 versionNr++;
-                knownNull.put(original, anchor);
+                Witness w = getOrElseAddTypeInfo(scrutinee);
+                w.trackDN(anchor);
             }
         } else {
             if (wasNull) {
                 impossiblePath();
             } else {
                 metricNullnessRegistered.increment();
-                trackNN(original, anchor);
+                trackNN(scrutinee, anchor);
             }
         }
         assert repOK();
@@ -861,7 +829,6 @@ public final class State extends MergeableState<State> implements Cloneable {
         versionNr = 0;
         isUnreachable = false;
         typeRefinements.clear();
-        knownNull.clear();
         trueFacts.clear();
         falseFacts.clear();
     }
@@ -881,7 +848,12 @@ public final class State extends MergeableState<State> implements Cloneable {
         if (StampTool.isObjectAlwaysNull(object)) {
             return null;
         }
-        return knownNull.get(GraphUtil.unproxify(object));
+        ValueNode scrutinee = GraphUtil.unproxify(object);
+        Witness w = typeRefinements.get(scrutinee);
+        if (w != null && w.isNull()) {
+            return w.guard();
+        }
+        return null;
     }
 
     /**
