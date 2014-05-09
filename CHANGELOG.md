@@ -8,7 +8,7 @@
 * ...
 
 ## Version 0.3
-7-May-2014, [Repository Revision](http://hg.openjdk.java.net/graal/graal/rev/graal-0.3)
+9-May-2014, [Repository Revision](http://hg.openjdk.java.net/graal/graal/rev/graal-0.3)
 
 ### Graal
 * Explicit support for oop compression/uncompression in high level graph.
