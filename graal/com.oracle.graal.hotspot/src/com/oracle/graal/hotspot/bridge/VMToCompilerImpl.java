@@ -136,15 +136,13 @@ public class VMToCompilerImpl implements VMToCompiler {
 
     private PrintStream log = System.out;
 
-    private long compilerStartTime;
+    private long runtimeStartTime;
 
     public VMToCompilerImpl(HotSpotGraalRuntime runtime) {
         this.runtime = runtime;
     }
 
-    public void startCompiler(boolean bootstrapEnabled) throws Throwable {
-
-        bootstrapRunning = bootstrapEnabled;
+    public void startRuntime() throws Throwable {
 
         if (LogFile.getValue() != null) {
             try {
@@ -191,6 +189,15 @@ public class VMToCompilerImpl implements VMToCompiler {
                 backend.completeInitialization();
             }
         }
+
+        BenchmarkCounters.initialize(runtime.getCompilerToVM());
+
+        runtimeStartTime = System.nanoTime();
+    }
+
+    public void startCompiler(boolean bootstrapEnabled) throws Throwable {
+
+        bootstrapRunning = bootstrapEnabled;
 
         if (runtime.getConfig().useGraalCompilationQueue) {
 
@@ -243,9 +250,6 @@ public class VMToCompilerImpl implements VMToCompiler {
                 t.start();
             }
         }
-        BenchmarkCounters.initialize(runtime.getCompilerToVM());
-
-        compilerStartTime = System.nanoTime();
     }
 
     /**
@@ -274,7 +278,7 @@ public class VMToCompilerImpl implements VMToCompiler {
             TTY.flush();
         }
 
-        long startTime = System.currentTimeMillis();
+        long boostrapStartTime = System.currentTimeMillis();
 
         boolean firstRun = true;
         do {
@@ -310,12 +314,12 @@ public class VMToCompilerImpl implements VMToCompiler {
                 // Are we out of time?
                 final int timedBootstrap = TimedBootstrap.getValue();
                 if (timedBootstrap != -1) {
-                    if ((System.currentTimeMillis() - startTime) > timedBootstrap) {
+                    if ((System.currentTimeMillis() - boostrapStartTime) > timedBootstrap) {
                         break;
                     }
                 }
             }
-        } while ((System.currentTimeMillis() - startTime) <= TimedBootstrap.getValue());
+        } while ((System.currentTimeMillis() - boostrapStartTime) <= TimedBootstrap.getValue());
 
         if (ResetDebugValuesAfterBootstrap.getValue()) {
             printDebugValues("bootstrap", true);
@@ -326,7 +330,7 @@ public class VMToCompilerImpl implements VMToCompiler {
         bootstrapRunning = false;
 
         if (PrintBootstrap.getValue()) {
-            TTY.println(" in %d ms (compiled %d methods)", System.currentTimeMillis() - startTime, compileQueue.getCompletedTaskCount());
+            TTY.println(" in %d ms (compiled %d methods)", System.currentTimeMillis() - boostrapStartTime, compileQueue.getCompletedTaskCount());
         }
 
         System.gc();
@@ -366,11 +370,14 @@ public class VMToCompilerImpl implements VMToCompiler {
                 });
             }
         }
+    }
+
+    public void shutdownRuntime() throws Exception {
         printDebugValues(ResetDebugValuesAfterBootstrap.getValue() ? "application" : null, false);
         phaseTransition("final");
 
         SnippetCounter.printGroups(TTY.out().out());
-        BenchmarkCounters.shutdown(runtime.getCompilerToVM(), compilerStartTime);
+        BenchmarkCounters.shutdown(runtime.getCompilerToVM(), runtimeStartTime);
     }
 
     private void printDebugValues(String phase, boolean reset) throws GraalInternalError {
