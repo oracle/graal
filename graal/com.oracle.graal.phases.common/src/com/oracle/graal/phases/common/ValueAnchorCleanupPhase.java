@@ -65,7 +65,7 @@ public class ValueAnchorCleanupPhase extends Phase {
 
     private static class CleanupValueAnchorsClosure extends SinglePassNodeIterator<State> {
 
-        public CleanupValueAnchorsClosure(FixedNode start) {
+        public CleanupValueAnchorsClosure(StartNode start) {
             super(start, new State());
         }
 

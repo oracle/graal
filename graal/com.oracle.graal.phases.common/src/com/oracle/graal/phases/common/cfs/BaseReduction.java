@@ -195,7 +195,7 @@ public abstract class BaseReduction extends SinglePassNodeIterator<State> {
 
     protected final PostponedDeopts postponedDeopts = new PostponedDeopts();
 
-    protected BaseReduction(FixedNode start, State initialState, PhaseContext context) {
+    protected BaseReduction(StartNode start, State initialState, PhaseContext context) {
         super(start, initialState);
         graph = start.graph();
         trueConstant = LogicConstantNode.tautology(graph);

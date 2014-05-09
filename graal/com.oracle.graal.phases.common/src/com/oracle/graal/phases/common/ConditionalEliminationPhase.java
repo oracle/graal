@@ -337,7 +337,7 @@ public class ConditionalEliminationPhase extends Phase {
         private final LogicNode trueConstant;
         private final LogicNode falseConstant;
 
-        public ConditionalElimination(FixedNode start, State initialState) {
+        public ConditionalElimination(StartNode start, State initialState) {
             super(start, initialState);
             trueConstant = LogicConstantNode.tautology(graph);
             falseConstant = LogicConstantNode.contradiction(graph);

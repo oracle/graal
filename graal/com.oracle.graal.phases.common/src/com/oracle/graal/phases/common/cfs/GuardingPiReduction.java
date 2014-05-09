@@ -47,7 +47,7 @@ import com.oracle.graal.phases.tiers.PhaseContext;
  */
 public abstract class GuardingPiReduction extends BaseReduction {
 
-    public GuardingPiReduction(FixedNode start, State initialState, PhaseContext context) {
+    public GuardingPiReduction(StartNode start, State initialState, PhaseContext context) {
         super(start, initialState, context);
     }
 

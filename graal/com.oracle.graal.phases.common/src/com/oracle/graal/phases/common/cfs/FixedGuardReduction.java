@@ -41,7 +41,7 @@ import com.oracle.graal.phases.tiers.PhaseContext;
  */
 public abstract class FixedGuardReduction extends CheckCastReduction {
 
-    public FixedGuardReduction(FixedNode start, State initialState, PhaseContext context) {
+    public FixedGuardReduction(StartNode start, State initialState, PhaseContext context) {
         super(start, initialState, context);
     }
 

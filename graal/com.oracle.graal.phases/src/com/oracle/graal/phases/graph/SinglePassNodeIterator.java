@@ -29,10 +29,9 @@ import com.oracle.graal.graph.util.*;
 import com.oracle.graal.nodes.*;
 
 /**
- * A SinglePassNodeIterator iterates the fixed nodes of the graph in post order starting from a
- * specified fixed node. Unlike in iterative dataflow analysis, a single pass is performed, which
- * allows keeping a smaller working set of pending {@link MergeableState}. This iteration scheme
- * requires:
+ * A SinglePassNodeIterator iterates the fixed nodes of the graph in post order starting from its
+ * start node. Unlike in iterative dataflow analysis, a single pass is performed, which allows
+ * keeping a smaller working set of pending {@link MergeableState}. This iteration scheme requires:
  * <ul>
  * <li>{@link MergeableState#merge(MergeNode, List)} to always return <code>true</code> (an
  * assertion checks this)</li>
@@ -59,11 +58,11 @@ public abstract class SinglePassNodeIterator<T extends MergeableState<T>> {
     private final NodeBitMap visitedEnds;
     private final Deque<BeginNode> nodeQueue;
     private final Map<FixedNode, T> nodeStates;
-    private final FixedNode start;
+    private final StartNode start;
 
     protected T state;
 
-    public SinglePassNodeIterator(FixedNode start, T initialState) {
+    public SinglePassNodeIterator(StartNode start, T initialState) {
         StructuredGraph graph = start.graph();
         visitedEnds = graph.createNodeBitMap();
         nodeQueue = new ArrayDeque<>();
@@ -136,17 +135,26 @@ public abstract class SinglePassNodeIterator<T extends MergeableState<T>> {
         }
     }
 
+    /**
+     * This method is invoked upon not having a (single) next {@link FixedNode} to visit. This
+     * method picks such next-node-to-visit from {@link #nodeQueue} and updates {@link #state} with
+     * the pre-state for that node.
+     *
+     * <p>
+     * Upon reaching a {@link MergeNode}, some entries are pruned from {@link #nodeStates} (ie, the
+     * entries associated to forward-ends for that merge-node).
+     * </p>
+     */
     private FixedNode nextQueuedNode() {
         int maxIterations = nodeQueue.size();
         while (maxIterations-- > 0) {
             BeginNode node = nodeQueue.removeFirst();
             if (node instanceof MergeNode) {
                 MergeNode merge = (MergeNode) node;
-                state = nodeStates.get(merge.forwardEndAt(0)).clone();
+                state = pruneEntry(merge.forwardEndAt(0)).clone();
                 ArrayList<T> states = new ArrayList<>(merge.forwardEndCount() - 1);
                 for (int i = 1; i < merge.forwardEndCount(); i++) {
-                    T other = nodeStates.get(merge.forwardEndAt(i));
-                    assert other != null;
+                    T other = pruneEntry(merge.forwardEndAt(i));
                     states.add(other);
                 }
                 boolean ready = state.merge(merge, states);
@@ -162,11 +170,18 @@ public abstract class SinglePassNodeIterator<T extends MergeableState<T>> {
         return null;
     }
 
+    /**
+     * Once all loop-end-nodes for a given loop-node have been visited:
+     * <ul>
+     * <li>the state for that loop-node is updated based on the states of the loop-end-nodes</li>
+     * <li>entries in {@link #nodeStates} are pruned for the loop (they aren't going to be looked up
+     * again, anyway)</li>
+     * </ul>
+     */
     private void finishLoopEnds(LoopEndNode end) {
         assert !visitedEnds.isMarked(end);
-        assert !nodeStates.containsKey(end);
-        keepForLater(end, state);
         visitedEnds.mark(end);
+        keepForLater(end, state);
         LoopBeginNode begin = end.loopBegin();
         boolean endsVisited = true;
         for (LoopEndNode le : begin.loopEnds()) {
@@ -178,20 +193,27 @@ public abstract class SinglePassNodeIterator<T extends MergeableState<T>> {
         if (endsVisited) {
             ArrayList<T> states = new ArrayList<>(begin.loopEnds().count());
             for (LoopEndNode le : begin.orderedLoopEnds()) {
-                states.add(nodeStates.get(le));
+                T leState = pruneEntry(le);
+                states.add(leState);
             }
-            T loopBeginState = nodeStates.get(begin);
-            if (loopBeginState != null) {
-                loopBeginState.loopEnds(begin, states);
-            }
+            T loopBeginState = pruneEntry(begin);
+            loopBeginState.loopEnds(begin, states);
         }
     }
 
+    /**
+     * Once all end-nodes for a given merge-node have been visited, that merge-node is added to the
+     * {@link #nodeQueue}
+     *
+     * <p>
+     * {@link #nextQueuedNode()} is in charge of pruning entries for the states of forward-ends
+     * inserted by this method.
+     * </p>
+     */
     private void queueMerge(EndNode end) {
         assert !visitedEnds.isMarked(end);
-        assert !nodeStates.containsKey(end);
-        keepForLater(end, state);
         visitedEnds.mark(end);
+        keepForLater(end, state);
         MergeNode merge = end.merge();
         boolean endsVisited = true;
         for (int i = 0; i < merge.forwardEndCount(); i++) {
@@ -241,5 +263,11 @@ public abstract class SinglePassNodeIterator<T extends MergeableState<T>> {
     private void keepForLater(FixedNode x, T s) {
         assert !nodeStates.containsKey(x);
         nodeStates.put(x, s);
+    }
+
+    private T pruneEntry(FixedNode x) {
+        T result = nodeStates.remove(x);
+        assert result != null;
+        return result;
     }
 }

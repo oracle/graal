@@ -50,7 +50,7 @@ import static com.oracle.graal.nodes.extended.BranchProbabilityNode.NOT_FREQUENT
  */
 public abstract class CheckCastReduction extends GuardingPiReduction {
 
-    public CheckCastReduction(FixedNode start, State initialState, PhaseContext context) {
+    public CheckCastReduction(StartNode start, State initialState, PhaseContext context) {
         super(start, initialState, context);
     }
 
