@@ -30,7 +30,7 @@ import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.spi.CanonicalizerTool;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.compiler.common.type.ObjectStamp;
-import com.oracle.graal.phases.graph.PostOrderNodeIterator;
+import com.oracle.graal.phases.graph.SinglePassNodeIterator;
 import com.oracle.graal.phases.tiers.PhaseContext;
 
 import java.util.ArrayList;
@@ -55,7 +55,7 @@ import java.util.ArrayList;
  * </p>
  *
  */
-public abstract class BaseReduction extends PostOrderNodeIterator<State> {
+public abstract class BaseReduction extends SinglePassNodeIterator<State> {
 
     protected static final DebugMetric metricCheckCastRemoved = Debug.metric("FSR-CheckCastRemoved");
     protected static final DebugMetric metricGuardingPiNodeRemoved = Debug.metric("FSR-GuardingPiNodeRemoved");

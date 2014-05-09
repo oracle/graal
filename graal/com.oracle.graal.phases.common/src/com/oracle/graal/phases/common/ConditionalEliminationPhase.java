@@ -332,7 +332,7 @@ public class ConditionalEliminationPhase extends Phase {
         }
     }
 
-    public class ConditionalElimination extends PostOrderNodeIterator<State> {
+    public class ConditionalElimination extends SinglePassNodeIterator<State> {
 
         private final LogicNode trueConstant;
         private final LogicNode falseConstant;
