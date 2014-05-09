@@ -56,11 +56,44 @@ import com.oracle.graal.nodes.*;
 public abstract class SinglePassNodeIterator<T extends MergeableState<T>> {
 
     private final NodeBitMap visitedEnds;
-    private final Deque<BeginNode> nodeQueue;
+    private final Deque<QElem<T>> nodeQueue;
     private final Map<FixedNode, T> nodeStates;
     private final StartNode start;
 
     protected T state;
+
+    /**
+     * An item queued in {@link #nodeQueue} can be used to continue with the single-pass visit after
+     * the previous path can't be followed anymore. Such items are:
+     * <ul>
+     * <li>de-queued via {@link #nextQueuedNode()}</li>
+     * <li>en-queued via {@link #queueMerge(EndNode)} and {@link #queueSuccessors(FixedNode)}</li>
+     * </ul>
+     *
+     * <p>
+     * Correspondingly each item may stand for:
+     * <ul>
+     * <li>a {@link MergeNode} whose pre-state results from merging those of its forward-ends, see
+     * {@link #nextQueuedNode()}</li>
+     * <li>the successor of a control-split node, in which case the pre-state of the successor in
+     * question is also stored in the item, see {@link #nextQueuedNode()}</li>
+     * </ul>
+     * </p>
+     */
+    private static class QElem<U> {
+        private final FixedNode node;
+        private final U preState;
+
+        private QElem(FixedNode node, U preState) {
+            this.node = node;
+            this.preState = preState;
+            assert repOK();
+        }
+
+        private boolean repOK() {
+            return (node instanceof MergeNode && preState == null) || (node instanceof BeginNode && preState != null);
+        }
+    }
 
     public SinglePassNodeIterator(StartNode start, T initialState) {
         StructuredGraph graph = start.graph();
@@ -127,10 +160,9 @@ public abstract class SinglePassNodeIterator<T extends MergeableState<T>> {
     }
 
     private void queueSuccessors(FixedNode x) {
-        keepForLater(x, state);
         for (Node node : x.successors()) {
             if (node != null) {
-                nodeQueue.addFirst((BeginNode) node);
+                nodeQueue.addFirst(new QElem<>((BeginNode) node, state));
             }
         }
     }
@@ -146,28 +178,28 @@ public abstract class SinglePassNodeIterator<T extends MergeableState<T>> {
      * </p>
      */
     private FixedNode nextQueuedNode() {
-        int maxIterations = nodeQueue.size();
-        while (maxIterations-- > 0) {
-            BeginNode node = nodeQueue.removeFirst();
-            if (node instanceof MergeNode) {
-                MergeNode merge = (MergeNode) node;
-                state = pruneEntry(merge.forwardEndAt(0)).clone();
-                ArrayList<T> states = new ArrayList<>(merge.forwardEndCount() - 1);
-                for (int i = 1; i < merge.forwardEndCount(); i++) {
-                    T other = pruneEntry(merge.forwardEndAt(i));
-                    states.add(other);
-                }
-                boolean ready = state.merge(merge, states);
-                assert ready : "Not a single-pass iterator after all";
-                return merge;
-            } else {
-                assert node.predecessor() != null;
-                state = nodeStates.get(node.predecessor()).clone();
-                state.afterSplit(node);
-                return node;
-            }
+        if (nodeQueue.isEmpty()) {
+            return null;
         }
-        return null;
+        QElem<T> elem = nodeQueue.removeFirst();
+        if (elem.node instanceof MergeNode) {
+            MergeNode merge = (MergeNode) elem.node;
+            state = pruneEntry(merge.forwardEndAt(0)).clone();
+            ArrayList<T> states = new ArrayList<>(merge.forwardEndCount() - 1);
+            for (int i = 1; i < merge.forwardEndCount(); i++) {
+                T other = pruneEntry(merge.forwardEndAt(i));
+                states.add(other);
+            }
+            boolean ready = state.merge(merge, states);
+            assert ready : "Not a single-pass iterator after all";
+            return merge;
+        } else {
+            BeginNode begin = (BeginNode) elem.node;
+            assert begin.predecessor() != null;
+            state = elem.preState.clone();
+            state.afterSplit(begin);
+            return begin;
+        }
     }
 
     /**
@@ -223,7 +255,7 @@ public abstract class SinglePassNodeIterator<T extends MergeableState<T>> {
             }
         }
         if (endsVisited) {
-            nodeQueue.add(merge);
+            nodeQueue.add(new QElem<>(merge, null));
         }
     }
 
@@ -257,7 +289,8 @@ public abstract class SinglePassNodeIterator<T extends MergeableState<T>> {
      * The lifecycle that single-pass node iterators go through is described in {@link #apply()}
      */
     protected void finished() {
-        // nothing to do
+        assert nodeQueue.isEmpty();
+        assert nodeStates.isEmpty();
     }
 
     private void keepForLater(FixedNode x, T s) {
