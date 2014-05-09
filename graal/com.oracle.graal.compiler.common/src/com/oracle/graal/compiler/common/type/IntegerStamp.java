@@ -183,7 +183,7 @@ public class IntegerStamp extends PrimitiveStamp {
 
     private Stamp createStamp(IntegerStamp other, long newUpperBound, long newLowerBound, long newDownMask, long newUpMask) {
         assert getBits() == other.getBits();
-        if (newLowerBound > newUpperBound || (newDownMask & (~newUpMask)) != 0) {
+        if (newLowerBound > newUpperBound || (newDownMask & (~newUpMask)) != 0 || (newUpMask == 0 && (newLowerBound > 0 || newUpperBound < 0))) {
             return illegal();
         } else if (newLowerBound == lowerBound && newUpperBound == upperBound && newDownMask == downMask && newUpMask == upMask) {
             return this;
