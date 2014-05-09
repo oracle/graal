@@ -47,6 +47,14 @@ public interface DebugConfig {
     boolean isMeterEnabled();
 
     /**
+     * Determines if memory use tracking is enabled in the {@linkplain Debug#currentScope() current
+     * debug scope}.
+     *
+     * @see Debug#memUseTracker(CharSequence)
+     */
+    boolean isMemUseTrackingEnabled();
+
+    /**
      * Determines if dumping is enabled in the {@linkplain Debug#currentScope() current debug scope}
      * .
      *

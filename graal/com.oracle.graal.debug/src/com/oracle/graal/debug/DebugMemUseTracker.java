@@ -22,49 +22,35 @@
  */
 package com.oracle.graal.debug;
 
-import java.util.concurrent.*;
-
-import com.oracle.graal.debug.internal.*;
+import com.sun.management.*;
 
 /**
- * A timer for some activity of interest. A timer should be deployed using the try-with-resources
- * pattern:
+ * Tracks memory usage within a scope using {@link ThreadMXBean}. This facility should be employed
+ * using the try-with-resources pattern:
  *
  * <pre>
- * try (TimerCloseable a = timer.start()) {
- *     // the code to time
+ * try (DebugMemUseTracker.Closeable a = memUseTracker.start()) {
+ *     // the code to measure
  * }
  * </pre>
  */
-public interface DebugTimer {
+public interface DebugMemUseTracker {
+
+    public interface Closeable extends AutoCloseable {
+        void close();
+    }
 
     /**
-     * Starts this timer if timing is {@linkplain Debug#isTimeEnabled() enabled} or this is an
-     * {@linkplain #isConditional() unconditional} timer.
+     * Creates a point from which memory usage will be recorded if memory use tracking is
+     * {@linkplain Debug#isMemUseTrackingEnabled() enabled}.
      *
-     * @return an object that must be closed once the activity has completed to add the elapsed time
-     *         since this call to the total for this timer
+     * @return an object that must be closed once the activity has completed to add the memory used
+     *         since this call to the total for this tracker
      */
-    TimerCloseable start();
+    Closeable start();
 
     /**
-     * Sets a flag determining if this timer is only enabled if timing is
-     * {@link Debug#isTimeEnabled() enabled}.
-     */
-    void setConditional(boolean flag);
-
-    /**
-     * Determines if this timer is only enabled if timing is {@link Debug#isTimeEnabled() enabled}.
-     */
-    boolean isConditional();
-
-    /**
-     * Gets the current value of this timer.
+     * Gets the current value of this tracker.
      */
     long getCurrentValue();
-
-    /**
-     * Gets the time unit of this timer.
-     */
-    TimeUnit getTimeUnit();
 }

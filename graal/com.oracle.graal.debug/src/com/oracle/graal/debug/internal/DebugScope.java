@@ -93,6 +93,7 @@ public final class DebugScope implements Debug.Scope {
 
     private boolean meterEnabled;
     private boolean timeEnabled;
+    private boolean memUseTrackingEnabled;
     private boolean dumpEnabled;
     private boolean logEnabled;
 
@@ -167,6 +168,10 @@ public final class DebugScope implements Debug.Scope {
 
     public boolean isTimeEnabled() {
         return timeEnabled;
+    }
+
+    public boolean isMemUseTrackingEnabled() {
+        return memUseTrackingEnabled;
     }
 
     public void log(String msg, Object... args) {
@@ -261,6 +266,7 @@ public final class DebugScope implements Debug.Scope {
         DebugConfig config = getConfig();
         if (config == null) {
             meterEnabled = false;
+            memUseTrackingEnabled = false;
             timeEnabled = false;
             dumpEnabled = false;
 
@@ -269,6 +275,7 @@ public final class DebugScope implements Debug.Scope {
             output = System.out;
         } else {
             meterEnabled = config.isMeterEnabled();
+            memUseTrackingEnabled = config.isMemUseTrackingEnabled();
             timeEnabled = config.isTimeEnabled();
             dumpEnabled = config.isDumpEnabled();
             logEnabled = config.isLogEnabled();
