@@ -25,6 +25,7 @@ package com.oracle.graal.compiler.test;
 import java.io.*;
 
 import com.oracle.graal.phases.common.cfs.FlowSensitiveReductionPhase;
+
 import org.junit.*;
 
 import com.oracle.graal.api.code.*;
@@ -179,6 +180,19 @@ public class TypeSystemTest extends GraalCompilerTest {
         }
 
         return ((InputStream) o).available();
+    }
+
+    @Test
+    public void test7() {
+        test("test7Snippet", "referenceSnippet7");
+    }
+
+    public static int test7Snippet(int x) {
+        return ((x & 0xff) << 10) == ((x & 0x1f) + 1) ? 0 : x;
+    }
+
+    public static int referenceSnippet7(int x) {
+        return x;
     }
 
     private void test(String snippet, String referenceSnippet) {

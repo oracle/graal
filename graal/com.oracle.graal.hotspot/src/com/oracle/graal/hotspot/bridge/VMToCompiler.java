@@ -30,6 +30,12 @@ import java.io.*;
  */
 public interface VMToCompiler {
 
+    void startRuntime() throws Throwable;
+
+    void startCompiler(boolean bootstrapEnabled) throws Throwable;
+
+    void bootstrap() throws Throwable;
+
     /**
      * Compiles a method to machine code. This method is called from the VM
      * (VMToCompiler::compileMethod).
@@ -40,9 +46,7 @@ public interface VMToCompiler {
 
     void shutdownCompiler() throws Exception;
 
-    void startCompiler(boolean bootstrapEnabled) throws Throwable;
-
-    void bootstrap() throws Throwable;
+    void shutdownRuntime() throws Throwable;
 
     void compileTheWorld() throws Throwable;
 
