@@ -8,7 +8,7 @@
 * ...
 
 ## Version 0.3
-7-May-2014, [Repository Revision](http://hg.openjdk.java.net/graal/graal/rev/XXX)
+7-May-2014, [Repository Revision](http://hg.openjdk.java.net/graal/graal/rev/graal-0.3)
 
 ### Graal
 * Explicit support for oop compression/uncompression in high level graph.
@@ -18,7 +18,6 @@
 * Transitioned to JDK 8 as minimum JDK level for Graal.
 * Added support for stack introspection.
 * New MatchRule facility to convert multiple HIR nodes into specialized LIR
-* ...
 
 ### Truffle
 * The method `CallTarget#call` takes now a variable number of Object arguments.
@@ -29,7 +28,6 @@
 * Added `TruffleRuntime#createIndirectCallNode` to create an `IndirectCallNode`.
 * `DirectCallNode#inline` was renamed to `DirectCallNode#forceInlining()`.
 * Removed deprecated `Node#adoptChild`.
-* ...
 
 ## Version 0.2
 25-Mar-2014, [Repository Revision](http://hg.openjdk.java.net/graal/graal/rev/graal-0.2)
