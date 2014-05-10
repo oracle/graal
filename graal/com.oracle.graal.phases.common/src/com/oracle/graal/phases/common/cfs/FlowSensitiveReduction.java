@@ -165,6 +165,7 @@ public class FlowSensitiveReduction extends FixedGuardReduction {
         assert !isAliveWithoutUsages(trueConstant);
         assert !isAliveWithoutUsages(falseConstant);
         assert !isAliveWithoutUsages(nullConstant);
+        super.finished();
     }
 
     private static boolean isAliveWithoutUsages(FloatingNode node) {

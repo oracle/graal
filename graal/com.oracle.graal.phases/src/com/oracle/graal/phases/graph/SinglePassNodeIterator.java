@@ -56,8 +56,37 @@ import com.oracle.graal.nodes.*;
 public abstract class SinglePassNodeIterator<T extends MergeableState<T>> {
 
     private final NodeBitMap visitedEnds;
+
+    /**
+     * @see SinglePassNodeIterator.QElem
+     */
     private final Deque<QElem<T>> nodeQueue;
+
+    /**
+     * The keys in this map may be:
+     * <ul>
+     * <li>loop-begins and loop-ends, see {@link #finishLoopEnds(LoopEndNode)}</li>
+     * <li>forward-ends of merge-nodes, see {@link #queueMerge(EndNode)}</li>
+     * </ul>
+     *
+     * <p>
+     * It's tricky to answer whether the state an entry contains is the pre-state or the post-state
+     * for the key in question, because states are mutable. Thus an entry may be created to contain
+     * a pre-state (at the time, as done for a loop-begin in {@link #apply()}) only to make it a
+     * post-state soon after (continuing with the loop-begin example, also in {@link #apply()}). In
+     * any case, given that keys are limited to the nodes mentioned in the previous paragraph, in
+     * all cases an entry can be considered to hold a post-state by the time such entry is
+     * retrieved.
+     * </p>
+     *
+     * <p>
+     * The only method that makes this map grow is {@link #keepForLater(FixedNode, MergeableState)}
+     * and the only one that shrinks it is {@link #pruneEntry(FixedNode)}. To make sure no entry is
+     * left behind inadvertently, asserts in {@link #finished()} are in place.
+     * </p>
+     */
     private final Map<FixedNode, T> nodeStates;
+
     private final StartNode start;
 
     protected T state;
@@ -209,6 +238,14 @@ public abstract class SinglePassNodeIterator<T extends MergeableState<T>> {
      * <li>entries in {@link #nodeStates} are pruned for the loop (they aren't going to be looked up
      * again, anyway)</li>
      * </ul>
+     *
+     * <p>
+     * The entries removed by this method were inserted:
+     * <ul>
+     * <li>for the loop-begin, by {@link #apply()}</li>
+     * <li>for loop-ends, by (previous) invocations of this method</li>
+     * </ul>
+     * </p>
      */
     private void finishLoopEnds(LoopEndNode end) {
         assert !visitedEnds.isMarked(end);
@@ -238,8 +275,8 @@ public abstract class SinglePassNodeIterator<T extends MergeableState<T>> {
      * {@link #nodeQueue}
      *
      * <p>
-     * {@link #nextQueuedNode()} is in charge of pruning entries for the states of forward-ends
-     * inserted by this method.
+     * {@link #nextQueuedNode()} is in charge of pruning entries (held by {@link #nodeStates}) for
+     * the forward-ends inserted by this method.
      * </p>
      */
     private void queueMerge(EndNode end) {
@@ -287,6 +324,11 @@ public abstract class SinglePassNodeIterator<T extends MergeableState<T>> {
 
     /**
      * The lifecycle that single-pass node iterators go through is described in {@link #apply()}
+     *
+     * <p>
+     * When overriding this method don't forget to invoke this implementation, otherwise the
+     * assertions will be skipped.
+     * </p>
      */
     protected void finished() {
         assert nodeQueue.isEmpty();
@@ -295,6 +337,7 @@ public abstract class SinglePassNodeIterator<T extends MergeableState<T>> {
 
     private void keepForLater(FixedNode x, T s) {
         assert !nodeStates.containsKey(x);
+        assert (x instanceof LoopBeginNode) || (x instanceof LoopEndNode) || (x instanceof EndNode);
         nodeStates.put(x, s);
     }
 
