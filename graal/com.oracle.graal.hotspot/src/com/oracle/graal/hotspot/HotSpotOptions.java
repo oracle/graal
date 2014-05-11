@@ -33,6 +33,7 @@ import java.nio.charset.*;
 import java.nio.file.*;
 import java.util.*;
 
+import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.hotspot.logging.*;
@@ -247,8 +248,9 @@ public class HotSpotOptions {
             unconditionallyEnableTimerOrMetric(InliningUtil.class, "InlinedBytecodes");
             unconditionallyEnableTimerOrMetric(CompilationTask.class, "CompilationTime");
         }
+        assert !Debug.Initialization.isDebugInitialized() : "The class " + Debug.class.getName() + " must not be initialized before the Graal runtime has been initialized. " +
+                        "This can be fixed by placing a call to " + Graal.class.getName() + ".runtime() on the path that triggers initialization of " + Debug.class.getName();
         if (areDebugScopePatternsEnabled()) {
-            assert !Debug.Initialization.isDebugInitialized();
             System.setProperty(Debug.Initialization.INITIALIZER_PROPERTY_NAME, "true");
         }
     }
