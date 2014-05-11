@@ -28,12 +28,14 @@ import static com.oracle.graal.compiler.common.GraalOptions.*;
 import java.io.*;
 import java.util.*;
 
+import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.debug.*;
 
 public class DebugEnvironment {
 
     public static GraalDebugConfig initialize(PrintStream log) {
+        Graal.getRuntime();
         if (!Debug.isEnabled()) {
             log.println("WARNING: Scope debugging needs to be enabled with -esa or -D" + Debug.Initialization.INITIALIZER_PROPERTY_NAME + "=true");
             return null;
