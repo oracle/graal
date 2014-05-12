@@ -41,5 +41,5 @@ public abstract class MemoryMapNode extends FloatingNode {
 
     public abstract Set<LocationIdentity> getLocations();
 
-    public abstract void replaceLastLocationAccess(MemoryNode oldNode, MemoryNode newNode);
+    public abstract boolean replaceLastLocationAccess(MemoryNode oldNode, MemoryNode newNode);
 }
