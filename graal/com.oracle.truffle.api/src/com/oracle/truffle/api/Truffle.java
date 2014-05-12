@@ -33,7 +33,14 @@ public class Truffle {
 
     private static final TruffleRuntime RUNTIME;
 
-    private static native TruffleRuntime initializeRuntime();
+    /**
+     * Creates a new {@link TruffleRuntime} instance if the runtime has a specialized
+     * implementation.
+     *
+     * @throws UnsatisfiedLinkError if the runtime does not have a specialized implementation of
+     *             {@link TruffleRuntime}
+     */
+    private static native TruffleRuntime createRuntime();
 
     public static TruffleRuntime getRuntime() {
         return RUNTIME;
@@ -42,7 +49,7 @@ public class Truffle {
     static {
         TruffleRuntime runtime;
         try {
-            runtime = initializeRuntime();
+            runtime = createRuntime();
         } catch (UnsatisfiedLinkError e) {
             runtime = new DefaultTruffleRuntime();
         }
