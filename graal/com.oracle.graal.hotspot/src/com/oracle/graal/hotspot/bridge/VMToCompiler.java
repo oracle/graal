@@ -30,7 +30,7 @@ import java.io.*;
  */
 public interface VMToCompiler {
 
-    void startRuntime() throws Throwable;
+    void startRuntime();
 
     void startCompiler(boolean bootstrapEnabled) throws Throwable;
 

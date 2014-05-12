@@ -87,7 +87,7 @@ public class HotSpotOptions {
             try {
                 for (String line : Files.readAllLines(graalDotOptions, Charset.defaultCharset())) {
                     if (!line.startsWith("#")) {
-                        if (!setOption(line)) {
+                        if (!parseOption(line, null)) {
                             throw new InternalError("Invalid option \"" + line + "\" specified in " + graalDotOptions);
                         }
                     }
@@ -98,14 +98,39 @@ public class HotSpotOptions {
         }
     }
 
+    /**
+     * Gets the Graal specific options specified to HotSpot (e.g., on the command line).
+     *
+     * @param timeCompilations (out) true if the CITime or CITimeEach HotSpot VM options are set
+     */
+    private static native String[] getVMOptions(boolean[] timeCompilations);
+
     static {
         initializeOptions();
         loadOptionOverrides();
+
+        boolean[] timeCompilations = {false};
+        for (String option : getVMOptions(timeCompilations)) {
+            if (!parseOption(option, null)) {
+                throw new InternalError("Invalid Graal option \"-G:" + option + "\"");
+            }
+        }
+
+        if (timeCompilations[0] || PrintCompRate.getValue() != 0) {
+            unconditionallyEnableTimerOrMetric(InliningUtil.class, "InlinedBytecodes");
+            unconditionallyEnableTimerOrMetric(CompilationTask.class, "CompilationTime");
+        }
+        assert !Debug.Initialization.isDebugInitialized() : "The class " + Debug.class.getName() + " must not be initialized before the Graal runtime has been initialized. " +
+                        "This can be fixed by placing a call to " + Graal.class.getName() + ".runtime() on the path that triggers initialization of " + Debug.class.getName();
+        if (areDebugScopePatternsEnabled()) {
+            System.setProperty(Debug.Initialization.INITIALIZER_PROPERTY_NAME, "true");
+        }
     }
 
-    // Called from VM code
-    public static boolean setOption(String option) {
-        return parseOption(option, null);
+    /**
+     * Ensures {@link HotSpotOptions} is initialized.
+     */
+    public static void initialize() {
     }
 
     interface OptionConsumer {
@@ -234,24 +259,6 @@ public class HotSpotOptions {
             }
         } catch (Exception e) {
             throw new GraalInternalError(e);
-        }
-    }
-
-    /**
-     * Called from VM code once all Graal command line options have been processed by
-     * {@link #setOption(String)}.
-     *
-     * @param timeCompilations true if the CITime or CITimeEach HotSpot VM options are set
-     */
-    public static void finalizeOptions(boolean timeCompilations) {
-        if (timeCompilations || PrintCompRate.getValue() != 0) {
-            unconditionallyEnableTimerOrMetric(InliningUtil.class, "InlinedBytecodes");
-            unconditionallyEnableTimerOrMetric(CompilationTask.class, "CompilationTime");
-        }
-        assert !Debug.Initialization.isDebugInitialized() : "The class " + Debug.class.getName() + " must not be initialized before the Graal runtime has been initialized. " +
-                        "This can be fixed by placing a call to " + Graal.class.getName() + ".runtime() on the path that triggers initialization of " + Debug.class.getName();
-        if (areDebugScopePatternsEnabled()) {
-            System.setProperty(Debug.Initialization.INITIALIZER_PROPERTY_NAME, "true");
         }
     }
 

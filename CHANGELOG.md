@@ -2,7 +2,7 @@
 
 ## `tip`
 ### Graal
-* ...
+* Made initialization of Graal runtime lazy in hosted mode.
 
 ### Truffle
 * ...
