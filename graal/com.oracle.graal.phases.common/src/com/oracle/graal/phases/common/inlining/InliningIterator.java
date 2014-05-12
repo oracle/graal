@@ -32,20 +32,20 @@ import java.util.Deque;
 import java.util.LinkedList;
 
 /**
- * Given a starting node, visit all fixed nodes in dominator-based order, collecting in the process
- * the {@link Invoke} nodes with {@link MethodCallTargetNode}. Such list of callsites is returned by
+ * Given a graph, visit all fixed nodes in dominator-based order, collecting in the process the
+ * {@link Invoke} nodes with {@link MethodCallTargetNode}. Such list of callsites is returned by
  * {@link #apply()}
  */
 class InliningIterator {
 
-    private final FixedNode start;
+    private final StartNode start;
     private final Deque<FixedNode> nodeQueue;
     private final NodeBitMap queuedNodes;
 
-    public InliningIterator(FixedNode start, NodeBitMap visitedFixedNodes) {
-        this.start = start;
+    public InliningIterator(StructuredGraph graph) {
+        this.start = graph.start();
         this.nodeQueue = new ArrayDeque<>();
-        this.queuedNodes = visitedFixedNodes;
+        this.queuedNodes = graph.createNodeBitMap();
         assert start.isAlive();
     }
 
