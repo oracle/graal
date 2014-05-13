@@ -170,7 +170,7 @@ public class InliningPhase extends AbstractInliningPhase {
                 data.popGraphs(remainingGraphs);
                 data.popInvocation();
             } else if (graphInfo.hasRemainingInvokes() && inliningPolicy.continueInlining(graphInfo.graph())) {
-                processNextInvoke(data, graphInfo, context, maxMethodPerInlining, canonicalizer);
+                InliningData.processNextInvoke(data, graphInfo, context, maxMethodPerInlining, canonicalizer);
             } else {
                 data.popGraph();
                 if (!currentInvocation.isRoot()) {
@@ -191,33 +191,6 @@ public class InliningPhase extends AbstractInliningPhase {
 
         assert data.inliningDepth() == 0;
         assert data.graphCount() == 0;
-    }
-
-    /**
-     * Process the next invoke and enqueue all its graphs for processing.
-     */
-    private static void processNextInvoke(InliningData data, GraphInfo graphInfo, HighTierContext context, int maxMethodPerInlining, CanonicalizerPhase canonicalizer) {
-        Invoke invoke = graphInfo.popInvoke();
-        MethodInvocation callerInvocation = data.currentInvocation();
-        Assumptions parentAssumptions = callerInvocation.assumptions();
-        InlineInfo info = InliningUtil.getInlineInfo(data, invoke, maxMethodPerInlining, context.getReplacements(), parentAssumptions, context.getOptimisticOptimizations());
-
-        if (info != null) {
-            double invokeProbability = graphInfo.invokeProbability(invoke);
-            double invokeRelevance = graphInfo.invokeRelevance(invoke);
-            MethodInvocation calleeInvocation = data.pushInvocation(info, parentAssumptions, invokeProbability, invokeRelevance);
-
-            for (int i = 0; i < info.numberOfMethods(); i++) {
-                Inlineable elem = DepthSearchUtil.getInlineableElement(info.methodAt(i), info.invoke(), context.replaceAssumptions(calleeInvocation.assumptions()), canonicalizer);
-                info.setInlinableElement(i, elem);
-                if (elem instanceof InlineableGraph) {
-                    data.pushGraph(((InlineableGraph) elem).getGraph(), invokeProbability * info.probabilityAt(i), invokeRelevance * info.relevanceAt(i));
-                } else {
-                    assert elem instanceof InlineableMacroNode;
-                    data.pushDummyGraph();
-                }
-            }
-        }
     }
 
     private void tryToInline(ToDoubleFunction<FixedNode> probabilities, GraphInfo callerGraphInfo, MethodInvocation calleeInfo, MethodInvocation parentInvocation, int inliningDepth,
@@ -463,6 +436,33 @@ public class InliningPhase extends AbstractInliningPhase {
 
             invocationQueue.push(new MethodInvocation(null, rootAssumptions, 1.0, 1.0));
             pushGraph(rootGraph, 1.0, 1.0);
+        }
+
+        /**
+         * Process the next invoke and enqueue all its graphs for processing.
+         */
+        private static void processNextInvoke(InliningData data, GraphInfo graphInfo, HighTierContext context, int maxMethodPerInlining, CanonicalizerPhase canonicalizer) {
+            Invoke invoke = graphInfo.popInvoke();
+            MethodInvocation callerInvocation = data.currentInvocation();
+            Assumptions parentAssumptions = callerInvocation.assumptions();
+            InlineInfo info = InliningUtil.getInlineInfo(data, invoke, maxMethodPerInlining, context.getReplacements(), parentAssumptions, context.getOptimisticOptimizations());
+
+            if (info != null) {
+                double invokeProbability = graphInfo.invokeProbability(invoke);
+                double invokeRelevance = graphInfo.invokeRelevance(invoke);
+                MethodInvocation calleeInvocation = data.pushInvocation(info, parentAssumptions, invokeProbability, invokeRelevance);
+
+                for (int i = 0; i < info.numberOfMethods(); i++) {
+                    Inlineable elem = DepthSearchUtil.getInlineableElement(info.methodAt(i), info.invoke(), context.replaceAssumptions(calleeInvocation.assumptions()), canonicalizer);
+                    info.setInlinableElement(i, elem);
+                    if (elem instanceof InlineableGraph) {
+                        data.pushGraph(((InlineableGraph) elem).getGraph(), invokeProbability * info.probabilityAt(i), invokeRelevance * info.relevanceAt(i));
+                    } else {
+                        assert elem instanceof InlineableMacroNode;
+                        data.pushDummyGraph();
+                    }
+                }
+            }
         }
 
         public int graphCount() {
