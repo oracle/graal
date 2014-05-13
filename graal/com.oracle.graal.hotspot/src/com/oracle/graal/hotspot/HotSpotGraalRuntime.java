@@ -25,6 +25,7 @@ package com.oracle.graal.hotspot;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.compiler.common.UnsafeAccess.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.Options.*;
+import static sun.reflect.Reflection.*;
 
 import java.lang.reflect.*;
 import java.util.*;
@@ -54,9 +55,26 @@ import com.oracle.graal.runtime.*;
  */
 public final class HotSpotGraalRuntime implements GraalRuntime, RuntimeProvider, StackIntrospection {
 
-    private static final HotSpotGraalRuntime instance = new HotSpotGraalRuntime();
+    private static final HotSpotGraalRuntime instance;
+
+    /**
+     * Initializes the native part of the Graal runtime.
+     */
+    private static native void init(Class<?> compilerToVMClass);
+
     static {
+        init(CompilerToVMImpl.class);
+
+        // The options must be processed before any code using them...
+        HotSpotOptions.initialize();
+
+        // ... including code in the constructor
+        instance = new HotSpotGraalRuntime();
+
+        // Why deferred initialization? See comment in completeInitialization().
         instance.completeInitialization();
+
+        registerFieldsToFilter(HotSpotGraalRuntime.class, "instance");
     }
 
     /**
@@ -73,10 +91,6 @@ public final class HotSpotGraalRuntime implements GraalRuntime, RuntimeProvider,
         }
         assert instance != null;
         return instance;
-    }
-
-    static {
-        Reflection.registerFieldsToFilter(HotSpotGraalRuntime.class, "instance");
     }
 
     /**
@@ -104,6 +118,8 @@ public final class HotSpotGraalRuntime implements GraalRuntime, RuntimeProvider,
 
         this.vmToCompiler = toCompiler;
         this.compilerToVm = toVM;
+
+        this.vmToCompiler.startRuntime();
     }
 
     // Options must not be directly declared in HotSpotGraalRuntime - see VerifyOptionsPhase

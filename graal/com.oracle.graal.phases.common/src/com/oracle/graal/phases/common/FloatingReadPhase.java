@@ -92,12 +92,15 @@ public class FloatingReadPhase extends Phase {
         }
 
         @Override
-        public void replaceLastLocationAccess(MemoryNode oldNode, MemoryNode newNode) {
+        public boolean replaceLastLocationAccess(MemoryNode oldNode, MemoryNode newNode) {
+            boolean replaced = false;
             for (Map.Entry<LocationIdentity, MemoryNode> entry : lastMemorySnapshot.entrySet()) {
                 if (entry.getValue() == oldNode) {
                     entry.setValue(newNode);
+                    replaced = true;
                 }
             }
+            return replaced;
         }
     }
 

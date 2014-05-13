@@ -477,106 +477,13 @@ public class InliningPhase extends AbstractInliningPhase {
         }
     }
 
-    private static class InliningIterator {
-
-        private final FixedNode start;
-        private final Deque<FixedNode> nodeQueue;
-        private final NodeBitMap queuedNodes;
-
-        public InliningIterator(FixedNode start, NodeBitMap visitedFixedNodes) {
-            this.start = start;
-            this.nodeQueue = new ArrayDeque<>();
-            this.queuedNodes = visitedFixedNodes;
-            assert start.isAlive();
-        }
-
-        public LinkedList<Invoke> apply() {
-            LinkedList<Invoke> invokes = new LinkedList<>();
-            FixedNode current;
-            forcedQueue(start);
-
-            while ((current = nextQueuedNode()) != null) {
-                assert current.isAlive();
-
-                if (current instanceof Invoke && ((Invoke) current).callTarget() instanceof MethodCallTargetNode) {
-                    if (current != start) {
-                        invokes.addLast((Invoke) current);
-                    }
-                    queueSuccessors(current);
-                } else if (current instanceof LoopBeginNode) {
-                    queueSuccessors(current);
-                } else if (current instanceof LoopEndNode) {
-                    // nothing todo
-                } else if (current instanceof MergeNode) {
-                    queueSuccessors(current);
-                } else if (current instanceof FixedWithNextNode) {
-                    queueSuccessors(current);
-                } else if (current instanceof EndNode) {
-                    queueMerge((EndNode) current);
-                } else if (current instanceof ControlSinkNode) {
-                    // nothing todo
-                } else if (current instanceof ControlSplitNode) {
-                    queueSuccessors(current);
-                } else {
-                    assert false : current;
-                }
-            }
-
-            return invokes;
-        }
-
-        private void queueSuccessors(FixedNode x) {
-            for (Node node : x.successors()) {
-                queue(node);
-            }
-        }
-
-        private void queue(Node node) {
-            if (node != null && !queuedNodes.isMarked(node)) {
-                forcedQueue(node);
-            }
-        }
-
-        private void forcedQueue(Node node) {
-            queuedNodes.mark(node);
-            nodeQueue.addFirst((FixedNode) node);
-        }
-
-        private FixedNode nextQueuedNode() {
-            if (nodeQueue.isEmpty()) {
-                return null;
-            }
-
-            FixedNode result = nodeQueue.removeFirst();
-            assert queuedNodes.isMarked(result);
-            return result;
-        }
-
-        private void queueMerge(AbstractEndNode end) {
-            MergeNode merge = end.merge();
-            if (!queuedNodes.isMarked(merge) && visitedAllEnds(merge)) {
-                queuedNodes.mark(merge);
-                nodeQueue.add(merge);
-            }
-        }
-
-        private boolean visitedAllEnds(MergeNode merge) {
-            for (int i = 0; i < merge.forwardEndCount(); i++) {
-                if (!queuedNodes.isMarked(merge.forwardEndAt(i))) {
-                    return false;
-                }
-            }
-            return true;
-        }
-    }
-
     /**
      * Holds the data for building the callee graphs recursively: graphs and invocations (each
      * invocation can have multiple graphs).
      */
     static class InliningData {
 
-        private static final GraphInfo DummyGraphInfo = new GraphInfo(null, new LinkedList<Invoke>(), 1.0, 1.0);
+        private static final GraphInfo DummyGraphInfo = new GraphInfo(null, 1.0, 1.0);
 
         /**
          * Call hierarchy from outer most call (i.e., compilation unit) to inner most callee.
@@ -601,10 +508,7 @@ public class InliningPhase extends AbstractInliningPhase {
 
         public void pushGraph(StructuredGraph graph, double probability, double relevance) {
             assert !contains(graph);
-            NodeBitMap visitedFixedNodes = graph.createNodeBitMap();
-            LinkedList<Invoke> invokes = new InliningIterator(graph.start(), visitedFixedNodes).apply();
-            assert invokes.size() == count(graph.getInvokes());
-            graphQueue.push(new GraphInfo(graph, invokes, probability, relevance));
+            graphQueue.push(new GraphInfo(graph, probability, relevance));
             assert graphQueue.size() <= maxGraphs;
         }
 
@@ -712,16 +616,6 @@ public class InliningPhase extends AbstractInliningPhase {
             }
             return false;
         }
-
-        private static int count(Iterable<Invoke> invokes) {
-            int count = 0;
-            Iterator<Invoke> iterator = invokes.iterator();
-            while (iterator.hasNext()) {
-                iterator.next();
-                count++;
-            }
-            return count;
-        }
     }
 
     private static class MethodInvocation {
@@ -803,13 +697,19 @@ public class InliningPhase extends AbstractInliningPhase {
         private final ToDoubleFunction<FixedNode> probabilities;
         private final ComputeInliningRelevance computeInliningRelevance;
 
-        public GraphInfo(StructuredGraph graph, LinkedList<Invoke> invokes, double probability, double relevance) {
+        public GraphInfo(StructuredGraph graph, double probability, double relevance) {
             this.graph = graph;
-            this.remainingInvokes = invokes;
+            if (graph == null) {
+                this.remainingInvokes = new LinkedList<>();
+            } else {
+                LinkedList<Invoke> invokes = new InliningIterator(graph).apply();
+                assert invokes.size() == count(graph.getInvokes());
+                this.remainingInvokes = invokes;
+            }
             this.probability = probability;
             this.relevance = relevance;
 
-            if (graph != null && (graph.hasNode(InvokeNode.class) || graph.hasNode(InvokeWithExceptionNode.class))) {
+            if (graph != null && !remainingInvokes.isEmpty()) {
                 probabilities = new FixedNodeProbabilityCache();
                 computeInliningRelevance = new ComputeInliningRelevance(graph, probabilities);
                 computeProbabilities();
@@ -817,6 +717,16 @@ public class InliningPhase extends AbstractInliningPhase {
                 probabilities = null;
                 computeInliningRelevance = null;
             }
+        }
+
+        private static int count(Iterable<Invoke> invokes) {
+            int count = 0;
+            Iterator<Invoke> iterator = invokes.iterator();
+            while (iterator.hasNext()) {
+                iterator.next();
+                count++;
+            }
+            return count;
         }
 
         /**

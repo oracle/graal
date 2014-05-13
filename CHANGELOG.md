@@ -2,9 +2,10 @@
 
 ## `tip`
 ### Graal
-* ...
+* Made initialization of Graal runtime lazy in hosted mode.
 
 ### Truffle
+* `truffle.jar`: strip out build-time only dependency into a seperated JAR file (`truffle-dsl-processor.jar`)
 * ...
 
 ## Version 0.3
@@ -74,4 +75,3 @@
 
 * Initial version of a multi-language framework on top of Graal.
 * Update of the [Truffle Inlining API](http://mail.openjdk.java.net/pipermail/graal-dev/2014-January/001516.html).
-

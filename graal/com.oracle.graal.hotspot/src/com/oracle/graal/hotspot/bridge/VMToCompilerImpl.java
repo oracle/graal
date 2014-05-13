@@ -142,7 +142,7 @@ public class VMToCompilerImpl implements VMToCompiler {
         this.runtime = runtime;
     }
 
-    public void startRuntime() throws Throwable {
+    public void startRuntime() {
 
         if (LogFile.getValue() != null) {
             try {

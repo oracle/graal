@@ -643,11 +643,6 @@ public class SnippetTemplate {
 
         MemoryAnchorNode memoryAnchor = snippetCopy.add(new MemoryAnchorNode());
         snippetCopy.start().replaceAtUsages(InputType.Memory, memoryAnchor);
-        if (memoryAnchor.usages().isEmpty()) {
-            memoryAnchor.safeDelete();
-        } else {
-            snippetCopy.addAfterFixed(snippetCopy.start(), memoryAnchor);
-        }
 
         this.snippet = snippetCopy;
 
@@ -656,15 +651,21 @@ public class SnippetTemplate {
         List<ReturnNode> returnNodes = new ArrayList<>(4);
         List<MemoryMapNode> memMaps = new ArrayList<>(4);
         StartNode entryPointNode = snippet.start();
+        boolean anchorUsed = false;
         for (ReturnNode retNode : snippet.getNodes(ReturnNode.class)) {
             MemoryMapNode memMap = retNode.getMemoryMap();
-            memMap.replaceLastLocationAccess(snippetCopy.start(), memoryAnchor);
+            anchorUsed |= memMap.replaceLastLocationAccess(snippetCopy.start(), memoryAnchor);
             memMaps.add(memMap);
             retNode.setMemoryMap(null);
             returnNodes.add(retNode);
             if (memMap.usages().isEmpty()) {
                 memMap.safeDelete();
             }
+        }
+        if (memoryAnchor.usages().isEmpty() && !anchorUsed) {
+            memoryAnchor.safeDelete();
+        } else {
+            snippetCopy.addAfterFixed(snippetCopy.start(), memoryAnchor);
         }
         assert snippet.getNodes().filter(MemoryMapNode.class).isEmpty();
         if (returnNodes.isEmpty()) {
@@ -1009,7 +1010,7 @@ public class SnippetTemplate {
         }
 
         @Override
-        public void replaceLastLocationAccess(MemoryNode oldNode, MemoryNode newNode) {
+        public boolean replaceLastLocationAccess(MemoryNode oldNode, MemoryNode newNode) {
             throw GraalInternalError.shouldNotReachHere();
         }
     }

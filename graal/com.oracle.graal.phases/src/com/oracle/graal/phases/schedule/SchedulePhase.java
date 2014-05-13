@@ -83,32 +83,56 @@ public final class SchedulePhase extends Phase {
     }
 
     private class KillSet implements Iterable<LocationIdentity> {
-        private final Set<LocationIdentity> set;
+        private List<LocationIdentity> list;
 
         public KillSet() {
-            this.set = new ArraySet<>();
+            list = null;
         }
 
         public KillSet(KillSet other) {
-            this.set = new HashSet<>(other.set);
+            if (other.list != null && other.list.size() > 0) {
+                list = new ArrayList<>(other.list);
+            }
+        }
+
+        private void initSet() {
+            if (list == null) {
+                list = new ArrayList<>(4);
+            }
         }
 
         public void add(LocationIdentity locationIdentity) {
-            set.add(locationIdentity);
+            if (list == null || !list.contains(locationIdentity)) {
+                initSet();
+                list.add(locationIdentity);
+            }
         }
 
         public void addAll(KillSet other) {
-            set.addAll(other.set);
+            if (other.list == null) {
+                return;
+            }
+            initSet();
+            for (LocationIdentity locationIdentity : other) {
+                if (!list.contains(locationIdentity)) {
+                    list.add(locationIdentity);
+                }
+            }
         }
 
         public Iterator<LocationIdentity> iterator() {
-            return set.iterator();
+            if (list == null) {
+                return Collections.emptyIterator();
+            }
+            return list.iterator();
         }
 
         public boolean isKilled(LocationIdentity locationIdentity) {
-            return set.contains(locationIdentity);
+            if (list == null) {
+                return false;
+            }
+            return list.contains(locationIdentity);
         }
-
     }
 
     private class NewMemoryScheduleClosure extends BlockIteratorClosure<KillSet> {
