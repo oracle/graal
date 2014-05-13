@@ -230,7 +230,7 @@ public class ComputeInliningRelevance {
             assert !Double.isNaN(invokeProbability);
 
             double relevance = (invokeProbability / getFastPathMinProbability()) * Math.min(1.0, getScopeRelevanceWithinParent());
-            assert !Double.isNaN(relevance);
+            assert !Double.isNaN(relevance) : invoke + ": " + relevance + " / " + invokeProbability + " / " + getFastPathMinProbability() + " / " + getScopeRelevanceWithinParent();
             return relevance;
         }
     }
