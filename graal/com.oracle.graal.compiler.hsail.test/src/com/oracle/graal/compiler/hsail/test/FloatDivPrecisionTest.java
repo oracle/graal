@@ -49,8 +49,8 @@ public class FloatDivPrecisionTest extends GraalKernelTester {
     }
 
     @Override
-    public boolean isEqualsFP(double first, double second) {
-        return Math.abs(first - second) == 0;
+    protected double equalFloatsOrDoublesDelta() {
+        return 0.0D;
     }
 
     @Test
