@@ -657,7 +657,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                 } else {
                     throw new GraalInternalError("Illegal state");
                 }
-            } else if (node instanceof MergeNode) {
+            } else if (node instanceof MergeNode && !(node instanceof LoopBeginNode)) {
                 for (AbstractEndNode endNode : ((MergeNode) node).cfgPredecessors()) {
                     propagateZeroProbability(endNode);
                 }
