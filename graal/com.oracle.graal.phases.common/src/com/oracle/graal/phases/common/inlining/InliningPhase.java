@@ -170,7 +170,7 @@ public class InliningPhase extends AbstractInliningPhase {
                 data.popGraphs(remainingGraphs);
                 data.popInvocation();
             } else if (graphInfo.hasRemainingInvokes() && inliningPolicy.continueInlining(graphInfo.graph())) {
-                processNextInvoke(data, graphInfo, context);
+                processNextInvoke(data, graphInfo, context, maxMethodPerInlining, canonicalizer);
             } else {
                 data.popGraph();
                 if (!currentInvocation.isRoot()) {
@@ -196,7 +196,7 @@ public class InliningPhase extends AbstractInliningPhase {
     /**
      * Process the next invoke and enqueue all its graphs for processing.
      */
-    private void processNextInvoke(InliningData data, GraphInfo graphInfo, HighTierContext context) {
+    private static void processNextInvoke(InliningData data, GraphInfo graphInfo, HighTierContext context, int maxMethodPerInlining, CanonicalizerPhase canonicalizer) {
         Invoke invoke = graphInfo.popInvoke();
         MethodInvocation callerInvocation = data.currentInvocation();
         Assumptions parentAssumptions = callerInvocation.assumptions();
