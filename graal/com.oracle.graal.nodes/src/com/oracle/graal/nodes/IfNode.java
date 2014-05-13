@@ -27,6 +27,7 @@ import java.util.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.meta.JavaTypeProfile.ProfiledType;
 import com.oracle.graal.api.meta.ProfilingInfo.TriState;
+import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.debug.*;
@@ -599,6 +600,18 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         connectEnds(falseEnds, phiValues, oldFalseSuccessor, merge, tool);
         connectEnds(trueEnds, phiValues, oldTrueSuccessor, merge, tool);
 
+        if (this.trueSuccessorProbability == 0.0) {
+            for (AbstractEndNode endNode : trueEnds) {
+                propagateZeroProbability(endNode);
+            }
+        }
+
+        if (this.trueSuccessorProbability == 1.0) {
+            for (AbstractEndNode endNode : falseEnds) {
+                propagateZeroProbability(endNode);
+            }
+        }
+
         /*
          * Remove obsolete ends only after processing all ends, otherwise oldTrueSuccessor or
          * oldFalseSuccessor might have been removed if it is a LoopExitNode.
@@ -618,6 +631,39 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         assert !this.isAlive() : this;
 
         return true;
+    }
+
+    private void propagateZeroProbability(FixedNode startNode) {
+        Node prev = null;
+        for (FixedNode node : GraphUtil.predecessorIterable(startNode)) {
+            if (node instanceof IfNode) {
+                IfNode ifNode = (IfNode) node;
+                if (ifNode.trueSuccessor() == prev) {
+                    if (ifNode.trueSuccessorProbability == 0.0) {
+                        return;
+                    } else if (ifNode.trueSuccessorProbability == 1.0) {
+                        propagateZeroProbability((FixedNode) ifNode.predecessor());
+                    } else {
+                        ifNode.setTrueSuccessorProbability(0.0);
+                    }
+                } else if (ifNode.falseSuccessor() == prev) {
+                    if (ifNode.trueSuccessorProbability == 1.0) {
+                        return;
+                    } else if (ifNode.trueSuccessorProbability == 0.0) {
+                        propagateZeroProbability((FixedNode) ifNode.predecessor());
+                    } else {
+                        ifNode.setTrueSuccessorProbability(1.0);
+                    }
+                } else {
+                    throw new GraalInternalError("Illegal state");
+                }
+            } else if (node instanceof MergeNode) {
+                for (AbstractEndNode endNode : ((MergeNode) node).cfgPredecessors()) {
+                    propagateZeroProbability(endNode);
+                }
+            }
+            prev = node;
+        }
     }
 
     private static boolean checkFrameState(FixedNode start) {
