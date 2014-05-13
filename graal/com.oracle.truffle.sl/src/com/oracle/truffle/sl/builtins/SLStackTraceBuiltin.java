@@ -55,11 +55,11 @@ public abstract class SLStackTraceBuiltin extends SLBuiltinNode {
         return str.toString();
     }
 
-    private static void dumpFrame(StringBuilder str, CallTarget rootNode, Frame frame, boolean isVirtual) {
+    private static void dumpFrame(StringBuilder str, CallTarget callTarget, Frame frame, boolean isVirtual) {
         if (str.length() > 0) {
             str.append("\n");
         }
-        str.append("Frame: ").append(rootNode).append(isVirtual ? " (virtual)" : "");
+        str.append("Frame: ").append(callTarget).append(isVirtual ? " (virtual)" : "");
         FrameDescriptor frameDescriptor = frame.getFrameDescriptor();
         for (FrameSlot s : frameDescriptor.getSlots()) {
             str.append(", ").append(s.getIdentifier()).append("=").append(frame.getValue(s));

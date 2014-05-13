@@ -24,6 +24,8 @@
  */
 package com.oracle.truffle.api.impl;
 
+import java.util.*;
+
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
@@ -36,6 +38,9 @@ import com.oracle.truffle.api.nodes.*;
  * {@link Truffle#getRuntime()} to retrieve the current {@link TruffleRuntime}.
  */
 public final class DefaultTruffleRuntime implements TruffleRuntime {
+
+    private ThreadLocal<LinkedList<FrameInstance>> stackTraces = new ThreadLocal<>();
+    private ThreadLocal<FrameInstance> currentFrames = new ThreadLocal<>();
 
     public DefaultTruffleRuntime() {
         if (Truffle.getRuntime() != null) {
@@ -50,11 +55,11 @@ public final class DefaultTruffleRuntime implements TruffleRuntime {
 
     @Override
     public RootCallTarget createCallTarget(RootNode rootNode) {
-        return new DefaultCallTarget(rootNode);
+        return new DefaultCallTarget(rootNode, this);
     }
 
     public DirectCallNode createDirectCallNode(CallTarget target) {
-        return new DefaultDirectCallNode(target);
+        return new DefaultDirectCallNode(target, this);
     }
 
     public IndirectCallNode createIndirectCallNode() {
@@ -86,13 +91,34 @@ public final class DefaultTruffleRuntime implements TruffleRuntime {
         return new DefaultAssumption(name);
     }
 
+    private LinkedList<FrameInstance> getThreadLocalStackTrace() {
+        LinkedList<FrameInstance> result = stackTraces.get();
+        if (result == null) {
+            result = new LinkedList<>();
+            stackTraces.set(result);
+        }
+        return result;
+    }
+
+    public FrameInstance setCurrentFrame(FrameInstance newValue) {
+        FrameInstance oldValue = currentFrames.get();
+        currentFrames.set(newValue);
+        return oldValue;
+    }
+
+    public void pushFrame(FrameInstance frame) {
+        getThreadLocalStackTrace().addFirst(frame);
+    }
+
+    public void popFrame() {
+        getThreadLocalStackTrace().removeFirst();
+    }
+
     public Iterable<FrameInstance> getStackTrace() {
-        // TODO(lstadler) implement this using ThreadLocal
-        return null;
+        return getThreadLocalStackTrace();
     }
 
     public FrameInstance getCurrentFrame() {
-        // TODO(lstadler) implement this using ThreadLocal
-        return null;
+        return currentFrames.get();
     }
 }
