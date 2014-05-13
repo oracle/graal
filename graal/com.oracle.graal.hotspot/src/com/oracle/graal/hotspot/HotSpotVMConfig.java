@@ -1033,9 +1033,9 @@ public class HotSpotVMConfig extends CompilerObject {
     @HotSpotVMField(name = "HSAILFrame::_pc_offset", type = "jint", get = HotSpotVMField.Type.OFFSET) @Stable public int hsailFramePcOffset;
     @HotSpotVMField(name = "HSAILFrame::_num_s_regs", type = "jbyte", get = HotSpotVMField.Type.OFFSET) @Stable public int hsailFrameNumSRegOffset;
     @HotSpotVMField(name = "HSAILFrame::_num_d_regs", type = "jbyte", get = HotSpotVMField.Type.OFFSET) @Stable public int hsailFrameNumDRegOffset;
-    @HotSpotVMConstant(name = "sizeof(HSAILFrame)") @Stable public int hsailFrameHeaderSize;
-    @HotSpotVMConstant(name = "sizeof(Hsail::HSAILKernelDeoptimization)") @Stable public int hsailKernelDeoptimizationHeaderSize;
-    @HotSpotVMConstant(name = "sizeof(Hsail::HSAILDeoptimizationInfo)") @Stable public int hsailDeoptimizationInfoHeaderSize;
+    @HotSpotVMType(name = "HSAILFrame", get = HotSpotVMType.Type.SIZE) @Stable public int hsailFrameHeaderSize;
+    @HotSpotVMType(name = "Hsail::HSAILKernelDeoptimization", get = HotSpotVMType.Type.SIZE) @Stable public int hsailKernelDeoptimizationHeaderSize;
+    @HotSpotVMType(name = "Hsail::HSAILDeoptimizationInfo", get = HotSpotVMType.Type.SIZE) @Stable public int hsailDeoptimizationInfoHeaderSize;
 
     /**
      * Mark word right shift to get identity hash code.
