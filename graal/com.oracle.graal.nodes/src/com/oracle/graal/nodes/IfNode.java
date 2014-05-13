@@ -642,17 +642,19 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                     if (ifNode.trueSuccessorProbability == 0.0) {
                         return;
                     } else if (ifNode.trueSuccessorProbability == 1.0) {
-                        propagateZeroProbability((FixedNode) ifNode.predecessor());
+                        continue;
                     } else {
                         ifNode.setTrueSuccessorProbability(0.0);
+                        return;
                     }
                 } else if (ifNode.falseSuccessor() == prev) {
                     if (ifNode.trueSuccessorProbability == 1.0) {
                         return;
                     } else if (ifNode.trueSuccessorProbability == 0.0) {
-                        propagateZeroProbability((FixedNode) ifNode.predecessor());
+                        continue;
                     } else {
                         ifNode.setTrueSuccessorProbability(1.0);
+                        return;
                     }
                 } else {
                     throw new GraalInternalError("Illegal state");
@@ -661,6 +663,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                 for (AbstractEndNode endNode : ((MergeNode) node).cfgPredecessors()) {
                     propagateZeroProbability(endNode);
                 }
+                return;
             }
             prev = node;
         }
