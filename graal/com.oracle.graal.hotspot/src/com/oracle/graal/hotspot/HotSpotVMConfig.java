@@ -1035,7 +1035,7 @@ public class HotSpotVMConfig extends CompilerObject {
     @HotSpotVMField(name = "HSAILFrame::_num_d_regs", type = "jbyte", get = HotSpotVMField.Type.OFFSET) @Stable public int hsailFrameNumDRegOffset;
     @HotSpotVMConstant(name = "sizeof(HSAILFrame)") @Stable public int hsailFrameHeaderSize;
     @HotSpotVMConstant(name = "sizeof(Hsail::HSAILKernelDeoptimization)") @Stable public int hsailKernelDeoptimizationHeaderSize;
-    @HotSpotVMField(name = "Hsail::HSAILDeoptimizationInfo::_deopt_save_states[0]", type = "Hsail::HSAILKernelDeoptimization", get = HotSpotVMField.Type.OFFSET) @Stable public int hsailSaveStatesOffset0;
+    @HotSpotVMConstant(name = "sizeof(Hsail::HSAILDeoptimizationInfo)") @Stable public int hsailDeoptimizationInfoHeaderSize;
 
     /**
      * Mark word right shift to get identity hash code.
