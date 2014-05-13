@@ -22,15 +22,17 @@
  */
 package com.oracle.graal.test;
 
+import java.io.*;
 import java.lang.reflect.*;
 import java.util.*;
 
 import org.junit.*;
+import org.junit.internal.*;
 
 /**
  * Base class for Graal tests.
  * <p>
- * This contains common utility methods that are used in multiple test projects.
+ * This contains common utility methods and classes that are used in tests.
  */
 public class GraalTest {
 
@@ -67,6 +69,76 @@ public class GraalTest {
             return clazz.getMethod(methodName, parameterTypes);
         } catch (NoSuchMethodException | SecurityException e) {
             throw new RuntimeException("method not found: " + methodName + "" + Arrays.toString(parameterTypes));
+        }
+    }
+
+    /**
+     * Compares two given objects for {@linkplain Assert#assertEquals(Object, Object) equality}.
+     * Does a deep copy equality comparison if {@code expected} is an array.
+     */
+    protected void assertEquals(Object expected, Object actual) {
+        if (expected != null && expected.getClass().isArray()) {
+            Assert.assertTrue(expected != null);
+            Assert.assertTrue(actual != null);
+            Assert.assertEquals(expected.getClass(), actual.getClass());
+            if (expected instanceof int[]) {
+                Assert.assertArrayEquals((int[]) expected, (int[]) actual);
+            } else if (expected instanceof byte[]) {
+                Assert.assertArrayEquals((byte[]) expected, (byte[]) actual);
+            } else if (expected instanceof char[]) {
+                Assert.assertArrayEquals((char[]) expected, (char[]) actual);
+            } else if (expected instanceof short[]) {
+                Assert.assertArrayEquals((short[]) expected, (short[]) actual);
+            } else if (expected instanceof float[]) {
+                Assert.assertArrayEquals((float[]) expected, (float[]) actual, 0.0f);
+            } else if (expected instanceof long[]) {
+                Assert.assertArrayEquals((long[]) expected, (long[]) actual);
+            } else if (expected instanceof double[]) {
+                Assert.assertArrayEquals((double[]) expected, (double[]) actual, 0.0d);
+            } else if (expected instanceof boolean[]) {
+                new ExactComparisonCriteria().arrayEquals(null, expected, actual);
+            } else if (expected instanceof Object[]) {
+                Assert.assertArrayEquals((Object[]) expected, (Object[]) actual);
+            } else {
+                Assert.fail("non-array value encountered: " + expected);
+            }
+        } else {
+            Assert.assertEquals(expected, actual);
+        }
+    }
+
+    @SuppressWarnings("serial")
+    public static class MultiCauseAssertionError extends AssertionError {
+
+        private Throwable[] causes;
+
+        public MultiCauseAssertionError(String message, Throwable... causes) {
+            super(message);
+            this.causes = causes;
+        }
+
+        @Override
+        public void printStackTrace(PrintStream out) {
+            super.printStackTrace(out);
+            int num = 0;
+            for (Throwable cause : causes) {
+                if (cause != null) {
+                    out.print("cause " + (num++));
+                    cause.printStackTrace(out);
+                }
+            }
+        }
+
+        @Override
+        public void printStackTrace(PrintWriter out) {
+            super.printStackTrace(out);
+            int num = 0;
+            for (Throwable cause : causes) {
+                if (cause != null) {
+                    out.print("cause " + (num++) + ": ");
+                    cause.printStackTrace(out);
+                }
+            }
         }
     }
 }
