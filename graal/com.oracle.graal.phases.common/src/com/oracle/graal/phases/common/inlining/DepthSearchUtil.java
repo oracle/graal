@@ -22,8 +22,17 @@
  */
 package com.oracle.graal.phases.common.inlining;
 
+import com.oracle.graal.api.meta.Constant;
+import com.oracle.graal.api.meta.ResolvedJavaMethod;
+import com.oracle.graal.compiler.common.type.Stamp;
+import com.oracle.graal.debug.Debug;
+import com.oracle.graal.graph.NodeInputList;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.phases.common.CanonicalizerPhase;
+import com.oracle.graal.phases.common.DeadCodeEliminationPhase;
 import com.oracle.graal.phases.tiers.HighTierContext;
+
+import static com.oracle.graal.compiler.common.GraalOptions.OptCanonicalizer;
 
 /**
  * The workings of {@link InliningPhase#run(StructuredGraph, HighTierContext)} include delving into
@@ -34,5 +43,107 @@ public class DepthSearchUtil {
 
     private DepthSearchUtil() {
         // no instances
+    }
+
+    static InliningUtil.Inlineable getInlineableElement(final ResolvedJavaMethod method, Invoke invoke, HighTierContext context, CanonicalizerPhase canonicalizer) {
+        Class<? extends FixedWithNextNode> macroNodeClass = InliningUtil.getMacroNodeClass(context.getReplacements(), method);
+        if (macroNodeClass != null) {
+            return new InliningUtil.InlineableMacroNode(macroNodeClass);
+        } else {
+            return new InliningUtil.InlineableGraph(buildGraph(method, invoke, context, canonicalizer));
+        }
+    }
+
+    private static StructuredGraph buildGraph(final ResolvedJavaMethod method, final Invoke invoke, final HighTierContext context, CanonicalizerPhase canonicalizer) {
+        final StructuredGraph newGraph;
+        final boolean parseBytecodes;
+
+        // TODO (chaeubl): copying the graph is only necessary if it is modified or if it contains
+        // any invokes
+        StructuredGraph intrinsicGraph = InliningUtil.getIntrinsicGraph(context.getReplacements(), method);
+        if (intrinsicGraph != null) {
+            newGraph = intrinsicGraph.copy();
+            parseBytecodes = false;
+        } else {
+            StructuredGraph cachedGraph = getCachedGraph(method, context);
+            if (cachedGraph != null) {
+                newGraph = cachedGraph.copy();
+                parseBytecodes = false;
+            } else {
+                newGraph = new StructuredGraph(method);
+                parseBytecodes = true;
+            }
+        }
+
+        try (Debug.Scope s = Debug.scope("InlineGraph", newGraph)) {
+            if (parseBytecodes) {
+                parseBytecodes(newGraph, context, canonicalizer);
+            }
+
+            boolean callerHasMoreInformationAboutArguments = false;
+            NodeInputList<ValueNode> args = invoke.callTarget().arguments();
+            for (ParameterNode param : newGraph.getNodes(ParameterNode.class).snapshot()) {
+                ValueNode arg = args.get(param.index());
+                if (arg.isConstant()) {
+                    Constant constant = arg.asConstant();
+                    newGraph.replaceFloating(param, ConstantNode.forConstant(constant, context.getMetaAccess(), newGraph));
+                    callerHasMoreInformationAboutArguments = true;
+                } else {
+                    Stamp joinedStamp = param.stamp().join(arg.stamp());
+                    if (joinedStamp != null && !joinedStamp.equals(param.stamp())) {
+                        param.setStamp(joinedStamp);
+                        callerHasMoreInformationAboutArguments = true;
+                    }
+                }
+            }
+
+            if (!callerHasMoreInformationAboutArguments) {
+                // TODO (chaeubl): if args are not more concrete, inlining should be avoided
+                // in most cases or we could at least use the previous graph size + invoke
+                // probability to check the inlining
+            }
+
+            if (OptCanonicalizer.getValue()) {
+                canonicalizer.apply(newGraph, context);
+            }
+
+            return newGraph;
+        } catch (Throwable e) {
+            throw Debug.handle(e);
+        }
+    }
+
+    private static StructuredGraph getCachedGraph(ResolvedJavaMethod method, HighTierContext context) {
+        if (context.getGraphCache() != null) {
+            StructuredGraph cachedGraph = context.getGraphCache().get(method);
+            if (cachedGraph != null) {
+                return cachedGraph;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * This method builds the IR nodes for <code>newGraph</code> and canonicalizes them. Provided
+     * profiling info is mature, the resulting graph is cached.
+     */
+    private static StructuredGraph parseBytecodes(StructuredGraph newGraph, HighTierContext context, CanonicalizerPhase canonicalizer) {
+        final boolean hasMatureProfilingInfo = newGraph.method().getProfilingInfo().isMature();
+
+        if (context.getGraphBuilderSuite() != null) {
+            context.getGraphBuilderSuite().apply(newGraph, context);
+        }
+        assert newGraph.start().next() != null : "graph needs to be populated during PhasePosition.AFTER_PARSING";
+
+        new DeadCodeEliminationPhase().apply(newGraph);
+
+        if (OptCanonicalizer.getValue()) {
+            canonicalizer.apply(newGraph, context);
+        }
+
+        if (hasMatureProfilingInfo && context.getGraphCache() != null) {
+            context.getGraphCache().put(newGraph.method(), newGraph.copy());
+        }
+        return newGraph;
     }
 }
