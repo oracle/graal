@@ -24,13 +24,26 @@
  */
 package com.oracle.truffle.api.instrument;
 
-import com.oracle.truffle.api.*;
-import com.oracle.truffle.api.instrument.impl.*;
+import com.oracle.truffle.api.frame.*;
+import com.oracle.truffle.api.nodes.*;
 
-public class InstrumentationFactory {
+/**
+ * A trap that can be set to interrupt execution at probed nodes carrying a specific tag.
+ */
+public abstract class PhylumTrap {
 
-    public static Instrumentation create(ExecutionContext context) {
-        return new InstrumentationImpl(context);
+    private final PhylumTag tag;
+
+    protected PhylumTrap(PhylumTag tag) {
+        this.tag = tag;
     }
 
+    public final PhylumTag getTag() {
+        return tag;
+    }
+
+    /**
+     * Callback that will be received whenever execution enters a node with the specified tag.
+     */
+    public abstract void phylumTrappedAt(Node node, MaterializedFrame frame);
 }

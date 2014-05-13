@@ -29,13 +29,11 @@ import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
 
 /**
- * Visualization services for the benefit of {@link Instrumentation}-based tools, possibly
- * specialized for each guest language and possibly specialized for relevant information from the
- * underlying Truffle implementation.
+ * Visualization services for the benefit of instrumentation-based tools, possibly specialized for
+ * each guest language and possibly specialized for relevant information from the underlying Truffle
+ * implementation.
  * <p>
  * <strong>Disclaimer:</strong> experimental interface under development.
- *
- * @See Instrumentation
  */
 public interface Visualizer {
 

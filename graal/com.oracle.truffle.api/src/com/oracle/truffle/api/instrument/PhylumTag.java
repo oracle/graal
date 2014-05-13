@@ -25,46 +25,32 @@
 package com.oracle.truffle.api.instrument;
 
 /**
- * Program element "tags" that define user-visible behavior for debugging and other simple tools.
- * These categories (<em>phyla</em>) should correspond to program structures that are meaningful to
- * a guest language programmer.
+ * Program element "tags", presumed to be singletons (best implemented as enums) that define
+ * user-visible behavior for debugging and other simple tools. These categories (<em>phyla</em>)
+ * should correspond to program structures that are meaningful to a guest language programmer.
  * <p>
  * An untagged Truffle node should be understood as an artifact of the guest language implementation
  * and should not be visible to the user of a guest language programming tool. Nodes may also have
  * more than one tag, for example a variable assignment that is also a statement. Finally, the
  * assignment of tags to nodes could depending on the use-case of whatever tool is using them.
  * <p>
- * This is a somewhat language-agnostic set of phyla, suitable for conventional imperative
- * languages, and is being developed incrementally.
- * <p>
- * The need for alternative sets of tags is likely to arise, perhaps for other families of languages
- * (for example for mostly expression-oriented languages) or even for specific languages.
- * <p>
- * These are listed alphabetically so that listing from some collection classes will come out in
- * that order.
- * <p>
  * <strong>Disclaimer:</strong> experimental interface under development.
+ *
+ * @see Probe
+ * @see Wrapper
+ * @see StandardTag
  */
-public enum PhylumTag {
+public interface PhylumTag {
 
     /**
-     * Marker for a variable assignment.
+     * Human-friendly name of guest language program elements belonging to the category, e.g.
+     * "statement".
      */
-    ASSIGNMENT,
+    String name();
 
     /**
-     * Marker for a call site.
+     * Criteria and example uses for the tag.
      */
-    CALL,
-
-    /**
-     * Marker for a location where a guest language exception is about to be thrown.
-     */
-    THROW,
-
-    /**
-     * Marker for a location where ordinary "stepping" should halt.
-     */
-    STATEMENT;
+    String getDescription();
 
 }

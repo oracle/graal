@@ -24,43 +24,54 @@
  */
 package com.oracle.truffle.api.instrument;
 
-import java.util.*;
-
-import com.oracle.truffle.api.*;
-import com.oracle.truffle.api.source.*;
-
-public interface Instrumentation {
-
-    /**
-     * Adds a new specification for how to instrument ASTs.
-     */
-    void addNodeProber(ASTNodeProber nodeProber);
-
-    /**
-     * Registers a tool interested in being notified about the insertion of a newly created
-     * {@link Probe} into a Truffle AST.
-     */
-    void addProbeListener(ProbeListener listener);
+/**
+ * A somewhat language-agnostic set of phylum categories, suitable for conventional imperative
+ * languages, and is being developed incrementally.
+ * <p>
+ * The need for alternative sets of tags is likely to arise, perhaps for other families of languages
+ * (for example for mostly expression-oriented languages) or even for specific languages.
+ * <p>
+ * <strong>Disclaimer:</strong> experimental interface under development.
+ *
+ * @see Probe
+ * @see Wrapper
+ */
+public enum StandardTag implements PhylumTag {
 
     /**
-     * Return the (possibly newly created) {@link Probe} uniquely associated with a particular
-     * source code location. A newly created probe carries no tags.
-     *
-     * @param eventListener an optional listener for certain instrumentation-related events
-     * @return a probe uniquely associated with an extent of guest language source code.
+     * Marker for a variable assignment.
      */
-    Probe getProbe(SourceSection sourceSection, InstrumentEventListener eventListener);
+    ASSIGNMENT("assignment", "a variable assignment"),
 
     /**
-     * Returns all existing probes with specific tag, or all probes if {@code tag = null}; empty
-     * collection if no probes found.
+     * Marker for a call site.
      */
-    Collection<Probe> findProbesTaggedAs(PhylumTag tag);
+    CALL("call", "a method/procedure call site"),
 
     /**
-     * Returns all existing probes with first character on a specified line; empty collection if no
-     * probes found.
+     * Marker for a location where a guest language exception is about to be thrown.
      */
-    Collection<Probe> findProbesByLine(SourceLineLocation lineLocation);
+    THROW("throw", "creator of an exception"),
+
+    /**
+     * Marker for a location where ordinary "stepping" should halt.
+     */
+    STATEMENT("statement", "basic unit of the language, suitable for \"stepping\" in a debugger");
+
+    private final String name;
+    private final String description;
+
+    private StandardTag(String name, String description) {
+        this.name = name;
+        this.description = description;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public String getDescription() {
+        return description;
+    }
 
 }

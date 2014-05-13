@@ -27,6 +27,7 @@ package com.oracle.truffle.api.instrument.impl;
 import java.util.*;
 
 import com.oracle.truffle.api.*;
+import com.oracle.truffle.api.CompilerDirectives.SlowPath;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.instrument.*;
 import com.oracle.truffle.api.nodes.*;
@@ -38,17 +39,18 @@ import com.oracle.truffle.api.nodes.*;
  */
 public abstract class InstrumentationNode extends Node implements ExecutionEvents {
 
-    // TODO (mlvdv) This is a pretty awkward design; it is a priority to revise it.
+    public interface ProbeCallback {
+        void newTagAdded(ProbeImpl probe, PhylumTag tag);
+    }
 
     /**
      * Creates a new {@link Probe}, presumed to be unique to a particular {@linkplain SourceSection}
      * extent of guest language source code.
      *
-     * @param eventListener an optional listener for certain instrumentation-related events.
      * @return a new probe
      */
-    static Probe createProbe(InstrumentationImpl instrumentation, SourceSection sourceSection, InstrumentEventListener eventListener) {
-        return new ProbeImpl(instrumentation, sourceSection, eventListener);
+    public static ProbeImpl createProbe(SourceSection sourceSection, ProbeCallback probeCallback) {
+        return new ProbeImpl(sourceSection, probeCallback);
     }
 
     /**
@@ -103,84 +105,84 @@ public abstract class InstrumentationNode extends Node implements ExecutionEvent
         probe.notifyProbeChanged(instrument);
     }
 
-    private void internalEnter(Node astNode, VirtualFrame frame) {
+    protected void internalEnter(Node astNode, VirtualFrame frame) {
         enter(astNode, frame);
         if (next != null) {
             next.internalEnter(astNode, frame);
         }
     }
 
-    private void internalLeave(Node astNode, VirtualFrame frame) {
+    protected void internalLeave(Node astNode, VirtualFrame frame) {
         leave(astNode, frame);
         if (next != null) {
             next.internalLeave(astNode, frame);
         }
     }
 
-    private void internalLeave(Node astNode, VirtualFrame frame, boolean result) {
+    protected void internalLeave(Node astNode, VirtualFrame frame, boolean result) {
         leave(astNode, frame, result);
         if (next != null) {
             next.internalLeave(astNode, frame, result);
         }
     }
 
-    private void internalLeave(Node astNode, VirtualFrame frame, byte result) {
+    protected void internalLeave(Node astNode, VirtualFrame frame, byte result) {
         leave(astNode, frame, result);
         if (next != null) {
             next.internalLeave(astNode, frame, result);
         }
     }
 
-    private void internalLeave(Node astNode, VirtualFrame frame, short result) {
+    protected void internalLeave(Node astNode, VirtualFrame frame, short result) {
         leave(astNode, frame, result);
         if (next != null) {
             next.internalLeave(astNode, frame, result);
         }
     }
 
-    private void internalLeave(Node astNode, VirtualFrame frame, int result) {
+    protected void internalLeave(Node astNode, VirtualFrame frame, int result) {
         leave(astNode, frame, result);
         if (next != null) {
             next.internalLeave(astNode, frame, result);
         }
     }
 
-    private void internalLeave(Node astNode, VirtualFrame frame, long result) {
+    protected void internalLeave(Node astNode, VirtualFrame frame, long result) {
         leave(astNode, frame, result);
         if (next != null) {
             next.internalLeave(astNode, frame, result);
         }
     }
 
-    private void internalLeave(Node astNode, VirtualFrame frame, char result) {
+    protected void internalLeave(Node astNode, VirtualFrame frame, char result) {
         leave(astNode, frame, result);
         if (next != null) {
             next.internalLeave(astNode, frame, result);
         }
     }
 
-    private void internalLeave(Node astNode, VirtualFrame frame, float result) {
+    protected void internalLeave(Node astNode, VirtualFrame frame, float result) {
         leave(astNode, frame, result);
         if (next != null) {
             next.internalLeave(astNode, frame, result);
         }
     }
 
-    private void internalLeave(Node astNode, VirtualFrame frame, double result) {
+    protected void internalLeave(Node astNode, VirtualFrame frame, double result) {
         leave(astNode, frame, result);
         if (next != null) {
             next.internalLeave(astNode, frame, result);
         }
     }
 
-    private void internalLeave(Node astNode, VirtualFrame frame, Object result) {
+    protected void internalLeave(Node astNode, VirtualFrame frame, Object result) {
         leave(astNode, frame, result);
         if (next != null) {
             next.internalLeave(astNode, frame, result);
         }
     }
 
-    private void internalLeaveExceptional(Node astNode, VirtualFrame frame, Exception e) {
+    protected void internalLeaveExceptional(Node astNode, VirtualFrame frame, Exception e) {
         leaveExceptional(astNode, frame, null);
         if (next != null) {
             next.internalLeaveExceptional(astNode, frame, e);
@@ -197,55 +199,39 @@ public abstract class InstrumentationNode extends Node implements ExecutionEvent
      * May be categorized by one or more {@linkplain PhylumTag tags}, signifying information useful
      * for instrumentation about its AST location(s).
      */
-    private static final class ProbeImpl extends InstrumentationNode implements Probe {
+    public static final class ProbeImpl extends InstrumentationNode implements Probe {
 
-        final InstrumentationImpl instrumentation;
-
-        final InstrumentEventListener eventListener;
-
-        @CompilerDirectives.CompilationFinal private Assumption probeUnchanged;
+        private final ProbeCallback probeCallback;
 
         /**
-         * When in stepping mode, ordinary line breakpoints are ignored, but every entry at a line
-         * will cause a halt.
-         */
-        @CompilerDirectives.CompilationFinal private boolean stepping;
-
-        /**
-         * Source information about the AST node to which this instrumentation is attached.
+         * Source information about the AST node (and its clones) to which this probe is attached.
          */
         private final SourceSection probedSourceSection;
 
-        private final Set<PhylumTag> tags = EnumSet.noneOf(PhylumTag.class);
+        // TODO (mlvdv) assumption model broken
+        @CompilerDirectives.CompilationFinal private Assumption probeUnchanged;
 
-        private ProbeImpl(InstrumentationImpl instrumentation, SourceSection sourceSection, InstrumentEventListener eventListener) {
-            this.instrumentation = instrumentation;
+        @CompilerDirectives.CompilationFinal private PhylumTrap trap = null;
+
+        private final ArrayList<PhylumTag> tags = new ArrayList<>();
+
+        private ProbeImpl(SourceSection sourceSection, ProbeCallback probeCallback) {
+            this.probeCallback = probeCallback;
             this.probedSourceSection = sourceSection;
-            this.eventListener = eventListener == null ? NullInstrumentEventListener.INSTANCE : eventListener;
             this.probeUnchanged = Truffle.getRuntime().createAssumption();
             this.next = null;
-        }
-
-        @Override
-        public Probe getProbe() {
-            return this;
-        }
-
-        @Override
-        protected void notifyProbeChanged(Instrument instrument) {
-            probeUnchanged.invalidate();
-            probeUnchanged = Truffle.getRuntime().createAssumption();
         }
 
         public SourceSection getSourceLocation() {
             return probedSourceSection;
         }
 
+        @SlowPath
         public void tagAs(PhylumTag tag) {
             assert tag != null;
             if (!tags.contains(tag)) {
                 tags.add(tag);
-                instrumentation.newTagAdded(this, tag);
+                probeCallback.newTagAdded(this, tag);
             }
         }
 
@@ -254,43 +240,51 @@ public abstract class InstrumentationNode extends Node implements ExecutionEvent
             return tags.contains(tag);
         }
 
-        public Set<PhylumTag> getPhylumTags() {
+        public Iterable<PhylumTag> getPhylumTags() {
             return tags;
         }
 
-        public void setStepping(boolean stepping) {
-            if (this.stepping != stepping) {
-                this.stepping = stepping;
-                probeUnchanged.invalidate();
-                probeUnchanged = Truffle.getRuntime().createAssumption();
-            }
-        }
-
-        public boolean isStepping() {
-            return stepping;
-        }
-
-        @CompilerDirectives.SlowPath
+        @SlowPath
         public void addInstrument(Instrument instrument) {
             probeUnchanged.invalidate();
             super.internalAddInstrument(instrument);
             probeUnchanged = Truffle.getRuntime().createAssumption();
         }
 
-        @CompilerDirectives.SlowPath
+        @SlowPath
         public void removeInstrument(Instrument instrument) {
             probeUnchanged.invalidate();
             super.internalRemoveInstrument(instrument);
             probeUnchanged = Truffle.getRuntime().createAssumption();
         }
 
+        @Override
+        public Probe getProbe() {
+            return this;
+        }
+
+        @Override
+        @SlowPath
+        protected void notifyProbeChanged(Instrument instrument) {
+            probeUnchanged.invalidate();
+            probeUnchanged = Truffle.getRuntime().createAssumption();
+        }
+
+        @SlowPath
+        public void setTrap(PhylumTrap trap) {
+            assert trap == null || isTaggedAs(trap.getTag());
+            probeUnchanged.invalidate();
+            this.trap = trap;
+            probeUnchanged = Truffle.getRuntime().createAssumption();
+        }
+
         public void notifyEnter(Node astNode, VirtualFrame frame) {
-            if (stepping || next != null) {
+            if (trap != null || next != null) {
                 if (!probeUnchanged.isValid()) {
                     CompilerDirectives.transferToInterpreter();
                 }
-                if (stepping) {
-                    eventListener.haltedAt(astNode, frame.materialize());
+                if (trap != null) {
+                    trap.phylumTrappedAt(astNode, frame.materialize());
                 }
                 if (next != null) {
                     next.internalEnter(astNode, frame);

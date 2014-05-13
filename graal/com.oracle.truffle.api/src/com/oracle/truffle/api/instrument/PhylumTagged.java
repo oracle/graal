@@ -24,13 +24,14 @@
  */
 package com.oracle.truffle.api.instrument;
 
-import java.util.*;
-
 /**
- * Information about a guest language program element that can be marked as belonging to 0 or more
- * {@linkplain PhylumTag tags}.
+ * Information about a guest language program element in a Truffle that can be marked as belonging
+ * to 0 or more {@linkplain PhylumTag tags}.
  * <p>
  * <strong>Disclaimer:</strong> experimental interface under development.
+ *
+ * @see Probe
+ * @see Wrapper
  */
 public interface PhylumTagged {
 
@@ -42,6 +43,6 @@ public interface PhylumTagged {
     /**
      * In which categories has this node been tagged (<em>empty set</em> if none).
      */
-    Set<PhylumTag> getPhylumTags();
+    Iterable<PhylumTag> getPhylumTags();
 
 }

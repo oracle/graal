@@ -33,14 +33,34 @@ import com.oracle.truffle.api.nodes.*;
  * A wrapper <em>decorates</em> an AST node (its <em>child</em>) by acting as a transparent
  * <em>proxy</em> for the child with respect to Truffle execution semantics.
  * <p>
- * A wrapper is also expected to notify its associated {@link Probe} when certain
- * {@link ExecutionEvents} occur at the wrapper during program execution.
+ * A wrapper is also expected to notify its associated {@link Probe} when {@link ExecutionEvents}
+ * occur at the wrapper during program execution.
  * <p>
  * The wrapper's {@link Probe} is shared by every copy of the wrapper made when the AST is copied.
  * <p>
- * Wrappers methods must be amenable to Truffle/Graal inlining.
+ * Wrapper implementation guidelines:
+ * <ol>
+ * <li>Every guest language implementation should include a Wrapper implementation; usually only one
+ * is needed.</li>
+ * <li>The Wrapper type should descend from the <em>language-specific node class</em> of the guest
+ * language.</li>
+ * <li>The Wrapper must have a single {@code @Child private <guestLanguage>Node child} field.</li>
+ * <li>The Wrapper must act as a <em>proxy</em> for its child, which means implementing every
+ * possible <em>execute-</em> method that gets called on guest language AST node types by their
+ * parents, and passing along each call to its child.</li>
+ * <li>The Wrapper must have a single {@code private final Probe probe} to which an optional probe
+ * can be attached during node construction.</li>
+ * <li>Wrapper methods must also notify its attached {@link Probe}, if any, in terms of standard
+ * {@link ExecutionEvents}.</li>
+ * <li>Most importantly, Wrappers must be implemented so that Truffle optimization will reduce their
+ * runtime overhead to zero when there is no probe attached or when a probe has no attached
+ * {@link Instrument}s.</li>
+ * </ol>
  * <p>
  * <strong>Disclaimer:</strong> experimental interface under development.
+ *
+ * @see Probe
+ * @see ExecutionEvents
  */
 public interface Wrapper extends PhylumTagged {
 

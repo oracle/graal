@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,14 +25,14 @@
 package com.oracle.truffle.api.instrument;
 
 import com.oracle.truffle.api.*;
-import com.oracle.truffle.api.frame.*;
-import com.oracle.truffle.api.nodes.*;
 
 /**
  * A client of the instrumentation framework that requests event notifications from the language
- * engine.
+ * engine when sources are loaded.
+ * <p>
+ * <strong>Disclaimer:</strong> experimental interface under development.
  */
-public interface InstrumentEventListener {
+public interface SourceListener {
 
     /**
      * The guest language runtime is starting to load a source. Care should be taken to ensure that
@@ -47,21 +47,5 @@ public interface InstrumentEventListener {
      * same argument.
      */
     void loadEnding(Source source);
-
-    /**
-     * A guest language call is about to be executed.
-     */
-    void callEntering(Node astNode, String name);
-
-    /**
-     * A guest language call has just completed.
-     */
-    void callReturned(Node astNode, String name);
-
-    /**
-     * An opportunity for instrumentation to interact with Truffle AST execution halted at some
-     * node.
-     */
-    void haltedAt(Node astNode, MaterializedFrame frame);
 
 }
