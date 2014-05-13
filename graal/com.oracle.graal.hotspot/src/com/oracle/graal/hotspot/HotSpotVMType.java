@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,15 +24,34 @@ package com.oracle.graal.hotspot;
 
 import java.lang.annotation.*;
 
+/**
+ * Refers to a C++ type in the VM.
+ */
 @Target(ElementType.FIELD)
 @Retention(RetentionPolicy.RUNTIME)
 public @interface HotSpotVMType {
 
+    /**
+     * Types of information this annotation can return.
+     */
     enum Type {
+        /**
+         * Returns the size of the type (C++ {@code sizeof()}).
+         */
         SIZE;
     }
 
-    String name();
-
+    /**
+     * Specifies what type of information to return.
+     *
+     * @see Type
+     */
     Type get();
+
+    /**
+     * Returns the name of the type.
+     *
+     * @return name of type
+     */
+    String name();
 }

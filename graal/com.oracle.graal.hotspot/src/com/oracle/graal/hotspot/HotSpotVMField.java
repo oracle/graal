@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,21 +24,53 @@ package com.oracle.graal.hotspot;
 
 import java.lang.annotation.*;
 
+/**
+ * Refers to a C++ field in the VM.
+ */
 @Target(ElementType.FIELD)
 @Retention(RetentionPolicy.RUNTIME)
 public @interface HotSpotVMField {
 
+    /**
+     * Types of information this annotation can return.
+     */
     enum Type {
+        /**
+         * Returns the offset of this field within the type. Only valid for instance fields.
+         */
         OFFSET,
+
+        /**
+         * Returns the absolute address of this field. Only valid for static fields.
+         */
         ADDRESS,
+
+        /**
+         * Returns the value of this field. Only valid for static fields.
+         */
         VALUE;
     }
 
-    String name();
+    /**
+     * Specifies what type of information to return.
+     *
+     * @see Type
+     */
+    Type get();
 
+    /**
+     * Returns the type name containing this field.
+     *
+     * @return name of containing type
+     */
     String type();
 
-    Type get();
+    /**
+     * Returns the name of this field.
+     *
+     * @return name of field
+     */
+    String name();
 
     /**
      * List of architectures where this constant is required. Names are derived from
