@@ -473,13 +473,13 @@ public class InliningPhase extends AbstractInliningPhase {
             return graphQueue.size();
         }
 
-        public void pushGraph(StructuredGraph graph, double probability, double relevance) {
+        private void pushGraph(StructuredGraph graph, double probability, double relevance) {
             assert !contains(graph);
             graphQueue.push(new GraphInfo(graph, probability, relevance));
             assert graphQueue.size() <= maxGraphs;
         }
 
-        public void pushDummyGraph() {
+        private void pushDummyGraph() {
             graphQueue.push(DummyGraphInfo);
         }
 
@@ -524,7 +524,7 @@ public class InliningPhase extends AbstractInliningPhase {
             return invocationQueue.peekFirst();
         }
 
-        public MethodInvocation pushInvocation(InlineInfo info, Assumptions assumptions, double probability, double relevance) {
+        private MethodInvocation pushInvocation(InlineInfo info, Assumptions assumptions, double probability, double relevance) {
             MethodInvocation methodInvocation = new MethodInvocation(info, new Assumptions(assumptions.useOptimisticAssumptions()), probability, relevance);
             invocationQueue.addFirst(methodInvocation);
             maxGraphs += info.numberOfMethods();
