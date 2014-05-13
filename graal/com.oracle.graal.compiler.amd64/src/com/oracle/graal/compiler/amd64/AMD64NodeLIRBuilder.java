@@ -274,40 +274,9 @@ public abstract class AMD64NodeLIRBuilder extends NodeLIRBuilder {
     }
 
     private Value emitReinterpretMemory(PlatformKind to, Access access) {
-        Kind from = getMemoryKind(access);
-        assert to != from : "should have been eliminated";
-
-        /*
-         * Conversions between integer to floating point types require moves between CPU and FPU
-         * registers.
-         */
-        switch ((Kind) to) {
-            case Int:
-                switch (from) {
-                    case Float:
-                        return emitConvert2MemoryOp(to, MOV_F2I, access);
-                }
-                break;
-            case Long:
-                switch (from) {
-                    case Double:
-                        return emitConvert2MemoryOp(to, MOV_D2L, access);
-                }
-                break;
-            case Float:
-                switch (from) {
-                    case Int:
-                        return emitConvert2MemoryOp(to, MOV_I2F, access);
-                }
-                break;
-            case Double:
-                switch (from) {
-                    case Long:
-                        return emitConvert2MemoryOp(to, MOV_L2D, access);
-                }
-                break;
-        }
-        throw GraalInternalError.shouldNotReachHere();
+        AMD64AddressValue address = makeAddress(access);
+        LIRFrameState state = getState(access);
+        return getLIRGeneratorTool().emitLoad(to, address, state);
     }
 
     protected AMD64Arithmetic getOp(ValueNode operation, Access access) {
