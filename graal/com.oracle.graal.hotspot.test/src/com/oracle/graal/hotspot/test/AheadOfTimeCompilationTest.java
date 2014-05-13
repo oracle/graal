@@ -66,19 +66,19 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
     @Test
     public void testStaticFinalObjectAOT() {
         StructuredGraph result = compile("getStaticFinalObject", true);
-        assertEquals(1, getConstantNodes(result).count());
-        assertEquals(getCodeCache().getTarget().wordKind, getConstantNodes(result).first().getKind());
-        assertEquals(2, result.getNodes(FloatingReadNode.class).count());
-        assertEquals(0, result.getNodes().filter(ReadNode.class).count());
+        assertDeepEquals(1, getConstantNodes(result).count());
+        assertDeepEquals(getCodeCache().getTarget().wordKind, getConstantNodes(result).first().getKind());
+        assertDeepEquals(2, result.getNodes(FloatingReadNode.class).count());
+        assertDeepEquals(0, result.getNodes().filter(ReadNode.class).count());
     }
 
     @Test
     public void testStaticFinalObject() {
         StructuredGraph result = compile("getStaticFinalObject", false);
-        assertEquals(1, getConstantNodes(result).count());
-        assertEquals(Kind.Object, getConstantNodes(result).first().getKind());
-        assertEquals(0, result.getNodes(FloatingReadNode.class).count());
-        assertEquals(0, result.getNodes().filter(ReadNode.class).count());
+        assertDeepEquals(1, getConstantNodes(result).count());
+        assertDeepEquals(Kind.Object, getConstantNodes(result).first().getKind());
+        assertDeepEquals(0, result.getNodes(FloatingReadNode.class).count());
+        assertDeepEquals(0, result.getNodes().filter(ReadNode.class).count());
     }
 
     public static Class<AheadOfTimeCompilationTest> getClassObject() {
@@ -90,12 +90,12 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
         StructuredGraph result = compile("getClassObject", true);
 
         NodeIterable<ConstantNode> filter = getConstantNodes(result);
-        assertEquals(1, filter.count());
+        assertDeepEquals(1, filter.count());
         HotSpotResolvedObjectType type = (HotSpotResolvedObjectType) getMetaAccess().lookupJavaType(AheadOfTimeCompilationTest.class);
-        assertEquals(type.klass(), filter.first().asConstant());
+        assertDeepEquals(type.klass(), filter.first().asConstant());
 
-        assertEquals(1, result.getNodes(FloatingReadNode.class).count());
-        assertEquals(0, result.getNodes().filter(ReadNode.class).count());
+        assertDeepEquals(1, result.getNodes(FloatingReadNode.class).count());
+        assertDeepEquals(0, result.getNodes().filter(ReadNode.class).count());
     }
 
     @Test
@@ -103,13 +103,13 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
         StructuredGraph result = compile("getClassObject", false);
 
         NodeIterable<ConstantNode> filter = getConstantNodes(result);
-        assertEquals(1, filter.count());
+        assertDeepEquals(1, filter.count());
         Object mirror = HotSpotObjectConstant.asObject(filter.first().asConstant());
-        assertEquals(Class.class, mirror.getClass());
-        assertEquals(AheadOfTimeCompilationTest.class, mirror);
+        assertDeepEquals(Class.class, mirror.getClass());
+        assertDeepEquals(AheadOfTimeCompilationTest.class, mirror);
 
-        assertEquals(0, result.getNodes(FloatingReadNode.class).count());
-        assertEquals(0, result.getNodes().filter(ReadNode.class).count());
+        assertDeepEquals(0, result.getNodes(FloatingReadNode.class).count());
+        assertDeepEquals(0, result.getNodes().filter(ReadNode.class).count());
     }
 
     public static Class<Integer> getPrimitiveClassObject() {
@@ -120,24 +120,24 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
     public void testPrimitiveClassObjectAOT() {
         StructuredGraph result = compile("getPrimitiveClassObject", true);
         NodeIterable<ConstantNode> filter = getConstantNodes(result);
-        assertEquals(1, filter.count());
-        assertEquals(getCodeCache().getTarget().wordKind, filter.first().getKind());
+        assertDeepEquals(1, filter.count());
+        assertDeepEquals(getCodeCache().getTarget().wordKind, filter.first().getKind());
 
-        assertEquals(2, result.getNodes(FloatingReadNode.class).count());
-        assertEquals(0, result.getNodes().filter(ReadNode.class).count());
+        assertDeepEquals(2, result.getNodes(FloatingReadNode.class).count());
+        assertDeepEquals(0, result.getNodes().filter(ReadNode.class).count());
     }
 
     @Test
     public void testPrimitiveClassObject() {
         StructuredGraph result = compile("getPrimitiveClassObject", false);
         NodeIterable<ConstantNode> filter = getConstantNodes(result);
-        assertEquals(1, filter.count());
+        assertDeepEquals(1, filter.count());
         Object mirror = HotSpotObjectConstant.asObject(filter.first().asConstant());
-        assertEquals(Class.class, mirror.getClass());
-        assertEquals(Integer.TYPE, mirror);
+        assertDeepEquals(Class.class, mirror.getClass());
+        assertDeepEquals(Integer.TYPE, mirror);
 
-        assertEquals(0, result.getNodes(FloatingReadNode.class).count());
-        assertEquals(0, result.getNodes().filter(ReadNode.class).count());
+        assertDeepEquals(0, result.getNodes(FloatingReadNode.class).count());
+        assertDeepEquals(0, result.getNodes().filter(ReadNode.class).count());
     }
 
     public static String getStringObject() {
@@ -159,13 +159,13 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
         StructuredGraph result = compile("getStringObject", compileAOT);
 
         NodeIterable<ConstantNode> filter = getConstantNodes(result);
-        assertEquals(1, filter.count());
+        assertDeepEquals(1, filter.count());
         Object mirror = HotSpotObjectConstant.asObject(filter.first().asConstant());
-        assertEquals(String.class, mirror.getClass());
-        assertEquals("test string", mirror);
+        assertDeepEquals(String.class, mirror.getClass());
+        assertDeepEquals("test string", mirror);
 
-        assertEquals(0, result.getNodes(FloatingReadNode.class).count());
-        assertEquals(0, result.getNodes().filter(ReadNode.class).count());
+        assertDeepEquals(0, result.getNodes(FloatingReadNode.class).count());
+        assertDeepEquals(0, result.getNodes().filter(ReadNode.class).count());
     }
 
     public static Boolean getBoxedBoolean() {
@@ -177,23 +177,23 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
     public void testBoxedBooleanAOT() {
         StructuredGraph result = compile("getBoxedBoolean", true);
 
-        assertEquals(2, result.getNodes(FloatingReadNode.class).count());
-        assertEquals(1, result.getNodes(PiNode.class).count());
-        assertEquals(1, getConstantNodes(result).count());
+        assertDeepEquals(2, result.getNodes(FloatingReadNode.class).count());
+        assertDeepEquals(1, result.getNodes(PiNode.class).count());
+        assertDeepEquals(1, getConstantNodes(result).count());
         ConstantNode constant = getConstantNodes(result).first();
-        assertEquals(Kind.Long, constant.getKind());
-        assertEquals(((HotSpotResolvedObjectType) getMetaAccess().lookupJavaType(Boolean.class)).klass(), constant.asConstant());
+        assertDeepEquals(Kind.Long, constant.getKind());
+        assertDeepEquals(((HotSpotResolvedObjectType) getMetaAccess().lookupJavaType(Boolean.class)).klass(), constant.asConstant());
     }
 
     @Test
     public void testBoxedBoolean() {
         StructuredGraph result = compile("getBoxedBoolean", false);
-        assertEquals(0, result.getNodes(FloatingReadNode.class).count());
-        assertEquals(0, result.getNodes(PiNode.class).count());
-        assertEquals(1, getConstantNodes(result).count());
+        assertDeepEquals(0, result.getNodes(FloatingReadNode.class).count());
+        assertDeepEquals(0, result.getNodes(PiNode.class).count());
+        assertDeepEquals(1, getConstantNodes(result).count());
         ConstantNode constant = getConstantNodes(result).first();
-        assertEquals(Kind.Object, constant.getKind());
-        assertEquals(Boolean.TRUE, HotSpotObjectConstant.asObject(constant.asConstant()));
+        assertDeepEquals(Kind.Object, constant.getKind());
+        assertDeepEquals(Boolean.TRUE, HotSpotObjectConstant.asObject(constant.asConstant()));
     }
 
     private StructuredGraph compile(String test, boolean compileAOT) {

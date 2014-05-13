@@ -37,7 +37,7 @@ public class ExplicitExceptionTest extends GraalCompilerTest {
     @Override
     protected InstalledCode getCode(ResolvedJavaMethod method, StructuredGraph graph) {
         InstalledCode installedCode = super.getCode(method, graph);
-        assertEquals(expectedForeignCallCount, graph.getNodes().filter(ForeignCallNode.class).count());
+        assertDeepEquals(expectedForeignCallCount, graph.getNodes().filter(ForeignCallNode.class).count());
         return installedCode;
     }
 

@@ -69,14 +69,14 @@ public class UnsafeSubstitutionsTest extends MethodSubstitutionTest {
         {
             Object expected = invokeSafe(originalMethod, receiver, args1);
             Object actual = invokeSafe(testMethod, null, args2);
-            assertEquals(expected, actual);
+            assertDeepEquals(expected, actual);
         }
 
         // Verify that the generated code and the original produce the same value
         {
             Object expected = invokeSafe(originalMethod, receiver, args1);
             Object actual = executeVarargsSafe(code, args2);
-            assertEquals(expected, actual);
+            assertDeepEquals(expected, actual);
         }
     }
 
@@ -201,18 +201,18 @@ public class UnsafeSubstitutionsTest extends MethodSubstitutionTest {
 
         AtomicInteger a1 = new AtomicInteger(42);
         AtomicInteger a2 = new AtomicInteger(42);
-        assertEquals(unsafe.compareAndSwapInt(a1, off(a1, "value"), 42, 53), compareAndSwapInt(unsafe, a2, off(a2, "value"), 42, 53));
-        assertEquals(a1.get(), a2.get());
+        assertDeepEquals(unsafe.compareAndSwapInt(a1, off(a1, "value"), 42, 53), compareAndSwapInt(unsafe, a2, off(a2, "value"), 42, 53));
+        assertDeepEquals(a1.get(), a2.get());
 
         AtomicLong l1 = new AtomicLong(42);
         AtomicLong l2 = new AtomicLong(42);
-        assertEquals(unsafe.compareAndSwapLong(l1, off(l1, "value"), 42, 53), compareAndSwapLong(unsafe, l2, off(l2, "value"), 42, 53));
-        assertEquals(l1.get(), l2.get());
+        assertDeepEquals(unsafe.compareAndSwapLong(l1, off(l1, "value"), 42, 53), compareAndSwapLong(unsafe, l2, off(l2, "value"), 42, 53));
+        assertDeepEquals(l1.get(), l2.get());
 
         AtomicReference<String> o1 = new AtomicReference<>("42");
         AtomicReference<String> o2 = new AtomicReference<>("42");
-        assertEquals(unsafe.compareAndSwapObject(o1, off(o1, "value"), "42", "53"), compareAndSwapObject(unsafe, o2, off(o2, "value"), "42", "53"));
-        assertEquals(o1.get(), o2.get());
+        assertDeepEquals(unsafe.compareAndSwapObject(o1, off(o1, "value"), "42", "53"), compareAndSwapObject(unsafe, o2, off(o2, "value"), "42", "53"));
+        assertDeepEquals(o1.get(), o2.get());
 
         Foo f1 = new Foo();
         f1.test("z", "Boolean", Boolean.TRUE);

@@ -87,7 +87,7 @@ public class PEAReadEliminationTest extends GraalCompilerTest {
         ValueNode result = getReturn("testSimpleSnippet").result();
         assertTrue(graph.getNodes().filter(LoadFieldNode.class).isEmpty());
         assertTrue(result.isConstant());
-        assertEquals(2, result.asConstant().asInt());
+        assertDeepEquals(2, result.asConstant().asInt());
     }
 
     @SuppressWarnings("all")
@@ -115,7 +115,7 @@ public class PEAReadEliminationTest extends GraalCompilerTest {
     public void testParam() {
         ValueNode result = getReturn("testParamSnippet").result();
         assertTrue(graph.getNodes().filter(LoadFieldNode.class).isEmpty());
-        assertEquals(graph.getParameter(1), result);
+        assertDeepEquals(graph.getParameter(1), result);
     }
 
     @SuppressWarnings("all")
@@ -129,7 +129,7 @@ public class PEAReadEliminationTest extends GraalCompilerTest {
     public void testMaterialized() {
         ValueNode result = getReturn("testMaterializedSnippet").result();
         assertTrue(graph.getNodes().filter(LoadFieldNode.class).isEmpty());
-        assertEquals(graph.getParameter(0), result);
+        assertDeepEquals(graph.getParameter(0), result);
     }
 
     @SuppressWarnings("all")
@@ -145,7 +145,7 @@ public class PEAReadEliminationTest extends GraalCompilerTest {
     public void testSimpleLoop() {
         ValueNode result = getReturn("testSimpleLoopSnippet").result();
         assertTrue(graph.getNodes().filter(LoadFieldNode.class).isEmpty());
-        assertEquals(graph.getParameter(1), result);
+        assertDeepEquals(graph.getParameter(1), result);
     }
 
     @SuppressWarnings("all")
@@ -162,7 +162,7 @@ public class PEAReadEliminationTest extends GraalCompilerTest {
     @Test
     public void testBadLoop() {
         ValueNode result = getReturn("testBadLoopSnippet").result();
-        assertEquals(0, graph.getNodes().filter(LoadFieldNode.class).count());
+        assertDeepEquals(0, graph.getNodes().filter(LoadFieldNode.class).count());
         assertTrue(result instanceof ProxyNode);
         assertTrue(((ProxyNode) result).value() instanceof ValuePhiNode);
     }
@@ -180,7 +180,7 @@ public class PEAReadEliminationTest extends GraalCompilerTest {
     @Test
     public void testBadLoop2() {
         ValueNode result = getReturn("testBadLoop2Snippet").result();
-        assertEquals(1, graph.getNodes().filter(LoadFieldNode.class).count());
+        assertDeepEquals(1, graph.getNodes().filter(LoadFieldNode.class).count());
         assertTrue(result instanceof LoadFieldNode);
     }
 
@@ -199,7 +199,7 @@ public class PEAReadEliminationTest extends GraalCompilerTest {
         processMethod("testPhiSnippet");
         assertTrue(graph.getNodes().filter(LoadFieldNode.class).isEmpty());
         List<ReturnNode> returnNodes = graph.getNodes(ReturnNode.class).snapshot();
-        assertEquals(2, returnNodes.size());
+        assertDeepEquals(2, returnNodes.size());
         assertTrue(returnNodes.get(0).predecessor() instanceof StoreFieldNode);
         assertTrue(returnNodes.get(1).predecessor() instanceof StoreFieldNode);
         assertTrue(returnNodes.get(0).result().isConstant());
@@ -215,7 +215,7 @@ public class PEAReadEliminationTest extends GraalCompilerTest {
     @Test
     public void testSimpleStore() {
         processMethod("testSimpleStoreSnippet");
-        assertEquals(1, graph.getNodes().filter(StoreFieldNode.class).count());
+        assertDeepEquals(1, graph.getNodes().filter(StoreFieldNode.class).count());
     }
 
     public static int testValueProxySnippet(boolean b, TestObject o) {
@@ -233,12 +233,12 @@ public class PEAReadEliminationTest extends GraalCompilerTest {
     @Test
     public void testValueProxy() {
         processMethod("testValueProxySnippet");
-        assertEquals(2, graph.getNodes().filter(LoadFieldNode.class).count());
+        assertDeepEquals(2, graph.getNodes().filter(LoadFieldNode.class).count());
     }
 
     final ReturnNode getReturn(String snippet) {
         processMethod(snippet);
-        assertEquals(1, graph.getNodes(ReturnNode.class).count());
+        assertDeepEquals(1, graph.getNodes(ReturnNode.class).count());
         return graph.getNodes(ReturnNode.class).first();
     }
 

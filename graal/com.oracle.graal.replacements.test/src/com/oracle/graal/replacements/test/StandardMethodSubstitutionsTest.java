@@ -44,12 +44,12 @@ public class StandardMethodSubstitutionsTest extends MethodSubstitutionTest {
         test("math");
 
         double value = 34567.891D;
-        assertEquals(Math.sqrt(value), MathSubstitutionsX86.sqrt(value));
-        assertEquals(Math.log(value), MathSubstitutionsX86.log(value));
-        assertEquals(Math.log10(value), MathSubstitutionsX86.log10(value));
-        assertEquals(Math.sin(value), MathSubstitutionsX86.sin(value));
-        assertEquals(Math.cos(value), MathSubstitutionsX86.cos(value));
-        assertEquals(Math.tan(value), MathSubstitutionsX86.tan(value));
+        assertDeepEquals(Math.sqrt(value), MathSubstitutionsX86.sqrt(value));
+        assertDeepEquals(Math.log(value), MathSubstitutionsX86.log(value));
+        assertDeepEquals(Math.log10(value), MathSubstitutionsX86.log10(value));
+        assertDeepEquals(Math.sin(value), MathSubstitutionsX86.sin(value));
+        assertDeepEquals(Math.cos(value), MathSubstitutionsX86.cos(value));
+        assertDeepEquals(Math.tan(value), MathSubstitutionsX86.tan(value));
     }
 
     @SuppressWarnings("all")
@@ -98,9 +98,9 @@ public class StandardMethodSubstitutionsTest extends MethodSubstitutionTest {
         assert optional || code != null;
         for (Object l : args) {
             // Verify that the original method and the substitution produce the same value
-            assertEquals(invokeSafe(testMethod, l), invokeSafe(realMethod, l));
+            assertDeepEquals(invokeSafe(testMethod, l), invokeSafe(realMethod, l));
             // Verify that the generated code and the original produce the same value
-            assertEquals(executeVarargsSafe(code, l), invokeSafe(realMethod, l));
+            assertDeepEquals(executeVarargsSafe(code, l), invokeSafe(realMethod, l));
         }
     }
 
