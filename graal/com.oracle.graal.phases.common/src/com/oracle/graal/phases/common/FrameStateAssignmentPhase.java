@@ -109,6 +109,7 @@ public class FrameStateAssignmentPhase extends Phase {
         if (graph.getGuardsStage().ordinal() < GuardsStage.AFTER_FSA.ordinal()) {
             ReentrantNodeIterator.apply(new FrameStateAssignmentClosure(), graph.start(), null);
             graph.setGuardsStage(GuardsStage.AFTER_FSA);
+            graph.getNodes(FrameState.class).filter(state -> state.usages().isEmpty()).forEach(GraphUtil::killWithUnusedFloatingInputs);
         }
     }
 

@@ -130,9 +130,13 @@ public class StaticDoubleSpillBoundsCatchOneTest extends GraalKernelTester {
         dispatchMethodKernel(size, out, in, aux);
     }
 
+    @Override
+    protected boolean supportsRequiredCapabilities() {
+        return canDeoptimize();
+    }
+
     @Test
     public void test() {
         testGeneratedHsail();
     }
-
 }

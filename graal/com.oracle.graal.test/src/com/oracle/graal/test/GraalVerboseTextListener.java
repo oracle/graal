@@ -65,7 +65,8 @@ public class GraalVerboseTextListener extends GraalTextListener {
 
     @Override
     public void testFailed(Failure failure) {
-        getWriter().print("FAILED");
+        getWriter().println("FAILED");
+        failure.getException().printStackTrace(getWriter());
     }
 
     @Override

@@ -374,11 +374,16 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
             throw new GraalInternalError("Cannot execute GPU kernel if device is not initialized");
         }
         int[] oopMapArray = ((HSAILHotSpotNmethod) kernel).getOopMapArray();
-        int saveAreaCounts = OopMapArrayBuilder.getSaveAreaCounts(oopMapArray);
-        int numDRegs = (saveAreaCounts >> 8) & 0xff;
-        int numStackSlots = (saveAreaCounts >> 16);
-        // pessimistically assume that any of the DRegs or stackslots could be oops
-        Object[] oopsSaveArea = new Object[maxDeoptIndex * (numDRegs + numStackSlots)];
+        Object[] oopsSaveArea;
+        if (getRuntime().getConfig().useHSAILDeoptimization) {
+            int saveAreaCounts = OopMapArrayBuilder.getSaveAreaCounts(oopMapArray);
+            int numDRegs = (saveAreaCounts >> 8) & 0xff;
+            int numStackSlots = (saveAreaCounts >> 16);
+            // pessimistically assume that any of the DRegs or stackslots could be oops
+            oopsSaveArea = new Object[maxDeoptIndex * (numDRegs + numStackSlots)];
+        } else {
+            oopsSaveArea = null;
+        }
         return executeKernel0(kernel, jobSize, args, oopsSaveArea, donorThreadPool.get().getThreads(), HsailAllocBytesPerWorkitem.getValue(), oopMapArray);
     }
 
@@ -765,7 +770,7 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
             // numStackSlots is the number of 8-byte locations used for stack variables
             int numStackSlots = (numStackSlotBytes + 7) / 8;
 
-            final int offsetToDeoptSaveStates = config.hsailSaveStatesOffset0;
+            final int offsetToDeoptSaveStates = config.hsailDeoptimizationInfoHeaderSize;
             final int bytesPerSaveArea = 4 * numSRegs + 8 * numDRegs + 8 * numStackSlots;
             final int sizeofKernelDeopt = config.hsailKernelDeoptimizationHeaderSize + config.hsailFrameHeaderSize + bytesPerSaveArea;
             final int offsetToNeverRanArray = config.hsailNeverRanArrayOffset;
@@ -854,7 +859,7 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
             asm.emitComment("// store PC");
             asm.emitStore(Kind.Int, codeBufferOffsetReg, pcStoreAddr);
 
-            asm.emitComment("// store regCounts (" + numSRegs + " $s registers and " + numDRegs + " $d registers" + numStackSlots + " stack slots)");
+            asm.emitComment("// store regCounts (" + numSRegs + " $s registers, " + numDRegs + " $d registers, " + numStackSlots + " stack slots)");
             asm.emitStore(Kind.Int, Constant.forInt(numSRegs + (numDRegs << 8) + (numStackSlots << 16)), regCountsAddr);
 
             // loop thru the usedValues storing each of the registers that are used.
