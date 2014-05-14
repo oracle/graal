@@ -191,11 +191,29 @@ public abstract class SinglePassNodeIterator<T extends MergeableState<T>> {
         finished();
     }
 
+    /**
+     * Two methods enqueue items in {@link #nodeQueue}. Of them, only this method enqueues items
+     * with non-null state (the other method being {@link #queueMerge(EndNode)}).
+     *
+     * <p>
+     * A space optimization is made: the state is cloned for all successors except the first. Given
+     * that right after invoking this method, {@link #nextQueuedNode()} is invoked, that single
+     * non-cloned state instance is in effect "handed over" to its next owner (thus realizing an
+     * owner-is-mutator access protocol).
+     * </p>
+     */
     private void queueSuccessors(FixedNode x) {
-        for (Node node : x.successors()) {
-            if (node != null) {
-                nodeQueue.addFirst(new PathStart<>((BeginNode) node, state));
-            }
+        Iterator<Node> iter = x.successors().nonNull().iterator();
+        if (iter.hasNext()) {
+            BeginNode begin = (BeginNode) iter.next();
+            // the current state isn't cloned for the first successor
+            // conceptually, the state is handed over to it
+            nodeQueue.addFirst(new PathStart<>(begin, state));
+        }
+        while (iter.hasNext()) {
+            BeginNode begin = (BeginNode) iter.next();
+            // for all other successors it is cloned
+            nodeQueue.addFirst(new PathStart<>(begin, state.clone()));
         }
     }
 
@@ -228,7 +246,7 @@ public abstract class SinglePassNodeIterator<T extends MergeableState<T>> {
         } else {
             BeginNode begin = elem.node;
             assert begin.predecessor() != null;
-            state = elem.stateOnEntry.clone();
+            state = elem.stateOnEntry;
             state.afterSplit(begin);
             return begin;
         }
