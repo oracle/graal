@@ -25,46 +25,62 @@
 package com.oracle.truffle.api;
 
 /**
- * Description of contiguous text section within the source code of a guest language program.
+ * Description of contiguous section of text within a {@link Source} of program code.
+ *
+ * The starting location of the section can be described using two different coordinates:
+ * <ul>
+ * <li>{@code (startLine, startColumn)}: rows and columns are 1-based, so the first character in a
+ * source file is at position {@code (1,1)}. {@code Tab} characters are counted as occupying one
+ * column.</li>
+ * <li><b>character index</b>: 0-based offset of the character from the beginning of the source, so
+ * the first character in a file is at index {@code 0}.</li>
+ * </ul>
+ * The {@code Newline} that terminates each line counts as a single character for the purpose of a
+ * character index and when counting the length of text. The {@code (line,column)} coordinates of a
+ * {@code Newline} should never appear in a text section.
+ * <p>
+ * If the final character of source is not a {@code Newline}, the final characters of the text are
+ * still considered to be a line ("unterminated").
+ * <p>
+ *
+ * @see Source#createSection(String, int, int, int, int)
+ * @see Source#createSection(String, int, int, int)
+ * @see Source#createSection(String, int, int)
  */
 public interface SourceSection {
 
+    // TODO support alternate text representations/encodings
+
     /**
-     * Returns the object representing the source program that contains this section.
+     * Representation of the source program that contains this section.
      *
      * @return the source object
      */
     Source getSource();
 
     /**
-     * Returns 1-based line number of the first character in this source section (inclusive).
+     * Returns 1-based line number of the first character in this section (inclusive).
      *
      * @return the starting line number
      */
     int getStartLine();
 
     /**
-     * Returns the 1-based column number of the first character in this source section (inclusive).
+     * Returns the 1-based column number of the first character in this section (inclusive).
      *
      * @return the starting column number
      */
     int getStartColumn();
 
     /**
-     * Returns the 0-based index of the first character in this source section.
-     * <p>
-     * The complete text of the source that contains this section can be retrieved via
-     * {@link Source#getCode()}.
+     * Returns the 0-based index of the first character in this section.
      *
      * @return the starting character index
      */
     int getCharIndex();
 
     /**
-     * Returns the length of this source section in characters.
-     * <p>
-     * The complete text of the source that contains this section can be retrieved via
-     * {@link Source#getCode()}.
+     * Returns the length of this section in characters.
      *
      * @return the number of characters in the section
      */
@@ -79,14 +95,14 @@ public interface SourceSection {
     int getCharEndIndex();
 
     /**
-     * Returns the identifier of this source section that is used for printing the section.
+     * Returns terse text describing this source section, typically used for printing the section.
      *
      * @return the identifier of the section
      */
     String getIdentifier();
 
     /**
-     * Returns text of the code represented by this source section.
+     * Returns text described by this section.
      *
      * @return the code as a String object
      */

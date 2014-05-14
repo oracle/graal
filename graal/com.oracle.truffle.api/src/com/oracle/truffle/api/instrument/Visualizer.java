@@ -61,7 +61,7 @@ public interface Visualizer {
     /**
      * Converts a value in the guest language to a display string.
      */
-    String displayValue(Object value);
+    String displayValue(ExecutionContext context, Object value);
 
     /**
      * Converts a slot identifier in the guest language to a display string.

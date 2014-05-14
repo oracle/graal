@@ -69,7 +69,7 @@ public class DefaultVisualizer implements Visualizer {
         return callTarget.toString();
     }
 
-    public String displayValue(Object value) {
+    public String displayValue(ExecutionContext context, Object value) {
         return value.toString();
     }
 

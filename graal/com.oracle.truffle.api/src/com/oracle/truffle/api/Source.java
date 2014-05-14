@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,6 +25,8 @@
 package com.oracle.truffle.api;
 
 import java.io.*;
+
+import com.oracle.truffle.api.source.*;
 
 /**
  * Represents a unit (typically a file) of guest language source code.
@@ -96,5 +98,62 @@ public interface Source {
      * numbered line.
      */
     int getLineLength(int lineNumber);
+
+    /**
+     * Creates a representation of a contiguous region of text in the source. Computes the
+     * {@code (startLine, startColumn)} values by building a {@linkplain TextMap map} of lines in
+     * the source.
+     * <p>
+     * Checks the position arguments for consistency with the source.
+     * <p>
+     * The resulting representation defines hash/equality around equivalent location, presuming that
+     * {@link Source} representations are cannonical.
+     *
+     *
+     * @param identifier terse description of the region
+     * @param charIndex 0-based position of the first character in the section
+     * @param length the number of characters in the section
+     * @return newly created object representing the specified region
+     * @throws IllegalArgumentException if either of the arguments are outside the text of the
+     *             source
+     * @throws IllegalStateException if the source is one of the "null" instances
+     */
+    SourceSection createSection(String identifier, int charIndex, int length) throws IllegalArgumentException, IllegalStateException;
+
+    /**
+     * Creates a representation of a contiguous region of text in the source. Computes the
+     * {@code charIndex} value by building a {@linkplain TextMap map} of lines in the source.
+     * <p>
+     * Checks the position arguments for consistency with the source.
+     * <p>
+     * The resulting representation defines hash/equality around equivalent location, presuming that
+     * {@link Source} representations are cannonical.
+     *
+     * @param identifier terse description of the region
+     * @param startLine 1-based line number of the first character in the section
+     * @param startColumn 1-based column number of the first character in the section
+     * @param length the number of characters in the section
+     * @return newly created object representing the specified region
+     * @throws IllegalArgumentException if arguments are outside the text of the source
+     * @throws IllegalStateException if the source is one of the "null" instances
+     */
+    SourceSection createSection(String identifier, int startLine, int startColumn, int length);
+
+    /**
+     * Creates a representation of a contiguous region of text in the source.
+     * <p>
+     * This method performs no checks on the validity of the arguments.
+     * <p>
+     * The resulting representation defines hash/equality around equivalent location, presuming that
+     * {@link Source} representations are cannonical.
+     *
+     * @param identifier terse description of the region
+     * @param startLine 1-based line number of the first character in the section
+     * @param startColumn 1-based column number of the first character in the section
+     * @param charIndex the 0-based index of the first character of the section
+     * @param length the number of characters in the section
+     * @return newly created object representing the specified region
+     */
+    SourceSection createSection(String identifier, int startLine, int startColumn, int charIndex, int length);
 
 }
