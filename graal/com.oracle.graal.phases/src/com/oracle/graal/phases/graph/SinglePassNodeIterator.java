@@ -58,9 +58,9 @@ public abstract class SinglePassNodeIterator<T extends MergeableState<T>> {
     private final NodeBitMap visitedEnds;
 
     /**
-     * @see SinglePassNodeIterator.QElem
+     * @see SinglePassNodeIterator.PathStart
      */
-    private final Deque<QElem<T>> nodeQueue;
+    private final Deque<PathStart<T>> nodeQueue;
 
     /**
      * The keys in this map may be:
@@ -104,23 +104,26 @@ public abstract class SinglePassNodeIterator<T extends MergeableState<T>> {
      * <ul>
      * <li>a {@link MergeNode} whose pre-state results from merging those of its forward-ends, see
      * {@link #nextQueuedNode()}</li>
-     * <li>the successor of a control-split node, in which case the pre-state of the successor in
-     * question is also stored in the item, see {@link #nextQueuedNode()}</li>
+     * <li>a successor of a control-split node, in which case the state on entry to it (the
+     * successor) is also stored in the item, see {@link #nextQueuedNode()}</li>
      * </ul>
      * </p>
      */
-    private static class QElem<U> {
+    private static class PathStart<U> {
         private final FixedNode node;
-        private final U preState;
+        private final U stateOnEntry;
 
-        private QElem(FixedNode node, U preState) {
+        private PathStart(FixedNode node, U stateOnEntry) {
             this.node = node;
-            this.preState = preState;
+            this.stateOnEntry = stateOnEntry;
             assert repOK();
         }
 
+        /**
+         * @return true iff this instance is internally consistent (ie, its "representation is OK")
+         */
         private boolean repOK() {
-            return (node instanceof MergeNode && preState == null) || (node instanceof BeginNode && preState != null);
+            return (node instanceof MergeNode && stateOnEntry == null) || (node instanceof BeginNode && stateOnEntry != null);
         }
     }
 
@@ -191,7 +194,7 @@ public abstract class SinglePassNodeIterator<T extends MergeableState<T>> {
     private void queueSuccessors(FixedNode x) {
         for (Node node : x.successors()) {
             if (node != null) {
-                nodeQueue.addFirst(new QElem<>((BeginNode) node, state));
+                nodeQueue.addFirst(new PathStart<>((BeginNode) node, state));
             }
         }
     }
@@ -210,7 +213,7 @@ public abstract class SinglePassNodeIterator<T extends MergeableState<T>> {
         if (nodeQueue.isEmpty()) {
             return null;
         }
-        QElem<T> elem = nodeQueue.removeFirst();
+        PathStart<T> elem = nodeQueue.removeFirst();
         if (elem.node instanceof MergeNode) {
             MergeNode merge = (MergeNode) elem.node;
             state = pruneEntry(merge.forwardEndAt(0)).clone();
@@ -225,7 +228,7 @@ public abstract class SinglePassNodeIterator<T extends MergeableState<T>> {
         } else {
             BeginNode begin = (BeginNode) elem.node;
             assert begin.predecessor() != null;
-            state = elem.preState.clone();
+            state = elem.stateOnEntry.clone();
             state.afterSplit(begin);
             return begin;
         }
@@ -292,7 +295,7 @@ public abstract class SinglePassNodeIterator<T extends MergeableState<T>> {
             }
         }
         if (endsVisited) {
-            nodeQueue.add(new QElem<>(merge, null));
+            nodeQueue.add(new PathStart<>(merge, null));
         }
     }
 
@@ -338,6 +341,7 @@ public abstract class SinglePassNodeIterator<T extends MergeableState<T>> {
     private void keepForLater(FixedNode x, T s) {
         assert !nodeStates.containsKey(x);
         assert (x instanceof LoopBeginNode) || (x instanceof LoopEndNode) || (x instanceof EndNode);
+        assert s != null;
         nodeStates.put(x, s);
     }
 
