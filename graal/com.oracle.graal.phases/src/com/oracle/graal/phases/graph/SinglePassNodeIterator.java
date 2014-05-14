@@ -110,10 +110,10 @@ public abstract class SinglePassNodeIterator<T extends MergeableState<T>> {
      * </p>
      */
     private static class PathStart<U> {
-        private final FixedNode node;
+        private final BeginNode node;
         private final U stateOnEntry;
 
-        private PathStart(FixedNode node, U stateOnEntry) {
+        private PathStart(BeginNode node, U stateOnEntry) {
             this.node = node;
             this.stateOnEntry = stateOnEntry;
             assert repOK();
@@ -123,7 +123,7 @@ public abstract class SinglePassNodeIterator<T extends MergeableState<T>> {
          * @return true iff this instance is internally consistent (ie, its "representation is OK")
          */
         private boolean repOK() {
-            return (node instanceof MergeNode && stateOnEntry == null) || (node instanceof BeginNode && stateOnEntry != null);
+            return (node instanceof MergeNode && stateOnEntry == null) || (stateOnEntry != null);
         }
     }
 
@@ -226,7 +226,7 @@ public abstract class SinglePassNodeIterator<T extends MergeableState<T>> {
             assert ready : "Not a single-pass iterator after all";
             return merge;
         } else {
-            BeginNode begin = (BeginNode) elem.node;
+            BeginNode begin = elem.node;
             assert begin.predecessor() != null;
             state = elem.stateOnEntry.clone();
             state.afterSplit(begin);
