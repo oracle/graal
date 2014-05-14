@@ -136,6 +136,8 @@ public class GraalTest {
                 Assert.assertEquals((double) expected, (double) actual, delta);
             } else if (expectedClass.equals(float.class) && actualClass.equals(float.class)) {
                 Assert.assertEquals((float) expected, (float) actual, delta);
+            } else {
+                Assert.assertEquals(message, expected, actual);
             }
         } else {
             Assert.assertEquals(message, expected, actual);
