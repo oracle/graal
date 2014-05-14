@@ -40,7 +40,7 @@ import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.options.*;
 import com.oracle.graal.phases.common.*;
-import com.oracle.graal.phases.common.inlining.InliningUtil.InlineInfo;
+import com.oracle.graal.phases.common.inlining.info.InlineInfo;
 import com.oracle.graal.phases.common.inlining.InliningUtil.Inlineable;
 import com.oracle.graal.phases.common.inlining.InliningUtil.InlineableGraph;
 import com.oracle.graal.phases.common.inlining.InliningUtil.InlineableMacroNode;
