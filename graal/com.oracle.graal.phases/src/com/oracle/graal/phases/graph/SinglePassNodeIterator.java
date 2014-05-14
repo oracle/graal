@@ -123,7 +123,13 @@ public abstract class SinglePassNodeIterator<T extends MergeableState<T>> {
          * @return true iff this instance is internally consistent (ie, its "representation is OK")
          */
         private boolean repOK() {
-            return (node instanceof MergeNode && stateOnEntry == null) || (stateOnEntry != null);
+            if (node == null) {
+                return false;
+            }
+            if (node instanceof MergeNode) {
+                return stateOnEntry == null;
+            }
+            return (stateOnEntry != null);
         }
     }
 
