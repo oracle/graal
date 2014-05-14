@@ -142,6 +142,7 @@ public class IfCanonicalizerTest extends GraalCompilerTest {
     @Test
     public void test6() {
         testCombinedIf("test6Snippet", 3);
+        test("test6Snippet", new int[]{0});
     }
 
     public static int test6Snippet(int[] a) {
@@ -149,16 +150,30 @@ public class IfCanonicalizerTest extends GraalCompilerTest {
         if (i >= 0 && i < a.length) {
             return a[i];
         }
-        return 0;
+        return 1;
     }
 
     @Test
     public void test7() {
         testCombinedIf("test7Snippet", 1);
+        test("test7Snippet", -1);
     }
 
     public static int test7Snippet(int v) {
         if (v >= 0 && v < 1024) {
+            return v + 1;
+        }
+        return v - 1;
+    }
+
+    @Test
+    public void test8() {
+        testCombinedIf("test8Snippet", 1);
+        test("test8Snippet", -1);
+    }
+
+    public static int test8Snippet(int v) {
+        if (v >= 0 && v <= 1024) {
             return v + 1;
         }
         return v - 1;

@@ -261,6 +261,8 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                 IfNode ifNode2 = (IfNode) falseSuccessor().next();
                 if (ifNode2.condition() instanceof IntegerLessThanNode) {
                     IntegerLessThanNode lessThan2 = (IntegerLessThanNode) ifNode2.condition();
+                    BeginNode falseSucc = ifNode2.falseSuccessor();
+                    BeginNode trueSucc = ifNode2.trueSuccessor();
                     IntegerBelowThanNode below = null;
                     /*
                      * Convert x >= 0 && x < positive which is represented as !(x < 0) && x <
@@ -268,8 +270,11 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                      */
                     if (lessThan2.x() == lessThan.x() && lessThan2.y().stamp() instanceof IntegerStamp && ((IntegerStamp) lessThan2.y().stamp()).isPositive() &&
                                     sameDestination(trueSuccessor(), ifNode2.falseSuccessor)) {
-
                         below = graph().unique(new IntegerBelowThanNode(lessThan2.x(), lessThan2.y()));
+                        // swap direction
+                        BeginNode tmp = falseSucc;
+                        falseSucc = trueSucc;
+                        trueSucc = tmp;
                     } else if (lessThan2.y() == lessThan.x() && sameDestination(trueSuccessor(), ifNode2.trueSuccessor)) {
                         /*
                          * Convert x >= 0 && x <= positive which is represented as !(x < 0) &&
@@ -284,9 +289,6 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                         }
                     }
                     if (below != null) {
-                        BeginNode falseSucc = ifNode2.falseSuccessor();
-                        BeginNode trueSucc = ifNode2.trueSuccessor();
-
                         ifNode2.setTrueSuccessor(null);
                         ifNode2.setFalseSuccessor(null);
 
