@@ -27,7 +27,6 @@ import java.util.*;
 
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.frame.*;
-import com.oracle.truffle.api.impl.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.sl.nodes.*;
 import com.oracle.truffle.sl.nodes.call.*;
@@ -243,7 +242,7 @@ public class SLNodeFactory {
         int startLine = t.line;
         int startColumn = t.col;
         int charLength = t.val.length();
-        SourceSection sourceSection = new DefaultSourceSection(source, functionName, startLine, startColumn, 0, charLength);
+        SourceSection sourceSection = source.createSection(functionName, startLine, startColumn, 0, charLength);
 
         node.assignSourceSection(sourceSection);
         return node;
