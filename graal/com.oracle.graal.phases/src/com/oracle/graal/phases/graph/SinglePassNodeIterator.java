@@ -234,7 +234,7 @@ public abstract class SinglePassNodeIterator<T extends MergeableState<T>> {
         PathStart<T> elem = nodeQueue.removeFirst();
         if (elem.node instanceof MergeNode) {
             MergeNode merge = (MergeNode) elem.node;
-            state = pruneEntry(merge.forwardEndAt(0)).clone();
+            state = pruneEntry(merge.forwardEndAt(0));
             ArrayList<T> states = new ArrayList<>(merge.forwardEndCount() - 1);
             for (int i = 1; i < merge.forwardEndCount(); i++) {
                 T other = pruneEntry(merge.forwardEndAt(i));
