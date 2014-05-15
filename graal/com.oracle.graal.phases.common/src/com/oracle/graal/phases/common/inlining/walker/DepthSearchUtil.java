@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.phases.common.inlining;
+package com.oracle.graal.phases.common.inlining.walker;
 
 import com.oracle.graal.api.meta.Constant;
 import com.oracle.graal.api.meta.ResolvedJavaMethod;
@@ -30,14 +30,14 @@ import com.oracle.graal.graph.NodeInputList;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.common.CanonicalizerPhase;
 import com.oracle.graal.phases.common.DeadCodeEliminationPhase;
+import com.oracle.graal.phases.common.inlining.InliningUtil;
 import com.oracle.graal.phases.tiers.HighTierContext;
 
 import static com.oracle.graal.compiler.common.GraalOptions.OptCanonicalizer;
 
 /**
- * The workings of {@link InliningPhase#run(StructuredGraph, HighTierContext)} include delving into
- * a callsite to explore inlining opportunities. The utilities used for that are grouped in this
- * class.
+ * The workings of {@link InliningData} include delving into a callsite to explore inlining
+ * opportunities. The utilities used for that are grouped in this class.
  */
 public class DepthSearchUtil {
 
