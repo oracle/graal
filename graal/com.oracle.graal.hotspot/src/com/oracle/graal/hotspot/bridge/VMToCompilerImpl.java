@@ -91,7 +91,7 @@ public class VMToCompilerImpl implements VMToCompiler {
      * is in the proper state.
      */
     static class Queue {
-        private ThreadPoolExecutor executor;
+        private final ThreadPoolExecutor executor;
 
         Queue(CompilerThreadFactory factory) {
             executor = new ThreadPoolExecutor(Threads.getValue(), Threads.getValue(), 0L, TimeUnit.MILLISECONDS, new PriorityBlockingQueue<Runnable>(), factory);
@@ -117,11 +117,19 @@ public class VMToCompilerImpl implements VMToCompiler {
             executor.execute(task);
         }
 
+        /**
+         * @see ExecutorService#isShutdown()
+         */
+        public boolean isShutdown() {
+            return executor.isShutdown();
+        }
+
         public void shutdown() throws InterruptedException {
             assert CompilationTask.isWithinEnqueue();
-            executor.shutdown();
-            if (Debug.isEnabled() && Dump.getValue() != null) {
-                // Wait 2 seconds to flush out all graph dumps that may be of interest
+            executor.shutdownNow();
+            if (Debug.isEnabled() && (Dump.getValue() != null || areMetricsOrTimersEnabled())) {
+                // Wait up to 2 seconds to flush out all graph dumps and stop metrics/timers
+                // being updated.
                 executor.awaitTermination(2, TimeUnit.SECONDS);
             }
         }
@@ -472,19 +480,7 @@ public class VMToCompilerImpl implements VMToCompiler {
         printMap(new DebugValueScope(null, result), debugValues);
     }
 
-    static long collectTotal(DebugValue value) {
-        List<DebugValueMap> maps = DebugValueMap.getTopLevelMaps();
-        long total = 0;
-        for (int i = 0; i < maps.size(); i++) {
-            DebugValueMap map = maps.get(i);
-            int index = value.getIndex();
-            total += map.getCurrentValue(index);
-            total += collectTotal(map.getChildren(), index);
-        }
-        return total;
-    }
-
-    private static long collectTotal(List<DebugValueMap> maps, int index) {
+    public static long collectTotal(List<DebugValueMap> maps, int index) {
         long total = 0;
         for (int i = 0; i < maps.size(); i++) {
             DebugValueMap map = maps.get(i);
@@ -570,8 +566,8 @@ public class VMToCompilerImpl implements VMToCompiler {
     void compileMethod(final HotSpotResolvedJavaMethod method, final int entryBCI, long ctask, final boolean blocking) {
         if (ctask != 0L) {
             HotSpotBackend backend = runtime.getHostBackend();
-            CompilationTask task = new CompilationTask(backend, method, entryBCI, ctask, false);
-            task.runCompilation(false);
+            CompilationTask task = new CompilationTask(null, backend, method, entryBCI, ctask, false);
+            task.runCompilation();
             return;
         }
 
@@ -596,13 +592,14 @@ public class VMToCompilerImpl implements VMToCompiler {
             if (method.tryToQueueForCompilation()) {
                 assert method.isQueuedForCompilation();
 
-                HotSpotBackend backend = runtime.getHostBackend();
-                CompilationTask task = new CompilationTask(backend, method, entryBCI, ctask, block);
-
                 try {
-                    compileQueue.execute(task);
-                    if (block) {
-                        task.block();
+                    if (!compileQueue.executor.isShutdown()) {
+                        HotSpotBackend backend = runtime.getHostBackend();
+                        CompilationTask task = new CompilationTask(compileQueue.executor, backend, method, entryBCI, ctask, block);
+                        compileQueue.execute(task);
+                        if (block) {
+                            task.block();
+                        }
                     }
                 } catch (RejectedExecutionException e) {
                     // The compile queue was already shut down.

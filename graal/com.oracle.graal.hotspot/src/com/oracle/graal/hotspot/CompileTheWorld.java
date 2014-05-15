@@ -317,7 +317,7 @@ public final class CompileTheWorld {
     class CTWCompilationTask extends CompilationTask {
 
         CTWCompilationTask(HotSpotBackend backend, HotSpotResolvedJavaMethod method) {
-            super(backend, method, INVOCATION_ENTRY_BCI, 0L, false);
+            super(null, backend, method, INVOCATION_ENTRY_BCI, 0L, false);
         }
 
         /**
@@ -349,7 +349,7 @@ public final class CompileTheWorld {
 
             HotSpotBackend backend = runtime.getHostBackend();
             CompilationTask task = new CTWCompilationTask(backend, method);
-            task.runCompilation(false);
+            task.runCompilation();
 
             compileTime += (System.currentTimeMillis() - start);
             compiledMethodsCounter++;
