@@ -62,7 +62,7 @@ public class DeoptimizationGroupingPhase extends BasePhase<MidTierContext> {
                         merge.addForwardEnd(firstEnd);
                         reasonActionPhi.addInput(((AbstractDeoptimizeNode) target).getActionAndReason(context.getMetaAccess()));
                         speculationPhi.addInput(((AbstractDeoptimizeNode) target).getSpeculation(context.getMetaAccess()));
-                        target.predecessor().replaceFirstSuccessor(target, firstEnd);
+                        target.replaceAtPredecessor(firstEnd);
 
                         exitLoops((AbstractDeoptimizeNode) target, firstEnd, cfg);
 
@@ -77,7 +77,7 @@ public class DeoptimizationGroupingPhase extends BasePhase<MidTierContext> {
                     merge.addForwardEnd(newEnd);
                     reasonActionPhi.addInput(deopt.getActionAndReason(context.getMetaAccess()));
                     speculationPhi.addInput(deopt.getSpeculation(context.getMetaAccess()));
-                    deopt.predecessor().replaceFirstSuccessor(deopt, newEnd);
+                    deopt.replaceAtPredecessor(newEnd);
                     exitLoops(deopt, newEnd, cfg);
                     obsoletes.add(deopt);
                 }
