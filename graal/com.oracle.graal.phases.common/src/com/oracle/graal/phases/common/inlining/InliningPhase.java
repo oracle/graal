@@ -43,7 +43,7 @@ import com.oracle.graal.phases.common.inlining.info.InlineInfo;
 import com.oracle.graal.phases.common.inlining.InliningUtil.Inlineable;
 import com.oracle.graal.phases.common.inlining.InliningUtil.InlineableGraph;
 import com.oracle.graal.phases.common.inlining.InliningUtil.InlineableMacroNode;
-import com.oracle.graal.phases.common.inlining.policy.AbstractInliningPolicy;
+import com.oracle.graal.phases.common.inlining.policy.GreedyInliningPolicy;
 import com.oracle.graal.phases.common.inlining.policy.InliningPolicy;
 import com.oracle.graal.phases.graph.*;
 import com.oracle.graal.phases.tiers.*;
@@ -68,7 +68,6 @@ public class InliningPhase extends AbstractInliningPhase {
     // Metrics
     private static final DebugMetric metricInliningPerformed = Debug.metric("InliningPerformed");
     private static final DebugMetric metricInliningConsidered = Debug.metric("InliningConsidered");
-    private static final DebugMetric metricInliningStoppedByMaxDesiredSize = Debug.metric("InliningStoppedByMaxDesiredSize");
     private static final DebugMetric metricInliningRuns = Debug.metric("InliningRuns");
 
     public InliningPhase(CanonicalizerPhase canonicalizer) {
@@ -240,72 +239,6 @@ public class InliningPhase extends AbstractInliningPhase {
             throw new GraalInternalError(e).addContext(callee.toString());
         } catch (GraalInternalError e) {
             throw e.addContext(callee.toString());
-        }
-    }
-
-    public static class GreedyInliningPolicy extends AbstractInliningPolicy {
-
-        public GreedyInliningPolicy(Map<Invoke, Double> hints) {
-            super(hints);
-        }
-
-        public boolean continueInlining(StructuredGraph currentGraph) {
-            if (currentGraph.getNodeCount() >= MaximumDesiredSize.getValue()) {
-                InliningUtil.logInliningDecision("inlining is cut off by MaximumDesiredSize");
-                metricInliningStoppedByMaxDesiredSize.increment();
-                return false;
-            }
-            return true;
-        }
-
-        @Override
-        public boolean isWorthInlining(ToDoubleFunction<FixedNode> probabilities, Replacements replacements, InlineInfo info, int inliningDepth, double probability, double relevance,
-                        boolean fullyProcessed) {
-            if (InlineEverything.getValue()) {
-                return InliningUtil.logInlinedMethod(info, inliningDepth, fullyProcessed, "inline everything");
-            }
-
-            if (isIntrinsic(replacements, info)) {
-                return InliningUtil.logInlinedMethod(info, inliningDepth, fullyProcessed, "intrinsic");
-            }
-
-            if (info.shouldInline()) {
-                return InliningUtil.logInlinedMethod(info, inliningDepth, fullyProcessed, "forced inlining");
-            }
-
-            double inliningBonus = getInliningBonus(info);
-            int nodes = determineNodeCount(info);
-            int lowLevelGraphSize = previousLowLevelGraphSize(info);
-
-            if (SmallCompiledLowLevelGraphSize.getValue() > 0 && lowLevelGraphSize > SmallCompiledLowLevelGraphSize.getValue() * inliningBonus) {
-                return InliningUtil.logNotInlinedMethod(info, inliningDepth, "too large previous low-level graph (low-level-nodes: %d, relevance=%f, probability=%f, bonus=%f, nodes=%d)",
-                                lowLevelGraphSize, relevance, probability, inliningBonus, nodes);
-            }
-
-            if (nodes < TrivialInliningSize.getValue() * inliningBonus) {
-                return InliningUtil.logInlinedMethod(info, inliningDepth, fullyProcessed, "trivial (relevance=%f, probability=%f, bonus=%f, nodes=%d)", relevance, probability, inliningBonus, nodes);
-            }
-
-            /*
-             * TODO (chaeubl): invoked methods that are on important paths but not yet compiled ->
-             * will be compiled anyways and it is likely that we are the only caller... might be
-             * useful to inline those methods but increases bootstrap time (maybe those methods are
-             * also getting queued in the compilation queue concurrently)
-             */
-            double invokes = determineInvokeProbability(probabilities, info);
-            if (LimitInlinedInvokes.getValue() > 0 && fullyProcessed && invokes > LimitInlinedInvokes.getValue() * inliningBonus) {
-                return InliningUtil.logNotInlinedMethod(info, inliningDepth, "callee invoke probability is too high (invokeP=%f, relevance=%f, probability=%f, bonus=%f, nodes=%d)", invokes,
-                                relevance, probability, inliningBonus, nodes);
-            }
-
-            double maximumNodes = computeMaximumSize(relevance, (int) (MaximumInliningSize.getValue() * inliningBonus));
-            if (nodes <= maximumNodes) {
-                return InliningUtil.logInlinedMethod(info, inliningDepth, fullyProcessed, "relevance-based (relevance=%f, probability=%f, bonus=%f, nodes=%d <= %f)", relevance, probability,
-                                inliningBonus, nodes, maximumNodes);
-            }
-
-            return InliningUtil.logNotInlinedMethod(info, inliningDepth, "relevance-based (relevance=%f, probability=%f, bonus=%f, nodes=%d > %f)", relevance, probability, inliningBonus, nodes,
-                            maximumNodes);
         }
     }
 
