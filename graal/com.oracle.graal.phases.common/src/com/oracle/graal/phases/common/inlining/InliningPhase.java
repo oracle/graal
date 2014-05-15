@@ -64,8 +64,6 @@ public class InliningPhase extends AbstractInliningPhase {
     private int inliningCount;
     private int maxMethodPerInlining = Integer.MAX_VALUE;
 
-    private static final DebugMetric metricInliningConsidered = Debug.metric("InliningConsidered");
-
     public InliningPhase(CanonicalizerPhase canonicalizer) {
         this(new GreedyInliningPolicy(null), canonicalizer);
     }
@@ -174,7 +172,8 @@ public class InliningPhase extends AbstractInliningPhase {
                         data.popInvocation();
                         final MethodInvocation parentInvoke = data.currentInvocation();
                         try (Scope s = Debug.scope("Inlining", data.inliningContext())) {
-                            boolean wasInlined = tryToInline(probabilities, data.currentGraph(), currentInvocation, parentInvoke, data.inliningDepth() + 1, context, inliningPolicy, canonicalizer);
+                            boolean wasInlined = InliningData.tryToInline(probabilities, data.currentGraph(), currentInvocation, parentInvoke, data.inliningDepth() + 1, context, inliningPolicy,
+                                            canonicalizer);
                             if (wasInlined) {
                                 inliningCount++;
                             }
@@ -191,27 +190,6 @@ public class InliningPhase extends AbstractInliningPhase {
     }
 
     /**
-     * @return true iff inlining was actually performed
-     */
-    private static boolean tryToInline(ToDoubleFunction<FixedNode> probabilities, CallsiteHolder callerCallsiteHolder, MethodInvocation calleeInfo, MethodInvocation parentInvocation,
-                    int inliningDepth, HighTierContext context, InliningPolicy inliningPolicy, CanonicalizerPhase canonicalizer) {
-        InlineInfo callee = calleeInfo.callee();
-        Assumptions callerAssumptions = parentInvocation.assumptions();
-        metricInliningConsidered.increment();
-
-        if (inliningPolicy.isWorthInlining(probabilities, context.getReplacements(), callee, inliningDepth, calleeInfo.probability(), calleeInfo.relevance(), true)) {
-            InliningData.doInline(callerCallsiteHolder, calleeInfo, callerAssumptions, context, canonicalizer);
-            return true;
-        }
-
-        if (context.getOptimisticOptimizations().devirtualizeInvokes()) {
-            callee.tryToDevirtualizeInvoke(context.getMetaAccess(), callerAssumptions);
-        }
-
-        return false;
-    }
-
-    /**
      * Holds the data for building the callee graphs recursively: graphs and invocations (each
      * invocation can have multiple graphs).
      */
@@ -221,6 +199,7 @@ public class InliningPhase extends AbstractInliningPhase {
         // Metrics
         private static final DebugMetric metricInliningPerformed = Debug.metric("InliningPerformed");
         private static final DebugMetric metricInliningRuns = Debug.metric("InliningRuns");
+        private static final DebugMetric metricInliningConsidered = Debug.metric("InliningConsidered");
 
         /**
          * Call hierarchy from outer most call (i.e., compilation unit) to inner most callee.
@@ -279,6 +258,27 @@ public class InliningPhase extends AbstractInliningPhase {
             } catch (GraalInternalError e) {
                 throw e.addContext(callee.toString());
             }
+        }
+
+        /**
+         * @return true iff inlining was actually performed
+         */
+        private static boolean tryToInline(ToDoubleFunction<FixedNode> probabilities, CallsiteHolder callerCallsiteHolder, MethodInvocation calleeInfo, MethodInvocation parentInvocation,
+                        int inliningDepth, HighTierContext context, InliningPolicy inliningPolicy, CanonicalizerPhase canonicalizer) {
+            InlineInfo callee = calleeInfo.callee();
+            Assumptions callerAssumptions = parentInvocation.assumptions();
+            metricInliningConsidered.increment();
+
+            if (inliningPolicy.isWorthInlining(probabilities, context.getReplacements(), callee, inliningDepth, calleeInfo.probability(), calleeInfo.relevance(), true)) {
+                doInline(callerCallsiteHolder, calleeInfo, callerAssumptions, context, canonicalizer);
+                return true;
+            }
+
+            if (context.getOptimisticOptimizations().devirtualizeInvokes()) {
+                callee.tryToDevirtualizeInvoke(context.getMetaAccess(), callerAssumptions);
+            }
+
+            return false;
         }
 
         /**
