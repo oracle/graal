@@ -127,7 +127,7 @@ public class CompilationTask implements Runnable, Comparable<Object> {
      * A {@link com.sun.management.ThreadMXBean} to be able to query some information about the
      * current compiler thread, e.g. total allocated bytes.
      */
-    private final com.sun.management.ThreadMXBean threadMXBean = (com.sun.management.ThreadMXBean) ManagementFactory.getThreadMXBean();
+    private static final com.sun.management.ThreadMXBean threadMXBean = (com.sun.management.ThreadMXBean) ManagementFactory.getThreadMXBean();
 
     /**
      * The address of the native CompileTask associated with this compilation. If 0L, then this
