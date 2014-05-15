@@ -242,21 +242,6 @@ public class InliningPhase extends AbstractInliningPhase {
         }
     }
 
-    public static final class InlineEverythingPolicy implements InliningPolicy {
-
-        public boolean continueInlining(StructuredGraph graph) {
-            if (graph.getNodeCount() >= MaximumDesiredSize.getValue()) {
-                throw new BailoutException("Inline all calls failed. The resulting graph is too large.");
-            }
-            return true;
-        }
-
-        public boolean isWorthInlining(ToDoubleFunction<FixedNode> probabilities, Replacements replacements, InlineInfo info, int inliningDepth, double probability, double relevance,
-                        boolean fullyProcessed) {
-            return true;
-        }
-    }
-
     /**
      * Holds the data for building the callee graphs recursively: graphs and invocations (each
      * invocation can have multiple graphs).
