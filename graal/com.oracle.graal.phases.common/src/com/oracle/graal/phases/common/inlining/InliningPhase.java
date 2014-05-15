@@ -153,14 +153,20 @@ public class InliningPhase extends AbstractInliningPhase {
         ToDoubleFunction<FixedNode> probabilities = new FixedNodeProbabilityCache();
 
         while (data.hasUnprocessedGraphs()) {
-            moveForward(context, data, probabilities);
+            boolean wasInlined = moveForward(context, data, probabilities);
+            if (wasInlined) {
+                inliningCount++;
+            }
         }
 
         assert data.inliningDepth() == 0;
         assert data.graphCount() == 0;
     }
 
-    private void moveForward(HighTierContext context, InliningData data, ToDoubleFunction<FixedNode> probabilities) {
+    /**
+     * @return true iff inlining was actually performed
+     */
+    private boolean moveForward(HighTierContext context, InliningData data, ToDoubleFunction<FixedNode> probabilities) {
 
         final MethodInvocation currentInvocation = data.currentInvocation();
 
@@ -171,18 +177,18 @@ public class InliningPhase extends AbstractInliningPhase {
             assert remainingGraphs > 0;
             data.popGraphs(remainingGraphs);
             data.popInvocation();
-            return;
+            return false;
         }
 
         final boolean delve = data.currentGraph().hasRemainingInvokes() && inliningPolicy.continueInlining(data.currentGraph().graph());
         if (delve) {
             data.processNextInvoke(context);
-            return;
+            return false;
         }
 
         data.popGraph();
         if (currentInvocation.isRoot()) {
-            return;
+            return false;
         }
 
         // try to inline
@@ -192,14 +198,13 @@ public class InliningPhase extends AbstractInliningPhase {
             data.popInvocation();
             final MethodInvocation parentInvoke = data.currentInvocation();
             try (Scope s = Debug.scope("Inlining", data.inliningContext())) {
-                boolean wasInlined = InliningData.tryToInline(probabilities, data.currentGraph(), currentInvocation, parentInvoke, data.inliningDepth() + 1, context, inliningPolicy, canonicalizer);
-                if (wasInlined) {
-                    inliningCount++;
-                }
+                return InliningData.tryToInline(probabilities, data.currentGraph(), currentInvocation, parentInvoke, data.inliningDepth() + 1, context, inliningPolicy, canonicalizer);
             } catch (Throwable e) {
                 throw Debug.handle(e);
             }
         }
+
+        return false;
     }
 
     /**
