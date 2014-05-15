@@ -153,40 +153,44 @@ public class InliningPhase extends AbstractInliningPhase {
         ToDoubleFunction<FixedNode> probabilities = new FixedNodeProbabilityCache();
 
         while (data.hasUnprocessedGraphs()) {
-            final MethodInvocation currentInvocation = data.currentInvocation();
-            if (!currentInvocation.isRoot() &&
-                            !inliningPolicy.isWorthInlining(probabilities, context.getReplacements(), currentInvocation.callee(), data.inliningDepth(), currentInvocation.probability(),
-                                            currentInvocation.relevance(), false)) {
-                int remainingGraphs = currentInvocation.totalGraphs() - currentInvocation.processedGraphs();
-                assert remainingGraphs > 0;
-                data.popGraphs(remainingGraphs);
-                data.popInvocation();
-            } else if (data.currentGraph().hasRemainingInvokes() && inliningPolicy.continueInlining(data.currentGraph().graph())) {
-                data.processNextInvoke(context);
-            } else {
-                data.popGraph();
-                if (!currentInvocation.isRoot()) {
-                    assert currentInvocation.callee().invoke().asNode().isAlive();
-                    currentInvocation.incrementProcessedGraphs();
-                    if (currentInvocation.processedGraphs() == currentInvocation.totalGraphs()) {
-                        data.popInvocation();
-                        final MethodInvocation parentInvoke = data.currentInvocation();
-                        try (Scope s = Debug.scope("Inlining", data.inliningContext())) {
-                            boolean wasInlined = InliningData.tryToInline(probabilities, data.currentGraph(), currentInvocation, parentInvoke, data.inliningDepth() + 1, context, inliningPolicy,
-                                            canonicalizer);
-                            if (wasInlined) {
-                                inliningCount++;
-                            }
-                        } catch (Throwable e) {
-                            throw Debug.handle(e);
-                        }
-                    }
-                }
-            }
+            moveForward(context, data, probabilities);
         }
 
         assert data.inliningDepth() == 0;
         assert data.graphCount() == 0;
+    }
+
+    private void moveForward(HighTierContext context, InliningData data, ToDoubleFunction<FixedNode> probabilities) {
+        final MethodInvocation currentInvocation = data.currentInvocation();
+        if (!currentInvocation.isRoot() &&
+                        !inliningPolicy.isWorthInlining(probabilities, context.getReplacements(), currentInvocation.callee(), data.inliningDepth(), currentInvocation.probability(),
+                                        currentInvocation.relevance(), false)) {
+            int remainingGraphs = currentInvocation.totalGraphs() - currentInvocation.processedGraphs();
+            assert remainingGraphs > 0;
+            data.popGraphs(remainingGraphs);
+            data.popInvocation();
+        } else if (data.currentGraph().hasRemainingInvokes() && inliningPolicy.continueInlining(data.currentGraph().graph())) {
+            data.processNextInvoke(context);
+        } else {
+            data.popGraph();
+            if (!currentInvocation.isRoot()) {
+                assert currentInvocation.callee().invoke().asNode().isAlive();
+                currentInvocation.incrementProcessedGraphs();
+                if (currentInvocation.processedGraphs() == currentInvocation.totalGraphs()) {
+                    data.popInvocation();
+                    final MethodInvocation parentInvoke = data.currentInvocation();
+                    try (Scope s = Debug.scope("Inlining", data.inliningContext())) {
+                        boolean wasInlined = InliningData.tryToInline(probabilities, data.currentGraph(), currentInvocation, parentInvoke, data.inliningDepth() + 1, context, inliningPolicy,
+                                        canonicalizer);
+                        if (wasInlined) {
+                            inliningCount++;
+                        }
+                    } catch (Throwable e) {
+                        throw Debug.handle(e);
+                    }
+                }
+            }
+        }
     }
 
     /**
