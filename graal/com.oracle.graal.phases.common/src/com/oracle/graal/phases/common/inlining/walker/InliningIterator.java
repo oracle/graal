@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.phases.common.inlining;
+package com.oracle.graal.phases.common.inlining.walker;
 
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeBitMap;
@@ -36,7 +36,7 @@ import java.util.LinkedList;
  * {@link Invoke} nodes with {@link MethodCallTargetNode}. Such list of callsites is returned by
  * {@link #apply()}
  */
-class InliningIterator {
+public class InliningIterator {
 
     private final StartNode start;
     private final Deque<FixedNode> nodeQueue;

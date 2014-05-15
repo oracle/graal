@@ -27,6 +27,7 @@ import com.oracle.graal.api.meta.ResolvedJavaMethod;
 import com.oracle.graal.nodes.FixedNode;
 import com.oracle.graal.nodes.Invoke;
 import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.phases.common.inlining.walker.InliningIterator;
 import com.oracle.graal.phases.graph.FixedNodeProbabilityCache;
 
 import java.util.Iterator;
