@@ -64,10 +64,7 @@ public class InliningPhase extends AbstractInliningPhase {
     private int inliningCount;
     private int maxMethodPerInlining = Integer.MAX_VALUE;
 
-    // Metrics
-    private static final DebugMetric metricInliningPerformed = Debug.metric("InliningPerformed");
     private static final DebugMetric metricInliningConsidered = Debug.metric("InliningConsidered");
-    private static final DebugMetric metricInliningRuns = Debug.metric("InliningRuns");
 
     public InliningPhase(CanonicalizerPhase canonicalizer) {
         this(new GreedyInliningPolicy(null), canonicalizer);
@@ -203,7 +200,7 @@ public class InliningPhase extends AbstractInliningPhase {
         metricInliningConsidered.increment();
 
         if (inliningPolicy.isWorthInlining(probabilities, context.getReplacements(), callee, inliningDepth, calleeInfo.probability(), calleeInfo.relevance(), true)) {
-            doInline(callerCallsiteHolder, calleeInfo, callerAssumptions, context, canonicalizer);
+            InliningData.doInline(callerCallsiteHolder, calleeInfo, callerAssumptions, context, canonicalizer);
             return true;
         }
 
@@ -214,43 +211,6 @@ public class InliningPhase extends AbstractInliningPhase {
         return false;
     }
 
-    private static void doInline(CallsiteHolder callerCallsiteHolder, MethodInvocation calleeInfo, Assumptions callerAssumptions, HighTierContext context, CanonicalizerPhase canonicalizer) {
-        StructuredGraph callerGraph = callerCallsiteHolder.graph();
-        Mark markBeforeInlining = callerGraph.getMark();
-        InlineInfo callee = calleeInfo.callee();
-        try {
-            try (Scope scope = Debug.scope("doInline", callerGraph)) {
-                List<Node> invokeUsages = callee.invoke().asNode().usages().snapshot();
-                callee.inline(new Providers(context), callerAssumptions);
-                callerAssumptions.record(calleeInfo.assumptions());
-                metricInliningRuns.increment();
-                Debug.dump(callerGraph, "after %s", callee);
-
-                if (OptCanonicalizer.getValue()) {
-                    Mark markBeforeCanonicalization = callerGraph.getMark();
-                    canonicalizer.applyIncremental(callerGraph, context, invokeUsages, markBeforeInlining);
-
-                    // process invokes that are possibly created during canonicalization
-                    for (Node newNode : callerGraph.getNewNodes(markBeforeCanonicalization)) {
-                        if (newNode instanceof Invoke) {
-                            callerCallsiteHolder.pushInvoke((Invoke) newNode);
-                        }
-                    }
-                }
-
-                callerCallsiteHolder.computeProbabilities();
-
-                metricInliningPerformed.increment();
-            }
-        } catch (BailoutException bailout) {
-            throw bailout;
-        } catch (AssertionError | RuntimeException e) {
-            throw new GraalInternalError(e).addContext(callee.toString());
-        } catch (GraalInternalError e) {
-            throw e.addContext(callee.toString());
-        }
-    }
-
     /**
      * Holds the data for building the callee graphs recursively: graphs and invocations (each
      * invocation can have multiple graphs).
@@ -258,6 +218,9 @@ public class InliningPhase extends AbstractInliningPhase {
     static class InliningData {
 
         private static final CallsiteHolder DUMMY_CALLSITE_HOLDER = new CallsiteHolder(null, 1.0, 1.0);
+        // Metrics
+        private static final DebugMetric metricInliningPerformed = Debug.metric("InliningPerformed");
+        private static final DebugMetric metricInliningRuns = Debug.metric("InliningRuns");
 
         /**
          * Call hierarchy from outer most call (i.e., compilation unit) to inner most callee.
@@ -279,6 +242,43 @@ public class InliningPhase extends AbstractInliningPhase {
 
             invocationQueue.push(new MethodInvocation(null, rootAssumptions, 1.0, 1.0));
             pushGraph(rootGraph, 1.0, 1.0);
+        }
+
+        private static void doInline(CallsiteHolder callerCallsiteHolder, MethodInvocation calleeInfo, Assumptions callerAssumptions, HighTierContext context, CanonicalizerPhase canonicalizer) {
+            StructuredGraph callerGraph = callerCallsiteHolder.graph();
+            Mark markBeforeInlining = callerGraph.getMark();
+            InlineInfo callee = calleeInfo.callee();
+            try {
+                try (Scope scope = Debug.scope("doInline", callerGraph)) {
+                    List<Node> invokeUsages = callee.invoke().asNode().usages().snapshot();
+                    callee.inline(new Providers(context), callerAssumptions);
+                    callerAssumptions.record(calleeInfo.assumptions());
+                    metricInliningRuns.increment();
+                    Debug.dump(callerGraph, "after %s", callee);
+
+                    if (OptCanonicalizer.getValue()) {
+                        Mark markBeforeCanonicalization = callerGraph.getMark();
+                        canonicalizer.applyIncremental(callerGraph, context, invokeUsages, markBeforeInlining);
+
+                        // process invokes that are possibly created during canonicalization
+                        for (Node newNode : callerGraph.getNewNodes(markBeforeCanonicalization)) {
+                            if (newNode instanceof Invoke) {
+                                callerCallsiteHolder.pushInvoke((Invoke) newNode);
+                            }
+                        }
+                    }
+
+                    callerCallsiteHolder.computeProbabilities();
+
+                    metricInliningPerformed.increment();
+                }
+            } catch (BailoutException bailout) {
+                throw bailout;
+            } catch (AssertionError | RuntimeException e) {
+                throw new GraalInternalError(e).addContext(callee.toString());
+            } catch (GraalInternalError e) {
+                throw e.addContext(callee.toString());
+            }
         }
 
         /**
