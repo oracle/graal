@@ -107,6 +107,11 @@ public class ObjectStamp extends Stamp {
             return StampFactory.illegal(Kind.Illegal);
         }
         ObjectStamp other = (ObjectStamp) otherStamp;
+        if (!isLegal()) {
+            return other;
+        } else if (!other.isLegal()) {
+            return this;
+        }
         ResolvedJavaType meetType;
         boolean meetExactType;
         boolean meetNonNull;
