@@ -261,6 +261,7 @@ public class InliningPhase extends AbstractInliningPhase {
         private int maxGraphs;
 
         public InliningData(StructuredGraph rootGraph, Assumptions rootAssumptions, int maxMethodPerInlining, CanonicalizerPhase canonicalizer) {
+            assert rootGraph != null;
             this.graphQueue = new ArrayDeque<>();
             this.invocationQueue = new ArrayDeque<>();
             this.maxMethodPerInlining = maxMethodPerInlining;
@@ -304,6 +305,7 @@ public class InliningPhase extends AbstractInliningPhase {
         }
 
         private void pushGraph(StructuredGraph graph, double probability, double relevance) {
+            assert graph != null;
             assert !contains(graph);
             graphQueue.push(new CallsiteHolder(graph, probability, relevance));
             assert graphQueue.size() <= maxGraphs;
