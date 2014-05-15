@@ -28,7 +28,6 @@ import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.compiler.common.type.StampFactory.*;
 
 import java.util.*;
-import java.util.function.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.Assumptions.Assumption;
