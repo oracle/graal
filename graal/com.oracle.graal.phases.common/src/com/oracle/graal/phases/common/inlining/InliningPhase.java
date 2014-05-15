@@ -98,12 +98,12 @@ public class InliningPhase extends AbstractInliningPhase {
      * {@link InliningData}. At any point in time, its topmost element consist of:
      * <ul>
      * <li>
-     * one or more {@link GraphInfo}s of inlining candidates, all of them corresponding to a single
-     * callsite (details below). For example, "exact inline" leads to a single candidate.</li>
+     * one or more {@link CallsiteHolder}s of inlining candidates, all of them corresponding to a
+     * single callsite (details below). For example, "exact inline" leads to a single candidate.</li>
      * <li>
      * the callsite (for the targets above) is tracked as a {@link MethodInvocation}. The difference
      * between {@link MethodInvocation#totalGraphs()} and {@link MethodInvocation#processedGraphs()}
-     * indicates the topmost {@link GraphInfo}s that might be delved-into to explore inlining
+     * indicates the topmost {@link CallsiteHolder}s that might be delved-into to explore inlining
      * opportunities.</li>
      * </ul>
      * </p>
@@ -112,7 +112,7 @@ public class InliningPhase extends AbstractInliningPhase {
      * The bottom-most element in the stack consists of:
      * <ul>
      * <li>
-     * a single {@link GraphInfo} (the root one, for the method on which inlining was called)</li>
+     * a single {@link CallsiteHolder} (the root one, for the method on which inlining was called)</li>
      * <li>
      * a single {@link MethodInvocation} (the {@link MethodInvocation#isRoot} one, ie the unknown
      * caller of the root graph)</li>
@@ -192,21 +192,21 @@ public class InliningPhase extends AbstractInliningPhase {
         assert data.graphCount() == 0;
     }
 
-    private void tryToInline(ToDoubleFunction<FixedNode> probabilities, GraphInfo callerGraphInfo, MethodInvocation calleeInfo, MethodInvocation parentInvocation, int inliningDepth,
+    private void tryToInline(ToDoubleFunction<FixedNode> probabilities, CallsiteHolder callerCallsiteHolder, MethodInvocation calleeInfo, MethodInvocation parentInvocation, int inliningDepth,
                     HighTierContext context) {
         InlineInfo callee = calleeInfo.callee();
         Assumptions callerAssumptions = parentInvocation.assumptions();
 
         if (inliningPolicy.isWorthInlining(probabilities, context.getReplacements(), callee, inliningDepth, calleeInfo.probability(), calleeInfo.relevance(), true)) {
-            doInline(callerGraphInfo, calleeInfo, callerAssumptions, context);
+            doInline(callerCallsiteHolder, calleeInfo, callerAssumptions, context);
         } else if (context.getOptimisticOptimizations().devirtualizeInvokes()) {
             callee.tryToDevirtualizeInvoke(context.getMetaAccess(), callerAssumptions);
         }
         metricInliningConsidered.increment();
     }
 
-    private void doInline(GraphInfo callerGraphInfo, MethodInvocation calleeInfo, Assumptions callerAssumptions, HighTierContext context) {
-        StructuredGraph callerGraph = callerGraphInfo.graph();
+    private void doInline(CallsiteHolder callerCallsiteHolder, MethodInvocation calleeInfo, Assumptions callerAssumptions, HighTierContext context) {
+        StructuredGraph callerGraph = callerCallsiteHolder.graph();
         Mark markBeforeInlining = callerGraph.getMark();
         InlineInfo callee = calleeInfo.callee();
         try {
@@ -224,12 +224,12 @@ public class InliningPhase extends AbstractInliningPhase {
                     // process invokes that are possibly created during canonicalization
                     for (Node newNode : callerGraph.getNewNodes(markBeforeCanonicalization)) {
                         if (newNode instanceof Invoke) {
-                            callerGraphInfo.pushInvoke((Invoke) newNode);
+                            callerCallsiteHolder.pushInvoke((Invoke) newNode);
                         }
                     }
                 }
 
-                callerGraphInfo.computeProbabilities();
+                callerCallsiteHolder.computeProbabilities();
 
                 inliningCount++;
                 metricInliningPerformed.increment();
@@ -418,12 +418,12 @@ public class InliningPhase extends AbstractInliningPhase {
      */
     static class InliningData {
 
-        private static final GraphInfo DummyGraphInfo = new GraphInfo(null, 1.0, 1.0);
+        private static final CallsiteHolder DUMMY_CALLSITE_HOLDER = new CallsiteHolder(null, 1.0, 1.0);
 
         /**
          * Call hierarchy from outer most call (i.e., compilation unit) to inner most callee.
          */
-        private final ArrayDeque<GraphInfo> graphQueue;
+        private final ArrayDeque<CallsiteHolder> graphQueue;
         private final ArrayDeque<MethodInvocation> invocationQueue;
         private final int maxMethodPerInlining;
         private final CanonicalizerPhase canonicalizer;
@@ -445,15 +445,15 @@ public class InliningPhase extends AbstractInliningPhase {
          * Process the next invoke and enqueue all its graphs for processing.
          */
         void processNextInvoke(HighTierContext context) {
-            GraphInfo graphInfo = currentGraph();
-            Invoke invoke = graphInfo.popInvoke();
+            CallsiteHolder callsiteHolder = currentGraph();
+            Invoke invoke = callsiteHolder.popInvoke();
             MethodInvocation callerInvocation = currentInvocation();
             Assumptions parentAssumptions = callerInvocation.assumptions();
             InlineInfo info = InliningUtil.getInlineInfo(this, invoke, maxMethodPerInlining, context.getReplacements(), parentAssumptions, context.getOptimisticOptimizations());
 
             if (info != null) {
-                double invokeProbability = graphInfo.invokeProbability(invoke);
-                double invokeRelevance = graphInfo.invokeRelevance(invoke);
+                double invokeProbability = callsiteHolder.invokeProbability(invoke);
+                double invokeRelevance = callsiteHolder.invokeRelevance(invoke);
                 MethodInvocation calleeInvocation = pushInvocation(info, parentAssumptions, invokeProbability, invokeRelevance);
 
                 for (int i = 0; i < info.numberOfMethods(); i++) {
@@ -475,19 +475,19 @@ public class InliningPhase extends AbstractInliningPhase {
 
         private void pushGraph(StructuredGraph graph, double probability, double relevance) {
             assert !contains(graph);
-            graphQueue.push(new GraphInfo(graph, probability, relevance));
+            graphQueue.push(new CallsiteHolder(graph, probability, relevance));
             assert graphQueue.size() <= maxGraphs;
         }
 
         private void pushDummyGraph() {
-            graphQueue.push(DummyGraphInfo);
+            graphQueue.push(DUMMY_CALLSITE_HOLDER);
         }
 
         public boolean hasUnprocessedGraphs() {
             return !graphQueue.isEmpty();
         }
 
-        public GraphInfo currentGraph() {
+        public CallsiteHolder currentGraph() {
             return graphQueue.peek();
         }
 
@@ -514,8 +514,8 @@ public class InliningPhase extends AbstractInliningPhase {
             }
             Object[] result = new Object[graphQueue.size()];
             int i = 0;
-            for (GraphInfo g : graphQueue) {
-                result[i++] = g.graph.method();
+            for (CallsiteHolder g : graphQueue) {
+                result[i++] = g.method();
             }
             return result;
         }
@@ -540,8 +540,8 @@ public class InliningPhase extends AbstractInliningPhase {
 
         public int countRecursiveInlining(ResolvedJavaMethod method) {
             int count = 0;
-            for (GraphInfo graphInfo : graphQueue) {
-                if (method.equals(graphInfo.method())) {
+            for (CallsiteHolder callsiteHolder : graphQueue) {
+                if (method.equals(callsiteHolder.method())) {
                     count++;
                 }
             }
@@ -567,7 +567,7 @@ public class InliningPhase extends AbstractInliningPhase {
             }
 
             result.append("\nGraphs: ");
-            for (GraphInfo graph : graphQueue) {
+            for (CallsiteHolder graph : graphQueue) {
                 result.append(graph.graph());
                 result.append("; ");
             }
@@ -576,7 +576,7 @@ public class InliningPhase extends AbstractInliningPhase {
         }
 
         private boolean contains(StructuredGraph graph) {
-            for (GraphInfo info : graphQueue) {
+            for (CallsiteHolder info : graphQueue) {
                 if (info.graph() == graph) {
                     return true;
                 }
@@ -654,7 +654,7 @@ public class InliningPhase extends AbstractInliningPhase {
      * Information about a graph that will potentially be inlined. This includes tracking the
      * invocations in graph that will subject to inlining themselves.
      */
-    private static class GraphInfo {
+    private static class CallsiteHolder {
 
         private final StructuredGraph graph;
         private final LinkedList<Invoke> remainingInvokes;
@@ -664,7 +664,7 @@ public class InliningPhase extends AbstractInliningPhase {
         private final ToDoubleFunction<FixedNode> probabilities;
         private final ComputeInliningRelevance computeInliningRelevance;
 
-        public GraphInfo(StructuredGraph graph, double probability, double relevance) {
+        public CallsiteHolder(StructuredGraph graph, double probability, double relevance) {
             this.graph = graph;
             if (graph == null) {
                 this.remainingInvokes = new LinkedList<>();
