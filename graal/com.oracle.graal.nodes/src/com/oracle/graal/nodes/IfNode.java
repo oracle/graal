@@ -325,7 +325,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         } else if (next1 instanceof DeoptimizeNode && next2 instanceof DeoptimizeNode) {
             DeoptimizeNode deopt1 = (DeoptimizeNode) next1;
             DeoptimizeNode deopt2 = (DeoptimizeNode) next2;
-            if (deopt1.reason() == deopt2.reason() && deopt1.action() == deopt1.action()) {
+            if (deopt1.reason() == deopt2.reason() && deopt1.action() == deopt2.action()) {
                 // Same deoptimization reason and action.
                 return true;
             }
