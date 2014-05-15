@@ -35,7 +35,6 @@ import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.graph.Graph.Mark;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.options.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.common.inlining.info.InlineInfo;
@@ -45,6 +44,7 @@ import com.oracle.graal.phases.common.inlining.InliningUtil.InlineableMacroNode;
 import com.oracle.graal.phases.common.inlining.policy.GreedyInliningPolicy;
 import com.oracle.graal.phases.common.inlining.policy.InliningPolicy;
 import com.oracle.graal.phases.common.inlining.walker.CallsiteHolder;
+import com.oracle.graal.phases.common.inlining.walker.MethodInvocation;
 import com.oracle.graal.phases.graph.*;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.phases.util.*;
@@ -96,9 +96,9 @@ public class InliningPhase extends AbstractInliningPhase {
      * single callsite (details below). For example, "exact inline" leads to a single candidate.</li>
      * <li>
      * the callsite (for the targets above) is tracked as a {@link MethodInvocation}. The difference
-     * between {@link MethodInvocation#totalGraphs()} and {@link MethodInvocation#processedGraphs()}
-     * indicates the topmost {@link CallsiteHolder}s that might be delved-into to explore inlining
-     * opportunities.</li>
+     * between {@link com.oracle.graal.phases.common.inlining.walker.MethodInvocation#totalGraphs()}
+     * and {@link MethodInvocation#processedGraphs()} indicates the topmost {@link CallsiteHolder}s
+     * that might be delved-into to explore inlining opportunities.</li>
      * </ul>
      * </p>
      *
@@ -108,8 +108,9 @@ public class InliningPhase extends AbstractInliningPhase {
      * <li>
      * a single {@link CallsiteHolder} (the root one, for the method on which inlining was called)</li>
      * <li>
-     * a single {@link MethodInvocation} (the {@link MethodInvocation#isRoot} one, ie the unknown
-     * caller of the root graph)</li>
+     * a single {@link MethodInvocation} (the
+     * {@link com.oracle.graal.phases.common.inlining.walker.MethodInvocation#isRoot} one, ie the
+     * unknown caller of the root graph)</li>
      * </ul>
      *
      * </p>
@@ -351,7 +352,7 @@ public class InliningPhase extends AbstractInliningPhase {
         }
 
         public void popInvocation() {
-            maxGraphs -= invocationQueue.peekFirst().callee.numberOfMethods();
+            maxGraphs -= invocationQueue.peekFirst().callee().numberOfMethods();
             assert graphQueue.size() <= maxGraphs;
             invocationQueue.removeFirst();
         }
@@ -444,71 +445,6 @@ public class InliningPhase extends AbstractInliningPhase {
             }
 
             return false;
-        }
-    }
-
-    private static class MethodInvocation {
-
-        private final InlineInfo callee;
-        private final Assumptions assumptions;
-        private final double probability;
-        private final double relevance;
-
-        private int processedGraphs;
-
-        public MethodInvocation(InlineInfo info, Assumptions assumptions, double probability, double relevance) {
-            this.callee = info;
-            this.assumptions = assumptions;
-            this.probability = probability;
-            this.relevance = relevance;
-        }
-
-        public void incrementProcessedGraphs() {
-            processedGraphs++;
-            assert processedGraphs <= callee.numberOfMethods();
-        }
-
-        public int processedGraphs() {
-            assert processedGraphs <= callee.numberOfMethods();
-            return processedGraphs;
-        }
-
-        public int totalGraphs() {
-            return callee.numberOfMethods();
-        }
-
-        public InlineInfo callee() {
-            return callee;
-        }
-
-        public Assumptions assumptions() {
-            return assumptions;
-        }
-
-        public double probability() {
-            return probability;
-        }
-
-        public double relevance() {
-            return relevance;
-        }
-
-        public boolean isRoot() {
-            return callee == null;
-        }
-
-        @Override
-        public String toString() {
-            if (isRoot()) {
-                return "<root>";
-            }
-            CallTargetNode callTarget = callee.invoke().callTarget();
-            if (callTarget instanceof MethodCallTargetNode) {
-                ResolvedJavaMethod calleeMethod = ((MethodCallTargetNode) callTarget).targetMethod();
-                return MetaUtil.format("Invoke#%H.%n(%p)", calleeMethod);
-            } else {
-                return "Invoke#" + callTarget.targetName();
-            }
         }
     }
 
