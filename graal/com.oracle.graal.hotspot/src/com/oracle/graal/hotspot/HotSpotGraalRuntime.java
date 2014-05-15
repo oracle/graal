@@ -43,6 +43,7 @@ import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.bridge.*;
+import com.oracle.graal.hotspot.events.*;
 import com.oracle.graal.hotspot.logging.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.options.*;
@@ -274,6 +275,8 @@ public final class HotSpotGraalRuntime implements GraalRuntime, RuntimeProvider,
             }
             registerBackend(factory.createBackend(this, hostBackend));
         }
+
+        eventProvider = createEventProvider();
     }
 
     private HotSpotBackend registerBackend(HotSpotBackend backend) {
@@ -379,6 +382,22 @@ public final class HotSpotGraalRuntime implements GraalRuntime, RuntimeProvider,
 
     private final NodeCollectionsProvider nodeCollectionsProvider = new DefaultNodeCollectionsProvider();
 
+    private final EventProvider eventProvider;
+
+    private EventProvider createEventProvider() {
+        if (config.flightRecorder) {
+            ServiceLoader<EventProvider> sl = ServiceLoader.loadInstalled(EventProvider.class);
+            EventProvider singleProvider = null;
+            for (EventProvider ep : sl) {
+                assert singleProvider == null : String.format("multiple %s service implementations found: %s and %s", EventProvider.class.getName(), singleProvider.getClass().getName(),
+                                ep.getClass().getName());
+                singleProvider = ep;
+            }
+            return singleProvider;
+        }
+        return new EmptyEventProvider();
+    }
+
     @SuppressWarnings("unchecked")
     @Override
     public <T> T getCapability(Class<T> clazz) {
@@ -392,6 +411,8 @@ public final class HotSpotGraalRuntime implements GraalRuntime, RuntimeProvider,
             return (T) getHostProviders().getSnippetReflection();
         } else if (clazz == MethodHandleAccessProvider.class) {
             return (T) getHostProviders().getMethodHandleAccess();
+        } else if (clazz == EventProvider.class) {
+            return (T) eventProvider;
         }
         return null;
     }
