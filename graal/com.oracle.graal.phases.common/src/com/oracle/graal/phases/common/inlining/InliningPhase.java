@@ -44,7 +44,7 @@ import com.oracle.graal.phases.common.inlining.info.InlineInfo;
 import com.oracle.graal.phases.common.inlining.InliningUtil.Inlineable;
 import com.oracle.graal.phases.common.inlining.InliningUtil.InlineableGraph;
 import com.oracle.graal.phases.common.inlining.InliningUtil.InlineableMacroNode;
-import com.oracle.graal.phases.common.inlining.InliningUtil.InliningPolicy;
+import com.oracle.graal.phases.common.inlining.policy.InliningPolicy;
 import com.oracle.graal.phases.graph.*;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.phases.util.*;

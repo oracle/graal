@@ -63,13 +63,6 @@ public class InliningUtil {
      */
     public static final DebugMetric InlinedBytecodes = Debug.metric("InlinedBytecodes");
 
-    public interface InliningPolicy {
-
-        boolean continueInlining(StructuredGraph graph);
-
-        boolean isWorthInlining(ToDoubleFunction<FixedNode> probabilities, Replacements replacements, InlineInfo info, int inliningDepth, double probability, double relevance, boolean fullyProcessed);
-    }
-
     public interface Inlineable {
 
         int getNodeCount();
