@@ -741,7 +741,7 @@ public class Debug {
 
     private static DebugMetric createMetric(String format, Object arg1, Object arg2) {
         String name = formatDebugName(format, arg1, arg2);
-        boolean conditional = enabledMetrics != null && enabledMetrics.contains(name);
+        boolean conditional = enabledMetrics == null || !enabledMetrics.contains(name);
         return new MetricImpl(name, conditional);
     }
 
@@ -981,7 +981,7 @@ public class Debug {
 
     private static DebugTimer createTimer(String format, Object arg1, Object arg2) {
         String name = formatDebugName(format, arg1, arg2);
-        boolean conditional = enabledTimers != null && enabledTimers.contains(name);
+        boolean conditional = enabledTimers == null || !enabledTimers.contains(name);
         return new TimerImpl(name, conditional);
     }
 
