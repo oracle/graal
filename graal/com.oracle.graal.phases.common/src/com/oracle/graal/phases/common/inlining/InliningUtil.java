@@ -49,8 +49,8 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.*;
-import com.oracle.graal.phases.common.inlining.InliningPhase.*;
 import com.oracle.graal.phases.common.inlining.info.*;
+import com.oracle.graal.phases.common.inlining.walker.InliningData;
 
 public class InliningUtil {
 

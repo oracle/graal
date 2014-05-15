@@ -45,7 +45,7 @@ public class DepthSearchUtil {
         // no instances
     }
 
-    static InliningUtil.Inlineable getInlineableElement(final ResolvedJavaMethod method, Invoke invoke, HighTierContext context, CanonicalizerPhase canonicalizer) {
+    public static InliningUtil.Inlineable getInlineableElement(final ResolvedJavaMethod method, Invoke invoke, HighTierContext context, CanonicalizerPhase canonicalizer) {
         Class<? extends FixedWithNextNode> macroNodeClass = InliningUtil.getMacroNodeClass(context.getReplacements(), method);
         if (macroNodeClass != null) {
             return new InliningUtil.InlineableMacroNode(macroNodeClass);
