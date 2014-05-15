@@ -23,7 +23,6 @@
 package com.oracle.graal.phases.common.inlining;
 
 import static com.oracle.graal.compiler.common.GraalOptions.*;
-import static com.oracle.graal.phases.common.inlining.InliningPhase.Options.*;
 
 import java.util.*;
 import java.util.function.*;
@@ -44,6 +43,7 @@ import com.oracle.graal.phases.common.inlining.info.InlineInfo;
 import com.oracle.graal.phases.common.inlining.InliningUtil.Inlineable;
 import com.oracle.graal.phases.common.inlining.InliningUtil.InlineableGraph;
 import com.oracle.graal.phases.common.inlining.InliningUtil.InlineableMacroNode;
+import com.oracle.graal.phases.common.inlining.policy.AbstractInliningPolicy;
 import com.oracle.graal.phases.common.inlining.policy.InliningPolicy;
 import com.oracle.graal.phases.graph.*;
 import com.oracle.graal.phases.tiers.*;
@@ -51,7 +51,7 @@ import com.oracle.graal.phases.util.*;
 
 public class InliningPhase extends AbstractInliningPhase {
 
-    static class Options {
+    public static class Options {
 
         // @formatter:off
         @Option(help = "Unconditionally inline intrinsics")
@@ -240,94 +240,6 @@ public class InliningPhase extends AbstractInliningPhase {
             throw new GraalInternalError(e).addContext(callee.toString());
         } catch (GraalInternalError e) {
             throw e.addContext(callee.toString());
-        }
-    }
-
-    private abstract static class AbstractInliningPolicy implements InliningPolicy {
-
-        protected final Map<Invoke, Double> hints;
-
-        public AbstractInliningPolicy(Map<Invoke, Double> hints) {
-            this.hints = hints;
-        }
-
-        protected double computeMaximumSize(double relevance, int configuredMaximum) {
-            double inlineRatio = Math.min(RelevanceCapForInlining.getValue(), relevance);
-            return configuredMaximum * inlineRatio;
-        }
-
-        protected double getInliningBonus(InlineInfo info) {
-            if (hints != null && hints.containsKey(info.invoke())) {
-                return hints.get(info.invoke());
-            }
-            return 1;
-        }
-
-        protected boolean isIntrinsic(Replacements replacements, InlineInfo info) {
-            if (AlwaysInlineIntrinsics.getValue()) {
-                return onlyIntrinsics(replacements, info);
-            } else {
-                return onlyForcedIntrinsics(replacements, info);
-            }
-        }
-
-        private static boolean onlyIntrinsics(Replacements replacements, InlineInfo info) {
-            for (int i = 0; i < info.numberOfMethods(); i++) {
-                if (!InliningUtil.canIntrinsify(replacements, info.methodAt(i))) {
-                    return false;
-                }
-            }
-            return true;
-        }
-
-        private static boolean onlyForcedIntrinsics(Replacements replacements, InlineInfo info) {
-            for (int i = 0; i < info.numberOfMethods(); i++) {
-                if (!InliningUtil.canIntrinsify(replacements, info.methodAt(i))) {
-                    return false;
-                }
-                if (!replacements.isForcedSubstitution(info.methodAt(i))) {
-                    return false;
-                }
-            }
-            return true;
-        }
-
-        protected static int previousLowLevelGraphSize(InlineInfo info) {
-            int size = 0;
-            for (int i = 0; i < info.numberOfMethods(); i++) {
-                ResolvedJavaMethod m = info.methodAt(i);
-                ProfilingInfo profile = m.getProfilingInfo();
-                int compiledGraphSize = profile.getCompilerIRSize(StructuredGraph.class);
-                if (compiledGraphSize > 0) {
-                    size += compiledGraphSize;
-                }
-            }
-            return size;
-        }
-
-        protected static int determineNodeCount(InlineInfo info) {
-            int nodes = 0;
-            for (int i = 0; i < info.numberOfMethods(); i++) {
-                Inlineable elem = info.inlineableElementAt(i);
-                if (elem != null) {
-                    nodes += elem.getNodeCount();
-                }
-            }
-            return nodes;
-        }
-
-        protected static double determineInvokeProbability(ToDoubleFunction<FixedNode> probabilities, InlineInfo info) {
-            double invokeProbability = 0;
-            for (int i = 0; i < info.numberOfMethods(); i++) {
-                Inlineable callee = info.inlineableElementAt(i);
-                Iterable<Invoke> invokes = callee.getInvokes();
-                if (invokes.iterator().hasNext()) {
-                    for (Invoke invoke : invokes) {
-                        invokeProbability += probabilities.applyAsDouble(invoke.asNode());
-                    }
-                }
-            }
-            return invokeProbability;
         }
     }
 
