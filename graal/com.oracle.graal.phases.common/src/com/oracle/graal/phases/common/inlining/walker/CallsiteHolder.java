@@ -20,13 +20,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.phases.common.inlining;
+package com.oracle.graal.phases.common.inlining.walker;
 
 import com.oracle.graal.api.meta.MetaUtil;
 import com.oracle.graal.api.meta.ResolvedJavaMethod;
 import com.oracle.graal.nodes.FixedNode;
 import com.oracle.graal.nodes.Invoke;
 import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.phases.common.inlining.ComputeInliningRelevance;
 import com.oracle.graal.phases.common.inlining.walker.InliningIterator;
 import com.oracle.graal.phases.graph.FixedNodeProbabilityCache;
 
@@ -40,7 +41,7 @@ import static com.oracle.graal.compiler.common.GraalOptions.CapInheritedRelevanc
  * Information about a graph that will potentially be inlined. This includes tracking the
  * invocations in graph that will subject to inlining themselves.
  */
-class CallsiteHolder {
+public class CallsiteHolder {
 
     private final StructuredGraph graph;
     private final LinkedList<Invoke> remainingInvokes;
