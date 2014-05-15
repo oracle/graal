@@ -62,6 +62,20 @@ public class ExactMathTest extends GraalCompilerTest {
     }
 
     @Test
+    public void testMulHigh() {
+        test("mulHigh", 7, 15);
+        test("mulHigh", Integer.MAX_VALUE, 15);
+        test("mulHigh", Integer.MIN_VALUE, 15);
+    }
+
+    @Test
+    public void testMulHighUnsigned() {
+        test("mulHighUnsigned", 7, 15);
+        test("mulHighUnsigned", Integer.MAX_VALUE, 15);
+        test("mulHighUnsigned", Integer.MIN_VALUE, 15);
+    }
+
+    @Test
     public void testLongAdd() {
         test("longAdd", (long) Integer.MAX_VALUE, 2L);
         test("longAdd", Long.MAX_VALUE, 2L);
@@ -80,6 +94,20 @@ public class ExactMathTest extends GraalCompilerTest {
         test("longSub", Long.MIN_VALUE, 2L);
     }
 
+    @Test
+    public void testLongMulHigh() {
+        test("longMulHigh", 7L, 15L);
+        test("longMulHigh", Long.MAX_VALUE, 15L);
+        test("longMulHigh", Long.MIN_VALUE, 15L);
+    }
+
+    @Test
+    public void testLongMulHighUnsigned() {
+        test("longMulHighUnsigned", 7L, 15L);
+        test("longMulHighUnsigned", Long.MAX_VALUE, 15L);
+        test("longMulHighUnsigned", Long.MIN_VALUE, 15L);
+    }
+
     public static int add(int a, int b) {
         return ExactMath.addExact(a, b);
     }
@@ -92,6 +120,14 @@ public class ExactMathTest extends GraalCompilerTest {
         return ExactMath.subtractExact(a, b);
     }
 
+    public static int mulHigh(int a, int b) {
+        return ExactMath.multiplyHigh(a, b);
+    }
+
+    public static int mulHighUnsigned(int a, int b) {
+        return ExactMath.multiplyHighUnsigned(a, b);
+    }
+
     public static long longAdd(long a, long b) {
         return ExactMath.addExact(a, b);
     }
@@ -102,5 +138,13 @@ public class ExactMathTest extends GraalCompilerTest {
 
     public static long longSub(long a, long b) {
         return ExactMath.subtractExact(a, b);
+    }
+
+    public static long longMulHigh(long a, long b) {
+        return ExactMath.multiplyHigh(a, b);
+    }
+
+    public static long longMulHighUnsigned(long a, long b) {
+        return ExactMath.multiplyHighUnsigned(a, b);
     }
 }

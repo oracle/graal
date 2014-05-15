@@ -580,6 +580,16 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
     }
 
     @Override
+    public Value emitMulHigh(Value a, Value b) {
+        throw GraalInternalError.unimplemented();
+    }
+
+    @Override
+    public Value emitUMulHigh(Value a, Value b) {
+        throw GraalInternalError.unimplemented();
+    }
+
+    @Override
     public Value emitDiv(Value a, Value b, LIRFrameState state) {
         Variable result = newVariable(a.getKind());
         switch (a.getKind().getStackKind()) {
