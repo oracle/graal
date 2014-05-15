@@ -149,11 +149,11 @@ public class InliningPhase extends AbstractInliningPhase {
      */
     @Override
     protected void run(final StructuredGraph graph, final HighTierContext context) {
-        final InliningData data = new InliningData(graph, context.getAssumptions(), maxMethodPerInlining, canonicalizer);
+        final InliningData data = new InliningData(graph, context.getAssumptions(), maxMethodPerInlining, canonicalizer, inliningPolicy);
         ToDoubleFunction<FixedNode> probabilities = new FixedNodeProbabilityCache();
 
         while (data.hasUnprocessedGraphs()) {
-            boolean wasInlined = moveForward(context, data, probabilities);
+            boolean wasInlined = data.moveForward(context, probabilities);
             if (wasInlined) {
                 inliningCount++;
             }
@@ -161,50 +161,6 @@ public class InliningPhase extends AbstractInliningPhase {
 
         assert data.inliningDepth() == 0;
         assert data.graphCount() == 0;
-    }
-
-    /**
-     * @return true iff inlining was actually performed
-     */
-    private boolean moveForward(HighTierContext context, InliningData data, ToDoubleFunction<FixedNode> probabilities) {
-
-        final MethodInvocation currentInvocation = data.currentInvocation();
-
-        final boolean backtrack = (!currentInvocation.isRoot() && !inliningPolicy.isWorthInlining(probabilities, context.getReplacements(), currentInvocation.callee(), data.inliningDepth(),
-                        currentInvocation.probability(), currentInvocation.relevance(), false));
-        if (backtrack) {
-            int remainingGraphs = currentInvocation.totalGraphs() - currentInvocation.processedGraphs();
-            assert remainingGraphs > 0;
-            data.popGraphs(remainingGraphs);
-            data.popInvocation();
-            return false;
-        }
-
-        final boolean delve = data.currentGraph().hasRemainingInvokes() && inliningPolicy.continueInlining(data.currentGraph().graph());
-        if (delve) {
-            data.processNextInvoke(context);
-            return false;
-        }
-
-        data.popGraph();
-        if (currentInvocation.isRoot()) {
-            return false;
-        }
-
-        // try to inline
-        assert currentInvocation.callee().invoke().asNode().isAlive();
-        currentInvocation.incrementProcessedGraphs();
-        if (currentInvocation.processedGraphs() == currentInvocation.totalGraphs()) {
-            data.popInvocation();
-            final MethodInvocation parentInvoke = data.currentInvocation();
-            try (Scope s = Debug.scope("Inlining", data.inliningContext())) {
-                return InliningData.tryToInline(probabilities, data.currentGraph(), currentInvocation, parentInvoke, data.inliningDepth() + 1, context, inliningPolicy, canonicalizer);
-            } catch (Throwable e) {
-                throw Debug.handle(e);
-            }
-        }
-
-        return false;
     }
 
     /**
@@ -226,22 +182,24 @@ public class InliningPhase extends AbstractInliningPhase {
         private final ArrayDeque<MethodInvocation> invocationQueue;
         private final int maxMethodPerInlining;
         private final CanonicalizerPhase canonicalizer;
+        private final InliningPolicy inliningPolicy;
 
         private int maxGraphs;
 
-        public InliningData(StructuredGraph rootGraph, Assumptions rootAssumptions, int maxMethodPerInlining, CanonicalizerPhase canonicalizer) {
+        public InliningData(StructuredGraph rootGraph, Assumptions rootAssumptions, int maxMethodPerInlining, CanonicalizerPhase canonicalizer, InliningPolicy inliningPolicy) {
             assert rootGraph != null;
             this.graphQueue = new ArrayDeque<>();
             this.invocationQueue = new ArrayDeque<>();
             this.maxMethodPerInlining = maxMethodPerInlining;
             this.canonicalizer = canonicalizer;
+            this.inliningPolicy = inliningPolicy;
             this.maxGraphs = 1;
 
             invocationQueue.push(new MethodInvocation(null, rootAssumptions, 1.0, 1.0));
             pushGraph(rootGraph, 1.0, 1.0);
         }
 
-        private static void doInline(CallsiteHolder callerCallsiteHolder, MethodInvocation calleeInfo, Assumptions callerAssumptions, HighTierContext context, CanonicalizerPhase canonicalizer) {
+        private void doInline(CallsiteHolder callerCallsiteHolder, MethodInvocation calleeInfo, Assumptions callerAssumptions, HighTierContext context) {
             StructuredGraph callerGraph = callerCallsiteHolder.graph();
             Mark markBeforeInlining = callerGraph.getMark();
             InlineInfo callee = calleeInfo.callee();
@@ -281,14 +239,14 @@ public class InliningPhase extends AbstractInliningPhase {
         /**
          * @return true iff inlining was actually performed
          */
-        private static boolean tryToInline(ToDoubleFunction<FixedNode> probabilities, CallsiteHolder callerCallsiteHolder, MethodInvocation calleeInfo, MethodInvocation parentInvocation,
-                        int inliningDepth, HighTierContext context, InliningPolicy inliningPolicy, CanonicalizerPhase canonicalizer) {
+        private boolean tryToInline(ToDoubleFunction<FixedNode> probabilities, CallsiteHolder callerCallsiteHolder, MethodInvocation calleeInfo, MethodInvocation parentInvocation, int inliningDepth,
+                        HighTierContext context) {
             InlineInfo callee = calleeInfo.callee();
             Assumptions callerAssumptions = parentInvocation.assumptions();
             metricInliningConsidered.increment();
 
             if (inliningPolicy.isWorthInlining(probabilities, context.getReplacements(), callee, inliningDepth, calleeInfo.probability(), calleeInfo.relevance(), true)) {
-                doInline(callerCallsiteHolder, calleeInfo, callerAssumptions, context, canonicalizer);
+                doInline(callerCallsiteHolder, calleeInfo, callerAssumptions, context);
                 return true;
             }
 
@@ -440,6 +398,50 @@ public class InliningPhase extends AbstractInliningPhase {
                     return true;
                 }
             }
+            return false;
+        }
+
+        /**
+         * @return true iff inlining was actually performed
+         */
+        private boolean moveForward(HighTierContext context, ToDoubleFunction<FixedNode> probabilities) {
+
+            final MethodInvocation currentInvocation = currentInvocation();
+
+            final boolean backtrack = (!currentInvocation.isRoot() && !inliningPolicy.isWorthInlining(probabilities, context.getReplacements(), currentInvocation.callee(), inliningDepth(),
+                            currentInvocation.probability(), currentInvocation.relevance(), false));
+            if (backtrack) {
+                int remainingGraphs = currentInvocation.totalGraphs() - currentInvocation.processedGraphs();
+                assert remainingGraphs > 0;
+                popGraphs(remainingGraphs);
+                popInvocation();
+                return false;
+            }
+
+            final boolean delve = currentGraph().hasRemainingInvokes() && inliningPolicy.continueInlining(currentGraph().graph());
+            if (delve) {
+                processNextInvoke(context);
+                return false;
+            }
+
+            popGraph();
+            if (currentInvocation.isRoot()) {
+                return false;
+            }
+
+            // try to inline
+            assert currentInvocation.callee().invoke().asNode().isAlive();
+            currentInvocation.incrementProcessedGraphs();
+            if (currentInvocation.processedGraphs() == currentInvocation.totalGraphs()) {
+                popInvocation();
+                final MethodInvocation parentInvoke = currentInvocation();
+                try (Scope s = Debug.scope("Inlining", inliningContext())) {
+                    return tryToInline(probabilities, currentGraph(), currentInvocation, parentInvoke, inliningDepth() + 1, context);
+                } catch (Throwable e) {
+                    throw Debug.handle(e);
+                }
+            }
+
             return false;
         }
     }
