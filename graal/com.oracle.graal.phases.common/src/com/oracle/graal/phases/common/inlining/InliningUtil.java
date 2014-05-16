@@ -150,14 +150,13 @@ public class InliningUtil {
         logInliningDecision(info, inliningDepth, true, false, msg, args);
     }
 
-    public static boolean logInliningDecision(InlineInfo info, int inliningDepth, boolean allowLogging, boolean success, String msg, final Object... args) {
+    public static void logInliningDecision(InlineInfo info, int inliningDepth, boolean allowLogging, boolean success, String msg, final Object... args) {
         if (allowLogging) {
             printInlining(info, inliningDepth, success, msg, args);
             if (shouldLogInliningDecision()) {
                 logInliningDecision(methodName(info), success, msg, args);
             }
         }
-        return success;
     }
 
     public static void logInliningDecision(final String msg, final Object... args) {
@@ -169,12 +168,11 @@ public class InliningUtil {
         }
     }
 
-    private static boolean logNotInlined(Invoke invoke, String msg) {
+    private static void logNotInlined(Invoke invoke, String msg) {
         if (shouldLogInliningDecision()) {
             String methodString = invoke.toString() + (invoke.callTarget() == null ? " callTarget=null" : invoke.callTarget().targetName());
             logInliningDecision(methodString, false, msg, new Object[0]);
         }
-        return false;
     }
 
     private static void logNotInlinedMethod(Invoke invoke, int inliningDepth, ResolvedJavaMethod method, String msg) {
