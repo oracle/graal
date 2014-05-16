@@ -190,11 +190,6 @@ public class InliningUtil {
         return null;
     }
 
-    private static boolean logNotInlinedMethodAndReturnFalse(Invoke invoke, int inliningDepth, ResolvedJavaMethod method, String msg) {
-        logNotInlinedMethodAndReturnNull(invoke, inliningDepth, method, msg);
-        return false;
-    }
-
     private static void logInliningDecision(final String methodString, final boolean success, final String msg, final Object... args) {
         String inliningMsg = "inlining " + methodString + ": " + msg;
         if (!success) {
@@ -497,7 +492,7 @@ public class InliningUtil {
         if (failureMessage == null) {
             return true;
         } else {
-            logNotInlinedMethodAndReturnFalse(invoke, data.inliningDepth(), method, failureMessage);
+            logNotInlinedMethodAndReturnNull(invoke, data.inliningDepth(), method, failureMessage);
             return false;
         }
     }
