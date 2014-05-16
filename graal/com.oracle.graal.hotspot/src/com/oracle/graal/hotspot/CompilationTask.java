@@ -245,7 +245,7 @@ public class CompilationTask implements Runnable, Comparable<Object> {
 
     public void runCompilation() {
         if (executor != null && executor.isShutdown()) {
-            // We don't want to do any unnecessary compilation is the Graal compilation
+            // We don't want to do any unnecessary compilation if the Graal compilation
             // queue has been shutdown. Note that we leave the JVM_ACC_QUEUED bit set
             // for the method so that it won't be re-scheduled for compilation.
             return;

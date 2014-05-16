@@ -480,7 +480,7 @@ public class VMToCompilerImpl implements VMToCompiler {
         printMap(new DebugValueScope(null, result), debugValues);
     }
 
-    public static long collectTotal(List<DebugValueMap> maps, int index) {
+    private static long collectTotal(List<DebugValueMap> maps, int index) {
         long total = 0;
         for (int i = 0; i < maps.size(); i++) {
             DebugValueMap map = maps.get(i);
