@@ -191,11 +191,7 @@ public class InliningUtil {
     }
 
     private static boolean logNotInlinedMethodAndReturnFalse(Invoke invoke, int inliningDepth, ResolvedJavaMethod method, String msg) {
-        printInlining(method, invoke, inliningDepth, false, msg, new Object[0]);
-        if (shouldLogInliningDecision()) {
-            String methodString = methodName(method, invoke);
-            logInliningDecision(methodString, false, msg, new Object[0]);
-        }
+        logNotInlinedMethodAndReturnNull(invoke, inliningDepth, method, msg);
         return false;
     }
 
