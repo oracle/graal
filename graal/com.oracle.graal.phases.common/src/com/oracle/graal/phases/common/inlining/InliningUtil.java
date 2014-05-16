@@ -142,20 +142,18 @@ public class InliningUtil {
         }
     }
 
-    public static void logInlinedMethod(InlineInfo info, int inliningDepth, boolean allowLogging, String msg, Object... args) {
-        logInliningDecision(info, inliningDepth, allowLogging, true, msg, args);
+    public static void logInlinedMethod(InlineInfo info, int inliningDepth, String msg, Object... args) {
+        logInliningDecision(info, inliningDepth, true, msg, args);
     }
 
     public static void logNotInlinedMethod(InlineInfo info, int inliningDepth, String msg, Object... args) {
-        logInliningDecision(info, inliningDepth, true, false, msg, args);
+        logInliningDecision(info, inliningDepth, false, msg, args);
     }
 
-    public static void logInliningDecision(InlineInfo info, int inliningDepth, boolean allowLogging, boolean success, String msg, final Object... args) {
-        if (allowLogging) {
-            printInlining(info, inliningDepth, success, msg, args);
-            if (shouldLogInliningDecision()) {
-                logInliningDecision(methodName(info), success, msg, args);
-            }
+    public static void logInliningDecision(InlineInfo info, int inliningDepth, boolean success, String msg, final Object... args) {
+        printInlining(info, inliningDepth, success, msg, args);
+        if (shouldLogInliningDecision()) {
+            logInliningDecision(methodName(info), success, msg, args);
         }
     }
 
