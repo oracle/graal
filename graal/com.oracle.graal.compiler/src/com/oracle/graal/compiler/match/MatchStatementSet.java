@@ -36,5 +36,5 @@ public interface MatchStatementSet {
     /**
      * @return the {@link MatchStatement}s available for this {@link NodeLIRBuilder} subclass.
      */
-    public List<MatchStatement> statements();
+    public List<MatchStatement> statements(MatchRuleRegistry.NodeClassLookup lookup);
 }

@@ -27,12 +27,60 @@ import static com.oracle.graal.compiler.GraalDebugConfig.*;
 import java.util.*;
 import java.util.Map.Entry;
 
+import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 
 public class MatchRuleRegistry {
+
+    /**
+     * Helper interface for mapping between Class and NodeClass. In static compilation environments,
+     * the current NodeClass might not be the same NodeClass used in the target so this provides a
+     * level of indirection.
+     */
+    public static interface NodeClassLookup {
+        NodeClass get(Class<?> theClass);
+
+    }
+
+    static class DefaultNodeClassLookup implements NodeClassLookup {
+        public NodeClass get(Class<?> theClass) {
+            return NodeClass.get(theClass);
+        }
+    }
+
+    /**
+     * Convert a list of field names into {@link com.oracle.graal.graph.NodeClass.Position} objects
+     * that can be used to read them during a match. The names should already have been confirmed to
+     * exist in the type.
+     *
+     * @param theClass
+     * @param names
+     * @return an array of Position objects corresponding to the named fields.
+     */
+    public static NodeClass.Position[] findPositions(NodeClassLookup lookup, Class<? extends ValueNode> theClass, String[] names) {
+        NodeClass.Position[] result = new NodeClass.Position[names.length];
+        NodeClass nodeClass = lookup.get(theClass);
+        for (int i = 0; i < names.length; i++) {
+            for (NodeClass.Position position : nodeClass.getFirstLevelInputPositions()) {
+                String name = nodeClass.getName(position);
+                if (name.endsWith("#NDF")) {
+                    name = name.substring(0, name.length() - 4);
+                }
+                if (name.equals(names[i])) {
+                    result[i] = position;
+                    break;
+                }
+            }
+            if (result[i] == null) {
+                throw new GraalInternalError("unknown field \"%s\" in class %s", names[i], theClass);
+            }
+        }
+        return result;
+    }
 
     private static final HashMap<Class<? extends NodeLIRBuilder>, Map<Class<? extends ValueNode>, List<MatchStatement>>> registry = new HashMap<>();
 
@@ -46,10 +94,11 @@ public class MatchRuleRegistry {
         Map<Class<? extends ValueNode>, List<MatchStatement>> result = registry.get(theClass);
 
         if (result == null) {
+            NodeClassLookup lookup = new DefaultNodeClassLookup();
             HashMap<Class<? extends NodeLIRBuilder>, List<MatchStatement>> localRules = new HashMap<>();
             ServiceLoader<MatchStatementSet> sl = ServiceLoader.loadInstalled(MatchStatementSet.class);
             for (MatchStatementSet rules : sl) {
-                localRules.put(rules.forClass(), rules.statements());
+                localRules.put(rules.forClass(), rules.statements(lookup));
             }
 
             // Walk the class hierarchy collecting lists and merge them together. The subclass

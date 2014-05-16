@@ -456,7 +456,7 @@ public class MatchProcessor extends AbstractProcessor {
         }
 
         String generatePositionDeclaration() {
-            return String.format("private static final NodeClass.Position[] %s_positions = MatchPattern.findPositions(%s.class, new String[]{\"%s\"});", nodeType.nodeClass, nodeType.nodeClass,
+            return String.format("NodeClass.Position[] %s_positions = MatchRuleRegistry.findPositions(lookup, %s.class, new String[]{\"%s\"});", nodeType.nodeClass, nodeType.nodeClass,
                             String.join("\", \"", nodeType.inputs));
         }
     }
@@ -528,33 +528,36 @@ public class MatchProcessor extends AbstractProcessor {
 
             }
 
-            for (String positionDeclaration : info.positionDeclarations) {
-                out.println("    " + positionDeclaration);
-            }
-            out.println();
-
             String desc = MatchStatement.class.getSimpleName();
-            out.println("    // CheckStyle: stop line length check");
-            out.println("    private static final List<" + desc + "> statements = Collections.unmodifiableList(Arrays.asList(");
-
-            int i = 0;
-            for (MatchRuleItem matchRule : info.matchRules) {
-                String comma = i == info.matchRules.size() - 1 ? "" : ",";
-                out.printf("        %s%s\n", matchRule.ruleBuilder(), comma);
-                i++;
-            }
-            out.println("    ));");
-            out.println("    // CheckStyle: resume line length check");
-            out.println();
 
             out.println("    public Class<? extends NodeLIRBuilder> forClass() {");
             out.println("        return " + topDeclaringClass + ".class;");
             out.println("    }");
             out.println();
             out.println("    @Override");
-            out.println("    public List<" + desc + "> statements() {");
+            out.println("    public List<" + desc + "> statements(MatchRuleRegistry.NodeClassLookup lookup) {");
+
+            for (String positionDeclaration : info.positionDeclarations) {
+                out.println("        " + positionDeclaration);
+            }
+            out.println();
+
+            out.println("        // CheckStyle: stop line length check");
+            out.println("        List<" + desc + "> statements = Collections.unmodifiableList(Arrays.asList(");
+
+            int i = 0;
+            for (MatchRuleItem matchRule : info.matchRules) {
+                String comma = i == info.matchRules.size() - 1 ? "" : ",";
+                out.printf("            %s%s\n", matchRule.ruleBuilder(), comma);
+                i++;
+            }
+            out.println("        ));");
+            out.println("        // CheckStyle: resume line length check");
             out.println("        return statements;");
             out.println("    }");
+
+            out.println();
+
             out.println("}");
         }
 
