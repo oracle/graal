@@ -78,7 +78,7 @@ public class StubUtil {
             if (isObjectResult) {
                 getAndClearObjectResult(thread);
             }
-            DeoptimizeCallerNode.deopt(InvalidateReprofile, RuntimeConstraint);
+            DeoptimizeCallerNode.deopt(DeoptimizationAction.None, RuntimeConstraint);
         }
     }
 
