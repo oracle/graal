@@ -169,7 +169,7 @@ public class InliningUtil {
         }
     }
 
-    private static boolean logNotInlinedMethod(Invoke invoke, String msg) {
+    private static boolean logNotInlined(Invoke invoke, String msg) {
         if (shouldLogInliningDecision()) {
             String methodString = invoke.toString() + (invoke.callTarget() == null ? " callTarget=null" : invoke.callTarget().targetName());
             logInliningDecision(methodString, false, msg, new Object[0]);
@@ -247,7 +247,7 @@ public class InliningUtil {
     public static InlineInfo getInlineInfo(InliningData data, Invoke invoke, int maxNumberOfMethods, Replacements replacements, Assumptions assumptions, OptimisticOptimizations optimisticOpts) {
         final String failureMessage = checkInvokeConditions(invoke);
         if (failureMessage != null) {
-            logNotInlinedMethod(invoke, failureMessage);
+            logNotInlined(invoke, failureMessage);
             return null;
         }
         MethodCallTargetNode callTarget = (MethodCallTargetNode) invoke.callTarget();
