@@ -34,9 +34,6 @@ import com.oracle.graal.phases.common.inlining.info.InlineInfo;
 import java.util.Map;
 import java.util.function.ToDoubleFunction;
 
-import static com.oracle.graal.phases.common.inlining.InliningUtil.logInlinedMethod;
-import static com.oracle.graal.phases.common.inlining.InliningUtil.logNotInlinedMethod;
-
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 
 public class GreedyInliningPolicy extends AbstractInliningPolicy {
@@ -60,24 +57,15 @@ public class GreedyInliningPolicy extends AbstractInliningPolicy {
     public boolean isWorthInlining(ToDoubleFunction<FixedNode> probabilities, Replacements replacements, InlineInfo info, int inliningDepth, double probability, double relevance,
                     boolean fullyProcessed) {
         if (InlineEverything.getValue()) {
-            if (fullyProcessed) {
-                logInlinedMethod(info, inliningDepth, "inline everything");
-            }
-            return true;
+            return InliningUtil.logInlinedMethod(info, inliningDepth, fullyProcessed, "inline everything");
         }
 
         if (isIntrinsic(replacements, info)) {
-            if (fullyProcessed) {
-                logInlinedMethod(info, inliningDepth, "intrinsic");
-            }
-            return true;
+            return InliningUtil.logInlinedMethod(info, inliningDepth, fullyProcessed, "intrinsic");
         }
 
         if (info.shouldInline()) {
-            if (fullyProcessed) {
-                logInlinedMethod(info, inliningDepth, "forced inlining");
-            }
-            return true;
+            return InliningUtil.logInlinedMethod(info, inliningDepth, fullyProcessed, "forced inlining");
         }
 
         double inliningBonus = getInliningBonus(info);
@@ -85,16 +73,12 @@ public class GreedyInliningPolicy extends AbstractInliningPolicy {
         int lowLevelGraphSize = previousLowLevelGraphSize(info);
 
         if (SmallCompiledLowLevelGraphSize.getValue() > 0 && lowLevelGraphSize > SmallCompiledLowLevelGraphSize.getValue() * inliningBonus) {
-            logNotInlinedMethod(info, inliningDepth, "too large previous low-level graph (low-level-nodes: %d, relevance=%f, probability=%f, bonus=%f, nodes=%d)", lowLevelGraphSize, relevance,
-                            probability, inliningBonus, nodes);
-            return false;
+            return InliningUtil.logNotInlinedMethod(info, inliningDepth, "too large previous low-level graph (low-level-nodes: %d, relevance=%f, probability=%f, bonus=%f, nodes=%d)",
+                            lowLevelGraphSize, relevance, probability, inliningBonus, nodes);
         }
 
         if (nodes < TrivialInliningSize.getValue() * inliningBonus) {
-            if (fullyProcessed) {
-                logInlinedMethod(info, inliningDepth, "trivial (relevance=%f, probability=%f, bonus=%f, nodes=%d)", relevance, probability, inliningBonus, nodes);
-            }
-            return true;
+            return InliningUtil.logInlinedMethod(info, inliningDepth, fullyProcessed, "trivial (relevance=%f, probability=%f, bonus=%f, nodes=%d)", relevance, probability, inliningBonus, nodes);
         }
 
         /*
@@ -105,20 +89,17 @@ public class GreedyInliningPolicy extends AbstractInliningPolicy {
          */
         double invokes = determineInvokeProbability(probabilities, info);
         if (LimitInlinedInvokes.getValue() > 0 && fullyProcessed && invokes > LimitInlinedInvokes.getValue() * inliningBonus) {
-            logNotInlinedMethod(info, inliningDepth, "callee invoke probability is too high (invokeP=%f, relevance=%f, probability=%f, bonus=%f, nodes=%d)", invokes, relevance, probability,
-                            inliningBonus, nodes);
-            return false;
+            return InliningUtil.logNotInlinedMethod(info, inliningDepth, "callee invoke probability is too high (invokeP=%f, relevance=%f, probability=%f, bonus=%f, nodes=%d)", invokes, relevance,
+                            probability, inliningBonus, nodes);
         }
 
         double maximumNodes = computeMaximumSize(relevance, (int) (MaximumInliningSize.getValue() * inliningBonus));
         if (nodes <= maximumNodes) {
-            if (fullyProcessed) {
-                logInlinedMethod(info, inliningDepth, "relevance-based (relevance=%f, probability=%f, bonus=%f, nodes=%d <= %f)", relevance, probability, inliningBonus, nodes, maximumNodes);
-            }
-            return true;
+            return InliningUtil.logInlinedMethod(info, inliningDepth, fullyProcessed, "relevance-based (relevance=%f, probability=%f, bonus=%f, nodes=%d <= %f)", relevance, probability,
+                            inliningBonus, nodes, maximumNodes);
         }
 
-        logNotInlinedMethod(info, inliningDepth, "relevance-based (relevance=%f, probability=%f, bonus=%f, nodes=%d > %f)", relevance, probability, inliningBonus, nodes, maximumNodes);
-        return false;
+        return InliningUtil.logNotInlinedMethod(info, inliningDepth, "relevance-based (relevance=%f, probability=%f, bonus=%f, nodes=%d > %f)", relevance, probability, inliningBonus, nodes,
+                        maximumNodes);
     }
 }

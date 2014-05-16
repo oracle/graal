@@ -37,7 +37,6 @@ import com.oracle.graal.phases.common.CanonicalizerPhase;
 import com.oracle.graal.phases.common.inlining.InliningUtil;
 import com.oracle.graal.phases.common.inlining.info.InlineInfo;
 import com.oracle.graal.phases.common.inlining.policy.InliningPolicy;
-import com.oracle.graal.phases.graph.FixedNodeProbabilityCache;
 import com.oracle.graal.phases.tiers.HighTierContext;
 import com.oracle.graal.phases.util.Providers;
 
@@ -62,31 +61,28 @@ public class InliningData {
     /**
      * Call hierarchy from outer most call (i.e., compilation unit) to inner most callee.
      */
-    private final ArrayDeque<CallsiteHolder> graphQueue = new ArrayDeque<>();
-    private final ArrayDeque<MethodInvocation> invocationQueue = new ArrayDeque<>();
-    private final ToDoubleFunction<FixedNode> probabilities = new FixedNodeProbabilityCache();
-
-    private final HighTierContext context;
+    private final ArrayDeque<CallsiteHolder> graphQueue;
+    private final ArrayDeque<MethodInvocation> invocationQueue;
     private final int maxMethodPerInlining;
     private final CanonicalizerPhase canonicalizer;
     private final InliningPolicy inliningPolicy;
 
     private int maxGraphs;
 
-    public InliningData(StructuredGraph rootGraph, HighTierContext context, int maxMethodPerInlining, CanonicalizerPhase canonicalizer, InliningPolicy inliningPolicy) {
+    public InliningData(StructuredGraph rootGraph, Assumptions rootAssumptions, int maxMethodPerInlining, CanonicalizerPhase canonicalizer, InliningPolicy inliningPolicy) {
         assert rootGraph != null;
-        this.context = context;
+        this.graphQueue = new ArrayDeque<>();
+        this.invocationQueue = new ArrayDeque<>();
         this.maxMethodPerInlining = maxMethodPerInlining;
         this.canonicalizer = canonicalizer;
         this.inliningPolicy = inliningPolicy;
         this.maxGraphs = 1;
 
-        Assumptions rootAssumptions = context.getAssumptions();
         invocationQueue.push(new MethodInvocation(null, rootAssumptions, 1.0, 1.0));
         pushGraph(rootGraph, 1.0, 1.0);
     }
 
-    private void doInline(CallsiteHolder callerCallsiteHolder, MethodInvocation calleeInfo, Assumptions callerAssumptions) {
+    private void doInline(CallsiteHolder callerCallsiteHolder, MethodInvocation calleeInfo, Assumptions callerAssumptions, HighTierContext context) {
         StructuredGraph callerGraph = callerCallsiteHolder.graph();
         Graph.Mark markBeforeInlining = callerGraph.getMark();
         InlineInfo callee = calleeInfo.callee();
@@ -126,13 +122,14 @@ public class InliningData {
     /**
      * @return true iff inlining was actually performed
      */
-    private boolean tryToInline(CallsiteHolder callerCallsiteHolder, MethodInvocation calleeInfo, MethodInvocation parentInvocation, int inliningDepth) {
+    private boolean tryToInline(ToDoubleFunction<FixedNode> probabilities, CallsiteHolder callerCallsiteHolder, MethodInvocation calleeInfo, MethodInvocation parentInvocation, int inliningDepth,
+                    HighTierContext context) {
         InlineInfo callee = calleeInfo.callee();
         Assumptions callerAssumptions = parentInvocation.assumptions();
         metricInliningConsidered.increment();
 
         if (inliningPolicy.isWorthInlining(probabilities, context.getReplacements(), callee, inliningDepth, calleeInfo.probability(), calleeInfo.relevance(), true)) {
-            doInline(callerCallsiteHolder, calleeInfo, callerAssumptions);
+            doInline(callerCallsiteHolder, calleeInfo, callerAssumptions, context);
             return true;
         }
 
@@ -146,7 +143,7 @@ public class InliningData {
     /**
      * Process the next invoke and enqueue all its graphs for processing.
      */
-    void processNextInvoke() {
+    void processNextInvoke(HighTierContext context) {
         CallsiteHolder callsiteHolder = currentGraph();
         Invoke invoke = callsiteHolder.popInvoke();
         MethodInvocation callerInvocation = currentInvocation();
@@ -290,7 +287,7 @@ public class InliningData {
     /**
      * @return true iff inlining was actually performed
      */
-    public boolean moveForward() {
+    public boolean moveForward(HighTierContext context, ToDoubleFunction<FixedNode> probabilities) {
 
         final MethodInvocation currentInvocation = currentInvocation();
 
@@ -306,7 +303,7 @@ public class InliningData {
 
         final boolean delve = currentGraph().hasRemainingInvokes() && inliningPolicy.continueInlining(currentGraph().graph());
         if (delve) {
-            processNextInvoke();
+            processNextInvoke(context);
             return false;
         }
 
@@ -322,7 +319,7 @@ public class InliningData {
             popInvocation();
             final MethodInvocation parentInvoke = currentInvocation();
             try (Debug.Scope s = Debug.scope("Inlining", inliningContext())) {
-                return tryToInline(currentGraph(), currentInvocation, parentInvoke, inliningDepth() + 1);
+                return tryToInline(probabilities, currentGraph(), currentInvocation, parentInvoke, inliningDepth() + 1, context);
             } catch (Throwable e) {
                 throw Debug.handle(e);
             }

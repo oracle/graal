@@ -23,6 +23,7 @@
 package com.oracle.graal.phases.common.inlining;
 
 import java.util.*;
+import java.util.function.*;
 
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.options.*;
@@ -32,6 +33,7 @@ import com.oracle.graal.phases.common.inlining.policy.InliningPolicy;
 import com.oracle.graal.phases.common.inlining.walker.CallsiteHolder;
 import com.oracle.graal.phases.common.inlining.walker.InliningData;
 import com.oracle.graal.phases.common.inlining.walker.MethodInvocation;
+import com.oracle.graal.phases.graph.*;
 import com.oracle.graal.phases.tiers.*;
 
 public class InliningPhase extends AbstractInliningPhase {
@@ -123,12 +125,12 @@ public class InliningPhase extends AbstractInliningPhase {
      * <ul>
      * <li>
      * the first step amounts to backtracking, the 2nd one to delving, and the 3rd one also involves
-     * backtracking (however after may-be inlining).</li>
+     * bakctraking (however after may-be inlining).</li>
      * <li>
      * the choice of abandon-and-backtrack or delve-into is depends on
      * {@link InliningPolicy#isWorthInlining} and {@link InliningPolicy#continueInlining}.</li>
      * <li>
-     * the 3rd choice is picked when both of the previous ones aren't picked</li>
+     * the 3rd choice is picked when both of the previous one aren't picked</li>
      * <li>
      * as part of trying-to-inline, {@link InliningPolicy#isWorthInlining} again sees use, but
      * that's another story.</li>
@@ -138,10 +140,11 @@ public class InliningPhase extends AbstractInliningPhase {
      */
     @Override
     protected void run(final StructuredGraph graph, final HighTierContext context) {
-        final InliningData data = new InliningData(graph, context, maxMethodPerInlining, canonicalizer, inliningPolicy);
+        final InliningData data = new InliningData(graph, context.getAssumptions(), maxMethodPerInlining, canonicalizer, inliningPolicy);
+        ToDoubleFunction<FixedNode> probabilities = new FixedNodeProbabilityCache();
 
         while (data.hasUnprocessedGraphs()) {
-            boolean wasInlined = data.moveForward();
+            boolean wasInlined = data.moveForward(context, probabilities);
             if (wasInlined) {
                 inliningCount++;
             }
