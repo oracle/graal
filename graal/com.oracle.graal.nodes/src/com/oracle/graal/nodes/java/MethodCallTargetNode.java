@@ -150,6 +150,25 @@ public class MethodCallTargetNode extends CallTargetNode implements IterableNode
                     targetMethod = resolvedMethod;
                     return this;
                 }
+                if (tool.assumptions() != null && tool.assumptions().useOptimisticAssumptions()) {
+                    ResolvedJavaType uniqueConcreteType = type.findUniqueConcreteSubtype();
+                    if (uniqueConcreteType != null) {
+                        ResolvedJavaMethod methodFromUniqueType = uniqueConcreteType.resolveMethod(targetMethod, invoke().getContextType());
+                        assert methodFromUniqueType != null;
+                        tool.assumptions().recordConcreteSubtype(type, uniqueConcreteType);
+                        invokeKind = InvokeKind.Special;
+                        targetMethod = methodFromUniqueType;
+                        return this;
+                    }
+
+                    ResolvedJavaMethod uniqueConcreteMethod = type.findUniqueConcreteMethod(targetMethod);
+                    if (uniqueConcreteMethod != null) {
+                        tool.assumptions().recordConcreteMethod(targetMethod, type, uniqueConcreteMethod);
+                        invokeKind = InvokeKind.Special;
+                        targetMethod = uniqueConcreteMethod;
+                        return this;
+                    }
+                }
             }
         }
         return this;
