@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.hotspot.meta;
 
+import static com.oracle.graal.compiler.common.GraalInternalError.*;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.compiler.common.UnsafeAccess.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
@@ -33,7 +34,6 @@ import java.util.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.meta.ProfilingInfo.TriState;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.debug.*;
@@ -589,24 +589,31 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
 
     /**
      * Returns the offset of this method into the v-table. The method must have a v-table entry as
-     * indicated by {@link #isInVirtualMethodTable()}, otherwise an exception is thrown.
+     * indicated by {@link #isInVirtualMethodTable(ResolvedJavaType)}, otherwise an exception is
+     * thrown.
      *
      * @return the offset of this method into the v-table
      */
-    public int vtableEntryOffset() {
-        if (!isInVirtualMethodTable() || !holder.isInitialized()) {
-            throw new GraalInternalError("%s does not have a vtable entry", this);
-        }
+    public int vtableEntryOffset(ResolvedJavaType resolved) {
+        guarantee(isInVirtualMethodTable(resolved) && holder.isInitialized(), "%s does not have a vtable entry", this);
         HotSpotVMConfig config = runtime().getConfig();
-        final int vtableIndex = getVtableIndex();
+        final int vtableIndex = getVtableIndex(resolved);
         return config.instanceKlassVtableStartOffset + vtableIndex * config.vtableEntrySize + config.vtableEntryMethodOffset;
     }
 
     @Override
-    public boolean isInVirtualMethodTable() {
-        // TODO (gd) this should probably take a ResolvedJavaType as argument so that we can take
-        // advantage of miranda & default methods.
-        return !holder.isInterface() && getVtableIndex() >= 0;
+    public boolean isInVirtualMethodTable(ResolvedJavaType resolved) {
+        return getVtableIndex(resolved) >= 0;
+    }
+
+    private int getVtableIndex(ResolvedJavaType resolved) {
+        if (holder.isInterface()) {
+            if (resolved.isArray() || resolved.isInterface()) {
+                return runtime().getConfig().invalidVtableIndex;
+            }
+            return getVtableIndexForInterface(resolved);
+        }
+        return getVtableIndex();
     }
 
     /**
@@ -615,11 +622,16 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
      * @return virtual table index
      */
     private int getVtableIndex() {
-        assert !holder.isInterface() : this;
+        assert !holder.isInterface();
         HotSpotVMConfig config = runtime().getConfig();
         int result = unsafe.getInt(metaspaceMethod + config.methodVtableIndexOffset);
         assert result >= config.nonvirtualVtableIndex : "must be linked";
         return result;
+    }
+
+    private int getVtableIndexForInterface(ResolvedJavaType resolved) {
+        HotSpotResolvedObjectType hotspotType = (HotSpotResolvedObjectType) resolved;
+        return runtime().getCompilerToVM().getVtableIndexForInterface(hotspotType.metaspaceKlass(), getMetaspaceMethod());
     }
 
     /**

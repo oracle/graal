@@ -22,36 +22,28 @@
  */
 package com.oracle.graal.phases.common.inlining.info;
 
-import com.oracle.graal.api.code.Assumptions;
+import static com.oracle.graal.compiler.common.GraalOptions.*;
+
+import java.util.*;
+
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.common.calc.Condition;
-import com.oracle.graal.compiler.common.type.StampFactory;
-import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.DebugMetric;
-import com.oracle.graal.graph.Node;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.calc.CompareNode;
-import com.oracle.graal.nodes.extended.LoadHubNode;
-import com.oracle.graal.nodes.extended.LoadMethodNode;
-import com.oracle.graal.nodes.java.ExceptionObjectNode;
-import com.oracle.graal.nodes.java.MethodCallTargetNode;
-import com.oracle.graal.nodes.java.TypeSwitchNode;
-import com.oracle.graal.nodes.util.GraphUtil;
-import com.oracle.graal.phases.common.CanonicalizerPhase;
-import com.oracle.graal.phases.common.TailDuplicationPhase;
-import com.oracle.graal.phases.common.inlining.InliningUtil;
-import com.oracle.graal.phases.tiers.PhaseContext;
-import com.oracle.graal.phases.util.Providers;
-
-import java.util.ArrayList;
-import java.util.List;
-
-import static com.oracle.graal.compiler.common.GraalOptions.ImmutableCode;
-import static com.oracle.graal.compiler.common.GraalOptions.OptTailDuplication;
-
-import com.oracle.graal.phases.common.inlining.InliningUtil.Inlineable;
 import com.oracle.graal.api.meta.JavaTypeProfile.ProfiledType;
+import com.oracle.graal.compiler.common.calc.*;
+import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.debug.*;
+import com.oracle.graal.graph.*;
+import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.calc.*;
+import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
+import com.oracle.graal.nodes.util.*;
+import com.oracle.graal.phases.common.*;
+import com.oracle.graal.phases.common.inlining.*;
+import com.oracle.graal.phases.common.inlining.InliningUtil.Inlineable;
+import com.oracle.graal.phases.tiers.*;
+import com.oracle.graal.phases.util.*;
 
 /**
  * Polymorphic inlining of m methods with n type checks (n &ge; m) in case that the profiling
@@ -361,9 +353,10 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
                 }
             }
 
+            ResolvedJavaType receiverType = invoke.getReceiverType();
             FixedNode lastSucc = successors[concretes.size()];
             for (int i = concretes.size() - 1; i >= 0; --i) {
-                LoadMethodNode method = graph.add(new LoadMethodNode(concretes.get(i), hub, constantMethods[i].getKind()));
+                LoadMethodNode method = graph.add(new LoadMethodNode(concretes.get(i), receiverType, hub, constantMethods[i].getKind()));
                 CompareNode methodCheck = CompareNode.createCompareNode(graph, Condition.EQ, method, constantMethods[i]);
                 IfNode ifNode = graph.add(new IfNode(methodCheck, successors[i], lastSucc, probability[i]));
                 method.setNext(ifNode);
@@ -396,8 +389,9 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
     }
 
     private boolean chooseMethodDispatch() {
+        ResolvedJavaType receiverType = invoke.getReceiverType();
         for (ResolvedJavaMethod concrete : concretes) {
-            if (!concrete.isInVirtualMethodTable()) {
+            if (!concrete.isInVirtualMethodTable(receiverType)) {
                 return false;
             }
         }

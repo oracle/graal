@@ -353,4 +353,6 @@ public interface CompilerToVM {
     void materializeVirtualObjects(HotSpotStackFrameReference stackFrame, boolean invalidate);
 
     void resolveInvokeDynamic(long metaspaceConstantPool, int index);
+
+    int getVtableIndexForInterface(long metaspaceKlass, long metaspaceMethod);
 }

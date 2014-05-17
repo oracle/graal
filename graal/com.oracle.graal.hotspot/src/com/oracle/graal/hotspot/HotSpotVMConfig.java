@@ -1066,6 +1066,7 @@ public class HotSpotVMConfig extends CompilerObject {
     @HotSpotVMConstant(name = "Method::_dont_inline") @Stable public int methodFlagsDontInline;
     @HotSpotVMConstant(name = "Method::_hidden") @Stable public int methodFlagsHidden;
     @HotSpotVMConstant(name = "Method::nonvirtual_vtable_index") @Stable public int nonvirtualVtableIndex;
+    @HotSpotVMConstant(name = "Method::invalid_vtable_index") @Stable public int invalidVtableIndex;
 
     @HotSpotVMConstant(name = "JVM_ACC_MONITOR_MATCH") @Stable public int jvmAccMonitorMatch;
     @HotSpotVMConstant(name = "JVM_ACC_HAS_MONITOR_BYTECODES") @Stable public int jvmAccHasMonitorBytecodes;

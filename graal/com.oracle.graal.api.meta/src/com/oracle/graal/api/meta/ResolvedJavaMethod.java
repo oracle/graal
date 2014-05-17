@@ -218,9 +218,10 @@ public interface ResolvedJavaMethod extends JavaMethod, InvokeTarget, ModifiersP
     Constant getEncoding();
 
     /**
-     * Checks if this method is present in the virtual table.
+     * Checks if this method is present in the virtual table for subtypes of the specified
+     * {@linkplain ResolvedJavaType type}.
      *
-     * @return true is this method is present in the virtual table
+     * @return true is this method is present in the virtual table for subtypes of this type.
      */
-    boolean isInVirtualMethodTable();
+    boolean isInVirtualMethodTable(ResolvedJavaType resolved);
 }
