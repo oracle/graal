@@ -631,7 +631,7 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
 
     private int getVtableIndexForInterface(ResolvedJavaType resolved) {
         HotSpotResolvedObjectType hotspotType = (HotSpotResolvedObjectType) resolved;
-        return runtime().getCompilerToVM().getVtableIndexForInterface(hotspotType.metaspaceKlass(), getMetaspaceMethod());
+        return runtime().getCompilerToVM().getVtableIndexForInterface(hotspotType.getMetaspaceKlass(), getMetaspaceMethod());
     }
 
     /**
