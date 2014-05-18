@@ -246,7 +246,9 @@ public class InliningUtil {
      * @return an instance of InlineInfo, or null if no inlining is possible at the given invoke
      */
     public static InlineInfo getInlineInfo(InliningData data, Invoke invoke, int maxNumberOfMethods, Replacements replacements, Assumptions assumptions, OptimisticOptimizations optimisticOpts) {
-        if (!checkInvokeConditions(invoke)) {
+        final String failureMessage = checkInvokeConditions(invoke);
+        if (failureMessage != null) {
+            logNotInlinedMethod(invoke, failureMessage);
             return null;
         }
         MethodCallTargetNode callTarget = (MethodCallTargetNode) invoke.callTarget();
@@ -452,24 +454,26 @@ public class InliningUtil {
         return graph.unique(new GuardedValueNode(receiver, anchor, stamp));
     }
 
-    // TODO (chaeubl): cleanup this method
-    private static boolean checkInvokeConditions(Invoke invoke) {
+    /**
+     * @return null iff the check succeeds, otherwise a (non-null) descriptive message.
+     */
+    private static String checkInvokeConditions(Invoke invoke) {
         if (invoke.predecessor() == null || !invoke.asNode().isAlive()) {
-            return logNotInlinedMethod(invoke, "the invoke is dead code");
+            return "the invoke is dead code";
         } else if (!(invoke.callTarget() instanceof MethodCallTargetNode)) {
-            return logNotInlinedMethod(invoke, "the invoke has already been lowered, or has been created as a low-level node");
+            return "the invoke has already been lowered, or has been created as a low-level node";
         } else if (((MethodCallTargetNode) invoke.callTarget()).targetMethod() == null) {
-            return logNotInlinedMethod(invoke, "target method is null");
+            return "target method is null";
         } else if (invoke.stateAfter() == null) {
             // TODO (chaeubl): why should an invoke not have a state after?
-            return logNotInlinedMethod(invoke, "the invoke has no after state");
+            return "the invoke has no after state";
         } else if (!invoke.useForInlining()) {
-            return logNotInlinedMethod(invoke, "the invoke is marked to be not used for inlining");
+            return "the invoke is marked to be not used for inlining";
         } else if (((MethodCallTargetNode) invoke.callTarget()).receiver() != null && ((MethodCallTargetNode) invoke.callTarget()).receiver().isConstant() &&
                         ((MethodCallTargetNode) invoke.callTarget()).receiver().asConstant().isNull()) {
-            return logNotInlinedMethod(invoke, "receiver is null");
+            return "receiver is null";
         } else {
-            return true;
+            return null;
         }
     }
 
