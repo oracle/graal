@@ -23,7 +23,6 @@
 package com.oracle.graal.phases.common.inlining;
 
 import java.util.*;
-import java.util.function.*;
 
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.options.*;
@@ -33,7 +32,6 @@ import com.oracle.graal.phases.common.inlining.policy.InliningPolicy;
 import com.oracle.graal.phases.common.inlining.walker.CallsiteHolder;
 import com.oracle.graal.phases.common.inlining.walker.InliningData;
 import com.oracle.graal.phases.common.inlining.walker.MethodInvocation;
-import com.oracle.graal.phases.graph.*;
 import com.oracle.graal.phases.tiers.*;
 
 public class InliningPhase extends AbstractInliningPhase {
@@ -141,10 +139,9 @@ public class InliningPhase extends AbstractInliningPhase {
     @Override
     protected void run(final StructuredGraph graph, final HighTierContext context) {
         final InliningData data = new InliningData(graph, context, maxMethodPerInlining, canonicalizer, inliningPolicy);
-        ToDoubleFunction<FixedNode> probabilities = new FixedNodeProbabilityCache();
 
         while (data.hasUnprocessedGraphs()) {
-            boolean wasInlined = data.moveForward(probabilities);
+            boolean wasInlined = data.moveForward();
             if (wasInlined) {
                 inliningCount++;
             }
