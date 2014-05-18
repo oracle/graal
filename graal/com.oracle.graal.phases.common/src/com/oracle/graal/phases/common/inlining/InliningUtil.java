@@ -181,13 +181,12 @@ public class InliningUtil {
         logNotInlinedInvoke(invoke, inliningDepth, method, msg, new Object[0]);
     }
 
-    private static InlineInfo logNotInlinedInvoke(Invoke invoke, int inliningDepth, ResolvedJavaMethod method, String msg, Object... args) {
+    private static void logNotInlinedInvoke(Invoke invoke, int inliningDepth, ResolvedJavaMethod method, String msg, Object... args) {
         printInlining(method, invoke, inliningDepth, false, msg, args);
         if (shouldLogInliningDecision()) {
             String methodString = methodName(method, invoke);
             logInliningDecision(methodString, false, msg, args);
         }
-        return null;
     }
 
     private static void logInliningDecision(final String methodString, final boolean success, final String msg, final Object... args) {
@@ -366,13 +365,15 @@ public class InliningUtil {
             invoke.setPolymorphic(true);
 
             if (!optimisticOpts.inlinePolymorphicCalls() && notRecordedTypeProbability == 0) {
-                return logNotInlinedInvoke(invoke, data.inliningDepth(), targetMethod, "inlining polymorphic calls is disabled (%d types)", ptypes.length);
+                logNotInlinedInvoke(invoke, data.inliningDepth(), targetMethod, "inlining polymorphic calls is disabled (%d types)", ptypes.length);
+                return null;
             }
             if (!optimisticOpts.inlineMegamorphicCalls() && notRecordedTypeProbability > 0) {
                 // due to filtering impossible types, notRecordedTypeProbability can be > 0 although
                 // the number of types is lower than what can be recorded in a type profile
-                return logNotInlinedInvoke(invoke, data.inliningDepth(), targetMethod, "inlining megamorphic calls is disabled (%d types, %f %% not recorded types)", ptypes.length,
+                logNotInlinedInvoke(invoke, data.inliningDepth(), targetMethod, "inlining megamorphic calls is disabled (%d types, %f %% not recorded types)", ptypes.length,
                                 notRecordedTypeProbability * 100);
+                return null;
             }
 
             // Find unique methods and their probabilities.
@@ -396,7 +397,8 @@ public class InliningUtil {
             }
 
             if (concreteMethods.size() > maxNumberOfMethods) {
-                return logNotInlinedInvoke(invoke, data.inliningDepth(), targetMethod, "polymorphic call with more than %d target methods", maxNumberOfMethods);
+                logNotInlinedInvoke(invoke, data.inliningDepth(), targetMethod, "polymorphic call with more than %d target methods", maxNumberOfMethods);
+                return null;
             }
 
             // Clear methods that fall below the threshold.
@@ -412,7 +414,8 @@ public class InliningUtil {
 
                 if (newConcreteMethods.size() == 0) {
                     // No method left that is worth inlining.
-                    return logNotInlinedInvoke(invoke, data.inliningDepth(), targetMethod, "no methods remaining after filtering less frequent methods (%d methods previously)", concreteMethods.size());
+                    logNotInlinedInvoke(invoke, data.inliningDepth(), targetMethod, "no methods remaining after filtering less frequent methods (%d methods previously)", concreteMethods.size());
+                    return null;
                 }
 
                 concreteMethods = newConcreteMethods;
@@ -436,7 +439,8 @@ public class InliningUtil {
 
             if (usedTypes.size() == 0) {
                 // No type left that is worth checking for.
-                return logNotInlinedInvoke(invoke, data.inliningDepth(), targetMethod, "no types remaining after filtering less frequent types (%d types previously)", ptypes.length);
+                logNotInlinedInvoke(invoke, data.inliningDepth(), targetMethod, "no types remaining after filtering less frequent types (%d types previously)", ptypes.length);
+                return null;
             }
 
             for (ResolvedJavaMethod concrete : concreteMethods) {
