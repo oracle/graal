@@ -140,11 +140,11 @@ public class InliningPhase extends AbstractInliningPhase {
      */
     @Override
     protected void run(final StructuredGraph graph, final HighTierContext context) {
-        final InliningData data = new InliningData(graph, context.getAssumptions(), maxMethodPerInlining, canonicalizer, inliningPolicy);
+        final InliningData data = new InliningData(graph, context, maxMethodPerInlining, canonicalizer, inliningPolicy);
         ToDoubleFunction<FixedNode> probabilities = new FixedNodeProbabilityCache();
 
         while (data.hasUnprocessedGraphs()) {
-            boolean wasInlined = data.moveForward(context, probabilities);
+            boolean wasInlined = data.moveForward(probabilities);
             if (wasInlined) {
                 inliningCount++;
             }
