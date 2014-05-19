@@ -470,7 +470,8 @@ public class InliningUtil {
         if (!(invoke.callTarget() instanceof MethodCallTargetNode)) {
             return "the invoke has already been lowered, or has been created as a low-level node";
         }
-        if (((MethodCallTargetNode) invoke.callTarget()).targetMethod() == null) {
+        MethodCallTargetNode callTarget = (MethodCallTargetNode) invoke.callTarget();
+        if (callTarget.targetMethod() == null) {
             return "target method is null";
         }
         if (invoke.stateAfter() == null) {
@@ -480,8 +481,8 @@ public class InliningUtil {
         if (!invoke.useForInlining()) {
             return "the invoke is marked to be not used for inlining";
         }
-        if (((MethodCallTargetNode) invoke.callTarget()).receiver() != null && ((MethodCallTargetNode) invoke.callTarget()).receiver().isConstant() &&
-                        ((MethodCallTargetNode) invoke.callTarget()).receiver().asConstant().isNull()) {
+        ValueNode receiver = callTarget.receiver();
+        if (receiver != null && receiver.isConstant() && receiver.asConstant().isNull()) {
             return "receiver is null";
         }
         return null;
