@@ -33,8 +33,11 @@ import com.oracle.graal.graph.Node;
 import com.oracle.graal.nodes.FixedNode;
 import com.oracle.graal.nodes.Invoke;
 import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.nodes.spi.Replacements;
+import com.oracle.graal.phases.OptimisticOptimizations;
 import com.oracle.graal.phases.common.CanonicalizerPhase;
 import com.oracle.graal.phases.common.inlining.InliningUtil;
+import com.oracle.graal.phases.common.inlining.info.ExactInlineInfo;
 import com.oracle.graal.phases.common.inlining.info.InlineInfo;
 import com.oracle.graal.phases.common.inlining.policy.InliningPolicy;
 import com.oracle.graal.phases.graph.FixedNodeProbabilityCache;
@@ -84,6 +87,14 @@ public class InliningData {
         Assumptions rootAssumptions = context.getAssumptions();
         invocationQueue.push(new MethodInvocation(null, rootAssumptions, 1.0, 1.0));
         pushGraph(rootGraph, 1.0, 1.0);
+    }
+
+    public InlineInfo getExactInlineInfo(Invoke invoke, Replacements replacements, OptimisticOptimizations optimisticOpts, ResolvedJavaMethod targetMethod) {
+        assert !targetMethod.isAbstract();
+        if (!InliningUtil.checkTargetConditions(this, replacements, invoke, targetMethod, optimisticOpts)) {
+            return null;
+        }
+        return new ExactInlineInfo(invoke, targetMethod);
     }
 
     private void doInline(CallsiteHolder callerCallsiteHolder, MethodInvocation calleeInfo, Assumptions callerAssumptions) {

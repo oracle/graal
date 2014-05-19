@@ -252,7 +252,7 @@ public class InliningUtil {
         ResolvedJavaMethod targetMethod = callTarget.targetMethod();
 
         if (callTarget.invokeKind() == InvokeKind.Special || targetMethod.canBeStaticallyBound()) {
-            return getExactInlineInfo(data, invoke, replacements, optimisticOpts, targetMethod);
+            return data.getExactInlineInfo(invoke, replacements, optimisticOpts, targetMethod);
         }
 
         assert callTarget.invokeKind() == InvokeKind.Virtual || callTarget.invokeKind() == InvokeKind.Interface;
@@ -277,7 +277,7 @@ public class InliningUtil {
                     assert targetMethod.getDeclaringClass().isAssignableFrom(holder) : holder + " subtype of " + targetMethod.getDeclaringClass() + " for " + targetMethod;
                     ResolvedJavaMethod resolvedMethod = holder.resolveMethod(targetMethod, contextType);
                     if (resolvedMethod != null) {
-                        return getExactInlineInfo(data, invoke, replacements, optimisticOpts, resolvedMethod);
+                        return data.getExactInlineInfo(invoke, replacements, optimisticOpts, resolvedMethod);
                     }
                 }
             }
@@ -287,7 +287,7 @@ public class InliningUtil {
             // arrays can be treated as Objects
             ResolvedJavaMethod resolvedMethod = holder.resolveMethod(targetMethod, contextType);
             if (resolvedMethod != null) {
-                return getExactInlineInfo(data, invoke, replacements, optimisticOpts, resolvedMethod);
+                return data.getExactInlineInfo(invoke, replacements, optimisticOpts, resolvedMethod);
             }
         }
 
@@ -317,14 +317,6 @@ public class InliningUtil {
             return null;
         }
         return new AssumptionInlineInfo(invoke, concrete, takenAssumption);
-    }
-
-    private static InlineInfo getExactInlineInfo(InliningData data, Invoke invoke, Replacements replacements, OptimisticOptimizations optimisticOpts, ResolvedJavaMethod targetMethod) {
-        assert !targetMethod.isAbstract();
-        if (!checkTargetConditions(data, replacements, invoke, targetMethod, optimisticOpts)) {
-            return null;
-        }
-        return new ExactInlineInfo(invoke, targetMethod);
     }
 
     private static InlineInfo getTypeCheckedInlineInfo(InliningData data, Invoke invoke, int maxNumberOfMethods, Replacements replacements, ResolvedJavaMethod targetMethod,
@@ -488,7 +480,7 @@ public class InliningUtil {
         return null;
     }
 
-    private static boolean checkTargetConditions(InliningData data, Replacements replacements, Invoke invoke, ResolvedJavaMethod method, OptimisticOptimizations optimisticOpts) {
+    public static boolean checkTargetConditions(InliningData data, Replacements replacements, Invoke invoke, ResolvedJavaMethod method, OptimisticOptimizations optimisticOpts) {
         String failureMessage = null;
         if (method == null) {
             failureMessage = "the method is not resolved";
