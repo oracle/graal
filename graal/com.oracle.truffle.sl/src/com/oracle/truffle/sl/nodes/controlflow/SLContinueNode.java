@@ -32,7 +32,7 @@ import com.oracle.truffle.sl.nodes.*;
  * are continuing. This is done by throwing an {@link SLContinueException exception} that is caught
  * by the {@link SLWhileNode#executeVoid loop node}.
  */
-@NodeInfo(shortName = "continue")
+@NodeInfo(shortName = "continue", description = "The node implementing a continue statement")
 public final class SLContinueNode extends SLStatementNode {
 
     @Override

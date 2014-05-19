@@ -35,6 +35,7 @@ import com.oracle.truffle.sl.runtime.*;
  * type system for all subclasses.
  */
 @TypeSystemReference(SLTypes.class)
+@NodeInfo(description = "The abstract base node for all expressions")
 public abstract class SLExpressionNode extends SLStatementNode {
 
     /**

@@ -33,6 +33,7 @@ import com.oracle.truffle.sl.nodes.controlflow.*;
  * builtin functions, the {@link #bodyNode} is a subclass of {@link SLBuiltinNode}. For user-defined
  * functions, the {@link #bodyNode} is a {@link SLFunctionBodyNode}.
  */
+@NodeInfo(language = "Simple Language", description = "The root of all Simple Language execution trees")
 public final class SLRootNode extends RootNode {
 
     /** The function body that is executed, and specialized during execution. */

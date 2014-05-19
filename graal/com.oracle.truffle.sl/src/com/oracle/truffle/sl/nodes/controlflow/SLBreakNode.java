@@ -32,7 +32,7 @@ import com.oracle.truffle.sl.nodes.*;
  * breaking out. This is done by throwing an {@link SLBreakException exception} that is caught by
  * the {@link SLWhileNode#executeVoid loop node}.
  */
-@NodeInfo(shortName = "break")
+@NodeInfo(shortName = "break", description = "The node implementing a break statement")
 public final class SLBreakNode extends SLStatementNode {
 
     @Override
