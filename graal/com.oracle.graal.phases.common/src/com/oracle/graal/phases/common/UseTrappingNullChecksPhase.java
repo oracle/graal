@@ -65,16 +65,19 @@ public class UseTrappingNullChecksPhase extends BasePhase<LowTierContext> {
         if (predecessor instanceof MergeNode) {
             MergeNode merge = (MergeNode) predecessor;
 
-            // Process each predecessor at the merge, unpacking the reasons as needed.
-            ValueNode reason = deopt.getActionAndReason();
-            List<ValueNode> values = reason instanceof ValuePhiNode ? ((ValuePhiNode) reason).values().snapshot() : Collections.nCopies(merge.forwardEndCount(), reason);
+            if (merge.phis().isEmpty()) {
+                // Process each predecessor at the merge, unpacking the reasons as needed.
+                ValueNode reason = deopt.getActionAndReason();
+                List<ValueNode> values = reason instanceof ValuePhiNode ? ((ValuePhiNode) reason).values().snapshot() : null;
 
-            int index = 0;
-            for (AbstractEndNode end : merge.cfgPredecessors().snapshot()) {
-                ValueNode thisReason = values.get(index++);
-                assert thisReason.isConstant();
-                DeoptimizationReason deoptimizationReason = metaAccessProvider.decodeDeoptReason(thisReason.asConstant());
-                tryUseTrappingNullCheck(deopt, end.predecessor(), deoptimizationReason, null);
+                int index = 0;
+                for (AbstractEndNode end : merge.cfgPredecessors().snapshot()) {
+                    ValueNode thisReason = values != null ? values.get(index++) : reason;
+                    if (thisReason.isConstant()) {
+                        DeoptimizationReason deoptimizationReason = metaAccessProvider.decodeDeoptReason(thisReason.asConstant());
+                        tryUseTrappingNullCheck(deopt, end.predecessor(), deoptimizationReason, null);
+                    }
+                }
             }
         }
     }
@@ -88,10 +91,11 @@ public class UseTrappingNullChecksPhase extends BasePhase<LowTierContext> {
         }
         if (predecessor instanceof MergeNode) {
             MergeNode merge = (MergeNode) predecessor;
-            for (AbstractEndNode end : merge.cfgPredecessors().snapshot()) {
-                checkPredecessor(deopt, end.predecessor(), deoptimizationReason);
+            if (merge.phis().isEmpty()) {
+                for (AbstractEndNode end : merge.cfgPredecessors().snapshot()) {
+                    checkPredecessor(deopt, end.predecessor(), deoptimizationReason);
+                }
             }
-
         } else if (predecessor instanceof BeginNode) {
             checkPredecessor(deopt, predecessor, deoptimizationReason);
         }
