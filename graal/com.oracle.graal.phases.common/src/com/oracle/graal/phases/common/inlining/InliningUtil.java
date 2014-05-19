@@ -169,12 +169,11 @@ public class InliningUtil {
         }
     }
 
-    private static boolean logNotInlinedMethod(Invoke invoke, String msg) {
+    private static void logNotInlinedMethod(Invoke invoke, String msg) {
         if (shouldLogInliningDecision()) {
             String methodString = invoke.toString() + (invoke.callTarget() == null ? " callTarget=null" : invoke.callTarget().targetName());
             logInliningDecision(methodString, false, msg, new Object[0]);
         }
-        return false;
     }
 
     private static void logNotInlined(Invoke invoke, int inliningDepth, ResolvedJavaMethod method, String msg) {
