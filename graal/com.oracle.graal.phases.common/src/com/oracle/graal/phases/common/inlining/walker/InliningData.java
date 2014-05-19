@@ -90,7 +90,7 @@ public class InliningData {
         pushGraph(rootGraph, 1.0, 1.0);
     }
 
-    private boolean checkTargetConditions(Invoke invoke, ResolvedJavaMethod method, OptimisticOptimizations optimisticOpts) {
+    private boolean checkTargetConditions(Invoke invoke, ResolvedJavaMethod method) {
         String failureMessage = null;
         if (method == null) {
             failureMessage = "the method is not resolved";
@@ -104,7 +104,7 @@ public class InliningData {
             failureMessage = "it is marked non-inlinable";
         } else if (countRecursiveInlining(method) > MaximumRecursiveInlining.getValue()) {
             failureMessage = "it exceeds the maximum recursive inlining depth";
-        } else if (new OptimisticOptimizations(method.getProfilingInfo()).lessOptimisticThan(optimisticOpts)) {
+        } else if (new OptimisticOptimizations(method.getProfilingInfo()).lessOptimisticThan(context.getOptimisticOptimizations())) {
             failureMessage = "the callee uses less optimistic optimizations than caller";
         }
         if (failureMessage == null) {
@@ -217,7 +217,7 @@ public class InliningData {
             ResolvedJavaType type = ptypes[0].getType();
             assert type.isArray() || !type.isAbstract();
             ResolvedJavaMethod concrete = type.resolveMethod(targetMethod, contextType);
-            if (!checkTargetConditions(invoke, concrete, optimisticOpts)) {
+            if (!checkTargetConditions(invoke, concrete)) {
                 return null;
             }
             return new TypeGuardInlineInfo(invoke, concrete, type);
@@ -305,7 +305,7 @@ public class InliningData {
             }
 
             for (ResolvedJavaMethod concrete : concreteMethods) {
-                if (!checkTargetConditions(invoke, concrete, optimisticOpts)) {
+                if (!checkTargetConditions(invoke, concrete)) {
                     InliningUtil.logNotInlined(invoke, inliningDepth(), targetMethod, "it is a polymorphic method call and at least one invoked method cannot be inlined");
                     return null;
                 }
@@ -316,7 +316,7 @@ public class InliningData {
 
     private InlineInfo getAssumptionInlineInfo(Invoke invoke, ResolvedJavaMethod concrete, Assumptions.Assumption takenAssumption) {
         assert !concrete.isAbstract();
-        if (!checkTargetConditions(invoke, concrete, context.getOptimisticOptimizations())) {
+        if (!checkTargetConditions(invoke, concrete)) {
             return null;
         }
         return new AssumptionInlineInfo(invoke, concrete, takenAssumption);
@@ -324,7 +324,7 @@ public class InliningData {
 
     private InlineInfo getExactInlineInfo(Invoke invoke, ResolvedJavaMethod targetMethod) {
         assert !targetMethod.isAbstract();
-        if (!checkTargetConditions(invoke, targetMethod, context.getOptimisticOptimizations())) {
+        if (!checkTargetConditions(invoke, targetMethod)) {
             return null;
         }
         return new ExactInlineInfo(invoke, targetMethod);
