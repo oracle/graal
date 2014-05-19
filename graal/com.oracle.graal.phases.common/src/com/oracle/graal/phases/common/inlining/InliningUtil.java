@@ -46,9 +46,7 @@ import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.util.*;
-import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.inlining.info.*;
-import com.oracle.graal.phases.common.inlining.walker.InliningData;
 
 public class InliningUtil {
 
@@ -269,31 +267,6 @@ public class InliningUtil {
             return "receiver is null";
         }
         return null;
-    }
-
-    public static boolean checkTargetConditions(InliningData data, Replacements replacements, Invoke invoke, ResolvedJavaMethod method, OptimisticOptimizations optimisticOpts) {
-        String failureMessage = null;
-        if (method == null) {
-            failureMessage = "the method is not resolved";
-        } else if (method.isNative() && (!Intrinsify.getValue() || !InliningUtil.canIntrinsify(replacements, method))) {
-            failureMessage = "it is a non-intrinsic native method";
-        } else if (method.isAbstract()) {
-            failureMessage = "it is an abstract method";
-        } else if (!method.getDeclaringClass().isInitialized()) {
-            failureMessage = "the method's class is not initialized";
-        } else if (!method.canBeInlined()) {
-            failureMessage = "it is marked non-inlinable";
-        } else if (data.countRecursiveInlining(method) > MaximumRecursiveInlining.getValue()) {
-            failureMessage = "it exceeds the maximum recursive inlining depth";
-        } else if (new OptimisticOptimizations(method.getProfilingInfo()).lessOptimisticThan(optimisticOpts)) {
-            failureMessage = "the callee uses less optimistic optimizations than caller";
-        }
-        if (failureMessage == null) {
-            return true;
-        } else {
-            logNotInlined(invoke, data.inliningDepth(), method, failureMessage);
-            return false;
-        }
     }
 
     /**

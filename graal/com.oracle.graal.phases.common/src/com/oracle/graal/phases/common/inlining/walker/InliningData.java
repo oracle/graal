@@ -35,6 +35,7 @@ import com.oracle.graal.graph.Graph;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.MethodCallTargetNode;
+import com.oracle.graal.nodes.spi.Replacements;
 import com.oracle.graal.phases.OptimisticOptimizations;
 import com.oracle.graal.phases.common.CanonicalizerPhase;
 import com.oracle.graal.phases.common.inlining.InliningUtil;
@@ -49,8 +50,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.ToDoubleFunction;
 
-import static com.oracle.graal.compiler.common.GraalOptions.MegamorphicInliningMinMethodProbability;
-import static com.oracle.graal.compiler.common.GraalOptions.OptCanonicalizer;
+import static com.oracle.graal.compiler.common.GraalOptions.*;
 
 /**
  * Holds the data for building the callee graphs recursively: graphs and invocations (each
@@ -89,6 +89,31 @@ public class InliningData {
         Assumptions rootAssumptions = context.getAssumptions();
         invocationQueue.push(new MethodInvocation(null, rootAssumptions, 1.0, 1.0));
         pushGraph(rootGraph, 1.0, 1.0);
+    }
+
+    private boolean checkTargetConditions(Replacements replacements, Invoke invoke, ResolvedJavaMethod method, OptimisticOptimizations optimisticOpts) {
+        String failureMessage = null;
+        if (method == null) {
+            failureMessage = "the method is not resolved";
+        } else if (method.isNative() && (!Intrinsify.getValue() || !InliningUtil.canIntrinsify(replacements, method))) {
+            failureMessage = "it is a non-intrinsic native method";
+        } else if (method.isAbstract()) {
+            failureMessage = "it is an abstract method";
+        } else if (!method.getDeclaringClass().isInitialized()) {
+            failureMessage = "the method's class is not initialized";
+        } else if (!method.canBeInlined()) {
+            failureMessage = "it is marked non-inlinable";
+        } else if (countRecursiveInlining(method) > MaximumRecursiveInlining.getValue()) {
+            failureMessage = "it exceeds the maximum recursive inlining depth";
+        } else if (new OptimisticOptimizations(method.getProfilingInfo()).lessOptimisticThan(optimisticOpts)) {
+            failureMessage = "the callee uses less optimistic optimizations than caller";
+        }
+        if (failureMessage == null) {
+            return true;
+        } else {
+            InliningUtil.logNotInlined(invoke, inliningDepth(), method, failureMessage);
+            return false;
+        }
     }
 
     /**
@@ -193,7 +218,7 @@ public class InliningData {
             ResolvedJavaType type = ptypes[0].getType();
             assert type.isArray() || !type.isAbstract();
             ResolvedJavaMethod concrete = type.resolveMethod(targetMethod, contextType);
-            if (!InliningUtil.checkTargetConditions(this, context.getReplacements(), invoke, concrete, optimisticOpts)) {
+            if (!checkTargetConditions(context.getReplacements(), invoke, concrete, optimisticOpts)) {
                 return null;
             }
             return new TypeGuardInlineInfo(invoke, concrete, type);
@@ -281,7 +306,7 @@ public class InliningData {
             }
 
             for (ResolvedJavaMethod concrete : concreteMethods) {
-                if (!InliningUtil.checkTargetConditions(this, context.getReplacements(), invoke, concrete, optimisticOpts)) {
+                if (!checkTargetConditions(context.getReplacements(), invoke, concrete, optimisticOpts)) {
                     InliningUtil.logNotInlined(invoke, inliningDepth(), targetMethod, "it is a polymorphic method call and at least one invoked method cannot be inlined");
                     return null;
                 }
@@ -292,7 +317,7 @@ public class InliningData {
 
     private InlineInfo getAssumptionInlineInfo(Invoke invoke, ResolvedJavaMethod concrete, Assumptions.Assumption takenAssumption) {
         assert !concrete.isAbstract();
-        if (!InliningUtil.checkTargetConditions(this, context.getReplacements(), invoke, concrete, context.getOptimisticOptimizations())) {
+        if (!checkTargetConditions(context.getReplacements(), invoke, concrete, context.getOptimisticOptimizations())) {
             return null;
         }
         return new AssumptionInlineInfo(invoke, concrete, takenAssumption);
@@ -300,7 +325,7 @@ public class InliningData {
 
     private InlineInfo getExactInlineInfo(Invoke invoke, ResolvedJavaMethod targetMethod) {
         assert !targetMethod.isAbstract();
-        if (!InliningUtil.checkTargetConditions(this, context.getReplacements(), invoke, targetMethod, context.getOptimisticOptimizations())) {
+        if (!checkTargetConditions(context.getReplacements(), invoke, targetMethod, context.getOptimisticOptimizations())) {
             return null;
         }
         return new ExactInlineInfo(invoke, targetMethod);
