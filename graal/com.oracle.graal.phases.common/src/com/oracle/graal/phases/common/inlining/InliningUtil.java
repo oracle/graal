@@ -166,7 +166,7 @@ public class InliningUtil {
         }
     }
 
-    private static void logNotInlinedMethod(Invoke invoke, String msg) {
+    public static void logNotInlinedMethod(Invoke invoke, String msg) {
         if (shouldLogInliningDecision()) {
             String methodString = invoke.toString() + (invoke.callTarget() == null ? " callTarget=null" : invoke.callTarget().targetName());
             logInliningDecision(methodString, false, msg, new Object[0]);
@@ -234,80 +234,6 @@ public class InliningUtil {
         invoke.asNode().replaceFirstInput(oldCallTarget, newCallTarget);
     }
 
-    /**
-     * Determines if inlining is possible at the given invoke node.
-     *
-     * @param invoke the invoke that should be inlined
-     * @return an instance of InlineInfo, or null if no inlining is possible at the given invoke
-     */
-    public static InlineInfo getInlineInfo(InliningData data, Invoke invoke, int maxNumberOfMethods, Replacements replacements, Assumptions assumptions, OptimisticOptimizations optimisticOpts) {
-        final String failureMessage = checkInvokeConditions(invoke);
-        if (failureMessage != null) {
-            logNotInlinedMethod(invoke, failureMessage);
-            return null;
-        }
-        MethodCallTargetNode callTarget = (MethodCallTargetNode) invoke.callTarget();
-        ResolvedJavaMethod targetMethod = callTarget.targetMethod();
-
-        if (callTarget.invokeKind() == InvokeKind.Special || targetMethod.canBeStaticallyBound()) {
-            return data.getExactInlineInfo(invoke, replacements, optimisticOpts, targetMethod);
-        }
-
-        assert callTarget.invokeKind() == InvokeKind.Virtual || callTarget.invokeKind() == InvokeKind.Interface;
-
-        ResolvedJavaType holder = targetMethod.getDeclaringClass();
-        if (!(callTarget.receiver().stamp() instanceof ObjectStamp)) {
-            return null;
-        }
-        ObjectStamp receiverStamp = (ObjectStamp) callTarget.receiver().stamp();
-        if (receiverStamp.alwaysNull()) {
-            // Don't inline if receiver is known to be null
-            return null;
-        }
-        ResolvedJavaType contextType = invoke.getContextType();
-        if (receiverStamp.type() != null) {
-            // the invoke target might be more specific than the holder (happens after inlining:
-            // parameters lose their declared type...)
-            ResolvedJavaType receiverType = receiverStamp.type();
-            if (receiverType != null && holder.isAssignableFrom(receiverType)) {
-                holder = receiverType;
-                if (receiverStamp.isExactType()) {
-                    assert targetMethod.getDeclaringClass().isAssignableFrom(holder) : holder + " subtype of " + targetMethod.getDeclaringClass() + " for " + targetMethod;
-                    ResolvedJavaMethod resolvedMethod = holder.resolveMethod(targetMethod, contextType);
-                    if (resolvedMethod != null) {
-                        return data.getExactInlineInfo(invoke, replacements, optimisticOpts, resolvedMethod);
-                    }
-                }
-            }
-        }
-
-        if (holder.isArray()) {
-            // arrays can be treated as Objects
-            ResolvedJavaMethod resolvedMethod = holder.resolveMethod(targetMethod, contextType);
-            if (resolvedMethod != null) {
-                return data.getExactInlineInfo(invoke, replacements, optimisticOpts, resolvedMethod);
-            }
-        }
-
-        if (assumptions.useOptimisticAssumptions()) {
-            ResolvedJavaType uniqueSubtype = holder.findUniqueConcreteSubtype();
-            if (uniqueSubtype != null) {
-                ResolvedJavaMethod resolvedMethod = uniqueSubtype.resolveMethod(targetMethod, contextType);
-                if (resolvedMethod != null) {
-                    return data.getAssumptionInlineInfo(invoke, replacements, optimisticOpts, resolvedMethod, new Assumptions.ConcreteSubtype(holder, uniqueSubtype));
-                }
-            }
-
-            ResolvedJavaMethod concrete = holder.findUniqueConcreteMethod(targetMethod);
-            if (concrete != null) {
-                return data.getAssumptionInlineInfo(invoke, replacements, optimisticOpts, concrete, new Assumptions.ConcreteMethod(targetMethod, holder, concrete));
-            }
-        }
-
-        // type check based inlining
-        return data.getTypeCheckedInlineInfo(invoke, maxNumberOfMethods, replacements, targetMethod, optimisticOpts);
-    }
-
     public static GuardedValueNode createAnchoredReceiver(StructuredGraph graph, GuardingNode anchor, ResolvedJavaType commonType, ValueNode receiver, boolean exact) {
         return createAnchoredReceiver(graph, anchor, receiver, exact ? StampFactory.exactNonNull(commonType) : StampFactory.declaredNonNull(commonType));
     }
@@ -320,7 +246,7 @@ public class InliningUtil {
     /**
      * @return null iff the check succeeds, otherwise a (non-null) descriptive message.
      */
-    private static String checkInvokeConditions(Invoke invoke) {
+    public static String checkInvokeConditions(Invoke invoke) {
         if (invoke.predecessor() == null || !invoke.asNode().isAlive()) {
             return "the invoke is dead code";
         }

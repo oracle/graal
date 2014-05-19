@@ -28,11 +28,13 @@ import com.oracle.graal.api.meta.JavaTypeProfile;
 import com.oracle.graal.api.meta.ResolvedJavaMethod;
 import com.oracle.graal.api.meta.ResolvedJavaType;
 import com.oracle.graal.compiler.common.GraalInternalError;
+import com.oracle.graal.compiler.common.type.ObjectStamp;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.DebugMetric;
 import com.oracle.graal.graph.Graph;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.java.MethodCallTargetNode;
 import com.oracle.graal.nodes.spi.Replacements;
 import com.oracle.graal.phases.OptimisticOptimizations;
 import com.oracle.graal.phases.common.CanonicalizerPhase;
@@ -88,6 +90,80 @@ public class InliningData {
         Assumptions rootAssumptions = context.getAssumptions();
         invocationQueue.push(new MethodInvocation(null, rootAssumptions, 1.0, 1.0));
         pushGraph(rootGraph, 1.0, 1.0);
+    }
+
+    /**
+     * Determines if inlining is possible at the given invoke node.
+     *
+     * @param invoke the invoke that should be inlined
+     * @return an instance of InlineInfo, or null if no inlining is possible at the given invoke
+     */
+    public InlineInfo getInlineInfo(Invoke invoke, int maxNumberOfMethods, Replacements replacements, Assumptions assumptions, OptimisticOptimizations optimisticOpts) {
+        final String failureMessage = InliningUtil.checkInvokeConditions(invoke);
+        if (failureMessage != null) {
+            InliningUtil.logNotInlinedMethod(invoke, failureMessage);
+            return null;
+        }
+        MethodCallTargetNode callTarget = (MethodCallTargetNode) invoke.callTarget();
+        ResolvedJavaMethod targetMethod = callTarget.targetMethod();
+
+        if (callTarget.invokeKind() == MethodCallTargetNode.InvokeKind.Special || targetMethod.canBeStaticallyBound()) {
+            return getExactInlineInfo(invoke, replacements, optimisticOpts, targetMethod);
+        }
+
+        assert callTarget.invokeKind() == MethodCallTargetNode.InvokeKind.Virtual || callTarget.invokeKind() == MethodCallTargetNode.InvokeKind.Interface;
+
+        ResolvedJavaType holder = targetMethod.getDeclaringClass();
+        if (!(callTarget.receiver().stamp() instanceof ObjectStamp)) {
+            return null;
+        }
+        ObjectStamp receiverStamp = (ObjectStamp) callTarget.receiver().stamp();
+        if (receiverStamp.alwaysNull()) {
+            // Don't inline if receiver is known to be null
+            return null;
+        }
+        ResolvedJavaType contextType = invoke.getContextType();
+        if (receiverStamp.type() != null) {
+            // the invoke target might be more specific than the holder (happens after inlining:
+            // parameters lose their declared type...)
+            ResolvedJavaType receiverType = receiverStamp.type();
+            if (receiverType != null && holder.isAssignableFrom(receiverType)) {
+                holder = receiverType;
+                if (receiverStamp.isExactType()) {
+                    assert targetMethod.getDeclaringClass().isAssignableFrom(holder) : holder + " subtype of " + targetMethod.getDeclaringClass() + " for " + targetMethod;
+                    ResolvedJavaMethod resolvedMethod = holder.resolveMethod(targetMethod, contextType);
+                    if (resolvedMethod != null) {
+                        return getExactInlineInfo(invoke, replacements, optimisticOpts, resolvedMethod);
+                    }
+                }
+            }
+        }
+
+        if (holder.isArray()) {
+            // arrays can be treated as Objects
+            ResolvedJavaMethod resolvedMethod = holder.resolveMethod(targetMethod, contextType);
+            if (resolvedMethod != null) {
+                return getExactInlineInfo(invoke, replacements, optimisticOpts, resolvedMethod);
+            }
+        }
+
+        if (assumptions.useOptimisticAssumptions()) {
+            ResolvedJavaType uniqueSubtype = holder.findUniqueConcreteSubtype();
+            if (uniqueSubtype != null) {
+                ResolvedJavaMethod resolvedMethod = uniqueSubtype.resolveMethod(targetMethod, contextType);
+                if (resolvedMethod != null) {
+                    return getAssumptionInlineInfo(invoke, replacements, optimisticOpts, resolvedMethod, new Assumptions.ConcreteSubtype(holder, uniqueSubtype));
+                }
+            }
+
+            ResolvedJavaMethod concrete = holder.findUniqueConcreteMethod(targetMethod);
+            if (concrete != null) {
+                return getAssumptionInlineInfo(invoke, replacements, optimisticOpts, concrete, new Assumptions.ConcreteMethod(targetMethod, holder, concrete));
+            }
+        }
+
+        // type check based inlining
+        return getTypeCheckedInlineInfo(invoke, maxNumberOfMethods, replacements, targetMethod, optimisticOpts);
     }
 
     public InlineInfo getTypeCheckedInlineInfo(Invoke invoke, int maxNumberOfMethods, Replacements replacements, ResolvedJavaMethod targetMethod, OptimisticOptimizations optimisticOpts) {
@@ -295,7 +371,7 @@ public class InliningData {
         Invoke invoke = callsiteHolder.popInvoke();
         MethodInvocation callerInvocation = currentInvocation();
         Assumptions parentAssumptions = callerInvocation.assumptions();
-        InlineInfo info = InliningUtil.getInlineInfo(this, invoke, maxMethodPerInlining, context.getReplacements(), parentAssumptions, context.getOptimisticOptimizations());
+        InlineInfo info = getInlineInfo(invoke, maxMethodPerInlining, context.getReplacements(), parentAssumptions, context.getOptimisticOptimizations());
 
         if (info != null) {
             double invokeProbability = callsiteHolder.invokeProbability(invoke);
