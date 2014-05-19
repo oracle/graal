@@ -76,8 +76,9 @@ public class GreedyInliningPolicy extends AbstractInliningPolicy {
         int lowLevelGraphSize = previousLowLevelGraphSize(info);
 
         if (SmallCompiledLowLevelGraphSize.getValue() > 0 && lowLevelGraphSize > SmallCompiledLowLevelGraphSize.getValue() * inliningBonus) {
-            return InliningUtil.logNotInlinedMethod(info, inliningDepth, "too large previous low-level graph (low-level-nodes: %d, relevance=%f, probability=%f, bonus=%f, nodes=%d)",
-                            lowLevelGraphSize, relevance, probability, inliningBonus, nodes);
+            InliningUtil.logNotInlinedMethod(info, inliningDepth, "too large previous low-level graph (low-level-nodes: %d, relevance=%f, probability=%f, bonus=%f, nodes=%d)", lowLevelGraphSize,
+                            relevance, probability, inliningBonus, nodes);
+            return false;
         }
 
         if (nodes < TrivialInliningSize.getValue() * inliningBonus) {
@@ -93,8 +94,9 @@ public class GreedyInliningPolicy extends AbstractInliningPolicy {
          */
         double invokes = determineInvokeProbability(probabilities, info);
         if (LimitInlinedInvokes.getValue() > 0 && fullyProcessed && invokes > LimitInlinedInvokes.getValue() * inliningBonus) {
-            return InliningUtil.logNotInlinedMethod(info, inliningDepth, "callee invoke probability is too high (invokeP=%f, relevance=%f, probability=%f, bonus=%f, nodes=%d)", invokes, relevance,
+            InliningUtil.logNotInlinedMethod(info, inliningDepth, "callee invoke probability is too high (invokeP=%f, relevance=%f, probability=%f, bonus=%f, nodes=%d)", invokes, relevance,
                             probability, inliningBonus, nodes);
+            return false;
         }
 
         double maximumNodes = computeMaximumSize(relevance, (int) (MaximumInliningSize.getValue() * inliningBonus));
@@ -104,7 +106,7 @@ public class GreedyInliningPolicy extends AbstractInliningPolicy {
             return true;
         }
 
-        return InliningUtil.logNotInlinedMethod(info, inliningDepth, "relevance-based (relevance=%f, probability=%f, bonus=%f, nodes=%d > %f)", relevance, probability, inliningBonus, nodes,
-                        maximumNodes);
+        InliningUtil.logNotInlinedMethod(info, inliningDepth, "relevance-based (relevance=%f, probability=%f, bonus=%f, nodes=%d > %f)", relevance, probability, inliningBonus, nodes, maximumNodes);
+        return false;
     }
 }
