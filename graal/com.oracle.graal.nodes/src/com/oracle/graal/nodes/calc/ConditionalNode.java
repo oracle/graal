@@ -82,7 +82,7 @@ public final class ConditionalNode extends BinaryNode implements Canonicalizable
                 IntegerStamp equalsXStamp = (IntegerStamp) equals.x().stamp();
                 if (equalsXStamp.upMask() == 1) {
                     if (x().asConstant().equals(Constant.INT_0) && y().asConstant().equals(Constant.INT_1)) {
-                        return equals.x();
+                        return IntegerConvertNode.convertUnsigned(equals.x(), stamp());
                     }
                 }
             }

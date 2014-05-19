@@ -75,6 +75,14 @@ public abstract class IntegerConvertNode extends ConvertNode implements Arithmet
     }
 
     public static ValueNode convert(ValueNode input, Stamp stamp) {
+        return convert(input, stamp, false);
+    }
+
+    public static ValueNode convertUnsigned(ValueNode input, Stamp stamp) {
+        return convert(input, stamp, true);
+    }
+
+    public static ValueNode convert(ValueNode input, Stamp stamp, boolean zeroExtend) {
         StructuredGraph graph = input.graph();
         IntegerStamp fromStamp = (IntegerStamp) input.stamp();
         IntegerStamp toStamp = (IntegerStamp) stamp;
@@ -84,6 +92,9 @@ public abstract class IntegerConvertNode extends ConvertNode implements Arithmet
             result = input;
         } else if (toStamp.getBits() < fromStamp.getBits()) {
             result = graph.unique(new NarrowNode(input, toStamp.getBits()));
+        } else if (zeroExtend) {
+            // toStamp.getBits() > fromStamp.getBits()
+            result = graph.unique(new ZeroExtendNode(input, toStamp.getBits()));
         } else {
             // toStamp.getBits() > fromStamp.getBits()
             result = graph.unique(new SignExtendNode(input, toStamp.getBits()));
