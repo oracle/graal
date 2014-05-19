@@ -98,7 +98,7 @@ public class InliningData {
      * @param invoke the invoke that should be inlined
      * @return an instance of InlineInfo, or null if no inlining is possible at the given invoke
      */
-    public InlineInfo getInlineInfo(Invoke invoke, Assumptions assumptions, OptimisticOptimizations optimisticOpts) {
+    public InlineInfo getInlineInfo(Invoke invoke, Assumptions assumptions) {
         final String failureMessage = InliningUtil.checkInvokeConditions(invoke);
         if (failureMessage != null) {
             InliningUtil.logNotInlinedMethod(invoke, failureMessage);
@@ -107,6 +107,7 @@ public class InliningData {
         MethodCallTargetNode callTarget = (MethodCallTargetNode) invoke.callTarget();
         ResolvedJavaMethod targetMethod = callTarget.targetMethod();
         final Replacements replacements = context.getReplacements();
+        final OptimisticOptimizations optimisticOpts = context.getOptimisticOptimizations();
 
         if (callTarget.invokeKind() == MethodCallTargetNode.InvokeKind.Special || targetMethod.canBeStaticallyBound()) {
             return getExactInlineInfo(invoke, replacements, optimisticOpts, targetMethod);
@@ -372,7 +373,7 @@ public class InliningData {
         Invoke invoke = callsiteHolder.popInvoke();
         MethodInvocation callerInvocation = currentInvocation();
         Assumptions parentAssumptions = callerInvocation.assumptions();
-        InlineInfo info = getInlineInfo(invoke, parentAssumptions, context.getOptimisticOptimizations());
+        InlineInfo info = getInlineInfo(invoke, parentAssumptions);
 
         if (info != null) {
             double invokeProbability = callsiteHolder.invokeProbability(invoke);
