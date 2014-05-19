@@ -35,7 +35,7 @@ public @interface NodeInfo {
 
     /**
      * Short name representing the node that can be used for debugging.
-     * 
+     *
      * @return the short name
      */
     String shortName() default "";
@@ -43,10 +43,26 @@ public @interface NodeInfo {
     /**
      * Provides a rough estimate for the cost of the annotated {@link Node}. This estimate can be
      * used by runtime systems or guest languages to implement heuristics based on Truffle ASTs.
-     * 
+     *
      * @see Node#getCost()
      * @see NodeCost
      */
     NodeCost cost() default NodeCost.MONOMORPHIC;
 
+    /**
+     * A human readable explanation of the purpose of the annotated {@link Node}. Can be used e.g.
+     * for debugging or visualization purposes.
+     *
+     * @return the description
+     */
+    String description() default "";
+
+    /**
+     * A description, providing a user-readable explanation of the source language of the annotated
+     * {@link Node}. Can be used e.g. for debugging or visualization purposes. Typically this
+     * information is set only in an abstract base node for the language implementation.
+     *
+     * @return the description
+     */
+    String language() default "";
 }
