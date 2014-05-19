@@ -90,23 +90,28 @@ public class InliningData {
         pushGraph(rootGraph, 1.0, 1.0);
     }
 
-    private boolean checkTargetConditions(Invoke invoke, ResolvedJavaMethod method) {
-        String failureMessage = null;
+    private String checkTargetConditionsHelper(ResolvedJavaMethod method) {
         if (method == null) {
-            failureMessage = "the method is not resolved";
+            return "the method is not resolved";
         } else if (method.isNative() && (!Intrinsify.getValue() || !InliningUtil.canIntrinsify(context.getReplacements(), method))) {
-            failureMessage = "it is a non-intrinsic native method";
+            return "it is a non-intrinsic native method";
         } else if (method.isAbstract()) {
-            failureMessage = "it is an abstract method";
+            return "it is an abstract method";
         } else if (!method.getDeclaringClass().isInitialized()) {
-            failureMessage = "the method's class is not initialized";
+            return "the method's class is not initialized";
         } else if (!method.canBeInlined()) {
-            failureMessage = "it is marked non-inlinable";
+            return "it is marked non-inlinable";
         } else if (countRecursiveInlining(method) > MaximumRecursiveInlining.getValue()) {
-            failureMessage = "it exceeds the maximum recursive inlining depth";
+            return "it exceeds the maximum recursive inlining depth";
         } else if (new OptimisticOptimizations(method.getProfilingInfo()).lessOptimisticThan(context.getOptimisticOptimizations())) {
-            failureMessage = "the callee uses less optimistic optimizations than caller";
+            return "the callee uses less optimistic optimizations than caller";
+        } else {
+            return null;
         }
+    }
+
+    private boolean checkTargetConditions(Invoke invoke, ResolvedJavaMethod method) {
+        final String failureMessage = checkTargetConditionsHelper(method);
         if (failureMessage == null) {
             return true;
         } else {
