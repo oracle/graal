@@ -163,10 +163,10 @@ public class InliningData {
         }
 
         // type check based inlining
-        return getTypeCheckedInlineInfo(invoke, maxMethodPerInlining, targetMethod, optimisticOpts);
+        return getTypeCheckedInlineInfo(invoke, targetMethod, optimisticOpts);
     }
 
-    public InlineInfo getTypeCheckedInlineInfo(Invoke invoke, int maxNumberOfMethods, ResolvedJavaMethod targetMethod, OptimisticOptimizations optimisticOpts) {
+    public InlineInfo getTypeCheckedInlineInfo(Invoke invoke, ResolvedJavaMethod targetMethod, OptimisticOptimizations optimisticOpts) {
         JavaTypeProfile typeProfile;
         ValueNode receiver = invoke.callTarget().arguments().get(0);
         if (receiver instanceof TypeProfileProxyNode) {
@@ -232,8 +232,8 @@ public class InliningData {
                 }
             }
 
-            if (concreteMethods.size() > maxNumberOfMethods) {
-                InliningUtil.logNotInlinedInvoke(invoke, inliningDepth(), targetMethod, "polymorphic call with more than %d target methods", maxNumberOfMethods);
+            if (concreteMethods.size() > maxMethodPerInlining) {
+                InliningUtil.logNotInlinedInvoke(invoke, inliningDepth(), targetMethod, "polymorphic call with more than %d target methods", maxMethodPerInlining);
                 return null;
             }
 
