@@ -466,21 +466,25 @@ public class InliningUtil {
     private static String checkInvokeConditions(Invoke invoke) {
         if (invoke.predecessor() == null || !invoke.asNode().isAlive()) {
             return "the invoke is dead code";
-        } else if (!(invoke.callTarget() instanceof MethodCallTargetNode)) {
+        }
+        if (!(invoke.callTarget() instanceof MethodCallTargetNode)) {
             return "the invoke has already been lowered, or has been created as a low-level node";
-        } else if (((MethodCallTargetNode) invoke.callTarget()).targetMethod() == null) {
+        }
+        if (((MethodCallTargetNode) invoke.callTarget()).targetMethod() == null) {
             return "target method is null";
-        } else if (invoke.stateAfter() == null) {
+        }
+        if (invoke.stateAfter() == null) {
             // TODO (chaeubl): why should an invoke not have a state after?
             return "the invoke has no after state";
-        } else if (!invoke.useForInlining()) {
+        }
+        if (!invoke.useForInlining()) {
             return "the invoke is marked to be not used for inlining";
-        } else if (((MethodCallTargetNode) invoke.callTarget()).receiver() != null && ((MethodCallTargetNode) invoke.callTarget()).receiver().isConstant() &&
+        }
+        if (((MethodCallTargetNode) invoke.callTarget()).receiver() != null && ((MethodCallTargetNode) invoke.callTarget()).receiver().isConstant() &&
                         ((MethodCallTargetNode) invoke.callTarget()).receiver().asConstant().isNull()) {
             return "receiver is null";
-        } else {
-            return null;
         }
+        return null;
     }
 
     private static boolean checkTargetConditions(InliningData data, Replacements replacements, Invoke invoke, ResolvedJavaMethod method, OptimisticOptimizations optimisticOpts) {
