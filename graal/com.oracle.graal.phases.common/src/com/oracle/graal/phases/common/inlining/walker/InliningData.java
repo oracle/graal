@@ -152,13 +152,13 @@ public class InliningData {
             if (uniqueSubtype != null) {
                 ResolvedJavaMethod resolvedMethod = uniqueSubtype.resolveMethod(targetMethod, contextType);
                 if (resolvedMethod != null) {
-                    return getAssumptionInlineInfo(invoke, optimisticOpts, resolvedMethod, new Assumptions.ConcreteSubtype(holder, uniqueSubtype));
+                    return getAssumptionInlineInfo(invoke, resolvedMethod, new Assumptions.ConcreteSubtype(holder, uniqueSubtype));
                 }
             }
 
             ResolvedJavaMethod concrete = holder.findUniqueConcreteMethod(targetMethod);
             if (concrete != null) {
-                return getAssumptionInlineInfo(invoke, optimisticOpts, concrete, new Assumptions.ConcreteMethod(targetMethod, holder, concrete));
+                return getAssumptionInlineInfo(invoke, concrete, new Assumptions.ConcreteMethod(targetMethod, holder, concrete));
             }
         }
 
@@ -290,9 +290,9 @@ public class InliningData {
         }
     }
 
-    public InlineInfo getAssumptionInlineInfo(Invoke invoke, OptimisticOptimizations optimisticOpts, ResolvedJavaMethod concrete, Assumptions.Assumption takenAssumption) {
+    public InlineInfo getAssumptionInlineInfo(Invoke invoke, ResolvedJavaMethod concrete, Assumptions.Assumption takenAssumption) {
         assert !concrete.isAbstract();
-        if (!InliningUtil.checkTargetConditions(this, context.getReplacements(), invoke, concrete, optimisticOpts)) {
+        if (!InliningUtil.checkTargetConditions(this, context.getReplacements(), invoke, concrete, context.getOptimisticOptimizations())) {
             return null;
         }
         return new AssumptionInlineInfo(invoke, concrete, takenAssumption);
