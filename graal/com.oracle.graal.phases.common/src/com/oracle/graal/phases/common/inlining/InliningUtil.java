@@ -31,7 +31,6 @@ import java.util.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.meta.JavaTypeProfile.ProfiledType;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.debug.*;
@@ -174,11 +173,11 @@ public class InliningUtil {
         }
     }
 
-    private static void logNotInlined(Invoke invoke, int inliningDepth, ResolvedJavaMethod method, String msg) {
+    public static void logNotInlined(Invoke invoke, int inliningDepth, ResolvedJavaMethod method, String msg) {
         logNotInlinedInvoke(invoke, inliningDepth, method, msg, new Object[0]);
     }
 
-    private static void logNotInlinedInvoke(Invoke invoke, int inliningDepth, ResolvedJavaMethod method, String msg, Object... args) {
+    public static void logNotInlinedInvoke(Invoke invoke, int inliningDepth, ResolvedJavaMethod method, String msg, Object... args) {
         printInlining(method, invoke, inliningDepth, false, msg, args);
         if (shouldLogInliningDecision()) {
             String methodString = methodName(method, invoke);
@@ -306,131 +305,7 @@ public class InliningUtil {
         }
 
         // type check based inlining
-        return getTypeCheckedInlineInfo(data, invoke, maxNumberOfMethods, replacements, targetMethod, optimisticOpts);
-    }
-
-    private static InlineInfo getTypeCheckedInlineInfo(InliningData data, Invoke invoke, int maxNumberOfMethods, Replacements replacements, ResolvedJavaMethod targetMethod,
-                    OptimisticOptimizations optimisticOpts) {
-        JavaTypeProfile typeProfile;
-        ValueNode receiver = invoke.callTarget().arguments().get(0);
-        if (receiver instanceof TypeProfileProxyNode) {
-            TypeProfileProxyNode typeProfileProxyNode = (TypeProfileProxyNode) receiver;
-            typeProfile = typeProfileProxyNode.getProfile();
-        } else {
-            logNotInlined(invoke, data.inliningDepth(), targetMethod, "no type profile exists");
-            return null;
-        }
-
-        ProfiledType[] ptypes = typeProfile.getTypes();
-        if (ptypes == null || ptypes.length <= 0) {
-            logNotInlined(invoke, data.inliningDepth(), targetMethod, "no types in profile");
-            return null;
-        }
-        ResolvedJavaType contextType = invoke.getContextType();
-        double notRecordedTypeProbability = typeProfile.getNotRecordedProbability();
-        if (ptypes.length == 1 && notRecordedTypeProbability == 0) {
-            if (!optimisticOpts.inlineMonomorphicCalls()) {
-                logNotInlined(invoke, data.inliningDepth(), targetMethod, "inlining monomorphic calls is disabled");
-                return null;
-            }
-
-            ResolvedJavaType type = ptypes[0].getType();
-            assert type.isArray() || !type.isAbstract();
-            ResolvedJavaMethod concrete = type.resolveMethod(targetMethod, contextType);
-            if (!checkTargetConditions(data, replacements, invoke, concrete, optimisticOpts)) {
-                return null;
-            }
-            return new TypeGuardInlineInfo(invoke, concrete, type);
-        } else {
-            invoke.setPolymorphic(true);
-
-            if (!optimisticOpts.inlinePolymorphicCalls() && notRecordedTypeProbability == 0) {
-                logNotInlinedInvoke(invoke, data.inliningDepth(), targetMethod, "inlining polymorphic calls is disabled (%d types)", ptypes.length);
-                return null;
-            }
-            if (!optimisticOpts.inlineMegamorphicCalls() && notRecordedTypeProbability > 0) {
-                // due to filtering impossible types, notRecordedTypeProbability can be > 0 although
-                // the number of types is lower than what can be recorded in a type profile
-                logNotInlinedInvoke(invoke, data.inliningDepth(), targetMethod, "inlining megamorphic calls is disabled (%d types, %f %% not recorded types)", ptypes.length,
-                                notRecordedTypeProbability * 100);
-                return null;
-            }
-
-            // Find unique methods and their probabilities.
-            ArrayList<ResolvedJavaMethod> concreteMethods = new ArrayList<>();
-            ArrayList<Double> concreteMethodsProbabilities = new ArrayList<>();
-            for (int i = 0; i < ptypes.length; i++) {
-                ResolvedJavaMethod concrete = ptypes[i].getType().resolveMethod(targetMethod, contextType);
-                if (concrete == null) {
-                    logNotInlined(invoke, data.inliningDepth(), targetMethod, "could not resolve method");
-                    return null;
-                }
-                int index = concreteMethods.indexOf(concrete);
-                double curProbability = ptypes[i].getProbability();
-                if (index < 0) {
-                    index = concreteMethods.size();
-                    concreteMethods.add(concrete);
-                    concreteMethodsProbabilities.add(curProbability);
-                } else {
-                    concreteMethodsProbabilities.set(index, concreteMethodsProbabilities.get(index) + curProbability);
-                }
-            }
-
-            if (concreteMethods.size() > maxNumberOfMethods) {
-                logNotInlinedInvoke(invoke, data.inliningDepth(), targetMethod, "polymorphic call with more than %d target methods", maxNumberOfMethods);
-                return null;
-            }
-
-            // Clear methods that fall below the threshold.
-            if (notRecordedTypeProbability > 0) {
-                ArrayList<ResolvedJavaMethod> newConcreteMethods = new ArrayList<>();
-                ArrayList<Double> newConcreteMethodsProbabilities = new ArrayList<>();
-                for (int i = 0; i < concreteMethods.size(); ++i) {
-                    if (concreteMethodsProbabilities.get(i) >= MegamorphicInliningMinMethodProbability.getValue()) {
-                        newConcreteMethods.add(concreteMethods.get(i));
-                        newConcreteMethodsProbabilities.add(concreteMethodsProbabilities.get(i));
-                    }
-                }
-
-                if (newConcreteMethods.size() == 0) {
-                    // No method left that is worth inlining.
-                    logNotInlinedInvoke(invoke, data.inliningDepth(), targetMethod, "no methods remaining after filtering less frequent methods (%d methods previously)", concreteMethods.size());
-                    return null;
-                }
-
-                concreteMethods = newConcreteMethods;
-                concreteMethodsProbabilities = newConcreteMethodsProbabilities;
-            }
-
-            // Clean out types whose methods are no longer available.
-            ArrayList<ProfiledType> usedTypes = new ArrayList<>();
-            ArrayList<Integer> typesToConcretes = new ArrayList<>();
-            for (ProfiledType type : ptypes) {
-                ResolvedJavaMethod concrete = type.getType().resolveMethod(targetMethod, contextType);
-                int index = concreteMethods.indexOf(concrete);
-                if (index == -1) {
-                    notRecordedTypeProbability += type.getProbability();
-                } else {
-                    assert type.getType().isArray() || !type.getType().isAbstract() : type + " " + concrete;
-                    usedTypes.add(type);
-                    typesToConcretes.add(index);
-                }
-            }
-
-            if (usedTypes.size() == 0) {
-                // No type left that is worth checking for.
-                logNotInlinedInvoke(invoke, data.inliningDepth(), targetMethod, "no types remaining after filtering less frequent types (%d types previously)", ptypes.length);
-                return null;
-            }
-
-            for (ResolvedJavaMethod concrete : concreteMethods) {
-                if (!checkTargetConditions(data, replacements, invoke, concrete, optimisticOpts)) {
-                    logNotInlined(invoke, data.inliningDepth(), targetMethod, "it is a polymorphic method call and at least one invoked method cannot be inlined");
-                    return null;
-                }
-            }
-            return new MultiTypeGuardInlineInfo(invoke, concreteMethods, concreteMethodsProbabilities, usedTypes, typesToConcretes, notRecordedTypeProbability);
-        }
+        return data.getTypeCheckedInlineInfo(invoke, maxNumberOfMethods, replacements, targetMethod, optimisticOpts);
     }
 
     public static GuardedValueNode createAnchoredReceiver(StructuredGraph graph, GuardingNode anchor, ResolvedJavaType commonType, ValueNode receiver, boolean exact) {
