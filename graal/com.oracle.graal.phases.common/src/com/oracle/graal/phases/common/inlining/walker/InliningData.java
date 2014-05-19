@@ -37,6 +37,7 @@ import com.oracle.graal.nodes.spi.Replacements;
 import com.oracle.graal.phases.OptimisticOptimizations;
 import com.oracle.graal.phases.common.CanonicalizerPhase;
 import com.oracle.graal.phases.common.inlining.InliningUtil;
+import com.oracle.graal.phases.common.inlining.info.AssumptionInlineInfo;
 import com.oracle.graal.phases.common.inlining.info.ExactInlineInfo;
 import com.oracle.graal.phases.common.inlining.info.InlineInfo;
 import com.oracle.graal.phases.common.inlining.policy.InliningPolicy;
@@ -87,6 +88,14 @@ public class InliningData {
         Assumptions rootAssumptions = context.getAssumptions();
         invocationQueue.push(new MethodInvocation(null, rootAssumptions, 1.0, 1.0));
         pushGraph(rootGraph, 1.0, 1.0);
+    }
+
+    public InlineInfo getAssumptionInlineInfo(Invoke invoke, Replacements replacements, OptimisticOptimizations optimisticOpts, ResolvedJavaMethod concrete, Assumptions.Assumption takenAssumption) {
+        assert !concrete.isAbstract();
+        if (!InliningUtil.checkTargetConditions(this, replacements, invoke, concrete, optimisticOpts)) {
+            return null;
+        }
+        return new AssumptionInlineInfo(invoke, concrete, takenAssumption);
     }
 
     public InlineInfo getExactInlineInfo(Invoke invoke, Replacements replacements, OptimisticOptimizations optimisticOpts, ResolvedJavaMethod targetMethod) {
