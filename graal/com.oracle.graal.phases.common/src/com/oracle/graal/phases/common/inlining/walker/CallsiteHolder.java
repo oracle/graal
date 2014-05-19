@@ -85,7 +85,7 @@ public class CallsiteHolder {
      * Gets the method associated with the {@linkplain #graph() graph} represented by this object.
      */
     public ResolvedJavaMethod method() {
-        return graph.method();
+        return graph == null ? null : graph.method();
     }
 
     public boolean hasRemainingInvokes() {
