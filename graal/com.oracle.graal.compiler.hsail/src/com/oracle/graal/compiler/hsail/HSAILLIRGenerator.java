@@ -838,16 +838,6 @@ public abstract class HSAILLIRGenerator extends LIRGenerator {
      * series of cascading compare and branch instructions. This is currently the recommended way of
      * generating performant HSAIL code for switch constructs.
      *
-     * In Java bytecode the keys for switch statements are always ints.
-     *
-     * The x86 backend also adds support for handling keys of type long or Object but these two
-     * special cases are for handling the TypeSwitchNode, which is a node that the JVM produces for
-     * handling operations related to method dispatch. We haven't yet added support for the
-     * TypeSwitchNode, so for the time being we have added a check to ensure that the keys are of
-     * type int. This also allows us to flag any test cases/execution paths that may trigger the
-     * creation of a TypeSwitchNode which we don't support yet.
-     *
-     *
      * @param strategy the strategy used for this switch.
      * @param keyTargets array of branch targets for each of the cases.
      * @param defaultTarget the branch target for the default case.
@@ -855,12 +845,16 @@ public abstract class HSAILLIRGenerator extends LIRGenerator {
      */
     @Override
     public void emitStrategySwitch(SwitchStrategy strategy, Variable key, LabelRef[] keyTargets, LabelRef defaultTarget) {
-        if ((key.getKind() == Kind.Int) || (key.getKind() == Kind.Long)) {
-            // Append the LIR instruction for generating compare and branch instructions.
-            append(new StrategySwitchOp(strategy, keyTargets, defaultTarget, key));
-        } else {
-            // Throw an exception if the keys aren't ints.
-            throw GraalInternalError.unimplemented("Switch statements are only supported for keys of type int or long, not " + key.getKind());
+        switch (key.getKind()) {
+            case Int:
+            case Long:
+            case Object:
+                // Append the LIR instruction for generating compare and branch instructions.
+                append(new StrategySwitchOp(strategy, keyTargets, defaultTarget, key));
+                break;
+            default:
+                // Throw an exception if the key kind is anything else.
+                throw GraalInternalError.unimplemented("Switch statements not supported for keys of type " + key.getKind());
         }
     }
 

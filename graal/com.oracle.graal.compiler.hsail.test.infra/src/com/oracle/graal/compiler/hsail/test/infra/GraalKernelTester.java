@@ -131,6 +131,13 @@ public abstract class GraalKernelTester extends KernelTester {
     }
 
     /**
+     * Determines if the JVM supports the required typeProfileWidth.
+     */
+    public boolean typeProfileWidthAtLeast(int val) {
+        return (getHSAILBackend().getRuntime().getConfig().typeProfileWidth >= val);
+    }
+
+    /**
      * Determines if the runtime supports {@link VirtualObject}s in {@link DebugInfo} associated
      * with HSAIL code.
      */

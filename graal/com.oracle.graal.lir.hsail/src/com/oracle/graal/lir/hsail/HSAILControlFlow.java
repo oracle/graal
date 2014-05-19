@@ -84,11 +84,6 @@ public class HSAILControlFlow {
         /**
          * Generates the code for this switch op.
          *
-         * The keys for switch statements in Java bytecode for of type int. However, Graal also
-         * generates a TypeSwitchNode (for method dispatch) which triggers the invocation of these
-         * routines with keys of type Long or Object. Currently we only support the
-         * IntegerSwitchNode so we throw an exception if the key isn't of type int.
-         *
          * @param crb the CompilationResultBuilder
          * @param masm the HSAIL assembler
          */
@@ -100,13 +95,13 @@ public class HSAILControlFlow {
                     switch (key.getKind()) {
                         case Int:
                         case Long:
+                        case Object:
                             // Generate cascading compare and branches for each case.
                             masm.emitCompare(key.getKind(), key, keyConstants[index], HSAILCompare.conditionToString(condition), false, false);
                             masm.cbr(masm.nameOf(target));
                             break;
-                        case Object:
                         default:
-                            throw new GraalInternalError("switch only supported for int");
+                            throw new GraalInternalError("switch not supported for kind " + key.getKind());
                     }
                 }
             };

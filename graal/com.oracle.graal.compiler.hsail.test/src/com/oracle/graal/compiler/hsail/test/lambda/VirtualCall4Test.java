@@ -26,15 +26,14 @@ package com.oracle.graal.compiler.hsail.test.lambda;
 import org.junit.Test;
 
 /**
- * Tests a true virtual method call with 2 targets.
+ * Tests a true virtual method call with 4 targets.
  */
-public class VirtualCallTest extends VirtualCallBase {
+public class VirtualCall4Test extends VirtualCallBase {
 
     void setupArrays() {
         for (int i = 0; i < NUM; i++) {
             outArray[i] = -i;
-            int kind = i % 3 == 0 ? 0 : 1;
-            inShapeArray[i] = createShape(kind, i + 1);
+            inShapeArray[i] = createShape(i % 4, i + 1);
         }
     }
 
@@ -52,7 +51,7 @@ public class VirtualCallTest extends VirtualCallBase {
 
     @Override
     protected boolean supportsRequiredCapabilities() {
-        return typeProfileWidthAtLeast(2);
+        return typeProfileWidthAtLeast(4);
     }
 
     @Test
