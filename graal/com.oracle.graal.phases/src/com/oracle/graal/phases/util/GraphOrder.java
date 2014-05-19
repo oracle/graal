@@ -224,7 +224,8 @@ public final class GraphOrder {
                     if (pendingStateAfter != null) {
                         pendingStateAfter.applyToNonVirtual(new NodeClosure<Node>() {
                             public void apply(Node usage, Node nonVirtualNode) {
-                                assert currentState.isMarked(nonVirtualNode) : nonVirtualNode + " not available at virtualstate " + usage + " at end of block " + block + " \n" + list;
+                                assert currentState.isMarked(nonVirtualNode) || nonVirtualNode instanceof VirtualObjectNode : nonVirtualNode + " not available at virtualstate " + usage +
+                                                " at end of block " + block + " \n" + list;
                             }
                         });
                     }
