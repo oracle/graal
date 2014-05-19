@@ -35,7 +35,6 @@ import com.oracle.graal.graph.Graph;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.MethodCallTargetNode;
-import com.oracle.graal.nodes.spi.Replacements;
 import com.oracle.graal.phases.OptimisticOptimizations;
 import com.oracle.graal.phases.common.CanonicalizerPhase;
 import com.oracle.graal.phases.common.inlining.InliningUtil;
@@ -106,7 +105,6 @@ public class InliningData {
         }
         MethodCallTargetNode callTarget = (MethodCallTargetNode) invoke.callTarget();
         ResolvedJavaMethod targetMethod = callTarget.targetMethod();
-        final Replacements replacements = context.getReplacements();
         final OptimisticOptimizations optimisticOpts = context.getOptimisticOptimizations();
 
         if (callTarget.invokeKind() == MethodCallTargetNode.InvokeKind.Special || targetMethod.canBeStaticallyBound()) {
@@ -165,10 +163,10 @@ public class InliningData {
         }
 
         // type check based inlining
-        return getTypeCheckedInlineInfo(invoke, maxMethodPerInlining, replacements, targetMethod, optimisticOpts);
+        return getTypeCheckedInlineInfo(invoke, maxMethodPerInlining, targetMethod, optimisticOpts);
     }
 
-    public InlineInfo getTypeCheckedInlineInfo(Invoke invoke, int maxNumberOfMethods, Replacements replacements, ResolvedJavaMethod targetMethod, OptimisticOptimizations optimisticOpts) {
+    public InlineInfo getTypeCheckedInlineInfo(Invoke invoke, int maxNumberOfMethods, ResolvedJavaMethod targetMethod, OptimisticOptimizations optimisticOpts) {
         JavaTypeProfile typeProfile;
         ValueNode receiver = invoke.callTarget().arguments().get(0);
         if (receiver instanceof TypeProfileProxyNode) {
@@ -195,7 +193,7 @@ public class InliningData {
             ResolvedJavaType type = ptypes[0].getType();
             assert type.isArray() || !type.isAbstract();
             ResolvedJavaMethod concrete = type.resolveMethod(targetMethod, contextType);
-            if (!InliningUtil.checkTargetConditions(this, replacements, invoke, concrete, optimisticOpts)) {
+            if (!InliningUtil.checkTargetConditions(this, context.getReplacements(), invoke, concrete, optimisticOpts)) {
                 return null;
             }
             return new TypeGuardInlineInfo(invoke, concrete, type);
@@ -283,7 +281,7 @@ public class InliningData {
             }
 
             for (ResolvedJavaMethod concrete : concreteMethods) {
-                if (!InliningUtil.checkTargetConditions(this, replacements, invoke, concrete, optimisticOpts)) {
+                if (!InliningUtil.checkTargetConditions(this, context.getReplacements(), invoke, concrete, optimisticOpts)) {
                     InliningUtil.logNotInlined(invoke, inliningDepth(), targetMethod, "it is a polymorphic method call and at least one invoked method cannot be inlined");
                     return null;
                 }
