@@ -35,7 +35,6 @@ import com.oracle.graal.graph.Graph;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.MethodCallTargetNode;
-import com.oracle.graal.nodes.spi.Replacements;
 import com.oracle.graal.phases.OptimisticOptimizations;
 import com.oracle.graal.phases.common.CanonicalizerPhase;
 import com.oracle.graal.phases.common.inlining.InliningUtil;
@@ -91,11 +90,11 @@ public class InliningData {
         pushGraph(rootGraph, 1.0, 1.0);
     }
 
-    private boolean checkTargetConditions(Replacements replacements, Invoke invoke, ResolvedJavaMethod method, OptimisticOptimizations optimisticOpts) {
+    private boolean checkTargetConditions(Invoke invoke, ResolvedJavaMethod method, OptimisticOptimizations optimisticOpts) {
         String failureMessage = null;
         if (method == null) {
             failureMessage = "the method is not resolved";
-        } else if (method.isNative() && (!Intrinsify.getValue() || !InliningUtil.canIntrinsify(replacements, method))) {
+        } else if (method.isNative() && (!Intrinsify.getValue() || !InliningUtil.canIntrinsify(context.getReplacements(), method))) {
             failureMessage = "it is a non-intrinsic native method";
         } else if (method.isAbstract()) {
             failureMessage = "it is an abstract method";
@@ -218,7 +217,7 @@ public class InliningData {
             ResolvedJavaType type = ptypes[0].getType();
             assert type.isArray() || !type.isAbstract();
             ResolvedJavaMethod concrete = type.resolveMethod(targetMethod, contextType);
-            if (!checkTargetConditions(context.getReplacements(), invoke, concrete, optimisticOpts)) {
+            if (!checkTargetConditions(invoke, concrete, optimisticOpts)) {
                 return null;
             }
             return new TypeGuardInlineInfo(invoke, concrete, type);
@@ -306,7 +305,7 @@ public class InliningData {
             }
 
             for (ResolvedJavaMethod concrete : concreteMethods) {
-                if (!checkTargetConditions(context.getReplacements(), invoke, concrete, optimisticOpts)) {
+                if (!checkTargetConditions(invoke, concrete, optimisticOpts)) {
                     InliningUtil.logNotInlined(invoke, inliningDepth(), targetMethod, "it is a polymorphic method call and at least one invoked method cannot be inlined");
                     return null;
                 }
@@ -317,7 +316,7 @@ public class InliningData {
 
     private InlineInfo getAssumptionInlineInfo(Invoke invoke, ResolvedJavaMethod concrete, Assumptions.Assumption takenAssumption) {
         assert !concrete.isAbstract();
-        if (!checkTargetConditions(context.getReplacements(), invoke, concrete, context.getOptimisticOptimizations())) {
+        if (!checkTargetConditions(invoke, concrete, context.getOptimisticOptimizations())) {
             return null;
         }
         return new AssumptionInlineInfo(invoke, concrete, takenAssumption);
@@ -325,7 +324,7 @@ public class InliningData {
 
     private InlineInfo getExactInlineInfo(Invoke invoke, ResolvedJavaMethod targetMethod) {
         assert !targetMethod.isAbstract();
-        if (!checkTargetConditions(context.getReplacements(), invoke, targetMethod, context.getOptimisticOptimizations())) {
+        if (!checkTargetConditions(invoke, targetMethod, context.getOptimisticOptimizations())) {
             return null;
         }
         return new ExactInlineInfo(invoke, targetMethod);
