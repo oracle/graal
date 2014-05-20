@@ -20,35 +20,25 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot;
+package com.oracle.graal.hotspotvmconfig;
 
 import java.lang.annotation.*;
 
 /**
- * Refers to a C++ field in the VM.
+ * Refers to a C++ type in the VM.
  */
 @Target(ElementType.FIELD)
 @Retention(RetentionPolicy.RUNTIME)
-public @interface HotSpotVMField {
+public @interface HotSpotVMType {
 
     /**
      * Types of information this annotation can return.
      */
     enum Type {
         /**
-         * Returns the offset of this field within the type. Only valid for instance fields.
+         * Returns the size of the type (C++ {@code sizeof()}).
          */
-        OFFSET,
-
-        /**
-         * Returns the absolute address of this field. Only valid for static fields.
-         */
-        ADDRESS,
-
-        /**
-         * Returns the value of this field. Only valid for static fields.
-         */
-        VALUE;
+        SIZE;
     }
 
     /**
@@ -59,25 +49,9 @@ public @interface HotSpotVMField {
     Type get();
 
     /**
-     * Returns the type name containing this field.
+     * Returns the name of the type.
      *
-     * @return name of containing type
-     */
-    String type();
-
-    /**
-     * Returns the name of this field.
-     *
-     * @return name of field
+     * @return name of type
      */
     String name();
-
-    /**
-     * List of architectures where this constant is required. Names are derived from
-     * {@link HotSpotVMConfig#getHostArchitectureName()}. An empty list implies that the constant is
-     * required on all architectures.
-     */
-    String[] archs() default {};
-
-    boolean optional() default false;
 }

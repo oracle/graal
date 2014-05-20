@@ -20,9 +20,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot;
+package com.oracle.graal.hotspotvmconfig;
 
-import java.lang.annotation.*;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
 /**
  * Refers to a C++ constant in the VM.
@@ -43,6 +46,7 @@ public @interface HotSpotVMConstant {
      * {@link HotSpotVMConfig#getHostArchitectureName()}. An empty list implies that the constant is
      * required on all architectures.
      */
+    @SuppressWarnings("javadoc")
     String[] archs() default {};
 
 }
