@@ -200,7 +200,7 @@ public class StampFactory {
             ResolvedJavaType type = value.isNull() ? null : metaAccess.lookupJavaType(value);
             return new ObjectStamp(type, value.isNonNull(), value.isNonNull(), value.isNull());
         } else {
-            throw new GraalInternalError(Kind.Object + " expected, actual kind: %s", value.getKind());
+            return forConstant(value);
         }
     }
 
