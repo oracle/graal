@@ -29,7 +29,7 @@ import com.oracle.graal.nodes.Invoke;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.phases.common.inlining.InliningUtil;
 
-import com.oracle.graal.phases.common.inlining.InliningUtil.Inlineable;
+import com.oracle.graal.phases.common.inlining.info.elem.Inlineable;
 import com.oracle.graal.phases.common.inlining.InliningUtil.InlineableMacroNode;
 import com.oracle.graal.phases.common.inlining.InliningUtil.InlineableGraph;
 

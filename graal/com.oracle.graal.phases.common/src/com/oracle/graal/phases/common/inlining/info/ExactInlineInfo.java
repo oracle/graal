@@ -27,8 +27,8 @@ import com.oracle.graal.api.meta.MetaAccessProvider;
 import com.oracle.graal.api.meta.MetaUtil;
 import com.oracle.graal.api.meta.ResolvedJavaMethod;
 import com.oracle.graal.nodes.Invoke;
+import com.oracle.graal.phases.common.inlining.info.elem.Inlineable;
 import com.oracle.graal.phases.util.Providers;
-import com.oracle.graal.phases.common.inlining.InliningUtil.Inlineable;
 
 /**
  * Represents an inlining opportunity where the compiler can statically determine a monomorphic

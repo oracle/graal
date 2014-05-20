@@ -30,6 +30,7 @@ import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.spi.Replacements;
 import com.oracle.graal.phases.common.inlining.InliningUtil;
 import com.oracle.graal.phases.common.inlining.info.InlineInfo;
+import com.oracle.graal.phases.common.inlining.info.elem.Inlineable;
 
 import java.util.Map;
 import java.util.function.ToDoubleFunction;
@@ -102,7 +103,7 @@ public abstract class AbstractInliningPolicy implements InliningPolicy {
     protected static int determineNodeCount(InlineInfo info) {
         int nodes = 0;
         for (int i = 0; i < info.numberOfMethods(); i++) {
-            InliningUtil.Inlineable elem = info.inlineableElementAt(i);
+            Inlineable elem = info.inlineableElementAt(i);
             if (elem != null) {
                 nodes += elem.getNodeCount();
             }
@@ -113,7 +114,7 @@ public abstract class AbstractInliningPolicy implements InliningPolicy {
     protected static double determineInvokeProbability(ToDoubleFunction<FixedNode> probabilities, InlineInfo info) {
         double invokeProbability = 0;
         for (int i = 0; i < info.numberOfMethods(); i++) {
-            InliningUtil.Inlineable callee = info.inlineableElementAt(i);
+            Inlineable callee = info.inlineableElementAt(i);
             Iterable<Invoke> invokes = callee.getInvokes();
             if (invokes.iterator().hasNext()) {
                 for (Invoke invoke : invokes) {

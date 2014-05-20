@@ -27,7 +27,7 @@ import com.oracle.graal.api.meta.MetaAccessProvider;
 import com.oracle.graal.api.meta.ResolvedJavaMethod;
 import com.oracle.graal.nodes.Invoke;
 import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.phases.common.inlining.InliningUtil;
+import com.oracle.graal.phases.common.inlining.info.elem.Inlineable;
 import com.oracle.graal.phases.util.Providers;
 
 /**
@@ -56,13 +56,13 @@ public interface InlineInfo {
 
     ResolvedJavaMethod methodAt(int index);
 
-    InliningUtil.Inlineable inlineableElementAt(int index);
+    Inlineable inlineableElementAt(int index);
 
     double probabilityAt(int index);
 
     double relevanceAt(int index);
 
-    void setInlinableElement(int index, InliningUtil.Inlineable inlineableElement);
+    void setInlinableElement(int index, Inlineable inlineableElement);
 
     /**
      * Performs the inlining described by this object and returns the node that represents the

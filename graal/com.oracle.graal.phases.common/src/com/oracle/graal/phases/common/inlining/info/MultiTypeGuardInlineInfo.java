@@ -41,7 +41,7 @@ import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.common.inlining.*;
-import com.oracle.graal.phases.common.inlining.InliningUtil.Inlineable;
+import com.oracle.graal.phases.common.inlining.info.elem.Inlineable;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.phases.util.*;
 

@@ -29,8 +29,8 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.CompareNode;
 import com.oracle.graal.nodes.extended.LoadHubNode;
 import com.oracle.graal.phases.common.inlining.InliningUtil;
+import com.oracle.graal.phases.common.inlining.info.elem.Inlineable;
 import com.oracle.graal.phases.util.Providers;
-import com.oracle.graal.phases.common.inlining.InliningUtil.Inlineable;
 import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
 
 /**

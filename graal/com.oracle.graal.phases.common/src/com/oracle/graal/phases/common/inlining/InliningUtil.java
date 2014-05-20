@@ -47,6 +47,7 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.common.inlining.info.*;
+import com.oracle.graal.phases.common.inlining.info.elem.Inlineable;
 
 public class InliningUtil {
 
@@ -57,13 +58,6 @@ public class InliningUtil {
      * parsed (which may be none for methods whose IR is retrieved from a cache).
      */
     public static final DebugMetric InlinedBytecodes = Debug.metric("InlinedBytecodes");
-
-    public interface Inlineable {
-
-        int getNodeCount();
-
-        Iterable<Invoke> getInvokes();
-    }
 
     public static class InlineableGraph implements Inlineable {
 
