@@ -338,15 +338,15 @@ public class InliningData {
         return new ExactInlineInfo(invoke, targetMethod);
     }
 
-    private void doInline(CallsiteHolder callerCallsiteHolder, MethodInvocation calleeInfo, Assumptions callerAssumptions) {
+    private void doInline(CallsiteHolder callerCallsiteHolder, MethodInvocation calleeInvocation, Assumptions callerAssumptions) {
         StructuredGraph callerGraph = callerCallsiteHolder.graph();
         Graph.Mark markBeforeInlining = callerGraph.getMark();
-        InlineInfo callee = calleeInfo.callee();
+        InlineInfo callee = calleeInvocation.callee();
         try {
             try (Debug.Scope scope = Debug.scope("doInline", callerGraph)) {
                 List<Node> invokeUsages = callee.invoke().asNode().usages().snapshot();
                 callee.inline(new Providers(context), callerAssumptions);
-                callerAssumptions.record(calleeInfo.assumptions());
+                callerAssumptions.record(calleeInvocation.assumptions());
                 metricInliningRuns.increment();
                 Debug.dump(callerGraph, "after %s", callee);
 
