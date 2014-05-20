@@ -403,7 +403,7 @@ public class InliningData {
         Invoke invoke = callsiteHolder.popInvoke();
         MethodInvocation callerInvocation = currentInvocation();
         Assumptions parentAssumptions = callerInvocation.assumptions();
-        InlineInfo info = getInlineInfo(invoke, parentAssumptions);
+        InlineInfo info = populateInlineInfo(invoke, parentAssumptions);
 
         if (info != null) {
             double invokeProbability = callsiteHolder.invokeProbability(invoke);
@@ -421,6 +421,11 @@ public class InliningData {
                 }
             }
         }
+    }
+
+    private InlineInfo populateInlineInfo(Invoke invoke, Assumptions parentAssumptions) {
+        InlineInfo info = getInlineInfo(invoke, parentAssumptions);
+        return info;
     }
 
     public int graphCount() {
