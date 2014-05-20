@@ -40,6 +40,7 @@ import com.oracle.graal.phases.common.CanonicalizerPhase;
 import com.oracle.graal.phases.common.inlining.InliningUtil;
 import com.oracle.graal.phases.common.inlining.info.*;
 import com.oracle.graal.phases.common.inlining.info.elem.Inlineable;
+import com.oracle.graal.phases.common.inlining.info.elem.InlineableMacroNode;
 import com.oracle.graal.phases.common.inlining.policy.InliningPolicy;
 import com.oracle.graal.phases.graph.FixedNodeProbabilityCache;
 import com.oracle.graal.phases.tiers.HighTierContext;
@@ -414,7 +415,7 @@ public class InliningData {
                 if (elem instanceof InliningUtil.InlineableGraph) {
                     pushGraph(((InliningUtil.InlineableGraph) elem).getGraph(), invokeProbability * info.probabilityAt(i), invokeRelevance * info.relevanceAt(i));
                 } else {
-                    assert elem instanceof InliningUtil.InlineableMacroNode;
+                    assert elem instanceof InlineableMacroNode;
                     pushDummyGraph();
                 }
             }

@@ -82,29 +82,6 @@ public class InliningUtil {
         }
     }
 
-    public static class InlineableMacroNode implements Inlineable {
-
-        private final Class<? extends FixedWithNextNode> macroNodeClass;
-
-        public InlineableMacroNode(Class<? extends FixedWithNextNode> macroNodeClass) {
-            this.macroNodeClass = macroNodeClass;
-        }
-
-        @Override
-        public int getNodeCount() {
-            return 1;
-        }
-
-        @Override
-        public Iterable<Invoke> getInvokes() {
-            return Collections.emptyList();
-        }
-
-        public Class<? extends FixedWithNextNode> getMacroNodeClass() {
-            return macroNodeClass;
-        }
-    }
-
     /**
      * Print a HotSpot-style inlining message to the console.
      */
