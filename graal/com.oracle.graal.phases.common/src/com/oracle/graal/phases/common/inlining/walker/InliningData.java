@@ -341,14 +341,14 @@ public class InliningData {
     private void doInline(CallsiteHolder callerCallsiteHolder, MethodInvocation calleeInvocation, Assumptions callerAssumptions) {
         StructuredGraph callerGraph = callerCallsiteHolder.graph();
         Graph.Mark markBeforeInlining = callerGraph.getMark();
-        InlineInfo callee = calleeInvocation.callee();
+        InlineInfo calleeInfo = calleeInvocation.callee();
         try {
             try (Debug.Scope scope = Debug.scope("doInline", callerGraph)) {
-                List<Node> invokeUsages = callee.invoke().asNode().usages().snapshot();
-                callee.inline(new Providers(context), callerAssumptions);
+                List<Node> invokeUsages = calleeInfo.invoke().asNode().usages().snapshot();
+                calleeInfo.inline(new Providers(context), callerAssumptions);
                 callerAssumptions.record(calleeInvocation.assumptions());
                 metricInliningRuns.increment();
-                Debug.dump(callerGraph, "after %s", callee);
+                Debug.dump(callerGraph, "after %s", calleeInfo);
 
                 if (OptCanonicalizer.getValue()) {
                     Graph.Mark markBeforeCanonicalization = callerGraph.getMark();
@@ -369,9 +369,9 @@ public class InliningData {
         } catch (BailoutException bailout) {
             throw bailout;
         } catch (AssertionError | RuntimeException e) {
-            throw new GraalInternalError(e).addContext(callee.toString());
+            throw new GraalInternalError(e).addContext(calleeInfo.toString());
         } catch (GraalInternalError e) {
-            throw e.addContext(callee.toString());
+            throw e.addContext(calleeInfo.toString());
         }
     }
 
