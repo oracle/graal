@@ -39,7 +39,7 @@ import com.oracle.truffle.api.nodes.*;
  */
 public abstract class InstrumentationNode extends Node implements ExecutionEvents {
 
-    public interface ProbeCallback {
+    interface ProbeCallback {
         void newTagAdded(ProbeImpl probe, PhylumTag tag);
     }
 
@@ -49,7 +49,7 @@ public abstract class InstrumentationNode extends Node implements ExecutionEvent
      *
      * @return a new probe
      */
-    public static ProbeImpl createProbe(SourceSection sourceSection, ProbeCallback probeCallback) {
+    static ProbeImpl createProbe(SourceSection sourceSection, ProbeCallback probeCallback) {
         return new ProbeImpl(sourceSection, probeCallback);
     }
 
@@ -64,7 +64,7 @@ public abstract class InstrumentationNode extends Node implements ExecutionEvent
     /**
      * @return the instance of {@link Probe} to which this instrument is attached.
      */
-    public Probe getProbe() {
+    protected Probe getProbe() {
         final InstrumentationNode parent = (InstrumentationNode) getParent();
         return parent == null ? null : parent.getProbe();
     }
@@ -199,7 +199,7 @@ public abstract class InstrumentationNode extends Node implements ExecutionEvent
      * May be categorized by one or more {@linkplain PhylumTag tags}, signifying information useful
      * for instrumentation about its AST location(s).
      */
-    public static final class ProbeImpl extends InstrumentationNode implements Probe {
+    static final class ProbeImpl extends InstrumentationNode implements Probe {
 
         private final ProbeCallback probeCallback;
 
@@ -259,7 +259,7 @@ public abstract class InstrumentationNode extends Node implements ExecutionEvent
         }
 
         @Override
-        public Probe getProbe() {
+        protected Probe getProbe() {
             return this;
         }
 
@@ -271,14 +271,14 @@ public abstract class InstrumentationNode extends Node implements ExecutionEvent
         }
 
         @SlowPath
-        public void setTrap(PhylumTrap trap) {
+        void setTrap(PhylumTrap trap) {
             assert trap == null || isTaggedAs(trap.getTag());
             probeUnchanged.invalidate();
             this.trap = trap;
             probeUnchanged = Truffle.getRuntime().createAssumption();
         }
 
-        public void notifyEnter(Node astNode, VirtualFrame frame) {
+        public void enter(Node astNode, VirtualFrame frame) {
             if (trap != null || next != null) {
                 if (!probeUnchanged.isValid()) {
                     CompilerDirectives.transferToInterpreter();
@@ -292,7 +292,7 @@ public abstract class InstrumentationNode extends Node implements ExecutionEvent
             }
         }
 
-        public void notifyLeave(Node astNode, VirtualFrame frame) {
+        public void leave(Node astNode, VirtualFrame frame) {
             if (next != null) {
                 if (!probeUnchanged.isValid()) {
                     CompilerDirectives.transferToInterpreter();
@@ -301,7 +301,7 @@ public abstract class InstrumentationNode extends Node implements ExecutionEvent
             }
         }
 
-        public void notifyLeave(Node astNode, VirtualFrame frame, boolean result) {
+        public void leave(Node astNode, VirtualFrame frame, boolean result) {
             if (next != null) {
                 if (!probeUnchanged.isValid()) {
                     CompilerDirectives.transferToInterpreter();
@@ -310,7 +310,7 @@ public abstract class InstrumentationNode extends Node implements ExecutionEvent
             }
         }
 
-        public void notifyLeave(Node astNode, VirtualFrame frame, byte result) {
+        public void leave(Node astNode, VirtualFrame frame, byte result) {
             if (next != null) {
                 if (!probeUnchanged.isValid()) {
                     CompilerDirectives.transferToInterpreter();
@@ -319,7 +319,7 @@ public abstract class InstrumentationNode extends Node implements ExecutionEvent
             }
         }
 
-        public void notifyLeave(Node astNode, VirtualFrame frame, short result) {
+        public void leave(Node astNode, VirtualFrame frame, short result) {
             if (next != null) {
                 if (!probeUnchanged.isValid()) {
                     CompilerDirectives.transferToInterpreter();
@@ -328,7 +328,7 @@ public abstract class InstrumentationNode extends Node implements ExecutionEvent
             }
         }
 
-        public void notifyLeave(Node astNode, VirtualFrame frame, int result) {
+        public void leave(Node astNode, VirtualFrame frame, int result) {
             if (next != null) {
                 if (!probeUnchanged.isValid()) {
                     CompilerDirectives.transferToInterpreter();
@@ -337,7 +337,7 @@ public abstract class InstrumentationNode extends Node implements ExecutionEvent
             }
         }
 
-        public void notifyLeave(Node astNode, VirtualFrame frame, long result) {
+        public void leave(Node astNode, VirtualFrame frame, long result) {
             if (next != null) {
                 if (!probeUnchanged.isValid()) {
                     CompilerDirectives.transferToInterpreter();
@@ -346,7 +346,7 @@ public abstract class InstrumentationNode extends Node implements ExecutionEvent
             }
         }
 
-        public void notifyLeave(Node astNode, VirtualFrame frame, char result) {
+        public void leave(Node astNode, VirtualFrame frame, char result) {
             if (next != null) {
                 if (!probeUnchanged.isValid()) {
                     CompilerDirectives.transferToInterpreter();
@@ -355,7 +355,7 @@ public abstract class InstrumentationNode extends Node implements ExecutionEvent
             }
         }
 
-        public void notifyLeave(Node astNode, VirtualFrame frame, float result) {
+        public void leave(Node astNode, VirtualFrame frame, float result) {
             if (next != null) {
                 if (!probeUnchanged.isValid()) {
                     CompilerDirectives.transferToInterpreter();
@@ -364,7 +364,7 @@ public abstract class InstrumentationNode extends Node implements ExecutionEvent
             }
         }
 
-        public void notifyLeave(Node astNode, VirtualFrame frame, double result) {
+        public void leave(Node astNode, VirtualFrame frame, double result) {
             if (next != null) {
                 if (!probeUnchanged.isValid()) {
                     CompilerDirectives.transferToInterpreter();
@@ -373,7 +373,7 @@ public abstract class InstrumentationNode extends Node implements ExecutionEvent
             }
         }
 
-        public void notifyLeave(Node astNode, VirtualFrame frame, Object result) {
+        public void leave(Node astNode, VirtualFrame frame, Object result) {
             if (next != null) {
                 if (!probeUnchanged.isValid()) {
                     CompilerDirectives.transferToInterpreter();
@@ -382,57 +382,13 @@ public abstract class InstrumentationNode extends Node implements ExecutionEvent
             }
         }
 
-        public void notifyLeaveExceptional(Node astNode, VirtualFrame frame, Exception e) {
+        public void leaveExceptional(Node astNode, VirtualFrame frame, Exception e) {
             if (next != null) {
                 if (!probeUnchanged.isValid()) {
                     CompilerDirectives.transferToInterpreter();
                 }
                 next.internalLeaveExceptional(astNode, frame, e);
             }
-        }
-
-        public void enter(Node astNode, VirtualFrame frame) {
-        }
-
-        public void leave(Node astNode, VirtualFrame frame) {
-        }
-
-        public void leave(Node astNode, VirtualFrame frame, boolean result) {
-            leave(astNode, frame, (Object) result);
-        }
-
-        public void leave(Node astNode, VirtualFrame frame, byte result) {
-            leave(astNode, frame, (Object) result);
-        }
-
-        public void leave(Node astNode, VirtualFrame frame, short result) {
-            leave(astNode, frame, (Object) result);
-        }
-
-        public void leave(Node astNode, VirtualFrame frame, int result) {
-            leave(astNode, frame, (Object) result);
-        }
-
-        public void leave(Node astNode, VirtualFrame frame, long result) {
-            leave(astNode, frame, (Object) result);
-        }
-
-        public void leave(Node astNode, VirtualFrame frame, char result) {
-            leave(astNode, frame, (Object) result);
-        }
-
-        public void leave(Node astNode, VirtualFrame frame, float result) {
-            leave(astNode, frame, (Object) result);
-        }
-
-        public void leave(Node astNode, VirtualFrame frame, double result) {
-            leave(astNode, frame, (Object) result);
-        }
-
-        public void leave(Node astNode, VirtualFrame frame, Object result) {
-        }
-
-        public void leaveExceptional(Node astNode, VirtualFrame frame, Exception e) {
         }
 
     }

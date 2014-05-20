@@ -31,29 +31,29 @@ import com.oracle.truffle.api.instrument.impl.*;
 import com.oracle.truffle.api.nodes.*;
 
 /**
- * A receiver of Truffle AST {@link ExecutionEvents}, propagated from a {@link Probe} to which the
- * instrument is attached, for the benefit of associated <em>tools</em>.
+ * A receiver of Truffle AST runtime {@link ExecutionEvents}, propagated from the {@link Probe} to
+ * which the instrument is attached, for the benefit of associated <em>tools</em>.
  * <p>
- * Guidelines for implementing Instruments, with particular attention to avoiding undesired runtime
+ * Guidelines for implementing {@link Instrument}s, with particular attention to minimize runtime
  * performance overhead:
  * <ol>
- * <li>Extend {@link Instrument} and override only the event handling methods for which some action
- * is needed.</li>
+ * <li>Extend this abstract class and override only the {@linkplain ExecutionEvents event handling
+ * methods} for which intervention is needed.</li>
  * <li>Instruments are Truffle {@link Node}s and should be coded as much as possible in the desired
  * <em>Truffle style</em>, documented more thoroughly elsewhere.</li>
  * <li>Maintain as little state as possible.</li>
- * <li>If state is necessary, make it {@code final} if possible.</li>
- * <li>If non-final state is necessary, annotate it as {@link CompilationFinal} and call
- * {@linkplain InstrumentationNode#notifyProbeChanged(Instrument)} whenever it is modified.</li>
+ * <li>If state is necessary, make object fields {@code final} if at all possible.</li>
+ * <li>If non-final object-valued state is necessary, annotate it as {@link CompilationFinal} and
+ * call {@linkplain InstrumentationNode#notifyProbeChanged(Instrument)} whenever it is modified.</li>
  * <li>Never store a {@link Frame} value in a field.</li>
  * <li>Minimize computation in standard execution paths.</li>
- * <li>Callbacks to tools should be made via callbacks provided at construction and stored in
- * {@code final} fields.</li>
- * <li>Tool callback methods should usually be annotated as {@link SlowPath} to prevent them from
- * being inlined into fast execution paths.</li>
- * <li>If computation is needed, and if performance is important, then the computation is best
- * expressed as a guest language AST and evaluated using standard Truffle mechanisms so that
- * standard Truffle optimizations can be applied.</li>
+ * <li>If runtime calls must be made back to a tool, construct the instrument with a callback stored
+ * in a {@code final} field.</li>
+ * <li>Tool methods called by the instrument should be annotated as {@link SlowPath} to prevent them
+ * from being inlined into fast execution paths.</li>
+ * <li>If computation in the execution path is needed, and if performance is important, then the
+ * computation is best expressed as a guest language AST and evaluated using standard Truffle
+ * mechanisms so that standard Truffle optimizations can be applied.</li>
  * </ol>
  * <p>
  * Guidelines for attachment to a {@link Probe}:
@@ -65,6 +65,18 @@ import com.oracle.truffle.api.nodes.*;
  * every copy, and so the Instrument will receive events corresponding to the intended syntactic
  * unit of code, independent of which AST copy is being executed.</li>
  * </ol>
+ * <p>
+ * Guidelines for handling {@link ExecutionEvents}:
+ * <ol>
+ * <li>Separate event methods are defined for each kind of possible return: object-valued,
+ * primitive-valued, void-valued, and exceptional.</li>
+ * <li>Override "leave*" primitive methods if the language implementation returns primitives and the
+ * instrument should avoid boxing them.</li>
+ * <li>On the other hand, if boxing all primitives for instrumentation is desired, it is only
+ * necessary to override the object-valued return methods, since the default implementation of each
+ * primitive-valued return method is to box the value and forward it to the object-valued return
+ * method.</li>
+ * </ol>
  *
  * <p>
  * <strong>Disclaimer:</strong> experimental; under development.
@@ -72,7 +84,7 @@ import com.oracle.truffle.api.nodes.*;
  * @see Probe
  * @see ASTNodeProber
  */
-public class Instrument extends InstrumentationNode {
+public abstract class Instrument extends InstrumentationNode {
 
     protected Instrument() {
     }

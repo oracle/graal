@@ -77,13 +77,14 @@ public class DefaultASTPrinter implements ASTPrinter {
         }
         if (node instanceof PhylumTagged) {
             final PhylumTagged taggedNode = (PhylumTagged) node;
+            p.print("[");
             String prefix = "";
             for (PhylumTag tag : taggedNode.getPhylumTags()) {
                 p.print(prefix);
                 prefix = ",";
                 p.print(tag.toString());
             }
-
+            p.print("]");
         }
 
         ArrayList<NodeField> childFields = new ArrayList<>();

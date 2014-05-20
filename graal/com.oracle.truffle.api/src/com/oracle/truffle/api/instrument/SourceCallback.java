@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.instrument.impl;
+package com.oracle.truffle.api.instrument;
 
 import com.oracle.truffle.api.*;
 
