@@ -39,11 +39,11 @@ public class InlineableGraph implements Inlineable {
 
     private final StructuredGraph graph;
 
-    public InlineableGraph(StructuredGraph graph) {
-        this.graph = graph;
+    public InlineableGraph(final ResolvedJavaMethod method, final Invoke invoke, final HighTierContext context, CanonicalizerPhase canonicalizer) {
+        this.graph = buildGraph(method, invoke, context, canonicalizer);
     }
 
-    public static StructuredGraph buildGraph(final ResolvedJavaMethod method, final Invoke invoke, final HighTierContext context, CanonicalizerPhase canonicalizer) {
+    private static StructuredGraph buildGraph(final ResolvedJavaMethod method, final Invoke invoke, final HighTierContext context, CanonicalizerPhase canonicalizer) {
         final StructuredGraph newGraph;
         final boolean parseBytecodes;
 

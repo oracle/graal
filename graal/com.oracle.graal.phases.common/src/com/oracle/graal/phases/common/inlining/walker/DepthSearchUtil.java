@@ -46,7 +46,7 @@ public class DepthSearchUtil {
         if (macroNodeClass != null) {
             return new InlineableMacroNode(macroNodeClass);
         } else {
-            return new InlineableGraph(InlineableGraph.buildGraph(method, invoke, context, canonicalizer));
+            return new InlineableGraph(method, invoke, context, canonicalizer);
         }
     }
 
