@@ -105,7 +105,7 @@ public class ObjectStampMeetTest extends ObjectStampTest {
     public void testMeetInterface0() {
         Stamp a = StampFactory.declared(getType(A.class));
         Stamp i = StampFactory.declared(getType(I.class));
-        Assert.assertNotSame(StampFactory.object(), meet(a, i));
+        Assert.assertEquals(StampFactory.declared(getType(Object.class)), meet(a, i));
     }
 
     @Test
