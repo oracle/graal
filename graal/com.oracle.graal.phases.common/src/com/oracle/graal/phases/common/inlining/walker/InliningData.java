@@ -378,13 +378,13 @@ public class InliningData {
     /**
      * @return true iff inlining was actually performed
      */
-    private boolean tryToInline(CallsiteHolder callerCallsiteHolder, MethodInvocation calleeInfo, MethodInvocation parentInvocation, int inliningDepth) {
-        InlineInfo callee = calleeInfo.callee();
+    private boolean tryToInline(CallsiteHolder callerCallsiteHolder, MethodInvocation calleeInvocation, MethodInvocation parentInvocation, int inliningDepth) {
+        InlineInfo callee = calleeInvocation.callee();
         Assumptions callerAssumptions = parentInvocation.assumptions();
         metricInliningConsidered.increment();
 
-        if (inliningPolicy.isWorthInlining(probabilities, context.getReplacements(), callee, inliningDepth, calleeInfo.probability(), calleeInfo.relevance(), true)) {
-            doInline(callerCallsiteHolder, calleeInfo, callerAssumptions);
+        if (inliningPolicy.isWorthInlining(probabilities, context.getReplacements(), callee, inliningDepth, calleeInvocation.probability(), calleeInvocation.relevance(), true)) {
+            doInline(callerCallsiteHolder, calleeInvocation, callerAssumptions);
             return true;
         }
 
