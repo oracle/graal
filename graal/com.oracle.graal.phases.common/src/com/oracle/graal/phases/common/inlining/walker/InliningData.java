@@ -40,6 +40,7 @@ import com.oracle.graal.phases.common.CanonicalizerPhase;
 import com.oracle.graal.phases.common.inlining.InliningUtil;
 import com.oracle.graal.phases.common.inlining.info.*;
 import com.oracle.graal.phases.common.inlining.info.elem.Inlineable;
+import com.oracle.graal.phases.common.inlining.info.elem.InlineableGraph;
 import com.oracle.graal.phases.common.inlining.info.elem.InlineableMacroNode;
 import com.oracle.graal.phases.common.inlining.policy.InliningPolicy;
 import com.oracle.graal.phases.graph.FixedNodeProbabilityCache;
@@ -412,8 +413,8 @@ public class InliningData {
             for (int i = 0; i < info.numberOfMethods(); i++) {
                 Inlineable elem = DepthSearchUtil.getInlineableElement(info.methodAt(i), info.invoke(), context.replaceAssumptions(calleeInvocation.assumptions()), canonicalizer);
                 info.setInlinableElement(i, elem);
-                if (elem instanceof InliningUtil.InlineableGraph) {
-                    pushGraph(((InliningUtil.InlineableGraph) elem).getGraph(), invokeProbability * info.probabilityAt(i), invokeRelevance * info.relevanceAt(i));
+                if (elem instanceof InlineableGraph) {
+                    pushGraph(((InlineableGraph) elem).getGraph(), invokeProbability * info.probabilityAt(i), invokeRelevance * info.relevanceAt(i));
                 } else {
                     assert elem instanceof InlineableMacroNode;
                     pushDummyGraph();

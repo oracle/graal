@@ -31,7 +31,7 @@ import com.oracle.graal.phases.common.inlining.InliningUtil;
 
 import com.oracle.graal.phases.common.inlining.info.elem.Inlineable;
 import com.oracle.graal.phases.common.inlining.info.elem.InlineableMacroNode;
-import com.oracle.graal.phases.common.inlining.InliningUtil.InlineableGraph;
+import com.oracle.graal.phases.common.inlining.info.elem.InlineableGraph;
 
 public abstract class AbstractInlineInfo implements InlineInfo {
 

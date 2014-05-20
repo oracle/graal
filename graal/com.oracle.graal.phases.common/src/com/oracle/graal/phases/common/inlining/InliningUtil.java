@@ -47,7 +47,6 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.common.inlining.info.*;
-import com.oracle.graal.phases.common.inlining.info.elem.Inlineable;
 
 public class InliningUtil {
 
@@ -58,29 +57,6 @@ public class InliningUtil {
      * parsed (which may be none for methods whose IR is retrieved from a cache).
      */
     public static final DebugMetric InlinedBytecodes = Debug.metric("InlinedBytecodes");
-
-    public static class InlineableGraph implements Inlineable {
-
-        private final StructuredGraph graph;
-
-        public InlineableGraph(StructuredGraph graph) {
-            this.graph = graph;
-        }
-
-        @Override
-        public int getNodeCount() {
-            return graph.getNodeCount();
-        }
-
-        @Override
-        public Iterable<Invoke> getInvokes() {
-            return graph.getInvokes();
-        }
-
-        public StructuredGraph getGraph() {
-            return graph;
-        }
-    }
 
     /**
      * Print a HotSpot-style inlining message to the console.

@@ -32,6 +32,7 @@ import com.oracle.graal.phases.common.CanonicalizerPhase;
 import com.oracle.graal.phases.common.DeadCodeEliminationPhase;
 import com.oracle.graal.phases.common.inlining.InliningUtil;
 import com.oracle.graal.phases.common.inlining.info.elem.Inlineable;
+import com.oracle.graal.phases.common.inlining.info.elem.InlineableGraph;
 import com.oracle.graal.phases.common.inlining.info.elem.InlineableMacroNode;
 import com.oracle.graal.phases.tiers.HighTierContext;
 
@@ -52,7 +53,7 @@ public class DepthSearchUtil {
         if (macroNodeClass != null) {
             return new InlineableMacroNode(macroNodeClass);
         } else {
-            return new InliningUtil.InlineableGraph(buildGraph(method, invoke, context, canonicalizer));
+            return new InlineableGraph(buildGraph(method, invoke, context, canonicalizer));
         }
     }
 
