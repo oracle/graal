@@ -374,6 +374,30 @@ public class MemoryScheduleTest extends GraphScheduleTest {
         assertReadAndWriteInSameBlock(schedule, false);
     }
 
+    public static int testAntiDependencySnippet(int a) {
+        /*
+         * This read must not be scheduled after the following write.
+         */
+        int res = container.a;
+        container.a = 10;
+
+        /*
+         * Add some more basic blocks.
+         */
+        if (a < 0) {
+            container.b = 20;
+        }
+        container.c = 30;
+        return res;
+    }
+
+    @Test
+    public void testAntiDependency() {
+        SchedulePhase schedule = getFinalSchedule("testAntiDependencySnippet", TestMode.WITHOUT_FRAMESTATES);
+        assertDeepEquals(4, schedule.getCFG().getBlocks().size());
+        assertReadBeforeAllWritesInStartBlock(schedule);
+    }
+
     /**
      * testing scheduling within a block.
      */
@@ -572,6 +596,20 @@ public class MemoryScheduleTest extends GraphScheduleTest {
         FloatingReadNode read = graph.getNodes().filter(FloatingReadNode.class).first();
         WriteNode write = graph.getNodes().filter(WriteNode.class).first();
         assertTrue(!(inSame ^ schedule.getCFG().blockFor(read) == schedule.getCFG().blockFor(write)));
+    }
+
+    private static void assertReadBeforeAllWritesInStartBlock(SchedulePhase schedule) {
+        boolean writeNodeFound = false;
+        boolean readNodeFound = false;
+        for (Node node : schedule.nodesFor(schedule.getCFG().getStartBlock())) {
+            if (node instanceof FloatingReadNode) {
+                assertTrue(!writeNodeFound);
+                readNodeFound = true;
+            } else if (node instanceof WriteNode) {
+                writeNodeFound = true;
+            }
+        }
+        assertTrue(readNodeFound);
     }
 
     private SchedulePhase getFinalSchedule(final String snippet, final TestMode mode) {
