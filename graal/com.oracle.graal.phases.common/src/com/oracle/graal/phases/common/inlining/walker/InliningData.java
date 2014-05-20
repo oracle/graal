@@ -403,18 +403,17 @@ public class InliningData {
         Invoke invoke = callsiteHolder.popInvoke();
         MethodInvocation callerInvocation = currentInvocation();
         Assumptions parentAssumptions = callerInvocation.assumptions();
-        InlineInfo info = populateInlineInfo(invoke, parentAssumptions);
+        Assumptions calleeAssumptions = new Assumptions(parentAssumptions.useOptimisticAssumptions());
+        InlineInfo info = populateInlineInfo(invoke, parentAssumptions, calleeAssumptions);
 
         if (info != null) {
             double invokeProbability = callsiteHolder.invokeProbability(invoke);
             double invokeRelevance = callsiteHolder.invokeRelevance(invoke);
-            Assumptions calleeAssumptions = new Assumptions(parentAssumptions.useOptimisticAssumptions());
             MethodInvocation methodInvocation = new MethodInvocation(info, calleeAssumptions, invokeProbability, invokeRelevance);
             pushInvocation(methodInvocation);
 
             for (int i = 0; i < info.numberOfMethods(); i++) {
-                Inlineable elem = Inlineable.getInlineableElement(info.methodAt(i), info.invoke(), context.replaceAssumptions(calleeAssumptions), canonicalizer);
-                info.setInlinableElement(i, elem);
+                Inlineable elem = info.inlineableElementAt(i);
                 if (elem instanceof InlineableGraph) {
                     pushGraph(((InlineableGraph) elem).getGraph(), invokeProbability * info.probabilityAt(i), invokeRelevance * info.relevanceAt(i));
                 } else {
@@ -425,8 +424,15 @@ public class InliningData {
         }
     }
 
-    private InlineInfo populateInlineInfo(Invoke invoke, Assumptions parentAssumptions) {
+    private InlineInfo populateInlineInfo(Invoke invoke, Assumptions parentAssumptions, Assumptions calleeAssumptions) {
         InlineInfo info = getInlineInfo(invoke, parentAssumptions);
+        if (info == null) {
+            return null;
+        }
+        for (int i = 0; i < info.numberOfMethods(); i++) {
+            Inlineable elem = Inlineable.getInlineableElement(info.methodAt(i), info.invoke(), context.replaceAssumptions(calleeAssumptions), canonicalizer);
+            info.setInlinableElement(i, elem);
+        }
         return info;
     }
 
