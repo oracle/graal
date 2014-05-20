@@ -506,4 +506,31 @@ public abstract class Node implements Cloneable {
             throw new RuntimeException(e);
         }
     }
+
+    /**
+     * Returns a user-readable description of the purpose of the Node, or "" if no description is
+     * available.
+     */
+    public String getDescription() {
+        NodeInfo info = getClass().getAnnotation(NodeInfo.class);
+        if (info != null) {
+            return info.description();
+        }
+        return "";
+    }
+
+    /**
+     * Returns a string representing the language this node has been implemented for. If the
+     * language is unknown, returns "".
+     */
+    public String getLanguage() {
+        NodeInfo info = getClass().getAnnotation(NodeInfo.class);
+        if (info != null && info.language() != null && info.language().length() > 0) {
+            return info.language();
+        }
+        if (parent != null) {
+            return parent.getLanguage();
+        }
+        return "";
+    }
 }

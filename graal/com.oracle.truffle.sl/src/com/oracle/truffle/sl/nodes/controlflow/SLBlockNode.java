@@ -30,7 +30,7 @@ import com.oracle.truffle.sl.nodes.*;
 /**
  * A statement node that just executes a list of other statements.
  */
-@NodeInfo(shortName = "block")
+@NodeInfo(shortName = "block", description = "The node implementing a source code block")
 public final class SLBlockNode extends SLStatementNode {
 
     /**

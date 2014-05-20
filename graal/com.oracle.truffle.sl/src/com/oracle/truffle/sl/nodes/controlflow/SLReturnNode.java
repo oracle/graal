@@ -34,7 +34,7 @@ import com.oracle.truffle.sl.runtime.*;
  * caught by the {@link SLFunctionBodyNode#executeGeneric function body}. The exception transports
  * the return value.
  */
-@NodeInfo(shortName = "return")
+@NodeInfo(shortName = "return", description = "The node implementing a return statement")
 public final class SLReturnNode extends SLStatementNode {
 
     @Child private SLExpressionNode valueNode;

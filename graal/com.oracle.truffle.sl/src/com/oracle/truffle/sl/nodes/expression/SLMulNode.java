@@ -25,6 +25,7 @@ package com.oracle.truffle.sl.nodes.expression;
 import java.math.*;
 
 import com.oracle.truffle.api.*;
+import com.oracle.truffle.api.CompilerDirectives.*;
 import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.sl.nodes.*;
@@ -41,6 +42,7 @@ public abstract class SLMulNode extends SLBinaryNode {
     }
 
     @Specialization
+    @SlowPath
     protected BigInteger mul(BigInteger left, BigInteger right) {
         return left.multiply(right);
     }
