@@ -211,6 +211,7 @@ public interface ResolvedJavaType extends JavaType, ModifiersProvider {
      * {@link #findUniqueConcreteMethod(ResolvedJavaMethod)}.
      *
      * @param method the method to select the implementation of
+     * @param callerType the caller or context type used to perform access checks
      * @return the concrete method that would be selected at runtime, or {@code null} if there is no
      *         concrete implementation of {@code method} in this type or any of its superclasses
      */
