@@ -22,9 +22,23 @@
  */
 package com.oracle.graal.phases.common.inlining.info.elem;
 
+import com.oracle.graal.api.meta.ResolvedJavaMethod;
+import com.oracle.graal.nodes.FixedWithNextNode;
 import com.oracle.graal.nodes.Invoke;
+import com.oracle.graal.phases.common.CanonicalizerPhase;
+import com.oracle.graal.phases.common.inlining.InliningUtil;
+import com.oracle.graal.phases.tiers.HighTierContext;
 
 public interface Inlineable {
+
+    static Inlineable getInlineableElement(final ResolvedJavaMethod method, Invoke invoke, HighTierContext context, CanonicalizerPhase canonicalizer) {
+        Class<? extends FixedWithNextNode> macroNodeClass = InliningUtil.getMacroNodeClass(context.getReplacements(), method);
+        if (macroNodeClass != null) {
+            return new InlineableMacroNode(macroNodeClass);
+        } else {
+            return new InlineableGraph(method, invoke, context, canonicalizer);
+        }
+    }
 
     int getNodeCount();
 
