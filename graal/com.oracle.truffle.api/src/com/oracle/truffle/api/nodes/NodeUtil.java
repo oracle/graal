@@ -47,6 +47,8 @@ public final class NodeUtil {
     public interface FieldOffsetProvider {
 
         long objectFieldOffset(Field field);
+
+        int getTypeSize(Class<?> clazz);
     }
 
     private static final FieldOffsetProvider unsafeFieldOffsetProvider = new FieldOffsetProvider() {
@@ -54,6 +56,17 @@ public final class NodeUtil {
         @Override
         public long objectFieldOffset(Field field) {
             return unsafe.objectFieldOffset(field);
+        }
+
+        @Override
+        public int getTypeSize(Class<?> clazz) {
+            if (!clazz.isPrimitive()) {
+                return Unsafe.ARRAY_OBJECT_INDEX_SCALE;
+            } else if (clazz == int.class) {
+                return Unsafe.ARRAY_INT_INDEX_SCALE;
+            } else {
+                throw new UnsupportedOperationException("unsupported field type: " + clazz);
+            }
         }
     };
 
