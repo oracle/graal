@@ -338,17 +338,17 @@ public class InliningData {
         return new ExactInlineInfo(invoke, targetMethod);
     }
 
-    private void doInline(CallsiteHolder callerCallsiteHolder, MethodInvocation calleeInfo, Assumptions callerAssumptions) {
+    private void doInline(CallsiteHolder callerCallsiteHolder, MethodInvocation calleeInvocation, Assumptions callerAssumptions) {
         StructuredGraph callerGraph = callerCallsiteHolder.graph();
         Graph.Mark markBeforeInlining = callerGraph.getMark();
-        InlineInfo callee = calleeInfo.callee();
+        InlineInfo calleeInfo = calleeInvocation.callee();
         try {
             try (Debug.Scope scope = Debug.scope("doInline", callerGraph)) {
-                List<Node> invokeUsages = callee.invoke().asNode().usages().snapshot();
-                callee.inline(new Providers(context), callerAssumptions);
-                callerAssumptions.record(calleeInfo.assumptions());
+                List<Node> invokeUsages = calleeInfo.invoke().asNode().usages().snapshot();
+                calleeInfo.inline(new Providers(context), callerAssumptions);
+                callerAssumptions.record(calleeInvocation.assumptions());
                 metricInliningRuns.increment();
-                Debug.dump(callerGraph, "after %s", callee);
+                Debug.dump(callerGraph, "after %s", calleeInfo);
 
                 if (OptCanonicalizer.getValue()) {
                     Graph.Mark markBeforeCanonicalization = callerGraph.getMark();
@@ -369,27 +369,27 @@ public class InliningData {
         } catch (BailoutException bailout) {
             throw bailout;
         } catch (AssertionError | RuntimeException e) {
-            throw new GraalInternalError(e).addContext(callee.toString());
+            throw new GraalInternalError(e).addContext(calleeInfo.toString());
         } catch (GraalInternalError e) {
-            throw e.addContext(callee.toString());
+            throw e.addContext(calleeInfo.toString());
         }
     }
 
     /**
      * @return true iff inlining was actually performed
      */
-    private boolean tryToInline(CallsiteHolder callerCallsiteHolder, MethodInvocation calleeInfo, MethodInvocation parentInvocation, int inliningDepth) {
-        InlineInfo callee = calleeInfo.callee();
+    private boolean tryToInline(CallsiteHolder callerCallsiteHolder, MethodInvocation calleeInvocation, MethodInvocation parentInvocation, int inliningDepth) {
+        InlineInfo calleeInfo = calleeInvocation.callee();
         Assumptions callerAssumptions = parentInvocation.assumptions();
         metricInliningConsidered.increment();
 
-        if (inliningPolicy.isWorthInlining(probabilities, context.getReplacements(), callee, inliningDepth, calleeInfo.probability(), calleeInfo.relevance(), true)) {
-            doInline(callerCallsiteHolder, calleeInfo, callerAssumptions);
+        if (inliningPolicy.isWorthInlining(probabilities, context.getReplacements(), calleeInfo, inliningDepth, calleeInvocation.probability(), calleeInvocation.relevance(), true)) {
+            doInline(callerCallsiteHolder, calleeInvocation, callerAssumptions);
             return true;
         }
 
         if (context.getOptimisticOptimizations().devirtualizeInvokes()) {
-            callee.tryToDevirtualizeInvoke(context.getMetaAccess(), callerAssumptions);
+            calleeInfo.tryToDevirtualizeInvoke(context.getMetaAccess(), callerAssumptions);
         }
 
         return false;
@@ -403,16 +403,17 @@ public class InliningData {
         Invoke invoke = callsiteHolder.popInvoke();
         MethodInvocation callerInvocation = currentInvocation();
         Assumptions parentAssumptions = callerInvocation.assumptions();
-        InlineInfo info = getInlineInfo(invoke, parentAssumptions);
+        Assumptions calleeAssumptions = new Assumptions(parentAssumptions.useOptimisticAssumptions());
+        InlineInfo info = populateInlineInfo(invoke, parentAssumptions, calleeAssumptions);
 
         if (info != null) {
             double invokeProbability = callsiteHolder.invokeProbability(invoke);
             double invokeRelevance = callsiteHolder.invokeRelevance(invoke);
-            MethodInvocation calleeInvocation = pushInvocation(info, parentAssumptions, invokeProbability, invokeRelevance);
+            MethodInvocation methodInvocation = new MethodInvocation(info, calleeAssumptions, invokeProbability, invokeRelevance);
+            pushInvocation(methodInvocation);
 
             for (int i = 0; i < info.numberOfMethods(); i++) {
-                Inlineable elem = Inlineable.getInlineableElement(info.methodAt(i), info.invoke(), context.replaceAssumptions(calleeInvocation.assumptions()), canonicalizer);
-                info.setInlinableElement(i, elem);
+                Inlineable elem = info.inlineableElementAt(i);
                 if (elem instanceof InlineableGraph) {
                     pushGraph(((InlineableGraph) elem).getGraph(), invokeProbability * info.probabilityAt(i), invokeRelevance * info.relevanceAt(i));
                 } else {
@@ -421,6 +422,18 @@ public class InliningData {
                 }
             }
         }
+    }
+
+    private InlineInfo populateInlineInfo(Invoke invoke, Assumptions parentAssumptions, Assumptions calleeAssumptions) {
+        InlineInfo info = getInlineInfo(invoke, parentAssumptions);
+        if (info == null) {
+            return null;
+        }
+        for (int i = 0; i < info.numberOfMethods(); i++) {
+            Inlineable elem = Inlineable.getInlineableElement(info.methodAt(i), info.invoke(), context.replaceAssumptions(calleeAssumptions), canonicalizer);
+            info.setInlinableElement(i, elem);
+        }
+        return info;
     }
 
     public int graphCount() {
@@ -479,12 +492,10 @@ public class InliningData {
         return invocationQueue.peekFirst();
     }
 
-    private MethodInvocation pushInvocation(InlineInfo info, Assumptions assumptions, double probability, double relevance) {
-        MethodInvocation methodInvocation = new MethodInvocation(info, new Assumptions(assumptions.useOptimisticAssumptions()), probability, relevance);
+    private void pushInvocation(MethodInvocation methodInvocation) {
         invocationQueue.addFirst(methodInvocation);
-        maxGraphs += info.numberOfMethods();
+        maxGraphs += methodInvocation.callee().numberOfMethods();
         assert graphQueue.size() <= maxGraphs;
-        return methodInvocation;
     }
 
     private void popInvocation() {

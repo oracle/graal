@@ -27,7 +27,7 @@ import com.oracle.graal.compiler.common.spi.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.hotspot.HotSpotVMConfig.CompressEncoding;
 
-public class NarrowOopStamp extends ObjectStamp {
+public class NarrowOopStamp extends AbstractObjectStamp {
 
     public static final PlatformKind NarrowOop = new PlatformKind() {
 
@@ -43,13 +43,18 @@ public class NarrowOopStamp extends ObjectStamp {
 
     private final CompressEncoding encoding;
 
-    public NarrowOopStamp(ObjectStamp stamp, CompressEncoding encoding) {
-        this(stamp.type(), stamp.isExactType(), stamp.nonNull(), stamp.alwaysNull(), encoding);
-    }
-
     public NarrowOopStamp(ResolvedJavaType type, boolean exactType, boolean nonNull, boolean alwaysNull, CompressEncoding encoding) {
         super(type, exactType, nonNull, alwaysNull);
         this.encoding = encoding;
+    }
+
+    @Override
+    protected AbstractObjectStamp copyWith(ResolvedJavaType type, boolean exactType, boolean nonNull, boolean alwaysNull) {
+        return new NarrowOopStamp(type, exactType, nonNull, alwaysNull, encoding);
+    }
+
+    public static Stamp compressed(AbstractObjectStamp stamp, CompressEncoding encoding) {
+        return new NarrowOopStamp(stamp.type(), stamp.isExactType(), stamp.nonNull(), stamp.alwaysNull(), encoding);
     }
 
     public Stamp uncompressed() {
@@ -61,21 +66,6 @@ public class NarrowOopStamp extends ObjectStamp {
     }
 
     @Override
-    public Stamp unrestricted() {
-        return new NarrowOopStamp((ObjectStamp) super.unrestricted(), encoding);
-    }
-
-    @Override
-    public Stamp illegal() {
-        return new NarrowOopStamp((ObjectStamp) super.illegal(), encoding);
-    }
-
-    @Override
-    public Kind getStackKind() {
-        return Kind.Object;
-    }
-
-    @Override
     public PlatformKind getPlatformKind(PlatformKindTool tool) {
         return NarrowOop;
     }
@@ -84,30 +74,8 @@ public class NarrowOopStamp extends ObjectStamp {
     public String toString() {
         StringBuilder str = new StringBuilder();
         str.append('n');
-        str.append(super.toString());
+        appendString(str);
         return str.toString();
-    }
-
-    @Override
-    public Stamp meet(Stamp otherStamp) {
-        if (this == otherStamp) {
-            return this;
-        }
-        if (!isCompatible(otherStamp)) {
-            return StampFactory.illegal();
-        }
-        return new NarrowOopStamp((ObjectStamp) super.meet(otherStamp), encoding);
-    }
-
-    @Override
-    public Stamp join(Stamp otherStamp) {
-        if (this == otherStamp) {
-            return this;
-        }
-        if (!isCompatible(otherStamp)) {
-            return StampFactory.illegal(Kind.Illegal);
-        }
-        return new NarrowOopStamp((ObjectStamp) super.join(otherStamp), encoding);
     }
 
     @Override

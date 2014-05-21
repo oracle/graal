@@ -71,7 +71,7 @@ public final class CompressionNode extends FloatingNode implements LIRLowerable,
             case Compress:
                 if (input instanceof ObjectStamp) {
                     // compressed oop
-                    return new NarrowOopStamp((ObjectStamp) input, encoding);
+                    return NarrowOopStamp.compressed((ObjectStamp) input, encoding);
                 } else if (input instanceof IntegerStamp) {
                     // compressed metaspace pointer
                     assert PrimitiveStamp.getBits(input) == 64;
