@@ -93,6 +93,10 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
+        if (stamp() == StampFactory.forNodeIntrinsic()) {
+            /* The actual stamp has not been set yet. */
+            return this;
+        }
         inferStamp();
         if (stamp().equals(object().stamp())) {
             return object();
