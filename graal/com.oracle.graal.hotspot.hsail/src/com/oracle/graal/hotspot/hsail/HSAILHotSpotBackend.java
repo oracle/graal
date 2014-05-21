@@ -316,7 +316,6 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
         // from host code
         result.setTotalFrameSize(hostCode.getTotalFrameSize());
         result.setCustomStackAreaOffset(hostCode.getCustomStackAreaOffset());
-        result.setRegisterRestoreEpilogueOffset(hostCode.getRegisterRestoreEpilogueOffset());
         result.setTargetCode(hostCode.getTargetCode(), hostCode.getTargetCodeSize());
         for (CodeAnnotation annotation : hostCode.getAnnotations()) {
             result.addAnnotation(annotation);
@@ -409,7 +408,7 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
     }
 
     @Override
-    public LIRGenerationResult newLIRGenerationResult(LIR lir, FrameMap frameMap, Object stub) {
+    public LIRGenerationResult newLIRGenerationResult(LIR lir, FrameMap frameMap, ResolvedJavaMethod method, Object stub) {
         return new HSAILHotSpotLIRGenerationResult(lir, frameMap);
     }
 
