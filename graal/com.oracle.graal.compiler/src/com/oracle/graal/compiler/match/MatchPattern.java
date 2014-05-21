@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.compiler.match;
 
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.Node.Verbosity;
 import com.oracle.graal.graph.*;
@@ -193,36 +192,6 @@ public class MatchPattern {
         Result result = matchUsage(node, context, true);
         if (result == Result.OK) {
             result = context.validate();
-        }
-        return result;
-    }
-
-    /**
-     * Convert a list of field names into {@link com.oracle.graal.graph.NodeClass.Position} objects
-     * that can be used to read them during a match. The names should already have been confirmed to
-     * exist in the type.
-     *
-     * @param theClass
-     * @param names
-     * @return an array of Position objects corresponding to the named fields.
-     */
-    public static NodeClass.Position[] findPositions(Class<? extends ValueNode> theClass, String[] names) {
-        NodeClass.Position[] result = new NodeClass.Position[names.length];
-        NodeClass nodeClass = NodeClass.get(theClass);
-        for (int i = 0; i < names.length; i++) {
-            for (NodeClass.Position position : nodeClass.getFirstLevelInputPositions()) {
-                String name = nodeClass.getName(position);
-                if (name.endsWith("#NDF")) {
-                    name = name.substring(0, name.length() - 4);
-                }
-                if (name.equals(names[i])) {
-                    result[i] = position;
-                    break;
-                }
-            }
-            if (result[i] == null) {
-                throw new GraalInternalError("unknown field \"%s\" in class %s", names[i], theClass);
-            }
         }
         return result;
     }

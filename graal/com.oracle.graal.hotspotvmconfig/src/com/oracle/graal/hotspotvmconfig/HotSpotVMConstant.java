@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,14 +20,25 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot;
+package com.oracle.graal.hotspotvmconfig;
 
-import java.lang.annotation.*;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
+/**
+ * Refers to a C++ constant in the VM.
+ */
 @Target(ElementType.FIELD)
 @Retention(RetentionPolicy.RUNTIME)
-public @interface HotSpotVMFlag {
+public @interface HotSpotVMConstant {
 
+    /**
+     * Returns the name of the constant.
+     *
+     * @return name of constant
+     */
     String name();
 
     /**
@@ -35,7 +46,7 @@ public @interface HotSpotVMFlag {
      * {@link HotSpotVMConfig#getHostArchitectureName()}. An empty list implies that the constant is
      * required on all architectures.
      */
+    @SuppressWarnings("javadoc")
     String[] archs() default {};
 
-    boolean optional() default false;
 }

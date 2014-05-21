@@ -197,4 +197,9 @@ public final class NodeBitMap implements NodeIterable<Node> {
     public boolean contains(Node node) {
         return isMarked(node);
     }
+
+    @Override
+    public String toString() {
+        return snapshot().toString();
+    }
 }

@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.phases.common.inlining;
+package com.oracle.graal.phases.common.inlining.walker;
 
 import static com.oracle.graal.graph.util.CollectionsAccess.*;
 

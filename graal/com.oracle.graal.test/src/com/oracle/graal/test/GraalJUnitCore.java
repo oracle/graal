@@ -49,6 +49,8 @@ public class GraalJUnitCore {
         List<Failure> missingClasses = new ArrayList<>();
         boolean verbose = false;
         boolean enableTiming = false;
+        boolean color = false;
+        boolean eagerStackTrace = false;
         for (String each : args) {
             if (each.charAt(0) == '-') {
                 // command line arguments
@@ -56,6 +58,10 @@ public class GraalJUnitCore {
                     verbose = true;
                 } else if (each.contentEquals("-JUnitEnableTiming")) {
                     enableTiming = true;
+                } else if (each.contentEquals("-JUnitColor")) {
+                    color = true;
+                } else if (each.contentEquals("-JUnitEagerStackTrace")) {
+                    eagerStackTrace = true;
                 } else {
                     system.out().println("Unknown command line argument: " + each);
                 }
@@ -79,6 +85,12 @@ public class GraalJUnitCore {
         }
         if (enableTiming) {
             graalListener = new TimingDecorator(graalListener);
+        }
+        if (color) {
+            graalListener = new AnsiTerminalDecorator(graalListener);
+        }
+        if (eagerStackTrace) {
+            graalListener = new EagerStackTraceDecorator(graalListener);
         }
         junitCore.addListener(GraalTextListener.createRunListener(graalListener));
         Result result = junitCore.run(classes.toArray(new Class[0]));

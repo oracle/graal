@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,32 +20,38 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot;
+package com.oracle.graal.hotspotvmconfig;
 
 import java.lang.annotation.*;
 
+/**
+ * Refers to a C++ type in the VM.
+ */
 @Target(ElementType.FIELD)
 @Retention(RetentionPolicy.RUNTIME)
-public @interface HotSpotVMField {
+public @interface HotSpotVMType {
 
+    /**
+     * Types of information this annotation can return.
+     */
     enum Type {
-        OFFSET,
-        ADDRESS,
-        VALUE;
+        /**
+         * Returns the size of the type (C++ {@code sizeof()}).
+         */
+        SIZE;
     }
 
-    String name();
-
-    String type();
-
+    /**
+     * Specifies what type of information to return.
+     *
+     * @see Type
+     */
     Type get();
 
     /**
-     * List of architectures where this constant is required. Names are derived from
-     * {@link HotSpotVMConfig#getHostArchitectureName()}. An empty list implies that the constant is
-     * required on all architectures.
+     * Returns the name of the type.
+     *
+     * @return name of type
      */
-    String[] archs() default {};
-
-    boolean optional() default false;
+    String name();
 }

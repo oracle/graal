@@ -39,8 +39,8 @@ public enum AMD64Arithmetic {
 
     // @formatter:off
 
-    IADD, ISUB, IMUL, IDIV, IDIVREM, IREM, IUDIV, IUREM, IAND, IOR, IXOR, ISHL, ISHR, IUSHR, IROL, IROR,
-    LADD, LSUB, LMUL, LDIV, LDIVREM, LREM, LUDIV, LUREM, LAND, LOR, LXOR, LSHL, LSHR, LUSHR, LROL, LROR,
+    IADD, ISUB, IMUL, IUMUL, IDIV, IDIVREM, IREM, IUDIV, IUREM, IAND, IOR, IXOR, ISHL, ISHR, IUSHR, IROL, IROR,
+    LADD, LSUB, LMUL, LUMUL, LDIV, LDIVREM, LREM, LUDIV, LUREM, LAND, LOR, LXOR, LSHL, LSHR, LUSHR, LROL, LROR,
     FADD, FSUB, FMUL, FDIV, FREM, FAND, FOR, FXOR,
     DADD, DSUB, DMUL, DDIV, DREM, DAND, DOR, DXOR,
     INEG, LNEG, INOT, LNOT,
@@ -339,6 +339,64 @@ public enum AMD64Arithmetic {
         public void verify() {
             super.verify();
             verifyKind(opcode, result, x, y);
+        }
+    }
+
+    public static class MulHighOp extends AMD64LIRInstruction {
+
+        @Opcode private final AMD64Arithmetic opcode;
+        @Def({REG}) public AllocatableValue lowResult;
+        @Def({REG}) public AllocatableValue highResult;
+        @Use({REG}) public AllocatableValue x;
+        @Use({REG, STACK}) public AllocatableValue y;
+
+        public MulHighOp(AMD64Arithmetic opcode, AllocatableValue y) {
+            PlatformKind kind = y.getPlatformKind();
+
+            this.opcode = opcode;
+            this.x = AMD64.rax.asValue(kind);
+            this.y = y;
+            this.lowResult = AMD64.rax.asValue(kind);
+            this.highResult = AMD64.rdx.asValue(kind);
+        }
+
+        @Override
+        public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
+            if (isRegister(y)) {
+                switch (opcode) {
+                    case IMUL:
+                        masm.imull(asRegister(y));
+                        break;
+                    case IUMUL:
+                        masm.mull(asRegister(y));
+                        break;
+                    case LMUL:
+                        masm.imulq(asRegister(y));
+                        break;
+                    case LUMUL:
+                        masm.mulq(asRegister(y));
+                        break;
+                    default:
+                        throw GraalInternalError.shouldNotReachHere();
+                }
+            } else {
+                switch (opcode) {
+                    case IMUL:
+                        masm.imull((AMD64Address) crb.asAddress(y));
+                        break;
+                    case IUMUL:
+                        masm.mull((AMD64Address) crb.asAddress(y));
+                        break;
+                    case LMUL:
+                        masm.imulq((AMD64Address) crb.asAddress(y));
+                        break;
+                    case LUMUL:
+                        masm.mulq((AMD64Address) crb.asAddress(y));
+                        break;
+                    default:
+                        throw GraalInternalError.shouldNotReachHere();
+                }
+            }
         }
     }
 

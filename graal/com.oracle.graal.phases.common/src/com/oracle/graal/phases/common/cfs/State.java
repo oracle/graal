@@ -191,8 +191,8 @@ public final class State extends MergeableState<State> implements Cloneable {
      * {@link com.oracle.graal.phases.common.cfs.FlowSensitiveReduction} determined to be
      * unreachable will be eliminated by canonicalization and dead code elimination. For now they
      * still exist, thus polluting the result of
-     * {@link com.oracle.graal.nodes.ValuePhiNode#inferPhiStamp()} but we are careful to skip them
-     * when merging type-witnesses and known-null maps.
+     * {@link com.oracle.graal.nodes.ValuePhiNode#inferStamp()} but we are careful to skip them when
+     * merging type-witnesses and known-null maps.
      * </p>
      */
     private void mergePhis(MergeNode merge, List<State> withStates, Map<ValueNode, Witness> newKnownPhiTypes) {

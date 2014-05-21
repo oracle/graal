@@ -42,6 +42,10 @@ public interface ArithmeticLIRGenerator {
 
     Value emitMul(Value a, Value b);
 
+    Value emitMulHigh(Value a, Value b);
+
+    Value emitUMulHigh(Value a, Value b);
+
     Value emitDiv(Value a, Value b, LIRFrameState state);
 
     Value emitRem(Value a, Value b, LIRFrameState state);

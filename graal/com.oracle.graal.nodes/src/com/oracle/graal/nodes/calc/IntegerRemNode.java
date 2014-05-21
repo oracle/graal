@@ -28,12 +28,18 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.type.*;
 
 @NodeInfo(shortName = "%")
 public class IntegerRemNode extends FixedBinaryNode implements Canonicalizable, Lowerable, LIRLowerable {
 
     public IntegerRemNode(Stamp stamp, ValueNode x, ValueNode y) {
         super(stamp, x, y);
+    }
+
+    @Override
+    public boolean inferStamp() {
+        return updateStamp(StampTool.rem(x().stamp(), y().stamp()));
     }
 
     @Override

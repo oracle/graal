@@ -45,8 +45,8 @@ public class HotSpotMethodSubstitutionTest extends MethodSubstitutionTest {
 
         Object obj = new Object();
 
-        assertEquals("a string".getClass(), ObjectSubstitutions.getClass("a string"));
-        assertEquals(obj.hashCode(), ObjectSubstitutions.hashCode(obj));
+        assertDeepEquals("a string".getClass(), ObjectSubstitutions.getClass("a string"));
+        assertDeepEquals(obj.hashCode(), ObjectSubstitutions.hashCode(obj));
     }
 
     @SuppressWarnings("all")
@@ -75,14 +75,14 @@ public class HotSpotMethodSubstitutionTest extends MethodSubstitutionTest {
         test("getComponentType");
 
         for (Class<?> c : new Class[]{getClass(), Cloneable.class, int[].class, String[][].class}) {
-            assertEquals(c.getModifiers(), ClassSubstitutions.getModifiers(c));
-            assertEquals(c.isInterface(), ClassSubstitutions.isInterface(c));
-            assertEquals(c.isArray(), ClassSubstitutions.isArray(c));
-            assertEquals(c.isPrimitive(), ClassSubstitutions.isPrimitive(c));
-            assertEquals(c.getSuperclass(), ClassSubstitutions.getSuperclass(c));
-            assertEquals(c.getComponentType(), ClassSubstitutions.getComponentType(c));
+            assertDeepEquals(c.getModifiers(), ClassSubstitutions.getModifiers(c));
+            assertDeepEquals(c.isInterface(), ClassSubstitutions.isInterface(c));
+            assertDeepEquals(c.isArray(), ClassSubstitutions.isArray(c));
+            assertDeepEquals(c.isPrimitive(), ClassSubstitutions.isPrimitive(c));
+            assertDeepEquals(c.getSuperclass(), ClassSubstitutions.getSuperclass(c));
+            assertDeepEquals(c.getComponentType(), ClassSubstitutions.getComponentType(c));
             for (Object o : new Object[]{this, new int[5], new String[2][], new Object()}) {
-                assertEquals(c.isInstance(o), ClassSubstitutions.isInstance(c, o));
+                assertDeepEquals(c.isInstance(o), ClassSubstitutions.isInstance(c, o));
             }
         }
     }
@@ -134,8 +134,8 @@ public class HotSpotMethodSubstitutionTest extends MethodSubstitutionTest {
         test("threadInterrupted");
 
         Thread currentThread = Thread.currentThread();
-        assertEquals(currentThread, ThreadSubstitutions.currentThread());
-        assertEquals(currentThread.isInterrupted(), ThreadSubstitutions.isInterrupted(currentThread, false));
+        assertDeepEquals(currentThread, ThreadSubstitutions.currentThread());
+        assertDeepEquals(currentThread.isInterrupted(), ThreadSubstitutions.isInterrupted(currentThread, false));
     }
 
     @SuppressWarnings("all")
@@ -161,7 +161,7 @@ public class HotSpotMethodSubstitutionTest extends MethodSubstitutionTest {
         SystemSubstitutions.currentTimeMillis();
         SystemSubstitutions.nanoTime();
         for (Object o : new Object[]{this, new int[5], new String[2][], new Object()}) {
-            assertEquals(System.identityHashCode(o), SystemSubstitutions.identityHashCode(o));
+            assertDeepEquals(System.identityHashCode(o), SystemSubstitutions.identityHashCode(o));
         }
     }
 

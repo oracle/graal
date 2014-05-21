@@ -601,6 +601,37 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         }
     }
 
+    private Value emitMulHigh(AMD64Arithmetic opcode, Value a, Value b) {
+        MulHighOp mulHigh = new MulHighOp(opcode, asAllocatable(b));
+        emitMove(mulHigh.x, a);
+        append(mulHigh);
+        return emitMove(mulHigh.highResult);
+    }
+
+    @Override
+    public Value emitMulHigh(Value a, Value b) {
+        switch (a.getKind().getStackKind()) {
+            case Int:
+                return emitMulHigh(IMUL, a, b);
+            case Long:
+                return emitMulHigh(LMUL, a, b);
+            default:
+                throw GraalInternalError.shouldNotReachHere();
+        }
+    }
+
+    @Override
+    public Value emitUMulHigh(Value a, Value b) {
+        switch (a.getKind().getStackKind()) {
+            case Int:
+                return emitMulHigh(IUMUL, a, b);
+            case Long:
+                return emitMulHigh(LUMUL, a, b);
+            default:
+                throw GraalInternalError.shouldNotReachHere();
+        }
+    }
+
     public Value emitBinaryMemory(AMD64Arithmetic op, Kind kind, AllocatableValue a, AMD64AddressValue location, LIRFrameState state) {
         Variable result = newVariable(a.getKind());
         append(new BinaryMemory(op, kind, result, a, location, state));

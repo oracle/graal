@@ -416,7 +416,7 @@ public class HotSpotConstantPool extends CompilerObject implements ConstantPool 
         if ((metaspacePointer & config.compilerToVMSymbolTag) != 0) {
             final long metaspaceSymbol = metaspacePointer & ~config.compilerToVMSymbolTag;
             String name = new HotSpotSymbol(metaspaceSymbol).asString();
-            return HotSpotUnresolvedJavaType.create(name);
+            return HotSpotUnresolvedJavaType.create("L" + name + ";");
         } else {
             assert (metaspacePointer & config.compilerToVMKlassTag) == 0;
             return HotSpotResolvedObjectType.fromMetaspaceKlass(metaspacePointer);

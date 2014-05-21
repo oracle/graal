@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.hotspot.stubs;
 
-import static com.oracle.graal.api.meta.DeoptimizationAction.*;
 import static com.oracle.graal.api.meta.DeoptimizationReason.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 import static com.oracle.graal.hotspot.nodes.CStringNode.*;
@@ -78,7 +77,7 @@ public class StubUtil {
             if (isObjectResult) {
                 getAndClearObjectResult(thread);
             }
-            DeoptimizeCallerNode.deopt(InvalidateReprofile, RuntimeConstraint);
+            DeoptimizeCallerNode.deopt(DeoptimizationAction.None, RuntimeConstraint);
         }
     }
 

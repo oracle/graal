@@ -34,18 +34,20 @@ public final class LoadMethodNode extends FixedWithNextNode implements Lowerable
 
     @Input private ValueNode hub;
     private final ResolvedJavaMethod method;
+    private final ResolvedJavaType receiverType;
 
     public ValueNode getHub() {
         return hub;
     }
 
-    public LoadMethodNode(ResolvedJavaMethod method, ValueNode hub, Kind kind) {
+    public LoadMethodNode(ResolvedJavaMethod method, ResolvedJavaType receiverType, ValueNode hub, Kind kind) {
         super(kind == Kind.Object ? StampFactory.objectNonNull() : StampFactory.forKind(kind));
+        this.receiverType = receiverType;
         this.hub = hub;
         this.method = method;
         assert !method.isAbstract() : "Cannot load abstract method from a hub";
         assert !method.isStatic() : "Cannot load a static method from a hub";
-        assert method.isInVirtualMethodTable();
+        assert method.isInVirtualMethodTable(receiverType);
     }
 
     @Override
@@ -55,5 +57,9 @@ public final class LoadMethodNode extends FixedWithNextNode implements Lowerable
 
     public ResolvedJavaMethod getMethod() {
         return method;
+    }
+
+    public ResolvedJavaType getReceiverType() {
+        return receiverType;
     }
 }

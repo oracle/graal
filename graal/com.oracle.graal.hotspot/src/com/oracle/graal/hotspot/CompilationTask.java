@@ -40,6 +40,7 @@ import java.util.concurrent.atomic.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.CallingConvention.Type;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.baseline.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.common.*;
@@ -47,6 +48,9 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.debug.internal.*;
 import com.oracle.graal.hotspot.bridge.*;
+import com.oracle.graal.hotspot.events.*;
+import com.oracle.graal.hotspot.events.EventProvider.CompilationEvent;
+import com.oracle.graal.hotspot.events.EventProvider.CompilerFailureEvent;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.phases.*;
 import com.oracle.graal.java.*;
@@ -103,6 +107,13 @@ public class CompilationTask implements Runnable, Comparable<Object> {
     private final int id;
     private final AtomicReference<CompilationStatus> status;
 
+    /**
+     * The executor processing the Graal compilation queue this task was placed on. This will be
+     * null for blocking compilations or if compilations are scheduled as native HotSpot
+     * {@linkplain #ctask CompileTask}s.
+     */
+    private final ExecutorService executor;
+
     private StructuredGraph graph;
 
     /**
@@ -116,7 +127,7 @@ public class CompilationTask implements Runnable, Comparable<Object> {
      * A {@link com.sun.management.ThreadMXBean} to be able to query some information about the
      * current compiler thread, e.g. total allocated bytes.
      */
-    private final com.sun.management.ThreadMXBean threadMXBean = (com.sun.management.ThreadMXBean) ManagementFactory.getThreadMXBean();
+    private static final com.sun.management.ThreadMXBean threadMXBean = (com.sun.management.ThreadMXBean) ManagementFactory.getThreadMXBean();
 
     /**
      * The address of the native CompileTask associated with this compilation. If 0L, then this
@@ -125,7 +136,8 @@ public class CompilationTask implements Runnable, Comparable<Object> {
      */
     private final long ctask;
 
-    public CompilationTask(HotSpotBackend backend, HotSpotResolvedJavaMethod method, int entryBCI, long ctask, boolean blocking) {
+    public CompilationTask(ExecutorService executor, HotSpotBackend backend, HotSpotResolvedJavaMethod method, int entryBCI, long ctask, boolean blocking) {
+        this.executor = executor;
         this.backend = backend;
         this.method = method;
         this.entryBCI = entryBCI;
@@ -144,6 +156,11 @@ public class CompilationTask implements Runnable, Comparable<Object> {
         return method;
     }
 
+    /**
+     * Returns the compilation id of this task.
+     *
+     * @return compile id
+     */
     public int getId() {
         return id;
     }
@@ -156,7 +173,7 @@ public class CompilationTask implements Runnable, Comparable<Object> {
     public void run() {
         withinEnqueue.set(Boolean.FALSE);
         try {
-            runCompilation(true);
+            runCompilation();
         } finally {
             withinEnqueue.set(Boolean.TRUE);
             status.set(CompilationStatus.Finished);
@@ -226,7 +243,14 @@ public class CompilationTask implements Runnable, Comparable<Object> {
         return method.getCompilationProfilingInfo(osrCompilation);
     }
 
-    public void runCompilation(boolean clearFromCompilationQueue) {
+    public void runCompilation() {
+        if (executor != null && executor.isShutdown()) {
+            // We don't want to do any unnecessary compilation if the Graal compilation
+            // queue has been shutdown. Note that we leave the JVM_ACC_QUEUED bit set
+            // for the method so that it won't be re-scheduled for compilation.
+            return;
+        }
+
         /*
          * no code must be outside this try/finally because it could happen otherwise that
          * clearQueuedForCompilation() is not executed
@@ -237,12 +261,16 @@ public class CompilationTask implements Runnable, Comparable<Object> {
         long previousInlinedBytecodes = InlinedBytecodes.getCurrentValue();
         long previousCompilationTime = CompilationTime.getCurrentValue();
         HotSpotInstalledCode installedCode = null;
+        final boolean isOSR = entryBCI != StructuredGraph.INVOCATION_ENTRY_BCI;
+
+        // Log a compilation event.
+        EventProvider eventProvider = Graal.getRequiredCapability(EventProvider.class);
+        CompilationEvent compilationEvent = eventProvider.newCompilationEvent();
 
         try (TimerCloseable a = CompilationTime.start()) {
             if (!tryToChangeStatus(CompilationStatus.Queued, CompilationStatus.Running)) {
                 return;
             }
-            boolean isOSR = entryBCI != StructuredGraph.INVOCATION_ENTRY_BCI;
 
             // If there is already compiled code for this method on our level we simply return.
             // Graal compiles are always at the highest compile level, even in non-tiered mode so we
@@ -266,6 +294,8 @@ public class CompilationTask implements Runnable, Comparable<Object> {
             final long allocatedBytesBefore = threadMXBean.getThreadAllocatedBytes(threadId);
 
             try (Scope s = Debug.scope("Compiling", new DebugDumpScope(String.valueOf(id), true))) {
+                // Begin the compilation event.
+                compilationEvent.begin();
 
                 if (UseBaselineCompiler.getValue() == true) {
                     HotSpotProviders providers = backend.getProviders();
@@ -307,6 +337,9 @@ public class CompilationTask implements Runnable, Comparable<Object> {
             } catch (Throwable e) {
                 throw Debug.handle(e);
             } finally {
+                // End the compilation event.
+                compilationEvent.end();
+
                 filter.remove();
                 final boolean printAfterCompilation = PrintAfterCompilation.getValue() && !TTY.isSuppressed();
 
@@ -346,16 +379,37 @@ public class CompilationTask implements Runnable, Comparable<Object> {
             if (PrintStackTraceOnException.getValue() || ExitVMOnException.getValue()) {
                 t.printStackTrace(TTY.cachedOut);
             }
+
+            // Log a failure event.
+            CompilerFailureEvent event = eventProvider.newCompilerFailureEvent();
+            if (event.shouldWrite()) {
+                event.setCompileId(getId());
+                event.setMessage(t.getMessage());
+                event.commit();
+            }
+
             if (ExitVMOnException.getValue()) {
                 System.exit(-1);
             }
         } finally {
-            int processedBytes = (int) (InlinedBytecodes.getCurrentValue() - previousInlinedBytecodes);
+            final int processedBytes = (int) (InlinedBytecodes.getCurrentValue() - previousInlinedBytecodes);
+
+            // Log a compilation event.
+            if (compilationEvent.shouldWrite()) {
+                compilationEvent.setMethod(MetaUtil.format("%H.%n(%p)", method));
+                compilationEvent.setCompileId(getId());
+                compilationEvent.setCompileLevel(config.compilationLevelFullOptimization);
+                compilationEvent.setSucceeded(true);
+                compilationEvent.setIsOsr(isOSR);
+                compilationEvent.setCodeSize(installedCode.getSize());
+                compilationEvent.setInlinedBytes(processedBytes);
+                compilationEvent.commit();
+            }
+
             if (ctask != 0L) {
                 unsafe.putInt(ctask + config.compileTaskNumInlinedBytecodesOffset, processedBytes);
             }
             if ((config.ciTime || config.ciTimeEach || PrintCompRate.getValue() != 0) && installedCode != null) {
-
                 long time = CompilationTime.getCurrentValue() - previousCompilationTime;
                 TimeUnit timeUnit = CompilationTime.getTimeUnit();
                 long timeUnitsPerSecond = timeUnit.convert(1, TimeUnit.SECONDS);
@@ -363,7 +417,7 @@ public class CompilationTask implements Runnable, Comparable<Object> {
                 c2vm.notifyCompilationStatistics(id, method, entryBCI != INVOCATION_ENTRY_BCI, processedBytes, time, timeUnitsPerSecond, installedCode);
             }
 
-            if (clearFromCompilationQueue) {
+            if (executor != null) {
                 assert method.isQueuedForCompilation();
                 method.clearQueuedForCompilation();
             }

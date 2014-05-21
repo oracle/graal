@@ -97,7 +97,7 @@ public class NewArrayStub extends SnippetStub {
 
         // check that array length is small enough for fast path.
         Word thread = registerAsWord(threadRegister);
-        if (length <= MAX_ARRAY_FAST_PATH_ALLOCATION_LENGTH) {
+        if (length >= 0 && length <= MAX_ARRAY_FAST_PATH_ALLOCATION_LENGTH) {
             Word memory = refillAllocate(thread, intArrayHub, sizeInBytes, logging());
             if (memory.notEqual(0)) {
                 if (logging()) {

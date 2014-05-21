@@ -66,7 +66,7 @@ public class InfopointReasonTest extends GraalCompilerTest {
         for (Infopoint sp : cr.getInfopoints()) {
             assertNotNull(sp.reason);
             if (sp instanceof Call) {
-                assertEquals(InfopointReason.CALL, sp.reason);
+                assertDeepEquals(InfopointReason.CALL, sp.reason);
             }
         }
     }

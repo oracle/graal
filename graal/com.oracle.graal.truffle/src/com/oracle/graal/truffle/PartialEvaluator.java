@@ -108,7 +108,7 @@ public class PartialEvaluator {
             canonicalizer.apply(graph, baseContext);
 
             // Intrinsify methods.
-            new ReplaceIntrinsicsPhase(providers.getReplacements()).apply(graph);
+            new IncrementalCanonicalizerPhase<>(canonicalizer, new ReplaceIntrinsicsPhase(providers.getReplacements())).apply(graph, baseContext);
 
             Debug.dump(graph, "Before inlining");
 

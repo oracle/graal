@@ -25,7 +25,9 @@ package com.oracle.graal.nodes;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.type.*;
 
 public interface Invoke extends StateSplit, Lowerable, DeoptimizingNode.DeoptDuring, GuardedNode {
 
@@ -84,5 +86,17 @@ public interface Invoke extends StateSplit, Lowerable, DeoptimizingNode.DeoptDur
         FrameState newStateDuring = stateAfter.duplicateModified(bci(), stateAfter.rethrowException(), asNode().getKind());
         newStateDuring.setDuringCall(true);
         setStateDuring(newStateDuring);
+    }
+
+    default ValueNode getReceiver() {
+        return callTarget().arguments().get(0);
+    }
+
+    default ResolvedJavaType getReceiverType() {
+        ResolvedJavaType receiverType = StampTool.typeOrNull(getReceiver());
+        if (receiverType == null) {
+            receiverType = ((MethodCallTargetNode) callTarget()).targetMethod().getDeclaringClass();
+        }
+        return receiverType;
     }
 }

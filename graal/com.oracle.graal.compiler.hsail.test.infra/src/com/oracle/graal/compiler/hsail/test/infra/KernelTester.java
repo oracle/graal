@@ -34,16 +34,19 @@ import java.util.concurrent.atomic.*;
 import java.util.logging.*;
 
 import com.amd.okra.*;
+import com.oracle.graal.test.*;
 
 /**
  * Abstract class on which the HSAIL unit tests are built. Executes a method or lambda on both the
  * Java side and the Okra side and compares the results for fields that are annotated with
- * {@link KernelTester.Result}.
+ * {@link Result}.
  */
-public abstract class KernelTester {
+public abstract class KernelTester extends GraalTest {
 
     /**
-     * Denotes a field whose value is to be compared as part of computing the result of a test.
+     * Denotes a field whose value is to be
+     * {@linkplain KernelTester#assertResultFieldsEqual(KernelTester) compared} as part of computing
+     * the result of a test.
      */
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.FIELD)
@@ -129,171 +132,27 @@ public abstract class KernelTester {
 
     public abstract void runTest();
 
-    // Default comparison is to compare all things marked @Result.
-    public boolean compareResults(KernelTester base) {
+    /**
+     * Asserts that the value of all {@link Result} annotated fields in this object and
+     * {@code other} are {@linkplain #assertDeepEquals(Object, Object) equal}.
+     *
+     * @throws AssertionError if the value of a result field in this and {@code other} are not equal
+     */
+    public void assertResultFieldsEqual(KernelTester other) {
         Class<?> clazz = this.getClass();
         while (clazz != null && clazz != KernelTester.class) {
             for (Field f : clazz.getDeclaredFields()) {
                 if (!Modifier.isStatic(f.getModifiers())) {
                     Result annos = f.getAnnotation(Result.class);
                     if (annos != null) {
-                        logger.fine("@Result field = " + f);
-                        Object myResult = getFieldFromObject(f, this);
-                        Object otherResult = getFieldFromObject(f, base);
-                        boolean same = compareObjects(myResult, otherResult);
-                        logger.fine("comparing " + myResult + ", " + otherResult + ", match=" + same);
-                        if (!same) {
-                            logger.severe("mismatch comparing " + f + ", " + myResult + " vs. " + otherResult);
-                            logSevere("FAILED!!! " + this.getClass());
-                            return false;
-                        }
+                        Object actualResult = getFieldFromObject(f, this);
+                        Object expectedResult = getFieldFromObject(f, other);
+                        assertDeepEquals(f.toString(), expectedResult, actualResult);
                     }
                 }
             }
             clazz = clazz.getSuperclass();
         }
-        logInfo("PASSED: " + this.getClass());
-        return true;
-    }
-
-    private boolean compareObjects(Object first, Object second) {
-        if (first == null) {
-            return (second == null);
-        }
-        if (second == null) {
-            return (first == null);
-        }
-        Class<?> clazz = first.getClass();
-        if (clazz != second.getClass()) {
-            return false;
-        }
-        if (!clazz.isArray()) {
-            // Non arrays.
-            if (clazz.equals(float.class) || clazz.equals(double.class)) {
-                return isEqualsFP((double) first, (double) second);
-            } else {
-                return first.equals(second);
-            }
-        } else {
-            // Handle the case where Objects are arrays.
-            ArrayComparer comparer;
-            if (clazz.equals(float[].class) || clazz.equals(double[].class)) {
-                comparer = new FPArrayComparer();
-            } else if (clazz.equals(long[].class) || clazz.equals(int[].class) || clazz.equals(byte[].class)) {
-                comparer = new IntArrayComparer();
-            } else if (clazz.equals(boolean[].class)) {
-                comparer = new BooleanArrayComparer();
-            } else {
-                comparer = new ObjArrayComparer();
-            }
-            return comparer.compareArrays(first, second);
-        }
-    }
-
-    static final int MISMATCHLIMIT = 10;
-    static final int ELEMENTDISPLAYLIMIT = 20;
-
-    public int getMisMatchLimit() {
-        return MISMATCHLIMIT;
-    }
-
-    public int getElementDisplayLimit() {
-        return ELEMENTDISPLAYLIMIT;
-    }
-
-    abstract class ArrayComparer {
-
-        abstract Object getElement(Object ary, int index);
-
-        // Equality test, can be overridden
-        boolean isEquals(Object firstElement, Object secondElement) {
-            return firstElement.equals(secondElement);
-        }
-
-        boolean compareArrays(Object first, Object second) {
-            int len = Array.getLength(first);
-            if (len != Array.getLength(second)) {
-                return false;
-            }
-            // If info logLevel, build string of first few elements from first array.
-            if (logLevel.intValue() <= Level.INFO.intValue()) {
-                StringBuilder sb = new StringBuilder();
-                for (int i = 0; i < Math.min(len, getElementDisplayLimit()); i++) {
-                    sb.append(getElement(first, i));
-                    sb.append(", ");
-                }
-                logger.info(sb.toString());
-            }
-            boolean success = true;
-            int mismatches = 0;
-            for (int i = 0; i < len; i++) {
-                Object firstElement = getElement(first, i);
-                Object secondElement = getElement(second, i);
-                if (!isEquals(firstElement, secondElement)) {
-                    logSevere("mismatch at index " + i + ", expected " + secondElement + ", saw " + firstElement);
-                    success = false;
-                    mismatches++;
-                    if (mismatches >= getMisMatchLimit()) {
-                        logSevere("...Truncated");
-                        break;
-                    }
-                }
-            }
-            return success;
-        }
-    }
-
-    class FPArrayComparer extends ArrayComparer {
-
-        @Override
-        Object getElement(Object ary, int index) {
-            return Array.getDouble(ary, index);
-        }
-
-        @Override
-        boolean isEquals(Object firstElement, Object secondElement) {
-            return isEqualsFP((double) firstElement, (double) secondElement);
-        }
-    }
-
-    class IntArrayComparer extends ArrayComparer {
-
-        @Override
-        Object getElement(Object ary, int index) {
-            return Array.getLong(ary, index);
-        }
-    }
-
-    class BooleanArrayComparer extends ArrayComparer {
-
-        @Override
-        Object getElement(Object ary, int index) {
-            return Array.getBoolean(ary, index);
-        }
-    }
-
-    class ObjArrayComparer extends ArrayComparer {
-
-        @Override
-        Object getElement(Object ary, int index) {
-            return Array.get(ary, index);
-        }
-
-        @Override
-        boolean isEquals(Object firstElement, Object secondElement) {
-            return compareObjects(firstElement, secondElement);
-        }
-    }
-
-    /**
-     * Tests two floating point values for equality.
-     */
-    public boolean isEqualsFP(double first, double second) {
-        // Special case for checking whether expected and actual values are both NaNs.
-        if (Double.isNaN(first) && Double.isNaN(second)) {
-            return true;
-        }
-        return first == second;
     }
 
     public void setDispatchMode(DispatchMode dispatchMode) {
@@ -761,8 +620,8 @@ public abstract class KernelTester {
         }
     }
 
-    private void compareOkraToSeq(HsailMode hsailModeToUse) {
-        compareOkraToSeq(hsailModeToUse, false);
+    private void assertOkraEqualsSeq(HsailMode hsailModeToUse) {
+        assertOkraEqualsSeq(hsailModeToUse, false);
     }
 
     /**
@@ -770,7 +629,7 @@ public abstract class KernelTester {
      * runOkraFirst flag controls which order they are done in. Note the compiler must use eager
      * resolving if Okra is done first.
      */
-    private void compareOkraToSeq(HsailMode hsailModeToUse, boolean useLambda) {
+    private void assertOkraEqualsSeq(HsailMode hsailModeToUse, boolean useLambda) {
         KernelTester testerSeq;
         if (runOkraFirst) {
             runOkraInstance(hsailModeToUse, useLambda);
@@ -779,7 +638,7 @@ public abstract class KernelTester {
             testerSeq = runSeqInstance();
             runOkraInstance(hsailModeToUse, useLambda);
         }
-        assertTrue("failed comparison to SEQ", compareResults(testerSeq));
+        assertResultFieldsEqual(testerSeq);
     }
 
     private void runOkraInstance(HsailMode hsailModeToUse, boolean useLambda) {
@@ -800,19 +659,19 @@ public abstract class KernelTester {
     }
 
     public void testGeneratedHsail() {
-        compareOkraToSeq(HsailMode.COMPILED);
+        assertOkraEqualsSeq(HsailMode.COMPILED);
     }
 
     public void testGeneratedHsailUsingLambdaMethod() {
-        compareOkraToSeq(HsailMode.COMPILED, true);
+        assertOkraEqualsSeq(HsailMode.COMPILED, true);
     }
 
     public void testInjectedHsail() {
-        newInstance().compareOkraToSeq(HsailMode.INJECT_HSAIL);
+        newInstance().assertOkraEqualsSeq(HsailMode.INJECT_HSAIL);
     }
 
     public void testInjectedOpencl() {
-        newInstance().compareOkraToSeq(HsailMode.INJECT_OCL);
+        newInstance().assertOkraEqualsSeq(HsailMode.INJECT_OCL);
     }
 
     protected static Object getFieldFromObject(Field f, Object fromObj) {

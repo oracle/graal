@@ -65,24 +65,24 @@ public class SimpleCFGTest extends GraalCompilerTest {
 
         List<Block> blocks = cfg.getBlocks();
         // check number of blocks
-        assertEquals(4, blocks.size());
+        assertDeepEquals(4, blocks.size());
 
         // check block - node assignment
-        assertEquals(blocks.get(0), cfg.blockFor(graph.start()));
-        assertEquals(blocks.get(0), cfg.blockFor(ifNode));
-        assertEquals(blocks.get(1), cfg.blockFor(trueBegin));
-        assertEquals(blocks.get(1), cfg.blockFor(trueEnd));
-        assertEquals(blocks.get(2), cfg.blockFor(falseBegin));
-        assertEquals(blocks.get(2), cfg.blockFor(falseEnd));
-        assertEquals(blocks.get(3), cfg.blockFor(merge));
-        assertEquals(blocks.get(3), cfg.blockFor(returnNode));
+        assertDeepEquals(blocks.get(0), cfg.blockFor(graph.start()));
+        assertDeepEquals(blocks.get(0), cfg.blockFor(ifNode));
+        assertDeepEquals(blocks.get(1), cfg.blockFor(trueBegin));
+        assertDeepEquals(blocks.get(1), cfg.blockFor(trueEnd));
+        assertDeepEquals(blocks.get(2), cfg.blockFor(falseBegin));
+        assertDeepEquals(blocks.get(2), cfg.blockFor(falseEnd));
+        assertDeepEquals(blocks.get(3), cfg.blockFor(merge));
+        assertDeepEquals(blocks.get(3), cfg.blockFor(returnNode));
 
         // check postOrder
         Iterator<Block> it = cfg.postOrder().iterator();
         for (int i = blocks.size() - 1; i >= 0; i--) {
             assertTrue(it.hasNext());
             Block b = it.next();
-            assertEquals(blocks.get(i), b);
+            assertDeepEquals(blocks.get(i), b);
         }
 
         // check dominators

@@ -142,6 +142,7 @@ public enum AMD64Compare {
         protected void verify() {
             super.verify();
             assert y instanceof Variable || y instanceof Constant;
+            assert kind != Kind.Long || !(y instanceof Constant) || NumUtil.isInt(((Constant) y).asLong());
         }
     }
 

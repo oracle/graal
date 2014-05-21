@@ -30,6 +30,8 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.tiers.*;
 
@@ -135,6 +137,59 @@ public class IfCanonicalizerTest extends GraalCompilerTest {
             return 1;
         }
         return 1;
+    }
+
+    @Test
+    public void test6() {
+        testCombinedIf("test6Snippet", 3);
+        test("test6Snippet", new int[]{0});
+    }
+
+    public static int test6Snippet(int[] a) {
+        int i = a[0];
+        if (i >= 0 && i < a.length) {
+            return a[i];
+        }
+        return 1;
+    }
+
+    @Test
+    public void test7() {
+        testCombinedIf("test7Snippet", 1);
+        test("test7Snippet", -1);
+    }
+
+    public static int test7Snippet(int v) {
+        if (v >= 0 && v < 1024) {
+            return v + 1;
+        }
+        return v - 1;
+    }
+
+    @Test
+    public void test8() {
+        testCombinedIf("test8Snippet", 1);
+        test("test8Snippet", -1);
+    }
+
+    public static int test8Snippet(int v) {
+        if (v >= 0 && v <= 1024) {
+            return v + 1;
+        }
+        return v - 1;
+    }
+
+    private void testCombinedIf(String snippet, int count) {
+        StructuredGraph graph = parse(snippet);
+        PhaseContext context = new PhaseContext(getProviders(), new Assumptions(false));
+        new LoweringPhase(new CanonicalizerPhase(true), LoweringTool.StandardLoweringStage.HIGH_TIER).apply(graph, context);
+        new FloatingReadPhase().apply(graph);
+        MidTierContext midContext = new MidTierContext(getProviders(), new Assumptions(false), getCodeCache().getTarget(), OptimisticOptimizations.ALL, graph.method().getProfilingInfo(), null);
+        new GuardLoweringPhase().apply(graph, midContext);
+        new LoweringPhase(new CanonicalizerPhase(true), LoweringTool.StandardLoweringStage.MID_TIER).apply(graph, midContext);
+        new ValueAnchorCleanupPhase().apply(graph);
+        new CanonicalizerPhase(true).apply(graph, context);
+        assertDeepEquals(count, graph.getNodes().filter(IfNode.class).count());
     }
 
     private void test(String snippet) {

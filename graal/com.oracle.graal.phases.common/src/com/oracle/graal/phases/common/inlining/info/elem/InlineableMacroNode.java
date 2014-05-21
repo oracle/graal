@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,21 +20,32 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot;
+package com.oracle.graal.phases.common.inlining.info.elem;
 
-import java.lang.annotation.*;
+import com.oracle.graal.nodes.FixedWithNextNode;
+import com.oracle.graal.nodes.Invoke;
 
-@Target(ElementType.FIELD)
-@Retention(RetentionPolicy.RUNTIME)
-public @interface HotSpotVMConstant {
+import java.util.Collections;
 
-    String name();
+public class InlineableMacroNode implements Inlineable {
 
-    /**
-     * List of architectures where this constant is required. Names are derived from
-     * {@link HotSpotVMConfig#getHostArchitectureName()}. An empty list implies that the constant is
-     * required on all architectures.
-     */
-    String[] archs() default {};
+    private final Class<? extends FixedWithNextNode> macroNodeClass;
 
+    public InlineableMacroNode(Class<? extends FixedWithNextNode> macroNodeClass) {
+        this.macroNodeClass = macroNodeClass;
+    }
+
+    @Override
+    public int getNodeCount() {
+        return 1;
+    }
+
+    @Override
+    public Iterable<Invoke> getInvokes() {
+        return Collections.emptyList();
+    }
+
+    public Class<? extends FixedWithNextNode> getMacroNodeClass() {
+        return macroNodeClass;
+    }
 }

@@ -35,13 +35,12 @@ import com.oracle.graal.hotspot.meta.*;
 public interface CompilerToVM {
 
     /**
-     * Copies the original bytecode of a given method into a given byte array.
+     * Copies the original bytecode of a given method into a new byte array and returns it.
      *
      * @param metaspaceMethod the metaspace Method object
-     * @param code the array into which to copy the original bytecode
-     * @return the value of {@code code}
+     * @return a new byte array containing the original bytecode
      */
-    byte[] initializeBytecode(long metaspaceMethod, byte[] code);
+    byte[] initializeBytecode(long metaspaceMethod);
 
     int exceptionTableLength(long metaspaceMethod);
 
@@ -248,7 +247,7 @@ public interface CompilerToVM {
 
     void initializeConfiguration(HotSpotVMConfig config);
 
-    long resolveMethod(long metaspaceKlass, String name, String signature);
+    long resolveMethod(long metaspaceKlassExactReceiver, long metaspaceMethod, long metaspaceKlassCaller);
 
     long getClassInitializer(long metaspaceKlass);
 
@@ -353,4 +352,6 @@ public interface CompilerToVM {
     void materializeVirtualObjects(HotSpotStackFrameReference stackFrame, boolean invalidate);
 
     void resolveInvokeDynamic(long metaspaceConstantPool, int index);
+
+    int getVtableIndexForInterface(long metaspaceKlass, long metaspaceMethod);
 }

@@ -528,7 +528,7 @@ public abstract class GraalCompilerTest extends GraalTest {
                 actual.exception.printStackTrace();
                 Assert.fail("expected " + expect.returnValue + " but got an exception");
             }
-            assertEquals(expect.returnValue, actual.returnValue);
+            assertDeepEquals(expect.returnValue, actual.returnValue);
         }
     }
 

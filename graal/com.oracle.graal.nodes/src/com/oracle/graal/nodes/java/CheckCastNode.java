@@ -132,8 +132,9 @@ public final class CheckCastNode extends FixedWithNextNode implements Canonicali
 
     @Override
     public boolean inferStamp() {
-        if (stamp() instanceof ObjectStamp && object().stamp() instanceof ObjectStamp) {
-            return updateStamp(((ObjectStamp) object().stamp()).castTo((ObjectStamp) stamp()));
+        if (object().stamp() instanceof ObjectStamp) {
+            ObjectStamp castStamp = (ObjectStamp) StampFactory.declared(type);
+            return updateStamp(((ObjectStamp) object().stamp()).castTo(castStamp));
         }
         return false;
     }

@@ -62,4 +62,24 @@ public class ExactMathSubstitutions {
     public static long multiplyExact(long x, long y) {
         return IntegerMulExactNode.multiplyExact(x, y);
     }
+
+    @MethodSubstitution
+    public static int multiplyHigh(int x, int y) {
+        return IntegerMulHighNode.multiplyHigh(x, y);
+    }
+
+    @MethodSubstitution
+    public static int multiplyHighUnsigned(int x, int y) {
+        return UnsignedMulHighNode.multiplyHighUnsigned(x, y);
+    }
+
+    @MethodSubstitution
+    public static long multiplyHigh(long x, long y) {
+        return IntegerMulHighNode.multiplyHigh(x, y);
+    }
+
+    @MethodSubstitution
+    public static long multiplyHighUnsigned(long x, long y) {
+        return UnsignedMulHighNode.multiplyHighUnsigned(x, y);
+    }
 }

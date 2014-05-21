@@ -171,7 +171,7 @@ public class PartialEscapeAnalysisTest extends EATestBase {
     @Test
     public void testReference1() {
         prepareGraph("testReference1Snippet", false);
-        assertEquals(1, graph.getNodes().filter(NewInstanceNode.class).count());
+        assertDeepEquals(1, graph.getNodes().filter(NewInstanceNode.class).count());
     }
 
     @SafeVarargs

@@ -235,18 +235,17 @@ public final class SchedulePhase extends Phase {
             if (!foundExcludeNode && node == excludeNode) {
                 foundExcludeNode = true;
             }
-            if (node == startNode) {
-                continue;
-            }
-            if (node instanceof MemoryCheckpoint.Single) {
-                LocationIdentity identity = ((MemoryCheckpoint.Single) node).getLocationIdentity();
-                accm.add(identity);
-            } else if (node instanceof MemoryCheckpoint.Multi) {
-                for (LocationIdentity identity : ((MemoryCheckpoint.Multi) node).getLocationIdentities()) {
+            if (node != startNode) {
+                if (node instanceof MemoryCheckpoint.Single) {
+                    LocationIdentity identity = ((MemoryCheckpoint.Single) node).getLocationIdentity();
                     accm.add(identity);
+                } else if (node instanceof MemoryCheckpoint.Multi) {
+                    for (LocationIdentity identity : ((MemoryCheckpoint.Multi) node).getLocationIdentities()) {
+                        accm.add(identity);
+                    }
                 }
+                assert MemoryCheckpoint.TypeAssertion.correctType(node);
             }
-            assert MemoryCheckpoint.TypeAssertion.correctType(node);
 
             if (foundExcludeNode) {
                 accm = set;

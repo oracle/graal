@@ -32,10 +32,10 @@ import com.oracle.graal.compiler.test.*;
 public class NewArrayTest extends GraalCompilerTest {
 
     @Override
-    protected void assertEquals(Object expected, Object actual) {
+    protected void assertDeepEquals(Object expected, Object actual) {
         Assert.assertTrue(expected != null);
         Assert.assertTrue(actual != null);
-        super.assertEquals(expected.getClass(), actual.getClass());
+        super.assertDeepEquals(expected.getClass(), actual.getClass());
         if (expected instanceof int[]) {
             Assert.assertArrayEquals((int[]) expected, (int[]) actual);
         } else if (expected instanceof byte[]) {

@@ -34,10 +34,10 @@ import com.oracle.graal.compiler.test.*;
 public class NewInstanceTest extends GraalCompilerTest {
 
     @Override
-    protected void assertEquals(Object expected, Object actual) {
+    protected void assertDeepEquals(Object expected, Object actual) {
         Assert.assertTrue(expected != null);
         Assert.assertTrue(actual != null);
-        super.assertEquals(expected.getClass(), actual.getClass());
+        super.assertDeepEquals(expected.getClass(), actual.getClass());
 
         if (expected instanceof Object[]) {
             Assert.assertTrue(actual instanceof Object[]);
@@ -45,12 +45,12 @@ public class NewInstanceTest extends GraalCompilerTest {
             Object[] aArr = (Object[]) actual;
             Assert.assertTrue(eArr.length == aArr.length);
             for (int i = 0; i < eArr.length; i++) {
-                assertEquals(eArr[i], aArr[i]);
+                assertDeepEquals(eArr[i], aArr[i]);
             }
         } else if (expected.getClass() != Object.class) {
             try {
                 expected.getClass().getDeclaredMethod("equals", Object.class);
-                super.assertEquals(expected, actual);
+                super.assertDeepEquals(expected, actual);
             } catch (Exception e) {
             }
         }

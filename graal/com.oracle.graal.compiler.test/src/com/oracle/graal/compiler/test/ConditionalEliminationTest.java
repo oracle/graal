@@ -100,7 +100,7 @@ public class ConditionalEliminationTest extends GraalCompilerTest {
         new ConditionalEliminationPhase(getMetaAccess()).apply(graph, context);
         canonicalizer.apply(graph, context);
 
-        assertEquals(1, graph.getNodes().filter(GuardNode.class).count());
+        assertDeepEquals(1, graph.getNodes().filter(GuardNode.class).count());
     }
 
     public static String testInstanceOfCheckCastSnippet(Object e) {
@@ -123,7 +123,7 @@ public class ConditionalEliminationTest extends GraalCompilerTest {
         new ConditionalEliminationPhase(getMetaAccess()).apply(graph, context);
         canonicalizer.apply(graph, context);
 
-        assertEquals(0, graph.getNodes().filter(GuardNode.class).count());
+        assertDeepEquals(0, graph.getNodes().filter(GuardNode.class).count());
     }
 
 }

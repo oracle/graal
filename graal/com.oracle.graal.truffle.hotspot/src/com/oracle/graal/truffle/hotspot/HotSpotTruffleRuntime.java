@@ -284,7 +284,6 @@ public final class HotSpotTruffleRuntime implements GraalTruffleRuntime {
         if (frames.hasNext()) {
             return new HotSpotFrameInstance.CallTargetFrame(frames.next(), true);
         } else {
-            System.out.println("no current frame found");
             return null;
         }
     }

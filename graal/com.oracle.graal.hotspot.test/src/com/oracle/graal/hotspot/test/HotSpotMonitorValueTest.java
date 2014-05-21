@@ -51,8 +51,8 @@ public class HotSpotMonitorValueTest extends GraalCompilerTest {
                         BytecodeFrame caller = frame.caller();
                         assertNotNull(caller);
                         assertNull(caller.caller());
-                        assertEquals(2, frame.numLocks);
-                        assertEquals(2, caller.numLocks);
+                        assertDeepEquals(2, frame.numLocks);
+                        assertDeepEquals(2, caller.numLocks);
                         HotSpotMonitorValue lock1 = (HotSpotMonitorValue) frame.getLockValue(0);
                         HotSpotMonitorValue lock2 = (HotSpotMonitorValue) frame.getLockValue(1);
                         HotSpotMonitorValue lock3 = (HotSpotMonitorValue) caller.getLockValue(0);
@@ -67,7 +67,7 @@ public class HotSpotMonitorValueTest extends GraalCompilerTest {
                                 }
                             }
                         }
-                        assertEquals(lock3.getOwner(), lock4.getOwner());
+                        assertDeepEquals(lock3.getOwner(), lock4.getOwner());
                         assertThat(lock1.getOwner(), not(lock2.getOwner()));
                         return super.addMethod(method, compResult);
                     }

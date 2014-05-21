@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,36 +30,8 @@ import com.oracle.graal.jtt.*;
  */
 public final class Class_getInterfaces01 extends JTTTest {
 
-    public static String test(int i) {
-        switch (i) {
-            case 0:
-                return toString(I1.class);
-            case 1:
-                return toString(I2.class);
-            case 2:
-                return toString(C1.class);
-            case 3:
-                return toString(C2.class);
-            case 4:
-                return toString(C12.class);
-            default:
-                return null;
-        }
-    }
-
-    private static String toString(Class<?> klass) {
-        final Class<?>[] classes = klass.getInterfaces();
-        final StringBuilder sb = new StringBuilder();
-        boolean first = true;
-        for (Class<?> c : classes) {
-            if (!first) {
-                sb.append(' ');
-            } else {
-                first = false;
-            }
-            sb.append(c.getName());
-        }
-        return sb.toString();
+    public static Class<?>[] test(Class<?> clazz) {
+        return clazz.getInterfaces();
     }
 
     interface I1 {
@@ -84,27 +56,26 @@ public final class Class_getInterfaces01 extends JTTTest {
 
     @Test
     public void run0() throws Throwable {
-        runTest("test", 0);
+        runTest("test", I1.class);
     }
 
     @Test
     public void run1() throws Throwable {
-        runTest("test", 1);
+        runTest("test", I2.class);
     }
 
     @Test
     public void run2() throws Throwable {
-        runTest("test", 2);
+        runTest("test", C1.class);
     }
 
     @Test
     public void run3() throws Throwable {
-        runTest("test", 3);
+        runTest("test", C2.class);
     }
 
     @Test
     public void run4() throws Throwable {
-        runTest("test", 4);
+        runTest("test", C12.class);
     }
-
 }
