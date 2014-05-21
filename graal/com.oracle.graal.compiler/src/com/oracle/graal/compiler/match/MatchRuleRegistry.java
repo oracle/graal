@@ -95,31 +95,7 @@ public class MatchRuleRegistry {
 
         if (result == null) {
             NodeClassLookup lookup = new DefaultNodeClassLookup();
-            HashMap<Class<? extends NodeLIRBuilder>, List<MatchStatement>> localRules = new HashMap<>();
-            ServiceLoader<MatchStatementSet> sl = ServiceLoader.loadInstalled(MatchStatementSet.class);
-            for (MatchStatementSet rules : sl) {
-                localRules.put(rules.forClass(), rules.statements(lookup));
-            }
-
-            // Walk the class hierarchy collecting lists and merge them together. The subclass
-            // rules are first which gives them preference over earlier rules.
-            Map<Class<? extends ValueNode>, List<MatchStatement>> rules = new HashMap<>();
-            Class<?> currentClass = theClass;
-            do {
-                List<MatchStatement> statements = localRules.get(currentClass);
-                if (statements != null) {
-                    for (MatchStatement statement : statements) {
-                        Class<? extends ValueNode> nodeClass = statement.getPattern().nodeClass();
-                        List<MatchStatement> current = rules.get(nodeClass);
-                        if (current == null) {
-                            current = new ArrayList<>();
-                            rules.put(nodeClass, current);
-                        }
-                        current.add(statement);
-                    }
-                }
-                currentClass = currentClass.getSuperclass();
-            } while (currentClass != NodeLIRBuilder.class);
+            Map<Class<? extends ValueNode>, List<MatchStatement>> rules = createRules(theClass, lookup);
             registry.put(theClass, rules);
             assert registry.get(theClass) == rules;
             result = rules;
@@ -141,5 +117,39 @@ public class MatchRuleRegistry {
             return null;
         }
         return result;
+    }
+
+    /*
+     * This is a separate, public method so that external clients can create rules with a custom
+     * lookup and without the default caching behavior.
+     */
+    public static Map<Class<? extends ValueNode>, List<MatchStatement>> createRules(Class<? extends NodeLIRBuilder> theClass, NodeClassLookup lookup) {
+        HashMap<Class<? extends NodeLIRBuilder>, MatchStatementSet> matchSets = new HashMap<>();
+        ServiceLoader<MatchStatementSet> sl = ServiceLoader.loadInstalled(MatchStatementSet.class);
+        for (MatchStatementSet rules : sl) {
+            matchSets.put(rules.forClass(), rules);
+        }
+
+        // Walk the class hierarchy collecting lists and merge them together. The subclass
+        // rules are first which gives them preference over earlier rules.
+        Map<Class<? extends ValueNode>, List<MatchStatement>> rules = new HashMap<>();
+        Class<?> currentClass = theClass;
+        do {
+            MatchStatementSet matchSet = matchSets.get(currentClass);
+            if (matchSet != null) {
+                List<MatchStatement> statements = matchSet.statements(lookup);
+                for (MatchStatement statement : statements) {
+                    Class<? extends ValueNode> nodeClass = statement.getPattern().nodeClass();
+                    List<MatchStatement> current = rules.get(nodeClass);
+                    if (current == null) {
+                        current = new ArrayList<>();
+                        rules.put(nodeClass, current);
+                    }
+                    current.add(statement);
+                }
+            }
+            currentClass = currentClass.getSuperclass();
+        } while (currentClass != NodeLIRBuilder.class);
+        return rules;
     }
 }
