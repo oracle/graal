@@ -410,17 +410,7 @@ public class InliningData {
             double invokeProbability = callsiteHolder.invokeProbability(invoke);
             double invokeRelevance = callsiteHolder.invokeRelevance(invoke);
             MethodInvocation methodInvocation = new MethodInvocation(info, calleeAssumptions, invokeProbability, invokeRelevance);
-            pushInvocation(methodInvocation);
-
-            for (int i = 0; i < info.numberOfMethods(); i++) {
-                Inlineable elem = info.inlineableElementAt(i);
-                if (elem instanceof InlineableGraph) {
-                    pushGraph(((InlineableGraph) elem).getGraph(), invokeProbability * info.probabilityAt(i), invokeRelevance * info.relevanceAt(i));
-                } else {
-                    assert elem instanceof InlineableMacroNode;
-                    pushDummyGraph();
-                }
-            }
+            pushInvocationAndGraphs(methodInvocation);
         }
     }
 
@@ -492,10 +482,22 @@ public class InliningData {
         return invocationQueue.peekFirst();
     }
 
-    private void pushInvocation(MethodInvocation methodInvocation) {
+    private void pushInvocationAndGraphs(MethodInvocation methodInvocation) {
         invocationQueue.addFirst(methodInvocation);
-        maxGraphs += methodInvocation.callee().numberOfMethods();
+        InlineInfo info = methodInvocation.callee();
+        maxGraphs += info.numberOfMethods();
         assert graphQueue.size() <= maxGraphs;
+        double invokeProbability = methodInvocation.probability();
+        double invokeRelevance = methodInvocation.relevance();
+        for (int i = 0; i < info.numberOfMethods(); i++) {
+            Inlineable elem = info.inlineableElementAt(i);
+            if (elem instanceof InlineableGraph) {
+                pushGraph(((InlineableGraph) elem).getGraph(), invokeProbability * info.probabilityAt(i), invokeRelevance * info.relevanceAt(i));
+            } else {
+                assert elem instanceof InlineableMacroNode;
+                pushDummyGraph();
+            }
+        }
     }
 
     private void popInvocation() {
