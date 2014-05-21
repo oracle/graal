@@ -51,15 +51,14 @@ public class CallsiteHolder {
 
     public CallsiteHolder(StructuredGraph graph, double probability, double relevance) {
         this.graph = graph;
-        if (graph == null) {
-            this.remainingInvokes = new LinkedList<>();
-        } else {
-            LinkedList<Invoke> invokes = new InliningIterator(graph).apply();
-            assert invokes.size() == count(graph.getInvokes());
-            this.remainingInvokes = invokes;
-        }
         this.probability = probability;
         this.relevance = relevance;
+        if (graph == null) {
+            remainingInvokes = new LinkedList<>();
+        } else {
+            remainingInvokes = new InliningIterator(graph).apply();
+            assert remainingInvokes.size() == count(graph.getInvokes());
+        }
 
         if (graph != null && !remainingInvokes.isEmpty()) {
             probabilities = new FixedNodeProbabilityCache();
