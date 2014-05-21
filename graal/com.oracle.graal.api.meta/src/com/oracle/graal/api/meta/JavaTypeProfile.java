@@ -109,14 +109,20 @@ public final class JavaTypeProfile extends AbstractJavaProfile<ProfiledType, Res
             if (result.size() == 0) {
                 return new JavaTypeProfile(newNullSeen, 1.0, EMPTY_ARRAY);
             }
-            double probabilitySum = 0.0;
-            for (int i = 0; i < result.size(); i++) {
-                probabilitySum += result.get(i).getProbability();
-            }
-            probabilitySum += newNotRecorded;
+            double factor;
+            if (result.size() == this.getItems().length) {
+                /* List of types did not change, no need to recompute probabilities. */
+                factor = 1.0;
+            } else {
+                double probabilitySum = 0.0;
+                for (int i = 0; i < result.size(); i++) {
+                    probabilitySum += result.get(i).getProbability();
+                }
+                probabilitySum += newNotRecorded;
 
-            double factor = 1.0 / probabilitySum; // Normalize to 1.0
-            assert factor >= 1.0;
+                factor = 1.0 / probabilitySum; // Normalize to 1.0
+                assert factor >= 1.0;
+            }
             ProfiledType[] newResult = new ProfiledType[result.size()];
             for (int i = 0; i < newResult.length; ++i) {
                 ProfiledType curType = result.get(i);
