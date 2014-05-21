@@ -39,7 +39,7 @@ public final class HotSpotResolvedPrimitiveType extends HotSpotResolvedJavaType 
 
     /**
      * Gets the Graal mirror for a {@link Kind}.
-     * 
+     *
      * @return the {@link HotSpotResolvedObjectType} corresponding to {@code kind}
      */
     public static ResolvedJavaType fromKind(Kind kind) {
@@ -49,12 +49,12 @@ public final class HotSpotResolvedPrimitiveType extends HotSpotResolvedJavaType 
 
     /**
      * Creates the Graal mirror for a primitive {@link Kind}.
-     * 
+     *
      * <p>
      * <b>NOTE</b>: Creating an instance of this class does not install the mirror for the
      * {@link Class} type. Use {@link #fromKind(Kind)} or {@link #fromClass(Class)} instead.
      * </p>
-     * 
+     *
      * @param kind the Kind to create the mirror for
      */
     public HotSpotResolvedPrimitiveType(Kind kind) {
@@ -184,6 +184,11 @@ public final class HotSpotResolvedPrimitiveType extends HotSpotResolvedJavaType 
 
     @Override
     public ResolvedJavaField[] getInstanceFields(boolean includeSuperclasses) {
+        return new ResolvedJavaField[0];
+    }
+
+    @Override
+    public ResolvedJavaField[] getStaticFields() {
         return new ResolvedJavaField[0];
     }
 
