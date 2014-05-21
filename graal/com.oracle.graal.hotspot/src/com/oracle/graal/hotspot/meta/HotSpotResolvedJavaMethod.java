@@ -56,6 +56,7 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
     private final HotSpotSignature signature;
     private HotSpotMethodData methodData;
     private byte[] code;
+    private Member toJavaCache;
 
     /**
      * Gets the holder of a HotSpot metaspace method native object.
@@ -505,16 +506,26 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
     }
 
     private Method toJava() {
+        if (toJavaCache != null) {
+            return (Method) toJavaCache;
+        }
         try {
-            return holder.mirror().getDeclaredMethod(name, signatureToTypes());
+            Method result = holder.mirror().getDeclaredMethod(name, signatureToTypes());
+            toJavaCache = result;
+            return result;
         } catch (NoSuchMethodException e) {
             return null;
         }
     }
 
     private Constructor<?> toJavaConstructor() {
+        if (toJavaCache != null) {
+            return (Constructor<?>) toJavaCache;
+        }
         try {
-            return holder.mirror().getDeclaredConstructor(signatureToTypes());
+            Constructor<?> result = holder.mirror().getDeclaredConstructor(signatureToTypes());
+            toJavaCache = result;
+            return result;
         } catch (NoSuchMethodException e) {
             return null;
         }
