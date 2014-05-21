@@ -439,6 +439,7 @@ public class InliningData {
 
     private void pushDummyGraph() {
         graphQueue.push(DUMMY_CALLSITE_HOLDER);
+        assert graphQueue.size() <= maxGraphs;
     }
 
     public boolean hasUnprocessedGraphs() {
