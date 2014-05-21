@@ -223,7 +223,7 @@ public class SnippetTemplate {
 
         private boolean check(String name, boolean constParam, boolean varargsParam) {
             assert nextParamIdx < info.getParameterCount() : "too many parameters: " + name + "  " + this;
-            assert info.names[nextParamIdx].equals(name) : "wrong parameter name: " + name + "  " + this;
+            assert info.names[nextParamIdx] == null || info.names[nextParamIdx].equals(name) : "wrong parameter name: " + name + "  " + this;
             assert constParam == info.isConstantParameter(nextParamIdx) : "Parameter " + (constParam ? "not " : "") + "annotated with @" + ConstantParameter.class.getSimpleName() + ": " + name +
                             "  " + this;
             assert varargsParam == info.isVarargsParameter(nextParamIdx) : "Parameter " + (varargsParam ? "not " : "") + "annotated with @" + VarargsParameter.class.getSimpleName() + ": " + name +
