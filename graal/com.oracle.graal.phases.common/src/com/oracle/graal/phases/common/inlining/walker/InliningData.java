@@ -280,7 +280,7 @@ public class InliningData {
                     }
                 }
 
-                if (newConcreteMethods.size() == 0) {
+                if (newConcreteMethods.isEmpty()) {
                     // No method left that is worth inlining.
                     InliningUtil.logNotInlinedInvoke(invoke, inliningDepth(), targetMethod, "no methods remaining after filtering less frequent methods (%d methods previously)",
                                     concreteMethods.size());
@@ -306,7 +306,7 @@ public class InliningData {
                 }
             }
 
-            if (usedTypes.size() == 0) {
+            if (usedTypes.isEmpty()) {
                 // No type left that is worth checking for.
                 InliningUtil.logNotInlinedInvoke(invoke, inliningDepth(), targetMethod, "no types remaining after filtering less frequent types (%d types previously)", ptypes.length);
                 return null;
