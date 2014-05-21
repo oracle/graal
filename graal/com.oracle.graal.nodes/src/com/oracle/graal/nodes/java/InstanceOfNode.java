@@ -34,7 +34,7 @@ import com.oracle.graal.nodes.spi.*;
 /**
  * The {@code InstanceOfNode} represents an instanceof test.
  */
-public final class InstanceOfNode extends UnaryOpLogicNode implements Canonicalizable, Lowerable, Virtualizable {
+public class InstanceOfNode extends UnaryOpLogicNode implements Canonicalizable, Lowerable, Virtualizable {
 
     private final ResolvedJavaType type;
     private JavaTypeProfile profile;
