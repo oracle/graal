@@ -57,6 +57,7 @@ public class WordTypeRewriterPhase extends Phase {
     protected final ResolvedJavaType wordBaseType;
     protected final ResolvedJavaType wordImplType;
     protected final ResolvedJavaType objectAccessType;
+    protected final ResolvedJavaType barrieredAccessType;
     protected final Kind wordKind;
 
     public WordTypeRewriterPhase(MetaAccessProvider metaAccess, SnippetReflectionProvider snippetReflection, Kind wordKind) {
@@ -66,6 +67,7 @@ public class WordTypeRewriterPhase extends Phase {
         this.wordBaseType = metaAccess.lookupJavaType(WordBase.class);
         this.wordImplType = metaAccess.lookupJavaType(Word.class);
         this.objectAccessType = metaAccess.lookupJavaType(ObjectAccess.class);
+        this.barrieredAccessType = metaAccess.lookupJavaType(BarrieredAccess.class);
     }
 
     @Override
@@ -170,10 +172,13 @@ public class WordTypeRewriterPhase extends Phase {
      */
     protected void rewriteInvoke(StructuredGraph graph, MethodCallTargetNode callTargetNode) {
         ResolvedJavaMethod targetMethod = callTargetNode.targetMethod();
-        if (!wordBaseType.isAssignableFrom(targetMethod.getDeclaringClass()) && !objectAccessType.equals(targetMethod.getDeclaringClass())) {
+        final boolean isWordBase = wordBaseType.isAssignableFrom(targetMethod.getDeclaringClass());
+        final boolean isObjectAccess = objectAccessType.equals(targetMethod.getDeclaringClass());
+        final boolean isBarrieredAccess = barrieredAccessType.equals(targetMethod.getDeclaringClass());
+        if (!isWordBase && !isObjectAccess && !isBarrieredAccess) {
             /*
              * Not a method defined on WordBase or a subclass / subinterface, and not on
-             * ObjectAccess, so nothing to rewrite.
+             * ObjectAccess and not on BarrieredAccess, so nothing to rewrite.
              */
             return;
         }
@@ -211,7 +216,9 @@ public class WordTypeRewriterPhase extends Phase {
                 replace(invoke, graph.unique(new XorNode(StampFactory.forKind(wordKind), arguments.get(0), ConstantNode.forIntegerKind(wordKind, -1, graph))));
                 break;
 
-            case READ: {
+            case READ_POINTER:
+            case READ_OBJECT:
+            case READ_BARRIERED: {
                 assert arguments.size() == 2 || arguments.size() == 3;
                 Kind readKind = asKind(callTargetNode.returnType());
                 LocationNode location;
@@ -220,7 +227,7 @@ public class WordTypeRewriterPhase extends Phase {
                 } else {
                     location = makeLocation(graph, arguments.get(1), readKind, arguments.get(2));
                 }
-                replace(invoke, readOp(graph, arguments.get(0), invoke, location, BarrierType.NONE, false));
+                replace(invoke, readOp(graph, arguments.get(0), invoke, location, operation.opcode()));
                 break;
             }
             case READ_HEAP: {
@@ -231,7 +238,9 @@ public class WordTypeRewriterPhase extends Phase {
                 replace(invoke, readOp(graph, arguments.get(0), invoke, location, barrierType, true));
                 break;
             }
-            case WRITE:
+            case WRITE_POINTER:
+            case WRITE_OBJECT:
+            case WRITE_BARRIERED:
             case INITIALIZE: {
                 assert arguments.size() == 3 || arguments.size() == 4;
                 Kind writeKind = asKind(targetMethod.getSignature().getParameterType(targetMethod.isStatic() ? 2 : 1, targetMethod.getDeclaringClass()));
@@ -375,6 +384,14 @@ public class WordTypeRewriterPhase extends Phase {
         return IndexedLocationNode.create(locationIdentity, readKind, 0, fromSigned(graph, offset), graph, 1);
     }
 
+    protected ValueNode readOp(StructuredGraph graph, ValueNode base, Invoke invoke, LocationNode location, Opcode op) {
+        assert op == Opcode.READ_POINTER || op == Opcode.READ_OBJECT || op == Opcode.READ_BARRIERED;
+        final BarrierType barrier = (op == Opcode.READ_BARRIERED ? BarrierType.PRECISE : BarrierType.NONE);
+        final boolean compressible = (op == Opcode.READ_OBJECT || op == Opcode.READ_BARRIERED);
+
+        return readOp(graph, base, invoke, location, barrier, compressible);
+    }
+
     protected ValueNode readOp(StructuredGraph graph, ValueNode base, Invoke invoke, LocationNode location, BarrierType barrierType, boolean compressible) {
         JavaReadNode read = graph.add(new JavaReadNode(base, location, barrierType, compressible));
         graph.addBeforeFixed(invoke.asNode(), read);
@@ -387,8 +404,11 @@ public class WordTypeRewriterPhase extends Phase {
     }
 
     protected ValueNode writeOp(StructuredGraph graph, ValueNode base, ValueNode value, Invoke invoke, LocationNode location, Opcode op) {
-        assert op == Opcode.WRITE || op == Opcode.INITIALIZE;
-        JavaWriteNode write = graph.add(new JavaWriteNode(base, value, location, BarrierType.NONE, false, op == Opcode.INITIALIZE));
+        assert op == Opcode.WRITE_POINTER || op == Opcode.WRITE_OBJECT || op == Opcode.WRITE_BARRIERED || op == Opcode.INITIALIZE;
+        final BarrierType barrier = (op == Opcode.WRITE_BARRIERED ? BarrierType.PRECISE : BarrierType.NONE);
+        final boolean compressible = (op == Opcode.WRITE_OBJECT || op == Opcode.WRITE_BARRIERED);
+        final boolean initialize = (op == Opcode.INITIALIZE);
+        JavaWriteNode write = graph.add(new JavaWriteNode(base, value, location, barrier, compressible, initialize));
         write.setStateAfter(invoke.stateAfter());
         graph.addBeforeFixed(invoke.asNode(), write);
         return write;
