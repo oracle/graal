@@ -141,13 +141,15 @@ public class HSAILControlFlow {
         protected MetaAccessProvider metaAccessProvider;
         protected String emitName;
         protected int codeBufferPos = -1;
+        private final boolean emitInfopoint;
 
-        public DeoptimizeOp(Value actionAndReason, LIRFrameState frameState, String emitName, MetaAccessProvider metaAccessProvider) {
+        public DeoptimizeOp(Value actionAndReason, LIRFrameState frameState, String emitName, boolean emitInfopoint, MetaAccessProvider metaAccessProvider) {
             super(Value.ILLEGAL);   // return with no ret value
             this.actionAndReason = actionAndReason;
             this.frameState = frameState;
             this.emitName = emitName;
             this.metaAccessProvider = metaAccessProvider;
+            this.emitInfopoint = emitInfopoint;
         }
 
         @Override
@@ -181,8 +183,12 @@ public class HSAILControlFlow {
             masm.emitMov(Kind.Int, codeBufferOffsetReg, Constant.forInt(codeBufferPos));
             masm.emitJumpToLabelName(masm.getDeoptLabelName());
 
-            // now record the debuginfo
-            crb.recordInfopoint(codeBufferPos, frameState, InfopointReason.IMPLICIT_EXCEPTION);
+            // Now record the debuginfo. If HSAIL deoptimization is off,
+            // no debuginfo is emitted and the kernel will return without
+            // a deoptimization.
+            if (emitInfopoint) {
+                crb.recordInfopoint(codeBufferPos, frameState, InfopointReason.IMPLICIT_EXCEPTION);
+            }
         }
 
         public LIRFrameState getFrameState() {

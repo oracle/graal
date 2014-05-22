@@ -122,7 +122,7 @@ public class VecmathNBodyDeoptTest extends GraalKernelTester {
 
     @Override
     protected boolean supportsRequiredCapabilities() {
-        return (canHandleDeoptVirtualObjects());
+        return (canHandleDeoptVirtualObjects() && canDeoptimize());
     }
 
     @Test

@@ -489,6 +489,10 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
         boolean useHSAILDeoptimization = config.useHSAILDeoptimization;
         boolean useHSAILSafepoints = config.useHSAILSafepoints;
 
+        if ((useHSAILSafepoints == true) && (useHSAILDeoptimization == false)) {
+            Debug.log("+UseHSAILSafepoints requires +UseHSAILDeoptimization");
+        }
+
         // see what graph nodes we have to see if we are using the thread register
         // if not, we don't have to emit the code that sets that up
         // maybe there is a better way to do this?

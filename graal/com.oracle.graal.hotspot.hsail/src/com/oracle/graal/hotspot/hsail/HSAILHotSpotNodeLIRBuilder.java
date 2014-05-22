@@ -104,7 +104,7 @@ public class HSAILHotSpotNodeLIRBuilder extends HSAILNodeLIRBuilder implements H
     @Override
     public void visitSafepointNode(SafepointNode i) {
         HotSpotVMConfig config = getGen().config;
-        if (config.useHSAILSafepoints == true) {
+        if ((config.useHSAILSafepoints == true) && (config.useHSAILDeoptimization == true)) {
             LIRFrameState info = state(i);
             HSAILHotSpotSafepointOp safepoint = new HSAILHotSpotSafepointOp(info, config, this);
             ((HSAILHotSpotLIRGenerationResult) getGen().getResult()).addDeopt(safepoint);

@@ -180,7 +180,7 @@ public class HSAILHotSpotLIRGenerator extends HSAILLIRGenerator implements HotSp
      * We need 64-bit and 32-bit scratch registers for the codegen $s0 can be live at this block.
      */
     private void emitDeoptimizeInner(Value actionAndReason, LIRFrameState lirFrameState, String emitName) {
-        DeoptimizeOp deopt = new DeoptimizeOp(actionAndReason, lirFrameState, emitName, getMetaAccess());
+        DeoptimizeOp deopt = new DeoptimizeOp(actionAndReason, lirFrameState, emitName, config.useHSAILDeoptimization, getMetaAccess());
         ((HSAILHotSpotLIRGenerationResult) getResult()).addDeopt(deopt);
         append(deopt);
     }
