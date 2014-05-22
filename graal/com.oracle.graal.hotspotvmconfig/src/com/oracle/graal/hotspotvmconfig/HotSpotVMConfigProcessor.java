@@ -54,7 +54,7 @@ public class HotSpotVMConfigProcessor extends AbstractProcessor {
      */
     private static final boolean DEBUG = true;
 
-    private static final String LOGFILE = "/tmp/hotspotvmconfigprocessor.log";
+    private static final String LOGFILE = new File(System.getProperty("java.io.tmpdir"), "hotspotvmconfigprocessor.log").getPath();
 
     private static PrintWriter log;
 
@@ -109,7 +109,7 @@ public class HotSpotVMConfigProcessor extends AbstractProcessor {
 
     //@formatter:off
     String[] prologue = new String[]{
-        "// The normal wrappers boolAt and intxAt skip constant flags",
+        "// The normal wrappers CommandLineFlags::boolAt and CommandLineFlags::intxAt skip constant flags",
         "static bool boolAt(char* name, bool* value) {",
         "  Flag* result = Flag::find_flag(name, strlen(name), true, true);",
         "  if (result == NULL) return false;",
@@ -157,12 +157,12 @@ public class HotSpotVMConfigProcessor extends AbstractProcessor {
             out.println();
 
             Set<String> fieldTypes = new HashSet<>();
-            for (String key : annotations.keySet()) {
-                fieldTypes.add(annotations.get(key).getType());
+            for (VMConfigField key : annotations.values()) {
+                fieldTypes.add(key.getType());
             }
             // For each type of field, generate a switch on the length of the symbol and then do a
             // direct compare. In general this reduces each operation to 2 tests plus a string
-            // compare. Being more prefect than that is probably not worth it.
+            // compare. Being more perfect than that is probably not worth it.
             for (String type : fieldTypes) {
                 String sigtype = type.equals("boolean") ? "bool" : type;
                 out.println("    if (fs.signature() == vmSymbols::" + sigtype + "_signature()) {");
