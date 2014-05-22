@@ -78,7 +78,7 @@ public class MidTier extends PhaseSuite<MidTierContext> {
             appendPhase(canonicalizer);
         }
 
-        appendPhase(new LoopSafepointEliminationPhase());
+        appendPhase(new IncrementalCanonicalizerPhase<>(canonicalizer, new LoopSafepointEliminationPhase()));
 
         appendPhase(new LoopSafepointInsertionPhase());
 
