@@ -59,7 +59,10 @@ public class AMD64HotSpotNodeLIRBuilder extends AMD64NodeLIRBuilder implements H
 
     private static ValueNode filterCompression(ValueNode node) {
         ValueNode result = node;
-        while (result instanceof CompressionNode) {
+        if (result instanceof PiNode) {
+            result = ((PiNode) result).getOriginalNode();
+        }
+        if (result instanceof CompressionNode) {
             result = ((CompressionNode) result).getInput();
         }
         return result;
@@ -131,7 +134,7 @@ public class AMD64HotSpotNodeLIRBuilder extends AMD64NodeLIRBuilder implements H
     }
 
     @Override
-    protected DebugInfoBuilder createDebugInfoBuilder(NodeMap<Value> nodeOperands) {
+    protected DebugInfoBuilder createDebugInfoBuilder(StructuredGraph graph, NodeMap<Value> nodeOperands) {
         HotSpotLockStack lockStack = new HotSpotLockStack(gen.getResult().getFrameMap(), Kind.Long);
         return new HotSpotDebugInfoBuilder(nodeOperands, lockStack);
     }

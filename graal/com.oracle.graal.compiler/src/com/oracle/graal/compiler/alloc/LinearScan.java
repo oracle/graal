@@ -824,14 +824,12 @@ public final class LinearScan {
                         // liveOut(block) is the union of liveIn(sux), for successors sux of block
                         int n = block.getSuccessorCount();
                         if (n > 0) {
+                            liveOut.clear();
                             // block has successors
                             if (n > 0) {
-                                liveOut.clear();
                                 for (AbstractBlock<?> successor : block.getSuccessors()) {
                                     liveOut.or(blockData.get(successor).liveIn);
                                 }
-                            } else {
-                                liveOut.clear();
                             }
 
                             if (!blockSets.liveOut.equals(liveOut)) {

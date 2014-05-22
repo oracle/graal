@@ -755,43 +755,6 @@ public final class NodeClass extends FieldIntrospection {
         return number;
     }
 
-    /**
-     * Populates a given map with the names and values of all data fields.
-     *
-     * @param node the node from which to take the values.
-     * @param properties a map that will be populated.
-     */
-    public void getDebugProperties(Node node, Map<Object, Object> properties) {
-        for (int i = 0; i < dataOffsets.length; ++i) {
-            Class<?> type = fieldTypes.get(dataOffsets[i]);
-            Object value = null;
-            if (type.isPrimitive()) {
-                if (type == Integer.TYPE) {
-                    value = unsafe.getInt(node, dataOffsets[i]);
-                } else if (type == Long.TYPE) {
-                    value = unsafe.getLong(node, dataOffsets[i]);
-                } else if (type == Boolean.TYPE) {
-                    value = unsafe.getBoolean(node, dataOffsets[i]);
-                } else if (type == Float.TYPE) {
-                    value = unsafe.getFloat(node, dataOffsets[i]);
-                } else if (type == Double.TYPE) {
-                    value = unsafe.getDouble(node, dataOffsets[i]);
-                } else if (type == Short.TYPE) {
-                    value = unsafe.getShort(node, dataOffsets[i]);
-                } else if (type == Character.TYPE) {
-                    value = unsafe.getChar(node, dataOffsets[i]);
-                } else if (type == Byte.TYPE) {
-                    value = unsafe.getByte(node, dataOffsets[i]);
-                } else {
-                    assert false : "unhandled property type: " + type;
-                }
-            } else {
-                value = unsafe.getObject(node, dataOffsets[i]);
-            }
-            properties.put(fieldNames.get(dataOffsets[i]), value);
-        }
-    }
-
     private static boolean deepEquals0(Object e1, Object e2) {
         assert e1 != null;
         boolean eq;
@@ -933,6 +896,73 @@ public final class NodeClass extends FieldIntrospection {
         return fieldNames.get(pos.isInput() ? inputOffsets[pos.getIndex()] : successorOffsets[pos.getIndex()]);
     }
 
+    public String getPropertyName(int pos) {
+        return fieldNames.get(dataOffsets[pos]);
+    }
+
+    public Class<?> getPropertyType(int pos) {
+        return fieldTypes.get(dataOffsets[pos]);
+    }
+
+    public Object getProperty(Node node, int pos) {
+        long dataOffset = dataOffsets[pos];
+        Class<?> type = fieldTypes.get(dataOffset);
+        Object value = null;
+        if (type.isPrimitive()) {
+            if (type == Integer.TYPE) {
+                value = unsafe.getInt(node, dataOffset);
+            } else if (type == Long.TYPE) {
+                value = unsafe.getLong(node, dataOffset);
+            } else if (type == Boolean.TYPE) {
+                value = unsafe.getBoolean(node, dataOffset);
+            } else if (type == Float.TYPE) {
+                value = unsafe.getFloat(node, dataOffset);
+            } else if (type == Double.TYPE) {
+                value = unsafe.getDouble(node, dataOffset);
+            } else if (type == Short.TYPE) {
+                value = unsafe.getShort(node, dataOffset);
+            } else if (type == Character.TYPE) {
+                value = unsafe.getChar(node, dataOffset);
+            } else if (type == Byte.TYPE) {
+                value = unsafe.getByte(node, dataOffset);
+            } else {
+                assert false : "unhandled property type: " + type;
+            }
+        } else {
+            value = unsafe.getObject(node, dataOffset);
+        }
+        return value;
+    }
+
+    public void setProperty(Node node, int pos, Object value) {
+        long dataOffset = dataOffsets[pos];
+        Class<?> type = fieldTypes.get(dataOffset);
+        if (type.isPrimitive()) {
+            if (type == Integer.TYPE) {
+                unsafe.putInt(node, dataOffset, (Integer) value);
+            } else if (type == Long.TYPE) {
+                unsafe.putLong(node, dataOffset, (Long) value);
+            } else if (type == Boolean.TYPE) {
+                unsafe.putBoolean(node, dataOffset, (Boolean) value);
+            } else if (type == Float.TYPE) {
+                unsafe.putFloat(node, dataOffset, (Float) value);
+            } else if (type == Double.TYPE) {
+                unsafe.putDouble(node, dataOffset, (Double) value);
+            } else if (type == Short.TYPE) {
+                unsafe.putShort(node, dataOffset, (Short) value);
+            } else if (type == Character.TYPE) {
+                unsafe.putChar(node, dataOffset, (Character) value);
+            } else if (type == Byte.TYPE) {
+                unsafe.putByte(node, dataOffset, (Byte) value);
+            } else {
+                assert false : "unhandled property type: " + type;
+            }
+        } else {
+            assert value == null || !value.getClass().isPrimitive();
+            unsafe.putObject(node, dataOffset, value);
+        }
+    }
+
     void updateInputSuccInPlace(Node node, InplaceUpdateClosure duplicationReplacement) {
         int index = 0;
         while (index < directInputCount) {
@@ -1031,7 +1061,7 @@ public final class NodeClass extends FieldIntrospection {
             if (pos.getSubIndex() < list.size()) {
                 list.set(pos.getSubIndex(), x);
             } else {
-                while (pos.getSubIndex() < list.size() - 1) {
+                while (list.size() < pos.getSubIndex()) {
                     list.add(null);
                 }
                 list.add(x);
@@ -1351,6 +1381,54 @@ public final class NodeClass extends FieldIntrospection {
                 return successorOffsets.length;
             }
         };
+    }
+
+    public Collection<Integer> getPropertyPositions() {
+        return new AbstractCollection<Integer>() {
+            @Override
+            public Iterator<Integer> iterator() {
+                return new Iterator<Integer>() {
+                    int i = 0;
+
+                    @Override
+                    public void remove() {
+                        throw new UnsupportedOperationException();
+                    }
+
+                    public Integer next() {
+                        Integer pos = i++;
+                        return pos;
+                    }
+
+                    public boolean hasNext() {
+                        return i < dataOffsets.length;
+                    }
+                };
+            }
+
+            @Override
+            public int size() {
+                return dataOffsets.length;
+            }
+        };
+    }
+
+    /**
+     * Initializes a fresh allocated node for which no constructor is called yet. Needed to
+     * implement node factories in svm.
+     */
+    public void initRawNode(Node node) {
+        node.init();
+        for (int inputPos = directInputCount; inputPos < inputOffsets.length; inputPos++) {
+            if (getNodeList(node, inputOffsets[inputPos]) == null) {
+                putNodeList(node, inputOffsets[inputPos], new NodeInputList<>(node));
+            }
+        }
+        for (int successorPos = directSuccessorCount; successorPos < successorOffsets.length; successorPos++) {
+            if (getNodeList(node, successorOffsets[successorPos]) == null) {
+                putNodeList(node, successorOffsets[successorPos], new NodeSuccessorList<>(node));
+            }
+        }
     }
 
     public Class<?> getJavaClass() {

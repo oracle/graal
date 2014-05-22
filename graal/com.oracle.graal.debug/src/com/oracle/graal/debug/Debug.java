@@ -277,7 +277,11 @@ public class Debug {
     }
 
     public static Scope forceLog() {
-        return Debug.sandbox("forceLog", new DelegatingDebugConfig().enable(LOG).enable(LOG_METHOD));
+        ArrayList<Object> context = new ArrayList<>();
+        for (Object obj : context()) {
+            context.add(obj);
+        }
+        return Debug.sandbox("forceLog", new DelegatingDebugConfig().enable(LOG).enable(LOG_METHOD), context.toArray());
     }
 
     /**

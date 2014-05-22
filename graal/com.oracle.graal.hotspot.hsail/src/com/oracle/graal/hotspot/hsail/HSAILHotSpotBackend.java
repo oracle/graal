@@ -316,7 +316,6 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
         // from host code
         result.setTotalFrameSize(hostCode.getTotalFrameSize());
         result.setCustomStackAreaOffset(hostCode.getCustomStackAreaOffset());
-        result.setRegisterRestoreEpilogueOffset(hostCode.getRegisterRestoreEpilogueOffset());
         result.setTargetCode(hostCode.getTargetCode(), hostCode.getTargetCodeSize());
         for (CodeAnnotation annotation : hostCode.getAnnotations()) {
             result.addAnnotation(annotation);
@@ -409,7 +408,7 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
     }
 
     @Override
-    public LIRGenerationResult newLIRGenerationResult(LIR lir, FrameMap frameMap, Object stub) {
+    public LIRGenerationResult newLIRGenerationResult(LIR lir, FrameMap frameMap, ResolvedJavaMethod method, Object stub) {
         return new HSAILHotSpotLIRGenerationResult(lir, frameMap);
     }
 
@@ -489,6 +488,10 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
         HotSpotVMConfig config = getRuntime().getConfig();
         boolean useHSAILDeoptimization = config.useHSAILDeoptimization;
         boolean useHSAILSafepoints = config.useHSAILSafepoints;
+
+        if ((useHSAILSafepoints == true) && (useHSAILDeoptimization == false)) {
+            Debug.log("+UseHSAILSafepoints requires +UseHSAILDeoptimization");
+        }
 
         // see what graph nodes we have to see if we are using the thread register
         // if not, we don't have to emit the code that sets that up

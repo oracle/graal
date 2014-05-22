@@ -710,7 +710,9 @@ public class ConditionalEliminationPhase extends Phase {
                     if (nonNull) {
                         replacementAnchor = searchAnchor(GraphUtil.unproxify(object), type);
                     }
-                    replacementAnchor = BeginNode.prevBegin(checkCast);
+                    if (replacementAnchor == null) {
+                        replacementAnchor = BeginNode.prevBegin(checkCast);
+                    }
                     PiNode piNode;
                     if (isNull) {
                         ConstantNode nullObject = ConstantNode.defaultForKind(Kind.Object, graph);

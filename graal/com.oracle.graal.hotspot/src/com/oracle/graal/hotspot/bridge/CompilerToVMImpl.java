@@ -43,7 +43,7 @@ public class CompilerToVMImpl implements CompilerToVM {
     public native long getMetaspaceMethod(Class<?> holder, int slot);
 
     @Override
-    public native byte[] initializeBytecode(long metaspaceMethod);
+    public native byte[] getBytecode(long metaspaceMethod);
 
     @Override
     public native int exceptionTableLength(long metaspaceMethod);

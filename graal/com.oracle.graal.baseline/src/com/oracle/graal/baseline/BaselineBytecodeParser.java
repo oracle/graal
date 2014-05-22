@@ -137,7 +137,7 @@ public class BaselineBytecodeParser extends AbstractBytecodeParser<Value, Baseli
             FrameMap frameMap = backend.newFrameMap(null);
             TargetDescription target = backend.getTarget();
             CallingConvention cc = CodeUtil.getCallingConvention(backend.getProviders().getCodeCache(), CallingConvention.Type.JavaCallee, method, false);
-            this.lirGenRes = backend.newLIRGenerationResult(lir, frameMap, null);
+            this.lirGenRes = backend.newLIRGenerationResult(lir, frameMap, method, null);
             this.gen = backend.newLIRGenerator(cc, lirGenRes);
             this.lirBuilder = backend.newBytecodeLIRBuilder(gen, this);
 
@@ -441,13 +441,13 @@ public class BaselineBytecodeParser extends AbstractBytecodeParser<Value, Baseli
     }
 
     @Override
-    protected Value genCheckCast(ResolvedJavaType type, Value object, JavaTypeProfile profileForTypeCheck, boolean b) {
+    protected Value createCheckCast(ResolvedJavaType type, Value object, JavaTypeProfile profileForTypeCheck, boolean b) {
         // TODO Auto-generated method stub
         throw GraalInternalError.unimplemented("Auto-generated method stub");
     }
 
     @Override
-    protected Value genInstanceOf(ResolvedJavaType type, Value object, JavaTypeProfile profileForTypeCheck) {
+    protected Value createInstanceOf(ResolvedJavaType type, Value object, JavaTypeProfile profileForTypeCheck) {
         // TODO Auto-generated method stub
         throw GraalInternalError.unimplemented("Auto-generated method stub");
     }

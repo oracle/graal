@@ -29,8 +29,6 @@ public interface ReferenceMap {
 
     void setRegister(int idx, PlatformKind kind);
 
-    PlatformKind getRegister(int idx);
-
     void setStackSlot(int offset, PlatformKind kind);
 
     boolean hasRegisterRefMap();

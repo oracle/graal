@@ -160,6 +160,10 @@ public abstract class AbstractFrameStateBuilder<T extends KindProvider, S extend
         return lockedObjects[i];
     }
 
+    public void storeLock(int i, T lock) {
+        lockedObjects[i] = lock;
+    }
+
     /**
      * Loads the local variable at the specified index, checking that the returned value is non-null
      * and that two-stack values are properly handled.

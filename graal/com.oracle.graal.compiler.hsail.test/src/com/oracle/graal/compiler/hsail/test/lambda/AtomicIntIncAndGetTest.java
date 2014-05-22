@@ -44,6 +44,11 @@ public class AtomicIntIncAndGetTest extends GraalKernelTester {
     }
 
     @Override
+    protected boolean supportsRequiredCapabilities() {
+        return (canDeoptimize());
+    }
+
+    @Override
     public void runTest() {
         setupArrays();
 

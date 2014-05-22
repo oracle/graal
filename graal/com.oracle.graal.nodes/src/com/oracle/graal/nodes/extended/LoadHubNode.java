@@ -50,7 +50,6 @@ public final class LoadHubNode extends FloatingGuardedNode implements Lowerable,
     public LoadHubNode(ValueNode object, Kind kind, ValueNode guard) {
         super(getKind(kind), (GuardingNode) guard);
         assert object != guard;
-        assert guard != null;
         this.object = object;
     }
 

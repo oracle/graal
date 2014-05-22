@@ -150,7 +150,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             methodSynchronizedObject = null;
             this.currentGraph = graph;
             HIRFrameStateBuilder frameState = new HIRFrameStateBuilder(method, graph, graphBuilderConfig.eagerResolving());
-            this.parser = new BytecodeParser(metaAccess, method, graphBuilderConfig, optimisticOpts, frameState, new BytecodeStream(method.getCode()), profilingInfo, method.getConstantPool(),
+            this.parser = createBytecodeParser(metaAccess, method, graphBuilderConfig, optimisticOpts, frameState, new BytecodeStream(method.getCode()), profilingInfo, method.getConstantPool(),
                             entryBCI);
             TTY.Filter filter = new TTY.Filter(PrintFilter.getValue(), method);
             try {
@@ -161,6 +161,12 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             parser = null;
 
             ComputeLoopFrequenciesClosure.compute(graph);
+        }
+
+        @SuppressWarnings("hiding")
+        protected BytecodeParser createBytecodeParser(MetaAccessProvider metaAccess, ResolvedJavaMethod method, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts,
+                        HIRFrameStateBuilder frameState, BytecodeStream stream, ProfilingInfo profilingInfo, ConstantPool constantPool, int entryBCI) {
+            return new BytecodeParser(metaAccess, method, graphBuilderConfig, optimisticOpts, frameState, stream, profilingInfo, constantPool, entryBCI);
         }
 
         @Override
@@ -190,7 +196,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             }
         }
 
-        class BytecodeParser extends AbstractBytecodeParser<ValueNode, HIRFrameStateBuilder> {
+        public class BytecodeParser extends AbstractBytecodeParser<ValueNode, HIRFrameStateBuilder> {
 
             private BciBlock[] loopHeaders;
             private LocalLiveness liveness;
@@ -433,12 +439,13 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     dispatchBegin.setStateAfter(dispatchState.create(bci));
                 } else {
                     dispatchBegin = currentGraph.add(new DispatchBeginNode());
-                    dispatchBegin.setStateAfter(dispatchState.create(bci));
                     dispatchState.apush(exceptionObject);
+                    dispatchBegin.setStateAfter(dispatchState.create(bci));
                     dispatchState.setRethrowException(true);
                 }
+                FixedWithNextNode finishedDispatch = finishInstruction(dispatchBegin, dispatchState);
                 FixedNode target = createTarget(dispatchBlock, dispatchState);
-                finishInstruction(dispatchBegin, dispatchState).setNext(target);
+                finishedDispatch.setNext(target);
                 return dispatchBegin;
             }
 
@@ -600,12 +607,12 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             }
 
             @Override
-            protected ValueNode genCheckCast(ResolvedJavaType type, ValueNode object, JavaTypeProfile profileForTypeCheck, boolean b) {
-                return new CheckCastNode(type, object, profileForTypeCheck, b);
+            protected ValueNode createCheckCast(ResolvedJavaType type, ValueNode object, JavaTypeProfile profileForTypeCheck, boolean forStoreCheck) {
+                return new CheckCastNode(type, object, profileForTypeCheck, forStoreCheck);
             }
 
             @Override
-            protected ValueNode genInstanceOf(ResolvedJavaType type, ValueNode object, JavaTypeProfile profileForTypeCheck) {
+            protected ValueNode createInstanceOf(ResolvedJavaType type, ValueNode object, JavaTypeProfile profileForTypeCheck) {
                 return new InstanceOfNode(type, object, profileForTypeCheck);
             }
 

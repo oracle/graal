@@ -607,6 +607,29 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
         return instanceFields;
     }
 
+    @Override
+    public ResolvedJavaField[] getStaticFields() {
+        if (isArray()) {
+            return new HotSpotResolvedJavaField[0];
+        } else {
+            final int fieldCount = getFieldCount();
+            ArrayList<HotSpotResolvedJavaField> fieldsArray = new ArrayList<>(fieldCount);
+
+            for (int i = 0; i < fieldCount; i++) {
+                FieldInfo field = new FieldInfo(i);
+
+                // We are only interested in static fields.
+                if (field.isStatic()) {
+                    HotSpotResolvedJavaField resolvedJavaField = createField(field.getName(), field.getType(), field.getOffset(), field.getAccessFlags());
+                    fieldsArray.add(resolvedJavaField);
+                }
+            }
+
+            fieldsArray.sort(new OffsetComparator());
+            return fieldsArray.toArray(new HotSpotResolvedJavaField[fieldsArray.size()]);
+        }
+    }
+
     /**
      * Returns the actual field count of this class's internal {@code InstanceKlass::_fields} array
      * by walking the array and discounting the generic signature slots at the end of the array.

@@ -101,14 +101,14 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool {
     public NodeLIRBuilder(StructuredGraph graph, LIRGeneratorTool gen) {
         this.gen = gen;
         this.nodeOperands = graph.createNodeMap();
-        this.debugInfoBuilder = createDebugInfoBuilder(nodeOperands);
+        this.debugInfoBuilder = createDebugInfoBuilder(graph, nodeOperands);
         if (MatchExpressions.getValue()) {
             matchRules = MatchRuleRegistry.lookup(getClass());
         }
     }
 
-    @SuppressWarnings("hiding")
-    protected DebugInfoBuilder createDebugInfoBuilder(NodeMap<Value> nodeOperands) {
+    @SuppressWarnings({"unused", "hiding"})
+    protected DebugInfoBuilder createDebugInfoBuilder(StructuredGraph graph, NodeMap<Value> nodeOperands) {
         return new DebugInfoBuilder(nodeOperands);
     }
 

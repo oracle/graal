@@ -42,10 +42,14 @@ public class FixedNodeProbabilityCache implements ToDoubleFunction<FixedNode> {
     private final Map<FixedNode, Double> cache = newIdentityMap();
 
     public double applyAsDouble(FixedNode node) {
+        assert node != null;
         metricComputeNodeProbability.increment();
 
         FixedNode current = node;
         while (true) {
+            if (current == null) {
+                return 1D;
+            }
             Node predecessor = current.predecessor();
             if (current instanceof BeginNode) {
                 if (predecessor == null) {
@@ -54,6 +58,9 @@ public class FixedNodeProbabilityCache implements ToDoubleFunction<FixedNode> {
                     assert predecessor instanceof ControlSplitNode : "a FixedNode with multiple successors needs to be a ControlSplitNode: " + current + " / " + predecessor;
                     break;
                 }
+            } else if (predecessor == null) {
+                // this should only appear for dead code
+                return 1D;
             }
             current = (FixedNode) predecessor;
         }
@@ -70,10 +77,8 @@ public class FixedNodeProbabilityCache implements ToDoubleFunction<FixedNode> {
                 if (current instanceof LoopBeginNode) {
                     probability *= ((LoopBeginNode) current).loopFrequency();
                 }
-            } else if (current instanceof StartNode) {
-                probability = 1D;
             } else {
-                // this should only appear for dead code
+                assert current instanceof StartNode;
                 probability = 1D;
             }
         } else {

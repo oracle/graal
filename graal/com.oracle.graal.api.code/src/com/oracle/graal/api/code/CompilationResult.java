@@ -460,7 +460,6 @@ public class CompilationResult implements Serializable {
 
     private int totalFrameSize = -1;
     private int customStackAreaOffset = -1;
-    private int registerRestoreEpilogueOffset = -1;
 
     private final String name;
 
@@ -638,26 +637,6 @@ public class CompilationResult implements Serializable {
         Mark mark = new Mark(codePos, markId);
         marks.add(mark);
         return mark;
-    }
-
-    /**
-     * Allows a method to specify the offset of the epilogue that restores the callee saved
-     * registers. Must be called iff the method is a callee saved method and stores callee registers
-     * on the stack.
-     *
-     * @param registerRestoreEpilogueOffset the offset in the machine code where the epilogue begins
-     */
-    public void setRegisterRestoreEpilogueOffset(int registerRestoreEpilogueOffset) {
-        assert this.registerRestoreEpilogueOffset == -1;
-        this.registerRestoreEpilogueOffset = registerRestoreEpilogueOffset;
-    }
-
-    /**
-     * @return the code offset of the start of the epilogue that restores all callee saved
-     *         registers, or -1 if this is not a callee saved method
-     */
-    public int getRegisterRestoreEpilogueOffset() {
-        return registerRestoreEpilogueOffset;
     }
 
     /**

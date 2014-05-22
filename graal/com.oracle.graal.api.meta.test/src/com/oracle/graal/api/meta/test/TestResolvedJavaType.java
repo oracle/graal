@@ -513,6 +513,16 @@ public class TestResolvedJavaType extends TypeUniverse {
         return result;
     }
 
+    public static Set<Field> getStaticFields(Class<?> c) {
+        Set<Field> result = new HashSet<>();
+        for (Field f : c.getDeclaredFields()) {
+            if (Modifier.isStatic(f.getModifiers())) {
+                result.add(f);
+            }
+        }
+        return result;
+    }
+
     public boolean fieldsEqual(Field f, ResolvedJavaField rjf) {
         return rjf.getDeclaringClass().equals(metaAccess.lookupJavaType(f.getDeclaringClass())) && rjf.getName().equals(f.getName()) &&
                         rjf.getType().resolve(rjf.getDeclaringClass()).equals(metaAccess.lookupJavaType(f.getType()));
@@ -566,6 +576,27 @@ public class TestResolvedJavaType extends TypeUniverse {
                 ResolvedJavaField[] actual2 = type.getInstanceFields(includeSuperclasses);
                 assertArrayEquals(actual, actual2);
             }
+        }
+    }
+
+    @Test
+    public void getStaticFieldsTest() {
+        for (Class<?> c : classes) {
+            ResolvedJavaType type = metaAccess.lookupJavaType(c);
+            Set<Field> expected = getStaticFields(c);
+            ResolvedJavaField[] actual = type.getStaticFields();
+            for (Field f : expected) {
+                assertNotNull(lookupField(actual, f));
+            }
+            for (ResolvedJavaField rf : actual) {
+                if (!isHiddenFromReflection(rf)) {
+                    assertEquals(lookupField(expected, rf) != null, !rf.isInternal());
+                }
+            }
+
+            // Test stability of getStaticFields
+            ResolvedJavaField[] actual2 = type.getStaticFields();
+            assertArrayEquals(actual, actual2);
         }
     }
 

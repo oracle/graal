@@ -219,7 +219,7 @@ public class MatchProcessor extends AbstractProcessor {
      */
     private static final boolean DEBUG = false;
 
-    private static final String MATCHPROCESSOR_LOG = "/tmp/matchprocessor.log";
+    private static final String LOGFILE = new File(System.getProperty("java.io.tmpdir"), "matchprocessor.log").getPath();
 
     private static PrintWriter log;
 
@@ -230,7 +230,7 @@ public class MatchProcessor extends AbstractProcessor {
     private static synchronized PrintWriter getLog() {
         if (log == null) {
             try {
-                log = new PrintWriter(new FileWriter(MATCHPROCESSOR_LOG, true));
+                log = new PrintWriter(new FileWriter(LOGFILE, true));
             } catch (IOException e) {
                 // Do nothing
             }
