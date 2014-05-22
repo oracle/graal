@@ -154,23 +154,6 @@ public abstract class ExecutionContext {
     public abstract String getLanguageShortName();
 
     /**
-     * Add instrumentation to subsequently constructed Truffle ASTs for the guest language; every
-     * one added will have the opportunity to add instrumentation.
-     *
-     * @throws IllegalStateException if AST instrumentation not enabled
-     * @throws IllegalArgumentException if prober not usable for the guest language implementation.
-     */
-    public abstract void addNodeProber(ASTNodeProber nodeProber) throws IllegalStateException, IllegalArgumentException;
-
-    /**
-     * Assigns a guest language-specific manager for using {@link ASTNodeProber}s added by tools to
-     * instrument ASTs with {@link Probe}s at specified nodes. This must be assigned outside the
-     * implementation context to avoid build circularities. It must also be set before any
-     * instrumentation probe implementations are assigned.
-     */
-    public abstract void setASTProber(ASTProber astProber);
-
-    /**
      * Establishes source event reporting
      */
     protected abstract void setSourceCallback(SourceCallback sourceCallback);
