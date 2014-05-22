@@ -36,17 +36,17 @@ public class IntervalWalker {
     /**
      * Sorted list of intervals, not live before the current position.
      */
-    RegisterBindingLists unhandledLists;
+    protected RegisterBindingLists unhandledLists;
 
     /**
      * Sorted list of intervals, live at the current position.
      */
-    RegisterBindingLists activeLists;
+    protected RegisterBindingLists activeLists;
 
     /**
      * Sorted list of intervals in a life time hole at the current position.
      */
-    RegisterBindingLists inactiveLists;
+    protected RegisterBindingLists inactiveLists;
 
     /**
      * The current interval (taken from the unhandled list) being processed.
@@ -67,11 +67,11 @@ public class IntervalWalker {
      * Processes the {@linkplain #currentInterval} interval in an attempt to allocate a physical
      * register to it and thus allow it to be moved to a list of {@linkplain #activeLists active}
      * intervals.
-     * 
+     *
      * @return {@code true} if a register was allocated to the {@linkplain #currentInterval}
      *         interval
      */
-    boolean activateCurrent() {
+    protected boolean activateCurrent() {
         return true;
     }
 
@@ -85,7 +85,7 @@ public class IntervalWalker {
 
     /**
      * Creates a new interval walker.
-     * 
+     *
      * @param allocator the register allocator context
      * @param unhandledFixed the list of unhandled {@linkplain RegisterBinding#Fixed fixed}
      *            intervals
@@ -103,7 +103,7 @@ public class IntervalWalker {
         nextInterval();
     }
 
-    void removeFromList(Interval interval) {
+    protected void removeFromList(Interval interval) {
         if (interval.state == State.Active) {
             activeLists.remove(RegisterBinding.Any, interval);
         } else {
@@ -112,7 +112,7 @@ public class IntervalWalker {
         }
     }
 
-    void walkTo(State state, int from) {
+    private void walkTo(State state, int from) {
         assert state == State.Active || state == State.Inactive : "wrong state";
         for (RegisterBinding binding : RegisterBinding.VALUES) {
             Interval prevprev = null;
@@ -176,7 +176,7 @@ public class IntervalWalker {
         }
     }
 
-    void nextInterval() {
+    private void nextInterval() {
         RegisterBinding binding;
         Interval any = unhandledLists.any;
         Interval fixed = unhandledLists.fixed;
@@ -201,7 +201,7 @@ public class IntervalWalker {
         currentInterval.rewindRange();
     }
 
-    void walkTo(int toOpId) {
+    protected void walkTo(int toOpId) {
         assert currentPosition <= toOpId : "can not walk backwards";
         while (currentInterval != null) {
             boolean isActive = currentInterval.from() <= toOpId;

@@ -836,7 +836,7 @@ final class LinearScanWalker extends IntervalWalker {
 
     // allocate a physical register or memory location to an interval
     @Override
-    boolean activateCurrent() {
+    protected boolean activateCurrent() {
         Interval interval = currentInterval;
         boolean result = true;
 
