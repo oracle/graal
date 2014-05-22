@@ -51,7 +51,7 @@ public class IntervalWalker {
     /**
      * The current interval (taken from the unhandled list) being processed.
      */
-    protected Interval currentInterval;
+    private Interval currentInterval;
 
     /**
      * The current position (intercept point through the intervals).
@@ -64,14 +64,12 @@ public class IntervalWalker {
     protected RegisterBinding currentBinding;
 
     /**
-     * Processes the {@linkplain #currentInterval} interval in an attempt to allocate a physical
-     * register to it and thus allow it to be moved to a list of {@linkplain #activeLists active}
-     * intervals.
+     * Processes the {@code currentInterval} interval in an attempt to allocate a physical register
+     * to it and thus allow it to be moved to a list of {@linkplain #activeLists active} intervals.
      *
-     * @return {@code true} if a register was allocated to the {@linkplain #currentInterval}
-     *         interval
+     * @return {@code true} if a register was allocated to the {@code currentInterval} interval
      */
-    protected boolean activateCurrent() {
+    protected boolean activateCurrent(@SuppressWarnings({"unused", "hiding"}) Interval currentInterval) {
         return true;
     }
 
@@ -217,7 +215,7 @@ public class IntervalWalker {
             if (isActive) {
                 try (Indent indent = Debug.logAndIndent("walk to op %d", opId)) {
                     currentInterval.state = State.Active;
-                    if (activateCurrent()) {
+                    if (activateCurrent(currentInterval)) {
                         activeLists.addToListSortedByCurrentFromPositions(currentBinding, currentInterval);
                         intervalMoved(currentInterval, State.Unhandled, State.Active);
                     }

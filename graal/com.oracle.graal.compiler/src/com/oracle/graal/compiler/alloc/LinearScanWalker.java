@@ -430,7 +430,7 @@ final class LinearScanWalker extends IntervalWalker {
 
             splitPart.setInsertMoveWhenActivated(moveNecessary);
 
-            assert splitPart.from() >= currentInterval.currentFrom() : "cannot append new interval before current walk position";
+            assert splitPart.from() >= currentPosition : "cannot append new interval before current walk position";
             unhandledLists.addToListSortedByStartAndUsePositions(RegisterBinding.Any, splitPart);
 
             if (Debug.isLogEnabled()) {
@@ -836,8 +836,7 @@ final class LinearScanWalker extends IntervalWalker {
 
     // allocate a physical register or memory location to an interval
     @Override
-    protected boolean activateCurrent() {
-        Interval interval = currentInterval;
+    protected boolean activateCurrent(Interval interval) {
         boolean result = true;
 
         try (Indent indent = Debug.logAndIndent("activating interval %s,  splitParent: %d", interval, interval.splitParent().operandNumber)) {
