@@ -79,7 +79,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
     }
 
     public PartialEscapeClosure(SchedulePhase schedule, MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, Assumptions assumptions) {
-        super(schedule);
+        super(schedule, schedule.getCFG());
         this.usages = schedule.getCFG().graph.createNodeBitMap();
         this.tool = new VirtualizerToolImpl(metaAccess, constantReflection, assumptions, this);
     }

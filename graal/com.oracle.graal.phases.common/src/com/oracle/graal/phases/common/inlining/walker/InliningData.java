@@ -264,11 +264,6 @@ public class InliningData {
                 }
             }
 
-            if (concreteMethods.size() > maxMethodPerInlining) {
-                InliningUtil.logNotInlinedInvoke(invoke, inliningDepth(), targetMethod, "polymorphic call with more than %d target methods", maxMethodPerInlining);
-                return null;
-            }
-
             // Clear methods that fall below the threshold.
             if (notRecordedTypeProbability > 0) {
                 ArrayList<ResolvedJavaMethod> newConcreteMethods = new ArrayList<>();
@@ -280,7 +275,7 @@ public class InliningData {
                     }
                 }
 
-                if (newConcreteMethods.size() == 0) {
+                if (newConcreteMethods.isEmpty()) {
                     // No method left that is worth inlining.
                     InliningUtil.logNotInlinedInvoke(invoke, inliningDepth(), targetMethod, "no methods remaining after filtering less frequent methods (%d methods previously)",
                                     concreteMethods.size());
@@ -289,6 +284,11 @@ public class InliningData {
 
                 concreteMethods = newConcreteMethods;
                 concreteMethodsProbabilities = newConcreteMethodsProbabilities;
+            }
+
+            if (concreteMethods.size() > maxMethodPerInlining) {
+                InliningUtil.logNotInlinedInvoke(invoke, inliningDepth(), targetMethod, "polymorphic call with more than %d target methods", maxMethodPerInlining);
+                return null;
             }
 
             // Clean out types whose methods are no longer available.
@@ -306,7 +306,7 @@ public class InliningData {
                 }
             }
 
-            if (usedTypes.size() == 0) {
+            if (usedTypes.isEmpty()) {
                 // No type left that is worth checking for.
                 InliningUtil.logNotInlinedInvoke(invoke, inliningDepth(), targetMethod, "no types remaining after filtering less frequent types (%d types previously)", ptypes.length);
                 return null;
@@ -410,17 +410,7 @@ public class InliningData {
             double invokeProbability = callsiteHolder.invokeProbability(invoke);
             double invokeRelevance = callsiteHolder.invokeRelevance(invoke);
             MethodInvocation methodInvocation = new MethodInvocation(info, calleeAssumptions, invokeProbability, invokeRelevance);
-            pushInvocation(methodInvocation);
-
-            for (int i = 0; i < info.numberOfMethods(); i++) {
-                Inlineable elem = info.inlineableElementAt(i);
-                if (elem instanceof InlineableGraph) {
-                    pushGraph(((InlineableGraph) elem).getGraph(), invokeProbability * info.probabilityAt(i), invokeRelevance * info.relevanceAt(i));
-                } else {
-                    assert elem instanceof InlineableMacroNode;
-                    pushDummyGraph();
-                }
-            }
+            pushInvocationAndGraphs(methodInvocation);
         }
     }
 
@@ -449,6 +439,7 @@ public class InliningData {
 
     private void pushDummyGraph() {
         graphQueue.push(DUMMY_CALLSITE_HOLDER);
+        assert graphQueue.size() <= maxGraphs;
     }
 
     public boolean hasUnprocessedGraphs() {
@@ -492,10 +483,22 @@ public class InliningData {
         return invocationQueue.peekFirst();
     }
 
-    private void pushInvocation(MethodInvocation methodInvocation) {
+    private void pushInvocationAndGraphs(MethodInvocation methodInvocation) {
         invocationQueue.addFirst(methodInvocation);
-        maxGraphs += methodInvocation.callee().numberOfMethods();
+        InlineInfo info = methodInvocation.callee();
+        maxGraphs += info.numberOfMethods();
         assert graphQueue.size() <= maxGraphs;
+        double invokeProbability = methodInvocation.probability();
+        double invokeRelevance = methodInvocation.relevance();
+        for (int i = 0; i < info.numberOfMethods(); i++) {
+            Inlineable elem = info.inlineableElementAt(i);
+            if (elem instanceof InlineableGraph) {
+                pushGraph(((InlineableGraph) elem).getGraph(), invokeProbability * info.probabilityAt(i), invokeRelevance * info.relevanceAt(i));
+            } else {
+                assert elem instanceof InlineableMacroNode;
+                pushDummyGraph();
+            }
+        }
     }
 
     private void popInvocation() {

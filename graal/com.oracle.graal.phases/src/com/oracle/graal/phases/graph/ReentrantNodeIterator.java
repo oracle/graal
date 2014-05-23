@@ -33,8 +33,13 @@ public final class ReentrantNodeIterator {
 
     public static class LoopInfo<StateT> {
 
-        public final Map<LoopEndNode, StateT> endStates = newNodeIdentityMap(4);
-        public final Map<LoopExitNode, StateT> exitStates = newNodeIdentityMap(2);
+        public final Map<LoopEndNode, StateT> endStates;
+        public final Map<LoopExitNode, StateT> exitStates;
+
+        public LoopInfo(int endCount, int exitCount) {
+            endStates = newNodeIdentityMap(endCount);
+            exitStates = newNodeIdentityMap(exitCount);
+        }
     }
 
     public abstract static class NodeIteratorClosure<StateT> {
@@ -64,7 +69,7 @@ public final class ReentrantNodeIterator {
     public static <StateT> LoopInfo<StateT> processLoop(NodeIteratorClosure<StateT> closure, LoopBeginNode loop, StateT initialState) {
         Map<FixedNode, StateT> blockEndStates = apply(closure, loop, initialState, loop);
 
-        LoopInfo<StateT> info = new LoopInfo<>();
+        LoopInfo<StateT> info = new LoopInfo<>(loop.loopEnds().count(), loop.loopExits().count());
         for (LoopEndNode end : loop.loopEnds()) {
             if (blockEndStates.containsKey(end)) {
                 info.endStates.put(end, blockEndStates.get(end));
@@ -119,11 +124,9 @@ public final class ReentrantNodeIterator {
                                     nodeQueue.add(entry.getKey());
                                 }
                             } else {
-                                assert !blockEndStates.containsKey(current);
-                                blockEndStates.put(current, state);
                                 boolean endsVisited = true;
                                 for (AbstractEndNode forwardEnd : merge.forwardEnds()) {
-                                    if (!blockEndStates.containsKey(forwardEnd)) {
+                                    if (forwardEnd != current && !blockEndStates.containsKey(forwardEnd)) {
                                         endsVisited = false;
                                         break;
                                     }
@@ -132,13 +135,16 @@ public final class ReentrantNodeIterator {
                                     ArrayList<StateT> states = new ArrayList<>(merge.forwardEndCount());
                                     for (int i = 0; i < merge.forwardEndCount(); i++) {
                                         AbstractEndNode forwardEnd = merge.forwardEndAt(i);
-                                        assert blockEndStates.containsKey(forwardEnd);
-                                        StateT other = blockEndStates.get(forwardEnd);
+                                        assert forwardEnd == current || blockEndStates.containsKey(forwardEnd);
+                                        StateT other = forwardEnd == current ? state : blockEndStates.remove(forwardEnd);
                                         states.add(other);
                                     }
                                     state = closure.merge(merge, states);
                                     current = closure.continueIteration(state) ? merge : null;
                                     continue;
+                                } else {
+                                    assert !blockEndStates.containsKey(current);
+                                    blockEndStates.put(current, state);
                                 }
                             }
                         }
@@ -148,14 +154,15 @@ public final class ReentrantNodeIterator {
                             current = firstSuccessor;
                             continue;
                         } else {
-                            while (successors.hasNext()) {
+                            do {
                                 BeginNode successor = (BeginNode) successors.next();
                                 StateT successorState = closure.afterSplit(successor, state);
                                 if (closure.continueIteration(successorState)) {
                                     blockEndStates.put(successor, successorState);
                                     nodeQueue.add(successor);
                                 }
-                            }
+                            } while (successors.hasNext());
+
                             state = closure.afterSplit((BeginNode) firstSuccessor, state);
                             current = closure.continueIteration(state) ? firstSuccessor : null;
                             continue;
@@ -169,7 +176,8 @@ public final class ReentrantNodeIterator {
                 return blockEndStates;
             } else {
                 current = nodeQueue.removeFirst();
-                state = blockEndStates.get(current);
+                assert blockEndStates.containsKey(current);
+                state = blockEndStates.remove(current);
                 assert !(current instanceof MergeNode) && current instanceof BeginNode;
             }
         } while (true);

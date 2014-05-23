@@ -332,13 +332,13 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
             assert concretes.size() > 0;
             Debug.log("Method check cascade with %d methods", concretes.size());
 
-            ValueNode[] constantMethods = new ValueNode[concretes.size()];
+            ConstantNode[] constantMethods = new ConstantNode[concretes.size()];
             double[] probability = new double[concretes.size()];
             for (int i = 0; i < concretes.size(); ++i) {
                 ResolvedJavaMethod firstMethod = concretes.get(i);
                 Constant firstMethodConstant = firstMethod.getEncoding();
 
-                ValueNode firstMethodConstantNode = ConstantNode.forConstant(firstMethodConstant, metaAccess, graph);
+                ConstantNode firstMethodConstantNode = ConstantNode.forConstant(firstMethodConstant, metaAccess, graph);
                 constantMethods[i] = firstMethodConstantNode;
                 double concretesProbability = concretesProbabilities.get(i);
                 assert concretesProbability >= 0.0;

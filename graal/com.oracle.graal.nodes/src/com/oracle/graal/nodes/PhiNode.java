@@ -82,6 +82,10 @@ public abstract class PhiNode extends FloatingNode {
         values().set(i, x);
     }
 
+    public void setValueAt(AbstractEndNode end, ValueNode x) {
+        setValueAt(merge().phiPredecessorIndex(end), x);
+    }
+
     public ValueNode valueAt(AbstractEndNode pred) {
         return valueAt(merge().phiPredecessorIndex(pred));
     }

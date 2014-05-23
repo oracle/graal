@@ -189,7 +189,9 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
                                 GraphUtil.tryKillUnused(valueNode);
                             } else if (improvedStamp) {
                                 // the improved stamp may enable additional canonicalization
-                                tryCanonicalize(valueNode, nodeClass);
+                                if (!tryCanonicalize(valueNode, nodeClass)) {
+                                    valueNode.usages().forEach(workList::add);
+                                }
                             }
                         }
                     }
