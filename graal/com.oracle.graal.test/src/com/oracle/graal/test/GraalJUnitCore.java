@@ -51,6 +51,7 @@ public class GraalJUnitCore {
         boolean enableTiming = false;
         boolean color = false;
         boolean eagerStackTrace = false;
+        boolean gcAfterTest = false;
         for (String each : args) {
             if (each.charAt(0) == '-') {
                 // command line arguments
@@ -62,6 +63,8 @@ public class GraalJUnitCore {
                     color = true;
                 } else if (each.contentEquals("-JUnitEagerStackTrace")) {
                     eagerStackTrace = true;
+                } else if (each.contentEquals("-JUnitGCAfterTest")) {
+                    gcAfterTest = true;
                 } else {
                     system.out().println("Unknown command line argument: " + each);
                 }
@@ -91,6 +94,9 @@ public class GraalJUnitCore {
         }
         if (eagerStackTrace) {
             graalListener = new EagerStackTraceDecorator(graalListener);
+        }
+        if (gcAfterTest) {
+            graalListener = new GCAfterTestDecorator(graalListener);
         }
         junitCore.addListener(GraalTextListener.createRunListener(graalListener));
         Result result = junitCore.run(classes.toArray(new Class[0]));
