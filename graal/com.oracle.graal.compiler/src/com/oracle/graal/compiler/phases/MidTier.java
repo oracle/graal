@@ -52,9 +52,6 @@ public class MidTier extends PhaseSuite<MidTierContext> {
 
         if (OptFloatingReads.getValue()) {
             appendPhase(new IncrementalCanonicalizerPhase<>(canonicalizer, new FloatingReadPhase()));
-            if (OptReadElimination.getValue()) {
-                appendPhase(new ReadEliminationPhase());
-            }
         }
         appendPhase(new RemoveValueProxyPhase());
 
