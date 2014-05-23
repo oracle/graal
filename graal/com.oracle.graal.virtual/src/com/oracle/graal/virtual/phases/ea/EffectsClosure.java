@@ -42,6 +42,7 @@ import com.oracle.graal.virtual.phases.ea.EffectList.Effect;
 
 public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> extends EffectsPhase.Closure<BlockT> {
 
+    private final ControlFlowGraph cfg;
     private final SchedulePhase schedule;
 
     protected final NodeMap<ValueNode> aliases;
@@ -51,11 +52,12 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
 
     private boolean changed;
 
-    public EffectsClosure(SchedulePhase schedule) {
+    public EffectsClosure(SchedulePhase schedule, ControlFlowGraph cfg) {
         this.schedule = schedule;
-        this.aliases = schedule.getCFG().graph.createNodeMap();
-        this.blockEffects = new BlockMap<>(schedule.getCFG());
-        for (Block block : schedule.getCFG().getBlocks()) {
+        this.cfg = cfg;
+        this.aliases = cfg.graph.createNodeMap();
+        this.blockEffects = new BlockMap<>(cfg);
+        for (Block block : cfg.getBlocks()) {
             blockEffects.put(block, new GraphEffectList());
         }
     }
@@ -67,7 +69,7 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
 
     @Override
     public void applyEffects() {
-        final StructuredGraph graph = schedule.getCFG().graph;
+        final StructuredGraph graph = cfg.graph;
         final ArrayList<Node> obsoleteNodes = new ArrayList<>(0);
         BlockIteratorClosure<Void> closure = new BlockIteratorClosure<Void>() {
 
@@ -114,7 +116,7 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
                 return info.exitStates;
             }
         };
-        ReentrantBlockIterator.apply(closure, schedule.getCFG().getStartBlock());
+        ReentrantBlockIterator.apply(closure, cfg.getStartBlock());
         assert VirtualUtil.assertNonReachable(graph, obsoleteNodes);
     }
 
@@ -124,7 +126,8 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
 
         GraphEffectList effects = blockEffects.get(block);
         FixedWithNextNode lastFixedNode = null;
-        for (Node node : schedule.getBlockToNodesMap().get(block)) {
+        Iterable<? extends Node> nodes = schedule != null ? schedule.getBlockToNodesMap().get(block) : block.getNodes();
+        for (Node node : nodes) {
             aliases.set(node, null);
             if (node instanceof LoopExitNode) {
                 LoopExitNode loopExit = (LoopExitNode) node;
