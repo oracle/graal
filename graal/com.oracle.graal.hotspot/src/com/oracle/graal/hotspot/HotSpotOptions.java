@@ -155,12 +155,12 @@ public class HotSpotOptions {
 
         if (value == null) {
             if (optionType == Boolean.TYPE || optionType == Boolean.class) {
-                System.out.println("Value for boolean option '" + optionName + "' must use '-G:+" + optionName + "' or '-G:-" + optionName + "' format");
+                System.err.println("Value for boolean option '" + optionName + "' must use '-G:+" + optionName + "' or '-G:-" + optionName + "' format");
                 return false;
             }
 
             if (valueString == null) {
-                System.out.println("Value for option '" + optionName + "' must use '-G:" + optionName + "=<value>' format");
+                System.err.println("Value for option '" + optionName + "' must use '-G:" + optionName + "=<value>' format");
                 return false;
             }
 
@@ -175,7 +175,7 @@ public class HotSpotOptions {
             }
         } else {
             if (optionType != Boolean.class) {
-                System.out.println("Value for option '" + optionName + "' must use '-G:" + optionName + "=<value>' format");
+                System.err.println("Value for option '" + optionName + "' must use '-G:" + optionName + "=<value>' format");
                 return false;
             }
         }
@@ -186,10 +186,10 @@ public class HotSpotOptions {
             } else {
                 OptionValue<?> optionValue = desc.getOptionValue();
                 optionValue.setValue(value);
-                // System.out.println("Set option " + desc.getName() + " to " + value);
+                // System.err.println("Set option " + desc.getName() + " to " + value);
             }
         } else {
-            System.out.println("Wrong value \"" + valueString + "\" for option " + optionName);
+            System.err.println("Wrong value \"" + valueString + "\" for option " + optionName);
             return false;
         }
 
@@ -197,13 +197,13 @@ public class HotSpotOptions {
     }
 
     protected static void printNoMatchMessage(String optionName) {
-        System.out.println("Could not find option " + optionName + " (use -G:+PrintFlags to see Graal options)");
+        System.err.println("Could not find option " + optionName + " (use -G:+PrintFlags to see Graal options)");
         List<OptionDescriptor> matches = fuzzyMatch(optionName);
         if (!matches.isEmpty()) {
-            System.out.println("Did you mean one of the following?");
+            System.err.println("Did you mean one of the following?");
             for (OptionDescriptor match : matches) {
                 boolean isBoolean = match.getType() == boolean.class;
-                System.out.println(String.format("    %s%s%s", isBoolean ? "(+/-)" : "", match.getName(), isBoolean ? "" : "=<value>"));
+                System.err.println(String.format("    %s%s%s", isBoolean ? "(+/-)" : "", match.getName(), isBoolean ? "" : "=<value>"));
             }
         }
     }
@@ -230,7 +230,7 @@ public class HotSpotOptions {
             }
             String previous = System.setProperty(propertyName, "true");
             if (previous != null) {
-                System.out.println("Overrode value \"" + previous + "\" of system property \"" + propertyName + "\" with \"true\"");
+                System.err.println("Overrode value \"" + previous + "\" of system property \"" + propertyName + "\" with \"true\"");
             }
         } catch (Exception e) {
             throw new GraalInternalError(e);

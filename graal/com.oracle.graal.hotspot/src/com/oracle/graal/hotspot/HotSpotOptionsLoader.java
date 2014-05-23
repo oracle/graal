@@ -58,30 +58,31 @@ class HotSpotOptionsLoader {
     }
 
     /**
-     * Command line utility for generating the source code of GraalRuntime::set_option().
-     *
-     * @param args one element array with the path of the source file to be created
+     * Command line utility for generating the source code of GraalRuntime::set_option() which is
+     * written {@link System#out}.
      */
-    public static void main(String[] args) throws Exception {
-        File outputFile = new File(args[0]);
-        PrintStream out = new PrintStream(outputFile);
-        Set<Integer> lengths = new TreeSet<>();
-        for (String s : options.keySet()) {
-            lengths.add(s.length());
+    public static void main(String[] args) {
+        PrintStream out = System.out;
+        try {
+            Set<Integer> lengths = new TreeSet<>();
+            for (String s : options.keySet()) {
+                lengths.add(s.length());
+            }
+            lengths.add("PrintFlags".length());
+
+            out.println("bool GraalRuntime::set_option(KlassHandle hotSpotOptionsClass, const char* name, int name_len, Handle name_handle, const char* value, TRAPS) {");
+            out.println("  if (value[0] == '+' || value[0] == '-') {");
+            out.println("    // boolean options");
+            genMatchers(out, lengths, true);
+            out.println("  } else {");
+            out.println("    // non-boolean options");
+            genMatchers(out, lengths, false);
+            out.println("  }");
+            out.println("  return false;");
+            out.println("}");
+        } catch (Throwable t) {
+            t.printStackTrace(out);
         }
-        lengths.add("PrintFlags".length());
-
-        out.println("bool GraalRuntime::set_option(KlassHandle hotSpotOptionsClass, const char* name, int name_len, Handle name_handle, const char* value, TRAPS) {");
-        out.println("  if (value[0] == '+' || value[0] == '-') {");
-        out.println("    // boolean options");
-        genMatchers(out, lengths, true);
-        out.println("  } else {");
-        out.println("    // non-boolean options");
-        genMatchers(out, lengths, false);
-        out.println("  }");
-        out.println("  return false;");
-        out.println("}");
-
         out.flush();
     }
 
@@ -90,6 +91,8 @@ class HotSpotOptionsLoader {
         for (int len : lengths) {
             boolean printedCase = false;
 
+            // The use of strncmp is required (instead of strcmp) as the option name will not be
+            // null terminated for <name>=<value> style options.
             if (len == "PrintFlags".length() && isBoolean) {
                 printedCase = true;
                 out.println("    case " + len + ":");
