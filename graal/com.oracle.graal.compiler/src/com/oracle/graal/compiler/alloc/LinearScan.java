@@ -65,7 +65,7 @@ public final class LinearScan {
 
     boolean callKillsRegisters;
 
-    private static final int INITIAL_SPLIT_INTERVALS_CAPACITY = 32;
+    private static final int SPLIT_INTERVALS_CAPACITY_RIGHT_SHIFT = 1;
 
     public static class BlockData {
 
@@ -282,7 +282,7 @@ public final class LinearScan {
             firstDerivedIntervalIndex = intervalsSize;
         }
         if (intervalsSize == intervals.length) {
-            intervals = Arrays.copyOf(intervals, intervals.length * 2);
+            intervals = Arrays.copyOf(intervals, intervals.length + (intervals.length >> SPLIT_INTERVALS_CAPACITY_RIGHT_SHIFT));
         }
         intervalsSize++;
         Variable variable = new Variable(source.kind(), ir.nextVariable());
@@ -591,7 +591,7 @@ public final class LinearScan {
     void numberInstructions() {
 
         intervalsSize = operandSize();
-        intervals = new Interval[intervalsSize + INITIAL_SPLIT_INTERVALS_CAPACITY];
+        intervals = new Interval[intervalsSize + (intervalsSize >> SPLIT_INTERVALS_CAPACITY_RIGHT_SHIFT)];
 
         ValueProcedure setVariableProc = new ValueProcedure() {
 
@@ -1875,7 +1875,6 @@ public final class LinearScan {
             }
 
             printLir("After register number assignment", true);
-
         }
     }
 
