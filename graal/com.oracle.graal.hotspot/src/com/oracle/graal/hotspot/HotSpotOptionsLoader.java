@@ -91,6 +91,8 @@ class HotSpotOptionsLoader {
         for (int len : lengths) {
             boolean printedCase = false;
 
+            // The use of strncmp is required (instead of strcmp) as the option name will not be
+            // null terminated for <name>=<value> style options.
             if (len == "PrintFlags".length() && isBoolean) {
                 printedCase = true;
                 out.println("    case " + len + ":");
