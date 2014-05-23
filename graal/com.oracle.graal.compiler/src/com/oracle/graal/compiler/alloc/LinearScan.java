@@ -660,65 +660,65 @@ public final class LinearScan {
                 List<LIRInstruction> instructions = ir.getLIRforBlock(block);
                 int numInst = instructions.size();
 
-                // iterate all instructions of the block
-                for (int j = 0; j < numInst; j++) {
-                    final LIRInstruction op = instructions.get(j);
+                ValueProcedure useProc = new ValueProcedure() {
 
-                    ValueProcedure useProc = new ValueProcedure() {
-
-                        @Override
-                        protected Value doValue(Value operand) {
-                            if (isVariable(operand)) {
-                                int operandNum = operandNumber(operand);
-                                if (!liveKill.get(operandNum)) {
-                                    liveGen.set(operandNum);
-                                    Debug.log("liveGen for operand %d", operandNum);
-                                }
-                                if (block.getLoop() != null) {
-                                    intervalInLoop.setBit(operandNum, block.getLoop().getIndex());
-                                }
-                            }
-
-                            if (DetailedAsserts.getValue()) {
-                                verifyInput(block, liveKill, operand);
-                            }
-                            return operand;
-                        }
-                    };
-                    ValueProcedure stateProc = new ValueProcedure() {
-
-                        @Override
-                        public Value doValue(Value operand) {
+                    @Override
+                    protected Value doValue(Value operand) {
+                        if (isVariable(operand)) {
                             int operandNum = operandNumber(operand);
                             if (!liveKill.get(operandNum)) {
                                 liveGen.set(operandNum);
-                                Debug.log("liveGen in state for operand %d", operandNum);
+                                Debug.log("liveGen for operand %d", operandNum);
                             }
-                            return operand;
+                            if (block.getLoop() != null) {
+                                intervalInLoop.setBit(operandNum, block.getLoop().getIndex());
+                            }
                         }
-                    };
-                    ValueProcedure defProc = new ValueProcedure() {
 
-                        @Override
-                        public Value doValue(Value operand) {
-                            if (isVariable(operand)) {
-                                int varNum = operandNumber(operand);
-                                liveKill.set(varNum);
-                                Debug.log("liveKill for operand %d", varNum);
-                                if (block.getLoop() != null) {
-                                    intervalInLoop.setBit(varNum, block.getLoop().getIndex());
-                                }
-                            }
-
-                            if (DetailedAsserts.getValue()) {
-                                // fixed intervals are never live at block boundaries, so
-                                // they need not be processed in live sets
-                                // process them only in debug mode so that this can be checked
-                                verifyTemp(liveKill, operand);
-                            }
-                            return operand;
+                        if (DetailedAsserts.getValue()) {
+                            verifyInput(block, liveKill, operand);
                         }
-                    };
+                        return operand;
+                    }
+                };
+                ValueProcedure stateProc = new ValueProcedure() {
+
+                    @Override
+                    public Value doValue(Value operand) {
+                        int operandNum = operandNumber(operand);
+                        if (!liveKill.get(operandNum)) {
+                            liveGen.set(operandNum);
+                            Debug.log("liveGen in state for operand %d", operandNum);
+                        }
+                        return operand;
+                    }
+                };
+                ValueProcedure defProc = new ValueProcedure() {
+
+                    @Override
+                    public Value doValue(Value operand) {
+                        if (isVariable(operand)) {
+                            int varNum = operandNumber(operand);
+                            liveKill.set(varNum);
+                            Debug.log("liveKill for operand %d", varNum);
+                            if (block.getLoop() != null) {
+                                intervalInLoop.setBit(varNum, block.getLoop().getIndex());
+                            }
+                        }
+
+                        if (DetailedAsserts.getValue()) {
+                            // fixed intervals are never live at block boundaries, so
+                            // they need not be processed in live sets
+                            // process them only in debug mode so that this can be checked
+                            verifyTemp(liveKill, operand);
+                        }
+                        return operand;
+                    }
+                };
+
+                // iterate all instructions of the block
+                for (int j = 0; j < numInst; j++) {
+                    final LIRInstruction op = instructions.get(j);
 
                     try (Indent indent2 = Debug.logAndIndent("handle op %d", op.id())) {
                         op.forEachInput(useProc);
@@ -1154,7 +1154,7 @@ public final class LinearScan {
                         // that the block was part of a non-natural loop, so it might
                         // have an invalid loop index.
                         if (block.isLoopEnd() && block.getLoop() != null && isIntervalInLoop(operandNum, block.getLoop().getIndex())) {
-                            intervalFor(operand).addUsePos(blockTo + 1, RegisterPriority.LiveAtLoopEnd);
+                            intervalFor(operandNum).addUsePos(blockTo + 1, RegisterPriority.LiveAtLoopEnd);
                         }
                     }
 
@@ -1424,13 +1424,6 @@ public final class LinearScan {
 
     Interval intervalAtBlockEnd(AbstractBlock<?> block, int operandNumber) {
         return splitChildAtOpId(intervalFor(operandNumber), getLastLirInstructionId(block) + 1, LIRInstruction.OperandMode.DEF);
-    }
-
-    Interval intervalAtOpId(Value operand, int opId) {
-        assert isVariable(operand) : "register number out of bounds";
-        assert intervalFor(operand) != null : "no interval found";
-
-        return splitChildAtOpId(intervalFor(operand), opId, LIRInstruction.OperandMode.USE);
     }
 
     void resolveCollectMappings(AbstractBlock<?> fromBlock, AbstractBlock<?> toBlock, MoveResolver moveResolver) {
