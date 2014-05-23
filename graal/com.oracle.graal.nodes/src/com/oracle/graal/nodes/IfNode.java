@@ -481,30 +481,23 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
             AbstractEndNode trueEnd = (AbstractEndNode) trueSuccessor().next();
             AbstractEndNode falseEnd = (AbstractEndNode) falseSuccessor().next();
             MergeNode merge = trueEnd.merge();
-            if (merge == falseEnd.merge() && merge.forwardEndCount() == 2 && trueSuccessor().anchored().isEmpty() && falseSuccessor().anchored().isEmpty()) {
+            if (merge == falseEnd.merge() && trueSuccessor().anchored().isEmpty() && falseSuccessor().anchored().isEmpty()) {
                 Iterator<PhiNode> phis = merge.phis().iterator();
                 if (!phis.hasNext()) {
-                    // empty if construct with no phis: remove it
-                    removeEmptyIf(tool);
+                    tool.addToWorkList(condition());
+                    removeThroughFalseBranch(tool);
                     return true;
                 } else {
                     PhiNode singlePhi = phis.next();
                     if (!phis.hasNext()) {
                         // one phi at the merge of an otherwise empty if construct: try to convert
                         // into a MaterializeNode
-                        boolean inverted = trueEnd == merge.forwardEndAt(1);
-                        ValueNode trueValue = singlePhi.valueAt(inverted ? 1 : 0);
-                        ValueNode falseValue = singlePhi.valueAt(inverted ? 0 : 1);
-                        if (trueValue.getKind() != falseValue.getKind()) {
-                            return false;
-                        }
-                        if (trueValue.getKind() != Kind.Int && trueValue.getKind() != Kind.Long) {
-                            return false;
-                        }
+                        ValueNode trueValue = singlePhi.valueAt(trueEnd);
+                        ValueNode falseValue = singlePhi.valueAt(falseEnd);
                         ConditionalNode conditional = canonicalizeConditionalCascade(trueValue, falseValue);
                         if (conditional != null) {
-                            graph().replaceFloating(singlePhi, conditional);
-                            removeEmptyIf(tool);
+                            singlePhi.setValueAt(trueEnd, conditional);
+                            removeThroughFalseBranch(tool);
                             return true;
                         }
                     }
@@ -518,12 +511,6 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
             ValueNode falseValue = falseEnd.result();
             ConditionalNode conditional = null;
             if (trueValue != null) {
-                if (trueValue.getKind() != falseValue.getKind()) {
-                    return false;
-                }
-                if (trueValue.getKind() != Kind.Int && trueValue.getKind() != Kind.Long) {
-                    return false;
-                }
                 conditional = canonicalizeConditionalCascade(trueValue, falseValue);
                 if (conditional == null) {
                     return false;
@@ -537,7 +524,19 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         return false;
     }
 
+    protected void removeThroughFalseBranch(SimplifierTool tool) {
+        BeginNode trueBegin = trueSuccessor();
+        graph().removeSplitPropagate(this, trueBegin, tool);
+        tool.addToWorkList(trueBegin);
+    }
+
     private ConditionalNode canonicalizeConditionalCascade(ValueNode trueValue, ValueNode falseValue) {
+        if (trueValue.getKind() != falseValue.getKind()) {
+            return null;
+        }
+        if (trueValue.getKind() != Kind.Int && trueValue.getKind() != Kind.Long) {
+            return null;
+        }
         if (trueValue.isConstant() && falseValue.isConstant()) {
             return graph().unique(new ConditionalNode(condition(), trueValue, falseValue));
         } else {
@@ -834,39 +833,5 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         }
 
         return null;
-    }
-
-    private void removeEmptyIf(SimplifierTool tool) {
-        BeginNode originalTrueSuccessor = trueSuccessor();
-        BeginNode originalFalseSuccessor = falseSuccessor();
-        assert originalTrueSuccessor.next() instanceof AbstractEndNode && originalFalseSuccessor.next() instanceof AbstractEndNode;
-
-        AbstractEndNode trueEnd = (AbstractEndNode) originalTrueSuccessor.next();
-        AbstractEndNode falseEnd = (AbstractEndNode) originalFalseSuccessor.next();
-        assert trueEnd.merge() == falseEnd.merge();
-
-        FixedWithNextNode pred = (FixedWithNextNode) predecessor();
-        MergeNode merge = trueEnd.merge();
-        merge.prepareDelete(pred);
-        assert merge.usages().isEmpty();
-        originalTrueSuccessor.prepareDelete();
-        originalFalseSuccessor.prepareDelete();
-
-        FixedNode next = merge.next();
-        FrameState state = merge.stateAfter();
-        merge.setNext(null);
-        setTrueSuccessor(null);
-        setFalseSuccessor(null);
-        pred.setNext(next);
-        safeDelete();
-        originalTrueSuccessor.safeDelete();
-        originalFalseSuccessor.safeDelete();
-        merge.safeDelete();
-        trueEnd.safeDelete();
-        falseEnd.safeDelete();
-        if (state != null) {
-            tool.removeIfUnused(state);
-        }
-        tool.addToWorkList(next);
     }
 }

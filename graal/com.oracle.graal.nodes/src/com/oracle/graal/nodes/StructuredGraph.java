@@ -27,6 +27,7 @@ import java.util.concurrent.atomic.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.util.*;
@@ -303,6 +304,10 @@ public class StructuredGraph extends Graph {
     }
 
     public void removeSplitPropagate(ControlSplitNode node, BeginNode survivingSuccessor) {
+        removeSplitPropagate(node, survivingSuccessor, null);
+    }
+
+    public void removeSplitPropagate(ControlSplitNode node, BeginNode survivingSuccessor, SimplifierTool tool) {
         assert node != null;
         assert node.usages().isEmpty();
         assert survivingSuccessor != null;
@@ -313,7 +318,7 @@ public class StructuredGraph extends Graph {
         for (Node successor : snapshot) {
             if (successor != null && successor.isAlive()) {
                 if (successor != survivingSuccessor) {
-                    GraphUtil.killCFG(successor);
+                    GraphUtil.killCFG(successor, tool);
                 }
             }
         }
