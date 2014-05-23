@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -48,7 +48,7 @@ abstract class Buffer {
 
     /**
      * Closes this buffer. No extra data can be written to this buffer after this call.
-     * 
+     *
      * @param trimmedCopy if {@code true}, then a copy of the underlying byte array up to (but not
      *            including) {@code position()} is returned
      * @return the data in this buffer or a trimmed copy if {@code trimmedCopy} is {@code true}
@@ -68,7 +68,7 @@ abstract class Buffer {
 
     /**
      * Copies the data from this buffer into a given array.
-     * 
+     *
      * @param dst the destination array
      * @param off starting position in {@code dst}
      * @param len number of bytes to copy
@@ -114,7 +114,7 @@ abstract class Buffer {
     }
 
     public int emitByte(int b, int pos) {
-        assert NumUtil.isUByte(b);
+        assert NumUtil.isUByte(b) || NumUtil.isByte(b);
         int newPos = pos + 1;
         ensureSize(newPos);
         data[pos] = (byte) (b & 0xFF);
@@ -139,7 +139,7 @@ abstract class Buffer {
 
         @Override
         public int emitShort(int b, int pos) {
-            assert NumUtil.isUShort(b);
+            assert NumUtil.isUShort(b) || NumUtil.isShort(b);
             int newPos = pos + 2;
             ensureSize(pos + 2);
             data[pos] = (byte) ((b >> 8) & 0xFF);
@@ -188,7 +188,7 @@ abstract class Buffer {
 
         @Override
         public int emitShort(int b, int pos) {
-            assert NumUtil.isUShort(b);
+            assert NumUtil.isUShort(b) || NumUtil.isShort(b);
             int newPos = pos + 2;
             ensureSize(newPos);
             data[pos] = (byte) (b & 0xFF);
