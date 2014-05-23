@@ -132,13 +132,7 @@ public class ReadEliminationBlockState extends EffectsBlockState<ReadElimination
     }
 
     public void killReadCache(LocationIdentity identity) {
-        Iterator<Map.Entry<CacheEntry<?>, ValueNode>> iter = readCache.entrySet().iterator();
-        while (iter.hasNext()) {
-            Map.Entry<CacheEntry<?>, ValueNode> entry = iter.next();
-            if (entry.getKey().conflicts(identity)) {
-                iter.remove();
-            }
-        }
+        readCache.entrySet().removeIf(entry -> entry.getKey().conflicts(identity));
     }
 
     public Map<CacheEntry<?>, ValueNode> getReadCache() {
