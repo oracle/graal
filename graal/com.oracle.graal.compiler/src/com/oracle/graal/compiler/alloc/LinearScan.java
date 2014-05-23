@@ -1366,7 +1366,7 @@ public final class LinearScan {
         int newLen = newList.length;
 
         // conventional sort-algorithm for new intervals
-        Arrays.sort(newList, INTERVAL_COMPARATOR);
+        Arrays.sort(newList, (Interval a, Interval b) -> a.from() - b.from());
 
         // merge old and new list (both already sorted) into one combined list
         Interval[] combinedList = new Interval[oldLen + newLen];
@@ -1385,25 +1385,6 @@ public final class LinearScan {
 
         sortedIntervals = combinedList;
     }
-
-    private static final Comparator<Interval> INTERVAL_COMPARATOR = new Comparator<Interval>() {
-
-        public int compare(Interval a, Interval b) {
-            if (a != null) {
-                if (b != null) {
-                    return a.from() - b.from();
-                } else {
-                    return -1;
-                }
-            } else {
-                if (b != null) {
-                    return 1;
-                } else {
-                    return 0;
-                }
-            }
-        }
-    };
 
     public void allocateRegisters() {
         try (Indent indent = Debug.logAndIndent("allocate registers")) {
