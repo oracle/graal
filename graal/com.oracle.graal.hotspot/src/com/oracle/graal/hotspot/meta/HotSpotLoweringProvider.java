@@ -36,7 +36,7 @@ public interface HotSpotLoweringProvider extends LoweringProvider {
 
     void initialize(HotSpotProviders providers, HotSpotVMConfig config);
 
-    int getScalingFactor(Kind kind);
+    int arrayScalingFactor(Kind kind);
 
     IndexedLocationNode createArrayLocation(Graph graph, Kind elementKind, ValueNode index, boolean initialization);
 

@@ -221,7 +221,7 @@ public class HSAILNewObjectSnippets extends NewObjectSnippets {
             final int headerSize = HotSpotGraalRuntime.getArrayBaseOffset(elementKind);
             // lowerer extends HotSpotLoweringProvider so we can just use that
             HotSpotLoweringProvider lowerer = (HotSpotLoweringProvider) providers.getLowerer();
-            int log2ElementSize = CodeUtil.log2(lowerer.getScalingFactor(elementKind));
+            int log2ElementSize = CodeUtil.log2(lowerer.arrayScalingFactor(elementKind));
 
             Arguments args = new Arguments(allocateArray, graph.getGuardsStage(), tool.getLoweringStage());
             args.add("hub", hub);

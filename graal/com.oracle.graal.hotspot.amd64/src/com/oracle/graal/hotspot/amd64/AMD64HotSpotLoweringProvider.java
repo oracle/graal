@@ -35,8 +35,8 @@ public class AMD64HotSpotLoweringProvider extends DefaultHotSpotLoweringProvider
 
     private AMD64ConvertSnippets.Templates convertSnippets;
 
-    public AMD64HotSpotLoweringProvider(HotSpotGraalRuntime runtime, MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls, HotSpotRegistersProvider registers) {
-        super(runtime, metaAccess, foreignCalls, registers);
+    public AMD64HotSpotLoweringProvider(HotSpotGraalRuntime runtime, MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls, HotSpotRegistersProvider registers, TargetDescription target) {
+        super(runtime, metaAccess, foreignCalls, registers, target);
     }
 
     @Override

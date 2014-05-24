@@ -104,7 +104,7 @@ public class AMD64HotSpotBackendFactory implements HotSpotBackendFactory {
         HotSpotConstantReflectionProvider constantReflection = createConstantReflection(runtime);
         Value[] nativeABICallerSaveRegisters = createNativeABICallerSaveRegisters(runtime.getConfig(), codeCache.getRegisterConfig());
         HotSpotHostForeignCallsProvider foreignCalls = createForeignCalls(runtime, metaAccess, codeCache, nativeABICallerSaveRegisters);
-        HotSpotLoweringProvider lowerer = createLowerer(runtime, metaAccess, foreignCalls, registers);
+        HotSpotLoweringProvider lowerer = createLowerer(runtime, metaAccess, foreignCalls, registers, target);
         // Replacements cannot have speculative optimizations since they have
         // to be valid for the entire run of the VM.
         Assumptions assumptions = new Assumptions(false);
@@ -161,8 +161,9 @@ public class AMD64HotSpotBackendFactory implements HotSpotBackendFactory {
         return new HotSpotSnippetReflectionProvider();
     }
 
-    protected HotSpotLoweringProvider createLowerer(HotSpotGraalRuntime runtime, HotSpotMetaAccessProvider metaAccess, HotSpotForeignCallsProvider foreignCalls, HotSpotRegistersProvider registers) {
-        return new AMD64HotSpotLoweringProvider(runtime, metaAccess, foreignCalls, registers);
+    protected HotSpotLoweringProvider createLowerer(HotSpotGraalRuntime runtime, HotSpotMetaAccessProvider metaAccess, HotSpotForeignCallsProvider foreignCalls, HotSpotRegistersProvider registers,
+                    TargetDescription target) {
+        return new AMD64HotSpotLoweringProvider(runtime, metaAccess, foreignCalls, registers, target);
     }
 
     protected Value[] createNativeABICallerSaveRegisters(HotSpotVMConfig config, RegisterConfig regConfig) {

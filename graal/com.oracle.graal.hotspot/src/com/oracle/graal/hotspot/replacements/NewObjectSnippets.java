@@ -416,7 +416,7 @@ public class NewObjectSnippets implements Snippets {
             ConstantNode hub = ConstantNode.forConstant(arrayType.klass(), providers.getMetaAccess(), graph);
             final int headerSize = HotSpotGraalRuntime.getArrayBaseOffset(elementKind);
             HotSpotLoweringProvider lowerer = (HotSpotLoweringProvider) providers.getLowerer();
-            int log2ElementSize = CodeUtil.log2(lowerer.getScalingFactor(elementKind));
+            int log2ElementSize = CodeUtil.log2(lowerer.arrayScalingFactor(elementKind));
 
             Arguments args = new Arguments(allocateArray, graph.getGuardsStage(), tool.getLoweringStage());
             args.add("hub", hub);

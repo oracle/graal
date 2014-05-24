@@ -121,15 +121,14 @@ public class HSAILHotSpotLoweringProvider extends DefaultHotSpotLoweringProvider
         return strategyMap.get(n.getClass());
     }
 
-    public HSAILHotSpotLoweringProvider(HotSpotGraalRuntime runtime, MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls, HotSpotRegistersProvider registers) {
-        super(runtime, metaAccess, foreignCalls, registers);
+    public HSAILHotSpotLoweringProvider(HotSpotGraalRuntime runtime, MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls, HotSpotRegistersProvider registers, TargetDescription target) {
+        super(runtime, metaAccess, foreignCalls, registers, target);
         initStrategyMap();
     }
 
     @Override
     public void initialize(HotSpotProviders providers, HotSpotVMConfig config) {
         super.initialize(providers, config);
-        TargetDescription target = providers.getCodeCache().getTarget();
         hsailNewObjectSnippets = new HSAILNewObjectSnippets.Templates(providers, target);
     }
 

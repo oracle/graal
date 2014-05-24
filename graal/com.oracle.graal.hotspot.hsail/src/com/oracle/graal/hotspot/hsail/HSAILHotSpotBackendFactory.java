@@ -36,8 +36,9 @@ import com.oracle.graal.hotspot.hsail.replacements.*;
 @ServiceProvider(HotSpotBackendFactory.class)
 public class HSAILHotSpotBackendFactory implements HotSpotBackendFactory {
 
-    protected HotSpotLoweringProvider createLowerer(HotSpotGraalRuntime runtime, HotSpotMetaAccessProvider metaAccess, HotSpotForeignCallsProvider foreignCalls, HotSpotRegistersProvider registers) {
-        return new HSAILHotSpotLoweringProvider(runtime, metaAccess, foreignCalls, registers);
+    protected HotSpotLoweringProvider createLowerer(HotSpotGraalRuntime runtime, HotSpotMetaAccessProvider metaAccess, HotSpotForeignCallsProvider foreignCalls, HotSpotRegistersProvider registers,
+                    TargetDescription target) {
+        return new HSAILHotSpotLoweringProvider(runtime, metaAccess, foreignCalls, registers, target);
     }
 
     @Override
@@ -46,10 +47,11 @@ public class HSAILHotSpotBackendFactory implements HotSpotBackendFactory {
 
         HotSpotRegisters registers = new HotSpotRegisters(HSAIL.threadRegister, Register.None, Register.None);
         HotSpotMetaAccessProvider metaAccess = host.getMetaAccess();
-        HSAILHotSpotCodeCacheProvider codeCache = new HSAILHotSpotCodeCacheProvider(runtime, createTarget());
+        TargetDescription target = createTarget();
+        HSAILHotSpotCodeCacheProvider codeCache = new HSAILHotSpotCodeCacheProvider(runtime, target);
         ConstantReflectionProvider constantReflection = host.getConstantReflection();
         HotSpotForeignCallsProvider foreignCalls = new HSAILHotSpotForeignCallsProvider(runtime, metaAccess, codeCache);
-        HotSpotLoweringProvider lowerer = createLowerer(runtime, metaAccess, foreignCalls, registers);
+        HotSpotLoweringProvider lowerer = createLowerer(runtime, metaAccess, foreignCalls, registers, target);
         // Replacements cannot have speculative optimizations since they have
         // to be valid for the entire run of the VM.
         Assumptions assumptions = new Assumptions(false);
