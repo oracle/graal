@@ -26,6 +26,7 @@ import com.oracle.truffle.api.CompilerDirectives.SlowPath;
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.source.*;
 import com.oracle.truffle.sl.parser.*;
 import com.oracle.truffle.sl.runtime.*;
 
@@ -44,7 +45,7 @@ public abstract class SLDefineFunctionBuiltin extends SLBuiltinNode {
 
     @SlowPath
     private static void doDefineFunction(SLContext context, String code) {
-        Source source = context.getSourceManager().get("[defineFunction]", code);
+        Source source = SourceFactory.fromText(code, "[defineFunction]");
         /* The same parsing code as for parsing the initial source. */
         Parser.parseSL(context, source);
     }

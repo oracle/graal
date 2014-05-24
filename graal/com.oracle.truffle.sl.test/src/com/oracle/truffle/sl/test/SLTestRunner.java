@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -54,20 +54,21 @@ public final class SLTestRunner extends ParentRunner<TestCase> {
 
     static class TestCase {
         protected final Description name;
-        protected final Source source;
+        protected final Path path;
+        protected final String sourceName;
         protected final String testInput;
         protected final String expectedOutput;
         protected String actualOutput;
 
-        protected TestCase(Class<?> testClass, String name, Source source, String testInput, String expectedOutput) {
-            this.name = Description.createTestDescription(testClass, name);
-            this.source = source;
+        protected TestCase(Class<?> testClass, String baseName, String sourceName, Path path, String testInput, String expectedOutput) {
+            this.name = Description.createTestDescription(testClass, baseName);
+            this.sourceName = sourceName;
+            this.path = path;
             this.testInput = testInput;
             this.expectedOutput = expectedOutput;
         }
     }
 
-    private final SourceManager sourceManager = new SourceManager();
     private final List<TestCase> testCases;
 
     public SLTestRunner(Class<?> runningClass) throws InitializationError {
@@ -89,7 +90,7 @@ public final class SLTestRunner extends ParentRunner<TestCase> {
         return testCases;
     }
 
-    protected List<TestCase> createTests(final Class<?> c) throws IOException, InitializationError {
+    protected static List<TestCase> createTests(final Class<?> c) throws IOException, InitializationError {
         SLTestSuite suite = c.getAnnotation(SLTestSuite.class);
         if (suite == null) {
             throw new InitializationError(String.format("@%s annotation required on class '%s' to run with '%s'.", SLTestSuite.class.getSimpleName(), c.getName(), SLTestRunner.class.getSimpleName()));
@@ -130,7 +131,7 @@ public final class SLTestRunner extends ParentRunner<TestCase> {
                         expectedOutput = readAllLines(outputFile);
                     }
 
-                    foundCases.add(new TestCase(c, baseName, sourceManager.get(sourceName, readAllLines(sourceFile)), testInput, expectedOutput));
+                    foundCases.add(new TestCase(c, baseName, sourceName, sourceFile, testInput, expectedOutput));
                 }
                 return FileVisitResult.CONTINUE;
             }
@@ -154,8 +155,9 @@ public final class SLTestRunner extends ParentRunner<TestCase> {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         PrintStream printer = new PrintStream(out);
         try {
-            SLContext context = new SLContext(sourceManager, new BufferedReader(new StringReader(repeat(testCase.testInput, REPEATS))), printer);
-            SLMain.run(context, testCase.source, null, REPEATS);
+            SLContext context = new SLContext(new BufferedReader(new StringReader(repeat(testCase.testInput, REPEATS))), printer);
+            final Source source = SourceFactory.fromText(readAllLines(testCase.path), testCase.sourceName);
+            SLMain.run(context, source, null, REPEATS);
 
             String actualOutput = new String(out.toByteArray());
             Assert.assertEquals(repeat(testCase.expectedOutput, REPEATS), actualOutput);

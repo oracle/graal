@@ -27,6 +27,7 @@ import java.math.*;
 
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.dsl.*;
+import com.oracle.truffle.api.instrument.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.api.source.*;
 import com.oracle.truffle.sl.builtins.*;
@@ -117,13 +118,14 @@ public class SLMain {
      * The main entry point. Use the mx command "mx sl" to run it with the correct class path setup.
      */
     public static void main(String[] args) throws IOException {
-        SourceManager sourceManager = new SourceManager();
+
+        SLContext context = new SLContext(new BufferedReader(new InputStreamReader(System.in)), System.out);
 
         Source source;
         if (args.length == 0) {
-            source = sourceManager.get("stdin", System.in);
+            source = SourceFactory.fromReader(new InputStreamReader(System.in), "stdin");
         } else {
-            source = sourceManager.get(args[0]);
+            source = SourceFactory.fromFile(args[0]);
         }
 
         int repeats = 1;
@@ -131,7 +133,6 @@ public class SLMain {
             repeats = Integer.parseInt(args[1]);
         }
 
-        SLContext context = new SLContext(sourceManager, new BufferedReader(new InputStreamReader(System.in)), System.out);
         run(context, source, System.out, repeats);
     }
 
@@ -144,8 +145,16 @@ public class SLMain {
             logOutput.println("== running on " + Truffle.getRuntime().getName());
         }
 
+        final SourceCallback sourceCallback = context.getSourceCallback();
+
         /* Parse the SL source file. */
+        if (sourceCallback != null) {
+            sourceCallback.startLoading(source);
+        }
         Parser.parseSL(context, source);
+        if (sourceCallback != null) {
+            sourceCallback.endLoading(source);
+        }
         /* Lookup our main entry point, which is per definition always named "main". */
         SLFunction main = context.getFunctionRegistry().lookup("main");
         if (main.getCallTarget() == null) {

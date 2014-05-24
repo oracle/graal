@@ -25,57 +25,59 @@
 package com.oracle.truffle.api.source;
 
 import java.io.*;
+import java.lang.ref.*;
 import java.util.*;
 
 import com.oracle.truffle.api.*;
 
 /**
- * A representation of source code information, suitable for hash table keys with equality defined
- * in terms of content. There are three kinds of sources supported at present.
+ * Provider for canonical representations of source code. Three kinds of sources are supported.
  * <ul>
  * <li><strong>File:</strong> Each file is represented as a canonical object, indexed by the
- * absolute, canonical path name of the file. The textual contents of the file may be supplied when
- * the object is created, or it may be read lazily. Only one lazy attempt will be made to read a
- * file, and failure will result silently in null content.</li>
+ * absolute, canonical path name of the file. File contents are <em>read lazily</em> and contents
+ * optionally <em>cached</em>.</li>
  * <li><strong>Literal Source:</strong> A named text string, whose contents are supplied concretely
- * (possibly via an {@link InputStream}), can also be used as a source. These are represented as
- * value objects whose equality depends on both name and contents.</li>
+ * (possibly via an {@link Reader}), can also be used as a source. These are not indexed and should
+ * be considered value objects; equality is defined based on contents.</li>
  * <li><strong>Fake Files:</strong> A named text string used for testing; its contents can be
  * retrieved by name, unlike literal sources.</li>
  * </ul>
  * <p>
- * <strong>Cache:</strong>
+ * <strong>File cache:</strong>
  * <ol>
- * <li>Access to source file contents via {@link Source#getInputStream()} or
- * {@link Source#getReader()} does <em>not</em> by itself result in the file's contents being cached
- * in the {@link Source} object.</li>
- * <li>Access to source file contents via {@link Source#getCode()} or any other {@link Source}
- * methods related to file's contents <em>will</em> result in the contents being cached in the
- * {@link Source} object.</li>
- * <li>Once source file contents have been cached, access to source file contents via
- * {@link Source#getInputStream()} or {@link Source#getReader()} will be provided from the cache.</li>
- * <li>Any access to source file contents via the cache will result in a timestamp check and
- * possible cache reload.</li>
+ * <li>File content caching is optional, <em>off</em> by default.</li>
+ * <li>The first access to source file contents will result in the contents being read, and (if
+ * enabled) cached.</li>
+ * <li>If file contents have been cached, access to contents via {@link Source#getInputStream()} or
+ * {@link Source#getReader()} will be provided from the cache.</li>
+ * <li>Any access to file contents via the cache will result in a timestamp check and possible cache
+ * reload.</li>
  * </ol>
  */
-public final class SourceManager {
+public final class SourceFactory {
 
     // Only files and fake files are indexed.
-    private final Map<String, SourceImpl> pathToSource = new HashMap<>();
+    private static final Map<String, WeakReference<SourceImpl>> pathToSource = new HashMap<>();
 
-    public SourceManager() {
+    private static boolean fileCacheEnabled = true;
 
+    private SourceFactory() {
     }
 
     /**
      * Gets the canonical representation of a source file, whose contents will be read lazily and
      * then cached.
      *
+     * @param fileName name
      * @param reset forces any existing {@link Source} cache to be cleared, forcing a re-read
+     * @return canonical representation of the file's contents.
+     * @throws RuntimeException if the file can not be read
      */
-    public Source get(String fileName, boolean reset) {
+    public static Source fromFile(String fileName, boolean reset) throws RuntimeException {
 
-        SourceImpl source = pathToSource.get(fileName);
+        // TODO (mlvdv) throw IOException
+
+        SourceImpl source = lookup(fileName);
         if (source == null) {
             final File file = new File(fileName);
             String path = null;
@@ -86,10 +88,10 @@ public final class SourceManager {
                     throw new RuntimeException("Can't find file " + fileName);
                 }
             }
-            source = pathToSource.get(path);
+            source = lookup(path);
             if (source == null) {
                 source = new FileSourceImpl(file, fileName, path);
-                pathToSource.put(path, source);
+                store(path, source);
             }
         }
         if (reset) {
@@ -101,40 +103,71 @@ public final class SourceManager {
     /**
      * Gets the canonical representation of a source file, whose contents will be read lazily and
      * then cached.
+     *
+     * @param fileName name
+     * @return canonical representation of the file's contents.
+     * @throws RuntimeException if the file can not be read
      */
-    public Source get(String fileName) {
-        return get(fileName, false);
+    public static Source fromFile(String fileName) throws RuntimeException {
+        return fromFile(fileName, false);
     }
 
     /**
-     * Creates a source from literal text.
+     * Creates a non-canonical source from literal text.
+     *
+     * @param code textual source code
+     * @param description a note about the origin, possibly useful for debugging
+     * @return a newly created, non-indexed source representation
      */
-    @SuppressWarnings("static-method")
-    public Source get(String name, String code) {
+    public static Source fromText(String code, String description) {
         assert code != null;
-        return new LiteralSourceImpl(name, code);
+        return new LiteralSourceImpl(description, code);
     }
 
     /**
      * Creates a source whose contents will be read immediately and cached.
+     *
+     * @param reader
+     * @param description a note about the origin, possibly useful for debugging
+     * @return a newly created, non-indexed source representation
+     * @throws IOException if reading fails
      */
-    @SuppressWarnings("static-method")
-    public Source get(String name, InputStream stream) throws IOException {
-        InputStreamReader reader = new InputStreamReader(stream);
-        return new LiteralSourceImpl(name, readCode(reader));
+    public static Source fromReader(Reader reader, String description) throws IOException {
+        return new LiteralSourceImpl(description, read(reader));
     }
 
     /**
      * Creates a source from literal text, but which acts as a file and can be retrieved by name
      * (unlike other literal sources); intended for testing.
+     *
+     * @param code textual source code
+     * @param fakeFileName string to use for indexing/lookup
+     * @return a newly created, source representation, canonical with respect to its name
      */
-    public Source getFakeFile(String name, String code) {
-        final SourceImpl source = new LiteralSourceImpl(name, code);
-        pathToSource.put(name, source);
+    public static Source asFakeFile(String code, String fakeFileName) {
+        final SourceImpl source = new LiteralSourceImpl(fakeFileName, code);
+        store(fakeFileName, source);
         return source;
     }
 
-    private static String readCode(Reader reader) throws IOException {
+    /**
+     * Enables/disables caching of file contents, <em>disabled</em> by default. Caching of sources
+     * created from literal text or readers is always enabled.
+     */
+    public static void setFileCaching(boolean enabled) {
+        fileCacheEnabled = enabled;
+    }
+
+    private static SourceImpl lookup(String key) {
+        WeakReference<SourceImpl> sourceRef = pathToSource.get(key);
+        return sourceRef == null ? null : sourceRef.get();
+    }
+
+    private static void store(String key, SourceImpl source) {
+        pathToSource.put(key, new WeakReference<>(source));
+    }
+
+    private static String read(Reader reader) throws IOException {
         final StringBuilder builder = new StringBuilder();
         final char[] buffer = new char[1024];
 
@@ -150,6 +183,8 @@ public final class SourceManager {
     }
 
     private abstract static class SourceImpl implements Source {
+        // TODO (mlvdv) consider canonicalizing and reusing SourceSection instances
+        // TOOD (mlvdv) connect SourceSections into a spatial tree for fast geometric lookup
 
         protected TextMap textMap = null;
 
@@ -329,14 +364,21 @@ public final class SourceManager {
 
         @Override
         public String getCode() {
-            if (code == null || timeStamp != file.lastModified()) {
-                try {
-                    code = readCode(getReader());
-                    timeStamp = file.lastModified();
-                } catch (IOException e) {
+            if (fileCacheEnabled) {
+                if (code == null || timeStamp != file.lastModified()) {
+                    try {
+                        code = read(getReader());
+                        timeStamp = file.lastModified();
+                    } catch (IOException e) {
+                    }
                 }
+                return code;
             }
-            return code;
+            try {
+                return read(new FileReader(file));
+            } catch (IOException e) {
+            }
+            return null;
         }
 
         @Override

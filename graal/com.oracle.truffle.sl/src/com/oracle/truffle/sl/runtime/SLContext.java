@@ -24,10 +24,11 @@ package com.oracle.truffle.sl.runtime;
 
 import java.io.*;
 
+import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.frame.*;
+import com.oracle.truffle.api.instrument.*;
 import com.oracle.truffle.api.nodes.*;
-import com.oracle.truffle.api.source.*;
 import com.oracle.truffle.sl.builtins.*;
 import com.oracle.truffle.sl.nodes.*;
 import com.oracle.truffle.sl.nodes.local.*;
@@ -43,26 +44,27 @@ import com.oracle.truffle.sl.parser.*;
  * However, if two separate scripts run in one Java VM at the same time, they have a different
  * context. Therefore, the context is not a singleton.
  */
-public final class SLContext {
-    private final SourceManager sourceManager;
+public final class SLContext extends ExecutionContext {
     private final BufferedReader input;
     private final PrintStream output;
     private final SLFunctionRegistry functionRegistry;
+    private SourceCallback sourceCallback = null;
 
-    public SLContext(SourceManager sourceManager, BufferedReader input, PrintStream output) {
-        this.sourceManager = sourceManager;
+    public SLContext(BufferedReader input, PrintStream output) {
         this.input = input;
         this.output = output;
         this.functionRegistry = new SLFunctionRegistry();
-
         installBuiltins();
     }
 
-    /**
-     * Returns the source manger that controls all SL source code that is executed.
-     */
-    public SourceManager getSourceManager() {
-        return sourceManager;
+    @Override
+    public String getLanguageShortName() {
+        return "Simple";
+    }
+
+    @Override
+    public void setSourceCallback(SourceCallback sourceCallback) {
+        this.sourceCallback = sourceCallback;
     }
 
     /**
@@ -86,6 +88,10 @@ public final class SLContext {
      */
     public SLFunctionRegistry getFunctionRegistry() {
         return functionRegistry;
+    }
+
+    public SourceCallback getSourceCallback() {
+        return sourceCallback;
     }
 
     /**
