@@ -28,28 +28,21 @@ import java.util.Map.Entry;
 
 public class NodeMap<T> extends NodeIdAccessor {
 
-    private final boolean autogrow;
     protected Object[] values;
 
     public NodeMap(Graph graph) {
-        this(graph, false);
-    }
-
-    public NodeMap(Graph graph, boolean autogrow) {
         super(graph);
         this.values = new Object[graph.nodeIdCount()];
-        this.autogrow = autogrow;
     }
 
     public NodeMap(NodeMap<T> copyFrom) {
         super(copyFrom.graph);
         this.values = Arrays.copyOf(copyFrom.values, copyFrom.values.length);
-        this.autogrow = copyFrom.autogrow;
     }
 
     @SuppressWarnings("unchecked")
     public T get(Node node) {
-        check(node);
+        assert check(node);
         return (T) values[getNodeId(node)];
     }
 
@@ -81,7 +74,7 @@ public class NodeMap<T> extends NodeIdAccessor {
     }
 
     public void set(Node node, T value) {
-        check(node);
+        assert check(node);
         values[getNodeId(node)] = value;
     }
 
@@ -93,16 +86,10 @@ public class NodeMap<T> extends NodeIdAccessor {
         return getNodeId(node) >= size();
     }
 
-    public void grow() {
-        this.values = Arrays.copyOf(values, graph.nodeIdCount());
-    }
-
-    private void check(Node node) {
-        if (autogrow && isNew(node)) {
-            grow();
-        }
+    private boolean check(Node node) {
         assert node.graph() == graph : String.format("%s is not part of the graph", node);
         assert !isNew(node) : "this node was added to the graph after creating the node map : " + node;
+        return true;
     }
 
     public void clear() {

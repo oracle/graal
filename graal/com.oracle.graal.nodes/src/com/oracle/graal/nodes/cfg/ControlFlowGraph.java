@@ -61,7 +61,7 @@ public class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
 
     protected ControlFlowGraph(StructuredGraph graph) {
         this.graph = graph;
-        this.nodeToBlock = graph.createNodeMap(true);
+        this.nodeToBlock = graph.createNodeMap();
     }
 
     public List<Block> getBlocks() {
