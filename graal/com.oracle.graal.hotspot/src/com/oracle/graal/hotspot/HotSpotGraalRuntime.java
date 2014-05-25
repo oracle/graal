@@ -25,6 +25,7 @@ package com.oracle.graal.hotspot;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.compiler.common.UnsafeAccess.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.Options.*;
+import static com.oracle.graal.hotspot.HotSpotGraalRuntime.InitTimer.*;
 import static sun.reflect.Reflection.*;
 
 import java.lang.reflect.*;
@@ -41,6 +42,7 @@ import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.target.*;
+import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.bridge.*;
 import com.oracle.graal.hotspot.events.*;
@@ -56,6 +58,37 @@ import com.oracle.graal.runtime.*;
  */
 public final class HotSpotGraalRuntime implements GraalRuntime, RuntimeProvider, StackIntrospection {
 
+    /**
+     * A facility for timing a step in the initialization sequence for the runtime. This exists
+     * separate from {@link DebugTimer} as it must be independent from all other Graal code so as to
+     * not perturb the initialization sequence.
+     */
+    public static class InitTimer implements AutoCloseable {
+        final String name;
+        final long start;
+
+        private InitTimer(String name) {
+            this.name = name;
+            this.start = System.currentTimeMillis();
+            System.out.println("START INIT: " + name);
+        }
+
+        public void close() {
+            final long end = System.currentTimeMillis();
+            System.out.println(" DONE INIT: " + name + " [" + (end - start) + " ms]");
+        }
+
+        public static InitTimer timer(String name) {
+            return ENABLED ? new InitTimer(name) : null;
+        }
+
+        /**
+         * Specified initialization timing is enabled. This must only be set via a system property
+         * as the timing facility is used to time initialization of {@link HotSpotOptions}.
+         */
+        private static final boolean ENABLED = Boolean.getBoolean("graal.runtime.TimeInit");
+    }
+
     private static final HotSpotGraalRuntime instance;
 
     /**
@@ -64,16 +97,24 @@ public final class HotSpotGraalRuntime implements GraalRuntime, RuntimeProvider,
     private static native void init(Class<?> compilerToVMClass);
 
     static {
-        init(CompilerToVMImpl.class);
+        try (InitTimer t = timer("initialize natives")) {
+            init(CompilerToVMImpl.class);
+        }
 
-        // The options must be processed before any code using them...
-        HotSpotOptions.initialize();
+        try (InitTimer t = timer("initialize HotSpotOptions")) {
+            // The options must be processed before any code using them...
+            HotSpotOptions.initialize();
+        }
 
-        // ... including code in the constructor
-        instance = new HotSpotGraalRuntime();
+        try (InitTimer t = timer("HotSpotGraalRuntime.<init>")) {
+            // ... including code in the constructor
+            instance = new HotSpotGraalRuntime();
+        }
 
-        // Why deferred initialization? See comment in completeInitialization().
-        instance.completeInitialization();
+        try (InitTimer t = timer("HotSpotGraalRuntime.completeInitialization")) {
+            // Why deferred initialization? See comment in completeInitialization().
+            instance.completeInitialization();
+        }
 
         registerFieldsToFilter(HotSpotGraalRuntime.class, "instance");
     }

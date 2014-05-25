@@ -24,6 +24,7 @@ package com.oracle.graal.hotspot.bridge;
 
 import static com.oracle.graal.compiler.GraalDebugConfig.*;
 import static com.oracle.graal.hotspot.CompileTheWorld.Options.*;
+import static com.oracle.graal.hotspot.HotSpotGraalRuntime.InitTimer.*;
 
 import java.io.*;
 import java.lang.reflect.*;
@@ -40,6 +41,7 @@ import com.oracle.graal.debug.internal.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.CompilationTask.Enqueueing;
 import com.oracle.graal.hotspot.CompileTheWorld.Config;
+import com.oracle.graal.hotspot.HotSpotGraalRuntime.InitTimer;
 import com.oracle.graal.hotspot.debug.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.java.*;
@@ -191,10 +193,14 @@ public class VMToCompilerImpl implements VMToCompiler {
         assert VerifyOptionsPhase.checkOptions(hostProviders.getMetaAccess());
 
         // Complete initialization of backends
-        hostBackend.completeInitialization();
+        try (InitTimer st = timer(hostBackend.getClass().getSimpleName() + ".completeInitialization")) {
+            hostBackend.completeInitialization();
+        }
         for (HotSpotBackend backend : runtime.getBackends().values()) {
             if (backend != hostBackend) {
-                backend.completeInitialization();
+                try (InitTimer st = timer(backend.getClass().getSimpleName() + ".completeInitialization")) {
+                    backend.completeInitialization();
+                }
             }
         }
 
@@ -204,6 +210,12 @@ public class VMToCompilerImpl implements VMToCompiler {
     }
 
     public void startCompiler(boolean bootstrapEnabled) throws Throwable {
+        try (InitTimer timer = timer("startCompiler")) {
+            startCompiler0(bootstrapEnabled);
+        }
+    }
+
+    private void startCompiler0(boolean bootstrapEnabled) throws Throwable {
 
         bootstrapRunning = bootstrapEnabled;
 
