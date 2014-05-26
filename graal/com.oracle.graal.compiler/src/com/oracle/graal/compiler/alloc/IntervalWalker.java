@@ -240,6 +240,9 @@ public class IntervalWalker {
         currentPosition = toOpId;
 
         if (currentPosition <= allocator.maxOpId()) {
+            // update unhandled stack intervals
+            updateUnhandledStackIntervals(toOpId);
+
             // call walkTo if still in range
             walkTo(State.Active, toOpId);
             walkTo(State.Inactive, toOpId);
@@ -265,9 +268,14 @@ public class IntervalWalker {
         Interval currentInterval = unhandledLists.get(RegisterBinding.Stack);
         while (currentInterval != Interval.EndMarker && currentInterval.from() <= opId) {
             Interval next = currentInterval.next;
-            currentInterval.state = State.Active;
-            activeLists.addToListSortedByCurrentFromPositions(RegisterBinding.Stack, currentInterval);
-            intervalMoved(currentInterval, State.Unhandled, State.Active);
+            if (currentInterval.to() > opId) {
+                currentInterval.state = State.Active;
+                activeLists.addToListSortedByCurrentFromPositions(RegisterBinding.Stack, currentInterval);
+                intervalMoved(currentInterval, State.Unhandled, State.Active);
+            } else {
+                currentInterval.state = State.Handled;
+                intervalMoved(currentInterval, State.Unhandled, State.Handled);
+            }
             currentInterval = next;
         }
         unhandledLists.set(RegisterBinding.Stack, currentInterval);
