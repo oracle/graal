@@ -46,6 +46,19 @@ public class NodeMap<T> extends NodeIdAccessor {
         return (T) values[getNodeId(node)];
     }
 
+    @SuppressWarnings("unchecked")
+    public T getAndGrow(Node node) {
+        checkAndGrow(node);
+        return (T) values[getNodeId(node)];
+    }
+
+    private void checkAndGrow(Node node) {
+        if (isNew(node)) {
+            this.values = Arrays.copyOf(values, graph.nodeIdCount());
+        }
+        assert check(node);
+    }
+
     public boolean isEmpty() {
         return !entries().iterator().hasNext();
     }
@@ -75,6 +88,11 @@ public class NodeMap<T> extends NodeIdAccessor {
 
     public void set(Node node, T value) {
         assert check(node);
+        values[getNodeId(node)] = value;
+    }
+
+    public void setAndGrow(Node node, T value) {
+        checkAndGrow(node);
         values[getNodeId(node)] = value;
     }
 
