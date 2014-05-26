@@ -221,6 +221,9 @@ public class IntervalWalker {
             // set currentPosition prior to call of walkTo
             currentPosition = opId;
 
+            // update unhandled stack intervals
+            updateUnhandledStackIntervals(opId);
+
             // call walkTo even if currentPosition == id
             walkTo(State.Active, opId);
             walkTo(State.Inactive, opId);
@@ -250,4 +253,24 @@ public class IntervalWalker {
             Debug.log("interval moved from %s to %s: %s", from, to, interval.logString(allocator));
         }
     }
+
+    /**
+     * Move {@linkplain #unhandledLists unhandled} stack intervals to
+     * {@linkplain IntervalWalker #activeLists active}.
+     *
+     * Note that for {@linkplain RegisterBinding#Fixed fixed} and {@linkplain RegisterBinding#Any
+     * any} intervals this is done in {@link #nextInterval(int)}.
+     */
+    private void updateUnhandledStackIntervals(int opId) {
+        Interval currentInterval = unhandledLists.get(RegisterBinding.Stack);
+        while (currentInterval != Interval.EndMarker && currentInterval.from() <= opId) {
+            Interval next = currentInterval.next;
+            currentInterval.state = State.Active;
+            activeLists.addToListSortedByCurrentFromPositions(RegisterBinding.Stack, currentInterval);
+            intervalMoved(currentInterval, State.Unhandled, State.Active);
+            currentInterval = next;
+        }
+        unhandledLists.set(RegisterBinding.Stack, currentInterval);
+    }
+
 }
