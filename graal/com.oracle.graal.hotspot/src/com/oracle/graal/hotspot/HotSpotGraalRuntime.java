@@ -24,8 +24,8 @@ package com.oracle.graal.hotspot;
 
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.compiler.common.UnsafeAccess.*;
-import static com.oracle.graal.hotspot.HotSpotGraalRuntime.Options.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.InitTimer.*;
+import static com.oracle.graal.hotspot.HotSpotGraalRuntime.Options.*;
 import static sun.reflect.Reflection.*;
 
 import java.lang.reflect.*;
@@ -70,16 +70,23 @@ public final class HotSpotGraalRuntime implements GraalRuntime, RuntimeProvider,
         private InitTimer(String name) {
             this.name = name;
             this.start = System.currentTimeMillis();
-            System.out.println("START INIT: " + name);
+            System.out.println("START: " + SPACES.substring(0, timerDepth * 2) + name);
+            assert Thread.currentThread() == initializingThread;
+            timerDepth++;
         }
 
         public void close() {
             final long end = System.currentTimeMillis();
-            System.out.println(" DONE INIT: " + name + " [" + (end - start) + " ms]");
+            timerDepth--;
+            System.out.println(" DONE: " + SPACES.substring(0, timerDepth * 2) + name + " [" + (end - start) + " ms]");
         }
 
         public static InitTimer timer(String name) {
             return ENABLED ? new InitTimer(name) : null;
+        }
+
+        public static InitTimer timer(String name, Object suffix) {
+            return ENABLED ? new InitTimer(name + suffix) : null;
         }
 
         /**
@@ -87,6 +94,9 @@ public final class HotSpotGraalRuntime implements GraalRuntime, RuntimeProvider,
          * as the timing facility is used to time initialization of {@link HotSpotOptions}.
          */
         private static final boolean ENABLED = Boolean.getBoolean("graal.runtime.TimeInit");
+        public static int timerDepth = 0;
+        public static final String SPACES = "                                            ";
+        public static final Thread initializingThread = Thread.currentThread();
     }
 
     private static final HotSpotGraalRuntime instance;
@@ -285,7 +295,9 @@ public final class HotSpotGraalRuntime implements GraalRuntime, RuntimeProvider,
 
         compilerToVm = toVM;
         vmToCompiler = toCompiler;
-        config = new HotSpotVMConfig(compilerToVm);
+        try (InitTimer t = timer("HotSpotVMConfig<init>")) {
+            config = new HotSpotVMConfig(compilerToVm);
+        }
 
         CompileTheWorld.Options.overrideWithNativeOptions(config);
 
@@ -306,18 +318,31 @@ public final class HotSpotGraalRuntime implements GraalRuntime, RuntimeProvider,
         }
 
         String hostArchitecture = config.getHostArchitectureName();
-        hostBackend = registerBackend(findFactory(hostArchitecture).createBackend(this, null));
+
+        HotSpotBackendFactory factory;
+        try (InitTimer t = timer("find factory:", hostArchitecture)) {
+            factory = findFactory(hostArchitecture);
+        }
+        try (InitTimer t = timer("create backend:", hostArchitecture)) {
+            hostBackend = registerBackend(factory.createBackend(this, null));
+        }
 
         String[] gpuArchitectures = getGPUArchitectureNames(compilerToVm);
         for (String arch : gpuArchitectures) {
-            HotSpotBackendFactory factory = findFactory(arch);
+            try (InitTimer t = timer("find factory:", arch)) {
+                factory = findFactory(arch);
+            }
             if (factory == null) {
                 throw new GraalInternalError("No backend available for specified GPU architecture \"%s\"", arch);
             }
-            registerBackend(factory.createBackend(this, hostBackend));
+            try (InitTimer t = timer("create backend:", arch)) {
+                registerBackend(factory.createBackend(this, hostBackend));
+            }
         }
 
-        eventProvider = createEventProvider();
+        try (InitTimer t = timer("createEventProvider")) {
+            eventProvider = createEventProvider();
+        }
     }
 
     private HotSpotBackend registerBackend(HotSpotBackend backend) {

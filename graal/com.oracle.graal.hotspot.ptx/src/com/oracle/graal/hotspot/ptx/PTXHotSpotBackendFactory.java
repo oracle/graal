@@ -22,10 +22,13 @@
  */
 package com.oracle.graal.hotspot.ptx;
 
+import static com.oracle.graal.hotspot.HotSpotGraalRuntime.InitTimer.*;
+
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.hotspot.*;
+import com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.nodes.spi.*;
@@ -37,19 +40,50 @@ public class PTXHotSpotBackendFactory implements HotSpotBackendFactory {
 
     public HotSpotBackend createBackend(HotSpotGraalRuntime runtime, HotSpotBackend hostBackend) {
         HotSpotProviders host = hostBackend.getProviders();
-
-        HotSpotMetaAccessProvider metaAccess = host.getMetaAccess();
-        PTXHotSpotCodeCacheProvider codeCache = new PTXHotSpotCodeCacheProvider(runtime, createTarget());
-        ConstantReflectionProvider constantReflection = host.getConstantReflection();
-        HotSpotForeignCallsProvider foreignCalls = new PTXHotSpotForeignCallsProvider();
-        LoweringProvider lowerer = new PTXHotSpotLoweringProvider(host.getLowerer());
-        Replacements replacements = host.getReplacements();
-        HotSpotDisassemblerProvider disassembler = host.getDisassembler();
-        SuitesProvider suites = new DefaultSuitesProvider();
-        HotSpotRegistersProvider registers = new HotSpotRegisters(PTX.tid, Register.None, Register.None);
-        HotSpotProviders providers = new HotSpotProviders(metaAccess, codeCache, constantReflection, foreignCalls, lowerer, replacements, disassembler, suites, registers, host.getSnippetReflection(),
-                        host.getMethodHandleAccess());
-        return new PTXHotSpotBackend(runtime, providers);
+        HotSpotMetaAccessProvider metaAccess;
+        PTXHotSpotCodeCacheProvider codeCache;
+        ConstantReflectionProvider constantReflection;
+        HotSpotForeignCallsProvider foreignCalls;
+        LoweringProvider lowerer;
+        Replacements replacements;
+        HotSpotDisassemblerProvider disassembler;
+        SuitesProvider suites;
+        HotSpotRegistersProvider registers;
+        HotSpotProviders providers;
+        try (InitTimer t = timer("create providers")) {
+            try (InitTimer rt = timer("create MetaAccess provider")) {
+                metaAccess = host.getMetaAccess();
+            }
+            try (InitTimer rt = timer("create CodeCache provider")) {
+                codeCache = new PTXHotSpotCodeCacheProvider(runtime, createTarget());
+            }
+            try (InitTimer rt = timer("create ConstantReflection provider")) {
+                constantReflection = host.getConstantReflection();
+            }
+            try (InitTimer rt = timer("create ForeignCalls provider")) {
+                foreignCalls = new PTXHotSpotForeignCallsProvider();
+            }
+            try (InitTimer rt = timer("create Lowerer provider")) {
+                lowerer = new PTXHotSpotLoweringProvider(host.getLowerer());
+            }
+            try (InitTimer rt = timer("create Replacements provider")) {
+                replacements = host.getReplacements();
+            }
+            try (InitTimer rt = timer("create Disassembler provider")) {
+                disassembler = host.getDisassembler();
+            }
+            try (InitTimer rt = timer("create Suites provider")) {
+                suites = new DefaultSuitesProvider();
+            }
+            try (InitTimer rt = timer("create HotSpotRegisters provider")) {
+                registers = new HotSpotRegisters(PTX.tid, Register.None, Register.None);
+            }
+            providers = new HotSpotProviders(metaAccess, codeCache, constantReflection, foreignCalls, lowerer, replacements, disassembler, suites, registers, host.getSnippetReflection(),
+                            host.getMethodHandleAccess());
+        }
+        try (InitTimer rt = timer("instantiate backend")) {
+            return new PTXHotSpotBackend(runtime, providers);
+        }
     }
 
     protected Architecture createArchitecture() {

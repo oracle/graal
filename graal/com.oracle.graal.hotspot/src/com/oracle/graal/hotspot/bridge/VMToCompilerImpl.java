@@ -193,12 +193,12 @@ public class VMToCompilerImpl implements VMToCompiler {
         assert VerifyOptionsPhase.checkOptions(hostProviders.getMetaAccess());
 
         // Complete initialization of backends
-        try (InitTimer st = timer(hostBackend.getClass().getSimpleName() + ".completeInitialization")) {
+        try (InitTimer st = timer(hostBackend.getTarget().arch.getName(), ".completeInitialization")) {
             hostBackend.completeInitialization();
         }
         for (HotSpotBackend backend : runtime.getBackends().values()) {
             if (backend != hostBackend) {
-                try (InitTimer st = timer(backend.getClass().getSimpleName() + ".completeInitialization")) {
+                try (InitTimer st = timer(backend.getTarget().arch.getName(), ".completeInitialization")) {
                     backend.completeInitialization();
                 }
             }

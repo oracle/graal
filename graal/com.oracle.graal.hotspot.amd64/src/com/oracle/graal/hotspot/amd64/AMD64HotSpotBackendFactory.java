@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.hotspot.amd64;
 
+import static com.oracle.graal.hotspot.HotSpotGraalRuntime.InitTimer.*;
+
 import java.util.*;
 
 import com.oracle.graal.amd64.*;
@@ -30,6 +32,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.hotspot.*;
+import com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.util.*;
@@ -98,26 +101,65 @@ public class AMD64HotSpotBackendFactory implements HotSpotBackendFactory {
         assert host == null;
         TargetDescription target = createTarget(runtime.getConfig());
 
-        HotSpotRegistersProvider registers = createRegisters();
-        HotSpotMetaAccessProvider metaAccess = createMetaAccess(runtime);
-        HotSpotCodeCacheProvider codeCache = createCodeCache(runtime, target);
-        HotSpotConstantReflectionProvider constantReflection = createConstantReflection(runtime);
-        Value[] nativeABICallerSaveRegisters = createNativeABICallerSaveRegisters(runtime.getConfig(), codeCache.getRegisterConfig());
-        HotSpotHostForeignCallsProvider foreignCalls = createForeignCalls(runtime, metaAccess, codeCache, nativeABICallerSaveRegisters);
-        HotSpotLoweringProvider lowerer = createLowerer(runtime, metaAccess, foreignCalls, registers, target);
-        // Replacements cannot have speculative optimizations since they have
-        // to be valid for the entire run of the VM.
-        Assumptions assumptions = new Assumptions(false);
-        Providers p = new Providers(metaAccess, codeCache, constantReflection, foreignCalls, lowerer, null);
-        HotSpotSnippetReflectionProvider snippetReflection = createSnippetReflection();
-        Replacements replacements = createReplacements(runtime, assumptions, p, snippetReflection);
-        HotSpotDisassemblerProvider disassembler = createDisassembler(runtime);
-        HotSpotSuitesProvider suites = createSuites(runtime);
-        HotSpotMethodHandleAccessProvider methodHandleAccess = new HotSpotMethodHandleAccessProvider();
-        HotSpotProviders providers = new HotSpotProviders(metaAccess, codeCache, constantReflection, foreignCalls, lowerer, replacements, disassembler, suites, registers, snippetReflection,
-                        methodHandleAccess);
-
-        return createBackend(runtime, providers);
+        HotSpotProviders providers;
+        HotSpotRegistersProvider registers;
+        HotSpotCodeCacheProvider codeCache;
+        HotSpotConstantReflectionProvider constantReflection;
+        HotSpotHostForeignCallsProvider foreignCalls;
+        Value[] nativeABICallerSaveRegisters;
+        HotSpotMetaAccessProvider metaAccess;
+        HotSpotLoweringProvider lowerer;
+        HotSpotSnippetReflectionProvider snippetReflection;
+        Replacements replacements;
+        HotSpotDisassemblerProvider disassembler;
+        HotSpotSuitesProvider suites;
+        HotSpotMethodHandleAccessProvider methodHandleAccess;
+        try (InitTimer t = timer("create providers")) {
+            try (InitTimer rt = timer("create HotSpotRegisters provider")) {
+                registers = createRegisters();
+            }
+            try (InitTimer rt = timer("create MetaAccess provider")) {
+                metaAccess = createMetaAccess(runtime);
+            }
+            try (InitTimer rt = timer("create CodeCache provider")) {
+                codeCache = createCodeCache(runtime, target);
+            }
+            try (InitTimer rt = timer("create ConstantReflection provider")) {
+                constantReflection = createConstantReflection(runtime);
+            }
+            try (InitTimer rt = timer("create NativeABICallerSaveRegisters")) {
+                nativeABICallerSaveRegisters = createNativeABICallerSaveRegisters(runtime.getConfig(), codeCache.getRegisterConfig());
+            }
+            try (InitTimer rt = timer("create ForeignCalls provider")) {
+                foreignCalls = createForeignCalls(runtime, metaAccess, codeCache, nativeABICallerSaveRegisters);
+            }
+            try (InitTimer rt = timer("create Lowerer provider")) {
+                lowerer = createLowerer(runtime, metaAccess, foreignCalls, registers, target);
+            }
+            // Replacements cannot have speculative optimizations since they have
+            // to be valid for the entire run of the VM.
+            Assumptions assumptions = new Assumptions(false);
+            Providers p = new Providers(metaAccess, codeCache, constantReflection, foreignCalls, lowerer, null);
+            try (InitTimer rt = timer("create SnippetReflection provider")) {
+                snippetReflection = createSnippetReflection();
+            }
+            try (InitTimer rt = timer("create Replacements provider")) {
+                replacements = createReplacements(runtime, assumptions, p, snippetReflection);
+            }
+            try (InitTimer rt = timer("create Disassembler provider")) {
+                disassembler = createDisassembler(runtime);
+            }
+            try (InitTimer rt = timer("create Suites provider")) {
+                suites = createSuites(runtime);
+            }
+            try (InitTimer rt = timer("create MethodHandleAccess provider")) {
+                methodHandleAccess = new HotSpotMethodHandleAccessProvider();
+            }
+            providers = new HotSpotProviders(metaAccess, codeCache, constantReflection, foreignCalls, lowerer, replacements, disassembler, suites, registers, snippetReflection, methodHandleAccess);
+        }
+        try (InitTimer rt = timer("instantiate backend")) {
+            return createBackend(runtime, providers);
+        }
     }
 
     protected AMD64HotSpotBackend createBackend(HotSpotGraalRuntime runtime, HotSpotProviders providers) {
