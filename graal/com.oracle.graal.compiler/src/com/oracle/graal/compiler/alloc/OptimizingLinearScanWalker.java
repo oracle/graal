@@ -22,6 +22,9 @@
  */
 package com.oracle.graal.compiler.alloc;
 
+import com.oracle.graal.compiler.common.cfg.*;
+import com.oracle.graal.debug.*;
+import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.options.*;
 
 public class OptimizingLinearScanWalker extends LinearScanWalker {
@@ -37,4 +40,14 @@ public class OptimizingLinearScanWalker extends LinearScanWalker {
         super(allocator, unhandledFixedFirst, unhandledAnyFirst);
     }
 
+    @Override
+    void walk() {
+        try (Scope s = Debug.scope("OptimizingLinearScanWalker")) {
+            for (AbstractBlock<?> block : allocator.sortedBlocks) {
+                int nextBlock = allocator.getFirstLirInstructionId(block);
+                walkTo(nextBlock);
+            }
+        }
+        super.walk();
+    }
 }
