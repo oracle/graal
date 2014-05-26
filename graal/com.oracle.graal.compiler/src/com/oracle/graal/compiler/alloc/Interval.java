@@ -883,6 +883,32 @@ public final class Interval {
         return true;
     }
 
+    // returns the interval that covers the given opId or null if there is none
+    Interval getIntervalCoveringOpId(int opId) {
+        assert opId >= 0 : "invalid opId";
+        assert opId < to() : "can only look into the past";
+
+        if (opId >= from()) {
+            return this;
+        }
+
+        Interval parent = splitParent();
+        Interval result = null;
+
+        assert !parent.splitChildren.isEmpty() : "no split children available";
+        int len = parent.splitChildren.size();
+
+        for (int i = len - 1; i >= 0; i--) {
+            Interval cur = parent.splitChildren.get(i);
+            if (cur.from() <= opId && opId < cur.to()) {
+                assert result == null : "covered by multiple split children " + result + " and " + cur;
+                result = cur;
+            }
+        }
+
+        return result;
+    }
+
     // returns the last split child that ends before the given opId
     Interval getSplitChildBeforeOpId(int opId) {
         assert opId >= 0 : "invalid opId";
