@@ -36,6 +36,7 @@ import com.oracle.graal.hotspot.HotSpotVMConfig.CompressEncoding;
 import com.oracle.graal.hotspot.data.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.StandardOp.MoveOp;
 import com.oracle.graal.lir.amd64.*;
 import com.oracle.graal.lir.amd64.AMD64Move.LoadOp;
 import com.oracle.graal.lir.amd64.AMD64Move.StoreConstantOp;
@@ -71,6 +72,125 @@ public class AMD64HotSpotMove {
                 }
             } else {
                 throw GraalInternalError.shouldNotReachHere("Attempt to store compressed constant of wrong type.");
+            }
+        }
+    }
+
+    public static class HotSpotLoadConstantOp extends AMD64LIRInstruction implements MoveOp {
+
+        @Def({REG, STACK}) private AllocatableValue result;
+        private final Constant input;
+
+        public HotSpotLoadConstantOp(AllocatableValue result, Constant input) {
+            this.result = result;
+            this.input = input;
+        }
+
+        @Override
+        public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
+            if (HotSpotCompressedNullConstant.COMPRESSED_NULL.equals(input)) {
+                if (isRegister(result)) {
+                    masm.movl(asRegister(result), 0);
+                } else {
+                    assert isStackSlot(result);
+                    masm.movl((AMD64Address) crb.asAddress(result), 0);
+                }
+            } else if (input instanceof HotSpotObjectConstant) {
+                boolean compressed = HotSpotObjectConstant.isCompressed(input);
+                OopData data = new OopData(compressed ? 4 : 8, HotSpotObjectConstant.asObject(input), compressed);
+                if (crb.target.inlineObjects) {
+                    crb.recordInlineDataInCode(data);
+                    if (isRegister(result)) {
+                        if (compressed) {
+                            masm.movl(asRegister(result), 0xDEADDEAD);
+                        } else {
+                            masm.movq(asRegister(result), 0xDEADDEADDEADDEADL);
+                        }
+                    } else {
+                        assert isStackSlot(result);
+                        if (compressed) {
+                            masm.movl((AMD64Address) crb.asAddress(result), 0xDEADDEAD);
+                        } else {
+                            throw GraalInternalError.shouldNotReachHere("Cannot store 64-bit constants to memory");
+                        }
+                    }
+                } else {
+                    if (isRegister(result)) {
+                        AMD64Address address = (AMD64Address) crb.recordDataReferenceInCode(data);
+                        if (compressed) {
+                            masm.movl(asRegister(result), address);
+                        } else {
+                            masm.movq(asRegister(result), address);
+                        }
+                    } else {
+                        throw GraalInternalError.shouldNotReachHere("Cannot directly store data patch to memory");
+                    }
+                }
+            } else if (input instanceof HotSpotMetaspaceConstant) {
+                assert input.getKind() == Kind.Int || input.getKind() == Kind.Long;
+                boolean compressed = input.getKind() == Kind.Int;
+                MetaspaceData data = new MetaspaceData(compressed ? 4 : 8, input.asLong(), HotSpotMetaspaceConstant.getMetaspaceObject(input), compressed);
+                crb.recordInlineDataInCode(data);
+                if (isRegister(result)) {
+                    if (compressed) {
+                        masm.movl(asRegister(result), input.asInt());
+                    } else {
+                        masm.movq(asRegister(result), input.asLong());
+                    }
+                } else {
+                    assert isStackSlot(result);
+                    if (compressed) {
+                        masm.movl((AMD64Address) crb.asAddress(result), input.asInt());
+                    } else {
+                        throw GraalInternalError.shouldNotReachHere("Cannot store 64-bit constants to memory");
+                    }
+                }
+            } else {
+                AMD64Move.move(crb, masm, result, input);
+            }
+        }
+
+        public Value getInput() {
+            return input;
+        }
+
+        public AllocatableValue getResult() {
+            return result;
+        }
+    }
+
+    public static class HotSpotStoreConstantOp extends StoreConstantOp {
+
+        public HotSpotStoreConstantOp(Kind kind, AMD64AddressValue address, Constant input, LIRFrameState state) {
+            super(kind, address, input, state);
+        }
+
+        @Override
+        public void emitMemAccess(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
+            if (input.isNull() && kind == Kind.Int) {
+                // compressed null
+                masm.movl(address.toAddress(), 0);
+            } else if (input instanceof HotSpotObjectConstant) {
+                if (HotSpotObjectConstant.isCompressed(input) && crb.target.inlineObjects) {
+                    // compressed oop
+                    crb.recordInlineDataInCode(new OopData(0, HotSpotObjectConstant.asObject(input), true));
+                    masm.movl(address.toAddress(), 0xDEADDEAD);
+                } else {
+                    // uncompressed oop
+                    throw GraalInternalError.shouldNotReachHere("Cannot store 64-bit constants to memory");
+                }
+            } else if (input instanceof HotSpotMetaspaceConstant) {
+                if (input.getKind() == Kind.Int) {
+                    // compressed metaspace pointer
+                    crb.recordInlineDataInCode(new MetaspaceData(0, input.asInt(), HotSpotMetaspaceConstant.getMetaspaceObject(input), true));
+                    masm.movl(address.toAddress(), input.asInt());
+                } else {
+                    // uncompressed metaspace pointer
+                    throw GraalInternalError.shouldNotReachHere("Cannot store 64-bit constants to memory");
+                }
+            } else {
+                // primitive value
+                super.emitMemAccess(crb, masm);
             }
         }
     }

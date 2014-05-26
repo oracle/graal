@@ -51,7 +51,7 @@ public class HotSpotMetaAccessProvider implements MetaAccessProvider {
     }
 
     public ResolvedJavaType lookupJavaType(Constant constant) {
-        if (constant.getKind() != Kind.Object || constant.isNull()) {
+        if (constant.isNull() || !(constant instanceof HotSpotObjectConstant)) {
             return null;
         }
         Object o = HotSpotObjectConstant.asObject(constant);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,7 +27,9 @@ import static com.oracle.graal.nodes.ConstantNode.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.hotspot.HotSpotVMConfig.*;
 import com.oracle.graal.hotspot.meta.*;
+import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.phases.*;
@@ -39,22 +41,24 @@ import com.oracle.graal.phases.tiers.*;
  * directly. Instead the {@link Class} reference should be obtained from the {@code Klass} object.
  * The reason for this is, that in Class Data Sharing (CDS) a {@code Klass} object is mapped to a
  * fixed address in memory, but the {@code javaMirror} is not (which lives in the Java heap).
- * 
+ *
  * Lowering can introduce new {@link ConstantNode}s containing a {@link Class} reference, thus this
  * phase must be applied after {@link LoweringPhase}.
- * 
+ *
  * @see AheadOfTimeVerificationPhase
  */
 public class LoadJavaMirrorWithKlassPhase extends BasePhase<PhaseContext> {
 
     private final int classMirrorOffset;
+    private final CompressEncoding oopEncoding;
 
-    public LoadJavaMirrorWithKlassPhase(int classMirrorOffset) {
+    public LoadJavaMirrorWithKlassPhase(int classMirrorOffset, CompressEncoding oopEncoding) {
         this.classMirrorOffset = classMirrorOffset;
+        this.oopEncoding = oopEncoding;
     }
 
-    private FloatingReadNode getClassConstantReplacement(StructuredGraph graph, PhaseContext context, Constant constant) {
-        if (constant.getKind() == Kind.Object && HotSpotObjectConstant.asObject(constant) instanceof Class<?>) {
+    private ValueNode getClassConstantReplacement(StructuredGraph graph, PhaseContext context, Constant constant) {
+        if (constant instanceof HotSpotObjectConstant && HotSpotObjectConstant.asObject(constant) instanceof Class<?>) {
             MetaAccessProvider metaAccess = context.getMetaAccess();
             ResolvedJavaType type = metaAccess.lookupJavaType((Class<?>) HotSpotObjectConstant.asObject(constant));
             assert type instanceof HotSpotResolvedObjectType;
@@ -65,7 +69,12 @@ public class LoadJavaMirrorWithKlassPhase extends BasePhase<PhaseContext> {
             Stamp stamp = StampFactory.exactNonNull(metaAccess.lookupJavaType(Class.class));
             LocationNode location = ConstantLocationNode.create(FINAL_LOCATION, Kind.Object, classMirrorOffset, graph);
             FloatingReadNode freadNode = graph.unique(new FloatingReadNode(klassNode, location, null, stamp));
-            return freadNode;
+
+            if (HotSpotObjectConstant.isCompressed(constant)) {
+                return CompressionNode.compress(freadNode, oopEncoding);
+            } else {
+                return freadNode;
+            }
         }
         return null;
     }
@@ -74,7 +83,7 @@ public class LoadJavaMirrorWithKlassPhase extends BasePhase<PhaseContext> {
     protected void run(StructuredGraph graph, PhaseContext context) {
         for (ConstantNode node : getConstantNodes(graph)) {
             Constant constant = node.asConstant();
-            FloatingReadNode freadNode = getClassConstantReplacement(graph, context, constant);
+            ValueNode freadNode = getClassConstantReplacement(graph, context, constant);
             if (freadNode != null) {
                 node.replace(graph, freadNode);
             }

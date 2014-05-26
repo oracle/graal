@@ -39,6 +39,7 @@ import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.HotSpotVMConfig.CompressEncoding;
+import com.oracle.graal.hotspot.amd64.AMD64HotSpotMove.HotSpotStoreConstantOp;
 import com.oracle.graal.hotspot.data.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.*;
@@ -55,7 +56,6 @@ import com.oracle.graal.lir.amd64.AMD64Move.LeaDataOp;
 import com.oracle.graal.lir.amd64.AMD64Move.LoadOp;
 import com.oracle.graal.lir.amd64.AMD64Move.MoveFromRegOp;
 import com.oracle.graal.lir.amd64.AMD64Move.MoveToRegOp;
-import com.oracle.graal.lir.amd64.AMD64Move.StoreConstantOp;
 import com.oracle.graal.lir.amd64.AMD64Move.StoreOp;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.gen.*;
@@ -480,7 +480,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         if (isConstant(inputVal)) {
             Constant c = asConstant(inputVal);
             if (canStoreConstant(c, false)) {
-                append(new StoreConstantOp(getMemoryKind(kind), storeAddress, c, state));
+                append(new HotSpotStoreConstantOp(getMemoryKind(kind), storeAddress, c, state));
                 return;
             }
         }
@@ -499,8 +499,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
             Variable result = newVariable(Kind.Int);
             AllocatableValue base = Value.ILLEGAL;
             if (encoding.base != 0) {
-                base = newVariable(Kind.Long);
-                append(new AMD64Move.MoveToRegOp(Kind.Long, base, Constant.forLong(encoding.base)));
+                base = emitMove(Constant.forLong(encoding.base));
             }
             append(new AMD64HotSpotMove.CompressPointer(result, asAllocatable(pointer), base, encoding, nonNull));
             return result;
@@ -518,8 +517,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
             Variable result = newVariable(Kind.Long);
             AllocatableValue base = Value.ILLEGAL;
             if (encoding.base != 0) {
-                base = newVariable(Kind.Long);
-                append(new AMD64Move.MoveToRegOp(Kind.Long, base, Constant.forLong(encoding.base)));
+                base = emitMove(Constant.forLong(encoding.base));
             }
             append(new AMD64HotSpotMove.UncompressPointer(result, asAllocatable(pointer), base, encoding, nonNull));
             return result;
@@ -528,7 +526,9 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
 
     @Override
     protected AMD64LIRInstruction createMove(AllocatableValue dst, Value src) {
-        if (dst.getPlatformKind() == NarrowOopStamp.NarrowOop) {
+        if (src instanceof Constant) {
+            return new AMD64HotSpotMove.HotSpotLoadConstantOp(dst, (Constant) src);
+        } else if (dst.getPlatformKind() == NarrowOopStamp.NarrowOop) {
             if (isRegister(src) || isStackSlot(dst)) {
                 return new MoveFromRegOp(Kind.Int, dst, src);
             } else {
@@ -640,5 +640,16 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     public void emitNullCheck(Value address, LIRFrameState state) {
         assert address.getKind() == Kind.Object : address + " - " + address.getKind() + " not an object!";
         append(new AMD64Move.NullCheckOp(load(address), state));
+    }
+
+    @Override
+    public boolean canInlineConstant(Constant c) {
+        if (HotSpotCompressedNullConstant.COMPRESSED_NULL.equals(c)) {
+            return true;
+        } else if (c instanceof HotSpotObjectConstant) {
+            return HotSpotObjectConstant.isCompressed(c);
+        } else {
+            return super.canInlineConstant(c);
+        }
     }
 }

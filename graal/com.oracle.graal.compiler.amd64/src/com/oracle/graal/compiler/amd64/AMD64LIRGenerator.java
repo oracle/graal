@@ -131,13 +131,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
 
     @Override
     public Variable emitMove(Value input) {
-        PlatformKind kind;
-        if (input instanceof Constant) {
-            kind = input.getKind().getStackKind();
-        } else {
-            kind = input.getPlatformKind();
-        }
-        Variable result = newVariable(kind);
+        Variable result = newVariable(input.getPlatformKind());
         emitMove(result, input);
         return result;
     }
