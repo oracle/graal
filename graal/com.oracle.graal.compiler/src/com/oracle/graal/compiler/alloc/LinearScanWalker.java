@@ -466,6 +466,7 @@ class LinearScanWalker extends IntervalWalker {
                     assert interval.firstUsage(RegisterPriority.ShouldHaveRegister) > currentPosition : "interval must not have use position before currentPosition";
 
                     allocator.assignSpillSlot(interval);
+                    handleSpillSlot(interval);
                     allocator.changeSpillState(interval, minSplitPos);
 
                     // Also kick parent intervals out of register to memory when they have no use
@@ -480,6 +481,7 @@ class LinearScanWalker extends IntervalWalker {
                                 // parent is never used, so kick it out of its assigned register
                                 Debug.log("kicking out interval %d out of its register because it is never used", parent.operandNumber);
                                 allocator.assignSpillSlot(parent);
+                                handleSpillSlot(parent);
                             } else {
                                 // do not go further back because the register is actually used by
                                 // the interval
@@ -508,6 +510,7 @@ class LinearScanWalker extends IntervalWalker {
 
                     Interval spilledPart = interval.split(optimalSplitPos, allocator);
                     allocator.assignSpillSlot(spilledPart);
+                    handleSpillSlot(spilledPart);
                     allocator.changeSpillState(spilledPart, optimalSplitPos);
 
                     if (!allocator.isBlockBegin(optimalSplitPos)) {
@@ -526,6 +529,14 @@ class LinearScanWalker extends IntervalWalker {
                 }
             }
         }
+    }
+
+    /**
+     * This is called for every interval that is assigned to a stack slot.
+     */
+    protected void handleSpillSlot(Interval interval) {
+        assert interval.location() != null && (interval.canMaterialize() || isStackSlot(interval.location())) : "interval not assigned to a stack slot " + interval;
+        // Do nothing. Stack slots are not processed in this implementation.
     }
 
     void splitStackInterval(Interval interval) {
