@@ -78,14 +78,14 @@ public class OptimizingLinearScanWalker extends LinearScanWalker {
                     walkTo(nextBlock);
 
                     try (Scope s1 = Debug.scope("LSRAOptimization")) {
-                        try (Indent indent1 = Debug.logAndIndent("Active intevals:")) {
+                        try (Indent indent1 = Debug.logAndIndent("Active intervals: (block %s [%d])", block, nextBlock)) {
                             for (Interval active = activeLists.get(RegisterBinding.Any); active != Interval.EndMarker; active = active.next) {
                                 Debug.log("active   (any): %s", active);
-                                optimize(block, active);
+                                optimize(nextBlock, block, active, RegisterBinding.Any);
                             }
                             for (Interval active = activeLists.get(RegisterBinding.Stack); active != Interval.EndMarker; active = active.next) {
                                 Debug.log("active (stack): %s", active);
-                                optimize(block, active);
+                                optimize(nextBlock, block, active, RegisterBinding.Stack);
                             }
 
                         }
@@ -96,7 +96,7 @@ public class OptimizingLinearScanWalker extends LinearScanWalker {
         super.walk();
     }
 
-    private void optimize(AbstractBlock<?> currentBlock, Interval currentInterval) {
+    private void optimize(int currentPos, AbstractBlock<?> currentBlock, Interval currentInterval, RegisterBinding binding) {
         // BEGIN initialize and sanity checks
         assert currentBlock != null : "block must not be null";
         assert currentInterval != null : "interval must not be null";
@@ -107,6 +107,11 @@ public class OptimizingLinearScanWalker extends LinearScanWalker {
         }
         if (!currentInterval.isSplitChild()) {
             // interval is not a split child -> no need for optimization
+            return;
+        }
+
+        if (currentInterval.from() == currentPos) {
+            // the interval starts at the current position so no need for splitting
             return;
         }
 
@@ -138,6 +143,25 @@ public class OptimizingLinearScanWalker extends LinearScanWalker {
         assert isStackSlot(currentLocation) || isRegister(currentLocation) : "current location not a register or stack slot " + currentLocation;
 
         try (Indent indent = Debug.logAndIndent("location differs: %s vs. %s", predecessorLocation, currentLocation)) {
+            // split current interval at current position
+            Debug.log("splitting at position %d", currentPos);
+
+            assert allocator.isBlockBegin(currentPos) && ((currentPos & 1) == 0) : "split pos must be even when on block boundary";
+
+            Interval splitPart = currentInterval.split(currentPos, allocator);
+
+            assert splitPart.from() >= currentPosition : "cannot append new interval before current walk position";
+            unhandledLists.addToListSortedByStartAndUsePositions(RegisterBinding.Any, splitPart);
+            activeLists.remove(binding, currentInterval);
+
+            // the currentSplitChild is needed later when moves are inserted for reloading
+            assert splitPart.currentSplitChild() == currentInterval : "overwriting wrong currentSplitChild";
+            splitPart.makeCurrentSplitChild();
+
+            if (Debug.isLogEnabled()) {
+                Debug.log("left interval  : %s", currentInterval.logString(allocator));
+                Debug.log("right interval : %s", splitPart.logString(allocator));
+            }
         }
 
     }
