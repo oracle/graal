@@ -55,6 +55,11 @@ public final class IllegalStamp extends Stamp {
     }
 
     @Override
+    public Stamp constant(Constant c, MetaAccessProvider meta) {
+        throw GraalInternalError.shouldNotReachHere("illegal stamp has no value");
+    }
+
+    @Override
     public ResolvedJavaType javaType(MetaAccessProvider metaAccess) {
         throw GraalInternalError.shouldNotReachHere("illegal stamp has no Java type");
     }

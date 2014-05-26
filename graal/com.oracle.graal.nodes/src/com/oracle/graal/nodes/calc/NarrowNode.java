@@ -41,7 +41,8 @@ public class NarrowNode extends IntegerConvertNode {
     }
 
     public static long narrow(long value, int resultBits) {
-        return value & IntegerStamp.defaultMask(resultBits);
+        long ret = value & IntegerStamp.defaultMask(resultBits);
+        return SignExtendNode.signExtend(ret, resultBits);
     }
 
     @Override

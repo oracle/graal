@@ -54,6 +54,12 @@ public class FloatStamp extends PrimitiveStamp {
     }
 
     @Override
+    public Stamp constant(Constant c, MetaAccessProvider meta) {
+        assert c.getKind().isNumericFloat() && c.getKind().getBitCount() == getBits();
+        return StampFactory.forConstant(c);
+    }
+
+    @Override
     public boolean isLegal() {
         return lowerBound <= upperBound || !nonNaN;
     }
