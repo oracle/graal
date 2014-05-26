@@ -1396,7 +1396,12 @@ public final class LinearScan {
             notPrecoloredIntervals = result.second;
 
             // allocate cpu registers
-            LinearScanWalker lsw = new LinearScanWalker(this, precoloredIntervals, notPrecoloredIntervals);
+            LinearScanWalker lsw;
+            if (OptimizingLinearScanWalker.Options.LSRAOptimization.getValue()) {
+                lsw = new OptimizingLinearScanWalker(this, precoloredIntervals, notPrecoloredIntervals);
+            } else {
+                lsw = new LinearScanWalker(this, precoloredIntervals, notPrecoloredIntervals);
+            }
             lsw.walk();
             lsw.finishAllocation();
         }

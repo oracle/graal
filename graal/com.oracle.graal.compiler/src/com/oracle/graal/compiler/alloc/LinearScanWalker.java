@@ -42,7 +42,7 @@ import com.oracle.graal.phases.util.*;
 
 /**
  */
-final class LinearScanWalker extends IntervalWalker {
+class LinearScanWalker extends IntervalWalker {
 
     private Register[] availableRegs;
 
