@@ -643,6 +643,26 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     }
 
     @Override
+    protected void emitCompareOp(PlatformKind cmpKind, Variable left, Value right) {
+        if (right instanceof HotSpotConstant) {
+            append(new AMD64HotSpotCompare.HotSpotCompareConstantOp(left, (Constant) right));
+        } else if (cmpKind == NarrowOopStamp.NarrowOop) {
+            append(new AMD64HotSpotCompare.HotSpotCompareNarrowOp(left, asAllocatable(right)));
+        } else {
+            super.emitCompareOp(cmpKind, left, right);
+        }
+    }
+
+    @Override
+    protected void emitCompareMemoryConOp(Kind kind, AMD64AddressValue address, Constant value, LIRFrameState state) {
+        if (value instanceof HotSpotConstant) {
+            append(new AMD64HotSpotCompare.HotSpotCompareMemoryConstantOp(kind, address, value, state));
+        } else {
+            super.emitCompareMemoryConOp(kind, address, value, state);
+        }
+    }
+
+    @Override
     public boolean canInlineConstant(Constant c) {
         if (HotSpotCompressedNullConstant.COMPRESSED_NULL.equals(c)) {
             return true;

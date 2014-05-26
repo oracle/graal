@@ -84,7 +84,7 @@ public enum AMD64Compare {
         }
 
         @Override
-        public void emitMemAccess(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
+        protected void emitMemAccess(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
             if (isRegister(y)) {
                 switch (opcode) {
                     case BCMP:
@@ -125,6 +125,13 @@ public enum AMD64Compare {
                     case LCMP:
                         if (NumUtil.isInt(crb.asLongConst(y))) {
                             masm.cmpq(address.toAddress(), (int) crb.asLongConst(y));
+                        } else {
+                            throw GraalInternalError.shouldNotReachHere();
+                        }
+                        break;
+                    case ACMP:
+                        if (asConstant(y).isNull()) {
+                            masm.cmpq(address.toAddress(), 0);
                         } else {
                             throw GraalInternalError.shouldNotReachHere();
                         }
