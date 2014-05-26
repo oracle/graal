@@ -95,7 +95,7 @@ public class GenGraalRuntimeInlineHpp {
             out.println("    return services;");
             out.println("  }");
         }
-        out.println("  return NULL;");
+        out.println("  return Handle();");
         out.println("}");
     }
 
