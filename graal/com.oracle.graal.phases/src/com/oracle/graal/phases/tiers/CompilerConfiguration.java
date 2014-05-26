@@ -22,9 +22,10 @@
  */
 package com.oracle.graal.phases.tiers;
 
+import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.phases.*;
 
-public interface CompilerConfiguration {
+public interface CompilerConfiguration extends Service {
 
     PhaseSuite<HighTierContext> createHighTier();
 

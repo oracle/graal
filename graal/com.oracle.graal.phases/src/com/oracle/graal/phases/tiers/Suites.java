@@ -26,6 +26,7 @@ import static com.oracle.graal.phases.tiers.Suites.Options.*;
 
 import java.util.*;
 
+import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.options.*;
 import com.oracle.graal.phases.*;
@@ -65,7 +66,7 @@ public final class Suites {
         CompilerConfiguration nonBasic = null;
         int nonBasicCount = 0;
 
-        for (CompilerConfiguration config : ServiceLoader.loadInstalled(CompilerConfiguration.class)) {
+        for (CompilerConfiguration config : Services.load(CompilerConfiguration.class)) {
             String name = config.getClass().getSimpleName();
             if (name.endsWith("CompilerConfiguration")) {
                 name = name.substring(0, name.length() - "CompilerConfiguration".length());

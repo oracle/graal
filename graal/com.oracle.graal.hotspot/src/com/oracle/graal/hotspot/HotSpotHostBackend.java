@@ -25,9 +25,8 @@ package com.oracle.graal.hotspot;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.InitTimer.*;
 
-import java.util.*;
-
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
@@ -80,7 +79,7 @@ public abstract class HotSpotHostBackend extends HotSpotBackend implements HostB
         if (Intrinsify.getValue()) {
             try (Scope s = Debug.scope("RegisterReplacements", new DebugDumpScope("RegisterReplacements"))) {
                 try (InitTimer st = timer("replacementsProviders.registerReplacements")) {
-                    ServiceLoader<ReplacementsProvider> sl = ServiceLoader.loadInstalled(ReplacementsProvider.class);
+                    Iterable<ReplacementsProvider> sl = Services.load(ReplacementsProvider.class);
                     for (ReplacementsProvider replacementsProvider : sl) {
                         replacementsProvider.registerReplacements(providers.getMetaAccess(), lowerer, providers.getSnippetReflection(), replacements, providers.getCodeCache().getTarget());
                     }

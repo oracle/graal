@@ -20,24 +20,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot;
+package com.oracle.graal.api.runtime;
 
-import com.oracle.graal.api.runtime.*;
-import com.oracle.graal.hotspot.HotSpotGraalRuntime.Options;
-
-public interface HotSpotBackendFactory extends Service {
-
-    HotSpotBackend createBackend(HotSpotGraalRuntime runtime, HotSpotBackend host);
-
-    /**
-     * Gets the CPU architecture of this backend.
-     */
-    String getArchitecture();
-
-    /**
-     * Gets the name of the {@link Options#GraalRuntime GraalRuntime} in which the backend created
-     * by this factory should be used.
-     */
-    String getGraalRuntimeName();
-
+/**
+ * Denotes a service that may be efficiently loaded by {@link Services#load(Class)}.
+ */
+public interface Service {
 }
