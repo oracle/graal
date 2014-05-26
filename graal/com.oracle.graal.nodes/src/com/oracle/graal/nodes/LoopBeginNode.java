@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,6 +29,7 @@ import java.util.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.graph.spi.*;
+import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.util.*;
@@ -175,7 +176,8 @@ public class LoopBeginNode extends MergeNode implements IterableNodeType, LIRLow
 
     @Override
     public void simplify(SimplifierTool tool) {
-        // nothing yet
+        removeDeadPhis();
+        canonicalizePhis(tool);
     }
 
     public boolean isLoopExit(BeginNode begin) {
@@ -209,19 +211,101 @@ public class LoopBeginNode extends MergeNode implements IterableNodeType, LIRLow
      * alive. This allows the removal of dead phi loops.
      */
     public void removeDeadPhis() {
-        Set<PhiNode> alive = new HashSet<>();
-        for (PhiNode phi : phis()) {
-            NodePredicate isAlive = u -> !isPhiAtMerge(u) || alive.contains(u);
-            if (phi.usages().filter(isAlive).isNotEmpty()) {
-                alive.add(phi);
-                for (PhiNode keptAlive : phi.values().filter(PhiNode.class).filter(isAlive.negate())) {
-                    alive.add(keptAlive);
+        if (phis().isNotEmpty()) {
+            Set<PhiNode> alive = new HashSet<>();
+            for (PhiNode phi : phis()) {
+                NodePredicate isAlive = u -> !isPhiAtMerge(u) || alive.contains(u);
+                if (phi.usages().filter(isAlive).isNotEmpty()) {
+                    alive.add(phi);
+                    for (PhiNode keptAlive : phi.values().filter(PhiNode.class).filter(isAlive.negate())) {
+                        alive.add(keptAlive);
+                    }
                 }
             }
+            for (PhiNode phi : phis().filter(((NodePredicate) alive::contains).negate()).snapshot()) {
+                phi.replaceAtUsages(null);
+                phi.safeDelete();
+            }
         }
-        for (PhiNode phi : phis().filter(((NodePredicate) alive::contains).negate()).snapshot()) {
-            phi.replaceAtUsages(null);
-            phi.safeDelete();
+    }
+
+    private static final int NO_INCREMENT = Integer.MIN_VALUE;
+
+    /**
+     * Returns an array with one entry for each input of the phi, which is either
+     * {@link #NO_INCREMENT} or the increment, i.e., the value by which the phi is incremented in
+     * the corresponding branch.
+     */
+    private static int[] getSelfIncrements(PhiNode phi) {
+        int[] selfIncrement = new int[phi.valueCount()];
+        for (int i = 0; i < phi.valueCount(); i++) {
+            ValueNode input = phi.valueAt(i);
+            long increment = NO_INCREMENT;
+            if (input != null && input instanceof IntegerAddNode) {
+                IntegerAddNode add = (IntegerAddNode) input;
+                if (add.x() == phi && add.y().isConstant()) {
+                    increment = add.y().asConstant().asLong();
+                } else if (add.y() == phi && add.x().isConstant()) {
+                    increment = add.x().asConstant().asLong();
+                }
+            } else if (input == phi) {
+                increment = 0;
+            }
+            if (increment < Integer.MIN_VALUE || increment > Integer.MAX_VALUE || increment == NO_INCREMENT) {
+                increment = NO_INCREMENT;
+            }
+            selfIncrement[i] = (int) increment;
+        }
+        return selfIncrement;
+    }
+
+    /**
+     * Coalesces loop phis that represent the same value (which is not handled by normal Global
+     * Value Numbering).
+     */
+    public void canonicalizePhis(SimplifierTool tool) {
+        int phiCount = phis().count();
+        if (phiCount > 1) {
+            int phiInputCount = phiPredecessorCount();
+            int phiIndex = 0;
+            int[][] selfIncrement = new int[phiCount][];
+            PhiNode[] phis = this.phis().snapshot().toArray(new PhiNode[phiCount]);
+
+            for (phiIndex = 0; phiIndex < phiCount; phiIndex++) {
+                PhiNode phi = phis[phiIndex];
+                if (phi != null) {
+                    nextPhi: for (int otherPhiIndex = phiIndex + 1; otherPhiIndex < phiCount; otherPhiIndex++) {
+                        PhiNode otherPhi = phis[otherPhiIndex];
+                        if (otherPhi == null || phi.getNodeClass() != otherPhi.getNodeClass() || !phi.getNodeClass().valueEqual(phi, otherPhi)) {
+                            continue nextPhi;
+                        }
+                        if (selfIncrement[phiIndex] == null) {
+                            selfIncrement[phiIndex] = getSelfIncrements(phi);
+                        }
+                        if (selfIncrement[otherPhiIndex] == null) {
+                            selfIncrement[otherPhiIndex] = getSelfIncrements(otherPhi);
+                        }
+                        int[] phiIncrement = selfIncrement[phiIndex];
+                        int[] otherPhiIncrement = selfIncrement[otherPhiIndex];
+                        for (int inputIndex = 0; inputIndex < phiInputCount; inputIndex++) {
+                            if (phiIncrement[inputIndex] == NO_INCREMENT) {
+                                if (phi.valueAt(inputIndex) != otherPhi.valueAt(inputIndex)) {
+                                    continue nextPhi;
+                                }
+                            }
+                            if (phiIncrement[inputIndex] != otherPhiIncrement[inputIndex]) {
+                                continue nextPhi;
+                            }
+                        }
+                        if (tool != null) {
+                            otherPhi.usages().forEach(tool::addToWorkList);
+                        }
+                        otherPhi.replaceAtUsages(phi);
+                        GraphUtil.killWithUnusedFloatingInputs(otherPhi);
+                        phis[otherPhiIndex] = null;
+                    }
+                }
+            }
         }
     }
 }
