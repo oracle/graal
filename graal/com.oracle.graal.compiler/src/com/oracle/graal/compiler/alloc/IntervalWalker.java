@@ -88,9 +88,9 @@ public class IntervalWalker {
     IntervalWalker(LinearScan allocator, Interval unhandledFixed, Interval unhandledAny) {
         this.allocator = allocator;
 
-        unhandledLists = new RegisterBindingLists(unhandledFixed, unhandledAny);
-        activeLists = new RegisterBindingLists(Interval.EndMarker, Interval.EndMarker);
-        inactiveLists = new RegisterBindingLists(Interval.EndMarker, Interval.EndMarker);
+        unhandledLists = new RegisterBindingLists(unhandledFixed, unhandledAny, Interval.EndMarker);
+        activeLists = new RegisterBindingLists(Interval.EndMarker, Interval.EndMarker, Interval.EndMarker);
+        inactiveLists = new RegisterBindingLists(Interval.EndMarker, Interval.EndMarker, Interval.EndMarker);
         currentPosition = -1;
     }
 

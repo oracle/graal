@@ -69,45 +69,60 @@ public final class Interval {
          */
         public Interval any;
 
-        public RegisterBindingLists(Interval fixed, Interval any) {
+        /**
+         * List of intervals whose binding is currently {@link RegisterBinding#Stack}.
+         */
+        public Interval stack;
+
+        public RegisterBindingLists(Interval fixed, Interval any, Interval stack) {
             this.fixed = fixed;
             this.any = any;
+            this.stack = stack;
         }
 
         /**
          * Gets the list for a specified binding.
-         * 
+         *
          * @param binding specifies the list to be returned
          * @return the list of intervals whose binding is {@code binding}
          */
         public Interval get(RegisterBinding binding) {
-            if (binding == RegisterBinding.Any) {
-                return any;
+            switch (binding) {
+                case Any:
+                    return any;
+                case Fixed:
+                    return fixed;
+                case Stack:
+                    return stack;
             }
-            assert binding == RegisterBinding.Fixed;
-            return fixed;
+            throw GraalInternalError.shouldNotReachHere();
         }
 
         /**
          * Sets the list for a specified binding.
-         * 
+         *
          * @param binding specifies the list to be replaced
          * @param list a list of intervals whose binding is {@code binding}
          */
         public void set(RegisterBinding binding, Interval list) {
             assert list != null;
-            if (binding == RegisterBinding.Any) {
-                any = list;
-            } else {
-                assert binding == RegisterBinding.Fixed;
-                fixed = list;
+            switch (binding) {
+                case Any:
+                    any = list;
+                    break;
+                case Fixed:
+                    fixed = list;
+                    break;
+                case Stack:
+                    stack = list;
+                    break;
             }
         }
 
         /**
          * Adds an interval to a list sorted by {@linkplain Interval#currentFrom() current from}
          * positions.
-         * 
+         *
          * @param binding specifies the list to be updated
          * @param interval the interval to add
          */
@@ -134,7 +149,7 @@ public final class Interval {
         /**
          * Adds an interval to a list sorted by {@linkplain Interval#from() start} positions and
          * {@linkplain Interval#firstUsage(RegisterPriority) first usage} positions.
-         * 
+         *
          * @param binding specifies the list to be updated
          * @param interval the interval to add
          */
@@ -157,7 +172,7 @@ public final class Interval {
 
         /**
          * Removes an interval from a list.
-         * 
+         *
          * @param binding specifies the list to be updated
          * @param i the interval to remove
          */
@@ -234,7 +249,12 @@ public final class Interval {
         /**
          * Interval has no specific register requirements.
          */
-        Any;
+        Any,
+
+        /**
+         * Interval is bound to a stack slot.
+         */
+        Stack;
 
         public static final RegisterBinding[] VALUES = values();
     }
@@ -310,7 +330,7 @@ public final class Interval {
      * List of use positions. Each entry in the list records the use position and register priority
      * associated with the use position. The entries in the list are in descending order of use
      * position.
-     * 
+     *
      */
     public static final class UsePosList {
 
@@ -318,7 +338,7 @@ public final class Interval {
 
         /**
          * Creates a use list.
-         * 
+         *
          * @param initialCapacity the initial capacity of the list in terms of entries
          */
         public UsePosList(int initialCapacity) {
@@ -333,7 +353,7 @@ public final class Interval {
          * Splits this list around a given position. All entries in this list with a use position
          * greater or equal than {@code splitPos} are removed from this list and added to the
          * returned list.
-         * 
+         *
          * @param splitPos the position for the split
          * @return a use position list containing all entries removed from this list that have a use
          *         position greater or equal than {@code splitPos}
@@ -355,7 +375,7 @@ public final class Interval {
 
         /**
          * Gets the use position at a specified index in this list.
-         * 
+         *
          * @param index the index of the entry for which the use position is returned
          * @return the use position of entry {@code index} in this list
          */
@@ -365,7 +385,7 @@ public final class Interval {
 
         /**
          * Gets the register priority for the use position at a specified index in this list.
-         * 
+         *
          * @param index the index of the entry for which the register priority is returned
          * @return the register priority of entry {@code index} in this list
          */
@@ -1044,7 +1064,7 @@ public final class Interval {
      * When a split child is split again, the new created interval is a direct child of the original
      * parent. That is, there is no tree of split children stored, just a flat list. All split
      * children are spilled to the same {@linkplain #spillSlot spill slot}.
-     * 
+     *
      * @param splitPos the position at which to split this interval
      * @param allocator the register allocator context
      * @return the child interval split off from this interval
@@ -1094,7 +1114,7 @@ public final class Interval {
     /**
      * Splits this interval at a specified position and returns the head as a new interval (this
      * interval is the tail).
-     * 
+     *
      * Currently, only the first range can be split, and the new interval must not have split
      * positions
      */
@@ -1196,7 +1216,7 @@ public final class Interval {
 
     /**
      * Gets a single line string for logging the details of this interval to a log stream.
-     * 
+     *
      * @param allocator the register allocator context
      */
     public String logString(LinearScan allocator) {
