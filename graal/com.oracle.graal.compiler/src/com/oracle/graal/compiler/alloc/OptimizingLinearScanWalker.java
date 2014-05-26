@@ -22,6 +22,10 @@
  */
 package com.oracle.graal.compiler.alloc;
 
+import static com.oracle.graal.api.code.ValueUtil.*;
+
+import com.oracle.graal.compiler.alloc.Interval.RegisterBinding;
+import com.oracle.graal.compiler.alloc.Interval.RegisterBindingLists;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
@@ -41,11 +45,43 @@ public class OptimizingLinearScanWalker extends LinearScanWalker {
     }
 
     @Override
+    protected void handleSpillSlot(Interval interval) {
+        assert interval.location() != null : "interval  not assigned " + interval;
+        if (interval.canMaterialize()) {
+            assert !isStackSlot(interval.location()) : "interval can materialize but assigned to a stack slot " + interval;
+            return;
+        }
+        assert isStackSlot(interval.location()) : "interval not assigned to a stack slot " + interval;
+        try (Scope s1 = Debug.scope("LSRAOptimization")) {
+            Debug.log("adding stack to unhandled list %s", interval);
+            unhandledLists.addToListSortedByStartAndUsePositions(RegisterBinding.Stack, interval);
+        }
+    }
+
+    @SuppressWarnings("unused")
+    private static void printRegisterBindingList(RegisterBindingLists list, RegisterBinding binding) {
+        for (Interval interval = list.get(binding); interval != Interval.EndMarker; interval = interval.next) {
+            Debug.log("%s", interval);
+        }
+    }
+
+    @Override
     void walk() {
         try (Scope s = Debug.scope("OptimizingLinearScanWalker")) {
             for (AbstractBlock<?> block : allocator.sortedBlocks) {
                 int nextBlock = allocator.getFirstLirInstructionId(block);
                 walkTo(nextBlock);
+                try (Scope s1 = Debug.scope("LSRAOptimization")) {
+                    try (Indent indent = Debug.logAndIndent("Active intevals:")) {
+                        for (Interval active = activeLists.get(RegisterBinding.Any); active != Interval.EndMarker; active = active.next) {
+                            Debug.log("active   (any): %s", active);
+                        }
+                        for (Interval active = activeLists.get(RegisterBinding.Stack); active != Interval.EndMarker; active = active.next) {
+                            Debug.log("active (stack): %s", active);
+                        }
+
+                    }
+                }
             }
         }
         super.walk();
