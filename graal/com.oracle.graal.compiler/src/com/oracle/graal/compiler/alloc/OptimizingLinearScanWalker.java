@@ -24,6 +24,7 @@ package com.oracle.graal.compiler.alloc;
 
 import static com.oracle.graal.api.code.ValueUtil.*;
 
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.alloc.Interval.RegisterBinding;
 import com.oracle.graal.compiler.alloc.Interval.RegisterBindingLists;
 import com.oracle.graal.compiler.common.cfg.*;
@@ -70,20 +71,74 @@ public class OptimizingLinearScanWalker extends LinearScanWalker {
         try (Scope s = Debug.scope("OptimizingLinearScanWalker")) {
             for (AbstractBlock<?> block : allocator.sortedBlocks) {
                 int nextBlock = allocator.getFirstLirInstructionId(block);
-                walkTo(nextBlock);
                 try (Scope s1 = Debug.scope("LSRAOptimization")) {
-                    try (Indent indent = Debug.logAndIndent("Active intevals:")) {
-                        for (Interval active = activeLists.get(RegisterBinding.Any); active != Interval.EndMarker; active = active.next) {
-                            Debug.log("active   (any): %s", active);
-                        }
-                        for (Interval active = activeLists.get(RegisterBinding.Stack); active != Interval.EndMarker; active = active.next) {
-                            Debug.log("active (stack): %s", active);
-                        }
+                    Debug.log("next block: %s (%d)", block, nextBlock);
+                }
+                try (Indent indent0 = Debug.indent()) {
+                    walkTo(nextBlock);
 
+                    try (Scope s1 = Debug.scope("LSRAOptimization")) {
+                        try (Indent indent1 = Debug.logAndIndent("Active intevals:")) {
+                            for (Interval active = activeLists.get(RegisterBinding.Any); active != Interval.EndMarker; active = active.next) {
+                                Debug.log("active   (any): %s", active);
+                                optimize(block, active);
+                            }
+                            for (Interval active = activeLists.get(RegisterBinding.Stack); active != Interval.EndMarker; active = active.next) {
+                                Debug.log("active (stack): %s", active);
+                                optimize(block, active);
+                            }
+
+                        }
                     }
                 }
             }
         }
         super.walk();
+    }
+
+    private void optimize(AbstractBlock<?> currentBlock, Interval currentInterval) {
+        // BEGIN initialize and sanity checks
+        assert currentBlock != null : "block must not be null";
+        assert currentInterval != null : "interval must not be null";
+
+        if (currentBlock.getPredecessorCount() != 1) {
+            // more than one predecessors -> optimization not possible
+            return;
+        }
+        if (!currentInterval.isSplitChild()) {
+            // interval is not a split child -> no need for optimization
+            return;
+        }
+
+        // get current location
+        AllocatableValue currentLocation = currentInterval.location();
+        assert currentLocation != null : "active intervals must have a location assigned!";
+
+        // get predecessor stuff
+        AbstractBlock<?> predecessorBlock = currentBlock.getPredecessors().get(0);
+        int predEndId = allocator.getLastLirInstructionId(predecessorBlock);
+        Interval predecessorInterval = currentInterval.getIntervalCoveringOpId(predEndId);
+        assert predecessorInterval != null : "variable not live at the end of the only predecessor! " + predecessorBlock + " -> " + currentBlock + " interval: " + currentInterval;
+        AllocatableValue predecessorLocation = predecessorInterval.location();
+        assert predecessorLocation != null : "handled intervals must have a location assigned!";
+
+        // END initialize and sanity checks
+
+        if (currentLocation.equals(predecessorLocation)) {
+            // locations are already equal -> nothing to optimize
+            return;
+        }
+
+        if (!isStackSlot(predecessorLocation) && !isRegister(predecessorLocation)) {
+            assert predecessorInterval.canMaterialize();
+            // value is materialized -> no need for optimization
+            return;
+        }
+
+        assert isStackSlot(currentLocation) || isRegister(currentLocation) : "current location not a register or stack slot " + currentLocation;
+
+        try (Indent indent = Debug.logAndIndent("location differs: %s vs. %s", predecessorLocation, currentLocation)) {
+        }
+
     }
 }
