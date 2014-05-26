@@ -2057,7 +2057,7 @@ public final class LinearScan {
                 int numUsePos = usePosList.size();
                 for (int useIdx = 0; useIdx < numUsePos; useIdx++) {
                     Interval.RegisterPriority priority = usePosList.registerPriority(useIdx);
-                    if (priority == Interval.RegisterPriority.ShouldHaveRegister) {
+                    if (priority.greaterEqual(Interval.RegisterPriority.ShouldHaveRegister)) {
                         return null;
                     }
                 }
