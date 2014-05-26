@@ -195,7 +195,6 @@ public class StampFactory {
     }
 
     public static Stamp forConstant(Constant value, MetaAccessProvider metaAccess) {
-        assert value.getKind() == Kind.Object;
         if (value.getKind() == Kind.Object) {
             ResolvedJavaType type = value.isNull() ? null : metaAccess.lookupJavaType(value);
             return new ObjectStamp(type, value.isNonNull(), value.isNonNull(), value.isNull());

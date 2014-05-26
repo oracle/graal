@@ -64,6 +64,12 @@ public class IntegerStamp extends PrimitiveStamp {
     }
 
     @Override
+    public Stamp constant(Constant c, MetaAccessProvider meta) {
+        long value = c.asLong();
+        return StampFactory.forInteger(getBits(), value, value);
+    }
+
+    @Override
     public boolean isLegal() {
         return lowerBound <= upperBound;
     }

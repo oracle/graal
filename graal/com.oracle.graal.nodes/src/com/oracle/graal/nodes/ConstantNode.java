@@ -153,13 +153,7 @@ public final class ConstantNode extends FloatingNode implements LIRLowerable {
     }
 
     public static ConstantNode forConstant(Stamp stamp, Constant constant, MetaAccessProvider metaAccess, StructuredGraph graph) {
-        if (stamp instanceof PrimitiveStamp) {
-            return forPrimitive(stamp, constant, graph);
-        } else {
-            ConstantNode ret = forConstant(constant, metaAccess, graph);
-            assert ret.stamp().isCompatible(stamp);
-            return ret;
-        }
+        return graph.unique(new ConstantNode(constant, stamp.constant(constant, metaAccess)));
     }
 
     /**

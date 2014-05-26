@@ -88,6 +88,15 @@ public abstract class Stamp {
     public abstract Stamp illegal();
 
     /**
+     * If it is possible to represent single value stamps of this kind, this method returns the
+     * stamp representing the single value c. stamp.constant(c).asConstant() should be equal to c.
+     * <p>
+     * If it is not possible to represent single value stamps, this method returns a stamp that
+     * includes c, and is otherwise as narrow as possible.
+     */
+    public abstract Stamp constant(Constant c, MetaAccessProvider meta);
+
+    /**
      * Test whether two stamps have the same base type.
      */
     public abstract boolean isCompatible(Stamp other);

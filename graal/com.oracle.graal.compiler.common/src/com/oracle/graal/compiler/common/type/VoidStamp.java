@@ -102,6 +102,11 @@ public final class VoidStamp extends Stamp {
         return true;
     }
 
+    @Override
+    public Stamp constant(Constant c, MetaAccessProvider meta) {
+        throw GraalInternalError.shouldNotReachHere("void stamp has no value");
+    }
+
     private static VoidStamp instance = new VoidStamp();
 
     static VoidStamp getInstance() {

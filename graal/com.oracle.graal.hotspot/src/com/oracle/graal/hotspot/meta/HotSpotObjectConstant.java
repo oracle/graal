@@ -23,12 +23,13 @@
 package com.oracle.graal.hotspot.meta;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.hotspot.nodes.type.*;
 
 /**
  * Represents a constant non-{@code null} object reference, within the compiler and across the
  * compiler/runtime interface.
  */
-public final class HotSpotObjectConstant extends Constant {
+public final class HotSpotObjectConstant extends Constant implements HotSpotConstant {
 
     private static final long serialVersionUID = 3592151693708093496L;
 
@@ -36,7 +37,7 @@ public final class HotSpotObjectConstant extends Constant {
         if (object == null) {
             return Constant.NULL_OBJECT;
         } else {
-            return new HotSpotObjectConstant(object);
+            return new HotSpotObjectConstant(object, false);
         }
     }
 
@@ -59,19 +60,39 @@ public final class HotSpotObjectConstant extends Constant {
     public static Object asBoxedValue(Constant constant) {
         if (constant.isNull()) {
             return null;
-        } else if (constant.getKind() == Kind.Object) {
+        } else if (constant instanceof HotSpotObjectConstant) {
             return ((HotSpotObjectConstant) constant).object;
         } else {
             return constant.asBoxedPrimitive();
         }
     }
 
-    private final Object object;
+    public static boolean isCompressed(Constant constant) {
+        if (constant.isNull()) {
+            return HotSpotCompressedNullConstant.NULL_OBJECT.equals(constant);
+        } else {
+            return ((HotSpotObjectConstant) constant).compressed;
+        }
+    }
 
-    private HotSpotObjectConstant(Object object) {
-        super(Kind.Object);
+    private final Object object;
+    private final boolean compressed;
+
+    private HotSpotObjectConstant(Object object, boolean compressed) {
+        super(compressed ? NarrowOopStamp.NarrowOop : Kind.Object);
         this.object = object;
+        this.compressed = compressed;
         assert object != null;
+    }
+
+    public Constant compress() {
+        assert !compressed;
+        return new HotSpotObjectConstant(object, true);
+    }
+
+    public Constant uncompress() {
+        assert compressed;
+        return new HotSpotObjectConstant(object, false);
     }
 
     @Override
@@ -135,6 +156,6 @@ public final class HotSpotObjectConstant extends Constant {
 
     @Override
     public String toString() {
-        return getKind().getJavaName() + "[" + Kind.Object.format(object) + "]";
+        return (compressed ? "NarrowOop" : getKind().getJavaName()) + "[" + Kind.Object.format(object) + "]";
     }
 }

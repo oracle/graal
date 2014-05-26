@@ -63,7 +63,7 @@ public abstract class Constant extends Value {
         assert NULL_OBJECT.isNull();
     }
 
-    protected Constant(Kind kind) {
+    protected Constant(PlatformKind kind) {
         super(kind);
     }
 

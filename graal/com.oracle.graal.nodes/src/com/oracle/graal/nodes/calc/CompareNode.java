@@ -126,14 +126,14 @@ public abstract class CompareNode extends BinaryOpLogicNode {
             }
         } else if (x() instanceof ConvertNode && y().isConstant()) {
             ConvertNode convertX = (ConvertNode) x();
-            ConstantNode newY = canonicalConvertConstant(convertX, y().asConstant());
+            ConstantNode newY = canonicalConvertConstant(tool, convertX, y().asConstant());
             if (newY != null) {
                 setX(convertX.getInput());
                 setY(newY);
             }
         } else if (y() instanceof ConvertNode && x().isConstant()) {
             ConvertNode convertY = (ConvertNode) y();
-            ConstantNode newX = canonicalConvertConstant(convertY, x().asConstant());
+            ConstantNode newX = canonicalConvertConstant(tool, convertY, x().asConstant());
             if (newX != null) {
                 setX(newX);
                 setY(convertY.getInput());
@@ -142,11 +142,11 @@ public abstract class CompareNode extends BinaryOpLogicNode {
         return this;
     }
 
-    private ConstantNode canonicalConvertConstant(ConvertNode convert, Constant constant) {
+    private ConstantNode canonicalConvertConstant(CanonicalizerTool tool, ConvertNode convert, Constant constant) {
         if (convert.preservesOrder(condition())) {
             Constant reverseConverted = convert.reverse(constant);
             if (convert.convert(reverseConverted).equals(constant)) {
-                return ConstantNode.forPrimitive(convert.getInput().stamp(), reverseConverted, convert.graph());
+                return ConstantNode.forConstant(convert.getInput().stamp(), reverseConverted, tool.getMetaAccess(), convert.graph());
             }
         }
         return null;
