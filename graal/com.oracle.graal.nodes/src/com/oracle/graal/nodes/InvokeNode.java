@@ -96,12 +96,15 @@ public final class InvokeNode extends AbstractMemoryCheckpoint implements Invoke
 
     @Override
     public boolean isAllowedUsageType(InputType type) {
-        if (getKind() != Kind.Void) {
-            if (callTarget instanceof MethodCallTargetNode && ((MethodCallTargetNode) callTarget).targetMethod().getAnnotation(NodeIntrinsic.class) != null) {
-                return true;
+        if (!super.isAllowedUsageType(type)) {
+            if (getKind() != Kind.Void) {
+                if (callTarget instanceof MethodCallTargetNode && ((MethodCallTargetNode) callTarget).targetMethod().getAnnotation(NodeIntrinsic.class) != null) {
+                    return true;
+                }
             }
+            return false;
         }
-        return super.isAllowedUsageType(type);
+        return true;
     }
 
     @Override
