@@ -29,6 +29,7 @@ import static com.oracle.graal.compiler.common.GraalOptions.*;
 import java.lang.reflect.*;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.*;
 
 import sun.misc.*;
 
@@ -68,27 +69,164 @@ public class ReplacementsImpl implements Replacements {
      */
     protected final ConcurrentMap<ResolvedJavaMethod, StructuredGraph> graphs;
 
-    // These data structures are all fully initialized during single-threaded
-    // compiler startup and so do not need to be concurrent.
-    protected final Map<ResolvedJavaMethod, ResolvedJavaMethod> registeredMethodSubstitutions;
-    private final Map<ResolvedJavaMethod, Class<? extends FixedWithNextNode>> registeredMacroSubstitutions;
-    private final Set<ResolvedJavaMethod> forcedSubstitutions;
+    /**
+     * Encapsulates method and macro substitutions for a single class.
+     */
+    protected class ClassReplacements {
+        protected final Map<ResolvedJavaMethod, ResolvedJavaMethod> methodSubstitutions = new HashMap<>();
+        private final Map<ResolvedJavaMethod, Class<? extends FixedWithNextNode>> macroSubstitutions = new HashMap<>();
+        private final Set<ResolvedJavaMethod> forcedSubstitutions = new HashSet<>();
+
+        public ClassReplacements(Class<?>[] substitutionClasses, AtomicReference<ClassReplacements> ref) {
+            for (Class<?> substitutionClass : substitutionClasses) {
+                ClassSubstitution classSubstitution = substitutionClass.getAnnotation(ClassSubstitution.class);
+                assert !Snippets.class.isAssignableFrom(substitutionClass);
+                SubstitutionGuard defaultGuard = getGuard(classSubstitution.defaultGuard());
+                for (Method substituteMethod : substitutionClass.getDeclaredMethods()) {
+                    if (ref.get() != null) {
+                        // Bail if another thread beat us creating the substitutions
+                        return;
+                    }
+                    MethodSubstitution methodSubstitution = substituteMethod.getAnnotation(MethodSubstitution.class);
+                    MacroSubstitution macroSubstitution = substituteMethod.getAnnotation(MacroSubstitution.class);
+                    if (methodSubstitution == null && macroSubstitution == null) {
+                        continue;
+                    }
+
+                    int modifiers = substituteMethod.getModifiers();
+                    if (!Modifier.isStatic(modifiers)) {
+                        throw new GraalInternalError("Substitution methods must be static: " + substituteMethod);
+                    }
+
+                    if (methodSubstitution != null) {
+                        SubstitutionGuard guard = getGuard(methodSubstitution.guard());
+                        if (guard == null) {
+                            guard = defaultGuard;
+                        }
+
+                        if (macroSubstitution != null && macroSubstitution.isStatic() != methodSubstitution.isStatic()) {
+                            throw new GraalInternalError("Macro and method substitution must agree on isStatic attribute: " + substituteMethod);
+                        }
+                        if (Modifier.isAbstract(modifiers) || Modifier.isNative(modifiers)) {
+                            throw new GraalInternalError("Substitution method must not be abstract or native: " + substituteMethod);
+                        }
+                        String originalName = originalName(substituteMethod, methodSubstitution.value());
+                        JavaSignature originalSignature = originalSignature(substituteMethod, methodSubstitution.signature(), methodSubstitution.isStatic());
+                        Member originalMethod = originalMethod(classSubstitution, methodSubstitution.optional(), originalName, originalSignature);
+                        if (originalMethod != null && (guard == null || guard.execute())) {
+                            ResolvedJavaMethod original = registerMethodSubstitution(this, originalMethod, substituteMethod);
+                            if (original != null && methodSubstitution.forced() && shouldIntrinsify(original)) {
+                                forcedSubstitutions.add(original);
+                            }
+                        }
+                    }
+                    // We don't have per method guards for macro substitutions but at
+                    // least respect the defaultGuard if there is one.
+                    if (macroSubstitution != null && (defaultGuard == null || defaultGuard.execute())) {
+                        String originalName = originalName(substituteMethod, macroSubstitution.value());
+                        JavaSignature originalSignature = originalSignature(substituteMethod, macroSubstitution.signature(), macroSubstitution.isStatic());
+                        Member originalMethod = originalMethod(classSubstitution, macroSubstitution.optional(), originalName, originalSignature);
+                        if (originalMethod != null) {
+                            ResolvedJavaMethod original = registerMacroSubstitution(this, originalMethod, macroSubstitution.macro());
+                            if (original != null && macroSubstitution.forced() && shouldIntrinsify(original)) {
+                                forcedSubstitutions.add(original);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        private JavaSignature originalSignature(Method substituteMethod, String methodSubstitution, boolean isStatic) {
+            Class<?>[] parameters;
+            Class<?> returnType;
+            if (methodSubstitution.isEmpty()) {
+                parameters = substituteMethod.getParameterTypes();
+                if (!isStatic) {
+                    assert parameters.length > 0 : "must be a static method with the 'this' object as its first parameter";
+                    parameters = Arrays.copyOfRange(parameters, 1, parameters.length);
+                }
+                returnType = substituteMethod.getReturnType();
+            } else {
+                Signature signature = providers.getMetaAccess().parseMethodDescriptor(methodSubstitution);
+                parameters = new Class[signature.getParameterCount(false)];
+                for (int i = 0; i < parameters.length; i++) {
+                    parameters[i] = resolveClass(signature.getParameterType(i, null));
+                }
+                returnType = resolveClass(signature.getReturnType(null));
+            }
+            return new JavaSignature(returnType, parameters);
+        }
+
+        private Member originalMethod(ClassSubstitution classSubstitution, boolean optional, String name, JavaSignature signature) {
+            Class<?> originalClass = classSubstitution.value();
+            if (originalClass == ClassSubstitution.class) {
+                originalClass = resolveClass(classSubstitution.className(), classSubstitution.optional());
+                if (originalClass == null) {
+                    // optional class was not found
+                    return null;
+                }
+            }
+            try {
+                if (name.equals("<init>")) {
+                    assert signature.returnType.equals(void.class) : signature;
+                    Constructor<?> original = originalClass.getDeclaredConstructor(signature.parameters);
+                    return original;
+                } else {
+                    Method original = originalClass.getDeclaredMethod(name, signature.parameters);
+                    if (!original.getReturnType().equals(signature.returnType)) {
+                        throw new NoSuchMethodException(originalClass.getName() + "." + name + signature);
+                    }
+                    return original;
+                }
+            } catch (NoSuchMethodException | SecurityException e) {
+                if (optional) {
+                    return null;
+                }
+                throw new GraalInternalError(e);
+            }
+        }
+    }
+
+    /**
+     * Per-class replacements. The entries in these maps are all fully initialized during
+     * single-threaded compiler startup and so do not need to be concurrent.
+     */
+    private final Map<String, AtomicReference<ClassReplacements>> classReplacements;
+    private final Map<String, Class<?>[]> internalNameToSubstitutionClasses;
+
     private final Map<Class<? extends SnippetTemplateCache>, SnippetTemplateCache> snippetTemplateCache;
 
     public ReplacementsImpl(Providers providers, SnippetReflectionProvider snippetReflection, Assumptions assumptions, TargetDescription target) {
         this.providers = providers.copyWith(this);
+        this.classReplacements = new HashMap<>();
+        this.internalNameToSubstitutionClasses = new HashMap<>();
         this.snippetReflection = snippetReflection;
         this.target = target;
         this.assumptions = assumptions;
         this.graphs = new ConcurrentHashMap<>();
-        this.registeredMethodSubstitutions = new HashMap<>();
-        this.registeredMacroSubstitutions = new HashMap<>();
-        this.forcedSubstitutions = new HashSet<>();
         this.snippetTemplateCache = new HashMap<>();
     }
 
     private static final boolean UseSnippetGraphCache = Boolean.parseBoolean(System.getProperty("graal.useSnippetGraphCache", "true"));
     private static final DebugTimer SnippetPreparationTime = Debug.timer("SnippetPreparationTime");
+
+    /**
+     * Gets the method and macro replacements for a given class. This method will parse the
+     * replacements in the substitution classes associated with {@code internalName} the first time
+     * this method is called for {@code internalName}.
+     */
+    protected ClassReplacements getClassReplacements(String internalName) {
+        Class<?>[] substitutionClasses = internalNameToSubstitutionClasses.get(internalName);
+        if (substitutionClasses != null) {
+            AtomicReference<ClassReplacements> crRef = classReplacements.get(internalName);
+            if (crRef.get() == null) {
+                crRef.compareAndSet(null, new ClassReplacements(substitutionClasses, crRef));
+            }
+            return crRef.get();
+        }
+        return null;
+    }
 
     public StructuredGraph getSnippet(ResolvedJavaMethod method) {
         return getSnippet(method, null);
@@ -133,7 +271,8 @@ public class ReplacementsImpl implements Replacements {
 
     @Override
     public StructuredGraph getMethodSubstitution(ResolvedJavaMethod original) {
-        ResolvedJavaMethod substitute = registeredMethodSubstitutions.get(original);
+        ClassReplacements cr = getClassReplacements(original.getDeclaringClass().getName());
+        ResolvedJavaMethod substitute = cr == null ? null : cr.methodSubstitutions.get(original);
         if (substitute == null) {
             return null;
         }
@@ -150,7 +289,8 @@ public class ReplacementsImpl implements Replacements {
     }
 
     public Class<? extends FixedWithNextNode> getMacroSubstitution(ResolvedJavaMethod method) {
-        return registeredMacroSubstitutions.get(method);
+        ClassReplacements cr = getClassReplacements(method.getDeclaringClass().getName());
+        return cr == null ? null : cr.macroSubstitutions.get(method);
     }
 
     public Assumptions getAssumptions() {
@@ -168,59 +308,29 @@ public class ReplacementsImpl implements Replacements {
         return null;
     }
 
-    public void registerSubstitutions(Class<?> substitutions) {
-        ClassSubstitution classSubstitution = substitutions.getAnnotation(ClassSubstitution.class);
-        assert classSubstitution != null;
-        assert !Snippets.class.isAssignableFrom(substitutions);
-        SubstitutionGuard defaultGuard = getGuard(classSubstitution.defaultGuard());
-        for (Method substituteMethod : substitutions.getDeclaredMethods()) {
-            MethodSubstitution methodSubstitution = substituteMethod.getAnnotation(MethodSubstitution.class);
-            MacroSubstitution macroSubstitution = substituteMethod.getAnnotation(MacroSubstitution.class);
-            if (methodSubstitution == null && macroSubstitution == null) {
-                continue;
-            }
-
-            int modifiers = substituteMethod.getModifiers();
-            if (!Modifier.isStatic(modifiers)) {
-                throw new GraalInternalError("Substitution methods must be static: " + substituteMethod);
-            }
-
-            if (methodSubstitution != null) {
-                SubstitutionGuard guard = getGuard(methodSubstitution.guard());
-                if (guard == null) {
-                    guard = defaultGuard;
-                }
-
-                if (macroSubstitution != null && macroSubstitution.isStatic() != methodSubstitution.isStatic()) {
-                    throw new GraalInternalError("Macro and method substitution must agree on isStatic attribute: " + substituteMethod);
-                }
-                if (Modifier.isAbstract(modifiers) || Modifier.isNative(modifiers)) {
-                    throw new GraalInternalError("Substitution method must not be abstract or native: " + substituteMethod);
-                }
-                String originalName = originalName(substituteMethod, methodSubstitution.value());
-                JavaSignature originalSignature = originalSignature(substituteMethod, methodSubstitution.signature(), methodSubstitution.isStatic());
-                Member originalMethod = originalMethod(classSubstitution, methodSubstitution.optional(), originalName, originalSignature);
-                if (originalMethod != null && (guard == null || guard.execute())) {
-                    ResolvedJavaMethod original = registerMethodSubstitution(originalMethod, substituteMethod);
-                    if (original != null && methodSubstitution.forced() && shouldIntrinsify(original)) {
-                        forcedSubstitutions.add(original);
-                    }
-                }
-            }
-            // We don't have per method guards for macro substitutions but at
-            // least respect the defaultGuard if there is one.
-            if (macroSubstitution != null && (defaultGuard == null || defaultGuard.execute())) {
-                String originalName = originalName(substituteMethod, macroSubstitution.value());
-                JavaSignature originalSignature = originalSignature(substituteMethod, macroSubstitution.signature(), macroSubstitution.isStatic());
-                Member originalMethod = originalMethod(classSubstitution, macroSubstitution.optional(), originalName, originalSignature);
-                if (originalMethod != null) {
-                    ResolvedJavaMethod original = registerMacroSubstitution(originalMethod, macroSubstitution.macro());
-                    if (original != null && macroSubstitution.forced() && shouldIntrinsify(original)) {
-                        forcedSubstitutions.add(original);
-                    }
-                }
-            }
+    private static String getOriginalInternalName(Class<?> substitutions) {
+        ClassSubstitution cs = substitutions.getAnnotation(ClassSubstitution.class);
+        assert cs != null : substitutions + " must be annotated by " + ClassSubstitution.class.getSimpleName();
+        if (cs.value() == ClassSubstitution.class) {
+            return toInternalName(cs.className());
         }
+        return toInternalName(cs.value().getName());
+    }
+
+    public void registerSubstitutions(Type original, Class<?> substitutionClass) {
+        String internalName = toInternalName(original.getTypeName());
+        assert getOriginalInternalName(substitutionClass).equals(internalName) : getOriginalInternalName(substitutionClass) + " != " + (internalName);
+        Class<?>[] classes = internalNameToSubstitutionClasses.get(internalName);
+        if (classes == null) {
+            classes = new Class<?>[]{substitutionClass};
+        } else {
+            assert !Arrays.asList(classes).contains(substitutionClass);
+            classes = Arrays.copyOf(classes, classes.length + 1);
+            classes[classes.length - 1] = substitutionClass;
+        }
+        internalNameToSubstitutionClasses.put(internalName, classes);
+        AtomicReference<ClassReplacements> existing = classReplacements.put(internalName, new AtomicReference<>());
+        assert existing == null || existing.get() == null;
     }
 
     /**
@@ -230,7 +340,7 @@ public class ReplacementsImpl implements Replacements {
      * @param substituteMethod the substitute method
      * @return the original method
      */
-    protected ResolvedJavaMethod registerMethodSubstitution(Member originalMember, Method substituteMethod) {
+    protected ResolvedJavaMethod registerMethodSubstitution(ClassReplacements cr, Member originalMember, Method substituteMethod) {
         MetaAccessProvider metaAccess = providers.getMetaAccess();
         ResolvedJavaMethod substitute = metaAccess.lookupJavaMethod(substituteMethod);
         ResolvedJavaMethod original;
@@ -243,7 +353,7 @@ public class ReplacementsImpl implements Replacements {
             Debug.log("substitution: %s --> %s", MetaUtil.format("%H.%n(%p) %r", original), MetaUtil.format("%H.%n(%p) %r", substitute));
         }
 
-        registeredMethodSubstitutions.put(original, substitute);
+        cr.methodSubstitutions.put(original, substitute);
         return original;
     }
 
@@ -254,7 +364,7 @@ public class ReplacementsImpl implements Replacements {
      * @param macro the substitute macro node class
      * @return the original method
      */
-    protected ResolvedJavaMethod registerMacroSubstitution(Member originalMethod, Class<? extends FixedWithNextNode> macro) {
+    protected ResolvedJavaMethod registerMacroSubstitution(ClassReplacements cr, Member originalMethod, Class<? extends FixedWithNextNode> macro) {
         ResolvedJavaMethod originalJavaMethod;
         MetaAccessProvider metaAccess = providers.getMetaAccess();
         if (originalMethod instanceof Method) {
@@ -262,7 +372,7 @@ public class ReplacementsImpl implements Replacements {
         } else {
             originalJavaMethod = metaAccess.lookupJavaConstructor((Constructor<?>) originalMethod);
         }
-        registeredMacroSubstitutions.put(originalJavaMethod, macro);
+        cr.macroSubstitutions.put(originalJavaMethod, macro);
         return originalJavaMethod;
     }
 
@@ -551,7 +661,7 @@ public class ReplacementsImpl implements Replacements {
      * @param optional if true, resolution failure returns null
      * @return the resolved class or null if resolution fails and {@code optional} is true
      */
-    static Class<?> resolveType(String className, boolean optional) {
+    static Class<?> resolveClass(String className, boolean optional) {
         try {
             // Need to use launcher class path to handle classes
             // that are not on the boot class path
@@ -565,7 +675,7 @@ public class ReplacementsImpl implements Replacements {
         }
     }
 
-    private static Class<?> resolveType(JavaType type) {
+    private static Class<?> resolveClass(JavaType type) {
         JavaType base = type;
         int dimensions = 0;
         while (base.getComponentType() != null) {
@@ -573,7 +683,7 @@ public class ReplacementsImpl implements Replacements {
             dimensions++;
         }
 
-        Class<?> baseClass = base.getKind() != Kind.Object ? base.getKind().toJavaClass() : resolveType(toJavaName(base), false);
+        Class<?> baseClass = base.getKind() != Kind.Object ? base.getKind().toJavaClass() : resolveClass(toJavaName(base), false);
         return dimensions == 0 ? baseClass : Array.newInstance(baseClass, new int[dimensions]).getClass();
     }
 
@@ -599,67 +709,21 @@ public class ReplacementsImpl implements Replacements {
         }
     }
 
-    private JavaSignature originalSignature(Method substituteMethod, String methodSubstitution, boolean isStatic) {
-        Class<?>[] parameters;
-        Class<?> returnType;
-        if (methodSubstitution.isEmpty()) {
-            parameters = substituteMethod.getParameterTypes();
-            if (!isStatic) {
-                assert parameters.length > 0 : "must be a static method with the 'this' object as its first parameter";
-                parameters = Arrays.copyOfRange(parameters, 1, parameters.length);
-            }
-            returnType = substituteMethod.getReturnType();
-        } else {
-            Signature signature = providers.getMetaAccess().parseMethodDescriptor(methodSubstitution);
-            parameters = new Class[signature.getParameterCount(false)];
-            for (int i = 0; i < parameters.length; i++) {
-                parameters[i] = resolveType(signature.getParameterType(i, null));
-            }
-            returnType = resolveType(signature.getReturnType(null));
-        }
-        return new JavaSignature(returnType, parameters);
-    }
-
-    private static Member originalMethod(ClassSubstitution classSubstitution, boolean optional, String name, JavaSignature signature) {
-        Class<?> originalClass = classSubstitution.value();
-        if (originalClass == ClassSubstitution.class) {
-            originalClass = resolveType(classSubstitution.className(), classSubstitution.optional());
-            if (originalClass == null) {
-                // optional class was not found
-                return null;
-            }
-        }
-        try {
-            if (name.equals("<init>")) {
-                assert signature.returnType.equals(void.class) : signature;
-                Constructor<?> original = originalClass.getDeclaredConstructor(signature.parameters);
-                return original;
-            } else {
-                Method original = originalClass.getDeclaredMethod(name, signature.parameters);
-                if (!original.getReturnType().equals(signature.returnType)) {
-                    throw new NoSuchMethodException(originalClass.getName() + "." + name + signature);
-                }
-                return original;
-            }
-        } catch (NoSuchMethodException | SecurityException e) {
-            if (optional) {
-                return null;
-            }
-            throw new GraalInternalError(e);
-        }
-    }
-
     @Override
     public Collection<ResolvedJavaMethod> getAllReplacements() {
         HashSet<ResolvedJavaMethod> result = new HashSet<>();
-        result.addAll(registeredMethodSubstitutions.keySet());
-        result.addAll(registeredMacroSubstitutions.keySet());
+        for (String internalName : classReplacements.keySet()) {
+            ClassReplacements cr = getClassReplacements(internalName);
+            result.addAll(cr.methodSubstitutions.keySet());
+            result.addAll(cr.macroSubstitutions.keySet());
+        }
         return result;
     }
 
     @Override
     public boolean isForcedSubstitution(ResolvedJavaMethod method) {
-        return forcedSubstitutions.contains(method);
+        ClassReplacements cr = getClassReplacements(method.getDeclaringClass().getName());
+        return cr != null && cr.forcedSubstitutions.contains(method);
     }
 
     @Override

@@ -89,7 +89,7 @@ public abstract class GraalCompilerTest extends GraalTest {
 
     private void installSubstitutions() {
         if (!substitutionsInstalled) {
-            this.providers.getReplacements().registerSubstitutions(InjectProfileDataSubstitutions.class);
+            this.providers.getReplacements().registerSubstitutions(GraalCompilerTest.class, InjectProfileDataSubstitutions.class);
             substitutionsInstalled = true;
         }
     }

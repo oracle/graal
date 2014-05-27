@@ -48,7 +48,7 @@ public class HotSpotReplacementsImpl extends ReplacementsImpl {
     }
 
     @Override
-    protected ResolvedJavaMethod registerMethodSubstitution(Member originalMethod, Method substituteMethod) {
+    protected ResolvedJavaMethod registerMethodSubstitution(ClassReplacements cr, Member originalMethod, Method substituteMethod) {
         final Class<?> substituteClass = substituteMethod.getDeclaringClass();
         if (substituteClass.getDeclaringClass() == BoxingSubstitutions.class) {
             if (config.useHeapProfiler) {
@@ -78,7 +78,7 @@ public class HotSpotReplacementsImpl extends ReplacementsImpl {
                 return null;
             }
         }
-        return super.registerMethodSubstitution(originalMethod, substituteMethod);
+        return super.registerMethodSubstitution(cr, originalMethod, substituteMethod);
     }
 
     @Override

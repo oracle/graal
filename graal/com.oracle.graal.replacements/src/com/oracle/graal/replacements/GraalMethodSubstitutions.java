@@ -24,6 +24,8 @@ package com.oracle.graal.replacements;
 
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 
+import java.lang.reflect.*;
+
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
@@ -37,20 +39,17 @@ import com.oracle.graal.nodes.spi.*;
 public class GraalMethodSubstitutions implements ReplacementsProvider {
 
     public void registerReplacements(MetaAccessProvider metaAccess, LoweringProvider loweringProvider, SnippetReflectionProvider snippetReflection, Replacements replacements, TargetDescription target) {
-        for (Class<?> clazz : BoxingSubstitutions.getClasses()) {
-            replacements.registerSubstitutions(clazz);
-        }
-
+        BoxingSubstitutions.registerReplacements(replacements);
         if (Intrinsify.getValue()) {
-            replacements.registerSubstitutions(ArraySubstitutions.class);
-            replacements.registerSubstitutions(MathSubstitutionsX86.class);
-            replacements.registerSubstitutions(DoubleSubstitutions.class);
-            replacements.registerSubstitutions(FloatSubstitutions.class);
-            replacements.registerSubstitutions(LongSubstitutions.class);
-            replacements.registerSubstitutions(IntegerSubstitutions.class);
-            replacements.registerSubstitutions(CharacterSubstitutions.class);
-            replacements.registerSubstitutions(ShortSubstitutions.class);
-            replacements.registerSubstitutions(UnsignedMathSubstitutions.class);
+            replacements.registerSubstitutions(Array.class, ArraySubstitutions.class);
+            replacements.registerSubstitutions(Math.class, MathSubstitutionsX86.class);
+            replacements.registerSubstitutions(Double.class, DoubleSubstitutions.class);
+            replacements.registerSubstitutions(Float.class, FloatSubstitutions.class);
+            replacements.registerSubstitutions(Long.class, LongSubstitutions.class);
+            replacements.registerSubstitutions(Integer.class, IntegerSubstitutions.class);
+            replacements.registerSubstitutions(Character.class, CharacterSubstitutions.class);
+            replacements.registerSubstitutions(Short.class, ShortSubstitutions.class);
+            replacements.registerSubstitutions(UnsignedMath.class, UnsignedMathSubstitutions.class);
         }
     }
 }

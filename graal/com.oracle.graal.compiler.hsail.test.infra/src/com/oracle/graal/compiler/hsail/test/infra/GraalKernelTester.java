@@ -54,7 +54,7 @@ public abstract class GraalKernelTester extends KernelTester {
 
     private static synchronized void installSubstitutions() {
         if (!substitutionsInstalled) {
-            getHSAILBackend().getProviders().getReplacements().registerSubstitutions(ForceDeoptSubstitutions.class);
+            getHSAILBackend().getProviders().getReplacements().registerSubstitutions(GraalKernelTester.class, ForceDeoptSubstitutions.class);
             substitutionsInstalled = true;
         }
     }

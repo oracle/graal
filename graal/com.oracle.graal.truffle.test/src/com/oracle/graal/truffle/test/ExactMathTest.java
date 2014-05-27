@@ -38,7 +38,7 @@ public class ExactMathTest extends GraalCompilerTest {
     public ExactMathTest() {
         if (!substitutionsInstalled) {
             Replacements replacements = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend().getProviders().getReplacements();
-            replacements.registerSubstitutions(ExactMathSubstitutions.class);
+            replacements.registerSubstitutions(ExactMath.class, ExactMathSubstitutions.class);
             substitutionsInstalled = true;
         }
     }
