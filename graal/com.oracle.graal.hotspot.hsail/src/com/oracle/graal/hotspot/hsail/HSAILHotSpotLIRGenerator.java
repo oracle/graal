@@ -94,7 +94,16 @@ public class HSAILHotSpotLIRGenerator extends HSAILLIRGenerator implements HotSp
 
     @Override
     public boolean canStoreConstant(Constant c, boolean isCompressed) {
-        return true;
+        return !(c instanceof HotSpotObjectConstant);
+    }
+
+    @Override
+    public boolean canInlineConstant(Constant c) {
+        if (c instanceof HotSpotObjectConstant) {
+            return c.isNull();
+        } else {
+            return super.canInlineConstant(c);
+        }
     }
 
     private static Kind getMemoryKind(PlatformKind kind) {
@@ -229,6 +238,15 @@ public class HSAILHotSpotLIRGenerator extends HSAILLIRGenerator implements HotSp
         if (dst.getPlatformKind() == NarrowOopStamp.NarrowOop) {
             if (HotSpotCompressedNullConstant.COMPRESSED_NULL.equals(src)) {
                 return new MoveToRegOp(Kind.Int, dst, Constant.INT_0);
+            } else if (src instanceof HotSpotObjectConstant) {
+                if (HotSpotObjectConstant.isCompressed((Constant) src)) {
+                    Variable uncompressed = newVariable(Kind.Object);
+                    append(new MoveToRegOp(Kind.Object, uncompressed, src));
+                    CompressEncoding oopEncoding = config.getOopEncoding();
+                    return new HSAILMove.CompressPointer(dst, newVariable(Kind.Object), uncompressed, oopEncoding.base, oopEncoding.shift, oopEncoding.alignment, true);
+                } else {
+                    return new MoveToRegOp(Kind.Object, dst, src);
+                }
             } else if (isRegister(src) || isStackSlot(dst)) {
                 return new MoveFromRegOp(Kind.Int, dst, src);
             } else {
