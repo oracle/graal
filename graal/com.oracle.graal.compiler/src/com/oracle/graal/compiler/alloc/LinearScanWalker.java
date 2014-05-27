@@ -44,12 +44,12 @@ import com.oracle.graal.phases.util.*;
  */
 class LinearScanWalker extends IntervalWalker {
 
-    private Register[] availableRegs;
+    protected Register[] availableRegs;
 
-    private final int[] usePos;
-    private final int[] blockPos;
+    protected final int[] usePos;
+    protected final int[] blockPos;
 
-    private List<Interval>[] spillIntervals;
+    protected List<Interval>[] spillIntervals;
 
     private MoveResolver moveResolver; // for ordering spill moves
 
