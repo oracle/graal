@@ -780,7 +780,7 @@ public final class BciBlockMapping {
         for (BciBlock successor : block.getSuccessors()) {
             // Recursively process successors.
             loops |= computeBlockOrder(successor);
-            if (block.visited && successor.active) {
+            if (successor.active) {
                 // Reached block via backward branch.
                 block.isLoopEnd = true;
             }
