@@ -44,9 +44,9 @@ public abstract class SnippetStub extends Stub implements Snippets {
 
     static class Template extends AbstractTemplates {
 
-        Template(HotSpotProviders providers, TargetDescription target, Class<? extends Snippets> declaringClass) {
+        Template(HotSpotProviders providers, TargetDescription target, Class<? extends Snippets> declaringClass, String snippetMethodName) {
             super(providers, providers.getSnippetReflection(), target);
-            this.info = snippet(declaringClass, null);
+            this.info = snippet(declaringClass, snippetMethodName);
         }
 
         /**
@@ -65,11 +65,26 @@ public abstract class SnippetStub extends Stub implements Snippets {
     /**
      * Creates a new snippet stub.
      *
+     * @param snippetMethodName name of the single {@link Snippet} annotated method in the class of
+     *            this object
      * @param linkage linkage details for a call to the stub
      */
-    public SnippetStub(HotSpotProviders providers, TargetDescription target, HotSpotForeignCallLinkage linkage) {
+    public SnippetStub(String snippetMethodName, HotSpotProviders providers, TargetDescription target, HotSpotForeignCallLinkage linkage) {
+        this(null, snippetMethodName, providers, target, linkage);
+    }
+
+    /**
+     * Creates a new snippet stub.
+     *
+     * @param snippetDeclaringClass this class in which the {@link Snippet} annotated method is
+     *            declared. If {@code null}, this the class of this object is used.
+     * @param snippetMethodName name of the single {@link Snippet} annotated method in
+     *            {@code snippetDeclaringClass}
+     * @param linkage linkage details for a call to the stub
+     */
+    public SnippetStub(Class<? extends Snippets> snippetDeclaringClass, String snippetMethodName, HotSpotProviders providers, TargetDescription target, HotSpotForeignCallLinkage linkage) {
         super(providers, linkage);
-        this.snippet = new Template(providers, target, getClass());
+        this.snippet = new Template(providers, target, snippetDeclaringClass == null ? getClass() : snippetDeclaringClass, snippetMethodName);
     }
 
     @Override

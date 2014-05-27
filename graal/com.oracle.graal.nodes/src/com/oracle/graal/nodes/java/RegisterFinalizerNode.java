@@ -22,8 +22,9 @@
  */
 package com.oracle.graal.nodes.java;
 
+import static com.oracle.graal.nodes.java.ForeignCallDescriptors.*;
+
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
@@ -35,8 +36,6 @@ import com.oracle.graal.nodes.spi.*;
  * constructor.
  */
 public final class RegisterFinalizerNode extends AbstractStateSplit implements Canonicalizable, LIRLowerable, Virtualizable, DeoptimizingNode.DeoptAfter {
-
-    public static final ForeignCallDescriptor REGISTER_FINALIZER = new ForeignCallDescriptor("registerFinalizer", void.class, Object.class);
 
     @Input(InputType.State) private FrameState deoptState;
     @Input private ValueNode object;

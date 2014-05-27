@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,26 +20,21 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.stubs;
+package com.oracle.graal.nodes.java;
 
-import static com.oracle.graal.hotspot.stubs.StubUtil.*;
-
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.meta.*;
-import com.oracle.graal.replacements.*;
+import com.oracle.graal.api.meta.*;
 
 /**
- * Stub called via {@link HotSpotHostForeignCallsProvider#VERIFY_OOP}.
+ * The foreign call descriptors used by nodes in this package.
+ * <p>
+ * Using a separate class for such descriptors prevents an access from triggering unwanted class
+ * initialization during runtime initialization.
  */
-public class VerifyOopStub extends SnippetStub {
+public class ForeignCallDescriptors {
 
-    public VerifyOopStub(HotSpotProviders providers, TargetDescription target, HotSpotForeignCallLinkage linkage) {
-        super("verifyOop", providers, target, linkage);
-    }
+    /**
+     * @see RegisterFinalizerNode
+     */
+    public static final ForeignCallDescriptor REGISTER_FINALIZER = new ForeignCallDescriptor("registerFinalizer", void.class, Object.class);
 
-    @Snippet
-    private static Object verifyOop(Object object) {
-        return verifyObject(object);
-    }
 }

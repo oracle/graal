@@ -47,7 +47,7 @@ import com.oracle.graal.word.*;
 public class UnwindExceptionToCallerStub extends SnippetStub {
 
     public UnwindExceptionToCallerStub(HotSpotProviders providers, TargetDescription target, HotSpotForeignCallLinkage linkage) {
-        super(providers, target, linkage);
+        super("unwindExceptionToCaller", providers, target, linkage);
     }
 
     /**
@@ -110,7 +110,8 @@ public class UnwindExceptionToCallerStub extends SnippetStub {
         return enabled || cAssertionsEnabled();
     }
 
-    public static final ForeignCallDescriptor EXCEPTION_HANDLER_FOR_RETURN_ADDRESS = descriptorFor(UnwindExceptionToCallerStub.class, "exceptionHandlerForReturnAddress");
+    public static final ForeignCallDescriptor EXCEPTION_HANDLER_FOR_RETURN_ADDRESS = newDescriptor(UnwindExceptionToCallerStub.class, "exceptionHandlerForReturnAddress", Word.class, Word.class,
+                    Word.class);
 
     @NodeIntrinsic(value = StubForeignCallNode.class, setStampFromReturnType = true)
     public static native Word exceptionHandlerForReturnAddress(@ConstantNodeParameter ForeignCallDescriptor exceptionHandlerForReturnAddress, Word thread, Word returnAddress);

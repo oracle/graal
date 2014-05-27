@@ -50,7 +50,7 @@ import com.oracle.graal.word.*;
 public class ExceptionHandlerStub extends SnippetStub {
 
     public ExceptionHandlerStub(HotSpotProviders providers, TargetDescription target, HotSpotForeignCallLinkage linkage) {
-        super(providers, target, linkage);
+        super("exceptionHandler", providers, target, linkage);
     }
 
     /**
@@ -142,7 +142,7 @@ public class ExceptionHandlerStub extends SnippetStub {
         return enabled || cAssertionsEnabled();
     }
 
-    public static final ForeignCallDescriptor EXCEPTION_HANDLER_FOR_PC = descriptorFor(ExceptionHandlerStub.class, "exceptionHandlerForPc");
+    public static final ForeignCallDescriptor EXCEPTION_HANDLER_FOR_PC = newDescriptor(ExceptionHandlerStub.class, "exceptionHandlerForPc", Word.class, Word.class);
 
     @NodeIntrinsic(value = StubForeignCallNode.class, setStampFromReturnType = true)
     public static native Word exceptionHandlerForPc(@ConstantNodeParameter ForeignCallDescriptor exceptionHandlerForPc, Word thread);

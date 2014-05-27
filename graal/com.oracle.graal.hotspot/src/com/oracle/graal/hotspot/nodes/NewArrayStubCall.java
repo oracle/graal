@@ -22,8 +22,9 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
+import static com.oracle.graal.hotspot.HotSpotBackend.*;
+
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.stubs.*;
@@ -41,8 +42,6 @@ public class NewArrayStubCall extends DeoptimizingStubCall implements LIRLowerab
 
     @Input private ValueNode hub;
     @Input private ValueNode length;
-
-    public static final ForeignCallDescriptor NEW_ARRAY = new ForeignCallDescriptor("new_array", Object.class, Word.class, int.class);
 
     public NewArrayStubCall(ValueNode hub, ValueNode length) {
         super(defaultStamp);

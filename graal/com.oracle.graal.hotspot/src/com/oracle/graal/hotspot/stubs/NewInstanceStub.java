@@ -53,7 +53,7 @@ import com.oracle.graal.word.*;
 public class NewInstanceStub extends SnippetStub {
 
     public NewInstanceStub(HotSpotProviders providers, TargetDescription target, HotSpotForeignCallLinkage linkage) {
-        super(providers, target, linkage);
+        super("newInstance", providers, target, linkage);
     }
 
     @Override
@@ -251,7 +251,7 @@ public class NewInstanceStub extends SnippetStub {
         return Boolean.getBoolean("graal.newInstanceStub.forceSlowPath");
     }
 
-    public static final ForeignCallDescriptor NEW_INSTANCE_C = descriptorFor(NewInstanceStub.class, "newInstanceC");
+    public static final ForeignCallDescriptor NEW_INSTANCE_C = newDescriptor(NewInstanceStub.class, "newInstanceC", void.class, Word.class, Word.class);
 
     @NodeIntrinsic(StubForeignCallNode.class)
     public static native void newInstanceC(@ConstantNodeParameter ForeignCallDescriptor newInstanceC, Word thread, Word hub);

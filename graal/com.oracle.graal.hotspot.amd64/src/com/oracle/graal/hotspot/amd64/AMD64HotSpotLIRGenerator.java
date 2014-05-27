@@ -24,8 +24,8 @@ package com.oracle.graal.hotspot.amd64;
 
 import static com.oracle.graal.amd64.AMD64.*;
 import static com.oracle.graal.api.code.ValueUtil.*;
+import static com.oracle.graal.hotspot.HotSpotBackend.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
-import static com.oracle.graal.hotspot.nodes.UncommonTrapCallNode.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 
 import java.util.*;

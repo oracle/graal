@@ -53,7 +53,7 @@ import com.oracle.graal.word.*;
 public class NewArrayStub extends SnippetStub {
 
     public NewArrayStub(HotSpotProviders providers, TargetDescription target, HotSpotForeignCallLinkage linkage) {
-        super(providers, target, linkage);
+        super("newArray", providers, target, linkage);
     }
 
     @Override
@@ -115,7 +115,7 @@ public class NewArrayStub extends SnippetStub {
         return verifyObject(getAndClearObjectResult(thread));
     }
 
-    public static final ForeignCallDescriptor NEW_ARRAY_C = descriptorFor(NewArrayStub.class, "newArrayC");
+    public static final ForeignCallDescriptor NEW_ARRAY_C = newDescriptor(NewArrayStub.class, "newArrayC", void.class, Word.class, Word.class, int.class);
 
     @NodeIntrinsic(StubForeignCallNode.class)
     public static native void newArrayC(@ConstantNodeParameter ForeignCallDescriptor newArrayC, Word thread, Word hub, int length);

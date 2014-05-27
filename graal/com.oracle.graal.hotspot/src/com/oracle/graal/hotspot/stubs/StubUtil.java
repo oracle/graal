@@ -47,14 +47,20 @@ import com.oracle.graal.word.*;
  */
 public class StubUtil {
 
-    public static final ForeignCallDescriptor VM_MESSAGE_C = descriptorFor(StubUtil.class, "vmMessageC");
+    public static final ForeignCallDescriptor VM_MESSAGE_C = newDescriptor(StubUtil.class, "vmMessageC", void.class, boolean.class, Word.class, long.class, long.class, long.class);
+
+    public static ForeignCallDescriptor newDescriptor(Class<?> stubClass, String name, Class<?> resultType, Class<?>... argumentTypes) {
+        ForeignCallDescriptor d = new ForeignCallDescriptor(name, resultType, argumentTypes);
+        assert descriptorFor(stubClass, name).equals(d) : descriptorFor(stubClass, name) + " != " + d;
+        return d;
+    }
 
     /**
      * Looks for a {@link StubForeignCallNode} node intrinsic named {@code name} in
      * {@code stubClass} and returns a {@link ForeignCallDescriptor} based on its signature and the
      * value of {@code hasSideEffect}.
      */
-    public static ForeignCallDescriptor descriptorFor(Class<?> stubClass, String name) {
+    private static ForeignCallDescriptor descriptorFor(Class<?> stubClass, String name) {
         Method found = null;
         for (Method method : stubClass.getDeclaredMethods()) {
             if (Modifier.isStatic(method.getModifiers()) && method.getAnnotation(NodeIntrinsic.class) != null && method.getName().equals(name)) {

@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
+import static com.oracle.graal.hotspot.HotSpotBackend.*;
+
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
@@ -39,8 +41,6 @@ public class NewInstanceStubCall extends DeoptimizingStubCall implements LIRLowe
     private static final Stamp defaultStamp = StampFactory.objectNonNull();
 
     @Input private ValueNode hub;
-
-    public static final ForeignCallDescriptor NEW_INSTANCE = new ForeignCallDescriptor("new_instance", Object.class, Word.class);
 
     public NewInstanceStubCall(ValueNode hub) {
         super(defaultStamp);

@@ -30,6 +30,8 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.hotspot.meta.*;
+import com.oracle.graal.hotspot.nodes.*;
+import com.oracle.graal.hotspot.replacements.*;
 import com.oracle.graal.hotspot.stubs.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.LIRInstruction.ValueProcedure;
@@ -68,6 +70,51 @@ public abstract class HotSpotBackend extends Backend {
     public static final ForeignCallDescriptor EXCEPTION_HANDLER_IN_CALLER = new ForeignCallDescriptor("exceptionHandlerInCaller", void.class, Object.class, Word.class);
 
     private final HotSpotGraalRuntime runtime;
+
+    /**
+     * @see AESCryptSubstitutions#encryptBlockStub(ForeignCallDescriptor, Word, Word, Word)
+     */
+    public static final ForeignCallDescriptor ENCRYPT_BLOCK = new ForeignCallDescriptor("encrypt_block", void.class, Word.class, Word.class, Word.class);
+
+    /**
+     * @see AESCryptSubstitutions#decryptBlockStub(ForeignCallDescriptor, Word, Word, Word)
+     */
+    public static final ForeignCallDescriptor DECRYPT_BLOCK = new ForeignCallDescriptor("decrypt_block", void.class, Word.class, Word.class, Word.class);
+
+    /**
+     * @see CipherBlockChainingSubstitutions#crypt
+     */
+    public static final ForeignCallDescriptor ENCRYPT = new ForeignCallDescriptor("encrypt", void.class, Word.class, Word.class, Word.class, Word.class, int.class);
+
+    /**
+     * @see CipherBlockChainingSubstitutions#crypt
+     */
+    public static final ForeignCallDescriptor DECRYPT = new ForeignCallDescriptor("decrypt", void.class, Word.class, Word.class, Word.class, Word.class, int.class);
+
+    /**
+     * @see VMErrorNode
+     */
+    public static final ForeignCallDescriptor VM_ERROR = new ForeignCallDescriptor("vm_error", void.class, Object.class, Object.class, long.class);
+
+    /**
+     * @see NewMultiArrayStubCall
+     */
+    public static final ForeignCallDescriptor NEW_MULTI_ARRAY = new ForeignCallDescriptor("new_multi_array", Object.class, Word.class, int.class, Word.class);
+
+    /**
+     * @see NewArrayStubCall
+     */
+    public static final ForeignCallDescriptor NEW_ARRAY = new ForeignCallDescriptor("new_array", Object.class, Word.class, int.class);
+
+    /**
+     * @see NewInstanceStubCall
+     */
+    public static final ForeignCallDescriptor NEW_INSTANCE = new ForeignCallDescriptor("new_instance", Object.class, Word.class);
+
+    /**
+     * @see UncommonTrapCallNode
+     */
+    public static final ForeignCallDescriptor UNCOMMON_TRAP = new ForeignCallDescriptor("uncommonTrap", Word.class, Word.class, int.class);
 
     public HotSpotBackend(HotSpotGraalRuntime runtime, HotSpotProviders providers) {
         super(providers);

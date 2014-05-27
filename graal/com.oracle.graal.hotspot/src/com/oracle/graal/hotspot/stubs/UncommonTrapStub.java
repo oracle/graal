@@ -80,7 +80,7 @@ public class UncommonTrapStub extends SnippetStub {
     private final TargetDescription target;
 
     public UncommonTrapStub(HotSpotProviders providers, TargetDescription target, HotSpotForeignCallLinkage linkage) {
-        super(providers, target, linkage);
+        super(UncommonTrapStub.class, "uncommonTrapHandler", providers, target, linkage);
         this.target = target;
     }
 
@@ -281,7 +281,7 @@ public class UncommonTrapStub extends SnippetStub {
         return config().deoptimizationUnpackUncommonTrap;
     }
 
-    public static final ForeignCallDescriptor UNPACK_FRAMES = descriptorFor(UncommonTrapStub.class, "unpackFrames");
+    public static final ForeignCallDescriptor UNPACK_FRAMES = newDescriptor(UncommonTrapStub.class, "unpackFrames", int.class, Word.class, int.class);
 
     @NodeIntrinsic(value = StubForeignCallNode.class, setStampFromReturnType = true)
     public static native int unpackFrames(@ConstantNodeParameter ForeignCallDescriptor unpackFrames, Word thread, int mode);

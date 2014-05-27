@@ -26,13 +26,12 @@ import static com.oracle.graal.amd64.AMD64.*;
 import static com.oracle.graal.api.code.CallingConvention.Type.*;
 import static com.oracle.graal.api.meta.LocationIdentity.*;
 import static com.oracle.graal.api.meta.Value.*;
+import static com.oracle.graal.hotspot.HotSpotBackend.*;
 import static com.oracle.graal.hotspot.HotSpotForeignCallLinkage.*;
 import static com.oracle.graal.hotspot.HotSpotForeignCallLinkage.RegisterEffect.*;
 import static com.oracle.graal.hotspot.HotSpotForeignCallLinkage.Transition.*;
 import static com.oracle.graal.hotspot.HotSpotHostBackend.*;
-import static com.oracle.graal.hotspot.replacements.AESCryptSubstitutions.*;
 import static com.oracle.graal.hotspot.replacements.CRC32Substitutions.*;
-import static com.oracle.graal.hotspot.replacements.CipherBlockChainingSubstitutions.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
