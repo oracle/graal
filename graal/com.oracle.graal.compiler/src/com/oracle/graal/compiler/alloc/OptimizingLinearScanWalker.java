@@ -39,7 +39,7 @@ public class OptimizingLinearScanWalker extends LinearScanWalker {
     public static class Options {
         // @formatter:off
         @Option(help = "Enable LSRA optimization")
-        public static final OptionValue<Boolean> LSRAOptimization = new OptionValue<>(false);
+        public static final OptionValue<Boolean> LSRAOptimization = new OptionValue<>(true);
         @Option(help = "LSRA optimization: Only split but do not reassign")
         public static final OptionValue<Boolean> LSRAOptSplitOnly = new OptionValue<>(false);
         // @formatter:on
