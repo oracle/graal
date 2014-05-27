@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.codegen;
+package com.oracle.graal.hotspot.sourcegen;
 
 import java.io.*;
 import java.lang.reflect.*;
