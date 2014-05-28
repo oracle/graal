@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.debug.internal;
 
+import static java.lang.Thread.*;
+
 import java.lang.management.*;
 
 import com.oracle.graal.debug.*;
@@ -30,6 +32,15 @@ import com.sun.management.ThreadMXBean;
 public final class MemUseTrackerImpl extends DebugValue implements DebugMemUseTracker {
 
     private static final ThreadMXBean threadMXBean = (ThreadMXBean) ManagementFactory.getThreadMXBean();
+
+    /**
+     * The amount of memory allocated by {@link ThreadMXBean#getThreadAllocatedBytes(long)} itself.
+     */
+    private static final long threadMXBeanOverhead = -getCurrentThreadAllocatedBytes() + getCurrentThreadAllocatedBytes();
+
+    private static long getCurrentThreadAllocatedBytes() {
+        return threadMXBean.getThreadAllocatedBytes(currentThread().getId()) - threadMXBeanOverhead;
+    }
 
     public static final Closeable VOID_CLOSEABLE = new Closeable() {
 
@@ -84,12 +95,12 @@ public final class MemUseTrackerImpl extends DebugValue implements DebugMemUseTr
 
         private CloseableImpl() {
             this.parent = currentTracker.get();
-            this.start = threadMXBean.getThreadAllocatedBytes(Thread.currentThread().getId());
+            this.start = getCurrentThreadAllocatedBytes();
         }
 
         @Override
         public void close() {
-            long end = threadMXBean.getThreadAllocatedBytes(Thread.currentThread().getId());
+            long end = getCurrentThreadAllocatedBytes();
             long allocated = end - start;
             if (parent != null) {
                 parent.nestedAmountToSubtract += allocated;
