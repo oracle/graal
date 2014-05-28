@@ -62,7 +62,7 @@ public abstract class InstrumentationNode extends Node implements ExecutionEvent
     }
 
     /**
-     * @return the instance of {@link Probe} to which this instrument is attached.
+     * Gets the {@link Probe} to which this instrument is attached; {@code null} if not attached.
      */
     protected Probe getProbe() {
         final InstrumentationNode parent = (InstrumentationNode) getParent();
@@ -96,13 +96,16 @@ public abstract class InstrumentationNode extends Node implements ExecutionEvent
     }
 
     /**
-     * Reports to the instance of {@link Probe} holding this instrument that some essential state
-     * has changed that requires deoptimization.
+     * Reports to the instance of {@link Probe} holding this instrument, if any, that some essential
+     * state has changed that requires deoptimization.
      */
     @CompilerDirectives.SlowPath
     protected void notifyProbeChanged(Instrument instrument) {
-        final ProbeImpl probe = (ProbeImpl) getProbe();
-        probe.notifyProbeChanged(instrument);
+        Probe probe = getProbe();
+        if (probe != null) {
+            final ProbeImpl probeImpl = (ProbeImpl) probe;
+            probeImpl.notifyProbeChanged(instrument);
+        }
     }
 
     protected void internalEnter(Node astNode, VirtualFrame frame) {
