@@ -86,6 +86,33 @@ public abstract class GraalCompilerTest extends GraalTest {
     private final Backend backend;
     private final Suites suites;
 
+    /**
+     * Can be overridden by unit tests to verify properties of the graph.
+     *
+     * @param graph the graph at the end of HighTier
+     */
+    protected boolean checkHighTierGraph(StructuredGraph graph) {
+        return true;
+    }
+
+    /**
+     * Can be overridden by unit tests to verify properties of the graph.
+     *
+     * @param graph the graph at the end of MidTier
+     */
+    protected boolean checkMidTierGraph(StructuredGraph graph) {
+        return true;
+    }
+
+    /**
+     * Can be overridden by unit tests to verify properties of the graph.
+     *
+     * @param graph the graph at the end of LowTier
+     */
+    protected boolean checkLowTierGraph(StructuredGraph graph) {
+        return true;
+    }
+
     private static boolean substitutionsInstalled;
 
     private void installSubstitutions() {
@@ -102,6 +129,27 @@ public abstract class GraalCompilerTest extends GraalTest {
             @Override
             protected void run(StructuredGraph graph) {
                 ComputeLoopFrequenciesClosure.compute(graph);
+            }
+        });
+        ret.getHighTier().appendPhase(new Phase("CheckGraphPhase") {
+
+            @Override
+            protected void run(StructuredGraph graph) {
+                assert checkHighTierGraph(graph);
+            }
+        });
+        ret.getMidTier().appendPhase(new Phase("CheckGraphPhase") {
+
+            @Override
+            protected void run(StructuredGraph graph) {
+                assert checkMidTierGraph(graph);
+            }
+        });
+        ret.getLowTier().appendPhase(new Phase("CheckGraphPhase") {
+
+            @Override
+            protected void run(StructuredGraph graph) {
+                assert checkLowTierGraph(graph);
             }
         });
         return ret;
