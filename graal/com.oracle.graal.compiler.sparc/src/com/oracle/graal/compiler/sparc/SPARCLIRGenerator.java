@@ -63,7 +63,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public boolean canStoreConstant(Constant c, boolean isCompressed) {
+    public boolean canStoreConstant(Constant c) {
         // SPARC can only store integer null constants (via g0)
         switch (c.getKind()) {
             case Float:

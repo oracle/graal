@@ -229,67 +229,6 @@ public class HSAILMove {
         }
     }
 
-    public static class LoadCompressedPointer extends LoadOp {
-
-        private final long base;
-        private final int shift;
-        private final int alignment;
-        @Temp({REG}) private AllocatableValue scratch;
-
-        public LoadCompressedPointer(Kind kind, AllocatableValue result, AllocatableValue scratch, HSAILAddressValue address, LIRFrameState state, long base, int shift, int alignment) {
-            super(kind, result, address, state);
-            this.base = base;
-            this.shift = shift;
-            this.alignment = alignment;
-            this.scratch = scratch;
-            assert kind == Kind.Object || kind == Kind.Long;
-        }
-
-        @Override
-        public void emitMemAccess(HSAILAssembler masm) {
-            // we will do a 32 bit load, zero extending into a 64 bit register
-            masm.emitLoad(result, address.toAddress(), "u32");
-            boolean testForNull = (kind == Kind.Object);
-            decodePointer(masm, result, base, shift, alignment, testForNull);
-        }
-    }
-
-    public static class StoreCompressedPointer extends HSAILLIRInstruction {
-
-        protected final Kind kind;
-        private final long base;
-        private final int shift;
-        private final int alignment;
-        @Temp({REG}) private AllocatableValue scratch;
-        @Alive({REG}) protected AllocatableValue input;
-        @Alive({COMPOSITE}) protected HSAILAddressValue address;
-        @State protected LIRFrameState state;
-
-        public StoreCompressedPointer(Kind kind, HSAILAddressValue address, AllocatableValue input, AllocatableValue scratch, LIRFrameState state, long base, int shift, int alignment) {
-            this.base = base;
-            this.shift = shift;
-            this.alignment = alignment;
-            this.scratch = scratch;
-            this.kind = kind;
-            this.address = address;
-            this.state = state;
-            this.input = input;
-            assert kind == Kind.Object || kind == Kind.Long;
-        }
-
-        @Override
-        public void emitCode(CompilationResultBuilder crb, HSAILAssembler masm) {
-            masm.emitMov(kind, scratch, input);
-            boolean testForNull = (kind == Kind.Object);
-            encodePointer(masm, scratch, base, shift, alignment, testForNull);
-            if (state != null) {
-                throw new InternalError("NYI");
-                // crb.recordImplicitException(masm.position(), state);
-            }
-            masm.emitStore(scratch, address.toAddress(), "u32");
-        }
-    }
-
     public static class CompressPointer extends HSAILLIRInstruction {
 
         private final long base;

@@ -101,7 +101,15 @@ public interface LIRGeneratorTool extends ArithmeticLIRGenerator {
      */
     boolean canInlineConstant(Constant c);
 
-    boolean canStoreConstant(Constant c, boolean isCompressed);
+    /**
+     * Checks whether the supplied constant can be used without loading it into a register for store
+     * operations, i.e., on the right hand side of a memory access.
+     *
+     * @param c The constant to check.
+     * @return True if the constant can be used directly, false if the constant needs to be in a
+     *         register.
+     */
+    boolean canStoreConstant(Constant c);
 
     RegisterAttributes attributes(Register register);
 

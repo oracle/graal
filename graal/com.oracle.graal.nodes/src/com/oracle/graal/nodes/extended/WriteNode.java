@@ -48,7 +48,7 @@ public final class WriteNode extends AbstractWriteNode implements LIRLowerable, 
         // It's possible a constant was forced for other usages so inspect the value directly and
         // use a constant if it can be directly stored.
         Value v;
-        if (value().isConstant() && gen.getLIRGeneratorTool().canStoreConstant(value().asConstant(), false)) {
+        if (value().isConstant() && gen.getLIRGeneratorTool().canStoreConstant(value().asConstant())) {
             v = value().asConstant();
         } else {
             v = gen.operand(value());

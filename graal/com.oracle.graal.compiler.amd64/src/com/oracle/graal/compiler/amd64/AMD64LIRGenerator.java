@@ -97,20 +97,14 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public boolean canStoreConstant(Constant c, boolean isCompressed) {
+    public boolean canStoreConstant(Constant c) {
         // there is no immediate move of 64-bit constants on Intel
         switch (c.getKind()) {
             case Long:
-                if (isCompressed) {
-                    return true;
-                }
                 return Util.isInt(c.asLong()) && !getCodeCache().needsDataPatch(c);
             case Double:
                 return false;
             case Object:
-                if (isCompressed) {
-                    return true;
-                }
                 return c.isNull();
             default:
                 return true;

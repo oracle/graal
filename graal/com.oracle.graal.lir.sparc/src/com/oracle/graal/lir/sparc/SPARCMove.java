@@ -329,12 +329,10 @@ public class SPARCMove {
     public static class StoreConstantOp extends MemOp {
 
         protected final Constant input;
-        private final boolean compress;
 
-        public StoreConstantOp(Kind kind, SPARCAddressValue address, Constant input, LIRFrameState state, boolean compress) {
+        public StoreConstantOp(Kind kind, SPARCAddressValue address, Constant input, LIRFrameState state) {
             super(kind, address, state);
             this.input = input;
-            this.compress = compress;
             if (!input.isDefaultForKind()) {
                 throw GraalInternalError.shouldNotReachHere("Can only store null constants to memory");
             }
@@ -356,11 +354,7 @@ public class SPARCMove {
                     break;
                 case Long:
                 case Object:
-                    if (compress) {
-                        new Stw(g0, address.toAddress()).emit(masm);
-                    } else {
-                        new Stx(g0, address.toAddress()).emit(masm);
-                    }
+                    new Stx(g0, address.toAddress()).emit(masm);
                     break;
                 case Float:
                 case Double:

@@ -95,7 +95,7 @@ public class PTXLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public boolean canStoreConstant(Constant c, boolean isCompressed) {
+    public boolean canStoreConstant(Constant c) {
         // Operand b must be in the .reg state space.
         return false;
     }

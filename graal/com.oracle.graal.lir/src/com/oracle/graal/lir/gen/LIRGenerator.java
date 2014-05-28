@@ -157,16 +157,6 @@ public abstract class LIRGenerator implements LIRGeneratorTool, PlatformKindTool
 
     private LIRGenerationResult res;
 
-    /**
-     * Checks whether the supplied constant can be used without loading it into a register for store
-     * operations, i.e., on the right hand side of a memory access.
-     *
-     * @param c The constant to check.
-     * @return True if the constant can be used directly, false if the constant needs to be in a
-     *         register.
-     */
-    public abstract boolean canStoreConstant(Constant c, boolean isCompressed);
-
     public LIRGenerator(CodeGenProviders providers, CallingConvention cc, LIRGenerationResult res) {
         this.res = res;
         this.providers = providers;

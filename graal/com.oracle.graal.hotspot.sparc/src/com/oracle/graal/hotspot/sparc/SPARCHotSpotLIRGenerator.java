@@ -179,8 +179,8 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
         SPARCAddressValue storeAddress = asAddressValue(address);
         if (isConstant(inputVal)) {
             Constant c = asConstant(inputVal);
-            if (canStoreConstant(c, false)) {
-                append(new StoreConstantOp((Kind) kind, storeAddress, c, state, false));
+            if (canStoreConstant(c)) {
+                append(new StoreConstantOp((Kind) kind, storeAddress, c, state));
                 return;
             }
         }

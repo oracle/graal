@@ -479,7 +479,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         AMD64AddressValue storeAddress = asAddressValue(address);
         if (isConstant(inputVal)) {
             Constant c = asConstant(inputVal);
-            if (canStoreConstant(c, false)) {
+            if (canStoreConstant(c)) {
                 append(new HotSpotStoreConstantOp(getMemoryKind(kind), storeAddress, c, state));
                 return;
             }
