@@ -80,6 +80,15 @@ public final class ProbeManager {
         probeListeners.add(listener);
     }
 
+    public void removeProbeListener(ProbeListener removeListener) {
+        final List<ProbeListener> listeners = new ArrayList<>(probeListeners);
+        for (ProbeListener listener : listeners) {
+            if (listener == removeListener) {
+                probeListeners.remove(listener);
+            }
+        }
+    }
+
     public Probe getProbe(SourceSection sourceSection) {
         assert sourceSection != null;
 

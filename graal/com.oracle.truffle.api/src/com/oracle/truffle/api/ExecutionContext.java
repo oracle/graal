@@ -71,11 +71,31 @@ public abstract class ExecutionContext {
     }
 
     /**
+     * Unregisters a tool interested in being notified about the loading of {@link Source}s.
+     */
+    public final void removeSourceListener(SourceListener removeListener) {
+        final List<SourceListener> listeners = new ArrayList<>(sourceListeners);
+        for (SourceListener listener : listeners) {
+            if (listener == removeListener) {
+                sourceListeners.remove(listener);
+            }
+        }
+    }
+
+    /**
      * Registers a tool interested in being notified about the insertion of a newly created
      * {@link Probe} into a Truffle AST.
      */
     public final void addProbeListener(ProbeListener listener) {
         probeManager.addProbeListener(listener);
+    }
+
+    /**
+     * Unregisters a tool interested in being notified about the insertion of a newly created
+     * {@link Probe} into a Truffle AST.
+     */
+    public final void removeProbeListener(ProbeListener listener) {
+        probeManager.removeProbeListener(listener);
     }
 
     /**
