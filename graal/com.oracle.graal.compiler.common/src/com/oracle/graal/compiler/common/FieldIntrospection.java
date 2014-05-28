@@ -86,7 +86,7 @@ public abstract class FieldIntrospection extends UnsafeAccess {
             Class<?> currentClazz = clazz;
             do {
                 for (Field field : currentClazz.getDeclaredFields()) {
-                    if (Modifier.isStatic(field.getModifiers())) {
+                    if (Modifier.isStatic(field.getModifiers()) || Modifier.isTransient(field.getModifiers())) {
                         continue;
                     }
                     Class<?> type = field.getType();
