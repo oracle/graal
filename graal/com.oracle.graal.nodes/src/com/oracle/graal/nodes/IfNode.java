@@ -149,65 +149,27 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
             LogicNegationNode negation = (LogicNegationNode) condition();
             IfNode newIfNode = graph().add(new IfNode(negation.getInput(), falseSucc, trueSucc, 1 - trueSuccessorProbability));
             predecessor().replaceFirstSuccessor(this, newIfNode);
-            this.safeDelete();
+            GraphUtil.killWithUnusedFloatingInputs(this);
             return;
         }
-        if (trueSuccessor().usages().isEmpty() && falseSuccessor().usages().isEmpty()) {
-            // push similar nodes upwards through the if, thereby deduplicating them
-            do {
-                BeginNode trueSucc = trueSuccessor();
-                BeginNode falseSucc = falseSuccessor();
-                if (trueSucc.getClass() == BeginNode.class && falseSucc.getClass() == BeginNode.class && trueSucc.next() instanceof FixedWithNextNode && falseSucc.next() instanceof FixedWithNextNode) {
-                    FixedWithNextNode trueNext = (FixedWithNextNode) trueSucc.next();
-                    FixedWithNextNode falseNext = (FixedWithNextNode) falseSucc.next();
-                    NodeClass nodeClass = trueNext.getNodeClass();
-                    if (trueNext.getClass() == falseNext.getClass()) {
-                        if (nodeClass.inputsEqual(trueNext, falseNext) && nodeClass.valueEqual(trueNext, falseNext)) {
-                            falseNext.replaceAtUsages(trueNext);
-                            graph().removeFixed(falseNext);
-                            FixedNode next = trueNext.next();
-                            trueNext.setNext(null);
-                            trueNext.replaceAtPredecessor(next);
-                            graph().addBeforeFixed(this, trueNext);
-                            for (Node usage : trueNext.usages().snapshot()) {
-                                if (usage.getNodeClass().valueNumberable() && !usage.getNodeClass().isLeafNode()) {
-                                    Node newNode = graph().findDuplicate(usage);
-                                    if (newNode != null) {
-                                        usage.replaceAtUsages(newNode);
-                                        usage.safeDelete();
-                                    }
-                                }
-                                if (usage.isAlive()) {
-                                    tool.addToWorkList(usage);
-                                }
-                            }
-                            continue;
-                        }
-                    }
-                }
-            } while (false);
-        }
-
-        if (checkForUnsignedCompare(tool)) {
-            return;
-        }
-
         if (condition() instanceof LogicConstantNode) {
             LogicConstantNode c = (LogicConstantNode) condition();
             if (c.getValue()) {
                 tool.deleteBranch(falseSuccessor());
                 tool.addToWorkList(trueSuccessor());
                 graph().removeSplit(this, trueSuccessor());
-                return;
             } else {
                 tool.deleteBranch(trueSuccessor());
                 tool.addToWorkList(falseSuccessor());
                 graph().removeSplit(this, falseSuccessor());
-                return;
             }
-        } else if (trueSuccessor().usages().isEmpty() && falseSuccessor().usages().isEmpty()) {
+            return;
+        }
+        if (trueSuccessor().usages().isEmpty() && falseSuccessor().usages().isEmpty()) {
 
-            if (removeOrMaterializeIf(tool)) {
+            pushNodesThroughIf(tool);
+
+            if (checkForUnsignedCompare(tool) || removeOrMaterializeIf(tool)) {
                 return;
             }
         }
@@ -248,6 +210,43 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         }
     }
 
+    private void pushNodesThroughIf(SimplifierTool tool) {
+        assert trueSuccessor().usages().isEmpty() && falseSuccessor().usages().isEmpty();
+        // push similar nodes upwards through the if, thereby deduplicating them
+        do {
+            BeginNode trueSucc = trueSuccessor();
+            BeginNode falseSucc = falseSuccessor();
+            if (trueSucc.getClass() == BeginNode.class && falseSucc.getClass() == BeginNode.class && trueSucc.next() instanceof FixedWithNextNode && falseSucc.next() instanceof FixedWithNextNode) {
+                FixedWithNextNode trueNext = (FixedWithNextNode) trueSucc.next();
+                FixedWithNextNode falseNext = (FixedWithNextNode) falseSucc.next();
+                NodeClass nodeClass = trueNext.getNodeClass();
+                if (trueNext.getClass() == falseNext.getClass()) {
+                    if (nodeClass.inputsEqual(trueNext, falseNext) && nodeClass.valueEqual(trueNext, falseNext)) {
+                        falseNext.replaceAtUsages(trueNext);
+                        graph().removeFixed(falseNext);
+                        FixedNode next = trueNext.next();
+                        trueNext.setNext(null);
+                        trueNext.replaceAtPredecessor(next);
+                        graph().addBeforeFixed(this, trueNext);
+                        for (Node usage : trueNext.usages().snapshot()) {
+                            if (usage.getNodeClass().valueNumberable() && !usage.getNodeClass().isLeafNode()) {
+                                Node newNode = graph().findDuplicate(usage);
+                                if (newNode != null) {
+                                    usage.replaceAtUsages(newNode);
+                                    usage.safeDelete();
+                                }
+                            }
+                            if (usage.isAlive()) {
+                                tool.addToWorkList(usage);
+                            }
+                        }
+                        continue;
+                    }
+                }
+            }
+        } while (false);
+    }
+
     /**
      * Recognize a couple patterns that can be merged into an unsigned compare.
      *
@@ -255,7 +254,8 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
      * @return true if a replacement was done.
      */
     private boolean checkForUnsignedCompare(SimplifierTool tool) {
-        if (condition() instanceof IntegerLessThanNode && trueSuccessor().usages().isEmpty() && falseSuccessor().usages().isEmpty()) {
+        assert trueSuccessor().usages().isEmpty() && falseSuccessor().usages().isEmpty();
+        if (condition() instanceof IntegerLessThanNode) {
             IntegerLessThanNode lessThan = (IntegerLessThanNode) condition();
             Constant y = lessThan.y().stamp().asConstant();
             if (y != null && y.asLong() == 0 && falseSuccessor().next() instanceof IfNode) {
@@ -478,6 +478,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
      * @return true if a transformation was made, false otherwise
      */
     private boolean removeOrMaterializeIf(SimplifierTool tool) {
+        assert trueSuccessor().usages().isEmpty() && falseSuccessor().usages().isEmpty();
         if (trueSuccessor().next() instanceof AbstractEndNode && falseSuccessor().next() instanceof AbstractEndNode) {
             AbstractEndNode trueEnd = (AbstractEndNode) trueSuccessor().next();
             AbstractEndNode falseEnd = (AbstractEndNode) falseSuccessor().next();
@@ -621,6 +622,11 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
      * @return true if a transformation was made, false otherwise
      */
     private boolean removeIntermediateMaterialization(SimplifierTool tool) {
+        if (!(predecessor() instanceof MergeNode) || predecessor() instanceof LoopBeginNode) {
+            return false;
+        }
+        MergeNode merge = (MergeNode) predecessor();
+
         if (!(condition() instanceof CompareNode)) {
             return false;
         }
@@ -629,16 +635,6 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         if (compare.usages().count() != 1) {
             return false;
         }
-
-        if (!(predecessor() instanceof MergeNode)) {
-            return false;
-        }
-
-        if (predecessor() instanceof LoopBeginNode) {
-            return false;
-        }
-
-        MergeNode merge = (MergeNode) predecessor();
 
         // Only consider merges with a single usage that is both a phi and an operand of the
         // comparison
