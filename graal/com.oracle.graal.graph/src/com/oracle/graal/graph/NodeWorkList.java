@@ -34,6 +34,7 @@ public class NodeWorkList implements Iterable<Node> {
     private Node lastPull;
     private Node lastChain;
 
+    // boolean addAgain
     public NodeWorkList(Graph graph) {
         this(graph, false, -1);
     }
@@ -65,22 +66,14 @@ public class NodeWorkList implements Iterable<Node> {
 
     public void add(Node node) {
         if (node != null) {
-            if (visited.isNew(node)) {
-                visited.grow(node);
-                inQueue.grow(node);
-            }
-            if (!visited.isMarked(node)) {
+            if (!visited.isMarkedAndGrow(node)) {
                 addAgain(node);
             }
         }
     }
 
     public void addAgain(Node node) {
-        if (visited.isNew(node)) {
-            visited.grow(node);
-            inQueue.grow(node);
-        }
-        if (node != null && !inQueue.isMarked(node)) {
+        if (node != null && !inQueue.isMarkedAndGrow(node)) {
             if (lastPull == node) {
                 if (firstNoChange == null) {
                     firstNoChange = node;
@@ -93,8 +86,8 @@ public class NodeWorkList implements Iterable<Node> {
             } else {
                 firstNoChange = null;
             }
-            visited.mark(node);
-            inQueue.mark(node);
+            visited.markAndGrow(node);
+            inQueue.markAndGrow(node);
             worklist.add(node);
         }
     }
@@ -121,7 +114,7 @@ public class NodeWorkList implements Iterable<Node> {
     }
 
     public boolean isMarked(Node node) {
-        return visited.isMarked(node);
+        return visited.isMarkedAndGrow(node);
     }
 
     public boolean isNew(Node node) {
@@ -133,7 +126,7 @@ public class NodeWorkList implements Iterable<Node> {
     }
 
     public boolean isInQueue(Node node) {
-        return !inQueue.isNew(node) && inQueue.isMarked(node);
+        return !inQueue.isNew(node) && inQueue.isMarkedAndGrow(node);
     }
 
     private class QueueConsumingIterator implements Iterator<Node> {
@@ -161,7 +154,7 @@ public class NodeWorkList implements Iterable<Node> {
                 firstNoChange = null;
             }
             lastPull = node;
-            inQueue.clear(node);
+            inQueue.clearAndGrow(node);
             return node;
         }
 

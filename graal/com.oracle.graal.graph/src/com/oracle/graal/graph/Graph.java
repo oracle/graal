@@ -740,11 +740,7 @@ public class Graph {
     }
 
     public NodeBitMap createNodeBitMap() {
-        return createNodeBitMap(false);
-    }
-
-    public NodeBitMap createNodeBitMap(boolean autoGrow) {
-        return new NodeBitMap(this, autoGrow);
+        return new NodeBitMap(this);
     }
 
     public <T> NodeMap<T> createNodeMap() {
