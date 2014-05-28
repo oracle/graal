@@ -211,7 +211,7 @@ public class PTXWrapperBuilder extends GraphKit {
             for (int slot : objectSlots) {
                 int offset = slot * wordSize;
                 LocationNode location = ConstantLocationNode.create(FINAL_LOCATION, Kind.Int, index * intSize, getGraph());
-                append(new WriteNode(objectParametersOffsets, ConstantNode.forInt(offset, getGraph()), location, BarrierType.NONE, false, false));
+                append(new WriteNode(objectParametersOffsets, ConstantNode.forInt(offset, getGraph()), location, BarrierType.NONE, false));
                 index++;
             }
         }
@@ -234,12 +234,12 @@ public class PTXWrapperBuilder extends GraphKit {
             ParameterNode javaParameter = javaParameters[javaParametersIndex];
             int javaParameterOffset = javaParameterOffsetsInKernelParametersBuffer[javaParametersIndex];
             LocationNode location = ConstantLocationNode.create(FINAL_LOCATION, javaParameter.getKind(), javaParameterOffset, getGraph());
-            append(new WriteNode(buf, javaParameter, location, BarrierType.NONE, false, false));
+            append(new WriteNode(buf, javaParameter, location, BarrierType.NONE, false));
             updateDimArg(method, sig, sigIndex++, args, javaParameter);
         }
         if (returnKind != Kind.Void) {
             LocationNode location = ConstantLocationNode.create(FINAL_LOCATION, wordKind, bufSize - wordSize, getGraph());
-            append(new WriteNode(buf, nullWord, location, BarrierType.NONE, false, false));
+            append(new WriteNode(buf, nullWord, location, BarrierType.NONE, false));
         }
 
         HIRFrameStateBuilder fsb = new HIRFrameStateBuilder(method, getGraph(), true);

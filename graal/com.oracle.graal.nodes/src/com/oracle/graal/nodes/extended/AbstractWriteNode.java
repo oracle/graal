@@ -63,12 +63,12 @@ public abstract class AbstractWriteNode extends FixedAccessNode implements State
         return initialization;
     }
 
-    public AbstractWriteNode(ValueNode object, ValueNode value, ValueNode location, BarrierType barrierType, boolean compressible) {
-        this(object, value, location, barrierType, compressible, false);
+    public AbstractWriteNode(ValueNode object, ValueNode value, ValueNode location, BarrierType barrierType) {
+        this(object, value, location, barrierType, false);
     }
 
-    public AbstractWriteNode(ValueNode object, ValueNode value, ValueNode location, BarrierType barrierType, boolean compressible, boolean initialization) {
-        super(object, location, StampFactory.forVoid(), barrierType, compressible);
+    public AbstractWriteNode(ValueNode object, ValueNode value, ValueNode location, BarrierType barrierType, boolean initialization) {
+        super(object, location, StampFactory.forVoid(), barrierType);
         this.value = value;
         this.initialization = initialization;
     }

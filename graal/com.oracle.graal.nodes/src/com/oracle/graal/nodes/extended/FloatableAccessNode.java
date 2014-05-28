@@ -35,12 +35,12 @@ public abstract class FloatableAccessNode extends FixedAccessNode {
         super(object, location, stamp);
     }
 
-    public FloatableAccessNode(ValueNode object, ValueNode location, Stamp stamp, GuardingNode guard, BarrierType barrierType, boolean compressible) {
-        super(object, location, stamp, guard, barrierType, compressible);
+    public FloatableAccessNode(ValueNode object, ValueNode location, Stamp stamp, GuardingNode guard, BarrierType barrierType) {
+        super(object, location, stamp, guard, barrierType);
     }
 
-    public FloatableAccessNode(ValueNode object, ValueNode location, Stamp stamp, BarrierType barrierType, boolean compressible) {
-        super(object, location, stamp, barrierType, compressible);
+    public FloatableAccessNode(ValueNode object, ValueNode location, Stamp stamp, BarrierType barrierType) {
+        super(object, location, stamp, barrierType);
     }
 
     public abstract FloatingAccessNode asFloatingNode(MemoryNode lastLocationAccess);

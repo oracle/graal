@@ -383,11 +383,11 @@ public class BenchmarkCounters {
             throw new GraalInternalError("too many counters, reduce number of counters or increase -XX:GraalCounterSize=... (current value: " + config.graalCountersSize + ")");
         }
         ConstantLocationNode arrayLocation = ConstantLocationNode.create(LocationIdentity.ANY_LOCATION, wordKind, config.graalCountersThreadOffset, graph);
-        ReadNode readArray = graph.add(new ReadNode(thread, arrayLocation, StampFactory.forKind(wordKind), BarrierType.NONE, false));
+        ReadNode readArray = graph.add(new ReadNode(thread, arrayLocation, StampFactory.forKind(wordKind), BarrierType.NONE));
         ConstantLocationNode location = ConstantLocationNode.create(LocationIdentity.ANY_LOCATION, Kind.Long, Unsafe.ARRAY_LONG_INDEX_SCALE * index, graph);
-        ReadNode read = graph.add(new ReadNode(readArray, location, StampFactory.forKind(Kind.Long), BarrierType.NONE, false));
+        ReadNode read = graph.add(new ReadNode(readArray, location, StampFactory.forKind(Kind.Long), BarrierType.NONE));
         IntegerAddNode add = graph.unique(new IntegerAddNode(StampFactory.forKind(Kind.Long), read, counter.getIncrement()));
-        WriteNode write = graph.add(new WriteNode(readArray, add, location, BarrierType.NONE, false));
+        WriteNode write = graph.add(new WriteNode(readArray, add, location, BarrierType.NONE));
 
         graph.addBeforeFixed(counter, thread);
         graph.addBeforeFixed(counter, readArray);

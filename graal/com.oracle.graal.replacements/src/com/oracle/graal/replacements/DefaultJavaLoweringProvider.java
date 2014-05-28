@@ -113,7 +113,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         ConstantLocationNode location = createFieldLocation(graph, field, false);
         assert location != null : "Field that is loaded must not be eliminated";
 
-        ReadNode memoryRead = graph.add(new ReadNode(object, location, loadStamp, fieldLoadBarrierType(field), false));
+        ReadNode memoryRead = graph.add(new ReadNode(object, location, loadStamp, fieldLoadBarrierType(field)));
         ValueNode readValue = implicitLoadConvert(graph, field.getKind(), memoryRead);
         loadField.replaceAtUsages(readValue);
         graph.replaceFixed(loadField, memoryRead);
@@ -141,7 +141,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
             graph.removeFixed(storeField);
             return;
         }
-        WriteNode memoryWrite = graph.add(new WriteNode(object, value, location, fieldStoreBarrierType(storeField.field()), false));
+        WriteNode memoryWrite = graph.add(new WriteNode(object, value, location, fieldStoreBarrierType(storeField.field())));
         memoryWrite.setStateAfter(storeField.stateAfter());
         graph.replaceFixedWithFixed(storeField, memoryWrite);
         memoryWrite.setGuard(createNullCheck(object, memoryWrite, tool));
@@ -160,7 +160,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         LocationNode location = createArrayLocation(graph, elementKind, loadIndexed.index(), false);
         Stamp loadStamp = loadStamp(loadIndexed.stamp(), elementKind, true);
 
-        ReadNode memoryRead = graph.add(new ReadNode(loadIndexed.array(), location, loadStamp, BarrierType.NONE, false));
+        ReadNode memoryRead = graph.add(new ReadNode(loadIndexed.array(), location, loadStamp, BarrierType.NONE));
         ValueNode readValue = implicitLoadConvert(graph, elementKind, memoryRead);
 
         memoryRead.setGuard(createBoundsCheck(loadIndexed, tool));
@@ -197,7 +197,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
             }
         }
 
-        WriteNode memoryWrite = graph.add(new WriteNode(array, implicitStoreConvert(graph, elementKind, value), location, arrayStoreBarrierType(storeIndexed.elementKind()), false));
+        WriteNode memoryWrite = graph.add(new WriteNode(array, implicitStoreConvert(graph, elementKind, value), location, arrayStoreBarrierType(storeIndexed.elementKind())));
         memoryWrite.setGuard(boundsCheck);
         memoryWrite.setStateAfter(storeIndexed.stateAfter());
         graph.replaceFixedWithFixed(storeIndexed, memoryWrite);
@@ -213,7 +213,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         ValueNode array = arrayLengthNode.array();
         ConstantLocationNode location = ConstantLocationNode.create(ARRAY_LENGTH_LOCATION, Kind.Int, arrayLengthOffset(), graph);
 
-        ReadNode arrayLengthRead = graph.add(new ReadNode(array, location, StampFactory.positiveInt(), BarrierType.NONE, false));
+        ReadNode arrayLengthRead = graph.add(new ReadNode(array, location, StampFactory.positiveInt(), BarrierType.NONE));
         arrayLengthRead.setGuard(createNullCheck(array, arrayLengthNode, tool));
         graph.replaceFixedWithFixed(arrayLengthNode, arrayLengthRead);
     }
@@ -235,7 +235,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         ValueNode expectedValue = implicitStoreConvert(graph, valueKind, cas.expected());
         ValueNode newValue = implicitStoreConvert(graph, valueKind, cas.newValue());
 
-        LoweredCompareAndSwapNode atomicNode = graph.add(new LoweredCompareAndSwapNode(cas.object(), location, expectedValue, newValue, compareAndSwapBarrierType(cas), false));
+        LoweredCompareAndSwapNode atomicNode = graph.add(new LoweredCompareAndSwapNode(cas.object(), location, expectedValue, newValue, compareAndSwapBarrierType(cas)));
         atomicNode.setStateAfter(cas.stateAfter());
         graph.replaceFixedWithFixed(cas, atomicNode);
     }
@@ -247,7 +247,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
 
         ValueNode newValue = implicitStoreConvert(graph, valueKind, n.newValue());
 
-        LoweredAtomicReadAndWriteNode memoryRead = graph.add(new LoweredAtomicReadAndWriteNode(n.object(), location, newValue, atomicReadAndWriteBarrierType(n), false));
+        LoweredAtomicReadAndWriteNode memoryRead = graph.add(new LoweredAtomicReadAndWriteNode(n.object(), location, newValue, atomicReadAndWriteBarrierType(n)));
         memoryRead.setStateAfter(n.stateAfter());
 
         ValueNode readValue = implicitLoadConvert(graph, valueKind, memoryRead);
@@ -277,7 +277,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         Kind readKind = load.accessKind();
         LocationNode location = createLocation(load);
         Stamp loadStamp = loadStamp(load.stamp(), readKind, compressible);
-        ReadNode memoryRead = graph.add(new ReadNode(load.object(), location, loadStamp, guard, BarrierType.NONE, false));
+        ReadNode memoryRead = graph.add(new ReadNode(load.object(), location, loadStamp, guard, BarrierType.NONE));
         ValueNode readValue = implicitLoadConvert(graph, readKind, memoryRead, compressible);
         load.replaceAtUsages(readValue);
         return memoryRead;
@@ -290,7 +290,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         boolean compressible = store.value().getKind() == Kind.Object;
         Kind valueKind = store.accessKind();
         ValueNode value = implicitStoreConvert(graph, valueKind, store.value(), compressible);
-        WriteNode write = graph.add(new WriteNode(object, value, location, unsafeStoreBarrierType(store), false));
+        WriteNode write = graph.add(new WriteNode(object, value, location, unsafeStoreBarrierType(store)));
         write.setStateAfter(store.stateAfter());
         graph.replaceFixedWithFixed(store, write);
     }
@@ -300,7 +300,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         Kind valueKind = read.location().getValueKind();
         Stamp loadStamp = loadStamp(read.stamp(), valueKind, read.isCompressible());
 
-        ReadNode memoryRead = graph.add(new ReadNode(read.object(), read.location(), loadStamp, read.getBarrierType(), false));
+        ReadNode memoryRead = graph.add(new ReadNode(read.object(), read.location(), loadStamp, read.getBarrierType()));
         ValueNode readValue = implicitLoadConvert(graph, valueKind, memoryRead, read.isCompressible());
         memoryRead.setGuard(read.getGuard());
         read.replaceAtUsages(readValue);
@@ -312,7 +312,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         Kind valueKind = write.location().getValueKind();
         ValueNode value = implicitStoreConvert(graph, valueKind, write.value(), write.isCompressible());
 
-        WriteNode memoryWrite = graph.add(new WriteNode(write.object(), value, write.location(), write.getBarrierType(), false, write.isInitialization()));
+        WriteNode memoryWrite = graph.add(new WriteNode(write.object(), value, write.location(), write.getBarrierType(), write.isInitialization()));
         memoryWrite.setStateAfter(write.stateAfter());
         graph.replaceFixedWithFixed(write, memoryWrite);
         memoryWrite.setGuard(write.getGuard());
@@ -368,7 +368,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                             barrierType = arrayInitializationBarrier(entryKind);
                         }
                         if (location != null) {
-                            WriteNode write = new WriteNode(newObject, implicitStoreConvert(graph, entryKind, value), location, barrierType, false);
+                            WriteNode write = new WriteNode(newObject, implicitStoreConvert(graph, entryKind, value), location, barrierType);
                             graph.addAfterFixed(newObject, graph.add(write));
                         }
                     }
@@ -400,7 +400,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                                 barrierType = BarrierType.PRECISE;
                             }
                             if (location != null) {
-                                WriteNode write = new WriteNode(newObject, implicitStoreConvert(graph, Kind.Object, allocValue), location, barrierType, false);
+                                WriteNode write = new WriteNode(newObject, implicitStoreConvert(graph, Kind.Object, allocValue), location, barrierType);
                                 graph.addBeforeFixed(commit, graph.add(write));
                             }
                         }
@@ -625,7 +625,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         ValueNode arrayLength = readArrayLength(n.graph(), array, tool.getConstantReflection());
         if (arrayLength == null) {
             Stamp stamp = StampFactory.positiveInt();
-            ReadNode readArrayLength = graph.add(new ReadNode(array, ConstantLocationNode.create(ARRAY_LENGTH_LOCATION, Kind.Int, arrayLengthOffset(), graph), stamp, BarrierType.NONE, false));
+            ReadNode readArrayLength = graph.add(new ReadNode(array, ConstantLocationNode.create(ARRAY_LENGTH_LOCATION, Kind.Int, arrayLengthOffset(), graph), stamp, BarrierType.NONE));
             graph.addBeforeFixed(n, readArrayLength);
             readArrayLength.setGuard(createNullCheck(array, readArrayLength, tool));
             arrayLength = readArrayLength;

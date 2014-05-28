@@ -194,7 +194,7 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
                     // compiled code entry as HotSpot does not guarantee they are final
                     // values.
                     ReadNode compiledEntry = graph.add(new ReadNode(metaspaceMethod, ConstantLocationNode.create(ANY_LOCATION, wordKind, runtime.getConfig().methodCompiledEntryOffset, graph),
-                                    StampFactory.forKind(wordKind), BarrierType.NONE, false));
+                                    StampFactory.forKind(wordKind), BarrierType.NONE));
 
                     loweredCallTarget = graph.add(new HotSpotIndirectCallTargetNode(metaspaceMethod, compiledEntry, parameters, invoke.asNode().stamp(), signature, callTarget.targetMethod(),
                                     CallingConvention.Type.JavaCall));
@@ -305,7 +305,7 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
                 int size = HIRFrameStateBuilder.stackSlots(osrLocal.getKind());
                 int offset = localsOffset - (osrLocal.index() + size - 1) * 8;
                 IndexedLocationNode location = IndexedLocationNode.create(ANY_LOCATION, osrLocal.getKind(), offset, ConstantNode.forLong(0, graph), graph, 1);
-                ReadNode load = graph.add(new ReadNode(buffer, location, osrLocal.stamp(), BarrierType.NONE, false));
+                ReadNode load = graph.add(new ReadNode(buffer, location, osrLocal.stamp(), BarrierType.NONE));
                 osrLocal.replaceAndDelete(load);
                 graph.addBeforeFixed(migrationEnd, load);
             }
@@ -388,7 +388,7 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
         assert vtableEntryOffset > 0;
         // We use LocationNode.ANY_LOCATION for the reads that access the vtable
         // entry as HotSpot does not guarantee that this is a final value.
-        ReadNode metaspaceMethod = graph.add(new ReadNode(hub, ConstantLocationNode.create(ANY_LOCATION, wordKind, vtableEntryOffset, graph), StampFactory.forKind(wordKind), BarrierType.NONE, false));
+        ReadNode metaspaceMethod = graph.add(new ReadNode(hub, ConstantLocationNode.create(ANY_LOCATION, wordKind, vtableEntryOffset, graph), StampFactory.forKind(wordKind), BarrierType.NONE));
         return metaspaceMethod;
     }
 
@@ -406,7 +406,7 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
             hubStamp = StampFactory.forKind(wordKind);
         }
 
-        FloatingReadNode memoryRead = graph.unique(new FloatingReadNode(object, location, null, hubStamp, guard, BarrierType.NONE, false));
+        FloatingReadNode memoryRead = graph.unique(new FloatingReadNode(object, location, null, hubStamp, guard, BarrierType.NONE));
         if (config.useCompressedClassPointers) {
             return CompressionNode.uncompress(memoryRead, config.getKlassEncoding());
         } else {
@@ -424,7 +424,7 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
             writeValue = CompressionNode.compress(value, config.getKlassEncoding());
         }
 
-        return graph.add(new WriteNode(object, writeValue, location, BarrierType.NONE, false));
+        return graph.add(new WriteNode(object, writeValue, location, BarrierType.NONE));
     }
 
     @Override

@@ -43,7 +43,6 @@ import com.oracle.graal.lir.sparc.SPARCMove.LoadOp;
 import com.oracle.graal.lir.sparc.SPARCMove.NullCheckOp;
 import com.oracle.graal.lir.sparc.SPARCMove.StoreConstantOp;
 import com.oracle.graal.lir.sparc.SPARCMove.StoreOp;
-import com.oracle.graal.nodes.extended.*;
 
 public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSpotLIRGenerator {
 
@@ -167,33 +166,11 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
         append(new SPARCHotSpotDeoptimizeCallerOp());
     }
 
-    private static boolean isCompressCandidate(Access access) {
-        return access != null && access.isCompressible();
-    }
-
     @Override
     public Variable emitLoad(PlatformKind kind, Value address, LIRFrameState state) {
         SPARCAddressValue loadAddress = asAddressValue(address);
         Variable result = newVariable(kind);
-        if (isCompressCandidate(null)) {
-            if (config.useCompressedOops && kind == Kind.Object) {
-                // append(new LoadCompressedPointer(kind, result, loadAddress, access != null ?
-                // state(access) :
-                // null, config.narrowOopBase, config.narrowOopShift,
-                // config.logMinObjAlignment));
-                throw GraalInternalError.unimplemented();
-            } else if (config.useCompressedClassPointers && kind == Kind.Long) {
-                // append(new LoadCompressedPointer(kind, result, loadAddress, access != null ?
-                // state(access) :
-                // null, config.narrowKlassBase, config.narrowKlassShift,
-                // config.logKlassAlignment));
-                throw GraalInternalError.unimplemented();
-            } else {
-                append(new LoadOp((Kind) kind, result, loadAddress, state));
-            }
-        } else {
-            append(new LoadOp((Kind) kind, result, loadAddress, state));
-        }
+        append(new LoadOp((Kind) kind, result, loadAddress, state));
         return result;
     }
 
@@ -202,42 +179,13 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
         SPARCAddressValue storeAddress = asAddressValue(address);
         if (isConstant(inputVal)) {
             Constant c = asConstant(inputVal);
-            if (canStoreConstant(c, isCompressCandidate(null))) {
-                if (inputVal.getKind() == Kind.Object) {
-                    append(new StoreConstantOp((Kind) kind, storeAddress, c, state, config.useCompressedOops && isCompressCandidate(null)));
-                } else if (inputVal.getKind() == Kind.Long) {
-                    append(new StoreConstantOp((Kind) kind, storeAddress, c, state, config.useCompressedClassPointers && isCompressCandidate(null)));
-                } else {
-                    append(new StoreConstantOp((Kind) kind, storeAddress, c, state, false));
-                }
+            if (canStoreConstant(c, false)) {
+                append(new StoreConstantOp((Kind) kind, storeAddress, c, state, false));
                 return;
             }
         }
         Variable input = load(inputVal);
-        if (isCompressCandidate(null)) {
-            if (config.useCompressedOops && kind == Kind.Object) {
-                // if (input.getKind() == Kind.Object) {
-                // Variable scratch = newVariable(Kind.Long);
-                // append(new StoreCompressedPointer(kind, storeAddress, input, scratch, state,
-                // config.narrowOopBase, config.narrowOopShift,
-                // config.logMinObjAlignment));
-                // } else {
-                // // the input oop is already compressed
-                // append(new StoreOp(input.getKind(), storeAddress, input, state));
-                // }
-                throw GraalInternalError.unimplemented();
-            } else if (config.useCompressedClassPointers && kind == Kind.Long) {
-                // Variable scratch = newVariable(Kind.Long);
-                // append(new StoreCompressedPointer(kind, storeAddress, input, scratch, state,
-                // config.narrowKlassBase, config.narrowKlassShift,
-                // config.logKlassAlignment));
-                throw GraalInternalError.unimplemented();
-            } else {
-                append(new StoreOp((Kind) kind, storeAddress, input, state));
-            }
-        } else {
-            append(new StoreOp((Kind) kind, storeAddress, input, state));
-        }
+        append(new StoreOp((Kind) kind, storeAddress, input, state));
     }
 
     public Value emitCompareAndSwap(Value address, Value expectedValue, Value newValue, Value trueValue, Value falseValue) {
