@@ -221,6 +221,9 @@ public class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
                     }
                 }
             }
+            if (probability > 1. / Double.MIN_NORMAL) {
+                probability = 1. / Double.MIN_NORMAL;
+            }
             block.setPredecessors(predecessors);
             block.setProbability(probability);
 
