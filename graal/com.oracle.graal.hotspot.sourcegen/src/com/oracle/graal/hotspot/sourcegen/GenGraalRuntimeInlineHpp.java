@@ -77,24 +77,42 @@ public class GenGraalRuntimeInlineHpp {
             }
         }
 
-        out.println("Handle GraalRuntime::get_service_impls(KlassHandle serviceKlass, TRAPS) {");
+        Set<Integer> lengths = new TreeSet<>();
         for (Class<?> service : services) {
-            out.printf("  if (serviceKlass->name()->equals(\"%s\")) {%n", toInternalName(service));
-            List<Class<?>> impls = new ArrayList<>();
-            for (Object impl : ServiceLoader.load(service)) {
-                impls.add(impl.getClass());
+            lengths.add(toInternalName(service).length());
+        }
+
+        out.println("Handle GraalRuntime::get_service_impls(KlassHandle serviceKlass, TRAPS) {");
+        out.println("  switch (serviceKlass->name()->utf8_length()) {");
+        for (int len : lengths) {
+            boolean printedCase = false;
+            for (Class<?> service : services) {
+                String serviceName = toInternalName(service);
+                if (len == serviceName.length()) {
+                    if (!printedCase) {
+                        printedCase = true;
+                        out.println("  case " + len + ":");
+                    }
+                    out.printf("    if (serviceKlass->name()->equals(\"%s\", %d)) {%n", serviceName, serviceName.length());
+                    List<Class<?>> impls = new ArrayList<>();
+                    for (Object impl : ServiceLoader.load(service)) {
+                        impls.add(impl.getClass());
+                    }
+
+                    out.printf("      objArrayOop servicesOop = oopFactory::new_objArray(serviceKlass(), %d, CHECK_NH);%n", impls.size());
+                    out.println("      objArrayHandle services(THREAD, servicesOop);");
+                    for (int i = 0; i < impls.size(); i++) {
+                        String name = toInternalName(impls.get(i));
+                        out.printf("      %sservice = create_Service(\"%s\", CHECK_NH);%n", (i == 0 ? "Handle " : ""), name);
+                        out.printf("      services->obj_at_put(%d, service());%n", i);
+                    }
+                    out.println("      return services;");
+                    out.println("    }");
+                }
             }
 
-            out.printf("    objArrayOop servicesOop = oopFactory::new_objArray(serviceKlass(), %d, CHECK_NH);%n", impls.size());
-            out.println("    objArrayHandle services(THREAD, servicesOop);");
-            for (int i = 0; i < impls.size(); i++) {
-                String name = toInternalName(impls.get(i));
-                out.printf("    %sservice = create_Service(\"%s\", CHECK_NH);%n", (i == 0 ? "Handle " : ""), name);
-                out.printf("    services->obj_at_put(%d, service());%n", i);
-            }
-            out.println("    return services;");
-            out.println("  }");
         }
+        out.println("  }");
         out.println("  return Handle();");
         out.println("}");
     }
