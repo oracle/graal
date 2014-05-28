@@ -424,7 +424,7 @@ public class SnippetTemplate {
     /**
      * Base class for snippet classes. It provides a cache for {@link SnippetTemplate}s.
      */
-    public abstract static class AbstractTemplates implements SnippetTemplateCache {
+    public abstract static class AbstractTemplates implements com.oracle.graal.api.replacements.SnippetTemplateCache {
 
         static final boolean UseSnippetTemplateCache = Boolean.parseBoolean(System.getProperty("graal.useSnippetTemplateCache", "true"));
 
