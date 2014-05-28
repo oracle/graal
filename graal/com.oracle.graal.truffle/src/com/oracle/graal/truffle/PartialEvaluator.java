@@ -34,7 +34,6 @@ import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.debug.internal.*;
-import com.oracle.graal.graph.Graph.Mark;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.spi.*;
@@ -49,6 +48,7 @@ import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.common.CanonicalizerPhase.CustomCanonicalizer;
 import com.oracle.graal.phases.common.inlining.*;
+import com.oracle.graal.phases.common.inlining.info.*;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.phases.util.*;
 import com.oracle.graal.truffle.nodes.asserts.*;
@@ -210,11 +210,10 @@ public class PartialEvaluator {
                             try (Indent indent = Debug.logAndIndent("inline graph %s", methodCallTargetNode.targetMethod())) {
 
                                 int nodeCountBefore = graph.getNodeCount();
-                                Mark mark = graph.getMark();
                                 if (TraceTruffleExpansion.getValue()) {
                                     expansionLogger.preExpand(methodCallTargetNode, inlineGraph);
                                 }
-                                List<Node> invokeUsages = methodCallTargetNode.invoke().asNode().usages().snapshot();
+                                List<Node> canonicalizedNodes = methodCallTargetNode.invoke().asNode().usages().snapshot();
                                 Map<Node, Node> inlined = InliningUtil.inline(methodCallTargetNode.invoke(), inlineGraph, false);
                                 if (TraceTruffleExpansion.getValue()) {
                                     expansionLogger.postExpand(inlined);
@@ -223,7 +222,8 @@ public class PartialEvaluator {
                                     int nodeCountAfter = graph.getNodeCount();
                                     Debug.dump(graph, "After inlining %s %+d (%d)", methodCallTargetNode.targetMethod().toString(), nodeCountAfter - nodeCountBefore, nodeCountAfter);
                                 }
-                                canonicalizer.applyIncremental(graph, phaseContext, invokeUsages, mark);
+                                AbstractInlineInfo.getInlinedParameterUsages(canonicalizedNodes, inlineGraph, inlined);
+                                canonicalizer.applyIncremental(graph, phaseContext, canonicalizedNodes);
 
                                 changed = true;
                             }

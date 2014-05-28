@@ -56,14 +56,7 @@ public abstract class AbstractInlineInfo implements InlineInfo {
         if (inlineable instanceof InlineableGraph) {
             StructuredGraph calleeGraph = ((InlineableGraph) inlineable).getGraph();
             Map<Node, Node> duplicateMap = InliningUtil.inline(invoke, calleeGraph, receiverNullCheck);
-            for (ParameterNode parameter : calleeGraph.getNodes(ParameterNode.class)) {
-                for (Node usage : parameter.usages()) {
-                    Node node = duplicateMap.get(usage);
-                    if (node != null && node.isAlive()) {
-                        parameterUsages.add(node);
-                    }
-                }
-            }
+            getInlinedParameterUsages(parameterUsages, calleeGraph, duplicateMap);
         } else {
             assert inlineable instanceof InlineableMacroNode;
 
@@ -75,5 +68,16 @@ public abstract class AbstractInlineInfo implements InlineInfo {
         InliningUtil.InlinedBytecodes.add(concrete.getCodeSize());
         assumptions.recordMethodContents(concrete);
         return parameterUsages;
+    }
+
+    public static void getInlinedParameterUsages(Collection<Node> parameterUsages, StructuredGraph calleeGraph, Map<Node, Node> duplicateMap) {
+        for (ParameterNode parameter : calleeGraph.getNodes(ParameterNode.class)) {
+            for (Node usage : parameter.usages()) {
+                Node node = duplicateMap.get(usage);
+                if (node != null && node.isAlive()) {
+                    parameterUsages.add(node);
+                }
+            }
+        }
     }
 }
