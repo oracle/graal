@@ -111,7 +111,7 @@ public class DebugHistogramTest {
         DebugHistogram histogram = Debug.createHistogram("TestHistogram");
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         histogram.add("MyCustomValue");
-        new DebugHistogramAsciiPrinter(new PrintStream(outputStream), Integer.MAX_VALUE, 10, 10).print(histogram);
+        new DebugHistogramAsciiPrinter(new PrintStream(outputStream), Integer.MAX_VALUE, 10, 10, 1).print(histogram);
         String[] lines = outputStream.toString().split("\n");
         Assert.assertEquals(4, lines.length);
         Assert.assertEquals("TestHistogram has 1 unique elements and 1 total elements:", lines[0]);

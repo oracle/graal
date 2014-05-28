@@ -44,6 +44,15 @@ public class DebugHistogramImpl implements DebugHistogram {
         }
     }
 
+    public void add(Object value, long count) {
+        CountedValue cv = map.get(value);
+        if (cv == null) {
+            map.put(value, new CountedValue(count, value));
+        } else {
+            cv.add(count);
+        }
+    }
+
     @Override
     public String getName() {
         return name;
