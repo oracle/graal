@@ -27,6 +27,7 @@ import static com.oracle.graal.compiler.GraalDebugConfig.*;
 import java.util.*;
 import java.util.Map.Entry;
 
+import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.debug.*;
@@ -125,7 +126,7 @@ public class MatchRuleRegistry {
      */
     public static Map<Class<? extends ValueNode>, List<MatchStatement>> createRules(Class<? extends NodeLIRBuilder> theClass, NodeClassLookup lookup) {
         HashMap<Class<? extends NodeLIRBuilder>, MatchStatementSet> matchSets = new HashMap<>();
-        ServiceLoader<MatchStatementSet> sl = ServiceLoader.loadInstalled(MatchStatementSet.class);
+        Iterable<MatchStatementSet> sl = Services.load(MatchStatementSet.class);
         for (MatchStatementSet rules : sl) {
             matchSets.put(rules.forClass(), rules);
         }

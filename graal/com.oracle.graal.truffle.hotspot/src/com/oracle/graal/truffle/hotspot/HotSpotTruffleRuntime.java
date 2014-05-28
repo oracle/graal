@@ -213,7 +213,7 @@ public final class HotSpotTruffleRuntime implements GraalTruffleRuntime {
     }
 
     private static CompilationResultBuilderFactory getOptimizedCallTargetInstrumentationFactory(String arch, ResolvedJavaMethod method) {
-        for (OptimizedCallTargetInstrumentationFactory factory : ServiceLoader.loadInstalled(OptimizedCallTargetInstrumentationFactory.class)) {
+        for (OptimizedCallTargetInstrumentationFactory factory : Services.load(OptimizedCallTargetInstrumentationFactory.class)) {
             if (factory.getArchitecture().equals(arch)) {
                 factory.setInstrumentedMethod(method);
                 return factory;
