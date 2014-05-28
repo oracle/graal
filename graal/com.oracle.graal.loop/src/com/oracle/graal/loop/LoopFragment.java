@@ -66,7 +66,7 @@ public abstract class LoopFragment {
     }
 
     public boolean contains(Node n) {
-        return nodes().contains(n);
+        return nodes().isMarkedAndGrow(n);
     }
 
     @SuppressWarnings("unchecked")
@@ -96,7 +96,7 @@ public abstract class LoopFragment {
         return original;
     }
 
-    public abstract NodeIterable<Node> nodes();
+    public abstract NodeBitMap nodes();
 
     public StructuredGraph graph() {
         LoopEx l;

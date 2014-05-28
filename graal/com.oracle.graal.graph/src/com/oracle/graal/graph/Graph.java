@@ -752,11 +752,11 @@ public class Graph {
     }
 
     public NodeWorkList createNodeWorkList() {
-        return new NodeWorkList(this);
+        return new NodeWorkList.SingletonNodeWorkList(this);
     }
 
-    public NodeWorkList createNodeWorkList(boolean fill, int iterationLimitPerNode) {
-        return new NodeWorkList(this, fill, iterationLimitPerNode);
+    public NodeWorkList createIterativeNodeWorkList(boolean fill, int iterationLimitPerNode) {
+        return new NodeWorkList.IterativeNodeWorkList(this, fill, iterationLimitPerNode);
     }
 
     void register(Node node) {

@@ -102,7 +102,7 @@ public class LoopFragmentInside extends LoopFragment {
     }
 
     @Override
-    public NodeIterable<Node> nodes() {
+    public NodeBitMap nodes() {
         if (nodes == null) {
             LoopFragmentWhole whole = loop().whole();
             whole.nodes(); // init nodes bitmap in whole

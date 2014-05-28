@@ -137,9 +137,9 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
         protected void run(StructuredGraph graph) {
             boolean wholeGraph = newNodesMark == null || newNodesMark.isStart();
             if (initWorkingSet == null) {
-                workList = graph.createNodeWorkList(wholeGraph, MAX_ITERATION_PER_NODE);
+                workList = graph.createIterativeNodeWorkList(wholeGraph, MAX_ITERATION_PER_NODE);
             } else {
-                workList = graph.createNodeWorkList(false, MAX_ITERATION_PER_NODE);
+                workList = graph.createIterativeNodeWorkList(false, MAX_ITERATION_PER_NODE);
                 workList.addAll(initWorkingSet);
             }
             if (!wholeGraph) {
@@ -154,7 +154,7 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
 
                 @Override
                 public void nodeChanged(Node node) {
-                    workList.addAgain(node);
+                    workList.add(node);
                 }
             };
             graph.trackInputChange(nodeChangedListener);
@@ -336,7 +336,7 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
                 if (node.inferStamp()) {
                     METRIC_STAMP_CHANGED.increment();
                     for (Node usage : node.usages()) {
-                        workList.addAgain(usage);
+                        workList.add(usage);
                     }
                     return true;
                 }
@@ -373,7 +373,7 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
 
             @Override
             public void addToWorkList(Node node) {
-                workList.addAgain(node);
+                workList.add(node);
             }
 
             @Override
