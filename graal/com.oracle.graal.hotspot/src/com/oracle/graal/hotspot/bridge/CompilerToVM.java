@@ -123,9 +123,9 @@ public interface CompilerToVM {
 
     int lookupNameAndTypeRefIndexInPool(long metaspaceConstantPool, int cpi);
 
-    long lookupNameRefInPool(long metaspaceConstantPool, int cpi);
+    String lookupNameRefInPool(long metaspaceConstantPool, int cpi);
 
-    long lookupSignatureRefInPool(long metaspaceConstantPool, int cpi);
+    String lookupSignatureRefInPool(long metaspaceConstantPool, int cpi);
 
     int lookupKlassRefIndexInPool(long metaspaceConstantPool, int cpi);
 
@@ -331,6 +331,13 @@ public interface CompilerToVM {
      * @return milliseconds since VM start
      */
     long getTimeStamp();
+
+    /**
+     * Gets the value of a metaspace {@code Symbol} as a String.
+     * 
+     * @param metaspaceSymbol
+     */
+    String getSymbol(long metaspaceSymbol);
 
     /**
      * Looks for the next Java stack frame with the given method.

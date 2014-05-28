@@ -27,6 +27,7 @@ import static com.oracle.graal.api.meta.MetaUtil.*;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.debug.Debug.*;
 import static com.oracle.graal.graph.util.CollectionsAccess.*;
+import static com.oracle.graal.replacements.SnippetTemplate.AbstractTemplates.*;
 import static java.util.FormattableFlags.*;
 
 import java.io.*;
@@ -418,13 +419,14 @@ public class SnippetTemplate {
     private static final DebugMetric SnippetTemplates = Debug.metric("SnippetTemplateCount");
 
     private static final String MAX_TEMPLATES_PER_SNIPPET_PROPERTY_NAME = "graal.maxTemplatesPerSnippet";
-    private static final boolean UseSnippetTemplateCache = Boolean.parseBoolean(System.getProperty("graal.useSnippetTemplateCache", "true"));
     private static final int MaxTemplatesPerSnippet = Integer.getInteger(MAX_TEMPLATES_PER_SNIPPET_PROPERTY_NAME, 50);
 
     /**
      * Base class for snippet classes. It provides a cache for {@link SnippetTemplate}s.
      */
     public abstract static class AbstractTemplates implements SnippetTemplateCache {
+
+        static final boolean UseSnippetTemplateCache = Boolean.parseBoolean(System.getProperty("graal.useSnippetTemplateCache", "true"));
 
         protected final Providers providers;
         protected final SnippetReflectionProvider snippetReflection;
@@ -891,7 +893,6 @@ public class SnippetTemplate {
      * lowered and the stamp of the snippet's return value.
      */
     public interface UsageReplacer {
-
         /**
          * Replaces all usages of {@code oldNode} with direct or indirect usages of {@code newNode}.
          */

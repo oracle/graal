@@ -22,8 +22,9 @@
  */
 package com.oracle.graal.hotspot.stubs;
 
+import static com.oracle.graal.hotspot.HotSpotBackend.*;
+import static com.oracle.graal.hotspot.nodes.DeoptimizationFetchUnrollInfoCallNode.*;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
-import static com.oracle.graal.hotspot.stubs.StubUtil.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
@@ -111,7 +112,7 @@ public class DeoptimizationStub extends SnippetStub {
         final Word thread = registerAsWord(threadRegister);
         final long registerSaver = SaveAllRegistersNode.saveAllRegisters();
 
-        final Word unrollBlock = DeoptimizationFetchUnrollInfoCallNode.fetchUnrollInfo(registerSaver);
+        final Word unrollBlock = fetchUnrollInfo(registerSaver);
 
         // Pop all the frames we must move/replace.
         //
@@ -270,12 +271,6 @@ public class DeoptimizationStub extends SnippetStub {
     private static int deoptimizationUnpackUncommonTrap() {
         return config().deoptimizationUnpackUncommonTrap;
     }
-
-    public static final ForeignCallDescriptor FETCH_UNROLL_INFO = newDescriptor(DeoptimizationStub.class, "fetchUnrollInfo", Word.class, Word.class);
-    public static final ForeignCallDescriptor UNPACK_FRAMES = newDescriptor(DeoptimizationStub.class, "unpackFrames", int.class, Word.class, int.class);
-
-    @NodeIntrinsic(value = StubForeignCallNode.class, setStampFromReturnType = true)
-    public static native Word fetchUnrollInfo(@ConstantNodeParameter ForeignCallDescriptor fetchUnrollInfo, Word thread);
 
     @NodeIntrinsic(value = StubForeignCallNode.class, setStampFromReturnType = true)
     public static native int unpackFrames(@ConstantNodeParameter ForeignCallDescriptor unpackFrames, Word thread, int mode);

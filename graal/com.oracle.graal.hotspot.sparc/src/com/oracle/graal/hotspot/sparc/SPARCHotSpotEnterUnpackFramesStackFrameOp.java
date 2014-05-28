@@ -30,14 +30,14 @@ import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.sparc.*;
-import com.oracle.graal.hotspot.stubs.*;
+import com.oracle.graal.hotspot.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.sparc.*;
 import com.oracle.graal.lir.asm.*;
 
 /**
  * Emits code that enters a stack frame which is tailored to call the C++ method
- * {@link DeoptimizationStub#UNPACK_FRAMES Deoptimization::unpack_frames}.
+ * {@link HotSpotBackend#UNPACK_FRAMES Deoptimization::unpack_frames}.
  */
 @Opcode("ENTER_UNPACK_FRAMES_STACK_FRAME")
 final class SPARCHotSpotEnterUnpackFramesStackFrameOp extends SPARCLIRInstruction {

@@ -71,10 +71,10 @@ public class CompilerToVMImpl implements CompilerToVM {
     public native int lookupNameAndTypeRefIndexInPool(long metaspaceConstantPool, int cpi);
 
     @Override
-    public native long lookupNameRefInPool(long metaspaceConstantPool, int cpi);
+    public native String lookupNameRefInPool(long metaspaceConstantPool, int cpi);
 
     @Override
-    public native long lookupSignatureRefInPool(long metaspaceConstantPool, int cpi);
+    public native String lookupSignatureRefInPool(long metaspaceConstantPool, int cpi);
 
     @Override
     public native int lookupKlassRefIndexInPool(long metaspaceConstantPool, int cpi);
@@ -180,6 +180,8 @@ public class CompilerToVMImpl implements CompilerToVM {
     public native void materializeVirtualObjects(HotSpotStackFrameReference stackFrame, boolean invalidate);
 
     public native long getTimeStamp();
+
+    public native String getSymbol(long metaspaceSymbol);
 
     public native void resolveInvokeDynamic(long metaspaceConstantPool, int index);
 
