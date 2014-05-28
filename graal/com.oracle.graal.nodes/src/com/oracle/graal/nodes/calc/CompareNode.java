@@ -26,6 +26,8 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.meta.ProfilingInfo.TriState;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.calc.*;
+import com.oracle.graal.debug.*;
+import com.oracle.graal.debug.internal.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
@@ -61,6 +63,17 @@ public abstract class CompareNode extends BinaryOpLogicNode {
      * @return {@code true} if unordered inputs produce true
      */
     public abstract boolean unorderedIsTrue();
+
+    protected static final DebugHistogram histogram = Debug.createHistogram("histo");
+
+    static {
+        Runtime.getRuntime().addShutdownHook(new Thread() {
+            @Override
+            public void run() {
+                new DebugHistogramAsciiPrinter(System.out).print(histogram);
+            }
+        });
+    }
 
     private LogicNode optimizeConditional(Constant constant, ConditionalNode conditionalNode, ConstantReflectionProvider constantReflection, Condition cond) {
         Constant trueConstant = conditionalNode.trueValue().asConstant();
@@ -105,38 +118,42 @@ public abstract class CompareNode extends BinaryOpLogicNode {
             return result;
         }
         if (x().isConstant()) {
-            if (y() instanceof ConditionalNode) {
-                return optimizeConditional(x().asConstant(), (ConditionalNode) y(), tool.getConstantReflection(), condition().mirror());
-            } else if (y() instanceof NormalizeCompareNode) {
-                return optimizeNormalizeCmp(x().asConstant(), (NormalizeCompareNode) y(), true);
+            if ((result = canonicalizeSymmetricConstant(tool, x().asConstant(), y(), true)) != this) {
+                return result;
             }
         } else if (y().isConstant()) {
-            if (x() instanceof ConditionalNode) {
-                return optimizeConditional(y().asConstant(), (ConditionalNode) x(), tool.getConstantReflection(), condition());
-            } else if (x() instanceof NormalizeCompareNode) {
-                return optimizeNormalizeCmp(y().asConstant(), (NormalizeCompareNode) x(), false);
+            if ((result = canonicalizeSymmetricConstant(tool, y().asConstant(), x(), false)) != this) {
+                return result;
             }
-        }
-        if (x() instanceof ConvertNode && y() instanceof ConvertNode) {
+        } else if (x() instanceof ConvertNode && y() instanceof ConvertNode) {
             ConvertNode convertX = (ConvertNode) x();
             ConvertNode convertY = (ConvertNode) y();
             if (convertX.preservesOrder(condition()) && convertY.preservesOrder(condition()) && convertX.getInput().stamp().isCompatible(convertY.getInput().stamp())) {
-                setX(convertX.getInput());
-                setY(convertY.getInput());
+                return graph().unique(duplicateModified(convertX.getInput(), convertY.getInput()));
             }
-        } else if (x() instanceof ConvertNode && y().isConstant()) {
-            ConvertNode convertX = (ConvertNode) x();
-            ConstantNode newY = canonicalConvertConstant(tool, convertX, y().asConstant());
-            if (newY != null) {
-                setX(convertX.getInput());
-                setY(newY);
+
+        }
+        return this;
+    }
+
+    protected abstract CompareNode duplicateModified(ValueNode newX, ValueNode newY);
+
+    protected Node canonicalizeSymmetricConstant(CanonicalizerTool tool, Constant constant, ValueNode nonConstant, boolean mirrored) {
+        if (nonConstant instanceof BinaryNode) {
+            if (nonConstant instanceof ConditionalNode) {
+                return optimizeConditional(constant, (ConditionalNode) nonConstant, tool.getConstantReflection(), mirrored ? condition().mirror() : condition());
+            } else if (nonConstant instanceof NormalizeCompareNode) {
+                return optimizeNormalizeCmp(constant, (NormalizeCompareNode) nonConstant, mirrored);
             }
-        } else if (y() instanceof ConvertNode && x().isConstant()) {
-            ConvertNode convertY = (ConvertNode) y();
-            ConstantNode newX = canonicalConvertConstant(tool, convertY, x().asConstant());
-            if (newX != null) {
-                setX(newX);
-                setY(convertY.getInput());
+        } else if (nonConstant instanceof ConvertNode) {
+            ConvertNode convert = (ConvertNode) nonConstant;
+            ConstantNode newConstant = canonicalConvertConstant(tool, convert, constant);
+            if (newConstant != null) {
+                if (mirrored) {
+                    return graph().unique(duplicateModified(newConstant, convert.getInput()));
+                } else {
+                    return graph().unique(duplicateModified(convert.getInput(), newConstant));
+                }
             }
         }
         return this;
