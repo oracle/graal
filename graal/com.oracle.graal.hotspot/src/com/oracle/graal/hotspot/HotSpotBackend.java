@@ -76,7 +76,7 @@ public abstract class HotSpotBackend extends Backend {
     /**
      * @see DeoptimizationFetchUnrollInfoCallNode
      */
-    public static final ForeignCallDescriptor FETCH_UNROLL_INFO = newDescriptor(DeoptimizationStub.class, "fetchUnrollInfo", Word.class, Word.class);
+    public static final ForeignCallDescriptor FETCH_UNROLL_INFO = new ForeignCallDescriptor("fetchUnrollInfo", Word.class, long.class);
 
     /**
      * @see DeoptimizationStub#unpackFrames(ForeignCallDescriptor, Word, int)
