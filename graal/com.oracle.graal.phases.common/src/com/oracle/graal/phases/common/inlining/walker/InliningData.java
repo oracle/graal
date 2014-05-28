@@ -47,9 +47,7 @@ import com.oracle.graal.phases.graph.FixedNodeProbabilityCache;
 import com.oracle.graal.phases.tiers.HighTierContext;
 import com.oracle.graal.phases.util.Providers;
 
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 import java.util.function.ToDoubleFunction;
 
 import static com.oracle.graal.compiler.common.GraalOptions.*;
@@ -340,19 +338,21 @@ public class InliningData {
 
     private void doInline(CallsiteHolder callerCallsiteHolder, MethodInvocation calleeInvocation, Assumptions callerAssumptions) {
         StructuredGraph callerGraph = callerCallsiteHolder.graph();
-        Graph.Mark markBeforeInlining = callerGraph.getMark();
         InlineInfo calleeInfo = calleeInvocation.callee();
         try {
             try (Debug.Scope scope = Debug.scope("doInline", callerGraph)) {
-                List<Node> invokeUsages = calleeInfo.invoke().asNode().usages().snapshot();
-                calleeInfo.inline(new Providers(context), callerAssumptions);
+                Set<Node> canonicalizedNodes = new HashSet<>();
+                calleeInfo.invoke().asNode().usages().snapshotTo(canonicalizedNodes);
+                Collection<Node> parameterUsages = calleeInfo.inline(new Providers(context), callerAssumptions);
+                canonicalizedNodes.addAll(parameterUsages);
                 callerAssumptions.record(calleeInvocation.assumptions());
                 metricInliningRuns.increment();
                 Debug.dump(callerGraph, "after %s", calleeInfo);
 
                 if (OptCanonicalizer.getValue()) {
                     Graph.Mark markBeforeCanonicalization = callerGraph.getMark();
-                    canonicalizer.applyIncremental(callerGraph, context, invokeUsages, markBeforeInlining);
+
+                    canonicalizer.applyIncremental(callerGraph, context, canonicalizedNodes);
 
                     // process invokes that are possibly created during canonicalization
                     for (Node newNode : callerGraph.getNewNodes(markBeforeCanonicalization)) {
