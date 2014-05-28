@@ -72,7 +72,7 @@ public abstract class LoopPolicies {
         for (Node successor : controlSplit.successors()) {
             BeginNode branch = (BeginNode) successor;
             // this may count twice because of fall-through in switches
-            inBranchTotal += loop.nodesInLoopFrom(branch, postDom).cardinality();
+            inBranchTotal += loop.nodesInLoopFrom(branch, postDom).count();
             double probability = controlSplit.probability(branch);
             if (probability > maxProbability) {
                 maxProbability = probability;

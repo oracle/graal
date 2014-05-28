@@ -22,10 +22,13 @@
  */
 package com.oracle.graal.phases.common.inlining.info;
 
+import java.util.*;
+
 import com.oracle.graal.api.code.Assumptions;
 import com.oracle.graal.api.meta.MetaAccessProvider;
 import com.oracle.graal.api.meta.MetaUtil;
 import com.oracle.graal.api.meta.ResolvedJavaMethod;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.Invoke;
 import com.oracle.graal.phases.common.inlining.info.elem.Inlineable;
 import com.oracle.graal.phases.util.Providers;
@@ -51,8 +54,8 @@ public class ExactInlineInfo extends AbstractInlineInfo {
     }
 
     @Override
-    public void inline(Providers providers, Assumptions assumptions) {
-        inline(invoke, concrete, inlineableElement, assumptions, !suppressNullCheck);
+    public Collection<Node> inline(Providers providers, Assumptions assumptions) {
+        return inline(invoke, concrete, inlineableElement, assumptions, !suppressNullCheck);
     }
 
     @Override

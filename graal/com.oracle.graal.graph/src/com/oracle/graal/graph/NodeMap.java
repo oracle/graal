@@ -28,6 +28,8 @@ import java.util.Map.Entry;
 
 public class NodeMap<T> extends NodeIdAccessor {
 
+    private static final int MIN_REALLOC_SIZE = 16;
+
     protected Object[] values;
 
     public NodeMap(Graph graph) {
@@ -54,7 +56,7 @@ public class NodeMap<T> extends NodeIdAccessor {
 
     private void checkAndGrow(Node node) {
         if (isNew(node)) {
-            this.values = Arrays.copyOf(values, graph.nodeIdCount());
+            this.values = Arrays.copyOf(values, Math.max(MIN_REALLOC_SIZE, graph.nodeIdCount() * 3 / 2));
         }
         assert check(node);
     }

@@ -121,17 +121,4 @@ public class NodeMapTest {
         map.setAndGrow(newNode, 1);
         assertEquals((Integer) 1, map.get(newNode));
     }
-
-    @Test(expected = AssertionError.class)
-    public void testNewSetAndGrowMultiple() {
-        TestNode newNode = graph.add(new TestNode());
-        map.setAndGrow(newNode, 1);
-        assertEquals((Integer) 1, map.get(newNode));
-        /*
-         * Failing here is not required, but if this behavior changes, usages of getAndGrow and
-         * setAndGrow need to be checked for compatibility.
-         */
-        TestNode newNode2 = graph.add(new TestNode());
-        map.get(newNode2);
-    }
 }

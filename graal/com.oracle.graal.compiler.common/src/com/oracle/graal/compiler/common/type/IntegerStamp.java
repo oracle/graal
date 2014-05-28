@@ -208,6 +208,9 @@ public class IntegerStamp extends PrimitiveStamp {
         if (!(otherStamp instanceof IntegerStamp)) {
             return StampFactory.illegal(Kind.Illegal);
         }
+        if (equals(otherStamp)) {
+            return this;
+        }
         IntegerStamp other = (IntegerStamp) otherStamp;
         return createStamp(other, Math.max(upperBound, other.upperBound), Math.min(lowerBound, other.lowerBound), downMask & other.downMask, upMask | other.upMask);
     }

@@ -36,6 +36,7 @@ import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
+import com.oracle.graal.debug.DebugMemUseTracker.Closeable;
 import com.oracle.graal.debug.internal.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.lir.asm.*;
@@ -102,6 +103,10 @@ public class TruffleCompilerImpl {
     public static final DebugTimer CompilationTime = Debug.timer("CompilationTime");
     public static final DebugTimer CodeInstallationTime = Debug.timer("CodeInstallation");
 
+    public static final DebugMemUseTracker PartialEvaluationMemUse = Debug.memUseTracker("TrufflePartialEvaluationMemUse");
+    public static final DebugMemUseTracker CompilationMemUse = Debug.memUseTracker("TruffleCompilationMemUse");
+    public static final DebugMemUseTracker CodeInstallationMemUse = Debug.memUseTracker("TruffleCodeInstallationMemUse");
+
     public void compileMethodImpl(final OptimizedCallTarget compilable) {
         final StructuredGraph graph;
 
@@ -111,7 +116,7 @@ public class TruffleCompilerImpl {
 
         long timeCompilationStarted = System.nanoTime();
         Assumptions assumptions = new Assumptions(true);
-        try (TimerCloseable a = PartialEvaluationTime.start()) {
+        try (TimerCloseable a = PartialEvaluationTime.start(); Closeable c = PartialEvaluationMemUse.start()) {
             graph = partialEvaluator.createGraph(compilable, assumptions);
         }
 
@@ -156,7 +161,7 @@ public class TruffleCompilerImpl {
         }
 
         CompilationResult result = null;
-        try (TimerCloseable a = CompilationTime.start(); Scope s = Debug.scope("TruffleGraal.GraalCompiler", graph, providers.getCodeCache())) {
+        try (TimerCloseable a = CompilationTime.start(); Scope s = Debug.scope("TruffleGraal.GraalCompiler", graph, providers.getCodeCache()); Closeable c = CompilationMemUse.start()) {
             CodeCacheProvider codeCache = providers.getCodeCache();
             CallingConvention cc = getCallingConvention(codeCache, Type.JavaCallee, graph.method(), false);
             CompilationResult compilationResult = new CompilationResult(name);
@@ -183,7 +188,7 @@ public class TruffleCompilerImpl {
         result.setAssumptions(newAssumptions);
 
         InstalledCode installedCode;
-        try (Scope s = Debug.scope("CodeInstall", providers.getCodeCache()); TimerCloseable a = CodeInstallationTime.start()) {
+        try (Scope s = Debug.scope("CodeInstall", providers.getCodeCache()); TimerCloseable a = CodeInstallationTime.start(); Closeable c = CodeInstallationMemUse.start()) {
             installedCode = providers.getCodeCache().addMethod(graph.method(), result, speculationLog, predefinedInstalledCode);
         } catch (Throwable e) {
             throw Debug.handle(e);

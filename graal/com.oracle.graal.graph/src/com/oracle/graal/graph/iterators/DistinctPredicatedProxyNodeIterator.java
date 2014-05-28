@@ -50,7 +50,7 @@ public class DistinctPredicatedProxyNodeIterator<T extends Node> extends Predica
             return true;
         }
         if (visited == null) {
-            visited = n.graph().createNodeBitMap(true);
+            visited = n.graph().createNodeBitMap();
         }
         boolean accept = !visited.isMarked(n);
         visited.mark(n);

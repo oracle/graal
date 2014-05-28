@@ -23,15 +23,18 @@
 package com.oracle.graal.hotspot.test;
 
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
+
 import java.lang.ref.*;
 import java.lang.reflect.*;
 
 import com.oracle.graal.phases.common.inlining.policy.InlineEverythingPolicy;
+
 import org.junit.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.runtime.*;
+import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
@@ -160,7 +163,7 @@ public class WriteBarrierAdditionTest extends GraalCompilerTest {
     }
 
     public static Object test5Snippet() throws Exception {
-        return UnsafeLoadNode.load(wr, useCompressedOops() ? 12 : 16, Kind.Object, LocationIdentity.ANY_LOCATION);
+        return UnsafeAccess.unsafe.getObject(wr, useCompressedOops() ? 12L : 16L);
     }
 
     /**

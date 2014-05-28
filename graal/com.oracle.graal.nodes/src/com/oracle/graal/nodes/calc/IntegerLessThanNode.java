@@ -101,4 +101,9 @@ public final class IntegerLessThanNode extends CompareNode {
         }
         return this;
     }
+
+    @Override
+    protected CompareNode duplicateModified(ValueNode newX, ValueNode newY) {
+        return new IntegerLessThanNode(newX, newY);
+    }
 }

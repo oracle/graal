@@ -132,11 +132,11 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
     }
 
     @Override
-    public void inline(Providers providers, Assumptions assumptions) {
+    public Collection<Node> inline(Providers providers, Assumptions assumptions) {
         if (hasSingleMethod()) {
-            inlineSingleMethod(graph(), providers.getMetaAccess(), assumptions);
+            return inlineSingleMethod(graph(), providers.getMetaAccess(), assumptions);
         } else {
-            inlineMultipleMethods(graph(), providers, assumptions);
+            return inlineMultipleMethods(graph(), providers, assumptions);
         }
     }
 
@@ -157,7 +157,7 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
         return notRecordedTypeProbability > 0;
     }
 
-    private void inlineMultipleMethods(StructuredGraph graph, Providers providers, Assumptions assumptions) {
+    private Collection<Node> inlineMultipleMethods(StructuredGraph graph, Providers providers, Assumptions assumptions) {
         int numberOfMethods = concretes.size();
         FixedNode continuation = invoke.next();
 
@@ -222,6 +222,8 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
 
         ArrayList<GuardedValueNode> replacementNodes = new ArrayList<>();
 
+        Collection<Node> parameterUsages = new ArrayList<>();
+
         // do the actual inlining for every invoke
         for (int i = 0; i < numberOfMethods; i++) {
             BeginNode node = successors[i];
@@ -239,7 +241,7 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
             GuardedValueNode anchoredReceiver = InliningUtil.createAnchoredReceiver(graph, node, commonType, receiver, exact);
             invokeForInlining.callTarget().replaceFirstInput(receiver, anchoredReceiver);
 
-            inline(invokeForInlining, methodAt(i), inlineableElementAt(i), assumptions, false);
+            parameterUsages.addAll(inline(invokeForInlining, methodAt(i), inlineableElementAt(i), assumptions, false));
 
             replacementNodes.add(anchoredReceiver);
         }
@@ -272,6 +274,7 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
                 TailDuplicationPhase.tailDuplicate(returnMerge, TailDuplicationPhase.TRUE_DECISION, replacementNodes, phaseContext, canonicalizer);
             }
         }
+        return parameterUsages;
     }
 
     private int getTypeCount(int concreteMethodIndex) {
@@ -307,7 +310,7 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
         return result;
     }
 
-    private void inlineSingleMethod(StructuredGraph graph, MetaAccessProvider metaAccess, Assumptions assumptions) {
+    private Collection<Node> inlineSingleMethod(StructuredGraph graph, MetaAccessProvider metaAccess, Assumptions assumptions) {
         assert concretes.size() == 1 && inlineableElements.length == 1 && ptypes.size() > 1 && !shouldFallbackToInvoke() && notRecordedTypeProbability == 0;
 
         BeginNode calleeEntryNode = graph.add(new BeginNode());
@@ -318,7 +321,7 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
 
         calleeEntryNode.setNext(invoke.asNode());
 
-        inline(invoke, methodAt(0), inlineableElementAt(0), assumptions, false);
+        return inline(invoke, methodAt(0), inlineableElementAt(0), assumptions, false);
     }
 
     private boolean createDispatchOnTypeBeforeInvoke(StructuredGraph graph, BeginNode[] successors, boolean invokeIsOnlySuccessor, MetaAccessProvider metaAccess) {

@@ -22,13 +22,13 @@
  */
 package com.oracle.graal.phases.common.inlining.info;
 
+import java.util.*;
+
 import com.oracle.graal.api.code.Assumptions;
 import com.oracle.graal.api.meta.ResolvedJavaMethod;
-import com.oracle.graal.nodes.FixedWithNextNode;
-import com.oracle.graal.nodes.Invoke;
-import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.graph.*;
+import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.common.inlining.InliningUtil;
-
 import com.oracle.graal.phases.common.inlining.info.elem.Inlineable;
 import com.oracle.graal.phases.common.inlining.info.elem.InlineableMacroNode;
 import com.oracle.graal.phases.common.inlining.info.elem.InlineableGraph;
@@ -51,18 +51,33 @@ public abstract class AbstractInlineInfo implements InlineInfo {
         return invoke;
     }
 
-    protected static void inline(Invoke invoke, ResolvedJavaMethod concrete, Inlineable inlineable, Assumptions assumptions, boolean receiverNullCheck) {
+    protected static Collection<Node> inline(Invoke invoke, ResolvedJavaMethod concrete, Inlineable inlineable, Assumptions assumptions, boolean receiverNullCheck) {
+        Collection<Node> parameterUsages = new ArrayList<>();
         if (inlineable instanceof InlineableGraph) {
             StructuredGraph calleeGraph = ((InlineableGraph) inlineable).getGraph();
-            InliningUtil.inline(invoke, calleeGraph, receiverNullCheck);
+            Map<Node, Node> duplicateMap = InliningUtil.inline(invoke, calleeGraph, receiverNullCheck);
+            getInlinedParameterUsages(parameterUsages, calleeGraph, duplicateMap);
         } else {
             assert inlineable instanceof InlineableMacroNode;
 
             Class<? extends FixedWithNextNode> macroNodeClass = ((InlineableMacroNode) inlineable).getMacroNodeClass();
-            InliningUtil.inlineMacroNode(invoke, concrete, macroNodeClass);
+            FixedWithNextNode macroNode = InliningUtil.inlineMacroNode(invoke, concrete, macroNodeClass);
+            parameterUsages.add(macroNode);
         }
 
         InliningUtil.InlinedBytecodes.add(concrete.getCodeSize());
         assumptions.recordMethodContents(concrete);
+        return parameterUsages;
+    }
+
+    public static void getInlinedParameterUsages(Collection<Node> parameterUsages, StructuredGraph calleeGraph, Map<Node, Node> duplicateMap) {
+        for (ParameterNode parameter : calleeGraph.getNodes(ParameterNode.class)) {
+            for (Node usage : parameter.usages()) {
+                Node node = duplicateMap.get(usage);
+                if (node != null && node.isAlive()) {
+                    parameterUsages.add(node);
+                }
+            }
+        }
     }
 }
