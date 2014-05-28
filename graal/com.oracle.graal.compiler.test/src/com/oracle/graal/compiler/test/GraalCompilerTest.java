@@ -53,6 +53,7 @@ import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.virtual.*;
 import com.oracle.graal.phases.*;
+import com.oracle.graal.phases.common.inlining.*;
 import com.oracle.graal.phases.schedule.*;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.phases.util.*;
@@ -94,10 +95,22 @@ public abstract class GraalCompilerTest extends GraalTest {
         }
     }
 
+    protected Suites createSuites() {
+        Suites ret = backend.getSuites().createSuites();
+        ret.getHighTier().findPhase(InliningPhase.class).add(new Phase("ComputeLoopFrequenciesPhase") {
+
+            @Override
+            protected void run(StructuredGraph graph) {
+                ComputeLoopFrequenciesClosure.compute(graph);
+            }
+        });
+        return ret;
+    }
+
     public GraalCompilerTest() {
         this.backend = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend();
         this.providers = getBackend().getProviders();
-        this.suites = backend.getSuites().createSuites();
+        this.suites = createSuites();
         installSubstitutions();
     }
 
@@ -117,7 +130,7 @@ public abstract class GraalCompilerTest extends GraalTest {
             this.backend = runtime.getHostBackend();
         }
         this.providers = backend.getProviders();
-        this.suites = backend.getSuites().createSuites();
+        this.suites = createSuites();
         installSubstitutions();
     }
 
