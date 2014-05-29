@@ -1860,7 +1860,7 @@ public class AMD64Assembler extends Assembler {
     }
 
     public final void testl(AMD64Address dst, int imm32) {
-        prefixq(dst);
+        prefix(dst);
         emitByte(0xF7);
         emitOperandHelper(0, dst);
         emitInt(imm32);
