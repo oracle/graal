@@ -116,7 +116,7 @@ public final class SourceFactory {
      * Creates a non-canonical source from literal text.
      *
      * @param code textual source code
-     * @param description a note about the origin, possibly useful for debugging
+     * @param description a note about the origin, for error messages and debugging
      * @return a newly created, non-indexed source representation
      */
     public static Source fromText(String code, String description) {
