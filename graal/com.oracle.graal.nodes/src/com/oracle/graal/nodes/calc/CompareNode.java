@@ -26,8 +26,6 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.meta.ProfilingInfo.TriState;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.calc.*;
-import com.oracle.graal.debug.*;
-import com.oracle.graal.debug.internal.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
@@ -63,17 +61,6 @@ public abstract class CompareNode extends BinaryOpLogicNode {
      * @return {@code true} if unordered inputs produce true
      */
     public abstract boolean unorderedIsTrue();
-
-    protected static final DebugHistogram histogram = Debug.createHistogram("histo");
-
-    static {
-        Runtime.getRuntime().addShutdownHook(new Thread() {
-            @Override
-            public void run() {
-                new DebugHistogramAsciiPrinter(System.out).print(histogram);
-            }
-        });
-    }
 
     private LogicNode optimizeConditional(Constant constant, ConditionalNode conditionalNode, ConstantReflectionProvider constantReflection, Condition cond) {
         Constant trueConstant = conditionalNode.trueValue().asConstant();
