@@ -190,7 +190,7 @@ public abstract class GraalKernelTester extends KernelTester {
     @Override
     public void testGeneratedHsail() {
         try (OverrideScope s = getOverrideScope()) {
-            assumeTrue(supportsRequiredCapabilities());
+            assumeTrue(supportsRequiredCapabilities() && okraEnvIsInitialized());
             super.testGeneratedHsail();
         }
     }
@@ -198,7 +198,7 @@ public abstract class GraalKernelTester extends KernelTester {
     @Override
     public void testGeneratedHsailUsingLambdaMethod() {
         try (OverrideScope s = getOverrideScope()) {
-            assumeTrue(supportsRequiredCapabilities());
+            assumeTrue(supportsRequiredCapabilities() && okraEnvIsInitialized());
             super.testGeneratedHsailUsingLambdaMethod();
         }
     }
