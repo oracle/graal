@@ -42,17 +42,17 @@ public class UnsafeSubstitutions {
 
     @MethodSubstitution(isStatic = false)
     public static boolean compareAndSwapObject(@SuppressWarnings("unused") final Object thisObj, Object o, long offset, Object expected, Object x) {
-        return CompareAndSwapNode.compareAndSwap(o, 0, offset, expected, x, Kind.Object, LocationIdentity.ANY_LOCATION);
+        return CompareAndSwapNode.compareAndSwap(o, offset, expected, x, Kind.Object, LocationIdentity.ANY_LOCATION);
     }
 
     @MethodSubstitution(isStatic = false)
     public static boolean compareAndSwapInt(@SuppressWarnings("unused") final Object thisObj, Object o, long offset, int expected, int x) {
-        return CompareAndSwapNode.compareAndSwap(o, 0, offset, expected, x, Kind.Int, LocationIdentity.ANY_LOCATION);
+        return CompareAndSwapNode.compareAndSwap(o, offset, expected, x, Kind.Int, LocationIdentity.ANY_LOCATION);
     }
 
     @MethodSubstitution(isStatic = false)
     public static boolean compareAndSwapLong(@SuppressWarnings("unused") final Object thisObj, Object o, long offset, long expected, long x) {
-        return CompareAndSwapNode.compareAndSwap(o, 0, offset, expected, x, Kind.Long, LocationIdentity.ANY_LOCATION);
+        return CompareAndSwapNode.compareAndSwap(o, offset, expected, x, Kind.Long, LocationIdentity.ANY_LOCATION);
     }
 
     @MethodSubstitution(isStatic = false)

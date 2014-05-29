@@ -230,7 +230,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
     protected void lowerCompareAndSwapNode(CompareAndSwapNode cas) {
         StructuredGraph graph = cas.graph();
         Kind valueKind = cas.getValueKind();
-        LocationNode location = IndexedLocationNode.create(cas.getLocationIdentity(), valueKind, cas.displacement(), cas.offset(), graph, 1);
+        LocationNode location = createLocation(cas.offset(), cas.getLocationIdentity(), valueKind);
 
         ValueNode expectedValue = implicitStoreConvert(graph, valueKind, cas.expected());
         ValueNode newValue = implicitStoreConvert(graph, valueKind, cas.newValue());
