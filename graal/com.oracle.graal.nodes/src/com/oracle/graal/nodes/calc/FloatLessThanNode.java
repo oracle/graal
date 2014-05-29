@@ -24,6 +24,7 @@ package com.oracle.graal.nodes.calc;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.meta.ProfilingInfo.TriState;
+import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
@@ -70,6 +71,11 @@ public final class FloatLessThanNode extends CompareNode {
 
     @Override
     protected CompareNode duplicateModified(ValueNode newX, ValueNode newY) {
-        return new FloatLessThanNode(newX, newY, unorderedIsTrue);
+        if (newX.stamp() instanceof FloatStamp && newY.stamp() instanceof FloatStamp) {
+            return new FloatLessThanNode(newX, newY, unorderedIsTrue);
+        } else if (newX.stamp() instanceof IntegerStamp && newY.stamp() instanceof IntegerStamp) {
+            return new IntegerLessThanNode(newX, newY);
+        }
+        throw GraalInternalError.shouldNotReachHere();
     }
 }

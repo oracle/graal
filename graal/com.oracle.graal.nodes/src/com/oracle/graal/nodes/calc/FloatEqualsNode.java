@@ -24,6 +24,7 @@ package com.oracle.graal.nodes.calc;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.meta.ProfilingInfo.*;
+import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
@@ -71,6 +72,11 @@ public final class FloatEqualsNode extends CompareNode {
 
     @Override
     protected CompareNode duplicateModified(ValueNode newX, ValueNode newY) {
-        return new FloatEqualsNode(newX, newY);
+        if (newX.stamp() instanceof FloatStamp && newY.stamp() instanceof FloatStamp) {
+            return new FloatEqualsNode(newX, newY);
+        } else if (newX.stamp() instanceof IntegerStamp && newY.stamp() instanceof IntegerStamp) {
+            return new IntegerEqualsNode(newX, newY);
+        }
+        throw GraalInternalError.shouldNotReachHere();
     }
 }

@@ -42,8 +42,8 @@ public final class IntegerBelowThanNode extends CompareNode {
      */
     public IntegerBelowThanNode(ValueNode x, ValueNode y) {
         super(x, y);
-        assert !x.getKind().isNumericFloat() && x.getKind() != Kind.Object;
-        assert !y.getKind().isNumericFloat() && y.getKind() != Kind.Object;
+        assert x.stamp() instanceof IntegerStamp;
+        assert y.stamp() instanceof IntegerStamp;
     }
 
     @Override
