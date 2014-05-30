@@ -37,6 +37,7 @@ import com.oracle.graal.lir.StandardOp.ImplicitNullCheck;
 import com.oracle.graal.lir.StandardOp.MoveOp;
 import com.oracle.graal.lir.StandardOp.NullCheck;
 import com.oracle.graal.lir.asm.*;
+import com.oracle.graal.sparc.*;
 
 public class SPARCMove {
 
@@ -207,7 +208,13 @@ public class SPARCMove {
             SPARCAddress addr = (SPARCAddress) crb.recordDataReferenceInCode(rawData);
             assert addr == masm.getPlaceholder();
             final boolean forceRelocatable = true;
-            new Setx(0, asRegister(result), forceRelocatable).emit(masm);
+            Register dstReg = asRegister(result);
+            new Setx(0, dstReg, forceRelocatable).emit(masm);
+            // TODO: Fix this issue with the pc relative addressing (This is just my first guess how
+            // to do this)
+            new SPARCAssembler.Sub(dstReg, 10 * 4, dstReg).emit(masm);
+            new SPARCAssembler.Rdpc(SPARC.g5).emit(masm);
+            new SPARCAssembler.Add(SPARC.g5, dstReg, dstReg).emit(masm);
         }
     }
 

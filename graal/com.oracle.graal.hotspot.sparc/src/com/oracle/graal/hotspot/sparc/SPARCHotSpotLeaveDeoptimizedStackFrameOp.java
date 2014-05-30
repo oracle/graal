@@ -28,12 +28,13 @@ import static com.oracle.graal.sparc.SPARC.*;
 import com.oracle.graal.asm.sparc.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
+import com.oracle.graal.lir.sparc.*;
 
 /**
  * Pops the current frame off the stack including the return address.
  */
 @Opcode("LEAVE_DEOPTIMIZED_STACK_FRAME")
-final class SPARCHotSpotLeaveDeoptimizedStackFrameOp extends SPARCHotSpotEpilogueOp {
+final class SPARCHotSpotLeaveDeoptimizedStackFrameOp extends SPARCLIRInstruction {
 
     @Override
     public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
