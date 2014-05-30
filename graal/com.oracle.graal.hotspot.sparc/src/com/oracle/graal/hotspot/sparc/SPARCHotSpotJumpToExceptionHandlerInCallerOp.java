@@ -61,6 +61,10 @@ final class SPARCHotSpotJumpToExceptionHandlerInCallerOp extends SPARCHotSpotEpi
 
     @Override
     public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
+        // Move the values up one level to be the input for the next call.
+        new SPARCMacroAssembler.Mov(asRegister(handlerInCallerPc), i2).emit(masm);
+        new SPARCMacroAssembler.Mov(asRegister(exception), i0).emit(masm);
+        new SPARCMacroAssembler.Mov(asRegister(exceptionPc), i1).emit(masm);
         leaveFrame(crb);
 
         // Restore SP from L7 if the exception PC is a method handle call site.

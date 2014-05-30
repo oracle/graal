@@ -282,7 +282,7 @@ public class SPARCControlFlow {
             this.condition = intCond(condition);
             this.trueValue = trueValue;
             this.falseValue = falseValue;
-            this.cCode = CC.Icc;
+            this.cCode = cCode;
         }
 
         @Override
