@@ -73,27 +73,9 @@ public class InlineableGraph implements Inlineable {
 
         try (Debug.Scope s = Debug.scope("InlineGraph", newGraph)) {
 
-            boolean callerHasMoreInformationAboutArguments = false;
-            NodeInputList<ValueNode> args = invoke.callTarget().arguments();
-            ArrayList<Node> parameterUsages = new ArrayList<>();
-            for (ParameterNode param : newGraph.getNodes(ParameterNode.class).snapshot()) {
-                ValueNode arg = args.get(param.index());
-                if (arg.isConstant()) {
-                    Constant constant = arg.asConstant();
-                    newGraph.replaceFloating(param, ConstantNode.forConstant(constant, context.getMetaAccess(), newGraph));
-                    callerHasMoreInformationAboutArguments = true;
-                    param.usages().snapshotTo(parameterUsages);
-                } else {
-                    Stamp joinedStamp = param.stamp().join(arg.stamp());
-                    if (joinedStamp != null && !joinedStamp.equals(param.stamp())) {
-                        param.setStamp(joinedStamp);
-                        callerHasMoreInformationAboutArguments = true;
-                        param.usages().snapshotTo(parameterUsages);
-                    }
-                }
-            }
-
-            if (callerHasMoreInformationAboutArguments) {
+            if (existProfitableParamArgReplacements(invoke, newGraph)) {
+                ArrayList<Node> parameterUsages = replaceParamsWithMoreInformativeArguments(invoke, newGraph, context);
+                assert !parameterUsages.isEmpty() : "The caller didn't have more information about arguments after all";
                 if (OptCanonicalizer.getValue()) {
                     canonicalizer.applyIncremental(newGraph, context, parameterUsages);
                 }
@@ -107,6 +89,60 @@ public class InlineableGraph implements Inlineable {
         } catch (Throwable e) {
             throw Debug.handle(e);
         }
+    }
+
+    private static boolean existProfitableParamArgReplacements(final Invoke invoke, final StructuredGraph newGraph) {
+        NodeInputList<ValueNode> args = invoke.callTarget().arguments();
+        for (ParameterNode param : newGraph.getNodes(ParameterNode.class)) {
+            if (param.usages().isNotEmpty()) {
+                ValueNode arg = args.get(param.index());
+                if (isArgMoreInformativeThanParam(arg, param)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private static boolean isArgMoreInformativeThanParam(ValueNode arg, ParameterNode param) {
+        if (arg.isConstant()) {
+            return true;
+        } else {
+            Stamp joinedStamp = param.stamp().join(arg.stamp());
+            if (joinedStamp != null && !joinedStamp.equals(param.stamp())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * This method must adopt the same definition of "more informative argument" as used in
+     * {@link #existProfitableParamArgReplacements(Invoke, StructuredGraph)}
+     */
+    private static ArrayList<Node> replaceParamsWithMoreInformativeArguments(final Invoke invoke, final StructuredGraph newGraph, final HighTierContext context) {
+        NodeInputList<ValueNode> args = invoke.callTarget().arguments();
+        ArrayList<Node> parameterUsages = new ArrayList<>();
+        for (ParameterNode param : newGraph.getNodes(ParameterNode.class).snapshot()) {
+            if (param.usages().isNotEmpty()) {
+                ValueNode arg = args.get(param.index());
+                if (arg.isConstant()) {
+                    Constant constant = arg.asConstant();
+                    param.usages().snapshotTo(parameterUsages);
+                    // collect param usages before replacing the param
+                    newGraph.replaceFloating(param, ConstantNode.forConstant(constant, context.getMetaAccess(), newGraph));
+                } else {
+                    Stamp joinedStamp = param.stamp().join(arg.stamp());
+                    if (joinedStamp != null && !joinedStamp.equals(param.stamp())) {
+                        param.setStamp(joinedStamp);
+                        param.usages().snapshotTo(parameterUsages);
+                    } else {
+                        assert !isArgMoreInformativeThanParam(arg, param);
+                    }
+                }
+            }
+        }
+        return parameterUsages;
     }
 
     private static StructuredGraph getCachedGraph(ResolvedJavaMethod method, HighTierContext context) {
