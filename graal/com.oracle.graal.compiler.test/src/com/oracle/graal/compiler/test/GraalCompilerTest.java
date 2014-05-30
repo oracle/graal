@@ -24,10 +24,9 @@ package com.oracle.graal.compiler.test;
 
 import static com.oracle.graal.api.code.CodeUtil.*;
 import static com.oracle.graal.compiler.GraalCompiler.*;
+import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.nodes.ConstantNode.*;
-import static com.oracle.graal.phases.GraalOptions.*;
 
-import java.io.*;
 import java.lang.reflect.*;
 import java.util.*;
 import java.util.concurrent.atomic.*;
@@ -54,6 +53,7 @@ import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.virtual.*;
 import com.oracle.graal.phases.*;
+import com.oracle.graal.phases.common.inlining.*;
 import com.oracle.graal.phases.schedule.*;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.phases.util.*;
@@ -86,19 +86,79 @@ public abstract class GraalCompilerTest extends GraalTest {
     private final Backend backend;
     private final Suites suites;
 
+    /**
+     * Can be overridden by unit tests to verify properties of the graph.
+     *
+     * @param graph the graph at the end of HighTier
+     */
+    protected boolean checkHighTierGraph(StructuredGraph graph) {
+        return true;
+    }
+
+    /**
+     * Can be overridden by unit tests to verify properties of the graph.
+     *
+     * @param graph the graph at the end of MidTier
+     */
+    protected boolean checkMidTierGraph(StructuredGraph graph) {
+        return true;
+    }
+
+    /**
+     * Can be overridden by unit tests to verify properties of the graph.
+     *
+     * @param graph the graph at the end of LowTier
+     */
+    protected boolean checkLowTierGraph(StructuredGraph graph) {
+        return true;
+    }
+
     private static boolean substitutionsInstalled;
 
     private void installSubstitutions() {
         if (!substitutionsInstalled) {
-            this.providers.getReplacements().registerSubstitutions(InjectProfileDataSubstitutions.class);
+            this.providers.getReplacements().registerSubstitutions(GraalCompilerTest.class, InjectProfileDataSubstitutions.class);
             substitutionsInstalled = true;
         }
+    }
+
+    protected Suites createSuites() {
+        Suites ret = backend.getSuites().createSuites();
+        ret.getHighTier().findPhase(InliningPhase.class).add(new Phase("ComputeLoopFrequenciesPhase") {
+
+            @Override
+            protected void run(StructuredGraph graph) {
+                ComputeLoopFrequenciesClosure.compute(graph);
+            }
+        });
+        ret.getHighTier().appendPhase(new Phase("CheckGraphPhase") {
+
+            @Override
+            protected void run(StructuredGraph graph) {
+                assert checkHighTierGraph(graph);
+            }
+        });
+        ret.getMidTier().appendPhase(new Phase("CheckGraphPhase") {
+
+            @Override
+            protected void run(StructuredGraph graph) {
+                assert checkMidTierGraph(graph);
+            }
+        });
+        ret.getLowTier().appendPhase(new Phase("CheckGraphPhase") {
+
+            @Override
+            protected void run(StructuredGraph graph) {
+                assert checkLowTierGraph(graph);
+            }
+        });
+        return ret;
     }
 
     public GraalCompilerTest() {
         this.backend = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend();
         this.providers = getBackend().getProviders();
-        this.suites = backend.getSuites().createSuites();
+        this.suites = createSuites();
         installSubstitutions();
     }
 
@@ -118,7 +178,7 @@ public abstract class GraalCompilerTest extends GraalTest {
             this.backend = runtime.getHostBackend();
         }
         this.providers = backend.getProviders();
-        this.suites = backend.getSuites().createSuites();
+        this.suites = createSuites();
         installSubstitutions();
     }
 
@@ -276,76 +336,6 @@ public abstract class GraalCompilerTest extends GraalTest {
     }
 
     private static AtomicInteger compilationId = new AtomicInteger();
-
-    /**
-     * Compares two given objects for {@linkplain Assert#assertEquals(Object, Object) equality}.
-     * Does a deep copy equality comparison if {@code expected} is an array.
-     */
-    protected void assertEquals(Object expected, Object actual) {
-        if (expected != null && expected.getClass().isArray()) {
-            Assert.assertTrue(expected != null);
-            Assert.assertTrue(actual != null);
-            Assert.assertEquals(expected.getClass(), actual.getClass());
-            if (expected instanceof int[]) {
-                Assert.assertArrayEquals((int[]) expected, (int[]) actual);
-            } else if (expected instanceof byte[]) {
-                Assert.assertArrayEquals((byte[]) expected, (byte[]) actual);
-            } else if (expected instanceof char[]) {
-                Assert.assertArrayEquals((char[]) expected, (char[]) actual);
-            } else if (expected instanceof short[]) {
-                Assert.assertArrayEquals((short[]) expected, (short[]) actual);
-            } else if (expected instanceof float[]) {
-                Assert.assertArrayEquals((float[]) expected, (float[]) actual, 0.0f);
-            } else if (expected instanceof long[]) {
-                Assert.assertArrayEquals((long[]) expected, (long[]) actual);
-            } else if (expected instanceof double[]) {
-                Assert.assertArrayEquals((double[]) expected, (double[]) actual, 0.0d);
-            } else if (expected instanceof boolean[]) {
-                new ExactComparisonCriteria().arrayEquals(null, expected, actual);
-            } else if (expected instanceof Object[]) {
-                Assert.assertArrayEquals((Object[]) expected, (Object[]) actual);
-            } else {
-                Assert.fail("non-array value encountered: " + expected);
-            }
-        } else {
-            Assert.assertEquals(expected, actual);
-        }
-    }
-
-    @SuppressWarnings("serial")
-    public static class MultiCauseAssertionError extends AssertionError {
-
-        private Throwable[] causes;
-
-        public MultiCauseAssertionError(String message, Throwable... causes) {
-            super(message);
-            this.causes = causes;
-        }
-
-        @Override
-        public void printStackTrace(PrintStream out) {
-            super.printStackTrace(out);
-            int num = 0;
-            for (Throwable cause : causes) {
-                if (cause != null) {
-                    out.print("cause " + (num++));
-                    cause.printStackTrace(out);
-                }
-            }
-        }
-
-        @Override
-        public void printStackTrace(PrintWriter out) {
-            super.printStackTrace(out);
-            int num = 0;
-            for (Throwable cause : causes) {
-                if (cause != null) {
-                    out.print("cause " + (num++) + ": ");
-                    cause.printStackTrace(out);
-                }
-            }
-        }
-    }
 
     protected void testN(int n, final String name, final Object... args) {
         final List<Throwable> errors = new ArrayList<>(n);
@@ -599,7 +589,7 @@ public abstract class GraalCompilerTest extends GraalTest {
                 actual.exception.printStackTrace();
                 Assert.fail("expected " + expect.returnValue + " but got an exception");
             }
-            assertEquals(expect.returnValue, actual.returnValue);
+            assertDeepEquals(expect.returnValue, actual.returnValue);
         }
     }
 

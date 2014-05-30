@@ -38,7 +38,6 @@ import com.oracle.graal.asm.*;
 import com.oracle.graal.asm.ptx.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.cfg.*;
-import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.gpu.*;
@@ -50,10 +49,12 @@ import com.oracle.graal.lir.LIRInstruction.OperandMode;
 import com.oracle.graal.lir.LIRInstruction.ValueProcedure;
 import com.oracle.graal.lir.StandardOp.LabelOp;
 import com.oracle.graal.lir.asm.*;
+import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.ptx.*;
 import com.oracle.graal.lir.ptx.PTXControlFlow.PTXPredicatedLIRInstruction;
 import com.oracle.graal.lir.ptx.PTXMemOp.LoadReturnAddrOp;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.tiers.*;
@@ -345,7 +346,7 @@ public class PTXHotSpotBackend extends HotSpotBackend {
     }
 
     @Override
-    public LIRGenerationResult newLIRGenerationResult(LIR lir, FrameMap frameMap, Object stub) {
+    public LIRGenerationResult newLIRGenerationResult(LIR lir, FrameMap frameMap, ResolvedJavaMethod method, Object stub) {
         return new LIRGenerationResultBase(lir, frameMap);
     }
 
@@ -355,12 +356,12 @@ public class PTXHotSpotBackend extends HotSpotBackend {
     }
 
     @Override
-    public LIRGenerator newLIRGenerator(CallingConvention cc, LIRGenerationResult lirGenRes) {
+    public LIRGeneratorTool newLIRGenerator(CallingConvention cc, LIRGenerationResult lirGenRes) {
         return new PTXHotSpotLIRGenerator(getProviders(), getRuntime().getConfig(), cc, lirGenRes);
     }
 
     @Override
-    public NodeLIRBuilder newNodeLIRGenerator(StructuredGraph graph, LIRGenerator lirGen) {
+    public NodeLIRBuilderTool newNodeLIRBuilder(StructuredGraph graph, LIRGeneratorTool lirGen) {
         return new PTXHotSpotNodeLIRBuilder(graph, lirGen);
     }
 

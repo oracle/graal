@@ -22,13 +22,13 @@
  */
 package com.oracle.graal.hotspot.replacements;
 
+import static com.oracle.graal.hotspot.HotSpotBackend.*;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 import sun.misc.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.compiler.common.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.hotspot.nodes.*;
@@ -108,9 +108,6 @@ public class CipherBlockChainingSubstitutions {
             decryptAESCryptStub(DECRYPT, inAddr, outAddr, kAddr, rAddr, inLength);
         }
     }
-
-    public static final ForeignCallDescriptor ENCRYPT = new ForeignCallDescriptor("encrypt", void.class, Word.class, Word.class, Word.class, Word.class, int.class);
-    public static final ForeignCallDescriptor DECRYPT = new ForeignCallDescriptor("decrypt", void.class, Word.class, Word.class, Word.class, Word.class, int.class);
 
     @NodeIntrinsic(ForeignCallNode.class)
     public static native void encryptAESCryptStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word in, Word out, Word key, Word r, int inLength);

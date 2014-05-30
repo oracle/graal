@@ -23,66 +23,23 @@
 
 package com.oracle.graal.compiler.hsail.test.lambda;
 
-import static com.oracle.graal.debug.Debug.*;
-
-import com.oracle.graal.compiler.hsail.test.infra.GraalKernelTester;
-import com.oracle.graal.debug.*;
-
 import org.junit.Test;
 
 /**
- * Tests a true virtual method call.
+ * Tests a true virtual method call with 2 targets.
  */
-public class VirtualCallTest extends GraalKernelTester {
-
-    static final int NUM = 20;
-
-    static abstract class Shape {
-
-        abstract public float getArea();
-    }
-
-    static class Circle extends Shape {
-
-        private float radius;
-
-        Circle(float r) {
-            radius = r;
-        }
-
-        @Override
-        public float getArea() {
-            return (float) (Math.PI * radius * radius);
-        }
-    }
-
-    static class Square extends Shape {
-
-        private float len;
-
-        Square(float _len) {
-            len = _len;
-        }
-
-        @Override
-        public float getArea() {
-            return len * len;
-        }
-    }
-
-    @Result public float[] outArray = new float[NUM];
-    public Shape[] inShapeArray = new Shape[NUM];
+public class VirtualCallTest extends VirtualCallBase {
 
     void setupArrays() {
         for (int i = 0; i < NUM; i++) {
-            if (i % 2 == 0)
-                inShapeArray[i] = new Circle(i + 1);
-            else
-                inShapeArray[i] = new Square(i + 1);
             outArray[i] = -i;
+            int kind = i % 3 == 0 ? 0 : 1;
+            inShapeArray[i] = createShape(kind, i + 1);
         }
     }
 
+    // although runTest is the same in each class derived from VirtualCallBase
+    // we duplicate the logic in each derived test so as to have different lambda call sites
     @Override
     public void runTest() {
         setupArrays();
@@ -93,19 +50,19 @@ public class VirtualCallTest extends GraalKernelTester {
         });
     }
 
-    // graal says not inlining getArea():float (0 bytes): no type profile exists
-    @Test(expected = com.oracle.graal.compiler.common.GraalInternalError.class)
-    public void test() {
-        try (DebugConfigScope s = disableIntercept()) {
-            testGeneratedHsail();
-        }
+    @Override
+    protected boolean supportsRequiredCapabilities() {
+        return typeProfileWidthAtLeast(2);
     }
 
-    @Test(expected = com.oracle.graal.compiler.common.GraalInternalError.class)
+    @Test
+    public void test() {
+        testGeneratedHsail();
+    }
+
+    @Test
     public void testUsingLambdaMethod() {
-        try (DebugConfigScope s = disableIntercept()) {
-            testGeneratedHsailUsingLambdaMethod();
-        }
+        testGeneratedHsailUsingLambdaMethod();
     }
 
 }

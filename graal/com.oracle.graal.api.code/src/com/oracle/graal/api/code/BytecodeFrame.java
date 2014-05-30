@@ -94,6 +94,43 @@ public class BytecodeFrame extends BytecodePosition implements Serializable {
     public final boolean duringCall;
 
     /**
+     * This BCI should be used for frame states that are built for code with no meaningful BCI.
+     */
+    public static final int UNKNOWN_BCI = -5;
+
+    /**
+     * The BCI for exception unwind. This is synthetic code and has no representation in bytecode.
+     * In contrast with {@link #AFTER_EXCEPTION_BCI}, at this point, if the method is synchronized,
+     * the monitor is still held.
+     */
+    public static final int UNWIND_BCI = -1;
+
+    /**
+     * The BCI for the state before starting to execute a method. Note that if the method is
+     * synchronized, the monitor is not yet held.
+     */
+    public static final int BEFORE_BCI = -2;
+
+    /**
+     * The BCI for the state after finishing the execution of a method and returning normally. Note
+     * that if the method was synchronized the monitor is already released.
+     */
+    public static final int AFTER_BCI = -3;
+
+    /**
+     * The BCI for exception unwind. This is synthetic code and has no representation in bytecode.
+     * In contrast with {@link #UNWIND_BCI}, at this point, if the method is synchronized, the
+     * monitor is already released.
+     */
+    public static final int AFTER_EXCEPTION_BCI = -4;
+
+    /**
+     * This BCI should be used for states that cannot be the target of a deoptimization, like
+     * snippet frame states.
+     */
+    public static final int INVALID_FRAMESTATE_BCI = -6;
+
+    /**
      * Creates a new frame object.
      *
      * @param caller the caller frame (which may be {@code null})

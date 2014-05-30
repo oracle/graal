@@ -24,6 +24,8 @@ package com.oracle.graal.compiler.test;
 
 import java.io.*;
 
+import com.oracle.graal.phases.common.cfs.FlowSensitiveReductionPhase;
+
 import org.junit.*;
 
 import com.oracle.graal.api.code.*;
@@ -180,11 +182,29 @@ public class TypeSystemTest extends GraalCompilerTest {
         return ((InputStream) o).available();
     }
 
+    @Test
+    public void test7() {
+        test("test7Snippet", "referenceSnippet7");
+    }
+
+    public static int test7Snippet(int x) {
+        return ((x & 0xff) << 10) == ((x & 0x1f) + 1) ? 0 : x;
+    }
+
+    public static int referenceSnippet7(int x) {
+        return x;
+    }
+
     private void test(String snippet, String referenceSnippet) {
         StructuredGraph graph = parse(snippet);
         Debug.dump(graph, "Graph");
         Assumptions assumptions = new Assumptions(false);
-        new ConditionalEliminationPhase(getMetaAccess()).apply(graph);
+        /*
+         * When using FlowSensitiveReductionPhase instead of ConditionalEliminationPhase,
+         * tail-duplication gets activated thus resulting in a graph with more nodes than the
+         * reference graph.
+         */
+        new ConditionalEliminationPhase(getMetaAccess()).apply(graph, new PhaseContext(getProviders(), assumptions));
         new CanonicalizerPhase(true).apply(graph, new PhaseContext(getProviders(), assumptions));
         // a second canonicalizer is needed to process nested MaterializeNodes
         new CanonicalizerPhase(true).apply(graph, new PhaseContext(getProviders(), assumptions));
@@ -239,7 +259,7 @@ public class TypeSystemTest extends GraalCompilerTest {
         StructuredGraph graph = parse(snippet);
         Assumptions assumptions = new Assumptions(false);
         new CanonicalizerPhase(true).apply(graph, new PhaseContext(getProviders(), assumptions));
-        new ConditionalEliminationPhase(getMetaAccess()).apply(graph);
+        new FlowSensitiveReductionPhase(getMetaAccess()).apply(graph, new PhaseContext(getProviders(), assumptions));
         new CanonicalizerPhase(true).apply(graph, new PhaseContext(getProviders(), assumptions));
         Debug.dump(graph, "Graph " + snippet);
         Assert.assertFalse("shouldn't have nodes of type " + clazz, graph.getNodes().filter(clazz).iterator().hasNext());

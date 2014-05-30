@@ -38,6 +38,11 @@ public class IntegerRemNode extends FixedBinaryNode implements Canonicalizable, 
     }
 
     @Override
+    public boolean inferStamp() {
+        return updateStamp(StampTool.rem(x().stamp(), y().stamp()));
+    }
+
+    @Override
     public Node canonical(CanonicalizerTool tool) {
         if (x().isConstant() && y().isConstant()) {
             long y = y().asConstant().asLong();
@@ -63,7 +68,7 @@ public class IntegerRemNode extends FixedBinaryNode implements Canonicalizable, 
 
     @Override
     public void generate(NodeLIRBuilderTool gen) {
-        gen.setResult(this, gen.getLIRGeneratorTool().emitRem(gen.operand(x()), gen.operand(y()), this));
+        gen.setResult(this, gen.getLIRGeneratorTool().emitRem(gen.operand(x()), gen.operand(y()), gen.state(this)));
     }
 
     @Override

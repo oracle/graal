@@ -35,7 +35,7 @@ public final class Thread_yield01 extends JTTTest {
         return true;
     }
 
-    @Test
+    @Test(timeout = 20000)
     public void run0() throws Throwable {
         runTest("test");
     }

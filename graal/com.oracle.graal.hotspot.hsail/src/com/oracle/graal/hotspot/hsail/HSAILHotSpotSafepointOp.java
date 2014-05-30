@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.hotspot.hsail;
 
-import static com.oracle.graal.api.code.ValueUtil.*;
-
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.hsail.*;
@@ -42,64 +40,55 @@ public class HSAILHotSpotSafepointOp extends HSAILLIRInstruction implements HSAI
     private Constant actionAndReason;
     @State protected LIRFrameState frameState;
     protected int codeBufferPos = -1;
-    protected int dregOopMap = 0;
     final int offsetToNoticeSafepoints;
+    final HotSpotVMConfig config;
 
     public HSAILHotSpotSafepointOp(LIRFrameState state, HotSpotVMConfig config, NodeLIRBuilderTool tool) {
         actionAndReason = tool.getLIRGeneratorTool().getMetaAccess().encodeDeoptActionAndReason(DeoptimizationAction.None, DeoptimizationReason.None, 0);
         frameState = state;
         offsetToNoticeSafepoints = config.hsailNoticeSafepointsOffset;
+        this.config = config;
     }
 
     @Override
     public void emitCode(CompilationResultBuilder crb, HSAILAssembler masm) {
+        if (config.useHSAILDeoptimization) {
+            // get a unique codeBuffer position
+            // when we save our state, we will save this as well (it can be used as a key to get the
+            // debugInfo)
+            codeBufferPos = masm.position();
 
-        // get a unique codeBuffer position
-        // when we save our state, we will save this as well (it can be used as a key to get the
-        // debugInfo)
-        codeBufferPos = masm.position();
+            masm.emitComment(" /* HSAIL safepoint bci=" + frameState.debugInfo().getBytecodePosition().getBCI() + ", frameState=" + frameState + " */");
+            String afterSafepointLabel = "@LAfterSafepoint_at_pos_" + codeBufferPos;
 
-        masm.emitComment(" /* HSAIL safepoint bci=" + frameState.debugInfo().getBytecodePosition().getBCI() + ", frameState=" + frameState + " */");
-        String afterSafepointLabel = "@LAfterSafepoint_at_pos_" + codeBufferPos;
+            AllocatableValue scratch64 = HSAIL.d16.asValue(Kind.Object);
+            AllocatableValue spAddrReg = HSAIL.d17.asValue(Kind.Object);
+            AllocatableValue scratch32 = HSAIL.s34.asValue(Kind.Int);
+            masm.emitLoadKernelArg(scratch64, masm.getDeoptInfoName(), "u64");
 
-        AllocatableValue scratch64 = HSAIL.d16.asValue(Kind.Object);
-        AllocatableValue spAddrReg = HSAIL.d17.asValue(Kind.Object);
-        AllocatableValue scratch32 = HSAIL.s34.asValue(Kind.Int);
-        masm.emitLoadKernelArg(scratch64, masm.getDeoptInfoName(), "u64");
+            // Build address of noticeSafepoints field
+            HSAILAddress noticeSafepointsAddr = new HSAILAddressValue(Kind.Object, scratch64, offsetToNoticeSafepoints).toAddress();
+            masm.emitLoad(Kind.Object, spAddrReg, noticeSafepointsAddr);
 
-        // Build address of noticeSafepoints field
-        HSAILAddress noticeSafepointsAddr = new HSAILAddressValue(Kind.Object, scratch64, offsetToNoticeSafepoints).toAddress();
-        masm.emitLoad(Kind.Object, spAddrReg, noticeSafepointsAddr);
+            // Load int value from that field
+            HSAILAddress noticeSafepointsIntAddr = new HSAILAddressValue(Kind.Int, spAddrReg, 0).toAddress();
+            masm.emitLoadAcquire(scratch32, noticeSafepointsIntAddr);
+            masm.emitCompare(Kind.Int, scratch32, Constant.forInt(0), "eq", false, false);
+            masm.cbr(afterSafepointLabel);
 
-        // Load int value from that field
-        HSAILAddress noticeSafepointsIntAddr = new HSAILAddressValue(Kind.Int, spAddrReg, 0).toAddress();
-        masm.emitLoadAcquire(scratch32, noticeSafepointsIntAddr);
-        masm.emitCompare(Kind.Int, scratch32, Constant.forInt(0), "eq", false, false);
-        masm.cbr(afterSafepointLabel);
+            AllocatableValue actionAndReasonReg = HSAIL.actionAndReasonReg.asValue(Kind.Int);
+            AllocatableValue codeBufferOffsetReg = HSAIL.codeBufferOffsetReg.asValue(Kind.Int);
+            masm.emitMov(Kind.Int, actionAndReasonReg, actionAndReason);
+            masm.emitMov(Kind.Int, codeBufferOffsetReg, Constant.forInt(codeBufferPos));
+            masm.emitJumpToLabelName(masm.getDeoptLabelName());
 
-        BytecodeFrame frame = frameState.debugInfo().frame();
-        for (int i = 0; i < frame.numLocals + frame.numStack; i++) {
-            Value val = frame.values[i];
-            if (isLegal(val) && isRegister(val)) {
-                Register reg = asRegister(val);
-                if (val.getKind() == Kind.Object) {
-                    dregOopMap |= 1 << (reg.encoding());
-                }
-            }
+            masm.emitString0(afterSafepointLabel + ":\n");
+
+            // now record the debuginfo
+            crb.recordInfopoint(codeBufferPos, frameState, InfopointReason.SAFEPOINT);
+        } else {
+            masm.emitComment("/* HSAIL safepoint would have been here. */");
         }
-
-        AllocatableValue actionAndReasonReg = HSAIL.actionAndReasonReg.asValue(Kind.Int);
-        AllocatableValue codeBufferOffsetReg = HSAIL.codeBufferOffsetReg.asValue(Kind.Int);
-        AllocatableValue dregOopMapReg = HSAIL.dregOopMapReg.asValue(Kind.Int);
-        masm.emitMov(Kind.Int, actionAndReasonReg, actionAndReason);
-        masm.emitMov(Kind.Int, codeBufferOffsetReg, Constant.forInt(codeBufferPos));
-        masm.emitMov(Kind.Int, dregOopMapReg, Constant.forInt(dregOopMap));
-        masm.emitJumpToLabelName(masm.getDeoptLabelName());
-
-        masm.emitString0(afterSafepointLabel + ":\n");
-
-        // now record the debuginfo
-        crb.recordInfopoint(codeBufferPos, frameState, InfopointReason.SAFEPOINT);
     }
 
     public LIRFrameState getFrameState() {

@@ -40,6 +40,7 @@ import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
+import com.oracle.graal.phases.common.inlining.*;
 import com.oracle.graal.phases.graph.*;
 import com.oracle.graal.phases.graph.ReentrantNodeIterator.NodeIteratorClosure;
 import com.oracle.graal.phases.tiers.*;
@@ -691,9 +692,9 @@ public class WriteBarrierVerificationTest extends GraalCompilerTest {
             };
 
             DebugConfig debugConfig = DebugScope.getConfig();
-            DebugConfig fixedConfig = Debug.fixedConfig(false, false, false, false, debugConfig.dumpHandlers(), debugConfig.output());
+            DebugConfig fixedConfig = Debug.fixedConfig(false, false, false, false, false, debugConfig.dumpHandlers(), debugConfig.output());
             try (DebugConfigScope s = Debug.setConfig(fixedConfig)) {
-                ReentrantNodeIterator.apply(closure, graph.start(), false, null);
+                ReentrantNodeIterator.apply(closure, graph.start(), false);
                 new WriteBarrierVerificationPhase().apply(graph);
             } catch (AssertionError error) {
                 /*

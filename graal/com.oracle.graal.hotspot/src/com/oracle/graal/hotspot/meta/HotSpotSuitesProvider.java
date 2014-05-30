@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.hotspot.meta;
 
-import static com.oracle.graal.phases.GraalOptions.*;
+import static com.oracle.graal.compiler.common.GraalOptions.*;
 
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.phases.*;
@@ -58,7 +58,7 @@ public class HotSpotSuitesProvider implements SuitesProvider {
 
         if (ImmutableCode.getValue()) {
             // lowering introduces class constants, therefore it must be after lowering
-            ret.getHighTier().appendPhase(new LoadJavaMirrorWithKlassPhase(runtime.getConfig().classMirrorOffset));
+            ret.getHighTier().appendPhase(new LoadJavaMirrorWithKlassPhase(runtime.getConfig().classMirrorOffset, runtime.getConfig().getOopEncoding()));
             if (VerifyPhases.getValue()) {
                 ret.getHighTier().appendPhase(new AheadOfTimeVerificationPhase());
             }

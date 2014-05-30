@@ -24,23 +24,11 @@ package com.oracle.graal.graph;
 
 import java.util.*;
 
-public class NodeWorkList implements Iterable<Node> {
+public abstract class NodeWorkList implements Iterable<Node> {
 
-    private final NodeBitMap visited;
-    private final NodeBitMap inQueue;
-    private final Queue<Node> worklist;
-    private int iterationLimit = Integer.MAX_VALUE;
-    private Node firstNoChange;
-    private Node lastPull;
-    private Node lastChain;
+    protected final Queue<Node> worklist;
 
-    public NodeWorkList(Graph graph) {
-        this(graph, false, -1);
-    }
-
-    public NodeWorkList(Graph graph, boolean fill, int iterationLimitPerNode) {
-        visited = graph.createNodeBitMap();
-        inQueue = graph.createNodeBitMap();
+    private NodeWorkList(Graph graph, boolean fill) {
         if (fill) {
             ArrayDeque<Node> deque = new ArrayDeque<>(graph.getNodeCount());
             for (Node node : graph.getNodes()) {
@@ -49,9 +37,6 @@ public class NodeWorkList implements Iterable<Node> {
             worklist = deque;
         } else {
             worklist = new ArrayDeque<>();
-        }
-        if (iterationLimitPerNode > 0) {
-            iterationLimit = iterationLimitPerNode * graph.getNodeCount();
         }
     }
 
@@ -63,188 +48,158 @@ public class NodeWorkList implements Iterable<Node> {
         }
     }
 
-    public void add(Node node) {
-        if (node != null) {
-            if (visited.isNew(node)) {
-                visited.grow(node);
-                inQueue.grow(node);
+    public abstract void add(Node node);
+
+    private abstract class QueueConsumingIterator implements Iterator<Node> {
+
+        protected void dropDeleted() {
+            while (!worklist.isEmpty() && worklist.peek().isDeleted()) {
+                worklist.remove();
             }
-            if (!visited.isMarked(node)) {
-                addAgain(node);
-            }
+        }
+
+        @Override
+        public void remove() {
+            throw new UnsupportedOperationException();
         }
     }
 
-    public void addAgain(Node node) {
-        if (visited.isNew(node)) {
-            visited.grow(node);
-            inQueue.grow(node);
+    public static final class IterativeNodeWorkList extends NodeWorkList {
+
+        private static final int EXPLICIT_BITMAP_THRESHOLD = 10;
+        protected NodeBitMap inQueue;
+
+        private int iterationLimit = Integer.MAX_VALUE;
+        private Node firstNoChange;
+        private Node lastPull;
+        private Node lastChain;
+
+        public IterativeNodeWorkList(Graph graph, boolean fill, int iterationLimitPerNode) {
+            super(graph, fill);
+            if (iterationLimitPerNode > 0) {
+                iterationLimit = iterationLimitPerNode * graph.getNodeCount();
+            }
         }
-        if (node != null && !inQueue.isMarked(node)) {
+
+        @Override
+        public Iterator<Node> iterator() {
+            return new QueueConsumingIterator() {
+                @Override
+                public boolean hasNext() {
+                    dropDeleted();
+                    return iterationLimit > 0 && !worklist.isEmpty();
+                }
+
+                @Override
+                public Node next() {
+                    if (iterationLimit-- <= 0) {
+                        throw new NoSuchElementException();
+                    }
+                    dropDeleted();
+                    Node node = worklist.remove();
+                    assert updateInfiniteWork(node);
+                    if (inQueue != null) {
+                        inQueue.clearAndGrow(node);
+                    }
+                    return node;
+                }
+
+                private boolean updateInfiniteWork(Node node) {
+                    if (lastPull != lastChain) {
+                        firstNoChange = null;
+                    }
+                    lastPull = node;
+                    return true;
+                }
+            };
+        }
+
+        @Override
+        public void add(Node node) {
+            if (node != null) {
+                if (inQueue != null) {
+                    if (inQueue.isMarkedAndGrow(node)) {
+                        return;
+                    }
+                } else {
+                    if (worklist.size() > EXPLICIT_BITMAP_THRESHOLD) {
+                        inflateToBitMap(node.graph());
+                    } else {
+                        for (Node queuedNode : worklist) {
+                            if (queuedNode == node) {
+                                return;
+                            }
+                        }
+                    }
+                }
+                assert checkInfiniteWork(node) : "Readded " + node;
+                if (inQueue != null) {
+                    inQueue.markAndGrow(node);
+                }
+                worklist.add(node);
+            }
+        }
+
+        private boolean checkInfiniteWork(Node node) {
             if (lastPull == node) {
                 if (firstNoChange == null) {
                     firstNoChange = node;
                     lastChain = node;
                 } else if (node == firstNoChange) {
-                    throw new InfiniteWorkException("ReAdded " + node);
+                    return false;
                 } else {
                     lastChain = node;
                 }
             } else {
                 firstNoChange = null;
             }
-            visited.mark(node);
-            inQueue.mark(node);
-            worklist.add(node);
-        }
-    }
-
-    public void clearVisited() {
-        visited.clearAll();
-    }
-
-    public void replaced(Node newNode, Node oldNode) {
-        this.replaced(newNode, oldNode, false);
-    }
-
-    public void replaced(Node newNode, Node oldNode, boolean add) {
-        worklist.remove(oldNode);
-        if (newNode == null) {
-            return;
-        }
-        if (add) {
-            this.add(newNode);
-        }
-        for (Node n : newNode.usages()) {
-            addAgain(n);
-        }
-    }
-
-    public boolean isMarked(Node node) {
-        return visited.isMarked(node);
-    }
-
-    public boolean isNew(Node node) {
-        return visited.isNew(node);
-    }
-
-    public boolean isEmpty() {
-        return worklist.isEmpty();
-    }
-
-    public boolean isInQueue(Node node) {
-        return !inQueue.isNew(node) && inQueue.isMarked(node);
-    }
-
-    private class QueueConsumingIterator implements Iterator<Node> {
-
-        private final Queue<Node> queue;
-
-        public QueueConsumingIterator(Queue<Node> queue) {
-            this.queue = queue;
+            return true;
         }
 
-        @Override
-        public boolean hasNext() {
-            dropDeleted();
-            return iterationLimit > 0 && !queue.isEmpty();
-        }
-
-        @Override
-        public Node next() {
-            if (iterationLimit-- <= 0) {
-                throw new NoSuchElementException();
-            }
-            dropDeleted();
-            Node node = queue.remove();
-            if (lastPull != lastChain) {
-                firstNoChange = null;
-            }
-            lastPull = node;
-            inQueue.clear(node);
-            return node;
-        }
-
-        private void dropDeleted() {
-            while (!queue.isEmpty() && queue.peek().isDeleted()) {
-                queue.remove();
-            }
-        }
-
-        @Override
-        public void remove() {
-            throw new UnsupportedOperationException();
-        }
-    }
-
-    @Override
-    public Iterator<Node> iterator() {
-        return new QueueConsumingIterator(worklist);
-    }
-
-    private static class UnmarkedNodeIterator implements Iterator<Node> {
-
-        private final NodeBitMap visited;
-        private Iterator<Node> nodes;
-        private Node nextNode;
-
-        public UnmarkedNodeIterator(NodeBitMap visited, Iterator<Node> nodes) {
-            this.visited = visited;
-            this.nodes = nodes;
-            forward();
-        }
-
-        private void forward() {
-            do {
-                if (!nodes.hasNext()) {
-                    nextNode = null;
-                    return;
+        private void inflateToBitMap(Graph graph) {
+            assert inQueue == null;
+            inQueue = graph.createNodeBitMap();
+            for (Node queuedNode : worklist) {
+                if (queuedNode.isAlive()) {
+                    inQueue.mark(queuedNode);
                 }
-                nextNode = nodes.next();
-            } while (visited.isMarked(nextNode));
+            }
+        }
+    }
+
+    public static final class SingletonNodeWorkList extends NodeWorkList {
+        protected final NodeBitMap visited;
+
+        public SingletonNodeWorkList(Graph graph) {
+            super(graph, false);
+            visited = graph.createNodeBitMap();
         }
 
         @Override
-        public boolean hasNext() {
-            return nextNode != null;
-        }
-
-        @Override
-        public Node next() {
-            try {
-                return nextNode;
-            } finally {
-                forward();
+        public void add(Node node) {
+            if (node != null) {
+                if (!visited.isMarkedAndGrow(node)) {
+                    visited.mark(node);
+                    worklist.add(node);
+                }
             }
         }
 
         @Override
-        public void remove() {
-            throw new UnsupportedOperationException();
-        }
+        public Iterator<Node> iterator() {
+            return new QueueConsumingIterator() {
+                @Override
+                public boolean hasNext() {
+                    dropDeleted();
+                    return !worklist.isEmpty();
+                }
 
-    }
-
-    public Iterable<Node> unmarkedNodes() {
-        return new Iterable<Node>() {
-
-            @Override
-            public Iterator<Node> iterator() {
-                return new UnmarkedNodeIterator(visited, visited.graph().getNodes().iterator());
-            }
-        };
-    }
-
-    public static class InfiniteWorkException extends RuntimeException {
-
-        private static final long serialVersionUID = -5319329402219396658L;
-
-        public InfiniteWorkException() {
-            super();
-        }
-
-        public InfiniteWorkException(String message) {
-            super(message);
+                @Override
+                public Node next() {
+                    dropDeleted();
+                    return worklist.remove();
+                }
+            };
         }
     }
 }

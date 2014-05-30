@@ -23,28 +23,34 @@
 package com.oracle.graal.hotspot.nodes;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.stubs.*;
+import com.oracle.graal.lir.StandardOp.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.word.*;
 
 /**
  * Emits code to enter a low-level stack frame specifically to call out to the C++ method
- * {@link DeoptimizationStub#UNPACK_FRAMES Deoptimization::unpack_frames}.
+ * {@link HotSpotBackend#UNPACK_FRAMES Deoptimization::unpack_frames}.
  */
 public class EnterUnpackFramesStackFrameNode extends FixedWithNextNode implements LIRLowerable {
 
     @Input private ValueNode framePc;
     @Input private ValueNode senderSp;
     @Input private ValueNode senderFp;
+    @Input private SaveAllRegistersNode registerSaver;
 
-    public EnterUnpackFramesStackFrameNode(ValueNode framePc, ValueNode senderSp, ValueNode senderFp) {
+    public EnterUnpackFramesStackFrameNode(ValueNode framePc, ValueNode senderSp, ValueNode senderFp, ValueNode registerSaver) {
         super(StampFactory.forVoid());
         this.framePc = framePc;
         this.senderSp = senderSp;
         this.senderFp = senderFp;
+        this.registerSaver = (SaveAllRegistersNode) registerSaver;
+    }
+
+    private SaveRegistersOp getSaveRegistersOp() {
+        return registerSaver.getSaveRegistersOp();
     }
 
     @Override
@@ -52,9 +58,9 @@ public class EnterUnpackFramesStackFrameNode extends FixedWithNextNode implement
         Value operandValue = gen.operand(framePc);
         Value senderSpValue = gen.operand(senderSp);
         Value senderFpValue = gen.operand(senderFp);
-        ((HotSpotLIRGenerator) gen.getLIRGeneratorTool()).emitEnterUnpackFramesStackFrame(operandValue, senderSpValue, senderFpValue);
+        ((HotSpotLIRGenerator) gen.getLIRGeneratorTool()).emitEnterUnpackFramesStackFrame(operandValue, senderSpValue, senderFpValue, getSaveRegistersOp());
     }
 
     @NodeIntrinsic
-    public static native void enterUnpackFramesStackFrame(Word framePc, Word senderSp, Word senderFp);
+    public static native void enterUnpackFramesStackFrame(Word framePc, Word senderSp, Word senderFp, long registerSaver);
 }

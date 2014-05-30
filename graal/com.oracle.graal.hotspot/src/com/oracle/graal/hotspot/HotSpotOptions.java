@@ -20,91 +20,52 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.graal.hotspot;
 
 import static com.oracle.graal.compiler.GraalDebugConfig.*;
+import static com.oracle.graal.hotspot.HotSpotOptionsLoader.*;
 import static com.oracle.graal.hotspot.bridge.VMToCompilerImpl.*;
-import static java.nio.file.Files.*;
+import static java.lang.Double.*;
 
-import java.io.*;
 import java.lang.reflect.*;
-import java.nio.charset.*;
-import java.nio.file.*;
 import java.util.*;
 
+import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.debug.*;
-import com.oracle.graal.hotspot.logging.*;
 import com.oracle.graal.options.*;
-import com.oracle.graal.phases.common.*;
+import com.oracle.graal.phases.common.inlining.*;
 
 /**
- * Called from {@code graalCompiler.cpp} to parse any Graal specific options. Such options are
- * (currently) distinguished by a {@code "-G:"} prefix.
+ * Called from {@code graalCompiler.cpp} to set Graal options from the HotSpot command line. Such
+ * options are (currently) distinguished by a {@code "-G:"} prefix.
  */
 public class HotSpotOptions {
 
-    private static final Map<String, OptionDescriptor> options = new HashMap<>();
-
     /**
-     * Initializes {@link #options} from {@link Options} services.
+     * Parses the Graal specific options specified to HotSpot (e.g., on the command line).
+     *
+     * @return true if the CITime or CITimeEach HotSpot VM options are set
      */
-    private static void initializeOptions() {
-        ServiceLoader<Options> sl = ServiceLoader.loadInstalled(Options.class);
-        for (Options opts : sl) {
-            for (OptionDescriptor desc : opts) {
-                if (isHotSpotOption(desc)) {
-                    String name = desc.getName();
-                    OptionDescriptor existing = options.put(name, desc);
-                    assert existing == null : "Option named \"" + name + "\" has multiple definitions: " + existing.getLocation() + " and " + desc.getLocation();
-                }
-            }
-        }
-    }
-
-    /**
-     * Determines if a given option is a HotSpot command line option.
-     */
-    public static boolean isHotSpotOption(OptionDescriptor desc) {
-        return desc.getClass().getName().startsWith("com.oracle.graal");
-    }
-
-    /**
-     * Loads default option value overrides from a {@code graal.options} file if it exists. Each
-     * line in this file starts with {@code "#"} and is ignored or must have the format of a Graal
-     * command line option without the leading {@code "-G:"} prefix. These option value are set
-     * prior to processing of any Graal options present on the command line.
-     */
-    private static void loadOptionOverrides() throws InternalError {
-        String javaHome = System.getProperty("java.home");
-        Path graalDotOptions = Paths.get(javaHome, "lib", "graal.options");
-        if (!exists(graalDotOptions)) {
-            graalDotOptions = Paths.get(javaHome, "jre", "lib", "graal.options");
-        }
-        if (exists(graalDotOptions)) {
-            try {
-                for (String line : Files.readAllLines(graalDotOptions, Charset.defaultCharset())) {
-                    if (!line.startsWith("#")) {
-                        if (!setOption(line)) {
-                            throw new InternalError("Invalid option \"" + line + "\" specified in " + graalDotOptions);
-                        }
-                    }
-                }
-            } catch (IOException e) {
-                throw (InternalError) new InternalError().initCause(e);
-            }
-        }
-    }
+    private static native boolean parseVMOptions();
 
     static {
-        initializeOptions();
-        loadOptionOverrides();
+        boolean timeCompilations = parseVMOptions();
+        if (timeCompilations || PrintCompRate.getValue() != 0) {
+            unconditionallyEnableTimerOrMetric(InliningUtil.class, "InlinedBytecodes");
+            unconditionallyEnableTimerOrMetric(CompilationTask.class, "CompilationTime");
+        }
+        assert !Debug.Initialization.isDebugInitialized() : "The class " + Debug.class.getName() + " must not be initialized before the Graal runtime has been initialized. " +
+                        "This can be fixed by placing a call to " + Graal.class.getName() + ".runtime() on the path that triggers initialization of " + Debug.class.getName();
+        if (areDebugScopePatternsEnabled()) {
+            System.setProperty(Debug.Initialization.INITIALIZER_PROPERTY_NAME, "true");
+        }
     }
 
-    // Called from VM code
-    public static boolean setOption(String option) {
-        return parseOption(option, null);
+    /**
+     * Ensures {@link HotSpotOptions} is initialized.
+     */
+    public static void initialize() {
     }
 
     interface OptionConsumer {
@@ -112,8 +73,44 @@ public class HotSpotOptions {
     }
 
     /**
+     * Helper for the VM code called by {@link #parseVMOptions()}.
+     *
+     * @param name the name of a parsed option
+     * @param option the object encapsulating the option
+     * @param spec specification of boolean option value, type of option value or action to take
+     */
+    static void setOption(String name, OptionValue<?> option, char spec, String stringValue, long primitiveValue) {
+        switch (spec) {
+            case '+':
+                option.setValue(Boolean.TRUE);
+                break;
+            case '-':
+                option.setValue(Boolean.FALSE);
+                break;
+            case '?':
+                printFlags();
+                break;
+            case ' ':
+                printNoMatchMessage(name);
+                break;
+            case 'i':
+                option.setValue((int) primitiveValue);
+                break;
+            case 'f':
+                option.setValue((float) longBitsToDouble(primitiveValue));
+                break;
+            case 'd':
+                option.setValue(longBitsToDouble(primitiveValue));
+                break;
+            case 's':
+                option.setValue(stringValue);
+                break;
+        }
+    }
+
+    /**
      * Parses a given option value specification.
-     * 
+     *
      * @param option the specification of an option and its value
      * @param setter the object to notify of the parsed option and value. If null, the
      *            {@link OptionValue#setValue(Object)} method of the specified option is called
@@ -150,15 +147,7 @@ public class HotSpotOptions {
 
         OptionDescriptor desc = options.get(optionName);
         if (desc == null) {
-            Logger.info("Could not find option " + optionName + " (use -G:+PrintFlags to see Graal options)");
-            List<OptionDescriptor> matches = fuzzyMatch(optionName);
-            if (!matches.isEmpty()) {
-                Logger.info("Did you mean one of the following?");
-                for (OptionDescriptor match : matches) {
-                    boolean isBoolean = match.getType() == boolean.class;
-                    Logger.info(String.format("    %s%s%s", isBoolean ? "(+/-)" : "", match.getName(), isBoolean ? "" : "=<value>"));
-                }
-            }
+            printNoMatchMessage(optionName);
             return false;
         }
 
@@ -166,12 +155,12 @@ public class HotSpotOptions {
 
         if (value == null) {
             if (optionType == Boolean.TYPE || optionType == Boolean.class) {
-                Logger.info("Value for boolean option '" + optionName + "' must use '-G:+" + optionName + "' or '-G:-" + optionName + "' format");
+                System.err.println("Value for boolean option '" + optionName + "' must use '-G:+" + optionName + "' or '-G:-" + optionName + "' format");
                 return false;
             }
 
             if (valueString == null) {
-                Logger.info("Value for option '" + optionName + "' must use '-G:" + optionName + "=<value>' format");
+                System.err.println("Value for option '" + optionName + "' must use '-G:" + optionName + "=<value>' format");
                 return false;
             }
 
@@ -186,7 +175,7 @@ public class HotSpotOptions {
             }
         } else {
             if (optionType != Boolean.class) {
-                Logger.info("Value for option '" + optionName + "' must use '-G:" + optionName + "=<value>' format");
+                System.err.println("Value for option '" + optionName + "' must use '-G:" + optionName + "=<value>' format");
                 return false;
             }
         }
@@ -197,14 +186,26 @@ public class HotSpotOptions {
             } else {
                 OptionValue<?> optionValue = desc.getOptionValue();
                 optionValue.setValue(value);
-                // Logger.info("Set option " + desc.getName() + " to " + value);
+                // System.err.println("Set option " + desc.getName() + " to " + value);
             }
         } else {
-            Logger.info("Wrong value \"" + valueString + "\" for option " + optionName);
+            System.err.println("Wrong value \"" + valueString + "\" for option " + optionName);
             return false;
         }
 
         return true;
+    }
+
+    protected static void printNoMatchMessage(String optionName) {
+        System.err.println("Could not find option " + optionName + " (use -G:+PrintFlags to see Graal options)");
+        List<OptionDescriptor> matches = fuzzyMatch(optionName);
+        if (!matches.isEmpty()) {
+            System.err.println("Did you mean one of the following?");
+            for (OptionDescriptor match : matches) {
+                boolean isBoolean = match.getType() == boolean.class;
+                System.err.println(String.format("    %s%s%s", isBoolean ? "(+/-)" : "", match.getName(), isBoolean ? "" : "=<value>"));
+            }
+        }
     }
 
     /**
@@ -213,7 +214,7 @@ public class HotSpotOptions {
      * <p>
      * This method verifies that the named field exists and is of an expected type. However, it does
      * not verify that the timer or metric created has the same name of the field.
-     * 
+     *
      * @param c the class in which the field is declared
      * @param name the name of the field
      */
@@ -229,7 +230,7 @@ public class HotSpotOptions {
             }
             String previous = System.setProperty(propertyName, "true");
             if (previous != null) {
-                Logger.info("Overrode value \"" + previous + "\" of system property \"" + propertyName + "\" with \"true\"");
+                System.err.println("Overrode value \"" + previous + "\" of system property \"" + propertyName + "\" with \"true\"");
             }
         } catch (Exception e) {
             throw new GraalInternalError(e);
@@ -237,25 +238,8 @@ public class HotSpotOptions {
     }
 
     /**
-     * Called from VM code once all Graal command line options have been processed by
-     * {@link #setOption(String)}.
-     * 
-     * @param timeCompilations true if the CITime or CITimeEach HotSpot VM options are set
-     */
-    public static void finalizeOptions(boolean timeCompilations) {
-        if (timeCompilations || PrintCompRate.getValue() != 0) {
-            unconditionallyEnableTimerOrMetric(InliningUtil.class, "InlinedBytecodes");
-            unconditionallyEnableTimerOrMetric(CompilationTask.class, "CompilationTime");
-        }
-        if (areDebugScopePatternsEnabled()) {
-            assert !Debug.Initialization.isDebugInitialized();
-            System.setProperty(Debug.Initialization.INITIALIZER_PROPERTY_NAME, "true");
-        }
-    }
-
-    /**
      * Wraps some given text to one or more lines of a given maximum width.
-     * 
+     *
      * @param text text to wrap
      * @param width maximum width of an output line, exception for words in {@code text} longer than
      *            this value
@@ -296,16 +280,16 @@ public class HotSpotOptions {
     }
 
     private static void printFlags() {
-        Logger.info("[Graal flags]");
-        SortedMap<String, OptionDescriptor> sortedOptions = new TreeMap<>(options);
+        System.out.println("[Graal flags]");
+        SortedMap<String, OptionDescriptor> sortedOptions = options;
         for (Map.Entry<String, OptionDescriptor> e : sortedOptions.entrySet()) {
             e.getKey();
             OptionDescriptor desc = e.getValue();
             Object value = desc.getOptionValue().getValue();
             List<String> helpLines = wrap(desc.getHelp(), 70);
-            Logger.info(String.format("%9s %-40s = %-14s %s", desc.getType().getSimpleName(), e.getKey(), value, helpLines.get(0)));
+            System.out.println(String.format("%9s %-40s = %-14s %s", desc.getType().getSimpleName(), e.getKey(), value, helpLines.get(0)));
             for (int i = 1; i < helpLines.size(); i++) {
-                Logger.info(String.format("%67s %s", " ", helpLines.get(i)));
+                System.out.println(String.format("%67s %s", " ", helpLines.get(i)));
             }
         }
 
@@ -314,7 +298,7 @@ public class HotSpotOptions {
 
     /**
      * Compute string similarity based on Dice's coefficient.
-     * 
+     *
      * Ported from str_similar() in globals.cpp.
      */
     static float stringSimiliarity(String str1, String str2) {

@@ -27,7 +27,7 @@ import java.util.*;
 public final class NodeNodeMap extends NodeMap<Node> implements Map<Node, Node> {
 
     public NodeNodeMap(Graph graph) {
-        super(graph, true);
+        super(graph);
     }
 
     public NodeNodeMap(NodeNodeMap copyFrom) {

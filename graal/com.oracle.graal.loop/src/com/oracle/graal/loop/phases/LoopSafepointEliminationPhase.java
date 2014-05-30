@@ -37,7 +37,7 @@ public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
         if (context.getOptimisticOptimizations().useLoopLimitChecks()) {
             loops.detectedCountedLoops();
             for (LoopEx loop : loops.countedLoops()) {
-                if (loop.lirLoop().children.isEmpty() && loop.counted().getStamp().getBits() <= 32) {
+                if (loop.lirLoop().getChildren().isEmpty() && loop.counted().getStamp().getBits() <= 32) {
                     boolean hasSafepoint = false;
                     for (LoopEndNode loopEnd : loop.loopBegin().loopEnds()) {
                         hasSafepoint |= loopEnd.canSafepoint();
@@ -54,7 +54,7 @@ public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
         for (LoopEx loop : loops.countedLoops()) {
             for (LoopEndNode loopEnd : loop.loopBegin().loopEnds()) {
                 Block b = loops.controlFlowGraph().blockFor(loopEnd);
-                blocks: while (b != loop.lirLoop().header) {
+                blocks: while (b != loop.lirLoop().getHeader()) {
                     assert b != null;
                     for (FixedNode node : b.getNodes()) {
                         if (node instanceof Invoke || node instanceof ForeignCallNode) {

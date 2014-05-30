@@ -23,12 +23,13 @@
 
 package com.oracle.graal.compiler.hsail.test.lambda;
 
-import java.util.stream.IntStream;
-
+import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 import static org.junit.Assert.*;
-import org.junit.Test;
-import java.util.Arrays;
-import java.util.ArrayList;
+
+import java.util.*;
+import java.util.stream.*;
+
+import org.junit.*;
 
 /**
  * Several tests for the Sumatra APIs.
@@ -266,6 +267,10 @@ public class ForEachToGraalTest {
     // Graal throws NYI
     @Test
     public void testForEachIntRangeNoCapturesUseEscapingNew() {
+        if (runtime().getConfig().useHSAILDeoptimization == false) {
+            return;
+        }
+
         MyPoint[] dest = new MyPoint[size];
         IntStream range = IntStream.range(0, dest.length).parallel();
 

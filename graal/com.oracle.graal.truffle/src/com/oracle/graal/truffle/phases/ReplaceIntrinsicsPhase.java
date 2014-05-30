@@ -28,7 +28,7 @@ import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.*;
-import com.oracle.graal.phases.common.*;
+import com.oracle.graal.phases.common.inlining.*;
 
 /**
  * Compiler phase for intrinsifying the access to the Truffle virtual frame.

@@ -23,19 +23,21 @@
 package com.oracle.graal.nodes.calc;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.meta.ProfilingInfo.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
+import com.oracle.graal.nodes.util.*;
 
 @NodeInfo(shortName = "==")
 public final class ObjectEqualsNode extends CompareNode implements Virtualizable {
 
     /**
      * Constructs a new object equality comparison node.
-     * 
+     *
      * @param x the instruction producing the first input to the instruction
      * @param y the instruction that produces the second input to this instruction
      */
@@ -56,21 +58,28 @@ public final class ObjectEqualsNode extends CompareNode implements Virtualizable
     }
 
     @Override
-    public Node canonical(CanonicalizerTool tool) {
-        if (x() == y()) {
-            return LogicConstantNode.tautology(graph());
+    public TriState evaluate(ConstantReflectionProvider constantReflection, ValueNode forX, ValueNode forY) {
+        if (GraphUtil.unproxify(forX) == GraphUtil.unproxify(forY)) {
+            return TriState.TRUE;
+        } else if (forX.stamp().alwaysDistinct(forY.stamp())) {
+            return TriState.FALSE;
+        } else {
+            return super.evaluate(constantReflection, forX, forY);
         }
+    }
 
-        if (ObjectStamp.isObjectAlwaysNull(x())) {
+    @Override
+    public Node canonical(CanonicalizerTool tool) {
+        Node result = super.canonical(tool);
+        if (result != this) {
+            return result;
+        }
+        if (StampTool.isObjectAlwaysNull(x())) {
             return graph().unique(new IsNullNode(y()));
-        } else if (ObjectStamp.isObjectAlwaysNull(y())) {
+        } else if (StampTool.isObjectAlwaysNull(y())) {
             return graph().unique(new IsNullNode(x()));
         }
-        if (x().stamp().alwaysDistinct(y().stamp())) {
-            return LogicConstantNode.contradiction(graph());
-        }
-
-        return super.canonical(tool);
+        return this;
     }
 
     private void virtualizeNonVirtualComparison(State state, ValueNode other, VirtualizerTool tool) {
@@ -110,7 +119,7 @@ public final class ObjectEqualsNode extends CompareNode implements Virtualizable
                 /*
                  * One of the two objects has identity, the other doesn't. In code, this looks like
                  * "Integer.valueOf(a) == new Integer(b)", which is always false.
-                 * 
+                 *
                  * In other words: an object created via valueOf can never be equal to one created
                  * by new in the same compilation unit.
                  */
@@ -128,5 +137,10 @@ public final class ObjectEqualsNode extends CompareNode implements Virtualizable
                 tool.replaceWithValue(LogicConstantNode.forBoolean(stateX == stateY, graph()));
             }
         }
+    }
+
+    @Override
+    protected CompareNode duplicateModified(ValueNode newX, ValueNode newY) {
+        return new ObjectEqualsNode(newX, newY);
     }
 }

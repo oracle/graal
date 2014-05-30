@@ -46,7 +46,7 @@ public class AheadOfTimeVerificationPhase extends VerifyPhase<PhaseContext> {
     protected boolean verify(StructuredGraph graph, PhaseContext context) {
         for (ConstantNode node : getConstantNodes(graph)) {
             if (node.recordsUsages() || !node.gatherUsages(graph).isEmpty()) {
-                if (isObject(node) && !isNullReference(node) && !isInternedString(node) && !isDirectMethodHandle(node)) {
+                if (isObject(node) && !isNullReference(node) && !isInternedString(node) && !isDirectMethodHandle(node) && !isBoundMethodHandle(node)) {
                     throw new VerificationError("illegal object constant: " + node);
                 }
             }
@@ -66,7 +66,14 @@ public class AheadOfTimeVerificationPhase extends VerifyPhase<PhaseContext> {
         if (!isObject(node)) {
             return false;
         }
-        return "Ljava/lang/invoke/DirectMethodHandle;".equals(ObjectStamp.typeOrNull(node).getName());
+        return "Ljava/lang/invoke/DirectMethodHandle;".equals(StampTool.typeOrNull(node).getName());
+    }
+
+    private static boolean isBoundMethodHandle(ConstantNode node) {
+        if (!isObject(node)) {
+            return false;
+        }
+        return StampTool.typeOrNull(node).getName().startsWith("Ljava/lang/invoke/BoundMethodHandle");
     }
 
     @SuppressFBWarnings(value = "ES_COMPARING_STRINGS_WITH_EQ", justification = "reference equality is what we want")

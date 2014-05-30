@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.hotspot.meta;
 
-import static com.oracle.graal.graph.UnsafeAccess.*;
+import static com.oracle.graal.compiler.common.UnsafeAccess.*;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 
 import java.lang.reflect.*;
@@ -223,7 +223,7 @@ public class HotSpotConstantReflectionProvider implements ConstantReflectionProv
 
     @Override
     public ResolvedJavaType asJavaType(Constant constant) {
-        if (constant.getKind() == Kind.Object) {
+        if (constant instanceof HotSpotObjectConstant) {
             Object obj = HotSpotObjectConstant.asObject(constant);
             if (obj instanceof Class) {
                 return runtime.getHostProviders().getMetaAccess().lookupJavaType((Class<?>) obj);

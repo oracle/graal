@@ -30,7 +30,6 @@ import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
 
 /**
  * Node for a {@linkplain ForeignCallDescriptor foreign} call.
@@ -95,7 +94,7 @@ public class ForeignCallNode extends AbstractMemoryCheckpoint implements LIRLowe
     public void generate(NodeLIRBuilderTool gen) {
         ForeignCallLinkage linkage = gen.getLIRGeneratorTool().getForeignCalls().lookupForeignCall(descriptor);
         Value[] operands = operands(gen);
-        Value result = gen.getLIRGeneratorTool().emitForeignCall(linkage, this, operands);
+        Value result = gen.getLIRGeneratorTool().emitForeignCall(linkage, gen.state(this), operands);
         if (result != null) {
             gen.setResult(this, result);
         }

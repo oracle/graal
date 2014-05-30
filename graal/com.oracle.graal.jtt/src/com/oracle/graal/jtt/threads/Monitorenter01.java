@@ -41,7 +41,7 @@ public final class Monitorenter01 extends JTTTest {
         }
     }
 
-    @Test
+    @Test(timeout = 20000)
     public void run0() throws Throwable {
         runTest("test");
     }

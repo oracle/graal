@@ -31,7 +31,7 @@ public class CFGVerifier {
     public static boolean verify(ControlFlowGraph cfg) {
         for (Block block : cfg.getBlocks()) {
             assert block.getId() >= 0;
-            assert cfg.getBlocks()[block.getId()] == block;
+            assert cfg.getBlocks().get(block.getId()) == block;
 
             for (Block pred : block.getPredecessors()) {
                 assert pred.getSuccessors().contains(block);
@@ -82,25 +82,25 @@ public class CFGVerifier {
                 }
             }
 
-            assert cfg.getLoops() == null || !block.isLoopHeader() || block.getLoop().header == block : block.beginNode;
+            assert cfg.getLoops() == null || !block.isLoopHeader() || block.getLoop().getHeader() == block : block.beginNode;
         }
 
         if (cfg.getLoops() != null) {
             for (Loop<Block> loop : cfg.getLoops()) {
-                assert loop.header.isLoopHeader();
+                assert loop.getHeader().isLoopHeader();
 
-                for (Block block : loop.blocks) {
-                    assert block.getId() >= loop.header.getId();
+                for (Block block : loop.getBlocks()) {
+                    assert block.getId() >= loop.getHeader().getId();
 
                     Loop<?> blockLoop = block.getLoop();
                     while (blockLoop != loop) {
                         assert blockLoop != null;
-                        blockLoop = blockLoop.parent;
+                        blockLoop = blockLoop.getParent();
                     }
 
                     if (!(block.isLoopHeader() && block.getLoop() == loop)) {
                         for (Block pred : block.getPredecessors()) {
-                            if (!loop.blocks.contains(pred)) {
+                            if (!loop.getBlocks().contains(pred)) {
                                 assert false : "Loop " + loop + " does not contain " + pred;
                                 return false;
                             }
@@ -108,12 +108,12 @@ public class CFGVerifier {
                     }
                 }
 
-                for (Block block : loop.exits) {
-                    assert block.getId() >= loop.header.getId();
+                for (Block block : loop.getExits()) {
+                    assert block.getId() >= loop.getHeader().getId();
 
                     Loop<?> blockLoop = block.getLoop();
                     while (blockLoop != null) {
-                        blockLoop = blockLoop.parent;
+                        blockLoop = blockLoop.getParent();
                         assert blockLoop != loop;
                     }
                 }

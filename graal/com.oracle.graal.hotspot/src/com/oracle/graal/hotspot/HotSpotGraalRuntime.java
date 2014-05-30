@@ -22,9 +22,11 @@
  */
 package com.oracle.graal.hotspot;
 
-import static com.oracle.graal.graph.UnsafeAccess.*;
+import static com.oracle.graal.compiler.common.GraalOptions.*;
+import static com.oracle.graal.compiler.common.UnsafeAccess.*;
+import static com.oracle.graal.hotspot.HotSpotGraalRuntime.InitTimer.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.Options.*;
-import static com.oracle.graal.phases.GraalOptions.*;
+import static sun.reflect.Reflection.*;
 
 import java.lang.reflect.*;
 import java.util.*;
@@ -34,12 +36,16 @@ import sun.reflect.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.stack.*;
+import com.oracle.graal.api.collections.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.target.*;
+import com.oracle.graal.debug.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.bridge.*;
+import com.oracle.graal.hotspot.events.*;
 import com.oracle.graal.hotspot.logging.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.options.*;
@@ -52,9 +58,75 @@ import com.oracle.graal.runtime.*;
  */
 public final class HotSpotGraalRuntime implements GraalRuntime, RuntimeProvider, StackIntrospection {
 
-    private static final HotSpotGraalRuntime instance = new HotSpotGraalRuntime();
+    /**
+     * A facility for timing a step in the initialization sequence for the runtime. This exists
+     * separate from {@link DebugTimer} as it must be independent from all other Graal code so as to
+     * not perturb the initialization sequence.
+     */
+    public static class InitTimer implements AutoCloseable {
+        final String name;
+        final long start;
+
+        private InitTimer(String name) {
+            this.name = name;
+            this.start = System.currentTimeMillis();
+            System.out.println("START: " + SPACES.substring(0, timerDepth * 2) + name);
+            assert Thread.currentThread() == initializingThread;
+            timerDepth++;
+        }
+
+        public void close() {
+            final long end = System.currentTimeMillis();
+            timerDepth--;
+            System.out.println(" DONE: " + SPACES.substring(0, timerDepth * 2) + name + " [" + (end - start) + " ms]");
+        }
+
+        public static InitTimer timer(String name) {
+            return ENABLED ? new InitTimer(name) : null;
+        }
+
+        public static InitTimer timer(String name, Object suffix) {
+            return ENABLED ? new InitTimer(name + suffix) : null;
+        }
+
+        /**
+         * Specified initialization timing is enabled. This must only be set via a system property
+         * as the timing facility is used to time initialization of {@link HotSpotOptions}.
+         */
+        private static final boolean ENABLED = Boolean.getBoolean("graal.runtime.TimeInit");
+        public static int timerDepth = 0;
+        public static final String SPACES = "                                            ";
+        public static final Thread initializingThread = Thread.currentThread();
+    }
+
+    private static final HotSpotGraalRuntime instance;
+
+    /**
+     * Initializes the native part of the Graal runtime.
+     */
+    private static native void init(Class<?> compilerToVMClass);
+
     static {
-        instance.completeInitialization();
+        try (InitTimer t = timer("initialize natives")) {
+            init(CompilerToVMImpl.class);
+        }
+
+        try (InitTimer t = timer("initialize HotSpotOptions")) {
+            // The options must be processed before any code using them...
+            HotSpotOptions.initialize();
+        }
+
+        try (InitTimer t = timer("HotSpotGraalRuntime.<init>")) {
+            // ... including code in the constructor
+            instance = new HotSpotGraalRuntime();
+        }
+
+        try (InitTimer t = timer("HotSpotGraalRuntime.completeInitialization")) {
+            // Why deferred initialization? See comment in completeInitialization().
+            instance.completeInitialization();
+        }
+
+        registerFieldsToFilter(HotSpotGraalRuntime.class, "instance");
     }
 
     /**
@@ -71,10 +143,6 @@ public final class HotSpotGraalRuntime implements GraalRuntime, RuntimeProvider,
         }
         assert instance != null;
         return instance;
-    }
-
-    static {
-        Reflection.registerFieldsToFilter(HotSpotGraalRuntime.class, "instance");
     }
 
     /**
@@ -102,6 +170,8 @@ public final class HotSpotGraalRuntime implements GraalRuntime, RuntimeProvider,
 
         this.vmToCompiler = toCompiler;
         this.compilerToVm = toVM;
+
+        this.vmToCompiler.startRuntime();
     }
 
     // Options must not be directly declared in HotSpotGraalRuntime - see VerifyOptionsPhase
@@ -119,7 +189,7 @@ public final class HotSpotGraalRuntime implements GraalRuntime, RuntimeProvider,
         HotSpotBackendFactory nonBasic = null;
         int nonBasicCount = 0;
 
-        for (HotSpotBackendFactory factory : ServiceLoader.loadInstalled(HotSpotBackendFactory.class)) {
+        for (HotSpotBackendFactory factory : Services.load(HotSpotBackendFactory.class)) {
             if (factory.getArchitecture().equalsIgnoreCase(architecture)) {
                 if (factory.getGraalRuntimeName().equals(GraalRuntime.getValue())) {
                     assert selected == null || checkFactoryOverriding(selected, factory);
@@ -225,7 +295,9 @@ public final class HotSpotGraalRuntime implements GraalRuntime, RuntimeProvider,
 
         compilerToVm = toVM;
         vmToCompiler = toCompiler;
-        config = new HotSpotVMConfig(compilerToVm);
+        try (InitTimer t = timer("HotSpotVMConfig<init>")) {
+            config = new HotSpotVMConfig(compilerToVm);
+        }
 
         CompileTheWorld.Options.overrideWithNativeOptions(config);
 
@@ -246,15 +318,30 @@ public final class HotSpotGraalRuntime implements GraalRuntime, RuntimeProvider,
         }
 
         String hostArchitecture = config.getHostArchitectureName();
-        hostBackend = registerBackend(findFactory(hostArchitecture).createBackend(this, null));
+
+        HotSpotBackendFactory factory;
+        try (InitTimer t = timer("find factory:", hostArchitecture)) {
+            factory = findFactory(hostArchitecture);
+        }
+        try (InitTimer t = timer("create backend:", hostArchitecture)) {
+            hostBackend = registerBackend(factory.createBackend(this, null));
+        }
 
         String[] gpuArchitectures = getGPUArchitectureNames(compilerToVm);
         for (String arch : gpuArchitectures) {
-            HotSpotBackendFactory factory = findFactory(arch);
+            try (InitTimer t = timer("find factory:", arch)) {
+                factory = findFactory(arch);
+            }
             if (factory == null) {
                 throw new GraalInternalError("No backend available for specified GPU architecture \"%s\"", arch);
             }
-            registerBackend(factory.createBackend(this, hostBackend));
+            try (InitTimer t = timer("create backend:", arch)) {
+                registerBackend(factory.createBackend(this, hostBackend));
+            }
+        }
+
+        try (InitTimer t = timer("createEventProvider")) {
+            eventProvider = createEventProvider();
         }
     }
 
@@ -359,15 +446,39 @@ public final class HotSpotGraalRuntime implements GraalRuntime, RuntimeProvider,
         return getClass().getSimpleName();
     }
 
+    private final NodeCollectionsProvider nodeCollectionsProvider = new DefaultNodeCollectionsProvider();
+
+    private final EventProvider eventProvider;
+
+    private EventProvider createEventProvider() {
+        if (config.flightRecorder) {
+            Iterable<EventProvider> sl = Services.load(EventProvider.class);
+            EventProvider singleProvider = null;
+            for (EventProvider ep : sl) {
+                assert singleProvider == null : String.format("multiple %s service implementations found: %s and %s", EventProvider.class.getName(), singleProvider.getClass().getName(),
+                                ep.getClass().getName());
+                singleProvider = ep;
+            }
+            return singleProvider;
+        }
+        return new EmptyEventProvider();
+    }
+
     @SuppressWarnings("unchecked")
     @Override
     public <T> T getCapability(Class<T> clazz) {
         if (clazz == RuntimeProvider.class) {
             return (T) this;
+        } else if (clazz == CollectionsProvider.class || clazz == NodeCollectionsProvider.class) {
+            return (T) nodeCollectionsProvider;
         } else if (clazz == StackIntrospection.class) {
             return (T) this;
         } else if (clazz == SnippetReflectionProvider.class) {
             return (T) getHostProviders().getSnippetReflection();
+        } else if (clazz == MethodHandleAccessProvider.class) {
+            return (T) getHostProviders().getMethodHandleAccess();
+        } else if (clazz == EventProvider.class) {
+            return (T) eventProvider;
         }
         return null;
     }

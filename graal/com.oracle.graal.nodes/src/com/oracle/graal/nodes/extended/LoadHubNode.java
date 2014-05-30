@@ -29,7 +29,6 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
 
 /**
  * Loads an object's {@linkplain Representation#ObjectHub hub}. The object is not null-checked by
@@ -51,7 +50,6 @@ public final class LoadHubNode extends FloatingGuardedNode implements Lowerable,
     public LoadHubNode(ValueNode object, Kind kind, ValueNode guard) {
         super(getKind(kind), (GuardingNode) guard);
         assert object != guard;
-        assert guard != null;
         this.object = object;
     }
 

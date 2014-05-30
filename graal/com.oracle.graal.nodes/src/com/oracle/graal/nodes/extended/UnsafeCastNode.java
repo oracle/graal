@@ -51,7 +51,7 @@ public class UnsafeCastNode extends FloatingGuardedNode implements LIRLowerable,
     }
 
     public UnsafeCastNode(ValueNode object, ResolvedJavaType toType, boolean exactType, boolean nonNull) {
-        this(object, toType.getKind() == Kind.Object ? StampFactory.object(toType, exactType, nonNull || ObjectStamp.isObjectNonNull(object.stamp())) : StampFactory.forKind(toType.getKind()));
+        this(object, toType.getKind() == Kind.Object ? StampFactory.object(toType, exactType, nonNull || StampTool.isObjectNonNull(object.stamp())) : StampFactory.forKind(toType.getKind()));
     }
 
     @Override
@@ -60,27 +60,36 @@ public class UnsafeCastNode extends FloatingGuardedNode implements LIRLowerable,
     }
 
     @Override
-    public boolean inferStamp() {
-        if (stamp() instanceof ObjectStamp && object.stamp() instanceof ObjectStamp) {
-            return updateStamp(((ObjectStamp) object.stamp()).castTo((ObjectStamp) stamp()));
-        }
-        return updateStamp(object.stamp().join(stamp()));
-    }
-
-    @Override
     public Node canonical(CanonicalizerTool tool) {
         assert getKind() == Kind.Object && object.getKind() == Kind.Object;
-        if (stamp().equals(object.stamp())) {
-            return object;
-        } else {
+
+        ObjectStamp my = (ObjectStamp) stamp();
+        ObjectStamp other = (ObjectStamp) object.stamp();
+
+        if (my.type() == null || other.type() == null) {
             return this;
         }
+        if (my.isExactType() && !other.isExactType()) {
+            return this;
+        }
+        if (my.nonNull() && !other.nonNull()) {
+            return this;
+        }
+        if (!my.type().isAssignableFrom(other.type())) {
+            return this;
+        }
+        /*
+         * The unsafe cast does not add any new type information, so it can be removed. Note that
+         * this means that the unsafe cast cannot be used to "drop" type information (in which case
+         * it must not be canonicalized in any case).
+         */
+        return object;
     }
 
     @Override
     public void virtualize(VirtualizerTool tool) {
         State state = tool.getObjectState(object);
-        if (state != null && state.getState() == EscapeState.Virtual && ObjectStamp.typeOrNull(this) != null && ObjectStamp.typeOrNull(this).isAssignableFrom(state.getVirtualObject().type())) {
+        if (state != null && state.getState() == EscapeState.Virtual && StampTool.typeOrNull(this) != null && StampTool.typeOrNull(this).isAssignableFrom(state.getVirtualObject().type())) {
             tool.replaceWithVirtual(state.getVirtualObject());
         }
     }

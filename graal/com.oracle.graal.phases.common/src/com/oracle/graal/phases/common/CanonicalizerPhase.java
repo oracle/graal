@@ -137,9 +137,9 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
         protected void run(StructuredGraph graph) {
             boolean wholeGraph = newNodesMark == null || newNodesMark.isStart();
             if (initWorkingSet == null) {
-                workList = graph.createNodeWorkList(wholeGraph, MAX_ITERATION_PER_NODE);
+                workList = graph.createIterativeNodeWorkList(wholeGraph, MAX_ITERATION_PER_NODE);
             } else {
-                workList = graph.createNodeWorkList(false, MAX_ITERATION_PER_NODE);
+                workList = graph.createIterativeNodeWorkList(false, MAX_ITERATION_PER_NODE);
                 workList.addAll(initWorkingSet);
             }
             if (!wholeGraph) {
@@ -154,7 +154,7 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
 
                 @Override
                 public void nodeChanged(Node node) {
-                    workList.addAgain(node);
+                    workList.add(node);
                 }
             };
             graph.trackInputChange(nodeChangedListener);
@@ -178,17 +178,20 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
                 }
                 StructuredGraph graph = (StructuredGraph) node.graph();
                 Mark mark = graph.getMark();
-                if (!tryKillUnused(node)) {
+                if (!GraphUtil.tryKillUnused(node)) {
                     if (!tryCanonicalize(node, nodeClass)) {
                         if (node instanceof ValueNode) {
                             ValueNode valueNode = (ValueNode) node;
                             boolean improvedStamp = tryInferStamp(valueNode);
                             Constant constant = valueNode.stamp().asConstant();
                             if (constant != null && !(node instanceof ConstantNode)) {
-                                performReplacement(valueNode, ConstantNode.forConstant(valueNode.stamp(), constant, context.getMetaAccess(), valueNode.graph()));
+                                valueNode.replaceAtUsages(InputType.Value, ConstantNode.forConstant(valueNode.stamp(), constant, context.getMetaAccess(), graph));
+                                GraphUtil.tryKillUnused(valueNode);
                             } else if (improvedStamp) {
                                 // the improved stamp may enable additional canonicalization
-                                tryCanonicalize(valueNode, nodeClass);
+                                if (!tryCanonicalize(valueNode, nodeClass)) {
+                                    valueNode.usages().forEach(workList::add);
+                                }
                             }
                         }
                     }
@@ -198,14 +201,6 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
                     workList.add(newNode);
                 }
             }
-        }
-
-        private static boolean tryKillUnused(Node node) {
-            if (node.isAlive() && GraphUtil.isFloatingNode().apply(node) && node.recordsUsages() && node.usages().isEmpty()) {
-                GraphUtil.killWithUnusedFloatingInputs(node);
-                return true;
-            }
-            return false;
         }
 
         public static boolean tryGlobalValueNumbering(Node node, NodeClass nodeClass) {
@@ -341,7 +336,7 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
                 if (node.inferStamp()) {
                     METRIC_STAMP_CHANGED.increment();
                     for (Node usage : node.usages()) {
-                        workList.addAgain(usage);
+                        workList.add(usage);
                     }
                     return true;
                 }
@@ -354,7 +349,7 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
             @Override
             public void deleteBranch(Node branch) {
                 branch.predecessor().replaceFirstSuccessor(branch, null);
-                GraphUtil.killCFG(branch);
+                GraphUtil.killCFG(branch, this);
             }
 
             /**
@@ -378,12 +373,12 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
 
             @Override
             public void addToWorkList(Node node) {
-                workList.addAgain(node);
+                workList.add(node);
             }
 
             @Override
             public void removeIfUnused(Node node) {
-                tryKillUnused(node);
+                GraphUtil.tryKillUnused(node);
             }
 
             @Override

@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.word.phases;
 
-import java.lang.reflect.*;
-
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.compiler.common.*;
@@ -110,12 +108,12 @@ public class WordTypeVerificationPhase extends Phase {
         if (method.getAnnotation(NodeIntrinsic.class) == null) {
             Invoke invoke = (Invoke) callTarget.usages().first();
             NodeInputList<ValueNode> arguments = callTarget.arguments();
-            boolean isStatic = Modifier.isStatic(method.getModifiers());
+            boolean isStatic = method.isStatic();
             int argc = 0;
             if (!isStatic) {
                 ValueNode receiver = arguments.get(argc);
                 if (receiver == node && isWord(node)) {
-                    ResolvedJavaMethod resolvedMethod = wordAccess.wordImplType.resolveMethod(method);
+                    ResolvedJavaMethod resolvedMethod = wordAccess.wordImplType.resolveMethod(method, invoke.getContextType());
                     verify(resolvedMethod != null, node, invoke.asNode(), "cannot resolve method on Word class: " + MetaUtil.format("%H.%n(%P) %r", method));
                     Operation operation = resolvedMethod.getAnnotation(Word.Operation.class);
                     verify(operation != null, node, invoke.asNode(), "cannot dispatch on word value to non @Operation annotated method " + resolvedMethod);

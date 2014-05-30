@@ -59,6 +59,10 @@ public class DelegatingDebugConfig implements DebugConfig {
          */
         METER,
         /**
+         * @see Debug#isMemUseTrackingEnabled()
+         */
+        TRACK_MEM_USE,
+        /**
          * @see Debug#isTimeEnabled()
          */
         TIME,
@@ -121,6 +125,14 @@ public class DelegatingDebugConfig implements DebugConfig {
         Boolean fs = featureState.get(Feature.METER);
         if (fs == null) {
             return delegate.isMeterEnabled();
+        }
+        return fs.booleanValue();
+    }
+
+    public boolean isMemUseTrackingEnabled() {
+        Boolean fs = featureState.get(Feature.TRACK_MEM_USE);
+        if (fs == null) {
+            return delegate.isMemUseTrackingEnabled();
         }
         return fs.booleanValue();
     }

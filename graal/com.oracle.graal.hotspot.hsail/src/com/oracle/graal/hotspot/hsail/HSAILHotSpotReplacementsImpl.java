@@ -59,16 +59,16 @@ public class HSAILHotSpotReplacementsImpl extends ReplacementsImpl {
 
     public void completeInitialization() {
         // Register the substitutions for java.lang.Math routines.
-        registerSubstitutions(HSAILMathSubstitutions.class);
+        registerSubstitutions(Math.class, HSAILMathSubstitutions.class);
 
         // Register the ignored substitutions
         addIgnoredResolvedMethod(String.class, "equals", Object.class);
     }
 
     @Override
-    protected ResolvedJavaMethod registerMethodSubstitution(Member originalMethod, Method substituteMethod) {
+    protected ResolvedJavaMethod registerMethodSubstitution(ClassReplacements cr, Member originalMethod, Method substituteMethod) {
         // TODO: decide if we want to override this in any way
-        return super.registerMethodSubstitution(originalMethod, substituteMethod);
+        return super.registerMethodSubstitution(cr, originalMethod, substituteMethod);
     }
 
     @Override

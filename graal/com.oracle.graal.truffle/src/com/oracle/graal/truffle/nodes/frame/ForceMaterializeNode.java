@@ -22,12 +22,11 @@
  */
 package com.oracle.graal.truffle.nodes.frame;
 
-import com.oracle.graal.compiler.gen.*;
-import com.oracle.graal.compiler.target.*;
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.type.*;
+import com.oracle.graal.nodes.spi.*;
 
-public class ForceMaterializeNode extends FixedWithNextNode implements LIRGenLowerable {
+public class ForceMaterializeNode extends FixedWithNextNode implements LIRLowerable {
 
     @Input private ValueNode object;
 
@@ -36,7 +35,7 @@ public class ForceMaterializeNode extends FixedWithNextNode implements LIRGenLow
         this.object = object;
     }
 
-    public void generate(NodeLIRBuilder generator) {
+    public void generate(NodeLIRBuilderTool generator) {
         // nothing to do
     }
 

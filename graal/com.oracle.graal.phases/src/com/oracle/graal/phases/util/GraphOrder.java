@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.phases.util;
 
+import static com.oracle.graal.graph.util.CollectionsAccess.*;
+
 import java.util.*;
 
 import com.oracle.graal.compiler.common.*;
@@ -30,6 +32,7 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.VirtualState.NodeClosure;
 import com.oracle.graal.nodes.cfg.*;
+import com.oracle.graal.nodes.virtual.*;
 import com.oracle.graal.phases.graph.*;
 import com.oracle.graal.phases.graph.ReentrantBlockIterator.BlockIteratorClosure;
 import com.oracle.graal.phases.schedule.*;
@@ -135,7 +138,7 @@ public final class GraphOrder {
     public static boolean assertSchedulableGraph(final StructuredGraph graph) {
         try {
             final SchedulePhase schedule = new SchedulePhase(SchedulingStrategy.LATEST_OUT_OF_LOOPS, MemoryScheduling.NONE);
-            final IdentityHashMap<LoopBeginNode, NodeBitMap> loopEntryStates = new IdentityHashMap<>();
+            final Map<LoopBeginNode, NodeBitMap> loopEntryStates = newNodeIdentityMap();
             schedule.apply(graph, false);
 
             BlockIteratorClosure<NodeBitMap> closure = new BlockIteratorClosure<NodeBitMap>() {
@@ -164,7 +167,8 @@ public final class GraphOrder {
                         if (pendingStateAfter != null && node instanceof FixedNode) {
                             pendingStateAfter.applyToNonVirtual(new NodeClosure<Node>() {
                                 public void apply(Node usage, Node nonVirtualNode) {
-                                    assert currentState.isMarked(nonVirtualNode) : nonVirtualNode + " not available at virtualstate " + usage + " before " + node + " in block " + block + " \n" + list;
+                                    assert currentState.isMarked(nonVirtualNode) || nonVirtualNode instanceof VirtualObjectNode : nonVirtualNode + " not available at virtualstate " + usage +
+                                                    " before " + node + " in block " + block + " \n" + list;
                                 }
                             });
                             pendingStateAfter = null;
@@ -199,7 +203,7 @@ public final class GraphOrder {
                                             assert currentState.isMarked(nonVirtual) : nonVirtual + " not available at " + node + " in block " + block + "\n" + list;
                                         });
                                     } else {
-                                        assert currentState.isMarked(input) : input + " not available at " + node + " in block " + block + "\n" + list;
+                                        assert currentState.isMarked(input) || input instanceof VirtualObjectNode : input + " not available at " + node + " in block " + block + "\n" + list;
                                     }
                                 }
                             }
@@ -220,7 +224,8 @@ public final class GraphOrder {
                     if (pendingStateAfter != null) {
                         pendingStateAfter.applyToNonVirtual(new NodeClosure<Node>() {
                             public void apply(Node usage, Node nonVirtualNode) {
-                                assert currentState.isMarked(nonVirtualNode) : nonVirtualNode + " not available at virtualstate " + usage + " at end of block " + block + " \n" + list;
+                                assert currentState.isMarked(nonVirtualNode) || nonVirtualNode instanceof VirtualObjectNode : nonVirtualNode + " not available at virtualstate " + usage +
+                                                " at end of block " + block + " \n" + list;
                             }
                         });
                     }

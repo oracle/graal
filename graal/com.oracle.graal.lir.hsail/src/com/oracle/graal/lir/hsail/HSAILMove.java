@@ -63,29 +63,6 @@ public class HSAILMove {
     }
 
     @Opcode("MOVE")
-    public static class SpillMoveOp extends AbstractMoveOp {
-
-        @Def({REG, STACK}) protected AllocatableValue result;
-        @Use({REG, STACK, CONST}) protected Value input;
-
-        public SpillMoveOp(Kind moveKind, AllocatableValue result, Value input) {
-            super(moveKind);
-            this.result = result;
-            this.input = input;
-        }
-
-        @Override
-        public Value getInput() {
-            return input;
-        }
-
-        @Override
-        public AllocatableValue getResult() {
-            return result;
-        }
-    }
-
-    @Opcode("MOVE")
     public static class MoveToRegOp extends AbstractMoveOp {
 
         @Def({REG, HINT}) protected AllocatableValue result;
@@ -252,67 +229,6 @@ public class HSAILMove {
         }
     }
 
-    public static class LoadCompressedPointer extends LoadOp {
-
-        private final long base;
-        private final int shift;
-        private final int alignment;
-        @Temp({REG}) private AllocatableValue scratch;
-
-        public LoadCompressedPointer(Kind kind, AllocatableValue result, AllocatableValue scratch, HSAILAddressValue address, LIRFrameState state, long base, int shift, int alignment) {
-            super(kind, result, address, state);
-            this.base = base;
-            this.shift = shift;
-            this.alignment = alignment;
-            this.scratch = scratch;
-            assert kind == Kind.Object || kind == Kind.Long;
-        }
-
-        @Override
-        public void emitMemAccess(HSAILAssembler masm) {
-            // we will do a 32 bit load, zero extending into a 64 bit register
-            masm.emitLoad(result, address.toAddress(), "u32");
-            boolean testForNull = (kind == Kind.Object);
-            decodePointer(masm, result, base, shift, alignment, testForNull);
-        }
-    }
-
-    public static class StoreCompressedPointer extends HSAILLIRInstruction {
-
-        protected final Kind kind;
-        private final long base;
-        private final int shift;
-        private final int alignment;
-        @Temp({REG}) private AllocatableValue scratch;
-        @Alive({REG}) protected AllocatableValue input;
-        @Alive({COMPOSITE}) protected HSAILAddressValue address;
-        @State protected LIRFrameState state;
-
-        public StoreCompressedPointer(Kind kind, HSAILAddressValue address, AllocatableValue input, AllocatableValue scratch, LIRFrameState state, long base, int shift, int alignment) {
-            this.base = base;
-            this.shift = shift;
-            this.alignment = alignment;
-            this.scratch = scratch;
-            this.kind = kind;
-            this.address = address;
-            this.state = state;
-            this.input = input;
-            assert kind == Kind.Object || kind == Kind.Long;
-        }
-
-        @Override
-        public void emitCode(CompilationResultBuilder crb, HSAILAssembler masm) {
-            masm.emitMov(kind, scratch, input);
-            boolean testForNull = (kind == Kind.Object);
-            encodePointer(masm, scratch, base, shift, alignment, testForNull);
-            if (state != null) {
-                throw new InternalError("NYI");
-                // crb.recordImplicitException(masm.position(), state);
-            }
-            masm.emitStore(scratch, address.toAddress(), "u32");
-        }
-    }
-
     public static class CompressPointer extends HSAILLIRInstruction {
 
         private final long base;
@@ -402,7 +318,8 @@ public class HSAILMove {
 
         @Override
         public void emitCode(CompilationResultBuilder crb, HSAILAssembler masm) {
-            throw new InternalError("NYI");
+            HSAILAddress addr = address.toAddress();
+            masm.emitLea(result, addr);
         }
     }
 
@@ -446,6 +363,65 @@ public class HSAILMove {
         }
     }
 
+    @Opcode("ATOMIC_READ_AND_ADD")
+    public static class AtomicReadAndAddOp extends HSAILLIRInstruction {
+
+        private final Kind accessKind;
+
+        @Def protected AllocatableValue result;
+        @Use({COMPOSITE}) protected HSAILAddressValue address;
+        @Use({REG, CONST}) protected Value delta;
+
+        public AtomicReadAndAddOp(Kind accessKind, AllocatableValue result, HSAILAddressValue address, Value delta) {
+            this.accessKind = accessKind;
+            this.result = result;
+            this.address = address;
+            this.delta = delta;
+        }
+
+        public HSAILAddressValue getAddress() {
+            return address;
+        }
+
+        @Override
+        public void emitCode(CompilationResultBuilder crb, HSAILAssembler masm) {
+            switch (accessKind) {
+                case Int:
+                case Long:
+                    masm.emitAtomicAdd(result, address.toAddress(), delta);
+                    break;
+                default:
+                    throw GraalInternalError.shouldNotReachHere();
+            }
+        }
+    }
+
+    @Opcode("ATOMIC_READ_AND_WRITE")
+    public static class AtomicReadAndWriteOp extends HSAILLIRInstruction {
+
+        private final Kind accessKind;
+
+        @Def protected AllocatableValue result;
+        @Use({COMPOSITE}) protected HSAILAddressValue address;
+        @Use({REG, CONST}) protected Value newValue;
+
+        public AtomicReadAndWriteOp(Kind accessKind, AllocatableValue result, HSAILAddressValue address, Value newValue) {
+            this.accessKind = accessKind;
+            this.result = result;
+            this.address = address;
+            this.newValue = newValue;
+        }
+
+        public HSAILAddressValue getAddress() {
+            return address;
+        }
+
+        @Override
+        public void emitCode(CompilationResultBuilder crb, HSAILAssembler masm) {
+            masm.emitAtomicExch(accessKind, result, address.toAddress(), newValue);
+        }
+    }
+
     public static class NullCheckOp extends HSAILLIRInstruction {
 
         @Use protected Value input;
@@ -486,29 +462,6 @@ public class HSAILMove {
             }
         } else {
             throw GraalInternalError.shouldNotReachHere();
-        }
-    }
-
-    @Opcode("ATOMICADD")
-    public static class AtomicGetAndAddOp extends HSAILLIRInstruction {
-
-        @Def protected AllocatableValue result;
-        @Use({COMPOSITE}) protected HSAILAddressValue address;
-        @Use({REG, CONST}) protected Value delta;
-
-        public AtomicGetAndAddOp(AllocatableValue result, HSAILAddressValue address, Value delta) {
-            this.result = result;
-            this.address = address;
-            this.delta = delta;
-        }
-
-        public HSAILAddressValue getAddress() {
-            return address;
-        }
-
-        @Override
-        public void emitCode(CompilationResultBuilder crb, HSAILAssembler masm) {
-            masm.emitAtomicAdd(result, address.toAddress(), delta);
         }
     }
 

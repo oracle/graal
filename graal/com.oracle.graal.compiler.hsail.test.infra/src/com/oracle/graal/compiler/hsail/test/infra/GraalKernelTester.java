@@ -27,8 +27,8 @@ package com.oracle.graal.compiler.hsail.test.infra;
  * This class extends KernelTester and provides a base class
  * for which the HSAIL code comes from the Graal compiler.
  */
+import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
-import static com.oracle.graal.phases.GraalOptions.*;
 import static org.junit.Assume.*;
 
 import java.io.*;
@@ -47,12 +47,21 @@ import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hsail.*;
 import com.oracle.graal.options.*;
 import com.oracle.graal.options.OptionValue.OverrideScope;
-import com.oracle.graal.phases.*;
 
 public abstract class GraalKernelTester extends KernelTester {
 
+    private static boolean substitutionsInstalled;
+
+    private static synchronized void installSubstitutions() {
+        if (!substitutionsInstalled) {
+            getHSAILBackend().getProviders().getReplacements().registerSubstitutions(GraalKernelTester.class, ForceDeoptSubstitutions.class);
+            substitutionsInstalled = true;
+        }
+    }
+
     public GraalKernelTester() {
         super(getHSAILBackend().isDeviceInitialized());
+        installSubstitutions();
     }
 
     protected static HSAILHotSpotBackend getHSAILBackend() {
@@ -122,19 +131,18 @@ public abstract class GraalKernelTester extends KernelTester {
     }
 
     /**
+     * Determines if the JVM supports the required typeProfileWidth.
+     */
+    public boolean typeProfileWidthAtLeast(int val) {
+        return (getHSAILBackend().getRuntime().getConfig().typeProfileWidth >= val);
+    }
+
+    /**
      * Determines if the runtime supports {@link VirtualObject}s in {@link DebugInfo} associated
      * with HSAIL code.
      */
     public boolean canHandleDeoptVirtualObjects() {
-        return false;
-    }
-
-    /**
-     * Determines if the runtime supports {@link StackSlot}s in {@link DebugInfo} associated with
-     * HSAIL code.
-     */
-    public boolean canHandleDeoptStackSlots() {
-        return false;
+        return true;
     }
 
     /**
@@ -182,7 +190,7 @@ public abstract class GraalKernelTester extends KernelTester {
     @Override
     public void testGeneratedHsail() {
         try (OverrideScope s = getOverrideScope()) {
-            assumeTrue(supportsRequiredCapabilities());
+            assumeTrue(supportsRequiredCapabilities() && okraEnvIsInitialized());
             super.testGeneratedHsail();
         }
     }
@@ -190,8 +198,18 @@ public abstract class GraalKernelTester extends KernelTester {
     @Override
     public void testGeneratedHsailUsingLambdaMethod() {
         try (OverrideScope s = getOverrideScope()) {
-            assumeTrue(supportsRequiredCapabilities());
+            assumeTrue(supportsRequiredCapabilities() && okraEnvIsInitialized());
             super.testGeneratedHsailUsingLambdaMethod();
         }
     }
+
+    // used for forcing a deoptimization
+    public static int forceDeopt(int x) {
+        return x * x;
+    }
+
+    public static double forceDeopt(double x) {
+        return x * x;
+    }
+
 }

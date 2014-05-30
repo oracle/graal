@@ -41,6 +41,7 @@ public class GuardingPiNode extends FixedWithNextNode implements Lowerable, Virt
     @Input(InputType.Condition) private LogicNode condition;
     private final DeoptimizationReason reason;
     private final DeoptimizationAction action;
+    private final Stamp piStamp;
     private boolean negated;
 
     public ValueNode object() {
@@ -49,6 +50,18 @@ public class GuardingPiNode extends FixedWithNextNode implements Lowerable, Virt
 
     public LogicNode condition() {
         return condition;
+    }
+
+    public boolean isNegated() {
+        return negated;
+    }
+
+    public DeoptimizationReason getReason() {
+        return reason;
+    }
+
+    public DeoptimizationAction getAction() {
+        return action;
     }
 
     /**
@@ -69,6 +82,7 @@ public class GuardingPiNode extends FixedWithNextNode implements Lowerable, Virt
     public GuardingPiNode(ValueNode object, ValueNode condition, boolean negateCondition, DeoptimizationReason reason, DeoptimizationAction action, Stamp stamp) {
         super(stamp);
         assert stamp != null;
+        this.piStamp = stamp;
         this.object = object;
         this.condition = (LogicNode) condition;
         this.reason = reason;
@@ -88,14 +102,14 @@ public class GuardingPiNode extends FixedWithNextNode implements Lowerable, Virt
     @Override
     public void virtualize(VirtualizerTool tool) {
         State state = tool.getObjectState(object);
-        if (state != null && state.getState() == EscapeState.Virtual && ObjectStamp.typeOrNull(this) != null && ObjectStamp.typeOrNull(this).isAssignableFrom(state.getVirtualObject().type())) {
+        if (state != null && state.getState() == EscapeState.Virtual && StampTool.typeOrNull(this) != null && StampTool.typeOrNull(this).isAssignableFrom(state.getVirtualObject().type())) {
             tool.replaceWithVirtual(state.getVirtualObject());
         }
     }
 
     @Override
     public boolean inferStamp() {
-        return updateStamp(stamp().join(object().stamp()));
+        return updateStamp(piStamp.join(object().stamp()));
     }
 
     @Override

@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.phases.common;
 
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.phases.*;
 
 /**

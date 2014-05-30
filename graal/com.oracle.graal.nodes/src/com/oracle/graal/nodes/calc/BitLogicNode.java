@@ -30,7 +30,7 @@ import com.oracle.graal.nodes.type.*;
 /**
  * The {@code LogicNode} class definition.
  */
-public abstract class BitLogicNode extends BinaryNode implements ArithmeticLIRLowerable, MemoryArithmeticLIRLowerable, NarrowableArithmeticNode {
+public abstract class BitLogicNode extends BinaryNode implements ArithmeticLIRLowerable, NarrowableArithmeticNode {
 
     /**
      * Constructs a new logic operation node.

@@ -24,7 +24,7 @@ package com.oracle.graal.hotspot.amd64;
 
 import static com.oracle.graal.amd64.AMD64.*;
 import static com.oracle.graal.asm.NumUtil.*;
-import static com.oracle.graal.phases.GraalOptions.*;
+import static com.oracle.graal.compiler.common.GraalOptions.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;

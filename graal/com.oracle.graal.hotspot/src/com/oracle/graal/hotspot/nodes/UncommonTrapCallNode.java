@@ -22,15 +22,17 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
+import static com.oracle.graal.hotspot.HotSpotBackend.*;
+
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.lir.StandardOp.SaveRegistersOp;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.word.*;
 
 /**
@@ -42,7 +44,6 @@ public class UncommonTrapCallNode extends FixedWithNextNode implements LIRLowera
     @Input private ValueNode trapRequest;
     @Input private SaveAllRegistersNode registerSaver;
     private final ForeignCallsProvider foreignCalls;
-    public static final ForeignCallDescriptor UNCOMMON_TRAP = new ForeignCallDescriptor("uncommonTrap", Word.class, Word.class, int.class);
 
     public UncommonTrapCallNode(@InjectedNodeParameter ForeignCallsProvider foreignCalls, ValueNode registerSaver, ValueNode trapRequest) {
         super(StampFactory.forKind(Kind.fromJavaClass(UNCOMMON_TRAP.getResultType())));

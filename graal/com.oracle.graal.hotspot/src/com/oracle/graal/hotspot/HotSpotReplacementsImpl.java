@@ -27,10 +27,10 @@ import java.lang.reflect.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
+import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.replacements.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.util.*;
 import com.oracle.graal.replacements.*;
 
@@ -48,7 +48,7 @@ public class HotSpotReplacementsImpl extends ReplacementsImpl {
     }
 
     @Override
-    protected ResolvedJavaMethod registerMethodSubstitution(Member originalMethod, Method substituteMethod) {
+    protected ResolvedJavaMethod registerMethodSubstitution(ClassReplacements cr, Member originalMethod, Method substituteMethod) {
         final Class<?> substituteClass = substituteMethod.getDeclaringClass();
         if (substituteClass.getDeclaringClass() == BoxingSubstitutions.class) {
             if (config.useHeapProfiler) {
@@ -78,7 +78,7 @@ public class HotSpotReplacementsImpl extends ReplacementsImpl {
                 return null;
             }
         }
-        return super.registerMethodSubstitution(originalMethod, substituteMethod);
+        return super.registerMethodSubstitution(cr, originalMethod, substituteMethod);
     }
 
     @Override
@@ -86,16 +86,14 @@ public class HotSpotReplacementsImpl extends ReplacementsImpl {
         HotSpotResolvedJavaMethod hsMethod = (HotSpotResolvedJavaMethod) method;
         int intrinsicId = hsMethod.intrinsicId();
         if (intrinsicId != 0) {
-            if (intrinsicId == config.vmIntrinsicInvokeBasic) {
-                return MethodHandleInvokeBasicNode.class;
-            } else if (intrinsicId == config.vmIntrinsicLinkToInterface) {
-                return MethodHandleLinkToInterfaceNode.class;
-            } else if (intrinsicId == config.vmIntrinsicLinkToSpecial) {
-                return MethodHandleLinkToSpecialNode.class;
-            } else if (intrinsicId == config.vmIntrinsicLinkToStatic) {
-                return MethodHandleLinkToStaticNode.class;
-            } else if (intrinsicId == config.vmIntrinsicLinkToVirtual) {
-                return MethodHandleLinkToVirtualNode.class;
+            /*
+             * The methods of MethodHandle that need substitution are signature-polymorphic, i.e.,
+             * the VM replicates them for every signature that they are actually used for.
+             * Therefore, we cannot use the usual annotation-driven mechanism to define the
+             * substitution.
+             */
+            if (MethodHandleNode.lookupMethodHandleIntrinsic(method) != null) {
+                return MethodHandleNode.class;
             }
         }
         return super.getMacroSubstitution(method);

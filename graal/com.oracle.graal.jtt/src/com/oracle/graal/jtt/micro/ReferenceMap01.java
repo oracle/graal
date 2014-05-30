@@ -22,8 +22,9 @@
  */
 package com.oracle.graal.jtt.micro;
 
+import org.junit.*;
+
 import com.oracle.graal.jtt.*;
-import com.oracle.graal.test.*;
 
 /*
  */
@@ -57,7 +58,7 @@ public class ReferenceMap01 extends JTTTest {
         return Integer.valueOf(foo(new String[]{"asdf"}));
     }
 
-    @LongTest
+    @Test
     public void run0() throws Throwable {
         runTest("test");
     }

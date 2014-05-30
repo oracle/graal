@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.loop;
 
+import static com.oracle.graal.graph.util.CollectionsAccess.*;
+
 import java.util.*;
 
 import com.oracle.graal.compiler.common.cfg.*;
@@ -32,8 +34,8 @@ import com.oracle.graal.nodes.cfg.*;
 
 public class LoopsData {
 
-    private Map<Loop<Block>, LoopEx> lirLoopToEx = new IdentityHashMap<>();
-    private Map<LoopBeginNode, LoopEx> loopBeginToEx = new IdentityHashMap<>();
+    private Map<Loop<Block>, LoopEx> lirLoopToEx = newIdentityMap();
+    private Map<LoopBeginNode, LoopEx> loopBeginToEx = newNodeIdentityMap();
     private ControlFlowGraph cfg;
 
     public LoopsData(final StructuredGraph graph) {
@@ -68,7 +70,7 @@ public class LoopsData {
 
             @Override
             public int compare(LoopEx o1, LoopEx o2) {
-                return o1.lirLoop().depth - o2.lirLoop().depth;
+                return o1.lirLoop().getDepth() - o2.lirLoop().getDepth();
             }
         });
         return loops;
@@ -80,7 +82,7 @@ public class LoopsData {
 
             @Override
             public int compare(LoopEx o1, LoopEx o2) {
-                return o2.lirLoop().depth - o1.lirLoop().depth;
+                return o2.lirLoop().getDepth() - o1.lirLoop().getDepth();
             }
         });
         return loops;

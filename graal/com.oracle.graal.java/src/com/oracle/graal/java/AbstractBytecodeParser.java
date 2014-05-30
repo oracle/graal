@@ -25,8 +25,6 @@ package com.oracle.graal.java;
 
 import static com.oracle.graal.api.code.TypeCheckHints.*;
 import static com.oracle.graal.bytecode.Bytecodes.*;
-import static java.lang.reflect.Modifier.*;
-
 import java.util.*;
 
 import com.oracle.graal.api.code.*;
@@ -39,7 +37,6 @@ import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.java.BciBlockMapping.BciBlock;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.calc.FloatConvertNode.FloatConvert;
 import com.oracle.graal.options.*;
 import com.oracle.graal.phases.*;
 
@@ -327,7 +324,7 @@ public abstract class AbstractBytecodeParser<T extends KindProvider, F extends A
     private void genArithmeticOp(Kind result, int opcode) {
         T y = frameState.pop(result);
         T x = frameState.pop(result);
-        boolean isStrictFP = isStrict(method.getModifiers());
+        boolean isStrictFP = method.isStrict();
         T v;
         switch (opcode) {
             case IADD:
@@ -586,7 +583,7 @@ public abstract class AbstractBytecodeParser<T extends KindProvider, F extends A
         }
     }
 
-    protected abstract T genCheckCast(ResolvedJavaType type, T object, JavaTypeProfile profileForTypeCheck, boolean b);
+    protected abstract T createCheckCast(ResolvedJavaType type, T object, JavaTypeProfile profileForTypeCheck, boolean forStoreCheck);
 
     private void genCheckCast() {
         int cpi = getStream().readCPI();
@@ -594,14 +591,14 @@ public abstract class AbstractBytecodeParser<T extends KindProvider, F extends A
         T object = frameState.apop();
         if (type instanceof ResolvedJavaType) {
             JavaTypeProfile profileForTypeCheck = getProfileForTypeCheck((ResolvedJavaType) type);
-            T checkCastNode = append(genCheckCast((ResolvedJavaType) type, object, profileForTypeCheck, false));
+            T checkCastNode = append(createCheckCast((ResolvedJavaType) type, object, profileForTypeCheck, false));
             frameState.apush(checkCastNode);
         } else {
             handleUnresolvedCheckCast(type, object);
         }
     }
 
-    protected abstract T genInstanceOf(ResolvedJavaType type, T object, JavaTypeProfile profileForTypeCheck);
+    protected abstract T createInstanceOf(ResolvedJavaType type, T object, JavaTypeProfile profileForTypeCheck);
 
     protected abstract T genConditional(T x);
 
@@ -611,7 +608,7 @@ public abstract class AbstractBytecodeParser<T extends KindProvider, F extends A
         T object = frameState.apop();
         if (type instanceof ResolvedJavaType) {
             ResolvedJavaType resolvedType = (ResolvedJavaType) type;
-            T instanceOfNode = genInstanceOf((ResolvedJavaType) type, object, getProfileForTypeCheck(resolvedType));
+            T instanceOfNode = createInstanceOf((ResolvedJavaType) type, object, getProfileForTypeCheck(resolvedType));
             frameState.ipush(append(genConditional(genUnique(instanceOfNode))));
         } else {
             handleUnresolvedInstanceOf(type, object);

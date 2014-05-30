@@ -432,22 +432,20 @@ public class CompilationResult implements Serializable {
 
         private static final long serialVersionUID = 3612943150662354844L;
         public final Object id;
-        public final Mark[] references;
 
-        public Mark(int pcOffset, Object id, Mark[] references) {
+        public Mark(int pcOffset, Object id) {
             super(pcOffset);
             this.id = id;
-            this.references = references;
         }
 
         @Override
         public String toString() {
             if (id == null) {
-                return String.format("%d[<mark with %d references>]", pcOffset, references.length);
+                return String.format("%d[<mar>]", pcOffset);
             } else if (id instanceof Integer) {
-                return String.format("%d[<mark with %d references and id %s>]", pcOffset, references.length, Integer.toHexString((Integer) id));
+                return String.format("%d[<mark with id %s>]", pcOffset, Integer.toHexString((Integer) id));
             } else {
-                return String.format("%d[<mark with %d references and id %s>]", pcOffset, references.length, id.toString());
+                return String.format("%d[<mark with id %s>]", pcOffset, id.toString());
             }
         }
     }
@@ -462,7 +460,6 @@ public class CompilationResult implements Serializable {
 
     private int totalFrameSize = -1;
     private int customStackAreaOffset = -1;
-    private int registerRestoreEpilogueOffset = -1;
 
     private final String name;
 
@@ -635,32 +632,11 @@ public class CompilationResult implements Serializable {
      *
      * @param codePos the position in the code that is covered by the handler
      * @param markId the identifier for this mark
-     * @param references an array of other marks that this mark references
      */
-    public Mark recordMark(int codePos, Object markId, Mark[] references) {
-        Mark mark = new Mark(codePos, markId, references);
+    public Mark recordMark(int codePos, Object markId) {
+        Mark mark = new Mark(codePos, markId);
         marks.add(mark);
         return mark;
-    }
-
-    /**
-     * Allows a method to specify the offset of the epilogue that restores the callee saved
-     * registers. Must be called iff the method is a callee saved method and stores callee registers
-     * on the stack.
-     *
-     * @param registerRestoreEpilogueOffset the offset in the machine code where the epilogue begins
-     */
-    public void setRegisterRestoreEpilogueOffset(int registerRestoreEpilogueOffset) {
-        assert this.registerRestoreEpilogueOffset == -1;
-        this.registerRestoreEpilogueOffset = registerRestoreEpilogueOffset;
-    }
-
-    /**
-     * @return the code offset of the start of the epilogue that restores all callee saved
-     *         registers, or -1 if this is not a callee saved method
-     */
-    public int getRegisterRestoreEpilogueOffset() {
-        return registerRestoreEpilogueOffset;
     }
 
     /**

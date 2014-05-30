@@ -29,9 +29,7 @@ import com.oracle.graal.nodes.*;
 /**
  * Interface for nodes which have {@link FrameState} nodes as input.
  */
-public interface NodeWithState {
-
-    Node asNode();
+public interface NodeWithState extends NodeInterface {
 
     default NodeIterable<FrameState> states() {
         return asNode().inputs().filter(FrameState.class);

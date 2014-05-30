@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.hotspot.server;
 
+import static com.oracle.graal.graph.util.CollectionsAccess.*;
+
 import java.io.*;
 import java.lang.reflect.*;
 import java.util.*;
@@ -32,7 +34,7 @@ import com.oracle.graal.hotspot.meta.*;
 
 public class ReplacingStreams {
 
-    private IdentityHashMap<Object, Placeholder> objectMap = new IdentityHashMap<>();
+    private Map<Object, Placeholder> objectMap = newIdentityMap();
     private ArrayList<Object> objectList = new ArrayList<>();
 
     private ReplacingOutputStream output;

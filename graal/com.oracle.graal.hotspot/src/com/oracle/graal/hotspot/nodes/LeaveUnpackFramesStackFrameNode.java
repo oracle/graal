@@ -22,27 +22,34 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.stubs.*;
+import com.oracle.graal.lir.StandardOp.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
 
 /**
  * Emits code to leave a low-level stack frame specifically to call out to the C++ method
- * {@link DeoptimizationStub#UNPACK_FRAMES Deoptimization::unpack_frames}.
+ * {@link HotSpotBackend#UNPACK_FRAMES Deoptimization::unpack_frames}.
  */
 public class LeaveUnpackFramesStackFrameNode extends FixedWithNextNode implements LIRLowerable {
 
-    public LeaveUnpackFramesStackFrameNode() {
+    @Input private SaveAllRegistersNode registerSaver;
+
+    public LeaveUnpackFramesStackFrameNode(ValueNode registerSaver) {
         super(StampFactory.forVoid());
+        this.registerSaver = (SaveAllRegistersNode) registerSaver;
+    }
+
+    private SaveRegistersOp getSaveRegistersOp() {
+        return registerSaver.getSaveRegistersOp();
     }
 
     @Override
     public void generate(NodeLIRBuilderTool gen) {
-        ((HotSpotLIRGenerator) gen.getLIRGeneratorTool()).emitLeaveUnpackFramesStackFrame();
+        ((HotSpotLIRGenerator) gen.getLIRGeneratorTool()).emitLeaveUnpackFramesStackFrame(getSaveRegistersOp());
     }
 
     @NodeIntrinsic
-    public static native void leaveUnpackFramesStackFrame();
+    public static native void leaveUnpackFramesStackFrame(long registerSaver);
 }

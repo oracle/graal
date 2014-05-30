@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.hotspot.sparc;
 
-import static com.oracle.graal.hotspot.HotSpotBackend.*;
+import static com.oracle.graal.hotspot.HotSpotHostBackend.*;
 import static com.oracle.graal.sparc.SPARC.*;
 
 import com.oracle.graal.api.code.*;

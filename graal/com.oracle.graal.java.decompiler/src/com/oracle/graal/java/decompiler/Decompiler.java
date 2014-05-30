@@ -68,8 +68,8 @@ public class Decompiler {
             cfgBlocks.add(b);
         }
 
-        for (int i = 0; i < getCfg().getBlocks().length - 1; i++) {
-            if (cfg.getBlocks()[i].getId() >= cfg.getBlocks()[i + 1].getId()) {
+        for (int i = 0; i < getCfg().getBlocks().size() - 1; i++) {
+            if (cfg.getBlocks().get(i).getId() >= cfg.getBlocks().get(i + 1).getId()) {
                 throw new AssertionError();
             }
         }

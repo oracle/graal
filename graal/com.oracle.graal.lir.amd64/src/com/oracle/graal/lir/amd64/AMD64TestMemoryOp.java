@@ -45,7 +45,7 @@ public class AMD64TestMemoryOp extends MemOp {
     @Override
     public void emitMemAccess(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
         if (isRegister(y)) {
-            switch (y.getKind()) {
+            switch (kind) {
                 case Int:
                     masm.testl(asIntReg(y), address.toAddress());
                     break;
@@ -56,7 +56,7 @@ public class AMD64TestMemoryOp extends MemOp {
                     throw GraalInternalError.shouldNotReachHere();
             }
         } else if (isConstant(y)) {
-            switch (y.getKind()) {
+            switch (kind) {
                 case Int:
                     masm.testl(address.toAddress(), crb.asIntConst(y));
                     break;

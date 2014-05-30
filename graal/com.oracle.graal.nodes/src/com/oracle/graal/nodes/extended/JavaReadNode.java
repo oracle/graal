@@ -22,9 +22,9 @@
  */
 package com.oracle.graal.nodes.extended;
 
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
 
 /**
  * Read a raw memory location according to Java field or array read semantics. It will perform read
@@ -32,8 +32,11 @@ import com.oracle.graal.nodes.type.*;
  */
 public final class JavaReadNode extends FixedAccessNode implements Lowerable, GuardingNode {
 
+    private final boolean compressible;
+
     public JavaReadNode(ValueNode object, LocationNode location, BarrierType barrierType, boolean compressible) {
-        super(object, location, StampFactory.forKind(location.getValueKind()), barrierType, compressible);
+        super(object, location, StampFactory.forKind(location.getValueKind()), barrierType);
+        this.compressible = compressible;
     }
 
     public void lower(LoweringTool tool) {
@@ -42,5 +45,9 @@ public final class JavaReadNode extends FixedAccessNode implements Lowerable, Gu
 
     public boolean canNullCheck() {
         return true;
+    }
+
+    public boolean isCompressible() {
+        return compressible;
     }
 }

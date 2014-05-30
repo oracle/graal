@@ -34,10 +34,10 @@ import com.oracle.graal.nodes.spi.*;
 public class CallSiteSubstitutions implements ReplacementsProvider {
 
     @Override
-    public void registerReplacements(MetaAccessProvider metaAccess, LoweringProvider loweringProvider, Replacements replacements, TargetDescription target) {
-        replacements.registerSubstitutions(ConstantCallSiteSubstitutions.class);
-        replacements.registerSubstitutions(MutableCallSiteSubstitutions.class);
-        replacements.registerSubstitutions(VolatileCallSiteSubstitutions.class);
+    public void registerReplacements(MetaAccessProvider metaAccess, LoweringProvider loweringProvider, SnippetReflectionProvider snippetReflection, Replacements replacements, TargetDescription target) {
+        replacements.registerSubstitutions(ConstantCallSite.class, ConstantCallSiteSubstitutions.class);
+        replacements.registerSubstitutions(MutableCallSite.class, MutableCallSiteSubstitutions.class);
+        replacements.registerSubstitutions(VolatileCallSite.class, VolatileCallSiteSubstitutions.class);
     }
 
     @ClassSubstitution(ConstantCallSite.class)

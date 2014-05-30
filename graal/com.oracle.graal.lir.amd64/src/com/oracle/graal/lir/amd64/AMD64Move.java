@@ -432,6 +432,74 @@ public class AMD64Move {
         }
     }
 
+    @Opcode("ATOMIC_READ_AND_ADD")
+    public static class AtomicReadAndAddOp extends AMD64LIRInstruction {
+
+        private final Kind accessKind;
+
+        @Def protected AllocatableValue result;
+        @Alive({COMPOSITE}) protected AMD64AddressValue address;
+        @Use protected AllocatableValue delta;
+
+        public AtomicReadAndAddOp(Kind accessKind, AllocatableValue result, AMD64AddressValue address, AllocatableValue delta) {
+            this.accessKind = accessKind;
+            this.result = result;
+            this.address = address;
+            this.delta = delta;
+        }
+
+        @Override
+        public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
+            move(accessKind, crb, masm, result, delta);
+            if (crb.target.isMP) {
+                masm.lock();
+            }
+            switch (accessKind) {
+                case Int:
+                    masm.xaddl(address.toAddress(), asRegister(result));
+                    break;
+                case Long:
+                    masm.xaddq(address.toAddress(), asRegister(result));
+                    break;
+                default:
+                    throw GraalInternalError.shouldNotReachHere();
+            }
+        }
+    }
+
+    @Opcode("ATOMIC_READ_AND_WRITE")
+    public static class AtomicReadAndWriteOp extends AMD64LIRInstruction {
+
+        private final Kind accessKind;
+
+        @Def protected AllocatableValue result;
+        @Alive({COMPOSITE}) protected AMD64AddressValue address;
+        @Use protected AllocatableValue newValue;
+
+        public AtomicReadAndWriteOp(Kind accessKind, AllocatableValue result, AMD64AddressValue address, AllocatableValue newValue) {
+            this.accessKind = accessKind;
+            this.result = result;
+            this.address = address;
+            this.newValue = newValue;
+        }
+
+        @Override
+        public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
+            move(accessKind, crb, masm, result, newValue);
+            switch (accessKind) {
+                case Int:
+                    masm.xchgl(asRegister(result), address.toAddress());
+                    break;
+                case Long:
+                case Object:
+                    masm.xchgq(asRegister(result), address.toAddress());
+                    break;
+                default:
+                    throw GraalInternalError.shouldNotReachHere();
+            }
+        }
+    }
+
     public static void move(CompilationResultBuilder crb, AMD64MacroAssembler masm, Value result, Value input) {
         move(result.getKind(), crb, masm, result, input);
     }

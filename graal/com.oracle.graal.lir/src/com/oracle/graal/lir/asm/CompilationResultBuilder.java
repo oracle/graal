@@ -92,14 +92,8 @@ public class CompilationResultBuilder {
         compilationResult.setTotalFrameSize(frameSize);
     }
 
-    private static final CompilationResult.Mark[] NO_REFS = {};
-
     public CompilationResult.Mark recordMark(Object id) {
-        return compilationResult.recordMark(asm.position(), id, NO_REFS);
-    }
-
-    public CompilationResult.Mark recordMark(Object id, CompilationResult.Mark... references) {
-        return compilationResult.recordMark(asm.position(), id, references);
+        return compilationResult.recordMark(asm.position(), id);
     }
 
     public void blockComment(String s) {

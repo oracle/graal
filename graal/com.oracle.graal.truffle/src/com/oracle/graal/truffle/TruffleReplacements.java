@@ -32,6 +32,7 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.util.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.truffle.substitutions.*;
+import com.oracle.truffle.api.*;
 
 /**
  * Custom {@link Replacements} for Truffle compilation.
@@ -48,11 +49,11 @@ public abstract class TruffleReplacements extends ReplacementsImpl {
     }
 
     protected void registerTruffleSubstitutions() {
-        registerSubstitutions(CompilerAssertsSubstitutions.class);
-        registerSubstitutions(CompilerDirectivesSubstitutions.class);
-        registerSubstitutions(ExactMathSubstitutions.class);
-        registerSubstitutions(OptimizedAssumptionSubstitutions.class);
-        registerSubstitutions(OptimizedCallTargetSubstitutions.class);
+        registerSubstitutions(CompilerAsserts.class, CompilerAssertsSubstitutions.class);
+        registerSubstitutions(CompilerDirectives.class, CompilerDirectivesSubstitutions.class);
+        registerSubstitutions(ExactMath.class, ExactMathSubstitutions.class);
+        registerSubstitutions(OptimizedAssumption.class, OptimizedAssumptionSubstitutions.class);
+        registerSubstitutions(OptimizedCallTarget.class, OptimizedCallTargetSubstitutions.class);
     }
 
     @Override

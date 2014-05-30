@@ -23,7 +23,7 @@
 package com.oracle.graal.lir.amd64;
 
 import static com.oracle.graal.api.code.ValueUtil.*;
-import static com.oracle.graal.graph.UnsafeAccess.*;
+import static com.oracle.graal.compiler.common.UnsafeAccess.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 
 import java.lang.reflect.*;
@@ -38,7 +38,7 @@ import com.oracle.graal.asm.amd64.AMD64Address.Scale;
 import com.oracle.graal.asm.amd64.AMD64Assembler.ConditionFlag;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
-import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.lir.gen.*;
 
 /**
  * Emits code which compares two arrays of the same length. If the CPU supports any vector

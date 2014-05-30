@@ -31,6 +31,7 @@ import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.ptx.*;
 import com.oracle.graal.nodes.*;
 
@@ -38,11 +39,6 @@ import com.oracle.graal.nodes.*;
  * This class implements the PTX specific portion of the LIR generator.
  */
 public class PTXNodeLIRBuilder extends NodeLIRBuilder {
-
-    // Number of the predicate register that can be used when needed.
-    // This value will be recorded and incremented in the LIR instruction
-    // that sets a predicate register. (e.g., CompareOp)
-    private int nextPredRegNum;
 
     public static final ForeignCallDescriptor ARITHMETIC_FREM = new ForeignCallDescriptor("arithmeticFrem", float.class, float.class, float.class);
     public static final ForeignCallDescriptor ARITHMETIC_DREM = new ForeignCallDescriptor("arithmeticDrem", double.class, double.class, double.class);
@@ -55,12 +51,8 @@ public class PTXNodeLIRBuilder extends NodeLIRBuilder {
         }
     }
 
-    public PTXNodeLIRBuilder(StructuredGraph graph, LIRGenerator lirGen) {
+    public PTXNodeLIRBuilder(StructuredGraph graph, LIRGeneratorTool lirGen) {
         super(graph, lirGen);
-    }
-
-    public int getNextPredRegNumber() {
-        return nextPredRegNum;
     }
 
     @Override
@@ -130,12 +122,6 @@ public class PTXNodeLIRBuilder extends NodeLIRBuilder {
         // LIRFrameState info = state(i);
         // append(new PTXSafepointOp(info, runtime().config, this));
         Debug.log("visitSafePointNode unimplemented");
-    }
-
-    @Override
-    public void emitNullCheck(ValueNode v, DeoptimizingNode deopting) {
-        assert v.getKind() == Kind.Object;
-        append(new PTXMove.NullCheckOp(gen.load(operand(v)), gen.state(deopting)));
     }
 
     @Override

@@ -54,10 +54,6 @@ public class ValuePhiNode extends PhiNode implements Canonicalizable {
 
     @Override
     public boolean inferStamp() {
-        return inferPhiStamp();
-    }
-
-    public boolean inferPhiStamp() {
         return updateStamp(StampTool.meet(values()));
     }
 }

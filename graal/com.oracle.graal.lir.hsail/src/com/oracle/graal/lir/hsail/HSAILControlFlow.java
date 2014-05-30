@@ -84,11 +84,6 @@ public class HSAILControlFlow {
         /**
          * Generates the code for this switch op.
          *
-         * The keys for switch statements in Java bytecode for of type int. However, Graal also
-         * generates a TypeSwitchNode (for method dispatch) which triggers the invocation of these
-         * routines with keys of type Long or Object. Currently we only support the
-         * IntegerSwitchNode so we throw an exception if the key isn't of type int.
-         *
          * @param crb the CompilationResultBuilder
          * @param masm the HSAIL assembler
          */
@@ -100,13 +95,13 @@ public class HSAILControlFlow {
                     switch (key.getKind()) {
                         case Int:
                         case Long:
+                        case Object:
                             // Generate cascading compare and branches for each case.
                             masm.emitCompare(key.getKind(), key, keyConstants[index], HSAILCompare.conditionToString(condition), false, false);
                             masm.cbr(masm.nameOf(target));
                             break;
-                        case Object:
                         default:
-                            throw new GraalInternalError("switch only supported for int");
+                            throw new GraalInternalError("switch not supported for kind " + key.getKind());
                     }
                 }
             };
@@ -146,14 +141,15 @@ public class HSAILControlFlow {
         protected MetaAccessProvider metaAccessProvider;
         protected String emitName;
         protected int codeBufferPos = -1;
-        protected int dregOopMap = 0;
+        private final boolean emitInfopoint;
 
-        public DeoptimizeOp(Value actionAndReason, LIRFrameState frameState, String emitName, MetaAccessProvider metaAccessProvider) {
+        public DeoptimizeOp(Value actionAndReason, LIRFrameState frameState, String emitName, boolean emitInfopoint, MetaAccessProvider metaAccessProvider) {
             super(Value.ILLEGAL);   // return with no ret value
             this.actionAndReason = actionAndReason;
             this.frameState = frameState;
             this.emitName = emitName;
             this.metaAccessProvider = metaAccessProvider;
+            this.emitInfopoint = emitInfopoint;
         }
 
         @Override
@@ -181,24 +177,18 @@ public class HSAILControlFlow {
 
             masm.emitComment("/* HSAIL Deoptimization pos=" + codeBufferPos + ", bci=" + frameState.debugInfo().getBytecodePosition().getBCI() + ", frameState=" + frameState + " */");
 
-            // get the bitmap of $d regs that contain references
-            ReferenceMap referenceMap = frameState.debugInfo().getReferenceMap();
-            for (int dreg = HSAIL.d0.number; dreg <= HSAIL.d15.number; dreg++) {
-                if (referenceMap.getRegister(dreg) == Kind.Object) {
-                    dregOopMap |= 1 << (dreg - HSAIL.d0.number);
-                }
-            }
-
             AllocatableValue actionAndReasonReg = HSAIL.actionAndReasonReg.asValue(Kind.Int);
             AllocatableValue codeBufferOffsetReg = HSAIL.codeBufferOffsetReg.asValue(Kind.Int);
-            AllocatableValue dregOopMapReg = HSAIL.dregOopMapReg.asValue(Kind.Int);
             masm.emitMov(Kind.Int, actionAndReasonReg, actionAndReason);
             masm.emitMov(Kind.Int, codeBufferOffsetReg, Constant.forInt(codeBufferPos));
-            masm.emitMov(Kind.Int, dregOopMapReg, Constant.forInt(dregOopMap));
             masm.emitJumpToLabelName(masm.getDeoptLabelName());
 
-            // now record the debuginfo
-            crb.recordInfopoint(codeBufferPos, frameState, InfopointReason.IMPLICIT_EXCEPTION);
+            // Now record the debuginfo. If HSAIL deoptimization is off,
+            // no debuginfo is emitted and the kernel will return without
+            // a deoptimization.
+            if (emitInfopoint) {
+                crb.recordInfopoint(codeBufferPos, frameState, InfopointReason.IMPLICIT_EXCEPTION);
+            }
         }
 
         public LIRFrameState getFrameState() {
@@ -305,10 +295,10 @@ public class HSAILControlFlow {
 
         @Opcode protected final HSAILCompare opcode;
         @Def({REG, HINT}) protected Value result;
-        @Use({REG, STACK, CONST}) protected Value trueValue;
-        @Use({REG, STACK, CONST}) protected Value falseValue;
-        @Use({REG, STACK, CONST}) protected Value left;
-        @Use({REG, STACK, CONST}) protected Value right;
+        @Use({REG, CONST}) protected Value trueValue;
+        @Use({REG, CONST}) protected Value falseValue;
+        @Use({REG, CONST}) protected Value left;
+        @Use({REG, CONST}) protected Value right;
         protected final Condition condition;
 
         public CondMoveOp(HSAILCompare opcode, Variable left, Variable right, Variable result, Condition condition, Value trueValue, Value falseValue) {

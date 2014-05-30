@@ -22,10 +22,11 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.hotspot.*;
+import com.oracle.graal.lir.StandardOp.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
 
 /**
  * Emits code to leave (pop) the current low-level stack frame. This operation also removes the
@@ -33,15 +34,22 @@ import com.oracle.graal.nodes.type.*;
  */
 public class LeaveCurrentStackFrameNode extends FixedWithNextNode implements LIRLowerable {
 
-    public LeaveCurrentStackFrameNode() {
+    @Input private SaveAllRegistersNode registerSaver;
+
+    public LeaveCurrentStackFrameNode(ValueNode registerSaver) {
         super(StampFactory.forVoid());
+        this.registerSaver = (SaveAllRegistersNode) registerSaver;
+    }
+
+    private SaveRegistersOp getSaveRegistersOp() {
+        return registerSaver.getSaveRegistersOp();
     }
 
     @Override
     public void generate(NodeLIRBuilderTool gen) {
-        ((HotSpotLIRGenerator) gen.getLIRGeneratorTool()).emitLeaveCurrentStackFrame();
+        ((HotSpotLIRGenerator) gen.getLIRGeneratorTool()).emitLeaveCurrentStackFrame(getSaveRegistersOp());
     }
 
     @NodeIntrinsic
-    public static native void leaveCurrentStackFrame();
+    public static native void leaveCurrentStackFrame(long registerSaver);
 }

@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.hotspot;
 
-import static com.oracle.graal.graph.UnsafeAccess.*;
+import static com.oracle.graal.compiler.common.UnsafeAccess.*;
 
 import java.lang.reflect.*;
 import java.util.*;
@@ -30,6 +30,7 @@ import java.util.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.hotspot.bridge.*;
 import com.oracle.graal.hotspot.meta.*;
+import com.oracle.graal.hotspotvmconfig.*;
 
 /**
  * Used to access native configuration details.
@@ -65,14 +66,21 @@ public class HotSpotVMConfig extends CompilerObject {
     public final int maxFrameSize = 16 * 1024;
 
     HotSpotVMConfig(CompilerToVM compilerToVm) {
-        /** These fields are set in {@link CompilerToVM#initializeConfiguration}. */
-        gHotSpotVMStructs = 0;
-        gHotSpotVMTypes = 0;
-        gHotSpotVMIntConstants = 0;
-        gHotSpotVMLongConstants = 0;
-
         compilerToVm.initializeConfiguration(this);
+        assert verifyInitialization();
 
+        oopEncoding = new CompressEncoding(narrowOopBase, narrowOopShift, logMinObjAlignment());
+        klassEncoding = new CompressEncoding(narrowKlassBase, narrowKlassShift, logKlassAlignment);
+
+        assert check();
+    }
+
+    /**
+     * Check that the initialization produces the same result as the values captured through
+     * vmStructs.
+     */
+    private boolean verifyInitialization() {
+        /** These fields are set in {@link CompilerToVM#initializeConfiguration}. */
         assert gHotSpotVMStructs != 0;
         assert gHotSpotVMTypes != 0;
         assert gHotSpotVMIntConstants != 0;
@@ -114,7 +122,7 @@ public class HotSpotVMConfig extends CompilerObject {
                 String type = annotation.type();
                 VMFields.Field entry = vmFields.get(name);
                 if (entry == null) {
-                    if (annotation.optional() || !isRequired(currentArch, annotation.archs())) {
+                    if (!isRequired(currentArch, annotation.archs())) {
                         continue;
                     }
                     throw new IllegalArgumentException("field not found: " + name);
@@ -129,13 +137,13 @@ public class HotSpotVMConfig extends CompilerObject {
 
                 switch (annotation.get()) {
                     case OFFSET:
-                        setField(f, entry.getOffset());
+                        checkField(f, entry.getOffset());
                         break;
                     case ADDRESS:
-                        setField(f, entry.getAddress());
+                        checkField(f, entry.getAddress());
                         break;
                     case VALUE:
-                        setField(f, entry.getValue());
+                        checkField(f, entry.getValue());
                         break;
                     default:
                         throw GraalInternalError.shouldNotReachHere("unknown kind " + annotation.get());
@@ -149,7 +157,7 @@ public class HotSpotVMConfig extends CompilerObject {
                 }
                 switch (annotation.get()) {
                     case SIZE:
-                        setField(f, entry.getSize());
+                        checkField(f, entry.getSize());
                         break;
                     default:
                         throw GraalInternalError.shouldNotReachHere("unknown kind " + annotation.get());
@@ -164,26 +172,22 @@ public class HotSpotVMConfig extends CompilerObject {
                     }
                     throw new IllegalArgumentException("constant not found: " + name);
                 }
-                setField(f, entry.getValue());
+                checkField(f, entry.getValue());
             } else if (f.isAnnotationPresent(HotSpotVMFlag.class)) {
                 HotSpotVMFlag annotation = f.getAnnotation(HotSpotVMFlag.class);
                 String name = annotation.name();
                 Flags.Flag entry = flags.get(name);
                 if (entry == null) {
-                    if (!isRequired(currentArch, annotation.archs())) {
+                    if (annotation.optional() || !isRequired(currentArch, annotation.archs())) {
                         continue;
                     }
                     throw new IllegalArgumentException("flag not found: " + name);
 
                 }
-                setField(f, entry.getValue());
+                checkField(f, entry.getValue());
             }
         }
-
-        oopEncoding = new CompressEncoding(narrowOopBase, narrowOopShift, logMinObjAlignment());
-        klassEncoding = new CompressEncoding(narrowKlassBase, narrowKlassShift, logKlassAlignment);
-
-        assert check();
+        return true;
     }
 
     private final CompressEncoding oopEncoding;
@@ -197,29 +201,29 @@ public class HotSpotVMConfig extends CompilerObject {
         return klassEncoding;
     }
 
-    private void setField(Field field, Object value) {
+    private void checkField(Field field, Object value) {
         try {
             Class<?> fieldType = field.getType();
             if (fieldType == boolean.class) {
                 if (value instanceof String) {
-                    field.setBoolean(this, Boolean.valueOf((String) value));
+                    assert field.getBoolean(this) == Boolean.valueOf((String) value) : field + " " + value + " " + field.getBoolean(this);
                 } else if (value instanceof Boolean) {
-                    field.setBoolean(this, (boolean) value);
+                    assert field.getBoolean(this) == (boolean) value : field + " " + value + " " + field.getBoolean(this);
                 } else if (value instanceof Long) {
-                    field.setBoolean(this, ((long) value) != 0);
+                    assert field.getBoolean(this) == (((long) value) != 0) : field + " " + value + " " + field.getBoolean(this);
                 } else {
                     GraalInternalError.shouldNotReachHere(value.getClass().getSimpleName());
                 }
             } else if (fieldType == int.class) {
                 if (value instanceof Integer) {
-                    field.setInt(this, (int) value);
+                    assert field.getInt(this) == (int) value : field + " " + value + " " + field.getInt(this);
                 } else if (value instanceof Long) {
-                    field.setInt(this, (int) (long) value);
+                    assert field.getInt(this) == (int) (long) value : field + " " + value + " " + field.getInt(this);
                 } else {
                     GraalInternalError.shouldNotReachHere(value.getClass().getSimpleName());
                 }
             } else if (fieldType == long.class) {
-                field.setLong(this, (long) value);
+                assert field.getLong(this) == (long) value : field + " " + value + " " + field.getLong(this);
             } else {
                 GraalInternalError.shouldNotReachHere(field.toString());
             }
@@ -248,14 +252,14 @@ public class HotSpotVMConfig extends CompilerObject {
     /**
      * VMStructEntry (see vmStructs.hpp).
      */
-    private long gHotSpotVMStructs;
-    private long gHotSpotVMStructEntryTypeNameOffset;
-    private long gHotSpotVMStructEntryFieldNameOffset;
-    private long gHotSpotVMStructEntryTypeStringOffset;
-    private long gHotSpotVMStructEntryIsStaticOffset;
-    private long gHotSpotVMStructEntryOffsetOffset;
-    private long gHotSpotVMStructEntryAddressOffset;
-    private long gHotSpotVMStructEntryArrayStride;
+    @HotSpotVMValue(expression = "gHotSpotVMStructs", get = HotSpotVMValue.Type.ADDRESS) @Stable private long gHotSpotVMStructs;
+    @HotSpotVMValue(expression = "gHotSpotVMStructEntryTypeNameOffset") @Stable private long gHotSpotVMStructEntryTypeNameOffset;
+    @HotSpotVMValue(expression = "gHotSpotVMStructEntryFieldNameOffset") @Stable private long gHotSpotVMStructEntryFieldNameOffset;
+    @HotSpotVMValue(expression = "gHotSpotVMStructEntryTypeStringOffset") @Stable private long gHotSpotVMStructEntryTypeStringOffset;
+    @HotSpotVMValue(expression = "gHotSpotVMStructEntryIsStaticOffset") @Stable private long gHotSpotVMStructEntryIsStaticOffset;
+    @HotSpotVMValue(expression = "gHotSpotVMStructEntryOffsetOffset") @Stable private long gHotSpotVMStructEntryOffsetOffset;
+    @HotSpotVMValue(expression = "gHotSpotVMStructEntryAddressOffset") @Stable private long gHotSpotVMStructEntryAddressOffset;
+    @HotSpotVMValue(expression = "gHotSpotVMStructEntryArrayStride") @Stable private long gHotSpotVMStructEntryArrayStride;
 
     class VMFields implements Iterable<VMFields.Field> {
 
@@ -364,14 +368,14 @@ public class HotSpotVMConfig extends CompilerObject {
     /**
      * VMTypeEntry (see vmStructs.hpp).
      */
-    private long gHotSpotVMTypes;
-    private long gHotSpotVMTypeEntryTypeNameOffset;
-    private long gHotSpotVMTypeEntrySuperclassNameOffset;
-    private long gHotSpotVMTypeEntryIsOopTypeOffset;
-    private long gHotSpotVMTypeEntryIsIntegerTypeOffset;
-    private long gHotSpotVMTypeEntryIsUnsignedOffset;
-    private long gHotSpotVMTypeEntrySizeOffset;
-    private long gHotSpotVMTypeEntryArrayStride;
+    @HotSpotVMValue(expression = "gHotSpotVMTypes", get = HotSpotVMValue.Type.ADDRESS) @Stable private long gHotSpotVMTypes;
+    @HotSpotVMValue(expression = "gHotSpotVMTypeEntryTypeNameOffset") @Stable private long gHotSpotVMTypeEntryTypeNameOffset;
+    @HotSpotVMValue(expression = "gHotSpotVMTypeEntrySuperclassNameOffset") @Stable private long gHotSpotVMTypeEntrySuperclassNameOffset;
+    @HotSpotVMValue(expression = "gHotSpotVMTypeEntryIsOopTypeOffset") @Stable private long gHotSpotVMTypeEntryIsOopTypeOffset;
+    @HotSpotVMValue(expression = "gHotSpotVMTypeEntryIsIntegerTypeOffset") @Stable private long gHotSpotVMTypeEntryIsIntegerTypeOffset;
+    @HotSpotVMValue(expression = "gHotSpotVMTypeEntryIsUnsignedOffset") @Stable private long gHotSpotVMTypeEntryIsUnsignedOffset;
+    @HotSpotVMValue(expression = "gHotSpotVMTypeEntrySizeOffset") @Stable private long gHotSpotVMTypeEntrySizeOffset;
+    @HotSpotVMValue(expression = "gHotSpotVMTypeEntryArrayStride") @Stable private long gHotSpotVMTypeEntryArrayStride;
 
     class VMTypes implements Iterable<VMTypes.Type> {
 
@@ -476,10 +480,10 @@ public class HotSpotVMConfig extends CompilerObject {
     /**
      * VMIntConstantEntry (see vmStructs.hpp).
      */
-    private long gHotSpotVMIntConstants;
-    private long gHotSpotVMIntConstantEntryNameOffset;
-    private long gHotSpotVMIntConstantEntryValueOffset;
-    private long gHotSpotVMIntConstantEntryArrayStride;
+    @HotSpotVMValue(expression = "gHotSpotVMIntConstants", get = HotSpotVMValue.Type.ADDRESS) @Stable private long gHotSpotVMIntConstants;
+    @HotSpotVMValue(expression = "gHotSpotVMIntConstantEntryNameOffset") @Stable private long gHotSpotVMIntConstantEntryNameOffset;
+    @HotSpotVMValue(expression = "gHotSpotVMIntConstantEntryValueOffset") @Stable private long gHotSpotVMIntConstantEntryValueOffset;
+    @HotSpotVMValue(expression = "gHotSpotVMIntConstantEntryArrayStride") @Stable private long gHotSpotVMIntConstantEntryArrayStride;
 
     class VMIntConstants implements Iterable<VMIntConstants.Constant> {
 
@@ -540,10 +544,10 @@ public class HotSpotVMConfig extends CompilerObject {
     /**
      * VMLongConstantEntry (see vmStructs.hpp).
      */
-    private long gHotSpotVMLongConstants;
-    private long gHotSpotVMLongConstantEntryNameOffset;
-    private long gHotSpotVMLongConstantEntryValueOffset;
-    private long gHotSpotVMLongConstantEntryArrayStride;
+    @HotSpotVMValue(expression = "gHotSpotVMLongConstants", get = HotSpotVMValue.Type.ADDRESS) @Stable private long gHotSpotVMLongConstants;
+    @HotSpotVMValue(expression = "gHotSpotVMLongConstantEntryNameOffset") @Stable private long gHotSpotVMLongConstantEntryNameOffset;
+    @HotSpotVMValue(expression = "gHotSpotVMLongConstantEntryValueOffset") @Stable private long gHotSpotVMLongConstantEntryValueOffset;
+    @HotSpotVMValue(expression = "gHotSpotVMLongConstantEntryArrayStride") @Stable private long gHotSpotVMLongConstantEntryArrayStride;
 
     class VMLongConstants implements Iterable<VMLongConstants.Constant> {
 
@@ -699,7 +703,7 @@ public class HotSpotVMConfig extends CompilerObject {
     }
 
     // os information, register layout, code generation, ...
-    @HotSpotVMConstant(name = "ASSERT") @Stable public boolean cAssertions;
+    @HotSpotVMValue(expression = "DEBUG_ONLY(1) NOT_DEBUG(0)") @Stable public boolean cAssertions;
     public final boolean windowsOs = System.getProperty("os.name", "").startsWith("Windows");
 
     @HotSpotVMFlag(name = "CodeEntryAlignment") @Stable public int codeEntryAlignment;
@@ -708,14 +712,15 @@ public class HotSpotVMConfig extends CompilerObject {
     @HotSpotVMFlag(name = "CITimeEach") @Stable public boolean ciTimeEach;
     @HotSpotVMFlag(name = "CompileThreshold") @Stable public long compileThreshold;
     @HotSpotVMFlag(name = "CompileTheWorld") @Stable public boolean compileTheWorld;
-    @HotSpotVMFlag(name = "CompileTheWorldStartAt") @Stable public int compileTheWorldStartAt;
-    @HotSpotVMFlag(name = "CompileTheWorldStopAt") @Stable public int compileTheWorldStopAt;
+    @HotSpotVMFlag(name = "CompileTheWorldStartAt", optional = true) @Stable public int compileTheWorldStartAt;
+    @HotSpotVMFlag(name = "CompileTheWorldStopAt", optional = true) @Stable public int compileTheWorldStopAt;
     @HotSpotVMFlag(name = "DontCompileHugeMethods") @Stable public boolean dontCompileHugeMethods;
     @HotSpotVMFlag(name = "HugeMethodLimit") @Stable public int hugeMethodLimit;
     @HotSpotVMFlag(name = "PrintCompilation") @Stable public boolean printCompilation;
     @HotSpotVMFlag(name = "CIPrintCompilerName") @Stable public boolean printCompilerName;
     @HotSpotVMFlag(name = "PrintInlining") @Stable public boolean printInlining;
     @HotSpotVMFlag(name = "GraalUseFastLocking") @Stable public boolean useFastLocking;
+    @HotSpotVMFlag(name = "UseGraalCompilationQueue", optional = true) @Stable public boolean useGraalCompilationQueue;
     @HotSpotVMFlag(name = "ForceUnreachable") @Stable public boolean forceUnreachable;
     @HotSpotVMFlag(name = "GPUOffload") @Stable public boolean gpuOffload;
     @HotSpotVMFlag(name = "TieredCompilation") @Stable public boolean tieredCompilation;
@@ -735,6 +740,8 @@ public class HotSpotVMConfig extends CompilerObject {
     @HotSpotVMFlag(name = "AllocateInstancePrefetchLines") @Stable public int allocateInstancePrefetchLines;
     @HotSpotVMFlag(name = "AllocatePrefetchStepSize") @Stable public int allocatePrefetchStepSize;
     @HotSpotVMFlag(name = "AllocatePrefetchDistance") @Stable public int allocatePrefetchDistance;
+
+    @HotSpotVMFlag(name = "FlightRecorder", optional = true) @Stable public boolean flightRecorder;
 
     @HotSpotVMField(name = "Universe::_collectedHeap", type = "CollectedHeap*", get = HotSpotVMField.Type.VALUE) @Stable private long universeCollectedHeap;
     @HotSpotVMField(name = "CollectedHeap::_total_collections", type = "unsigned int", get = HotSpotVMField.Type.OFFSET) @Stable private int collectedHeapTotalCollectionsOffset;
@@ -794,6 +801,7 @@ public class HotSpotVMConfig extends CompilerObject {
     // offsets, ...
     @HotSpotVMFlag(name = "StackShadowPages") @Stable public int stackShadowPages;
     @HotSpotVMFlag(name = "UseStackBanging") @Stable public boolean useStackBanging;
+    @HotSpotVMConstant(name = "STACK_BIAS") @Stable public int stackBias;
 
     @HotSpotVMField(name = "oopDesc::_mark", type = "markOop", get = HotSpotVMField.Type.OFFSET) @Stable public int markOffset;
     @HotSpotVMField(name = "oopDesc::_metadata._klass", type = "Klass*", get = HotSpotVMField.Type.OFFSET) @Stable public int hubOffset;
@@ -844,12 +852,12 @@ public class HotSpotVMConfig extends CompilerObject {
 
     @HotSpotVMType(name = "vtableEntry", get = HotSpotVMType.Type.SIZE) @Stable public int vtableEntrySize;
     @HotSpotVMField(name = "vtableEntry::_method", type = "Method*", get = HotSpotVMField.Type.OFFSET) @Stable public int vtableEntryMethodOffset;
-    @Stable public int instanceKlassVtableStartOffset;
+    @HotSpotVMValue(expression = "InstanceKlass::vtable_start_offset() * HeapWordSize") @Stable public int instanceKlassVtableStartOffset;
 
     /**
      * The offset of the array length word in an array object's header.
      */
-    @Stable public int arrayLengthOffset;
+    @HotSpotVMValue(expression = "arrayOopDesc::length_offset_in_bytes()") @Stable public int arrayLengthOffset;
 
     @HotSpotVMField(name = "Array<int>::_length", type = "int", get = HotSpotVMField.Type.OFFSET) @Stable public int arrayU1LengthOffset;
     @HotSpotVMField(name = "Array<u1>::_data", type = "", get = HotSpotVMField.Type.OFFSET) @Stable public int arrayU1DataOffset;
@@ -891,7 +899,7 @@ public class HotSpotVMConfig extends CompilerObject {
     @HotSpotVMField(name = "JavaThread::_is_method_handle_return", type = "int", get = HotSpotVMField.Type.OFFSET) @Stable public int threadIsMethodHandleReturnOffset;
     @HotSpotVMField(name = "JavaThread::_satb_mark_queue", type = "ObjPtrQueue", get = HotSpotVMField.Type.OFFSET) @Stable public int javaThreadSatbMarkQueueOffset;
     @HotSpotVMField(name = "JavaThread::_vm_result", type = "oop", get = HotSpotVMField.Type.OFFSET) @Stable public int threadObjectResultOffset;
-    @HotSpotVMField(name = "JavaThread::_graal_counters[0]", type = "jlong", get = HotSpotVMField.Type.OFFSET, optional = true) @Stable public int graalCountersThreadOffset;
+    @HotSpotVMValue(expression = "in_bytes(JavaThread::graal_counters_offset())") @Stable public int graalCountersThreadOffset;
 
     /**
      * An invalid value for {@link #rtldDefault}.
@@ -905,7 +913,7 @@ public class HotSpotVMConfig extends CompilerObject {
      *     void* (const char *filename, char *ebuf, int ebuflen)
      * </pre>
      */
-    @Stable public long dllLoad;
+    @HotSpotVMValue(expression = "os::dll_load", get = HotSpotVMValue.Type.ADDRESS) @Stable public long dllLoad;
 
     /**
      * Address of the library lookup routine. The C signature of this routine is:
@@ -914,7 +922,7 @@ public class HotSpotVMConfig extends CompilerObject {
      *     void* (void* handle, const char* name)
      * </pre>
      */
-    @Stable public long dllLookup;
+    @HotSpotVMValue(expression = "os::dll_lookup", get = HotSpotVMValue.Type.ADDRESS) @Stable public long dllLookup;
 
     /**
      * A pseudo-handle which when used as the first argument to {@link #dllLookup} means lookup will
@@ -922,7 +930,7 @@ public class HotSpotVMConfig extends CompilerObject {
      * this field is {@value #INVALID_RTLD_DEFAULT_HANDLE}, then this capability is not supported on
      * the current platform.
      */
-    @Stable public long rtldDefault = INVALID_RTLD_DEFAULT_HANDLE;
+    @HotSpotVMValue(expression = "RTLD_DEFAULT", defines = {"TARGET_OS_FAMILY_bsd", "TARGET_OS_FAMILY_linux"}, get = HotSpotVMValue.Type.ADDRESS) @Stable public long rtldDefault = INVALID_RTLD_DEFAULT_HANDLE;
 
     /**
      * This field is used to pass exception objects into and out of the runtime system during
@@ -1020,8 +1028,6 @@ public class HotSpotVMConfig extends CompilerObject {
      * exceptions from Hsail back to C++ runtime.
      */
     @HotSpotVMField(name = "Hsail::HSAILDeoptimizationInfo::_notice_safepoints", type = "jint*", get = HotSpotVMField.Type.OFFSET) @Stable public int hsailNoticeSafepointsOffset;
-    @HotSpotVMField(name = "Hsail::HSAILDeoptimizationInfo::_deopt_save_states[0]", type = "Hsail::HSAILKernelDeoptimization", get = HotSpotVMField.Type.OFFSET) @Stable public int hsailSaveStatesOffset0;
-    @HotSpotVMField(name = "Hsail::HSAILDeoptimizationInfo::_deopt_save_states[1]", type = "Hsail::HSAILKernelDeoptimization", get = HotSpotVMField.Type.OFFSET) @Stable public int hsailSaveStatesOffset1;
     @HotSpotVMField(name = "Hsail::HSAILDeoptimizationInfo::_deopt_occurred", type = "jint", get = HotSpotVMField.Type.OFFSET) @Stable public int hsailDeoptOccurredOffset;
     @HotSpotVMField(name = "Hsail::HSAILDeoptimizationInfo::_never_ran_array", type = "jboolean *", get = HotSpotVMField.Type.OFFSET) @Stable public int hsailNeverRanArrayOffset;
     @HotSpotVMField(name = "Hsail::HSAILDeoptimizationInfo::_deopt_next_index", type = "jint", get = HotSpotVMField.Type.OFFSET) @Stable public int hsailDeoptNextIndexOffset;
@@ -1029,11 +1035,13 @@ public class HotSpotVMConfig extends CompilerObject {
 
     @HotSpotVMField(name = "Hsail::HSAILKernelDeoptimization::_workitemid", type = "jint", get = HotSpotVMField.Type.OFFSET) @Stable public int hsailDeoptimizationWorkItem;
     @HotSpotVMField(name = "Hsail::HSAILKernelDeoptimization::_actionAndReason", type = "jint", get = HotSpotVMField.Type.OFFSET) @Stable public int hsailDeoptimizationReason;
-    @HotSpotVMField(name = "Hsail::HSAILKernelDeoptimization::_first_frame", type = "HSAILFrame", get = HotSpotVMField.Type.OFFSET) @Stable public int hsailDeoptimizationFrame;
 
     @HotSpotVMField(name = "HSAILFrame::_pc_offset", type = "jint", get = HotSpotVMField.Type.OFFSET) @Stable public int hsailFramePcOffset;
     @HotSpotVMField(name = "HSAILFrame::_num_s_regs", type = "jbyte", get = HotSpotVMField.Type.OFFSET) @Stable public int hsailFrameNumSRegOffset;
-    @HotSpotVMField(name = "HSAILFrame::_save_area[0]", type = "jlong", get = HotSpotVMField.Type.OFFSET) @Stable public int hsailFrameSaveAreaOffset;
+    @HotSpotVMField(name = "HSAILFrame::_num_d_regs", type = "jbyte", get = HotSpotVMField.Type.OFFSET) @Stable public int hsailFrameNumDRegOffset;
+    @HotSpotVMType(name = "HSAILFrame", get = HotSpotVMType.Type.SIZE) @Stable public int hsailFrameHeaderSize;
+    @HotSpotVMType(name = "Hsail::HSAILKernelDeoptimization", get = HotSpotVMType.Type.SIZE) @Stable public int hsailKernelDeoptimizationHeaderSize;
+    @HotSpotVMType(name = "Hsail::HSAILDeoptimizationInfo", get = HotSpotVMType.Type.SIZE) @Stable public int hsailDeoptimizationInfoHeaderSize;
 
     /**
      * Mark word right shift to get identity hash code.
@@ -1062,14 +1070,18 @@ public class HotSpotVMConfig extends CompilerObject {
     @HotSpotVMConstant(name = "Method::_dont_inline") @Stable public int methodFlagsDontInline;
     @HotSpotVMConstant(name = "Method::_hidden") @Stable public int methodFlagsHidden;
     @HotSpotVMConstant(name = "Method::nonvirtual_vtable_index") @Stable public int nonvirtualVtableIndex;
+    @HotSpotVMConstant(name = "Method::invalid_vtable_index") @Stable public int invalidVtableIndex;
 
     @HotSpotVMConstant(name = "JVM_ACC_MONITOR_MATCH") @Stable public int jvmAccMonitorMatch;
     @HotSpotVMConstant(name = "JVM_ACC_HAS_MONITOR_BYTECODES") @Stable public int jvmAccHasMonitorBytecodes;
 
+    @HotSpotVMField(name = "CompileTask::_compile_id", type = "uint", get = HotSpotVMField.Type.OFFSET) @Stable public int compileTaskCompileIdOffset;
+    @HotSpotVMField(name = "CompileTask::_num_inlined_bytecodes", type = "int", get = HotSpotVMField.Type.OFFSET) @Stable public int compileTaskNumInlinedBytecodesOffset;
+
     /**
      * Value of Method::extra_stack_entries().
      */
-    @Stable public int extraStackEntries;
+    @HotSpotVMValue(expression = "Method::extra_stack_entries()") @Stable public int extraStackEntries;
 
     @HotSpotVMField(name = "ConstMethod::_constants", type = "ConstantPool*", get = HotSpotVMField.Type.OFFSET) @Stable public int constMethodConstantsOffset;
     @HotSpotVMField(name = "ConstMethod::_flags", type = "u2", get = HotSpotVMField.Type.OFFSET) @Stable public int constMethodFlagsOffset;
@@ -1150,8 +1162,8 @@ public class HotSpotVMConfig extends CompilerObject {
     @HotSpotVMField(name = "Universe::_non_oop_bits", type = "intptr_t", get = HotSpotVMField.Type.VALUE) @Stable public long nonOopBits;
 
     @HotSpotVMField(name = "StubRoutines::_verify_oop_count", type = "jint", get = HotSpotVMField.Type.ADDRESS) @Stable public long verifyOopCounterAddress;
-    @Stable public long verifyOopMask;
-    @Stable public long verifyOopBits;
+    @HotSpotVMValue(expression = "Universe::verify_oop_mask()") @Stable public long verifyOopMask;
+    @HotSpotVMValue(expression = "Universe::verify_oop_bits()") @Stable public long verifyOopBits;
 
     @HotSpotVMField(name = "CollectedHeap::_barrier_set", type = "BarrierSet*", get = HotSpotVMField.Type.OFFSET) @Stable public int collectedHeapBarrierSetOffset;
 
@@ -1241,13 +1253,13 @@ public class HotSpotVMConfig extends CompilerObject {
     @HotSpotVMType(name = "BasicLock", get = HotSpotVMType.Type.SIZE) @Stable public int basicLockSize;
     @HotSpotVMField(name = "BasicLock::_displaced_header", type = "markOop", get = HotSpotVMField.Type.OFFSET) @Stable public int basicLockDisplacedHeaderOffset;
 
-    @Stable public long heapEndAddress;
-    @Stable public long heapTopAddress;
+    @HotSpotVMValue(expression = "Universe::heap()->end_addr()", get = HotSpotVMValue.Type.ADDRESS) @Stable public long heapEndAddress;
+    @HotSpotVMValue(expression = "Universe::heap()->top_addr()", get = HotSpotVMValue.Type.ADDRESS) @Stable public long heapTopAddress;
 
     @HotSpotVMField(name = "Thread::_allocated_bytes", type = "jlong", get = HotSpotVMField.Type.OFFSET) @Stable public int threadAllocatedBytesOffset;
 
     @HotSpotVMFlag(name = "TLABWasteIncrement") @Stable public int tlabRefillWasteIncrement;
-    @Stable public int tlabAlignmentReserve;
+    @HotSpotVMValue(expression = "ThreadLocalAllocBuffer::alignment_reserve()") @Stable public int tlabAlignmentReserve;
 
     @HotSpotVMField(name = "ThreadLocalAllocBuffer::_start", type = "HeapWord*", get = HotSpotVMField.Type.OFFSET) @Stable private int threadLocalAllocBufferStartOffset;
     @HotSpotVMField(name = "ThreadLocalAllocBuffer::_end", type = "HeapWord*", get = HotSpotVMField.Type.OFFSET) @Stable private int threadLocalAllocBufferEndOffset;
@@ -1296,7 +1308,7 @@ public class HotSpotVMConfig extends CompilerObject {
     }
 
     @HotSpotVMFlag(name = "TLABStats") @Stable public boolean tlabStats;
-    @Stable public boolean inlineContiguousAllocationSupported;
+    @HotSpotVMValue(expression = " !CMSIncrementalMode && Universe::heap()->supports_inline_contig_alloc()") @Stable public boolean inlineContiguousAllocationSupported;
 
     /**
      * The DataLayout header size is the same as the cell size.
@@ -1352,8 +1364,6 @@ public class HotSpotVMConfig extends CompilerObject {
         return unsafe.getAddress(codeCacheHeap + codeHeapMemoryOffset + virtualSpaceHighBoundaryOffset);
     }
 
-    @Stable public long handleDeoptStub;
-
     @HotSpotVMField(name = "StubRoutines::_aescrypt_encryptBlock", type = "address", get = HotSpotVMField.Type.VALUE) @Stable public long aescryptEncryptBlockStub;
     @HotSpotVMField(name = "StubRoutines::_aescrypt_decryptBlock", type = "address", get = HotSpotVMField.Type.VALUE) @Stable public long aescryptDecryptBlockStub;
     @HotSpotVMField(name = "StubRoutines::_cipherBlockChaining_encryptAESCrypt", type = "address", get = HotSpotVMField.Type.VALUE) @Stable public long cipherBlockChainingEncryptAESCryptStub;
@@ -1390,41 +1400,43 @@ public class HotSpotVMConfig extends CompilerObject {
     @HotSpotVMField(name = "StubRoutines::_unsafe_arraycopy", type = "address", get = HotSpotVMField.Type.VALUE) @Stable public long unsafeArraycopy;
     @HotSpotVMField(name = "StubRoutines::_generic_arraycopy", type = "address", get = HotSpotVMField.Type.VALUE) @Stable public long genericArraycopy;
 
-    @Stable public long newInstanceAddress;
-    @Stable public long newArrayAddress;
-    @Stable public long newMultiArrayAddress;
-    @Stable public long dynamicNewArrayAddress;
-    @Stable public long dynamicNewInstanceAddress;
-    @Stable public long registerFinalizerAddress;
-    @Stable public long threadIsInterruptedAddress;
-    @Stable public long vmMessageAddress;
-    @Stable public long identityHashCodeAddress;
-    @Stable public long exceptionHandlerForPcAddress;
-    @Stable public long exceptionHandlerForReturnAddressAddress;
-    @Stable public long osrMigrationEndAddress;
-    @Stable public long monitorenterAddress;
-    @Stable public long monitorexitAddress;
-    @Stable public long createNullPointerExceptionAddress;
-    @Stable public long createOutOfBoundsExceptionAddress;
-    @Stable public long logPrimitiveAddress;
-    @Stable public long logObjectAddress;
-    @Stable public long logPrintfAddress;
-    @Stable public long vmErrorAddress;
-    @Stable public long writeBarrierPreAddress;
-    @Stable public long writeBarrierPostAddress;
-    @Stable public long validateObject;
-    @Stable public long javaTimeMillisAddress;
-    @Stable public long javaTimeNanosAddress;
-    @Stable public long arithmeticSinAddress;
-    @Stable public long arithmeticCosAddress;
-    @Stable public long arithmeticTanAddress;
-    @Stable public long loadAndClearExceptionAddress;
+    @HotSpotVMValue(expression = "GraalRuntime::new_instance", get = HotSpotVMValue.Type.ADDRESS) @Stable public long newInstanceAddress;
+    @HotSpotVMValue(expression = "GraalRuntime::new_array", get = HotSpotVMValue.Type.ADDRESS) @Stable public long newArrayAddress;
+    @HotSpotVMValue(expression = "GraalRuntime::new_multi_array", get = HotSpotVMValue.Type.ADDRESS) @Stable public long newMultiArrayAddress;
+    @HotSpotVMValue(expression = "GraalRuntime::dynamic_new_array", get = HotSpotVMValue.Type.ADDRESS) @Stable public long dynamicNewArrayAddress;
+    @HotSpotVMValue(expression = "GraalRuntime::dynamic_new_instance", get = HotSpotVMValue.Type.ADDRESS) @Stable public long dynamicNewInstanceAddress;
+    @HotSpotVMValue(expression = "GraalRuntime::thread_is_interrupted", get = HotSpotVMValue.Type.ADDRESS) @Stable public long threadIsInterruptedAddress;
+    @HotSpotVMValue(expression = "GraalRuntime::vm_message", get = HotSpotVMValue.Type.ADDRESS) @Stable public long vmMessageAddress;
+    @HotSpotVMValue(expression = "GraalRuntime::identity_hash_code", get = HotSpotVMValue.Type.ADDRESS) @Stable public long identityHashCodeAddress;
+    @HotSpotVMValue(expression = "GraalRuntime::exception_handler_for_pc", get = HotSpotVMValue.Type.ADDRESS) @Stable public long exceptionHandlerForPcAddress;
+    @HotSpotVMValue(expression = "GraalRuntime::monitorenter", get = HotSpotVMValue.Type.ADDRESS) @Stable public long monitorenterAddress;
+    @HotSpotVMValue(expression = "GraalRuntime::monitorexit", get = HotSpotVMValue.Type.ADDRESS) @Stable public long monitorexitAddress;
+    @HotSpotVMValue(expression = "GraalRuntime::create_null_exception", get = HotSpotVMValue.Type.ADDRESS) @Stable public long createNullPointerExceptionAddress;
+    @HotSpotVMValue(expression = "GraalRuntime::create_out_of_bounds_exception", get = HotSpotVMValue.Type.ADDRESS) @Stable public long createOutOfBoundsExceptionAddress;
+    @HotSpotVMValue(expression = "GraalRuntime::log_primitive", get = HotSpotVMValue.Type.ADDRESS) @Stable public long logPrimitiveAddress;
+    @HotSpotVMValue(expression = "GraalRuntime::log_object", get = HotSpotVMValue.Type.ADDRESS) @Stable public long logObjectAddress;
+    @HotSpotVMValue(expression = "GraalRuntime::log_printf", get = HotSpotVMValue.Type.ADDRESS) @Stable public long logPrintfAddress;
+    @HotSpotVMValue(expression = "GraalRuntime::vm_error", get = HotSpotVMValue.Type.ADDRESS) @Stable public long vmErrorAddress;
+    @HotSpotVMValue(expression = "GraalRuntime::load_and_clear_exception", get = HotSpotVMValue.Type.ADDRESS) @Stable public long loadAndClearExceptionAddress;
+    @HotSpotVMValue(expression = "GraalRuntime::write_barrier_pre", get = HotSpotVMValue.Type.ADDRESS) @Stable public long writeBarrierPreAddress;
+    @HotSpotVMValue(expression = "GraalRuntime::write_barrier_post", get = HotSpotVMValue.Type.ADDRESS) @Stable public long writeBarrierPostAddress;
+    @HotSpotVMValue(expression = "GraalRuntime::validate_object", get = HotSpotVMValue.Type.ADDRESS) @Stable public long validateObject;
 
-    @Stable public int graalCountersSize;
+    @HotSpotVMValue(expression = "SharedRuntime::register_finalizer", get = HotSpotVMValue.Type.ADDRESS) @Stable public long registerFinalizerAddress;
+    @HotSpotVMValue(expression = "SharedRuntime::exception_handler_for_return_address", get = HotSpotVMValue.Type.ADDRESS) @Stable public long exceptionHandlerForReturnAddressAddress;
+    @HotSpotVMValue(expression = "SharedRuntime::OSR_migration_end", get = HotSpotVMValue.Type.ADDRESS) @Stable public long osrMigrationEndAddress;
 
-    @Stable public long deoptimizationFetchUnrollInfo;
-    @Stable public long deoptimizationUncommonTrap;
-    @Stable public long deoptimizationUnpackFrames;
+    @HotSpotVMValue(expression = "os::javaTimeMillis", get = HotSpotVMValue.Type.ADDRESS) @Stable public long javaTimeMillisAddress;
+    @HotSpotVMValue(expression = "os::javaTimeNanos", get = HotSpotVMValue.Type.ADDRESS) @Stable public long javaTimeNanosAddress;
+    @HotSpotVMValue(expression = "SharedRuntime::dsin", get = HotSpotVMValue.Type.ADDRESS) @Stable public long arithmeticSinAddress;
+    @HotSpotVMValue(expression = "SharedRuntime::dcos", get = HotSpotVMValue.Type.ADDRESS) @Stable public long arithmeticCosAddress;
+    @HotSpotVMValue(expression = "SharedRuntime::dtan", get = HotSpotVMValue.Type.ADDRESS) @Stable public long arithmeticTanAddress;
+
+    @HotSpotVMValue(expression = "(jint) GraalCounterSize") @Stable public int graalCountersSize;
+
+    @HotSpotVMValue(expression = "Deoptimization::fetch_unroll_info", get = HotSpotVMValue.Type.ADDRESS) @Stable public long deoptimizationFetchUnrollInfo;
+    @HotSpotVMValue(expression = "Deoptimization::uncommon_trap", get = HotSpotVMValue.Type.ADDRESS) @Stable public long deoptimizationUncommonTrap;
+    @HotSpotVMValue(expression = "Deoptimization::unpack_frames", get = HotSpotVMValue.Type.ADDRESS) @Stable public long deoptimizationUnpackFrames;
 
     @HotSpotVMConstant(name = "Deoptimization::Reason_none") @Stable public int deoptReasonNone;
     @HotSpotVMConstant(name = "Deoptimization::Reason_null_check") @Stable public int deoptReasonNullCheck;

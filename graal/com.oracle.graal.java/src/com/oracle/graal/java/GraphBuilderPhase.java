@@ -25,10 +25,8 @@ package com.oracle.graal.java;
 import static com.oracle.graal.api.meta.DeoptimizationAction.*;
 import static com.oracle.graal.api.meta.DeoptimizationReason.*;
 import static com.oracle.graal.bytecode.Bytecodes.*;
-import static com.oracle.graal.phases.GraalOptions.*;
-import static java.lang.reflect.Modifier.*;
+import static com.oracle.graal.compiler.common.GraalOptions.*;
 
-import java.lang.reflect.*;
 import java.util.*;
 
 import com.oracle.graal.api.code.*;
@@ -38,6 +36,7 @@ import com.oracle.graal.api.meta.ResolvedJavaType.Representation;
 import com.oracle.graal.bytecode.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.calc.*;
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Node.ValueNumberable;
@@ -46,7 +45,6 @@ import com.oracle.graal.java.BciBlockMapping.ExceptionDispatchBlock;
 import com.oracle.graal.java.BciBlockMapping.LocalLiveness;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
-import com.oracle.graal.nodes.calc.FloatConvertNode.FloatConvert;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
@@ -152,7 +150,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             methodSynchronizedObject = null;
             this.currentGraph = graph;
             HIRFrameStateBuilder frameState = new HIRFrameStateBuilder(method, graph, graphBuilderConfig.eagerResolving());
-            this.parser = new BytecodeParser(metaAccess, method, graphBuilderConfig, optimisticOpts, frameState, new BytecodeStream(method.getCode()), profilingInfo, method.getConstantPool(),
+            this.parser = createBytecodeParser(metaAccess, method, graphBuilderConfig, optimisticOpts, frameState, new BytecodeStream(method.getCode()), profilingInfo, method.getConstantPool(),
                             entryBCI);
             TTY.Filter filter = new TTY.Filter(PrintFilter.getValue(), method);
             try {
@@ -161,6 +159,14 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 filter.remove();
             }
             parser = null;
+
+            ComputeLoopFrequenciesClosure.compute(graph);
+        }
+
+        @SuppressWarnings("hiding")
+        protected BytecodeParser createBytecodeParser(MetaAccessProvider metaAccess, ResolvedJavaMethod method, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts,
+                        HIRFrameStateBuilder frameState, BytecodeStream stream, ProfilingInfo profilingInfo, ConstantPool constantPool, int entryBCI) {
+            return new BytecodeParser(metaAccess, method, graphBuilderConfig, optimisticOpts, frameState, stream, profilingInfo, constantPool, entryBCI);
         }
 
         @Override
@@ -190,7 +196,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             }
         }
 
-        class BytecodeParser extends AbstractBytecodeParser<ValueNode, HIRFrameStateBuilder> {
+        public class BytecodeParser extends AbstractBytecodeParser<ValueNode, HIRFrameStateBuilder> {
 
             private BciBlock[] loopHeaders;
             private LocalLiveness liveness;
@@ -219,9 +225,9 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     liveness = blockMap.liveness;
 
                     lastInstr = currentGraph.start();
-                    if (isSynchronized(method.getModifiers())) {
+                    if (method.isSynchronized()) {
                         // add a monitor enter to the start block
-                        currentGraph.start().setStateAfter(frameState.create(FrameState.BEFORE_BCI));
+                        currentGraph.start().setStateAfter(frameState.create(BytecodeFrame.BEFORE_BCI));
                         methodSynchronizedObject = synchronizedObject(frameState, method);
                         lastInstr = genMonitorEnter(methodSynchronizedObject);
                     }
@@ -289,7 +295,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     unwindBlock = new ExceptionDispatchBlock();
                     unwindBlock.startBci = -1;
                     unwindBlock.endBci = -1;
-                    unwindBlock.deoptBci = FrameState.UNWIND_BCI;
+                    unwindBlock.deoptBci = method.isSynchronized() ? BytecodeFrame.UNWIND_BCI : BytecodeFrame.AFTER_EXCEPTION_BCI;
                     unwindBlock.setId(Integer.MAX_VALUE);
                 }
                 return unwindBlock;
@@ -409,7 +415,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             }
 
             private DispatchBeginNode handleException(ValueNode exceptionObject, int bci) {
-                assert bci == FrameState.BEFORE_BCI || bci == bci() : "invalid bci";
+                assert bci == BytecodeFrame.BEFORE_BCI || bci == bci() : "invalid bci";
                 Debug.log("Creating exception dispatch edges at %d, exception object=%s, exception seen=%s", bci, exceptionObject, profilingInfo.getExceptionSeen(bci));
 
                 BciBlock dispatchBlock = currentBlock.exceptionDispatchBlock();
@@ -433,12 +439,13 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     dispatchBegin.setStateAfter(dispatchState.create(bci));
                 } else {
                     dispatchBegin = currentGraph.add(new DispatchBeginNode());
-                    dispatchBegin.setStateAfter(dispatchState.create(bci));
                     dispatchState.apush(exceptionObject);
+                    dispatchBegin.setStateAfter(dispatchState.create(bci));
                     dispatchState.setRethrowException(true);
                 }
+                FixedWithNextNode finishedDispatch = finishInstruction(dispatchBegin, dispatchState);
                 FixedNode target = createTarget(dispatchBlock, dispatchState);
-                finishInstruction(dispatchBegin, dispatchState).setNext(target);
+                finishedDispatch.setNext(target);
                 return dispatchBegin;
             }
 
@@ -600,12 +607,12 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             }
 
             @Override
-            protected ValueNode genCheckCast(ResolvedJavaType type, ValueNode object, JavaTypeProfile profileForTypeCheck, boolean b) {
-                return new CheckCastNode(type, object, profileForTypeCheck, b);
+            protected ValueNode createCheckCast(ResolvedJavaType type, ValueNode object, JavaTypeProfile profileForTypeCheck, boolean forStoreCheck) {
+                return new CheckCastNode(type, object, profileForTypeCheck, forStoreCheck);
             }
 
             @Override
-            protected ValueNode genInstanceOf(ResolvedJavaType type, ValueNode object, JavaTypeProfile profileForTypeCheck) {
+            protected ValueNode createInstanceOf(ResolvedJavaType type, ValueNode object, JavaTypeProfile profileForTypeCheck) {
                 return new InstanceOfNode(type, object, profileForTypeCheck);
             }
 
@@ -636,7 +643,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
             @Override
             protected void emitNullCheck(ValueNode receiver) {
-                if (ObjectStamp.isObjectNonNull(receiver.stamp())) {
+                if (StampTool.isObjectNonNull(receiver.stamp())) {
                     return;
                 }
                 BlockPlaceholderNode trueSucc = currentGraph.add(new BlockPlaceholderNode(this));
@@ -723,7 +730,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                      * https://wikis.oracle.com/display/HotSpotInternals/Method+handles
                      * +and+invokedynamic
                      */
-                    boolean hasReceiver = !isStatic(((ResolvedJavaMethod) target).getModifiers());
+                    boolean hasReceiver = !((ResolvedJavaMethod) target).isStatic();
                     Constant appendix = constantPool.lookupAppendix(stream.readCPI(), Bytecodes.INVOKEVIRTUAL);
                     if (appendix != null) {
                         frameState.apush(ConstantNode.forConstant(appendix, metaAccess, currentGraph));
@@ -816,7 +823,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     append(new InfopointNode(InfopointReason.METHOD_END, frameState.create(bci())));
                 }
 
-                synchronizedEpilogue(FrameState.AFTER_BCI, x);
+                synchronizedEpilogue(BytecodeFrame.AFTER_BCI, x);
                 if (frameState.lockDepth() != 0) {
                     throw new BailoutException("unbalanced monitors");
                 }
@@ -1089,7 +1096,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             }
 
             private ValueNode synchronizedObject(HIRFrameStateBuilder state, ResolvedJavaMethod target) {
-                if (isStatic(target.getModifiers())) {
+                if (target.isStatic()) {
                     return appendConstant(target.getDeclaringClass().getEncoding(Representation.JavaClass));
                 } else {
                     return state.loadLocal(0);
@@ -1155,13 +1162,12 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             private void createUnwind() {
                 assert frameState.stackSize() == 1 : frameState;
                 ValueNode exception = frameState.apop();
-                append(new FixedGuardNode(currentGraph.unique(new IsNullNode(exception)), NullCheckException, InvalidateReprofile, true));
-                synchronizedEpilogue(FrameState.AFTER_EXCEPTION_BCI, null);
+                synchronizedEpilogue(BytecodeFrame.AFTER_EXCEPTION_BCI, null);
                 append(new UnwindNode(exception));
             }
 
             private void synchronizedEpilogue(int bci, ValueNode returnValue) {
-                if (Modifier.isSynchronized(method.getModifiers())) {
+                if (method.isSynchronized()) {
                     MonitorExitNode monitorExit = genMonitorExit(methodSynchronizedObject, returnValue);
                     if (returnValue != null) {
                         frameState.push(returnValue.getKind(), returnValue);

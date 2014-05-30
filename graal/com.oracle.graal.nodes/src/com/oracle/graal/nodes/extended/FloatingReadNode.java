@@ -38,15 +38,15 @@ public final class FloatingReadNode extends FloatingAccessNode implements Iterab
     @Input(InputType.Memory) private MemoryNode lastLocationAccess;
 
     public FloatingReadNode(ValueNode object, LocationNode location, MemoryNode lastLocationAccess, Stamp stamp) {
-        this(object, location, lastLocationAccess, stamp, null, BarrierType.NONE, false);
+        this(object, location, lastLocationAccess, stamp, null, BarrierType.NONE);
     }
 
     public FloatingReadNode(ValueNode object, LocationNode location, MemoryNode lastLocationAccess, Stamp stamp, GuardingNode guard) {
-        this(object, location, lastLocationAccess, stamp, guard, BarrierType.NONE, false);
+        this(object, location, lastLocationAccess, stamp, guard, BarrierType.NONE);
     }
 
-    public FloatingReadNode(ValueNode object, LocationNode location, MemoryNode lastLocationAccess, Stamp stamp, GuardingNode guard, BarrierType barrierType, boolean compressible) {
-        super(object, location, stamp, guard, barrierType, compressible);
+    public FloatingReadNode(ValueNode object, LocationNode location, MemoryNode lastLocationAccess, Stamp stamp, GuardingNode guard, BarrierType barrierType) {
+        super(object, location, stamp, guard, barrierType);
         this.lastLocationAccess = lastLocationAccess;
     }
 
@@ -63,20 +63,20 @@ public final class FloatingReadNode extends FloatingAccessNode implements Iterab
     public void generate(NodeLIRBuilderTool gen) {
         Value address = location().generateAddress(gen, gen.getLIRGeneratorTool(), gen.operand(object()));
         PlatformKind readKind = gen.getLIRGeneratorTool().getPlatformKind(stamp());
-        gen.setResult(this, gen.getLIRGeneratorTool().emitLoad(readKind, address, this));
+        gen.setResult(this, gen.getLIRGeneratorTool().emitLoad(readKind, address, null));
     }
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
         if (object() instanceof PiNode && ((PiNode) object()).getGuard() == getGuard()) {
-            return graph().unique(new FloatingReadNode(((PiNode) object()).getOriginalNode(), location(), getLastLocationAccess(), stamp(), getGuard(), getBarrierType(), isCompressible()));
+            return graph().unique(new FloatingReadNode(((PiNode) object()).getOriginalNode(), location(), getLastLocationAccess(), stamp(), getGuard(), getBarrierType()));
         }
-        return ReadNode.canonicalizeRead(this, location(), object(), tool, isCompressible());
+        return ReadNode.canonicalizeRead(this, location(), object(), tool);
     }
 
     @Override
     public FixedAccessNode asFixedNode() {
-        return graph().add(new ReadNode(object(), accessLocation(), stamp(), getGuard(), getBarrierType(), isCompressible()));
+        return graph().add(new ReadNode(object(), accessLocation(), stamp(), getGuard(), getBarrierType()));
     }
 
     @Override

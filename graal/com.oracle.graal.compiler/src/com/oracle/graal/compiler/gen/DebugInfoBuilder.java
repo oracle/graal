@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.compiler.gen;
 
+import static com.oracle.graal.graph.util.CollectionsAccess.*;
+
 import java.util.*;
 import java.util.Map.Entry;
 
@@ -46,8 +48,8 @@ public class DebugInfoBuilder {
         this.nodeOperands = nodeOperands;
     }
 
-    protected final HashMap<VirtualObjectNode, VirtualObject> virtualObjects = new HashMap<>();
-    protected final IdentityHashMap<VirtualObjectNode, EscapeObjectState> objectStates = new IdentityHashMap<>();
+    protected final Map<VirtualObjectNode, VirtualObject> virtualObjects = new HashMap<>();
+    protected final Map<VirtualObjectNode, EscapeObjectState> objectStates = newNodeIdentityMap();
 
     public LIRFrameState build(FrameState topState, LabelRef exceptionEdge) {
         assert virtualObjects.size() == 0;
@@ -76,7 +78,7 @@ public class DebugInfoBuilder {
             boolean changed;
             do {
                 changed = false;
-                IdentityHashMap<VirtualObjectNode, VirtualObject> virtualObjectsCopy = new IdentityHashMap<>(virtualObjects);
+                Map<VirtualObjectNode, VirtualObject> virtualObjectsCopy = newIdentityMap(virtualObjects);
                 for (Entry<VirtualObjectNode, VirtualObject> entry : virtualObjectsCopy.entrySet()) {
                     if (entry.getValue().getValues() == null) {
                         VirtualObjectNode vobj = entry.getKey();
@@ -116,21 +118,33 @@ public class DebugInfoBuilder {
     }
 
     protected BytecodeFrame computeFrameForState(FrameState state) {
-        int numLocals = state.localsSize();
-        int numStack = state.stackSize();
-        int numLocks = state.locksSize();
+        try {
+            assert state.bci != BytecodeFrame.INVALID_FRAMESTATE_BCI;
+            assert state.bci != BytecodeFrame.UNKNOWN_BCI;
+            assert state.bci != BytecodeFrame.BEFORE_BCI || state.locksSize() == 0;
+            assert state.bci != BytecodeFrame.AFTER_BCI || state.locksSize() == 0;
+            assert state.bci != BytecodeFrame.AFTER_EXCEPTION_BCI || state.locksSize() == 0;
+            assert !(state.method().isSynchronized() && state.bci != BytecodeFrame.BEFORE_BCI && state.bci != BytecodeFrame.AFTER_BCI && state.bci != BytecodeFrame.AFTER_EXCEPTION_BCI) ||
+                            state.locksSize() > 0;
+            assert state.verify();
 
-        Value[] values = new Value[numLocals + numStack + numLocks];
-        computeLocals(state, numLocals, values);
-        computeStack(state, numLocals, numStack, values);
-        computeLocks(state, values);
+            int numLocals = state.localsSize();
+            int numStack = state.stackSize();
+            int numLocks = state.locksSize();
 
-        BytecodeFrame caller = null;
-        if (state.outerFrameState() != null) {
-            caller = computeFrameForState(state.outerFrameState());
+            Value[] values = new Value[numLocals + numStack + numLocks];
+            computeLocals(state, numLocals, values);
+            computeStack(state, numLocals, numStack, values);
+            computeLocks(state, values);
+
+            BytecodeFrame caller = null;
+            if (state.outerFrameState() != null) {
+                caller = computeFrameForState(state.outerFrameState());
+            }
+            return new BytecodeFrame(caller, state.method(), state.bci, state.rethrowException(), state.duringCall(), values, numLocals, numStack, numLocks);
+        } catch (GraalInternalError e) {
+            throw e.addContext("FrameState: ", state);
         }
-        assert state.bci >= FrameState.BEFORE_BCI : "bci == " + state.bci;
-        return new BytecodeFrame(caller, state.method(), state.bci, state.rethrowException(), state.duringCall(), values, numLocals, numStack, numLocks);
     }
 
     protected void computeLocals(FrameState state, int numLocals, Value[] values) {
@@ -169,39 +183,43 @@ public class DebugInfoBuilder {
     private static final DebugMetric STATE_CONSTANTS = Debug.metric("StateConstants");
 
     protected Value toValue(ValueNode value) {
-        if (value instanceof VirtualObjectNode) {
-            VirtualObjectNode obj = (VirtualObjectNode) value;
-            EscapeObjectState state = objectStates.get(obj);
-            if (state == null && obj.entryCount() > 0) {
-                // null states occur for objects with 0 fields
-                throw new GraalInternalError("no mapping found for virtual object %s", obj);
-            }
-            if (state instanceof MaterializedObjectState) {
-                return toValue(((MaterializedObjectState) state).materializedValue());
-            } else {
-                assert obj.entryCount() == 0 || state instanceof VirtualObjectState;
-                VirtualObject vobject = virtualObjects.get(value);
-                if (vobject == null) {
-                    vobject = VirtualObject.get(obj.type(), null, virtualObjects.size());
-                    virtualObjects.put(obj, vobject);
+        try {
+            if (value instanceof VirtualObjectNode) {
+                VirtualObjectNode obj = (VirtualObjectNode) value;
+                EscapeObjectState state = objectStates.get(obj);
+                if (state == null && obj.entryCount() > 0) {
+                    // null states occur for objects with 0 fields
+                    throw new GraalInternalError("no mapping found for virtual object %s", obj);
                 }
-                STATE_VIRTUAL_OBJECTS.increment();
-                return vobject;
+                if (state instanceof MaterializedObjectState) {
+                    return toValue(((MaterializedObjectState) state).materializedValue());
+                } else {
+                    assert obj.entryCount() == 0 || state instanceof VirtualObjectState;
+                    VirtualObject vobject = virtualObjects.get(value);
+                    if (vobject == null) {
+                        vobject = VirtualObject.get(obj.type(), null, virtualObjects.size());
+                        virtualObjects.put(obj, vobject);
+                    }
+                    STATE_VIRTUAL_OBJECTS.increment();
+                    return vobject;
+                }
+            } else if (value instanceof ConstantNode) {
+                STATE_CONSTANTS.increment();
+                return ((ConstantNode) value).getValue();
+
+            } else if (value != null) {
+                STATE_VARIABLES.increment();
+                Value operand = nodeOperands.get(value);
+                assert operand != null && (operand instanceof Variable || operand instanceof Constant) : operand + " for " + value;
+                return operand;
+
+            } else {
+                // return a dummy value because real value not needed
+                STATE_ILLEGALS.increment();
+                return Value.ILLEGAL;
             }
-        } else if (value instanceof ConstantNode) {
-            STATE_CONSTANTS.increment();
-            return ((ConstantNode) value).getValue();
-
-        } else if (value != null) {
-            STATE_VARIABLES.increment();
-            Value operand = nodeOperands.get(value);
-            assert operand != null && (operand instanceof Variable || operand instanceof Constant) : operand + " for " + value;
-            return operand;
-
-        } else {
-            // return a dummy value because real value not needed
-            STATE_ILLEGALS.increment();
-            return Value.ILLEGAL;
+        } catch (GraalInternalError e) {
+            throw e.addContext("toValue: ", value);
         }
     }
 }

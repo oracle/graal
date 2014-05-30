@@ -42,6 +42,8 @@ public class GraalDebugConfig implements DebugConfig {
     public static final OptionValue<String> Dump = new OptionValue<>(null);
     @Option(help = "Pattern for scope(s) to in which metering is enabled (see DebugFilter and Debug.metric)")
     public static final OptionValue<String> Meter = new OptionValue<>(null);
+    @Option(help = "Pattern for scope(s) to in which memory use tracking is enabled (see DebugFilter and Debug.metric)")
+    public static final OptionValue<String> TrackMemUse = new OptionValue<>(null);
     @Option(help = "Pattern for scope(s) to in which timing is enabled (see DebugFilter and Debug.timer)")
     public static final OptionValue<String> Time = new OptionValue<>(null);
     @Option(help = "Pattern for scope(s) to in which logging is enabled (see DebugFilter and Debug.log)")
@@ -70,6 +72,8 @@ public class GraalDebugConfig implements DebugConfig {
             return enabled;
         }
     };
+    @Option(help = "Enable more verbose log output when available")
+    public static final OptionValue<Boolean> LogVerbose = new OptionValue<>(false);
     // @formatter:on
 
     public static boolean areDebugScopePatternsEnabled() {
@@ -77,11 +81,12 @@ public class GraalDebugConfig implements DebugConfig {
     }
 
     public static boolean areMetricsOrTimersEnabled() {
-        return Meter.getValue() != null || Time.getValue() != null;
+        return Meter.getValue() != null || Time.getValue() != null || TrackMemUse.getValue() != null;
     }
 
     private final DebugFilter logFilter;
     private final DebugFilter meterFilter;
+    private final DebugFilter trackMemUseFilter;
     private final DebugFilter timerFilter;
     private final DebugFilter dumpFilter;
     private final MethodFilter[] methodFilter;
@@ -89,9 +94,11 @@ public class GraalDebugConfig implements DebugConfig {
     private final PrintStream output;
     private final Set<Object> extraFilters = new HashSet<>();
 
-    public GraalDebugConfig(String logFilter, String meterFilter, String timerFilter, String dumpFilter, String methodFilter, PrintStream output, List<DebugDumpHandler> dumpHandlers) {
+    public GraalDebugConfig(String logFilter, String meterFilter, String trackMemUseFilter, String timerFilter, String dumpFilter, String methodFilter, PrintStream output,
+                    List<DebugDumpHandler> dumpHandlers) {
         this.logFilter = DebugFilter.parse(logFilter);
         this.meterFilter = DebugFilter.parse(meterFilter);
+        this.trackMemUseFilter = DebugFilter.parse(trackMemUseFilter);
         this.timerFilter = DebugFilter.parse(timerFilter);
         this.dumpFilter = DebugFilter.parse(dumpFilter);
         if (methodFilter == null || methodFilter.isEmpty()) {
@@ -118,6 +125,14 @@ public class GraalDebugConfig implements DebugConfig {
 
     public boolean isMeterEnabled() {
         return isEnabled(meterFilter);
+    }
+
+    public boolean isMetderEnabled() {
+        return isEnabled(meterFilter);
+    }
+
+    public boolean isMemUseTrackingEnabled() {
+        return isEnabled(trackMemUseFilter);
     }
 
     public boolean isDumpEnabled() {
@@ -150,7 +165,7 @@ public class GraalDebugConfig implements DebugConfig {
 
     /**
      * Extracts a {@link JavaMethod} from an opaque debug context.
-     * 
+     *
      * @return the {@link JavaMethod} represented by {@code context} or null
      */
     public static JavaMethod asJavaMethod(Object context) {
@@ -216,7 +231,7 @@ public class GraalDebugConfig implements DebugConfig {
         if (e instanceof BailoutException) {
             return null;
         }
-        Debug.setConfig(Debug.fixedConfig(true, true, false, false, dumpHandlers, output));
+        Debug.setConfig(Debug.fixedConfig(true, true, false, false, false, dumpHandlers, output));
         Debug.log(String.format("Exception occurred in scope: %s", Debug.currentScope()));
         for (Object o : Debug.context()) {
             if (o instanceof Graph) {

@@ -35,7 +35,7 @@ import com.oracle.graal.replacements.*;
 public class VerifyOopStub extends SnippetStub {
 
     public VerifyOopStub(HotSpotProviders providers, TargetDescription target, HotSpotForeignCallLinkage linkage) {
-        super(providers, target, linkage);
+        super("verifyOop", providers, target, linkage);
     }
 
     @Snippet

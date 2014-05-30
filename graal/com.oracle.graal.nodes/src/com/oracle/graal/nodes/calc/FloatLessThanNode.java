@@ -22,11 +22,14 @@
  */
 package com.oracle.graal.nodes.calc;
 
+import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.meta.ProfilingInfo.TriState;
+import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.calc.*;
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
-import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.type.*;
+import com.oracle.graal.nodes.util.*;
 
 @NodeInfo(shortName = "<")
 public final class FloatLessThanNode extends CompareNode {
@@ -35,7 +38,7 @@ public final class FloatLessThanNode extends CompareNode {
 
     /**
      * Constructs a new floating point comparison node.
-     * 
+     *
      * @param x the instruction producing the first input to the instruction
      * @param y the instruction that produces the second input to this instruction
      * @param unorderedIsTrue whether a comparison that is undecided (involving NaNs, etc.) leads to
@@ -59,10 +62,20 @@ public final class FloatLessThanNode extends CompareNode {
     }
 
     @Override
-    public Node canonical(CanonicalizerTool tool) {
-        if (x() == y() && !unorderedIsTrue()) {
-            return LogicConstantNode.contradiction(graph());
+    public TriState evaluate(ConstantReflectionProvider constantReflection, ValueNode forX, ValueNode forY) {
+        if (GraphUtil.unproxify(forX) == GraphUtil.unproxify(forY) && !unorderedIsTrue()) {
+            return TriState.FALSE;
         }
-        return super.canonical(tool);
+        return super.evaluate(constantReflection, forX, forY);
+    }
+
+    @Override
+    protected CompareNode duplicateModified(ValueNode newX, ValueNode newY) {
+        if (newX.stamp() instanceof FloatStamp && newY.stamp() instanceof FloatStamp) {
+            return new FloatLessThanNode(newX, newY, unorderedIsTrue);
+        } else if (newX.stamp() instanceof IntegerStamp && newY.stamp() instanceof IntegerStamp) {
+            return new IntegerLessThanNode(newX, newY);
+        }
+        throw GraalInternalError.shouldNotReachHere();
     }
 }

@@ -69,6 +69,12 @@ public abstract class AbstractFrameStateBuilder<T extends KindProvider, S extend
     public abstract boolean isCompatibleWith(S other);
 
     public void clearNonLiveLocals(BciBlock block, LocalLiveness liveness, boolean liveIn) {
+        /*
+         * (lstadler) if somebody is tempted to remove/disable this clearing code: it's possible to
+         * remove it for normal compilations, but not for OSR compilations - otherwise dead object
+         * slots at the OSR entry aren't cleared. it is also not enough to rely on PiNodes with
+         * Kind.Illegal, because the conflicting branch might not have been parsed.
+         */
         if (liveness == null) {
             return;
         }
@@ -118,6 +124,13 @@ public abstract class AbstractFrameStateBuilder<T extends KindProvider, S extend
     }
 
     /**
+     * @return the current lock depth
+     */
+    public int lockDepth() {
+        return lockedObjects.length;
+    }
+
+    /**
      * Gets the value in the local variables at the specified index, without any sanity checking.
      *
      * @param i the index into the locals
@@ -135,6 +148,20 @@ public abstract class AbstractFrameStateBuilder<T extends KindProvider, S extend
      */
     public T stackAt(int i) {
         return stack[i];
+    }
+
+    /**
+     * Gets the value in the lock at the specified index, without any sanity checking.
+     *
+     * @param i the index into the lock
+     * @return the instruction that produced the value for the specified lock
+     */
+    public T lockAt(int i) {
+        return lockedObjects[i];
+    }
+
+    public void storeLock(int i, T lock) {
+        lockedObjects[i] = lock;
     }
 
     /**

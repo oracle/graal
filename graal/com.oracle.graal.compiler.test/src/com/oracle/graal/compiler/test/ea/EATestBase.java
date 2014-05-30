@@ -37,6 +37,7 @@ import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.virtual.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
+import com.oracle.graal.phases.common.inlining.*;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.virtual.phases.ea.*;
 
@@ -126,7 +127,7 @@ public class EATestBase extends GraalCompilerTest {
     /**
      * Runs Escape Analysis on the given snippet and makes sure that no allocations remain in the
      * graph.
-     * 
+     *
      * @param snippet the name of the method whose graph should be processed
      * @param expectedConstantResult if this is non-null, the resulting graph needs to have the
      *            given constant return value
@@ -156,7 +157,7 @@ public class EATestBase extends GraalCompilerTest {
             new InliningPhase(new CanonicalizerPhase(true)).apply(graph, context);
             new DeadCodeEliminationPhase().apply(graph);
             new CanonicalizerPhase(true).apply(graph, context);
-            new PartialEscapePhase(iterativeEscapeAnalysis, false, new CanonicalizerPhase(true)).apply(graph, context);
+            new PartialEscapePhase(iterativeEscapeAnalysis, false, new CanonicalizerPhase(true), null).apply(graph, context);
             returnNodes = graph.getNodes(ReturnNode.class).snapshot();
         } catch (Throwable e) {
             throw Debug.handle(e);

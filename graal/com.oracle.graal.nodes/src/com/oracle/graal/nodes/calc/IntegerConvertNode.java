@@ -27,12 +27,11 @@ import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
 
 /**
  * An {@code IntegerConvert} converts an integer to an integer of different width.
  */
-public abstract class IntegerConvertNode extends ConvertNode implements ArithmeticLIRLowerable, Canonicalizable, MemoryArithmeticLIRLowerable {
+public abstract class IntegerConvertNode extends ConvertNode implements ArithmeticLIRLowerable, Canonicalizable {
 
     private final int resultBits;
 
@@ -76,6 +75,14 @@ public abstract class IntegerConvertNode extends ConvertNode implements Arithmet
     }
 
     public static ValueNode convert(ValueNode input, Stamp stamp) {
+        return convert(input, stamp, false);
+    }
+
+    public static ValueNode convertUnsigned(ValueNode input, Stamp stamp) {
+        return convert(input, stamp, true);
+    }
+
+    public static ValueNode convert(ValueNode input, Stamp stamp, boolean zeroExtend) {
         StructuredGraph graph = input.graph();
         IntegerStamp fromStamp = (IntegerStamp) input.stamp();
         IntegerStamp toStamp = (IntegerStamp) stamp;
@@ -85,6 +92,9 @@ public abstract class IntegerConvertNode extends ConvertNode implements Arithmet
             result = input;
         } else if (toStamp.getBits() < fromStamp.getBits()) {
             result = graph.unique(new NarrowNode(input, toStamp.getBits()));
+        } else if (zeroExtend) {
+            // toStamp.getBits() > fromStamp.getBits()
+            result = graph.unique(new ZeroExtendNode(input, toStamp.getBits()));
         } else {
             // toStamp.getBits() > fromStamp.getBits()
             result = graph.unique(new SignExtendNode(input, toStamp.getBits()));

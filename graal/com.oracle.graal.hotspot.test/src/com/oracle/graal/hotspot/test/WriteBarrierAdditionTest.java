@@ -27,11 +27,14 @@ import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 import java.lang.ref.*;
 import java.lang.reflect.*;
 
+import com.oracle.graal.phases.common.inlining.policy.InlineEverythingPolicy;
+
 import org.junit.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.runtime.*;
+import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
@@ -44,6 +47,7 @@ import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
+import com.oracle.graal.phases.common.inlining.*;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.runtime.*;
 
@@ -159,7 +163,7 @@ public class WriteBarrierAdditionTest extends GraalCompilerTest {
     }
 
     public static Object test5Snippet() throws Exception {
-        return UnsafeLoadNode.load(wr, useCompressedOops() ? 12 : 16, Kind.Object, LocationIdentity.ANY_LOCATION);
+        return UnsafeAccess.unsafe.getObject(wr, useCompressedOops() ? 12L : 16L);
     }
 
     /**
@@ -249,7 +253,7 @@ public class WriteBarrierAdditionTest extends GraalCompilerTest {
             StructuredGraph graph = parse(snippet);
             HighTierContext highContext = new HighTierContext(getProviders(), new Assumptions(false), null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL);
             MidTierContext midContext = new MidTierContext(getProviders(), new Assumptions(false), getCodeCache().getTarget(), OptimisticOptimizations.ALL, graph.method().getProfilingInfo(), null);
-            new InliningPhase(new InliningPhase.InlineEverythingPolicy(), new CanonicalizerPhase(true)).apply(graph, highContext);
+            new InliningPhase(new InlineEverythingPolicy(), new CanonicalizerPhase(true)).apply(graph, highContext);
             new LoweringPhase(new CanonicalizerPhase(true), LoweringTool.StandardLoweringStage.HIGH_TIER).apply(graph, highContext);
             new GuardLoweringPhase().apply(graph, midContext);
             new LoweringPhase(new CanonicalizerPhase(true), LoweringTool.StandardLoweringStage.MID_TIER).apply(graph, midContext);

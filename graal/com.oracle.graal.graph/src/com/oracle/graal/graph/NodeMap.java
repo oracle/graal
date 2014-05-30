@@ -28,29 +28,37 @@ import java.util.Map.Entry;
 
 public class NodeMap<T> extends NodeIdAccessor {
 
-    private final boolean autogrow;
+    private static final int MIN_REALLOC_SIZE = 16;
+
     protected Object[] values;
 
     public NodeMap(Graph graph) {
-        this(graph, false);
-    }
-
-    public NodeMap(Graph graph, boolean autogrow) {
         super(graph);
         this.values = new Object[graph.nodeIdCount()];
-        this.autogrow = autogrow;
     }
 
     public NodeMap(NodeMap<T> copyFrom) {
         super(copyFrom.graph);
         this.values = Arrays.copyOf(copyFrom.values, copyFrom.values.length);
-        this.autogrow = copyFrom.autogrow;
     }
 
     @SuppressWarnings("unchecked")
     public T get(Node node) {
-        check(node);
+        assert check(node);
         return (T) values[getNodeId(node)];
+    }
+
+    @SuppressWarnings("unchecked")
+    public T getAndGrow(Node node) {
+        checkAndGrow(node);
+        return (T) values[getNodeId(node)];
+    }
+
+    private void checkAndGrow(Node node) {
+        if (isNew(node)) {
+            this.values = Arrays.copyOf(values, Math.max(MIN_REALLOC_SIZE, graph.nodeIdCount() * 3 / 2));
+        }
+        assert check(node);
     }
 
     public boolean isEmpty() {
@@ -81,7 +89,12 @@ public class NodeMap<T> extends NodeIdAccessor {
     }
 
     public void set(Node node, T value) {
-        check(node);
+        assert check(node);
+        values[getNodeId(node)] = value;
+    }
+
+    public void setAndGrow(Node node, T value) {
+        checkAndGrow(node);
         values[getNodeId(node)] = value;
     }
 
@@ -93,16 +106,10 @@ public class NodeMap<T> extends NodeIdAccessor {
         return getNodeId(node) >= size();
     }
 
-    public void grow() {
-        this.values = Arrays.copyOf(values, graph.nodeIdCount());
-    }
-
-    private void check(Node node) {
-        if (autogrow && isNew(node)) {
-            grow();
-        }
+    private boolean check(Node node) {
         assert node.graph() == graph : String.format("%s is not part of the graph", node);
         assert !isNew(node) : "this node was added to the graph after creating the node map : " + node;
+        return true;
     }
 
     public void clear() {

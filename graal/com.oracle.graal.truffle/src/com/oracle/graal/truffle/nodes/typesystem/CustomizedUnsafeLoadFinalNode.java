@@ -24,13 +24,13 @@ package com.oracle.graal.truffle.nodes.typesystem;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.calc.*;
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.truffle.nodes.*;
 import com.oracle.truffle.api.*;
 
@@ -57,7 +57,7 @@ public class CustomizedUnsafeLoadFinalNode extends FixedWithNextNode implements 
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        if (object.isConstant() && !object.isNullConstant() && offset.isConstant()) {
+        if (object.isConstant() && !object.isNullConstant() && offset.isConstant() && condition.isConstant() && condition.asConstant().asInt() == 1) {
             Constant constant = tool.getConstantReflection().readUnsafeConstant(accessKind, object.asConstant(), offset.asConstant().asLong());
             return ConstantNode.forConstant(constant, tool.getMetaAccess(), graph());
         }

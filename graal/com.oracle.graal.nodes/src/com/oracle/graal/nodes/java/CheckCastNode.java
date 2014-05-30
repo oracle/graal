@@ -39,7 +39,7 @@ import com.oracle.graal.nodes.type.*;
 /**
  * Implements a type check against a compile-time known type.
  */
-public final class CheckCastNode extends FixedWithNextNode implements Canonicalizable, Lowerable, Virtualizable, ValueProxy {
+public class CheckCastNode extends FixedWithNextNode implements Canonicalizable, Lowerable, Virtualizable, ValueProxy {
 
     @Input private ValueNode object;
     private final ResolvedJavaType type;
@@ -107,7 +107,7 @@ public final class CheckCastNode extends FixedWithNextNode implements Canonicali
             // This is a check cast that will always fail
             condition = LogicConstantNode.contradiction(graph());
             stamp = StampFactory.declared(type);
-        } else if (ObjectStamp.isObjectNonNull(object)) {
+        } else if (StampTool.isObjectNonNull(object)) {
             condition = graph().addWithoutUnique(new InstanceOfNode(type, object, profile));
         } else {
             if (profile != null && profile.getNullSeen() == TriState.FALSE) {
@@ -132,8 +132,9 @@ public final class CheckCastNode extends FixedWithNextNode implements Canonicali
 
     @Override
     public boolean inferStamp() {
-        if (stamp() instanceof ObjectStamp && object().stamp() instanceof ObjectStamp) {
-            return updateStamp(((ObjectStamp) object().stamp()).castTo((ObjectStamp) stamp()));
+        if (object().stamp() instanceof ObjectStamp) {
+            ObjectStamp castStamp = (ObjectStamp) StampFactory.declared(type);
+            return updateStamp(((ObjectStamp) object().stamp()).castTo(castStamp));
         }
         return false;
     }
@@ -142,7 +143,7 @@ public final class CheckCastNode extends FixedWithNextNode implements Canonicali
     public Node canonical(CanonicalizerTool tool) {
         assert object() != null : this;
 
-        ResolvedJavaType objectType = ObjectStamp.typeOrNull(object());
+        ResolvedJavaType objectType = StampTool.typeOrNull(object());
         if (objectType != null && type.isAssignableFrom(objectType)) {
             // we don't have to check for null types here because they will also pass the
             // checkcast.
@@ -161,7 +162,7 @@ public final class CheckCastNode extends FixedWithNextNode implements Canonicali
             }
         }
 
-        if (ObjectStamp.isObjectAlwaysNull(object())) {
+        if (StampTool.isObjectAlwaysNull(object())) {
             return object();
         }
         if (tool.assumptions() != null && tool.assumptions().useOptimisticAssumptions()) {

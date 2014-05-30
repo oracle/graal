@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.hotspot.meta;
 
-import static com.oracle.graal.graph.UnsafeAccess.*;
+import static com.oracle.graal.compiler.common.UnsafeAccess.*;
 
 import java.lang.reflect.*;
 
@@ -51,7 +51,7 @@ public class HotSpotMetaAccessProvider implements MetaAccessProvider {
     }
 
     public ResolvedJavaType lookupJavaType(Constant constant) {
-        if (constant.getKind() != Kind.Object || constant.isNull()) {
+        if (constant.isNull() || !(constant instanceof HotSpotObjectConstant)) {
             return null;
         }
         Object o = HotSpotObjectConstant.asObject(constant);

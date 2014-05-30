@@ -23,8 +23,8 @@
 package com.oracle.graal.hotspot.stubs;
 
 import static com.oracle.graal.compiler.GraalCompiler.*;
+import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
-import static com.oracle.graal.phases.GraalOptions.*;
 
 import java.util.*;
 

@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.hotspot.amd64;
 
-import static com.oracle.graal.hotspot.HotSpotBackend.*;
+import static com.oracle.graal.hotspot.HotSpotHostBackend.*;
 
 import com.oracle.graal.asm.amd64.*;
 import com.oracle.graal.lir.*;

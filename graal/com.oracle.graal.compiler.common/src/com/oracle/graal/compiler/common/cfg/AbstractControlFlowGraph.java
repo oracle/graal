@@ -29,7 +29,7 @@ public interface AbstractControlFlowGraph<T extends AbstractBlock<T>> {
     static final int BLOCK_ID_INITIAL = -1;
     static final int BLOCK_ID_VISITED = -2;
 
-    T[] getBlocks();
+    List<T> getBlocks();
 
     Collection<Loop<T>> getLoops();
 

@@ -22,9 +22,10 @@
  */
 package com.oracle.graal.phases.common;
 
-import static com.oracle.graal.phases.GraalOptions.*;
+import static com.oracle.graal.compiler.common.GraalOptions.*;
 
 import java.util.*;
+import java.util.function.*;
 
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.type.*;
@@ -39,7 +40,6 @@ import com.oracle.graal.nodes.VirtualState.NodeClosure;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.nodes.virtual.*;
 import com.oracle.graal.phases.*;
@@ -154,13 +154,15 @@ public class TailDuplicationPhase extends BasePhase<PhaseContext> {
 
     @Override
     protected void run(StructuredGraph graph, PhaseContext phaseContext) {
-        NodesToDoubles nodeProbabilities = new ComputeProbabilityClosure(graph).apply();
+        if (graph.hasNode(MergeNode.class)) {
+            ToDoubleFunction<FixedNode> nodeProbabilities = new FixedNodeProbabilityCache();
 
-        // A snapshot is taken here, so that new MergeNode instances aren't considered for tail
-        // duplication.
-        for (MergeNode merge : graph.getNodes(MergeNode.class).snapshot()) {
-            if (!(merge instanceof LoopBeginNode) && nodeProbabilities.get(merge) >= TailDuplicationProbability.getValue()) {
-                tailDuplicate(merge, DEFAULT_DECISION, null, phaseContext, canonicalizer);
+            // A snapshot is taken here, so that new MergeNode instances aren't considered for tail
+            // duplication.
+            for (MergeNode merge : graph.getNodes(MergeNode.class).snapshot()) {
+                if (!(merge instanceof LoopBeginNode) && nodeProbabilities.applyAsDouble(merge) >= TailDuplicationProbability.getValue()) {
+                    tailDuplicate(merge, DEFAULT_DECISION, null, phaseContext, canonicalizer);
+                }
             }
         }
     }

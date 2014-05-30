@@ -23,11 +23,11 @@
 package com.oracle.graal.nodes.java;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
 
 /**
  * Represents the lowered version of an atomic compare-and-swap operation{@code CompareAndSwapNode}.
@@ -61,8 +61,8 @@ public class LoweredCompareAndSwapNode extends FixedAccessNode implements StateS
         return newValue;
     }
 
-    public LoweredCompareAndSwapNode(ValueNode object, LocationNode location, ValueNode expectedValue, ValueNode newValue, BarrierType barrierType, boolean compressible) {
-        super(object, location, StampFactory.forKind(Kind.Boolean.getStackKind()), barrierType, compressible);
+    public LoweredCompareAndSwapNode(ValueNode object, LocationNode location, ValueNode expectedValue, ValueNode newValue, BarrierType barrierType) {
+        super(object, location, StampFactory.forKind(Kind.Boolean.getStackKind()), barrierType);
         assert expectedValue.getKind() == newValue.getKind();
         this.expectedValue = expectedValue;
         this.newValue = newValue;

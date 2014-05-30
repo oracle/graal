@@ -43,6 +43,7 @@ import com.oracle.graal.nodes.type.*;
 public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtualizable, IterableNodeType, Canonicalizable, ValueProxy {
 
     @Input private ValueNode object;
+    private final Stamp piStamp;
 
     public ValueNode object() {
         return object;
@@ -50,16 +51,18 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
 
     public PiNode(ValueNode object, Stamp stamp) {
         super(stamp);
+        this.piStamp = stamp;
         this.object = object;
     }
 
     public PiNode(ValueNode object, Stamp stamp, ValueNode anchor) {
         super(stamp, (GuardingNode) anchor);
         this.object = object;
+        this.piStamp = stamp;
     }
 
     public PiNode(ValueNode object, ResolvedJavaType toType, boolean exactType, boolean nonNull) {
-        this(object, StampFactory.object(toType, exactType, nonNull || ObjectStamp.isObjectNonNull(object.stamp())));
+        this(object, StampFactory.object(toType, exactType, nonNull || StampTool.isObjectNonNull(object.stamp())));
     }
 
     @Override
@@ -71,22 +74,29 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
 
     @Override
     public boolean inferStamp() {
-        if (stamp() == StampFactory.forNodeIntrinsic()) {
+        if (piStamp == StampFactory.forNodeIntrinsic()) {
             return false;
         }
-        return updateStamp(stamp().join(object().stamp()));
+        if (piStamp instanceof ObjectStamp && object.stamp() instanceof ObjectStamp) {
+            return updateStamp(((ObjectStamp) object.stamp()).castTo((ObjectStamp) piStamp));
+        }
+        return updateStamp(piStamp.join(object().stamp()));
     }
 
     @Override
     public void virtualize(VirtualizerTool tool) {
         State state = tool.getObjectState(object);
-        if (state != null && state.getState() == EscapeState.Virtual && ObjectStamp.typeOrNull(this) != null && ObjectStamp.typeOrNull(this).isAssignableFrom(state.getVirtualObject().type())) {
+        if (state != null && state.getState() == EscapeState.Virtual && StampTool.typeOrNull(this) != null && StampTool.typeOrNull(this).isAssignableFrom(state.getVirtualObject().type())) {
             tool.replaceWithVirtual(state.getVirtualObject());
         }
     }
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
+        if (stamp() == StampFactory.forNodeIntrinsic()) {
+            /* The actual stamp has not been set yet. */
+            return this;
+        }
         inferStamp();
         if (stamp().equals(object().stamp())) {
             return object();

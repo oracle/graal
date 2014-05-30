@@ -22,9 +22,10 @@
  */
 package com.oracle.graal.hotspot;
 
+import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.hotspot.HotSpotGraalRuntime.Options;
 
-public interface HotSpotBackendFactory {
+public interface HotSpotBackendFactory extends Service {
 
     HotSpotBackend createBackend(HotSpotGraalRuntime runtime, HotSpotBackend host);
 

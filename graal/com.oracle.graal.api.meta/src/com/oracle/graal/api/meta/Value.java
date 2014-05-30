@@ -45,7 +45,7 @@ public abstract class Value implements Serializable, KindProvider {
 
     /**
      * Initializes a new value of the specified kind.
-     * 
+     *
      * @param platformKind the kind
      */
     protected Value(PlatformKind platformKind) {

@@ -23,7 +23,7 @@
 package com.oracle.graal.java;
 
 import static com.oracle.graal.bytecode.Bytecodes.*;
-import static com.oracle.graal.phases.GraalOptions.*;
+import static com.oracle.graal.compiler.common.GraalOptions.*;
 
 import java.util.*;
 
@@ -154,6 +154,10 @@ public final class BciBlockMapping {
             return loop;
         }
 
+        public void setLoop(Loop<BciBlock> loop) {
+            this.loop = loop;
+        }
+
         public int getLoopDepth() {
             return Long.bitCount(loops);
         }
@@ -176,6 +180,71 @@ public final class BciBlockMapping {
 
         public BciBlock getPredecessor(int index) {
             return predecessors.get(index);
+        }
+
+        /**
+         * Get the loop id of the inner most loop.
+         *
+         * @return the loop id of the most inner loop or -1 if not part of any loop
+         */
+        public int getLoopId() {
+            long l = loops;
+            if (l == 0) {
+                return -1;
+            }
+            int pos = 0;
+            for (int lMask = 1; (l & lMask) == 0; lMask = lMask << 1) {
+                pos++;
+            }
+            return pos;
+        }
+
+        /**
+         * Iterate over loop ids.
+         */
+        public Iterable<Integer> loopIdIterable() {
+            return new Iterable<Integer>() {
+                public Iterator<Integer> iterator() {
+                    return idIterator(loops);
+                }
+            };
+        }
+
+        /**
+         * Iterate over exit ids.
+         */
+        public Iterable<Integer> exitIdIterable() {
+            return new Iterable<Integer>() {
+                public Iterator<Integer> iterator() {
+                    return idIterator(exits);
+                }
+            };
+        }
+
+        private static Iterator<Integer> idIterator(long field) {
+            return new Iterator<Integer>() {
+
+                long l = field;
+                int pos = 0;
+                int lMask = 1;
+
+                public Integer next() {
+                    for (; (l & lMask) == 0; lMask = lMask << 1) {
+                        pos++;
+                    }
+                    l &= ~lMask;
+                    return pos;
+                }
+
+                public boolean hasNext() {
+                    return l != 0;
+                }
+            };
+
+        }
+
+        public double probability() {
+            return 1D;
         }
     }
 
@@ -211,9 +280,10 @@ public final class BciBlockMapping {
         this.method = method;
         exceptionHandlers = method.getExceptionHandlers();
         stream = new BytecodeStream(method.getCode());
-        this.blockMap = new BciBlock[method.getCodeSize()];
+        int codeSize = method.getCodeSize();
+        this.blockMap = new BciBlock[codeSize];
         this.blocks = new ArrayList<>();
-        this.loopHeaders = new BciBlock[64];
+        this.loopHeaders = new BciBlock[codeSize < 64 ? codeSize : 64];
     }
 
     /**
@@ -627,31 +697,24 @@ public final class BciBlockMapping {
                     sb.append(" ");
                 }
                 sb.append(n).append("  Loop : ");
-                long l = b.loops;
-                int pos = 0;
-                while (l != 0) {
-                    int lMask = 1 << pos;
-                    if ((l & lMask) != 0) {
-                        sb.append("B").append(loopHeaders[pos].getId()).append(" ");
-                        l &= ~lMask;
-                    }
-                    pos++;
+                for (int pos : b.loopIdIterable()) {
+                    sb.append("B").append(loopHeaders[pos].getId()).append(" ");
                 }
                 sb.append(n).append("  Exits : ");
-                l = b.exits;
-                pos = 0;
-                while (l != 0) {
-                    int lMask = 1 << pos;
-                    if ((l & lMask) != 0) {
-                        sb.append("B").append(loopHeaders[pos].getId()).append(" ");
-                        l &= ~lMask;
-                    }
-                    pos++;
+                for (int pos : b.exitIdIterable()) {
+                    sb.append("B").append(loopHeaders[pos].getId()).append(" ");
                 }
                 sb.append(n);
             }
             Debug.log("%s", sb);
         }
+    }
+
+    /**
+     * Get the header block for a loop index.
+     */
+    public BciBlock getLoopHeader(int index) {
+        return loopHeaders[index];
     }
 
     /**
@@ -718,7 +781,7 @@ public final class BciBlockMapping {
         for (BciBlock successor : block.getSuccessors()) {
             // Recursively process successors.
             loops |= computeBlockOrder(successor);
-            if (block.visited && successor.active) {
+            if (successor.active) {
                 // Reached block via backward branch.
                 block.isLoopEnd = true;
             }

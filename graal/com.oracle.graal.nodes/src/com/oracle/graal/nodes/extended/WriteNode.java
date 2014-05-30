@@ -34,12 +34,12 @@ import com.oracle.graal.nodes.virtual.*;
  */
 public final class WriteNode extends AbstractWriteNode implements LIRLowerable, Simplifiable, Virtualizable {
 
-    public WriteNode(ValueNode object, ValueNode value, ValueNode location, BarrierType barrierType, boolean compressible) {
-        super(object, value, location, barrierType, compressible);
+    public WriteNode(ValueNode object, ValueNode value, ValueNode location, BarrierType barrierType) {
+        super(object, value, location, barrierType);
     }
 
-    public WriteNode(ValueNode object, ValueNode value, ValueNode location, BarrierType barrierType, boolean compressible, boolean initialization) {
-        super(object, value, location, barrierType, compressible, initialization);
+    public WriteNode(ValueNode object, ValueNode value, ValueNode location, BarrierType barrierType, boolean initialization) {
+        super(object, value, location, barrierType, initialization);
     }
 
     @Override
@@ -48,13 +48,13 @@ public final class WriteNode extends AbstractWriteNode implements LIRLowerable, 
         // It's possible a constant was forced for other usages so inspect the value directly and
         // use a constant if it can be directly stored.
         Value v;
-        if (value().isConstant() && gen.getLIRGeneratorTool().canStoreConstant(value().asConstant(), isCompressible())) {
+        if (value().isConstant() && gen.getLIRGeneratorTool().canStoreConstant(value().asConstant())) {
             v = value().asConstant();
         } else {
             v = gen.operand(value());
         }
         PlatformKind writeKind = gen.getLIRGeneratorTool().getPlatformKind(value().stamp());
-        gen.getLIRGeneratorTool().emitStore(writeKind, address, v, this);
+        gen.getLIRGeneratorTool().emitStore(writeKind, address, v, gen.state(this));
     }
 
     @Override
@@ -65,7 +65,7 @@ public final class WriteNode extends AbstractWriteNode implements LIRLowerable, 
     }
 
     @NodeIntrinsic
-    public static native void writeMemory(Object object, Object value, Location location, @ConstantNodeParameter BarrierType barrierType, @ConstantNodeParameter boolean compressible);
+    public static native void writeMemory(Object object, Object value, Location location, @ConstantNodeParameter BarrierType barrierType);
 
     @Override
     public void virtualize(VirtualizerTool tool) {

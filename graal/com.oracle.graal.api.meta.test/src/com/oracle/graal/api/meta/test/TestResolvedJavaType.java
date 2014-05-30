@@ -265,10 +265,13 @@ public class TestResolvedJavaType extends TypeUniverse {
     static class Concrete3 extends Concrete2 {
     }
 
+    static final class Final1 extends Abstract1 {
+    }
+
     abstract static class Abstract4 extends Concrete3 {
     }
 
-    void checkConcreteSubtype(ResolvedJavaType type, Class<?> expected) {
+    void checkConcreteSubtype(ResolvedJavaType type, ResolvedJavaType expected) {
         ResolvedJavaType subtype = type.findUniqueConcreteSubtype();
         if (subtype == null) {
             // findUniqueConcreteSubtype() is conservative
@@ -276,7 +279,7 @@ public class TestResolvedJavaType extends TypeUniverse {
             if (expected == null) {
                 assertNull(subtype);
             } else {
-                assertTrue(subtype.equals(metaAccess.lookupJavaType(expected)));
+                assertTrue(subtype.equals(expected));
             }
         }
 
@@ -294,31 +297,44 @@ public class TestResolvedJavaType extends TypeUniverse {
     @Test
     public void findUniqueConcreteSubtypeTest() {
         ResolvedJavaType base = metaAccess.lookupJavaType(Base.class);
-        checkConcreteSubtype(base, Base.class);
+        checkConcreteSubtype(base, base);
 
         ResolvedJavaType a1 = metaAccess.lookupJavaType(Abstract1.class);
         ResolvedJavaType c1 = metaAccess.lookupJavaType(Concrete1.class);
 
         checkConcreteSubtype(base, null);
-        checkConcreteSubtype(a1, Concrete1.class);
-        checkConcreteSubtype(c1, Concrete1.class);
+        checkConcreteSubtype(a1, c1);
+        checkConcreteSubtype(c1, c1);
 
         ResolvedJavaType i1 = metaAccess.lookupJavaType(Interface1.class);
         ResolvedJavaType c2 = metaAccess.lookupJavaType(Concrete2.class);
 
         checkConcreteSubtype(base, null);
         checkConcreteSubtype(a1, null);
-        checkConcreteSubtype(c1, Concrete1.class);
-        checkConcreteSubtype(i1, Concrete2.class);
-        checkConcreteSubtype(c2, Concrete2.class);
+        checkConcreteSubtype(c1, c1);
+        checkConcreteSubtype(i1, c2);
+        checkConcreteSubtype(c2, c2);
 
         ResolvedJavaType c3 = metaAccess.lookupJavaType(Concrete3.class);
         checkConcreteSubtype(c2, null);
-        checkConcreteSubtype(c3, Concrete3.class);
+        checkConcreteSubtype(c3, c3);
 
         ResolvedJavaType a4 = metaAccess.lookupJavaType(Abstract4.class);
         checkConcreteSubtype(c3, null);
         checkConcreteSubtype(a4, null);
+
+        ResolvedJavaType a1a = metaAccess.lookupJavaType(Abstract1[].class);
+        checkConcreteSubtype(a1a, null);
+        ResolvedJavaType c1a = metaAccess.lookupJavaType(Concrete1[].class);
+        checkConcreteSubtype(c1a, null);
+        ResolvedJavaType f1a = metaAccess.lookupJavaType(Final1[].class);
+        checkConcreteSubtype(f1a, f1a);
+
+        ResolvedJavaType obja = metaAccess.lookupJavaType(Object[].class);
+        checkConcreteSubtype(obja, null);
+
+        ResolvedJavaType inta = metaAccess.lookupJavaType(int[].class);
+        checkConcreteSubtype(inta, inta);
     }
 
     @Test
@@ -431,20 +447,21 @@ public class TestResolvedJavaType extends TypeUniverse {
         return declarations;
     }
 
-    private static void checkResolveMethod(ResolvedJavaType type, ResolvedJavaMethod decl, ResolvedJavaMethod expected) {
-        ResolvedJavaMethod impl = type.resolveMethod(decl);
+    private static void checkResolveMethod(ResolvedJavaType type, ResolvedJavaType context, ResolvedJavaMethod decl, ResolvedJavaMethod expected) {
+        ResolvedJavaMethod impl = type.resolveMethod(decl, context);
         assertEquals(expected, impl);
     }
 
     @Test
     public void resolveMethodTest() {
+        ResolvedJavaType context = metaAccess.lookupJavaType(TestResolvedJavaType.class);
         for (Class<?> c : classes) {
             if (c.isInterface() || c.isPrimitive()) {
                 ResolvedJavaType type = metaAccess.lookupJavaType(c);
                 for (Method m : c.getDeclaredMethods()) {
                     if (JAVA_VERSION <= 1.7D || (!isStatic(m.getModifiers()) && !isPrivate(m.getModifiers()))) {
                         ResolvedJavaMethod resolved = metaAccess.lookupJavaMethod(m);
-                        ResolvedJavaMethod impl = type.resolveMethod(resolved);
+                        ResolvedJavaMethod impl = type.resolveMethod(resolved, context);
                         ResolvedJavaMethod expected = resolved.isDefault() ? resolved : null;
                         assertEquals(m.toString(), expected, impl);
                     } else {
@@ -458,12 +475,14 @@ public class TestResolvedJavaType extends TypeUniverse {
                     Set<Method> decls = findDeclarations(impl, c);
                     for (Method decl : decls) {
                         ResolvedJavaMethod m = metaAccess.lookupJavaMethod(decl);
-                        ResolvedJavaMethod i = metaAccess.lookupJavaMethod(impl);
-                        checkResolveMethod(type, m, i);
+                        if (m.isPublic()) {
+                            ResolvedJavaMethod i = metaAccess.lookupJavaMethod(impl);
+                            checkResolveMethod(type, context, m, i);
+                        }
                     }
                 }
                 for (Method m : c.getDeclaredMethods()) {
-                    ResolvedJavaMethod impl = type.resolveMethod(metaAccess.lookupJavaMethod(m));
+                    ResolvedJavaMethod impl = type.resolveMethod(metaAccess.lookupJavaMethod(m), context);
                     ResolvedJavaMethod expected = isAbstract(m.getModifiers()) ? null : impl;
                     assertEquals(type + " " + m.toString(), expected, impl);
                 }
@@ -490,6 +509,16 @@ public class TestResolvedJavaType extends TypeUniverse {
         }
         if (includeSuperclasses && c != Object.class) {
             result.addAll(getInstanceFields(c.getSuperclass(), true));
+        }
+        return result;
+    }
+
+    public static Set<Field> getStaticFields(Class<?> c) {
+        Set<Field> result = new HashSet<>();
+        for (Field f : c.getDeclaredFields()) {
+            if (Modifier.isStatic(f.getModifiers())) {
+                result.add(f);
+            }
         }
         return result;
     }
@@ -547,6 +576,27 @@ public class TestResolvedJavaType extends TypeUniverse {
                 ResolvedJavaField[] actual2 = type.getInstanceFields(includeSuperclasses);
                 assertArrayEquals(actual, actual2);
             }
+        }
+    }
+
+    @Test
+    public void getStaticFieldsTest() {
+        for (Class<?> c : classes) {
+            ResolvedJavaType type = metaAccess.lookupJavaType(c);
+            Set<Field> expected = getStaticFields(c);
+            ResolvedJavaField[] actual = type.getStaticFields();
+            for (Field f : expected) {
+                assertNotNull(lookupField(actual, f));
+            }
+            for (ResolvedJavaField rf : actual) {
+                if (!isHiddenFromReflection(rf)) {
+                    assertEquals(lookupField(expected, rf) != null, !rf.isInternal());
+                }
+            }
+
+            // Test stability of getStaticFields
+            ResolvedJavaField[] actual2 = type.getStaticFields();
+            assertArrayEquals(actual, actual2);
         }
     }
 

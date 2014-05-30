@@ -23,6 +23,7 @@
 package com.oracle.graal.nodes.calc;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.meta.ProfilingInfo.TriState;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.graph.*;
@@ -35,7 +36,7 @@ import com.oracle.graal.nodes.*;
  * Compare should probably be made a value (so that it can be canonicalized for example) and in later stages some Compare usage should be transformed
  * into variants that do not materialize the value (CompareIf, CompareGuard...)
  */
-public abstract class CompareNode extends BinaryLogicNode implements Canonicalizable {
+public abstract class CompareNode extends BinaryOpLogicNode {
 
     /**
      * Constructs a new Compare instruction.
@@ -90,53 +91,66 @@ public abstract class CompareNode extends BinaryLogicNode implements Canonicaliz
     }
 
     @Override
+    public TriState evaluate(ConstantReflectionProvider constantReflection, ValueNode forX, ValueNode forY) {
+        if (forX.isConstant() && forY.isConstant()) {
+            return TriState.get(condition().foldCondition(forX.asConstant(), forY.asConstant(), constantReflection, unorderedIsTrue()));
+        }
+        return TriState.UNKNOWN;
+    }
+
+    @Override
     public Node canonical(CanonicalizerTool tool) {
-        if (x().isConstant() && y().isConstant() && tool.getMetaAccess() != null) {
-            return LogicConstantNode.forBoolean(condition().foldCondition(x().asConstant(), y().asConstant(), tool.getConstantReflection(), unorderedIsTrue()), graph());
+        Node result = super.canonical(tool);
+        if (result != this) {
+            return result;
         }
         if (x().isConstant()) {
-            if (y() instanceof ConditionalNode) {
-                return optimizeConditional(x().asConstant(), (ConditionalNode) y(), tool.getConstantReflection(), condition().mirror());
-            } else if (y() instanceof NormalizeCompareNode) {
-                return optimizeNormalizeCmp(x().asConstant(), (NormalizeCompareNode) y(), true);
+            if ((result = canonicalizeSymmetricConstant(tool, x().asConstant(), y(), true)) != this) {
+                return result;
             }
         } else if (y().isConstant()) {
-            if (x() instanceof ConditionalNode) {
-                return optimizeConditional(y().asConstant(), (ConditionalNode) x(), tool.getConstantReflection(), condition());
-            } else if (x() instanceof NormalizeCompareNode) {
-                return optimizeNormalizeCmp(y().asConstant(), (NormalizeCompareNode) x(), false);
+            if ((result = canonicalizeSymmetricConstant(tool, y().asConstant(), x(), false)) != this) {
+                return result;
             }
+        } else if (x() instanceof ConvertNode && y() instanceof ConvertNode) {
+            ConvertNode convertX = (ConvertNode) x();
+            ConvertNode convertY = (ConvertNode) y();
+            if (convertX.preservesOrder(condition()) && convertY.preservesOrder(condition()) && convertX.getInput().stamp().isCompatible(convertY.getInput().stamp())) {
+                return graph().unique(duplicateModified(convertX.getInput(), convertY.getInput()));
+            }
+
         }
-        if (x() instanceof ConvertNode && y() instanceof ConvertNode) {
-            ConvertNode convertX = (ConvertNode) x();
-            ConvertNode convertY = (ConvertNode) y();
-            if (convertX.isLossless() && convertY.isLossless() && convertX.getInput().stamp().isCompatible(convertY.getInput().stamp())) {
-                setX(convertX.getInput());
-                setY(convertY.getInput());
+        return this;
+    }
+
+    protected abstract CompareNode duplicateModified(ValueNode newX, ValueNode newY);
+
+    protected Node canonicalizeSymmetricConstant(CanonicalizerTool tool, Constant constant, ValueNode nonConstant, boolean mirrored) {
+        if (nonConstant instanceof BinaryNode) {
+            if (nonConstant instanceof ConditionalNode) {
+                return optimizeConditional(constant, (ConditionalNode) nonConstant, tool.getConstantReflection(), mirrored ? condition().mirror() : condition());
+            } else if (nonConstant instanceof NormalizeCompareNode) {
+                return optimizeNormalizeCmp(constant, (NormalizeCompareNode) nonConstant, mirrored);
             }
-        } else if (x() instanceof ConvertNode && y().isConstant()) {
-            ConvertNode convertX = (ConvertNode) x();
-            ConstantNode newY = canonicalConvertConstant(convertX, y().asConstant());
-            if (newY != null) {
-                setX(convertX.getInput());
-                setY(newY);
-            }
-        } else if (y() instanceof ConvertNode && x().isConstant()) {
-            ConvertNode convertY = (ConvertNode) y();
-            ConstantNode newX = canonicalConvertConstant(convertY, x().asConstant());
-            if (newX != null) {
-                setX(newX);
-                setY(convertY.getInput());
+        } else if (nonConstant instanceof ConvertNode) {
+            ConvertNode convert = (ConvertNode) nonConstant;
+            ConstantNode newConstant = canonicalConvertConstant(tool, convert, constant);
+            if (newConstant != null) {
+                if (mirrored) {
+                    return graph().unique(duplicateModified(newConstant, convert.getInput()));
+                } else {
+                    return graph().unique(duplicateModified(convert.getInput(), newConstant));
+                }
             }
         }
         return this;
     }
 
-    private static ConstantNode canonicalConvertConstant(ConvertNode convert, Constant constant) {
-        if (convert.isLossless()) {
+    private ConstantNode canonicalConvertConstant(CanonicalizerTool tool, ConvertNode convert, Constant constant) {
+        if (convert.preservesOrder(condition())) {
             Constant reverseConverted = convert.reverse(constant);
             if (convert.convert(reverseConverted).equals(constant)) {
-                return ConstantNode.forPrimitive(convert.getInput().stamp(), reverseConverted, convert.graph());
+                return ConstantNode.forConstant(convert.getInput().stamp(), reverseConverted, tool.getMetaAccess(), convert.graph());
             }
         }
         return null;

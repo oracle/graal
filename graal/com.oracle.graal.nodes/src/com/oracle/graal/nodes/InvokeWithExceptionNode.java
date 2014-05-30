@@ -37,7 +37,7 @@ public class InvokeWithExceptionNode extends ControlSplitNode implements Invoke,
     private static final double EXCEPTION_PROBA = 1e-5;
 
     @Successor private BeginNode next;
-    @Successor private DispatchBeginNode exceptionEdge;
+    @Successor private BeginNode exceptionEdge;
     @Input(InputType.Extension) private CallTargetNode callTarget;
     @Input(InputType.State) private FrameState stateDuring;
     @Input(InputType.State) private FrameState stateAfter;
@@ -47,7 +47,7 @@ public class InvokeWithExceptionNode extends ControlSplitNode implements Invoke,
     private boolean useForInlining;
     private double exceptionProbability;
 
-    public InvokeWithExceptionNode(CallTargetNode callTarget, DispatchBeginNode exceptionEdge, int bci) {
+    public InvokeWithExceptionNode(CallTargetNode callTarget, BeginNode exceptionEdge, int bci) {
         super(callTarget.returnStamp());
         this.exceptionEdge = exceptionEdge;
         this.bci = bci;
@@ -57,11 +57,11 @@ public class InvokeWithExceptionNode extends ControlSplitNode implements Invoke,
         this.exceptionProbability = EXCEPTION_PROBA;
     }
 
-    public DispatchBeginNode exceptionEdge() {
+    public BeginNode exceptionEdge() {
         return exceptionEdge;
     }
 
-    public void setExceptionEdge(DispatchBeginNode x) {
+    public void setExceptionEdge(BeginNode x) {
         updatePredecessor(exceptionEdge, x);
         exceptionEdge = x;
     }
@@ -220,13 +220,6 @@ public class InvokeWithExceptionNode extends ControlSplitNode implements Invoke,
     public void setStateDuring(FrameState stateDuring) {
         updateUsages(this.stateDuring, stateDuring);
         this.stateDuring = stateDuring;
-    }
-
-    @Override
-    public void computeStateDuring(FrameState tempStateAfter) {
-        FrameState newStateDuring = tempStateAfter.duplicateModified(bci(), tempStateAfter.rethrowException(), getKind());
-        newStateDuring.setDuringCall(true);
-        setStateDuring(newStateDuring);
     }
 
     @Override

@@ -43,7 +43,7 @@ public class CompilerToVMImpl implements CompilerToVM {
     public native long getMetaspaceMethod(Class<?> holder, int slot);
 
     @Override
-    public native byte[] initializeBytecode(long metaspaceMethod, byte[] code);
+    public native byte[] getBytecode(long metaspaceMethod);
 
     @Override
     public native int exceptionTableLength(long metaspaceMethod);
@@ -71,10 +71,10 @@ public class CompilerToVMImpl implements CompilerToVM {
     public native int lookupNameAndTypeRefIndexInPool(long metaspaceConstantPool, int cpi);
 
     @Override
-    public native long lookupNameRefInPool(long metaspaceConstantPool, int cpi);
+    public native String lookupNameRefInPool(long metaspaceConstantPool, int cpi);
 
     @Override
-    public native long lookupSignatureRefInPool(long metaspaceConstantPool, int cpi);
+    public native String lookupSignatureRefInPool(long metaspaceConstantPool, int cpi);
 
     @Override
     public native int lookupKlassRefIndexInPool(long metaspaceConstantPool, int cpi);
@@ -99,7 +99,7 @@ public class CompilerToVMImpl implements CompilerToVM {
     public native void initializeConfiguration(HotSpotVMConfig config);
 
     @Override
-    public native long resolveMethod(long metaspaceKlass, String name, String signature);
+    public native long resolveMethod(long metaspaceKlassExactReceiver, long metaspaceMethod, long metaspaceKlassCaller);
 
     @Override
     public native boolean hasFinalizableSubclass(long metaspaceKlass);
@@ -181,5 +181,9 @@ public class CompilerToVMImpl implements CompilerToVM {
 
     public native long getTimeStamp();
 
+    public native String getSymbol(long metaspaceSymbol);
+
     public native void resolveInvokeDynamic(long metaspaceConstantPool, int index);
+
+    public native int getVtableIndexForInterface(long metaspaceKlass, long metaspaceMethod);
 }

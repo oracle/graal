@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
+import static com.oracle.graal.hotspot.HotSpotBackend.*;
+
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
@@ -29,7 +31,6 @@ import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.stubs.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.word.*;
 
 /**
@@ -40,8 +41,6 @@ public class NewInstanceStubCall extends DeoptimizingStubCall implements LIRLowe
     private static final Stamp defaultStamp = StampFactory.objectNonNull();
 
     @Input private ValueNode hub;
-
-    public static final ForeignCallDescriptor NEW_INSTANCE = new ForeignCallDescriptor("new_instance", Object.class, Word.class);
 
     public NewInstanceStubCall(ValueNode hub) {
         super(defaultStamp);
@@ -60,7 +59,7 @@ public class NewInstanceStubCall extends DeoptimizingStubCall implements LIRLowe
     @Override
     public void generate(NodeLIRBuilderTool gen) {
         ForeignCallLinkage linkage = gen.getLIRGeneratorTool().getForeignCalls().lookupForeignCall(NEW_INSTANCE);
-        Value result = gen.getLIRGeneratorTool().emitForeignCall(linkage, this, gen.operand(hub));
+        Value result = gen.getLIRGeneratorTool().emitForeignCall(linkage, gen.state(this), gen.operand(hub));
         gen.setResult(this, result);
     }
 

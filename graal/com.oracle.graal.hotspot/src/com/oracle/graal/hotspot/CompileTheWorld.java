@@ -22,9 +22,9 @@
  */
 package com.oracle.graal.hotspot;
 
+import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 import static com.oracle.graal.nodes.StructuredGraph.*;
-import static com.oracle.graal.phases.GraalOptions.*;
 
 import java.io.*;
 import java.lang.reflect.*;
@@ -317,7 +317,7 @@ public final class CompileTheWorld {
     class CTWCompilationTask extends CompilationTask {
 
         CTWCompilationTask(HotSpotBackend backend, HotSpotResolvedJavaMethod method) {
-            super(backend, method, INVOCATION_ENTRY_BCI, false);
+            super(null, backend, method, INVOCATION_ENTRY_BCI, 0L, false);
         }
 
         /**
@@ -349,7 +349,7 @@ public final class CompileTheWorld {
 
             HotSpotBackend backend = runtime.getHostBackend();
             CompilationTask task = new CTWCompilationTask(backend, method);
-            task.runCompilation(false);
+            task.runCompilation();
 
             compileTime += (System.currentTimeMillis() - start);
             compiledMethodsCounter++;

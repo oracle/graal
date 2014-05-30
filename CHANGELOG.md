@@ -2,23 +2,36 @@
 
 ## `tip`
 ### Graal
+* Made initialization of Graal runtime lazy in hosted mode.
+* Added supported for new 'jrelibrary' dependency type in mx/projects.
+* Java projects with compliance level higher than the JDKs specified by JAVA_HOME and EXTRA_JAVA_HOMES are ignored once mx/projects has been processed.
+* ResolvedJavaType.resolveMethod now takes a context type used to perform access checks. It now works correctly regarding default methods.
+
+### Truffle
+* `truffle.jar`: strip out build-time only dependency into a seperated JAR file (`truffle-dsl-processor.jar`)
+* ...
+
+## Version 0.3
+9-May-2014, [Repository Revision](http://hg.openjdk.java.net/graal/graal/rev/graal-0.3)
+
+### Graal
 * Explicit support for oop compression/uncompression in high level graph.
 * LIRGenerator refactoring.
 * Explicit types for inputs (InputType enum).
 * Added graal.version system property to Graal enabled VM builds.
 * Transitioned to JDK 8 as minimum JDK level for Graal.
 * Added support for stack introspection.
-* ...
+* New MatchRule facility to convert multiple HIR nodes into specialized LIR
 
 ### Truffle
-* The method CallTarget#call takes now a variable number of Object arguments.
-* Support for collecting stack traces and for accessing the current frame in slow paths.
-* Renamed CallNode to DirectCallNode.
-* Renamed TruffleRuntime#createCallNode to TruffleRuntime#createDirectCallNode.
-* Added IndirectCallNode for calls with a changing CallTarget. 
-* Added TruffleRuntime#createIndirectCallNode to create an IndirectCallNode.
-* DirectCallNode#inline was renamed to DirectCallNode#forceInlining().
-* ...
+* The method `CallTarget#call` takes now a variable number of Object arguments.
+* Support for collecting stack traces and for accessing the current frame in slow paths (see `TruffleRuntime#getStackTrace`).
+* Renamed `CallNode` to `DirectCallNode`.
+* Renamed `TruffleRuntime#createCallNode` to `TruffleRuntime#createDirectCallNode`.
+* Added `IndirectCallNode` for calls with a changing `CallTarget`.
+* Added `TruffleRuntime#createIndirectCallNode` to create an `IndirectCallNode`.
+* `DirectCallNode#inline` was renamed to `DirectCallNode#forceInlining()`.
+* Removed deprecated `Node#adoptChild`.
 
 ## Version 0.2
 25-Mar-2014, [Repository Revision](http://hg.openjdk.java.net/graal/graal/rev/graal-0.2)
@@ -44,7 +57,7 @@
 * New API to declare the cost of a Node for use in runtime environment specific heuristics. See `NodeCost`, `Node#getCost` and `NodeInfo#cost`.
 * Removed old API for `NodeInfo#Kind` and `NodeInfo#kind`. As a replacement the new `NodeCost` API can be used.
 * Changed `Node#replace` reason parameter type to `CharSequence` (to enable lazy string building)
-* Deprecated `Node#adoptChild` and `Node#adoptChild`, no longer needed in node constructor
+* Deprecated `Node#adoptChild` and `Node#adoptChildren`, no longer needed in node constructor
 * New `Node#insert` method for inserting new nodes into the tree (formerly `adoptChild`)
 * New `Node#adoptChildren` helper method that adopts all (direct and indirect) children of a node
 * New API `Node#atomic` for atomic tree operations
@@ -65,4 +78,3 @@
 
 * Initial version of a multi-language framework on top of Graal.
 * Update of the [Truffle Inlining API](http://mail.openjdk.java.net/pipermail/graal-dev/2014-January/001516.html).
-

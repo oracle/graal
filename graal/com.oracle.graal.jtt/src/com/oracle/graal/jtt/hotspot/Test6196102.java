@@ -22,8 +22,9 @@
  */
 package com.oracle.graal.jtt.hotspot;
 
+import org.junit.*;
+
 import com.oracle.graal.jtt.*;
-import com.oracle.graal.test.*;
 
 /**
  * @bug 6196102
@@ -46,7 +47,7 @@ public class Test6196102 extends JTTTest {
         return "ok";
     }
 
-    @LongTest
+    @Test
     public void run0() throws Throwable {
         runTest("test");
     }

@@ -33,11 +33,6 @@ public abstract class BoundsCatchManyBase extends BoundsCatchBase {
         return (gid < 4096 && gid % 512 == 1);
     }
 
-    @Override
-    public int getMisMatchLimit() {
-        return 1000;
-    }
-
     public void run(int gid) {
         int outval = getOutval(gid);
         try {

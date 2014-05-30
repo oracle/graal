@@ -23,10 +23,13 @@
 
 package com.oracle.graal.replacements.amd64;
 
-import static com.oracle.graal.phases.GraalOptions.*;
+import static com.oracle.graal.compiler.common.GraalOptions.*;
+
+import java.util.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.replacements.*;
@@ -37,10 +40,10 @@ import com.oracle.graal.replacements.*;
 @ServiceProvider(ReplacementsProvider.class)
 public class AMD64Substitutions implements ReplacementsProvider {
 
-    public void registerReplacements(MetaAccessProvider metaAccess, LoweringProvider lowerer, Replacements replacements, TargetDescription target) {
+    public void registerReplacements(MetaAccessProvider metaAccess, LoweringProvider lowerer, SnippetReflectionProvider snippetReflection, Replacements replacements, TargetDescription target) {
         if (Intrinsify.getValue()) {
-            replacements.registerSubstitutions(ArraysSubstitutions.class);
-            replacements.registerSubstitutions(StringSubstitutions.class);
+            replacements.registerSubstitutions(Arrays.class, ArraysSubstitutions.class);
+            replacements.registerSubstitutions(String.class, StringSubstitutions.class);
         }
     }
 

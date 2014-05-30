@@ -31,6 +31,7 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
+import com.oracle.graal.phases.common.inlining.*;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.replacements.nodes.*;
@@ -78,9 +79,9 @@ public class ArraysSubstitutionsTest extends MethodSubstitutionTest {
             Object arg1 = args1[i];
             Object arg2 = args2[i];
             // Verify that the original method and the substitution produce the same value
-            assertEquals(invokeSafe(testMethod, null, arg1, arg2), invokeSafe(realMethod, null, arg1, arg2));
+            assertDeepEquals(invokeSafe(testMethod, null, arg1, arg2), invokeSafe(realMethod, null, arg1, arg2));
             // Verify that the generated code and the original produce the same value
-            assertEquals(executeVarargsSafe(code, arg1, arg2), invokeSafe(realMethod, null, arg1, arg2));
+            assertDeepEquals(executeVarargsSafe(code, arg1, arg2), invokeSafe(realMethod, null, arg1, arg2));
         }
     }
 

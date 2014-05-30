@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,28 +35,28 @@ import com.oracle.graal.api.meta.*;
  */
 public class SPARC extends Architecture {
 
-    // @formatter:off
-
     public static final RegisterCategory CPU = new RegisterCategory("CPU");
     public static final RegisterCategory FPU = new RegisterCategory("FPU");
 
     // General purpose registers
-    public static final Register r0  = new Register(0, 0, "g0", CPU);
-    public static final Register r1  = new Register(1, 1, "g1", CPU);
-    public static final Register r2  = new Register(2, 2, "g2", CPU);
-    public static final Register r3  = new Register(3, 3, "g3", CPU);
-    public static final Register r4  = new Register(4, 4, "g4", CPU);
-    public static final Register r5  = new Register(5, 5, "g5", CPU);
-    public static final Register r6  = new Register(6, 6, "g6", CPU);
-    public static final Register r7  = new Register(7, 7, "g7", CPU);
-    public static final Register r8  = new Register(8, 8, "o0", CPU);
-    public static final Register r9  = new Register(9, 9, "o1", CPU);
+    public static final Register r0 = new Register(0, 0, "g0", CPU);
+    public static final Register r1 = new Register(1, 1, "g1", CPU);
+    public static final Register r2 = new Register(2, 2, "g2", CPU);
+    public static final Register r3 = new Register(3, 3, "g3", CPU);
+    public static final Register r4 = new Register(4, 4, "g4", CPU);
+    public static final Register r5 = new Register(5, 5, "g5", CPU);
+    public static final Register r6 = new Register(6, 6, "g6", CPU);
+    public static final Register r7 = new Register(7, 7, "g7", CPU);
+
+    public static final Register r8 = new Register(8, 8, "o0", CPU);
+    public static final Register r9 = new Register(9, 9, "o1", CPU);
     public static final Register r10 = new Register(10, 10, "o2", CPU);
     public static final Register r11 = new Register(11, 11, "o3", CPU);
     public static final Register r12 = new Register(12, 12, "o4", CPU);
     public static final Register r13 = new Register(13, 13, "o5", CPU);
     public static final Register r14 = new Register(14, 14, "o6", CPU);
     public static final Register r15 = new Register(15, 15, "o7", CPU);
+
     public static final Register r16 = new Register(16, 16, "l0", CPU);
     public static final Register r17 = new Register(17, 17, "l1", CPU);
     public static final Register r18 = new Register(18, 18, "l2", CPU);
@@ -65,6 +65,7 @@ public class SPARC extends Architecture {
     public static final Register r21 = new Register(21, 21, "l5", CPU);
     public static final Register r22 = new Register(22, 22, "l6", CPU);
     public static final Register r23 = new Register(23, 23, "l7", CPU);
+
     public static final Register r24 = new Register(24, 24, "i0", CPU);
     public static final Register r25 = new Register(25, 25, "i1", CPU);
     public static final Register r26 = new Register(26, 26, "i2", CPU);
@@ -113,12 +114,14 @@ public class SPARC extends Architecture {
     public static final Register sp = o6;
     public static final Register fp = i6;
 
+    // @formatter:off
     public static final Register[] cpuRegisters = {
         r0,  r1,  r2,  r3,  r4,  r5,  r6,  r7,
         r8,  r9,  r10, r11, r12, r13, r14, r15,
         r16, r17, r18, r19, r20, r21, r22, r23,
         r24, r25, r26, r27, r28, r29, r30, r31
     };
+    // @formatter:on
 
     // Floating point registers
     public static final Register f0 = new Register(32, 0, "f0", FPU);
@@ -130,6 +133,43 @@ public class SPARC extends Architecture {
     public static final Register f6 = new Register(38, 6, "f6", FPU);
     public static final Register f7 = new Register(39, 7, "f7", FPU);
 
+    public static final Register f8 = new Register(40, 8, "f8", FPU);
+    public static final Register f9 = new Register(41, 9, "f9", FPU);
+    public static final Register f10 = new Register(42, 10, "f10", FPU);
+    public static final Register f11 = new Register(43, 11, "f11", FPU);
+    public static final Register f12 = new Register(44, 12, "f12", FPU);
+    public static final Register f13 = new Register(45, 13, "f13", FPU);
+    public static final Register f14 = new Register(46, 14, "f14", FPU);
+    public static final Register f15 = new Register(47, 15, "f15", FPU);
+
+    public static final Register f16 = new Register(48, 16, "f16", FPU);
+    public static final Register f17 = new Register(49, 17, "f17", FPU);
+    public static final Register f18 = new Register(50, 18, "f18", FPU);
+    public static final Register f19 = new Register(51, 19, "f19", FPU);
+    public static final Register f20 = new Register(52, 20, "f20", FPU);
+    public static final Register f21 = new Register(53, 21, "f21", FPU);
+    public static final Register f22 = new Register(54, 22, "f22", FPU);
+    public static final Register f23 = new Register(55, 23, "f23", FPU);
+
+    public static final Register f24 = new Register(56, 24, "f24", FPU);
+    public static final Register f25 = new Register(57, 25, "f25", FPU);
+    public static final Register f26 = new Register(58, 26, "f26", FPU);
+    public static final Register f27 = new Register(59, 27, "f27", FPU);
+    public static final Register f28 = new Register(60, 28, "f28", FPU);
+    public static final Register f29 = new Register(61, 29, "f29", FPU);
+    public static final Register f30 = new Register(62, 30, "f30", FPU);
+    public static final Register f31 = new Register(63, 31, "f31", FPU);
+
+    // @formatter:off
+    public static final Register[] fpuRegisters = {
+        f0,  f1,  f2,  f3,  f4,  f5,  f6,  f7,
+        f8,  f9,  f10, f11, f12, f13, f14, f15,
+        f16, f17, f18, f19, f20, f21, f22, f23,
+        f24, f25, f26, f27, f28, f29, f30, f31
+    };
+    // @formatter:on
+
+    // @formatter:off
     public static final Register[] allRegisters = {
         // CPU
         r0,  r1,  r2,  r3,  r4,  r5,  r6,  r7,
@@ -138,9 +178,16 @@ public class SPARC extends Architecture {
         r24, r25, r26, r27, r28, r29, r30, r31,
         // FPU
         f0,  f1,  f2,  f3,  f4,  f5,  f6,  f7,
+        f8,  f9,  f10, f11, f12, f13, f14, f15,
+        f16, f17, f18, f19, f20, f21, f22, f23,
+        f24, f25, f26, f27, f28, f29, f30, f31
     };
-
     // @formatter:on
+
+    /**
+     * Stack bias for stack and frame pointer loads.
+     */
+    public static final int STACK_BIAS = 0x7ff;
 
     public SPARC() {
         super("SPARC", 8, ByteOrder.BIG_ENDIAN, false, allRegisters, LOAD_STORE | STORE_STORE, 1, r31.encoding + 1, 8);

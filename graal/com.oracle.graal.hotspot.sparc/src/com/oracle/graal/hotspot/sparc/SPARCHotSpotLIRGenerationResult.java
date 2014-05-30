@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,10 +25,10 @@ package com.oracle.graal.hotspot.sparc;
 import java.util.*;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.hotspot.stubs.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.*;
+import com.oracle.graal.lir.gen.*;
 
 public class SPARCHotSpotLIRGenerationResult extends LIRGenerationResultBase {
 

@@ -25,6 +25,7 @@ package com.oracle.graal.replacements;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.nodes.spi.*;
 
 public class BoxingSubstitutions {
 
@@ -140,8 +141,14 @@ public class BoxingSubstitutions {
         }
     }
 
-    public static Class<?>[] getClasses() {
-        return new Class<?>[]{BooleanSubstitutions.class, ByteSubstitutions.class, CharacterSubstitutions.class, DoubleSubstitutions.class, FloatSubstitutions.class, IntegerSubstitutions.class,
-                        LongSubstitutions.class, ShortSubstitutions.class};
+    public static void registerReplacements(Replacements replacements) {
+        replacements.registerSubstitutions(Boolean.class, BooleanSubstitutions.class);
+        replacements.registerSubstitutions(Character.class, CharacterSubstitutions.class);
+        replacements.registerSubstitutions(Double.class, DoubleSubstitutions.class);
+        replacements.registerSubstitutions(Byte.class, ByteSubstitutions.class);
+        replacements.registerSubstitutions(Float.class, FloatSubstitutions.class);
+        replacements.registerSubstitutions(Integer.class, IntegerSubstitutions.class);
+        replacements.registerSubstitutions(Short.class, ShortSubstitutions.class);
+        replacements.registerSubstitutions(Long.class, LongSubstitutions.class);
     }
 }

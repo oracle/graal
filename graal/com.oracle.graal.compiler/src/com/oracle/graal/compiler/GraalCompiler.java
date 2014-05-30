@@ -24,7 +24,7 @@ package com.oracle.graal.compiler;
 
 import static com.oracle.graal.compiler.GraalCompiler.Options.*;
 import static com.oracle.graal.compiler.MethodFilter.*;
-import static com.oracle.graal.phases.GraalOptions.*;
+import static com.oracle.graal.compiler.common.GraalOptions.*;
 
 import java.util.*;
 
@@ -35,20 +35,19 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.meta.ProfilingInfo.TriState;
 import com.oracle.graal.compiler.alloc.*;
 import com.oracle.graal.compiler.common.cfg.*;
-import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.debug.internal.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
+import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.cfg.*;
-import com.oracle.graal.nodes.util.*;
+import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.options.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
-import com.oracle.graal.phases.graph.*;
 import com.oracle.graal.phases.schedule.*;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.phases.util.*;
@@ -207,7 +206,7 @@ public class GraalCompiler {
         }
     }
 
-    private static void emitBlock(NodeLIRBuilder nodeLirGen, LIRGenerationResult lirGenRes, Block b, StructuredGraph graph, BlockMap<List<ScheduledNode>> blockMap) {
+    private static void emitBlock(NodeLIRBuilderTool nodeLirGen, LIRGenerationResult lirGenRes, Block b, StructuredGraph graph, BlockMap<List<ScheduledNode>> blockMap) {
         if (lirGenRes.getLIR().getLIRforBlock(b) == null) {
             for (Block pred : b.getPredecessors()) {
                 if (!b.isLoopHeader() || !pred.isLoopEnd()) {
@@ -219,7 +218,7 @@ public class GraalCompiler {
     }
 
     public static LIRGenerationResult emitLIR(Backend backend, TargetDescription target, SchedulePhase schedule, StructuredGraph graph, Object stub, CallingConvention cc, RegisterConfig registerConfig) {
-        Block[] blocks = schedule.getCFG().getBlocks();
+        List<Block> blocks = schedule.getCFG().getBlocks();
         Block startBlock = schedule.getCFG().getStartBlock();
         assert startBlock != null;
         assert startBlock.getPredecessorCount() == 0;
@@ -229,10 +228,8 @@ public class GraalCompiler {
         List<Block> linearScanOrder = null;
         try (Scope ds = Debug.scope("MidEnd")) {
             try (Scope s = Debug.scope("ComputeLinearScanOrder")) {
-                NodesToDoubles nodeProbabilities = new ComputeProbabilityClosure(graph).apply();
-                BlocksToDoubles blockProbabilities = BlocksToDoubles.createFromNodeProbability(nodeProbabilities, schedule.getCFG());
-                codeEmittingOrder = ComputeBlockOrder.computeCodeEmittingOrder(blocks.length, startBlock, blockProbabilities);
-                linearScanOrder = ComputeBlockOrder.computeLinearScanOrder(blocks.length, startBlock, blockProbabilities);
+                codeEmittingOrder = ComputeBlockOrder.computeCodeEmittingOrder(blocks.size(), startBlock);
+                linearScanOrder = ComputeBlockOrder.computeLinearScanOrder(blocks.size(), startBlock);
 
                 lir = new LIR(schedule.getCFG(), linearScanOrder, codeEmittingOrder);
                 Debug.dump(lir, "After linear scan order");
@@ -244,9 +241,9 @@ public class GraalCompiler {
         }
         try (Scope ds = Debug.scope("BackEnd", lir)) {
             FrameMap frameMap = backend.newFrameMap(registerConfig);
-            LIRGenerationResult lirGenRes = backend.newLIRGenerationResult(lir, frameMap, stub);
-            LIRGenerator lirGen = backend.newLIRGenerator(cc, lirGenRes);
-            NodeLIRBuilder nodeLirGen = backend.newNodeLIRGenerator(graph, lirGen);
+            LIRGenerationResult lirGenRes = backend.newLIRGenerationResult(lir, frameMap, graph.method(), stub);
+            LIRGeneratorTool lirGen = backend.newLIRGenerator(cc, lirGenRes);
+            NodeLIRBuilderTool nodeLirGen = backend.newNodeLIRBuilder(graph, lirGen);
 
             try (Scope s = Debug.scope("LIRGen", lirGen)) {
                 for (Block b : linearScanOrder) {

@@ -24,6 +24,7 @@ package com.oracle.graal.truffle.hotspot;
 
 import static com.oracle.graal.api.code.CodeUtil.*;
 import static com.oracle.graal.compiler.GraalCompiler.*;
+import static com.oracle.graal.graph.util.CollectionsAccess.*;
 import static com.oracle.graal.truffle.TruffleCompilerOptions.*;
 
 import java.util.*;
@@ -45,16 +46,15 @@ import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.*;
-import com.oracle.graal.phases.common.*;
+import com.oracle.graal.phases.common.inlining.*;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.phases.util.*;
 import com.oracle.graal.printer.*;
 import com.oracle.graal.runtime.*;
 import com.oracle.graal.truffle.*;
 import com.oracle.truffle.api.*;
-import com.oracle.truffle.api.CompilerDirectives.*;
+import com.oracle.truffle.api.CompilerDirectives.SlowPath;
 import com.oracle.truffle.api.frame.*;
-import com.oracle.truffle.api.impl.*;
 import com.oracle.truffle.api.nodes.*;
 
 /**
@@ -71,7 +71,7 @@ public final class HotSpotTruffleRuntime implements GraalTruffleRuntime {
     private StackIntrospection stackIntrospection;
     private ArrayList<String> includes;
     private ArrayList<String> excludes;
-    private Map<OptimizedCallTarget, Future<?>> compilations = new IdentityHashMap<>();
+    private Map<OptimizedCallTarget, Future<?>> compilations = newIdentityMap();
     private final ThreadPoolExecutor compileQueue;
 
     private final ResolvedJavaMethod[] callNodeMethod;
@@ -118,7 +118,7 @@ public final class HotSpotTruffleRuntime implements GraalTruffleRuntime {
         if (target instanceof OptimizedCallTarget) {
             return OptimizedDirectCallNode.create((OptimizedCallTarget) target);
         } else {
-            return new DefaultDirectCallNode(target);
+            throw new IllegalStateException(String.format("Unexpected call target class %s!", target.getClass()));
         }
     }
 
@@ -213,7 +213,7 @@ public final class HotSpotTruffleRuntime implements GraalTruffleRuntime {
     }
 
     private static CompilationResultBuilderFactory getOptimizedCallTargetInstrumentationFactory(String arch, ResolvedJavaMethod method) {
-        for (OptimizedCallTargetInstrumentationFactory factory : ServiceLoader.loadInstalled(OptimizedCallTargetInstrumentationFactory.class)) {
+        for (OptimizedCallTargetInstrumentationFactory factory : Services.load(OptimizedCallTargetInstrumentationFactory.class)) {
             if (factory.getArchitecture().equals(arch)) {
                 factory.setInstrumentedMethod(method);
                 return factory;
@@ -284,7 +284,6 @@ public final class HotSpotTruffleRuntime implements GraalTruffleRuntime {
         if (frames.hasNext()) {
             return new HotSpotFrameInstance.CallTargetFrame(frames.next(), true);
         } else {
-            System.out.println("no current frame found");
             return null;
         }
     }

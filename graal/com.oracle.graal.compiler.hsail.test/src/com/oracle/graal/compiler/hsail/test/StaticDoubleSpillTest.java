@@ -113,13 +113,13 @@ public class StaticDoubleSpillTest extends GraalKernelTester {
          * argument).
          * 
          */
-        Arrays.fill(out, 0f);
-        Arrays.fill(in, 0f);
+        Arrays.fill(out, -1f);
+        for (int i = 0; i < size; i++) {
+            in[i] = i + 1;
+        }
         dispatchMethodKernel(size, out, in);
     }
 
-    // Marked to only run on hardware until simulator spill bug is fixed.
-    @Ignore
     @Test
     public void test() {
         testGeneratedHsail();

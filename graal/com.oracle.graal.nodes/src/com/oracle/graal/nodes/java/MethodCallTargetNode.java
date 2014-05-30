@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.nodes.java;
 
-import java.lang.reflect.*;
-
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
@@ -43,6 +41,8 @@ public class MethodCallTargetNode extends CallTargetNode implements IterableNode
     private final JavaType returnType;
     private ResolvedJavaMethod targetMethod;
     private InvokeKind invokeKind;
+
+    private transient Stamp lastCanonicalizedReceiverStamp;
 
     /**
      * @param arguments
@@ -109,12 +109,12 @@ public class MethodCallTargetNode extends CallTargetNode implements IterableNode
             assertTrue(n instanceof Invoke, "call target can only be used from an invoke (%s)", n);
         }
         if (invokeKind == InvokeKind.Special || invokeKind == InvokeKind.Static) {
-            assertFalse(Modifier.isAbstract(targetMethod.getModifiers()), "special calls or static calls are only allowed for concrete methods (%s)", targetMethod);
+            assertFalse(targetMethod.isAbstract(), "special calls or static calls are only allowed for concrete methods (%s)", targetMethod);
         }
         if (invokeKind == InvokeKind.Static) {
-            assertTrue(Modifier.isStatic(targetMethod.getModifiers()), "static calls are only allowed for static methods (%s)", targetMethod);
+            assertTrue(targetMethod.isStatic(), "static calls are only allowed for static methods (%s)", targetMethod);
         } else {
-            assertFalse(Modifier.isStatic(targetMethod.getModifiers()), "static calls are only allowed for non-static methods (%s)", targetMethod);
+            assertFalse(targetMethod.isStatic(), "static calls are only allowed for non-static methods (%s)", targetMethod);
         }
         return super.verify();
     }
@@ -139,18 +139,41 @@ public class MethodCallTargetNode extends CallTargetNode implements IterableNode
                 return this;
             }
 
-            assert targetMethod.getDeclaringClass().asExactType() == null : "should have been handled by canBeStaticallyBound";
-
             // check if the type of the receiver can narrow the result
-            ValueNode receiver = receiver();
-            ResolvedJavaType type = ObjectStamp.typeOrNull(receiver);
-            if (type != null) {
+            Stamp receiverStamp = receiver().stamp();
+            if (receiverStamp.equals(lastCanonicalizedReceiverStamp)) {
+                return this;
+            }
+            lastCanonicalizedReceiverStamp = receiverStamp;
+
+            ResolvedJavaType type = StampTool.typeOrNull(receiverStamp);
+            if (type != null && (invoke().stateAfter() != null || invoke().stateDuring() != null)) {
                 // either the holder class is exact, or the receiver object has an exact type
-                ResolvedJavaMethod resolvedMethod = type.resolveMethod(targetMethod);
-                if (resolvedMethod != null && (resolvedMethod.canBeStaticallyBound() || ObjectStamp.isExactType(receiver))) {
+                ResolvedJavaMethod resolvedMethod = type.resolveMethod(targetMethod, invoke().getContextType());
+                if (resolvedMethod != null && (resolvedMethod.canBeStaticallyBound() || StampTool.isExactType(receiverStamp))) {
                     invokeKind = InvokeKind.Special;
                     targetMethod = resolvedMethod;
                     return this;
+                }
+                if (tool.assumptions() != null && tool.assumptions().useOptimisticAssumptions()) {
+                    ResolvedJavaType uniqueConcreteType = type.findUniqueConcreteSubtype();
+                    if (uniqueConcreteType != null) {
+                        ResolvedJavaMethod methodFromUniqueType = uniqueConcreteType.resolveMethod(targetMethod, invoke().getContextType());
+                        if (methodFromUniqueType != null) {
+                            tool.assumptions().recordConcreteSubtype(type, uniqueConcreteType);
+                            invokeKind = InvokeKind.Special;
+                            targetMethod = methodFromUniqueType;
+                            return this;
+                        }
+                    }
+
+                    ResolvedJavaMethod uniqueConcreteMethod = type.findUniqueConcreteMethod(targetMethod);
+                    if (uniqueConcreteMethod != null) {
+                        tool.assumptions().recordConcreteMethod(targetMethod, type, uniqueConcreteMethod);
+                        invokeKind = InvokeKind.Special;
+                        targetMethod = uniqueConcreteMethod;
+                        return this;
+                    }
                 }
             }
         }

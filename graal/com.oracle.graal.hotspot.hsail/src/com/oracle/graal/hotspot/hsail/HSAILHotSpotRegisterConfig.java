@@ -194,6 +194,14 @@ public class HSAILHotSpotRegisterConfig implements RegisterConfig {
         throw new UnsupportedOperationException();
     }
 
+    public boolean isAllocatableSReg(Register reg) {
+        return (reg.number >= HSAIL.s0.number && reg.number <= HSAIL.s31.number);
+    }
+
+    public boolean isAllocatableDReg(Register reg) {
+        return (reg.number >= HSAIL.d0.number && reg.number <= HSAIL.d15.number);
+    }
+
     public HSAILHotSpotRegisterConfig() {
 
     }

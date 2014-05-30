@@ -35,13 +35,12 @@ import com.oracle.graal.hotspot.meta.*;
 public interface CompilerToVM {
 
     /**
-     * Copies the original bytecode of a given method into a given byte array.
+     * Copies the original bytecode of a given method into a new byte array and returns it.
      *
      * @param metaspaceMethod the metaspace Method object
-     * @param code the array into which to copy the original bytecode
-     * @return the value of {@code code}
+     * @return a new byte array containing the original bytecode
      */
-    byte[] initializeBytecode(long metaspaceMethod, byte[] code);
+    byte[] getBytecode(long metaspaceMethod);
 
     int exceptionTableLength(long metaspaceMethod);
 
@@ -124,9 +123,9 @@ public interface CompilerToVM {
 
     int lookupNameAndTypeRefIndexInPool(long metaspaceConstantPool, int cpi);
 
-    long lookupNameRefInPool(long metaspaceConstantPool, int cpi);
+    String lookupNameRefInPool(long metaspaceConstantPool, int cpi);
 
-    long lookupSignatureRefInPool(long metaspaceConstantPool, int cpi);
+    String lookupSignatureRefInPool(long metaspaceConstantPool, int cpi);
 
     int lookupKlassRefIndexInPool(long metaspaceConstantPool, int cpi);
 
@@ -248,7 +247,7 @@ public interface CompilerToVM {
 
     void initializeConfiguration(HotSpotVMConfig config);
 
-    long resolveMethod(long metaspaceKlass, String name, String signature);
+    long resolveMethod(long metaspaceKlassExactReceiver, long metaspaceMethod, long metaspaceKlassCaller);
 
     long getClassInitializer(long metaspaceKlass);
 
@@ -334,6 +333,13 @@ public interface CompilerToVM {
     long getTimeStamp();
 
     /**
+     * Gets the value of a metaspace {@code Symbol} as a String.
+     * 
+     * @param metaspaceSymbol
+     */
+    String getSymbol(long metaspaceSymbol);
+
+    /**
      * Looks for the next Java stack frame with the given method.
      *
      * @param frame the starting point of the search, where {@code null} refers to the topmost frame
@@ -353,4 +359,6 @@ public interface CompilerToVM {
     void materializeVirtualObjects(HotSpotStackFrameReference stackFrame, boolean invalidate);
 
     void resolveInvokeDynamic(long metaspaceConstantPool, int index);
+
+    int getVtableIndexForInterface(long metaspaceKlass, long metaspaceMethod);
 }

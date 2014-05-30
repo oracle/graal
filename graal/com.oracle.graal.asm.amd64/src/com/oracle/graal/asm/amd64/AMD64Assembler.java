@@ -784,15 +784,39 @@ public class AMD64Assembler extends Assembler {
     }
 
     public final void idivl(Register src) {
-        int encode = prefixAndEncode(src.encoding);
+        int encode = prefixAndEncode(7, src.encoding);
         emitByte(0xF7);
-        emitByte(0xF8 | encode);
+        emitByte(0xC0 | encode);
     }
 
     public final void divl(Register src) {
-        int encode = prefixAndEncode(src.encoding);
+        int encode = prefixAndEncode(6, src.encoding);
         emitByte(0xF7);
-        emitByte(0xF0 | encode);
+        emitByte(0xC0 | encode);
+    }
+
+    public final void mull(Register src) {
+        int encode = prefixAndEncode(4, src.encoding);
+        emitByte(0xF7);
+        emitByte(0xC0 | encode);
+    }
+
+    public final void mull(AMD64Address src) {
+        prefix(src);
+        emitByte(0xF7);
+        emitOperandHelper(4, src);
+    }
+
+    public final void imull(Register src) {
+        int encode = prefixAndEncode(5, src.encoding);
+        emitByte(0xF7);
+        emitByte(0xC0 | encode);
+    }
+
+    public final void imull(AMD64Address src) {
+        prefix(src);
+        emitByte(0xF7);
+        emitOperandHelper(5, src);
     }
 
     public final void imull(Register dst, Register src) {
@@ -1647,15 +1671,96 @@ public class AMD64Assembler extends Assembler {
     public final void shrl(Register dst, int imm8) {
         assert isShiftCount(imm8) : "illegal shift count";
         int encode = prefixAndEncode(dst.encoding);
-        emitByte(0xC1);
-        emitByte(0xE8 | encode);
-        emitByte(imm8);
+        if (imm8 == 1) {
+            emitByte(0xD1);
+            emitByte(0xE8 | encode);
+        } else {
+            emitByte(0xC1);
+            emitByte(0xE8 | encode);
+            emitByte(imm8);
+        }
     }
 
     public final void shrl(Register dst) {
         int encode = prefixAndEncode(dst.encoding);
         emitByte(0xD3);
         emitByte(0xE8 | encode);
+    }
+
+    public final void roll(Register dst, int imm8) {
+        assert isShiftCount(imm8) : "illegal shift count";
+        int encode = prefixAndEncode(dst.encoding);
+        if (imm8 == 1) {
+            emitByte(0xD1);
+            emitByte(0xC0 | encode);
+        } else {
+            emitByte(0xC1);
+            emitByte(0xC0 | encode);
+            emitByte(imm8);
+        }
+    }
+
+    public final void roll(Register dst) {
+        int encode = prefixAndEncode(dst.encoding);
+        emitByte(0xD3);
+        emitByte(0xC0 | encode);
+    }
+
+    public final void rorl(Register dst, int imm8) {
+        assert isShiftCount(imm8) : "illegal shift count";
+        int encode = prefixAndEncode(dst.encoding);
+        if (imm8 == 1) {
+            emitByte(0xD1);
+            emitByte(0xC8 | encode);
+        } else {
+            emitByte(0xC1);
+            emitByte(0xC8 | encode);
+            emitByte(imm8);
+        }
+    }
+
+    public final void rorl(Register dst) {
+        int encode = prefixAndEncode(dst.encoding);
+        emitByte(0xD3);
+        emitByte(0xC8 | encode);
+    }
+
+    public final void rolq(Register dst, int imm8) {
+        assert isShiftCount(imm8) : "illegal shift count";
+        int encode = prefixqAndEncode(dst.encoding);
+        if (imm8 == 1) {
+            emitByte(0xD1);
+            emitByte(0xC0 | encode);
+        } else {
+            emitByte(0xC1);
+            emitByte(0xC0 | encode);
+            emitByte(imm8);
+        }
+    }
+
+    public final void rolq(Register dst) {
+        int encode = prefixqAndEncode(dst.encoding);
+        emitByte(0xD3);
+        emitByte(0xC0 | encode);
+    }
+
+    public final void rorq(Register dst, int imm8) {
+        assert isShiftCount(imm8) : "illegal shift count";
+        int encode = prefixqAndEncode(dst.encoding);
+        if (imm8 == 1) {
+            emitByte(0xD1);
+            emitByte(0xC8 | encode);
+        } else {
+            emitByte(0xC1);
+            emitByte(0xC8 | encode);
+            emitByte(imm8);
+        }
+    }
+
+    public final void rorq(Register dst) {
+        int encode = prefixqAndEncode(dst.encoding);
+        emitByte(0xD3);
+        emitByte(0xC8 | encode);
     }
 
     public final void sqrtsd(Register dst, AMD64Address src) {
@@ -1755,7 +1860,7 @@ public class AMD64Assembler extends Assembler {
     }
 
     public final void testl(AMD64Address dst, int imm32) {
-        prefixq(dst);
+        prefix(dst);
         emitByte(0xF7);
         emitOperandHelper(0, dst);
         emitInt(imm32);
@@ -2265,15 +2370,39 @@ public class AMD64Assembler extends Assembler {
     }
 
     public final void divq(Register src) {
-        int encode = prefixqAndEncode(src.encoding);
+        int encode = prefixqAndEncode(6, src.encoding);
         emitByte(0xF7);
-        emitByte(0xF0 | encode);
+        emitByte(0xC0 | encode);
     }
 
     public final void idivq(Register src) {
-        int encode = prefixqAndEncode(src.encoding);
+        int encode = prefixqAndEncode(7, src.encoding);
         emitByte(0xF7);
-        emitByte(0xF8 | encode);
+        emitByte(0xC0 | encode);
+    }
+
+    public final void mulq(Register src) {
+        int encode = prefixqAndEncode(4, src.encoding);
+        emitByte(0xF7);
+        emitByte(0xC0 | encode);
+    }
+
+    public final void mulq(AMD64Address src) {
+        prefixq(src);
+        emitByte(0xF7);
+        emitOperandHelper(4, src);
+    }
+
+    public final void imulq(Register src) {
+        int encode = prefixqAndEncode(5, src.encoding);
+        emitByte(0xF7);
+        emitByte(0xC0 | encode);
+    }
+
+    public final void imulq(AMD64Address src) {
+        prefixq(src);
+        emitByte(0xF7);
+        emitOperandHelper(5, src);
     }
 
     public final void imulq(Register dst, Register src) {
@@ -2442,9 +2571,14 @@ public class AMD64Assembler extends Assembler {
     public final void shrq(Register dst, int imm8) {
         assert isShiftCount(imm8 >> 1) : "illegal shift count";
         int encode = prefixqAndEncode(dst.encoding);
-        emitByte(0xC1);
-        emitByte(0xE8 | encode);
-        emitByte(imm8);
+        if (imm8 == 1) {
+            emitByte(0xD1);
+            emitByte(0xE8 | encode);
+        } else {
+            emitByte(0xC1);
+            emitByte(0xE8 | encode);
+            emitByte(imm8);
+        }
     }
 
     public final void shrq(Register dst) {
@@ -2510,6 +2644,32 @@ public class AMD64Assembler extends Assembler {
         emitByte(0xF7);
         emitOperandHelper(0, dst);
         emitInt(imm32);
+    }
+
+    public final void xaddl(AMD64Address dst, Register src) {
+        prefix(dst, src);
+        emitByte(0x0F);
+        emitByte(0xC1);
+        emitOperandHelper(src, dst);
+    }
+
+    public final void xaddq(AMD64Address dst, Register src) {
+        prefixq(dst, src);
+        emitByte(0x0F);
+        emitByte(0xC1);
+        emitOperandHelper(src, dst);
+    }
+
+    public final void xchgl(Register dst, AMD64Address src) {
+        prefix(src, dst);
+        emitByte(0x87);
+        emitOperandHelper(dst, src);
+    }
+
+    public final void xchgq(Register dst, AMD64Address src) {
+        prefixq(src, dst);
+        emitByte(0x87);
+        emitOperandHelper(dst, src);
     }
 
     public final void xorq(Register dst, int imm32) {

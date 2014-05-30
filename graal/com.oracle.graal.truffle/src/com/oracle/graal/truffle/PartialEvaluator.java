@@ -22,10 +22,9 @@
  */
 package com.oracle.graal.truffle;
 
-import static com.oracle.graal.phases.GraalOptions.*;
+import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.truffle.TruffleCompilerOptions.*;
 
-import java.lang.reflect.*;
 import java.util.*;
 
 import com.oracle.graal.api.code.*;
@@ -35,7 +34,6 @@ import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.debug.internal.*;
-import com.oracle.graal.graph.Graph.Mark;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.spi.*;
@@ -49,6 +47,8 @@ import com.oracle.graal.nodes.virtual.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.common.CanonicalizerPhase.CustomCanonicalizer;
+import com.oracle.graal.phases.common.inlining.*;
+import com.oracle.graal.phases.common.inlining.info.*;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.phases.util.*;
 import com.oracle.graal.truffle.nodes.asserts.*;
@@ -87,7 +87,7 @@ public class PartialEvaluator {
             constantReceivers = new HashSet<>();
         }
 
-        final StructuredGraph graph = truffleCache.createRootGraph();
+        final StructuredGraph graph = truffleCache.createRootGraph(callTarget.toString());
         assert graph != null : "no graph for root method";
 
         try (Scope s = Debug.scope("CreateGraph", graph); Indent indent = Debug.logAndIndent("createGraph %s", graph.method())) {
@@ -108,7 +108,7 @@ public class PartialEvaluator {
             canonicalizer.apply(graph, baseContext);
 
             // Intrinsify methods.
-            new ReplaceIntrinsicsPhase(providers.getReplacements()).apply(graph);
+            new IncrementalCanonicalizerPhase<>(canonicalizer, new ReplaceIntrinsicsPhase(providers.getReplacements())).apply(graph, baseContext);
 
             Debug.dump(graph, "Before inlining");
 
@@ -124,7 +124,16 @@ public class PartialEvaluator {
             if (TraceTruffleCompilationHistogram.getValue() && constantReceivers != null) {
                 DebugHistogram histogram = Debug.createHistogram("Expanded Truffle Nodes");
                 for (Constant c : constantReceivers) {
-                    histogram.add(providers.getMetaAccess().lookupJavaType(c).getName());
+                    String javaName = MetaUtil.toJavaName(providers.getMetaAccess().lookupJavaType(c), false);
+
+                    // The DSL uses nested classes with redundant names - only show the inner class
+                    int index = javaName.indexOf('$');
+                    if (index != -1) {
+                        javaName = javaName.substring(index + 1);
+                    }
+
+                    histogram.add(javaName);
+
                 }
                 new DebugHistogramAsciiPrinter(TTY.out().out()).print(histogram);
             }
@@ -193,7 +202,7 @@ public class PartialEvaluator {
                         }
 
                         StructuredGraph inlineGraph = replacements.getMethodSubstitution(methodCallTargetNode.targetMethod());
-                        if (inlineGraph == null && !Modifier.isNative(methodCallTargetNode.targetMethod().getModifiers()) && methodCallTargetNode.targetMethod().canBeInlined()) {
+                        if (inlineGraph == null && !methodCallTargetNode.targetMethod().isNative() && methodCallTargetNode.targetMethod().canBeInlined()) {
                             inlineGraph = parseGraph(methodCallTargetNode.targetMethod(), methodCallTargetNode.arguments(), assumptions, phaseContext, false);
                         }
 
@@ -201,11 +210,10 @@ public class PartialEvaluator {
                             try (Indent indent = Debug.logAndIndent("inline graph %s", methodCallTargetNode.targetMethod())) {
 
                                 int nodeCountBefore = graph.getNodeCount();
-                                Mark mark = graph.getMark();
                                 if (TraceTruffleExpansion.getValue()) {
                                     expansionLogger.preExpand(methodCallTargetNode, inlineGraph);
                                 }
-                                List<Node> invokeUsages = methodCallTargetNode.invoke().asNode().usages().snapshot();
+                                List<Node> canonicalizedNodes = methodCallTargetNode.invoke().asNode().usages().snapshot();
                                 Map<Node, Node> inlined = InliningUtil.inline(methodCallTargetNode.invoke(), inlineGraph, false);
                                 if (TraceTruffleExpansion.getValue()) {
                                     expansionLogger.postExpand(inlined);
@@ -214,7 +222,8 @@ public class PartialEvaluator {
                                     int nodeCountAfter = graph.getNodeCount();
                                     Debug.dump(graph, "After inlining %s %+d (%d)", methodCallTargetNode.targetMethod().toString(), nodeCountAfter - nodeCountBefore, nodeCountAfter);
                                 }
-                                canonicalizer.applyIncremental(graph, phaseContext, invokeUsages, mark);
+                                AbstractInlineInfo.getInlinedParameterUsages(canonicalizedNodes, inlineGraph, inlined);
+                                canonicalizer.applyIncremental(graph, phaseContext, canonicalizedNodes);
 
                                 changed = true;
                             }
@@ -288,7 +297,7 @@ public class PartialEvaluator {
 
             @Override
             public int compare(LoopEx o1, LoopEx o2) {
-                return o2.lirLoop().depth - o1.lirLoop().depth;
+                return o2.lirLoop().getDepth() - o1.lirLoop().getDepth();
             }
         });
         return sortedLoops;

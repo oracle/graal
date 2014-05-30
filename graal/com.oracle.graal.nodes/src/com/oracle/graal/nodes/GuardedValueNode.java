@@ -28,7 +28,6 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
 
 /**
  * A node that changes the type of its input, usually narrowing it. For example, a GuardedValueNode
@@ -39,10 +38,12 @@ import com.oracle.graal.nodes.type.*;
 public class GuardedValueNode extends FloatingGuardedNode implements LIRLowerable, Virtualizable, IterableNodeType, Canonicalizable, ValueProxy {
 
     @Input private ValueNode object;
+    private final Stamp piStamp;
 
     public GuardedValueNode(ValueNode object, GuardingNode guard, Stamp stamp) {
         super(stamp, guard);
         this.object = object;
+        this.piStamp = stamp;
     }
 
     public GuardedValueNode(ValueNode object, GuardingNode guard) {
@@ -62,10 +63,10 @@ public class GuardedValueNode extends FloatingGuardedNode implements LIRLowerabl
 
     @Override
     public boolean inferStamp() {
-        if (stamp() instanceof ObjectStamp && object().stamp() instanceof ObjectStamp) {
-            return updateStamp(((ObjectStamp) object().stamp()).castTo((ObjectStamp) stamp()));
+        if (piStamp instanceof ObjectStamp && object().stamp() instanceof ObjectStamp) {
+            return updateStamp(((ObjectStamp) object().stamp()).castTo((ObjectStamp) piStamp));
         }
-        return updateStamp(object().stamp().join(stamp()));
+        return updateStamp(object().stamp().join(piStamp));
     }
 
     @Override
@@ -78,7 +79,7 @@ public class GuardedValueNode extends FloatingGuardedNode implements LIRLowerabl
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        if (getGuard() == graph().start() || getGuard() == null) {
+        if (getGuard() == null) {
             if (stamp().equals(object().stamp())) {
                 return object();
             } else {

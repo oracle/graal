@@ -23,15 +23,16 @@
 package com.oracle.graal.hotspot.hsail.replacements;
 
 import static com.oracle.graal.api.code.UnsignedMath.*;
+import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.hotspot.hsail.replacements.HSAILHotSpotReplacementsUtil.*;
 import static com.oracle.graal.hotspot.hsail.replacements.HSAILNewObjectSnippets.Options.*;
 import static com.oracle.graal.nodes.PiArrayNode.*;
 import static com.oracle.graal.nodes.extended.BranchProbabilityNode.*;
-import static com.oracle.graal.phases.GraalOptions.*;
 import static com.oracle.graal.replacements.SnippetTemplate.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
@@ -40,7 +41,6 @@ import com.oracle.graal.hotspot.stubs.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.options.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.replacements.Snippet.ConstantParameter;
@@ -221,7 +221,7 @@ public class HSAILNewObjectSnippets extends NewObjectSnippets {
             final int headerSize = HotSpotGraalRuntime.getArrayBaseOffset(elementKind);
             // lowerer extends HotSpotLoweringProvider so we can just use that
             HotSpotLoweringProvider lowerer = (HotSpotLoweringProvider) providers.getLowerer();
-            int log2ElementSize = CodeUtil.log2(lowerer.getScalingFactor(elementKind));
+            int log2ElementSize = CodeUtil.log2(lowerer.arrayScalingFactor(elementKind));
 
             Arguments args = new Arguments(allocateArray, graph.getGuardsStage(), tool.getLoweringStage());
             args.add("hub", hub);

@@ -64,4 +64,10 @@ public class HotSpotDebugInfoBuilder extends DebugInfoBuilder {
     protected LIRFrameState newLIRFrameState(LabelRef exceptionEdge, BytecodeFrame frame, VirtualObject[] virtualObjectsArray) {
         return new HotSpotLIRFrameState(frame, virtualObjectsArray, exceptionEdge);
     }
+
+    @Override
+    protected BytecodeFrame computeFrameForState(FrameState state) {
+        assert state.bci >= 0 || state.bci == BytecodeFrame.BEFORE_BCI;
+        return super.computeFrameForState(state);
+    }
 }

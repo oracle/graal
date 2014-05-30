@@ -22,21 +22,20 @@
  */
 package com.oracle.graal.nodes.java;
 
+import static com.oracle.graal.nodes.java.ForeignCallDescriptors.*;
+
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
 
 /**
  * This node is used to perform the finalizer registration at the end of the java.lang.Object
  * constructor.
  */
 public final class RegisterFinalizerNode extends AbstractStateSplit implements Canonicalizable, LIRLowerable, Virtualizable, DeoptimizingNode.DeoptAfter {
-
-    public static final ForeignCallDescriptor REGISTER_FINALIZER = new ForeignCallDescriptor("registerFinalizer", void.class, Object.class);
 
     @Input(InputType.State) private FrameState deoptState;
     @Input private ValueNode object;
@@ -53,7 +52,7 @@ public final class RegisterFinalizerNode extends AbstractStateSplit implements C
     @Override
     public void generate(NodeLIRBuilderTool gen) {
         ForeignCallLinkage linkage = gen.getLIRGeneratorTool().getForeignCalls().lookupForeignCall(REGISTER_FINALIZER);
-        gen.getLIRGeneratorTool().emitForeignCall(linkage, this, gen.operand(object()));
+        gen.getLIRGeneratorTool().emitForeignCall(linkage, gen.state(this), gen.operand(object()));
     }
 
     @Override

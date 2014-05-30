@@ -32,7 +32,6 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
 
 /**
  * The {@code ConstantNode} represents a {@link Constant constant}.
@@ -154,13 +153,7 @@ public final class ConstantNode extends FloatingNode implements LIRLowerable {
     }
 
     public static ConstantNode forConstant(Stamp stamp, Constant constant, MetaAccessProvider metaAccess, StructuredGraph graph) {
-        if (stamp instanceof PrimitiveStamp) {
-            return forPrimitive(stamp, constant, graph);
-        } else {
-            ConstantNode ret = forConstant(constant, metaAccess, graph);
-            assert ret.stamp().isCompatible(stamp);
-            return ret;
-        }
+        return graph.unique(new ConstantNode(constant, stamp.constant(constant, metaAccess)));
     }
 
     /**

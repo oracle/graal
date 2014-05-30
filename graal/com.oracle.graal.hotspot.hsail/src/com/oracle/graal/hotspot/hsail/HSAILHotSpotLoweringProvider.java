@@ -33,12 +33,11 @@ import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
-import com.oracle.graal.hotspot.hsail.nodes.*;
 import com.oracle.graal.hotspot.hsail.replacements.*;
 
 import java.util.HashMap;
 
-public class HSAILHotSpotLoweringProvider extends HotSpotLoweringProvider {
+public class HSAILHotSpotLoweringProvider extends DefaultHotSpotLoweringProvider {
 
     private HSAILNewObjectSnippets.Templates hsailNewObjectSnippets;
 
@@ -104,29 +103,6 @@ public class HSAILHotSpotLoweringProvider extends HotSpotLoweringProvider {
         }
     };
 
-    LoweringStrategy AtomicGetAndAddStrategy = new LoweringStrategy() {
-        @Override
-        void lower(Node n, LoweringTool tool) {
-            StructuredGraph graph = (StructuredGraph) n.graph();
-
-            // Note: this code adapted from CompareAndSwapNode
-            // lowering but since we are not dealing with an object
-            // but a word (thread passed in), I wasn't sure what
-            // should be done with the Location stuff so leaving it
-            // out for now
-
-            AtomicGetAndAddNode getAdd = (AtomicGetAndAddNode) n;
-            // LocationNode location = IndexedLocationNode.create(ANY_LOCATION, Kind.Long, 0,
-            // getAdd.offset(), graph, 1);
-            LocationNode location = IndexedLocationNode.create(getAdd.getLocationIdentity(), Kind.Long, 0, getAdd.offset(), graph, 1);
-            // note: getAdd.base() used to be getAdd.object()
-            LoweredAtomicGetAndAddNode loweredAtomicGetAdd = graph.add(new LoweredAtomicGetAndAddNode(getAdd.base(), location, getAdd.delta(), HeapAccess.BarrierType.NONE,
-                            getAdd.getKind() == Kind.Object));
-            loweredAtomicGetAdd.setStateAfter(getAdd.stateAfter());
-            graph.replaceFixedWithFixed(getAdd, loweredAtomicGetAdd);
-        }
-    };
-
     private HashMap<Class<?>, LoweringStrategy> strategyMap = new HashMap<>();
 
     void initStrategyMap() {
@@ -139,22 +115,20 @@ public class HSAILHotSpotLoweringProvider extends HotSpotLoweringProvider {
         strategyMap.put(MonitorEnterNode.class, RejectStrategy);
         strategyMap.put(MonitorExitNode.class, RejectStrategy);
         strategyMap.put(UnwindNode.class, UnwindNodeStrategy);
-        strategyMap.put(AtomicGetAndAddNode.class, AtomicGetAndAddStrategy);
     }
 
     private LoweringStrategy getStrategy(Node n) {
         return strategyMap.get(n.getClass());
     }
 
-    public HSAILHotSpotLoweringProvider(HotSpotGraalRuntime runtime, MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls, HotSpotRegistersProvider registers) {
-        super(runtime, metaAccess, foreignCalls, registers);
+    public HSAILHotSpotLoweringProvider(HotSpotGraalRuntime runtime, MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls, HotSpotRegistersProvider registers, TargetDescription target) {
+        super(runtime, metaAccess, foreignCalls, registers, target);
         initStrategyMap();
     }
 
     @Override
     public void initialize(HotSpotProviders providers, HotSpotVMConfig config) {
         super.initialize(providers, config);
-        TargetDescription target = providers.getCodeCache().getTarget();
         hsailNewObjectSnippets = new HSAILNewObjectSnippets.Templates(providers, target);
     }
 

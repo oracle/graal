@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.api.meta.test;
 
-import static java.lang.reflect.Modifier.*;
 import static org.junit.Assert.*;
 
 import java.lang.annotation.*;
@@ -52,9 +51,9 @@ public class TestResolvedJavaMethod extends MethodUniverse {
             if (code == null) {
                 assertTrue(m.getCodeSize() == 0);
             } else {
-                if (isAbstract(m.getModifiers())) {
+                if (m.isAbstract()) {
                     assertTrue(code.length == 0);
-                } else if (!isNative(m.getModifiers())) {
+                } else if (!m.isNative()) {
                     assertTrue(code.length > 0);
                 }
             }
@@ -69,9 +68,9 @@ public class TestResolvedJavaMethod extends MethodUniverse {
         for (Map.Entry<Method, ResolvedJavaMethod> e : methods.entrySet()) {
             ResolvedJavaMethod m = e.getValue();
             int codeSize = m.getCodeSize();
-            if (isAbstract(m.getModifiers())) {
+            if (m.isAbstract()) {
                 assertTrue(codeSize == 0);
-            } else if (!isNative(m.getModifiers())) {
+            } else if (!m.isNative()) {
                 assertTrue(codeSize > 0);
             }
         }
@@ -124,6 +123,18 @@ public class TestResolvedJavaMethod extends MethodUniverse {
         for (Map.Entry<Constructor<?>, ResolvedJavaMethod> e : constructors.entrySet()) {
             ResolvedJavaMethod m = e.getValue();
             assertEquals(e.getKey().isSynthetic(), m.isSynthetic());
+        }
+    }
+
+    @Test
+    public void isSynchronizedTest() {
+        for (Map.Entry<Method, ResolvedJavaMethod> e : methods.entrySet()) {
+            ResolvedJavaMethod m = e.getValue();
+            assertEquals(Modifier.isSynchronized(e.getKey().getModifiers()), m.isSynchronized());
+        }
+        for (Map.Entry<Constructor<?>, ResolvedJavaMethod> e : constructors.entrySet()) {
+            ResolvedJavaMethod m = e.getValue();
+            assertEquals(Modifier.isSynchronized(e.getKey().getModifiers()), m.isSynchronized());
         }
     }
 

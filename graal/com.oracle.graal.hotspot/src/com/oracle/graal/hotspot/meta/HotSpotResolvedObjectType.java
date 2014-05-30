@@ -23,9 +23,8 @@
 package com.oracle.graal.hotspot.meta;
 
 import static com.oracle.graal.api.meta.MetaUtil.*;
-import static com.oracle.graal.graph.UnsafeAccess.*;
+import static com.oracle.graal.compiler.common.UnsafeAccess.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
-import static java.lang.reflect.Modifier.*;
 
 import java.lang.annotation.*;
 import java.lang.reflect.*;
@@ -109,7 +108,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
     /**
      * Gets the metaspace Klass for this type.
      */
-    private long metaspaceKlass() {
+    public long getMetaspaceKlass() {
         return HotSpotGraalRuntime.unsafeReadWord(javaClass, runtime().getConfig().klassOffset);
     }
 
@@ -120,7 +119,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
 
     public int getAccessFlags() {
         HotSpotVMConfig config = runtime().getConfig();
-        return unsafe.getInt(metaspaceKlass() + config.klassAccessFlagsOffset);
+        return unsafe.getInt(getMetaspaceKlass() + config.klassAccessFlagsOffset);
     }
 
     @Override
@@ -141,9 +140,9 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
     public ResolvedJavaType findUniqueConcreteSubtype() {
         HotSpotVMConfig config = runtime().getConfig();
         if (isArray()) {
-            return isFinal(getElementalType(this).getModifiers()) ? this : null;
+            return getElementalType(this).isFinal() ? this : null;
         } else if (isInterface()) {
-            final long implementorMetaspaceKlass = runtime().getCompilerToVM().getKlassImplementor(metaspaceKlass());
+            final long implementorMetaspaceKlass = runtime().getCompilerToVM().getKlassImplementor(getMetaspaceKlass());
 
             // No implementor.
             if (implementorMetaspaceKlass == 0) {
@@ -157,20 +156,20 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
              * than one implementors (see: InstanceKlass::add_implementor). The isInterface check
              * takes care of this fact since this class is an interface.
              */
-            if (isAbstract(type.getModifiers()) || type.isInterface() || !type.isLeafClass()) {
+            if (type.isAbstract() || type.isInterface() || !type.isLeafClass()) {
                 return null;
             }
             return type;
         } else {
             HotSpotResolvedObjectType type = this;
-            while (isAbstract(type.getModifiers())) {
+            while (type.isAbstract()) {
                 long subklass = type.getSubklass();
                 if (subklass == 0 || unsafeReadWord(subklass + config.nextSiblingOffset) != 0) {
                     return null;
                 }
                 type = (HotSpotResolvedObjectType) fromMetaspaceKlass(subklass);
             }
-            if (isAbstract(type.getModifiers()) || type.isInterface() || !type.isLeafClass()) {
+            if (type.isAbstract() || type.isInterface() || !type.isLeafClass()) {
                 return null;
             }
             return type;
@@ -194,7 +193,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
      * @return value of the subklass field as metaspace klass pointer
      */
     private long getSubklass() {
-        return unsafeReadWord(metaspaceKlass() + runtime().getConfig().subklassOffset);
+        return unsafeReadWord(getMetaspaceKlass() + runtime().getConfig().subklassOffset);
     }
 
     @Override
@@ -255,7 +254,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
         if (isArray()) {
             return getComponentType().asExactType() != null ? this : null;
         }
-        return isFinal(getModifiers()) ? this : null;
+        return isFinal() ? this : null;
     }
 
     @Override
@@ -273,7 +272,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
     @Override
     public boolean hasFinalizableSubclass() {
         assert !isArray();
-        return runtime().getCompilerToVM().hasFinalizableSubclass(metaspaceKlass());
+        return runtime().getCompilerToVM().hasFinalizableSubclass(getMetaspaceKlass());
     }
 
     @Override
@@ -311,7 +310,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
      * @return state field value of this type
      */
     private int getState() {
-        return unsafe.getByte(metaspaceKlass() + runtime().getConfig().klassStateOffset) & 0xFF;
+        return unsafe.getByte(getMetaspaceKlass() + runtime().getConfig().klassStateOffset) & 0xFF;
     }
 
     @Override
@@ -356,18 +355,22 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
     }
 
     @Override
-    public ResolvedJavaMethod resolveMethod(ResolvedJavaMethod method) {
-        assert method instanceof HotSpotMethod;
-        if (!isAbstract(method.getModifiers()) && method.getDeclaringClass().equals(this)) {
+    public ResolvedJavaMethod resolveMethod(ResolvedJavaMethod method, ResolvedJavaType callerType) {
+        assert !callerType.isArray();
+        if (!method.isAbstract() && method.getDeclaringClass().equals(this) && method.isPublic()) {
             return method;
         }
-
-        final long resolvedMetaspaceMethod = runtime().getCompilerToVM().resolveMethod(metaspaceKlass(), method.getName(), ((HotSpotSignature) method.getSignature()).getMethodDescriptor());
+        if (!method.getDeclaringClass().isAssignableFrom(this)) {
+            return null;
+        }
+        HotSpotResolvedJavaMethod hotSpotMethod = (HotSpotResolvedJavaMethod) method;
+        HotSpotResolvedObjectType hotSpotCallerType = (HotSpotResolvedObjectType) callerType;
+        final long resolvedMetaspaceMethod = runtime().getCompilerToVM().resolveMethod(getMetaspaceKlass(), hotSpotMethod.getMetaspaceMethod(), hotSpotCallerType.getMetaspaceKlass());
         if (resolvedMetaspaceMethod == 0) {
             return null;
         }
         HotSpotResolvedJavaMethod resolvedMethod = HotSpotResolvedJavaMethod.fromMetaspace(resolvedMetaspaceMethod);
-        if (isAbstract(resolvedMethod.getModifiers())) {
+        if (resolvedMethod.isAbstract()) {
             return null;
         }
         return resolvedMethod;
@@ -375,7 +378,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
 
     public ConstantPool constantPool() {
         if (constantPool == null) {
-            final long metaspaceConstantPool = unsafe.getAddress(metaspaceKlass() + runtime().getConfig().instanceKlassConstantsOffset);
+            final long metaspaceConstantPool = unsafe.getAddress(getMetaspaceKlass() + runtime().getConfig().instanceKlassConstantsOffset);
             constantPool = new HotSpotConstantPool(metaspaceConstantPool);
         }
         return constantPool;
@@ -391,7 +394,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
         assert !isInterface();
 
         HotSpotVMConfig config = runtime().getConfig();
-        final int layoutHelper = unsafe.getInt(metaspaceKlass() + config.klassLayoutHelperOffset);
+        final int layoutHelper = unsafe.getInt(getMetaspaceKlass() + config.klassLayoutHelperOffset);
         assert layoutHelper > config.klassLayoutHelperNeutralValue : "must be instance";
 
         // See: Klass::layout_helper_size_in_bytes
@@ -477,7 +480,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
         public FieldInfo(int index) {
             HotSpotVMConfig config = runtime().getConfig();
             // Get Klass::_fields
-            final long metaspaceFields = unsafe.getAddress(metaspaceKlass() + config.instanceKlassFieldsOffset);
+            final long metaspaceFields = unsafe.getAddress(getMetaspaceKlass() + config.instanceKlassFieldsOffset);
             assert config.fieldInfoFieldSlots == 6 : "revisit the field parsing code";
             metaspaceData = metaspaceFields + config.arrayU2DataOffset + config.fieldInfoFieldSlots * Short.BYTES * index;
         }
@@ -604,6 +607,29 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
         return instanceFields;
     }
 
+    @Override
+    public ResolvedJavaField[] getStaticFields() {
+        if (isArray()) {
+            return new HotSpotResolvedJavaField[0];
+        } else {
+            final int fieldCount = getFieldCount();
+            ArrayList<HotSpotResolvedJavaField> fieldsArray = new ArrayList<>(fieldCount);
+
+            for (int i = 0; i < fieldCount; i++) {
+                FieldInfo field = new FieldInfo(i);
+
+                // We are only interested in static fields.
+                if (field.isStatic()) {
+                    HotSpotResolvedJavaField resolvedJavaField = createField(field.getName(), field.getType(), field.getOffset(), field.getAccessFlags());
+                    fieldsArray.add(resolvedJavaField);
+                }
+            }
+
+            fieldsArray.sort(new OffsetComparator());
+            return fieldsArray.toArray(new HotSpotResolvedJavaField[fieldsArray.size()]);
+        }
+    }
+
     /**
      * Returns the actual field count of this class's internal {@code InstanceKlass::_fields} array
      * by walking the array and discounting the generic signature slots at the end of the array.
@@ -613,7 +639,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
      */
     private int getFieldCount() {
         HotSpotVMConfig config = runtime().getConfig();
-        final long metaspaceFields = unsafe.getAddress(metaspaceKlass() + config.instanceKlassFieldsOffset);
+        final long metaspaceFields = unsafe.getAddress(getMetaspaceKlass() + config.instanceKlassFieldsOffset);
         int metaspaceFieldsLength = unsafe.getInt(metaspaceFields + config.arrayU1LengthOffset);
         int fieldCount = 0;
 
@@ -635,7 +661,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
     @Override
     public String getSourceFileName() {
         HotSpotVMConfig config = runtime().getConfig();
-        final int sourceFileNameIndex = unsafe.getChar(metaspaceKlass() + config.klassSourceFileNameIndexOffset);
+        final int sourceFileNameIndex = unsafe.getChar(getMetaspaceKlass() + config.klassSourceFileNameIndexOffset);
         if (sourceFileNameIndex == 0) {
             return null;
         }
@@ -656,7 +682,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
      * Gets the metaspace Klass boxed in a {@link Constant}.
      */
     public Constant klass() {
-        return HotSpotMetaspaceConstant.forMetaspaceObject(runtime().getTarget().wordKind, metaspaceKlass(), this);
+        return HotSpotMetaspaceConstant.forMetaspaceObject(runtime().getTarget().wordKind, getMetaspaceKlass(), this);
     }
 
     public boolean isPrimaryType() {
@@ -665,7 +691,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
 
     public int superCheckOffset() {
         HotSpotVMConfig config = runtime().getConfig();
-        return unsafe.getInt(metaspaceKlass() + config.superCheckOffsetOffset);
+        return unsafe.getInt(getMetaspaceKlass() + config.superCheckOffsetOffset);
     }
 
     public long prototypeMarkWord() {
@@ -673,7 +699,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
         if (isArray()) {
             return config.arrayPrototypeMarkWord();
         } else {
-            return unsafeReadWord(metaspaceKlass() + config.prototypeMarkWordOffset);
+            return unsafeReadWord(getMetaspaceKlass() + config.prototypeMarkWordOffset);
         }
     }
 
@@ -733,7 +759,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
     }
 
     public ResolvedJavaMethod getClassInitializer() {
-        final long metaspaceMethod = runtime().getCompilerToVM().getClassInitializer(metaspaceKlass());
+        final long metaspaceMethod = runtime().getCompilerToVM().getClassInitializer(getMetaspaceKlass());
         if (metaspaceMethod != 0L) {
             return createMethod(metaspaceMethod);
         }
@@ -747,12 +773,6 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
 
     @Override
     public String toString() {
-        String simpleName;
-        if (isArray() || isInterface()) {
-            simpleName = getName();
-        } else {
-            simpleName = getName().substring(1, getName().length() - 1);
-        }
-        return "HotSpotType<" + simpleName + ", resolved>";
+        return "HotSpotType<" + getName() + ", resolved>";
     }
 }

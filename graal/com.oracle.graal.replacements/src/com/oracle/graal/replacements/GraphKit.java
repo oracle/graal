@@ -35,6 +35,7 @@ import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
 import com.oracle.graal.phases.common.*;
+import com.oracle.graal.phases.common.inlining.*;
 import com.oracle.graal.phases.util.*;
 import com.oracle.graal.replacements.ReplacementsImpl.FrameStateProcessing;
 import com.oracle.graal.word.phases.*;
@@ -72,7 +73,7 @@ public class GraphKit {
 
     /**
      * Ensures a floating node is added to or already present in the graph via {@link Graph#unique}.
-     * 
+     *
      * @return a node similar to {@code node} if one exists, otherwise {@code node}
      */
     public <T extends FloatingNode> T unique(T node) {
@@ -96,13 +97,13 @@ public class GraphKit {
     }
 
     public InvokeNode createInvoke(Class<?> declaringClass, String name, ValueNode... args) {
-        return createInvoke(declaringClass, name, InvokeKind.Static, null, FrameState.UNKNOWN_BCI, args);
+        return createInvoke(declaringClass, name, InvokeKind.Static, null, BytecodeFrame.UNKNOWN_BCI, args);
     }
 
     /**
      * Creates and appends an {@link InvokeNode} for a call to a given method with a given set of
      * arguments. The method is looked up via reflection based on the declaring class and name.
-     * 
+     *
      * @param declaringClass the class declaring the invoked method
      * @param name the name of the invoked method
      * @param args the arguments to the invocation
@@ -125,7 +126,7 @@ public class GraphKit {
      * arguments.
      */
     public InvokeNode createInvoke(ResolvedJavaMethod method, InvokeKind invokeKind, HIRFrameStateBuilder frameStateBuilder, int bci, ValueNode... args) {
-        assert Modifier.isStatic(method.getModifiers()) == (invokeKind == InvokeKind.Static);
+        assert method.isStatic() == (invokeKind == InvokeKind.Static);
         Signature signature = method.getSignature();
         JavaType returnType = signature.getReturnType(null);
         assert checkArgs(method, args);
@@ -150,14 +151,14 @@ public class GraphKit {
 
     /**
      * Determines if a given set of arguments is compatible with the signature of a given method.
-     * 
+     *
      * @return true if {@code args} are compatible with the signature if {@code method}
      * @throws AssertionError if {@code args} are not compatible with the signature if
      *             {@code method}
      */
     public boolean checkArgs(ResolvedJavaMethod method, ValueNode... args) {
         Signature signature = method.getSignature();
-        boolean isStatic = Modifier.isStatic(method.getModifiers());
+        boolean isStatic = method.isStatic();
         if (signature.getParameterCount(!isStatic) != args.length) {
             throw new AssertionError(graph + ": wrong number of arguments to " + method);
         }
@@ -185,16 +186,17 @@ public class GraphKit {
     }
 
     /**
-     * {@linkplain #inline Inlines} all invocations currently in the graph.
+     * Recursively {@linkplain #inline inlines} all invocations currently in the graph.
      */
     public void inlineInvokes(SnippetReflectionProvider snippetReflection) {
-        for (InvokeNode invoke : graph.getNodes().filter(InvokeNode.class).snapshot()) {
-            inline(invoke, snippetReflection);
+        while (!graph.getNodes().filter(InvokeNode.class).isEmpty()) {
+            for (InvokeNode invoke : graph.getNodes().filter(InvokeNode.class).snapshot()) {
+                inline(invoke, snippetReflection);
+            }
         }
 
         // Clean up all code that is now dead after inlining.
         new DeadCodeEliminationPhase().apply(graph);
-        assert graph.getNodes().filter(InvokeNode.class).isEmpty();
     }
 
     /**
@@ -239,7 +241,7 @@ public class GraphKit {
      * emitting the code executed when the condition hold; and a call to {@link #elsePart} to start
      * emititng the code when the condition does not hold. It must be followed by a call to
      * {@link #endIf} to close the if-block.
-     * 
+     *
      * @param condition The condition for the if-block
      * @param trueProbability The estimated probability the the condition is true
      */

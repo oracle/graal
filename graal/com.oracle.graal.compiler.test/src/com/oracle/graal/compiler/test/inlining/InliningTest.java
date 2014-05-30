@@ -23,7 +23,6 @@
 package com.oracle.graal.compiler.test.inlining;
 
 import static org.junit.Assert.*;
-
 import java.lang.reflect.*;
 
 import org.junit.*;
@@ -37,8 +36,8 @@ import com.oracle.graal.java.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
+import com.oracle.graal.phases.common.inlining.*;
 import com.oracle.graal.phases.tiers.*;
-import com.oracle.graal.test.*;
 
 public class InliningTest extends GraalCompilerTest {
 
@@ -73,7 +72,7 @@ public class InliningTest extends GraalCompilerTest {
         assertInlined(getGraph("invokeMethodOnFieldSnippet", false));
     }
 
-    @LongTest
+    @Test
     public void testStaticBindableInliningIP() {
         assertManyMethodInfopoints(assertInlined(getGraph("invokeConstructorSnippet", true)));
         assertManyMethodInfopoints(assertInlined(getGraph("invokeFinalMethodSnippet", true)));
@@ -82,7 +81,7 @@ public class InliningTest extends GraalCompilerTest {
     }
 
     @Ignore("would need read elimination/EA before inlining")
-    @LongTest
+    @Test
     public void testDependentStaticBindableInliningIP() {
         assertManyMethodInfopoints(assertInlined(getGraph("invokeMethodOnFinalFieldSnippet", true)));
         assertManyMethodInfopoints(assertInlined(getGraph("invokeMethodOnFieldSnippet", true)));
@@ -180,7 +179,7 @@ public class InliningTest extends GraalCompilerTest {
         assertNotInlined(getGraph("invokeOverriddenInterfaceMethodSnippet", false));
     }
 
-    @LongTest
+    @Test
     public void testClassHierarchyAnalysisIP() {
         assertManyMethodInfopoints(assertInlined(getGraph("invokeLeafClassMethodSnippet", true)));
         assertManyMethodInfopoints(assertInlined(getGraph("invokeConcreteMethodSnippet", true)));

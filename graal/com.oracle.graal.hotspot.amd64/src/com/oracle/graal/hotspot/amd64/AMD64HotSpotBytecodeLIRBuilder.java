@@ -24,17 +24,17 @@ package com.oracle.graal.hotspot.amd64;
 
 import static com.oracle.graal.amd64.AMD64.*;
 
-import java.lang.reflect.*;
-
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.hotspot.amd64.AMD64HotSpotLIRGenerator.SaveRbp;
+import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.lir.StandardOp.NoOp;
+import com.oracle.graal.lir.gen.*;
 
 public class AMD64HotSpotBytecodeLIRBuilder extends BytecodeLIRBuilder {
 
-    public AMD64HotSpotBytecodeLIRBuilder(LIRGenerator gen, BytecodeParserTool parser) {
+    public AMD64HotSpotBytecodeLIRBuilder(LIRGeneratorTool gen, BytecodeParserTool parser) {
         super(gen, parser);
     }
 
@@ -72,12 +72,27 @@ public class AMD64HotSpotBytecodeLIRBuilder extends BytecodeLIRBuilder {
         gen.append(getSaveRbp().placeholder);
 
         Signature sig = method.getSignature();
-        boolean isStatic = Modifier.isStatic(method.getModifiers());
+        boolean isStatic = method.isStatic();
         for (int i = 0; i < sig.getParameterCount(!isStatic); i++) {
             Value paramValue = params[i];
             assert paramValue.getKind() == sig.getParameterKind(i).getStackKind();
             parser.storeLocal(i, gen.emitMove(paramValue));
         }
+    }
+
+    @Override
+    public int getArrayLengthOffset() {
+        return getGen().config.arrayLengthOffset;
+    }
+
+    @Override
+    public Constant getClassConstant(ResolvedJavaType declaringClass) {
+        return HotSpotObjectConstant.forObject(((HotSpotResolvedJavaType) declaringClass).mirror());
+    }
+
+    @Override
+    public int getFieldOffset(ResolvedJavaField field) {
+        return ((HotSpotResolvedJavaField) field).offset();
     }
 
 }

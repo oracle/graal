@@ -28,7 +28,7 @@ import sun.reflect.*;
 
 public class Graal {
 
-    private static GraalRuntime runtime;
+    private static final GraalRuntime runtime;
 
     private static native GraalRuntime initializeRuntime();
 
@@ -47,12 +47,13 @@ public class Graal {
     }
 
     static {
+        GraalRuntime rt;
         try {
-            runtime = initializeRuntime();
+            rt = initializeRuntime();
         } catch (UnsatisfiedLinkError e) {
-            runtime = new InvalidGraalRuntime();
+            rt = new InvalidGraalRuntime();
         }
-
+        runtime = rt;
         Reflection.registerFieldsToFilter(Graal.class, "runtime");
     }
 

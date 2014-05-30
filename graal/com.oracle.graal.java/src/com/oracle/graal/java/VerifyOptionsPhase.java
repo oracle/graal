@@ -24,8 +24,6 @@
 package com.oracle.graal.java;
 
 import static com.oracle.graal.api.meta.MetaUtil.*;
-import static java.lang.reflect.Modifier.*;
-
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
@@ -115,9 +113,9 @@ public class VerifyOptionsPhase extends Phase {
             if (node instanceof StoreFieldNode) {
                 ResolvedJavaField field = ((StoreFieldNode) node).field();
                 verify(field.getDeclaringClass().equals(declaringClass), node, "store to field " + format("%H.%n", field));
-                verify(isStatic(field.getModifiers()), node, "store to field " + format("%H.%n", field));
+                verify(field.isStatic(), node, "store to field " + format("%H.%n", field));
                 if (optionValueType.isAssignableFrom((ResolvedJavaType) field.getType())) {
-                    verify(isFinal(field.getModifiers()), node, "option field " + format("%H.%n", field) + " not final");
+                    verify(field.isFinal(), node, "option field " + format("%H.%n", field) + " not final");
                 } else {
                     verify((field.isSynthetic()), node, "store to non-synthetic field " + format("%H.%n", field));
                 }

@@ -26,6 +26,7 @@ import java.util.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 
 /**
@@ -102,6 +103,37 @@ public class StampTool {
             return StampFactory.forInteger(stamp1.getBits(), lowerBound, upperBound);
         }
         return stamp1.unrestricted();
+    }
+
+    public static Stamp rem(Stamp stamp1, Stamp stamp2) {
+        if (stamp1 instanceof IntegerStamp && stamp2 instanceof IntegerStamp) {
+            return rem((IntegerStamp) stamp1, (IntegerStamp) stamp2);
+        }
+        return StampFactory.illegal();
+    }
+
+    public static Stamp rem(IntegerStamp stamp1, IntegerStamp stamp2) {
+        assert stamp1.getBits() == stamp2.getBits();
+        long magnitude; // the maximum absolute value of the result
+        if (stamp2.lowerBound() == IntegerStamp.defaultMinValue(stamp2.getBits())) {
+            // Math.abs(...) - 1 does not work in this case
+            magnitude = IntegerStamp.defaultMaxValue(stamp2.getBits());
+        } else {
+            magnitude = Math.max(Math.abs(stamp2.lowerBound()), Math.abs(stamp2.upperBound())) - 1;
+        }
+        long lowerBound = Math.max(stamp1.lowerBound(), -magnitude);
+        if (stamp1.upperBound() > magnitude) {
+            // if the result can wrap around at the upper bound, it can reach any value between 0
+            // and magnitude
+            lowerBound = Math.min(lowerBound, 0);
+        }
+        long upperBound = Math.min(stamp1.upperBound(), magnitude);
+        if (stamp1.lowerBound() < -magnitude) {
+            // if the result can wrap around at the lower bound, it can reach any value between
+            // -magnitude and 0
+            upperBound = Math.max(upperBound, 0);
+        }
+        return StampFactory.forInteger(stamp1.getBits(), lowerBound, upperBound);
     }
 
     private static boolean addOverflowsPositively(long x, long y, int bits) {
@@ -450,5 +482,111 @@ public class StampTool {
             return StampFactory.forInteger(y.getBits(), 0, y.lowerBound() - 1);
         }
         return null;
+    }
+
+    /**
+     * Checks whether this {@link ValueNode} represents a {@linkplain Stamp#isLegal() legal} Object
+     * value which is known to be always null.
+     *
+     * @param node the node to check
+     * @return true if this node represents a legal object value which is known to be always null
+     */
+    public static boolean isObjectAlwaysNull(ValueNode node) {
+        return isObjectAlwaysNull(node.stamp());
+    }
+
+    /**
+     * Checks whether this {@link Stamp} represents a {@linkplain Stamp#isLegal() legal} Object
+     * stamp whose values are known to be always null.
+     *
+     * @param stamp the stamp to check
+     * @return true if this stamp represents a legal object stamp whose values are known to be
+     *         always null
+     */
+    public static boolean isObjectAlwaysNull(Stamp stamp) {
+        if (stamp instanceof ObjectStamp && stamp.isLegal()) {
+            return ((ObjectStamp) stamp).alwaysNull();
+        }
+        return false;
+    }
+
+    /**
+     * Checks whether this {@link ValueNode} represents a {@linkplain Stamp#isLegal() legal} Object
+     * value which is known to never be null.
+     *
+     * @param node the node to check
+     * @return true if this node represents a legal object value which is known to never be null
+     */
+    public static boolean isObjectNonNull(ValueNode node) {
+        return isObjectNonNull(node.stamp());
+    }
+
+    /**
+     * Checks whether this {@link Stamp} represents a {@linkplain Stamp#isLegal() legal} Object
+     * stamp whose values known to be always null.
+     *
+     * @param stamp the stamp to check
+     * @return true if this stamp represents a legal object stamp whose values are known to be
+     *         always null
+     */
+    public static boolean isObjectNonNull(Stamp stamp) {
+        if (stamp instanceof ObjectStamp && stamp.isLegal()) {
+            return ((ObjectStamp) stamp).nonNull();
+        }
+        return false;
+    }
+
+    /**
+     * Returns the {@linkplain ResolvedJavaType Java type} this {@linkplain ValueNode} has if it is
+     * a {@linkplain Stamp#isLegal() legal} Object value.
+     *
+     * @param node the node to check
+     * @return the Java type this value has if it is a legal Object type, null otherwise
+     */
+    public static ResolvedJavaType typeOrNull(ValueNode node) {
+        return typeOrNull(node.stamp());
+    }
+
+    /**
+     * Returns the {@linkplain ResolvedJavaType Java type} this {@linkplain Stamp} has if it is a
+     * {@linkplain Stamp#isLegal() legal} Object stamp.
+     *
+     * @param stamp the stamp to check
+     * @return the Java type this stamp has if it is a legal Object stamp, null otherwise
+     */
+    public static ResolvedJavaType typeOrNull(Stamp stamp) {
+        if (stamp instanceof ObjectStamp && stamp.isLegal()) {
+            return ((ObjectStamp) stamp).type();
+        }
+        return null;
+    }
+
+    /**
+     * Checks whether this {@link ValueNode} represents a {@linkplain Stamp#isLegal() legal} Object
+     * value whose Java type is known exactly. If this method returns true then the
+     * {@linkplain ResolvedJavaType Java type} returned by {@link #typeOrNull(ValueNode)} is the
+     * concrete dynamic/runtime Java type of this value.
+     *
+     * @param node the node to check
+     * @return true if this node represents a legal object value whose Java type is known exactly
+     */
+    public static boolean isExactType(ValueNode node) {
+        return isExactType(node.stamp());
+    }
+
+    /**
+     * Checks whether this {@link Stamp} represents a {@linkplain Stamp#isLegal() legal} Object
+     * stamp whose {@linkplain ResolvedJavaType Java type} is known exactly. If this method returns
+     * true then the Java type returned by {@link #typeOrNull(Stamp)} is the only concrete
+     * dynamic/runtime Java type possible for values of this stamp.
+     *
+     * @param stamp the stamp to check
+     * @return true if this node represents a legal object stamp whose Java type is known exactly
+     */
+    public static boolean isExactType(Stamp stamp) {
+        if (stamp instanceof ObjectStamp && stamp.isLegal()) {
+            return ((ObjectStamp) stamp).isExactType();
+        }
+        return false;
     }
 }

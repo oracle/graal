@@ -23,6 +23,8 @@
 package com.oracle.graal.compiler.gen;
 
 import static com.oracle.graal.api.code.ValueUtil.*;
+import static com.oracle.graal.compiler.GraalDebugConfig.*;
+import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.lir.LIR.*;
 import static com.oracle.graal.nodes.ConstantNode.*;
 
@@ -34,44 +36,79 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.common.cfg.*;
-import com.oracle.graal.compiler.gen.LIRGenerator.LoadConstant;
-import com.oracle.graal.compiler.target.*;
+import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.compiler.match.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.JumpOp;
+import com.oracle.graal.lir.gen.*;
+import com.oracle.graal.lir.gen.LIRGenerator.LoadConstant;
+import com.oracle.graal.lir.gen.LIRGenerator.Options;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.virtual.*;
-import com.oracle.graal.phases.*;
 
 /**
  * This class traverses the HIR instructions and generates LIR instructions from them.
  */
+@MatchableNode(nodeClass = ConstantNode.class, shareable = true)
+@MatchableNode(nodeClass = FloatConvertNode.class, inputs = {"input"})
+@MatchableNode(nodeClass = FloatSubNode.class, inputs = {"x", "y"})
+@MatchableNode(nodeClass = FloatingReadNode.class, inputs = {"object", "location"})
+@MatchableNode(nodeClass = IfNode.class, inputs = {"condition"})
+@MatchableNode(nodeClass = IntegerSubNode.class, inputs = {"x", "y"})
+@MatchableNode(nodeClass = LeftShiftNode.class, inputs = {"x", "y"})
+@MatchableNode(nodeClass = NarrowNode.class, inputs = {"input"})
+@MatchableNode(nodeClass = ReadNode.class, inputs = {"object", "location"})
+@MatchableNode(nodeClass = ReinterpretNode.class, inputs = {"value"})
+@MatchableNode(nodeClass = SignExtendNode.class, inputs = {"input"})
+@MatchableNode(nodeClass = UnsignedRightShiftNode.class, inputs = {"x", "y"})
+@MatchableNode(nodeClass = WriteNode.class, inputs = {"object", "location", "value"})
+@MatchableNode(nodeClass = ZeroExtendNode.class, inputs = {"input"})
+@MatchableNode(nodeClass = AndNode.class, inputs = {"x", "y"}, commutative = true)
+@MatchableNode(nodeClass = FloatAddNode.class, inputs = {"x", "y"}, commutative = true)
+@MatchableNode(nodeClass = FloatEqualsNode.class, inputs = {"x", "y"}, commutative = true)
+@MatchableNode(nodeClass = FloatLessThanNode.class, inputs = {"x", "y"}, commutative = true)
+@MatchableNode(nodeClass = FloatMulNode.class, inputs = {"x", "y"}, commutative = true)
+@MatchableNode(nodeClass = IntegerAddNode.class, inputs = {"x", "y"}, commutative = true)
+@MatchableNode(nodeClass = IntegerBelowThanNode.class, inputs = {"x", "y"}, commutative = true)
+@MatchableNode(nodeClass = IntegerEqualsNode.class, inputs = {"x", "y"}, commutative = true)
+@MatchableNode(nodeClass = IntegerLessThanNode.class, inputs = {"x", "y"}, commutative = true)
+@MatchableNode(nodeClass = IntegerMulNode.class, inputs = {"x", "y"}, commutative = true)
+@MatchableNode(nodeClass = IntegerTestNode.class, inputs = {"x", "y"}, commutative = true)
+@MatchableNode(nodeClass = ObjectEqualsNode.class, inputs = {"x", "y"}, commutative = true)
+@MatchableNode(nodeClass = OrNode.class, inputs = {"x", "y"}, commutative = true)
+@MatchableNode(nodeClass = XorNode.class, inputs = {"x", "y"}, commutative = true)
+@MatchableNode(nodeClass = PiNode.class, inputs = {"object"})
+@MatchableNode(nodeClass = ConstantLocationNode.class, shareable = true)
 public abstract class NodeLIRBuilder implements NodeLIRBuilderTool {
 
     private final NodeMap<Value> nodeOperands;
     private final DebugInfoBuilder debugInfoBuilder;
 
-    protected final LIRGenerator gen;
+    protected final LIRGeneratorTool gen;
 
     private ValueNode currentInstruction;
     private ValueNode lastInstructionPrinted; // Debugging only
 
-    public NodeLIRBuilder(StructuredGraph graph, LIRGenerator gen) {
+    private Map<Class<? extends ValueNode>, List<MatchStatement>> matchRules;
+
+    public NodeLIRBuilder(StructuredGraph graph, LIRGeneratorTool gen) {
         this.gen = gen;
         this.nodeOperands = graph.createNodeMap();
-        this.debugInfoBuilder = createDebugInfoBuilder(nodeOperands);
-        gen.setDebugInfoBuilder(debugInfoBuilder);
+        this.debugInfoBuilder = createDebugInfoBuilder(graph, nodeOperands);
+        if (MatchExpressions.getValue()) {
+            matchRules = MatchRuleRegistry.lookup(getClass());
+        }
     }
 
-    @SuppressWarnings("hiding")
-    protected DebugInfoBuilder createDebugInfoBuilder(NodeMap<Value> nodeOperands) {
+    @SuppressWarnings({"unused", "hiding"})
+    protected DebugInfoBuilder createDebugInfoBuilder(StructuredGraph graph, NodeMap<Value> nodeOperands) {
         return new DebugInfoBuilder(nodeOperands);
     }
 
@@ -113,25 +150,25 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool {
                     return setResult(node, value);
                 } else {
                     Variable loadedValue;
-                    if (gen.constantLoads == null) {
-                        gen.constantLoads = new HashMap<>();
+                    if (gen.getConstantLoads() == null) {
+                        gen.setConstantLoads(new HashMap<>());
                     }
-                    LoadConstant load = gen.constantLoads.get(value);
+                    LoadConstant load = gen.getConstantLoads().get(value);
                     assert gen.getCurrentBlock() instanceof Block;
                     if (load == null) {
                         int index = gen.getResult().getLIR().getLIRforBlock(gen.getCurrentBlock()).size();
                         loadedValue = gen.emitMove(value);
                         LIRInstruction op = gen.getResult().getLIR().getLIRforBlock(gen.getCurrentBlock()).get(index);
-                        gen.constantLoads.put(value, new LoadConstant(loadedValue, gen.getCurrentBlock(), index, op));
+                        gen.getConstantLoads().put(value, new LoadConstant(loadedValue, gen.getCurrentBlock(), index, op));
                     } else {
-                        AbstractBlock<?> dominator = ControlFlowGraph.commonDominator((Block) load.block, (Block) gen.getCurrentBlock());
-                        loadedValue = load.variable;
-                        if (dominator != load.block) {
+                        AbstractBlock<?> dominator = ControlFlowGraph.commonDominator((Block) load.getBlock(), (Block) gen.getCurrentBlock());
+                        loadedValue = load.getVariable();
+                        if (dominator != load.getBlock()) {
                             load.unpin(gen.getResult().getLIR());
                         } else {
-                            assert load.block != gen.getCurrentBlock() || load.index < gen.getResult().getLIR().getLIRforBlock(gen.getCurrentBlock()).size();
+                            assert load.getBlock() != gen.getCurrentBlock() || load.getIndex() < gen.getResult().getLIR().getLIRforBlock(gen.getCurrentBlock()).size();
                         }
-                        load.block = dominator;
+                        load.setBlock(dominator);
                     }
                     return loadedValue;
                 }
@@ -154,11 +191,23 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool {
     @Override
     public Value setResult(ValueNode x, Value operand) {
         assert (!isRegister(operand) || !gen.attributes(asRegister(operand)).isAllocatable());
-        assert nodeOperands == null || nodeOperands.get(x) == null : "operand cannot be set twice";
+        assert nodeOperands != null && (nodeOperands.get(x) == null || nodeOperands.get(x) instanceof ComplexMatchValue) : "operand cannot be set twice";
         assert operand != null && isLegal(operand) : "operand must be legal";
         assert !(x instanceof VirtualObjectNode);
         nodeOperands.set(x, operand);
         return operand;
+    }
+
+    /**
+     * Used by the {@link MatchStatement} machinery to override the generation LIR for some
+     * ValueNodes.
+     */
+    public void setMatchResult(ValueNode x, Value operand) {
+        assert operand.equals(ComplexMatchValue.INTERIOR_MATCH) || operand instanceof ComplexMatchValue;
+        assert operand instanceof ComplexMatchValue || x.usages().count() == 1 : "interior matches must be single user";
+        assert nodeOperands != null && nodeOperands.get(x) == null : "operand cannot be set twice";
+        assert !(x instanceof VirtualObjectNode);
+        nodeOperands.set(x, operand);
     }
 
     public LabelRef getLIRBlock(FixedNode b) {
@@ -172,7 +221,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool {
     }
 
     public final void append(LIRInstruction op) {
-        if (gen.printIRWithLIR && !TTY.isSuppressed()) {
+        if (Options.PrintIRWithLIR.getValue() && !TTY.isSuppressed()) {
             if (currentInstruction != null && lastInstructionPrinted != currentInstruction) {
                 lastInstructionPrinted = currentInstruction;
                 InstructionPrinter ip = new InstructionPrinter(TTY.out());
@@ -193,33 +242,41 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool {
         }
 
         List<ScheduledNode> nodes = blockMap.get(block);
-        int instructionsFolded = 0;
+
+        // Allow NodeLIRBuilder subclass to specialize code generation of any interesting groups
+        // of instructions
+        matchComplexExpressions(nodes);
+
         for (int i = 0; i < nodes.size(); i++) {
             Node instr = nodes.get(i);
-            if (gen.traceLevel >= 3) {
+            if (Options.TraceLIRGeneratorLevel.getValue() >= 3) {
                 TTY.println("LIRGen for " + instr);
-            }
-            if (instructionsFolded > 0) {
-                instructionsFolded--;
-                continue;
             }
             if (!ConstantNodeRecordsUsages && instr instanceof ConstantNode) {
                 // Loading of constants is done lazily by operand()
 
             } else if (instr instanceof ValueNode) {
                 ValueNode valueNode = (ValueNode) instr;
-                if (!hasOperand(valueNode)) {
+                Value operand = getOperand(valueNode);
+                if (operand == null) {
                     if (!peephole(valueNode)) {
-                        instructionsFolded = maybeFoldMemory(nodes, i, valueNode);
-                        if (instructionsFolded == 0) {
-                            try {
-                                doRoot((ValueNode) instr);
-                            } catch (GraalInternalError e) {
-                                throw GraalGraphInternalError.transformAndAddContext(e, instr);
-                            } catch (Throwable e) {
-                                throw new GraalGraphInternalError(e).addContext(instr);
-                            }
+                        try {
+                            doRoot((ValueNode) instr);
+                        } catch (GraalInternalError e) {
+                            throw GraalGraphInternalError.transformAndAddContext(e, instr);
+                        } catch (Throwable e) {
+                            throw new GraalGraphInternalError(e).addContext(instr);
                         }
+                    }
+                } else if (ComplexMatchValue.INTERIOR_MATCH.equals(operand)) {
+                    // Doesn't need to be evaluated
+                    Debug.log("interior match for %s", valueNode);
+                } else if (operand instanceof ComplexMatchValue) {
+                    Debug.log("complex match for %s", valueNode);
+                    ComplexMatchValue match = (ComplexMatchValue) operand;
+                    operand = match.evaluate(this);
+                    if (operand != null) {
+                        setResult(valueNode, operand);
                     }
                 } else {
                     // There can be cases in which the result of an instruction is already set
@@ -245,156 +302,45 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool {
         gen.doBlockEnd(block);
     }
 
-    private static final DebugMetric MemoryFoldSuccess = Debug.metric("MemoryFoldSuccess");
-    private static final DebugMetric MemoryFoldFailed = Debug.metric("MemoryFoldFailed");
-    private static final DebugMetric MemoryFoldFailedNonAdjacent = Debug.metric("MemoryFoldedFailedNonAdjacent");
-    private static final DebugMetric MemoryFoldFailedDifferentBlock = Debug.metric("MemoryFoldedFailedDifferentBlock");
-
-    /**
-     * Subclass can provide helper to fold memory operations into other operations.
-     */
-    public MemoryArithmeticLIRLowerer getMemoryLowerer() {
-        return null;
-    }
-
-    private static final Object LOG_OUTPUT_LOCK = new Object();
-
-    /**
-     * Try to find a sequence of Nodes which can be passed to the backend to look for optimized
-     * instruction sequences using memory. Currently this basically is a read with a single
-     * arithmetic user followed by an possible if use. This should generalized to more generic
-     * pattern matching so that it can be more flexibly used.
-     */
-    private int maybeFoldMemory(List<ScheduledNode> nodes, int i, ValueNode access) {
-        MemoryArithmeticLIRLowerer lowerer = getMemoryLowerer();
-        if (lowerer != null && GraalOptions.OptFoldMemory.getValue() && (access instanceof ReadNode || access instanceof FloatingReadNode) && access.usages().count() == 1 && i + 1 < nodes.size()) {
-            try (Scope s = Debug.scope("MaybeFoldMemory", access)) {
-                // This is all bit hacky since it's happening on the linearized schedule. This needs
-                // to be revisited at some point.
-
-                // Uncast the memory operation.
-                Node use = access.usages().first();
-                if (use instanceof UnsafeCastNode && use.usages().count() == 1) {
-                    use = use.usages().first();
+    protected void matchComplexExpressions(List<ScheduledNode> nodes) {
+        if (matchRules != null) {
+            try (Scope s = Debug.scope("MatchComplexExpressions")) {
+                if (LogVerbose.getValue()) {
+                    int i = 0;
+                    for (ScheduledNode node : nodes) {
+                        Debug.log("%d: (%s) %1S", i++, node.usages().count(), node);
+                    }
                 }
 
-                // Find a memory lowerable usage of this operation
-                if (use instanceof MemoryArithmeticLIRLowerable) {
-                    ValueNode operation = (ValueNode) use;
-                    if (!nodes.contains(operation)) {
-                        Debug.log("node %1s in different block from %1s", access, operation);
-                        MemoryFoldFailedDifferentBlock.increment();
-                        return 0;
+                // Match the nodes in backwards order to encourage longer matches.
+                for (int index = nodes.size() - 1; index >= 0; index--) {
+                    ScheduledNode snode = nodes.get(index);
+                    if (!(snode instanceof ValueNode)) {
+                        continue;
                     }
-                    ValueNode firstOperation = operation;
-                    if (operation instanceof LogicNode) {
-                        if (operation.usages().count() == 1 && operation.usages().first() instanceof IfNode) {
-                            ValueNode ifNode = (ValueNode) operation.usages().first();
-                            if (!nodes.contains(ifNode)) {
-                                MemoryFoldFailedDifferentBlock.increment();
-                                Debug.log("if node %1s in different block from %1s", ifNode, operation);
-                                try (Indent indent = Debug.logAndIndent("checking operations")) {
-                                    int start = nodes.indexOf(access);
-                                    int end = nodes.indexOf(operation);
-                                    for (int i1 = Math.min(start, end); i1 <= Math.max(start, end); i1++) {
-                                        Debug.log("%d: (%d) %1s", i1, nodes.get(i1).usages().count(), nodes.get(i1));
-                                    }
-                                }
-                                return 0;
-                            } else {
-                                operation = ifNode;
+                    ValueNode node = (ValueNode) snode;
+                    if (getOperand(node) != null) {
+                        continue;
+                    }
+                    // See if this node is the root of any MatchStatements
+                    List<MatchStatement> statements = matchRules.get(node.getClass());
+                    if (statements != null) {
+                        for (MatchStatement statement : statements) {
+                            if (statement.generate(this, index, node, nodes)) {
+                                // Found a match so skip to the next
+                                break;
                             }
                         }
                     }
-                    if (Debug.isLogEnabled()) {
-                        synchronized (LOG_OUTPUT_LOCK) {  // Hack to ensure the output is grouped.
-                            try (Indent indent = Debug.logAndIndent("checking operations")) {
-                                int start = nodes.indexOf(access);
-                                int end = nodes.indexOf(operation);
-                                for (int i1 = Math.min(start, end); i1 <= Math.max(start, end); i1++) {
-                                    Debug.log("%d: (%d) %1s", i1, nodes.get(i1).usages().count(), nodes.get(i1));
-                                }
-                            }
-                        }
-                    }
-                    // Possible lowerable operation in the same block. Check out the dependencies.
-                    int opIndex = nodes.indexOf(operation);
-                    int current = i + 1;
-                    ArrayList<ValueNode> deferred = null;
-                    for (; current < opIndex; current++) {
-                        ScheduledNode node = nodes.get(current);
-                        if (node != firstOperation) {
-                            if (node instanceof LocationNode || node instanceof VirtualObjectNode) {
-                                // nothing to do
-                                continue;
-                            } else if (node instanceof ConstantNode) {
-                                if (deferred == null) {
-                                    deferred = new ArrayList<>(2);
-                                }
-                                // These nodes are collected and the backend is expended to
-                                // evaluate them before generating the lowered form. This
-                                // basically works around unfriendly scheduling of values which
-                                // are defined in a block but not used there.
-                                deferred.add((ValueNode) node);
-                                continue;
-                            } else if (node instanceof UnsafeCastNode) {
-                                UnsafeCastNode cast = (UnsafeCastNode) node;
-                                if (cast.getOriginalNode() == access) {
-                                    continue;
-                                }
-                            }
-
-                            // Unexpected inline node
-                            // Debug.log("unexpected node %1s", node);
-                            break;
-                        }
-                    }
-
-                    if (current == opIndex) {
-                        if (lowerer.memoryPeephole((Access) access, (MemoryArithmeticLIRLowerable) operation, deferred)) {
-                            MemoryFoldSuccess.increment();
-                            // if this operation had multiple access inputs, then previous attempts
-                            // would be marked as failures which is wrong. Try to adjust the
-                            // counters to account for this.
-                            for (Node input : operation.inputs()) {
-                                if (input == access) {
-                                    continue;
-                                }
-                                if (input instanceof Access && nodes.contains(input)) {
-                                    MemoryFoldFailedNonAdjacent.add(-1);
-                                }
-                            }
-                            if (deferred != null) {
-                                // Ensure deferred nodes were evaluated
-                                for (ValueNode node : deferred) {
-                                    assert hasOperand(node);
-                                }
-                            }
-                            return opIndex - i;
-                        } else {
-                            // This isn't true failure, it just means there wasn't match for the
-                            // pattern. Usually that means it's just not supported by the backend.
-                            MemoryFoldFailed.increment();
-                            return 0;
-                        }
-                    } else {
-                        MemoryFoldFailedNonAdjacent.increment();
-                    }
-                } else if (!(use instanceof Access) && !(use instanceof PhiNode) && use.usages().count() == 1) {
-                    // memory usage which isn't considered lowerable. Mostly these are
-                    // uninteresting but it might be worth looking at to ensure that interesting
-                    // nodes are being properly handled.
-                    // Debug.log("usage isn't lowerable %1s", access.usages().first());
                 }
             }
         }
-        return 0;
     }
 
     protected abstract boolean peephole(ValueNode valueNode);
 
     private void doRoot(ValueNode instr) {
-        if (gen.traceLevel >= 2) {
+        if (Options.TraceLIRGeneratorLevel.getValue() >= 2) {
             TTY.println("Emitting LIR for instruction " + instr);
         }
         currentInstruction = instr;
@@ -408,11 +354,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool {
         if (Debug.isLogEnabled() && node.stamp() instanceof IllegalStamp) {
             Debug.log("This node has invalid type, we are emitting dead code(?): %s", node);
         }
-        if (node instanceof LIRGenLowerable) {
-            ((LIRGenLowerable) node).generate(this);
-        } else if (node instanceof LIRGenResLowerable) {
-            ((LIRGenResLowerable) node).generate(this, gen.getResult());
-        } else if (node instanceof LIRLowerable) {
+        if (node instanceof LIRLowerable) {
             ((LIRLowerable) node).generate(this);
         } else if (node instanceof ArithmeticLIRLowerable) {
             ((ArithmeticLIRLowerable) node).generate(this, gen);
@@ -461,7 +403,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool {
     }
 
     private void moveToPhi(MergeNode merge, AbstractEndNode pred) {
-        if (gen.traceLevel >= 1) {
+        if (Options.TraceLIRGeneratorLevel.getValue() >= 1) {
             TTY.println("MOVE TO PHI from " + pred + " to " + merge);
         }
         PhiResolver resolver = new PhiResolver(gen);
@@ -569,7 +511,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool {
         if (x instanceof InvokeWithExceptionNode) {
             exceptionEdge = getLIRBlock(((InvokeWithExceptionNode) x).exceptionEdge());
         }
-        LIRFrameState callState = gen.stateWithExceptionEdge(x, exceptionEdge);
+        LIRFrameState callState = stateWithExceptionEdge(x, exceptionEdge);
 
         Value result = invokeCc.getReturn();
         if (callTarget instanceof DirectCallTargetNode) {
@@ -662,6 +604,45 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool {
         return debugInfoBuilder;
     }
 
+    private static FrameState getFrameState(DeoptimizingNode deopt) {
+        if (deopt instanceof DeoptimizingNode.DeoptBefore) {
+            assert !(deopt instanceof DeoptimizingNode.DeoptDuring || deopt instanceof DeoptimizingNode.DeoptAfter);
+            return ((DeoptimizingNode.DeoptBefore) deopt).stateBefore();
+        } else if (deopt instanceof DeoptimizingNode.DeoptDuring) {
+            assert !(deopt instanceof DeoptimizingNode.DeoptAfter);
+            return ((DeoptimizingNode.DeoptDuring) deopt).stateDuring();
+        } else {
+            assert deopt instanceof DeoptimizingNode.DeoptAfter;
+            return ((DeoptimizingNode.DeoptAfter) deopt).stateAfter();
+        }
+    }
+
+    public LIRFrameState state(DeoptimizingNode deopt) {
+        if (!deopt.canDeoptimize()) {
+            return null;
+        }
+        return stateFor(getFrameState(deopt));
+    }
+
+    public LIRFrameState stateWithExceptionEdge(DeoptimizingNode deopt, LabelRef exceptionEdge) {
+        if (!deopt.canDeoptimize()) {
+            return null;
+        }
+        return stateForWithExceptionEdge(getFrameState(deopt), exceptionEdge);
+    }
+
+    public LIRFrameState stateFor(FrameState state) {
+        return stateForWithExceptionEdge(state, null);
+    }
+
+    public LIRFrameState stateForWithExceptionEdge(FrameState state, LabelRef exceptionEdge) {
+        if (gen.needOnlyOopMaps()) {
+            return new LIRFrameState(null, null, null);
+        }
+        assert state != null;
+        return getDebugInfoBuilder().build(state, exceptionEdge);
+    }
+
     public void emitOverflowCheckBranch(BeginNode overflowSuccessor, BeginNode next, double probability) {
         gen.emitOverflowCheckBranch(getLIRBlock(overflowSuccessor), getLIRBlock(next), probability);
     }
@@ -687,11 +668,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool {
     }
 
     @Override
-    public LIRGenerator getLIRGeneratorTool() {
-        return gen;
-    }
-
-    public LIRGenerator getLIRGenerator() {
+    public LIRGeneratorTool getLIRGeneratorTool() {
         return gen;
     }
 }

@@ -36,7 +36,7 @@ import com.oracle.graal.nodes.util.*;
  * The {@code InvokeNode} represents all kinds of method calls.
  */
 @NodeInfo(nameTemplate = "Invoke#{p#targetMethod/s}", allowedUsageTypes = {InputType.Memory})
-public final class InvokeNode extends AbstractMemoryCheckpoint implements Invoke, LIRLowerable, MemoryCheckpoint.Single {
+public final class InvokeNode extends AbstractMemoryCheckpoint implements Invoke, LIRLowerable, MemoryCheckpoint.Single, IterableNodeType {
 
     @Input(InputType.Extension) private CallTargetNode callTarget;
     @Input(InputType.State) private FrameState stateDuring;
@@ -96,12 +96,15 @@ public final class InvokeNode extends AbstractMemoryCheckpoint implements Invoke
 
     @Override
     public boolean isAllowedUsageType(InputType type) {
-        if (getKind() != Kind.Void) {
-            if (callTarget instanceof MethodCallTargetNode && ((MethodCallTargetNode) callTarget).targetMethod().getAnnotation(NodeIntrinsic.class) != null) {
-                return true;
+        if (!super.isAllowedUsageType(type)) {
+            if (getKind() != Kind.Void) {
+                if (callTarget instanceof MethodCallTargetNode && ((MethodCallTargetNode) callTarget).targetMethod().getAnnotation(NodeIntrinsic.class) != null) {
+                    return true;
+                }
             }
+            return false;
         }
-        return super.isAllowedUsageType(type);
+        return true;
     }
 
     @Override
@@ -182,13 +185,6 @@ public final class InvokeNode extends AbstractMemoryCheckpoint implements Invoke
     public void setStateDuring(FrameState stateDuring) {
         updateUsages(this.stateDuring, stateDuring);
         this.stateDuring = stateDuring;
-    }
-
-    @Override
-    public void computeStateDuring(FrameState stateAfter) {
-        FrameState newStateDuring = stateAfter.duplicateModified(bci(), stateAfter.rethrowException(), getKind());
-        newStateDuring.setDuringCall(true);
-        setStateDuring(newStateDuring);
     }
 
     @Override

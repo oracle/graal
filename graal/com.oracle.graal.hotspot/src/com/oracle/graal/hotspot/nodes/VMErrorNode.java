@@ -23,13 +23,14 @@
 package com.oracle.graal.hotspot.nodes;
 
 import static com.oracle.graal.api.meta.MetaUtil.*;
+import static com.oracle.graal.hotspot.HotSpotBackend.*;
 import static com.oracle.graal.hotspot.nodes.CStringNode.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.replacements.*;
 
 /**
@@ -40,7 +41,6 @@ public final class VMErrorNode extends DeoptimizingStubCall implements LIRLowera
 
     private final String format;
     @Input private ValueNode value;
-    public static final ForeignCallDescriptor VM_ERROR = new ForeignCallDescriptor("vm_error", void.class, Object.class, Object.class, long.class);
 
     public VMErrorNode(String format, ValueNode value) {
         super(StampFactory.forVoid());
@@ -67,7 +67,7 @@ public final class VMErrorNode extends DeoptimizingStubCall implements LIRLowera
         Value whereArg = emitCString(gen, whereString);
         Value formatArg = emitCString(gen, format);
 
-        ForeignCallLinkage linkage = gen.getLIRGeneratorTool().getForeignCalls().lookupForeignCall(VMErrorNode.VM_ERROR);
+        ForeignCallLinkage linkage = gen.getLIRGeneratorTool().getForeignCalls().lookupForeignCall(VM_ERROR);
         gen.getLIRGeneratorTool().emitForeignCall(linkage, null, whereArg, formatArg, gen.operand(value));
     }
 

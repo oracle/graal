@@ -24,8 +24,6 @@ package com.oracle.graal.hotspot.meta;
 
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 
-import java.lang.reflect.*;
-
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 
@@ -38,7 +36,7 @@ import com.oracle.graal.api.meta.*;
  * instance to be anything but weak. This is due to the fact that HotSpot does not treat nmethods as
  * strong GC roots.
  */
-public final class HotSpotNmethod extends HotSpotInstalledCode {
+public class HotSpotNmethod extends HotSpotInstalledCode {
 
     /**
      * This (indirect) Method* reference is safe since class redefinition preserves all methods
@@ -84,10 +82,10 @@ public final class HotSpotNmethod extends HotSpotInstalledCode {
     }
 
     protected boolean checkThreeObjectArgs() {
-        assert method.getSignature().getParameterCount(!Modifier.isStatic(method.getModifiers())) == 3;
+        assert method.getSignature().getParameterCount(!method.isStatic()) == 3;
         assert method.getSignature().getParameterKind(0) == Kind.Object;
         assert method.getSignature().getParameterKind(1) == Kind.Object;
-        assert !Modifier.isStatic(method.getModifiers()) || method.getSignature().getParameterKind(2) == Kind.Object;
+        assert !method.isStatic() || method.getSignature().getParameterKind(2) == Kind.Object;
         return true;
     }
 

@@ -47,7 +47,7 @@ public class ArraySet<E> extends ArrayList<E> implements Set<E> {
     public boolean add(E e) {
         // avoid duplicated entries
         if (contains(e)) {
-            return true;
+            return false;
         }
         return super.add(e);
     }

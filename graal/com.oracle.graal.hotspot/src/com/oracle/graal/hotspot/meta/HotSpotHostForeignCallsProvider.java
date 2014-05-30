@@ -27,25 +27,19 @@ import static com.oracle.graal.api.meta.LocationIdentity.*;
 import static com.oracle.graal.hotspot.HotSpotBackend.*;
 import static com.oracle.graal.hotspot.HotSpotForeignCallLinkage.RegisterEffect.*;
 import static com.oracle.graal.hotspot.HotSpotForeignCallLinkage.Transition.*;
-import static com.oracle.graal.hotspot.nodes.NewArrayStubCall.*;
-import static com.oracle.graal.hotspot.nodes.NewInstanceStubCall.*;
-import static com.oracle.graal.hotspot.nodes.NewMultiArrayStubCall.*;
-import static com.oracle.graal.hotspot.nodes.UncommonTrapCallNode.*;
-import static com.oracle.graal.hotspot.nodes.VMErrorNode.*;
+import static com.oracle.graal.hotspot.meta.DefaultHotSpotLoweringProvider.RuntimeCalls.*;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 import static com.oracle.graal.hotspot.replacements.MonitorSnippets.*;
 import static com.oracle.graal.hotspot.replacements.NewObjectSnippets.*;
 import static com.oracle.graal.hotspot.replacements.SystemSubstitutions.*;
 import static com.oracle.graal.hotspot.replacements.ThreadSubstitutions.*;
 import static com.oracle.graal.hotspot.replacements.WriteBarrierSnippets.*;
-import static com.oracle.graal.hotspot.stubs.DeoptimizationStub.*;
 import static com.oracle.graal.hotspot.stubs.ExceptionHandlerStub.*;
 import static com.oracle.graal.hotspot.stubs.NewArrayStub.*;
 import static com.oracle.graal.hotspot.stubs.NewInstanceStub.*;
 import static com.oracle.graal.hotspot.stubs.StubUtil.*;
 import static com.oracle.graal.hotspot.stubs.UnwindExceptionToCallerStub.*;
-import static com.oracle.graal.hotspot.meta.HotSpotLoweringProvider.RuntimeCalls.*;
-import static com.oracle.graal.nodes.java.RegisterFinalizerNode.*;
+import static com.oracle.graal.nodes.java.ForeignCallDescriptors.*;
 import static com.oracle.graal.replacements.Log.*;
 import static com.oracle.graal.replacements.MathSubstitutionsX86.*;
 
@@ -103,7 +97,6 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
     public void initialize(HotSpotProviders providers, HotSpotVMConfig c) {
         TargetDescription target = providers.getCodeCache().getTarget();
 
-        registerForeignCall(DEOPT_HANDLER, c.handleDeoptStub, NativeCall, PRESERVES_REGISTERS, LEAF_NOFP, REEXECUTABLE, NO_LOCATIONS);
         registerForeignCall(IC_MISS_HANDLER, c.inlineCacheMissStub(), NativeCall, PRESERVES_REGISTERS, LEAF_NOFP, REEXECUTABLE, NO_LOCATIONS);
 
         registerForeignCall(JAVA_TIME_MILLIS, c.javaTimeMillisAddress, NativeCall, DESTROYS_REGISTERS, LEAF_NOFP, REEXECUTABLE, NO_LOCATIONS);
@@ -119,7 +112,14 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         registerForeignCall(NEW_ARRAY_C, c.newArrayAddress, NativeCall, DESTROYS_REGISTERS, NOT_LEAF, REEXECUTABLE, ANY_LOCATION);
         registerForeignCall(NEW_INSTANCE_C, c.newInstanceAddress, NativeCall, DESTROYS_REGISTERS, NOT_LEAF, REEXECUTABLE, ANY_LOCATION);
         registerForeignCall(UNCOMMON_TRAP, c.deoptimizationUncommonTrap, NativeCall, DESTROYS_REGISTERS, NOT_LEAF, NOT_REEXECUTABLE, ANY_LOCATION);
+
+        /*
+         * We cannot use LEAF_SP here because on some architectures we have to align the stack
+         * manually before calling into the VM. See {@link
+         * AMD64HotSpotEnterUnpackFramesStackFrameOp#emitCode}.
+         */
         registerForeignCall(UNPACK_FRAMES, c.deoptimizationUnpackFrames, NativeCall, DESTROYS_REGISTERS, LEAF, NOT_REEXECUTABLE, ANY_LOCATION);
+
         registerForeignCall(VM_MESSAGE_C, c.vmMessageAddress, NativeCall, DESTROYS_REGISTERS, NOT_LEAF, REEXECUTABLE, NO_LOCATIONS);
 
         link(new NewInstanceStub(providers, target, registerStubCall(NEW_INSTANCE, REEXECUTABLE, NOT_LEAF, ANY_LOCATION)));

@@ -73,9 +73,9 @@ public class StringSubstitutionsTest extends MethodSubstitutionTest {
             Object arg1 = args1[i];
             Object arg2 = args2[i];
             // Verify that the original method and the substitution produce the same value
-            assertEquals(invokeSafe(testMethod, null, arg1, arg2), invokeSafe(realMethod, arg1, arg2));
+            assertDeepEquals(invokeSafe(testMethod, null, arg1, arg2), invokeSafe(realMethod, arg1, arg2));
             // Verify that the generated code and the original produce the same value
-            assertEquals(executeVarargsSafe(code, arg1, arg2), invokeSafe(realMethod, arg1, arg2));
+            assertDeepEquals(executeVarargsSafe(code, arg1, arg2), invokeSafe(realMethod, arg1, arg2));
         }
     }
 

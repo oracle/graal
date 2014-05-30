@@ -55,7 +55,7 @@ public class SPARCHotSpotBackendFactory implements HotSpotBackendFactory {
         HotSpotConstantReflectionProvider constantReflection = new HotSpotConstantReflectionProvider(runtime);
         Value[] nativeABICallerSaveRegisters = createNativeABICallerSaveRegisters(runtime.getConfig(), codeCache.getRegisterConfig());
         HotSpotForeignCallsProvider foreignCalls = new SPARCHotSpotForeignCallsProvider(runtime, metaAccess, codeCache, nativeABICallerSaveRegisters);
-        LoweringProvider lowerer = new SPARCHotSpotLoweringProvider(runtime, metaAccess, foreignCalls, registers);
+        LoweringProvider lowerer = new SPARCHotSpotLoweringProvider(runtime, metaAccess, foreignCalls, registers, target);
         // Replacements cannot have speculative optimizations since they have
         // to be valid for the entire run of the VM.
         Assumptions assumptions = new Assumptions(false);
@@ -64,7 +64,9 @@ public class SPARCHotSpotBackendFactory implements HotSpotBackendFactory {
         HotSpotReplacementsImpl replacements = new HotSpotReplacementsImpl(p, snippetReflection, runtime.getConfig(), assumptions, target);
         HotSpotDisassemblerProvider disassembler = new HotSpotDisassemblerProvider(runtime);
         HotSpotSuitesProvider suites = new HotSpotSuitesProvider(runtime);
-        HotSpotProviders providers = new HotSpotProviders(metaAccess, codeCache, constantReflection, foreignCalls, lowerer, replacements, disassembler, suites, registers, snippetReflection);
+        HotSpotMethodHandleAccessProvider methodHandleAccess = new HotSpotMethodHandleAccessProvider();
+        HotSpotProviders providers = new HotSpotProviders(metaAccess, codeCache, constantReflection, foreignCalls, lowerer, replacements, disassembler, suites, registers, snippetReflection,
+                        methodHandleAccess);
 
         return new SPARCHotSpotBackend(runtime, providers);
     }

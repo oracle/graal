@@ -164,6 +164,9 @@ public class TestResolvedJavaField extends FieldUniverse {
     public void testCoverage() {
         Set<String> known = new HashSet<>(Arrays.asList(untestedApiMethods));
         for (Method m : ResolvedJavaField.class.getDeclaredMethods()) {
+            if (m.isSynthetic()) {
+                continue;
+            }
             if (findTestMethod(m) == null) {
                 assertTrue("test missing for " + m, known.contains(m.getName()));
             } else {
