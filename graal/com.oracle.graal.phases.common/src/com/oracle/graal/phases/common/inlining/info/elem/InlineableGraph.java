@@ -45,31 +45,34 @@ public class InlineableGraph implements Inlineable {
         this.graph = buildGraph(method, invoke, context, canonicalizer);
     }
 
+    /**
+     * @return a (possibly cached) graph. The caller is responsible for cloning before modification.
+     */
+    private static StructuredGraph getOriginalGraph(final ResolvedJavaMethod method, final HighTierContext context) {
+        StructuredGraph intrinsicGraph = InliningUtil.getIntrinsicGraph(context.getReplacements(), method);
+        if (intrinsicGraph != null) {
+            return intrinsicGraph;
+        }
+        StructuredGraph cachedGraph = getCachedGraph(method, context);
+        if (cachedGraph != null) {
+            return cachedGraph;
+        }
+        return null;
+    }
+
     private static StructuredGraph buildGraph(final ResolvedJavaMethod method, final Invoke invoke, final HighTierContext context, CanonicalizerPhase canonicalizer) {
-        final StructuredGraph newGraph;
-        final boolean parseBytecodes;
+        StructuredGraph newGraph = getOriginalGraph(method, context);
+        if (newGraph == null) {
+            newGraph = new StructuredGraph(method);
+            parseBytecodes(newGraph, context, canonicalizer);
+        } else {
+            newGraph = newGraph.copy();
+        }
 
         // TODO (chaeubl): copying the graph is only necessary if it is modified or if it contains
         // any invokes
-        StructuredGraph intrinsicGraph = InliningUtil.getIntrinsicGraph(context.getReplacements(), method);
-        if (intrinsicGraph != null) {
-            newGraph = intrinsicGraph.copy();
-            parseBytecodes = false;
-        } else {
-            StructuredGraph cachedGraph = getCachedGraph(method, context);
-            if (cachedGraph != null) {
-                newGraph = cachedGraph.copy();
-                parseBytecodes = false;
-            } else {
-                newGraph = new StructuredGraph(method);
-                parseBytecodes = true;
-            }
-        }
 
         try (Debug.Scope s = Debug.scope("InlineGraph", newGraph)) {
-            if (parseBytecodes) {
-                parseBytecodes(newGraph, context, canonicalizer);
-            }
 
             boolean callerHasMoreInformationAboutArguments = false;
             NodeInputList<ValueNode> args = invoke.callTarget().arguments();
@@ -119,24 +122,29 @@ public class InlineableGraph implements Inlineable {
 
     /**
      * This method builds the IR nodes for <code>newGraph</code> and canonicalizes them. Provided
-     * profiling info is mature, the resulting graph is cached.
+     * profiling info is mature, a copy of the resulting graph is cached. Thus, any modifications
+     * performed on the returned graph won't affect the cached copy.</p>
      */
     private static StructuredGraph parseBytecodes(StructuredGraph newGraph, HighTierContext context, CanonicalizerPhase canonicalizer) {
-        if (context.getGraphBuilderSuite() != null) {
-            context.getGraphBuilderSuite().apply(newGraph, context);
-        }
-        assert newGraph.start().next() != null : "graph needs to be populated by the GraphBuilderSuite";
+        try (Debug.Scope s = Debug.scope("InlineGraph", newGraph)) {
+            if (context.getGraphBuilderSuite() != null) {
+                context.getGraphBuilderSuite().apply(newGraph, context);
+            }
+            assert newGraph.start().next() != null : "graph needs to be populated by the GraphBuilderSuite";
 
-        new DeadCodeEliminationPhase().apply(newGraph);
+            new DeadCodeEliminationPhase().apply(newGraph);
 
-        if (OptCanonicalizer.getValue()) {
-            canonicalizer.apply(newGraph, context);
-        }
+            if (OptCanonicalizer.getValue()) {
+                canonicalizer.apply(newGraph, context);
+            }
 
-        if (context.getGraphCache() != null) {
-            context.getGraphCache().put(newGraph.method(), newGraph.copy());
+            if (context.getGraphCache() != null) {
+                context.getGraphCache().put(newGraph.method(), newGraph.copy());
+            }
+            return newGraph;
+        } catch (Throwable e) {
+            throw Debug.handle(e);
         }
-        return newGraph;
     }
 
     @Override
