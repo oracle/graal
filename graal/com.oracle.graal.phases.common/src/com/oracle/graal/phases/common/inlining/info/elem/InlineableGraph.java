@@ -65,9 +65,8 @@ public class InlineableGraph implements Inlineable {
         if (newGraph == null) {
             newGraph = new StructuredGraph(method);
             parseBytecodes(newGraph, context, canonicalizer);
-        } else {
-            newGraph = newGraph.copy();
         }
+        newGraph = newGraph.copy();
 
         // TODO (chaeubl): copying the graph is only necessary if it is modified or if it contains
         // any invokes
@@ -122,8 +121,8 @@ public class InlineableGraph implements Inlineable {
 
     /**
      * This method builds the IR nodes for <code>newGraph</code> and canonicalizes them. Provided
-     * profiling info is mature, a copy of the resulting graph is cached. Thus, any modifications
-     * performed on the returned graph won't affect the cached copy.</p>
+     * profiling info is mature, the resulting graph is cached. The caller is responsible for
+     * cloning before modification.</p>
      */
     private static StructuredGraph parseBytecodes(StructuredGraph newGraph, HighTierContext context, CanonicalizerPhase canonicalizer) {
         try (Debug.Scope s = Debug.scope("InlineGraph", newGraph)) {
@@ -139,7 +138,7 @@ public class InlineableGraph implements Inlineable {
             }
 
             if (context.getGraphCache() != null) {
-                context.getGraphCache().put(newGraph.method(), newGraph.copy());
+                context.getGraphCache().put(newGraph.method(), newGraph);
             }
             return newGraph;
         } catch (Throwable e) {
