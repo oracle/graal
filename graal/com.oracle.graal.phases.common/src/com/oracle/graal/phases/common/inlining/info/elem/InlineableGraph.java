@@ -122,7 +122,15 @@ public class InlineableGraph implements Inlineable {
     private static ArrayList<Node> replaceParamsWithMoreInformativeArguments(final Invoke invoke, final StructuredGraph newGraph, final HighTierContext context) {
         NodeInputList<ValueNode> args = invoke.callTarget().arguments();
         ArrayList<Node> parameterUsages = null;
-        for (ParameterNode param : newGraph.getNodes(ParameterNode.class).snapshot()) {
+        List<ParameterNode> params = newGraph.getNodes(ParameterNode.class).snapshot();
+        assert params.size() <= args.size();
+        /*
+         * param-nodes that see no use (eg, after canonicalization) don't occur in `params`. That's
+         * why the sizes of `params` and `args` don't always match exactly. It's always possible to
+         * pair a param-node with its corresponding arg-node using param.index() as index into the
+         * `args` list.
+         */
+        for (ParameterNode param : params) {
             if (param.usages().isNotEmpty()) {
                 ValueNode arg = args.get(param.index());
                 if (arg.isConstant()) {
@@ -130,6 +138,7 @@ public class InlineableGraph implements Inlineable {
                     parameterUsages = trackParameterUsages(param, parameterUsages);
                     // collect param usages before replacing the param
                     newGraph.replaceFloating(param, ConstantNode.forConstant(constant, context.getMetaAccess(), newGraph));
+                    // param-node gone, leaving a gap in the sequence given by param.index()
                 } else {
                     Stamp joinedStamp = param.stamp().join(arg.stamp());
                     if (joinedStamp != null && !joinedStamp.equals(param.stamp())) {
@@ -141,6 +150,7 @@ public class InlineableGraph implements Inlineable {
                 }
             }
         }
+        assert (parameterUsages == null) || (!parameterUsages.isEmpty());
         return parameterUsages;
     }
 
