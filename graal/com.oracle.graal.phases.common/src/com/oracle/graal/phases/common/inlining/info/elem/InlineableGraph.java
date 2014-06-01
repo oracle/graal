@@ -73,12 +73,10 @@ public class InlineableGraph implements Inlineable {
 
         try (Debug.Scope s = Debug.scope("InlineGraph", newGraph)) {
 
-            if (existProfitableParamArgReplacements(invoke, newGraph)) {
-                ArrayList<Node> parameterUsages = replaceParamsWithMoreInformativeArguments(invoke, newGraph, context);
+            ArrayList<Node> parameterUsages = replaceParamsWithMoreInformativeArguments(invoke, newGraph, context);
+            if (parameterUsages != null && OptCanonicalizer.getValue()) {
                 assert !parameterUsages.isEmpty() : "The caller didn't have more information about arguments after all";
-                if (OptCanonicalizer.getValue()) {
-                    canonicalizer.applyIncremental(newGraph, context, parameterUsages);
-                }
+                canonicalizer.applyIncremental(newGraph, context, parameterUsages);
             } else {
                 // TODO (chaeubl): if args are not more concrete, inlining should be avoided
                 // in most cases or we could at least use the previous graph size + invoke
@@ -89,19 +87,6 @@ public class InlineableGraph implements Inlineable {
         } catch (Throwable e) {
             throw Debug.handle(e);
         }
-    }
-
-    private static boolean existProfitableParamArgReplacements(final Invoke invoke, final StructuredGraph newGraph) {
-        NodeInputList<ValueNode> args = invoke.callTarget().arguments();
-        for (ParameterNode param : newGraph.getNodes(ParameterNode.class)) {
-            if (param.usages().isNotEmpty()) {
-                ValueNode arg = args.get(param.index());
-                if (isArgMoreInformativeThanParam(arg, param)) {
-                    return true;
-                }
-            }
-        }
-        return false;
     }
 
     private static boolean isArgMoreInformativeThanParam(ValueNode arg, ParameterNode param) {
@@ -117,25 +102,39 @@ public class InlineableGraph implements Inlineable {
     }
 
     /**
-     * This method must adopt the same definition of "more informative argument" as used in
-     * {@link #existProfitableParamArgReplacements(Invoke, StructuredGraph)}
+     * This method detects:
+     * <ul>
+     * <li>
+     * constants among the arguments to the <code>invoke</code></li>
+     * <li>
+     * arguments with more precise type than that declared by the corresponding parameter</li>
+     * </ul>
+     *
+     * <p>
+     * The corresponding parameters are updated to reflect the above information. Before doing so,
+     * their usages are added to <code>parameterUsages</code> for later incremental
+     * canonicalization.
+     * </p>
+     *
+     * @return null if no incremental canonicalization is need, a list of nodes for such
+     *         canonicalization otherwise.
      */
     private static ArrayList<Node> replaceParamsWithMoreInformativeArguments(final Invoke invoke, final StructuredGraph newGraph, final HighTierContext context) {
         NodeInputList<ValueNode> args = invoke.callTarget().arguments();
-        ArrayList<Node> parameterUsages = new ArrayList<>();
+        ArrayList<Node> parameterUsages = null;
         for (ParameterNode param : newGraph.getNodes(ParameterNode.class).snapshot()) {
             if (param.usages().isNotEmpty()) {
                 ValueNode arg = args.get(param.index());
                 if (arg.isConstant()) {
                     Constant constant = arg.asConstant();
-                    param.usages().snapshotTo(parameterUsages);
+                    parameterUsages = trackParameterUsages(param, parameterUsages);
                     // collect param usages before replacing the param
                     newGraph.replaceFloating(param, ConstantNode.forConstant(constant, context.getMetaAccess(), newGraph));
                 } else {
                     Stamp joinedStamp = param.stamp().join(arg.stamp());
                     if (joinedStamp != null && !joinedStamp.equals(param.stamp())) {
                         param.setStamp(joinedStamp);
-                        param.usages().snapshotTo(parameterUsages);
+                        parameterUsages = trackParameterUsages(param, parameterUsages);
                     } else {
                         assert !isArgMoreInformativeThanParam(arg, param);
                     }
@@ -143,6 +142,12 @@ public class InlineableGraph implements Inlineable {
             }
         }
         return parameterUsages;
+    }
+
+    private static ArrayList<Node> trackParameterUsages(ParameterNode param, ArrayList<Node> parameterUsages) {
+        ArrayList<Node> result = (parameterUsages == null) ? new ArrayList<>() : parameterUsages;
+        param.usages().snapshotTo(result);
+        return result;
     }
 
     private static StructuredGraph getCachedGraph(ResolvedJavaMethod method, HighTierContext context) {
