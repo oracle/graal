@@ -43,7 +43,7 @@ public class InlineableGraph implements Inlineable {
 
     public InlineableGraph(final ResolvedJavaMethod method, final Invoke invoke, final HighTierContext context, CanonicalizerPhase canonicalizer) {
         this.graph = buildGraph(method, context, canonicalizer);
-        specializeGraphToArguments(this.graph, invoke, context, canonicalizer);
+        specializeGraphToArguments(invoke, context, canonicalizer);
     }
 
     /**
@@ -75,13 +75,13 @@ public class InlineableGraph implements Inlineable {
      * @return true iff one or more parameters <code>newGraph</code> were specialized to account for
      *         a constant argument, or an argument with a more specific stamp.
      */
-    private static boolean specializeGraphToArguments(final StructuredGraph newGraph, final Invoke invoke, final HighTierContext context, CanonicalizerPhase canonicalizer) {
-        try (Debug.Scope s = Debug.scope("InlineGraph", newGraph)) {
+    private boolean specializeGraphToArguments(final Invoke invoke, final HighTierContext context, CanonicalizerPhase canonicalizer) {
+        try (Debug.Scope s = Debug.scope("InlineGraph", graph)) {
 
-            ArrayList<Node> parameterUsages = replaceParamsWithMoreInformativeArguments(invoke, newGraph, context);
+            ArrayList<Node> parameterUsages = replaceParamsWithMoreInformativeArguments(invoke, graph, context);
             if (parameterUsages != null && OptCanonicalizer.getValue()) {
                 assert !parameterUsages.isEmpty() : "The caller didn't have more information about arguments after all";
-                canonicalizer.applyIncremental(newGraph, context, parameterUsages);
+                canonicalizer.applyIncremental(graph, context, parameterUsages);
                 return true;
             } else {
                 // TODO (chaeubl): if args are not more concrete, inlining should be avoided
