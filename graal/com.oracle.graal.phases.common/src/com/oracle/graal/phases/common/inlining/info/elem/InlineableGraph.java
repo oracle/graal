@@ -42,7 +42,9 @@ public class InlineableGraph implements Inlineable {
     private final StructuredGraph graph;
 
     public InlineableGraph(final ResolvedJavaMethod method, final Invoke invoke, final HighTierContext context, CanonicalizerPhase canonicalizer) {
-        this.graph = buildGraph(method, context, canonicalizer);
+        StructuredGraph original = buildGraph(method, context, canonicalizer);
+        // TODO copying the graph is only necessary if it is modified or if it contains any invokes
+        this.graph = original.copy();
         specializeGraphToArguments(invoke, context, canonicalizer);
     }
 
@@ -61,14 +63,17 @@ public class InlineableGraph implements Inlineable {
         return null;
     }
 
+    /**
+     * This method looks up in a cache the graph for the argument, if not found bytecode is parsed.
+     * The graph thus obtained is returned, ie the caller is responsible for cloning before
+     * modification.
+     */
     private static StructuredGraph buildGraph(final ResolvedJavaMethod method, final HighTierContext context, CanonicalizerPhase canonicalizer) {
-        StructuredGraph newGraph = getOriginalGraph(method, context);
-        if (newGraph == null) {
-            newGraph = parseBytecodes(method, context, canonicalizer);
+        StructuredGraph result = getOriginalGraph(method, context);
+        if (result == null) {
+            result = parseBytecodes(method, context, canonicalizer);
         }
-        // TODO (chaeubl): copying the graph is only necessary if it is modified or if it contains
-        // any invokes
-        return newGraph.copy();
+        return result;
     }
 
     /**
