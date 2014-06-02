@@ -70,19 +70,30 @@ public class InlineableGraph implements Inlineable {
         // TODO (chaeubl): copying the graph is only necessary if it is modified or if it contains
         // any invokes
 
+        specializeGraphToArguments(newGraph, invoke, context, canonicalizer);
+
+        return newGraph;
+    }
+
+    /**
+     * @return true iff one or more parameters <code>newGraph</code> were specialized to account for
+     *         a constant argument, or an argument with a more specific stamp.
+     */
+    private static boolean specializeGraphToArguments(final StructuredGraph newGraph, final Invoke invoke, final HighTierContext context, CanonicalizerPhase canonicalizer) {
         try (Debug.Scope s = Debug.scope("InlineGraph", newGraph)) {
 
             ArrayList<Node> parameterUsages = replaceParamsWithMoreInformativeArguments(invoke, newGraph, context);
             if (parameterUsages != null && OptCanonicalizer.getValue()) {
                 assert !parameterUsages.isEmpty() : "The caller didn't have more information about arguments after all";
                 canonicalizer.applyIncremental(newGraph, context, parameterUsages);
+                return true;
             } else {
                 // TODO (chaeubl): if args are not more concrete, inlining should be avoided
                 // in most cases or we could at least use the previous graph size + invoke
                 // probability to check the inlining
+                return false;
             }
 
-            return newGraph;
         } catch (Throwable e) {
             throw Debug.handle(e);
         }
