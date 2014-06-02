@@ -1216,9 +1216,9 @@ public abstract class SPARCAssembler extends Assembler {
         Fsubq(0x47, "fsubq"),
         Fmuls(0x49, "fmuls"),
         Fmuld(0x4A, "fmuld"),
-        Fdivs(0x4C, "fdivs"),
-        Fdivd(0x4D, "fdivd"),
-        Fdivq(0x4E, "fdivq"),
+        Fdivs(0x4D, "fdivs"),
+        Fdivd(0x4E, "fdivd"),
+        Fdivq(0x4F, "fdivq"),
 
         Fsqrts(0x29, "fsqrts"),
         Fsqrtd(0x2A, "fsqrtd"),
