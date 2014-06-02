@@ -72,7 +72,7 @@ public class InlineableGraph implements Inlineable {
     private boolean specializeGraphToArguments(final Invoke invoke, final HighTierContext context, CanonicalizerPhase canonicalizer) {
         try (Debug.Scope s = Debug.scope("InlineGraph", graph)) {
 
-            ArrayList<Node> parameterUsages = replaceParamsWithMoreInformativeArguments(invoke, graph, context);
+            ArrayList<Node> parameterUsages = replaceParamsWithMoreInformativeArguments(invoke, context);
             if (parameterUsages != null && OptCanonicalizer.getValue()) {
                 assert !parameterUsages.isEmpty() : "The caller didn't have more information about arguments after all";
                 canonicalizer.applyIncremental(graph, context, parameterUsages);
@@ -119,10 +119,10 @@ public class InlineableGraph implements Inlineable {
      * @return null if no incremental canonicalization is need, a list of nodes for such
      *         canonicalization otherwise.
      */
-    private static ArrayList<Node> replaceParamsWithMoreInformativeArguments(final Invoke invoke, final StructuredGraph newGraph, final HighTierContext context) {
+    private ArrayList<Node> replaceParamsWithMoreInformativeArguments(final Invoke invoke, final HighTierContext context) {
         NodeInputList<ValueNode> args = invoke.callTarget().arguments();
         ArrayList<Node> parameterUsages = null;
-        List<ParameterNode> params = newGraph.getNodes(ParameterNode.class).snapshot();
+        List<ParameterNode> params = graph.getNodes(ParameterNode.class).snapshot();
         assert params.size() <= args.size();
         /*
          * param-nodes that aren't used (eg, as a result of canonicalization) don't occur in
@@ -137,7 +137,7 @@ public class InlineableGraph implements Inlineable {
                     Constant constant = arg.asConstant();
                     parameterUsages = trackParameterUsages(param, parameterUsages);
                     // collect param usages before replacing the param
-                    newGraph.replaceFloating(param, ConstantNode.forConstant(constant, context.getMetaAccess(), newGraph));
+                    graph.replaceFloating(param, ConstantNode.forConstant(constant, context.getMetaAccess(), graph));
                     // param-node gone, leaving a gap in the sequence given by param.index()
                 } else {
                     Stamp joinedStamp = param.stamp().join(arg.stamp());
