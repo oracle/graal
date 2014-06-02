@@ -124,10 +124,10 @@ public class InlineableGraph implements Inlineable {
         List<ParameterNode> params = newGraph.getNodes(ParameterNode.class).snapshot();
         assert params.size() <= args.size();
         /*
-         * param-nodes that see no use (eg, after canonicalization) don't occur in `params`. That's
-         * why the sizes of `params` and `args` don't always match exactly. It's always possible to
-         * pair a param-node with its corresponding arg-node using param.index() as index into the
-         * `args` list.
+         * param-nodes that aren't used (eg, as a result of canonicalization) don't occur in
+         * `params`. Thus, in general, the sizes of `params` and `args` don't always match. Still,
+         * it's always possible to pair a param-node with its corresponding arg-node using
+         * param.index() as index into `args`.
          */
         for (ParameterNode param : params) {
             if (param.usages().isNotEmpty()) {
