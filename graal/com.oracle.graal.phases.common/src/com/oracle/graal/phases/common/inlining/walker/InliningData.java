@@ -380,6 +380,7 @@ public class InliningData {
      */
     private boolean tryToInline(CallsiteHolder callerCallsiteHolder, MethodInvocation calleeInvocation, MethodInvocation parentInvocation, int inliningDepth) {
         InlineInfo calleeInfo = calleeInvocation.callee();
+        assert iterContains(callerCallsiteHolder.graph().getInvokes(), calleeInfo.invoke());
         Assumptions callerAssumptions = parentInvocation.assumptions();
         metricInliningConsidered.increment();
 
@@ -392,6 +393,15 @@ public class InliningData {
             calleeInfo.tryToDevirtualizeInvoke(context.getMetaAccess(), callerAssumptions);
         }
 
+        return false;
+    }
+
+    private static <T> boolean iterContains(Iterable<T> in, T elem) {
+        for (T i : in) {
+            if (i == elem) {
+                return true;
+            }
+        }
         return false;
     }
 
@@ -585,6 +595,10 @@ public class InliningData {
         assert currentInvocation.callee().invoke().asNode().isAlive();
         currentInvocation.incrementProcessedGraphs();
         if (currentInvocation.processedGraphs() == currentInvocation.totalGraphs()) {
+            /*
+             * "all of currentInvocation's graphs processed" amounts to
+             * "all concrete methods that come into question already had the callees they contain analyzed for inlining"
+             */
             popInvocation();
             final MethodInvocation parentInvoke = currentInvocation();
             try (Debug.Scope s = Debug.scope("Inlining", inliningContext())) {
@@ -595,5 +609,49 @@ public class InliningData {
         }
 
         return false;
+    }
+
+    /**
+     * This method checks an invariant that {@link #moveForward()} must maintain: "the top
+     * invocation records how many concrete target methods (for it) remain on the
+     * {@link #graphQueue}; those targets 'belong' to the current invocation in question."
+     */
+    private boolean topGraphsForTopInvocation() {
+        if (invocationQueue.isEmpty()) {
+            assert graphQueue.isEmpty();
+            return true;
+        }
+        if (currentInvocation().isRoot()) {
+            if (!graphQueue.isEmpty()) {
+                assert graphQueue.size() == 1;
+            }
+            return true;
+        }
+        final int remainingGraphs = currentInvocation().totalGraphs() - currentInvocation().processedGraphs();
+        final Iterator<CallsiteHolder> iter = graphQueue.iterator();
+        for (int i = (remainingGraphs - 1); i >= 0; i--) {
+            if (!iter.hasNext()) {
+                assert false;
+                return false;
+            }
+            CallsiteHolder queuedTargetCH = iter.next();
+            Inlineable targetIE = currentInvocation().callee().inlineableElementAt(i);
+            if (targetIE instanceof InlineableMacroNode) {
+                assert queuedTargetCH == DUMMY_CALLSITE_HOLDER;
+            } else {
+                InlineableGraph targetIG = (InlineableGraph) targetIE;
+                assert queuedTargetCH.method().equals(targetIG.getGraph().method());
+            }
+        }
+        return true;
+    }
+
+    /**
+     * This method checks invariants for this class. Named after shorthand for
+     * "internal representation is ok".
+     */
+    public boolean repOK() {
+        assert topGraphsForTopInvocation();
+        return true;
     }
 }

@@ -45,56 +45,38 @@ public class InlineableGraph implements Inlineable {
         this.graph = buildGraph(method, invoke, context, canonicalizer);
     }
 
+    /**
+     * @return a (possibly cached) graph. The caller is responsible for cloning before modification.
+     */
+    private static StructuredGraph getOriginalGraph(final ResolvedJavaMethod method, final HighTierContext context) {
+        StructuredGraph intrinsicGraph = InliningUtil.getIntrinsicGraph(context.getReplacements(), method);
+        if (intrinsicGraph != null) {
+            return intrinsicGraph;
+        }
+        StructuredGraph cachedGraph = getCachedGraph(method, context);
+        if (cachedGraph != null) {
+            return cachedGraph;
+        }
+        return null;
+    }
+
     private static StructuredGraph buildGraph(final ResolvedJavaMethod method, final Invoke invoke, final HighTierContext context, CanonicalizerPhase canonicalizer) {
-        final StructuredGraph newGraph;
-        final boolean parseBytecodes;
+        StructuredGraph newGraph = getOriginalGraph(method, context);
+        if (newGraph == null) {
+            newGraph = new StructuredGraph(method);
+            parseBytecodes(newGraph, context, canonicalizer);
+        }
+        newGraph = newGraph.copy();
 
         // TODO (chaeubl): copying the graph is only necessary if it is modified or if it contains
         // any invokes
-        StructuredGraph intrinsicGraph = InliningUtil.getIntrinsicGraph(context.getReplacements(), method);
-        if (intrinsicGraph != null) {
-            newGraph = intrinsicGraph.copy();
-            parseBytecodes = false;
-        } else {
-            StructuredGraph cachedGraph = getCachedGraph(method, context);
-            if (cachedGraph != null) {
-                newGraph = cachedGraph.copy();
-                parseBytecodes = false;
-            } else {
-                newGraph = new StructuredGraph(method);
-                parseBytecodes = true;
-            }
-        }
 
         try (Debug.Scope s = Debug.scope("InlineGraph", newGraph)) {
-            if (parseBytecodes) {
-                parseBytecodes(newGraph, context, canonicalizer);
-            }
 
-            boolean callerHasMoreInformationAboutArguments = false;
-            NodeInputList<ValueNode> args = invoke.callTarget().arguments();
-            ArrayList<Node> parameterUsages = new ArrayList<>();
-            for (ParameterNode param : newGraph.getNodes(ParameterNode.class).snapshot()) {
-                ValueNode arg = args.get(param.index());
-                if (arg.isConstant()) {
-                    Constant constant = arg.asConstant();
-                    newGraph.replaceFloating(param, ConstantNode.forConstant(constant, context.getMetaAccess(), newGraph));
-                    callerHasMoreInformationAboutArguments = true;
-                    param.usages().snapshotTo(parameterUsages);
-                } else {
-                    Stamp joinedStamp = param.stamp().join(arg.stamp());
-                    if (joinedStamp != null && !joinedStamp.equals(param.stamp())) {
-                        param.setStamp(joinedStamp);
-                        callerHasMoreInformationAboutArguments = true;
-                        param.usages().snapshotTo(parameterUsages);
-                    }
-                }
-            }
-
-            if (callerHasMoreInformationAboutArguments) {
-                if (OptCanonicalizer.getValue()) {
-                    canonicalizer.applyIncremental(newGraph, context, parameterUsages);
-                }
+            ArrayList<Node> parameterUsages = replaceParamsWithMoreInformativeArguments(invoke, newGraph, context);
+            if (parameterUsages != null && OptCanonicalizer.getValue()) {
+                assert !parameterUsages.isEmpty() : "The caller didn't have more information about arguments after all";
+                canonicalizer.applyIncremental(newGraph, context, parameterUsages);
             } else {
                 // TODO (chaeubl): if args are not more concrete, inlining should be avoided
                 // in most cases or we could at least use the previous graph size + invoke
@@ -105,6 +87,67 @@ public class InlineableGraph implements Inlineable {
         } catch (Throwable e) {
             throw Debug.handle(e);
         }
+    }
+
+    private static boolean isArgMoreInformativeThanParam(ValueNode arg, ParameterNode param) {
+        if (arg.isConstant()) {
+            return true;
+        } else {
+            Stamp joinedStamp = param.stamp().join(arg.stamp());
+            if (joinedStamp != null && !joinedStamp.equals(param.stamp())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * This method detects:
+     * <ul>
+     * <li>
+     * constants among the arguments to the <code>invoke</code></li>
+     * <li>
+     * arguments with more precise type than that declared by the corresponding parameter</li>
+     * </ul>
+     *
+     * <p>
+     * The corresponding parameters are updated to reflect the above information. Before doing so,
+     * their usages are added to <code>parameterUsages</code> for later incremental
+     * canonicalization.
+     * </p>
+     *
+     * @return null if no incremental canonicalization is need, a list of nodes for such
+     *         canonicalization otherwise.
+     */
+    private static ArrayList<Node> replaceParamsWithMoreInformativeArguments(final Invoke invoke, final StructuredGraph newGraph, final HighTierContext context) {
+        NodeInputList<ValueNode> args = invoke.callTarget().arguments();
+        ArrayList<Node> parameterUsages = null;
+        for (ParameterNode param : newGraph.getNodes(ParameterNode.class).snapshot()) {
+            if (param.usages().isNotEmpty()) {
+                ValueNode arg = args.get(param.index());
+                if (arg.isConstant()) {
+                    Constant constant = arg.asConstant();
+                    parameterUsages = trackParameterUsages(param, parameterUsages);
+                    // collect param usages before replacing the param
+                    newGraph.replaceFloating(param, ConstantNode.forConstant(constant, context.getMetaAccess(), newGraph));
+                } else {
+                    Stamp joinedStamp = param.stamp().join(arg.stamp());
+                    if (joinedStamp != null && !joinedStamp.equals(param.stamp())) {
+                        param.setStamp(joinedStamp);
+                        parameterUsages = trackParameterUsages(param, parameterUsages);
+                    } else {
+                        assert !isArgMoreInformativeThanParam(arg, param);
+                    }
+                }
+            }
+        }
+        return parameterUsages;
+    }
+
+    private static ArrayList<Node> trackParameterUsages(ParameterNode param, ArrayList<Node> parameterUsages) {
+        ArrayList<Node> result = (parameterUsages == null) ? new ArrayList<>() : parameterUsages;
+        param.usages().snapshotTo(result);
+        return result;
     }
 
     private static StructuredGraph getCachedGraph(ResolvedJavaMethod method, HighTierContext context) {
@@ -119,24 +162,29 @@ public class InlineableGraph implements Inlineable {
 
     /**
      * This method builds the IR nodes for <code>newGraph</code> and canonicalizes them. Provided
-     * profiling info is mature, the resulting graph is cached.
+     * profiling info is mature, the resulting graph is cached. The caller is responsible for
+     * cloning before modification.</p>
      */
     private static StructuredGraph parseBytecodes(StructuredGraph newGraph, HighTierContext context, CanonicalizerPhase canonicalizer) {
-        if (context.getGraphBuilderSuite() != null) {
-            context.getGraphBuilderSuite().apply(newGraph, context);
-        }
-        assert newGraph.start().next() != null : "graph needs to be populated the GraphBuilderSuite";
+        try (Debug.Scope s = Debug.scope("InlineGraph", newGraph)) {
+            if (context.getGraphBuilderSuite() != null) {
+                context.getGraphBuilderSuite().apply(newGraph, context);
+            }
+            assert newGraph.start().next() != null : "graph needs to be populated by the GraphBuilderSuite";
 
-        new DeadCodeEliminationPhase().apply(newGraph);
+            new DeadCodeEliminationPhase().apply(newGraph);
 
-        if (OptCanonicalizer.getValue()) {
-            canonicalizer.apply(newGraph, context);
-        }
+            if (OptCanonicalizer.getValue()) {
+                canonicalizer.apply(newGraph, context);
+            }
 
-        if (context.getGraphCache() != null) {
-            context.getGraphCache().put(newGraph.method(), newGraph.copy());
+            if (context.getGraphCache() != null) {
+                context.getGraphCache().put(newGraph.method(), newGraph);
+            }
+            return newGraph;
+        } catch (Throwable e) {
+            throw Debug.handle(e);
         }
-        return newGraph;
     }
 
     @Override
