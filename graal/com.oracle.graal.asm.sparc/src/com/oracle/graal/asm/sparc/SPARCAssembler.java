@@ -1181,6 +1181,7 @@ public abstract class SPARCAssembler extends Assembler {
         Fnsmuld(0x79, "fnsmuld"),
         Fnhadds(0x71, "fnhadds"),
         Fnhaddd(0x72, "fnhaddd"),
+        Movtos(0x119, "movtos"),
         // end VIS3
 
         // start CAMMELLIA
@@ -1228,7 +1229,8 @@ public abstract class SPARCAssembler extends Assembler {
         Fdmuldq(0x6E, "fdmulq"),
 
         Fstoi(0xD1, "fstoi"),
-        Fdtoi(0xD2, "fdtoi");
+        Fdtoi(0xD2, "fdtoi"),
+        Fitos(0xC4, "fitos");
         // @formatter:on
 
         private final int value;
@@ -1664,6 +1666,13 @@ public abstract class SPARCAssembler extends Assembler {
         public Bmask(Register src1, Register src2, Register dst) {
             /* VIS2 only */
             super(Ops.ArithOp, Op3s.Impdep1, Opfs.Bmask, src1, src2, dst);
+        }
+    }
+
+    public static class Movwtos extends Fmt3p {
+        public Movwtos(Register src, Register dst) {
+            /* VIS3 only */
+            super(Ops.ArithOp, Op3s.Impdep1, Opfs.Movtos, g0, src, dst);
         }
     }
 
@@ -2637,6 +2646,13 @@ public abstract class SPARCAssembler extends Assembler {
         }
     }
 
+    public static class Fitos extends Fmt3n {
+
+        public Fitos(SPARCAssembler masm, Register src2, Register dst) {
+            super(masm, Ops.ArithOp.getValue(), Op3s.Fpop1.getValue(), Opfs.Fitos.getValue(), src2.encoding(), dst.encoding());
+        }
+    }
+
     /**
      * Flush register windows
      */
@@ -2862,6 +2878,10 @@ public abstract class SPARCAssembler extends Assembler {
     public static class Ldf extends Fmt11 {
 
         public Ldf(SPARCAddress src, Register dst) {
+            super(Op3s.Ldf, src, dst);
+        }
+
+        public Ldf(Register src, Register dst) {
             super(Op3s.Ldf, src, dst);
         }
     }

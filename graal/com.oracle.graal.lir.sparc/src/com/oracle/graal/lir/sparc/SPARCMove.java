@@ -23,25 +23,23 @@
 package com.oracle.graal.lir.sparc;
 
 import static com.oracle.graal.api.code.ValueUtil.*;
-import static com.oracle.graal.asm.sparc.SPARCMacroAssembler.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 import static com.oracle.graal.sparc.SPARC.*;
 
+import com.oracle.graal.api.code.CompilationResult.RawData;
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.CompilationResult.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.sparc.*;
+import com.oracle.graal.asm.sparc.SPARCAssembler.*;
+import com.oracle.graal.asm.sparc.SPARCMacroAssembler.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.StandardOp.ImplicitNullCheck;
-import com.oracle.graal.lir.StandardOp.MoveOp;
-import com.oracle.graal.lir.StandardOp.NullCheck;
+import com.oracle.graal.lir.StandardOp.*;
 import com.oracle.graal.lir.asm.*;
-import com.oracle.graal.sparc.*;
 
 public class SPARCMove {
 
-    @Opcode("MOVE")
+    @Opcode("MOVE_TOREG")
     public static class MoveToRegOp extends SPARCLIRInstruction implements MoveOp {
 
         @Def({REG, HINT}) protected AllocatableValue result;
@@ -68,7 +66,7 @@ public class SPARCMove {
         }
     }
 
-    @Opcode("MOVE")
+    @Opcode("MOVE_FROMREG")
     public static class MoveFromRegOp extends SPARCLIRInstruction implements MoveOp {
 
         @Def({REG, STACK}) protected AllocatableValue result;
@@ -210,11 +208,6 @@ public class SPARCMove {
             final boolean forceRelocatable = true;
             Register dstReg = asRegister(result);
             new Setx(0, dstReg, forceRelocatable).emit(masm);
-            // TODO: Fix this issue with the pc relative addressing (This is just my first guess how
-            // to do this)
-            new SPARCAssembler.Sub(dstReg, 10 * 4, dstReg).emit(masm);
-            new SPARCAssembler.Rdpc(SPARC.g5).emit(masm);
-            new SPARCAssembler.Add(SPARC.g5, dstReg, dstReg).emit(masm);
         }
     }
 
@@ -488,7 +481,12 @@ public class SPARCMove {
                 }
                 break;
             case Float:
-                new Ldf((SPARCAddress) crb.asFloatConstRef(input), asFloatReg(result)).emit(masm);
+                crb.asFloatConstRef(input);
+                Register scratch = g5;
+                // First load the address into the scratch register
+                new Setx(0, scratch, true).emit(masm);
+                // Now load the float value
+                new Ldf(scratch, asFloatReg(result)).emit(masm);
                 break;
             case Object:
                 if (input.isNull()) {

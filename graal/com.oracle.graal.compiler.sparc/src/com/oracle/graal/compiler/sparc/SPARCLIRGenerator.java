@@ -850,7 +850,14 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
             assert inputVal.getKind() == Kind.Int;
             Variable result = newVariable(Kind.Int);
             int mask = (int) IntegerStamp.defaultMask(fromBits);
-            append(new BinaryRegConst(SPARCArithmetic.IAND, result, asAllocatable(inputVal), Constant.forInt(mask)));
+            Constant constant = Constant.forInt(mask);
+            if (canInlineConstant(constant)) {
+                append(new BinaryRegConst(SPARCArithmetic.IAND, result, asAllocatable(inputVal), constant));
+            } else {
+                Variable maskVar = newVariable(Kind.Int);
+                emitMove(maskVar, constant);
+                append(new BinaryRegReg(IAND, result, maskVar, (inputVal)));
+            }
             if (toBits > 32) {
                 Variable longResult = newVariable(Kind.Long);
                 emitMove(longResult, result);
