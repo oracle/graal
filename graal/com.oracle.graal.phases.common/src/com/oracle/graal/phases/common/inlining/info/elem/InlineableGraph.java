@@ -42,25 +42,10 @@ public class InlineableGraph implements Inlineable {
     private final StructuredGraph graph;
 
     public InlineableGraph(final ResolvedJavaMethod method, final Invoke invoke, final HighTierContext context, CanonicalizerPhase canonicalizer) {
-        StructuredGraph original = buildGraph(method, context, canonicalizer);
+        StructuredGraph original = getOriginalGraph(method, context, canonicalizer);
         // TODO copying the graph is only necessary if it is modified or if it contains any invokes
         this.graph = original.copy();
         specializeGraphToArguments(invoke, context, canonicalizer);
-    }
-
-    /**
-     * @return a (possibly cached) graph. The caller is responsible for cloning before modification.
-     */
-    private static StructuredGraph getOriginalGraph(final ResolvedJavaMethod method, final HighTierContext context) {
-        StructuredGraph intrinsicGraph = InliningUtil.getIntrinsicGraph(context.getReplacements(), method);
-        if (intrinsicGraph != null) {
-            return intrinsicGraph;
-        }
-        StructuredGraph cachedGraph = getCachedGraph(method, context);
-        if (cachedGraph != null) {
-            return cachedGraph;
-        }
-        return null;
     }
 
     /**
@@ -68,12 +53,16 @@ public class InlineableGraph implements Inlineable {
      * The graph thus obtained is returned, ie the caller is responsible for cloning before
      * modification.
      */
-    private static StructuredGraph buildGraph(final ResolvedJavaMethod method, final HighTierContext context, CanonicalizerPhase canonicalizer) {
-        StructuredGraph result = getOriginalGraph(method, context);
-        if (result == null) {
-            result = parseBytecodes(method, context, canonicalizer);
+    private static StructuredGraph getOriginalGraph(final ResolvedJavaMethod method, final HighTierContext context, CanonicalizerPhase canonicalizer) {
+        StructuredGraph result = InliningUtil.getIntrinsicGraph(context.getReplacements(), method);
+        if (result != null) {
+            return result;
         }
-        return result;
+        result = getCachedGraph(method, context);
+        if (result != null) {
+            return result;
+        }
+        return parseBytecodes(method, context, canonicalizer);
     }
 
     /**
