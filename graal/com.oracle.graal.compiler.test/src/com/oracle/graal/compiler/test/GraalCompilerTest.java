@@ -53,6 +53,7 @@ import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.virtual.*;
 import com.oracle.graal.phases.*;
+import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.common.inlining.*;
 import com.oracle.graal.phases.schedule.*;
 import com.oracle.graal.phases.tiers.*;
@@ -124,7 +125,9 @@ public abstract class GraalCompilerTest extends GraalTest {
 
     protected Suites createSuites() {
         Suites ret = backend.getSuites().createSuites();
-        ret.getHighTier().findPhase(InliningPhase.class).add(new Phase("ComputeLoopFrequenciesPhase") {
+        ListIterator<BasePhase<? super HighTierContext>> iter = ret.getHighTier().findPhase(InliningPhase.class);
+        PhaseSuite.findNextPhase(iter, CanonicalizerPhase.class);
+        iter.add(new Phase("ComputeLoopFrequenciesPhase") {
 
             @Override
             protected void run(StructuredGraph graph) {
