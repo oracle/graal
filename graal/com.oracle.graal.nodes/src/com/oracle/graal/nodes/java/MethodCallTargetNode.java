@@ -42,8 +42,6 @@ public class MethodCallTargetNode extends CallTargetNode implements IterableNode
     private ResolvedJavaMethod targetMethod;
     private InvokeKind invokeKind;
 
-    private transient Stamp lastCanonicalizedReceiverStamp;
-
     /**
      * @param arguments
      */
@@ -140,17 +138,12 @@ public class MethodCallTargetNode extends CallTargetNode implements IterableNode
             }
 
             // check if the type of the receiver can narrow the result
-            Stamp receiverStamp = receiver().stamp();
-            if (receiverStamp.equals(lastCanonicalizedReceiverStamp)) {
-                return this;
-            }
-            lastCanonicalizedReceiverStamp = receiverStamp;
-
-            ResolvedJavaType type = StampTool.typeOrNull(receiverStamp);
+            ValueNode receiver = receiver();
+            ResolvedJavaType type = StampTool.typeOrNull(receiver);
             if (type != null && (invoke().stateAfter() != null || invoke().stateDuring() != null)) {
                 // either the holder class is exact, or the receiver object has an exact type
                 ResolvedJavaMethod resolvedMethod = type.resolveMethod(targetMethod, invoke().getContextType());
-                if (resolvedMethod != null && (resolvedMethod.canBeStaticallyBound() || StampTool.isExactType(receiverStamp))) {
+                if (resolvedMethod != null && (resolvedMethod.canBeStaticallyBound() || StampTool.isExactType(receiver))) {
                     invokeKind = InvokeKind.Special;
                     targetMethod = resolvedMethod;
                     return this;
