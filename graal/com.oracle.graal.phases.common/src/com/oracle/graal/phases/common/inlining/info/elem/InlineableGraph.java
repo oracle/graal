@@ -42,7 +42,8 @@ public class InlineableGraph implements Inlineable {
     private final StructuredGraph graph;
 
     public InlineableGraph(final ResolvedJavaMethod method, final Invoke invoke, final HighTierContext context, CanonicalizerPhase canonicalizer) {
-        this.graph = buildGraph(method, invoke, context, canonicalizer);
+        this.graph = buildGraph(method, context, canonicalizer);
+        specializeGraphToArguments(this.graph, invoke, context, canonicalizer);
     }
 
     /**
@@ -60,19 +61,14 @@ public class InlineableGraph implements Inlineable {
         return null;
     }
 
-    private static StructuredGraph buildGraph(final ResolvedJavaMethod method, final Invoke invoke, final HighTierContext context, CanonicalizerPhase canonicalizer) {
+    private static StructuredGraph buildGraph(final ResolvedJavaMethod method, final HighTierContext context, CanonicalizerPhase canonicalizer) {
         StructuredGraph newGraph = getOriginalGraph(method, context);
         if (newGraph == null) {
             newGraph = parseBytecodes(method, context, canonicalizer);
         }
-        newGraph = newGraph.copy();
-
         // TODO (chaeubl): copying the graph is only necessary if it is modified or if it contains
         // any invokes
-
-        specializeGraphToArguments(newGraph, invoke, context, canonicalizer);
-
-        return newGraph;
+        return newGraph.copy();
     }
 
     /**
