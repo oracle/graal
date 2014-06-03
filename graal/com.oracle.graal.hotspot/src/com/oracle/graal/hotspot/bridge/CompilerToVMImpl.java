@@ -23,6 +23,8 @@
 
 package com.oracle.graal.hotspot.bridge;
 
+import static com.oracle.graal.hotspot.InitTimer.*;
+
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
@@ -31,6 +33,17 @@ import com.oracle.graal.hotspot.meta.*;
  * Entries into the HotSpot VM from Java code.
  */
 public class CompilerToVMImpl implements CompilerToVM {
+
+    /**
+     * Initializes the native part of the Graal runtime.
+     */
+    private static native void init();
+
+    static {
+        try (InitTimer t = timer("CompilerToVMImpl.init")) {
+            init();
+        }
+    }
 
     private native int installCode0(HotSpotCompiledCode compiledCode, InstalledCode code, SpeculationLog speculationLog);
 
@@ -156,8 +169,6 @@ public class CompilerToVMImpl implements CompilerToVM {
 
     public synchronized native void notifyCompilationStatistics(int id, HotSpotResolvedJavaMethod method, boolean osr, int processedBytecodes, long time, long timeUnitsPerSecond,
                     InstalledCode installedCode);
-
-    public synchronized native void printCompilationStatistics(boolean perCompiler, boolean aggregate);
 
     public native void resetCompilationStatistics();
 

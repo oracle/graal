@@ -27,9 +27,10 @@ import java.lang.reflect.*;
 import java.util.*;
 
 import com.oracle.graal.debug.*;
+import com.oracle.graal.hotspot.bridge.*;
 
 /**
- * Scoped logging class used to display the call hierarchy of VMToCompiler/CompilerToVM calls.
+ * Scoped logging class used to display the call hierarchy of {@link CompilerToVM} calls.
  */
 public class Logger {
 

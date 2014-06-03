@@ -23,8 +23,8 @@
 package com.oracle.graal.hotspot;
 
 import static com.oracle.graal.compiler.GraalDebugConfig.*;
+import static com.oracle.graal.hotspot.CompilationQueue.Options.*;
 import static com.oracle.graal.hotspot.HotSpotOptionsLoader.*;
-import static com.oracle.graal.hotspot.bridge.VMToCompilerImpl.*;
 import static java.lang.Double.*;
 
 import java.lang.reflect.*;
@@ -37,8 +37,8 @@ import com.oracle.graal.options.*;
 import com.oracle.graal.phases.common.inlining.*;
 
 /**
- * Called from {@code graalCompiler.cpp} to set Graal options from the HotSpot command line. Such
- * options are (currently) distinguished by a {@code "-G:"} prefix.
+ * Sets Graal options from the HotSpot command line. Such options are distinguished by a
+ * {@code "-G:"} prefix.
  */
 public class HotSpotOptions {
 
@@ -52,6 +52,9 @@ public class HotSpotOptions {
     static {
         boolean timeCompilations = parseVMOptions();
         if (timeCompilations || PrintCompRate.getValue() != 0) {
+            if (timeCompilations && PrintCompRate.getValue() != 0) {
+                throw new GraalInternalError("PrintCompRate is incompatible with CITime and CITimeEach");
+            }
             unconditionallyEnableTimerOrMetric(InliningUtil.class, "InlinedBytecodes");
             unconditionallyEnableTimerOrMetric(CompilationTask.class, "CompilationTime");
         }

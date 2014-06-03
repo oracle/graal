@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.hotspot.amd64;
 
-import static com.oracle.graal.hotspot.HotSpotGraalRuntime.InitTimer.*;
+import static com.oracle.graal.hotspot.InitTimer.*;
 
 import java.util.*;
 
@@ -32,7 +32,6 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.util.*;
