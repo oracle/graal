@@ -58,7 +58,7 @@ import static com.oracle.graal.compiler.common.GraalOptions.*;
  */
 public class InliningData {
 
-    private static final CallsiteHolder DUMMY_CALLSITE_HOLDER = new CallsiteHolder(null, 1.0, 1.0);
+    private static final CallsiteHolder DUMMY_CALLSITE_HOLDER = new CallsiteHolderDummy();
     // Metrics
     private static final DebugMetric metricInliningPerformed = Debug.metric("InliningPerformed");
     private static final DebugMetric metricInliningRuns = Debug.metric("InliningRuns");
@@ -88,7 +88,7 @@ public class InliningData {
 
         Assumptions rootAssumptions = context.getAssumptions();
         invocationQueue.push(new MethodInvocation(null, rootAssumptions, 1.0, 1.0));
-        pushGraph(rootGraph, 1.0, 1.0);
+        pushExplorableGraph(rootGraph, 1.0, 1.0);
     }
 
     private String checkTargetConditionsHelper(ResolvedJavaMethod method) {
@@ -336,7 +336,7 @@ public class InliningData {
         return new ExactInlineInfo(invoke, targetMethod);
     }
 
-    private void doInline(CallsiteHolder callerCallsiteHolder, MethodInvocation calleeInvocation, Assumptions callerAssumptions) {
+    private void doInline(CallsiteHolderExplorable callerCallsiteHolder, MethodInvocation calleeInvocation, Assumptions callerAssumptions) {
         StructuredGraph callerGraph = callerCallsiteHolder.graph();
         InlineInfo calleeInfo = calleeInvocation.callee();
         try {
@@ -378,7 +378,7 @@ public class InliningData {
     /**
      * @return true iff inlining was actually performed
      */
-    private boolean tryToInline(CallsiteHolder callerCallsiteHolder, MethodInvocation calleeInvocation, MethodInvocation parentInvocation, int inliningDepth) {
+    private boolean tryToInline(CallsiteHolderExplorable callerCallsiteHolder, MethodInvocation calleeInvocation, MethodInvocation parentInvocation, int inliningDepth) {
         InlineInfo calleeInfo = calleeInvocation.callee();
         assert callerCallsiteHolder.containsInvoke(calleeInfo.invoke());
         Assumptions callerAssumptions = parentInvocation.assumptions();
@@ -400,7 +400,7 @@ public class InliningData {
      * Process the next invoke and enqueue all its graphs for processing.
      */
     private void processNextInvoke() {
-        CallsiteHolder callsiteHolder = currentGraph();
+        CallsiteHolderExplorable callsiteHolder = (CallsiteHolderExplorable) currentGraph();
         Invoke invoke = callsiteHolder.popInvoke();
         MethodInvocation callerInvocation = currentInvocation();
         Assumptions parentAssumptions = callerInvocation.assumptions();
@@ -431,10 +431,10 @@ public class InliningData {
         return graphQueue.size();
     }
 
-    private void pushGraph(StructuredGraph graph, double probability, double relevance) {
+    private void pushExplorableGraph(StructuredGraph graph, double probability, double relevance) {
         assert graph != null;
         assert !contains(graph);
-        graphQueue.push(new CallsiteHolder(graph, probability, relevance));
+        graphQueue.push(new CallsiteHolderExplorable(graph, probability, relevance));
         assert graphQueue.size() <= maxGraphs;
     }
 
@@ -494,7 +494,7 @@ public class InliningData {
         for (int i = 0; i < info.numberOfMethods(); i++) {
             Inlineable elem = info.inlineableElementAt(i);
             if (elem instanceof InlineableGraph) {
-                pushGraph(((InlineableGraph) elem).getGraph(), invokeProbability * info.probabilityAt(i), invokeRelevance * info.relevanceAt(i));
+                pushExplorableGraph(((InlineableGraph) elem).getGraph(), invokeProbability * info.probabilityAt(i), invokeRelevance * info.relevanceAt(i));
             } else {
                 assert elem instanceof InlineableMacroNode;
                 pushDummyGraph();
@@ -593,7 +593,7 @@ public class InliningData {
             popInvocation();
             final MethodInvocation parentInvoke = currentInvocation();
             try (Debug.Scope s = Debug.scope("Inlining", inliningContext())) {
-                return tryToInline(currentGraph(), currentInvocation, parentInvoke, inliningDepth() + 1);
+                return tryToInline((CallsiteHolderExplorable) currentGraph(), currentInvocation, parentInvoke, inliningDepth() + 1);
             } catch (Throwable e) {
                 throw Debug.handle(e);
             }

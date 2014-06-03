@@ -25,28 +25,34 @@ package com.oracle.graal.phases.common.inlining.walker;
 import com.oracle.graal.api.meta.ResolvedJavaMethod;
 import com.oracle.graal.nodes.StructuredGraph;
 
+import com.oracle.graal.phases.common.inlining.info.elem.InlineableMacroNode;
+
 /**
- * Information about a graph that will potentially be inlined. This includes tracking the
- * invocations in graph that will subject to inlining themselves.
+ * A {@link CallsiteHolder} that stands for an {@link InlineableMacroNode} in the stack realized by
+ * {@link InliningData}.
  */
-public abstract class CallsiteHolder {
+public final class CallsiteHolderDummy extends CallsiteHolder {
 
-    /**
-     * Gets the method associated with the {@linkplain #graph() graph} represented by this object.
-     */
-    public abstract ResolvedJavaMethod method();
+    public CallsiteHolderDummy() {
+    }
 
-    /**
-     * The stack realized by {@link InliningData} grows upon {@link InliningData#moveForward()}
-     * deciding to explore (depth-first) a callsite of the graph associated to this
-     * {@link CallsiteHolder}. The list of not-yet-considered callsites is managed by
-     * {@link CallsiteHolderExplorable}, and this method reports whether any such candidates remain.
-     */
-    public abstract boolean hasRemainingInvokes();
+    @Override
+    public ResolvedJavaMethod method() {
+        return null;
+    }
 
-    /**
-     * The graph about which this object contains inlining information.
-     */
-    public abstract StructuredGraph graph();
+    @Override
+    public boolean hasRemainingInvokes() {
+        return false;
+    }
 
+    @Override
+    public StructuredGraph graph() {
+        return null;
+    }
+
+    @Override
+    public String toString() {
+        return "<macro-node>";
+    }
 }
