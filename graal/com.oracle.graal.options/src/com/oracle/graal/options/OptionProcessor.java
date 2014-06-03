@@ -326,4 +326,3 @@ public class OptionProcessor extends AbstractProcessor {
         return true;
     }
 }
-
