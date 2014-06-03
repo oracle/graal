@@ -107,6 +107,15 @@ public class CallsiteHolder {
         remainingInvokes.push(invoke);
     }
 
+    public boolean containsInvoke(Invoke invoke) {
+        for (Invoke i : graph().getInvokes()) {
+            if (i == invoke) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public void computeProbabilities() {
         computeInliningRelevance.compute();
     }

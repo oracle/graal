@@ -380,7 +380,7 @@ public class InliningData {
      */
     private boolean tryToInline(CallsiteHolder callerCallsiteHolder, MethodInvocation calleeInvocation, MethodInvocation parentInvocation, int inliningDepth) {
         InlineInfo calleeInfo = calleeInvocation.callee();
-        assert iterContains(callerCallsiteHolder.graph().getInvokes(), calleeInfo.invoke());
+        assert callerCallsiteHolder.containsInvoke(calleeInfo.invoke());
         Assumptions callerAssumptions = parentInvocation.assumptions();
         metricInliningConsidered.increment();
 
@@ -393,15 +393,6 @@ public class InliningData {
             calleeInfo.tryToDevirtualizeInvoke(context.getMetaAccess(), callerAssumptions);
         }
 
-        return false;
-    }
-
-    private static <T> boolean iterContains(Iterable<T> in, T elem) {
-        for (T i : in) {
-            if (i == elem) {
-                return true;
-            }
-        }
         return false;
     }
 
