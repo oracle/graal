@@ -119,7 +119,7 @@ public class CompilationQueue {
     private CompilationQueue() {
         CompilerThreadFactory factory = new CompilerThreadFactory("GraalCompilerThread", new DebugConfigAccess() {
             public GraalDebugConfig getDebugConfig() {
-                return Debug.isEnabled() ? DebugEnvironment.initialize(HotSpotGraalRuntime.Options.LogFile.log()) : null;
+                return Debug.isEnabled() ? DebugEnvironment.initialize(HotSpotGraalRuntime.Options.LogFile.getStream()) : null;
             }
         });
 
