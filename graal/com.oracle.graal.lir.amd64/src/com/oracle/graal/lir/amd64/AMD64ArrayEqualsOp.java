@@ -59,8 +59,8 @@ public class AMD64ArrayEqualsOp extends AMD64LIRInstruction {
     @Temp({REG}) protected Value temp2;
     @Temp({REG}) protected Value temp3;
     @Temp({REG}) protected Value temp4;
-    @Temp({REG}) protected Value vectorTemp1;
-    @Temp({REG}) protected Value vectorTemp2;
+    @Temp({REG, ILLEGAL}) protected Value vectorTemp1;
+    @Temp({REG, ILLEGAL}) protected Value vectorTemp2;
 
     public AMD64ArrayEqualsOp(LIRGeneratorTool tool, Kind kind, Value result, Value array1, Value array2, Value length) {
         this.kind = kind;
@@ -84,6 +84,9 @@ public class AMD64ArrayEqualsOp extends AMD64LIRInstruction {
         if (supportsSSE41(tool.target())) {
             this.vectorTemp1 = tool.newVariable(Kind.Double);
             this.vectorTemp2 = tool.newVariable(Kind.Double);
+        } else {
+            this.vectorTemp1 = Value.ILLEGAL;
+            this.vectorTemp2 = Value.ILLEGAL;
         }
     }
 
@@ -128,7 +131,7 @@ public class AMD64ArrayEqualsOp extends AMD64LIRInstruction {
 
     /**
      * Returns if the underlying AMD64 architecture supports SSE 4.1 instructions.
-     * 
+     *
      * @param target target description of the underlying architecture
      * @return true if the underlying architecture supports SSE 4.1
      */
