@@ -29,7 +29,6 @@ import com.oracle.graal.nodes.Invoke;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.phases.graph.FixedNodeProbabilityCache;
 
-import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.function.ToDoubleFunction;
 
@@ -59,7 +58,6 @@ public class CallsiteHolder {
             computeInliningRelevance = null;
         } else {
             remainingInvokes = new InliningIterator(graph).apply();
-            assert remainingInvokes.size() == count(graph.getInvokes());
             if (remainingInvokes.isEmpty()) {
                 probabilities = null;
                 computeInliningRelevance = null;
@@ -69,16 +67,6 @@ public class CallsiteHolder {
                 computeProbabilities();
             }
         }
-    }
-
-    private static int count(Iterable<Invoke> invokes) {
-        int count = 0;
-        Iterator<Invoke> iterator = invokes.iterator();
-        while (iterator.hasNext()) {
-            iterator.next();
-            count++;
-        }
-        return count;
     }
 
     /**
