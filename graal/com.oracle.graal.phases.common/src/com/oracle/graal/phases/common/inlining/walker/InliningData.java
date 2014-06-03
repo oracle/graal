@@ -378,7 +378,8 @@ public class InliningData {
     /**
      * @return true iff inlining was actually performed
      */
-    private boolean tryToInline(CallsiteHolderExplorable callerCallsiteHolder, MethodInvocation calleeInvocation, MethodInvocation parentInvocation, int inliningDepth) {
+    private boolean tryToInline(MethodInvocation calleeInvocation, MethodInvocation parentInvocation, int inliningDepth) {
+        CallsiteHolderExplorable callerCallsiteHolder = (CallsiteHolderExplorable) currentGraph();
         InlineInfo calleeInfo = calleeInvocation.callee();
         assert callerCallsiteHolder.containsInvoke(calleeInfo.invoke());
         Assumptions callerAssumptions = parentInvocation.assumptions();
@@ -593,7 +594,7 @@ public class InliningData {
             popInvocation();
             final MethodInvocation parentInvoke = currentInvocation();
             try (Debug.Scope s = Debug.scope("Inlining", inliningContext())) {
-                return tryToInline((CallsiteHolderExplorable) currentGraph(), currentInvocation, parentInvoke, inliningDepth() + 1);
+                return tryToInline(currentInvocation, parentInvoke, inliningDepth() + 1);
             } catch (Throwable e) {
                 throw Debug.handle(e);
             }
