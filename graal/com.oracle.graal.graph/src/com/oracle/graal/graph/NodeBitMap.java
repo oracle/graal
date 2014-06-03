@@ -123,8 +123,9 @@ public final class NodeBitMap implements NodeIterable<Node> {
 
     public void grow() {
         nodeCount = Math.max(nodeCount, graph().nodeIdCount());
-        int newLength = Math.max((bits.length * 3 / 2) + 1, sizeForNodeCount(nodeCount));
+        int newLength = sizeForNodeCount(nodeCount);
         if (newLength > bits.length) {
+            newLength = Math.max(newLength, (bits.length * 3 / 2) + 1);
             bits = Arrays.copyOf(bits, newLength);
         }
     }
