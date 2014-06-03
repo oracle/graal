@@ -443,6 +443,9 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
     public Value emitNegate(Value input) {
         Variable result = newVariable(input.getKind());
         switch (input.getKind().getStackKind()) {
+            case Long:
+                append(new Op1Stack(LNEG, result, input));
+                break;
             case Int:
                 append(new Op1Stack(INEG, result, input));
                 break;
@@ -782,13 +785,13 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
             case F2L:
                 return emitConvert2Op(Kind.Long, F2L, input);
             case I2D:
-                return emitConvert2Op(Kind.Double, I2D, input);
+                return emitConvert2Op(Kind.Double, L2D, emitConvert2Op(Kind.Long, I2L, input));
             case I2F:
                 return emitConvert2Op(Kind.Float, I2F, input);
             case L2D:
                 return emitConvert2Op(Kind.Double, L2D, input);
             case L2F:
-                return emitConvert2Op(Kind.Float, L2F, input);
+                return emitConvert2Op(Kind.Float, D2F, emitConvert2Op(Kind.Double, L2D, input));
             default:
                 throw GraalInternalError.shouldNotReachHere();
         }
@@ -841,13 +844,13 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
         if (fromBits == toBits) {
             return inputVal;
         } else if (fromBits > 32) {
-            assert inputVal.getKind() == Kind.Long;
+            assert inputVal.getKind() == Kind.Long : inputVal.getKind();
             Variable result = newVariable(Kind.Long);
             long mask = IntegerStamp.defaultMask(fromBits);
             append(new BinaryRegConst(SPARCArithmetic.LAND, result, asAllocatable(inputVal), Constant.forLong(mask)));
             return result;
         } else {
-            assert inputVal.getKind() == Kind.Int;
+            assert inputVal.getKind() == Kind.Int || inputVal.getKind() == Kind.Short || inputVal.getKind() == Kind.Byte : inputVal.getKind();
             Variable result = newVariable(Kind.Int);
             int mask = (int) IntegerStamp.defaultMask(fromBits);
             Constant constant = Constant.forInt(mask);

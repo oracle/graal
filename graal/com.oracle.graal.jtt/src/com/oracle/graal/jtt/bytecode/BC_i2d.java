@@ -49,4 +49,24 @@ public class BC_i2d extends JTTTest {
         runTest("test", -34);
     }
 
+    @Test
+    public void run3() throws Throwable {
+        runTest("test", Integer.MIN_VALUE);
+    }
+
+    @Test
+    public void run4() throws Throwable {
+        runTest("test", Integer.MAX_VALUE);
+    }
+
+    @Test
+    public void run5() throws Throwable {
+        runTest("test", 34);
+    }
+
+    @Test
+    public void run6() throws Throwable {
+        runTest("test", new Integer(Short.MAX_VALUE));
+    }
+
 }

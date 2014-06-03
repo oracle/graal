@@ -404,10 +404,10 @@ public enum SPARCArithmetic {
                     new Sll(asIntReg(src1), asIntReg(src2), asIntReg(dst)).emit(masm);
                     break;
                 case ISHR:
-                    new Srl(asIntReg(src1), asIntReg(src2), asIntReg(dst)).emit(masm);
+                    new Sra(asIntReg(src1), asIntReg(src2), asIntReg(dst)).emit(masm);
                     break;
                 case IUSHR:
-                    new Sra(asIntReg(src1), asIntReg(src2), asIntReg(dst)).emit(masm);
+                    new Srl(asIntReg(src1), asIntReg(src2), asIntReg(dst)).emit(masm);
                     break;
                 case IREM:
                     throw GraalInternalError.unimplemented();
@@ -553,26 +553,48 @@ public enum SPARCArithmetic {
                 case LNOT:
                     new Not(asLongReg(src), asLongReg(dst)).emit(masm);
                     break;
+                case D2F:
+                    new Fdtos(asDoubleReg(src), asFloatReg(dst)).emit(masm);
+                    break;
+                /*
+                 * case L2F:
+                 * 
+                 * new Movxtod(asLongReg(src), asDoubleReg(dst)).emit(masm); new Fxtod(masm,
+                 * asDoubleReg(dst), asDoubleReg(dst)); new Fdtos(asDoubleReg(dst),
+                 * asFloatReg(dst)).emit(masm); break;
+                 */
+                case L2D:
+                    new Movxtod(asLongReg(src), asDoubleReg(dst)).emit(masm);
+                    new Fxtod(masm, asDoubleReg(dst), asDoubleReg(dst));
+                    break;
                 case I2L:
                     new Signx(asIntReg(src), asLongReg(dst)).emit(masm);
                     break;
                 case L2I:
                     new Signx(asLongReg(src), asIntReg(dst)).emit(masm);
                     break;
+                case B2L:
+                    new Sllx(asIntReg(src), 56, asLongReg(dst)).emit(masm);
+                    new Srax(asLongReg(dst), 56, asLongReg(dst)).emit(masm);
+                    break;
+                case S2L:
+                    new Sllx(asIntReg(src), 48, asLongReg(dst)).emit(masm);
+                    new Srax(asLongReg(dst), 48, asLongReg(dst)).emit(masm);
+                    break;
                 case B2I:
                     new Sll(asIntReg(src), 24, asIntReg(dst)).emit(masm);
-                    new Srl(asIntReg(dst), 24, asIntReg(dst)).emit(masm);
+                    new Sra(asIntReg(dst), 24, asIntReg(dst)).emit(masm);
                     break;
                 case S2I:
                     new Sll(asIntReg(src), 16, asIntReg(dst)).emit(masm);
-                    new Srl(asIntReg(dst), 16, asIntReg(dst)).emit(masm);
+                    new Sra(asIntReg(dst), 16, asIntReg(dst)).emit(masm);
                     break;
                 case I2F:
                     new Movwtos(asIntReg(src), asFloatReg(dst)).emit(masm);
                     new Fitos(masm, asFloatReg(dst), asFloatReg(dst));
                     break;
-                case I2D:
-                    new Fdtoi(masm, asIntReg(src), asDoubleReg(dst));
+                case F2D:
+                    new Fstod(masm, asDoubleReg(dst), asDoubleReg(dst));
                     break;
                 case FNEG:
                     new Fnegs(masm, asFloatReg(src), asFloatReg(dst));

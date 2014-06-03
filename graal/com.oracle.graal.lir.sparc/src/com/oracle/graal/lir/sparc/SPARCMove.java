@@ -455,6 +455,7 @@ public class SPARCMove {
     }
 
     private static void const2reg(CompilationResultBuilder crb, SPARCMacroAssembler masm, Value result, Constant input) {
+        Register scratch = g5;
         switch (input.getKind().getStackKind()) {
             case Int:
                 if (crb.codeCache.needsDataPatch(input)) {
@@ -482,11 +483,18 @@ public class SPARCMove {
                 break;
             case Float:
                 crb.asFloatConstRef(input);
-                Register scratch = g5;
                 // First load the address into the scratch register
                 new Setx(0, scratch, true).emit(masm);
                 // Now load the float value
                 new Ldf(scratch, asFloatReg(result)).emit(masm);
+                break;
+            case Double:
+                crb.asDoubleConstRef(input);
+                scratch = g5;
+                // First load the address into the scratch register
+                new Setx(0, scratch, true).emit(masm);
+                // Now load the float value
+                new Lddf(scratch, asDoubleReg(result)).emit(masm);
                 break;
             case Object:
                 if (input.isNull()) {
