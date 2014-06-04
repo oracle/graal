@@ -1289,4 +1289,8 @@ public final class Interval {
         }
         return buf.toString();
     }
+
+    List<Interval> getSplitChildren() {
+        return Collections.unmodifiableList(splitChildren);
+    }
 }
