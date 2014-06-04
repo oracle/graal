@@ -25,6 +25,7 @@ package com.oracle.graal.phases.schedule;
 import static com.oracle.graal.api.meta.LocationIdentity.*;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.nodes.cfg.ControlFlowGraph.*;
+import static com.oracle.graal.compiler.common.cfg.AbstractBlock.*;
 
 import java.util.*;
 
@@ -442,7 +443,7 @@ public final class SchedulePhase extends Phase {
                     FloatingReadNode read = (FloatingReadNode) node;
                     block = optimalBlock(read, strategy);
                     Debug.log("schedule for %s: %s", read, block);
-                    assert earliestBlock.dominates(block) : String.format("%s (%s) cannot be scheduled before earliest schedule (%s). location: %s", read, block, earliestBlock,
+                    assert dominates(earliestBlock, block) : String.format("%s (%s) cannot be scheduled before earliest schedule (%s). location: %s", read, block, earliestBlock,
                                     read.getLocationIdentity());
                 } else {
                     block = latestBlock(node, strategy);
@@ -461,7 +462,7 @@ public final class SchedulePhase extends Phase {
                         FloatingReadNode read = (FloatingReadNode) node;
                         MemoryNode lastLocationAccess = read.getLastLocationAccess();
                         Block upperBound = blockForMemoryNode(lastLocationAccess);
-                        assert upperBound.dominates(block) : String.format(
+                        assert dominates(upperBound, block) : String.format(
                                         "out of loop movement voilated memory semantics for %s (location %s). moved to %s but upper bound is %s (earliest: %s, latest: %s)", read,
                                         read.getLocationIdentity(), block, upperBound, earliestBlock, latest);
                     }
@@ -470,7 +471,7 @@ public final class SchedulePhase extends Phase {
             default:
                 throw new GraalInternalError("unknown scheduling strategy");
         }
-        if (!earliestBlock.dominates(block)) {
+        if (!dominates(earliestBlock, block)) {
             throw new SchedulingError("%s: Graph cannot be scheduled : inconsistent for %s, %d usages, (%s needs to dominate %s)", node.graph(), node, node.usages().count(), earliestBlock, block);
         }
         cfg.getNodeToBlock().set(node, block);
@@ -512,10 +513,10 @@ public final class SchedulePhase extends Phase {
 
         Block upperBoundBlock = blockForMemoryNode(n.getLastLocationAccess());
         Block earliestBlock = earliestBlock(n);
-        assert upperBoundBlock.dominates(earliestBlock) : "upper bound (" + upperBoundBlock + ") should dominate earliest (" + earliestBlock + ")";
+        assert dominates(upperBoundBlock, earliestBlock) : "upper bound (" + upperBoundBlock + ") should dominate earliest (" + earliestBlock + ")";
 
         Block latestBlock = latestBlock(n, strategy);
-        assert latestBlock != null && earliestBlock.dominates(latestBlock) : "earliest (" + earliestBlock + ") should dominate latest block (" + latestBlock + ")";
+        assert latestBlock != null && dominates(earliestBlock, latestBlock) : "earliest (" + earliestBlock + ") should dominate latest block (" + latestBlock + ")";
 
         Debug.log("processing %s (accessing %s): latest %s, earliest %s, upper bound %s (%s)", n, locid, latestBlock, earliestBlock, upperBoundBlock, n.getLastLocationAccess());
         if (earliestBlock == latestBlock) {
@@ -577,7 +578,7 @@ public final class SchedulePhase extends Phase {
     private static Deque<Block> computePathInDominatorTree(Block earliestBlock, Block latestBlock) {
         Deque<Block> path = new LinkedList<>();
         Block currentBlock = latestBlock;
-        while (currentBlock != null && earliestBlock.dominates(currentBlock)) {
+        while (currentBlock != null && dominates(earliestBlock, currentBlock)) {
             path.push(currentBlock);
             currentBlock = currentBlock.getDominator();
         }
@@ -632,7 +633,7 @@ public final class SchedulePhase extends Phase {
         }
 
         if (assertionEnabled()) {
-            if (cdbc.block != null && !earliestBlock(node).dominates(cdbc.block)) {
+            if (cdbc.block != null && !dominates(earliestBlock(node), cdbc.block)) {
                 throw new SchedulingError("failed to find correct latest schedule for %s. cdbc: %s, earliest: %s", node, cdbc.block, earliestBlock(node));
             }
         }
