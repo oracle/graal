@@ -442,9 +442,8 @@ public final class LinearScan {
 
                 if (defLoopDepth < spillLoopDepth) {
                     // the loop depth of the spilling position is higher then the loop depth
-                    // at the definition of the interval . move write to memory out of loop
-                    // by storing at definitin of the interval
-                    interval.setSpillState(SpillState.StoreAtDefinition);
+                    // at the definition of the interval . move write to memory out of loop.
+                    interval.setSpillState(SpillState.SpillInDominator);
                 } else {
                     // the interval is currently spilled only once, so for now there is no
                     // reason to store the interval at the definition
@@ -1904,18 +1903,40 @@ public final class LinearScan {
                             }
                         }
                     }
-                    if (spillBlock == null || defBlock.equals(spillBlock)) {
+                    if (spillBlock == null) {
                         // no spill interval
                         interval.setSpillState(SpillState.StoreAtDefinition);
                     } else {
-                        assert dominates(defBlock, spillBlock);
-                        betterSpillPos.increment();
-                        Debug.log("Better spill position found (Block %s)", spillBlock);
-                        interval.setSpillDefinitionPos(getFirstLirInstructionId(spillBlock));
+                        // move out of loops
+                        if (defBlock.getLoopDepth() < spillBlock.getLoopDepth()) {
+                            spillBlock = moveSpillOutOfLoop(defBlock, spillBlock);
+                        }
+
+                        if (!defBlock.equals(spillBlock)) {
+                            assert dominates(defBlock, spillBlock);
+                            betterSpillPos.increment();
+                            Debug.log("Better spill position found (Block %s)", spillBlock);
+                            interval.setSpillDefinitionPos(getFirstLirInstructionId(spillBlock));
+                        } else {
+                            // definition is the best choice
+                            interval.setSpillState(SpillState.StoreAtDefinition);
+                        }
                     }
                 }
             }
         }
+    }
+
+    private static AbstractBlock<?> moveSpillOutOfLoop(AbstractBlock<?> defBlock, AbstractBlock<?> spillBlock) {
+        int defLoopDepth = defBlock.getLoopDepth();
+        for (AbstractBlock<?> block = spillBlock.getDominator(); !defBlock.equals(block); block = block.getDominator()) {
+            assert block != null : "spill block not dominated by definition block?";
+            if (block.getLoopDepth() <= defLoopDepth) {
+                assert block.getLoopDepth() == defLoopDepth : "Cannot spill an interval outside of the loop where it is defined!";
+                return block;
+            }
+        }
+        return defBlock;
     }
 
     private AbstractBlock<?> nearestCommonDominator(AbstractBlock<?> a, AbstractBlock<?> b) {
