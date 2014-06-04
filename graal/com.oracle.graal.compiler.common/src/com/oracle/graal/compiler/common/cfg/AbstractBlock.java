@@ -64,6 +64,7 @@ public interface AbstractBlock<T extends AbstractBlock<T>> {
      * True if block {@code a} dominates block {@code b}.
      */
     static boolean dominates(AbstractBlock<?> a, AbstractBlock<?> b) {
+        assert a != null;
         return isDominatedBy(b, a);
     }
 
@@ -71,6 +72,7 @@ public interface AbstractBlock<T extends AbstractBlock<T>> {
      * True if block {@code a} is dominated by block {@code b}.
      */
     static boolean isDominatedBy(AbstractBlock<?> a, AbstractBlock<?> b) {
+        assert a != null;
         if (a == b) {
             return true;
         }
