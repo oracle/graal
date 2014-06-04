@@ -25,6 +25,7 @@ package com.oracle.graal.compiler.alloc;
 import static com.oracle.graal.api.code.CodeUtil.*;
 import static com.oracle.graal.api.code.ValueUtil.*;
 import static com.oracle.graal.compiler.GraalDebugConfig.*;
+import static com.oracle.graal.compiler.common.cfg.AbstractBlock.*;
 import static com.oracle.graal.lir.LIRValueUtil.*;
 
 import java.util.*;
@@ -1844,6 +1845,12 @@ public final class LinearScan {
                 throw Debug.handle(e);
             }
 
+            try (Scope s = Debug.scope("SpillPosition")) {
+                findSpillPosition();
+            } catch (Throwable e) {
+                throw Debug.handle(e);
+            }
+
             try (Scope s = Debug.scope("ResolveDataFlow")) {
                 resolveDataFlow();
             } catch (Throwable e) {
@@ -1874,6 +1881,68 @@ public final class LinearScan {
 
             printLir("After register number assignment", true);
         }
+    }
+
+    private DebugMetric betterSpillPos = Debug.metric("BetterSpillPosition");
+
+    private void findSpillPosition() {
+        for (Interval interval : intervals) {
+            if (interval != null && interval.isSplitParent() && interval.spillState() == SpillState.StoreAtDefinition) {
+                AbstractBlock<?> defBlock = blockForId(interval.spillDefinitionPos());
+                AbstractBlock<?> spillBlock = null;
+                try (Indent indent = Debug.logAndIndent("interval %s (%s)", interval, defBlock)) {
+                    for (Interval splitChild : interval.getSplitChildren()) {
+                        if (isStackSlot(splitChild.location())) {
+                            AbstractBlock<?> splitBlock = blockForId(splitChild.from());
+                            assert dominates(defBlock, splitBlock) : "Definition does not dominate the spill interval";
+                            Debug.log("Split interval %s", splitChild, splitBlock);
+                            if (spillBlock == null) {
+                                spillBlock = splitBlock;
+                            } else {
+                                spillBlock = nearestCommonDominator(spillBlock, splitBlock);
+                                assert spillBlock != null;
+                            }
+                        }
+                    }
+                    assert spillBlock != null;
+                    assert dominates(defBlock, spillBlock);
+                    if (!defBlock.equals(spillBlock)) {
+                        betterSpillPos.increment();
+                        int pos = getFirstLirInstructionId(spillBlock);
+                        Debug.log("Better spill position found (Block %s, %d)", spillBlock, pos);
+                    }
+                }
+            }
+        }
+    }
+
+    private AbstractBlock<?> nearestCommonDominator(AbstractBlock<?> a, AbstractBlock<?> b) {
+        assert a != null;
+        assert b != null;
+        try (Indent indent = Debug.logAndIndent("nearest common dominator of %s and %s", a, b)) {
+
+            if (a.equals(b)) {
+                return a;
+            }
+
+            // collect a's dominators
+            BitSet aDom = new BitSet(sortedBlocks.size());
+
+            // a != b
+            for (AbstractBlock<?> x = a; x != null; x = x.getDominator()) {
+                aDom.set(x.getId());
+            }
+
+            // walk b's dominator
+            for (AbstractBlock<?> x = b; x != null; x = x.getDominator()) {
+                if (aDom.get(x.getId())) {
+                    Debug.log("found %s", x);
+                    return x;
+                }
+            }
+        }
+        Debug.log("no common dominator found");
+        return null;
     }
 
     void printIntervals(String label) {
