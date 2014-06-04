@@ -309,6 +309,11 @@ public final class Interval {
         OneSpillStore,
 
         /**
+         * The interval is spilled multiple times.
+         */
+        MultipleSpills,
+
+        /**
          * The interval should be stored immediately after its definition to prevent multiple
          * redundant stores.
          */
@@ -649,7 +654,7 @@ public final class Interval {
     }
 
     void setSpillDefinitionPos(int pos) {
-        assert spillDefinitionPos() == -1 : "cannot set the position twice";
+        assert spillState() == SpillState.MultipleSpills || spillDefinitionPos() == -1 : "cannot set the position twice";
         splitParent().spillDefinitionPos = pos;
     }
 
