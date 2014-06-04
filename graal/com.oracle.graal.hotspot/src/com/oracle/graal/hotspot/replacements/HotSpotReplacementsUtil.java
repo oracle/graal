@@ -207,7 +207,7 @@ public class HotSpotReplacementsUtil {
 
     /**
      * Reads the pending deoptimization value for the given thread.
-     * 
+     *
      * @return {@code true} if there was a pending deoptimization
      */
     public static int readPendingDeoptimization(Word thread) {
@@ -413,6 +413,16 @@ public class HotSpotReplacementsUtil {
     @Fold
     public static int instanceHeaderSize() {
         return config().useCompressedClassPointers ? (2 * wordSize()) - 4 : 2 * wordSize();
+    }
+
+    @Fold
+    public static byte dirtyCardValue() {
+        return config().dirtyCardValue;
+    }
+
+    @Fold
+    public static byte g1YoungCardValue() {
+        return config().g1YoungCardValue;
     }
 
     @Fold

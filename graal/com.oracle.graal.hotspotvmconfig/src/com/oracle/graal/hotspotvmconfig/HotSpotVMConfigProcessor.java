@@ -127,6 +127,8 @@ public class HotSpotVMConfigProcessor extends AbstractProcessor {
         "}",
         "",
         "#define set_boolean(name, value) vmconfig_oop->bool_field_put(fs.offset(), value)",
+        "#define set_byte(name, value) vmconfig_oop->byte_field_put(fs.offset(), (jbyte)value)",
+        "#define set_short(name, value) vmconfig_oop->short_field_put(fs.offset(), (jshort)value)",
         "#define set_int(name, value) vmconfig_oop->int_field_put(fs.offset(), (int)value)",
         "#define set_long(name, value) vmconfig_oop->long_field_put(fs.offset(), value)",
         "#define set_address(name, value) do { set_long(name, (jlong) value); } while (0)",
