@@ -124,6 +124,7 @@ public final class NodeIntrinsicVerifier extends AbstractVerifier {
 
     private void findConstructor(TypeElement nodeClass, TypeMirror[] signature, ExecutableElement intrinsicMethod, AnnotationMirror intrinsicAnnotation) {
         List<ExecutableElement> constructors = ElementFilter.constructorsIn(nodeClass.getEnclosedElements());
+        List<String> failureReasons = new ArrayList<>();
 
         nextConstructor: for (ExecutableElement constructor : constructors) {
             int sIdx = 0;
@@ -141,13 +142,16 @@ public final class NodeIntrinsicVerifier extends AbstractVerifier {
                     TypeMirror varargsType = ((ArrayType) paramType).getComponentType();
                     while (sIdx < signature.length) {
                         if (!isTypeCompatible(varargsType, signature[sIdx++])) {
+                            failureReasons.add(String.format("Constructor %s failed because the types of argument %d are incompatible: %s != %s", constructor, sIdx, varargsType, signature[sIdx - 1]));
                             continue nextConstructor;
                         }
                     }
                 } else if (sIdx >= signature.length) {
                     // too many arguments in intrinsic method
+                    failureReasons.add(String.format("Too many arguments for %s", constructor));
                     continue nextConstructor;
                 } else if (!isTypeCompatible(paramType, signature[sIdx++])) {
+                    failureReasons.add(String.format("Constructor %s failed because the types of argument %d are incompatible: %s != %s", constructor, sIdx, paramType, signature[sIdx - 1]));
                     continue nextConstructor;
                 }
             }
@@ -158,10 +162,17 @@ public final class NodeIntrinsicVerifier extends AbstractVerifier {
             }
 
             // too many arguments in constructor
+            failureReasons.add(String.format("Not enough arguments for %s", constructor));
         }
 
         // not found
-        env.getMessager().printMessage(Kind.ERROR, "Could not find matching constructor for node intrinsic.", intrinsicMethod, intrinsicAnnotation);
+        if (failureReasons.isEmpty()) {
+            env.getMessager().printMessage(Kind.ERROR, "Could not find matching constructor for node intrinsic.", intrinsicMethod, intrinsicAnnotation);
+        } else {
+            for (String reason : failureReasons) {
+                env.getMessager().printMessage(Kind.ERROR, reason, intrinsicMethod, intrinsicAnnotation);
+            }
+        }
     }
 
     private boolean isTypeCompatible(TypeMirror originalType, TypeMirror substitutionType) {
