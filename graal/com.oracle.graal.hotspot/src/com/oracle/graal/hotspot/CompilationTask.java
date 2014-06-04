@@ -66,6 +66,8 @@ import com.oracle.graal.phases.tiers.*;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 
+//JaCoCo Exclude
+
 public class CompilationTask implements Runnable, Comparable<Object> {
 
     static {
