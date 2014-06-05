@@ -32,7 +32,7 @@ public final class Class_cast02 extends JTTTest {
 
     static final String string = "";
     static final Object object = new Object();
-    static final Class_cast02 thisObject = new Class_cast02();
+    static final DummyTestClass thisObject = new DummyTestClass();
 
     public static int test(int i) {
         if (i == 0) {
@@ -51,7 +51,7 @@ public final class Class_cast02 extends JTTTest {
             }
         }
         if (i == 3) {
-            if (Class_cast02.class.cast(null) == null) {
+            if (DummyTestClass.class.cast(null) == null) {
                 return -1;
             }
         }

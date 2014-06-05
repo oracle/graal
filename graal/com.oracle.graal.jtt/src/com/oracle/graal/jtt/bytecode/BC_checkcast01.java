@@ -30,9 +30,12 @@ import com.oracle.graal.jtt.*;
  */
 public class BC_checkcast01 extends JTTTest {
 
+    private static class TestClass {
+    }
+
     static Object object2 = new Object();
     static Object object3 = "";
-    static Object object4 = new BC_checkcast01();
+    static Object object4 = new TestClass();
 
     public static int test(int arg) {
         Object obj;
@@ -45,7 +48,7 @@ public class BC_checkcast01 extends JTTTest {
         } else {
             obj = null;
         }
-        final BC_checkcast01 bc = (BC_checkcast01) obj;
+        final TestClass bc = (TestClass) obj;
         if (bc != null) {
             return arg;
         }

@@ -28,12 +28,12 @@ import org.junit.*;
 
 import com.oracle.graal.jtt.*;
 
-public final class Class_isInstance07 extends JTTTest implements Cloneable {
+public final class Class_isInstance07 extends JTTTest {
 
     static final String string = "";
     static final Object obj = new Object();
     static final String[] sarray = {};
-    static final Object thisObject = new Class_isInstance07();
+    static final Object thisObject = new DummyTestClass();
 
     public static boolean test(int i, Class<?> c) {
         Object object = null;

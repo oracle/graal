@@ -30,7 +30,7 @@ import com.oracle.graal.jtt.*;
  */
 public class BC_monitorenter extends JTTTest {
 
-    static com.oracle.graal.jtt.bytecode.BC_monitorenter object = new com.oracle.graal.jtt.bytecode.BC_monitorenter();
+    static DummyTestClass object = new DummyTestClass();
 
     public static boolean test(boolean arg) {
         final Object o = arg ? object : null;

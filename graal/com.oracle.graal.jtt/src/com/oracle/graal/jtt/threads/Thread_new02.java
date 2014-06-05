@@ -28,9 +28,15 @@ import org.junit.*;
 
 import com.oracle.graal.jtt.*;
 
-public class Thread_new02 extends JTTTest implements Runnable {
+public class Thread_new02 extends JTTTest {
 
-    static final Thread_new02 thisObject = new Thread_new02();
+    private static class TestClass implements Runnable {
+        public void run() {
+            // do nothing.
+        }
+    }
+
+    static final TestClass thisObject = new TestClass();
 
     public static boolean test(int i) {
         if (i == 0) {
@@ -46,10 +52,6 @@ public class Thread_new02 extends JTTTest implements Runnable {
             return new Thread(thisObject, "Thread_new01") != null;
         }
         return false;
-    }
-
-    public void run() {
-        // do nothing.
     }
 
     @Test

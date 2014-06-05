@@ -31,9 +31,11 @@ import com.oracle.graal.jtt.*;
  */
 public class VN_Cast01 extends JTTTest {
 
-    static final Object object = new VN_Cast01();
+    private static class TestClass {
+        int field = 9;
+    }
 
-    int field = 9;
+    static final Object object = new TestClass();
 
     public static int test(int arg) {
         if (arg == 0) {
@@ -50,23 +52,23 @@ public class VN_Cast01 extends JTTTest {
 
     private static int test1() {
         Object o = object;
-        VN_Cast01 a = (VN_Cast01) o;
-        VN_Cast01 b = (VN_Cast01) o;
+        TestClass a = (TestClass) o;
+        TestClass b = (TestClass) o;
         return a.field + b.field;
     }
 
     private static int test2() {
-        Object obj = new VN_Cast01();
-        VN_Cast01 a = (VN_Cast01) obj;
-        VN_Cast01 b = (VN_Cast01) obj;
+        Object obj = new TestClass();
+        TestClass a = (TestClass) obj;
+        TestClass b = (TestClass) obj;
         return a.field + b.field;
     }
 
     @SuppressWarnings("all")
     private static int test3() {
         Object o = null;
-        VN_Cast01 a = (VN_Cast01) o;
-        VN_Cast01 b = (VN_Cast01) o;
+        TestClass a = (TestClass) o;
+        TestClass b = (TestClass) o;
         return a.field + b.field;
     }
 

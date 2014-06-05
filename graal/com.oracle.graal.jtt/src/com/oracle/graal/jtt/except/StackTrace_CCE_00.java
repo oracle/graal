@@ -32,7 +32,7 @@ public class StackTrace_CCE_00 extends JTTTest {
 
     static Object object2 = new Object();
     static Object object3 = "";
-    static Object object4 = new StackTrace_CCE_00();
+    static Object object4 = new DummyTestClass();
 
     public static int test(int arg) {
         Object obj = null;
@@ -46,7 +46,7 @@ public class StackTrace_CCE_00 extends JTTTest {
             obj = object4;
         }
         try {
-            final StackTrace_CCE_00 bc = (StackTrace_CCE_00) obj;
+            final DummyTestClass bc = (DummyTestClass) obj;
             if (bc == null) {
                 return arg;
             }

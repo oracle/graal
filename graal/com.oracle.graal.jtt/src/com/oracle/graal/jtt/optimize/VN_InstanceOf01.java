@@ -31,7 +31,7 @@ import com.oracle.graal.jtt.*;
  */
 public class VN_InstanceOf01 extends JTTTest {
 
-    static final Object object = new VN_InstanceOf01();
+    static final Object object = new DummyTestClass();
 
     public static boolean test(int arg) {
         if (arg == 0) {
@@ -48,21 +48,21 @@ public class VN_InstanceOf01 extends JTTTest {
     }
 
     private static boolean foo1() {
-        boolean a = object instanceof VN_InstanceOf01;
-        boolean b = object instanceof VN_InstanceOf01;
+        boolean a = object instanceof DummyTestClass;
+        boolean b = object instanceof DummyTestClass;
         return a | b;
     }
 
     private static boolean foo2() {
-        Object obj = new VN_InstanceOf01();
-        boolean a = obj instanceof VN_InstanceOf01;
-        boolean b = obj instanceof VN_InstanceOf01;
+        Object obj = new DummyTestClass();
+        boolean a = obj instanceof DummyTestClass;
+        boolean b = obj instanceof DummyTestClass;
         return a | b;
     }
 
     private static boolean foo3() {
-        boolean a = null instanceof VN_InstanceOf01;
-        boolean b = null instanceof VN_InstanceOf01;
+        boolean a = null instanceof DummyTestClass;
+        boolean b = null instanceof DummyTestClass;
         return a | b;
     }
 

@@ -44,11 +44,11 @@ public class StrangeFrames extends JTTTest {
     }
 
     static void oneOperandStackSlot() {
-        new StrangeFrames();
+        new DummyTestClass();
     }
 
     static void twoOperandStackSlots() {
-        two(new StrangeFrames(), new StrangeFrames());
+        two(new DummyTestClass(), new DummyTestClass());
     }
 
     static void oneLocalSlot() {

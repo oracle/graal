@@ -34,13 +34,15 @@ import com.oracle.graal.jtt.*;
  */
 public class UnsafeAccess01 extends JTTTest {
 
-    @SuppressWarnings("unused") private int field = 42;
+    private static class TestClass {
+        @SuppressWarnings("unused") private int field = 42;
+    }
 
     public static int test() throws SecurityException, NoSuchFieldException {
         final Unsafe unsafe = getUnsafe();
 
-        final UnsafeAccess01 object = new UnsafeAccess01();
-        final Field field = UnsafeAccess01.class.getDeclaredField("field");
+        final TestClass object = new TestClass();
+        final Field field = TestClass.class.getDeclaredField("field");
         final long offset = unsafe.objectFieldOffset(field);
         final int value = unsafe.getInt(object, offset);
         return value;

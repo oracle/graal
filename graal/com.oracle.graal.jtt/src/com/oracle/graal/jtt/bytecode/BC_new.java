@@ -32,7 +32,7 @@ public class BC_new extends JTTTest {
 
     @SuppressWarnings("unused")
     public static int test(int a) {
-        new BC_new();
+        new DummyTestClass();
         return a;
     }
 

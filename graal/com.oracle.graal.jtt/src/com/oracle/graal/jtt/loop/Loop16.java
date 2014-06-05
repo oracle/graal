@@ -32,30 +32,32 @@ import com.oracle.graal.jtt.*;
  */
 public class Loop16 extends JTTTest {
 
-    public int a;
-    public int b;
-    public int c;
+    private static class TestClass {
+        public int a;
+        public int b;
+        public int c;
 
-    public static int test(int count) {
-        return new Loop16().run(count);
+        public int run(int count) {
+            l1: for (int i = 0; i <= count; i++) {
+                if (i > 5) {
+                    for (int j = 0; j < i; j++) {
+                        a += i;
+                        if (a > 500) {
+                            break l1;
+                        }
+                    }
+                } else if (i > 7) {
+                    b += i;
+                } else {
+                    c += i;
+                }
+            }
+            return a + b + c;
+        }
     }
 
-    public int run(int count) {
-        l1: for (int i = 0; i <= count; i++) {
-            if (i > 5) {
-                for (int j = 0; j < i; j++) {
-                    a += i;
-                    if (a > 500) {
-                        break l1;
-                    }
-                }
-            } else if (i > 7) {
-                b += i;
-            } else {
-                c += i;
-            }
-        }
-        return a + b + c;
+    public static int test(int count) {
+        return new TestClass().run(count);
     }
 
     @Test

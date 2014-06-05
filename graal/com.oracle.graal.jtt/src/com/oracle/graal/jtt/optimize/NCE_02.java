@@ -31,13 +31,15 @@ import com.oracle.graal.jtt.*;
  */
 public class NCE_02 extends JTTTest {
 
-    public static NCE_02 object = new NCE_02();
+    public static class TestClass {
+        int field1;
+        int field2 = 23;
+    }
 
-    int field1;
-    int field2 = 23;
+    public static TestClass object = new TestClass();
 
     public static int test() {
-        NCE_02 o = object;
+        TestClass o = object;
         o.field1 = 11;
         // expect non-null
         o.field1 = 22;

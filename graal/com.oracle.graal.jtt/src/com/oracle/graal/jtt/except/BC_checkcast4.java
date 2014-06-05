@@ -32,7 +32,7 @@ public final class BC_checkcast4 extends JTTTest {
 
     static Object object2 = new Object();
     static Object object3 = "";
-    static Object object4 = new BC_checkcast4();
+    static Object object4 = new DummyTestClass();
 
     public static int test(int arg) {
         Object obj;
@@ -45,7 +45,7 @@ public final class BC_checkcast4 extends JTTTest {
         } else {
             obj = null;
         }
-        final BC_checkcast4 bc = (BC_checkcast4) obj;
+        final DummyTestClass bc = (DummyTestClass) obj;
         if (bc != null) {
             return arg;
         }

@@ -28,7 +28,21 @@ import org.junit.*;
 
 import com.oracle.graal.jtt.*;
 
-public class Object_wait02 extends JTTTest implements Runnable {
+public class Object_wait02 extends JTTTest {
+
+    private static class TestClass implements Runnable {
+        public void run() {
+            try {
+                Thread.sleep(sleep);
+            } catch (InterruptedException ex) {
+
+            }
+            synchronized (object) {
+                done = true;
+                object.notifyAll();
+            }
+        }
+    }
 
     static volatile boolean done;
     static final Object object = new Object();
@@ -37,25 +51,13 @@ public class Object_wait02 extends JTTTest implements Runnable {
     public static boolean test(int i) throws InterruptedException {
         done = false;
         sleep = i * 200;
-        new Thread(new Object_wait02()).start();
+        new Thread(new TestClass()).start();
         synchronized (object) {
             while (!done) {
                 object.wait(200);
             }
         }
         return done;
-    }
-
-    public void run() {
-        try {
-            Thread.sleep(sleep);
-        } catch (InterruptedException ex) {
-
-        }
-        synchronized (object) {
-            done = true;
-            object.notifyAll();
-        }
     }
 
     @Test(timeout = 20000)

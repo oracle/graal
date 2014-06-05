@@ -32,6 +32,12 @@ import com.oracle.graal.jtt.*;
  */
 public class Invoke_except01 extends JTTTest {
 
+    public static class TestClass {
+        public static int method(int[] arg) {
+            return arg.length;
+        }
+    }
+
     public static int test(int arg) throws IllegalAccessException, InvocationTargetException {
         Object[] args;
         if (arg == 0) {
@@ -45,16 +51,12 @@ public class Invoke_except01 extends JTTTest {
         } else {
             args = null;
         }
-        for (Method m : Invoke_except01.class.getDeclaredMethods()) {
+        for (Method m : TestClass.class.getDeclaredMethods()) {
             if ("method".equals(m.getName())) {
                 return (Integer) m.invoke(null, args);
             }
         }
         return 42;
-    }
-
-    public static int method(int[] arg) {
-        return arg.length;
     }
 
     @Test

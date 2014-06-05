@@ -31,6 +31,38 @@ import com.oracle.graal.jtt.*;
 @SuppressWarnings("unused")
 public class List_reorder_bug extends JTTTest {
 
+    private static class TestClass {
+        String s;
+
+        private void print(String s2) {
+            this.s = s2;
+        }
+
+        private void match(Object a, int src, int id, int seq) {
+            print("match: " + src + ", " + id);
+            List item = list;
+            List itemPrev = null;
+            while (item != null) {
+                if (item.id == id) {
+                    if (item.bool) {
+                        outcall(item.id);
+                    }
+                    if (itemPrev != null) {
+                        itemPrev.next = item.next;
+                    } else {
+                        list = item.next;
+                    }
+
+                    item.next = null;
+                    return;
+                }
+
+                itemPrev = item;
+                item = item.next;
+            }
+        }
+    }
+
     static class List {
 
         List(int id) {
@@ -47,44 +79,14 @@ public class List_reorder_bug extends JTTTest {
     public static boolean test(int i) {
         list = new List(5);
         list.next = new List(6);
-        new List_reorder_bug().match(new Object(), 27, 6, 0);
+        new TestClass().match(new Object(), 27, 6, 0);
         return list.next == null;
-    }
-
-    private void match(Object a, int src, int id, int seq) {
-        print("match: " + src + ", " + id);
-        List item = list;
-        List itemPrev = null;
-        while (item != null) {
-            if (item.id == id) {
-                if (item.bool) {
-                    outcall(item.id);
-                }
-                if (itemPrev != null) {
-                    itemPrev.next = item.next;
-                } else {
-                    list = item.next;
-                }
-
-                item.next = null;
-                return;
-            }
-
-            itemPrev = item;
-            item = item.next;
-        }
     }
 
     static int globalId;
 
     private static void outcall(int id) {
         globalId = id;
-    }
-
-    String s;
-
-    private void print(String s2) {
-        this.s = s2;
     }
 
     @Test

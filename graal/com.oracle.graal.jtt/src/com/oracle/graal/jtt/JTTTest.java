@@ -44,6 +44,9 @@ import com.oracle.graal.nodes.*;
  */
 public class JTTTest extends GraalCompilerTest {
 
+    public static final class DummyTestClass {
+    }
+
     protected static final Set<DeoptimizationReason> EMPTY = Collections.<DeoptimizationReason> emptySet();
     /**
      * The arguments which, if non-null, will replace the Locals in the test method's graph.

@@ -33,10 +33,12 @@ import com.oracle.graal.jtt.*;
  */
 public class LLE_01 extends JTTTest {
 
-    int field1;
+    private static class TestClass {
+        int field1;
+    }
 
     public static int test() {
-        LLE_01 o = new LLE_01();
+        TestClass o = new TestClass();
         o.field1 = 1;
         o.field1 = 0;
         return o.field1;

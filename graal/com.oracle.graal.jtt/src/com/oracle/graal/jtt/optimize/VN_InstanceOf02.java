@@ -33,7 +33,7 @@ public class VN_InstanceOf02 extends JTTTest {
 
     private static boolean cond = true;
 
-    static final Object object = new VN_InstanceOf02();
+    static final Object object = new DummyTestClass();
 
     public static boolean test(int arg) {
         if (arg == 0) {
@@ -50,28 +50,28 @@ public class VN_InstanceOf02 extends JTTTest {
     }
 
     private static boolean foo1() {
-        boolean a = object instanceof VN_InstanceOf02;
+        boolean a = object instanceof DummyTestClass;
         if (cond) {
-            boolean b = object instanceof VN_InstanceOf02;
+            boolean b = object instanceof DummyTestClass;
             return a | b;
         }
         return false;
     }
 
     private static boolean foo2() {
-        Object obj = new VN_InstanceOf02();
-        boolean a = obj instanceof VN_InstanceOf02;
+        Object obj = new DummyTestClass();
+        boolean a = obj instanceof DummyTestClass;
         if (cond) {
-            boolean b = obj instanceof VN_InstanceOf02;
+            boolean b = obj instanceof DummyTestClass;
             return a | b;
         }
         return false;
     }
 
     private static boolean foo3() {
-        boolean a = null instanceof VN_InstanceOf02;
+        boolean a = null instanceof DummyTestClass;
         if (cond) {
-            boolean b = null instanceof VN_InstanceOf02;
+            boolean b = null instanceof DummyTestClass;
             return a | b;
         }
         return false;

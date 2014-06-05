@@ -32,7 +32,7 @@ public class BC_checkcast3 extends JTTTest {
 
     static Object[] o1 = {new Object()};
     static String[] o2 = {""};
-    static BC_checkcast3[] o3 = {new BC_checkcast3()};
+    static DummyTestClass[] o3 = {new DummyTestClass()};
 
     public static int test(int arg) {
         Object obj = null;
@@ -45,7 +45,7 @@ public class BC_checkcast3 extends JTTTest {
         if (arg == 2) {
             obj = o3;
         }
-        Object[] r = (BC_checkcast3[]) obj;
+        Object[] r = (DummyTestClass[]) obj;
         return r == null ? -1 : -1;
     }
 

@@ -36,7 +36,7 @@ public class Catch_NASE_2 extends JTTTest {
     @SuppressWarnings("unused")
     public static int test(int a) {
         try {
-            Catch_NASE_2[] v = new Catch_NASE_2[a];
+            DummyTestClass[] v = new DummyTestClass[a];
             if (v != null) {
                 return v.length;
             }

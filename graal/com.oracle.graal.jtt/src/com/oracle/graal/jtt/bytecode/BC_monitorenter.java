@@ -30,7 +30,7 @@ import com.oracle.graal.jtt.*;
  */
 public class BC_monitorenter extends JTTTest {
 
-    static BC_monitorenter object = new BC_monitorenter();
+    static DummyTestClass object = new DummyTestClass();
 
     public static int test(int arg) {
         synchronized (object) {

@@ -32,7 +32,7 @@ public final class Object_getClass01 extends JTTTest {
 
     static final Object object = new Object();
     static final Object string = new String();
-    static final Object_getClass01 thisObject = new Object_getClass01();
+    static final DummyTestClass thisObject = new DummyTestClass();
 
     public static String test(int i) {
         if (i == 0) {

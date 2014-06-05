@@ -30,15 +30,17 @@ import com.oracle.graal.jtt.*;
 
 public class Object_clone01 extends JTTTest {
 
-    static final Object_clone01 field = new Object_clone01();
+    private static class TestClass {
+        @SuppressWarnings("unused")
+        private boolean tryClone(int i) throws CloneNotSupportedException {
+            return this == this.clone();
+        }
+    }
+
+    static final TestClass field = new TestClass();
 
     public static boolean test(int i) throws CloneNotSupportedException {
         return field.tryClone(i);
-    }
-
-    @SuppressWarnings("unused")
-    private boolean tryClone(int i) throws CloneNotSupportedException {
-        return this == this.clone();
     }
 
     @Test
