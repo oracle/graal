@@ -36,6 +36,7 @@ import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.*;
 import com.oracle.graal.lir.asm.*;
+import com.sun.org.apache.bcel.internal.generic.*;
 
 public class SPARCMove {
 
@@ -319,9 +320,13 @@ public class SPARCMove {
                     new Stx(asRegister(input), addr).emit(masm);
                     break;
                 case Float:
+                    new Stf(asRegister(input), addr).emit(masm);
+                    break;
                 case Double:
+                    new Stdf(asRegister(input), addr).emit(masm);
+                    break;
                 default:
-                    throw GraalInternalError.shouldNotReachHere("missing: " + address.getKind());
+                    throw GraalInternalError.shouldNotReachHere("missing: " + kind);
             }
         }
     }
@@ -391,10 +396,14 @@ public class SPARCMove {
         }
     }
 
+    @SuppressWarnings("unused")
     private static void reg2reg(SPARCAssembler masm, Value result, Value input) {
         final Register src = asRegister(input);
         final Register dst = asRegister(result);
-        if (src.equals(dst)) {
+        // implicit conversions between double and float registers can happen in the "same Register"
+// f0->d0
+        boolean isFloatToDoubleConversion = result.getKind() == Kind.Double && input.getKind() == Kind.Float;
+        if (src.equals(dst) && !isFloatToDoubleConversion) {
             return;
         }
         switch (input.getKind()) {
@@ -404,10 +413,31 @@ public class SPARCMove {
                 new Mov(src, dst).emit(masm);
                 break;
             case Float:
-                new Fmovs(src, dst).emit(masm);
+                switch (result.getKind()) {
+                    case Long:
+                        new Movstosw(src, dst).emit(masm);
+                        break;
+                    case Int:
+                        new Movstouw(src, dst).emit(masm);
+                        break;
+                    case Float:
+                        new Fmovs(src, dst).emit(masm);
+                        break;
+                    case Double:
+                        new Fstod(masm, src, dst);
+                        break;
+                    default:
+                        throw GraalInternalError.shouldNotReachHere();
+                }
                 break;
             case Double:
-                new Fmovd(src, dst).emit(masm);
+                if (result.getPlatformKind() == Kind.Long) {
+                    new Movdtox(src, dst).emit(masm);
+                } else if (result.getPlatformKind() == Kind.Int) {
+                    new Movstouw(src, dst).emit(masm);
+                } else {
+                    new Fmovd(src, dst).emit(masm);
+                }
                 break;
             default:
                 throw GraalInternalError.shouldNotReachHere();

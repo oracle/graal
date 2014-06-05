@@ -456,6 +456,43 @@ public abstract class SPARCAssembler extends Assembler {
 
     // @formatter:off
     /**
+     * Instruction format for fcmp
+     *
+     * | 10  | --- |cc1|cc0|desc |   rs1   |   opf  | rs2 |
+     * |31 30|29 27|26 |25 |24 19|18     14|13     5|4   0|
+     */
+    // @formatter:on
+    public static class Fmt3c {
+        private int op;
+        private int cc;
+        private int desc;
+        private int opf;
+        private int rs1;
+        private int rs2;
+
+        public Fmt3c(Ops op, CC cc, int desc, Opfs opf, Register rs1, Register rs2) {
+            this.op = op.getValue();
+            this.opf = opf.getValue();
+            this.desc = desc;
+            this.rs1 = rs1.encoding();
+            this.rs2 = rs2.encoding();
+            this.cc = cc.getValue();
+        }
+
+        public void emit(SPARCAssembler masm) {
+            assert op == 2 || op == 3;
+            assert cc >= 0 && cc < 0x4;
+            assert opf >= 0 && opf < 0x200;
+            assert rs1 >= 0 && rs1 < 0x20;
+            assert rs2 >= 0 && rs2 < 0x20;
+            assert desc >= 0 && desc < 0x40;
+
+            masm.emitInt(op << 30 | cc << 25 | desc << 19 | rs1 << 14 | opf << 5 | rs2);
+        }
+    }
+
+    // @formatter:off
+    /**
      * Instruction format for Arithmetic, Logical, Moves, Tcc, Prefetch, and Misc.
      *
      * | 10  |   rd   |   op3   |   rs1   | i|     imm_asi   |   rs2   |
@@ -1043,7 +1080,9 @@ public abstract class SPARCAssembler extends Assembler {
         Stf(0b100100, "stf"),
         Stfsr(0x25, "stfsr"),
         Staf(0x26, "staf"),
-        Stdf(0b100111, "stdf");
+        Stdf(0b100111, "stdf"),
+
+        Fcmp(0b110101, "fcmp");
 
         // @formatter:on
 
@@ -1181,6 +1220,9 @@ public abstract class SPARCAssembler extends Assembler {
         Fnsmuld(0x79, "fnsmuld"),
         Fnhadds(0x71, "fnhadds"),
         Fnhaddd(0x72, "fnhaddd"),
+        Movdtox(0x110, "movdtox"),
+        Movstouw(0x111, "movstouw"),
+        Movstosw(0x113, "movstosw"),
         Movxtod(0x118, "movxtod"),
         Movwtos(0x119, "movwtos"),
         // end VIS3
@@ -1231,6 +1273,8 @@ public abstract class SPARCAssembler extends Assembler {
 
         Fstoi(0xD1, "fstoi"),
         Fdtoi(0xD2, "fdtoi"),
+        Fstox(0x81, "fstox"),
+        Fdtox(0x82, "fdtox"),
         Fxtos(0x84, "fxtos"),
         Fxtod(0x88, "fxtod"),
         Fxtoq(0x8C, "fxtoq"),
@@ -1238,7 +1282,13 @@ public abstract class SPARCAssembler extends Assembler {
         Fdtos(0xC6, "fdtos"),
         Fitod(0xC8, "fitod"),
         Fstod(0xC9, "fstod"),
-        Fitoq(0xCC, "fitoq")
+        Fitoq(0xCC, "fitoq"),
+
+
+        Fcmps(0x51, "fcmps"),
+        Fcmpd(0x52, "fcmpd"),
+        Fcmpq(0x53, "fcmpq"),
+
         ;
         // @formatter:on
 
@@ -1314,6 +1364,41 @@ public abstract class SPARCAssembler extends Assembler {
         private final String operator;
 
         private CC(int value, String op) {
+            this.value = value;
+            this.operator = op;
+        }
+
+        public int getValue() {
+            return value;
+        }
+
+        public String getOperator() {
+            return operator;
+        }
+    }
+
+    public enum FCond {
+        Fba(0x8, "fba"),
+        Fbn(0x0, "fbn"),
+        Fbu(0x7, "fbu"),
+        Fbg(0x6, "fbg"),
+        Fbug(0x5, "fbug"),
+        Fbl(0x4, "fbl"),
+        Fbul(0x3, "fbul"),
+        Fblg(0x2, "fblg"),
+        Fbne(0x1, "fbne"),
+        Fbe(0x9, "fbe"),
+        Fbue(0xA, "fbue"),
+        Fbge(0xB, "fbge"),
+        Fbuge(0xC, "fbuge"),
+        Fble(0xD, "fble"),
+        Fbule(0xE, "fbule"),
+        Fbo(0xF, "fbo");
+        private final int value;
+        private final String operator;
+
+        private FCond(int value, String op) {
+            assert value >= 0 && value < 1 << 5 : value; // 4 bits
             this.value = value;
             this.operator = op;
         }
@@ -1689,6 +1774,27 @@ public abstract class SPARCAssembler extends Assembler {
         public Movxtod(Register src, Register dst) {
             /* VIS3 only */
             super(Ops.ArithOp, Op3s.Impdep1, Opfs.Movxtod, g0, src, dst);
+        }
+    }
+
+    public static class Movdtox extends Fmt3p {
+        public Movdtox(Register src, Register dst) {
+            /* VIS3 only */
+            super(Ops.ArithOp, Op3s.Impdep1, Opfs.Movdtox, g0, src, dst);
+        }
+    }
+
+    public static class Movstosw extends Fmt3p {
+        public Movstosw(Register src, Register dst) {
+            /* VIS3 only */
+            super(Ops.ArithOp, Op3s.Impdep1, Opfs.Movstosw, g0, src, dst);
+        }
+    }
+
+    public static class Movstouw extends Fmt3p {
+        public Movstouw(Register src, Register dst) {
+            /* VIS3 only */
+            super(Ops.ArithOp, Op3s.Impdep1, Opfs.Movstouw, g0, src, dst);
         }
     }
 
@@ -2659,6 +2765,20 @@ public abstract class SPARCAssembler extends Assembler {
         }
     }
 
+    public static class Fstox extends Fmt3n {
+
+        public Fstox(SPARCAssembler masm, Register src2, Register dst) {
+            super(masm, Ops.ArithOp.getValue(), Op3s.Fpop1.getValue(), Opfs.Fstox.getValue(), src2.encoding(), dst.encoding());
+        }
+    }
+
+    public static class Fdtox extends Fmt3n {
+
+        public Fdtox(SPARCAssembler masm, Register src2, Register dst) {
+            super(masm, Ops.ArithOp.getValue(), Op3s.Fpop1.getValue(), Opfs.Fdtox.getValue(), src2.encoding(), dst.encoding());
+        }
+    }
+
     public static class Fstod extends Fmt3n {
 
         public Fstod(SPARCAssembler masm, Register src2, Register dst) {
@@ -2895,6 +3015,20 @@ public abstract class SPARCAssembler extends Assembler {
         public Fzerod(SPARCAssembler asm, Register dst) {
             /* VIS1 only */
             super(asm, Ops.ArithOp.getValue(), Op3s.Fpop1.getValue(), Opfs.Fzerod.getValue(), 0, dst.encoding());
+        }
+    }
+
+    public static class Fcmp extends Fmt3c {
+
+        public Fcmp(CC cc, Opfs opf, Register r1, Register r2) {
+            super(Ops.ArithOp, cc, 0b110101, opf, r1, r2);
+        }
+    }
+
+    public static class Fbfcc extends Fmt00b {
+
+        public Fbfcc(SPARCAssembler asm, FCond cond, boolean annul, int disp) {
+            super(asm, Ops.BranchOp.getValue(), annul ? 1 : 0, cond.getValue(), 0b110, disp);
         }
     }
 

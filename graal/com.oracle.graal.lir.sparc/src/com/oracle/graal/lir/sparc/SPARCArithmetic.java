@@ -556,16 +556,15 @@ public enum SPARCArithmetic {
                 case D2F:
                     new Fdtos(asDoubleReg(src), asFloatReg(dst)).emit(masm);
                     break;
-                /*
-                 * case L2F:
-                 * 
-                 * new Movxtod(asLongReg(src), asDoubleReg(dst)).emit(masm); new Fxtod(masm,
-                 * asDoubleReg(dst), asDoubleReg(dst)); new Fdtos(asDoubleReg(dst),
-                 * asFloatReg(dst)).emit(masm); break;
-                 */
                 case L2D:
-                    new Movxtod(asLongReg(src), asDoubleReg(dst)).emit(masm);
-                    new Fxtod(masm, asDoubleReg(dst), asDoubleReg(dst));
+                    if (src.getPlatformKind() == Kind.Long) {
+                        new Movxtod(asLongReg(src), asDoubleReg(dst)).emit(masm);
+                        new Fxtod(masm, asDoubleReg(dst), asDoubleReg(dst));
+                    } else if (src.getPlatformKind() == Kind.Double) {
+                        new Fxtod(masm, asDoubleReg(src), asDoubleReg(dst));
+                    } else {
+                        throw GraalInternalError.shouldNotReachHere("cannot handle source register " + src.getPlatformKind());
+                    }
                     break;
                 case I2L:
                     new Signx(asIntReg(src), asLongReg(dst)).emit(masm);
@@ -590,11 +589,45 @@ public enum SPARCArithmetic {
                     new Sra(asIntReg(dst), 16, asIntReg(dst)).emit(masm);
                     break;
                 case I2F:
-                    new Movwtos(asIntReg(src), asFloatReg(dst)).emit(masm);
-                    new Fitos(masm, asFloatReg(dst), asFloatReg(dst));
+                    if (src.getPlatformKind() == Kind.Int) {
+                        new Movwtos(asIntReg(src), asFloatReg(dst)).emit(masm);
+                        new Fitos(masm, asFloatReg(dst), asFloatReg(dst));
+                    } else if (src.getPlatformKind() == Kind.Float) {
+                        new Fitos(masm, asFloatReg(src), asFloatReg(dst));
+                    } else {
+                        throw GraalInternalError.shouldNotReachHere("cannot handle source register " + src.getPlatformKind());
+                    }
                     break;
                 case F2D:
                     new Fstod(masm, asDoubleReg(dst), asDoubleReg(dst));
+                    break;
+                case F2L:
+                    new Fcmp(CC.Fcc0, Opfs.Fcmps, asFloatReg(dst), asFloatReg(dst)).emit(masm);
+                    new Fbfcc(masm, FCond.Fbo, false, 4);
+                    new Fstox(masm, asFloatReg(dst), asFloatReg(dst));
+                    new Fitos(masm, asFloatReg(dst), asFloatReg(dst));
+                    new Fsubs(asFloatReg(dst), asFloatReg(dst), asFloatReg(dst)).emit(masm);
+                    break;
+                case F2I:
+                    new Fcmp(CC.Fcc0, Opfs.Fcmps, asFloatReg(dst), asFloatReg(dst)).emit(masm);
+                    new Fbfcc(masm, FCond.Fbo, false, 4);
+                    new Fstoi(masm, asFloatReg(dst), asFloatReg(dst));
+                    new Fitos(masm, asFloatReg(dst), asFloatReg(dst));
+                    new Fsubs(asFloatReg(dst), asFloatReg(dst), asFloatReg(dst)).emit(masm);
+                    break;
+                case D2L:
+                    new Fcmp(CC.Fcc0, Opfs.Fcmpd, asDoubleReg(dst), asDoubleReg(dst)).emit(masm);
+                    new Fbfcc(masm, FCond.Fbo, false, 4);
+                    new Fdtox(masm, asDoubleReg(dst), asDoubleReg(dst));
+                    new Fxtod(masm, asDoubleReg(dst), asDoubleReg(dst));
+                    new Fsubd(asDoubleReg(dst), asDoubleReg(dst), asDoubleReg(dst)).emit(masm);
+                    break;
+                case D2I:
+                    new Fcmp(CC.Fcc0, Opfs.Fcmpd, asDoubleReg(dst), asDoubleReg(dst)).emit(masm);
+                    new Fbfcc(masm, FCond.Fbo, false, 4);
+                    new Fdtoi(masm, asDoubleReg(dst), asDoubleReg(dst));
+                    new Fitod(masm, asDoubleReg(dst), asDoubleReg(dst));
+                    new Fsubd(asDoubleReg(dst), asDoubleReg(dst), asDoubleReg(dst)).emit(masm);
                     break;
                 case FNEG:
                     new Fnegs(masm, asFloatReg(src), asFloatReg(dst));
