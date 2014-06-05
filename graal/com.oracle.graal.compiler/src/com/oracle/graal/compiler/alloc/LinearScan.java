@@ -49,6 +49,7 @@ import com.oracle.graal.lir.LIRInstruction.OperandMode;
 import com.oracle.graal.lir.LIRInstruction.ValueProcedure;
 import com.oracle.graal.lir.StandardOp.MoveOp;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.options.*;
 import com.oracle.graal.phases.util.*;
 
 /**
@@ -68,6 +69,13 @@ public final class LinearScan {
     boolean callKillsRegisters;
 
     private static final int SPLIT_INTERVALS_CAPACITY_RIGHT_SHIFT = 1;
+
+    public static class Options {
+        // @formatter:off
+        @Option(help = "Enable spill position optimization")
+        public static final OptionValue<Boolean> LSRAOptimizeSpillPosition = new OptionValue<>(true);
+        // @formatter:on
+    }
 
     public static class BlockData {
 
@@ -443,7 +451,13 @@ public final class LinearScan {
                 if (defLoopDepth < spillLoopDepth) {
                     // the loop depth of the spilling position is higher then the loop depth
                     // at the definition of the interval . move write to memory out of loop.
-                    interval.setSpillState(SpillState.SpillInDominator);
+                    if (Options.LSRAOptimizeSpillPosition.getValue()) {
+                        // find best spill position in dominator the tree
+                        interval.setSpillState(SpillState.SpillInDominator);
+                    } else {
+                        // store at definition of the interval
+                        interval.setSpillState(SpillState.StoreAtDefinition);
+                    }
                 } else {
                     // the interval is currently spilled only once, so for now there is no
                     // reason to store the interval at the definition
@@ -453,8 +467,14 @@ public final class LinearScan {
             }
 
             case OneSpillStore: {
-                // the interval is spilled more then once
-                interval.setSpillState(SpillState.SpillInDominator);
+                if (Options.LSRAOptimizeSpillPosition.getValue()) {
+                    // the interval is spilled more then once
+                    interval.setSpillState(SpillState.SpillInDominator);
+                } else {
+                    // it is better to store it to
+                    // memory at the definition
+                    interval.setSpillState(SpillState.StoreAtDefinition);
+                }
                 break;
             }
 
@@ -1844,10 +1864,12 @@ public final class LinearScan {
                 throw Debug.handle(e);
             }
 
-            try (Scope s = Debug.scope("SpillPosition")) {
-                findSpillPosition();
-            } catch (Throwable e) {
-                throw Debug.handle(e);
+            if (Options.LSRAOptimizeSpillPosition.getValue()) {
+                try (Scope s = Debug.scope("OptimizeSpillPosition")) {
+                    optimizeSpillPosition();
+                } catch (Throwable e) {
+                    throw Debug.handle(e);
+                }
             }
 
             try (Scope s = Debug.scope("ResolveDataFlow")) {
@@ -1885,7 +1907,7 @@ public final class LinearScan {
     private DebugMetric betterSpillPos = Debug.metric("BetterSpillPosition");
     private DebugMetric betterSpillPosWithLowerProbability = Debug.metric("BetterSpillPositionWithLowerProbability");
 
-    private void findSpillPosition() {
+    private void optimizeSpillPosition() {
         for (Interval interval : intervals) {
             if (interval != null && interval.isSplitParent() && interval.spillState() == SpillState.SpillInDominator) {
                 AbstractBlock<?> defBlock = blockForId(interval.spillDefinitionPos());
