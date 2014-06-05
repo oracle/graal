@@ -1915,14 +1915,15 @@ public final class LinearScan {
                 try (Indent indent = Debug.logAndIndent("interval %s (%s)", interval, defBlock)) {
                     for (Interval splitChild : interval.getSplitChildren()) {
                         if (isStackSlot(splitChild.location())) {
-                            AbstractBlock<?> splitBlock = blockForId(splitChild.from());
-                            assert dominates(defBlock, splitBlock) : "Definition does not dominate the spill interval";
-                            Debug.log("Split interval %s", splitChild, splitBlock);
-                            if (spillBlock == null) {
-                                spillBlock = splitBlock;
-                            } else {
-                                spillBlock = nearestCommonDominator(spillBlock, splitBlock);
-                                assert spillBlock != null;
+                            for (AbstractBlock<?> splitBlock : blocksForSplitChild(splitChild)) {
+                                assert dominates(defBlock, splitBlock) : String.format("Definition does not dominate the spill block %s !dom %s (interval %s)", defBlock, splitBlock, interval);
+                                Debug.log("Split interval %s, block %s", splitChild, splitBlock);
+                                if (spillBlock == null) {
+                                    spillBlock = splitBlock;
+                                } else {
+                                    spillBlock = nearestCommonDominator(spillBlock, splitBlock);
+                                    assert spillBlock != null;
+                                }
                             }
                         }
                     }
@@ -1956,6 +1957,49 @@ public final class LinearScan {
                 }
             }
         }
+    }
+
+    /**
+     * Iterate over all {@link AbstractBlock blocks} of an interval with an use position.
+     */
+    private class UseBlockIterator implements Iterator<AbstractBlock<?>> {
+
+        int nextOpId;
+        Interval interval;
+
+        public UseBlockIterator(Interval interval) {
+            nextOpId = interval.nextUsage(RegisterPriority.None, 0);
+            this.interval = interval;
+        }
+
+        public AbstractBlock<?> next() {
+            AbstractBlock<?> block = blockForId(nextOpId);
+
+            int nextBlockIndex = block.getLinearScanNumber() + 1;
+            if (nextBlockIndex < sortedBlocks.size()) {
+                int from = getFirstLirInstructionId(sortedBlocks.get(nextBlockIndex));
+                assert from > nextOpId : "cannot go backwards";
+                assert from > maxOpId() || isBlockBegin(from) : "nextOpId is not a block begin";
+                assert from > maxOpId() || blockForId(from).getLinearScanNumber() == block.getLinearScanNumber() + 1 : "nextOpId is not the beginning of the next block";
+                nextOpId = interval.nextUsage(RegisterPriority.None, from);
+            } else {
+                // already at last the last block
+                nextOpId = Integer.MAX_VALUE;
+            }
+            return block;
+        }
+
+        public boolean hasNext() {
+            return nextOpId < interval.to();
+        }
+    }
+
+    private Iterable<AbstractBlock<?>> blocksForSplitChild(Interval interval) {
+        return new Iterable<AbstractBlock<?>>() {
+            public Iterator<AbstractBlock<?>> iterator() {
+                return new UseBlockIterator(interval);
+            }
+        };
     }
 
     private static AbstractBlock<?> moveSpillOutOfLoop(AbstractBlock<?> defBlock, AbstractBlock<?> spillBlock) {
