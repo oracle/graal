@@ -37,6 +37,26 @@ import com.oracle.graal.options.*;
  */
 public class GenGraalRuntimeInlineHpp {
 
+    private static final ZipFile graalJar;
+
+    static {
+        String path = null;
+        String classPath = System.getProperty("java.class.path");
+        for (String e : classPath.split(File.pathSeparator)) {
+            if (e.endsWith("graal.jar")) {
+                path = e;
+                break;
+            }
+        }
+        ZipFile zipFile = null;
+        try {
+            zipFile = new ZipFile(Objects.requireNonNull(path, "Could not find graal.jar on class path: " + classPath));
+        } catch (IOException e) {
+            throw new InternalError(e);
+        }
+        graalJar = zipFile;
+    }
+
     public static void main(String[] args) {
         PrintStream out = System.out;
         try {
@@ -52,17 +72,8 @@ public class GenGraalRuntimeInlineHpp {
      * Generates code for {@code GraalRuntime::get_service_impls()}.
      */
     private static void genGetServiceImpls(PrintStream out) throws Exception {
-        String graalJar = null;
-        String classPath = System.getProperty("java.class.path");
-        for (String e : classPath.split(File.pathSeparator)) {
-            if (e.endsWith("graal.jar")) {
-                graalJar = e;
-                break;
-            }
-        }
         final List<Class<? extends Service>> services = new ArrayList<>();
-        final ZipFile zipFile = new ZipFile(new File(Objects.requireNonNull(graalJar, "Could not find graal.jar on class path: " + classPath)));
-        for (final Enumeration<? extends ZipEntry> e = zipFile.entries(); e.hasMoreElements();) {
+        for (final Enumeration<? extends ZipEntry> e = graalJar.entries(); e.hasMoreElements();) {
             final ZipEntry zipEntry = e.nextElement();
             String name = zipEntry.getName();
             if (name.startsWith("META-INF/services/")) {
@@ -191,7 +202,14 @@ public class GenGraalRuntimeInlineHpp {
     static SortedMap<String, OptionDescriptor> getOptions() throws Exception {
         Field field = Class.forName("com.oracle.graal.hotspot.HotSpotOptionsLoader").getDeclaredField("options");
         field.setAccessible(true);
-        return (SortedMap<String, OptionDescriptor>) field.get(null);
+        SortedMap<String, OptionDescriptor> options = (SortedMap<String, OptionDescriptor>) field.get(null);
+
+        Set<Class<?>> checked = new HashSet<>();
+        for (final OptionDescriptor option : options.values()) {
+            Class<?> cls = option.getDeclaringClass();
+            OptionsVerifier.checkClass(cls, option, checked, graalJar);
+        }
+        return options;
     }
 
     private static Class<?> getFieldType(OptionDescriptor desc) throws Exception {

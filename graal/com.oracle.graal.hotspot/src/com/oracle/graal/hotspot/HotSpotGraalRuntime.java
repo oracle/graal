@@ -52,7 +52,6 @@ import com.oracle.graal.hotspot.debug.*;
 import com.oracle.graal.hotspot.events.*;
 import com.oracle.graal.hotspot.logging.*;
 import com.oracle.graal.hotspot.meta.*;
-import com.oracle.graal.java.*;
 import com.oracle.graal.options.*;
 import com.oracle.graal.printer.*;
 import com.oracle.graal.replacements.*;
@@ -146,9 +145,6 @@ public final class HotSpotGraalRuntime implements GraalRuntime, RuntimeProvider,
                 }
             }
         }
-
-        final HotSpotProviders hostProviders = hostBackend.getProviders();
-        assert VerifyOptionsPhase.checkOptions(hostProviders.getMetaAccess());
 
         // Complete initialization of backends
         try (InitTimer st = timer(hostBackend.getTarget().arch.getName(), ".completeInitialization")) {
