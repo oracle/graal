@@ -27,6 +27,7 @@ import static com.oracle.graal.debug.DelegatingDebugConfig.Feature.*;
 import java.io.*;
 import java.lang.reflect.*;
 import java.util.*;
+import java.util.concurrent.*;
 import java.util.zip.*;
 
 import org.junit.*;
@@ -34,6 +35,8 @@ import org.junit.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.runtime.*;
+import com.oracle.graal.compiler.*;
+import com.oracle.graal.compiler.CompilerThreadFactory.DebugConfigAccess;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.nodes.*;
@@ -42,6 +45,7 @@ import com.oracle.graal.phases.VerifyPhase.VerificationError;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.phases.util.*;
 import com.oracle.graal.phases.verify.*;
+import com.oracle.graal.printer.*;
 import com.oracle.graal.runtime.*;
 import com.oracle.graal.test.*;
 
@@ -97,7 +101,15 @@ public class CheckGraalInvariants extends GraalTest {
         String property = System.getProperty(CheckGraalInvariants.class.getName() + ".filters");
         String[] filters = property == null ? null : property.split(",");
 
-        List<String> errors = new ArrayList<>();
+        CompilerThreadFactory factory = new CompilerThreadFactory("CheckInvariantsThread", new DebugConfigAccess() {
+            public GraalDebugConfig getDebugConfig() {
+                return DebugEnvironment.initialize(System.out);
+            }
+        });
+        int availableProcessors = Runtime.getRuntime().availableProcessors();
+        ThreadPoolExecutor executor = new ThreadPoolExecutor(availableProcessors, availableProcessors, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>(), factory);
+
+        List<String> errors = Collections.synchronizedList(new ArrayList<>());
         for (String className : classNames) {
             try {
                 Class<?> c = Class.forName(className, false, CheckGraalInvariants.class.getClassLoader());
@@ -107,22 +119,24 @@ public class CheckGraalInvariants extends GraalTest {
                     } else {
                         String methodName = className + "." + m.getName();
                         if (matches(filters, methodName)) {
-                            StructuredGraph graph = new StructuredGraph(metaAccess.lookupJavaMethod(m));
-                            try (DebugConfigScope s = Debug.setConfig(new DelegatingDebugConfig().disable(INTERCEPT))) {
-                                graphBuilderSuite.apply(graph, context);
-                                checkGraph(context, graph);
-                            } catch (VerificationError e) {
-                                errors.add(e.getMessage());
-                            } catch (LinkageError e) {
-                                // suppress linkages errors resulting from eager resolution
-                            } catch (BailoutException e) {
-                                // Graal bail outs on certain patterns in Java bytecode (e.g.,
-                                // unbalanced monitors introduced by jacoco).
-                            } catch (Throwable e) {
-                                StringWriter sw = new StringWriter();
-                                e.printStackTrace(new PrintWriter(sw));
-                                errors.add(String.format("Error while checking %s:%n%s", methodName, sw));
-                            }
+                            executor.execute(() -> {
+                                StructuredGraph graph = new StructuredGraph(metaAccess.lookupJavaMethod(m));
+                                try (DebugConfigScope s = Debug.setConfig(new DelegatingDebugConfig().disable(INTERCEPT))) {
+                                    graphBuilderSuite.apply(graph, context);
+                                    checkGraph(context, graph);
+                                } catch (VerificationError e) {
+                                    errors.add(e.getMessage());
+                                } catch (LinkageError e) {
+                                    // suppress linkages errors resulting from eager resolution
+                                } catch (BailoutException e) {
+                                    // Graal bail outs on certain patterns in Java bytecode (e.g.,
+                                    // unbalanced monitors introduced by jacoco).
+                                } catch (Throwable e) {
+                                    StringWriter sw = new StringWriter();
+                                    e.printStackTrace(new PrintWriter(sw));
+                                    errors.add(String.format("Error while checking %s:%n%s", methodName, sw));
+                                }
+                            });
                         }
                     }
                 }
@@ -131,6 +145,13 @@ public class CheckGraalInvariants extends GraalTest {
                 e.printStackTrace();
             }
         }
+        executor.shutdown();
+        try {
+            executor.awaitTermination(1, TimeUnit.HOURS);
+        } catch (InterruptedException e1) {
+            throw new RuntimeException(e1);
+        }
+
         if (!errors.isEmpty()) {
             StringBuilder msg = new StringBuilder();
             String nl = String.format("%n");
