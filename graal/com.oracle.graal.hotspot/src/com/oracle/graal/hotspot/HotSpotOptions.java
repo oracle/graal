@@ -36,6 +36,8 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.options.*;
 import com.oracle.graal.phases.common.inlining.*;
 
+//JaCoCo Exclude
+
 /**
  * Sets Graal options from the HotSpot command line. Such options are distinguished by a
  * {@code "-G:"} prefix.

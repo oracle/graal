@@ -40,6 +40,8 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.options.*;
 import com.oracle.graal.printer.*;
 
+//JaCoCo Exclude
+
 /**
  * A queue for running {@link CompilationTask}s on background compilation thread(s). The singleton
  * {@linkplain #queue() instance} is created the first time this class is accessed.
