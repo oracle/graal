@@ -907,20 +907,20 @@ public abstract class AbstractBytecodeParser<T extends KindProvider, F extends A
     switch (opcode) {
         case NOP            : /* nothing to do */ break;
         case ACONST_NULL    : frameState.apush(appendConstant(Constant.NULL_OBJECT)); break;
-        case ICONST_M1      : frameState.ipush(appendConstant(Constant.INT_MINUS_1)); break;
-        case ICONST_0       : frameState.ipush(appendConstant(Constant.INT_0)); break;
-        case ICONST_1       : frameState.ipush(appendConstant(Constant.INT_1)); break;
-        case ICONST_2       : frameState.ipush(appendConstant(Constant.INT_2)); break;
-        case ICONST_3       : frameState.ipush(appendConstant(Constant.INT_3)); break;
-        case ICONST_4       : frameState.ipush(appendConstant(Constant.INT_4)); break;
-        case ICONST_5       : frameState.ipush(appendConstant(Constant.INT_5)); break;
-        case LCONST_0       : frameState.lpush(appendConstant(Constant.LONG_0)); break;
-        case LCONST_1       : frameState.lpush(appendConstant(Constant.LONG_1)); break;
-        case FCONST_0       : frameState.fpush(appendConstant(Constant.FLOAT_0)); break;
-        case FCONST_1       : frameState.fpush(appendConstant(Constant.FLOAT_1)); break;
-        case FCONST_2       : frameState.fpush(appendConstant(Constant.FLOAT_2)); break;
-        case DCONST_0       : frameState.dpush(appendConstant(Constant.DOUBLE_0)); break;
-        case DCONST_1       : frameState.dpush(appendConstant(Constant.DOUBLE_1)); break;
+        case ICONST_M1      : // fall through
+        case ICONST_0       : // fall through
+        case ICONST_1       : // fall through
+        case ICONST_2       : // fall through
+        case ICONST_3       : // fall through
+        case ICONST_4       : // fall through
+        case ICONST_5       : frameState.ipush(appendConstant(Constant.forInt(opcode - ICONST_0))); break;
+        case LCONST_0       : // fall through
+        case LCONST_1       : frameState.lpush(appendConstant(Constant.forLong(opcode - LCONST_0))); break;
+        case FCONST_0       : // fall through
+        case FCONST_1       : // fall through
+        case FCONST_2       : frameState.fpush(appendConstant(Constant.forFloat(opcode - FCONST_0))); break;
+        case DCONST_0       : // fall through
+        case DCONST_1       : frameState.dpush(appendConstant(Constant.forDouble(opcode - DCONST_0))); break;
         case BIPUSH         : frameState.ipush(appendConstant(Constant.forInt(stream.readByte()))); break;
         case SIPUSH         : frameState.ipush(appendConstant(Constant.forInt(stream.readShort()))); break;
         case LDC            : // fall through

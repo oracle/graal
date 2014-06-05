@@ -32,36 +32,23 @@ public abstract class Constant extends Value {
 
     private static final long serialVersionUID = -6355452536852663986L;
 
-    private static final Constant[] INT_CONSTANT_CACHE = new Constant[100];
-    static {
-        for (int i = 0; i < INT_CONSTANT_CACHE.length; ++i) {
-            INT_CONSTANT_CACHE[i] = new PrimitiveConstant(Kind.Int, i);
-        }
-    }
-
+    /*
+     * Using a larger cache for integers leads to only a slight increase in cache hit ratio which is
+     * not enough to justify the impact on startup time.
+     */
     public static final Constant NULL_OBJECT = new NullConstant();
     public static final Constant INT_MINUS_1 = new PrimitiveConstant(Kind.Int, -1);
-    public static final Constant INT_0 = forInt(0);
-    public static final Constant INT_1 = forInt(1);
-    public static final Constant INT_2 = forInt(2);
-    public static final Constant INT_3 = forInt(3);
-    public static final Constant INT_4 = forInt(4);
-    public static final Constant INT_5 = forInt(5);
+    public static final Constant INT_0 = new PrimitiveConstant(Kind.Int, 0);
+    public static final Constant INT_1 = new PrimitiveConstant(Kind.Int, 1);
+    public static final Constant INT_2 = new PrimitiveConstant(Kind.Int, 2);
     public static final Constant LONG_0 = new PrimitiveConstant(Kind.Long, 0L);
     public static final Constant LONG_1 = new PrimitiveConstant(Kind.Long, 1L);
     public static final Constant FLOAT_0 = new PrimitiveConstant(Kind.Float, Float.floatToRawIntBits(0.0F));
     public static final Constant FLOAT_1 = new PrimitiveConstant(Kind.Float, Float.floatToRawIntBits(1.0F));
-    public static final Constant FLOAT_2 = new PrimitiveConstant(Kind.Float, Float.floatToRawIntBits(2.0F));
     public static final Constant DOUBLE_0 = new PrimitiveConstant(Kind.Double, Double.doubleToRawLongBits(0.0D));
     public static final Constant DOUBLE_1 = new PrimitiveConstant(Kind.Double, Double.doubleToRawLongBits(1.0D));
     public static final Constant TRUE = new PrimitiveConstant(Kind.Boolean, 1L);
     public static final Constant FALSE = new PrimitiveConstant(Kind.Boolean, 0L);
-
-    static {
-        assert FLOAT_0 != forFloat(-0.0F) : "Constant for 0.0f must be different from -0.0f";
-        assert DOUBLE_0 != forDouble(-0.0d) : "Constant for 0.0d must be different from -0.0d";
-        assert NULL_OBJECT.isNull();
-    }
 
     protected Constant(PlatformKind kind) {
         super(kind);
@@ -183,9 +170,6 @@ public abstract class Constant extends Value {
         if (Float.compare(f, 1.0F) == 0) {
             return FLOAT_1;
         }
-        if (Float.compare(f, 2.0F) == 0) {
-            return FLOAT_2;
-        }
         return new PrimitiveConstant(Kind.Float, Float.floatToRawIntBits(f));
     }
 
@@ -196,7 +180,13 @@ public abstract class Constant extends Value {
      * @return a boxed copy of {@code value}
      */
     public static Constant forLong(long i) {
-        return i == 0 ? LONG_0 : i == 1 ? LONG_1 : new PrimitiveConstant(Kind.Long, i);
+        if (i == 0) {
+            return LONG_0;
+        } else if (i == 1) {
+            return LONG_1;
+        } else {
+            return new PrimitiveConstant(Kind.Long, i);
+        }
     }
 
     /**
@@ -206,13 +196,18 @@ public abstract class Constant extends Value {
      * @return a boxed copy of {@code value}
      */
     public static Constant forInt(int i) {
-        if (i == -1) {
-            return INT_MINUS_1;
+        switch (i) {
+            case -1:
+                return INT_MINUS_1;
+            case 0:
+                return INT_0;
+            case 1:
+                return INT_1;
+            case 2:
+                return INT_2;
+            default:
+                return new PrimitiveConstant(Kind.Int, i);
         }
-        if (i >= 0 && i < INT_CONSTANT_CACHE.length) {
-            return INT_CONSTANT_CACHE[i];
-        }
-        return new PrimitiveConstant(Kind.Int, i);
     }
 
     /**
@@ -346,6 +341,8 @@ public abstract class Constant extends Value {
      */
     public static Constant zero(Kind kind) {
         switch (kind) {
+            case Boolean:
+                return FALSE;
             case Byte:
                 return forByte((byte) 0);
             case Char:
@@ -370,6 +367,8 @@ public abstract class Constant extends Value {
      */
     public static Constant one(Kind kind) {
         switch (kind) {
+            case Boolean:
+                return TRUE;
             case Byte:
                 return forByte((byte) 1);
             case Char:
