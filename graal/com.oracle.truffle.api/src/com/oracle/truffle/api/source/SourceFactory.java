@@ -26,6 +26,7 @@ package com.oracle.truffle.api.source;
 
 import java.io.*;
 import java.lang.ref.*;
+import java.net.*;
 import java.util.*;
 
 import com.oracle.truffle.api.*;
@@ -39,7 +40,7 @@ import com.oracle.truffle.api.*;
  * <li><strong>Literal Source:</strong> A named text string, whose contents are supplied concretely
  * (possibly via an {@link Reader}), can also be used as a source. These are not indexed and should
  * be considered value objects; equality is defined based on contents.</li>
- * <li><strong>Fake Files:</strong> A named text string used for testing; its contents can be
+ * <li><strong>Pseudo Files:</strong> A named text string used for testing; its contents can be
  * retrieved by name, unlike literal sources.</li>
  * </ul>
  * <p>
@@ -56,7 +57,7 @@ import com.oracle.truffle.api.*;
  */
 public final class SourceFactory {
 
-    // Only files and fake files are indexed.
+    // Only files and pseudo files are indexed.
     private static final Map<String, WeakReference<SourceImpl>> pathToSource = new HashMap<>();
 
     private static boolean fileCacheEnabled = true;
@@ -71,23 +72,17 @@ public final class SourceFactory {
      * @param fileName name
      * @param reset forces any existing {@link Source} cache to be cleared, forcing a re-read
      * @return canonical representation of the file's contents.
-     * @throws RuntimeException if the file can not be read
+     * @throws IOException if the file can not be read
      */
-    public static Source fromFile(String fileName, boolean reset) throws RuntimeException {
-
-        // TODO (mlvdv) throw IOException
+    public static Source fromFile(String fileName, boolean reset) throws IOException {
 
         SourceImpl source = lookup(fileName);
         if (source == null) {
             final File file = new File(fileName);
-            String path = null;
-            if (file.exists()) {
-                try {
-                    path = file.getCanonicalPath();
-                } catch (IOException e) {
-                    throw new RuntimeException("Can't find file " + fileName);
-                }
+            if (!file.canRead()) {
+                throw new IOException("Can't read file " + fileName);
             }
+            String path = file.getCanonicalPath();
             source = lookup(path);
             if (source == null) {
                 source = new FileSourceImpl(file, fileName, path);
@@ -106,9 +101,9 @@ public final class SourceFactory {
      *
      * @param fileName name
      * @return canonical representation of the file's contents.
-     * @throws RuntimeException if the file can not be read
+     * @throws IOException if the file can not be read
      */
-    public static Source fromFile(String fileName) throws RuntimeException {
+    public static Source fromFile(String fileName) throws IOException {
         return fromFile(fileName, false);
     }
 
@@ -122,6 +117,18 @@ public final class SourceFactory {
     public static Source fromText(String code, String description) {
         assert code != null;
         return new LiteralSourceImpl(description, code);
+    }
+
+    /**
+     * Creates a source whose contents will be read immediately from a URL and cached.
+     *
+     * @param url
+     * @param name identifies the origin, possibly useful for debugging
+     * @return a newly created, non-indexed source representation
+     * @throws IOException if reading fails
+     */
+    public static Source fromURL(URL url, String name) throws IOException {
+        return URLSourceImpl.get(url, name);
     }
 
     /**
@@ -141,13 +148,25 @@ public final class SourceFactory {
      * (unlike other literal sources); intended for testing.
      *
      * @param code textual source code
-     * @param fakeFileName string to use for indexing/lookup
+     * @param pseudoFileName string to use for indexing/lookup
      * @return a newly created, source representation, canonical with respect to its name
      */
-    public static Source asFakeFile(String code, String fakeFileName) {
-        final SourceImpl source = new LiteralSourceImpl(fakeFileName, code);
-        store(fakeFileName, source);
+    public static Source asPseudoFile(String code, String pseudoFileName) {
+        final SourceImpl source = new LiteralSourceImpl(pseudoFileName, code);
+        store(pseudoFileName, source);
         return source;
+    }
+
+    /**
+     * Creates a non-canonical representation of a source that is unavailable; attempts to access
+     * any information about the source beyond the name/description will result in a
+     * {@link IllegalStateException}
+     *
+     * @param description a note about the origin, for error messages and debugging
+     * @return a newly created, non-indexed representation of an unavailable source
+     */
+    public static Source asNull(String description) {
+        return new NullSourceImpl(description);
     }
 
     /**
@@ -302,6 +321,10 @@ public final class SourceFactory {
             return name;
         }
 
+        public URL getURL() {
+            return null;
+        }
+
         @Override
         public Reader getReader() {
             return new StringReader(code);
@@ -386,6 +409,10 @@ public final class SourceFactory {
             return path;
         }
 
+        public URL getURL() {
+            return null;
+        }
+
         @Override
         public Reader getReader() {
             if (code != null && timeStamp == file.lastModified()) {
@@ -401,6 +428,98 @@ public final class SourceFactory {
         @Override
         protected void reset() {
             this.code = null;
+        }
+
+    }
+
+    private static class URLSourceImpl extends SourceImpl {
+
+        private static final Map<URL, WeakReference<URLSourceImpl>> urlToSource = new HashMap<>();
+
+        public static URLSourceImpl get(URL url, String name) throws IOException {
+            WeakReference<URLSourceImpl> sourceRef = urlToSource.get(url);
+            URLSourceImpl source = sourceRef == null ? null : sourceRef.get();
+            if (source == null) {
+                source = new URLSourceImpl(url, name);
+                urlToSource.put(url, new WeakReference<>(source));
+            }
+            return source;
+        }
+
+        private final URL url;
+        private final String name;
+        private String code = null;  // A cache of the source contents
+
+        public URLSourceImpl(URL url, String name) throws IOException {
+            this.url = url;
+            this.name = name;
+            code = read(new InputStreamReader(url.openStream()));
+        }
+
+        public String getName() {
+            return name;
+        }
+
+        public String getShortName() {
+            return name;
+        }
+
+        public String getPath() {
+            return url.getPath();
+        }
+
+        public URL getURL() {
+            return url;
+        }
+
+        public Reader getReader() {
+            return new StringReader(code);
+        }
+
+        public String getCode() {
+            return code;
+        }
+
+        @Override
+        protected void reset() {
+        }
+
+    }
+
+    private static final class NullSourceImpl extends SourceImpl {
+
+        private final String description;
+
+        public NullSourceImpl(String description) {
+            this.description = description;
+        }
+
+        public String getName() {
+            return description;
+        }
+
+        public String getShortName() {
+            return description;
+        }
+
+        public String getPath() {
+            return null;
+        }
+
+        public URL getURL() {
+            return null;
+        }
+
+        public Reader getReader() {
+            return null;
+        }
+
+        public String getCode() {
+            throw new IllegalStateException("null source: " + description);
+        }
+
+        @Override
+        protected void reset() {
         }
 
     }

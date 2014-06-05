@@ -25,11 +25,12 @@
 package com.oracle.truffle.api;
 
 import java.io.*;
+import java.net.*;
 
 import com.oracle.truffle.api.source.*;
 
 /**
- * Represents a unit (typically a file) of guest language source code.
+ * Represents a unit of guest language source code.
  */
 public interface Source {
 
@@ -51,9 +52,14 @@ public interface Source {
     String getShortName();
 
     /**
-     * The normalized, canonical name of the file.
+     * The normalized, canonical name if the source is a file.
      */
     String getPath();
+
+    /**
+     * The URL if the source is retrieved via URL.
+     */
+    URL getURL();
 
     /**
      * Access to the source contents.
