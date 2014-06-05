@@ -2052,7 +2052,7 @@ public class AMD64Assembler extends Assembler {
             if (srcEnc >= 8) {
                 emitByte(Prefix.REXB);
                 srcEnc -= 8;
-            } else if (byteinst && srcEnc >= 4) {
+            } else if (byteinst && (srcEnc >= 4 || dstEnc >= 4)) {
                 emitByte(Prefix.REX);
             }
         } else {
