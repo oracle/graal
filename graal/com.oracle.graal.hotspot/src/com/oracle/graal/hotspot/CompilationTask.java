@@ -27,12 +27,15 @@ import static com.oracle.graal.api.code.CodeUtil.*;
 import static com.oracle.graal.compiler.GraalCompiler.*;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.compiler.common.UnsafeAccess.*;
-import static com.oracle.graal.hotspot.bridge.VMToCompilerImpl.*;
+import static com.oracle.graal.hotspot.CompilationQueue.*;
+import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
+import static com.oracle.graal.hotspot.InitTimer.*;
 import static com.oracle.graal.nodes.StructuredGraph.*;
 import static com.oracle.graal.phases.common.inlining.InliningUtil.*;
 
 import java.io.*;
 import java.lang.management.*;
+import java.security.*;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.*;
@@ -47,6 +50,7 @@ import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.debug.internal.*;
+import com.oracle.graal.hotspot.CompilationQueue.Options;
 import com.oracle.graal.hotspot.bridge.*;
 import com.oracle.graal.hotspot.events.*;
 import com.oracle.graal.hotspot.events.EventProvider.CompilationEvent;
@@ -60,9 +64,19 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.tiers.*;
 
-import edu.umd.cs.findbugs.annotations.*;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+
+//JaCoCo Exclude
 
 public class CompilationTask implements Runnable, Comparable<Object> {
+
+    static {
+        try (InitTimer t = timer("initialize CompilationTask")) {
+            // Must be first to ensure any options accessed by the rest of the class
+            // initializer are initialized from the command line.
+            HotSpotOptions.initialize();
+        }
+    }
 
     // Keep static finals in a group with withinEnqueue as the last one. CompilationTask can be
     // called from within it's own clinit so it needs to be careful about accessing state. Once
@@ -409,7 +423,7 @@ public class CompilationTask implements Runnable, Comparable<Object> {
             if (ctask != 0L) {
                 unsafe.putInt(ctask + config.compileTaskNumInlinedBytecodesOffset, processedBytes);
             }
-            if ((config.ciTime || config.ciTimeEach || PrintCompRate.getValue() != 0) && installedCode != null) {
+            if ((config.ciTime || config.ciTimeEach || Options.PrintCompRate.getValue() != 0) && installedCode != null) {
                 long time = CompilationTime.getCurrentValue() - previousCompilationTime;
                 TimeUnit timeUnit = CompilationTime.getTimeUnit();
                 long timeUnitsPerSecond = timeUnit.convert(1, TimeUnit.SECONDS);
@@ -473,5 +487,70 @@ public class CompilationTask implements Runnable, Comparable<Object> {
     @Override
     public String toString() {
         return "Compilation[id=" + id + ", " + MetaUtil.format("%H.%n(%p)", method) + (entryBCI == StructuredGraph.INVOCATION_ENTRY_BCI ? "" : "@" + entryBCI) + "]";
+    }
+
+    /**
+     * Entry point for the VM to schedule a compilation for a metaspace Method.
+     *
+     * Called from the VM.
+     */
+    @SuppressWarnings("unused")
+    private static void compileMetaspaceMethod(long metaspaceMethod, final int entryBCI, long ctask, final boolean blocking) {
+        final HotSpotResolvedJavaMethod method = HotSpotResolvedJavaMethod.fromMetaspace(metaspaceMethod);
+        if (ctask != 0L) {
+            // This is on a VM CompilerThread - no user frames exist
+            compileMethod(method, entryBCI, ctask, false);
+        } else {
+            // We have to use a privileged action here because compilations are
+            // enqueued from user code which very likely contains unprivileged frames.
+            AccessController.doPrivileged(new PrivilegedAction<Void>() {
+                public Void run() {
+                    compileMethod(method, entryBCI, 0L, blocking);
+                    return null;
+                }
+            });
+        }
+    }
+
+    /**
+     * Compiles a method to machine code.
+     */
+    static void compileMethod(final HotSpotResolvedJavaMethod method, final int entryBCI, long ctask, final boolean blocking) {
+        if (ctask != 0L) {
+            HotSpotBackend backend = runtime().getHostBackend();
+            CompilationTask task = new CompilationTask(null, backend, method, entryBCI, ctask, false);
+            task.runCompilation();
+            return;
+        }
+
+        if (isWithinEnqueue()) {
+            // This is required to avoid deadlocking a compiler thread. The issue is that a
+            // java.util.concurrent.BlockingQueue is used to implement the compilation worker
+            // queues. If a compiler thread triggers a compilation, then it may be blocked trying
+            // to add something to its own queue.
+            return;
+        }
+
+        // Don't allow blocking compiles from CompilerThreads
+        boolean block = blocking && !(Thread.currentThread() instanceof CompilerThread);
+        try (Enqueueing enqueueing = new Enqueueing()) {
+            if (method.tryToQueueForCompilation()) {
+                assert method.isQueuedForCompilation();
+
+                try {
+                    CompilationQueue queue = queue();
+                    if (!queue.executor.isShutdown()) {
+                        HotSpotBackend backend = runtime().getHostBackend();
+                        CompilationTask task = new CompilationTask(queue.executor, backend, method, entryBCI, ctask, block);
+                        queue.execute(task);
+                        if (block) {
+                            task.block();
+                        }
+                    }
+                } catch (RejectedExecutionException e) {
+                    // The compile queue was already shut down.
+                }
+            }
+        }
     }
 }

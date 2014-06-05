@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.hotspot.replacements;
 
+import static com.oracle.graal.api.code.MemoryBarriers.*;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 import static com.oracle.graal.nodes.extended.BranchProbabilityNode.*;
@@ -213,22 +214,26 @@ public class WriteBarrierSnippets implements Snippets {
                 g1EffectiveAfterNullPostWriteBarrierCounter.inc();
 
                 // If the card is already dirty, (hence already enqueued) skip the insertion.
-                if (probability(NOT_FREQUENT_PROBABILITY, cardByte != (byte) 0)) {
-                    log(trace, "[%d] G1-Post Thread: %p Card: %p \n", gcCycle, thread.rawValue(), Word.unsigned(cardByte).rawValue());
-                    cardAddress.writeByte(0, (byte) 0, GC_CARD_LOCATION);
-                    g1ExecutedPostWriteBarrierCounter.inc();
+                if (probability(NOT_FREQUENT_PROBABILITY, cardByte != g1YoungCardValue())) {
+                    MembarNode.memoryBarrier(STORE_LOAD);
+                    byte cardByteReload = cardAddress.readByte(0);
+                    if (probability(NOT_FREQUENT_PROBABILITY, cardByteReload != dirtyCardValue())) {
+                        log(trace, "[%d] G1-Post Thread: %p Card: %p \n", gcCycle, thread.rawValue(), Word.unsigned(cardByte).rawValue());
+                        cardAddress.writeByte(0, (byte) 0, GC_CARD_LOCATION);
+                        g1ExecutedPostWriteBarrierCounter.inc();
 
-                    // If the thread local card queue is full, issue a native call which will
-                    // initialize a new one and add the card entry.
-                    if (probability(FREQUENT_PROBABILITY, indexValue.notEqual(0))) {
-                        Word nextIndex = indexValue.subtract(wordSize());
-                        Word logAddress = bufferAddress.add(nextIndex);
-                        // Log the object to be scanned as well as update
-                        // the card queue's next index.
-                        logAddress.writeWord(0, cardAddress, GC_LOG_LOCATION);
-                        indexAddress.writeWord(0, nextIndex, GC_INDEX_LOCATION);
-                    } else {
-                        g1PostBarrierStub(G1WBPOSTCALL, cardAddress);
+                        // If the thread local card queue is full, issue a native call which will
+                        // initialize a new one and add the card entry.
+                        if (probability(FREQUENT_PROBABILITY, indexValue.notEqual(0))) {
+                            Word nextIndex = indexValue.subtract(wordSize());
+                            Word logAddress = bufferAddress.add(nextIndex);
+                            // Log the object to be scanned as well as update
+                            // the card queue's next index.
+                            logAddress.writeWord(0, cardAddress, GC_LOG_LOCATION);
+                            indexAddress.writeWord(0, nextIndex, GC_INDEX_LOCATION);
+                        } else {
+                            g1PostBarrierStub(G1WBPOSTCALL, cardAddress);
+                        }
                     }
                 }
             }
@@ -293,19 +298,23 @@ public class WriteBarrierSnippets implements Snippets {
             Word cardAddress = Word.unsigned((start + cardStart) + count);
             byte cardByte = cardAddress.readByte(0);
             // If the card is already dirty, (hence already enqueued) skip the insertion.
-            if (cardByte != (byte) 0) {
-                cardAddress.writeByte(0, (byte) 0, GC_CARD_LOCATION);
-                // If the thread local card queue is full, issue a native call which will
-                // initialize a new one and add the card entry.
-                if (indexValue != 0) {
-                    indexValue = indexValue - wordSize();
-                    Word logAddress = bufferAddress.add(Word.unsigned(indexValue));
-                    // Log the object to be scanned as well as update
-                    // the card queue's next index.
-                    logAddress.writeWord(0, cardAddress, GC_LOG_LOCATION);
-                    indexAddress.writeWord(0, Word.unsigned(indexValue), GC_INDEX_LOCATION);
-                } else {
-                    g1PostBarrierStub(G1WBPOSTCALL, cardAddress);
+            if (probability(NOT_FREQUENT_PROBABILITY, cardByte != g1YoungCardValue())) {
+                MembarNode.memoryBarrier(STORE_LOAD);
+                byte cardByteReload = cardAddress.readByte(0);
+                if (probability(NOT_FREQUENT_PROBABILITY, cardByteReload != dirtyCardValue())) {
+                    cardAddress.writeByte(0, (byte) 0, GC_CARD_LOCATION);
+                    // If the thread local card queue is full, issue a native call which will
+                    // initialize a new one and add the card entry.
+                    if (indexValue != 0) {
+                        indexValue = indexValue - wordSize();
+                        Word logAddress = bufferAddress.add(Word.unsigned(indexValue));
+                        // Log the object to be scanned as well as update
+                        // the card queue's next index.
+                        logAddress.writeWord(0, cardAddress, GC_LOG_LOCATION);
+                        indexAddress.writeWord(0, Word.unsigned(indexValue), GC_INDEX_LOCATION);
+                    } else {
+                        g1PostBarrierStub(G1WBPOSTCALL, cardAddress);
+                    }
                 }
             }
         }

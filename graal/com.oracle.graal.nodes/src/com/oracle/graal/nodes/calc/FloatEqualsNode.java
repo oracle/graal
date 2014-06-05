@@ -42,7 +42,7 @@ public final class FloatEqualsNode extends CompareNode {
      */
     public FloatEqualsNode(ValueNode x, ValueNode y) {
         super(x, y);
-        assert x.stamp() instanceof FloatStamp && y.stamp() instanceof FloatStamp;
+        assert x.stamp() instanceof FloatStamp && y.stamp() instanceof FloatStamp : x.stamp() + " " + y.stamp();
         assert x.stamp().isCompatible(y.stamp());
     }
 

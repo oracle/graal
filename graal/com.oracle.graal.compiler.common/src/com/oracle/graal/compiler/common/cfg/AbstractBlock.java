@@ -59,4 +59,25 @@ public interface AbstractBlock<T extends AbstractBlock<T>> {
     T getDominator();
 
     double probability();
+
+    /**
+     * True if block {@code a} dominates block {@code b}.
+     */
+    static boolean dominates(AbstractBlock<?> a, AbstractBlock<?> b) {
+        return isDominatedBy(b, a);
+    }
+
+    /**
+     * True if block {@code a} is dominated by block {@code b}.
+     */
+    static boolean isDominatedBy(AbstractBlock<?> a, AbstractBlock<?> b) {
+        if (a == b) {
+            return true;
+        }
+        if (a.getDominator() == null) {
+            return false;
+        }
+        return isDominatedBy(a.getDominator(), b);
+    }
+
 }

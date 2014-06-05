@@ -153,7 +153,7 @@ public class GenGraalRuntimeInlineHpp {
                 out.println("    case " + len + ":");
                 out.printf("      if (strncmp(name, \"PrintFlags\", %d) == 0) {%n", len);
                 out.println("        if (value[0] == '+') {");
-                out.println("          VMToCompiler::setOption(hotSpotOptionsClass, name_handle, Handle(), '?', Handle(), 0L);");
+                out.println("          set_option_helper(hotSpotOptionsClass, name_handle, Handle(), '?', Handle(), 0L);");
                 out.println("        }");
                 out.println("        return true;");
                 out.println("      }");
@@ -170,14 +170,14 @@ public class GenGraalRuntimeInlineHpp {
                     out.printf("        Handle option = get_OptionValue(\"L%s;\", \"%s\", \"L%s;\", CHECK_(true));%n", toInternalName(declaringClass), desc.getFieldName(),
                                     toInternalName(getFieldType(desc)));
                     if (isBoolean) {
-                        out.println("        VMToCompiler::setOption(hotSpotOptionsClass, name_handle, option, value[0], Handle(), 0L);");
+                        out.println("        set_option_helper(hotSpotOptionsClass, name_handle, option, value[0], Handle(), 0L);");
                     } else if (desc.getType() == String.class) {
                         out.println("        Handle stringValue = java_lang_String::create_from_str(value, CHECK_(true));");
-                        out.println("        VMToCompiler::setOption(hotSpotOptionsClass, name_handle, option, 's', stringValue, 0L);");
+                        out.println("        set_option_helper(hotSpotOptionsClass, name_handle, option, 's', stringValue, 0L);");
                     } else {
                         char spec = getPrimitiveSpecChar(desc);
                         out.println("        jlong primitiveValue = parse_primitive_option_value('" + spec + "', name_handle, value, CHECK_(true));");
-                        out.println("        VMToCompiler::setOption(hotSpotOptionsClass, name_handle, option, '" + spec + "', Handle(), primitiveValue);");
+                        out.println("        set_option_helper(hotSpotOptionsClass, name_handle, option, '" + spec + "', Handle(), primitiveValue);");
                     }
                     out.println("        return true;");
                     out.println("      }");

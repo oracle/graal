@@ -167,7 +167,7 @@ public final class CompressionNode extends ConvertNode implements LIRLowerable, 
     public void generate(NodeLIRBuilderTool gen) {
         HotSpotLIRGenerator hsGen = (HotSpotLIRGenerator) gen.getLIRGeneratorTool();
         boolean nonNull;
-        if (getInput().stamp() instanceof ObjectStamp) {
+        if (getInput().stamp() instanceof AbstractObjectStamp) {
             nonNull = StampTool.isObjectNonNull(getInput().stamp());
         } else {
             // metaspace pointers are never null

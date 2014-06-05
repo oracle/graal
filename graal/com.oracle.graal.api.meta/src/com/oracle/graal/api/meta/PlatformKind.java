@@ -28,4 +28,6 @@ package com.oracle.graal.api.meta;
 public interface PlatformKind {
 
     String name();
+
+    Constant getDefaultValue();
 }

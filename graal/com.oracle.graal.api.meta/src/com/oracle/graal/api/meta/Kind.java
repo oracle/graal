@@ -436,4 +436,27 @@ public enum Kind implements PlatformKind {
                 throw new IllegalArgumentException("illegal call to bits on " + this);
         }
     }
+
+    public Constant getDefaultValue() {
+        switch (this) {
+            case Boolean:
+                return Constant.FALSE;
+            case Int:
+                return Constant.INT_0;
+            case Long:
+                return Constant.LONG_0;
+            case Float:
+                return Constant.FLOAT_0;
+            case Double:
+                return Constant.DOUBLE_0;
+            case Object:
+                return Constant.NULL_OBJECT;
+            case Byte:
+            case Char:
+            case Short:
+                return new PrimitiveConstant(this, 0);
+            default:
+                throw new IllegalArgumentException("illegal call to getDefaultValue on " + this);
+        }
+    }
 }

@@ -1180,6 +1180,9 @@ public class HotSpotVMConfig extends CompilerObject {
     @HotSpotVMField(name = "CardTableModRefBS::byte_map_base", type = "jbyte*", get = HotSpotVMField.Type.OFFSET) @Stable private int cardTableModRefBSByteMapBaseOffset;
     @HotSpotVMConstant(name = "CardTableModRefBS::card_shift") @Stable public int cardTableModRefBSCardShift;
 
+    @HotSpotVMValue(expression = "(jbyte)CardTableModRefBS::dirty_card_val()") @Stable public byte dirtyCardValue;
+    @HotSpotVMValue(expression = "(jbyte)G1SATBCardTableModRefBS::g1_young_card_val()") @Stable public byte g1YoungCardValue;
+
     public long cardtableStartAddress() {
         final long barrierSetAddress = unsafe.getAddress(universeCollectedHeap + collectedHeapBarrierSetOffset);
         final int kind = unsafe.getInt(barrierSetAddress + barrierSetKindOffset);

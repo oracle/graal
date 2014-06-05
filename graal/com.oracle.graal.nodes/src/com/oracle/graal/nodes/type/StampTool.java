@@ -504,8 +504,8 @@ public class StampTool {
      *         always null
      */
     public static boolean isObjectAlwaysNull(Stamp stamp) {
-        if (stamp instanceof ObjectStamp && stamp.isLegal()) {
-            return ((ObjectStamp) stamp).alwaysNull();
+        if (stamp instanceof AbstractObjectStamp && stamp.isLegal()) {
+            return ((AbstractObjectStamp) stamp).alwaysNull();
         }
         return false;
     }
@@ -530,8 +530,8 @@ public class StampTool {
      *         always null
      */
     public static boolean isObjectNonNull(Stamp stamp) {
-        if (stamp instanceof ObjectStamp && stamp.isLegal()) {
-            return ((ObjectStamp) stamp).nonNull();
+        if (stamp instanceof AbstractObjectStamp && stamp.isLegal()) {
+            return ((AbstractObjectStamp) stamp).nonNull();
         }
         return false;
     }
@@ -555,8 +555,8 @@ public class StampTool {
      * @return the Java type this stamp has if it is a legal Object stamp, null otherwise
      */
     public static ResolvedJavaType typeOrNull(Stamp stamp) {
-        if (stamp instanceof ObjectStamp && stamp.isLegal()) {
-            return ((ObjectStamp) stamp).type();
+        if (stamp instanceof AbstractObjectStamp && stamp.isLegal()) {
+            return ((AbstractObjectStamp) stamp).type();
         }
         return null;
     }
@@ -584,8 +584,8 @@ public class StampTool {
      * @return true if this node represents a legal object stamp whose Java type is known exactly
      */
     public static boolean isExactType(Stamp stamp) {
-        if (stamp instanceof ObjectStamp && stamp.isLegal()) {
-            return ((ObjectStamp) stamp).isExactType();
+        if (stamp instanceof AbstractObjectStamp && stamp.isLegal()) {
+            return ((AbstractObjectStamp) stamp).isExactType();
         }
         return false;
     }

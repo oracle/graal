@@ -107,7 +107,15 @@ public class OptionProcessor extends AbstractProcessor {
             optionName = fieldName;
         }
 
-        String optionType = declaredFieldType.getTypeArguments().get(0).toString();
+        DeclaredType declaredOptionValueType = declaredFieldType;
+        while (!types.isSameType(types.erasure(declaredOptionValueType), types.erasure(optionValueType))) {
+            List<? extends TypeMirror> directSupertypes = types.directSupertypes(declaredFieldType);
+            assert !directSupertypes.isEmpty();
+            declaredOptionValueType = (DeclaredType) directSupertypes.get(0);
+        }
+
+        assert !declaredOptionValueType.getTypeArguments().isEmpty();
+        String optionType = declaredOptionValueType.getTypeArguments().get(0).toString();
         if (optionType.startsWith("java.lang.")) {
             optionType = optionType.substring("java.lang.".length());
         }

@@ -167,20 +167,6 @@ public final class Block extends AbstractBlockBase<Block> {
         return "B" + id;
     }
 
-    public boolean dominates(Block block) {
-        return block.isDominatedBy(this);
-    }
-
-    public boolean isDominatedBy(Block block) {
-        if (block == this) {
-            return true;
-        }
-        if (getDominator() == null) {
-            return false;
-        }
-        return getDominator().isDominatedBy(block);
-    }
-
     public double probability() {
         return probability;
     }

@@ -455,7 +455,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool {
 
     private void emitNullCheckBranch(IsNullNode node, LabelRef trueSuccessor, LabelRef falseSuccessor, double trueSuccessorProbability) {
         PlatformKind kind = gen.getPlatformKind(node.object().stamp());
-        gen.emitCompareBranch(kind, operand(node.object()), Constant.NULL_OBJECT, Condition.EQ, false, trueSuccessor, falseSuccessor, trueSuccessorProbability);
+        gen.emitCompareBranch(kind, operand(node.object()), kind.getDefaultValue(), Condition.EQ, false, trueSuccessor, falseSuccessor, trueSuccessorProbability);
     }
 
     public void emitCompareBranch(CompareNode compare, LabelRef trueSuccessor, LabelRef falseSuccessor, double trueSuccessorProbability) {
@@ -483,7 +483,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool {
         if (node instanceof IsNullNode) {
             IsNullNode isNullNode = (IsNullNode) node;
             PlatformKind kind = gen.getPlatformKind(isNullNode.object().stamp());
-            return gen.emitConditionalMove(kind, operand(isNullNode.object()), Constant.NULL_OBJECT, Condition.EQ, false, trueValue, falseValue);
+            return gen.emitConditionalMove(kind, operand(isNullNode.object()), kind.getDefaultValue(), Condition.EQ, false, trueValue, falseValue);
         } else if (node instanceof CompareNode) {
             CompareNode compare = (CompareNode) node;
             PlatformKind kind = gen.getPlatformKind(compare.x().stamp());
