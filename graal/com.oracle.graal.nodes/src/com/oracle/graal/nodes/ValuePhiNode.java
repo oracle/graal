@@ -32,7 +32,7 @@ import com.oracle.graal.nodes.type.*;
  * variable.
  */
 @NodeInfo(nameTemplate = "ValuePhi({i#values})")
-public class ValuePhiNode extends PhiNode implements Canonicalizable {
+public class ValuePhiNode extends PhiNode implements Simplifiable {
 
     @Input final NodeInputList<ValueNode> values = new NodeInputList<>(this);
 

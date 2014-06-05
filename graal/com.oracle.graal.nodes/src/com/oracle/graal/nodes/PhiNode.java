@@ -158,14 +158,19 @@ public abstract class PhiNode extends FloatingNode {
     }
 
     @Override
-    public Node canonical(CanonicalizerTool tool) {
+    public void simplify(SimplifierTool tool) {
         ValueNode singleValue = singleValue();
 
         if (singleValue != null) {
-            return singleValue;
+            for (Node node : usages().snapshot()) {
+                if (node instanceof ProxyNode && ((ProxyNode) node).proxyPoint() instanceof LoopExitNode && ((LoopExitNode) ((ProxyNode) node).proxyPoint()).loopBegin() == merge) {
+                    node.usages().forEach(tool::addToWorkList);
+                    graph().replaceFloating((FloatingNode) node, singleValue);
+                }
+            }
+            graph().replaceFloating(this, singleValue);
+            usages().forEach(tool::addToWorkList);
         }
-
-        return this;
     }
 
     public ValueNode firstValue() {
