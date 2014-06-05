@@ -63,7 +63,7 @@ public class LoopFragmentInside extends LoopFragment {
     }
 
     @Override
-    public LoopFragmentInside duplicate() {
+    public LoopFragmentInside duplicate(boolean createExitFrameStates) {
         assert !isDuplicate();
         return new LoopFragmentInside(this);
     }
@@ -85,14 +85,14 @@ public class LoopFragmentInside extends LoopFragment {
     }
 
     @Override
-    public void insertBefore(LoopEx loop) {
+    public void insertBefore(LoopEx loop, boolean createExitFrameStates) {
         assert this.isDuplicate() && this.original().loop() == loop;
 
         patchNodes(dataFixBefore);
 
         BeginNode end = mergeEnds();
 
-        mergeEarlyExits();
+        mergeEarlyExits(createExitFrameStates);
 
         original().patchPeeling(this);
 

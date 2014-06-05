@@ -73,7 +73,7 @@ public class OnStackReplacementPhase extends Phase {
                 break;
             }
 
-            LoopTransformations.peel(osrLoop);
+            LoopTransformations.peel(osrLoop, true);
             for (Node usage : osr.usages().snapshot()) {
                 ProxyNode proxy = (ProxyNode) usage;
                 proxy.replaceAndDelete(proxy.value());
