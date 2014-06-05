@@ -53,7 +53,7 @@ public final class OptimizedCallTargetLog {
     private OptimizedCallTargetLog() {
     }
 
-    public static void logInliningDecision(TruffleInliningResult result) {
+    public static void logInliningDecision(TruffleInliningDecision result) {
         if (!TraceTruffleInlining.getValue()) {
             return;
         }
@@ -63,7 +63,7 @@ public final class OptimizedCallTargetLog {
         logInliningDone(result.getCallTarget());
     }
 
-    private static void logInliningDecisionRecursive(TruffleInliningResult result, int depth) {
+    private static void logInliningDecisionRecursive(TruffleInliningDecision result, int depth) {
         List<OptimizedDirectCallNode> callNodes = searchCallNodes(result.getCallTarget());
         for (OptimizedDirectCallNode callNode : callNodes) {
             TruffleInliningProfile profile = result.getProfiles().get(callNode);

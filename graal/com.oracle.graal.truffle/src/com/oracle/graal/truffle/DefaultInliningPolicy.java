@@ -34,9 +34,8 @@ public class DefaultInliningPolicy implements TruffleInliningPolicy {
         return profile.getFrequency() / profile.getDeepNodeCount();
     }
 
-    public boolean isAllowed(TruffleInliningProfile profile, int currentBudgetLeft) {
+    public boolean isAllowed(TruffleInliningProfile profile, int currentNodeCount) {
         if (profile.isRecursiveCall()) {
-            // recursive call found
             profile.setFailedReason(REASON_RECURSION);
             return false;
         }
@@ -45,7 +44,7 @@ public class DefaultInliningPolicy implements TruffleInliningPolicy {
             return true;
         }
 
-        if (currentBudgetLeft - profile.getDeepNodeCount() < 0) {
+        if (currentNodeCount + profile.getDeepNodeCount() > TruffleInliningMaxCallerSize.getValue()) {
             profile.setFailedReason(REASON_MAXIMUM_TOTAL_NODE_COUNT);
             return false;
         }

@@ -29,25 +29,20 @@ public class TruffleInliningProfile {
     private final OptimizedDirectCallNode callNode;
     private final int nodeCount;
     private final int deepNodeCount;
-    private final int callSites;
     private final double frequency;
-    private final boolean forced;
     private final boolean recursiveCall;
-    private final TruffleInliningResult recursiveResult;
+    private final TruffleInliningDecision recursiveResult;
 
     private String failedReason;
     private int queryIndex = -1;
     private double score;
 
-    public TruffleInliningProfile(OptimizedDirectCallNode callNode, int callSites, int nodeCount, int deepNodeCount, double frequency, boolean forced, boolean recursiveCall,
-                    TruffleInliningResult recursiveResult) {
+    public TruffleInliningProfile(OptimizedDirectCallNode callNode, int nodeCount, int deepNodeCount, double frequency, boolean recursiveCall, TruffleInliningDecision recursiveResult) {
         this.callNode = callNode;
-        this.callSites = callSites;
         this.nodeCount = nodeCount;
         this.deepNodeCount = deepNodeCount;
         this.frequency = frequency;
         this.recursiveCall = recursiveCall;
-        this.forced = forced;
         this.recursiveResult = recursiveResult;
     }
 
@@ -60,14 +55,14 @@ public class TruffleInliningProfile {
     }
 
     public int getCallSites() {
-        return callSites;
+        return callNode.getCurrentCallTarget().getKnownCallSiteCount();
     }
 
     public int getNodeCount() {
         return nodeCount;
     }
 
-    public TruffleInliningResult getRecursiveResult() {
+    public TruffleInliningDecision getRecursiveResult() {
         return recursiveResult;
     }
 
@@ -96,7 +91,7 @@ public class TruffleInliningProfile {
     }
 
     public boolean isForced() {
-        return forced;
+        return callNode.isInliningForced();
     }
 
     public double getFrequency() {
@@ -112,7 +107,7 @@ public class TruffleInliningProfile {
         properties.put("nodeCount", String.format("%5d/%5d", deepNodeCount, nodeCount));
         properties.put("frequency", frequency);
         properties.put("score", String.format("%8.4f", getScore()));
-        properties.put(String.format("index=%3d, force=%s, callSites=%2d", queryIndex, (forced ? "Y" : "N"), callSites), "");
+        properties.put(String.format("index=%3d, force=%s, callSites=%2d", queryIndex, (isForced() ? "Y" : "N"), getCallSites()), "");
         properties.put("reason", failedReason);
         return properties;
     }

@@ -24,14 +24,14 @@ package com.oracle.graal.truffle;
 
 import java.util.*;
 
-public final class TruffleInliningResult implements Iterable<TruffleInliningProfile> {
+public final class TruffleInliningDecision implements Iterable<TruffleInliningProfile> {
 
     private final OptimizedCallTarget callTarget;
     private final Map<OptimizedDirectCallNode, TruffleInliningProfile> profiles;
     private final Set<TruffleInliningProfile> inlined;
     private final int nodeCount;
 
-    public TruffleInliningResult(OptimizedCallTarget callTarget, List<TruffleInliningProfile> profiles, Set<TruffleInliningProfile> inlined, int nodeCount) {
+    public TruffleInliningDecision(OptimizedCallTarget callTarget, List<TruffleInliningProfile> profiles, Set<TruffleInliningProfile> inlined, int nodeCount) {
         this.callTarget = callTarget;
         this.profiles = new HashMap<>();
         for (TruffleInliningProfile profile : profiles) {
