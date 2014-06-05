@@ -23,7 +23,6 @@
 package com.oracle.graal.printer;
 
 import java.io.*;
-import java.math.*;
 import java.util.*;
 import java.util.regex.*;
 
@@ -160,19 +159,9 @@ public class HexCodeFile {
     }
 
     public void writeTo(OutputStream out) {
-        /**
-         * The BigInteger issue is necessary, as the c1visualizer/mxpaser/Long.parseLong cannot
-         * parse unsigned strings representing values greater or equal 1<<63
-         */
-        BigInteger relocatedtartAddress = new BigInteger(Long.toHexString(startAddress), 16);
-        if (startAddress < 0) {
-            relocatedtartAddress = relocatedtartAddress.clearBit(63); // Remove the sign bit.
-            comments.get(0).add(0, String.format("NOTICE: Address value is always 0x%x less than physical.", Long.MIN_VALUE));
-        }
-        // Now generate the output.
         PrintStream ps = out instanceof PrintStream ? (PrintStream) out : new PrintStream(out);
         ps.printf("Platform %s %d %s%n", isa, wordWidth, SECTION_DELIM);
-        ps.printf("HexCode %x %s %s%n", relocatedtartAddress.longValue(), HexCodeFile.hexCodeString(code), SECTION_DELIM);
+        ps.printf("HexCode %x %s %s%n", startAddress, HexCodeFile.hexCodeString(code), SECTION_DELIM);
 
         for (JumpTable table : jumpTables) {
             ps.printf("JumpTable %d %d %d %d %s%n", table.position, table.entrySize, table.low, table.high, SECTION_DELIM);

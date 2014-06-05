@@ -599,33 +599,33 @@ public enum SPARCArithmetic {
                     }
                     break;
                 case F2D:
-                    new Fstod(masm, asDoubleReg(dst), asDoubleReg(dst));
+                    new Fstod(masm, asFloatReg(src), asDoubleReg(dst));
                     break;
                 case F2L:
                     new Fcmp(CC.Fcc0, Opfs.Fcmps, asFloatReg(dst), asFloatReg(dst)).emit(masm);
                     new Fbfcc(masm, FCond.Fbo, false, 4);
-                    new Fstox(masm, asFloatReg(dst), asFloatReg(dst));
+                    new Fstox(masm, asFloatReg(src), asFloatReg(dst));
                     new Fitos(masm, asFloatReg(dst), asFloatReg(dst));
                     new Fsubs(asFloatReg(dst), asFloatReg(dst), asFloatReg(dst)).emit(masm);
                     break;
                 case F2I:
                     new Fcmp(CC.Fcc0, Opfs.Fcmps, asFloatReg(dst), asFloatReg(dst)).emit(masm);
                     new Fbfcc(masm, FCond.Fbo, false, 4);
-                    new Fstoi(masm, asFloatReg(dst), asFloatReg(dst));
+                    new Fstoi(masm, asFloatReg(src), asFloatReg(dst));
                     new Fitos(masm, asFloatReg(dst), asFloatReg(dst));
                     new Fsubs(asFloatReg(dst), asFloatReg(dst), asFloatReg(dst)).emit(masm);
                     break;
                 case D2L:
                     new Fcmp(CC.Fcc0, Opfs.Fcmpd, asDoubleReg(dst), asDoubleReg(dst)).emit(masm);
                     new Fbfcc(masm, FCond.Fbo, false, 4);
-                    new Fdtox(masm, asDoubleReg(dst), asDoubleReg(dst));
+                    new Fdtox(masm, asDoubleReg(src), asDoubleReg(dst));
                     new Fxtod(masm, asDoubleReg(dst), asDoubleReg(dst));
                     new Fsubd(asDoubleReg(dst), asDoubleReg(dst), asDoubleReg(dst)).emit(masm);
                     break;
                 case D2I:
                     new Fcmp(CC.Fcc0, Opfs.Fcmpd, asDoubleReg(dst), asDoubleReg(dst)).emit(masm);
                     new Fbfcc(masm, FCond.Fbo, false, 4);
-                    new Fdtoi(masm, asDoubleReg(dst), asDoubleReg(dst));
+                    new Fdtoi(masm, asDoubleReg(src), asDoubleReg(dst));
                     new Fitod(masm, asDoubleReg(dst), asDoubleReg(dst));
                     new Fsubd(asDoubleReg(dst), asDoubleReg(dst), asDoubleReg(dst)).emit(masm);
                     break;
