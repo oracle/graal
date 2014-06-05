@@ -72,4 +72,12 @@ public class DynamicNewArrayNode extends AbstractNewArrayNode {
     public static Object newArray(Class<?> componentType, int length) {
         return Array.newInstance(componentType, length);
     }
+
+    @NodeIntrinsic
+    private static native Object newArray(Class<?> componentType, int length, @ConstantNodeParameter boolean fillContents);
+
+    public static Object newUninitializedArray(Class<?> componentType, int length) {
+        return newArray(componentType, length, false);
+    }
+
 }

@@ -39,7 +39,7 @@ public class NewArrayNode extends AbstractNewArrayNode implements VirtualizableA
 
     /**
      * Constructs a new NewArrayNode.
-     * 
+     *
      * @param elementType the the type of the elements of the newly created array (not the type of
      *            the array itself).
      * @param length the node that produces the length for this allocation.
@@ -49,9 +49,16 @@ public class NewArrayNode extends AbstractNewArrayNode implements VirtualizableA
         super(StampFactory.exactNonNull(elementType.getArrayClass()), length, fillContents);
     }
 
+    @NodeIntrinsic
+    static private native Object newArray(@ConstantNodeParameter Class<?> elementType, int length, @ConstantNodeParameter boolean fillContents);
+
+    public static Object newUninitializedArray(Class<?> elementType, int length) {
+        return newArray(elementType, length, false);
+    }
+
     /**
      * Gets the element type of the array.
-     * 
+     *
      * @return the element type of the array
      */
     public ResolvedJavaType elementType() {

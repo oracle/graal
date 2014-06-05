@@ -1390,14 +1390,14 @@ public class HotSpotVMConfig extends CompilerObject {
     @HotSpotVMField(name = "StubRoutines::_arrayof_jshort_arraycopy", type = "address", get = HotSpotVMField.Type.VALUE) @Stable public long jshortAlignedArraycopy;
     @HotSpotVMField(name = "StubRoutines::_arrayof_jint_arraycopy", type = "address", get = HotSpotVMField.Type.VALUE) @Stable public long jintAlignedArraycopy;
     @HotSpotVMField(name = "StubRoutines::_arrayof_jlong_arraycopy", type = "address", get = HotSpotVMField.Type.VALUE) @Stable public long jlongAlignedArraycopy;
-    @HotSpotVMField(name = "StubRoutines::_arrayof_oop_arraycopy", type = "address", get = HotSpotVMField.Type.VALUE) @Stable public long alignedOopAlignedArraycopy;
-    @HotSpotVMField(name = "StubRoutines::_arrayof_oop_arraycopy_uninit", type = "address", get = HotSpotVMField.Type.VALUE) @Stable public long alignedOopArraycopyUninit;
+    @HotSpotVMField(name = "StubRoutines::_arrayof_oop_arraycopy", type = "address", get = HotSpotVMField.Type.VALUE) @Stable public long oopAlignedArraycopy;
+    @HotSpotVMField(name = "StubRoutines::_arrayof_oop_arraycopy_uninit", type = "address", get = HotSpotVMField.Type.VALUE) @Stable public long oopAlignedArraycopyUninit;
     @HotSpotVMField(name = "StubRoutines::_arrayof_jbyte_disjoint_arraycopy", type = "address", get = HotSpotVMField.Type.VALUE) @Stable public long jbyteAlignedDisjointArraycopy;
     @HotSpotVMField(name = "StubRoutines::_arrayof_jshort_disjoint_arraycopy", type = "address", get = HotSpotVMField.Type.VALUE) @Stable public long jshortAlignedDisjointArraycopy;
     @HotSpotVMField(name = "StubRoutines::_arrayof_jint_disjoint_arraycopy", type = "address", get = HotSpotVMField.Type.VALUE) @Stable public long jintAlignedDisjointArraycopy;
     @HotSpotVMField(name = "StubRoutines::_arrayof_jlong_disjoint_arraycopy", type = "address", get = HotSpotVMField.Type.VALUE) @Stable public long jlongAlignedDisjointArraycopy;
-    @HotSpotVMField(name = "StubRoutines::_arrayof_oop_disjoint_arraycopy", type = "address", get = HotSpotVMField.Type.VALUE) @Stable public long alignedOopDisjointArraycopy;
-    @HotSpotVMField(name = "StubRoutines::_arrayof_oop_disjoint_arraycopy_uninit", type = "address", get = HotSpotVMField.Type.VALUE) @Stable public long alignedOopDisjointArraycopyUninit;
+    @HotSpotVMField(name = "StubRoutines::_arrayof_oop_disjoint_arraycopy", type = "address", get = HotSpotVMField.Type.VALUE) @Stable public long oopAlignedDisjointArraycopy;
+    @HotSpotVMField(name = "StubRoutines::_arrayof_oop_disjoint_arraycopy_uninit", type = "address", get = HotSpotVMField.Type.VALUE) @Stable public long oopAlignedDisjointArraycopyUninit;
     @HotSpotVMField(name = "StubRoutines::_checkcast_arraycopy", type = "address", get = HotSpotVMField.Type.VALUE) @Stable public long checkcastArraycopy;
     @HotSpotVMField(name = "StubRoutines::_checkcast_arraycopy_uninit", type = "address", get = HotSpotVMField.Type.VALUE) @Stable public long checkcastArraycopyUninit;
     @HotSpotVMField(name = "StubRoutines::_unsafe_arraycopy", type = "address", get = HotSpotVMField.Type.VALUE) @Stable public long unsafeArraycopy;

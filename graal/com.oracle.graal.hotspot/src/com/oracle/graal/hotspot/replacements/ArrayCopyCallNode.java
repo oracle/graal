@@ -40,7 +40,7 @@ import com.oracle.graal.replacements.SnippetTemplate.Arguments;
 import com.oracle.graal.runtime.*;
 
 @NodeInfo(allowedUsageTypes = {InputType.Memory})
-public final class ArrayCopyCallNode extends ArrayRangeWriteNode implements Lowerable, MemoryCheckpoint.Single {
+public final class ArrayCopyCallNode extends AbstractMemoryCheckpoint implements Lowerable, MemoryCheckpoint.Single {
 
     @Input private ValueNode src;
     @Input private ValueNode srcPos;
@@ -49,10 +49,15 @@ public final class ArrayCopyCallNode extends ArrayRangeWriteNode implements Lowe
     @Input private ValueNode length;
 
     private Kind elementKind;
+
+    /**
+     * Aligned means that the offset of the copy is heap word aligned.
+     */
     private boolean aligned;
     private boolean disjoint;
+    private boolean uninitialized;
 
-    private ArrayCopyCallNode(ValueNode src, ValueNode srcPos, ValueNode dest, ValueNode destPos, ValueNode length, Kind elementKind, boolean aligned, boolean disjoint) {
+    private ArrayCopyCallNode(ValueNode src, ValueNode srcPos, ValueNode dest, ValueNode destPos, ValueNode length, Kind elementKind, boolean aligned, boolean disjoint, boolean uninitialized) {
         super(StampFactory.forVoid());
         assert elementKind != null;
         this.src = src;
@@ -63,10 +68,11 @@ public final class ArrayCopyCallNode extends ArrayRangeWriteNode implements Lowe
         this.elementKind = elementKind;
         this.aligned = aligned;
         this.disjoint = disjoint;
+        this.uninitialized = uninitialized;
     }
 
-    private ArrayCopyCallNode(ValueNode src, ValueNode srcPos, ValueNode dest, ValueNode destPos, ValueNode length, Kind elementKind) {
-        this(src, srcPos, dest, destPos, length, elementKind, false, false);
+    private ArrayCopyCallNode(ValueNode src, ValueNode srcPos, ValueNode dest, ValueNode destPos, ValueNode length, Kind elementKind, boolean disjoint) {
+        this(src, srcPos, dest, destPos, length, elementKind, false, disjoint, false);
     }
 
     public ValueNode getSource() {
@@ -85,29 +91,8 @@ public final class ArrayCopyCallNode extends ArrayRangeWriteNode implements Lowe
         return destPos;
     }
 
-    @Override
-    public ValueNode getArray() {
-        return dest;
-    }
-
-    @Override
-    public ValueNode getIndex() {
-        return destPos;
-    }
-
-    @Override
     public ValueNode getLength() {
         return length;
-    }
-
-    @Override
-    public boolean isObjectArray() {
-        return elementKind == Kind.Object;
-    }
-
-    @Override
-    public boolean isInitialization() {
-        return false;
     }
 
     public void addSnippetArguments(Arguments args) {
@@ -137,7 +122,7 @@ public final class ArrayCopyCallNode extends ArrayRangeWriteNode implements Lowe
     public void lower(LoweringTool tool) {
         if (graph().getGuardsStage() == StructuredGraph.GuardsStage.AFTER_FSA) {
             updateAlignedDisjoint();
-            ForeignCallDescriptor desc = HotSpotHostForeignCallsProvider.lookupArraycopyDescriptor(elementKind, isAligned(), isDisjoint());
+            ForeignCallDescriptor desc = HotSpotHostForeignCallsProvider.lookupArraycopyDescriptor(elementKind, isAligned(), isDisjoint(), isUninitialized());
             StructuredGraph graph = graph();
             ValueNode srcAddr = computeBase(getSource(), getSourcePosition());
             ValueNode destAddr = computeBase(getDestination(), getDestinationPosition());
@@ -161,11 +146,20 @@ public final class ArrayCopyCallNode extends ArrayRangeWriteNode implements Lowe
     }
 
     @NodeIntrinsic
-    public static native void arraycopy(Object src, int srcPos, Object dest, int destPos, int length, @ConstantNodeParameter Kind elementKind);
+    private static native void arraycopy(Object src, int srcPos, Object dest, int destPos, int length, @ConstantNodeParameter Kind elementKind, @ConstantNodeParameter boolean aligned,
+                    @ConstantNodeParameter boolean disjoint, @ConstantNodeParameter boolean uninitialized);
 
-    @NodeIntrinsic
-    public static native void arraycopy(Object src, int srcPos, Object dest, int destPos, int length, @ConstantNodeParameter Kind elementKind, @ConstantNodeParameter boolean aligned,
-                    @ConstantNodeParameter boolean disjoint);
+    public static void arraycopy(Object src, int srcPos, Object dest, int destPos, int length, @ConstantNodeParameter Kind elementKind, boolean aligned, boolean disjoint) {
+        arraycopy(src, srcPos, dest, destPos, length, elementKind, aligned, disjoint, false);
+    }
+
+    public static void disjointArraycopy(Object src, int srcPos, Object dest, int destPos, int length, @ConstantNodeParameter Kind elementKind) {
+        arraycopy(src, srcPos, dest, destPos, length, elementKind, false, true, false);
+    }
+
+    public static void disjointUninitializedArraycopy(Object src, int srcPos, Object dest, int destPos, int length, @ConstantNodeParameter Kind elementKind) {
+        arraycopy(src, srcPos, dest, destPos, length, elementKind, false, true, true);
+    }
 
     public boolean isAligned() {
         return aligned;
@@ -173,6 +167,10 @@ public final class ArrayCopyCallNode extends ArrayRangeWriteNode implements Lowe
 
     public boolean isDisjoint() {
         return disjoint;
+    }
+
+    public boolean isUninitialized() {
+        return uninitialized;
     }
 
     public void updateAlignedDisjoint() {
