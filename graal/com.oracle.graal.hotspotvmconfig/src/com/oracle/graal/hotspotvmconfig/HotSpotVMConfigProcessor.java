@@ -52,20 +52,22 @@ public class HotSpotVMConfigProcessor extends AbstractProcessor {
      * channel for any debug messages and debugging annotation processors requires some special
      * setup.
      */
-    private static final boolean DEBUG = true;
+    private static final boolean DEBUG = false;
 
-    private static final String LOGFILE = new File(System.getProperty("java.io.tmpdir"), "hotspotvmconfigprocessor.log").getPath();
-
-    private static PrintWriter log;
+    private PrintWriter log;
 
     /**
-     * Logging facility for the debugging the annotation processor.
+     * Logging facility for debugging the annotation processor.
      */
 
-    private static synchronized PrintWriter getLog() {
+    private PrintWriter getLog() {
         if (log == null) {
             try {
-                log = new PrintWriter(new FileWriter(LOGFILE, true));
+                // Create the log file within the generated source directory so it's easy to find.
+                // /tmp isn't platform independent and java.io.tmpdir can map anywhere, particularly
+                // on the mac.
+                FileObject file = processingEnv.getFiler().createResource(StandardLocation.SOURCE_OUTPUT, "", getClass().getSimpleName() + "log");
+                log = new PrintWriter(new FileWriter(file.toUri().getPath(), true));
             } catch (IOException e) {
                 // Do nothing
             }
@@ -73,7 +75,7 @@ public class HotSpotVMConfigProcessor extends AbstractProcessor {
         return log;
     }
 
-    private static synchronized void logMessage(String format, Object... args) {
+    private void logMessage(String format, Object... args) {
         if (!DEBUG) {
             return;
         }
@@ -84,7 +86,7 @@ public class HotSpotVMConfigProcessor extends AbstractProcessor {
         }
     }
 
-    private static synchronized void logException(Throwable t) {
+    private void logException(Throwable t) {
         if (!DEBUG) {
             return;
         }
@@ -104,7 +106,7 @@ public class HotSpotVMConfigProcessor extends AbstractProcessor {
             logMessage("throw for %s:\n", element);
         }
         logException(t);
-        processingEnv.getMessager().printMessage(Kind.ERROR, "Exception throw during processing: " + t.toString() + " " + Arrays.toString(Arrays.copyOf(t.getStackTrace(), 8)), element);
+        errorMessage(element, "Exception throw during processing: %s %s", t, Arrays.toString(Arrays.copyOf(t.getStackTrace(), 4)));
     }
 
     //@formatter:off
