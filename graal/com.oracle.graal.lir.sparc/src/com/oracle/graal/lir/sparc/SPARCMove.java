@@ -36,7 +36,6 @@ import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.*;
 import com.oracle.graal.lir.asm.*;
-import com.sun.org.apache.bcel.internal.generic.*;
 
 public class SPARCMove {
 

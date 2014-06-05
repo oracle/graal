@@ -79,11 +79,11 @@ public enum SPARCCompare {
                     new Cmp(asObjectReg(x), asObjectReg(y)).emit(masm);
                     break;
                 case FCMP:
-                    // masm.ucomiss(asFloatReg(x), asFloatReg(y));
-                    // break;
+                    new Fcmp(CC.Fcc0, Opfs.Fcmps, asFloatReg(x), asFloatReg(y)).emit(masm);
+                    break;
                 case DCMP:
-                    // masm.ucomisd(asDoubleReg(x), asDoubleReg(y));
-                    // break;
+                    new Fcmp(CC.Fcc0, Opfs.Fcmpd, asDoubleReg(x), asDoubleReg(y)).emit(masm);
+                    break;
                 default:
                     throw GraalInternalError.shouldNotReachHere();
             }
