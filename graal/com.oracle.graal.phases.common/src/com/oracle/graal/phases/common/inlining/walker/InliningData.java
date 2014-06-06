@@ -405,27 +405,16 @@ public class InliningData {
         Invoke invoke = callsiteHolder.popInvoke();
         MethodInvocation callerInvocation = currentInvocation();
         Assumptions parentAssumptions = callerInvocation.assumptions();
-        Assumptions calleeAssumptions = new Assumptions(parentAssumptions.useOptimisticAssumptions());
-        InlineInfo info = populateInlineInfo(invoke, parentAssumptions, calleeAssumptions);
+        InlineInfo info = getInlineInfo(invoke, parentAssumptions);
 
         if (info != null) {
+            Assumptions calleeAssumptions = new Assumptions(parentAssumptions.useOptimisticAssumptions());
+            info.populateInlinableElements(context, calleeAssumptions, canonicalizer);
             double invokeProbability = callsiteHolder.invokeProbability(invoke);
             double invokeRelevance = callsiteHolder.invokeRelevance(invoke);
             MethodInvocation methodInvocation = new MethodInvocation(info, calleeAssumptions, invokeProbability, invokeRelevance);
             pushInvocationAndGraphs(methodInvocation);
         }
-    }
-
-    private InlineInfo populateInlineInfo(Invoke invoke, Assumptions parentAssumptions, Assumptions calleeAssumptions) {
-        InlineInfo info = getInlineInfo(invoke, parentAssumptions);
-        if (info == null) {
-            return null;
-        }
-        for (int i = 0; i < info.numberOfMethods(); i++) {
-            Inlineable elem = Inlineable.getInlineableElement(info.methodAt(i), info.invoke(), context.replaceAssumptions(calleeAssumptions), canonicalizer);
-            info.setInlinableElement(i, elem);
-        }
-        return info;
     }
 
     public int graphCount() {

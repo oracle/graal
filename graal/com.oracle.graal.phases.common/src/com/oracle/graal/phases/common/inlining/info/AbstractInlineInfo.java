@@ -28,10 +28,12 @@ import com.oracle.graal.api.code.Assumptions;
 import com.oracle.graal.api.meta.ResolvedJavaMethod;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.phases.common.CanonicalizerPhase;
 import com.oracle.graal.phases.common.inlining.InliningUtil;
 import com.oracle.graal.phases.common.inlining.info.elem.Inlineable;
 import com.oracle.graal.phases.common.inlining.info.elem.InlineableMacroNode;
 import com.oracle.graal.phases.common.inlining.info.elem.InlineableGraph;
+import com.oracle.graal.phases.tiers.HighTierContext;
 
 public abstract class AbstractInlineInfo implements InlineInfo {
 
@@ -78,6 +80,13 @@ public abstract class AbstractInlineInfo implements InlineInfo {
                     parameterUsages.add(node);
                 }
             }
+        }
+    }
+
+    public final void populateInlinableElements(HighTierContext context, Assumptions calleeAssumptions, CanonicalizerPhase canonicalizer) {
+        for (int i = 0; i < numberOfMethods(); i++) {
+            Inlineable elem = Inlineable.getInlineableElement(methodAt(i), invoke, context.replaceAssumptions(calleeAssumptions), canonicalizer);
+            setInlinableElement(i, elem);
         }
     }
 }
