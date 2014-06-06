@@ -57,6 +57,7 @@ public final class FrameDescriptor implements Cloneable {
     }
 
     public FrameSlot addFrameSlot(Object identifier, FrameSlotKind kind) {
+        CompilerAsserts.neverPartOfCompilation("interpreter-only.  includes hashmap operations.");
         assert !identifierToSlotMap.containsKey(identifier);
         FrameSlot slot = new FrameSlot(this, identifier, slots.size(), kind);
         slots.add(slot);
@@ -87,6 +88,7 @@ public final class FrameDescriptor implements Cloneable {
     }
 
     public void removeFrameSlot(Object identifier) {
+        CompilerAsserts.neverPartOfCompilation("interpreter-only.  includes hashmap operations.");
         assert identifierToSlotMap.containsKey(identifier);
         slots.remove(identifierToSlotMap.get(identifier));
         identifierToSlotMap.remove(identifier);
@@ -104,7 +106,7 @@ public final class FrameDescriptor implements Cloneable {
 
     /**
      * Retrieve the list of all the identifiers associated with this frame descriptor.
-     * 
+     *
      * @return the list of all the identifiers in this frame descriptor
      */
     public Set<Object> getIdentifiers() {
