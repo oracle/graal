@@ -33,6 +33,9 @@ import com.oracle.graal.phases.common.inlining.InliningUtil;
 import com.oracle.graal.phases.common.inlining.info.elem.Inlineable;
 import com.oracle.graal.phases.common.inlining.info.elem.InlineableMacroNode;
 import com.oracle.graal.phases.common.inlining.info.elem.InlineableGraph;
+import com.oracle.graal.phases.common.inlining.walker.CallsiteHolder;
+import com.oracle.graal.phases.common.inlining.walker.CallsiteHolderExplorable;
+import com.oracle.graal.phases.common.inlining.walker.InliningData;
 import com.oracle.graal.phases.tiers.HighTierContext;
 
 public abstract class AbstractInlineInfo implements InlineInfo {
@@ -87,6 +90,17 @@ public abstract class AbstractInlineInfo implements InlineInfo {
         for (int i = 0; i < numberOfMethods(); i++) {
             Inlineable elem = Inlineable.getInlineableElement(methodAt(i), invoke, context.replaceAssumptions(calleeAssumptions), canonicalizer);
             setInlinableElement(i, elem);
+        }
+    }
+
+    public final CallsiteHolder buildCallsiteHolderForElement(int index, double invokeProbability, double invokeRelevance) {
+        Inlineable elem = inlineableElementAt(index);
+        if (elem instanceof InlineableGraph) {
+            InlineableGraph ig = (InlineableGraph) elem;
+            return new CallsiteHolderExplorable(ig.getGraph(), invokeProbability * probabilityAt(index), invokeRelevance * relevanceAt(index));
+        } else {
+            assert elem instanceof InlineableMacroNode;
+            return InliningData.DUMMY_CALLSITE_HOLDER;
         }
     }
 }

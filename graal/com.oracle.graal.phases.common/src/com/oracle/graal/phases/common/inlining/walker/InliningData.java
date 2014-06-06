@@ -58,7 +58,7 @@ import static com.oracle.graal.compiler.common.GraalOptions.*;
  */
 public class InliningData {
 
-    private static final CallsiteHolder DUMMY_CALLSITE_HOLDER = new CallsiteHolderDummy();
+    public static final CallsiteHolder DUMMY_CALLSITE_HOLDER = new CallsiteHolderDummy();
     // Metrics
     private static final DebugMetric metricInliningPerformed = Debug.metric("InliningPerformed");
     private static final DebugMetric metricInliningRuns = Debug.metric("InliningRuns");
@@ -88,7 +88,7 @@ public class InliningData {
 
         Assumptions rootAssumptions = context.getAssumptions();
         invocationQueue.push(new MethodInvocation(null, rootAssumptions, 1.0, 1.0));
-        pushExplorableGraph(rootGraph, 1.0, 1.0);
+        graphQueue.push(new CallsiteHolderExplorable(rootGraph, 1.0, 1.0));
     }
 
     private String checkTargetConditionsHelper(ResolvedJavaMethod method) {
@@ -421,18 +421,6 @@ public class InliningData {
         return graphQueue.size();
     }
 
-    private void pushExplorableGraph(StructuredGraph graph, double probability, double relevance) {
-        assert graph != null;
-        assert !contains(graph);
-        graphQueue.push(new CallsiteHolderExplorable(graph, probability, relevance));
-        assert graphQueue.size() <= maxGraphs;
-    }
-
-    private void pushDummyGraph() {
-        graphQueue.push(DUMMY_CALLSITE_HOLDER);
-        assert graphQueue.size() <= maxGraphs;
-    }
-
     public boolean hasUnprocessedGraphs() {
         return !graphQueue.isEmpty();
     }
@@ -482,13 +470,10 @@ public class InliningData {
         double invokeProbability = methodInvocation.probability();
         double invokeRelevance = methodInvocation.relevance();
         for (int i = 0; i < info.numberOfMethods(); i++) {
-            Inlineable elem = info.inlineableElementAt(i);
-            if (elem instanceof InlineableGraph) {
-                pushExplorableGraph(((InlineableGraph) elem).getGraph(), invokeProbability * info.probabilityAt(i), invokeRelevance * info.relevanceAt(i));
-            } else {
-                assert elem instanceof InlineableMacroNode;
-                pushDummyGraph();
-            }
+            CallsiteHolder ch = info.buildCallsiteHolderForElement(i, invokeProbability, invokeRelevance);
+            assert (ch == DUMMY_CALLSITE_HOLDER) || !contains(ch.graph());
+            graphQueue.push(ch);
+            assert graphQueue.size() <= maxGraphs;
         }
     }
 
@@ -536,6 +521,7 @@ public class InliningData {
     }
 
     private boolean contains(StructuredGraph graph) {
+        assert graph != null;
         for (CallsiteHolder info : graphQueue) {
             if (info.graph() == graph) {
                 return true;
