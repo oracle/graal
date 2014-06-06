@@ -57,9 +57,9 @@ public abstract class LoopFragment {
         return loop;
     }
 
-    public abstract LoopFragment duplicate(boolean createExitFrameStates);
+    public abstract LoopFragment duplicate();
 
-    public abstract void insertBefore(LoopEx l, boolean createExitFrameStates);
+    public abstract void insertBefore(LoopEx l);
 
     public void disconnect() {
         // TODO (gd) possibly abstract
@@ -299,7 +299,7 @@ public abstract class LoopFragment {
      * Merges the early exits (i.e. loop exits) that were duplicated as part of this fragment, with
      * the original fragment's exits.
      */
-    protected void mergeEarlyExits(boolean createExitFrameStates) {
+    protected void mergeEarlyExits() {
         assert isDuplicate();
         StructuredGraph graph = graph();
         for (BeginNode earlyExit : LoopFragment.toHirBlocks(original().loop().lirLoop().getExits())) {
@@ -325,24 +325,19 @@ public abstract class LoopFragment {
             FrameState state = null;
             if (exitState != null) {
                 state = exitState;
+                exitState = exitState.duplicateWithVirtualState();
+                loopEarlyExit.setStateAfter(exitState);
                 merge.setStateAfter(state);
-
-                if (createExitFrameStates) {
-                    exitState = exitState.duplicateWithVirtualState();
-                    loopEarlyExit.setStateAfter(exitState);
-                    /*
-                     * Using the old exit's state as the merge's state is necessary because some of
-                     * the VirtualState nodes contained in the old exit's state may be shared by
-                     * other dominated VirtualStates. Those dominated virtual states need to see the
-                     * proxy->phi update that are applied below.
-                     * 
-                     * We now update the original fragment's nodes accordingly:
-                     */
-                    state.applyToVirtual(node -> original.nodes.clearAndGrow(node));
-                    exitState.applyToVirtual(node -> original.nodes.markAndGrow(node));
-                } else {
-                    loopEarlyExit.setStateAfter(null);
-                }
+                /*
+                 * Using the old exit's state as the merge's state is necessary because some of the
+                 * VirtualState nodes contained in the old exit's state may be shared by other
+                 * dominated VirtualStates. Those dominated virtual states need to see the
+                 * proxy->phi update that are applied below.
+                 *
+                 * We now update the original fragment's nodes accordingly:
+                 */
+                state.applyToVirtual(node -> original.nodes.clearAndGrow(node));
+                exitState.applyToVirtual(node -> original.nodes.markAndGrow(node));
             }
             FrameState finalExitState = exitState;
 
@@ -378,7 +373,7 @@ public abstract class LoopFragment {
                     if (merge.isPhiAtMerge(usage)) {
                         return false;
                     }
-                    if (finalExitState != null && usage instanceof VirtualState) {
+                    if (usage instanceof VirtualState) {
                         VirtualState stateUsage = (VirtualState) usage;
                         if (finalExitState.isPartOfThisState(stateUsage)) {
                             return false;

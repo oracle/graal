@@ -45,7 +45,7 @@ public class LoopFragmentInsideFrom extends LoopFragmentInside {
     }
 
     @Override
-    public LoopFragmentInsideFrom duplicate(boolean createExitFrameStates) {
+    public LoopFragmentInsideFrom duplicate() {
         return new LoopFragmentInsideFrom(this);
     }
 

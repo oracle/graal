@@ -39,18 +39,18 @@ public class LoopFragmentWhole extends LoopFragment {
     }
 
     @Override
-    public LoopFragmentWhole duplicate(boolean createExitFrameStates) {
+    public LoopFragmentWhole duplicate() {
         LoopFragmentWhole loopFragmentWhole = new LoopFragmentWhole(this);
-        loopFragmentWhole.reify(createExitFrameStates);
+        loopFragmentWhole.reify();
         return loopFragmentWhole;
     }
 
-    private void reify(boolean createExitFrameStates) {
+    private void reify() {
         assert this.isDuplicate();
 
         patchNodes(null);
 
-        mergeEarlyExits(createExitFrameStates);
+        mergeEarlyExits();
     }
 
     @Override
@@ -102,7 +102,7 @@ public class LoopFragmentWhole extends LoopFragment {
     }
 
     @Override
-    public void insertBefore(LoopEx loop, boolean createExitFrameStates) {
+    public void insertBefore(LoopEx loop) {
         // TODO Auto-generated method stub
 
     }
