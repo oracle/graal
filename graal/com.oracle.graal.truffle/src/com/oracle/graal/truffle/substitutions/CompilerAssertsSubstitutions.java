@@ -33,6 +33,9 @@ public class CompilerAssertsSubstitutions {
     @MacroSubstitution(macro = NeverPartOfCompilationNode.class, isStatic = true)
     public static native void neverPartOfCompilation();
 
+    @MacroSubstitution(macro = NeverPartOfCompilationNode.class, isStatic = true)
+    public static native void neverPartOfCompilation(String message);
+
     @MacroSubstitution(macro = CompilationConstantNode.class, isStatic = true)
     public static native boolean compilationConstant(boolean value);
 
