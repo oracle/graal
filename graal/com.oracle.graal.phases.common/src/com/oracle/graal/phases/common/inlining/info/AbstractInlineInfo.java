@@ -34,8 +34,8 @@ import com.oracle.graal.phases.common.inlining.info.elem.Inlineable;
 import com.oracle.graal.phases.common.inlining.info.elem.InlineableMacroNode;
 import com.oracle.graal.phases.common.inlining.info.elem.InlineableGraph;
 import com.oracle.graal.phases.common.inlining.walker.CallsiteHolder;
+import com.oracle.graal.phases.common.inlining.walker.CallsiteHolderDummy;
 import com.oracle.graal.phases.common.inlining.walker.CallsiteHolderExplorable;
-import com.oracle.graal.phases.common.inlining.walker.InliningData;
 import com.oracle.graal.phases.tiers.HighTierContext;
 
 public abstract class AbstractInlineInfo implements InlineInfo {
@@ -100,7 +100,7 @@ public abstract class AbstractInlineInfo implements InlineInfo {
             return new CallsiteHolderExplorable(ig.getGraph(), invokeProbability * probabilityAt(index), invokeRelevance * relevanceAt(index));
         } else {
             assert elem instanceof InlineableMacroNode;
-            return InliningData.DUMMY_CALLSITE_HOLDER;
+            return CallsiteHolderDummy.DUMMY_CALLSITE_HOLDER;
         }
     }
 }

@@ -51,6 +51,7 @@ import java.util.*;
 import java.util.function.ToDoubleFunction;
 
 import static com.oracle.graal.compiler.common.GraalOptions.*;
+import static com.oracle.graal.phases.common.inlining.walker.CallsiteHolderDummy.DUMMY_CALLSITE_HOLDER;
 
 /**
  * Holds the data for building the callee graphs recursively: graphs and invocations (each
@@ -58,7 +59,6 @@ import static com.oracle.graal.compiler.common.GraalOptions.*;
  */
 public class InliningData {
 
-    public static final CallsiteHolder DUMMY_CALLSITE_HOLDER = new CallsiteHolderDummy();
     // Metrics
     private static final DebugMetric metricInliningPerformed = Debug.metric("InliningPerformed");
     private static final DebugMetric metricInliningRuns = Debug.metric("InliningRuns");
