@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -44,14 +44,14 @@ public abstract class LoopTransformations {
 
     public static void invert(LoopEx loop, FixedNode point) {
         LoopFragmentInsideBefore head = loop.insideBefore(point);
-        LoopFragmentInsideBefore duplicate = head.duplicate(true);
+        LoopFragmentInsideBefore duplicate = head.duplicate();
         head.disconnect();
-        head.insertBefore(loop, true);
+        head.insertBefore(loop);
         duplicate.appendInside(loop);
     }
 
-    public static void peel(LoopEx loop, boolean createExitFrameStates) {
-        loop.inside().duplicate(createExitFrameStates).insertBefore(loop, createExitFrameStates);
+    public static void peel(LoopEx loop) {
+        loop.inside().duplicate().insertBefore(loop);
     }
 
     public static void fullUnroll(LoopEx loop, PhaseContext context, CanonicalizerPhase canonicalizer) {
@@ -61,7 +61,7 @@ public abstract class LoopTransformations {
         StructuredGraph graph = loopBegin.graph();
         while (!loopBegin.isDeleted()) {
             Mark mark = graph.getMark();
-            peel(loop, false);
+            peel(loop);
             canonicalizer.applyIncremental(graph, context, mark);
             loopBegin.removeDeadPhis();
             loop.invalidateFragments();
@@ -88,7 +88,7 @@ public abstract class LoopTransformations {
         while (successors.hasNext()) {
             Position position = successors.nextPosition();
             // create a new loop duplicate, connect it and simplify it
-            LoopFragmentWhole duplicateLoop = originalLoop.duplicate(true);
+            LoopFragmentWhole duplicateLoop = originalLoop.duplicate();
             controlSplitClass.set(newControlSplit, position, BeginNode.begin(duplicateLoop.entryPoint()));
             ControlSplitNode duplicatedControlSplit = duplicateLoop.getDuplicatedNode(controlSplitNode);
             graph.removeSplitPropagate(duplicatedControlSplit, (BeginNode) controlSplitClass.get(duplicatedControlSplit, position));
@@ -105,8 +105,8 @@ public abstract class LoopTransformations {
         }
         // TODO (gd) implement counted loop
         LoopFragmentWhole main = loop.whole();
-        LoopFragmentWhole prologue = main.duplicate(true);
-        prologue.insertBefore(loop, false);
+        LoopFragmentWhole prologue = main.duplicate();
+        prologue.insertBefore(loop);
         // CountedLoopBeginNode counted = prologue.countedLoop();
         // StructuredGraph graph = (StructuredGraph) counted.graph();
         // ValueNode tripCountPrologue = counted.tripCount();
@@ -115,7 +115,7 @@ public abstract class LoopTransformations {
         // graph.replaceFloating(tripCountMain, "tripCountMain - (tripCountPrologue % factor)");
         LoopFragmentInside inside = loop.inside();
         for (int i = 0; i < factor; i++) {
-            inside.duplicate(false).appendInside(loop);
+            inside.duplicate().appendInside(loop);
         }
     }
 
