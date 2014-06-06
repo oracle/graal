@@ -20,6 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+//JaCoCo Exclude
 package com.oracle.graal.nodes.java;
 
 import java.lang.reflect.*;
