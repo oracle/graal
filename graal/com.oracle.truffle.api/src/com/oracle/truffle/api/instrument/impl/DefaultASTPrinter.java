@@ -27,12 +27,12 @@ package com.oracle.truffle.api.instrument.impl;
 import java.io.*;
 import java.util.*;
 
-import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.instrument.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.api.nodes.NodeUtil.NodeClass;
 import com.oracle.truffle.api.nodes.NodeUtil.NodeField;
 import com.oracle.truffle.api.nodes.NodeUtil.NodeFieldKind;
+import com.oracle.truffle.api.source.*;
 
 /**
  * A language-agnostic for printing out various pieces of a Truffle AST.

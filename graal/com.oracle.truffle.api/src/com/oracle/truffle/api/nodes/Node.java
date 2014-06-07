@@ -30,6 +30,7 @@ import java.util.*;
 import java.util.concurrent.*;
 
 import com.oracle.truffle.api.*;
+import com.oracle.truffle.api.source.*;
 
 /**
  * Abstract base class for all Truffle nodes.

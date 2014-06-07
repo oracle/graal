@@ -36,6 +36,7 @@ import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.api.nodes.Node.Child;
 import com.oracle.truffle.api.nodes.Node.Children;
+import com.oracle.truffle.api.source.*;
 
 /**
  * THIS IS NOT PUBLIC API.

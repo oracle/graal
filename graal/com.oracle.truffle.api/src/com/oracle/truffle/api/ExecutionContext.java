@@ -120,7 +120,7 @@ public abstract class ExecutionContext {
      * Returns all existing probes with first character on a specified line; empty collection if no
      * probes found.
      */
-    public final Collection<Probe> findProbesByLine(SourceLineLocation lineLocation) {
+    public final Collection<Probe> findProbesByLine(LineLocation lineLocation) {
         return probeManager.findProbesByLine(lineLocation);
     }
 

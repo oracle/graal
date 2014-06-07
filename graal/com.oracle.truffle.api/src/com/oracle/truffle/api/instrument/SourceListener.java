@@ -24,7 +24,7 @@
  */
 package com.oracle.truffle.api.instrument;
 
-import com.oracle.truffle.api.*;
+import com.oracle.truffle.api.source.*;
 
 /**
  * A client of the instrumentation framework that requests event notifications from the language

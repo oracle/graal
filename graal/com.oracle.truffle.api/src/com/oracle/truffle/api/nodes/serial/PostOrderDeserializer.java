@@ -29,11 +29,11 @@ import java.util.*;
 
 import sun.misc.*;
 
-import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.api.nodes.NodeUtil.NodeClass;
 import com.oracle.truffle.api.nodes.NodeUtil.NodeField;
 import com.oracle.truffle.api.nodes.NodeUtil.NodeFieldKind;
+import com.oracle.truffle.api.source.*;
 
 /**
  * Experimental API. May change without notice.
@@ -61,12 +61,12 @@ public final class PostOrderDeserializer {
 
     /**
      * Deserializes the byte stream and returns the deserialized Truffle AST node.
-     * 
+     *
      * @param bytes the trimmed byte array containing the serialized data
      * @param expectedType the expected root node type. Throws an exception if the root node is not
      *            assignable from this type.
      * @return the deserialized Truffle AST represented by the root Node.
-     * 
+     *
      * @throws UnsupportedConstantPoolTypeException thrown if a type is encountered that is not
      *             supported by the constant pool implementation.
      */

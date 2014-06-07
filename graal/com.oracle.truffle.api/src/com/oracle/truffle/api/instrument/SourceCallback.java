@@ -24,7 +24,7 @@
  */
 package com.oracle.truffle.api.instrument;
 
-import com.oracle.truffle.api.*;
+import com.oracle.truffle.api.source.*;
 
 /**
  * Instrumentation callback for guest language source-related events.

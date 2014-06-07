@@ -36,7 +36,6 @@ import org.junit.runner.notification.*;
 import org.junit.runners.*;
 import org.junit.runners.model.*;
 
-import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.source.*;
 import com.oracle.truffle.sl.*;
 import com.oracle.truffle.sl.runtime.*;
@@ -156,7 +155,7 @@ public final class SLTestRunner extends ParentRunner<TestCase> {
         PrintStream printer = new PrintStream(out);
         try {
             SLContext context = new SLContext(new BufferedReader(new StringReader(repeat(testCase.testInput, REPEATS))), printer);
-            final Source source = SourceFactory.fromText(readAllLines(testCase.path), testCase.sourceName);
+            final Source source = Source.fromText(readAllLines(testCase.path), testCase.sourceName);
             SLMain.run(context, source, null, REPEATS);
 
             String actualOutput = new String(out.toByteArray());

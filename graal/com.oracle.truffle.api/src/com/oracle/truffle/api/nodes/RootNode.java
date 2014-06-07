@@ -26,6 +26,7 @@ package com.oracle.truffle.api.nodes;
 
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.frame.*;
+import com.oracle.truffle.api.source.*;
 
 /**
  * A root node is a node with a method to execute it given only a frame as a parameter. Therefore, a

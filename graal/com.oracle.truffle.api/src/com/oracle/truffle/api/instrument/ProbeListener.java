@@ -24,10 +24,14 @@
  */
 package com.oracle.truffle.api.instrument;
 
-import com.oracle.truffle.api.*;
+import com.oracle.truffle.api.source.*;
 
 /**
  * Client for receiving events relate to {@link Probe} management. Does not report AST copying.
+ * <p>
+ * <strong>Disclaimer:</strong> experimental interface under development.
+ *
+ * @See Instrumentation
  */
 public interface ProbeListener {
 

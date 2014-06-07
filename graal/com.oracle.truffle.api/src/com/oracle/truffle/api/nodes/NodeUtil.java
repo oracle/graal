@@ -34,6 +34,7 @@ import sun.misc.*;
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.nodes.Node.Child;
 import com.oracle.truffle.api.nodes.Node.Children;
+import com.oracle.truffle.api.source.*;
 
 /**
  * Utility class that manages the special access methods for node instances.

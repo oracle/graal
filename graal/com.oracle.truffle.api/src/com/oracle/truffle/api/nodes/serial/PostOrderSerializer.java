@@ -29,11 +29,11 @@ import java.nio.*;
 
 import sun.misc.*;
 
-import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.api.nodes.NodeUtil.NodeClass;
 import com.oracle.truffle.api.nodes.NodeUtil.NodeField;
 import com.oracle.truffle.api.nodes.NodeUtil.NodeFieldKind;
+import com.oracle.truffle.api.source.*;
 
 /**
  * Experimental API. May change without notice.
@@ -59,10 +59,10 @@ public final class PostOrderSerializer {
 
     /**
      * Serializes the node AST and returns the serialized data as byte array.
-     * 
+     *
      * @param node the root node that represents the Truffle AST that should be serialized.
      * @return a trimmed byte array that contains the serialized data.
-     * 
+     *
      * @throws UnsupportedConstantPoolTypeException thrown if a type is encountered that is not
      *             supported by the constant pool implementation.
      */

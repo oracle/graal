@@ -123,9 +123,9 @@ public class SLMain {
 
         Source source;
         if (args.length == 0) {
-            source = SourceFactory.fromReader(new InputStreamReader(System.in), "stdin");
+            source = Source.fromReader(new InputStreamReader(System.in), "stdin");
         } else {
-            source = SourceFactory.fromFile(args[0]);
+            source = Source.fromFileName(args[0]);
         }
 
         int repeats = 1;
