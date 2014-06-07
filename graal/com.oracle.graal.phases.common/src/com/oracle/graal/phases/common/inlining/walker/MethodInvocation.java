@@ -29,6 +29,17 @@ import com.oracle.graal.nodes.CallTargetNode;
 import com.oracle.graal.nodes.java.MethodCallTargetNode;
 import com.oracle.graal.phases.common.inlining.info.InlineInfo;
 
+/**
+ * <p>
+ * An instance of this class denotes a callsite being analyzed for inlining.
+ * </p>
+ * <p>
+ * Each element of the {@link InliningData} stack contains one such instance, the accompanying
+ * {@link CallsiteHolder}s in that element represent feasible targets for the callsite in question.
+ * </p>
+ *
+ * @see InliningData#moveForward()
+ */
 public class MethodInvocation {
 
     private final InlineInfo callee;

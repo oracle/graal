@@ -37,6 +37,20 @@ import com.oracle.graal.phases.tiers.HighTierContext;
 
 import static com.oracle.graal.compiler.common.GraalOptions.OptCanonicalizer;
 
+/**
+ * <p>
+ * Represents a feasible concrete target for inlining, whose graph has been copied already and thus
+ * can be modified without affecting the original (usually cached) version.
+ * </p>
+ *
+ * <p>
+ * Instances of this class don't make sense in isolation but as part of an
+ * {@link com.oracle.graal.phases.common.inlining.info.InlineInfo InlineInfo}.
+ * </p>
+ *
+ * @see com.oracle.graal.phases.common.inlining.walker.InliningData#moveForward()
+ * @see com.oracle.graal.phases.common.inlining.walker.CallsiteHolderExplorable
+ */
 public class InlineableGraph implements Inlineable {
 
     private final StructuredGraph graph;

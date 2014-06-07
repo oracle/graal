@@ -36,15 +36,19 @@ import static com.oracle.graal.compiler.common.GraalOptions.CapInheritedRelevanc
 
 /**
  * <p>
- * A {@link CallsiteHolder} whose graph has been already copied and thus can be modified without
+ * A {@link CallsiteHolder} whose graph has been copied already and thus can be modified without
  * affecting the original (usually cached) version.
  * </p>
  *
  * <p>
- * An instance of this class is "explorable" in that any {@link Invoke} nodes it contains are
- * candidates for depth-first search for further inlining opportunities (as realized by
- * {@link InliningData})
+ * An instance of this class is derived from an
+ * {@link com.oracle.graal.phases.common.inlining.info.elem.InlineableGraph InlineableGraph} and
+ * contains a subset of the information there: just the {@link Invoke} nodes from it. Such nodes are
+ * candidates for depth-first search of further inlining opportunities (thus the adjective
+ * "explorable" given to this class)
  * </p>
+ *
+ * @see InliningData#moveForward()
  */
 public final class CallsiteHolderExplorable extends CallsiteHolder {
 
