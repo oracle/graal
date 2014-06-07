@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,11 +22,20 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api;
+package com.oracle.truffle.api.source;
 
 /**
- * Marker for a special flavor of {@link SourceSection} that has no content and can be ignored.
+ * A specification for a location in guest language source, expressed as a line number in a specific
+ * instance of {@link Source}, suitable for hash table keys with equality defined in terms of
+ * content.
  */
-public interface NullSourceSection extends SourceSection {
+public interface LineLocation extends Comparable<Object> {
+
+    public Source getSource();
+
+    /**
+     * Gets the 1-based number of a line in the source
+     */
+    public int getLineNumber();
 
 }

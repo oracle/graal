@@ -22,30 +22,18 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api;
+package com.oracle.truffle.api.source;
 
 /**
- * Description of contiguous section of text within a {@link Source} of program code.
- *
- * The starting location of the section can be described using two different coordinates:
- * <ul>
- * <li>{@code (startLine, startColumn)}: rows and columns are 1-based, so the first character in a
- * source file is at position {@code (1,1)}. {@code Tab} characters are counted as occupying one
- * column.</li>
- * <li><b>character index</b>: 0-based offset of the character from the beginning of the source, so
- * the first character in a file is at index {@code 0}.</li>
- * </ul>
- * The {@code Newline} that terminates each line counts as a single character for the purpose of a
- * character index and when counting the length of text. The {@code (line,column)} coordinates of a
- * {@code Newline} should never appear in a text section.
- * <p>
- * If the final character of source is not a {@code Newline}, the final characters of the text are
- * still considered to be a line ("unterminated").
- * <p>
+ * Description of contiguous section of text within a {@link Source} of program code; supports
+ * multiple modes of access to the text and its location. A special {@linkplain NullSourceSection
+ * null subtype} should be used for code that is not available from source, e.g language builtins.
  *
  * @see Source#createSection(String, int, int, int, int)
  * @see Source#createSection(String, int, int, int)
  * @see Source#createSection(String, int, int)
+ * @see Source#createSection(String, int)
+ * @see NullSourceSection
  */
 public interface SourceSection {
 
@@ -64,6 +52,11 @@ public interface SourceSection {
      * @return the starting line number
      */
     int getStartLine();
+
+    /**
+     * Gets a representation of the first line of the section, suitable for a hash key.
+     */
+    LineLocation getLineLocation();
 
     /**
      * Returns the 1-based column number of the first character in this section (inclusive).
@@ -115,57 +108,5 @@ public interface SourceSection {
      * @return a short description of the source section
      */
     String getShortDescription();
-
-    /**
-     * Singleton instance with no content.
-     */
-    SourceSection NULL = new NullSourceSection() {
-
-        @Override
-        public Source getSource() {
-            return null;
-        }
-
-        @Override
-        public int getStartLine() {
-            return 0;
-        }
-
-        @Override
-        public int getStartColumn() {
-            return 0;
-        }
-
-        @Override
-        public int getCharIndex() {
-            return 0;
-        }
-
-        @Override
-        public int getCharLength() {
-            return 0;
-        }
-
-        @Override
-        public int getCharEndIndex() {
-            return 0;
-        }
-
-        @Override
-        public String getIdentifier() {
-            return null;
-        }
-
-        @Override
-        public String getCode() {
-            return null;
-        }
-
-        @Override
-        public String getShortDescription() {
-            return "short";
-        }
-
-    };
 
 }
