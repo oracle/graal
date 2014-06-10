@@ -1968,7 +1968,8 @@ public final class LinearScan {
         Interval interval;
 
         public UseBlockIterator(Interval interval) {
-            nextOpId = interval.nextUsage(RegisterPriority.None, 0);
+            // the first use position is the begin of the interval
+            nextOpId = interval.from();
             this.interval = interval;
         }
 
