@@ -54,6 +54,10 @@ public class CompilationQueue {
     static {
         try (InitTimer t = timer("initialize CompilationQueue")) {
 
+            // The Graal runtime needs to be initialized here to avoid
+            // issues re-entering Java code during compilation scheduling.
+            HotSpotGraalRuntime.runtime();
+
             // Must be first to ensure any options accessed by the rest of the class
             // initializer are initialized from the command line.
             HotSpotOptions.initialize();
