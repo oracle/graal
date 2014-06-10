@@ -26,7 +26,6 @@ import static com.oracle.graal.api.code.ValueUtil.*;
 import static com.oracle.graal.compiler.GraalDebugConfig.*;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.lir.LIR.*;
-import static com.oracle.graal.nodes.ConstantNode.*;
 
 import java.util.*;
 import java.util.Map.Entry;
@@ -44,7 +43,6 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.JumpOp;
 import com.oracle.graal.lir.gen.*;
-import com.oracle.graal.lir.gen.LIRGenerator.LoadConstant;
 import com.oracle.graal.lir.gen.LIRGenerator.Options;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
@@ -135,48 +133,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool {
         if (nodeOperands == null) {
             return null;
         }
-        Value operand = nodeOperands.get(node);
-        if (operand == null) {
-            operand = getConstantOperand(node);
-        }
-        return operand;
-    }
-
-    private Value getConstantOperand(ValueNode node) {
-        if (!ConstantNodeRecordsUsages) {
-            Constant value = node.asConstant();
-            if (value != null) {
-                if (gen.canInlineConstant(value)) {
-                    return setResult(node, value);
-                } else {
-                    Variable loadedValue;
-                    if (gen.getConstantLoads() == null) {
-                        gen.setConstantLoads(new HashMap<>());
-                    }
-                    LoadConstant load = gen.getConstantLoads().get(value);
-                    assert gen.getCurrentBlock() instanceof Block;
-                    if (load == null) {
-                        int index = gen.getResult().getLIR().getLIRforBlock(gen.getCurrentBlock()).size();
-                        loadedValue = gen.emitMove(value);
-                        LIRInstruction op = gen.getResult().getLIR().getLIRforBlock(gen.getCurrentBlock()).get(index);
-                        gen.getConstantLoads().put(value, new LoadConstant(loadedValue, gen.getCurrentBlock(), index, op));
-                    } else {
-                        AbstractBlock<?> dominator = ControlFlowGraph.commonDominator((Block) load.getBlock(), (Block) gen.getCurrentBlock());
-                        loadedValue = load.getVariable();
-                        if (dominator != load.getBlock()) {
-                            load.unpin(gen.getResult().getLIR());
-                        } else {
-                            assert load.getBlock() != gen.getCurrentBlock() || load.getIndex() < gen.getResult().getLIR().getLIRforBlock(gen.getCurrentBlock()).size();
-                        }
-                        load.setBlock(dominator);
-                    }
-                    return loadedValue;
-                }
-            }
-        } else {
-            // Constant is loaded by ConstantNode.generate()
-        }
-        return null;
+        return nodeOperands.get(node);
     }
 
     public ValueNode valueForOperand(Value value) {
@@ -252,10 +209,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool {
             if (Options.TraceLIRGeneratorLevel.getValue() >= 3) {
                 TTY.println("LIRGen for " + instr);
             }
-            if (!ConstantNodeRecordsUsages && instr instanceof ConstantNode) {
-                // Loading of constants is done lazily by operand()
-
-            } else if (instr instanceof ValueNode) {
+            if (instr instanceof ValueNode) {
                 ValueNode valueNode = (ValueNode) instr;
                 Value operand = getOperand(valueNode);
                 if (operand == null) {

@@ -67,32 +67,9 @@ public final class ConstantNode extends FloatingNode implements LIRLowerable {
         return value;
     }
 
-    /**
-     * Used to measure the impact of ConstantNodes not recording their usages. This and all code
-     * predicated on this value being true will be removed at some point.
-     */
-    public static final boolean ConstantNodeRecordsUsages = Boolean.parseBoolean(System.getProperty("graal.constantNodeRecordsUsages", "true"));
-
     @Override
     public boolean recordsUsages() {
-        return ConstantNodeRecordsUsages;
-    }
-
-    /**
-     * Computes the usages of this node by iterating over all the nodes in the graph, searching for
-     * those that have this node as an input.
-     */
-    public List<Node> gatherUsages(StructuredGraph graph) {
-        assert !ConstantNodeRecordsUsages;
-        List<Node> usages = new ArrayList<>();
-        for (Node node : graph.getNodes()) {
-            for (Node input : node.inputs()) {
-                if (input == this) {
-                    usages.add(node);
-                }
-            }
-        }
-        return usages;
+        return true;
     }
 
     /**
@@ -104,25 +81,15 @@ public final class ConstantNode extends FloatingNode implements LIRLowerable {
     }
 
     /**
-     * Replaces this node at its usages with another node. If {@link #ConstantNodeRecordsUsages} is
-     * false, this is an expensive operation that should only be used in test/verification/AOT code.
+     * Replaces this node at its usages with another node.
      */
     public void replace(StructuredGraph graph, Node replacement) {
-        if (!recordsUsages()) {
-            List<Node> usages = gatherUsages(graph);
-            for (Node usage : usages) {
-                usage.replaceFirstInput(this, replacement);
-            }
-            graph.removeFloating(this);
-        } else {
-            assert graph == graph();
-            graph().replaceFloating(this, replacement);
-        }
+        assert graph == graph();
+        graph().replaceFloating(this, replacement);
     }
 
     @Override
     public void generate(NodeLIRBuilderTool gen) {
-        assert ConstantNodeRecordsUsages : "LIR generator should generate constants per-usage";
         if (gen.getLIRGeneratorTool().canInlineConstant(value) || onlyUsedInVirtualState()) {
             gen.setResult(this, value);
         } else {
