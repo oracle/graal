@@ -757,8 +757,8 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
         int numStackSlotBytes = 0;
         if (useHSAILDeoptimization) {
             /*
-             * Get the union of registers and stack slots needed to be saved at the infopoints. While
-             * doing this compute the highest register in each category.
+             * Get the union of registers and stack slots needed to be saved at the infopoints.
+             * While doing this compute the highest register in each category.
              */
             HSAILHotSpotRegisterConfig hsailRegConfig = (HSAILHotSpotRegisterConfig) regConfig;
             Set<Register> infoUsedRegs = new TreeSet<>();

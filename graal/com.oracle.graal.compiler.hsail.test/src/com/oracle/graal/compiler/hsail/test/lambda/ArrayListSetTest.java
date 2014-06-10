@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,61 +20,37 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.graal.compiler.hsail.test.lambda;
 
-import static com.oracle.graal.debug.Debug.*;
+import com.oracle.graal.compiler.hsail.test.infra.*;
 
 import org.junit.*;
-
-import com.oracle.graal.compiler.hsail.test.infra.*;
-import com.oracle.graal.debug.*;
+import java.util.*;
 
 /**
- * Tests creating a String and calling .equals() on it.
+ * Tests calling ArrayList.set().
  */
-public class NewStringEqualsTest extends GraalKernelTester {
+public class ArrayListSetTest extends GraalKernelTester {
 
-    static final int NUM = 20;
-    @Result public boolean[] outArray = new boolean[NUM];
-    char[] chars = new char[100];
-
-    void setupArrays() {
-        for (int i = 0; i < chars.length; i++) {
-            chars[i] = (char) ('A' + i);
-        }
-        for (int i = 0; i < NUM; i++) {
-        }
-    }
+    final static int NUM = 50;
+    ArrayList<Integer> aryList = new ArrayList<>();
 
     @Override
     public void runTest() {
-        setupArrays();
-        String base = "ABCDEFGHIJ";
-
+        for (int i = 0; i < NUM; i++) {
+            aryList.add(-1);
+        }
         dispatchLambdaKernel(NUM, (gid) -> {
-            outArray[gid] = new String(chars, 0, 10 + (gid % 3)).equals(base);
+            aryList.set(gid, gid);
         });
-    }
 
-    @Override
-    protected boolean supportsRequiredCapabilities() {
-        // although not escaping, seems to require object allocation support
-        return (canHandleObjectAllocation());
-    }
-
-    @Test
-    public void test() {
-        try (DebugConfigScope s = disableIntercept()) {
-            testGeneratedHsail();
+        for (int i = 0; i < NUM; i++) {
+            System.out.println(aryList.get(i));
         }
     }
 
     @Test
     public void testUsingLambdaMethod() {
-        try (DebugConfigScope s = disableIntercept()) {
-            testGeneratedHsailUsingLambdaMethod();
-        }
+        testGeneratedHsailUsingLambdaMethod();
     }
-
 }

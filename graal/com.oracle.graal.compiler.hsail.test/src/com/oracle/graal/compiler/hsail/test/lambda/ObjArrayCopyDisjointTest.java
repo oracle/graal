@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,38 +20,30 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.graal.compiler.hsail.test.lambda;
-
-import java.util.*;
-
-import org.junit.*;
 
 import com.oracle.graal.compiler.hsail.test.infra.*;
 
+import org.junit.*;
+
 /**
- * Tests calling ArrayList.get().
+ * Tests {@link System#arraycopy} for object arrays where dest and src type are same, no overlap.
  */
-public class ArrayListGetTest extends GraalKernelTester {
+public class ObjArrayCopyDisjointTest extends GraalKernelTester {
 
-    static final int NUM = 20;
-    @Result public int[] outArray = new int[NUM];
-    public ArrayList<Integer> inList = new ArrayList<>();
+    final static int MAXOUTSIZ = 100;
+    final static int NUM = 20;
 
-    void setupArrays() {
-        for (int i = 0; i < NUM; i++) {
-            inList.add(i);
-            outArray[i] = -i;
-        }
-    }
+    @Result String[][] outArray = new String[NUM][MAXOUTSIZ];
+    String[] inArray = new String[NUM + MAXOUTSIZ];
 
     @Override
     public void runTest() {
-        setupArrays();
-
+        for (int i = 0; i < inArray.length; i++) {
+            inArray[i] = Integer.toString(i * 1111);
+        }
         dispatchLambdaKernel(NUM, (gid) -> {
-            int val = inList.get(gid);
-            outArray[gid] = val * val + 1;
+            System.arraycopy(inArray, gid, outArray[gid], 0, MAXOUTSIZ);
         });
     }
 
@@ -59,5 +51,4 @@ public class ArrayListGetTest extends GraalKernelTester {
     public void testUsingLambdaMethod() {
         testGeneratedHsailUsingLambdaMethod();
     }
-
 }

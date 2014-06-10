@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,61 +20,39 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.graal.compiler.hsail.test.lambda;
 
-import static com.oracle.graal.debug.Debug.*;
+import com.oracle.graal.compiler.hsail.test.infra.*;
 
 import org.junit.*;
 
-import com.oracle.graal.compiler.hsail.test.infra.*;
-import com.oracle.graal.debug.*;
-
 /**
- * Tests creating a String and calling .equals() on it.
+ * Tests creating a new {@link CharSequence} using {@link String#subSequence(int, int)}.
  */
-public class NewStringEqualsTest extends GraalKernelTester {
+public class StringSubsequenceTest extends GraalKernelTester {
 
-    static final int NUM = 20;
-    @Result public boolean[] outArray = new boolean[NUM];
-    char[] chars = new char[100];
-
-    void setupArrays() {
-        for (int i = 0; i < chars.length; i++) {
-            chars[i] = (char) ('A' + i);
-        }
-        for (int i = 0; i < NUM; i++) {
-        }
-    }
+    final static int NUM = 50;
+    String inputString;
+    @Result CharSequence[] resultSequence = new String[NUM];
 
     @Override
     public void runTest() {
-        setupArrays();
-        String base = "ABCDEFGHIJ";
-
+        StringBuilder builder = new StringBuilder();
+        for (int i = 0; i < NUM + 10; i++) {
+            builder.append(i);
+        }
+        inputString = builder.toString();
         dispatchLambdaKernel(NUM, (gid) -> {
-            outArray[gid] = new String(chars, 0, 10 + (gid % 3)).equals(base);
+            resultSequence[gid] = inputString.subSequence(gid, gid + 10);
         });
-    }
 
-    @Override
-    protected boolean supportsRequiredCapabilities() {
-        // although not escaping, seems to require object allocation support
-        return (canHandleObjectAllocation());
-    }
-
-    @Test
-    public void test() {
-        try (DebugConfigScope s = disableIntercept()) {
-            testGeneratedHsail();
+        for (int i = 0; i < NUM; i++) {
+            System.out.println(resultSequence[i]);
         }
     }
 
     @Test
     public void testUsingLambdaMethod() {
-        try (DebugConfigScope s = disableIntercept()) {
-            testGeneratedHsailUsingLambdaMethod();
-        }
+        testGeneratedHsailUsingLambdaMethod();
     }
-
 }
