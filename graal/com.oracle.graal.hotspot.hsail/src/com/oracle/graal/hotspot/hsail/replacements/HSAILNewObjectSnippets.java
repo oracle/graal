@@ -161,7 +161,7 @@ public class HSAILNewObjectSnippets extends NewObjectSnippets {
 
     protected static Object addressToFormattedObject(Word addr, @ConstantParameter int size, Word hub, Word prototypeMarkWord, @ConstantParameter boolean fillContents,
                     @ConstantParameter String typeContext) {
-        Object result = formatObject(hub, size, addr, prototypeMarkWord, fillContents, true, false, true);
+        Object result = formatObject(hub, size, addr, prototypeMarkWord, fillContents, true, true);
         profileAllocation("instance", size, typeContext);
         return piCast(verifyOop(result), StampFactory.forNodeIntrinsic());
     }
