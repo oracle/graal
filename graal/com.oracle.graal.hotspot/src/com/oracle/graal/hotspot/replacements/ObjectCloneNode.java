@@ -77,6 +77,7 @@ public class ObjectCloneNode extends MacroNode implements VirtualizableAllocatio
                     assert snippetGraph != null : "ObjectCloneSnippets should be installed";
                     return lowerReplacement(snippetGraph.copy(), tool);
                 }
+                assert false : "unhandled array type " + type.getComponentType().getKind();
             } else {
                 type = getConcreteType(getObject().stamp(), tool.assumptions(), tool.getMetaAccess());
                 if (type != null) {
@@ -106,7 +107,7 @@ public class ObjectCloneNode extends MacroNode implements VirtualizableAllocatio
     /*
      * Looks at the given stamp and determines if it is an exact type (or can be assumed to be an
      * exact type) and if it is a cloneable type.
-     *
+     * 
      * If yes, then the exact type is returned, otherwise it returns null.
      */
     private static ResolvedJavaType getConcreteType(Stamp stamp, Assumptions assumptions, MetaAccessProvider metaAccess) {
