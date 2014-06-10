@@ -661,7 +661,8 @@ public final class Interval {
 
     // returns true if this interval has a shadow copy on the stack that is always correct
     boolean alwaysInMemory() {
-        return (splitParent().spillState == SpillState.StoreAtDefinition || splitParent().spillState == SpillState.StartInMemory) && !canMaterialize();
+        return (splitParent().spillState == SpillState.SpillInDominator || splitParent().spillState == SpillState.StoreAtDefinition || splitParent().spillState == SpillState.StartInMemory) &&
+                        !canMaterialize();
     }
 
     void removeFirstUsePos() {
