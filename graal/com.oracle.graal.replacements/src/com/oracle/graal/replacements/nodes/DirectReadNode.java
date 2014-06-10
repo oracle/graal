@@ -45,6 +45,10 @@ public class DirectReadNode extends FixedWithNextNode implements LIRLowerable {
         this.readKind = readKind;
     }
 
+    protected ValueNode getAddress() {
+        return address;
+    }
+
     @Override
     public void generate(NodeLIRBuilderTool gen) {
         gen.setResult(this, gen.getLIRGeneratorTool().emitLoad(readKind, gen.operand(address), null));

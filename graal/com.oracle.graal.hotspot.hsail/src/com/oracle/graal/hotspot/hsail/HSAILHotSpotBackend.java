@@ -66,7 +66,6 @@ import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.hsail.*;
 import com.oracle.graal.lir.hsail.HSAILControlFlow.DeoptimizingOp;
-import com.oracle.graal.lir.hsail.HSAILMove.AtomicReadAndAddOp;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.StructuredGraph.GuardsStage;
 import com.oracle.graal.nodes.extended.*;
@@ -103,8 +102,10 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
         paramTypeMap.put("HotSpotResolvedPrimitiveType<double>", "f64");
         paramTypeMap.put("HotSpotResolvedPrimitiveType<long>", "s64");
 
-        // The order of the conjunction below is important: the OkraUtil
-        // call may provision the native library required by the initialize() call
+        /*
+         * The order of the conjunction below is important: the OkraUtil call may provision the
+         * native library required by the initialize() call
+         */
         deviceInitialized = OkraUtil.okraLibExists() && initialize();
     }
 
@@ -261,8 +262,7 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
      */
     public final HotSpotNmethod installKernel(ResolvedJavaMethod method, ExternalCompilationResult hsailCode) {
         assert hsailCode.getEntryPoint() != 0L;
-        // code below here lifted from HotSpotCodeCacheProviders.addExternalMethod
-        // used to be return getProviders().getCodeCache().addExternalMethod(method, hsailCode);
+        // Code here based on HotSpotCodeCacheProvider.addExternalMethod().
         HotSpotResolvedJavaMethod javaMethod = (HotSpotResolvedJavaMethod) method;
         if (hsailCode.getId() == -1) {
             hsailCode.setId(javaMethod.allocateCompileId(hsailCode.getEntryBCI()));
@@ -294,6 +294,7 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
 
         HSAILHotSpotNmethod code = new HSAILHotSpotNmethod(javaMethod, hsailCode.getName(), false, true);
         code.setOopMapArray(hsailCode.getOopMapArray());
+        code.setUsesAllocationFlag(hsailCode.getUsesAllocationFlag());
         HotSpotCompiledNmethod compiled = new HotSpotCompiledNmethod(getTarget(), javaMethod, compilationResult);
         CodeInstallResult result = getRuntime().getCompilerToVM().installCode(compiled, code, null);
         if (result != CodeInstallResult.OK) {
@@ -388,7 +389,9 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
         } else {
             oopsSaveArea = null;
         }
-        return executeKernel0(kernel, jobSize, args, oopsSaveArea, donorThreadPool.get().getThreads(), HsailAllocBytesPerWorkitem.getValue(), oopMapArray);
+        // Pass donorThreadPoolArray if this kernel uses allocation, otherwise null
+        Thread[] donorThreadArray = ((HSAILHotSpotNmethod) kernel).getUsesAllocationFlag() ? donorThreadPool.get().getThreads() : null;
+        return executeKernel0(kernel, jobSize, args, oopsSaveArea, donorThreadArray, HsailAllocBytesPerWorkitem.getValue(), oopMapArray);
     }
 
     private static native boolean executeKernel0(HotSpotInstalledCode kernel, int jobSize, Object[] args, Object[] oopsSave, Thread[] donorThreads, int allocBytesPerWorkitem, int[] oopMapArray)
@@ -449,6 +452,7 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
 
     static class HSAILHotSpotNmethod extends HotSpotNmethod {
         private int[] oopMapArray;
+        private boolean usesAllocation;
 
         HSAILHotSpotNmethod(HotSpotResolvedJavaMethod method, String name, boolean isDefault, boolean isExternal) {
             super(method, name, isDefault, isExternal);
@@ -460,6 +464,14 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
 
         int[] getOopMapArray() {
             return oopMapArray;
+        }
+
+        public void setUsesAllocationFlag(boolean val) {
+            usesAllocation = val;
+        }
+
+        public boolean getUsesAllocationFlag() {
+            return usesAllocation;
         }
     }
 
@@ -493,19 +505,22 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
             Debug.log("+UseHSAILSafepoints requires +UseHSAILDeoptimization");
         }
 
-        // see what graph nodes we have to see if we are using the thread register
-        // if not, we don't have to emit the code that sets that up
-        // maybe there is a better way to do this?
-        boolean usesThreadRegister = false;
+        /*
+         * See what graph nodes we have to see if we are using the thread register. If not, we don't
+         * have to emit the code that sets it up. Maybe there is a better way to do this?
+         */
+        boolean usesAllocation = false;
         search: for (AbstractBlock<?> b : lir.linearScanOrder()) {
             for (LIRInstruction op : lir.getLIRforBlock(b)) {
-                if (op instanceof AtomicReadAndAddOp) {
-                    usesThreadRegister = true;
+                if ((op instanceof HSAILMove.LoadOp) && ((HSAILMove.LoadOp) op).usesThreadRegister()) {
+                    usesAllocation = true;
                     assert useHSAILDeoptimization : "cannot use thread register if HSAIL deopt support is disabled";
                     break search;
                 }
             }
         }
+        // save usesAllocation flag in ExternalCompilationResult
+        ((ExternalCompilationResult) crb.compilationResult).setUsesAllocationFlag(usesAllocation);
 
         // Emit the prologue.
         HSAILAssembler asm = (HSAILAssembler) crb.asm;
@@ -527,8 +542,7 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
             nonConstantParamCount++;
         }
 
-        // If this is an instance method, include mappings for the "this" parameter
-        // as the first parameter.
+        // If this is an instance method, include the "this" parameter
         if (!isStatic) {
             nonConstantParamCount++;
         }
@@ -564,8 +578,10 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
         // Include the gid.
         System.arraycopy(paramtypes, 0, ccParamTypes, 0, nonConstantParamCount);
 
-        // Last entry is always int (its register gets used in the workitemabsid instruction)
-        // this is true even for object stream labmdas
+        /*
+         * Last entry is always int (its register gets used in the workitemabsid instruction). This
+         * is true even for object stream lambdas.
+         */
         if (sigParamCount > 0) {
             ccParamTypes[ccParamTypes.length - 1] = metaAccess.lookupJavaType(int.class);
         }
@@ -621,7 +637,6 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
         if (useHSAILDeoptimization) {
             // Aliases for d16
             RegisterValue d16_deoptInfo = HSAIL.d16.asValue(wordKind);
-            RegisterValue d16_donorThreads = d16_deoptInfo;
 
             // Aliases for d17
             RegisterValue d17_donorThreadIndex = HSAIL.d17.asValue(wordKind);
@@ -645,21 +660,20 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
             asm.emitLoadAcquire(s34_deoptOccurred, new HSAILAddressValue(Kind.Int, d16_deoptInfo, config.hsailDeoptOccurredOffset).toAddress());
             asm.emitCompare(Kind.Int, s34_deoptOccurred, Constant.forInt(0), "ne", false, false);
             asm.cbr(deoptInProgressLabel);
-            // load thread register if needed
-            if (usesThreadRegister) {
+            // load thread register if this kernel performs allocation
+            if (usesAllocation) {
+                RegisterValue threadReg = getProviders().getRegisters().getThreadRegister().asValue(wordKind);
                 assert HsailDonorThreads.getValue() > 0;
-                asm.emitLoad(wordKind, d16_donorThreads, new HSAILAddressValue(wordKind, d16_deoptInfo, config.hsailDonorThreadsOffset).toAddress());
+                asm.emitLoad(wordKind, threadReg, new HSAILAddressValue(wordKind, d16_deoptInfo, config.hsailCurTlabInfoOffset).toAddress());
                 if (HsailDonorThreads.getValue() != 1) {
                     asm.emitComment("// map workitem to a donor thread");
                     asm.emitString(String.format("rem_u32  $%s, %s, %d;", s34_donorThreadIndex.getRegister(), workItemReg, HsailDonorThreads.getValue()));
                     asm.emitConvert(d17_donorThreadIndex, s34_donorThreadIndex, wordKind, Kind.Int);
-                    asm.emit("mad", d16_donorThreads, d17_donorThreadIndex, Constant.forInt(8), d16_donorThreads);
+                    asm.emit("mad", threadReg, d17_donorThreadIndex, Constant.forInt(8), threadReg);
                 } else {
                     // workitem is already mapped to solitary donor thread
                 }
-                AllocatableValue threadRegValue = getProviders().getRegisters().getThreadRegister().asValue(wordKind);
-                asm.emitComment("// $" + getProviders().getRegisters().getThreadRegister() + " will point to a donor thread for this workitem");
-                asm.emitLoad(wordKind, threadRegValue, new HSAILAddressValue(wordKind, d16_donorThreads).toAddress());
+                asm.emitComment("// $" + getProviders().getRegisters().getThreadRegister() + " will point to holder of tlab thread info for this workitem");
             }
         }
 
@@ -676,8 +690,10 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
             boolean useCompressedOops = config.useCompressedOops;
             final int arrayElementsOffset = HotSpotGraalRuntime.getArrayBaseOffset(wordKind);
             String iterationObjArgReg = HSAIL.mapRegister(cc.getArgument(nonConstantParamCount - 1));
-            // iterationObjArgReg will be the highest $d register in use (it is the last parameter)
-            // so tempReg can be the next higher $d register
+            /*
+             * iterationObjArgReg will be the highest $d register in use (it is the last parameter)
+             * so tempReg can be the next higher $d register
+             */
             String tmpReg = "$d" + (asRegister(cc.getArgument(nonConstantParamCount - 1)).encoding() + 1);
             // Convert gid to long.
             asm.emitString("cvt_u64_s32 " + tmpReg + ", " + workItemReg + "; // Convert gid to long");
@@ -740,8 +756,10 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
         int numDRegs = 0;
         int numStackSlotBytes = 0;
         if (useHSAILDeoptimization) {
-            // get the union of registers and stack slots needed to be saved at the infopoints
-            // while doing this compute the highest register in each category
+            /*
+             * Get the union of registers and stack slots needed to be saved at the infopoints. While
+             * doing this compute the highest register in each category.
+             */
             HSAILHotSpotRegisterConfig hsailRegConfig = (HSAILHotSpotRegisterConfig) regConfig;
             Set<Register> infoUsedRegs = new TreeSet<>();
             Set<StackSlot> infoUsedStackSlots = new HashSet<>();
@@ -836,13 +854,16 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
 
             asm.emitComment("// Determine next deopt save slot");
             asm.emitAtomicAdd(scratch32, deoptNextIndexAddr, Constant.forInt(1));
-            // scratch32 now holds next index to use
-            // set error condition if no room in save area
+            /*
+             * scratch32 now holds next index to use set error condition if no room in save area
+             */
             asm.emitComment("// assert room to save deopt");
             asm.emitCompare(Kind.Int, scratch32, Constant.forInt(maxDeoptIndex), "lt", false, false);
             asm.cbr("@L_StoreDeopt");
-            // if assert fails, store a guaranteed negative workitemid in top level deopt occurred
-            // flag
+            /*
+             * if assert fails, store a guaranteed negative workitemid in top level deopt occurred
+             * flag
+             */
             asm.emitWorkItemAbsId(scratch32);
             asm.emit("mad", scratch32, scratch32, Constant.forInt(-1), Constant.forInt(-1));
             asm.emitStore(scratch32, deoptInfoAddr);
@@ -880,8 +901,10 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
             asm.emitComment("// store regCounts (" + numSRegs + " $s registers, " + numDRegs + " $d registers, " + numStackSlots + " stack slots)");
             asm.emitStore(Kind.Int, Constant.forInt(numSRegs + (numDRegs << 8) + (numStackSlots << 16)), regCountsAddr);
 
-            // loop thru the usedValues storing each of the registers that are used.
-            // we always store in a fixed location, even if some registers are skipped
+            /*
+             * Loop thru the usedValues storing each of the registers that are used. We always store
+             * in a fixed location, even if some registers are skipped.
+             */
             asm.emitComment("// store used regs");
             for (Register reg : infoUsedRegs) {
                 if (hsailRegConfig.isAllocatableSReg(reg)) {
@@ -961,11 +984,11 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
         private int intsPerInfopoint;
 
         int[] build(List<Infopoint> infoList, int numSRegs, int numDRegs, int numStackSlots, HSAILHotSpotRegisterConfig hsailRegConfig) {
-            // we are told that infoList is always sorted
-            // each infoPoint can have a different oopMap
-
-            // since numStackSlots is the number of 8-byte stack slots used, it is an upper limit on
-            // the number of oop stack slots
+            /*
+             * We are told that infoList is always sorted. Each infoPoint can have a different
+             * oopMap. Since numStackSlots is the number of 8-byte stack slots used, it is an upper
+             * limit on the number of oop stack slots
+             */
             int bitsPerInfopoint = numDRegs + numStackSlots;
             int intsForBits = (bitsPerInfopoint + 31) / 32;
             int numInfopoints = infoList.size();

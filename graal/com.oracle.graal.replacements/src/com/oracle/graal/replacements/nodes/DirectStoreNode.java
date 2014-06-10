@@ -53,6 +53,14 @@ public class DirectStoreNode extends FixedWithNextNode implements LIRLowerable {
         gen.getLIRGeneratorTool().emitStore(kind, gen.operand(address), v, null);
     }
 
+    protected ValueNode getAddress() {
+        return address;
+    }
+
+    protected ValueNode getValue() {
+        return value;
+    }
+
     /*
      * The kind of the store is provided explicitly in these intrinsics because it is not always
      * possible to determine the kind from the given value during compilation (because stack kinds

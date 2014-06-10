@@ -20,47 +20,33 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.hsail.test;
+package com.oracle.graal.hotspot.hsail.replacements;
 
-import java.util.*;
-import java.util.concurrent.atomic.*;
+import com.oracle.graal.api.meta.*;
+import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.replacements.nodes.*;
+import com.oracle.graal.hotspot.hsail.*;
+import com.oracle.graal.word.*;
 
-import org.junit.*;
+public class HSAILDirectLoadAcquireNode extends DirectReadNode {
 
-import com.oracle.graal.compiler.hsail.test.infra.*;
-
-/**
- * Tests {@link AtomicInteger#getAndAdd(int)} which tests HSAIL atomic_add codegen.
- */
-public class AtomicIntGetAndAddTest extends GraalKernelTester {
-
-    static final int NUM = 20;
-    @Result public int[] outArray = new int[NUM];
-    AtomicInteger atomicInt = new AtomicInteger();
-
-    void setupArrays() {
-        for (int i = 0; i < NUM; i++) {
-            outArray[i] = -i;
-        }
+    public HSAILDirectLoadAcquireNode(ValueNode address, Kind readKind) {
+        super(address, readKind);
     }
 
     @Override
-    public void runTest() {
-        setupArrays();
-
-        dispatchMethodKernel(NUM);
-
-        // note: the actual order of entries in outArray is not predictable
-        // thus we sort before we compare results
-        Arrays.sort(outArray);
+    public void generate(NodeLIRBuilderTool gen) {
+        HSAILHotSpotLIRGenerator hsailgen = (HSAILHotSpotLIRGenerator) (gen.getLIRGeneratorTool());
+        Value result = hsailgen.emitLoadAcquire(getKind(), gen.operand(getAddress()), null);
+        gen.setResult(this, result);
     }
 
-    public void run(int gid) {
-        outArray[gid] = atomicInt.getAndAdd(0x7);
+    @NodeIntrinsic
+    public static native long loadAcquire(long address, @ConstantNodeParameter Kind kind);
+
+    public static long loadAcquireLong(Word address) {
+        return loadAcquire(address.rawValue(), Kind.Long);
     }
 
-    @Test
-    public void test() {
-        testGeneratedHsail();
-    }
 }

@@ -44,6 +44,7 @@ public class ExternalCompilationResult extends CompilationResult {
     private StructuredGraph hostGraph;
 
     private int[] oopMapArray;
+    private boolean usesAllocation;
 
     /**
      * Set the address for the point of entry to the external compilation result.
@@ -84,6 +85,14 @@ public class ExternalCompilationResult extends CompilationResult {
 
     public int[] getOopMapArray() {
         return oopMapArray;
+    }
+
+    public void setUsesAllocationFlag(boolean val) {
+        usesAllocation = val;
+    }
+
+    public boolean getUsesAllocationFlag() {
+        return usesAllocation;
     }
 
 }

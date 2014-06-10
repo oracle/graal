@@ -38,17 +38,8 @@ import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.SaveRegistersOp;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.hsail.*;
-import com.oracle.graal.lir.hsail.HSAILControlFlow.CondMoveOp;
-import com.oracle.graal.lir.hsail.HSAILControlFlow.DeoptimizeOp;
-import com.oracle.graal.lir.hsail.HSAILControlFlow.ForeignCall1ArgOp;
-import com.oracle.graal.lir.hsail.HSAILControlFlow.ForeignCall2ArgOp;
-import com.oracle.graal.lir.hsail.HSAILControlFlow.ForeignCallNoArgOp;
-import com.oracle.graal.lir.hsail.HSAILMove.CompareAndSwapOp;
-import com.oracle.graal.lir.hsail.HSAILMove.LoadOp;
-import com.oracle.graal.lir.hsail.HSAILMove.MoveFromRegOp;
-import com.oracle.graal.lir.hsail.HSAILMove.MoveToRegOp;
-import com.oracle.graal.lir.hsail.HSAILMove.StoreConstantOp;
-import com.oracle.graal.lir.hsail.HSAILMove.StoreOp;
+import com.oracle.graal.lir.hsail.HSAILControlFlow.*;
+import com.oracle.graal.lir.hsail.HSAILMove.*;
 import com.oracle.graal.phases.util.*;
 
 /**
@@ -126,6 +117,13 @@ public class HSAILHotSpotLIRGenerator extends HSAILLIRGenerator implements HotSp
         return result;
     }
 
+    public Variable emitLoadAcquire(PlatformKind kind, Value address, LIRFrameState state) {
+        HSAILAddressValue loadAddress = asAddressValue(address);
+        Variable result = newVariable(kind);
+        append(new LoadAcquireOp(getMemoryKind(kind), result, loadAddress, state));
+        return result;
+    }
+
     @Override
     public void emitStore(PlatformKind kind, Value address, Value inputVal, LIRFrameState state) {
         HSAILAddressValue storeAddress = asAddressValue(address);
@@ -145,6 +143,13 @@ public class HSAILHotSpotLIRGenerator extends HSAILLIRGenerator implements HotSp
         } else {
             append(new StoreOp(getMemoryKind(kind), storeAddress, input, state));
         }
+    }
+
+    public void emitStoreRelease(PlatformKind kind, Value address, Value inputVal, LIRFrameState state) {
+        HSAILAddressValue storeAddress = asAddressValue(address);
+        // TODO: handle Constants here
+        Variable input = load(inputVal);
+        append(new StoreReleaseOp(getMemoryKind(kind), storeAddress, input, state));
     }
 
     public Value emitCompareAndSwap(Value address, Value expectedValue, Value newValue, Value trueValue, Value falseValue) {
@@ -313,5 +318,11 @@ public class HSAILHotSpotLIRGenerator extends HSAILLIRGenerator implements HotSp
         Variable obj = newVariable(Kind.Object);
         emitMove(obj, address);
         append(new HSAILMove.NullCheckOp(obj, state));
+    }
+
+    public Variable emitWorkItemAbsId() {
+        Variable result = newVariable(Kind.Int);
+        append(new WorkItemAbsIdOp(result));
+        return result;
     }
 }

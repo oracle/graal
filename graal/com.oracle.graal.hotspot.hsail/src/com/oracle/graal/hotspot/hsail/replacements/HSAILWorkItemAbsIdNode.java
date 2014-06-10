@@ -20,47 +20,28 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.hsail.test;
+package com.oracle.graal.hotspot.hsail.replacements;
 
-import java.util.*;
-import java.util.concurrent.atomic.*;
+import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.hotspot.hsail.*;
 
-import org.junit.*;
+public class HSAILWorkItemAbsIdNode extends FixedWithNextNode implements LIRLowerable {
 
-import com.oracle.graal.compiler.hsail.test.infra.*;
-
-/**
- * Tests {@link AtomicInteger#getAndAdd(int)} which tests HSAIL atomic_add codegen.
- */
-public class AtomicIntGetAndAddTest extends GraalKernelTester {
-
-    static final int NUM = 20;
-    @Result public int[] outArray = new int[NUM];
-    AtomicInteger atomicInt = new AtomicInteger();
-
-    void setupArrays() {
-        for (int i = 0; i < NUM; i++) {
-            outArray[i] = -i;
-        }
+    public HSAILWorkItemAbsIdNode() {
+        super(StampFactory.forKind(Kind.Int));
     }
 
     @Override
-    public void runTest() {
-        setupArrays();
-
-        dispatchMethodKernel(NUM);
-
-        // note: the actual order of entries in outArray is not predictable
-        // thus we sort before we compare results
-        Arrays.sort(outArray);
+    public void generate(NodeLIRBuilderTool gen) {
+        HSAILHotSpotLIRGenerator hsailgen = (HSAILHotSpotLIRGenerator) (gen.getLIRGeneratorTool());
+        Value result = hsailgen.emitWorkItemAbsId();
+        gen.setResult(this, result);
     }
 
-    public void run(int gid) {
-        outArray[gid] = atomicInt.getAndAdd(0x7);
-    }
+    @NodeIntrinsic
+    public static native int getWorkItemAbsId();
 
-    @Test
-    public void test() {
-        testGeneratedHsail();
-    }
 }
