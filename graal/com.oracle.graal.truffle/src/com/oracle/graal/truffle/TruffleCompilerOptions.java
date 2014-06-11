@@ -87,6 +87,8 @@ public class TruffleCompilerOptions {
     public static final OptionValue<Boolean> TraceTruffleCompilationHistogram = new OptionValue<>(false);
     @Option(help = "Prints out all polymorphic and generic nodes after compilation.")
     public static final OptionValue<Boolean> TraceTruffleCompilationPolymorphism = new OptionValue<>(false);
+    @Option(help = "Prints out all polymorphic and generic nodes after compilation.")
+    public static final OptionValue<Boolean> TraceTruffleCompilationAST = new OptionValue<>(false);
     @Option(help = "")
     public static final OptionValue<Boolean> TraceTruffleExpansion = new OptionValue<>(false);
     @Option(help = "")

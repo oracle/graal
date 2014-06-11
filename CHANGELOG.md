@@ -9,6 +9,7 @@
 
 ### Truffle
 * `truffle.jar`: strip out build-time only dependency into a seperated JAR file (`truffle-dsl-processor.jar`)
+* New flag -G:+TraceTruffleCompilationAST to print the AST before compilation.
 * ...
 
 ## Version 0.3
