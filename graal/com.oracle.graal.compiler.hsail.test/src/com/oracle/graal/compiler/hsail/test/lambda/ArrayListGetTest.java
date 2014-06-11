@@ -55,6 +55,7 @@ public class ArrayListGetTest extends GraalKernelTester {
         });
     }
 
+    @Ignore("emitDirectCall unimplemented")
     @Test
     public void testUsingLambdaMethod() {
         testGeneratedHsailUsingLambdaMethod();

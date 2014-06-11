@@ -44,9 +44,9 @@ public class ArrayListSetTest extends GraalKernelTester {
             aryList.set(gid, gid);
         });
 
-        for (int i = 0; i < NUM; i++) {
-            System.out.println(aryList.get(i));
-        }
+        // for (int i = 0; i < NUM; i++) {
+        // System.out.println(aryList.get(i));
+        // }
     }
 
     @Test

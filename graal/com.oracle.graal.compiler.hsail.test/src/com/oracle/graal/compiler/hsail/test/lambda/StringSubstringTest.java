@@ -47,6 +47,7 @@ public class StringSubstringTest extends GraalKernelTester {
         });
     }
 
+    @Ignore("emitDirectCall unimplemented")
     @Test
     public void testUsingLambdaMethod() {
         testGeneratedHsailUsingLambdaMethod();

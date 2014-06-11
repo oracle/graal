@@ -50,6 +50,7 @@ public class EscapingNewStringConcatTest extends EscapingNewBase {
         myOutArray[gid] = inArray[(gid + NUM / 2) % NUM] + inArray[gid];
     }
 
+    @Ignore("emitDirectCall unimplemented")
     @Test
     public void test() {
         try (DebugConfigScope s = disableIntercept()) {

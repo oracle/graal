@@ -46,11 +46,12 @@ public class StringSubsequenceTest extends GraalKernelTester {
             resultSequence[gid] = inputString.subSequence(gid, gid + 10);
         });
 
-        for (int i = 0; i < NUM; i++) {
-            System.out.println(resultSequence[i]);
-        }
+        // for (int i = 0; i < NUM; i++) {
+        // System.out.println(resultSequence[i]);
+        // }
     }
 
+    @Ignore("emitDirectCall unimplemented")
     @Test
     public void testUsingLambdaMethod() {
         testGeneratedHsailUsingLambdaMethod();
