@@ -133,33 +133,27 @@ public abstract class AMD64NodeLIRBuilder extends NodeLIRBuilder {
             }
         }
 
-        PlatformKind cmpKind = gen.getPlatformKind(compare.x().stamp());
-        if (cmpKind instanceof Kind) {
-            // emitCompareBranchMemory expects the memory on the right, so mirror the condition if
-            // that's not true. It might be mirrored again the actual compare is emitted but that's
-            // ok.
-            Condition finalCondition = uncast(compare.x()) == access ? cond.mirror() : cond;
-            return new ComplexMatchResult() {
-                public Value evaluate(NodeLIRBuilder builder) {
-                    LabelRef trueLabel = getLIRBlock(ifNode.trueSuccessor());
-                    LabelRef falseLabel = getLIRBlock(ifNode.falseSuccessor());
-                    boolean unorderedIsTrue = compare.unorderedIsTrue();
-                    double trueLabelProbability = ifNode.probability(ifNode.trueSuccessor());
-                    Value other;
-                    if (value.isConstant()) {
-                        other = value.asConstant();
-                    } else {
-                        other = operand(value);
-                    }
-
-                    getLIRGeneratorTool().emitCompareBranchMemory((Kind) cmpKind, other, makeAddress(access), getState(access), finalCondition, unorderedIsTrue, trueLabel, falseLabel,
-                                    trueLabelProbability);
-                    return null;
+        // emitCompareBranchMemory expects the memory on the right, so mirror the condition if
+        // that's not true. It might be mirrored again the actual compare is emitted but that's
+        // ok.
+        Condition finalCondition = uncast(compare.x()) == access ? cond.mirror() : cond;
+        return new ComplexMatchResult() {
+            public Value evaluate(NodeLIRBuilder builder) {
+                LabelRef trueLabel = getLIRBlock(ifNode.trueSuccessor());
+                LabelRef falseLabel = getLIRBlock(ifNode.falseSuccessor());
+                boolean unorderedIsTrue = compare.unorderedIsTrue();
+                double trueLabelProbability = ifNode.probability(ifNode.trueSuccessor());
+                Value other;
+                if (value.isConstant()) {
+                    other = value.asConstant();
+                } else {
+                    other = operand(value);
                 }
-            };
-        }
-        return null;
 
+                getLIRGeneratorTool().emitCompareBranchMemory(kind, other, makeAddress(access), getState(access), finalCondition, unorderedIsTrue, trueLabel, falseLabel, trueLabelProbability);
+                return null;
+            }
+        };
     }
 
     private ComplexMatchResult emitIntegerTestBranchMemory(IfNode x, ValueNode value, Access access) {

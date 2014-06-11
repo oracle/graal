@@ -67,36 +67,6 @@ public class AMD64HotSpotNodeLIRBuilder extends AMD64NodeLIRBuilder implements H
         return result;
     }
 
-    private void emitCompareMemoryObject(IfNode ifNode, ValueNode valueNode, Access access, CompareNode compare) {
-        Value value;
-        // This works by embedding the compressed form for constants, so force a constant instead of
-        // respecting what operand() would return.
-        if (valueNode.isConstant()) {
-            value = valueNode.asConstant();
-        } else {
-            value = gen.load(operand(valueNode));
-        }
-        AMD64AddressValue address = makeAddress(access);
-
-        Condition cond = compare.condition();
-        Value left;
-        Value right;
-        if (access == filterCompression(compare.x())) {
-            left = value;
-            right = address;
-        } else {
-            assert access == filterCompression(compare.y());
-            left = address;
-            right = value;
-            cond = cond.mirror();
-        }
-
-        LabelRef trueLabel = getLIRBlock(ifNode.trueSuccessor());
-        LabelRef falseLabel = getLIRBlock(ifNode.falseSuccessor());
-        double trueLabelProbability = ifNode.probability(ifNode.trueSuccessor());
-        getGen().emitCompareBranchMemoryCompressed(left, right, cond, trueLabel, falseLabel, trueLabelProbability, getState(access));
-    }
-
     private void emitCompareCompressedMemory(Kind kind, IfNode ifNode, ValueNode valueNode, CompressionNode compress, ConstantLocationNode location, Access access, CompareNode compare) {
         Value value = gen.load(operand(valueNode));
         AMD64AddressValue address = makeCompressedAddress(compress, location);
@@ -269,24 +239,6 @@ public class AMD64HotSpotNodeLIRBuilder extends AMD64NodeLIRBuilder implements H
         AMD64AddressValue address = getGen().emitAddress(getGen().getProviders().getRegisters().getHeapBaseRegister().asValue(), location.getDisplacement(), operand(compress.getInput()),
                         1 << compress.getEncoding().shift);
         return address;
-    }
-
-    @MatchRule("(If (ObjectEquals=compare Constant=value (Pi (Compression Read=access))))")
-    @MatchRule("(If (ObjectEquals=compare Constant=value (Pi (Compression FloatingRead=access))))")
-    @MatchRule("(If (ObjectEquals=compare (Compression value) (Pi (Compression Read=access))))")
-    @MatchRule("(If (ObjectEquals=compare (Compression value) (Pi (Compression FloatingRead=access))))")
-    @MatchRule("(If (ObjectEquals=compare Constant=value (Compression Read=access)))")
-    @MatchRule("(If (ObjectEquals=compare Constant=value (Compression FloatingRead=access)))")
-    @MatchRule("(If (ObjectEquals=compare (Compression value) (Compression Read=access)))")
-    @MatchRule("(If (ObjectEquals=compare (Compression value) (Compression FloatingRead=access)))")
-    public ComplexMatchResult ifCompareMemoryObject(IfNode root, CompareNode compare, ValueNode value, Access access) {
-        if (HotSpotGraalRuntime.runtime().getConfig().useCompressedOops) {
-            return builder -> {
-                emitCompareMemoryObject(root, value, access, compare);
-                return null;
-            };
-        }
-        return null;
     }
 
     @MatchRule("(If (IntegerEquals=compare value (FloatingRead=access (Compression=compress object) ConstantLocation=location)))")
