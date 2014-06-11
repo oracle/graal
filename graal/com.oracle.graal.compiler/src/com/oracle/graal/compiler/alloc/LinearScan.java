@@ -2024,7 +2024,6 @@ public final class LinearScan {
 
                             if (defBlock.probability() <= spillBlock.probability()) {
                                 // better spill block has the same probability -> do nothing
-                                assert spillBlock.probability() - defBlock.probability() < 0.00000001 : "Check whether the probability difference is within epsilon";
                                 interval.setSpillState(SpillState.StoreAtDefinition);
                             } else {
                                 betterSpillPosWithLowerProbability.increment();
