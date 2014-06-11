@@ -170,7 +170,7 @@ public class HSAILMove {
         }
 
         public boolean usesThreadRegister() {
-            return (address.toAddress().getBase() == HSAIL.threadRegister);
+            return (address.toAddress().getBase().equals(HSAIL.threadRegister));
         }
     }
 
