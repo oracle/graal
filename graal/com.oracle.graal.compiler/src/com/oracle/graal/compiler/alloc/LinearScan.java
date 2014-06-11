@@ -1975,9 +1975,16 @@ public final class LinearScan {
             if (interval != null && interval.isSplitParent() && interval.spillState() == SpillState.SpillInDominator) {
                 AbstractBlock<?> defBlock = blockForId(interval.spillDefinitionPos());
                 AbstractBlock<?> spillBlock = null;
+                Interval firstSpillChild = null;
                 try (Indent indent = Debug.logAndIndent("interval %s (%s)", interval, defBlock)) {
                     for (Interval splitChild : interval.getSplitChildren()) {
                         if (isStackSlot(splitChild.location())) {
+                            if (firstSpillChild == null || splitChild.from() < firstSpillChild.from()) {
+                                firstSpillChild = splitChild;
+                            } else {
+                                assert firstSpillChild.from() < splitChild.from();
+                            }
+                            // iterate all blocks where the interval has use positions
                             for (AbstractBlock<?> splitBlock : blocksForSplitChild(splitChild)) {
                                 assert dominates(defBlock, splitBlock) : String.format("Definition does not dominate the spill block %s !dom %s (interval %s)", defBlock, splitBlock, interval);
                                 Debug.log("Split interval %s, block %s", splitChild, splitBlock);
@@ -1997,6 +2004,17 @@ public final class LinearScan {
                         // move out of loops
                         if (defBlock.getLoopDepth() < spillBlock.getLoopDepth()) {
                             spillBlock = moveSpillOutOfLoop(defBlock, spillBlock);
+                        }
+
+                        /*
+                         * If the spill block is the begin of the first split child (aka the value
+                         * is on the stack) spill in the dominator.
+                         */
+                        assert firstSpillChild != null;
+                        if (!defBlock.equals(spillBlock) && spillBlock.equals(blockForId(firstSpillChild.from()))) {
+                            AbstractBlock<?> dom = spillBlock.getDominator();
+                            Debug.log("Spill block (%s) is the beginning of a spill child -> use dominator (%s)", spillBlock, dom);
+                            spillBlock = dom;
                         }
 
                         if (!defBlock.equals(spillBlock)) {
