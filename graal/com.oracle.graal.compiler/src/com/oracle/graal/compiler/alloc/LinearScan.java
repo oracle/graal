@@ -606,7 +606,9 @@ public final class LinearScan {
                                     insertionBuffer.init(instructions);
                                 }
 
-                                AllocatableValue fromLocation = interval.location();
+                                // if we spill in a dominator we need to find the right location
+                                AllocatableValue fromLocation = interval.spillState() == SpillState.SpillInDominator ? interval.getSplitChildAtOpId(opId, OperandMode.DEF, this).location()
+                                                : interval.location();
                                 AllocatableValue toLocation = canonicalSpillOpr(interval);
 
                                 assert isRegister(fromLocation) : "from operand must be a register but is: " + fromLocation + " toLocation=" + toLocation + " spillState=" + interval.spillState();
