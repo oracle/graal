@@ -1953,8 +1953,17 @@ public final class LinearScan {
                     verify();
                 }
 
-                eliminateSpillMoves();
-                assignLocations();
+                try (Scope s1 = Debug.scope("EliminateSpillMove")) {
+                    eliminateSpillMoves();
+                } catch (Throwable e) {
+                    throw Debug.handle(e);
+                }
+
+                try (Scope s1 = Debug.scope("AssignLocations")) {
+                    assignLocations();
+                } catch (Throwable e) {
+                    throw Debug.handle(e);
+                }
 
                 if (DetailedAsserts.getValue()) {
                     verifyIntervals();
