@@ -2047,11 +2047,13 @@ public final class LinearScan {
 
         int nextOpId;
         Interval interval;
+        Range currentRange;
 
         public UseBlockIterator(Interval interval) {
             // the first use position is the begin of the interval
             nextOpId = interval.from();
             this.interval = interval;
+            this.currentRange = interval.first();
         }
 
         public AbstractBlock<?> next() {
@@ -2064,6 +2066,11 @@ public final class LinearScan {
                 assert from > maxOpId() || isBlockBegin(from) : "nextOpId is not a block begin";
                 assert from > maxOpId() || blockForId(from).getLinearScanNumber() == block.getLinearScanNumber() + 1 : "nextOpId is not the beginning of the next block";
                 nextOpId = interval.nextUsage(RegisterPriority.None, from);
+                if (nextOpId > currentRange.from) {
+                    // jump to next range
+                    nextOpId = currentRange.from;
+                    currentRange = currentRange.next;
+                }
             } else {
                 // already at last the last block
                 nextOpId = Integer.MAX_VALUE;
