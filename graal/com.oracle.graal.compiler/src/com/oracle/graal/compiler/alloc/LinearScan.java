@@ -1728,6 +1728,9 @@ public final class LinearScan {
         // included in the oop map
         iw.walkBefore(op.id());
 
+        // TODO(je) we could pass this as parameter
+        AbstractBlock<?> block = blockForId(op.id());
+
         // Iterate through active intervals
         for (Interval interval = iw.activeLists.get(RegisterBinding.Fixed); interval != Interval.EndMarker; interval = interval.next) {
             Value operand = interval.operand;
@@ -1750,11 +1753,25 @@ public final class LinearScan {
                 // Spill optimization: when the stack value is guaranteed to be always correct,
                 // then it must be added to the oop map even if the interval is currently in a
                 // register
-                if (interval.alwaysInMemory() && op.id() > interval.spillDefinitionPos() && !interval.location().equals(interval.spillSlot())) {
-                    assert interval.spillDefinitionPos() > 0 : "position not set correctly";
-                    assert interval.spillSlot() != null : "no spill slot assigned";
-                    assert !isRegister(interval.operand) : "interval is on stack :  so stack slot is registered twice";
-                    info.markLocation(interval.spillSlot(), frameMap);
+                int spillPos = interval.spillDefinitionPos();
+                if (interval.spillState() != SpillState.SpillInDominator) {
+                    if (interval.alwaysInMemory() && op.id() > interval.spillDefinitionPos() && !interval.location().equals(interval.spillSlot())) {
+                        assert interval.spillDefinitionPos() > 0 : "position not set correctly";
+                        assert spillPos > 0 : "position not set correctly";
+                        assert interval.spillSlot() != null : "no spill slot assigned";
+                        assert !isRegister(interval.operand) : "interval is on stack :  so stack slot is registered twice";
+                        info.markLocation(interval.spillSlot(), frameMap);
+                    }
+                } else {
+                    AbstractBlock<?> spillBlock = blockForId(spillPos);
+                    if (interval.alwaysInMemory() && !interval.location().equals(interval.spillSlot())) {
+                        if ((spillBlock.equals(block) && op.id() > spillPos) || AbstractBlock.dominates(spillBlock, block)) {
+                            assert spillPos > 0 : "position not set correctly";
+                            assert interval.spillSlot() != null : "no spill slot assigned";
+                            assert !isRegister(interval.operand) : "interval is on stack :  so stack slot is registered twice";
+                            info.markLocation(interval.spillSlot(), frameMap);
+                        }
+                    }
                 }
             }
         }
