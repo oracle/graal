@@ -111,8 +111,11 @@ public class TruffleCompilerImpl {
     public void compileMethodImpl(final OptimizedCallTarget compilable) {
         final StructuredGraph graph;
 
-        if (TraceTruffleCompilation.getValue()) {
+        if (TraceTruffleCompilation.getValue() || TraceTruffleCompilationAST.getValue()) {
             OptimizedCallTargetLog.logOptimizingStart(compilable);
+            if (TraceTruffleCompilationAST.getValue()) {
+                NodeUtil.printCompactTree(OptimizedCallTarget.OUT, compilable.getRootNode());
+            }
         }
 
         long timeCompilationStarted = System.nanoTime();
