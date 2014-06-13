@@ -72,7 +72,7 @@ public class GreedyInliningPolicy extends AbstractInliningPolicy {
         }
 
         double inliningBonus = getInliningBonus(info);
-        int nodes = determineNodeCount(info);
+        int nodes = info.determineNodeCount();
         int lowLevelGraphSize = previousLowLevelGraphSize(info);
 
         if (SmallCompiledLowLevelGraphSize.getValue() > 0 && lowLevelGraphSize > SmallCompiledLowLevelGraphSize.getValue() * inliningBonus) {

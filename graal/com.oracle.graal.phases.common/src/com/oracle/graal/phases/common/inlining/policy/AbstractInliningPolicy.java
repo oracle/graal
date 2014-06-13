@@ -100,17 +100,6 @@ public abstract class AbstractInliningPolicy implements InliningPolicy {
         return size;
     }
 
-    protected static int determineNodeCount(InlineInfo info) {
-        int nodes = 0;
-        for (int i = 0; i < info.numberOfMethods(); i++) {
-            Inlineable elem = info.inlineableElementAt(i);
-            if (elem != null) {
-                nodes += elem.getNodeCount();
-            }
-        }
-        return nodes;
-    }
-
     protected static double determineInvokeProbability(ToDoubleFunction<FixedNode> probabilities, InlineInfo info) {
         double invokeProbability = 0;
         for (int i = 0; i < info.numberOfMethods(); i++) {

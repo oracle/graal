@@ -103,4 +103,15 @@ public abstract class AbstractInlineInfo implements InlineInfo {
             return CallsiteHolderDummy.DUMMY_CALLSITE_HOLDER;
         }
     }
+
+    public final int determineNodeCount() {
+        int nodes = 0;
+        for (int i = 0; i < numberOfMethods(); i++) {
+            Inlineable elem = inlineableElementAt(i);
+            if (elem != null) {
+                nodes += elem.getNodeCount();
+            }
+        }
+        return nodes;
+    }
 }

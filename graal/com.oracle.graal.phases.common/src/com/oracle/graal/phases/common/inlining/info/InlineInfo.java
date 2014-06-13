@@ -89,4 +89,6 @@ public interface InlineInfo {
     void populateInlinableElements(HighTierContext context, Assumptions calleeAssumptions, CanonicalizerPhase canonicalizer);
 
     CallsiteHolder buildCallsiteHolderForElement(int index, double invokeProbability, double invokeRelevance);
+
+    int determineNodeCount();
 }
