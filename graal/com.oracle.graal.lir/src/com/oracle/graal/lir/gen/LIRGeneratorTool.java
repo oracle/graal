@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -52,9 +52,9 @@ public interface LIRGeneratorTool extends ArithmeticLIRGenerator {
 
     void doBlockEnd(AbstractBlock<?> block);
 
-    Value emitLoad(PlatformKind kind, Value address, LIRFrameState state);
+    Value emitLoad(LIRKind kind, Value address, LIRFrameState state);
 
-    void emitStore(PlatformKind kind, Value address, Value input, LIRFrameState state);
+    void emitStore(LIRKind kind, Value address, Value input, LIRFrameState state);
 
     void emitNullCheck(Value address, LIRFrameState state);
 
@@ -106,7 +106,7 @@ public interface LIRGeneratorTool extends ArithmeticLIRGenerator {
 
     RegisterAttributes attributes(Register register);
 
-    Variable newVariable(PlatformKind kind);
+    Variable newVariable(LIRKind kind);
 
     Variable emitMove(Value input);
 
@@ -166,7 +166,7 @@ public interface LIRGeneratorTool extends ArithmeticLIRGenerator {
      * @return the operand representing the ABI defined location used return a value of kind
      *         {@code kind}
      */
-    AllocatableValue resultOperandFor(Kind kind);
+    AllocatableValue resultOperandFor(LIRKind kind);
 
     void append(LIRInstruction op);
 

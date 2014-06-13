@@ -120,7 +120,7 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
     public void emitReturn(Value input) {
         AllocatableValue operand = Value.ILLEGAL;
         if (input != null) {
-            operand = resultOperandFor(input.getKind());
+            operand = resultOperandFor(input.getLIRKind());
             emitMove(operand, input);
         }
         append(new SPARCHotSpotReturnOp(operand, getStub() != null));
@@ -148,9 +148,9 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
     }
 
     private void moveValueToThread(Value v, int offset) {
-        Kind wordKind = getProviders().getCodeCache().getTarget().wordKind;
+        LIRKind wordKind = LIRKind.value(getProviders().getCodeCache().getTarget().wordKind);
         RegisterValue thread = getProviders().getRegisters().getThreadRegister().asValue(wordKind);
-        SPARCAddressValue pendingDeoptAddress = new SPARCAddressValue(v.getKind(), thread, offset);
+        SPARCAddressValue pendingDeoptAddress = new SPARCAddressValue(wordKind, thread, offset);
         append(new StoreOp(v.getKind(), pendingDeoptAddress, emitMove(v), null));
     }
 
@@ -167,25 +167,25 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
     }
 
     @Override
-    public Variable emitLoad(PlatformKind kind, Value address, LIRFrameState state) {
+    public Variable emitLoad(LIRKind kind, Value address, LIRFrameState state) {
         SPARCAddressValue loadAddress = asAddressValue(address);
         Variable result = newVariable(kind);
-        append(new LoadOp((Kind) kind, result, loadAddress, state));
+        append(new LoadOp((Kind) kind.getPlatformKind(), result, loadAddress, state));
         return result;
     }
 
     @Override
-    public void emitStore(PlatformKind kind, Value address, Value inputVal, LIRFrameState state) {
+    public void emitStore(LIRKind kind, Value address, Value inputVal, LIRFrameState state) {
         SPARCAddressValue storeAddress = asAddressValue(address);
         if (isConstant(inputVal)) {
             Constant c = asConstant(inputVal);
             if (canStoreConstant(c)) {
-                append(new StoreConstantOp((Kind) kind, storeAddress, c, state));
+                append(new StoreConstantOp((Kind) kind.getPlatformKind(), storeAddress, c, state));
                 return;
             }
         }
         Variable input = load(inputVal);
-        append(new StoreOp((Kind) kind, storeAddress, input, state));
+        append(new StoreOp((Kind) kind.getPlatformKind(), storeAddress, input, state));
     }
 
     public Value emitCompareAndSwap(Value address, Value expectedValue, Value newValue, Value trueValue, Value falseValue) {
@@ -243,7 +243,7 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
         for (int i = 0; i < savedRegisters.length; i++) {
             PlatformKind kind = target().arch.getLargestStorableKind(savedRegisters[i].getRegisterCategory());
             assert kind != Kind.Illegal;
-            StackSlot spillSlot = getResult().getFrameMap().allocateSpillSlot(kind);
+            StackSlot spillSlot = getResult().getFrameMap().allocateSpillSlot(LIRKind.value(kind));
             savedRegisterLocations[i] = spillSlot;
         }
         return emitSaveRegisters(savedRegisters, savedRegisterLocations, false);
@@ -261,7 +261,7 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
         Register thread = getProviders().getRegisters().getThreadRegister();
         Variable framePcVariable = load(framePc);
         Variable senderSpVariable = load(senderSp);
-        Variable scratchVariable = newVariable(getHostWordKind());
+        Variable scratchVariable = newVariable(LIRKind.value(getHostWordKind()));
         append(new SPARCHotSpotEnterUnpackFramesStackFrameOp(thread, config.threadLastJavaSpOffset(), config.threadLastJavaPcOffset(), framePcVariable, senderSpVariable, scratchVariable));
     }
 
@@ -284,7 +284,7 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
         Register threadRegister = getProviders().getRegisters().getThreadRegister();
         Register stackPointerRegister = getProviders().getRegisters().getStackPointerRegister();
         append(new SPARCHotSpotCRuntimeCallPrologueOp(config.threadLastJavaSpOffset(), threadRegister, stackPointerRegister));
-        Variable result = super.emitForeignCall(linkage, null, threadRegister.asValue(Kind.Long), trapRequest);
+        Variable result = super.emitForeignCall(linkage, null, threadRegister.asValue(LIRKind.value(Kind.Long)), trapRequest);
         append(new SPARCHotSpotCRuntimeCallEpilogueOp(config.threadLastJavaSpOffset(), config.threadLastJavaPcOffset(), config.threadJavaFrameAnchorFlagsOffset(), threadRegister));
 
         return result;

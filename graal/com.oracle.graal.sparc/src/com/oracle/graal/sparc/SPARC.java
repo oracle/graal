@@ -195,12 +195,12 @@ public class SPARC extends Architecture {
     }
 
     @Override
-    public boolean canStoreValue(RegisterCategory category, PlatformKind platformKind) {
-        if (!(platformKind instanceof Kind)) {
+    public boolean canStoreValue(RegisterCategory category, PlatformKind lirKind) {
+        if (!(lirKind instanceof Kind)) {
             return false;
         }
 
-        Kind kind = (Kind) platformKind;
+        Kind kind = (Kind) lirKind;
         if (category == CPU) {
             switch (kind) {
                 case Boolean:

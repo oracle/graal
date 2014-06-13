@@ -71,8 +71,8 @@ public class NarrowOopStamp extends AbstractObjectStamp {
     }
 
     @Override
-    public PlatformKind getPlatformKind(PlatformKindTool tool) {
-        return NarrowOop;
+    public LIRKind getLIRKind(LIRKindTool tool) {
+        return LIRKind.reference(Kind.Int);
     }
 
     @Override

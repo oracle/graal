@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -38,7 +38,8 @@ public class HSAILDirectLoadAcquireNode extends DirectReadNode {
     @Override
     public void generate(NodeLIRBuilderTool gen) {
         HSAILHotSpotLIRGenerator hsailgen = (HSAILHotSpotLIRGenerator) (gen.getLIRGeneratorTool());
-        Value result = hsailgen.emitLoadAcquire(getKind(), gen.operand(getAddress()), null);
+        LIRKind kind = hsailgen.getLIRKind(stamp());
+        Value result = hsailgen.emitLoadAcquire(kind, gen.operand(getAddress()), null);
         gen.setResult(this, result);
     }
 

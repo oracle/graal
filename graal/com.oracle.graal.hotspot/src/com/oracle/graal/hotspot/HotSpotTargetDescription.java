@@ -23,29 +23,15 @@
 package com.oracle.graal.hotspot;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
-import com.oracle.graal.hotspot.nodes.type.*;
 
 public class HotSpotTargetDescription extends TargetDescription {
 
-    private final PlatformKind rawNarrowOopKind;
-
-    public HotSpotTargetDescription(Architecture arch, boolean isMP, int stackAlignment, int implicitNullCheckLimit, boolean inlineObjects, PlatformKind rawNarrowOopKind) {
+    public HotSpotTargetDescription(Architecture arch, boolean isMP, int stackAlignment, int implicitNullCheckLimit, boolean inlineObjects) {
         super(arch, isMP, stackAlignment, implicitNullCheckLimit, inlineObjects);
-        this.rawNarrowOopKind = rawNarrowOopKind;
-    }
-
-    @Override
-    public int getSizeInBytes(PlatformKind kind) {
-        if (kind == NarrowOopStamp.NarrowOop) {
-            return super.getSizeInBytes(rawNarrowOopKind);
-        } else {
-            return super.getSizeInBytes(kind);
-        }
     }
 
     @Override
     public ReferenceMap createReferenceMap(boolean hasRegisters, int stackSlotCount) {
-        return new HotSpotReferenceMap(hasRegisters ? arch.getRegisterReferenceMapBitCount() : 0, stackSlotCount, wordSize);
+        return new HotSpotReferenceMap(hasRegisters ? arch.getRegisterReferenceMapBitCount() : 0, stackSlotCount, this);
     }
 }

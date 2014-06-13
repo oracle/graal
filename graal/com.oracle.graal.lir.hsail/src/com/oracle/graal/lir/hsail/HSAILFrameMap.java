@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,9 +28,9 @@ import com.oracle.graal.lir.*;
 
 /**
  * HSAIL specific frame map.
- * 
+ *
  * This is the format of a HSAIL stack frame:
- * 
+ *
  * <pre>
  * TODO stack frame layout
  * </pre>
@@ -66,7 +66,7 @@ public final class HSAILFrameMap extends FrameMap {
     }
 
     @Override
-    protected StackSlot allocateNewSpillSlot(PlatformKind kind, int additionalOffset) {
+    protected StackSlot allocateNewSpillSlot(LIRKind kind, int additionalOffset) {
         return StackSlot.get(kind, -spillSize + additionalOffset, true);
     }
 }

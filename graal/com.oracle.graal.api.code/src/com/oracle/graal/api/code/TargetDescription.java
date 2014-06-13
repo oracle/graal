@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -56,7 +56,7 @@ public abstract class TargetDescription {
      * The stack alignment requirement of the platform. For example, from Appendix D of <a
      * href="http://www.intel.com/Assets/PDF/manual/248966.pdf">Intel 64 and IA-32 Architectures
      * Optimization Reference Manual</a>:
-     * 
+     *
      * <pre>
      *     "It is important to ensure that the stack frame is aligned to a
      *      16-byte boundary upon function entry to keep local __m128 data,
@@ -84,6 +84,24 @@ public abstract class TargetDescription {
 
     public int getSizeInBytes(PlatformKind kind) {
         return arch.getSizeInBytes(kind);
+    }
+
+    public LIRKind getLIRKind(Kind javaKind) {
+        switch (javaKind) {
+            case Boolean:
+            case Byte:
+            case Short:
+            case Char:
+            case Int:
+            case Long:
+            case Float:
+            case Double:
+                return LIRKind.value(javaKind);
+            case Object:
+                return LIRKind.reference(javaKind);
+            default:
+                return LIRKind.Illegal;
+        }
     }
 
     public abstract ReferenceMap createReferenceMap(boolean hasRegisters, int stackSlotCount);

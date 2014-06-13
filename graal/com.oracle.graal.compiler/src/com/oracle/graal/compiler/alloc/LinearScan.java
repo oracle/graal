@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -959,13 +959,13 @@ public final class LinearScan {
         }
     }
 
-    void addUse(AllocatableValue operand, int from, int to, RegisterPriority registerPriority, PlatformKind kind) {
+    void addUse(AllocatableValue operand, int from, int to, RegisterPriority registerPriority, LIRKind kind) {
         if (!isProcessed(operand)) {
             return;
         }
 
         Interval interval = getOrCreateInterval(operand);
-        if (kind != Kind.Illegal) {
+        if (kind != LIRKind.Illegal) {
             interval.setKind(kind);
         }
 
@@ -977,13 +977,13 @@ public final class LinearScan {
         Debug.log("add use: %s, from %d to %d (%s)", interval, from, to, registerPriority.name());
     }
 
-    void addTemp(AllocatableValue operand, int tempPos, RegisterPriority registerPriority, PlatformKind kind) {
+    void addTemp(AllocatableValue operand, int tempPos, RegisterPriority registerPriority, LIRKind kind) {
         if (!isProcessed(operand)) {
             return;
         }
 
         Interval interval = getOrCreateInterval(operand);
-        if (kind != Kind.Illegal) {
+        if (kind != LIRKind.Illegal) {
             interval.setKind(kind);
         }
 
@@ -998,14 +998,14 @@ public final class LinearScan {
         return !isRegister(operand) || attributes(asRegister(operand)).isAllocatable();
     }
 
-    void addDef(AllocatableValue operand, LIRInstruction op, RegisterPriority registerPriority, PlatformKind kind) {
+    void addDef(AllocatableValue operand, LIRInstruction op, RegisterPriority registerPriority, LIRKind kind) {
         if (!isProcessed(operand)) {
             return;
         }
         int defPos = op.id();
 
         Interval interval = getOrCreateInterval(operand);
-        if (kind != Kind.Illegal) {
+        if (kind != LIRKind.Illegal) {
             interval.setKind(kind);
         }
 
@@ -1147,7 +1147,7 @@ public final class LinearScan {
                         AllocatableValue operand = intervalFor(operandNum).operand;
                         Debug.log("live in %d: %s", operandNum, operand);
 
-                        addUse(operand, blockFrom, blockTo + 2, RegisterPriority.None, Kind.Illegal);
+                        addUse(operand, blockFrom, blockTo + 2, RegisterPriority.None, LIRKind.Illegal);
 
                         // add special use positions for loop-end blocks when the
                         // interval is used anywhere inside this loop. It's possible
@@ -1171,7 +1171,7 @@ public final class LinearScan {
                             if (op.destroysCallerSavedRegisters()) {
                                 for (Register r : callerSaveRegs) {
                                     if (attributes(r).isAllocatable()) {
-                                        addTemp(r.asValue(), opId, RegisterPriority.None, Kind.Illegal);
+                                        addTemp(r.asValue(), opId, RegisterPriority.None, LIRKind.Illegal);
                                     }
                                 }
                                 Debug.log("operation destroys all caller-save registers");
@@ -1182,7 +1182,7 @@ public final class LinearScan {
                                 @Override
                                 public Value doValue(Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
                                     if (isVariableOrRegister(operand)) {
-                                        addDef((AllocatableValue) operand, op, registerPriorityOfOutputOperand(op), operand.getPlatformKind());
+                                        addDef((AllocatableValue) operand, op, registerPriorityOfOutputOperand(op), operand.getLIRKind());
                                         addRegisterHint(op, operand, mode, flags, true);
                                     }
                                     return operand;
@@ -1193,7 +1193,7 @@ public final class LinearScan {
                                 @Override
                                 public Value doValue(Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
                                     if (isVariableOrRegister(operand)) {
-                                        addTemp((AllocatableValue) operand, opId, RegisterPriority.MustHaveRegister, operand.getPlatformKind());
+                                        addTemp((AllocatableValue) operand, opId, RegisterPriority.MustHaveRegister, operand.getLIRKind());
                                         addRegisterHint(op, operand, mode, flags, false);
                                     }
                                     return operand;
@@ -1205,7 +1205,7 @@ public final class LinearScan {
                                 public Value doValue(Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
                                     if (isVariableOrRegister(operand)) {
                                         RegisterPriority p = registerPriorityOfInputOperand(flags);
-                                        addUse((AllocatableValue) operand, blockFrom, opId + 1, p, operand.getPlatformKind());
+                                        addUse((AllocatableValue) operand, blockFrom, opId + 1, p, operand.getLIRKind());
                                         addRegisterHint(op, operand, mode, flags, false);
                                     }
                                     return operand;
@@ -1217,7 +1217,7 @@ public final class LinearScan {
                                 public Value doValue(Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
                                     if (isVariableOrRegister(operand)) {
                                         RegisterPriority p = registerPriorityOfInputOperand(flags);
-                                        addUse((AllocatableValue) operand, blockFrom, opId, p, operand.getPlatformKind());
+                                        addUse((AllocatableValue) operand, blockFrom, opId, p, operand.getLIRKind());
                                         addRegisterHint(op, operand, mode, flags, false);
                                     }
                                     return operand;
@@ -1233,7 +1233,7 @@ public final class LinearScan {
 
                                 @Override
                                 public Value doValue(Value operand) {
-                                    addUse((AllocatableValue) operand, blockFrom, opId + 1, RegisterPriority.None, operand.getPlatformKind());
+                                    addUse((AllocatableValue) operand, blockFrom, opId + 1, RegisterPriority.None, operand.getLIRKind());
                                     return operand;
                                 }
                             });
@@ -1918,7 +1918,7 @@ public final class LinearScan {
                     throw new GraalInternalError("");
                 }
 
-                if (isVariable(i1.operand) && i1.kind() == Kind.Illegal) {
+                if (isVariable(i1.operand) && i1.kind() == LIRKind.Illegal) {
                     Debug.log("Interval %d has no type assigned", i1.operandNumber);
                     Debug.log(i1.logString(this));
                     throw new GraalInternalError("");

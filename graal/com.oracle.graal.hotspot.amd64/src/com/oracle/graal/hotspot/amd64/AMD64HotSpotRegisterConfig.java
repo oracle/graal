@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,7 +33,6 @@ import com.oracle.graal.api.code.CallingConvention.Type;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.nodes.type.*;
 
 public class AMD64HotSpotRegisterConfig implements RegisterConfig {
 
@@ -70,16 +69,9 @@ public class AMD64HotSpotRegisterConfig implements RegisterConfig {
             return categorized.get(kind);
         }
 
-        PlatformKind primitiveKind;
-        if (kind == NarrowOopStamp.NarrowOop) {
-            primitiveKind = Kind.Int;
-        } else {
-            primitiveKind = kind;
-        }
-
         ArrayList<Register> list = new ArrayList<>();
         for (Register reg : getAllocatableRegisters()) {
-            if (architecture.canStoreValue(reg.getRegisterCategory(), primitiveKind)) {
+            if (architecture.canStoreValue(reg.getRegisterCategory(), kind)) {
                 list.add(reg);
             }
         }
@@ -222,14 +214,14 @@ public class AMD64HotSpotRegisterConfig implements RegisterConfig {
                 case Object:
                     if (!stackOnly && currentGeneral < generalParameterRegisters.length) {
                         Register register = generalParameterRegisters[currentGeneral++];
-                        locations[i] = register.asValue(kind);
+                        locations[i] = register.asValue(target.getLIRKind(kind));
                     }
                     break;
                 case Float:
                 case Double:
                     if (!stackOnly && currentXMM < xmmParameterRegisters.length) {
                         Register register = xmmParameterRegisters[currentXMM++];
-                        locations[i] = register.asValue(kind);
+                        locations[i] = register.asValue(target.getLIRKind(kind));
                     }
                     break;
                 default:
@@ -237,13 +229,13 @@ public class AMD64HotSpotRegisterConfig implements RegisterConfig {
             }
 
             if (locations[i] == null) {
-                locations[i] = StackSlot.get(kind.getStackKind(), currentStackOffset, !type.out);
+                locations[i] = StackSlot.get(target.getLIRKind(kind.getStackKind()), currentStackOffset, !type.out);
                 currentStackOffset += Math.max(target.getSizeInBytes(kind), target.wordSize);
             }
         }
 
         Kind returnKind = returnType == null ? Kind.Void : returnType.getKind();
-        AllocatableValue returnLocation = returnKind == Kind.Void ? Value.ILLEGAL : getReturnRegister(returnKind).asValue(returnKind.getStackKind());
+        AllocatableValue returnLocation = returnKind == Kind.Void ? Value.ILLEGAL : getReturnRegister(returnKind).asValue(target.getLIRKind(returnKind.getStackKind()));
         return new CallingConvention(currentStackOffset, returnLocation, locations);
     }
 

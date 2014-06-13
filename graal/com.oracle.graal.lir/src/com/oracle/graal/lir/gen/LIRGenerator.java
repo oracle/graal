@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,7 +23,6 @@
 package com.oracle.graal.lir.gen;
 
 import static com.oracle.graal.api.code.ValueUtil.*;
-import static com.oracle.graal.api.meta.Value.*;
 import static com.oracle.graal.lir.LIRValueUtil.*;
 
 import java.util.*;
@@ -45,7 +44,7 @@ import com.oracle.graal.options.*;
 /**
  * This class traverses the HIR instructions and generates LIR instructions from them.
  */
-public abstract class LIRGenerator implements LIRGeneratorTool, PlatformKindTool {
+public abstract class LIRGenerator implements LIRGeneratorTool, LIRKindTool {
 
     public static class Options {
         // @formatter:off
@@ -104,12 +103,12 @@ public abstract class LIRGenerator implements LIRGeneratorTool, PlatformKindTool
     /**
      * Creates a new {@linkplain Variable variable}.
      *
-     * @param platformKind The kind of the new variable.
+     * @param lirKind The kind of the new variable.
      * @return a new variable
      */
     @Override
-    public Variable newVariable(PlatformKind platformKind) {
-        return new Variable(platformKind, res.getLIR().nextVariable());
+    public Variable newVariable(LIRKind lirKind) {
+        return new Variable(lirKind, res.getLIR().nextVariable());
     }
 
     @Override
@@ -156,11 +155,8 @@ public abstract class LIRGenerator implements LIRGeneratorTool, PlatformKindTool
      * @return the operand representing the ABI defined location used return a value of kind
      *         {@code kind}
      */
-    public AllocatableValue resultOperandFor(Kind kind) {
-        if (kind == Kind.Void) {
-            return ILLEGAL;
-        }
-        return res.getFrameMap().registerConfig.getReturnRegister(kind).asValue(kind);
+    public AllocatableValue resultOperandFor(LIRKind kind) {
+        return res.getFrameMap().registerConfig.getReturnRegister((Kind) kind.getPlatformKind()).asValue(kind);
     }
 
     public void append(LIRInstruction op) {
@@ -234,10 +230,11 @@ public abstract class LIRGenerator implements LIRGeneratorTool, PlatformKindTool
         if (value.getKind().getStackKind() != value.getKind()) {
             // We only have stack-kinds in the LIR, so convert the operand kind for values from the
             // calling convention.
+            LIRKind stackKind = value.getLIRKind().changeType(value.getKind().getStackKind());
             if (isRegister(value)) {
-                return asRegister(value).asValue(value.getKind().getStackKind());
+                return asRegister(value).asValue(stackKind);
             } else if (isStackSlot(value)) {
-                return StackSlot.get(value.getKind().getStackKind(), asStackSlot(value).getRawOffset(), asStackSlot(value).getRawAddFrameSize());
+                return StackSlot.get(stackKind, asStackSlot(value).getRawOffset(), asStackSlot(value).getRawAddFrameSize());
             } else {
                 throw GraalInternalError.shouldNotReachHere();
             }
@@ -349,36 +346,46 @@ public abstract class LIRGenerator implements LIRGeneratorTool, PlatformKindTool
     /**
      * Default implementation: Return the Java stack kind for each stamp.
      */
-    public PlatformKind getPlatformKind(Stamp stamp) {
-        return stamp.getPlatformKind(this);
+    public LIRKind getLIRKind(Stamp stamp) {
+        return stamp.getLIRKind(this);
     }
 
-    public PlatformKind getIntegerKind(int bits) {
+    public LIRKind getIntegerKind(int bits) {
         if (bits <= 8) {
-            return Kind.Byte;
+            return LIRKind.value(Kind.Byte);
         } else if (bits <= 16) {
-            return Kind.Short;
+            return LIRKind.value(Kind.Short);
         } else if (bits <= 32) {
-            return Kind.Int;
+            return LIRKind.value(Kind.Int);
         } else {
             assert bits <= 64;
-            return Kind.Long;
+            return LIRKind.value(Kind.Long);
         }
     }
 
-    public PlatformKind getFloatingKind(int bits) {
+    public LIRKind getFloatingKind(int bits) {
         switch (bits) {
             case 32:
-                return Kind.Float;
+                return LIRKind.value(Kind.Float);
             case 64:
-                return Kind.Double;
+                return LIRKind.value(Kind.Double);
             default:
                 throw GraalInternalError.shouldNotReachHere();
         }
     }
 
-    public PlatformKind getObjectKind() {
-        return Kind.Object;
+    public LIRKind getObjectKind() {
+        return LIRKind.reference(Kind.Object);
+    }
+
+    protected LIRKind getAddressKind(Value base, long displacement, Value index) {
+        if (base.getLIRKind().isValue() && (index.equals(Value.ILLEGAL) || index.getLIRKind().isValue())) {
+            return LIRKind.value(target().wordKind);
+        } else if (base.getLIRKind().isReference(0) && displacement == 0L && index.equals(Value.ILLEGAL)) {
+            return LIRKind.reference(target().wordKind);
+        } else {
+            return LIRKind.derivedReference(target().wordKind);
+        }
     }
 
     public AbstractBlock<?> getCurrentBlock() {

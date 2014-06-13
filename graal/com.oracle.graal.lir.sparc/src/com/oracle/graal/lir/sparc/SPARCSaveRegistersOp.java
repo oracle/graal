@@ -67,7 +67,7 @@ public class SPARCSaveRegistersOp extends SPARCLIRInstruction implements SaveReg
     }
 
     private static void saveRegister(CompilationResultBuilder crb, SPARCMacroAssembler masm, StackSlot result, Register register) {
-        RegisterValue input = register.asValue(result.getKind());
+        RegisterValue input = register.asValue(result.getLIRKind());
         SPARCMove.move(crb, masm, result, input);
     }
 

@@ -30,7 +30,7 @@ final class NullConstant extends Constant {
     private static final long serialVersionUID = 8906209595800783961L;
 
     protected NullConstant() {
-        super(Kind.Object);
+        super(LIRKind.reference(Kind.Object));
     }
 
     @Override

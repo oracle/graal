@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,7 +23,6 @@
 package com.oracle.graal.hotspot.meta;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.hotspot.nodes.type.*;
 
 /**
  * Represents a constant non-{@code null} object reference, within the compiler and across the
@@ -79,7 +78,7 @@ public final class HotSpotObjectConstant extends Constant implements HotSpotCons
     private final boolean compressed;
 
     private HotSpotObjectConstant(Object object, boolean compressed) {
-        super(compressed ? NarrowOopStamp.NarrowOop : Kind.Object);
+        super(LIRKind.reference(compressed ? Kind.Int : Kind.Object));
         this.object = object;
         this.compressed = compressed;
         assert object != null;

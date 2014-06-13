@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -190,16 +190,14 @@ public class SPARCControlFlow {
                             emitCompare(masm, target, condition, CC.Icc);
                             break;
                         case Long: {
-                            Register temp = asLongReg(scratch);
-                            SPARCMove.move(crb, masm, temp.asValue(Kind.Long), keyConstants[index]);
-                            new Cmp(keyRegister, temp).emit(masm);
+                            SPARCMove.move(crb, masm, scratch, keyConstants[index]);
+                            new Cmp(keyRegister, asLongReg(scratch)).emit(masm);
                             emitCompare(masm, target, condition, CC.Xcc);
                             break;
                         }
                         case Object: {
-                            Register temp = asObjectReg(scratch);
-                            SPARCMove.move(crb, masm, temp.asValue(Kind.Object), keyConstants[index]);
-                            new Cmp(keyRegister, temp).emit(masm);
+                            SPARCMove.move(crb, masm, scratch, keyConstants[index]);
+                            new Cmp(keyRegister, asObjectReg(scratch)).emit(masm);
                             emitCompare(masm, target, condition, CC.Ptrcc);
                             break;
                         }

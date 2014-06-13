@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -54,7 +54,7 @@ public class AMD64SaveRegistersOp extends AMD64LIRInstruction implements SaveReg
     protected final boolean supportsRemove;
 
     /**
-     * 
+     *
      * @param savedRegisters the registers saved by this operation which may be subject to
      *            {@linkplain #remove(Set) pruning}
      * @param slots the slots to which the registers are saved
@@ -67,7 +67,7 @@ public class AMD64SaveRegistersOp extends AMD64LIRInstruction implements SaveReg
     }
 
     protected void saveRegister(CompilationResultBuilder crb, AMD64MacroAssembler masm, StackSlot result, Register register) {
-        RegisterValue input = register.asValue(result.getKind());
+        RegisterValue input = register.asValue(result.getLIRKind());
         AMD64Move.move(crb, masm, result, input);
     }
 

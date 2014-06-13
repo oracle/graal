@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -259,17 +259,17 @@ public abstract class FrameMap {
      * @param additionalOffset
      * @return A spill slot denoting the reserved memory area.
      */
-    protected abstract StackSlot allocateNewSpillSlot(PlatformKind kind, int additionalOffset);
+    protected abstract StackSlot allocateNewSpillSlot(LIRKind kind, int additionalOffset);
 
     /**
-     * Returns the spill slot size for the given {@link PlatformKind}. The default value is the size
-     * in bytes for the target architecture.
+     * Returns the spill slot size for the given {@link LIRKind}. The default value is the size in
+     * bytes for the target architecture.
      *
-     * @param kind the {@link PlatformKind} to be stored in the spill slot.
+     * @param kind the {@link LIRKind} to be stored in the spill slot.
      * @return the size in bytes
      */
-    public int spillSlotSize(PlatformKind kind) {
-        return target.getSizeInBytes(kind);
+    public int spillSlotSize(LIRKind kind) {
+        return target.getSizeInBytes(kind.getPlatformKind());
     }
 
     /**
@@ -280,12 +280,12 @@ public abstract class FrameMap {
      * @param kind The kind of the spill slot to be reserved.
      * @return A spill slot denoting the reserved memory area.
      */
-    public StackSlot allocateSpillSlot(PlatformKind kind) {
+    public StackSlot allocateSpillSlot(LIRKind kind) {
         assert frameSize == -1 : "frame size must not yet be fixed";
         if (freedSlots != null) {
             for (Iterator<StackSlot> iter = freedSlots.iterator(); iter.hasNext();) {
                 StackSlot s = iter.next();
-                if (s.getPlatformKind() == kind) {
+                if (s.getLIRKind() == kind) {
                     iter.remove();
                     if (freedSlots.isEmpty()) {
                         freedSlots = null;
@@ -302,8 +302,8 @@ public abstract class FrameMap {
     private Set<StackSlot> freedSlots;
 
     /**
-     * Frees a spill slot that was obtained via {@link #allocateSpillSlot(PlatformKind)} such that
-     * it can be reused for the next allocation request for the same kind of slot.
+     * Frees a spill slot that was obtained via {@link #allocateSpillSlot(LIRKind)} such that it can
+     * be reused for the next allocation request for the same kind of slot.
      */
     public void freeSpillSlot(StackSlot slot) {
         if (freedSlots == null) {
@@ -338,7 +338,7 @@ public abstract class FrameMap {
             for (int slotIndex = 0; slotIndex < slots; slotIndex++) {
                 StackSlot objectSlot = null;
                 if (objects.get(slotIndex)) {
-                    objectSlot = allocateNewSpillSlot(Kind.Object, slotIndex * stackSlotSize());
+                    objectSlot = allocateNewSpillSlot(LIRKind.reference(Kind.Object), slotIndex * stackSlotSize());
                     objectStackSlots.add(objectSlot);
                     if (outObjectStackSlots != null) {
                         outObjectStackSlots.add(objectSlot);
@@ -348,7 +348,7 @@ public abstract class FrameMap {
                     if (objectSlot != null) {
                         result = objectSlot;
                     } else {
-                        result = allocateNewSpillSlot(target.wordKind, 0);
+                        result = allocateNewSpillSlot(LIRKind.value(target.wordKind), 0);
                     }
                 }
             }
@@ -356,7 +356,7 @@ public abstract class FrameMap {
             return result;
 
         } else {
-            return allocateNewSpillSlot(target.wordKind, 0);
+            return allocateNewSpillSlot(LIRKind.value(target.wordKind), 0);
         }
     }
 
@@ -377,7 +377,7 @@ public abstract class FrameMap {
      * @param refMap A reference map, as created by {@link #initReferenceMap(boolean)}.
      */
     public void setReference(Value location, ReferenceMap refMap) {
-        PlatformKind kind = location.getPlatformKind();
+        LIRKind kind = location.getLIRKind();
         if (isRegister(location)) {
             refMap.setRegister(asRegister(location).getReferenceMapIndex(), kind);
         } else if (isStackSlot(location)) {

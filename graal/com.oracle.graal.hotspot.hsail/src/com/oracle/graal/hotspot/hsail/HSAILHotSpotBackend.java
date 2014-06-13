@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -496,6 +496,7 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
     public void emitCode(CompilationResultBuilder crb, LIR lir, ResolvedJavaMethod method) {
         assert method != null : lir + " is not associated with a method";
         Kind wordKind = getProviders().getCodeCache().getTarget().wordKind;
+        LIRKind wordLIRKind = LIRKind.value(wordKind);
 
         HotSpotVMConfig config = getRuntime().getConfig();
         boolean useHSAILDeoptimization = config.useHSAILDeoptimization;
@@ -636,14 +637,14 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
 
         if (useHSAILDeoptimization) {
             // Aliases for d16
-            RegisterValue d16_deoptInfo = HSAIL.d16.asValue(wordKind);
+            RegisterValue d16_deoptInfo = HSAIL.d16.asValue(wordLIRKind);
 
             // Aliases for d17
-            RegisterValue d17_donorThreadIndex = HSAIL.d17.asValue(wordKind);
+            RegisterValue d17_donorThreadIndex = HSAIL.d17.asValue(wordLIRKind);
             RegisterValue d17_safepointFlagAddrIndex = d17_donorThreadIndex;
 
             // Aliases for s34
-            RegisterValue s34_deoptOccurred = HSAIL.s34.asValue(Kind.Int);
+            RegisterValue s34_deoptOccurred = HSAIL.s34.asValue(LIRKind.value(Kind.Int));
             RegisterValue s34_donorThreadIndex = s34_deoptOccurred;
 
             asm.emitLoadKernelArg(d16_deoptInfo, asm.getDeoptInfoName(), "u64");
@@ -651,20 +652,20 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
 
             if (useHSAILSafepoints) {
                 // Load address of _notice_safepoints field
-                asm.emitLoad(wordKind, d17_safepointFlagAddrIndex, new HSAILAddressValue(wordKind, d16_deoptInfo, config.hsailNoticeSafepointsOffset).toAddress());
+                asm.emitLoad(wordKind, d17_safepointFlagAddrIndex, new HSAILAddressValue(wordLIRKind, d16_deoptInfo, config.hsailNoticeSafepointsOffset).toAddress());
                 // Load int value from that field
-                asm.emitLoadAcquire(s34_deoptOccurred, new HSAILAddressValue(Kind.Int, d17_safepointFlagAddrIndex, 0).toAddress());
+                asm.emitLoadAcquire(s34_deoptOccurred, new HSAILAddressValue(wordLIRKind, d17_safepointFlagAddrIndex, 0).toAddress());
                 asm.emitCompare(Kind.Int, s34_deoptOccurred, Constant.forInt(0), "ne", false, false);
                 asm.cbr(deoptInProgressLabel);
             }
-            asm.emitLoadAcquire(s34_deoptOccurred, new HSAILAddressValue(Kind.Int, d16_deoptInfo, config.hsailDeoptOccurredOffset).toAddress());
+            asm.emitLoadAcquire(s34_deoptOccurred, new HSAILAddressValue(wordLIRKind, d16_deoptInfo, config.hsailDeoptOccurredOffset).toAddress());
             asm.emitCompare(Kind.Int, s34_deoptOccurred, Constant.forInt(0), "ne", false, false);
             asm.cbr(deoptInProgressLabel);
             // load thread register if this kernel performs allocation
             if (usesAllocation) {
-                RegisterValue threadReg = getProviders().getRegisters().getThreadRegister().asValue(wordKind);
+                RegisterValue threadReg = getProviders().getRegisters().getThreadRegister().asValue(wordLIRKind);
                 assert HsailDonorThreads.getValue() > 0;
-                asm.emitLoad(wordKind, threadReg, new HSAILAddressValue(wordKind, d16_deoptInfo, config.hsailCurTlabInfoOffset).toAddress());
+                asm.emitLoad(wordKind, threadReg, new HSAILAddressValue(wordLIRKind, d16_deoptInfo, config.hsailCurTlabInfoOffset).toAddress());
                 if (HsailDonorThreads.getValue() != 1) {
                     asm.emitComment("// map workitem to a donor thread");
                     asm.emitString(String.format("rem_u32  $%s, %s, %d;", s34_donorThreadIndex.getRegister(), workItemReg, HsailDonorThreads.getValue()));
@@ -818,18 +819,18 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
             final int offsetToNumSaves = config.hsailFrameNumSRegOffset;
             final int offsetToSaveArea = config.hsailFrameHeaderSize;
 
-            AllocatableValue scratch64 = HSAIL.d16.asValue(wordKind);
-            AllocatableValue cuSaveAreaPtr = HSAIL.d17.asValue(wordKind);
-            AllocatableValue waveMathScratch1 = HSAIL.d18.asValue(wordKind);
-            AllocatableValue waveMathScratch2 = HSAIL.d19.asValue(wordKind);
+            AllocatableValue scratch64 = HSAIL.d16.asValue(wordLIRKind);
+            AllocatableValue cuSaveAreaPtr = HSAIL.d17.asValue(wordLIRKind);
+            AllocatableValue waveMathScratch1 = HSAIL.d18.asValue(wordLIRKind);
+            AllocatableValue waveMathScratch2 = HSAIL.d19.asValue(wordLIRKind);
 
-            AllocatableValue actionAndReasonReg = HSAIL.actionAndReasonReg.asValue(Kind.Int);
-            AllocatableValue codeBufferOffsetReg = HSAIL.codeBufferOffsetReg.asValue(Kind.Int);
-            AllocatableValue scratch32 = HSAIL.s34.asValue(Kind.Int);
-            AllocatableValue workidreg = HSAIL.s35.asValue(Kind.Int);
+            AllocatableValue actionAndReasonReg = HSAIL.actionAndReasonReg.asValue(LIRKind.value(Kind.Int));
+            AllocatableValue codeBufferOffsetReg = HSAIL.codeBufferOffsetReg.asValue(LIRKind.value(Kind.Int));
+            AllocatableValue scratch32 = HSAIL.s34.asValue(LIRKind.value(Kind.Int));
+            AllocatableValue workidreg = HSAIL.s35.asValue(LIRKind.value(Kind.Int));
 
-            HSAILAddress deoptNextIndexAddr = new HSAILAddressValue(Kind.Int, scratch64, offsetToDeoptNextIndex).toAddress();
-            HSAILAddress neverRanArrayAddr = new HSAILAddressValue(Kind.Int, scratch64, offsetToNeverRanArray).toAddress();
+            HSAILAddress deoptNextIndexAddr = new HSAILAddressValue(wordLIRKind, scratch64, offsetToDeoptNextIndex).toAddress();
+            HSAILAddress neverRanArrayAddr = new HSAILAddressValue(wordLIRKind, scratch64, offsetToNeverRanArray).toAddress();
 
             // The just-started lanes that see the deopt flag will jump here
             asm.emitString0(deoptInProgressLabel + ":\n");
@@ -837,7 +838,7 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
             asm.emitWorkItemAbsId(workidreg);
             asm.emitConvert(waveMathScratch2, workidreg, wordKind, Kind.Int);
             asm.emit("add", waveMathScratch1, waveMathScratch1, waveMathScratch2);
-            HSAILAddress neverRanStoreAddr = new HSAILAddressValue(Kind.Byte, waveMathScratch1, 0).toAddress();
+            HSAILAddress neverRanStoreAddr = new HSAILAddressValue(wordLIRKind, waveMathScratch1, 0).toAddress();
             asm.emitStore(Kind.Byte, Constant.forInt(1), neverRanStoreAddr);
             asm.emitString("ret;");
 
@@ -845,7 +846,7 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
             asm.emitString0(asm.getDeoptLabelName() + ":\n");
             String labelExit = asm.getDeoptLabelName() + "_Exit";
 
-            HSAILAddress deoptInfoAddr = new HSAILAddressValue(Kind.Int, scratch64, config.hsailDeoptOccurredOffset).toAddress();
+            HSAILAddress deoptInfoAddr = new HSAILAddressValue(wordLIRKind, scratch64, config.hsailDeoptOccurredOffset).toAddress();
             asm.emitLoadKernelArg(scratch64, asm.getDeoptInfoName(), "u64");
 
             // Set deopt occurred flag
@@ -882,14 +883,14 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
             // Add offset to _deopt_save_states[0]
             asm.emit("add", scratch64, cuSaveAreaPtr, Constant.forInt(offsetToDeoptSaveStates));
 
-            HSAILAddress workItemAddr = new HSAILAddressValue(Kind.Int, scratch64, offsetToDeoptimizationWorkItem).toAddress();
-            HSAILAddress actionReasonStoreAddr = new HSAILAddressValue(Kind.Int, scratch64, offsetToDeoptimizationReason).toAddress();
+            HSAILAddress workItemAddr = new HSAILAddressValue(wordLIRKind, scratch64, offsetToDeoptimizationWorkItem).toAddress();
+            HSAILAddress actionReasonStoreAddr = new HSAILAddressValue(wordLIRKind, scratch64, offsetToDeoptimizationReason).toAddress();
 
             asm.emitComment("// Get _deopt_info._first_frame");
             asm.emit("add", waveMathScratch1, scratch64, Constant.forInt(offsetToDeoptimizationFrame));
             // Now scratch64 is the _deopt_info._first_frame
-            HSAILAddress pcStoreAddr = new HSAILAddressValue(Kind.Int, waveMathScratch1, offsetToFramePc).toAddress();
-            HSAILAddress regCountsAddr = new HSAILAddressValue(Kind.Int, waveMathScratch1, offsetToNumSaves).toAddress();
+            HSAILAddress pcStoreAddr = new HSAILAddressValue(wordLIRKind, waveMathScratch1, offsetToFramePc).toAddress();
+            HSAILAddress regCountsAddr = new HSAILAddressValue(wordLIRKind, waveMathScratch1, offsetToNumSaves).toAddress();
             asm.emitComment("// store deopting workitem");
             asm.emitWorkItemAbsId(scratch32);
             asm.emitStore(Kind.Int, scratch32, workItemAddr);
@@ -911,16 +912,16 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
                     // 32 bit registers
                     Kind kind = Kind.Int;
                     int ofst = offsetToSaveArea + reg.encoding * 4;
-                    HSAILAddress addr = new HSAILAddressValue(kind, waveMathScratch1, ofst).toAddress();
-                    AllocatableValue regValue = reg.asValue(kind);
+                    HSAILAddress addr = new HSAILAddressValue(wordLIRKind, waveMathScratch1, ofst).toAddress();
+                    AllocatableValue regValue = reg.asValue(LIRKind.value(kind));
                     asm.emitStore(kind, regValue, addr);
                 } else if (hsailRegConfig.isAllocatableDReg(reg)) {
                     // 64 bit registers
                     Kind kind = Kind.Long;
                     // d reg ofst starts past the 32 sregs
                     int ofst = offsetToSaveArea + (numSRegs * 4) + reg.encoding * 8;
-                    HSAILAddress addr = new HSAILAddressValue(kind, waveMathScratch1, ofst).toAddress();
-                    AllocatableValue regValue = reg.asValue(kind);
+                    HSAILAddress addr = new HSAILAddressValue(wordLIRKind, waveMathScratch1, ofst).toAddress();
+                    AllocatableValue regValue = reg.asValue(LIRKind.value(kind));
                     asm.emitStore(kind, regValue, addr);
                 } else {
                     throw GraalInternalError.unimplemented();
@@ -935,7 +936,7 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
                     Kind kind = slot.getKind();
                     int sizeInBits = (kind.isObject() || kind.getByteCount() == 8 ? 64 : 32);
                     int ofst = offsetToSaveArea + (numSRegs * 4) + (numDRegs * 8) + HSAIL.getStackOffsetStart(slot, sizeInBits);
-                    HSAILAddress addr = new HSAILAddressValue(kind, waveMathScratch1, ofst).toAddress();
+                    HSAILAddress addr = new HSAILAddressValue(wordLIRKind, waveMathScratch1, ofst).toAddress();
                     if (sizeInBits == 64) {
                         asm.emitSpillLoad(kind, scratch64, slot);
                         asm.emitStore(kind, scratch64, addr);

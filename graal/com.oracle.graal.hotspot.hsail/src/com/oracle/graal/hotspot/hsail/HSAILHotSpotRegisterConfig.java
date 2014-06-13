@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,7 +29,6 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.CallingConvention.Type;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
-import com.oracle.graal.hotspot.nodes.type.*;
 import com.oracle.graal.hsail.*;
 
 /**
@@ -107,7 +106,7 @@ public class HSAILHotSpotRegisterConfig implements RegisterConfig {
 
                     if (!stackOnly && currentRegs32 < generalParameterRegisters.length) {
                         Register register = generalParameterRegisters[currentRegs32++];
-                        locations[i] = register.asValue(kind);
+                        locations[i] = register.asValue(target.getLIRKind(kind));
                     }
                     break;
                 case Long:
@@ -115,7 +114,7 @@ public class HSAILHotSpotRegisterConfig implements RegisterConfig {
                 case Double:
                     if (!stackOnly && currentRegs64 < longParameterRegisters.length) {
                         Register register = longParameterRegisters[currentRegs64++];
-                        locations[i] = register.asValue(kind);
+                        locations[i] = register.asValue(target.getLIRKind(kind));
                     }
                     break;
                 default:
@@ -123,13 +122,13 @@ public class HSAILHotSpotRegisterConfig implements RegisterConfig {
             }
 
             if (locations[i] == null) {
-                locations[i] = StackSlot.get(kind.getStackKind(), currentStackOffset, !type.out);
+                locations[i] = StackSlot.get(target.getLIRKind(kind.getStackKind()), currentStackOffset, !type.out);
                 currentStackOffset += Math.max(target.getSizeInBytes(kind), target.wordSize);
             }
         }
 
         Kind returnKind = returnType == null ? Kind.Void : returnType.getKind();
-        AllocatableValue returnLocation = returnKind == Kind.Void ? Value.ILLEGAL : getReturnRegister(returnKind).asValue(returnKind);
+        AllocatableValue returnLocation = returnKind == Kind.Void ? Value.ILLEGAL : getReturnRegister(returnKind).asValue(target.getLIRKind(returnKind));
         return new CallingConvention(currentStackOffset, returnLocation, locations);
     }
 
@@ -145,14 +144,7 @@ public class HSAILHotSpotRegisterConfig implements RegisterConfig {
 
     @Override
     public Register[] getAllocatableRegisters(PlatformKind kind) {
-        Kind primitiveKind;
-        if (kind == NarrowOopStamp.NarrowOop) {
-            primitiveKind = Kind.Int;
-        } else {
-            primitiveKind = (Kind) kind;
-        }
-
-        switch (primitiveKind) {
+        switch ((Kind) kind) {
             case Int:
             case Short:
             case Byte:

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -37,7 +37,7 @@ public final class HotSpotMonitorValue extends Value {
     private final boolean eliminated;
 
     public HotSpotMonitorValue(Value owner, StackSlot slot, boolean eliminated) {
-        super(Kind.Illegal);
+        super(LIRKind.Illegal);
         this.owner = owner;
         this.slot = slot;
         this.eliminated = eliminated;

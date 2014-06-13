@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,8 +27,8 @@ import com.oracle.graal.api.meta.*;
 /**
  * Denotes a register that stores a value of a fixed kind. There is exactly one (canonical) instance
  * of {@link RegisterValue} for each ({@link Register}, {@link Kind}) pair. Use
- * {@link Register#asValue(PlatformKind)} to retrieve the canonical {@link RegisterValue} instance
- * for a given (register,kind) pair.
+ * {@link Register#asValue(LIRKind)} to retrieve the canonical {@link RegisterValue} instance for a
+ * given (register,kind) pair.
  */
 public final class RegisterValue extends AllocatableValue {
 
@@ -39,7 +39,7 @@ public final class RegisterValue extends AllocatableValue {
     /**
      * Should only be called from {@link Register#Register} to ensure canonicalization.
      */
-    protected RegisterValue(PlatformKind kind, Register register) {
+    protected RegisterValue(LIRKind kind, Register register) {
         super(kind);
         this.reg = register;
     }

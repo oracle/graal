@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -372,8 +372,8 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool {
         append(new JumpOp(getLIRBlock(merge)));
     }
 
-    protected PlatformKind getPhiKind(PhiNode phi) {
-        return gen.getPlatformKind(phi.stamp());
+    protected LIRKind getPhiKind(PhiNode phi) {
+        return gen.getLIRKind(phi.stamp());
     }
 
     private Value operandForPhi(ValuePhiNode phi) {
@@ -408,12 +408,12 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool {
     }
 
     private void emitNullCheckBranch(IsNullNode node, LabelRef trueSuccessor, LabelRef falseSuccessor, double trueSuccessorProbability) {
-        PlatformKind kind = gen.getPlatformKind(node.object().stamp());
+        PlatformKind kind = gen.getLIRKind(node.object().stamp()).getPlatformKind();
         gen.emitCompareBranch(kind, operand(node.object()), kind.getDefaultValue(), Condition.EQ, false, trueSuccessor, falseSuccessor, trueSuccessorProbability);
     }
 
     public void emitCompareBranch(CompareNode compare, LabelRef trueSuccessor, LabelRef falseSuccessor, double trueSuccessorProbability) {
-        PlatformKind kind = gen.getPlatformKind(compare.x().stamp());
+        PlatformKind kind = gen.getLIRKind(compare.x().stamp()).getPlatformKind();
         gen.emitCompareBranch(kind, operand(compare.x()), operand(compare.y()), compare.condition(), compare.unorderedIsTrue(), trueSuccessor, falseSuccessor, trueSuccessorProbability);
     }
 
@@ -436,11 +436,11 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool {
     public Variable emitConditional(LogicNode node, Value trueValue, Value falseValue) {
         if (node instanceof IsNullNode) {
             IsNullNode isNullNode = (IsNullNode) node;
-            PlatformKind kind = gen.getPlatformKind(isNullNode.object().stamp());
+            PlatformKind kind = gen.getLIRKind(isNullNode.object().stamp()).getPlatformKind();
             return gen.emitConditionalMove(kind, operand(isNullNode.object()), kind.getDefaultValue(), Condition.EQ, false, trueValue, falseValue);
         } else if (node instanceof CompareNode) {
             CompareNode compare = (CompareNode) node;
-            PlatformKind kind = gen.getPlatformKind(compare.x().stamp());
+            PlatformKind kind = gen.getLIRKind(compare.x().stamp()).getPlatformKind();
             return gen.emitConditionalMove(kind, operand(compare.x()), operand(compare.y()), compare.condition(), compare.unorderedIsTrue(), trueValue, falseValue);
         } else if (node instanceof LogicConstantNode) {
             return gen.emitMove(((LogicConstantNode) node).getValue() ? trueValue : falseValue);
@@ -527,7 +527,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool {
             if (keyCount == 1) {
                 assert defaultTarget != null;
                 double probability = x.probability(x.keySuccessor(0));
-                PlatformKind kind = gen.getPlatformKind(x.value().stamp());
+                PlatformKind kind = gen.getLIRKind(x.value().stamp()).getPlatformKind();
                 gen.emitCompareBranch(kind, gen.load(operand(x.value())), x.keyAt(0), Condition.EQ, false, getLIRBlock(x.keySuccessor(0)), defaultTarget, probability);
             } else {
                 LabelRef[] keyTargets = new LabelRef[keyCount];

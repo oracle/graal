@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -39,11 +39,11 @@ public class SPARCAddressValue extends CompositeValue {
     @Component({REG, OperandFlag.ILLEGAL}) protected AllocatableValue index;
     protected final int displacement;
 
-    public SPARCAddressValue(PlatformKind kind, AllocatableValue base, int displacement) {
+    public SPARCAddressValue(LIRKind kind, AllocatableValue base, int displacement) {
         this(kind, base, Value.ILLEGAL, displacement);
     }
 
-    public SPARCAddressValue(PlatformKind kind, AllocatableValue base, AllocatableValue index, int displacement) {
+    public SPARCAddressValue(LIRKind kind, AllocatableValue base, AllocatableValue index, int displacement) {
         super(kind);
         assert isIllegal(index) || displacement == 0;
         this.base = base;
@@ -94,13 +94,13 @@ public class SPARCAddressValue extends CompositeValue {
     public boolean equals(Object obj) {
         if (obj instanceof SPARCAddressValue) {
             SPARCAddressValue addr = (SPARCAddressValue) obj;
-            return getPlatformKind() == addr.getPlatformKind() && displacement == addr.displacement && base.equals(addr.base) && index.equals(addr.index);
+            return getLIRKind().equals(addr.getLIRKind()) && displacement == addr.displacement && base.equals(addr.base) && index.equals(addr.index);
         }
         return false;
     }
 
     @Override
     public int hashCode() {
-        return base.hashCode() ^ index.hashCode() ^ (displacement << 4) ^ getPlatformKind().hashCode();
+        return base.hashCode() ^ index.hashCode() ^ (displacement << 4) ^ getLIRKind().hashCode();
     }
 }

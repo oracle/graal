@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -451,7 +451,7 @@ public final class Interval {
     /**
      * The kind of this interval.
      */
-    private PlatformKind kind;
+    private LIRKind kind;
 
     /**
      * The head of the list of ranges describing this interval. This list is sorted by
@@ -533,7 +533,7 @@ public final class Interval {
     void assignLocation(AllocatableValue newLocation) {
         if (isRegister(newLocation)) {
             assert this.location == null : "cannot re-assign location for " + this;
-            if (newLocation.getPlatformKind() == Kind.Illegal && kind != Kind.Illegal) {
+            if (newLocation.getLIRKind() == LIRKind.Illegal && kind != LIRKind.Illegal) {
                 this.location = asRegister(newLocation).asValue(kind);
                 return;
             }
@@ -542,8 +542,8 @@ public final class Interval {
         } else {
             assert this.location == null || isRegister(this.location) : "cannot re-assign location for " + this;
             assert isStackSlot(newLocation);
-            assert newLocation.getPlatformKind() != Kind.Illegal;
-            assert newLocation.getPlatformKind() == this.kind;
+            assert newLocation.getLIRKind() != LIRKind.Illegal;
+            assert newLocation.getLIRKind().equals(this.kind);
         }
         this.location = newLocation;
     }
@@ -556,13 +556,13 @@ public final class Interval {
         return location;
     }
 
-    public PlatformKind kind() {
+    public LIRKind kind() {
         assert !isRegister(operand) : "cannot access type for fixed interval";
         return kind;
     }
 
-    void setKind(PlatformKind kind) {
-        assert isRegister(operand) || this.kind() == Kind.Illegal || this.kind() == kind : "overwriting existing type";
+    void setKind(LIRKind kind) {
+        assert isRegister(operand) || this.kind() == LIRKind.Illegal || this.kind() == kind : "overwriting existing type";
         this.kind = kind;
     }
 
@@ -715,7 +715,7 @@ public final class Interval {
         } else {
             assert isIllegal(operand) || isVariable(operand);
         }
-        this.kind = Kind.Illegal;
+        this.kind = LIRKind.Illegal;
         this.first = Range.EndMarker;
         this.usePosList = new UsePosList(4);
         this.current = Range.EndMarker;

@@ -104,7 +104,7 @@ public class ReinterpretNode extends FloatingNode implements Canonicalizable, Ar
 
     @Override
     public void generate(NodeMappableLIRBuilder builder, ArithmeticLIRGenerator gen) {
-        PlatformKind kind = gen.getPlatformKind(stamp());
+        LIRKind kind = gen.getLIRKind(stamp());
         builder.setResult(this, gen.emitReinterpret(kind, builder.operand(value())));
     }
 

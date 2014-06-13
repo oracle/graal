@@ -42,7 +42,7 @@ public class ObjectStamp extends AbstractObjectStamp {
     }
 
     @Override
-    public PlatformKind getPlatformKind(PlatformKindTool tool) {
+    public LIRKind getLIRKind(LIRKindTool tool) {
         return tool.getObjectKind();
     }
 

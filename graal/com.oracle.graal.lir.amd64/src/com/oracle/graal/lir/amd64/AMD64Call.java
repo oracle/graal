@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -141,7 +141,7 @@ public class AMD64Call {
              * The register allocator does not support virtual registers that are used at the call
              * site, so use a fixed register.
              */
-            callTemp = AMD64.rax.asValue(Kind.Long);
+            callTemp = AMD64.rax.asValue(LIRKind.value(Kind.Long));
             assert ValueUtil.differentRegisters(parameters, callTemp);
         }
 

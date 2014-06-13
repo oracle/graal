@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -351,7 +351,7 @@ public enum AMD64Arithmetic {
         @Use({REG, STACK}) public AllocatableValue y;
 
         public MulHighOp(AMD64Arithmetic opcode, AllocatableValue y) {
-            PlatformKind kind = y.getPlatformKind();
+            LIRKind kind = y.getLIRKind();
 
             this.opcode = opcode;
             this.x = AMD64.rax.asValue(kind);
@@ -411,8 +411,8 @@ public enum AMD64Arithmetic {
 
         public DivRemOp(AMD64Arithmetic opcode, AllocatableValue x, AllocatableValue y, LIRFrameState state) {
             this.opcode = opcode;
-            this.divResult = AMD64.rax.asValue(x.getPlatformKind());
-            this.remResult = AMD64.rdx.asValue(x.getPlatformKind());
+            this.divResult = AMD64.rax.asValue(x.getLIRKind());
+            this.remResult = AMD64.rdx.asValue(x.getLIRKind());
             this.x = x;
             this.y = y;
             this.state = state;
@@ -446,7 +446,7 @@ public enum AMD64Arithmetic {
         public FPDivRemOp(AMD64Arithmetic opcode, AllocatableValue result, AllocatableValue x, AllocatableValue y) {
             this.opcode = opcode;
             this.result = result;
-            this.raxTemp = AMD64.rax.asValue(Kind.Int);
+            this.raxTemp = AMD64.rax.asValue(LIRKind.value(Kind.Int));
             this.x = x;
             this.y = y;
         }

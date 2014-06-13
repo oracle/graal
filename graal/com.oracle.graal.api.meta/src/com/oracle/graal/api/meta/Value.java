@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,7 +32,7 @@ public abstract class Value implements Serializable, KindProvider {
 
     private static final long serialVersionUID = -6909397188697766469L;
 
-    @SuppressWarnings("serial") public static final AllocatableValue ILLEGAL = new AllocatableValue(Kind.Illegal) {
+    @SuppressWarnings("serial") public static final AllocatableValue ILLEGAL = new AllocatableValue(LIRKind.Illegal) {
 
         @Override
         public String toString() {
@@ -41,17 +41,17 @@ public abstract class Value implements Serializable, KindProvider {
     };
 
     private final Kind kind;
-    private final PlatformKind platformKind;
+    private final LIRKind lirKind;
 
     /**
      * Initializes a new value of the specified kind.
      *
-     * @param platformKind the kind
+     * @param lirKind the kind
      */
-    protected Value(PlatformKind platformKind) {
-        this.platformKind = platformKind;
-        if (platformKind instanceof Kind) {
-            this.kind = (Kind) platformKind;
+    protected Value(LIRKind lirKind) {
+        this.lirKind = lirKind;
+        if (getPlatformKind() instanceof Kind) {
+            this.kind = (Kind) getPlatformKind();
         } else {
             this.kind = Kind.Illegal;
         }
@@ -72,23 +72,27 @@ public abstract class Value implements Serializable, KindProvider {
         return kind;
     }
 
+    public final LIRKind getLIRKind() {
+        return lirKind;
+    }
+
     /**
      * Returns the platform specific kind used to store this value.
      */
     public final PlatformKind getPlatformKind() {
-        return platformKind;
+        return lirKind.getPlatformKind();
     }
 
     @Override
     public int hashCode() {
-        return 41 + platformKind.hashCode();
+        return 41 + lirKind.hashCode();
     }
 
     @Override
     public boolean equals(Object obj) {
         if (obj instanceof Value) {
             Value that = (Value) obj;
-            return kind.equals(that.kind) && platformKind.equals(that.platformKind);
+            return kind.equals(that.kind) && lirKind.equals(that.lirKind);
         }
         return false;
     }

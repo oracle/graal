@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -47,7 +47,7 @@ public final class VirtualObject extends Value {
      * returned by {@link ResolvedJavaType#getInstanceFields(boolean) getInstanceFields(true)}. If
      * {@code type} is an array then the length of the values array determines the reallocated array
      * length.
-     * 
+     *
      * @param type the type of the object whose allocation was removed during compilation. This can
      *            be either an instance of an array type.
      * @param values an array containing all the values to be stored into the object when it is
@@ -61,7 +61,7 @@ public final class VirtualObject extends Value {
     }
 
     private VirtualObject(ResolvedJavaType type, Value[] values, int id) {
-        super(Kind.Object);
+        super(LIRKind.reference(Kind.Object));
         this.type = type;
         this.values = values;
         this.id = id;
@@ -164,7 +164,7 @@ public final class VirtualObject extends Value {
 
     /**
      * Overwrites the current set of values with a new one.
-     * 
+     *
      * @param values an array containing all the values to be stored into the object when it is
      *            recreated.
      */
@@ -175,7 +175,7 @@ public final class VirtualObject extends Value {
 
     @Override
     public int hashCode() {
-        return getPlatformKind().hashCode() + type.hashCode();
+        return getLIRKind().hashCode() + type.hashCode();
     }
 
     @Override

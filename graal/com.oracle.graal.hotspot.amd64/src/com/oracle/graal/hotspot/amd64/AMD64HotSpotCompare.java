@@ -30,40 +30,12 @@ import com.oracle.graal.asm.amd64.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.hotspot.data.*;
 import com.oracle.graal.hotspot.meta.*;
-import com.oracle.graal.hotspot.nodes.type.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.amd64.*;
 import com.oracle.graal.lir.amd64.AMD64Move.MemOp;
 import com.oracle.graal.lir.asm.*;
 
 public class AMD64HotSpotCompare {
-
-    @Opcode("NCMP")
-    public static class HotSpotCompareNarrowOp extends AMD64LIRInstruction {
-
-        @Use({REG}) protected AllocatableValue x;
-        @Use({REG, STACK}) protected AllocatableValue y;
-
-        public HotSpotCompareNarrowOp(AllocatableValue x, AllocatableValue y) {
-            this.x = x;
-            this.y = y;
-        }
-
-        @Override
-        public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-            if (isRegister(y)) {
-                masm.cmpl(asRegister(x), asRegister(y));
-            } else {
-                assert isStackSlot(y);
-                masm.cmpl(asRegister(x), (AMD64Address) crb.asAddress(y));
-            }
-        }
-
-        @Override
-        protected void verify() {
-            assert x.getPlatformKind() == NarrowOopStamp.NarrowOop && y.getPlatformKind() == NarrowOopStamp.NarrowOop;
-        }
-    }
 
     @Opcode("CMP")
     public static class HotSpotCompareConstantOp extends AMD64LIRInstruction {

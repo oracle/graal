@@ -37,7 +37,7 @@ public class ComplexMatchValue extends Value {
      * This is the Value of a node which was matched as part of a complex match. The value isn't
      * actually useable but this marks it as having been evaluated.
      */
-    @SuppressWarnings("serial") public static Value INTERIOR_MATCH = new Value(Kind.Illegal) {
+    @SuppressWarnings("serial") public static Value INTERIOR_MATCH = new Value(LIRKind.Illegal) {
 
         @Override
         public String toString() {
@@ -54,7 +54,7 @@ public class ComplexMatchValue extends Value {
     final ComplexMatchResult result;
 
     public ComplexMatchValue(ComplexMatchResult result) {
-        super(Kind.Illegal);
+        super(LIRKind.Illegal);
         this.result = result;
     }
 

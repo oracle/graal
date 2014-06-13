@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -38,14 +38,17 @@ import com.oracle.graal.word.*;
  */
 public final class CurrentJavaThreadNode extends FloatingNode implements LIRLowerable {
 
+    private LIRKind wordKind;
+
     private CurrentJavaThreadNode(Kind kind) {
         super(StampFactory.forKind(kind));
+        this.wordKind = LIRKind.value(kind);
     }
 
     @Override
     public void generate(NodeLIRBuilderTool gen) {
         Register rawThread = ((HotSpotLIRGenerator) gen.getLIRGeneratorTool()).getProviders().getRegisters().getThreadRegister();
-        gen.setResult(this, rawThread.asValue(this.getKind()));
+        gen.setResult(this, rawThread.asValue(wordKind));
     }
 
     private static int eetopOffset() {

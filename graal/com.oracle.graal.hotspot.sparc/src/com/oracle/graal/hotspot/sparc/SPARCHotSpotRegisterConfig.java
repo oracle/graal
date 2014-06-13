@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -198,14 +198,14 @@ public class SPARCHotSpotRegisterConfig implements RegisterConfig {
                 case Object:
                     if (!stackOnly && currentGeneral < generalParameterRegisters.length) {
                         Register register = generalParameterRegisters[currentGeneral++];
-                        locations[i] = register.asValue(kind);
+                        locations[i] = register.asValue(target.getLIRKind(kind));
                     }
                     break;
                 case Float:
                 case Double:
                     if (!stackOnly && currentFloating < fpuParameterRegisters.length) {
                         Register register = fpuParameterRegisters[currentFloating++];
-                        locations[i] = register.asValue(kind);
+                        locations[i] = register.asValue(target.getLIRKind(kind));
                     }
                     break;
                 default:
@@ -213,13 +213,13 @@ public class SPARCHotSpotRegisterConfig implements RegisterConfig {
             }
 
             if (locations[i] == null) {
-                locations[i] = StackSlot.get(kind.getStackKind(), currentStackOffset, !type.out);
+                locations[i] = StackSlot.get(target.getLIRKind(kind.getStackKind()), currentStackOffset, !type.out);
                 currentStackOffset += Math.max(target.getSizeInBytes(kind), target.wordSize);
             }
         }
 
         Kind returnKind = returnType == null ? Kind.Void : returnType.getKind();
-        AllocatableValue returnLocation = returnKind == Kind.Void ? Value.ILLEGAL : getReturnRegister(returnKind, type).asValue(returnKind.getStackKind());
+        AllocatableValue returnLocation = returnKind == Kind.Void ? Value.ILLEGAL : getReturnRegister(returnKind, type).asValue(target.getLIRKind(returnKind.getStackKind()));
         return new CallingConvention(currentStackOffset, returnLocation, locations);
     }
 

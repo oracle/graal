@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -71,7 +71,12 @@ public final class WordCastNode extends FixedWithNextNode implements LIRLowerabl
         assert getKind() != input.getKind();
         assert generator.getLIRGeneratorTool().target().getSizeInBytes(getKind()) == generator.getLIRGeneratorTool().target().getSizeInBytes(input.getKind());
 
-        AllocatableValue result = generator.getLIRGeneratorTool().newVariable(getKind());
+        LIRKind kind = generator.getLIRGeneratorTool().getLIRKind(stamp());
+        if (kind.isValue()) {
+            kind = kind.makeDerivedReference();
+        }
+
+        AllocatableValue result = generator.getLIRGeneratorTool().newVariable(kind);
         generator.getLIRGeneratorTool().emitMove(result, generator.operand(input));
         generator.setResult(this, result);
     }

@@ -27,11 +27,11 @@ import com.oracle.graal.api.meta.*;
 /**
  * This interface can be used to access platform and VM specific kinds.
  */
-public interface PlatformKindTool {
+public interface LIRKindTool {
 
-    PlatformKind getIntegerKind(int bits);
+    LIRKind getIntegerKind(int bits);
 
-    PlatformKind getFloatingKind(int bits);
+    LIRKind getFloatingKind(int bits);
 
-    PlatformKind getObjectKind();
+    LIRKind getObjectKind();
 }

@@ -27,9 +27,9 @@ import com.oracle.graal.api.meta.*;
 
 public interface ReferenceMap {
 
-    void setRegister(int idx, PlatformKind kind);
+    void setRegister(int idx, LIRKind kind);
 
-    void setStackSlot(int offset, PlatformKind kind);
+    void setStackSlot(int offset, LIRKind kind);
 
     boolean hasRegisterRefMap();
 

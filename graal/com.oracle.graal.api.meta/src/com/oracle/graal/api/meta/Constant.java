@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -50,7 +50,7 @@ public abstract class Constant extends Value {
     public static final Constant TRUE = new PrimitiveConstant(Kind.Boolean, 1L);
     public static final Constant FALSE = new PrimitiveConstant(Kind.Boolean, 0L);
 
-    protected Constant(PlatformKind kind) {
+    protected Constant(LIRKind kind) {
         super(kind);
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -197,7 +197,7 @@ final class MoveResolver {
 
     private void insertMove(Interval fromInterval, Interval toInterval) {
         assert !fromInterval.operand.equals(toInterval.operand) : "from and to interval equal: " + fromInterval;
-        assert fromInterval.kind() == toInterval.kind() : "move between different types";
+        assert fromInterval.kind().equals(toInterval.kind()) : "move between different types";
         assert insertIdx != -1 : "must setup insert position first";
 
         AllocatableValue fromOpr = fromInterval.operand;
@@ -209,7 +209,7 @@ final class MoveResolver {
     }
 
     private void insertMove(Value fromOpr, Interval toInterval) {
-        assert fromOpr.getPlatformKind() == toInterval.kind() : "move between different types";
+        assert fromOpr.getLIRKind() == toInterval.kind() : "move between different types";
         assert insertIdx != -1 : "must setup insert position first";
 
         AllocatableValue toOpr = toInterval.operand;

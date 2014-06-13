@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -110,7 +110,7 @@ public class PTXHotSpotRegisterConfig implements RegisterConfig {
         if (returnKind == Kind.Void) {
             returnLocation = Value.ILLEGAL;
         } else {
-            returnLocation = new Variable(returnKind, currentGeneral++);
+            returnLocation = new Variable(target.getLIRKind(returnKind), currentGeneral++);
         }
 
         AllocatableValue[] locations = new AllocatableValue[parameterTypes.length];
@@ -129,7 +129,7 @@ public class PTXHotSpotRegisterConfig implements RegisterConfig {
                 case Double:
                 case Object:
                     if (!stackOnly) {
-                        locations[i] = new Variable(kind, currentGeneral++);
+                        locations[i] = new Variable(target.getLIRKind(kind), currentGeneral++);
                     }
                     break;
                 default:
@@ -137,7 +137,7 @@ public class PTXHotSpotRegisterConfig implements RegisterConfig {
             }
 
             if (locations[i] == null) {
-                locations[i] = StackSlot.get(kind.getStackKind(), currentStackOffset, !type.out);
+                locations[i] = StackSlot.get(target.getLIRKind(kind.getStackKind()), currentStackOffset, !type.out);
                 currentStackOffset += Math.max(target.getSizeInBytes(kind), target.wordSize);
             }
         }

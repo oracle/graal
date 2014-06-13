@@ -75,15 +75,15 @@ public class AMD64ArrayEqualsOp extends AMD64LIRInstruction {
         this.lengthValue = length;
 
         // Allocate some temporaries.
-        this.temp1 = tool.newVariable(tool.target().wordKind);
-        this.temp2 = tool.newVariable(tool.target().wordKind);
-        this.temp3 = tool.newVariable(tool.target().wordKind);
-        this.temp4 = tool.newVariable(tool.target().wordKind);
+        this.temp1 = tool.newVariable(LIRKind.derivedReference(tool.target().wordKind));
+        this.temp2 = tool.newVariable(LIRKind.derivedReference(tool.target().wordKind));
+        this.temp3 = tool.newVariable(LIRKind.value(tool.target().wordKind));
+        this.temp4 = tool.newVariable(LIRKind.value(tool.target().wordKind));
 
         // We only need the vector temporaries if we generate SSE code.
         if (supportsSSE41(tool.target())) {
-            this.vectorTemp1 = tool.newVariable(Kind.Double);
-            this.vectorTemp2 = tool.newVariable(Kind.Double);
+            this.vectorTemp1 = tool.newVariable(LIRKind.value(Kind.Double));
+            this.vectorTemp2 = tool.newVariable(LIRKind.value(Kind.Double));
         } else {
             this.vectorTemp1 = Value.ILLEGAL;
             this.vectorTemp2 = Value.ILLEGAL;

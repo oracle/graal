@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -157,9 +157,8 @@ public class AMD64ControlFlow {
                             break;
                         case Object:
                             assert condition == Condition.EQ || condition == Condition.NE;
-                            Register temp = asObjectReg(scratch);
-                            AMD64Move.move(crb, masm, temp.asValue(Kind.Object), keyConstants[index]);
-                            masm.cmpptr(keyRegister, temp);
+                            AMD64Move.move(crb, masm, scratch, keyConstants[index]);
+                            masm.cmpptr(keyRegister, asObjectReg(scratch));
                             break;
                         default:
                             throw new GraalInternalError("switch only supported for int, long and object");
