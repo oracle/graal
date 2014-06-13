@@ -57,8 +57,8 @@ public final class MemUseTrackerImpl extends DebugValue implements DebugMemUseTr
     private final DebugValue flat;
 
     public MemUseTrackerImpl(String name) {
-        super(name + "_Accm", false);
-        this.flat = new DebugValue(name + "_Flat", false) {
+        super(name + "_Accm", true);
+        this.flat = new DebugValue(name + "_Flat", true) {
 
             @Override
             public String toString(long value) {
@@ -69,7 +69,7 @@ public final class MemUseTrackerImpl extends DebugValue implements DebugMemUseTr
 
     @Override
     public Closeable start() {
-        if (!isConditional() || Debug.isTimeEnabled()) {
+        if (!isConditional() || Debug.isMemUseTrackingEnabled()) {
             CloseableImpl result = new CloseableImpl();
             currentTracker.set(result);
             return result;
