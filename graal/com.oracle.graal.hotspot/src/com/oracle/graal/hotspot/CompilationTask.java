@@ -63,6 +63,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.tiers.*;
+import com.oracle.graal.printer.*;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 
@@ -490,21 +491,31 @@ public class CompilationTask implements Runnable, Comparable<Object> {
     }
 
     /**
-     * Entry point for the VM to schedule a compilation for a metaspace Method.
+     * Schedules compilation of a metaspace Method.
      *
      * Called from the VM.
      */
     @SuppressWarnings("unused")
     private static void compileMetaspaceMethod(long metaspaceMethod, final int entryBCI, long ctask, final boolean blocking) {
-        final HotSpotResolvedJavaMethod method = HotSpotResolvedJavaMethod.fromMetaspace(metaspaceMethod);
         if (ctask != 0L) {
+            // Ensure a Graal runtime is initialized prior to Debug being initialized as the former
+            // may include processing command line options used by the latter.
+            Graal.getRuntime();
+
+            // Ensure a debug configuration for this thread is initialized
+            if (Debug.isEnabled() && DebugScope.getConfig() == null) {
+                DebugEnvironment.initialize(System.out);
+            }
+
             // This is on a VM CompilerThread - no user frames exist
+            final HotSpotResolvedJavaMethod method = HotSpotResolvedJavaMethod.fromMetaspace(metaspaceMethod);
             compileMethod(method, entryBCI, ctask, false);
         } else {
             // We have to use a privileged action here because compilations are
             // enqueued from user code which very likely contains unprivileged frames.
             AccessController.doPrivileged(new PrivilegedAction<Void>() {
                 public Void run() {
+                    final HotSpotResolvedJavaMethod method = HotSpotResolvedJavaMethod.fromMetaspace(metaspaceMethod);
                     compileMethod(method, entryBCI, 0L, blocking);
                     return null;
                 }

@@ -37,7 +37,7 @@ public class DebugEnvironment {
     public static GraalDebugConfig initialize(PrintStream log) {
 
         // Ensure Graal runtime is initialized prior to Debug being initialized as the former
-        // included processing command line options used by the latter.
+        // may include processing command line options used by the latter.
         Graal.getRuntime();
 
         if (!Debug.isEnabled()) {
