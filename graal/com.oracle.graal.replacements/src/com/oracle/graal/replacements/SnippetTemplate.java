@@ -1147,14 +1147,11 @@ public class SnippetTemplate {
                         next = fwn.next();
                         fwn.setNext(null);
                     }
-                    returnDuplicate.clearInputs();
                     returnDuplicate.replaceAndDelete(next);
                 }
             }
 
             // Remove the replacee from its graph
-            replacee.clearInputs();
-            replacee.replaceAtUsages(null);
             GraphUtil.killCFG(replacee);
 
             Debug.dump(replaceeGraph, "After lowering %s with %s", replacee, this);
@@ -1241,7 +1238,6 @@ public class SnippetTemplate {
             replacer.replace(replacee, returnValue, new DuplicateMapper(duplicates, replaceeGraph.start()));
 
             if (returnDuplicate.isAlive()) {
-                returnDuplicate.clearInputs();
                 returnDuplicate.replaceAndDelete(next);
             }
 

@@ -735,9 +735,7 @@ public abstract class Node implements Cloneable, Formattable {
         }
     }
 
-    public void clearInputs() {
-        assert assertFalse(isDeleted(), "cannot clear inputs of deleted node");
-
+    private void unregisterInputs() {
         for (Node input : inputs()) {
             if (input.recordsUsages()) {
                 removeThisFromUsages(input);
@@ -746,6 +744,12 @@ public abstract class Node implements Cloneable, Formattable {
                 }
             }
         }
+    }
+
+    public void clearInputs() {
+        assert assertFalse(isDeleted(), "cannot clear inputs of deleted node");
+
+        unregisterInputs();
         getNodeClass().clearInputs(this);
     }
 
@@ -753,13 +757,17 @@ public abstract class Node implements Cloneable, Formattable {
         return n.removeUsage(this);
     }
 
-    public void clearSuccessors() {
-        assert assertFalse(isDeleted(), "cannot clear successors of deleted node");
-
+    private void unregisterSuccessors() {
         for (Node successor : successors()) {
             assert assertTrue(successor.predecessor == this, "wrong predecessor in old successor (%s): %s", successor, successor.predecessor);
             successor.predecessor = null;
         }
+    }
+
+    public void clearSuccessors() {
+        assert assertFalse(isDeleted(), "cannot clear successors of deleted node");
+
+        unregisterSuccessors();
         getNodeClass().clearSuccessors(this);
     }
 
@@ -777,8 +785,8 @@ public abstract class Node implements Cloneable, Formattable {
      */
     public void safeDelete() {
         assert checkDeletion();
-        clearInputs();
-        clearSuccessors();
+        unregisterInputs();
+        unregisterSuccessors();
         graph.unregister(this);
         id = DELETED_ID_START - id;
         assert isDeleted();

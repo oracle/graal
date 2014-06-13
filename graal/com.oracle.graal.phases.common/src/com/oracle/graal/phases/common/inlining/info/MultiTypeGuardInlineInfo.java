@@ -222,9 +222,7 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
 
         ArrayList<GuardedValueNode> replacementNodes = new ArrayList<>();
 
-        Collection<Node> parameterUsages = new ArrayList<>();
-
-        // do the actual inlining for every invoke
+        // prepare the anchors for the invokes
         for (int i = 0; i < numberOfMethods; i++) {
             BeginNode node = successors[i];
             Invoke invokeForInlining = (Invoke) node.next();
@@ -241,8 +239,7 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
             GuardedValueNode anchoredReceiver = InliningUtil.createAnchoredReceiver(graph, node, commonType, receiver, exact);
             invokeForInlining.callTarget().replaceFirstInput(receiver, anchoredReceiver);
 
-            parameterUsages.addAll(inline(invokeForInlining, methodAt(i), inlineableElementAt(i), assumptions, false));
-
+            assert !anchoredReceiver.isDeleted() : anchoredReceiver;
             replacementNodes.add(anchoredReceiver);
         }
         if (shouldFallbackToInvoke()) {
@@ -273,6 +270,13 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
                 CanonicalizerPhase canonicalizer = new CanonicalizerPhase(!ImmutableCode.getValue());
                 TailDuplicationPhase.tailDuplicate(returnMerge, TailDuplicationPhase.TRUE_DECISION, replacementNodes, phaseContext, canonicalizer);
             }
+        }
+
+        Collection<Node> parameterUsages = new ArrayList<>();
+        // do the actual inlining for every invoke
+        for (int i = 0; i < numberOfMethods; i++) {
+            Invoke invokeForInlining = (Invoke) successors[i].next();
+            parameterUsages.addAll(inline(invokeForInlining, methodAt(i), inlineableElementAt(i), assumptions, false));
         }
         return parameterUsages;
     }

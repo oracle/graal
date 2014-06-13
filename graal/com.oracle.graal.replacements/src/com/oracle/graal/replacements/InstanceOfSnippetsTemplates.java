@@ -234,7 +234,6 @@ public abstract class InstanceOfSnippetsTemplates extends AbstractTemplates {
         public void replaceUsingInstantiation() {
             ValueNode newValue = instantiation.asMaterialization(usage.graph(), trueValue, falseValue);
             usage.replaceAtUsages(newValue);
-            usage.clearInputs();
             assert usage.usages().isEmpty();
             GraphUtil.killWithUnusedFloatingInputs(usage);
         }
@@ -246,7 +245,6 @@ public abstract class InstanceOfSnippetsTemplates extends AbstractTemplates {
             newNode.inferStamp();
             instantiation.initialize(newNode, trueValue, falseValue);
             usage.replaceAtUsages(newNode);
-            usage.clearInputs();
             assert usage.usages().isEmpty();
             GraphUtil.killWithUnusedFloatingInputs(usage);
         }
