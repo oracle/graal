@@ -79,10 +79,23 @@ public final class Register implements Comparable<Register> {
      */
     public static class RegisterCategory {
 
-        private String name;
+        private final String name;
+
+        private final int referenceMapOffset;
+        private final int referenceMapShift;
 
         public RegisterCategory(String name) {
+            this(name, 0, 0);
+        }
+
+        public RegisterCategory(String name, int referenceMapOffset) {
+            this(name, referenceMapOffset, 0);
+        }
+
+        public RegisterCategory(String name, int referenceMapOffset, int referenceMapShift) {
             this.name = name;
+            this.referenceMapOffset = referenceMapOffset;
+            this.referenceMapShift = referenceMapShift;
         }
 
         @Override
@@ -107,7 +120,7 @@ public final class Register implements Comparable<Register> {
 
     /**
      * Creates a {@link Register} instance.
-     * 
+     *
      * @param number unique identifier for the register
      * @param encoding the target machine encoding for the register
      * @param name the mnemonic name for the register
@@ -124,9 +137,13 @@ public final class Register implements Comparable<Register> {
         return registerCategory;
     }
 
+    public int getReferenceMapIndex() {
+        return (encoding << registerCategory.referenceMapShift) + registerCategory.referenceMapOffset;
+    }
+
     /**
      * Gets this register as a {@linkplain RegisterValue value} with a specified kind.
-     * 
+     *
      * @param kind the specified kind
      * @return the {@link RegisterValue}
      */
@@ -136,7 +153,7 @@ public final class Register implements Comparable<Register> {
 
     /**
      * Gets this register as a {@linkplain RegisterValue value} with no particular kind.
-     * 
+     *
      * @return a {@link RegisterValue} with {@link Kind#Illegal} kind.
      */
     public RegisterValue asValue() {
@@ -145,7 +162,7 @@ public final class Register implements Comparable<Register> {
 
     /**
      * Determines if this is a valid register.
-     * 
+     *
      * @return {@code true} iff this register is valid
      */
     public boolean isValid() {
@@ -154,7 +171,7 @@ public final class Register implements Comparable<Register> {
 
     /**
      * Gets the maximum register {@linkplain #number number} in a given set of registers.
-     * 
+     *
      * @param registers the set of registers to process
      * @return the maximum register number for any register in {@code registers}
      */
@@ -170,7 +187,7 @@ public final class Register implements Comparable<Register> {
 
     /**
      * Gets the maximum register {@linkplain #encoding encoding} in a given set of registers.
-     * 
+     *
      * @param registers the set of registers to process
      * @return the maximum register encoding for any register in {@code registers}
      */

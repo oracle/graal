@@ -36,7 +36,6 @@ import com.oracle.graal.api.meta.*;
 public class SPARC extends Architecture {
 
     public static final RegisterCategory CPU = new RegisterCategory("CPU");
-    public static final RegisterCategory FPU = new RegisterCategory("FPU");
 
     // General purpose registers
     public static final Register r0 = new Register(0, 0, "g0", CPU);
@@ -122,6 +121,8 @@ public class SPARC extends Architecture {
         r24, r25, r26, r27, r28, r29, r30, r31
     };
     // @formatter:on
+
+    public static final RegisterCategory FPU = new RegisterCategory("FPU", cpuRegisters.length);
 
     // Floating point registers
     public static final Register f0 = new Register(32, 0, "f0", FPU);

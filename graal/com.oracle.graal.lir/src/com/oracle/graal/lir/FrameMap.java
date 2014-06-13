@@ -379,7 +379,7 @@ public abstract class FrameMap {
     public void setReference(Value location, ReferenceMap refMap) {
         PlatformKind kind = location.getPlatformKind();
         if (isRegister(location)) {
-            refMap.setRegister(asRegister(location).number, kind);
+            refMap.setRegister(asRegister(location).getReferenceMapIndex(), kind);
         } else if (isStackSlot(location)) {
             int offset = offsetForStackSlot(asStackSlot(location));
             refMap.setStackSlot(offset, kind);

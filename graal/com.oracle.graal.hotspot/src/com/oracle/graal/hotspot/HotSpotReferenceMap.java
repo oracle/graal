@@ -35,11 +35,12 @@ public class HotSpotReferenceMap implements ReferenceMap, Serializable {
     private static final long serialVersionUID = -1052183095979496819L;
 
     /**
-     * Contains 2 bits per register.
+     * Contains 3 bits per 64 bit register, and n*3 bits per n*64 bit vector register.
      * <ul>
      * <li>bit0 = 0: contains no references</li>
-     * <li>bit0 = 1, bit1 = 0: contains a wide oop</li>
-     * <li>bit0 = 1, bit1 = 1: contains a narrow oop</li>
+     * <li>bit0 = 1, bit1+2 = 0: contains a wide oop</li>
+     * <li>bit0 = 1, bit1 = 1: contains a narrow oop in the lower 32 bit</li>
+     * <li>bit0 = 1, bit2 = 1: contains a narrow oop in the upper 32 bit</li>
      * </ul>
      */
     private final BitSet registerRefMap;
@@ -59,7 +60,7 @@ public class HotSpotReferenceMap implements ReferenceMap, Serializable {
 
     public HotSpotReferenceMap(int registerCount, int frameSlotCount, int frameSlotSize) {
         if (registerCount > 0) {
-            this.registerRefMap = new BitSet(registerCount * 2);
+            this.registerRefMap = new BitSet(registerCount * 3);
         } else {
             this.registerRefMap = null;
         }
@@ -69,23 +70,11 @@ public class HotSpotReferenceMap implements ReferenceMap, Serializable {
 
     public void setRegister(int idx, PlatformKind kind) {
         if (kind == Kind.Object) {
-            registerRefMap.set(2 * idx);
+            registerRefMap.set(3 * idx);
         } else if (kind == NarrowOopStamp.NarrowOop) {
-            registerRefMap.set(2 * idx);
-            registerRefMap.set(2 * idx + 1);
+            registerRefMap.set(3 * idx);
+            registerRefMap.set(3 * idx + 1);
         }
-    }
-
-    public PlatformKind getRegister(int idx) {
-        int refMapIndex = idx * 2;
-        if (registerRefMap.get(refMapIndex)) {
-            if (registerRefMap.get(refMapIndex + 1)) {
-                return NarrowOopStamp.NarrowOop;
-            } else {
-                return Kind.Object;
-            }
-        }
-        return null;
     }
 
     public void setStackSlot(int offset, PlatformKind kind) {
