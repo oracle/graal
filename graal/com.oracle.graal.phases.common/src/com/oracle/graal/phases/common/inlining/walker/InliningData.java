@@ -523,10 +523,8 @@ public class InliningData {
         InlineInfo info = methodInvocation.callee();
         maxGraphs += info.numberOfMethods();
         assert graphQueue.size() <= maxGraphs;
-        double invokeProbability = methodInvocation.probability();
-        double invokeRelevance = methodInvocation.relevance();
         for (int i = 0; i < info.numberOfMethods(); i++) {
-            CallsiteHolder ch = info.buildCallsiteHolderForElement(i, invokeProbability, invokeRelevance);
+            CallsiteHolder ch = methodInvocation.buildCallsiteHolderForElement(i);
             assert (ch == DUMMY_CALLSITE_HOLDER) || !contains(ch.graph());
             graphQueue.push(ch);
             assert graphQueue.size() <= maxGraphs;

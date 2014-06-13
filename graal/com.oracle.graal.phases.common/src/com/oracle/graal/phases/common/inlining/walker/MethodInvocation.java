@@ -28,6 +28,9 @@ import com.oracle.graal.api.meta.ResolvedJavaMethod;
 import com.oracle.graal.nodes.CallTargetNode;
 import com.oracle.graal.nodes.java.MethodCallTargetNode;
 import com.oracle.graal.phases.common.inlining.info.InlineInfo;
+import com.oracle.graal.phases.common.inlining.info.elem.Inlineable;
+import com.oracle.graal.phases.common.inlining.info.elem.InlineableGraph;
+import com.oracle.graal.phases.common.inlining.info.elem.InlineableMacroNode;
 
 /**
  * <p>
@@ -88,6 +91,17 @@ public class MethodInvocation {
 
     public boolean isRoot() {
         return callee == null;
+    }
+
+    public CallsiteHolder buildCallsiteHolderForElement(int index) {
+        Inlineable elem = callee.inlineableElementAt(index);
+        if (elem instanceof InlineableGraph) {
+            InlineableGraph ig = (InlineableGraph) elem;
+            return new CallsiteHolderExplorable(ig.getGraph(), probability * callee.probabilityAt(index), relevance * callee.relevanceAt(index));
+        } else {
+            assert elem instanceof InlineableMacroNode;
+            return CallsiteHolderDummy.DUMMY_CALLSITE_HOLDER;
+        }
     }
 
     @Override
