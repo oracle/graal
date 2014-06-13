@@ -26,7 +26,6 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
-import com.oracle.graal.lir.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.util.*;
@@ -130,8 +129,7 @@ public class ArrayEqualsNode extends FixedWithNextNode implements LIRLowerable, 
 
     @Override
     public void generate(NodeLIRBuilderTool gen) {
-        Variable result = gen.newVariable(Kind.Int);
-        gen.emitArrayEquals(kind, result, gen.operand(array1), gen.operand(array2), gen.operand(length));
+        Value result = gen.getLIRGeneratorTool().emitArrayEquals(kind, gen.operand(array1), gen.operand(array2), gen.operand(length));
         gen.setResult(this, result);
     }
 }

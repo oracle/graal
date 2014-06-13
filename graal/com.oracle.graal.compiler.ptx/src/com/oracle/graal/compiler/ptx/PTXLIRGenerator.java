@@ -765,21 +765,23 @@ public class PTXLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public void emitBitCount(Variable result, Value value) {
+    public Value emitBitCount(Value value) {
+        Variable result = newVariable(Kind.Int);
         if (value.getKind().getStackKind() == Kind.Int) {
             append(new PTXBitManipulationOp(IPOPCNT, result, value));
         } else {
             append(new PTXBitManipulationOp(LPOPCNT, result, value));
         }
+        return result;
     }
 
     @Override
-    public void emitBitScanForward(Variable result, Value value) {
+    public Value emitBitScanForward(Value value) {
         throw GraalInternalError.unimplemented("PTXLIRGenerator.emitBitScanForward()");
     }
 
     @Override
-    public void emitBitScanReverse(Variable result, Value value) {
+    public Value emitBitScanReverse(Value value) {
         throw GraalInternalError.unimplemented("PTXLIRGenerator.emitBitScanReverse()");
     }
 
@@ -814,12 +816,12 @@ public class PTXLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public void emitByteSwap(Variable result, Value input) {
+    public Value emitByteSwap(Value input) {
         throw GraalInternalError.unimplemented("PTXLIRGenerator.emitByteSwap()");
     }
 
     @Override
-    public void emitArrayEquals(Kind kind, Variable result, Value array1, Value array2, Value length) {
+    public Value emitArrayEquals(Kind kind, Value array1, Value array2, Value length) {
         // TODO Auto-generated method stub
         throw GraalInternalError.unimplemented();
     }

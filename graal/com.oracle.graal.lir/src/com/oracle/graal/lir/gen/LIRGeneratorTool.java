@@ -189,14 +189,14 @@ public interface LIRGeneratorTool extends ArithmeticLIRGenerator {
 
     CallingConvention getCallingConvention();
 
-    void emitBitCount(Variable result, Value operand);
+    Value emitBitCount(Value operand);
 
-    void emitBitScanForward(Variable result, Value operand);
+    Value emitBitScanForward(Value operand);
 
-    void emitBitScanReverse(Variable result, Value operand);
+    Value emitBitScanReverse(Value operand);
 
-    void emitByteSwap(Variable result, Value operand);
+    Value emitByteSwap(Value operand);
 
-    void emitArrayEquals(Kind kind, Variable result, Value array1, Value array2, Value length);
+    Value emitArrayEquals(Kind kind, Value array1, Value array2, Value length);
 
 }

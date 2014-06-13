@@ -601,26 +601,6 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool {
         gen.emitOverflowCheckBranch(getLIRBlock(overflowSuccessor), getLIRBlock(next), probability);
     }
 
-    public final void emitArrayEquals(Kind kind, Variable result, Value array1, Value array2, Value length) {
-        gen.emitArrayEquals(kind, result, array1, array2, length);
-    }
-
-    public final Variable newVariable(Kind i) {
-        return gen.newVariable(i);
-    }
-
-    public final void emitBitCount(Variable result, Value operand) {
-        gen.emitBitCount(result, operand);
-    }
-
-    public final void emitBitScanForward(Variable result, Value operand) {
-        gen.emitBitScanForward(result, operand);
-    }
-
-    final void emitBitScanReverse(Variable result, Value operand) {
-        gen.emitBitScanReverse(result, operand);
-    }
-
     @Override
     public LIRGeneratorTool getLIRGeneratorTool() {
         return gen;

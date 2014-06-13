@@ -364,26 +364,32 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public void emitBitCount(Variable result, Value operand) {
+    public Value emitBitCount(Value operand) {
+        Variable result = newVariable(Kind.Int);
         if (operand.getKind().getStackKind() == Kind.Int) {
             append(new SPARCBitManipulationOp(IPOPCNT, result, asAllocatable(operand), this));
         } else {
             append(new SPARCBitManipulationOp(LPOPCNT, result, asAllocatable(operand), this));
         }
+        return result;
     }
 
     @Override
-    public void emitBitScanForward(Variable result, Value operand) {
+    public Value emitBitScanForward(Value operand) {
+        Variable result = newVariable(Kind.Int);
         append(new SPARCBitManipulationOp(BSF, result, asAllocatable(operand), this));
+        return result;
     }
 
     @Override
-    public void emitBitScanReverse(Variable result, Value operand) {
+    public Value emitBitScanReverse(Value operand) {
+        Variable result = newVariable(Kind.Int);
         if (operand.getKind().getStackKind() == Kind.Int) {
             append(new SPARCBitManipulationOp(IBSR, result, asAllocatable(operand), this));
         } else {
             append(new SPARCBitManipulationOp(LBSR, result, asAllocatable(operand), this));
         }
+        return result;
     }
 
     @Override
@@ -429,12 +435,14 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public void emitByteSwap(Variable result, Value input) {
+    public Value emitByteSwap(Value input) {
+        Variable result = newVariable(input.getPlatformKind());
         append(new SPARCByteSwapOp(result, input));
+        return result;
     }
 
     @Override
-    public void emitArrayEquals(Kind kind, Variable result, Value array1, Value array2, Value length) {
+    public Value emitArrayEquals(Kind kind, Value array1, Value array2, Value length) {
         // TODO Auto-generated method stub
         throw GraalInternalError.unimplemented();
     }

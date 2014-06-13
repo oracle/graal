@@ -95,7 +95,7 @@ public class HSAILHotSpotNodeLIRBuilder extends HSAILNodeLIRBuilder implements H
             throw GraalInternalError.shouldNotReachHere("NYI");
         }
 
-        Variable casResult = newVariable(kind);
+        Variable casResult = gen.newVariable(kind);
         append(new CompareAndSwapOp(kind, casResult, address, expected, newVal));
 
         setResult(x, casResult);

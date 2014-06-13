@@ -218,7 +218,7 @@ public class AMD64HotSpotNodeLIRBuilder extends AMD64NodeLIRBuilder implements H
         gen.emitMove(raxLocal, expected);
         append(new CompareAndSwapOp(kind, raxLocal, address, raxLocal, newVal));
 
-        Variable result = newVariable(x.getKind());
+        Variable result = gen.newVariable(x.getKind());
         gen.emitMove(result, raxLocal);
         setResult(x, result);
     }

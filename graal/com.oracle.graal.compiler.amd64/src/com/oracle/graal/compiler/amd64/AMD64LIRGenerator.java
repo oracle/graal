@@ -991,26 +991,32 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public void emitBitCount(Variable result, Value value) {
+    public Value emitBitCount(Value value) {
+        Variable result = newVariable(Kind.Int);
         if (value.getKind().getStackKind() == Kind.Int) {
             append(new AMD64BitManipulationOp(IPOPCNT, result, asAllocatable(value)));
         } else {
             append(new AMD64BitManipulationOp(LPOPCNT, result, asAllocatable(value)));
         }
+        return result;
     }
 
     @Override
-    public void emitBitScanForward(Variable result, Value value) {
+    public Value emitBitScanForward(Value value) {
+        Variable result = newVariable(Kind.Int);
         append(new AMD64BitManipulationOp(BSF, result, asAllocatable(value)));
+        return result;
     }
 
     @Override
-    public void emitBitScanReverse(Variable result, Value value) {
+    public Value emitBitScanReverse(Value value) {
+        Variable result = newVariable(Kind.Int);
         if (value.getKind().getStackKind() == Kind.Int) {
             append(new AMD64BitManipulationOp(IBSR, result, asAllocatable(value)));
         } else {
             append(new AMD64BitManipulationOp(LBSR, result, asAllocatable(value)));
         }
+        return result;
     }
 
     @Override
@@ -1056,13 +1062,17 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public void emitByteSwap(Variable result, Value input) {
+    public Value emitByteSwap(Value input) {
+        Variable result = newVariable(input.getPlatformKind());
         append(new AMD64ByteSwapOp(result, input));
+        return result;
     }
 
     @Override
-    public void emitArrayEquals(Kind kind, Variable result, Value array1, Value array2, Value length) {
+    public Value emitArrayEquals(Kind kind, Value array1, Value array2, Value length) {
+        Variable result = newVariable(Kind.Int);
         append(new AMD64ArrayEqualsOp(this, kind, result, array1, array2, asAllocatable(length)));
+        return result;
     }
 
     @Override

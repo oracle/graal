@@ -26,7 +26,6 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
-import com.oracle.graal.lir.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
@@ -66,8 +65,7 @@ public class ReverseBytesNode extends FloatingNode implements LIRLowerable, Cano
 
     @Override
     public void generate(NodeLIRBuilderTool gen) {
-        Variable result = gen.newVariable(value.getKind());
-        gen.getLIRGeneratorTool().emitByteSwap(result, gen.operand(value));
+        Value result = gen.getLIRGeneratorTool().emitByteSwap(gen.operand(value));
         gen.setResult(this, result);
     }
 }

@@ -78,7 +78,7 @@ public class SPARCHotSpotNodeLIRBuilder extends SPARCNodeLIRBuilder implements H
 
         if (ValueUtil.isConstant(offset)) {
             assert !gen.getCodeCache().needsDataPatch(asConstant(offset));
-            Variable longAddress = newVariable(Kind.Long);
+            Variable longAddress = gen.newVariable(Kind.Long);
             gen.emitMove(longAddress, address);
             address = getGen().emitAdd(longAddress, asConstant(offset));
         } else {
@@ -89,7 +89,7 @@ public class SPARCHotSpotNodeLIRBuilder extends SPARCNodeLIRBuilder implements H
 
         append(new CompareAndSwapOp(address, cmpValue, newValue));
 
-        Variable result = newVariable(x.getKind());
+        Variable result = gen.newVariable(x.getKind());
         gen.emitMove(result, newValue);
         setResult(x, result);
     }

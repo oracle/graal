@@ -381,16 +381,6 @@ public abstract class LIRGenerator implements LIRGeneratorTool, PlatformKindTool
         return Kind.Object;
     }
 
-    public abstract void emitBitCount(Variable result, Value operand);
-
-    public abstract void emitBitScanForward(Variable result, Value operand);
-
-    public abstract void emitBitScanReverse(Variable result, Value operand);
-
-    public abstract void emitByteSwap(Variable result, Value operand);
-
-    public abstract void emitArrayEquals(Kind kind, Variable result, Value array1, Value array2, Value length);
-
     public AbstractBlock<?> getCurrentBlock() {
         return currentBlock;
     }
