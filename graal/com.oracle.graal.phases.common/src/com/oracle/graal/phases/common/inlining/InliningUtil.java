@@ -289,7 +289,6 @@ public class InliningUtil {
                 stateAtExceptionEdge = obj.stateAfter();
                 UnwindNode unwindDuplicate = (UnwindNode) duplicates.get(unwindNode);
                 obj.replaceAtUsages(unwindDuplicate.exception());
-                unwindDuplicate.clearInputs();
                 Node n = obj.next();
                 obj.setNext(null);
                 unwindDuplicate.replaceAndDelete(n);
@@ -332,7 +331,6 @@ public class InliningUtil {
                 ReturnNode returnNode = (ReturnNode) duplicates.get(returnNodes.get(0));
                 Node returnValue = returnNode.result();
                 invokeNode.replaceAtUsages(returnValue);
-                returnNode.clearInputs();
                 returnNode.replaceAndDelete(n);
             } else {
                 ArrayList<ReturnNode> returnDuplicates = new ArrayList<>(returnNodes.size());
@@ -454,7 +452,6 @@ public class InliningUtil {
                 }
                 returnValuePhi.addInput(returnNode.result());
             }
-            returnNode.clearInputs();
             returnNode.replaceAndDelete(endNode);
 
         }
