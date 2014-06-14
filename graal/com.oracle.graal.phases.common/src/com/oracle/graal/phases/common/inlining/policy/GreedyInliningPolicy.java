@@ -30,6 +30,7 @@ import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.spi.Replacements;
 import com.oracle.graal.phases.common.inlining.InliningUtil;
 import com.oracle.graal.phases.common.inlining.info.InlineInfo;
+import com.oracle.graal.phases.common.inlining.walker.MethodInvocation;
 
 import java.util.Map;
 import java.util.function.ToDoubleFunction;
@@ -54,8 +55,12 @@ public class GreedyInliningPolicy extends AbstractInliningPolicy {
     }
 
     @Override
-    public boolean isWorthInlining(ToDoubleFunction<FixedNode> probabilities, Replacements replacements, InlineInfo info, int inliningDepth, double probability, double relevance,
-                    boolean fullyProcessed) {
+    public boolean isWorthInlining(ToDoubleFunction<FixedNode> probabilities, Replacements replacements, MethodInvocation invocation, int inliningDepth, boolean fullyProcessed) {
+
+        final InlineInfo info = invocation.callee();
+        final double probability = invocation.probability();
+        final double relevance = invocation.relevance();
+
         if (InlineEverything.getValue()) {
             InliningUtil.logInlinedMethod(info, inliningDepth, fullyProcessed, "inline everything");
             return true;

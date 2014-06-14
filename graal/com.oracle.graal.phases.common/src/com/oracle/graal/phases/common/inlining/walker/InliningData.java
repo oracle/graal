@@ -419,7 +419,7 @@ public class InliningData {
         Assumptions callerAssumptions = parentInvocation.assumptions();
         metricInliningConsidered.increment();
 
-        if (inliningPolicy.isWorthInlining(probabilities, context.getReplacements(), calleeInfo, inliningDepth, calleeInvocation.probability(), calleeInvocation.relevance(), true)) {
+        if (inliningPolicy.isWorthInlining(probabilities, context.getReplacements(), calleeInvocation, inliningDepth, true)) {
             doInline(callerCallsiteHolder, calleeInvocation, callerAssumptions);
             return true;
         }
@@ -634,8 +634,7 @@ public class InliningData {
 
         final MethodInvocation currentInvocation = currentInvocation();
 
-        final boolean backtrack = (!currentInvocation.isRoot() && !inliningPolicy.isWorthInlining(probabilities, context.getReplacements(), currentInvocation.callee(), inliningDepth(),
-                        currentInvocation.probability(), currentInvocation.relevance(), false));
+        final boolean backtrack = (!currentInvocation.isRoot() && !inliningPolicy.isWorthInlining(probabilities, context.getReplacements(), currentInvocation, inliningDepth(), false));
         if (backtrack) {
             int remainingGraphs = currentInvocation.totalGraphs() - currentInvocation.processedGraphs();
             assert remainingGraphs > 0;
