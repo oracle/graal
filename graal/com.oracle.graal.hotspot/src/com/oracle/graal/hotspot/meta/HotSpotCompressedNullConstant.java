@@ -23,6 +23,7 @@
 package com.oracle.graal.hotspot.meta;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.hotspot.nodes.type.*;
 
 /**
  * The compressed representation of the {@link Constant#NULL_OBJECT null constant}.
@@ -34,7 +35,7 @@ public final class HotSpotCompressedNullConstant extends Constant implements Hot
     public static final Constant COMPRESSED_NULL = new HotSpotCompressedNullConstant();
 
     private HotSpotCompressedNullConstant() {
-        super(LIRKind.reference(Kind.Int));
+        super(LIRKind.reference(NarrowOopStamp.NarrowOop));
     }
 
     @Override

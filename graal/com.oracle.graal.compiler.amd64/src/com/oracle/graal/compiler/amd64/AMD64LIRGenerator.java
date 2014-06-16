@@ -235,7 +235,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
 
     @Override
     public void emitCompareBranch(PlatformKind cmpKind, Value left, Value right, Condition cond, boolean unorderedIsTrue, LabelRef trueLabel, LabelRef falseLabel, double trueLabelProbability) {
-        boolean mirrored = emitCompare((Kind) cmpKind, left, right);
+        boolean mirrored = emitCompare(cmpKind, left, right);
         Condition finalCondition = mirrored ? cond.mirror() : cond;
         if (cmpKind == Kind.Float || cmpKind == Kind.Double) {
             append(new FloatBranchOp(finalCondition, unorderedIsTrue, trueLabel, falseLabel, trueLabelProbability));
@@ -268,7 +268,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
 
     @Override
     public Variable emitConditionalMove(PlatformKind cmpKind, Value left, Value right, Condition cond, boolean unorderedIsTrue, Value trueValue, Value falseValue) {
-        boolean mirrored = emitCompare((Kind) cmpKind, left, right);
+        boolean mirrored = emitCompare(cmpKind, left, right);
         Condition finalCondition = mirrored ? cond.mirror() : cond;
 
         Variable result = newVariable(trueValue.getLIRKind());
@@ -297,8 +297,8 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         }
     }
 
-    protected void emitCompareOp(Kind cmpKind, Variable left, Value right) {
-        switch (cmpKind) {
+    protected void emitCompareOp(PlatformKind cmpKind, Variable left, Value right) {
+        switch ((Kind) cmpKind) {
             case Byte:
             case Boolean:
                 append(new CompareOp(BCMP, left, right));
@@ -413,7 +413,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
      * @param b the right operand of the comparison
      * @return true if the left and right operands were switched, false otherwise
      */
-    private boolean emitCompare(Kind cmpKind, Value a, Value b) {
+    private boolean emitCompare(PlatformKind cmpKind, Value a, Value b) {
         Variable left;
         Value right;
         boolean mirrored;

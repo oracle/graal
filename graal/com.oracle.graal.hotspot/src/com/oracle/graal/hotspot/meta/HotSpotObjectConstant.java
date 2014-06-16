@@ -23,6 +23,7 @@
 package com.oracle.graal.hotspot.meta;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.hotspot.nodes.type.*;
 
 /**
  * Represents a constant non-{@code null} object reference, within the compiler and across the
@@ -78,7 +79,7 @@ public final class HotSpotObjectConstant extends Constant implements HotSpotCons
     private final boolean compressed;
 
     private HotSpotObjectConstant(Object object, boolean compressed) {
-        super(LIRKind.reference(compressed ? Kind.Int : Kind.Object));
+        super(LIRKind.reference(compressed ? NarrowOopStamp.NarrowOop : Kind.Object));
         this.object = object;
         this.compressed = compressed;
         assert object != null;

@@ -72,7 +72,7 @@ public class NarrowOopStamp extends AbstractObjectStamp {
 
     @Override
     public LIRKind getLIRKind(LIRKindTool tool) {
-        return LIRKind.reference(Kind.Int);
+        return LIRKind.reference(NarrowOop);
     }
 
     @Override
