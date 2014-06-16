@@ -67,8 +67,6 @@ public abstract class FrameMap {
      */
     protected int outgoingSize;
 
-    protected int freeSpill4 = -1;
-
     /**
      * Determines if this frame has values on the stack for outgoing calls.
      */
@@ -297,19 +295,8 @@ public abstract class FrameMap {
             }
         }
         int size = spillSlotSize(kind);
-        if (size == 4 && freeSpill4 != -1) {
-            int offset = spillSize - freeSpill4 - size;
-            freeSpill4 = -1;
-            return allocateNewSpillSlot(kind, offset);
-        } else {
-            int origSpillSize = spillSize;
-            spillSize = NumUtil.roundUp(spillSize + size, size);
-            int waste = (spillSize - origSpillSize) - size;
-            if (waste == 4 && freeSpill4 == -1) {
-                freeSpill4 = origSpillSize;
-            }
-            return allocateNewSpillSlot(kind, 0);
-        }
+        spillSize = NumUtil.roundUp(spillSize + size, size);
+        return allocateNewSpillSlot(kind, 0);
     }
 
     private Set<StackSlot> freedSlots;
