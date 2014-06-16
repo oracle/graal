@@ -34,25 +34,36 @@ public class HotSpotReferenceMap implements ReferenceMap, Serializable {
 
     private static final long serialVersionUID = -1052183095979496819L;
 
+    private static final int BITS_PER_WORD = 3;
+
     /**
-     * Contains 3 bits per 64 bit register, and n*3 bits per n*64 bit vector register.
-     * <ul>
-     * <li>bit0 = 0: contains no references</li>
-     * <li>bit0 = 1, bit1+2 = 0: contains a wide oop</li>
-     * <li>bit0 = 1, bit1 = 1: contains a narrow oop in the lower 32 bit</li>
-     * <li>bit0 = 1, bit2 = 1: contains a narrow oop in the upper 32 bit</li>
-     * </ul>
+     * Contains 3 bits per scalar register, and n*3 bits per n-word vector register (e.g., on a
+     * 64-bit system, a 256-bit vector register requires 12 reference map bits).
+     * <p>
+     * These bits can have the following values (LSB first):
+     *
+     * <pre>
+     * 000 - contains no references
+     * 100 - contains a wide oop
+     * 110 - contains a narrow oop in the lower half
+     * 101 - contains a narrow oop in the upper half
+     * 111 - contains two narrow oops
+     * </pre>
      */
     private final BitSet registerRefMap;
 
     /**
-     * Contains 3 bits per stack slot.
-     * <ul>
-     * <li>bit0 = 0: contains no references</li>
-     * <li>bit0 = 1, bit1+2 = 0: contains a wide oop</li>
-     * <li>bit0 = 1, bit1 = 1: contains a narrow oop in the lower half</li>
-     * <li>bit0 = 1, bit2 = 1: contains a narrow oop in the upper half</li>
-     * </ul>
+     * Contains 3 bits per stack word.
+     * <p>
+     * These bits can have the following values (LSB first):
+     *
+     * <pre>
+     * 000 - contains no references
+     * 100 - contains a wide oop
+     * 110 - contains a narrow oop in the lower half
+     * 101 - contains a narrow oop in the upper half
+     * 111 - contains two narrow oops
+     * </pre>
      */
     private final BitSet frameRefMap;
 
@@ -60,18 +71,18 @@ public class HotSpotReferenceMap implements ReferenceMap, Serializable {
 
     public HotSpotReferenceMap(int registerCount, int frameSlotCount, TargetDescription target) {
         if (registerCount > 0) {
-            this.registerRefMap = new BitSet(registerCount * 3);
+            this.registerRefMap = new BitSet(registerCount * BITS_PER_WORD);
         } else {
             this.registerRefMap = null;
         }
-        this.frameRefMap = new BitSet(frameSlotCount * 3);
+        this.frameRefMap = new BitSet(frameSlotCount * BITS_PER_WORD);
         this.target = target;
     }
 
     private static void setOop(BitSet map, int startIdx, LIRKind kind) {
         int length = kind.getPlatformKind().getVectorLength();
-        map.clear(3 * startIdx, 3 * (startIdx + length) - 1);
-        for (int i = 0, idx = 3 * startIdx; i < length; i++, idx += 3) {
+        map.clear(BITS_PER_WORD * startIdx, BITS_PER_WORD * (startIdx + length) - 1);
+        for (int i = 0, idx = BITS_PER_WORD * startIdx; i < length; i++, idx += BITS_PER_WORD) {
             if (kind.isReference(i)) {
                 map.set(idx);
             }
@@ -81,8 +92,8 @@ public class HotSpotReferenceMap implements ReferenceMap, Serializable {
     private static void setNarrowOop(BitSet map, int idx, LIRKind kind) {
         int length = kind.getPlatformKind().getVectorLength();
         int nextIdx = idx + (length + 1) / 2;
-        map.clear(3 * idx, 3 * nextIdx - 1);
-        for (int i = 0, regIdx = 3 * idx; i < length; i += 2, regIdx += 3) {
+        map.clear(BITS_PER_WORD * idx, BITS_PER_WORD * nextIdx - 1);
+        for (int i = 0, regIdx = BITS_PER_WORD * idx; i < length; i += 2, regIdx += BITS_PER_WORD) {
             if (kind.isReference(i)) {
                 map.set(regIdx);
                 map.set(regIdx + 1);
@@ -130,11 +141,11 @@ public class HotSpotReferenceMap implements ReferenceMap, Serializable {
                 // so setNarrowOop won't work correctly
                 int idx = offset / target.wordSize;
                 if (kind.isReference(0)) {
-                    frameRefMap.set(3 * idx);
+                    frameRefMap.set(BITS_PER_WORD * idx);
                     if (offset % target.wordSize == 0) {
-                        frameRefMap.set(3 * idx + 1);
+                        frameRefMap.set(BITS_PER_WORD * idx + 1);
                     } else {
-                        frameRefMap.set(3 * idx + 2);
+                        frameRefMap.set(BITS_PER_WORD * idx + 2);
                     }
                 }
             }
@@ -152,14 +163,14 @@ public class HotSpotReferenceMap implements ReferenceMap, Serializable {
     }
 
     public void appendRegisterMap(StringBuilder sb, RefMapFormatter formatter) {
-        for (int reg = registerRefMap.nextSetBit(0); reg >= 0; reg = registerRefMap.nextSetBit(reg + 2)) {
-            sb.append(' ').append(formatter.formatRegister(reg / 2));
+        for (int reg = registerRefMap.nextSetBit(0); reg >= 0; reg = registerRefMap.nextSetBit(reg + BITS_PER_WORD)) {
+            sb.append(' ').append(formatter.formatRegister(reg / BITS_PER_WORD));
         }
     }
 
     public void appendFrameMap(StringBuilder sb, RefMapFormatter formatter) {
-        for (int slot = frameRefMap.nextSetBit(0); slot >= 0; slot = frameRefMap.nextSetBit(slot + 3)) {
-            sb.append(' ').append(formatter.formatStackSlot(slot / 3));
+        for (int slot = frameRefMap.nextSetBit(0); slot >= 0; slot = frameRefMap.nextSetBit(slot + BITS_PER_WORD)) {
+            sb.append(' ').append(formatter.formatStackSlot(slot / BITS_PER_WORD));
         }
     }
 }
