@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,6 +33,7 @@ import com.oracle.graal.api.code.CallingConvention.Type;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.hotspot.*;
+import com.oracle.graal.hotspot.nodes.type.*;
 
 public class AMD64HotSpotRegisterConfig implements RegisterConfig {
 
@@ -69,9 +70,16 @@ public class AMD64HotSpotRegisterConfig implements RegisterConfig {
             return categorized.get(kind);
         }
 
+        PlatformKind primitiveKind;
+        if (kind == NarrowOopStamp.NarrowOop) {
+            primitiveKind = Kind.Int;
+        } else {
+            primitiveKind = kind;
+        }
+
         ArrayList<Register> list = new ArrayList<>();
         for (Register reg : getAllocatableRegisters()) {
-            if (architecture.canStoreValue(reg.getRegisterCategory(), kind)) {
+            if (architecture.canStoreValue(reg.getRegisterCategory(), primitiveKind)) {
                 list.add(reg);
             }
         }
