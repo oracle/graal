@@ -614,7 +614,22 @@ public final class LinearScan {
                                 assert isRegister(fromLocation) : "from operand must be a register but is: " + fromLocation + " toLocation=" + toLocation + " spillState=" + interval.spillState();
                                 assert isStackSlot(toLocation) : "to operand must be a stack slot";
 
-                                insertionBuffer.append(j + 1, ir.getSpillMoveFactory().createMove(toLocation, fromLocation));
+                                if (interval.spillState() == SpillState.SpillInDominator) {
+                                    /*
+                                     * SpillInDominator spill positions are always at the beginning
+                                     * of a basic block. We need to skip the moves inserted by data
+                                     * flow resolution to ensure data integrity.
+                                     */
+                                    assert isBlockBegin(opId) && j == 0 : "SpillInDominator spill position must be at the beginning of a block!";
+                                    int pos = 1;
+                                    while (instructions.get(pos).id() == -1) {
+                                        pos++;
+                                    }
+                                    assert pos < instructions.size() : String.format("Cannot move spill move out of the current block! (pos: %d, #inst: %d, block: %s", pos, instructions.size(), block);
+                                    insertionBuffer.append(pos, ir.getSpillMoveFactory().createMove(toLocation, fromLocation));
+                                } else {
+                                    insertionBuffer.append(j + 1, ir.getSpillMoveFactory().createMove(toLocation, fromLocation));
+                                }
 
                                 Debug.log("inserting move after definition of interval %d to stack slot %s at opId %d", interval.operandNumber, interval.spillSlot(), opId);
                             }
