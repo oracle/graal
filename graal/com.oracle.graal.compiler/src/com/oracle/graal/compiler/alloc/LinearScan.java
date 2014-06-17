@@ -965,7 +965,7 @@ public final class LinearScan {
         }
 
         Interval interval = getOrCreateInterval(operand);
-        if (kind != LIRKind.Illegal) {
+        if (!kind.equals(LIRKind.Illegal)) {
             interval.setKind(kind);
         }
 
@@ -983,7 +983,7 @@ public final class LinearScan {
         }
 
         Interval interval = getOrCreateInterval(operand);
-        if (kind != LIRKind.Illegal) {
+        if (!kind.equals(LIRKind.Illegal)) {
             interval.setKind(kind);
         }
 
@@ -1005,7 +1005,7 @@ public final class LinearScan {
         int defPos = op.id();
 
         Interval interval = getOrCreateInterval(operand);
-        if (kind != LIRKind.Illegal) {
+        if (!kind.equals(LIRKind.Illegal)) {
             interval.setKind(kind);
         }
 
@@ -1918,7 +1918,7 @@ public final class LinearScan {
                     throw new GraalInternalError("");
                 }
 
-                if (isVariable(i1.operand) && i1.kind() == LIRKind.Illegal) {
+                if (isVariable(i1.operand) && i1.kind().equals(LIRKind.Illegal)) {
                     Debug.log("Interval %d has no type assigned", i1.operandNumber);
                     Debug.log(i1.logString(this));
                     throw new GraalInternalError("");

@@ -148,7 +148,7 @@ public class HSAILHotSpotLIRGenerator extends HSAILLIRGenerator implements HotSp
 
     public Value emitCompareAndSwap(Value address, Value expectedValue, Value newValue, Value trueValue, Value falseValue) {
         LIRKind kind = newValue.getLIRKind();
-        assert kind == expectedValue.getLIRKind();
+        assert kind.equals(expectedValue.getLIRKind());
         Kind memKind = (Kind) kind.getPlatformKind();
 
         HSAILAddressValue addressValue = asAddressValue(address);

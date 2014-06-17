@@ -209,7 +209,7 @@ final class MoveResolver {
     }
 
     private void insertMove(Value fromOpr, Interval toInterval) {
-        assert fromOpr.getLIRKind() == toInterval.kind() : "move between different types";
+        assert fromOpr.getLIRKind().equals(toInterval.kind()) : "move between different types";
         assert insertIdx != -1 : "must setup insert position first";
 
         AllocatableValue toOpr = toInterval.operand;
@@ -339,7 +339,7 @@ final class MoveResolver {
         Debug.log("add move mapping from %s to %s", fromInterval, toInterval);
 
         assert !fromInterval.operand.equals(toInterval.operand) : "from and to interval equal: " + fromInterval;
-        assert fromInterval.kind() == toInterval.kind();
+        assert fromInterval.kind().equals(toInterval.kind());
         mappingFrom.add(fromInterval);
         mappingFromOpr.add(Value.ILLEGAL);
         mappingTo.add(toInterval);

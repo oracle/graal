@@ -533,7 +533,7 @@ public final class Interval {
     void assignLocation(AllocatableValue newLocation) {
         if (isRegister(newLocation)) {
             assert this.location == null : "cannot re-assign location for " + this;
-            if (newLocation.getLIRKind() == LIRKind.Illegal && kind != LIRKind.Illegal) {
+            if (newLocation.getLIRKind().equals(LIRKind.Illegal) && !kind.equals(LIRKind.Illegal)) {
                 this.location = asRegister(newLocation).asValue(kind);
                 return;
             }
@@ -542,7 +542,7 @@ public final class Interval {
         } else {
             assert this.location == null || isRegister(this.location) : "cannot re-assign location for " + this;
             assert isStackSlot(newLocation);
-            assert newLocation.getLIRKind() != LIRKind.Illegal;
+            assert !newLocation.getLIRKind().equals(LIRKind.Illegal);
             assert newLocation.getLIRKind().equals(this.kind);
         }
         this.location = newLocation;
@@ -562,7 +562,7 @@ public final class Interval {
     }
 
     void setKind(LIRKind kind) {
-        assert isRegister(operand) || this.kind() == LIRKind.Illegal || this.kind() == kind : "overwriting existing type";
+        assert isRegister(operand) || this.kind().equals(LIRKind.Illegal) || this.kind().equals(kind) : "overwriting existing type";
         this.kind = kind;
     }
 
@@ -774,7 +774,7 @@ public final class Interval {
                 Interval i1 = splitChildren.get(i);
 
                 assert i1.splitParent() == this : "not a split child of this interval";
-                assert i1.kind() == kind() : "must be equal for all split children";
+                assert i1.kind().equals(kind()) : "must be equal for all split children";
                 assert (i1.spillSlot() == null && spillSlot == null) || i1.spillSlot().equals(spillSlot()) : "must be equal for all split children";
 
                 for (int j = i + 1; j < splitChildren.size(); j++) {
