@@ -29,7 +29,7 @@ package com.oracle.truffle.api.source;
  * instance of {@link Source}, suitable for hash table keys with equality defined in terms of
  * content.
  */
-public interface LineLocation extends Comparable<Object> {
+public interface LineLocation {
 
     public Source getSource();
 

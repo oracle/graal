@@ -28,175 +28,175 @@ import org.junit.*;
 
 import com.oracle.truffle.api.source.*;
 
-public class TextMapTest {
+public class SourceTextTest {
 
-    final TextMap emptyTextMap = new TextMap("");
+    private final Source emptySource = Source.fromText("", null);
 
-    final TextMap emptyLineMap = new TextMap("\n");
+    private final Source emptyLineSource = Source.fromText("\n", null);
 
-    private final TextMap shortMap = new TextMap("01");
+    private final Source shortSource = Source.fromText("01", null);
 
-    private final TextMap longMap = new TextMap("01234\n67\n9\n");
+    private final Source longSource = Source.fromText("01234\n67\n9\n", null);
 
     @Test
     public void emptyTextTest0() {
-        assertEquals(emptyTextMap.lineCount(), 0);
+        assertEquals(emptySource.getLineCount(), 0);
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void emptyTextTest1() {
-        emptyTextMap.offsetToLine(0);
+        emptySource.getLineNumber(0);
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void emptyTextTest2() {
-        emptyTextMap.offsetToCol(0);
+        emptySource.getColumnNumber(0);
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void emptyTextTest3() {
-        emptyTextMap.lineStartOffset(-1);
+        emptySource.getLineNumber(-1);
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void emptyTextTest4() {
-        emptyTextMap.lineStartOffset(0);
+        emptySource.getLineStartOffset(0);
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void emptyTextTest5() {
-        emptyTextMap.lineStartOffset(1);
+        emptySource.getLineStartOffset(1);
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void emptyTextTest6() {
-        emptyTextMap.lineLength(1);
+        emptySource.getLineLength(1);
     }
 
     @Test
     public void emptyLineTest0() {
-        assertEquals(emptyLineMap.lineCount(), 1);
-        assertEquals(emptyLineMap.offsetToLine(0), 1);
-        assertEquals(emptyLineMap.lineStartOffset(1), 0);
-        assertEquals(emptyLineMap.offsetToCol(0), 1);
-        assertEquals(emptyLineMap.lineLength(1), 0);
+        assertEquals(emptyLineSource.getLineCount(), 1);
+        assertEquals(emptyLineSource.getLineNumber(0), 1);
+        assertEquals(emptyLineSource.getLineStartOffset(1), 0);
+        assertEquals(emptyLineSource.getColumnNumber(0), 1);
+        assertEquals(emptyLineSource.getLineLength(1), 0);
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void emptyLineTest1() {
-        emptyLineMap.offsetToLine(1);
+        emptyLineSource.getLineNumber(1);
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void emptyLineTest2() {
-        emptyLineMap.lineStartOffset(2);
+        emptyLineSource.getLineStartOffset(2);
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void emptyLineTest3() {
-        emptyLineMap.offsetToCol(1);
+        emptyLineSource.getColumnNumber(1);
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void emptyLineTest4() {
-        emptyLineMap.lineLength(2);
+        emptyLineSource.getLineLength(2);
     }
 
     @Test
     public void shortTextTest0() {
 
-        assertEquals(shortMap.lineCount(), 1);
+        assertEquals(shortSource.getLineCount(), 1);
 
-        assertEquals(shortMap.offsetToLine(0), 1);
-        assertEquals(shortMap.lineStartOffset(1), 0);
-        assertEquals(shortMap.offsetToCol(0), 1);
+        assertEquals(shortSource.getLineNumber(0), 1);
+        assertEquals(shortSource.getLineStartOffset(1), 0);
+        assertEquals(shortSource.getColumnNumber(0), 1);
 
-        assertEquals(shortMap.offsetToLine(1), 1);
-        assertEquals(shortMap.offsetToCol(1), 2);
+        assertEquals(shortSource.getLineNumber(1), 1);
+        assertEquals(shortSource.getColumnNumber(1), 2);
 
-        assertEquals(shortMap.lineLength(1), 2);
+        assertEquals(shortSource.getLineLength(1), 2);
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void shortTextTest1() {
-        shortMap.offsetToLine(-1);
+        shortSource.getLineNumber(-1);
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void shortTextTest2() {
-        shortMap.offsetToCol(-1);
+        shortSource.getColumnNumber(-1);
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void shortTextTest3() {
-        shortMap.offsetToLine(2);
+        shortSource.getLineNumber(2);
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void shortTextTest4() {
-        shortMap.offsetToCol(2);
+        shortSource.getColumnNumber(2);
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void shortTextTest5() {
-        shortMap.lineStartOffset(2);
+        shortSource.getLineLength(2);
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void shortTextTest6() {
-        shortMap.lineLength(2);
+        shortSource.getLineLength(2);
     }
 
     @Test
     public void longTextTest0() {
 
-        assertEquals(longMap.lineCount(), 3);
+        assertEquals(longSource.getLineCount(), 3);
 
-        assertEquals(longMap.offsetToLine(0), 1);
-        assertEquals(longMap.lineStartOffset(1), 0);
-        assertEquals(longMap.offsetToCol(0), 1);
+        assertEquals(longSource.getLineNumber(0), 1);
+        assertEquals(longSource.getLineStartOffset(1), 0);
+        assertEquals(longSource.getColumnNumber(0), 1);
 
-        assertEquals(longMap.offsetToLine(4), 1);
-        assertEquals(longMap.offsetToCol(4), 5);
+        assertEquals(longSource.getLineNumber(4), 1);
+        assertEquals(longSource.getColumnNumber(4), 5);
 
-        assertEquals(longMap.offsetToLine(5), 1); // newline
-        assertEquals(longMap.offsetToCol(5), 6); // newline
-        assertEquals(longMap.lineLength(1), 5);
+        assertEquals(longSource.getLineNumber(5), 1); // newline
+        assertEquals(longSource.getColumnNumber(5), 6); // newline
+        assertEquals(longSource.getLineLength(1), 5);
 
-        assertEquals(longMap.offsetToLine(6), 2);
-        assertEquals(longMap.lineStartOffset(2), 6);
-        assertEquals(longMap.offsetToCol(6), 1);
+        assertEquals(longSource.getLineNumber(6), 2);
+        assertEquals(longSource.getLineStartOffset(2), 6);
+        assertEquals(longSource.getColumnNumber(6), 1);
 
-        assertEquals(longMap.offsetToLine(7), 2);
-        assertEquals(longMap.offsetToCol(7), 2);
+        assertEquals(longSource.getLineNumber(7), 2);
+        assertEquals(longSource.getColumnNumber(7), 2);
 
-        assertEquals(longMap.offsetToLine(8), 2); // newline
-        assertEquals(longMap.offsetToLine(8), 2); // newline
-        assertEquals(longMap.lineLength(2), 2);
+        assertEquals(longSource.getLineNumber(8), 2); // newline
+        assertEquals(longSource.getLineNumber(8), 2); // newline
+        assertEquals(longSource.getLineLength(2), 2);
 
-        assertEquals(longMap.offsetToLine(9), 3);
-        assertEquals(longMap.lineStartOffset(3), 9);
-        assertEquals(longMap.offsetToCol(9), 1);
+        assertEquals(longSource.getLineNumber(9), 3);
+        assertEquals(longSource.getLineStartOffset(3), 9);
+        assertEquals(longSource.getColumnNumber(9), 1);
 
-        assertEquals(longMap.offsetToLine(10), 3); // newline
-        assertEquals(longMap.offsetToCol(10), 2); // newline
-        assertEquals(longMap.lineLength(3), 1);
+        assertEquals(longSource.getLineNumber(10), 3); // newline
+        assertEquals(longSource.getColumnNumber(10), 2); // newline
+        assertEquals(longSource.getLineLength(3), 1);
 
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void longTextTest1() {
-        longMap.offsetToLine(11);
+        longSource.getLineNumber(11);
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void longTextTest2() {
-        longMap.offsetToCol(11);
+        longSource.getColumnNumber(11);
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void longTextTest3() {
-        longMap.lineStartOffset(4);
+        longSource.getLineStartOffset(4);
     }
 
 }
