@@ -26,6 +26,7 @@ import static com.oracle.graal.api.meta.LocationIdentity.*;
 import static com.oracle.graal.nodes.ConstantNode.*;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.hotspot.HotSpotVMConfig.*;
 import com.oracle.graal.hotspot.meta.*;
@@ -61,13 +62,35 @@ public class LoadJavaMirrorWithKlassPhase extends BasePhase<PhaseContext> {
         if (constant instanceof HotSpotObjectConstant && HotSpotObjectConstant.asObject(constant) instanceof Class<?>) {
             MetaAccessProvider metaAccess = context.getMetaAccess();
             ResolvedJavaType type = metaAccess.lookupJavaType((Class<?>) HotSpotObjectConstant.asObject(constant));
-            assert type instanceof HotSpotResolvedObjectType;
-
-            Constant klass = ((HotSpotResolvedObjectType) type).klass();
+            Constant klass;
+            LocationNode location;
+            if (type instanceof HotSpotResolvedObjectType) {
+                location = ConstantLocationNode.create(FINAL_LOCATION, Kind.Object, classMirrorOffset, graph);
+                klass = ((HotSpotResolvedObjectType) type).klass();
+            } else {
+                /*
+                 * Primitive classes are more difficult since they don't have a corresponding Klass*
+                 * so get them from Class.TYPE for the java box type.
+                 */
+                HotSpotResolvedPrimitiveType primitive = (HotSpotResolvedPrimitiveType) type;
+                ResolvedJavaType boxingClass = metaAccess.lookupJavaType(primitive.getKind().toBoxedJavaClass());
+                klass = ((HotSpotResolvedObjectType) boxingClass).klass();
+                HotSpotResolvedJavaField[] a = (HotSpotResolvedJavaField[]) boxingClass.getStaticFields();
+                HotSpotResolvedJavaField typeField = null;
+                for (HotSpotResolvedJavaField f : a) {
+                    if (f.getName().equals("TYPE")) {
+                        typeField = f;
+                        break;
+                    }
+                }
+                if (typeField == null) {
+                    throw new GraalInternalError("Can't find TYPE field in class");
+                }
+                location = ConstantLocationNode.create(FINAL_LOCATION, Kind.Object, typeField.offset(), graph);
+            }
             ConstantNode klassNode = ConstantNode.forConstant(klass, metaAccess, graph);
 
             Stamp stamp = StampFactory.exactNonNull(metaAccess.lookupJavaType(Class.class));
-            LocationNode location = ConstantLocationNode.create(FINAL_LOCATION, Kind.Object, classMirrorOffset, graph);
             FloatingReadNode freadNode = graph.unique(new FloatingReadNode(klassNode, location, null, stamp));
 
             if (HotSpotObjectConstant.isCompressed(constant)) {
