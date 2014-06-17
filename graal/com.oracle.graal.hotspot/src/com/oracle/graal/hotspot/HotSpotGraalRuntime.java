@@ -169,7 +169,7 @@ public final class HotSpotGraalRuntime implements GraalRuntime, RuntimeProvider,
         @Option(help = "The runtime configuration to use")
         static final OptionValue<String> GraalRuntime = new OptionValue<>("");
 
-        @Option(help = "File to which logging is sent")
+        @Option(help = "File to which logging is sent.  %p in the name will be replaced with a string the process, usually the process id.")
         public static final PrintStreamOption LogFile = new PrintStreamOption();
         // @formatter:on
     }
