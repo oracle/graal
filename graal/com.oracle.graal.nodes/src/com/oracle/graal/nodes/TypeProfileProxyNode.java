@@ -47,6 +47,9 @@ public final class TypeProfileProxyNode extends FloatingNode implements Canonica
     }
 
     public static ValueNode create(ValueNode object, JavaTypeProfile profile) {
+        if (StampTool.isExactType(object)) {
+            return object;
+        }
         if (profile == null) {
             // No profile, so create no node.
             return object;
