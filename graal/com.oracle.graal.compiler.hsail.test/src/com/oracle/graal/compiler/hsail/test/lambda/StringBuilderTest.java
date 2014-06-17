@@ -45,6 +45,11 @@ public class StringBuilderTest extends GraalKernelTester {
         });
     }
 
+    @Override
+    protected boolean supportsRequiredCapabilities() {
+        return (canHandleObjectAllocation());
+    }
+
     @Test
     public void testUsingLambdaMethod() {
         testGeneratedHsailUsingLambdaMethod();
