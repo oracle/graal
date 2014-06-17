@@ -250,7 +250,7 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
     /**
      * Generates a GPU binary from HSAIL code.
      */
-    private static native long generateKernel(byte[] hsailCode, String name);
+    static native long generateKernel(byte[] hsailCode, String name);
 
     /**
      * Installs the {@linkplain ExternalCompilationResult#getEntryPoint() GPU binary} associated

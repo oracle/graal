@@ -32,4 +32,12 @@ public interface CompileAndDispatch {
     Object createKernel(Class<?> consumerClass);
 
     boolean dispatchKernel(Object kernel, int jobSize, Object[] args);
+
+    Object createKernelFromHsailString(String code, String methodName);
+
+    String getIntegerReduceIntrinsic(String reducerName);
+
+    Integer offloadIntReduceImpl(Object kernel, int identity, int[] streamSource);
+
+    String getIntReduceTargetName(Class<?> opClass);
 }
