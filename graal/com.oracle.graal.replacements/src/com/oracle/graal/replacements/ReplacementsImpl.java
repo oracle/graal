@@ -483,7 +483,10 @@ public class ReplacementsImpl implements Replacements {
             if (!SnippetTemplate.hasConstantParameter(method)) {
                 NodeIntrinsificationVerificationPhase.verify(graph);
             }
+            int sideEffectCount = 0;
+            assert (sideEffectCount = graph.getNodes().filter(e -> e instanceof StateSplit && ((StateSplit) e).hasSideEffect()).count()) >= 0;
             new ConvertDeoptimizeToGuardPhase().apply(graph);
+            assert sideEffectCount == graph.getNodes().filter(e -> e instanceof StateSplit && ((StateSplit) e).hasSideEffect()).count() : "deleted side effecting node";
 
             switch (frameStateProcessing) {
                 case Removal:
