@@ -2082,7 +2082,7 @@ public final class LinearScan {
             int nextBlockIndex = block.getLinearScanNumber() + 1;
             if (nextBlockIndex < sortedBlocks.size()) {
                 block = sortedBlocks.get(nextBlockIndex);
-                if (range.to < getFirstLirInstructionId(block)) {
+                if (range.to <= getFirstLirInstructionId(block)) {
                     range = range.next;
                     if (range == Range.EndMarker) {
                         block = null;
