@@ -33,7 +33,6 @@ import com.oracle.graal.compiler.hsail.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.HotSpotVMConfig.CompressEncoding;
 import com.oracle.graal.hotspot.meta.*;
-import com.oracle.graal.hotspot.nodes.type.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.SaveRegistersOp;
 import com.oracle.graal.lir.gen.*;
@@ -46,7 +45,6 @@ import com.oracle.graal.lir.hsail.HSAILControlFlow.ForeignCallNoArgOp;
 import com.oracle.graal.lir.hsail.HSAILMove.CompareAndSwapOp;
 import com.oracle.graal.lir.hsail.HSAILMove.LoadAcquireOp;
 import com.oracle.graal.lir.hsail.HSAILMove.LoadOp;
-import com.oracle.graal.lir.hsail.HSAILMove.MoveFromRegOp;
 import com.oracle.graal.lir.hsail.HSAILMove.MoveToRegOp;
 import com.oracle.graal.lir.hsail.HSAILMove.StoreConstantOp;
 import com.oracle.graal.lir.hsail.HSAILMove.StoreOp;
@@ -109,26 +107,18 @@ public class HSAILHotSpotLIRGenerator extends HSAILLIRGenerator implements HotSp
         }
     }
 
-    private static Kind getMemoryKind(LIRKind kind) {
-        if (kind.getPlatformKind() == NarrowOopStamp.NarrowOop) {
-            return Kind.Int;
-        } else {
-            return (Kind) kind.getPlatformKind();
-        }
-    }
-
     @Override
     public Variable emitLoad(LIRKind kind, Value address, LIRFrameState state) {
         HSAILAddressValue loadAddress = asAddressValue(address);
         Variable result = newVariable(kind);
-        append(new LoadOp(getMemoryKind(kind), result, loadAddress, state));
+        append(new LoadOp((Kind) kind.getPlatformKind(), result, loadAddress, state));
         return result;
     }
 
     public Variable emitLoadAcquire(LIRKind kind, Value address, LIRFrameState state) {
         HSAILAddressValue loadAddress = asAddressValue(address);
         Variable result = newVariable(kind);
-        append(new LoadAcquireOp(getMemoryKind(kind), result, loadAddress, state));
+        append(new LoadAcquireOp((Kind) kind.getPlatformKind(), result, loadAddress, state));
         return result;
     }
 
@@ -141,25 +131,25 @@ public class HSAILHotSpotLIRGenerator extends HSAILLIRGenerator implements HotSp
                 c = Constant.INT_0;
             }
             if (canStoreConstant(c)) {
-                append(new StoreConstantOp(getMemoryKind(kind), storeAddress, c, state));
+                append(new StoreConstantOp((Kind) kind.getPlatformKind(), storeAddress, c, state));
                 return;
             }
         }
         Variable input = load(inputVal);
-        append(new StoreOp(getMemoryKind(kind), storeAddress, input, state));
+        append(new StoreOp((Kind) kind.getPlatformKind(), storeAddress, input, state));
     }
 
     public void emitStoreRelease(LIRKind kind, Value address, Value inputVal, LIRFrameState state) {
         HSAILAddressValue storeAddress = asAddressValue(address);
         // TODO: handle Constants here
         Variable input = load(inputVal);
-        append(new StoreReleaseOp(getMemoryKind(kind), storeAddress, input, state));
+        append(new StoreReleaseOp((Kind) kind.getPlatformKind(), storeAddress, input, state));
     }
 
     public Value emitCompareAndSwap(Value address, Value expectedValue, Value newValue, Value trueValue, Value falseValue) {
         LIRKind kind = newValue.getLIRKind();
         assert kind == expectedValue.getLIRKind();
-        Kind memKind = getMemoryKind(kind);
+        Kind memKind = (Kind) kind.getPlatformKind();
 
         HSAILAddressValue addressValue = asAddressValue(address);
         Variable expected = emitMove(expectedValue);
@@ -175,7 +165,7 @@ public class HSAILHotSpotLIRGenerator extends HSAILLIRGenerator implements HotSp
     @Override
     public Value emitAtomicReadAndAdd(Value address, Value delta) {
         LIRKind kind = delta.getLIRKind();
-        Kind memKind = getMemoryKind(kind);
+        Kind memKind = (Kind) kind.getPlatformKind();
         Variable result = newVariable(kind);
         HSAILAddressValue addressValue = asAddressValue(address);
         append(new HSAILMove.AtomicReadAndAddOp(memKind, result, addressValue, asAllocatable(delta)));
@@ -185,7 +175,7 @@ public class HSAILHotSpotLIRGenerator extends HSAILLIRGenerator implements HotSp
     @Override
     public Value emitAtomicReadAndWrite(Value address, Value newValue) {
         LIRKind kind = newValue.getLIRKind();
-        Kind memKind = getMemoryKind(kind);
+        Kind memKind = (Kind) kind.getPlatformKind();
         Variable result = newVariable(kind);
         HSAILAddressValue addressValue = asAddressValue(address);
         append(new HSAILMove.AtomicReadAndWriteOp(memKind, result, addressValue, asAllocatable(newValue)));
@@ -251,12 +241,6 @@ public class HSAILHotSpotLIRGenerator extends HSAILLIRGenerator implements HotSp
             append(new MoveToRegOp(Kind.Object, uncompressed, src));
             CompressEncoding oopEncoding = config.getOopEncoding();
             return new HSAILMove.CompressPointer(dst, newVariable(LIRKind.reference(Kind.Object)), uncompressed, oopEncoding.base, oopEncoding.shift, oopEncoding.alignment, true);
-        } else if (dst.getPlatformKind() == NarrowOopStamp.NarrowOop) {
-            if (isRegister(src) || isStackSlot(dst)) {
-                return new MoveFromRegOp(Kind.Int, dst, src);
-            } else {
-                return new MoveToRegOp(Kind.Int, dst, src);
-            }
         } else {
             return super.createMove(dst, src);
         }
@@ -297,7 +281,7 @@ public class HSAILHotSpotLIRGenerator extends HSAILLIRGenerator implements HotSp
 
     @Override
     public Value emitCompress(Value pointer, CompressEncoding encoding, boolean nonNull) {
-        Variable result = newVariable(LIRKind.reference(NarrowOopStamp.NarrowOop));
+        Variable result = newVariable(LIRKind.reference(Kind.Int));
         append(new HSAILMove.CompressPointer(result, newVariable(pointer.getLIRKind()), asAllocatable(pointer), encoding.base, encoding.shift, encoding.alignment, nonNull));
         return result;
     }

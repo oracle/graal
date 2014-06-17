@@ -28,7 +28,6 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.nodes.type.*;
 
 /**
  * A data item that represents an oop value.
@@ -48,7 +47,7 @@ public class OopData extends PatchedData {
     @Override
     public int getSize(TargetDescription target) {
         if (compressed) {
-            return target.getSizeInBytes(NarrowOopStamp.NarrowOop);
+            return target.getSizeInBytes(Kind.Int);
         } else {
             return target.getSizeInBytes(Kind.Object);
         }

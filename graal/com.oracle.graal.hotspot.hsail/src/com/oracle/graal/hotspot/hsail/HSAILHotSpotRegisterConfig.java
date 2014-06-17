@@ -29,7 +29,6 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.CallingConvention.Type;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
-import com.oracle.graal.hotspot.nodes.type.*;
 import com.oracle.graal.hsail.*;
 
 /**
@@ -145,14 +144,7 @@ public class HSAILHotSpotRegisterConfig implements RegisterConfig {
 
     @Override
     public Register[] getAllocatableRegisters(PlatformKind kind) {
-        Kind primitiveKind;
-        if (kind == NarrowOopStamp.NarrowOop) {
-            primitiveKind = Kind.Int;
-        } else {
-            primitiveKind = (Kind) kind;
-        }
-
-        switch (primitiveKind) {
+        switch ((Kind) kind) {
             case Int:
             case Short:
             case Byte:

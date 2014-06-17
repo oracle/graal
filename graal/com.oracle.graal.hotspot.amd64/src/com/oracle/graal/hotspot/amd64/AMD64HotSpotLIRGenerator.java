@@ -39,7 +39,6 @@ import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.HotSpotVMConfig.CompressEncoding;
 import com.oracle.graal.hotspot.amd64.AMD64HotSpotMove.HotSpotStoreConstantOp;
 import com.oracle.graal.hotspot.meta.*;
-import com.oracle.graal.hotspot.nodes.type.*;
 import com.oracle.graal.hotspot.stubs.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.NoOp;
@@ -50,7 +49,6 @@ import com.oracle.graal.lir.amd64.AMD64Move.CompareAndSwapOp;
 import com.oracle.graal.lir.amd64.AMD64Move.LeaDataOp;
 import com.oracle.graal.lir.amd64.AMD64Move.LoadOp;
 import com.oracle.graal.lir.amd64.AMD64Move.MoveFromRegOp;
-import com.oracle.graal.lir.amd64.AMD64Move.MoveToRegOp;
 import com.oracle.graal.lir.amd64.AMD64Move.StoreOp;
 import com.oracle.graal.lir.gen.*;
 
@@ -436,14 +434,6 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         }
     }
 
-    private static Kind getMemoryKind(LIRKind kind) {
-        if (kind.getPlatformKind() == NarrowOopStamp.NarrowOop) {
-            return Kind.Int;
-        } else {
-            return (Kind) kind.getPlatformKind();
-        }
-    }
-
     private static LIRKind toStackKind(LIRKind kind) {
         if (kind.getPlatformKind() instanceof Kind) {
             Kind stackKind = ((Kind) kind.getPlatformKind()).getStackKind();
@@ -465,7 +455,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     public Variable emitLoad(LIRKind kind, Value address, LIRFrameState state) {
         AMD64AddressValue loadAddress = asAddressValue(address);
         Variable result = newVariable(toStackKind(kind));
-        append(new LoadOp(getMemoryKind(kind), result, loadAddress, state));
+        append(new LoadOp((Kind) kind.getPlatformKind(), result, loadAddress, state));
         return result;
     }
 
@@ -475,12 +465,12 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         if (isConstant(inputVal)) {
             Constant c = asConstant(inputVal);
             if (canStoreConstant(c)) {
-                append(new HotSpotStoreConstantOp(getMemoryKind(kind), storeAddress, c, state));
+                append(new HotSpotStoreConstantOp((Kind) kind.getPlatformKind(), storeAddress, c, state));
                 return;
             }
         }
         Variable input = load(inputVal);
-        append(new StoreOp(getMemoryKind(kind), storeAddress, input, state));
+        append(new StoreOp((Kind) kind.getPlatformKind(), storeAddress, input, state));
     }
 
     @Override
@@ -489,7 +479,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         assert inputKind.getPlatformKind() == Kind.Long || inputKind.getPlatformKind() == Kind.Object;
         if (inputKind.isReference(0)) {
             // oop
-            Variable result = newVariable(LIRKind.reference(NarrowOopStamp.NarrowOop));
+            Variable result = newVariable(LIRKind.reference(Kind.Int));
             append(new AMD64HotSpotMove.CompressPointer(result, asAllocatable(pointer), getProviders().getRegisters().getHeapBaseRegister().asValue(), encoding, nonNull));
             return result;
         } else {
@@ -507,7 +497,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     @Override
     public Value emitUncompress(Value pointer, CompressEncoding encoding, boolean nonNull) {
         LIRKind inputKind = pointer.getLIRKind();
-        assert inputKind.getPlatformKind() == Kind.Int || inputKind.getPlatformKind() == NarrowOopStamp.NarrowOop;
+        assert inputKind.getPlatformKind() == Kind.Int;
         if (inputKind.isReference(0)) {
             // oop
             Variable result = newVariable(LIRKind.reference(Kind.Object));
@@ -529,12 +519,6 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     protected AMD64LIRInstruction createMove(AllocatableValue dst, Value src) {
         if (src instanceof Constant) {
             return new AMD64HotSpotMove.HotSpotLoadConstantOp(dst, (Constant) src);
-        } else if (dst.getPlatformKind() == NarrowOopStamp.NarrowOop) {
-            if (isRegister(src) || isStackSlot(dst)) {
-                return new MoveFromRegOp(Kind.Int, dst, src);
-            } else {
-                return new MoveToRegOp(Kind.Int, dst, src);
-            }
         } else {
             return super.createMove(dst, src);
         }
@@ -543,7 +527,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     public Value emitCompareAndSwap(Value address, Value expectedValue, Value newValue, Value trueValue, Value falseValue) {
         LIRKind kind = newValue.getLIRKind();
         assert kind.equals(expectedValue.getLIRKind());
-        Kind memKind = getMemoryKind(kind);
+        Kind memKind = (Kind) kind.getPlatformKind();
 
         AMD64AddressValue addressValue = asAddressValue(address);
         RegisterValue raxRes = AMD64.rax.asValue(kind);
@@ -558,7 +542,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
 
     public Value emitAtomicReadAndAdd(Value address, Value delta) {
         LIRKind kind = delta.getLIRKind();
-        Kind memKind = getMemoryKind(kind);
+        Kind memKind = (Kind) kind.getPlatformKind();
         Variable result = newVariable(kind);
         AMD64AddressValue addressValue = asAddressValue(address);
         append(new AMD64Move.AtomicReadAndAddOp(memKind, result, addressValue, asAllocatable(delta)));
@@ -567,7 +551,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
 
     public Value emitAtomicReadAndWrite(Value address, Value newValue) {
         LIRKind kind = newValue.getLIRKind();
-        Kind memKind = getMemoryKind(kind);
+        Kind memKind = (Kind) kind.getPlatformKind();
         Variable result = newVariable(kind);
         AMD64AddressValue addressValue = asAddressValue(address);
         append(new AMD64Move.AtomicReadAndWriteOp(memKind, result, addressValue, asAllocatable(newValue)));
@@ -583,8 +567,6 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     protected void emitCompareOp(PlatformKind cmpKind, Variable left, Value right) {
         if (right instanceof HotSpotConstant) {
             append(new AMD64HotSpotCompare.HotSpotCompareConstantOp(left, (Constant) right));
-        } else if (cmpKind == NarrowOopStamp.NarrowOop) {
-            append(new AMD64HotSpotCompare.HotSpotCompareNarrowOp(left, asAllocatable(right)));
         } else {
             super.emitCompareOp(cmpKind, left, right);
         }

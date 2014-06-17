@@ -42,7 +42,7 @@ public class SPARCHotSpotBackendFactory implements HotSpotBackendFactory {
         final int stackFrameAlignment = 16;
         final int implicitNullCheckLimit = 4096;
         final boolean inlineObjects = true;
-        return new HotSpotTargetDescription(createArchitecture(), true, stackFrameAlignment, implicitNullCheckLimit, inlineObjects, Kind.Int);
+        return new HotSpotTargetDescription(createArchitecture(), true, stackFrameAlignment, implicitNullCheckLimit, inlineObjects);
     }
 
     public HotSpotBackend createBackend(HotSpotGraalRuntime runtime, HotSpotBackend host) {
