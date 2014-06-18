@@ -80,18 +80,20 @@ public class AllocatorTest extends GraalCompilerTest {
             }
         }
 
-        private void collectStats(final LIRInstruction instr) {
-            instr.forEachOutput(new ValueProcedure() {
+        private ValueProcedure collectStatsProc = new ValueProcedure() {
 
-                @Override
-                public Value doValue(Value value) {
-                    if (ValueUtil.isRegister(value)) {
-                        final Register reg = ValueUtil.asRegister(value);
-                        registers.add(reg);
-                    }
-                    return value;
+            @Override
+            public Value doValue(Value value) {
+                if (ValueUtil.isRegister(value)) {
+                    final Register reg = ValueUtil.asRegister(value);
+                    registers.add(reg);
                 }
-            });
+                return value;
+            }
+        };
+
+        private void collectStats(final LIRInstruction instr) {
+            instr.forEachOutput(collectStatsProc);
 
             if (instr instanceof MoveOp) {
                 MoveOp move = (MoveOp) instr;

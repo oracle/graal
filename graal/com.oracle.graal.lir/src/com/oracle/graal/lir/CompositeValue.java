@@ -26,6 +26,7 @@ import java.lang.annotation.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
+import com.oracle.graal.lir.LIRInstruction.InstructionValueProcedure;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
 import com.oracle.graal.lir.LIRInstruction.ValueProcedure;
@@ -56,6 +57,10 @@ public abstract class CompositeValue extends Value {
 
     public final void forEachComponent(OperandMode mode, ValueProcedure proc) {
         valueClass.forEachComponent(this, mode, proc);
+    }
+
+    public final void forEachComponent(LIRInstruction inst, OperandMode mode, InstructionValueProcedure proc) {
+        valueClass.forEachComponent(inst, this, mode, proc);
     }
 
     @Override

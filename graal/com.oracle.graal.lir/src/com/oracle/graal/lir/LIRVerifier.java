@@ -32,6 +32,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.debug.*;
+import com.oracle.graal.lir.LIRInstruction.InstructionValueProcedure;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
 import com.oracle.graal.lir.LIRInstruction.ValueProcedure;
@@ -62,14 +63,15 @@ public final class LIRVerifier {
         return isRegister(value) && frameMap.registerConfig.getAttributesMap()[asRegister(value).number].isAllocatable();
     }
 
-    public static boolean verify(final LIRInstruction op) {
-        ValueProcedure allowedProc = new ValueProcedure() {
+    private static InstructionValueProcedure allowedProc = new InstructionValueProcedure() {
 
-            @Override
-            public Value doValue(Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
-                return allowed(op, value, mode, flags);
-            }
-        };
+        @Override
+        public Value doValue(LIRInstruction op, Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
+            return allowed(op, value, mode, flags);
+        }
+    };
+
+    public static boolean verify(final LIRInstruction op) {
 
         op.forEachInput(allowedProc);
         op.forEachAlive(allowedProc);
