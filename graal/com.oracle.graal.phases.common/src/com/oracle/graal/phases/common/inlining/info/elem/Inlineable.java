@@ -32,6 +32,8 @@ import com.oracle.graal.phases.tiers.HighTierContext;
 public interface Inlineable {
 
     static Inlineable getInlineableElement(final ResolvedJavaMethod method, Invoke invoke, HighTierContext context, CanonicalizerPhase canonicalizer) {
+        assert method != null;
+        assert invoke != null;
         Class<? extends FixedWithNextNode> macroNodeClass = InliningUtil.getMacroNodeClass(context.getReplacements(), method);
         if (macroNodeClass != null) {
             return new InlineableMacroNode(macroNodeClass);

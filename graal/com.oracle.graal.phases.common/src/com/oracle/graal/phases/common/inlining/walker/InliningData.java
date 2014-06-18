@@ -34,7 +34,9 @@ import com.oracle.graal.debug.DebugMetric;
 import com.oracle.graal.graph.Graph;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.java.AbstractNewObjectNode;
 import com.oracle.graal.nodes.java.MethodCallTargetNode;
+import com.oracle.graal.nodes.virtual.VirtualObjectNode;
 import com.oracle.graal.phases.OptimisticOptimizations;
 import com.oracle.graal.phases.common.CanonicalizerPhase;
 import com.oracle.graal.phases.common.inlining.InliningUtil;
@@ -110,8 +112,12 @@ public class InliningData {
         this.maxGraphs = 1;
 
         Assumptions rootAssumptions = context.getAssumptions();
-        invocationQueue.push(new MethodInvocation(null, rootAssumptions, 1.0, 1.0));
-        graphQueue.push(new CallsiteHolderExplorable(rootGraph, 1.0, 1.0));
+        invocationQueue.push(new MethodInvocation(null, rootAssumptions, 1.0, 1.0, null));
+        graphQueue.push(new CallsiteHolderExplorable(rootGraph, 1.0, 1.0, null));
+    }
+
+    public static boolean isFreshInstantiation(ValueNode arg) {
+        return (arg instanceof AbstractNewObjectNode) || (arg instanceof VirtualObjectNode);
     }
 
     private String checkTargetConditionsHelper(ResolvedJavaMethod method) {
@@ -468,9 +474,51 @@ public class InliningData {
             info.populateInlinableElements(context, calleeAssumptions, canonicalizer);
             double invokeProbability = callsiteHolder.invokeProbability(invoke);
             double invokeRelevance = callsiteHolder.invokeRelevance(invoke);
-            MethodInvocation methodInvocation = new MethodInvocation(info, calleeAssumptions, invokeProbability, invokeRelevance);
+            MethodInvocation methodInvocation = new MethodInvocation(info, calleeAssumptions, invokeProbability, invokeRelevance, freshlyInstantiatedArguments(invoke, callsiteHolder.getFixedParams()));
             pushInvocationAndGraphs(methodInvocation);
         }
+    }
+
+    /**
+     * <p>
+     * A freshly instantiated argument is either:
+     * <uL>
+     * <li>an {@link InliningData#isFreshInstantiation(com.oracle.graal.nodes.ValueNode)}</li>
+     * <li>a fixed-param, ie a {@link ParameterNode} receiving a freshly instantiated argument</li>
+     * </uL>
+     * </p>
+     *
+     * @return the positions of freshly instantiated arguments in the argument list of the
+     *         <code>invoke</code>, or null if no such positions exist.
+     */
+    public static BitSet freshlyInstantiatedArguments(Invoke invoke, Set<ParameterNode> fixedParams) {
+        assert fixedParams != null;
+        assert paramsAndInvokeAreInSameGraph(invoke, fixedParams);
+        BitSet result = null;
+        int argIdx = 0;
+        for (ValueNode arg : invoke.callTarget().arguments()) {
+            assert arg != null;
+            if (isFreshInstantiation(arg) || fixedParams.contains(arg)) {
+                if (result == null) {
+                    result = new BitSet();
+                }
+                result.set(argIdx);
+            }
+            argIdx++;
+        }
+        return result;
+    }
+
+    private static boolean paramsAndInvokeAreInSameGraph(Invoke invoke, Set<ParameterNode> fixedParams) {
+        if (fixedParams.isEmpty()) {
+            return true;
+        }
+        for (ParameterNode p : fixedParams) {
+            if (p.graph() != invoke.asNode().graph()) {
+                return false;
+            }
+        }
+        return true;
     }
 
     public int graphCount() {
