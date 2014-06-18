@@ -713,7 +713,7 @@ public abstract class Source {
 
         @Override
         public String toString() {
-            return String.format("%s:%d", source.getName(), startLine);
+            return getCode();
         }
 
         @Override
