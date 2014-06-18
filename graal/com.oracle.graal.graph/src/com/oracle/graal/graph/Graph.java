@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.graph;
 
-import static com.oracle.graal.graph.iterators.EmptyNodeIterable.*;
-
 import java.util.*;
 
 import com.oracle.graal.compiler.common.*;
@@ -535,9 +533,6 @@ public class Graph {
      * mark}.
      */
     public NodeIterable<Node> getNewNodes(Mark mark) {
-        if (mark.isCurrent()) {
-            return emptyNodeIterable();
-        }
         final int index = mark.getValue();
         return new NodeIterable<Node>() {
 

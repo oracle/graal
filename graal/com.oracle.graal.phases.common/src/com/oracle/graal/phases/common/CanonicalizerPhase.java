@@ -197,8 +197,10 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
                     }
                 }
 
-                for (Node newNode : graph.getNewNodes(mark)) {
-                    workList.add(newNode);
+                if (!mark.isCurrent()) {
+                    for (Node newNode : graph.getNewNodes(mark)) {
+                        workList.add(newNode);
+                    }
                 }
             }
         }
