@@ -34,6 +34,13 @@ import com.oracle.graal.debug.*;
 
 public class DebugEnvironment {
 
+    @SuppressWarnings("all")
+    private static boolean assertionsEnabled() {
+        boolean assertionsEnabled = false;
+        assert assertionsEnabled = true;
+        return assertionsEnabled;
+    }
+
     public static GraalDebugConfig initialize(PrintStream log) {
 
         // Ensure Graal runtime is initialized prior to Debug being initialized as the former
@@ -55,7 +62,13 @@ public class DebugEnvironment {
         if (DecompileAfterPhase.getValue() != null) {
             dumpHandlers.add(new DecompilerDebugDumpHandler());
         }
-        GraalDebugConfig debugConfig = new GraalDebugConfig(Log.getValue(), Meter.getValue(), TrackMemUse.getValue(), Time.getValue(), Dump.getValue(), MethodFilter.getValue(), log, dumpHandlers);
+        List<DebugVerifyHandler> verifyHandlers = new ArrayList<>();
+        String verifyFilter = Verify.getValue();
+        if (verifyFilter == null && assertionsEnabled()) {
+            verifyFilter = "";
+        }
+        GraalDebugConfig debugConfig = new GraalDebugConfig(Log.getValue(), Meter.getValue(), TrackMemUse.getValue(), Time.getValue(), Dump.getValue(), verifyFilter, MethodFilter.getValue(), log,
+                        dumpHandlers, verifyHandlers);
         Debug.setConfig(debugConfig);
         return debugConfig;
     }

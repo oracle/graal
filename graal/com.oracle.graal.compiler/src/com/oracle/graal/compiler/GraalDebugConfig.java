@@ -42,6 +42,8 @@ public class GraalDebugConfig implements DebugConfig {
     public static final OptionValue<String> Dump = new OptionValue<>(null);
     @Option(help = "Pattern for scope(s) to in which metering is enabled (see DebugFilter and Debug.metric)")
     public static final OptionValue<String> Meter = new OptionValue<>(null);
+    @Option(help = "Pattern for scope(s) to in which verification is enabled (see DebugFilter and Debug.verify)")
+    public static final OptionValue<String> Verify = new OptionValue<>(null);
     @Option(help = "Pattern for scope(s) to in which memory use tracking is enabled (see DebugFilter and Debug.metric)")
     public static final OptionValue<String> TrackMemUse = new OptionValue<>(null);
     @Option(help = "Pattern for scope(s) to in which timing is enabled (see DebugFilter and Debug.timer)")
@@ -89,18 +91,21 @@ public class GraalDebugConfig implements DebugConfig {
     private final DebugFilter trackMemUseFilter;
     private final DebugFilter timerFilter;
     private final DebugFilter dumpFilter;
+    private final DebugFilter verifyFilter;
     private final MethodFilter[] methodFilter;
     private final List<DebugDumpHandler> dumpHandlers;
+    private final List<DebugVerifyHandler> verifyHandlers;
     private final PrintStream output;
     private final Set<Object> extraFilters = new HashSet<>();
 
-    public GraalDebugConfig(String logFilter, String meterFilter, String trackMemUseFilter, String timerFilter, String dumpFilter, String methodFilter, PrintStream output,
-                    List<DebugDumpHandler> dumpHandlers) {
+    public GraalDebugConfig(String logFilter, String meterFilter, String trackMemUseFilter, String timerFilter, String dumpFilter, String verifyFilter, String methodFilter, PrintStream output,
+                    List<DebugDumpHandler> dumpHandlers, List<DebugVerifyHandler> verifyHandlers) {
         this.logFilter = DebugFilter.parse(logFilter);
         this.meterFilter = DebugFilter.parse(meterFilter);
         this.trackMemUseFilter = DebugFilter.parse(trackMemUseFilter);
         this.timerFilter = DebugFilter.parse(timerFilter);
         this.dumpFilter = DebugFilter.parse(dumpFilter);
+        this.verifyFilter = DebugFilter.parse(verifyFilter);
         if (methodFilter == null || methodFilter.isEmpty()) {
             this.methodFilter = null;
         } else {
@@ -112,6 +117,7 @@ public class GraalDebugConfig implements DebugConfig {
             // TTY.println(Thread.currentThread().getName() + ": " + toString());
         }
         this.dumpHandlers = dumpHandlers;
+        this.verifyHandlers = verifyHandlers;
         this.output = output;
     }
 
@@ -127,10 +133,6 @@ public class GraalDebugConfig implements DebugConfig {
         return isEnabled(meterFilter);
     }
 
-    public boolean isMetderEnabled() {
-        return isEnabled(meterFilter);
-    }
-
     public boolean isMemUseTrackingEnabled() {
         return isEnabled(trackMemUseFilter);
     }
@@ -141,6 +143,14 @@ public class GraalDebugConfig implements DebugConfig {
 
     public boolean isDumpEnabledForMethod() {
         return isEnabledForMethod(dumpFilter);
+    }
+
+    public boolean isVerifyEnabled() {
+        return isEnabled(verifyFilter);
+    }
+
+    public boolean isVerifyEnabledForMethod() {
+        return isEnabledForMethod(verifyFilter);
     }
 
     public boolean isTimeEnabled() {
@@ -231,7 +241,7 @@ public class GraalDebugConfig implements DebugConfig {
         if (e instanceof BailoutException) {
             return null;
         }
-        Debug.setConfig(Debug.fixedConfig(true, true, false, false, false, dumpHandlers, output));
+        Debug.setConfig(Debug.fixedConfig(true, true, false, false, false, false, dumpHandlers, verifyHandlers, output));
         Debug.log(String.format("Exception occurred in scope: %s", Debug.currentScope()));
         for (Object o : Debug.context()) {
             if (o instanceof Graph) {
@@ -266,6 +276,11 @@ public class GraalDebugConfig implements DebugConfig {
     @Override
     public Collection<DebugDumpHandler> dumpHandlers() {
         return dumpHandlers;
+    }
+
+    @Override
+    public Collection<DebugVerifyHandler> verifyHandlers() {
+        return verifyHandlers;
     }
 
     @Override

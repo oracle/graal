@@ -95,6 +95,7 @@ public final class DebugScope implements Debug.Scope {
     private boolean timeEnabled;
     private boolean memUseTrackingEnabled;
     private boolean dumpEnabled;
+    private boolean verifyEnabled;
     private boolean logEnabled;
 
     private PrintStream output;
@@ -158,6 +159,10 @@ public final class DebugScope implements Debug.Scope {
         return dumpEnabled;
     }
 
+    public boolean isVerifyEnabled() {
+        return verifyEnabled;
+    }
+
     public boolean isLogEnabled() {
         return logEnabled;
     }
@@ -209,6 +214,21 @@ public final class DebugScope implements Debug.Scope {
         } else {
             PrintStream out = System.out;
             out.println("Forced dump ignored because debugging is disabled - use -G:Dump=xxx option");
+        }
+    }
+
+    /**
+     * @see Debug#verify(Object, String, Object)
+     */
+    public void verify(Object object, String formatString, Object... args) {
+        if (isVerifyEnabled()) {
+            DebugConfig config = getConfig();
+            if (config != null) {
+                String message = String.format(formatString, args);
+                for (DebugVerifyHandler handler : config.verifyHandlers()) {
+                    handler.verify(object, message);
+                }
+            }
         }
     }
 
@@ -269,6 +289,7 @@ public final class DebugScope implements Debug.Scope {
             memUseTrackingEnabled = false;
             timeEnabled = false;
             dumpEnabled = false;
+            verifyEnabled = false;
 
             // Be pragmatic: provide a default log stream to prevent a crash if the stream is not
             // set while logging
@@ -278,6 +299,7 @@ public final class DebugScope implements Debug.Scope {
             memUseTrackingEnabled = config.isMemUseTrackingEnabled();
             timeEnabled = config.isTimeEnabled();
             dumpEnabled = config.isDumpEnabled();
+            verifyEnabled = config.isVerifyEnabled();
             logEnabled = config.isLogEnabled();
             output = config.output();
         }

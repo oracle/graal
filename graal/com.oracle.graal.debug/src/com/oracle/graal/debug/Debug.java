@@ -86,6 +86,33 @@ public class Debug {
         return ENABLED && DebugScope.getInstance().isDumpEnabled();
     }
 
+    /**
+     * Determines if verification is enabled in the current method, regardless of the
+     * {@linkplain Debug#currentScope() current debug scope}.
+     *
+     * @see Debug#verify(Object, String)
+     */
+    public static boolean isVerifyEnabledForMethod() {
+        if (!ENABLED) {
+            return false;
+        }
+        DebugConfig config = DebugScope.getConfig();
+        if (config == null) {
+            return false;
+        }
+        return config.isVerifyEnabledForMethod();
+    }
+
+    /**
+     * Determines if verification is enabled in the {@linkplain Debug#currentScope() current debug
+     * scope}.
+     *
+     * @see Debug#verify(Object, String)
+     */
+    public static boolean isVerifyEnabled() {
+        return ENABLED && DebugScope.getInstance().isVerifyEnabled();
+    }
+
     public static boolean isMeterEnabled() {
         return ENABLED && DebugScope.getInstance().isMeterEnabled();
     }
@@ -460,6 +487,65 @@ public class Debug {
     }
 
     /**
+     * Calls all {@link DebugVerifyHandler}s in the current {@linkplain DebugScope#getConfig()
+     * config} to perform verification on a given object.
+     *
+     * @param object the object to be verified
+     * @param msg denoting context of verification
+     */
+    public static void verify(Object object, String msg) {
+        if (ENABLED && DebugScope.getInstance().isVerifyEnabled()) {
+            DebugScope.getInstance().verify(object, msg);
+        }
+    }
+
+    /**
+     * Calls all {@link DebugVerifyHandler}s in the current {@linkplain DebugScope#getConfig()
+     * config} to perform verification on a given object.
+     *
+     * @param object the object to be verified
+     * @param format format string for message denoting context of verification
+     * @param arg argument to format string
+     */
+    public static void verify(Object object, String format, Object arg) {
+        if (ENABLED && DebugScope.getInstance().isVerifyEnabled()) {
+            DebugScope.getInstance().verify(object, format, arg);
+        }
+    }
+
+    /**
+     * @see Debug#verify(Object, String, Object)
+     */
+    public static void verify(Object object, String format, Object arg1, Object arg2) {
+        if (ENABLED && DebugScope.getInstance().isVerifyEnabled()) {
+            DebugScope.getInstance().verify(object, format, arg1, arg2);
+        }
+    }
+
+    /**
+     * @see Debug#verify(Object, String, Object)
+     */
+    public static void verify(Object object, String format, Object arg1, Object arg2, Object arg3) {
+        if (ENABLED && DebugScope.getInstance().isVerifyEnabled()) {
+            DebugScope.getInstance().verify(object, format, arg1, arg2, arg3);
+        }
+    }
+
+    /**
+     * This override exists to catch cases when {@link #verify(Object, String, Object)} is called
+     * with one argument bound to a varargs method parameter. It will bind to this method instead of
+     * the single arg variant and produce a deprecation warning instead of silently wrapping the
+     * Object[] inside of another Object[].
+     */
+    @Deprecated
+    public static void verify(Object object, String format, Object[] args) {
+        assert false : "shouldn't use this";
+        if (ENABLED && DebugScope.getInstance().isVerifyEnabled()) {
+            DebugScope.getInstance().verify(object, format, args);
+        }
+    }
+
+    /**
      * Opens a new indentation level (by adding some spaces) based on the current indentation level.
      * This should be used in a {@linkplain Indent try-with-resources} pattern.
      *
@@ -773,11 +859,11 @@ public class Debug {
     }
 
     public static DebugConfig silentConfig() {
-        return fixedConfig(false, false, false, false, false, Collections.<DebugDumpHandler> emptyList(), System.out);
+        return fixedConfig(false, false, false, false, false, false, Collections.<DebugDumpHandler> emptyList(), Collections.<DebugVerifyHandler> emptyList(), System.out);
     }
 
     public static DebugConfig fixedConfig(final boolean isLogEnabled, final boolean isDumpEnabled, final boolean isMeterEnabled, final boolean isMemUseTrackingEnabled, final boolean isTimerEnabled,
-                    final Collection<DebugDumpHandler> dumpHandlers, final PrintStream output) {
+                    final boolean isVerifyEnabled, final Collection<DebugDumpHandler> dumpHandlers, final Collection<DebugVerifyHandler> verifyHandlers, final PrintStream output) {
         return new DebugConfig() {
 
             @Override
@@ -809,6 +895,15 @@ public class Debug {
             }
 
             @Override
+            public boolean isVerifyEnabled() {
+                return isVerifyEnabled;
+            }
+
+            public boolean isVerifyEnabledForMethod() {
+                return isVerifyEnabled;
+            }
+
+            @Override
             public boolean isTimeEnabled() {
                 return isTimerEnabled;
             }
@@ -821,6 +916,11 @@ public class Debug {
             @Override
             public Collection<DebugDumpHandler> dumpHandlers() {
                 return dumpHandlers;
+            }
+
+            @Override
+            public Collection<DebugVerifyHandler> verifyHandlers() {
+                return verifyHandlers;
             }
 
             @Override

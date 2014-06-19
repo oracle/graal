@@ -123,9 +123,9 @@ public final class HotSpotGraalRuntime implements GraalRuntime, RuntimeProvider,
 
         TTY.initialize(Options.LogFile.getStream());
 
-        if (Log.getValue() == null && Meter.getValue() == null && Time.getValue() == null && Dump.getValue() == null) {
+        if (Log.getValue() == null && Meter.getValue() == null && Time.getValue() == null && Dump.getValue() == null && Verify.getValue() == null) {
             if (MethodFilter.getValue() != null) {
-                TTY.println("WARNING: Ignoring MethodFilter option since Log, Meter, Time and Dump options are all null");
+                TTY.println("WARNING: Ignoring MethodFilter option since Log, Meter, Time, Dump and Verify options are all null");
             }
         }
 
