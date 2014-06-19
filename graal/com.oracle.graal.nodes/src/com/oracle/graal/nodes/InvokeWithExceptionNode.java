@@ -189,9 +189,9 @@ public class InvokeWithExceptionNode extends ControlSplitNode implements Invoke,
         } else {
             graph().replaceSplit(this, node, next());
         }
-        call.safeDelete();
+        GraphUtil.killWithUnusedFloatingInputs(call);
         if (state.usages().isEmpty()) {
-            state.safeDelete();
+            GraphUtil.killWithUnusedFloatingInputs(state);
         }
     }
 
