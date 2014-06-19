@@ -56,8 +56,8 @@ public class LoopFragmentWhole extends LoopFragment {
     @Override
     public NodeBitMap nodes() {
         if (nodes == null) {
-            Loop<Block> lirLoop = loop().lirLoop();
-            nodes = LoopFragment.computeNodes(graph(), LoopFragment.toHirBlocks(lirLoop.getBlocks()), LoopFragment.toHirExits(lirLoop.getExits()));
+            Loop<Block> loop = loop().loop();
+            nodes = LoopFragment.computeNodes(graph(), LoopFragment.toHirBlocks(loop.getBlocks()), LoopFragment.toHirExits(loop.getExits()));
         }
         return nodes;
     }
