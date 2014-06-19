@@ -28,6 +28,7 @@ import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
 
 /**
@@ -35,13 +36,27 @@ import com.oracle.graal.phases.common.*;
  */
 public class NoDeadCodeVerifyHandler implements DebugVerifyHandler {
 
-    public void verify(Object object, String message) {
-        if (object instanceof StructuredGraph) {
-            StructuredGraph graph = (StructuredGraph) object;
+    private static final Collection<Class<? extends Phase>> excludedPhases = Arrays.asList(FloatingReadPhase.class);
+
+    private static boolean isExcluded(Phase phase) {
+        for (Class<? extends Phase> c : excludedPhases) {
+            if (c.isAssignableFrom(phase.getClass())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public void verify(Object object, Object... context) {
+        StructuredGraph graph = extract(StructuredGraph.class, object);
+        Phase phase = extract(Phase.class, context);
+        String message = extract(String.class, context);
+        if (graph != null && (phase == null || !isExcluded(phase))) {
             List<Node> removed = new ArrayList<>();
             new DeadCodeEliminationPhase(removed).run(graph);
             if (!removed.isEmpty()) {
-                throw new GraalInternalError("%s: found dead nodes in %s: %s", message, graph, removed);
+                String prefix = message == null ? "" : message + ": ";
+                throw new GraalInternalError("%sfound dead nodes in %s: %s", prefix, graph, removed);
             }
         }
     }

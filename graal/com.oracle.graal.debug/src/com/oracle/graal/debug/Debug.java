@@ -90,7 +90,7 @@ public class Debug {
      * Determines if verification is enabled in the current method, regardless of the
      * {@linkplain Debug#currentScope() current debug scope}.
      *
-     * @see Debug#verify(Object, String)
+     * @see Debug#verify(Object, Object)
      */
     public static boolean isVerifyEnabledForMethod() {
         if (!ENABLED) {
@@ -107,7 +107,7 @@ public class Debug {
      * Determines if verification is enabled in the {@linkplain Debug#currentScope() current debug
      * scope}.
      *
-     * @see Debug#verify(Object, String)
+     * @see Debug#verify(Object, Object)
      */
     public static boolean isVerifyEnabled() {
         return ENABLED && DebugScope.getInstance().isVerifyEnabled();
@@ -490,12 +490,14 @@ public class Debug {
      * Calls all {@link DebugVerifyHandler}s in the current {@linkplain DebugScope#getConfig()
      * config} to perform verification on a given object.
      *
-     * @param object the object to be verified
-     * @param msg denoting context of verification
+     * @param object object to verify
+     * @param context object describing the context of verification
+     *
+     * @see DebugVerifyHandler#verify(Object, Object...)
      */
-    public static void verify(Object object, String msg) {
+    public static void verify(Object object, Object context) {
         if (ENABLED && DebugScope.getInstance().isVerifyEnabled()) {
-            DebugScope.getInstance().verify(object, msg);
+            DebugScope.getInstance().verify(object, context);
         }
     }
 
@@ -503,45 +505,29 @@ public class Debug {
      * Calls all {@link DebugVerifyHandler}s in the current {@linkplain DebugScope#getConfig()
      * config} to perform verification on a given object.
      *
-     * @param object the object to be verified
-     * @param format format string for message denoting context of verification
-     * @param arg argument to format string
+     * @param object object to verify
+     * @param context1 first object describing the context of verification
+     * @param context2 second object describing the context of verification
+     *
+     * @see DebugVerifyHandler#verify(Object, Object...)
      */
-    public static void verify(Object object, String format, Object arg) {
+    public static void verify(Object object, Object context1, Object context2) {
         if (ENABLED && DebugScope.getInstance().isVerifyEnabled()) {
-            DebugScope.getInstance().verify(object, format, arg);
+            DebugScope.getInstance().verify(object, context1, context2);
         }
     }
 
     /**
-     * @see Debug#verify(Object, String, Object)
-     */
-    public static void verify(Object object, String format, Object arg1, Object arg2) {
-        if (ENABLED && DebugScope.getInstance().isVerifyEnabled()) {
-            DebugScope.getInstance().verify(object, format, arg1, arg2);
-        }
-    }
-
-    /**
-     * @see Debug#verify(Object, String, Object)
-     */
-    public static void verify(Object object, String format, Object arg1, Object arg2, Object arg3) {
-        if (ENABLED && DebugScope.getInstance().isVerifyEnabled()) {
-            DebugScope.getInstance().verify(object, format, arg1, arg2, arg3);
-        }
-    }
-
-    /**
-     * This override exists to catch cases when {@link #verify(Object, String, Object)} is called
-     * with one argument bound to a varargs method parameter. It will bind to this method instead of
-     * the single arg variant and produce a deprecation warning instead of silently wrapping the
+     * This override exists to catch cases when {@link #verify(Object, Object)} is called with one
+     * argument bound to a varargs method parameter. It will bind to this method instead of the
+     * single arg variant and produce a deprecation warning instead of silently wrapping the
      * Object[] inside of another Object[].
      */
     @Deprecated
-    public static void verify(Object object, String format, Object[] args) {
+    public static void verify(Object object, Object[] args) {
         assert false : "shouldn't use this";
         if (ENABLED && DebugScope.getInstance().isVerifyEnabled()) {
-            DebugScope.getInstance().verify(object, format, args);
+            DebugScope.getInstance().verify(object, args);
         }
     }
 

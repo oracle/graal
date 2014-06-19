@@ -218,15 +218,14 @@ public final class DebugScope implements Debug.Scope {
     }
 
     /**
-     * @see Debug#verify(Object, String, Object)
+     * @see Debug#verify(Object, Object)
      */
-    public void verify(Object object, String formatString, Object... args) {
+    public void verify(Object object, Object... ctx) {
         if (isVerifyEnabled()) {
             DebugConfig config = getConfig();
             if (config != null) {
-                String message = String.format(formatString, args);
                 for (DebugVerifyHandler handler : config.verifyHandlers()) {
-                    handler.verify(object, message);
+                    handler.verify(object, ctx);
                 }
             }
         }
