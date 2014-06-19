@@ -100,6 +100,9 @@ public abstract class BasePhase<C> {
             if (dumpGraph && Debug.isDumpEnabled()) {
                 Debug.dump(graph, "After phase %s", getName());
             }
+            if (Debug.isVerifyEnabled()) {
+                Debug.verify(graph, "After phase %s", getName());
+            }
             assert graph.verify();
         } catch (Throwable t) {
             throw Debug.handle(t);
