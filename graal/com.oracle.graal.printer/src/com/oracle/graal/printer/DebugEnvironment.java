@@ -67,6 +67,9 @@ public class DebugEnvironment {
         if (verifyFilter == null && assertionsEnabled()) {
             verifyFilter = "";
         }
+        if (verifyFilter != null) {
+            verifyHandlers.add(new NoDeadCodeVerifyHandler());
+        }
         GraalDebugConfig debugConfig = new GraalDebugConfig(Log.getValue(), Meter.getValue(), TrackMemUse.getValue(), Time.getValue(), Dump.getValue(), verifyFilter, MethodFilter.getValue(), log,
                         dumpHandlers, verifyHandlers);
         Debug.setConfig(debugConfig);
