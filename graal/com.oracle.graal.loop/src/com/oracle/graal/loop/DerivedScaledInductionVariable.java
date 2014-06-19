@@ -25,6 +25,7 @@ package com.oracle.graal.loop;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
+import com.oracle.graal.nodes.util.*;
 
 public class DerivedScaledInductionVariable extends InductionVariable {
 
@@ -118,5 +119,12 @@ public class DerivedScaledInductionVariable extends InductionVariable {
     @Override
     public long constantExtremum() {
         return base.constantExtremum() * scale.asConstant().asLong();
+    }
+
+    @Override
+    public void deleteUnusedNodes() {
+        if (scale.usages().isEmpty()) {
+            GraphUtil.killWithUnusedFloatingInputs(scale);
+        }
     }
 }

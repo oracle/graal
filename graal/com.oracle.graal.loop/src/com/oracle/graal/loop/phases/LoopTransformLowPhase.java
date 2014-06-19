@@ -47,6 +47,7 @@ public class LoopTransformLowPhase extends Phase {
                 } catch (Throwable e) {
                     throw Debug.handle(e);
                 }
+                dataReassociate.deleteUnusedNodes();
             }
             if (LoopUnswitch.getValue()) {
                 boolean unswitched;

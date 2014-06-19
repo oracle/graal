@@ -47,6 +47,7 @@ public class LoopTransformHighPhase extends Phase {
                         Debug.dump(graph, "After peeling %s", loop);
                     }
                 }
+                data.deleteUnusedNodes();
             }
         }
     }

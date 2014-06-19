@@ -121,4 +121,13 @@ public class InductionVariables {
         }
         return null;
     }
+
+    /**
+     * Deletes any nodes created within the scope of this object that have no usages.
+     */
+    public void deleteUnusedNodes() {
+        for (InductionVariable iv : ivs.values()) {
+            iv.deleteUnusedNodes();
+        }
+    }
 }

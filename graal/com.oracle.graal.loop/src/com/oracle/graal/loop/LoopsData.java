@@ -121,4 +121,13 @@ public class LoopsData {
         }
         return match;
     }
+
+    /**
+     * Deletes any nodes created within the scope of this object that have no usages.
+     */
+    public void deleteUnusedNodes() {
+        for (LoopEx loop : loops()) {
+            loop.deleteUnusedNodes();
+        }
+    }
 }

@@ -280,6 +280,7 @@ public class PartialEvaluator {
                             break;
                         }
                     }
+                    loopsData.deleteUnusedNodes();
                 } while (unrolled);
             } catch (Throwable e) {
                 throw Debug.handle(e);

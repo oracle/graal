@@ -56,6 +56,7 @@ public class LoopFullUnrollPhase extends BasePhase<PhaseContext> {
                         break;
                     }
                 }
+                dataCounted.deleteUnusedNodes();
             } while (peeled);
         }
     }
