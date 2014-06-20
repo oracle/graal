@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.phases.common;
 
-import java.util.*;
-
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
@@ -34,16 +32,6 @@ public class DeadCodeEliminationPhase extends Phase {
     // Metrics
     private static final DebugMetric metricNodesRemoved = Debug.metric("NodesRemoved");
 
-    private final List<Node> removed;
-
-    public DeadCodeEliminationPhase() {
-        this(null);
-    }
-
-    public DeadCodeEliminationPhase(List<Node> removed) {
-        this.removed = removed;
-    }
-
     @Override
     public void run(StructuredGraph graph) {
         NodeFlood flood = graph.createNodeFlood();
@@ -52,7 +40,7 @@ public class DeadCodeEliminationPhase extends Phase {
         iterateSuccessors(flood);
         disconnectCFGNodes(flood, graph);
         iterateInputs(flood, graph);
-        deleteNodes(flood, graph, removed);
+        deleteNodes(flood, graph);
 
         // remove chained Merges
         for (MergeNode merge : graph.getNodes(MergeNode.class)) {
@@ -105,7 +93,7 @@ public class DeadCodeEliminationPhase extends Phase {
         }
     }
 
-    private static void deleteNodes(NodeFlood flood, StructuredGraph graph, List<Node> removed) {
+    private static void deleteNodes(NodeFlood flood, StructuredGraph graph) {
         for (Node node : graph.getNodes()) {
             if (!flood.isMarked(node)) {
                 node.clearInputs();
@@ -116,9 +104,6 @@ public class DeadCodeEliminationPhase extends Phase {
             if (!flood.isMarked(node)) {
                 metricNodesRemoved.increment();
                 node.safeDelete();
-                if (removed != null) {
-                    removed.add(node);
-                }
             }
         }
     }
