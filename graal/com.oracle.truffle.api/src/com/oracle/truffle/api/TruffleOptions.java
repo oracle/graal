@@ -72,6 +72,13 @@ public class TruffleOptions {
      */
     public static NodeCost TraceRewritesFilterToCost = parseNodeInfoKind(System.getProperty("truffle.TraceRewritesFilterToCost"));
 
+    /**
+     * Enables the dumping of Node creations and AST rewrites in JSON format.
+     * <p>
+     * Can be set with {@code -Dtruffle.TraceASTJSON=true}.
+     */
+    public static final boolean TraceASTJSON = Boolean.getBoolean("truffle.TraceASTJSON");
+
     private static NodeCost parseNodeInfoKind(String kind) {
         if (kind == null) {
             return null;

@@ -31,6 +31,7 @@ import java.util.concurrent.*;
 
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.source.*;
+import com.oracle.truffle.api.utilities.*;
 
 /**
  * Abstract base class for all Truffle nodes.
@@ -58,12 +59,15 @@ public abstract class Node implements Cloneable {
     }
 
     protected Node() {
-        CompilerAsserts.neverPartOfCompilation();
+        this(null);
     }
 
     protected Node(SourceSection sourceSection) {
         CompilerAsserts.neverPartOfCompilation();
         this.sourceSection = sourceSection;
+        if (TruffleOptions.TraceASTJSON) {
+            JSONHelper.dumpNewNode(this);
+        }
     }
 
     /**
@@ -169,6 +173,9 @@ public abstract class Node implements Cloneable {
         }
         boolean isInserted = newChild.parent == null;
         newChild.parent = this;
+        if (TruffleOptions.TraceASTJSON) {
+            JSONHelper.dumpNewChild(this, newChild);
+        }
         newChild.adoptHelper();
         if (isInserted) {
             newChild.onAdopt();
@@ -273,6 +280,9 @@ public abstract class Node implements Cloneable {
             this.parent.adoptUnadoptedHelper(newNode);
         }
         reportReplace(this, newNode, reason);
+        if (TruffleOptions.TraceASTJSON) {
+            JSONHelper.dumpReplaceChild(this, newNode, reason);
+        }
         onReplace(newNode, reason);
     }
 
