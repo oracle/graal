@@ -48,8 +48,8 @@ public class JSONHelper {
 
     public static void dumpNewNode(Node newNode) {
         if (AstJsonDumpBuilder != null) {
-            AstJsonDumpBuilder.append("{ \"action\": \"createNode\", \"newId\": \"" + getID(newNode) + "\", \"newType\": \"" + getType(newNode) + "\"" + "\"newDescription\": \"" +
-                            newNode.getDescription() + "\"" + "\"newLanguage\": \"" + newNode.getLanguage() + "\"" + getSourceSectionInfo(newNode) + " },\n");
+            AstJsonDumpBuilder.append("{ \"action\": \"createNode\", \"newId\": \"" + getID(newNode) + "\", \"type\": \"" + getType(newNode) + "\", \"description\": \"" + newNode.getDescription() +
+                            "\", \"language\": \"" + newNode.getLanguage() + "\"" + getSourceSectionInfo(newNode) + " },\n");
         }
     }
 
