@@ -234,7 +234,9 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
                 METRIC_CANONICALIZATION_CONSIDERED_NODES.increment();
                 try (Scope s = Debug.scope("CanonicalizeNode", node)) {
                     Node canonical = node.canonical(tool);
-                    return performReplacement(node, canonical);
+                    if (performReplacement(node, canonical)) {
+                        return true;
+                    }
                 } catch (Throwable e) {
                     throw Debug.handle(e);
                 }
@@ -248,8 +250,9 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
                 } catch (Throwable e) {
                     throw Debug.handle(e);
                 }
+                return node.isDeleted();
             }
-            return node.isDeleted();
+            return false;
         }
 
 // @formatter:off
