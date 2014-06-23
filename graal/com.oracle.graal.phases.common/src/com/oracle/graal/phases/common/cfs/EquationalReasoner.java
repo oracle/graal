@@ -629,7 +629,7 @@ public final class EquationalReasoner {
         }
         TypeProfileProxyNode profile = (TypeProfileProxyNode) object;
         ObjectStamp outgoinStamp = (ObjectStamp) profile.stamp();
-        ObjectStamp payloadStamp = (ObjectStamp) profile.getObject().stamp();
+        ObjectStamp payloadStamp = (ObjectStamp) profile.getValue().stamp();
         if (payloadStamp.nonNull() && !outgoinStamp.nonNull()) {
             profile.setStamp(FlowUtil.asNonNullStamp(outgoinStamp));
         }

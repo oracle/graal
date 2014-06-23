@@ -112,7 +112,7 @@ public class IntegerSubNode extends IntegerArithmeticNode implements Canonicaliz
             return BinaryNode.reassociate(this, ValueNode.isConstantPredicate());
         }
         if (y() instanceof NegateNode) {
-            return IntegerArithmeticNode.add(graph(), x(), ((NegateNode) y()).x());
+            return IntegerArithmeticNode.add(graph(), x(), ((NegateNode) y()).getValue());
         }
         return this;
     }

@@ -30,23 +30,17 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
 
-public class UnboxNode extends FloatingNode implements Virtualizable, Lowerable, Canonicalizable {
+public class UnboxNode extends UnaryNode implements Virtualizable, Lowerable, Canonicalizable {
 
-    @Input private ValueNode value;
     private final Kind boxingKind;
 
     public UnboxNode(ValueNode value, Kind boxingKind) {
-        super(StampFactory.forKind(boxingKind.getStackKind()));
-        this.value = value;
+        super(StampFactory.forKind(boxingKind.getStackKind()), value);
         this.boxingKind = boxingKind;
     }
 
     public Kind getBoxingKind() {
         return boxingKind;
-    }
-
-    public ValueNode getValue() {
-        return value;
     }
 
     @Override
@@ -56,7 +50,7 @@ public class UnboxNode extends FloatingNode implements Virtualizable, Lowerable,
 
     @Override
     public void virtualize(VirtualizerTool tool) {
-        State state = tool.getObjectState(value);
+        State state = tool.getObjectState(getValue());
         if (state != null && state.getState() == EscapeState.Virtual) {
             ResolvedJavaType objectType = state.getVirtualObject().type();
             ResolvedJavaType expectedType = tool.getMetaAccessProvider().lookupJavaType(boxingKind.toBoxedJavaClass());
@@ -68,14 +62,14 @@ public class UnboxNode extends FloatingNode implements Virtualizable, Lowerable,
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        if (value.isConstant()) {
-            Constant constant = value.asConstant();
+        if (getValue().isConstant()) {
+            Constant constant = getValue().asConstant();
             Constant unboxed = tool.getConstantReflection().unboxPrimitive(constant);
             if (unboxed != null && unboxed.getKind() == boxingKind) {
                 return ConstantNode.forConstant(unboxed, tool.getMetaAccess(), graph());
             }
-        } else if (value instanceof BoxNode) {
-            BoxNode box = (BoxNode) value;
+        } else if (getValue() instanceof BoxNode) {
+            BoxNode box = (BoxNode) getValue();
             if (boxingKind == box.getBoxingKind()) {
                 return box.getValue();
             }

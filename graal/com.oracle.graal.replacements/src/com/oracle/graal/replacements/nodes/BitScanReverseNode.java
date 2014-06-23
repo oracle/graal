@@ -30,19 +30,16 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
 
-public class BitScanReverseNode extends FloatingNode implements LIRLowerable, Canonicalizable {
-
-    @Input private ValueNode value;
+public class BitScanReverseNode extends UnaryNode implements LIRLowerable, Canonicalizable {
 
     public BitScanReverseNode(ValueNode value) {
-        super(StampFactory.forInteger(Kind.Int, 0, ((PrimitiveStamp) value.stamp()).getBits()));
-        this.value = value;
+        super(StampFactory.forInteger(Kind.Int, 0, ((PrimitiveStamp) value.stamp()).getBits()), value);
     }
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        if (value.isConstant()) {
-            Constant c = value.asConstant();
+        if (getValue().isConstant()) {
+            Constant c = getValue().asConstant();
             if (c.getKind() == Kind.Int) {
                 return ConstantNode.forInt(31 - Integer.numberOfLeadingZeros(c.asInt()), graph());
             } else if (c.getKind() == Kind.Long) {
@@ -78,7 +75,7 @@ public class BitScanReverseNode extends FloatingNode implements LIRLowerable, Ca
 
     @Override
     public void generate(NodeLIRBuilderTool gen) {
-        Value result = gen.getLIRGeneratorTool().emitBitScanReverse(gen.operand(value));
+        Value result = gen.getLIRGeneratorTool().emitBitScanReverse(gen.operand(getValue()));
         gen.setResult(this, result);
     }
 

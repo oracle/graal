@@ -181,8 +181,8 @@ public class AMD64ConvertSnippets implements Snippets {
             StructuredGraph graph = convert.graph();
 
             Arguments args = new Arguments(key, graph.getGuardsStage(), tool.getLoweringStage());
-            args.add("input", convert.getInput());
-            args.add("result", graph.unique(new AMD64FloatConvertNode(convert.stamp(), convert.getOp(), convert.getInput())));
+            args.add("input", convert.getValue());
+            args.add("result", graph.unique(new AMD64FloatConvertNode(convert.stamp(), convert.getOp(), convert.getValue())));
 
             SnippetTemplate template = template(args);
             Debug.log("Lowering %s in %s: node=%s, template=%s, arguments=%s", convert.getOp(), graph, convert, template, args);

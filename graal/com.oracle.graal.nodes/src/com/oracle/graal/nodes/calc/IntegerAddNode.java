@@ -82,9 +82,9 @@ public class IntegerAddNode extends IntegerArithmeticNode implements Canonicaliz
             }
         }
         if (x() instanceof NegateNode) {
-            return IntegerArithmeticNode.sub(graph(), y(), ((NegateNode) x()).x());
+            return IntegerArithmeticNode.sub(graph(), y(), ((NegateNode) x()).getValue());
         } else if (y() instanceof NegateNode) {
-            return IntegerArithmeticNode.sub(graph(), x(), ((NegateNode) y()).x());
+            return IntegerArithmeticNode.sub(graph(), x(), ((NegateNode) y()).getValue());
         }
         return this;
     }

@@ -30,20 +30,17 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
 
-public class ReverseBytesNode extends FloatingNode implements LIRLowerable, Canonicalizable {
-
-    @Input private ValueNode value;
+public class ReverseBytesNode extends UnaryNode implements LIRLowerable, Canonicalizable {
 
     public ReverseBytesNode(ValueNode value) {
-        super(StampFactory.forKind(value.getKind()));
+        super(StampFactory.forKind(value.getKind()), value);
         assert getKind().isNumericInteger();
-        this.value = value;
     }
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        if (value.isConstant()) {
-            long v = value.asConstant().asLong();
+        if (getValue().isConstant()) {
+            long v = getValue().asConstant().asLong();
             if (getKind().getStackKind() == Kind.Int) {
                 return ConstantNode.forInt(Integer.reverseBytes((int) v), graph());
             } else if (getKind() == Kind.Long) {
@@ -65,7 +62,7 @@ public class ReverseBytesNode extends FloatingNode implements LIRLowerable, Cano
 
     @Override
     public void generate(NodeLIRBuilderTool gen) {
-        Value result = gen.getLIRGeneratorTool().emitByteSwap(gen.operand(value));
+        Value result = gen.getLIRGeneratorTool().emitByteSwap(gen.operand(getValue()));
         gen.setResult(this, result);
     }
 }

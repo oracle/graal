@@ -68,31 +68,31 @@ public class NarrowNode extends IntegerConvertNode {
             return ret;
         }
 
-        if (getInput() instanceof NarrowNode) {
+        if (getValue() instanceof NarrowNode) {
             // zzzzzzzz yyyyxxxx -(narrow)-> yyyyxxxx -(narrow)-> xxxx
             // ==> zzzzzzzz yyyyxxxx -(narrow)-> xxxx
-            NarrowNode other = (NarrowNode) getInput();
-            return graph().unique(new NarrowNode(other.getInput(), getResultBits()));
-        } else if (getInput() instanceof IntegerConvertNode) {
+            NarrowNode other = (NarrowNode) getValue();
+            return graph().unique(new NarrowNode(other.getValue(), getResultBits()));
+        } else if (getValue() instanceof IntegerConvertNode) {
             // SignExtendNode or ZeroExtendNode
-            IntegerConvertNode other = (IntegerConvertNode) getInput();
+            IntegerConvertNode other = (IntegerConvertNode) getValue();
             if (getResultBits() == other.getInputBits()) {
                 // xxxx -(extend)-> yyyy xxxx -(narrow)-> xxxx
                 // ==> no-op
-                return other.getInput();
+                return other.getValue();
             } else if (getResultBits() < other.getInputBits()) {
                 // yyyyxxxx -(extend)-> zzzzzzzz yyyyxxxx -(narrow)-> xxxx
                 // ==> yyyyxxxx -(narrow)-> xxxx
-                return graph().unique(new NarrowNode(other.getInput(), getResultBits()));
+                return graph().unique(new NarrowNode(other.getValue(), getResultBits()));
             } else {
                 if (other instanceof SignExtendNode) {
                     // sxxx -(sign-extend)-> ssssssss sssssxxx -(narrow)-> sssssxxx
                     // ==> sxxx -(sign-extend)-> sssssxxx
-                    return graph().unique(new SignExtendNode(other.getInput(), getResultBits()));
+                    return graph().unique(new SignExtendNode(other.getValue(), getResultBits()));
                 } else if (other instanceof ZeroExtendNode) {
                     // xxxx -(zero-extend)-> 00000000 00000xxx -(narrow)-> 0000xxxx
                     // ==> xxxx -(zero-extend)-> 0000xxxx
-                    return graph().unique(new ZeroExtendNode(other.getInput(), getResultBits()));
+                    return graph().unique(new ZeroExtendNode(other.getValue(), getResultBits()));
                 }
             }
         }
@@ -102,11 +102,11 @@ public class NarrowNode extends IntegerConvertNode {
 
     @Override
     public boolean inferStamp() {
-        return updateStamp(StampTool.narrowingConversion(getInput().stamp(), getResultBits()));
+        return updateStamp(StampTool.narrowingConversion(getValue().stamp(), getResultBits()));
     }
 
     @Override
     public void generate(NodeMappableLIRBuilder builder, ArithmeticLIRGenerator gen) {
-        builder.setResult(this, gen.emitNarrow(builder.operand(getInput()), getResultBits()));
+        builder.setResult(this, gen.emitNarrow(builder.operand(getValue()), getResultBits()));
     }
 }

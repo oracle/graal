@@ -63,7 +63,7 @@ public class AMD64HotSpotNodeLIRBuilder extends AMD64NodeLIRBuilder implements H
             result = ((PiNode) result).getOriginalNode();
         }
         if (result instanceof CompressionNode) {
-            result = ((CompressionNode) result).getInput();
+            result = ((CompressionNode) result).getValue();
         }
         return result;
     }
@@ -223,7 +223,7 @@ public class AMD64HotSpotNodeLIRBuilder extends AMD64NodeLIRBuilder implements H
     boolean canFormCompressedMemory(CompressionNode compress, ConstantLocationNode location) {
         HotSpotVMConfig config = HotSpotGraalRuntime.runtime().getConfig();
         if (config.useCompressedOops && compress.getEncoding().shift <= 3 && NumUtil.isInt(location.getDisplacement())) {
-            Stamp compressedStamp = compress.getInput().stamp();
+            Stamp compressedStamp = compress.getValue().stamp();
             if (compressedStamp instanceof NarrowOopStamp) {
                 return true;
             } else if (compressedStamp instanceof IntegerStamp) {
@@ -236,7 +236,7 @@ public class AMD64HotSpotNodeLIRBuilder extends AMD64NodeLIRBuilder implements H
 
     private AMD64AddressValue makeCompressedAddress(CompressionNode compress, ConstantLocationNode location) {
         assert canFormCompressedMemory(compress, location);
-        AMD64AddressValue address = getGen().emitAddress(getGen().getProviders().getRegisters().getHeapBaseRegister().asValue(), location.getDisplacement(), operand(compress.getInput()),
+        AMD64AddressValue address = getGen().emitAddress(getGen().getProviders().getRegisters().getHeapBaseRegister().asValue(), location.getDisplacement(), operand(compress.getValue()),
                         1 << compress.getEncoding().shift);
         return address;
     }

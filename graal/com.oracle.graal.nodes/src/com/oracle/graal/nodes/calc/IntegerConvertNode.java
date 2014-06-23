@@ -45,8 +45,8 @@ public abstract class IntegerConvertNode extends ConvertNode implements Arithmet
     }
 
     public int getInputBits() {
-        if (getInput().stamp() instanceof IntegerStamp) {
-            return ((IntegerStamp) getInput().stamp()).getBits();
+        if (getValue().stamp() instanceof IntegerStamp) {
+            return ((IntegerStamp) getValue().stamp()).getBits();
         } else {
             return 0;
         }
@@ -61,12 +61,12 @@ public abstract class IntegerConvertNode extends ConvertNode implements Arithmet
     }
 
     protected ValueNode canonicalConvert() {
-        if (getInput().stamp() instanceof IntegerStamp) {
-            int inputBits = ((IntegerStamp) getInput().stamp()).getBits();
+        if (getValue().stamp() instanceof IntegerStamp) {
+            int inputBits = ((IntegerStamp) getValue().stamp()).getBits();
             if (inputBits == resultBits) {
-                return getInput();
-            } else if (getInput().isConstant()) {
-                Constant ret = evalConst(getInput().asConstant());
+                return getValue();
+            } else if (getValue().isConstant()) {
+                Constant ret = evalConst(getValue().asConstant());
                 return ConstantNode.forIntegerBits(resultBits, ret.asLong(), graph());
             }
         }

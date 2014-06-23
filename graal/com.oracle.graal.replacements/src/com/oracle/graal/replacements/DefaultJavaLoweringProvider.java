@@ -580,7 +580,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
             SignExtendNode extend = (SignExtendNode) offset;
             if (extend.getResultBits() == 64) {
                 signExtend = true;
-                offset = extend.getInput();
+                offset = extend.getValue();
             }
         }
         if (offset instanceof IntegerAddNode) {

@@ -95,7 +95,7 @@ public class FloatConvertNode extends ConvertNode implements Canonicalizable, Lo
 
     @Override
     public boolean inferStamp() {
-        return updateStamp(createStamp(op, getInput()));
+        return updateStamp(createStamp(op, getValue()));
     }
 
     private static Constant convert(FloatConvert op, Constant value) {
@@ -148,12 +148,12 @@ public class FloatConvertNode extends ConvertNode implements Canonicalizable, Lo
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        if (getInput().isConstant()) {
-            return ConstantNode.forPrimitive(evalConst(getInput().asConstant()), graph());
-        } else if (getInput() instanceof FloatConvertNode) {
-            FloatConvertNode other = (FloatConvertNode) getInput();
+        if (getValue().isConstant()) {
+            return ConstantNode.forPrimitive(evalConst(getValue().asConstant()), graph());
+        } else if (getValue() instanceof FloatConvertNode) {
+            FloatConvertNode other = (FloatConvertNode) getValue();
             if (other.isLossless() && other.op == this.op.reverse()) {
-                return other.getInput();
+                return other.getValue();
             }
         }
         return this;
@@ -164,6 +164,6 @@ public class FloatConvertNode extends ConvertNode implements Canonicalizable, Lo
     }
 
     public void generate(NodeMappableLIRBuilder builder, ArithmeticLIRGenerator gen) {
-        builder.setResult(this, gen.emitFloatConvert(op, builder.operand(getInput())));
+        builder.setResult(this, gen.emitFloatConvert(op, builder.operand(getValue())));
     }
 }

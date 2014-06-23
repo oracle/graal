@@ -31,17 +31,10 @@ import com.oracle.graal.nodes.*;
 /**
  * Represents a conversion between primitive types.
  */
-public abstract class ConvertNode extends FloatingNode implements ArithmeticOperation {
+public abstract class ConvertNode extends UnaryNode implements ArithmeticOperation {
 
-    @Input private ValueNode input;
-
-    protected ConvertNode(Stamp stamp, ValueNode input) {
-        super(stamp);
-        this.input = input;
-    }
-
-    public ValueNode getInput() {
-        return input;
+    protected ConvertNode(Stamp stamp, ValueNode value) {
+        super(stamp, value);
     }
 
     public abstract Constant convert(Constant c);
