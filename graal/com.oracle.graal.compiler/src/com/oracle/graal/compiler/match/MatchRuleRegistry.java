@@ -68,9 +68,6 @@ public class MatchRuleRegistry {
         for (int i = 0; i < names.length; i++) {
             for (NodeClass.Position position : nodeClass.getFirstLevelInputPositions()) {
                 String name = nodeClass.getName(position);
-                if (name.endsWith("#NDF")) {
-                    name = name.substring(0, name.length() - 4);
-                }
                 if (name.equals(names[i])) {
                     result[i] = position;
                     break;
