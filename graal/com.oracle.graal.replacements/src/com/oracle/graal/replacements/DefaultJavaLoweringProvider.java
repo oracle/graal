@@ -109,7 +109,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         StructuredGraph graph = loadField.graph();
         ResolvedJavaField field = loadField.field();
         ValueNode object = loadField.isStatic() ? staticFieldBase(graph, field) : loadField.object();
-        Stamp loadStamp = loadStamp(loadField.stamp(), field.getKind(), true);
+        Stamp loadStamp = loadStamp(loadField.stamp(), field.getKind());
         ConstantLocationNode location = createFieldLocation(graph, field, false);
         assert location != null : "Field that is loaded must not be eliminated";
 
@@ -158,7 +158,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         StructuredGraph graph = loadIndexed.graph();
         Kind elementKind = loadIndexed.elementKind();
         LocationNode location = createArrayLocation(graph, elementKind, loadIndexed.index(), false);
-        Stamp loadStamp = loadStamp(loadIndexed.stamp(), elementKind, true);
+        Stamp loadStamp = loadStamp(loadIndexed.stamp(), elementKind);
 
         ReadNode memoryRead = graph.add(new ReadNode(loadIndexed.array(), location, loadStamp, BarrierType.NONE));
         ValueNode readValue = implicitLoadConvert(graph, elementKind, memoryRead);
@@ -502,6 +502,10 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
     }
 
     protected abstract LocationIdentity initLocationIdentity();
+
+    public Stamp loadStamp(Stamp stamp, Kind kind) {
+        return loadStamp(stamp, kind, true);
+    }
 
     protected Stamp loadStamp(Stamp stamp, Kind kind, @SuppressWarnings("unused") boolean compressible) {
         switch (kind) {
