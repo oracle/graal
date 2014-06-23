@@ -154,7 +154,7 @@ public class TruffleCompilerImpl {
     }
 
     private static String formatSourceSection(SourceSection sourceSection) {
-        return sourceSection != null ? sourceSection.toString() : "n/a";
+        return sourceSection != null ? sourceSection.getShortDescription() : "n/a";
     }
 
     public CompilationResult compileMethodHelper(StructuredGraph graph, Assumptions assumptions, String name, SpeculationLog speculationLog, InstalledCode predefinedInstalledCode) {
