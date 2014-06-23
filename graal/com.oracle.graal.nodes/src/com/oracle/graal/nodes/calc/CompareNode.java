@@ -126,12 +126,10 @@ public abstract class CompareNode extends BinaryOpLogicNode {
     protected abstract CompareNode duplicateModified(ValueNode newX, ValueNode newY);
 
     protected Node canonicalizeSymmetricConstant(CanonicalizerTool tool, Constant constant, ValueNode nonConstant, boolean mirrored) {
-        if (nonConstant instanceof BinaryNode) {
-            if (nonConstant instanceof ConditionalNode) {
-                return optimizeConditional(constant, (ConditionalNode) nonConstant, tool.getConstantReflection(), mirrored ? condition().mirror() : condition());
-            } else if (nonConstant instanceof NormalizeCompareNode) {
-                return optimizeNormalizeCmp(constant, (NormalizeCompareNode) nonConstant, mirrored);
-            }
+        if (nonConstant instanceof ConditionalNode) {
+            return optimizeConditional(constant, (ConditionalNode) nonConstant, tool.getConstantReflection(), mirrored ? condition().mirror() : condition());
+        } else if (nonConstant instanceof NormalizeCompareNode) {
+            return optimizeNormalizeCmp(constant, (NormalizeCompareNode) nonConstant, mirrored);
         } else if (nonConstant instanceof ConvertNode) {
             ConvertNode convert = (ConvertNode) nonConstant;
             ConstantNode newConstant = canonicalConvertConstant(tool, convert, constant);

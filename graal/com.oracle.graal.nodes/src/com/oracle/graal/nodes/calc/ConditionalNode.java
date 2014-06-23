@@ -37,9 +37,11 @@ import com.oracle.graal.nodes.spi.*;
  * The {@code ConditionalNode} class represents a comparison that yields one of two values. Note
  * that these nodes are not built directly from the bytecode but are introduced by canonicalization.
  */
-public final class ConditionalNode extends BinaryNode implements Canonicalizable, LIRLowerable {
+public final class ConditionalNode extends FloatingNode implements Canonicalizable, LIRLowerable {
 
     @Input(InputType.Condition) private LogicNode condition;
+    @Input private ValueNode trueValue;
+    @Input private ValueNode falseValue;
 
     public LogicNode condition() {
         return condition;
@@ -50,38 +52,40 @@ public final class ConditionalNode extends BinaryNode implements Canonicalizable
     }
 
     public ConditionalNode(LogicNode condition, ValueNode trueValue, ValueNode falseValue) {
-        super(trueValue.stamp().meet(falseValue.stamp()), trueValue, falseValue);
+        super(trueValue.stamp().meet(falseValue.stamp()));
         assert trueValue.stamp().isCompatible(falseValue.stamp());
         this.condition = condition;
+        this.trueValue = trueValue;
+        this.falseValue = falseValue;
     }
 
     @Override
     public boolean inferStamp() {
-        return updateStamp(x().stamp().meet(y().stamp()));
+        return updateStamp(trueValue.stamp().meet(falseValue.stamp()));
     }
 
     public ValueNode trueValue() {
-        return x();
+        return trueValue;
     }
 
     public ValueNode falseValue() {
-        return y();
+        return falseValue;
     }
 
     @Override
-    public Node canonical(CanonicalizerTool tool) {
+    public ValueNode canonical(CanonicalizerTool tool) {
         if (condition instanceof LogicNegationNode) {
             LogicNegationNode negated = (LogicNegationNode) condition;
             return graph().unique(new ConditionalNode(negated.getInput(), falseValue(), trueValue()));
         }
 
         // this optimizes the case where a value that can only be 0 or 1 is materialized to 0 or 1
-        if (x().isConstant() && y().isConstant() && condition instanceof IntegerEqualsNode) {
+        if (trueValue().isConstant() && falseValue().isConstant() && condition instanceof IntegerEqualsNode) {
             IntegerEqualsNode equals = (IntegerEqualsNode) condition;
             if (equals.y().isConstant() && equals.y().asConstant().equals(Constant.INT_0) && equals.x().stamp() instanceof IntegerStamp) {
                 IntegerStamp equalsXStamp = (IntegerStamp) equals.x().stamp();
                 if (equalsXStamp.upMask() == 1) {
-                    if (x().asConstant().equals(Constant.INT_0) && y().asConstant().equals(Constant.INT_1)) {
+                    if (trueValue().asConstant().equals(Constant.INT_0) && falseValue().asConstant().equals(Constant.INT_1)) {
                         return IntegerConvertNode.convertUnsigned(equals.x(), stamp());
                     }
                 }
