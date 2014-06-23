@@ -195,7 +195,7 @@ public class StampTool {
         return add(stamp1, (IntegerStamp) StampTool.negate(stamp2));
     }
 
-    private static Stamp stampForMask(int bits, long downMask, long upMask) {
+    public static Stamp stampForMask(int bits, long downMask, long upMask) {
         long lowerBound;
         long upperBound;
         if (((upMask >>> (bits - 1)) & 1) == 0) {
