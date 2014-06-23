@@ -381,6 +381,10 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
                 workList.add(node);
             }
 
+            public void addToWorkList(Iterable<? extends Node> nodes) {
+                workList.addAll(nodes);
+            }
+
             @Override
             public void removeIfUnused(Node node) {
                 GraphUtil.tryKillUnused(node);

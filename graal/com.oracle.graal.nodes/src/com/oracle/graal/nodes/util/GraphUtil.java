@@ -94,13 +94,13 @@ public class GraphUtil {
             } else if (merge instanceof LoopBeginNode && ((LoopBeginNode) merge).loopEnds().isEmpty()) {
                 // not a loop anymore
                 if (tool != null) {
-                    merge.phis().forEach(phi -> phi.usages().forEach(tool::addToWorkList));
+                    merge.phis().forEach(phi -> tool.addToWorkList(phi.usages()));
                 }
                 graph.reduceDegenerateLoopBegin((LoopBeginNode) merge);
             } else if (merge.phiPredecessorCount() == 1) {
                 // not a merge anymore
                 if (tool != null) {
-                    merge.phis().forEach(phi -> phi.usages().forEach(tool::addToWorkList));
+                    merge.phis().forEach(phi -> tool.addToWorkList(phi.usages()));
                 }
                 graph.reduceTrivialMerge(merge);
             }
