@@ -36,15 +36,13 @@ import com.oracle.graal.nodes.spi.*;
  * of the {@link FloatConvertNode} which, on AMD64 needs a {@link AMD64FloatConvertNode} plus some
  * fixup code that handles the corner cases that differ between AMD64 and Java.
  */
-public class AMD64FloatConvertNode extends FloatingNode implements ArithmeticLIRLowerable {
+public class AMD64FloatConvertNode extends UnaryNode implements ArithmeticLIRLowerable {
 
     private final FloatConvert op;
-    @Input private ValueNode value;
 
     public AMD64FloatConvertNode(Stamp stamp, FloatConvert op, ValueNode value) {
-        super(stamp);
+        super(stamp, value);
         this.op = op;
-        this.value = value;
     }
 
     public Constant evalConst(Constant... inputs) {
@@ -53,6 +51,6 @@ public class AMD64FloatConvertNode extends FloatingNode implements ArithmeticLIR
     }
 
     public void generate(NodeMappableLIRBuilder builder, ArithmeticLIRGenerator gen) {
-        builder.setResult(this, gen.emitFloatConvert(op, builder.operand(value)));
+        builder.setResult(this, gen.emitFloatConvert(op, builder.operand(getValue())));
     }
 }

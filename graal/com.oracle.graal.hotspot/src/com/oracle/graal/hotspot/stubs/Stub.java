@@ -64,6 +64,11 @@ public abstract class Stub {
     protected InstalledCode code;
 
     /**
+     * Compilation result from which {@link #code} was created.
+     */
+    protected CompilationResult compResult;
+
+    /**
      * The registers destroyed by this stub.
      */
     private Set<Register> destroyedRegisters;
@@ -152,7 +157,7 @@ public abstract class Stub {
                 CallingConvention incomingCc = linkage.getIncomingCallingConvention();
                 TargetDescription target = codeCache.getTarget();
 
-                final CompilationResult compResult = new CompilationResult();
+                compResult = new CompilationResult();
                 try (Scope s0 = Debug.scope("StubCompilation", graph, providers.getCodeCache())) {
                     Assumptions assumptions = new Assumptions(OptAssumptions.getValue());
                     SchedulePhase schedule = emitFrontEnd(providers, target, graph, assumptions, null, providers.getSuites().getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL,
@@ -182,6 +187,18 @@ public abstract class Stub {
             }
             assert code != null : "error installing stub " + this;
         }
+
         return code;
+    }
+
+    /**
+     * Gets the compilation result for this stub, compiling it first if necessary, and installing it
+     * in code.
+     */
+    public synchronized CompilationResult getCompilationResult(final Backend backend) {
+        if (code == null) {
+            getCode(backend);
+        }
+        return compResult;
     }
 }

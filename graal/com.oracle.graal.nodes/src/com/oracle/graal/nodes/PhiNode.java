@@ -164,7 +164,7 @@ public abstract class PhiNode extends FloatingNode {
         if (singleValue != null) {
             for (Node node : usages().snapshot()) {
                 if (node instanceof ProxyNode && ((ProxyNode) node).proxyPoint() instanceof LoopExitNode && ((LoopExitNode) ((ProxyNode) node).proxyPoint()).loopBegin() == merge) {
-                    node.usages().forEach(tool::addToWorkList);
+                    tool.addToWorkList(node.usages());
                     graph().replaceFloating((FloatingNode) node, singleValue);
                 }
             }

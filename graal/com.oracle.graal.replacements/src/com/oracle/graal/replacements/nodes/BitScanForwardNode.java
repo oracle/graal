@@ -24,32 +24,34 @@ package com.oracle.graal.replacements.nodes;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.graph.*;
-import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
 
-public class BitScanForwardNode extends FloatingNode implements LIRLowerable, Canonicalizable {
-
-    @Input private ValueNode value;
+public class BitScanForwardNode extends UnaryNode implements LIRLowerable {
 
     public BitScanForwardNode(ValueNode value) {
-        super(StampFactory.forInteger(Kind.Int, 0, ((PrimitiveStamp) value.stamp()).getBits()));
-        this.value = value;
+        super(StampFactory.forInteger(Kind.Int, 0, ((PrimitiveStamp) value.stamp()).getBits()), value);
+        assert value.getKind() == Kind.Int || value.getKind() == Kind.Long;
     }
 
     @Override
-    public Node canonical(CanonicalizerTool tool) {
-        if (value.isConstant()) {
-            Constant c = value.asConstant();
-            if (c.getKind() == Kind.Int) {
-                return ConstantNode.forInt(Integer.numberOfTrailingZeros(c.asInt()), graph());
-            } else if (c.getKind() == Kind.Long) {
-                return ConstantNode.forInt(Long.numberOfTrailingZeros(c.asLong()), graph());
-            }
+    public boolean inferStamp() {
+        IntegerStamp valueStamp = (IntegerStamp) getValue().stamp();
+        int min;
+        int max;
+        long mask = IntegerStamp.defaultMask(valueStamp.getBits());
+        int firstAlwaysSetBit = scan(valueStamp.downMask() & mask);
+        if (firstAlwaysSetBit == -1) {
+            int lastMaybeSetBit = BitScanReverseNode.scan(valueStamp.upMask() & mask);
+            min = -1;
+            max = lastMaybeSetBit;
+        } else {
+            int firstMaybeSetBit = scan(valueStamp.upMask() & mask);
+            min = firstMaybeSetBit;
+            max = firstAlwaysSetBit;
         }
-        return this;
+        return updateStamp(StampFactory.forInteger(Kind.Int, min, max));
     }
 
     @NodeIntrinsic
@@ -71,7 +73,7 @@ public class BitScanForwardNode extends FloatingNode implements LIRLowerable, Ca
 
     @Override
     public void generate(NodeLIRBuilderTool gen) {
-        Value result = gen.getLIRGeneratorTool().emitBitScanForward(gen.operand(value));
+        Value result = gen.getLIRGeneratorTool().emitBitScanForward(gen.operand(getValue()));
         gen.setResult(this, result);
     }
 }

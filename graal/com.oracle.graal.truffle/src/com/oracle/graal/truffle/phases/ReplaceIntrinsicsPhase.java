@@ -54,7 +54,7 @@ public class ReplaceIntrinsicsPhase extends Phase {
                     } else {
                         StructuredGraph inlineGraph = replacements.getMethodSubstitution(methodCallTarget.targetMethod());
                         if (inlineGraph != null) {
-                            InliningUtil.inline(methodCallTarget.invoke(), inlineGraph, true);
+                            InliningUtil.inline(methodCallTarget.invoke(), inlineGraph, true, null);
                             Debug.dump(graph, "After inlining %s", methodCallTarget.targetMethod().toString());
                         }
                     }

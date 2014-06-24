@@ -115,8 +115,8 @@ public abstract class CompareNode extends BinaryOpLogicNode {
         } else if (x() instanceof ConvertNode && y() instanceof ConvertNode) {
             ConvertNode convertX = (ConvertNode) x();
             ConvertNode convertY = (ConvertNode) y();
-            if (convertX.preservesOrder(condition()) && convertY.preservesOrder(condition()) && convertX.getInput().stamp().isCompatible(convertY.getInput().stamp())) {
-                return graph().unique(duplicateModified(convertX.getInput(), convertY.getInput()));
+            if (convertX.preservesOrder(condition()) && convertY.preservesOrder(condition()) && convertX.getValue().stamp().isCompatible(convertY.getValue().stamp())) {
+                return graph().unique(duplicateModified(convertX.getValue(), convertY.getValue()));
             }
 
         }
@@ -126,20 +126,18 @@ public abstract class CompareNode extends BinaryOpLogicNode {
     protected abstract CompareNode duplicateModified(ValueNode newX, ValueNode newY);
 
     protected Node canonicalizeSymmetricConstant(CanonicalizerTool tool, Constant constant, ValueNode nonConstant, boolean mirrored) {
-        if (nonConstant instanceof BinaryNode) {
-            if (nonConstant instanceof ConditionalNode) {
-                return optimizeConditional(constant, (ConditionalNode) nonConstant, tool.getConstantReflection(), mirrored ? condition().mirror() : condition());
-            } else if (nonConstant instanceof NormalizeCompareNode) {
-                return optimizeNormalizeCmp(constant, (NormalizeCompareNode) nonConstant, mirrored);
-            }
+        if (nonConstant instanceof ConditionalNode) {
+            return optimizeConditional(constant, (ConditionalNode) nonConstant, tool.getConstantReflection(), mirrored ? condition().mirror() : condition());
+        } else if (nonConstant instanceof NormalizeCompareNode) {
+            return optimizeNormalizeCmp(constant, (NormalizeCompareNode) nonConstant, mirrored);
         } else if (nonConstant instanceof ConvertNode) {
             ConvertNode convert = (ConvertNode) nonConstant;
             ConstantNode newConstant = canonicalConvertConstant(tool, convert, constant);
             if (newConstant != null) {
                 if (mirrored) {
-                    return graph().unique(duplicateModified(newConstant, convert.getInput()));
+                    return graph().unique(duplicateModified(newConstant, convert.getValue()));
                 } else {
-                    return graph().unique(duplicateModified(convert.getInput(), newConstant));
+                    return graph().unique(duplicateModified(convert.getValue(), newConstant));
                 }
             }
         }
@@ -150,7 +148,7 @@ public abstract class CompareNode extends BinaryOpLogicNode {
         if (convert.preservesOrder(condition())) {
             Constant reverseConverted = convert.reverse(constant);
             if (convert.convert(reverseConverted).equals(constant)) {
-                return ConstantNode.forConstant(convert.getInput().stamp(), reverseConverted, tool.getMetaAccess(), convert.graph());
+                return ConstantNode.forConstant(convert.getValue().stamp(), reverseConverted, tool.getMetaAccess(), convert.graph());
             }
         }
         return null;

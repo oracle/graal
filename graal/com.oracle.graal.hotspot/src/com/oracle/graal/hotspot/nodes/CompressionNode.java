@@ -152,12 +152,12 @@ public final class CompressionNode extends ConvertNode implements LIRLowerable, 
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        if (getInput().isConstant()) {
-            return ConstantNode.forConstant(stamp(), evalConst(getInput().asConstant()), tool.getMetaAccess(), graph());
-        } else if (getInput() instanceof CompressionNode) {
-            CompressionNode other = (CompressionNode) getInput();
+        if (getValue().isConstant()) {
+            return ConstantNode.forConstant(stamp(), evalConst(getValue().asConstant()), tool.getMetaAccess(), graph());
+        } else if (getValue() instanceof CompressionNode) {
+            CompressionNode other = (CompressionNode) getValue();
             if (op != other.op && encoding.equals(other.encoding)) {
-                return other.getInput();
+                return other.getValue();
             }
         }
         return this;
@@ -167,8 +167,8 @@ public final class CompressionNode extends ConvertNode implements LIRLowerable, 
     public void generate(NodeLIRBuilderTool gen) {
         HotSpotLIRGenerator hsGen = (HotSpotLIRGenerator) gen.getLIRGeneratorTool();
         boolean nonNull;
-        if (getInput().stamp() instanceof AbstractObjectStamp) {
-            nonNull = StampTool.isObjectNonNull(getInput().stamp());
+        if (getValue().stamp() instanceof AbstractObjectStamp) {
+            nonNull = StampTool.isObjectNonNull(getValue().stamp());
         } else {
             // metaspace pointers are never null
             nonNull = true;
@@ -177,10 +177,10 @@ public final class CompressionNode extends ConvertNode implements LIRLowerable, 
         Value result;
         switch (op) {
             case Compress:
-                result = hsGen.emitCompress(gen.operand(getInput()), encoding, nonNull);
+                result = hsGen.emitCompress(gen.operand(getValue()), encoding, nonNull);
                 break;
             case Uncompress:
-                result = hsGen.emitUncompress(gen.operand(getInput()), encoding, nonNull);
+                result = hsGen.emitUncompress(gen.operand(getValue()), encoding, nonNull);
                 break;
             default:
                 throw GraalInternalError.shouldNotReachHere();

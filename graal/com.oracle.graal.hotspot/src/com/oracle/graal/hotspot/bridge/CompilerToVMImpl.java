@@ -68,7 +68,7 @@ public class CompilerToVMImpl implements CompilerToVM {
     public native boolean hasBalancedMonitors(long metaspaceMethod);
 
     @Override
-    public native long findUniqueConcreteMethod(long metaspaceMethod);
+    public native long findUniqueConcreteMethod(long actualHolderMetaspaceKlass, long metaspaceMethod);
 
     @Override
     public native long getKlassImplementor(long metaspaceKlass);

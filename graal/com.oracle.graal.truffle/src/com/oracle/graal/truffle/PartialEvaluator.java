@@ -214,7 +214,7 @@ public class PartialEvaluator {
                                     expansionLogger.preExpand(methodCallTargetNode, inlineGraph);
                                 }
                                 List<Node> canonicalizedNodes = methodCallTargetNode.invoke().asNode().usages().snapshot();
-                                Map<Node, Node> inlined = InliningUtil.inline(methodCallTargetNode.invoke(), inlineGraph, false);
+                                Map<Node, Node> inlined = InliningUtil.inline(methodCallTargetNode.invoke(), inlineGraph, false, canonicalizedNodes);
                                 if (TraceTruffleExpansion.getValue()) {
                                     expansionLogger.postExpand(inlined);
                                 }

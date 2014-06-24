@@ -64,4 +64,13 @@ public class ObjectStamp extends AbstractObjectStamp {
         }
         return false;
     }
+
+    @Override
+    public Constant asConstant() {
+        if (alwaysNull()) {
+            return Constant.NULL_OBJECT;
+        } else {
+            return null;
+        }
+    }
 }

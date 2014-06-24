@@ -559,12 +559,13 @@ public abstract class Node implements Cloneable, Formattable {
                     assert assertTrue(result, "not found in usages, old input: %s", oldInput);
                 }
             }
+            maybeNotifyChanged(this);
             if (newInput != null) {
                 if (newInput.recordsUsages()) {
-                    maybeNotifyChanged(this);
                     newInput.addUsage(this);
                 }
-            } else if (oldInput != null && oldInput.recordsUsages() && oldInput.usages().isEmpty()) {
+            }
+            if (oldInput != null && oldInput.recordsUsages() && oldInput.usages().isEmpty()) {
                 maybeNotifyZeroInputs(oldInput);
             }
         }

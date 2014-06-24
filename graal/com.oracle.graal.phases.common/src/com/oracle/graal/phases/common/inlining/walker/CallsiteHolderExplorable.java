@@ -24,12 +24,10 @@ package com.oracle.graal.phases.common.inlining.walker;
 
 import com.oracle.graal.api.meta.MetaUtil;
 import com.oracle.graal.api.meta.ResolvedJavaMethod;
-import com.oracle.graal.nodes.FixedNode;
-import com.oracle.graal.nodes.Invoke;
-import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.graph.FixedNodeProbabilityCache;
 
-import java.util.LinkedList;
+import java.util.*;
 import java.util.function.ToDoubleFunction;
 
 import static com.oracle.graal.compiler.common.GraalOptions.CapInheritedRelevance;
@@ -52,19 +50,30 @@ import static com.oracle.graal.compiler.common.GraalOptions.CapInheritedRelevanc
  */
 public final class CallsiteHolderExplorable extends CallsiteHolder {
 
+    /**
+     * Graph in which inlining may be performed at one or more of the callsites containined in
+     * {@link #remainingInvokes}
+     */
     private final StructuredGraph graph;
+
     private final LinkedList<Invoke> remainingInvokes;
     private final double probability;
     private final double relevance;
 
+    /**
+     * @see #getFixedParams()
+     */
+    private final Set<ParameterNode> fixedParams;
+
     private final ToDoubleFunction<FixedNode> probabilities;
     private final ComputeInliningRelevance computeInliningRelevance;
 
-    public CallsiteHolderExplorable(StructuredGraph graph, double probability, double relevance) {
+    public CallsiteHolderExplorable(StructuredGraph graph, double probability, double relevance, BitSet freshlyInstantiatedArguments) {
         assert graph != null;
         this.graph = graph;
         this.probability = probability;
         this.relevance = relevance;
+        this.fixedParams = fixedParamsAt(freshlyInstantiatedArguments);
         remainingInvokes = new InliningIterator(graph).apply();
         if (remainingInvokes.isEmpty()) {
             probabilities = null;
@@ -74,6 +83,65 @@ public final class CallsiteHolderExplorable extends CallsiteHolder {
             computeInliningRelevance = new ComputeInliningRelevance(graph, probabilities);
             computeProbabilities();
         }
+        assert repOK();
+    }
+
+    /**
+     * @see #getFixedParams()
+     */
+    @SuppressWarnings("unchecked")
+    private Set<ParameterNode> fixedParamsAt(BitSet freshlyInstantiatedArguments) {
+        if (freshlyInstantiatedArguments == null || freshlyInstantiatedArguments.isEmpty()) {
+            return Collections.EMPTY_SET;
+        }
+        Set<ParameterNode> result = new HashSet<>();
+        for (ParameterNode p : graph.getNodes(ParameterNode.class)) {
+            if (freshlyInstantiatedArguments.get(p.index())) {
+                result.add(p);
+            }
+        }
+        return result;
+    }
+
+    /**
+     * <p>
+     * Parameters for which the callsite targeting {@link #graph()} provides "fixed" arguments. That
+     * callsite isn't referenced by this instance. Instead, it belongs to the graph of the caller of
+     * this {@link CallsiteHolderExplorable}
+     * </p>
+     *
+     * <p>
+     * Constant arguments don't contribute to fixed-params: those params have been removed already,
+     * see {@link com.oracle.graal.phases.common.inlining.info.elem.InlineableGraph}.
+     * </p>
+     *
+     * <p>
+     * Instead, fixed-params are those receiving freshly instantiated arguments (possibly
+     * instantiated several levels up in the call-hierarchy)
+     * </p>
+     * */
+    public Set<ParameterNode> getFixedParams() {
+        return fixedParams;
+    }
+
+    public boolean repOK() {
+        for (Invoke invoke : remainingInvokes) {
+            if (!invoke.asNode().isAlive() || !containsInvoke(invoke)) {
+                assert false;
+                return false;
+            }
+            if (!allArgsNonNull(invoke)) {
+                assert false;
+                return false;
+            }
+        }
+        for (ParameterNode fixedParam : fixedParams) {
+            if (!containsParam(fixedParam)) {
+                assert false;
+                return false;
+            }
+        }
+        return true;
     }
 
     @Override
@@ -99,9 +167,28 @@ public final class CallsiteHolderExplorable extends CallsiteHolder {
         remainingInvokes.push(invoke);
     }
 
+    public static boolean allArgsNonNull(Invoke invoke) {
+        for (ValueNode arg : invoke.callTarget().arguments()) {
+            if (arg == null) {
+                assert false;
+                return false;
+            }
+        }
+        return true;
+    }
+
     public boolean containsInvoke(Invoke invoke) {
         for (Invoke i : graph().getInvokes()) {
             if (i == invoke) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public boolean containsParam(ParameterNode param) {
+        for (ParameterNode p : graph.getNodes(ParameterNode.class)) {
+            if (p == param) {
                 return true;
             }
         }

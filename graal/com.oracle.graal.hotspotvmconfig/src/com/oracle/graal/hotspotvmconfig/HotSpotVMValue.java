@@ -45,6 +45,13 @@ public @interface HotSpotVMValue {
         VALUE
     }
 
+    /**
+     * If {@link #expression} is a C++ function name, {@link #signature} represents the signature of
+     * the function.
+     *
+     */
+    String signature() default "";
+
     Type get() default Type.VALUE;
 
     /**

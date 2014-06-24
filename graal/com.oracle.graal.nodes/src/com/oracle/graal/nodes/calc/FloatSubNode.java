@@ -55,23 +55,8 @@ public final class FloatSubNode extends FloatArithmeticNode implements Canonical
         }
         if (x().isConstant() && y().isConstant()) {
             return ConstantNode.forPrimitive(evalConst(x().asConstant(), y().asConstant()), graph());
-        } else if (y().isConstant()) {
-            Constant c = y().asConstant();
-            if (c.getKind() == Kind.Float) {
-                float f = c.asFloat();
-                if (f == 0.0f) {
-                    return x();
-                }
-                return graph().unique(new FloatAddNode(stamp(), x(), ConstantNode.forFloat(-f, graph()), isStrictFP()));
-            } else {
-                assert c.getKind() == Kind.Double;
-                double d = c.asDouble();
-                if (d == 0.0) {
-                    return x();
-                }
-                return graph().unique(new FloatAddNode(stamp(), x(), ConstantNode.forDouble(-d, graph()), isStrictFP()));
-            }
         }
+        // Constant 0.0 can't be eliminated since it can affect the sign of the result.
         return this;
     }
 

@@ -26,6 +26,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.spi.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.hotspot.HotSpotVMConfig.CompressEncoding;
+import com.oracle.graal.hotspot.meta.*;
 
 public class NarrowOopStamp extends AbstractObjectStamp {
 
@@ -99,5 +100,14 @@ public class NarrowOopStamp extends AbstractObjectStamp {
             return false;
         }
         return super.equals(other);
+    }
+
+    @Override
+    public Constant asConstant() {
+        if (alwaysNull()) {
+            return HotSpotCompressedNullConstant.COMPRESSED_NULL;
+        } else {
+            return null;
+        }
     }
 }

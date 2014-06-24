@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,18 +20,31 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.phases.common;
+package com.oracle.graal.nodes.calc;
 
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.phases.*;
 
-public class CleanTypeProfileProxyPhase extends Phase {
+/**
+ * The {@code UnaryNode} class is the base of arithmetic and bit logic operations with exactly one
+ * input.
+ */
+public abstract class UnaryNode extends FloatingNode {
 
-    @Override
-    protected void run(StructuredGraph graph) {
-        for (TypeProfileProxyNode proxy : graph.getNodes(TypeProfileProxyNode.class)) {
-            graph.replaceFloating(proxy, proxy.getValue());
-        }
-        assert graph.getNodes(TypeProfileProxyNode.class).count() == 0;
+    @Input private ValueNode value;
+
+    public ValueNode getValue() {
+        return value;
+    }
+
+    /**
+     * Creates a new UnaryNode instance.
+     *
+     * @param stamp the result type of this instruction
+     * @param value the input instruction
+     */
+    public UnaryNode(Stamp stamp, ValueNode value) {
+        super(stamp);
+        this.value = value;
     }
 }

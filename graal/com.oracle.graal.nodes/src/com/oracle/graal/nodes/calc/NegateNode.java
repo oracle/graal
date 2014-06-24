@@ -34,27 +34,20 @@ import com.oracle.graal.nodes.type.*;
 /**
  * The {@code NegateNode} node negates its operand.
  */
-public final class NegateNode extends FloatingNode implements Canonicalizable, ArithmeticLIRLowerable, NarrowableArithmeticNode {
-
-    @Input private ValueNode x;
-
-    public ValueNode x() {
-        return x;
-    }
+public final class NegateNode extends UnaryNode implements Canonicalizable, ArithmeticLIRLowerable, NarrowableArithmeticNode {
 
     @Override
     public boolean inferStamp() {
-        return updateStamp(StampTool.negate(x().stamp()));
+        return updateStamp(StampTool.negate(getValue().stamp()));
     }
 
     /**
      * Creates new NegateNode instance.
      *
-     * @param x the instruction producing the value that is input to this instruction
+     * @param value the instruction producing the value that is input to this instruction
      */
-    public NegateNode(ValueNode x) {
-        super(StampTool.negate(x.stamp()));
-        this.x = x;
+    public NegateNode(ValueNode value) {
+        super(StampTool.negate(value.stamp()), value);
     }
 
     public Constant evalConst(Constant... inputs) {
@@ -76,14 +69,14 @@ public final class NegateNode extends FloatingNode implements Canonicalizable, A
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        if (x().isConstant()) {
-            return ConstantNode.forPrimitive(evalConst(x.asConstant()), graph());
+        if (getValue().isConstant()) {
+            return ConstantNode.forPrimitive(evalConst(getValue().asConstant()), graph());
         }
-        if (x() instanceof NegateNode) {
-            return ((NegateNode) x()).x();
+        if (getValue() instanceof NegateNode) {
+            return ((NegateNode) getValue()).getValue();
         }
-        if (x() instanceof IntegerSubNode) {
-            IntegerSubNode sub = (IntegerSubNode) x;
+        if (getValue() instanceof IntegerSubNode) {
+            IntegerSubNode sub = (IntegerSubNode) getValue();
             return IntegerArithmeticNode.sub(graph(), sub.y(), sub.x());
         }
         return this;
@@ -91,6 +84,6 @@ public final class NegateNode extends FloatingNode implements Canonicalizable, A
 
     @Override
     public void generate(NodeMappableLIRBuilder builder, ArithmeticLIRGenerator gen) {
-        builder.setResult(this, gen.emitNegate(builder.operand(x())));
+        builder.setResult(this, gen.emitNegate(builder.operand(getValue())));
     }
 }

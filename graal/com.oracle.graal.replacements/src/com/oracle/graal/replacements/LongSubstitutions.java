@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,7 +22,9 @@
  */
 package com.oracle.graal.replacements;
 
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
+import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.replacements.nodes.*;
 
 @ClassSubstitution(Long.class)
@@ -52,5 +54,15 @@ public class LongSubstitutions {
     @MethodSubstitution
     public static int bitCount(long i) {
         return BitCountNode.bitCount(i);
+    }
+
+    @MethodSubstitution
+    public static long divideUnsigned(long dividend, long divisor) {
+        return UnsignedDivNode.unsignedDivide(Kind.Long, dividend, divisor);
+    }
+
+    @MethodSubstitution
+    public static long remainderUnsigned(long dividend, long divisor) {
+        return UnsignedRemNode.unsignedRemainder(Kind.Long, dividend, divisor);
     }
 }

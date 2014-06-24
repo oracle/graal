@@ -560,11 +560,11 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
             }
             boolean negateConditionalCondition;
             ValueNode otherValue;
-            if (constant == conditional.x()) {
-                otherValue = conditional.y();
+            if (constant == conditional.trueValue()) {
+                otherValue = conditional.falseValue();
                 negateConditionalCondition = false;
-            } else if (constant == conditional.y()) {
-                otherValue = conditional.x();
+            } else if (constant == conditional.falseValue()) {
+                otherValue = conditional.trueValue();
                 negateConditionalCondition = true;
             } else {
                 return null;

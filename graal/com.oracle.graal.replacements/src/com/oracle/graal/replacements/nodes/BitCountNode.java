@@ -30,19 +30,25 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
 
-public class BitCountNode extends FloatingNode implements LIRLowerable, Canonicalizable {
-
-    @Input private ValueNode value;
+public class BitCountNode extends UnaryNode implements LIRLowerable, Canonicalizable {
 
     public BitCountNode(ValueNode value) {
-        super(StampFactory.forInteger(Kind.Int, 0, ((PrimitiveStamp) value.stamp()).getBits()));
-        this.value = value;
+        super(StampFactory.forInteger(Kind.Int, 0, ((PrimitiveStamp) value.stamp()).getBits()), value);
+        assert value.getKind() == Kind.Int || value.getKind() == Kind.Long;
+    }
+
+    @Override
+    public boolean inferStamp() {
+        IntegerStamp valueStamp = (IntegerStamp) getValue().stamp();
+        assert (valueStamp.downMask() & IntegerStamp.defaultMask(valueStamp.getBits())) == valueStamp.downMask();
+        assert (valueStamp.upMask() & IntegerStamp.defaultMask(valueStamp.getBits())) == valueStamp.upMask();
+        return updateStamp(StampFactory.forInteger(Kind.Int, bitCount(valueStamp.downMask()), bitCount(valueStamp.upMask())));
     }
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        if (value.isConstant()) {
-            Constant c = value.asConstant();
+        if (getValue().isConstant()) {
+            Constant c = getValue().asConstant();
             if (c.getKind() == Kind.Int) {
                 return ConstantNode.forInt(Integer.bitCount(c.asInt()), graph());
             } else if (c.getKind() == Kind.Long) {
@@ -64,7 +70,7 @@ public class BitCountNode extends FloatingNode implements LIRLowerable, Canonica
 
     @Override
     public void generate(NodeLIRBuilderTool gen) {
-        Value result = gen.getLIRGeneratorTool().emitBitCount(gen.operand(value));
+        Value result = gen.getLIRGeneratorTool().emitBitCount(gen.operand(getValue()));
         gen.setResult(this, result);
     }
 }

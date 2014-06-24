@@ -84,22 +84,22 @@ public class ZeroExtendNode extends IntegerConvertNode {
             return ret;
         }
 
-        if (getInput() instanceof ZeroExtendNode) {
+        if (getValue() instanceof ZeroExtendNode) {
             // xxxx -(zero-extend)-> 0000 xxxx -(zero-extend)-> 00000000 0000xxxx
             // ==> xxxx -(zero-extend)-> 00000000 0000xxxx
-            ZeroExtendNode other = (ZeroExtendNode) getInput();
-            return graph().unique(new ZeroExtendNode(other.getInput(), getResultBits()));
+            ZeroExtendNode other = (ZeroExtendNode) getValue();
+            return graph().unique(new ZeroExtendNode(other.getValue(), getResultBits()));
         }
-        if (getInput() instanceof NarrowNode) {
-            NarrowNode narrow = (NarrowNode) getInput();
-            Stamp inputStamp = narrow.getInput().stamp();
+        if (getValue() instanceof NarrowNode) {
+            NarrowNode narrow = (NarrowNode) getValue();
+            Stamp inputStamp = narrow.getValue().stamp();
             if (inputStamp instanceof IntegerStamp && inputStamp.isCompatible(stamp())) {
                 IntegerStamp istamp = (IntegerStamp) inputStamp;
                 long mask = IntegerStamp.defaultMask(PrimitiveStamp.getBits(narrow.stamp()));
                 if (((istamp.upMask() | istamp.downMask()) & ~mask) == 0) {
                     // The original value is in the range of the masked zero extended result so
                     // simply return the original input.
-                    return narrow.getInput();
+                    return narrow.getValue();
                 }
             }
         }
@@ -109,11 +109,11 @@ public class ZeroExtendNode extends IntegerConvertNode {
 
     @Override
     public boolean inferStamp() {
-        return updateStamp(StampTool.zeroExtend(getInput().stamp(), getResultBits()));
+        return updateStamp(StampTool.zeroExtend(getValue().stamp(), getResultBits()));
     }
 
     @Override
     public void generate(NodeMappableLIRBuilder builder, ArithmeticLIRGenerator gen) {
-        builder.setResult(this, gen.emitZeroExtend(builder.operand(getInput()), getInputBits(), getResultBits()));
+        builder.setResult(this, gen.emitZeroExtend(builder.operand(getValue()), getInputBits(), getResultBits()));
     }
 }

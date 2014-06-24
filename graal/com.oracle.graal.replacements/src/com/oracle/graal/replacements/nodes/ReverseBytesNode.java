@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,33 +24,31 @@ package com.oracle.graal.replacements.nodes;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.graph.*;
-import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.type.*;
 
-public class ReverseBytesNode extends FloatingNode implements LIRLowerable, Canonicalizable {
-
-    @Input private ValueNode value;
+public class ReverseBytesNode extends UnaryNode implements LIRLowerable {
 
     public ReverseBytesNode(ValueNode value) {
-        super(StampFactory.forKind(value.getKind()));
-        assert getKind().isNumericInteger();
-        this.value = value;
+        super(StampFactory.forKind(value.getKind()), value);
+        assert getKind() == Kind.Int || getKind() == Kind.Long;
     }
 
     @Override
-    public Node canonical(CanonicalizerTool tool) {
-        if (value.isConstant()) {
-            long v = value.asConstant().asLong();
-            if (getKind().getStackKind() == Kind.Int) {
-                return ConstantNode.forInt(Integer.reverseBytes((int) v), graph());
-            } else if (getKind() == Kind.Long) {
-                return ConstantNode.forLong(Long.reverseBytes(v), graph());
-            }
+    public boolean inferStamp() {
+        IntegerStamp valueStamp = (IntegerStamp) getValue().stamp();
+        Stamp newStamp;
+        if (getKind() == Kind.Int) {
+            long mask = IntegerStamp.defaultMask(Kind.Int.getBitCount());
+            newStamp = StampTool.stampForMask(valueStamp.getBits(), reverse((int) valueStamp.downMask()) & mask, reverse((int) valueStamp.upMask()) & mask);
+        } else if (getKind() == Kind.Long) {
+            newStamp = StampTool.stampForMask(valueStamp.getBits(), reverse(valueStamp.downMask()), reverse(valueStamp.upMask()));
+        } else {
+            return false;
         }
-        return this;
+        return updateStamp(newStamp);
     }
 
     @NodeIntrinsic
@@ -65,7 +63,7 @@ public class ReverseBytesNode extends FloatingNode implements LIRLowerable, Cano
 
     @Override
     public void generate(NodeLIRBuilderTool gen) {
-        Value result = gen.getLIRGeneratorTool().emitByteSwap(gen.operand(value));
+        Value result = gen.getLIRGeneratorTool().emitByteSwap(gen.operand(getValue()));
         gen.setResult(this, result);
     }
 }

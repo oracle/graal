@@ -32,7 +32,6 @@ import com.oracle.graal.nodes.Invoke;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.phases.common.CanonicalizerPhase;
 import com.oracle.graal.phases.common.inlining.info.elem.Inlineable;
-import com.oracle.graal.phases.common.inlining.walker.CallsiteHolder;
 import com.oracle.graal.phases.tiers.HighTierContext;
 import com.oracle.graal.phases.util.Providers;
 
@@ -88,5 +87,5 @@ public interface InlineInfo {
 
     void populateInlinableElements(HighTierContext context, Assumptions calleeAssumptions, CanonicalizerPhase canonicalizer);
 
-    CallsiteHolder buildCallsiteHolderForElement(int index, double invokeProbability, double invokeRelevance);
+    int determineNodeCount();
 }

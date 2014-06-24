@@ -142,7 +142,7 @@ public class MacroNode extends AbstractMemoryCheckpoint implements Lowerable, Me
                     ((Lowerable) nonNullReceiver).lower(tool);
                 }
             }
-            InliningUtil.inline(invoke, replacementGraph, false);
+            InliningUtil.inline(invoke, replacementGraph, false, null);
             Debug.dump(graph(), "After inlining replacement %s", replacementGraph);
         } else {
             invoke.lower(tool);

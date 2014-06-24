@@ -74,26 +74,26 @@ public class SignExtendNode extends IntegerConvertNode {
             return ret;
         }
 
-        if (getInput() instanceof SignExtendNode) {
+        if (getValue() instanceof SignExtendNode) {
             // sxxx -(sign-extend)-> ssss sxxx -(sign-extend)-> ssssssss sssssxxx
             // ==> sxxx -(sign-extend)-> ssssssss sssssxxx
-            SignExtendNode other = (SignExtendNode) getInput();
-            return graph().unique(new SignExtendNode(other.getInput(), getResultBits()));
-        } else if (getInput() instanceof ZeroExtendNode) {
-            ZeroExtendNode other = (ZeroExtendNode) getInput();
+            SignExtendNode other = (SignExtendNode) getValue();
+            return graph().unique(new SignExtendNode(other.getValue(), getResultBits()));
+        } else if (getValue() instanceof ZeroExtendNode) {
+            ZeroExtendNode other = (ZeroExtendNode) getValue();
             if (other.getResultBits() > other.getInputBits()) {
                 // sxxx -(zero-extend)-> 0000 sxxx -(sign-extend)-> 00000000 0000sxxx
                 // ==> sxxx -(zero-extend)-> 00000000 0000sxxx
-                return graph().unique(new ZeroExtendNode(other.getInput(), getResultBits()));
+                return graph().unique(new ZeroExtendNode(other.getValue(), getResultBits()));
             }
         }
 
-        if (getInput().stamp() instanceof IntegerStamp) {
-            IntegerStamp inputStamp = (IntegerStamp) getInput().stamp();
+        if (getValue().stamp() instanceof IntegerStamp) {
+            IntegerStamp inputStamp = (IntegerStamp) getValue().stamp();
             if ((inputStamp.upMask() & (1L << (getInputBits() - 1))) == 0L) {
                 // 0xxx -(sign-extend)-> 0000 0xxx
                 // ==> 0xxx -(zero-extend)-> 0000 0xxx
-                return graph().unique(new ZeroExtendNode(getInput(), getResultBits()));
+                return graph().unique(new ZeroExtendNode(getValue(), getResultBits()));
             }
         }
 
@@ -102,11 +102,11 @@ public class SignExtendNode extends IntegerConvertNode {
 
     @Override
     public boolean inferStamp() {
-        return updateStamp(StampTool.signExtend(getInput().stamp(), getResultBits()));
+        return updateStamp(StampTool.signExtend(getValue().stamp(), getResultBits()));
     }
 
     @Override
     public void generate(NodeMappableLIRBuilder builder, ArithmeticLIRGenerator gen) {
-        builder.setResult(this, gen.emitSignExtend(builder.operand(getInput()), getInputBits(), getResultBits()));
+        builder.setResult(this, gen.emitSignExtend(builder.operand(getValue()), getInputBits(), getResultBits()));
     }
 }
