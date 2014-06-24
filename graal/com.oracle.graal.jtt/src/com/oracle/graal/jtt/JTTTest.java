@@ -67,9 +67,13 @@ public class JTTTest extends GraalCompilerTest {
             assert parameterTypes.length == args.length;
             for (int i = 0; i < args.length; i++) {
                 ParameterNode param = graph.getParameter(i);
-                Constant c = getSnippetReflection().forBoxed(parameterTypes[i].getKind(), args[i]);
-                ConstantNode replacement = ConstantNode.forConstant(c, getMetaAccess(), graph);
-                param.replaceAtUsages(replacement);
+                if (param != null) {
+                    Constant c = getSnippetReflection().forBoxed(parameterTypes[i].getKind(), args[i]);
+                    ConstantNode replacement = ConstantNode.forConstant(c, getMetaAccess(), graph);
+                    param.replaceAtUsages(replacement);
+                } else {
+                    // Parameter is not used and has been dead-code eliminated
+                }
             }
         }
         return graph;
