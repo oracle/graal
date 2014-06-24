@@ -459,7 +459,26 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
 
     @Override
     public ResolvedJavaMethod findUniqueConcreteMethod(ResolvedJavaMethod method) {
-        return ((HotSpotResolvedJavaMethod) method).uniqueConcreteMethod();
+        HotSpotResolvedJavaMethod hmethod = (HotSpotResolvedJavaMethod) method;
+        HotSpotResolvedObjectType declaredHolder = hmethod.getDeclaringClass();
+        /*
+         * Sometimes the receiver type in the graph hasn't stabilized to a subtype of declared
+         * holder, usually because of phis, so make sure that the type is related to the declared
+         * type before using it for lookup.
+         */
+        if (!declaredHolder.isAssignableFrom(this) || this.isArray() || this.equals(declaredHolder)) {
+            return hmethod.uniqueConcreteMethod(declaredHolder);
+        }
+        /*
+         * The holder may be a subtype of the decaredHolder so make sure to resolve the method to
+         * the correct method for the subtype.
+         */
+        HotSpotResolvedJavaMethod newMethod = (HotSpotResolvedJavaMethod) resolveMethod(hmethod, this);
+        if (newMethod != null && !hmethod.equals(newMethod)) {
+            hmethod = newMethod;
+        }
+
+        return hmethod.uniqueConcreteMethod(this);
     }
 
     /**
