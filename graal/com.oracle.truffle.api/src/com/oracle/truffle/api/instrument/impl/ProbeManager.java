@@ -119,6 +119,11 @@ public final class ProbeManager {
         return probe;
     }
 
+    public boolean hasProbe(SourceSection sourceSection) {
+        assert sourceSection != null;
+        return srcToProbe.get(sourceSection) != null;
+    }
+
     public Collection<Probe> findProbesTaggedAs(PhylumTag tag) {
         final List<Probe> probes = new ArrayList<>();
         for (Probe probe : srcToProbe.values()) {

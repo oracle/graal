@@ -109,6 +109,16 @@ public abstract class ExecutionContext {
     }
 
     /**
+     * Has a {@link Probe} been created that is uniquely associated with a particular source code
+     * location.
+     *
+     * @return a probe uniquely associated with an extent of guest language source code.
+     */
+    public final boolean hasProbe(SourceSection sourceSection) {
+        return probeManager.hasProbe(sourceSection);
+    }
+
+    /**
      * Returns all existing probes with specific tag, or all probes if {@code tag = null}; empty
      * collection if no probes found.
      */
