@@ -67,11 +67,6 @@ public final class ConstantNode extends FloatingNode implements LIRLowerable {
         return value;
     }
 
-    @Override
-    public boolean recordsUsages() {
-        return true;
-    }
-
     /**
      * Gathers all the {@link ConstantNode}s that are inputs to the
      * {@linkplain StructuredGraph#getNodes() live nodes} in a given graph.
