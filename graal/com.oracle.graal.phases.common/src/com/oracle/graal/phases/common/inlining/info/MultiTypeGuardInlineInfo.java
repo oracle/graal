@@ -272,13 +272,16 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
             }
         }
 
-        Collection<Node> parameterUsages = new ArrayList<>();
+        Collection<Node> canonicalizeNodes = new ArrayList<>();
         // do the actual inlining for every invoke
         for (int i = 0; i < numberOfMethods; i++) {
             Invoke invokeForInlining = (Invoke) successors[i].next();
-            parameterUsages.addAll(inline(invokeForInlining, methodAt(i), inlineableElementAt(i), assumptions, false));
+            canonicalizeNodes.addAll(inline(invokeForInlining, methodAt(i), inlineableElementAt(i), assumptions, false));
         }
-        return parameterUsages;
+        if (returnValuePhi != null) {
+            canonicalizeNodes.add(returnValuePhi);
+        }
+        return canonicalizeNodes;
     }
 
     private int getTypeCount(int concreteMethodIndex) {

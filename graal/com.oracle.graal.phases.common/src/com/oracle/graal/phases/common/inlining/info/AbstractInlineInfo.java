@@ -54,22 +54,22 @@ public abstract class AbstractInlineInfo implements InlineInfo {
     }
 
     protected static Collection<Node> inline(Invoke invoke, ResolvedJavaMethod concrete, Inlineable inlineable, Assumptions assumptions, boolean receiverNullCheck) {
-        Collection<Node> parameterUsages = new ArrayList<>();
+        List<Node> canonicalizeNodes = new ArrayList<>();
         if (inlineable instanceof InlineableGraph) {
             StructuredGraph calleeGraph = ((InlineableGraph) inlineable).getGraph();
-            Map<Node, Node> duplicateMap = InliningUtil.inline(invoke, calleeGraph, receiverNullCheck);
-            getInlinedParameterUsages(parameterUsages, calleeGraph, duplicateMap);
+            Map<Node, Node> duplicateMap = InliningUtil.inline(invoke, calleeGraph, receiverNullCheck, canonicalizeNodes);
+            getInlinedParameterUsages(canonicalizeNodes, calleeGraph, duplicateMap);
         } else {
             assert inlineable instanceof InlineableMacroNode;
 
             Class<? extends FixedWithNextNode> macroNodeClass = ((InlineableMacroNode) inlineable).getMacroNodeClass();
             FixedWithNextNode macroNode = InliningUtil.inlineMacroNode(invoke, concrete, macroNodeClass);
-            parameterUsages.add(macroNode);
+            canonicalizeNodes.add(macroNode);
         }
 
         InliningUtil.InlinedBytecodes.add(concrete.getCodeSize());
         assumptions.recordMethodContents(concrete);
-        return parameterUsages;
+        return canonicalizeNodes;
     }
 
     public static void getInlinedParameterUsages(Collection<Node> parameterUsages, StructuredGraph calleeGraph, Map<Node, Node> duplicateMap) {

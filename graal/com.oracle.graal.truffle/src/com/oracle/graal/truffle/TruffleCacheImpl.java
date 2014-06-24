@@ -244,7 +244,7 @@ public final class TruffleCacheImpl implements TruffleCache {
                             ", must annotate such calls with @CompilerDirectives.SlowPath!"));
         }
         Invoke invoke = methodCallTargetNode.invoke();
-        InliningUtil.inline(invoke, inlineGraph, true);
+        InliningUtil.inline(invoke, inlineGraph, true, null);
     }
 
     private boolean tryCutOffRuntimeExceptions(MethodCallTargetNode methodCallTargetNode) {
