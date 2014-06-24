@@ -229,6 +229,12 @@ public class HotSpotConstantReflectionProvider implements ConstantReflectionProv
                 return runtime.getHostProviders().getMetaAccess().lookupJavaType((Class<?>) obj);
             }
         }
+        if (constant instanceof HotSpotMetaspaceConstant) {
+            Object obj = HotSpotMetaspaceConstant.getMetaspaceObject(constant);
+            if (obj instanceof HotSpotResolvedObjectType) {
+                return (ResolvedJavaType) obj;
+            }
+        }
         return null;
     }
 }
