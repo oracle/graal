@@ -269,4 +269,12 @@ public class HotSpotForeignCallLinkage implements ForeignCallLinkage, InvokeTarg
     public boolean needsJavaFrameAnchor() {
         return canDeoptimize() || transition == Transition.LEAF_SP;
     }
+
+    public CompilationResult getStubCompilationResult(final Backend backend) {
+        return stub.getCompilationResult(backend);
+    }
+
+    public Stub getStub() {
+        return stub;
+    }
 }

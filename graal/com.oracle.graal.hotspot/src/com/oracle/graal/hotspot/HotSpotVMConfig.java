@@ -1424,9 +1424,9 @@ public class HotSpotVMConfig extends CompilerObject {
     @HotSpotVMValue(expression = "GraalRuntime::dynamic_new_array", get = HotSpotVMValue.Type.ADDRESS) @Stable public long dynamicNewArrayAddress;
     @HotSpotVMValue(expression = "GraalRuntime::dynamic_new_instance", get = HotSpotVMValue.Type.ADDRESS) @Stable public long dynamicNewInstanceAddress;
     @HotSpotVMValue(expression = "GraalRuntime::thread_is_interrupted", get = HotSpotVMValue.Type.ADDRESS) @Stable public long threadIsInterruptedAddress;
-    @HotSpotVMValue(expression = "GraalRuntime::vm_message", get = HotSpotVMValue.Type.ADDRESS) @Stable public long vmMessageAddress;
+    @HotSpotVMValue(expression = "GraalRuntime::vm_message", signature = "(unsigned char, long, long, long, long)", get = HotSpotVMValue.Type.ADDRESS) @Stable public long vmMessageAddress;
     @HotSpotVMValue(expression = "GraalRuntime::identity_hash_code", get = HotSpotVMValue.Type.ADDRESS) @Stable public long identityHashCodeAddress;
-    @HotSpotVMValue(expression = "GraalRuntime::exception_handler_for_pc", get = HotSpotVMValue.Type.ADDRESS) @Stable public long exceptionHandlerForPcAddress;
+    @HotSpotVMValue(expression = "GraalRuntime::exception_handler_for_pc", signature = "(JavaThread*)", get = HotSpotVMValue.Type.ADDRESS) @Stable public long exceptionHandlerForPcAddress;
     @HotSpotVMValue(expression = "GraalRuntime::monitorenter", get = HotSpotVMValue.Type.ADDRESS) @Stable public long monitorenterAddress;
     @HotSpotVMValue(expression = "GraalRuntime::monitorexit", get = HotSpotVMValue.Type.ADDRESS) @Stable public long monitorexitAddress;
     @HotSpotVMValue(expression = "GraalRuntime::create_null_exception", get = HotSpotVMValue.Type.ADDRESS) @Stable public long createNullPointerExceptionAddress;
@@ -1452,9 +1452,9 @@ public class HotSpotVMConfig extends CompilerObject {
 
     @HotSpotVMValue(expression = "(jint) GraalCounterSize") @Stable public int graalCountersSize;
 
-    @HotSpotVMValue(expression = "Deoptimization::fetch_unroll_info", get = HotSpotVMValue.Type.ADDRESS) @Stable public long deoptimizationFetchUnrollInfo;
+    @HotSpotVMValue(expression = "Deoptimization::fetch_unroll_info", signature = "(JavaThread*)", get = HotSpotVMValue.Type.ADDRESS) @Stable public long deoptimizationFetchUnrollInfo;
     @HotSpotVMValue(expression = "Deoptimization::uncommon_trap", get = HotSpotVMValue.Type.ADDRESS) @Stable public long deoptimizationUncommonTrap;
-    @HotSpotVMValue(expression = "Deoptimization::unpack_frames", get = HotSpotVMValue.Type.ADDRESS) @Stable public long deoptimizationUnpackFrames;
+    @HotSpotVMValue(expression = "Deoptimization::unpack_frames", signature = "(JavaThread*, int)", get = HotSpotVMValue.Type.ADDRESS) @Stable public long deoptimizationUnpackFrames;
 
     @HotSpotVMConstant(name = "Deoptimization::Reason_none") @Stable public int deoptReasonNone;
     @HotSpotVMConstant(name = "Deoptimization::Reason_null_check") @Stable public int deoptReasonNullCheck;
@@ -1598,5 +1598,36 @@ public class HotSpotVMConfig extends CompilerObject {
                 return false;
             }
         }
+    }
+
+    /**
+     * Returns the name of the C/C++ function that is associated (via HotSpotVMValue annotation)
+     * with the HotSpotVMConfig object's field containing {@code foreignCalltargetAddress}; returns
+     * null if no field holds the provided address.
+     *
+     * @param foreignCallTargetAddress address of foreign call target
+     * @return C/C++ symbol name or null
+     */
+    public String getCSymbol(long foreignCallTargetAddress) {
+        for (Field f : HotSpotVMConfig.class.getDeclaredFields()) {
+            if (f.isAnnotationPresent(HotSpotVMValue.class)) {
+                HotSpotVMValue annotation = f.getAnnotation(HotSpotVMValue.class);
+
+                if (annotation.get() == HotSpotVMValue.Type.ADDRESS) {
+                    try {
+                        if (foreignCallTargetAddress == f.getLong(this)) {
+                            return (annotation.expression() + annotation.signature());
+                        }
+                    } catch (IllegalArgumentException e1) {
+                        // TODO Auto-generated catch block
+                        e1.printStackTrace();
+                    } catch (IllegalAccessException e1) {
+                        // TODO Auto-generated catch block
+                        e1.printStackTrace();
+                    }
+                }
+            }
+        }
+        return null;
     }
 }

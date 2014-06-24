@@ -175,4 +175,9 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         registerArrayCopy(Kind.Object, c.oopArraycopy, c.oopAlignedArraycopy, c.oopDisjointArraycopy, c.oopAlignedDisjointArraycopy);
         registerArrayCopy(Kind.Object, c.oopArraycopyUninit, c.oopAlignedArraycopyUninit, c.oopDisjointArraycopyUninit, c.oopAlignedDisjointArraycopyUninit, true);
     }
+
+    public HotSpotForeignCallLinkage getForeignCall(ForeignCallDescriptor descriptor) {
+        assert foreignCalls != null : descriptor;
+        return foreignCalls.get(descriptor);
+    }
 }
