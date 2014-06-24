@@ -50,10 +50,6 @@ public final class SLFunctionBodyNode extends SLExpressionNode {
     private final BranchProfile nullTaken = new BranchProfile();
 
     public SLFunctionBodyNode(SLStatementNode bodyNode) {
-        /*
-         * It is a Truffle requirement to call adoptChild(), which performs all the necessary steps
-         * to add the new child to the node tree.
-         */
         this.bodyNode = bodyNode;
     }
 

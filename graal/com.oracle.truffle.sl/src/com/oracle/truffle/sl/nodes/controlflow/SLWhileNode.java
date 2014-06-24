@@ -51,10 +51,6 @@ public final class SLWhileNode extends SLStatementNode {
     private final BranchProfile breakTaken = new BranchProfile();
 
     public SLWhileNode(SLExpressionNode conditionNode, SLStatementNode bodyNode) {
-        /*
-         * It is a Truffle requirement to call adoptChild(), which performs all the necessary steps
-         * to add the new child to the node tree.
-         */
         this.conditionNode = conditionNode;
         this.bodyNode = bodyNode;
     }

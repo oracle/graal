@@ -53,10 +53,6 @@ public final class SLIfNode extends SLStatementNode {
     private final BranchProfile elseTaken = new BranchProfile();
 
     public SLIfNode(SLExpressionNode conditionNode, SLStatementNode thenPartNode, SLStatementNode elsePartNode) {
-        /*
-         * It is a Truffle requirement to call adoptChild(), which performs all the necessary steps
-         * to add the new child to the node tree.
-         */
         this.conditionNode = conditionNode;
         this.thenPartNode = thenPartNode;
         this.elsePartNode = elsePartNode;
