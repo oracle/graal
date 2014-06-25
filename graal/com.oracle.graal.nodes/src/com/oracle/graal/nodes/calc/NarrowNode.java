@@ -24,7 +24,6 @@ package com.oracle.graal.nodes.calc;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodes.*;
@@ -62,20 +61,20 @@ public class NarrowNode extends IntegerConvertNode {
     }
 
     @Override
-    public Node canonical(CanonicalizerTool tool) {
-        ValueNode ret = canonicalConvert();
-        if (ret != null) {
+    public ValueNode canonical(CanonicalizerTool tool, ValueNode forValue) {
+        ValueNode ret = canonicalConvert(forValue);
+        if (ret != this) {
             return ret;
         }
 
-        if (getValue() instanceof NarrowNode) {
+        if (forValue instanceof NarrowNode) {
             // zzzzzzzz yyyyxxxx -(narrow)-> yyyyxxxx -(narrow)-> xxxx
             // ==> zzzzzzzz yyyyxxxx -(narrow)-> xxxx
-            NarrowNode other = (NarrowNode) getValue();
-            return graph().unique(new NarrowNode(other.getValue(), getResultBits()));
-        } else if (getValue() instanceof IntegerConvertNode) {
+            NarrowNode other = (NarrowNode) forValue;
+            return new NarrowNode(other.getValue(), getResultBits());
+        } else if (forValue instanceof IntegerConvertNode) {
             // SignExtendNode or ZeroExtendNode
-            IntegerConvertNode other = (IntegerConvertNode) getValue();
+            IntegerConvertNode other = (IntegerConvertNode) forValue;
             if (getResultBits() == other.getInputBits()) {
                 // xxxx -(extend)-> yyyy xxxx -(narrow)-> xxxx
                 // ==> no-op
@@ -83,20 +82,19 @@ public class NarrowNode extends IntegerConvertNode {
             } else if (getResultBits() < other.getInputBits()) {
                 // yyyyxxxx -(extend)-> zzzzzzzz yyyyxxxx -(narrow)-> xxxx
                 // ==> yyyyxxxx -(narrow)-> xxxx
-                return graph().unique(new NarrowNode(other.getValue(), getResultBits()));
+                return new NarrowNode(other.getValue(), getResultBits());
             } else {
                 if (other instanceof SignExtendNode) {
                     // sxxx -(sign-extend)-> ssssssss sssssxxx -(narrow)-> sssssxxx
                     // ==> sxxx -(sign-extend)-> sssssxxx
-                    return graph().unique(new SignExtendNode(other.getValue(), getResultBits()));
+                    return new SignExtendNode(other.getValue(), getResultBits());
                 } else if (other instanceof ZeroExtendNode) {
                     // xxxx -(zero-extend)-> 00000000 00000xxx -(narrow)-> 0000xxxx
                     // ==> xxxx -(zero-extend)-> 0000xxxx
-                    return graph().unique(new ZeroExtendNode(other.getValue(), getResultBits()));
+                    return new ZeroExtendNode(other.getValue(), getResultBits());
                 }
             }
         }
-
         return this;
     }
 

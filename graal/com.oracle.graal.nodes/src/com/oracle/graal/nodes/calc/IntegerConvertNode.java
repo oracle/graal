@@ -22,16 +22,14 @@
  */
 package com.oracle.graal.nodes.calc;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 
 /**
  * An {@code IntegerConvert} converts an integer to an integer of different width.
  */
-public abstract class IntegerConvertNode extends ConvertNode implements ArithmeticLIRLowerable, Canonicalizable {
+public abstract class IntegerConvertNode extends ConvertNode implements ArithmeticLIRLowerable {
 
     private final int resultBits;
 
@@ -60,18 +58,16 @@ public abstract class IntegerConvertNode extends ConvertNode implements Arithmet
         }
     }
 
-    protected ValueNode canonicalConvert() {
-        if (getValue().stamp() instanceof IntegerStamp) {
-            int inputBits = ((IntegerStamp) getValue().stamp()).getBits();
+    protected ValueNode canonicalConvert(ValueNode value) {
+        if (value.stamp() instanceof IntegerStamp) {
+            int inputBits = ((IntegerStamp) value.stamp()).getBits();
             if (inputBits == resultBits) {
-                return getValue();
-            } else if (getValue().isConstant()) {
-                Constant ret = evalConst(getValue().asConstant());
-                return ConstantNode.forIntegerBits(resultBits, ret.asLong(), graph());
+                return value;
+            } else if (value.isConstant()) {
+                return ConstantNode.forIntegerBits(resultBits, evalConst(value.asConstant()).asLong());
             }
         }
-
-        return null;
+        return this;
     }
 
     public static ValueNode convert(ValueNode input, Stamp stamp) {

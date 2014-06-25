@@ -26,6 +26,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
@@ -48,6 +49,12 @@ public class AMD64FloatConvertNode extends UnaryNode implements ArithmeticLIRLow
     public Constant evalConst(Constant... inputs) {
         // this node should never have been created if its input is constant
         throw GraalInternalError.shouldNotReachHere();
+    }
+
+    @Override
+    public ValueNode canonical(CanonicalizerTool tool, ValueNode forValue) {
+        // nothing to do
+        return this;
     }
 
     public void generate(NodeMappableLIRBuilder builder, ArithmeticLIRGenerator gen) {
