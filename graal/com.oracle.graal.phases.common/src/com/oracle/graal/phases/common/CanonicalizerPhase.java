@@ -24,12 +24,15 @@ package com.oracle.graal.phases.common;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Graph.Mark;
 import com.oracle.graal.graph.Graph.NodeChangedListener;
 import com.oracle.graal.graph.spi.*;
+import com.oracle.graal.graph.spi.Canonicalizable.Binary;
+import com.oracle.graal.graph.spi.Canonicalizable.Unary;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.util.*;
@@ -229,11 +232,50 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
             return result;
         }
 
+        private static AutoCloseable getCanonicalizeableContractAssertion(Node node) {
+            boolean needsAssertion = false;
+            assert (needsAssertion = true) == true;
+            if (needsAssertion) {
+                Mark mark = node.graph().getMark();
+                return () -> {
+                    assert mark.equals(node.graph().getMark()) : "new node created while canonicalizing " + node.getClass().getSimpleName() + " " + node + ": " +
+                                    node.graph().getNewNodes(mark).snapshot();
+                };
+            } else {
+                return new AutoCloseable() {
+                    public void close() throws Exception {
+                        // nothing to do
+                    }
+                };
+            }
+        }
+
         public boolean baseTryCanonicalize(final Node node, NodeClass nodeClass) {
-            if (nodeClass.isCanonicalizable()) {
+            if (nodeClass.getCanonicalizeMethod() != null) {
                 METRIC_CANONICALIZATION_CONSIDERED_NODES.increment();
                 try (Scope s = Debug.scope("CanonicalizeNode", node)) {
-                    Node canonical = node.canonical(tool);
+                    Node canonical;
+                    switch (nodeClass.getCanonicalizeMethod()) {
+                        case BASE:
+                            canonical = node.canonical(tool);
+                            break;
+                        case UNARY:
+                            try (AutoCloseable verify = getCanonicalizeableContractAssertion(node)) {
+                                @SuppressWarnings("unchecked")
+                                Canonicalizable.Unary<Node> unary = (Unary<Node>) node;
+                                canonical = unary.canonical(tool, unary.getValue());
+                            }
+                            break;
+                        case BINARY:
+                            try (AutoCloseable verify = getCanonicalizeableContractAssertion(node)) {
+                                @SuppressWarnings("unchecked")
+                                Canonicalizable.Binary<Node> binary = (Binary<Node>) node;
+                                canonical = binary.canonical(tool, binary.getX(), binary.getY());
+                            }
+                            break;
+                        default:
+                            throw GraalInternalError.shouldNotReachHere("unexpected CanonicalizeMethod");
+                    }
                     if (performReplacement(node, canonical)) {
                         return true;
                     }
@@ -271,14 +313,19 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
 //                                         --------------------------------------------
 //       X: must not happen (checked with assertions)
 // @formatter:on
-        private boolean performReplacement(final Node node, Node canonical) {
-            if (canonical == node) {
+        private boolean performReplacement(final Node node, Node newCanonical) {
+            if (newCanonical == node) {
                 Debug.log("Canonicalizer: work on %1s", node);
                 return false;
             } else {
+                Node canonical = newCanonical;
                 Debug.log("Canonicalizer: replacing %1s with %1s", node, canonical);
                 METRIC_CANONICALIZED_NODES.increment();
                 StructuredGraph graph = (StructuredGraph) node.graph();
+                if (canonical != null && !canonical.isAlive()) {
+                    assert !canonical.isDeleted();
+                    canonical = graph.addOrUniqueWithInputs(canonical);
+                }
                 if (node instanceof FloatingNode) {
                     if (canonical == null) {
                         // case 1

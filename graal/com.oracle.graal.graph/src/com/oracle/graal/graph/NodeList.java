@@ -136,6 +136,12 @@ public abstract class NodeList<T extends Node> extends AbstractList<T> implement
         return oldValue;
     }
 
+    void initialize(int index, T node) {
+        incModCount();
+        assert index < size();
+        nodes[index] = node;
+    }
+
     void copy(NodeList<T> other) {
         incModCount();
         nodes = Arrays.copyOf(other.nodes, other.size);

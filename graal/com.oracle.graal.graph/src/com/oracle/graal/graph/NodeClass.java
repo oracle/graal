@@ -35,6 +35,7 @@ import com.oracle.graal.graph.Node.Input;
 import com.oracle.graal.graph.Node.Successor;
 import com.oracle.graal.graph.Node.Verbosity;
 import com.oracle.graal.graph.spi.*;
+import com.oracle.graal.graph.spi.Canonicalizable.CanonicalizeMethod;
 
 /**
  * Metadata for every {@link Node} type. The metadata includes:
@@ -102,7 +103,7 @@ public final class NodeClass extends FieldIntrospection {
     /**
      * Determines if this node type implements {@link Canonicalizable}.
      */
-    private final boolean isCanonicalizable;
+    private final CanonicalizeMethod canonicalizeMethod;
 
     /**
      * Determines if this node type implements {@link Simplifiable}.
@@ -116,7 +117,18 @@ public final class NodeClass extends FieldIntrospection {
     public NodeClass(Class<?> clazz, CalcOffset calcOffset, int[] presetIterableIds, int presetIterableId) {
         super(clazz);
         assert NODE_CLASS.isAssignableFrom(clazz);
-        this.isCanonicalizable = Canonicalizable.class.isAssignableFrom(clazz);
+        if (Canonicalizable.Unary.class.isAssignableFrom(clazz)) {
+            assert !Canonicalizable.Binary.class.isAssignableFrom(clazz) && !Canonicalizable.class.isAssignableFrom(clazz) : clazz;
+            this.canonicalizeMethod = CanonicalizeMethod.UNARY;
+        } else if (Canonicalizable.Binary.class.isAssignableFrom(clazz)) {
+            assert !Canonicalizable.class.isAssignableFrom(clazz) : clazz;
+            this.canonicalizeMethod = CanonicalizeMethod.BINARY;
+        } else if (Canonicalizable.class.isAssignableFrom(clazz)) {
+            this.canonicalizeMethod = CanonicalizeMethod.BASE;
+        } else {
+            this.canonicalizeMethod = null;
+        }
+
         this.isSimplifiable = Simplifiable.class.isAssignableFrom(clazz);
 
         FieldScanner scanner = new FieldScanner(calcOffset);
@@ -249,8 +261,8 @@ public final class NodeClass extends FieldIntrospection {
     /**
      * Determines if this node type implements {@link Canonicalizable}.
      */
-    public boolean isCanonicalizable() {
-        return isCanonicalizable;
+    public CanonicalizeMethod getCanonicalizeMethod() {
+        return canonicalizeMethod;
     }
 
     /**
@@ -375,6 +387,10 @@ public final class NodeClass extends FieldIntrospection {
 
         public void set(Node node, Node value) {
             node.getNodeClass().set(node, this, value);
+        }
+
+        void initialize(Node node, Node value) {
+            node.getNodeClass().initializePosition(node, this, value);
         }
 
         public boolean isValidFor(Node node, Node from) {
@@ -1063,6 +1079,20 @@ public final class NodeClass extends FieldIntrospection {
                 }
                 list.add(x);
             }
+        }
+    }
+
+    public void initializePosition(Node node, Position pos, Node x) {
+        long offset = pos.isInput() ? inputOffsets[pos.getIndex()] : successorOffsets[pos.getIndex()];
+        if (pos.getSubIndex() == NOT_ITERABLE) {
+            assert x == null || fieldTypes.get((pos.isInput() ? inputOffsets : successorOffsets)[pos.getIndex()]).isAssignableFrom(x.getClass()) : this + ".set(node, pos, " + x + ")";
+            putNode(node, offset, x);
+        } else {
+            NodeList<Node> list = getNodeList(node, offset);
+            while (list.size() <= pos.getSubIndex()) {
+                list.add(null);
+            }
+            list.initialize(pos.getSubIndex(), x);
         }
     }
 

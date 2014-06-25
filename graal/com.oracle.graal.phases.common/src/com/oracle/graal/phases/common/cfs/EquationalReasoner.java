@@ -27,10 +27,12 @@ import static com.oracle.graal.graph.util.CollectionsAccess.*;
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
+import com.oracle.graal.graph.spi.Canonicalizable.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
@@ -332,10 +334,32 @@ public final class EquationalReasoner {
         }
         FlowUtil.inferStampAndCheck(changed);
         added.add(changed);
-        ValueNode canon = (ValueNode) changed.canonical(tool);
+
+        Node canon;
+        switch (changed.getNodeClass().getCanonicalizeMethod()) {
+            case BASE:
+                canon = changed.canonical(tool);
+                break;
+            case UNARY:
+                @SuppressWarnings("unchecked")
+                Canonicalizable.Unary<Node> unary = (Unary<Node>) changed;
+                canon = unary.canonical(tool, unary.getValue());
+                break;
+            case BINARY:
+                @SuppressWarnings("unchecked")
+                Canonicalizable.Binary<Node> binary = (Binary<Node>) changed;
+                canon = binary.canonical(tool, binary.getX(), binary.getY());
+                break;
+            default:
+                throw GraalInternalError.shouldNotReachHere("unexpected CanonicalizeMethod");
+        }
+        if (canon != null && !canon.isAlive()) {
+            assert !canon.isDeleted();
+            canon = graph.addOrUniqueWithInputs(canon);
+        }
         // might be already in `added`, no problem adding it again.
-        added.add(canon);
-        rememberSubstitution(f, canon);
+        added.add((ValueNode) canon);
+        rememberSubstitution(f, (ValueNode) canon);
         return canon;
     }
 

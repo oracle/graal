@@ -26,6 +26,12 @@ import com.oracle.graal.graph.*;
 
 public interface Canonicalizable {
 
+    public enum CanonicalizeMethod {
+        BASE,
+        UNARY,
+        BINARY
+    }
+
     Node canonical(CanonicalizerTool tool);
 
     public interface Unary<T extends Node> {
