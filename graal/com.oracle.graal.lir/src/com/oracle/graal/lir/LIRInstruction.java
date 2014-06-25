@@ -32,6 +32,7 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.debug.*;
+import com.oracle.graal.lir.LIRInstructionClass.ValuePosition;
 import com.oracle.graal.lir.asm.*;
 
 /**
@@ -40,6 +41,22 @@ import com.oracle.graal.lir.asm.*;
 public abstract class LIRInstruction {
 
     public static final Value[] NO_OPERANDS = {};
+
+    /**
+     * Iterator for iterating over a list of {@linkplain ValuePosition value positions}.
+     */
+    public abstract static class ValuePositionProcedure {
+
+        /**
+         * Iterator method to be overwritten. This version of the iterator does not take additional
+         * parameters to keep the signature short.
+         *
+         * @param instruction The current instruction.
+         * @param position The position of the value that is iterated.
+         */
+
+        public abstract void doValue(LIRInstruction instruction, ValuePosition position);
+    }
 
     /**
      * Iterator for iterating over a list of values. Subclasses must overwrite one of the doValue

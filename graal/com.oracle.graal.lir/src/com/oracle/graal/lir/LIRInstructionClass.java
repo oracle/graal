@@ -32,6 +32,7 @@ import com.oracle.graal.lir.LIRInstruction.InstructionValueProcedure;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
 import com.oracle.graal.lir.LIRInstruction.StateProcedure;
+import com.oracle.graal.lir.LIRInstruction.ValuePositionProcedure;
 
 public class LIRInstructionClass extends LIRIntrospection {
 
@@ -414,6 +415,22 @@ public class LIRInstructionClass extends LIRIntrospection {
             }
         }
         return false;
+    }
+
+    public final void forEachUse(LIRInstruction obj, ValuePositionProcedure proc) {
+        forEach(obj, obj, directUseCount, useOffsets, OperandMode.USE, useFlags, proc);
+    }
+
+    public final void forEachAlive(LIRInstruction obj, ValuePositionProcedure proc) {
+        forEach(obj, obj, directAliveCount, aliveOffsets, OperandMode.ALIVE, aliveFlags, proc);
+    }
+
+    public final void forEachTemp(LIRInstruction obj, ValuePositionProcedure proc) {
+        forEach(obj, obj, directTempCount, tempOffsets, OperandMode.TEMP, tempFlags, proc);
+    }
+
+    public final void forEachDef(LIRInstruction obj, ValuePositionProcedure proc) {
+        forEach(obj, obj, directDefCount, defOffsets, OperandMode.DEF, defFlags, proc);
     }
 
     public final void forEachUse(LIRInstruction obj, InstructionValueProcedure proc) {
