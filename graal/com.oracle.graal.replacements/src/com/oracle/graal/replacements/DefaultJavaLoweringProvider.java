@@ -223,7 +223,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         if (graph.getGuardsStage().ordinal() < StructuredGraph.GuardsStage.FIXED_DEOPTS.ordinal()) {
             return;
         }
-        ValueNode hub = createReadHub(graph, loadHub.object(), loadHub.getGuard());
+        ValueNode hub = createReadHub(graph, loadHub.getValue(), loadHub.getGuard());
         graph.replaceFloating(loadHub, hub);
     }
 

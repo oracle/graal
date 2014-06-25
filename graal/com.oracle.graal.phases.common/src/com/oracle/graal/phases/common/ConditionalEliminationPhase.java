@@ -438,8 +438,8 @@ public class ConditionalEliminationPhase extends Phase {
                         }
                     }
                     if (type != null) {
-                        state.addNullness(false, loadHub.object());
-                        state.addType(type, loadHub.object());
+                        state.addNullness(false, loadHub.getValue());
+                        state.addType(type, loadHub.getValue());
                     }
                 }
             }
