@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,7 +25,6 @@ package com.oracle.graal.nodes.extended;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.meta.ResolvedJavaType.Representation;
 import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
@@ -34,7 +33,7 @@ import com.oracle.graal.nodes.spi.*;
  * Loads an object's {@linkplain Representation#ObjectHub hub}. The object is not null-checked by
  * this operation.
  */
-public final class LoadHubNode extends FloatingGuardedNode implements Lowerable, Canonicalizable, Virtualizable {
+public final class LoadHubNode extends FloatingGuardedNode implements Lowerable, Canonicalizable.Unary<ValueNode>, Virtualizable {
 
     @Input private ValueNode value;
 
@@ -63,10 +62,10 @@ public final class LoadHubNode extends FloatingGuardedNode implements Lowerable,
     }
 
     @Override
-    public Node canonical(CanonicalizerTool tool) {
+    public ValueNode canonical(CanonicalizerTool tool, ValueNode forObject) {
         MetaAccessProvider metaAccess = tool.getMetaAccess();
-        if (metaAccess != null && value.stamp() instanceof ObjectStamp) {
-            ObjectStamp stamp = (ObjectStamp) value.stamp();
+        if (metaAccess != null && forObject.stamp() instanceof ObjectStamp) {
+            ObjectStamp stamp = (ObjectStamp) forObject.stamp();
 
             ResolvedJavaType exactType;
             if (stamp.isExactType()) {
@@ -81,7 +80,7 @@ public final class LoadHubNode extends FloatingGuardedNode implements Lowerable,
             }
 
             if (exactType != null) {
-                return ConstantNode.forConstant(exactType.getEncoding(Representation.ObjectHub), metaAccess, graph());
+                return ConstantNode.forConstant(exactType.getEncoding(Representation.ObjectHub), metaAccess);
             }
         }
         return this;
