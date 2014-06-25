@@ -647,7 +647,7 @@ public final class State extends MergeableState<State> implements Cloneable {
         }
 
         if (condition instanceof LogicNegationNode) {
-            addFact(!isTrue, ((LogicNegationNode) condition).getInput(), anchor);
+            addFact(!isTrue, ((LogicNegationNode) condition).getValue(), anchor);
         } else if (condition instanceof ShortCircuitOrNode) {
             /*
              * We can register the conditions being or-ed as long as the anchor is a fixed node,

@@ -147,7 +147,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
             setTrueSuccessor(null);
             setFalseSuccessor(null);
             LogicNegationNode negation = (LogicNegationNode) condition();
-            IfNode newIfNode = graph().add(new IfNode(negation.getInput(), falseSucc, trueSucc, 1 - trueSuccessorProbability));
+            IfNode newIfNode = graph().add(new IfNode(negation.getValue(), falseSucc, trueSucc, 1 - trueSuccessorProbability));
             predecessor().replaceFirstSuccessor(this, newIfNode);
             GraphUtil.killWithUnusedFloatingInputs(this);
             return;

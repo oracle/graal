@@ -103,7 +103,7 @@ public class GuardNode extends FloatingAnchoredNode implements Canonicalizable, 
     public Node canonical(CanonicalizerTool tool) {
         if (condition() instanceof LogicNegationNode) {
             LogicNegationNode negation = (LogicNegationNode) condition();
-            return graph().unique(new GuardNode(negation.getInput(), getAnchor(), reason, action, !negated, speculation));
+            return graph().unique(new GuardNode(negation.getValue(), getAnchor(), reason, action, !negated, speculation));
         } else if (condition() instanceof LogicConstantNode) {
             LogicConstantNode c = (LogicConstantNode) condition();
             if (c.getValue() != negated) {

@@ -69,14 +69,14 @@ public class ShortCircuitOrNode extends LogicNode implements IterableNodeType, C
         LogicNode xCond = x;
         boolean xNeg = xNegated;
         while (xCond instanceof LogicNegationNode) {
-            xCond = ((LogicNegationNode) xCond).getInput();
+            xCond = ((LogicNegationNode) xCond).getValue();
             xNeg = !xNeg;
         }
 
         LogicNode yCond = y;
         boolean yNeg = yNegated;
         while (yCond instanceof LogicNegationNode) {
-            yCond = ((LogicNegationNode) yCond).getInput();
+            yCond = ((LogicNegationNode) yCond).getValue();
             yNeg = !yNeg;
         }
 

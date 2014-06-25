@@ -76,7 +76,7 @@ public final class ConditionalNode extends FloatingNode implements Canonicalizab
     public ValueNode canonical(CanonicalizerTool tool) {
         if (condition instanceof LogicNegationNode) {
             LogicNegationNode negated = (LogicNegationNode) condition;
-            return graph().unique(new ConditionalNode(negated.getInput(), falseValue(), trueValue()));
+            return graph().unique(new ConditionalNode(negated.getValue(), falseValue(), trueValue()));
         }
 
         // this optimizes the case where a value that can only be 0 or 1 is materialized to 0 or 1
