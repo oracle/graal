@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,9 +22,8 @@
  */
 package com.oracle.graal.nodes.calc;
 
-import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.meta.ProfilingInfo.TriState;
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
 
 /**
@@ -45,19 +44,19 @@ public class IntegerTestNode extends BinaryOpLogicNode {
     }
 
     @Override
-    public TriState evaluate(ConstantReflectionProvider constantReflection, ValueNode forX, ValueNode forY) {
+    public ValueNode canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
         if (forX.isConstant() && forY.isConstant()) {
-            return TriState.get((forX.asConstant().asLong() & forY.asConstant().asLong()) == 0);
+            return LogicConstantNode.forBoolean((forX.asConstant().asLong() & forY.asConstant().asLong()) == 0);
         }
-        if (x().stamp() instanceof IntegerStamp && y().stamp() instanceof IntegerStamp) {
+        if (getX().stamp() instanceof IntegerStamp && getY().stamp() instanceof IntegerStamp) {
             IntegerStamp xStamp = (IntegerStamp) forX.stamp();
             IntegerStamp yStamp = (IntegerStamp) forY.stamp();
             if ((xStamp.upMask() & yStamp.upMask()) == 0) {
-                return TriState.TRUE;
+                return LogicConstantNode.tautology();
             } else if ((xStamp.downMask() & yStamp.downMask()) != 0) {
-                return TriState.FALSE;
+                return LogicConstantNode.contradiction();
             }
         }
-        return TriState.UNKNOWN;
+        return this;
     }
 }

@@ -103,7 +103,7 @@ public class CompareCanonicalizerTest extends GraalCompilerTest {
             IntegerTestNode test = (IntegerTestNode) conditional.condition();
             ParameterNode param0 = graph.getParameter(0);
             ParameterNode param1 = graph.getParameter(1);
-            assertTrue((test.x() == param0 && test.y() == param1) || (test.x() == param1 && test.y() == param0));
+            assertTrue((test.getX() == param0 && test.getY() == param1) || (test.getX() == param1 && test.getY() == param0));
         }
     }
 

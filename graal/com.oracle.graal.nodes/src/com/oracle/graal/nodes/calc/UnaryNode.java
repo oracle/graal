@@ -23,13 +23,14 @@
 package com.oracle.graal.nodes.calc;
 
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
 
 /**
  * The {@code UnaryNode} class is the base of arithmetic and bit logic operations with exactly one
  * input.
  */
-public abstract class UnaryNode extends FloatingNode {
+public abstract class UnaryNode extends FloatingNode implements Canonicalizable.Unary<ValueNode> {
 
     @Input private ValueNode value;
 

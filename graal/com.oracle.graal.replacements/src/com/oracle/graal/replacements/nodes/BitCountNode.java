@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,13 +24,12 @@ package com.oracle.graal.replacements.nodes;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
 
-public class BitCountNode extends UnaryNode implements LIRLowerable, Canonicalizable {
+public class BitCountNode extends UnaryNode implements LIRLowerable {
 
     public BitCountNode(ValueNode value) {
         super(StampFactory.forInteger(Kind.Int, 0, ((PrimitiveStamp) value.stamp()).getBits()), value);
@@ -46,14 +45,10 @@ public class BitCountNode extends UnaryNode implements LIRLowerable, Canonicaliz
     }
 
     @Override
-    public Node canonical(CanonicalizerTool tool) {
-        if (getValue().isConstant()) {
-            Constant c = getValue().asConstant();
-            if (c.getKind() == Kind.Int) {
-                return ConstantNode.forInt(Integer.bitCount(c.asInt()), graph());
-            } else if (c.getKind() == Kind.Long) {
-                return ConstantNode.forInt(Long.bitCount(c.asLong()), graph());
-            }
+    public ValueNode canonical(CanonicalizerTool tool, ValueNode forValue) {
+        if (forValue.isConstant()) {
+            Constant c = forValue.asConstant();
+            return ConstantNode.forInt(forValue.getKind() == Kind.Int ? bitCount(c.asInt()) : bitCount(c.asLong()));
         }
         return this;
     }

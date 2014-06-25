@@ -22,28 +22,21 @@
  */
 package com.oracle.graal.nodes;
 
-import com.oracle.graal.api.meta.ProfilingInfo.TriState;
+import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.spi.*;
 
-public abstract class UnaryOpLogicNode extends LogicNode implements LIRLowerable {
+public abstract class UnaryOpLogicNode extends LogicNode implements LIRLowerable, Canonicalizable.Unary<ValueNode> {
 
-    @Input private ValueNode object;
+    @Input private ValueNode value;
 
-    public ValueNode object() {
-        return object;
+    public ValueNode getValue() {
+        return value;
     }
 
-    protected void setX(ValueNode object) {
-        updateUsages(this.object, object);
-        this.object = object;
+    public UnaryOpLogicNode(ValueNode value) {
+        assert value != null;
+        this.value = value;
     }
-
-    public UnaryOpLogicNode(ValueNode object) {
-        assert object != null;
-        this.object = object;
-    }
-
-    public abstract TriState evaluate(ValueNode forObject);
 
     @Override
     public void generate(NodeLIRBuilderTool gen) {

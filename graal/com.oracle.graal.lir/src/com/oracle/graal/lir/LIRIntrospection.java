@@ -35,7 +35,6 @@ import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.lir.LIRInstruction.InstructionValueProcedure;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
-import com.oracle.graal.lir.LIRInstruction.ValueProcedure;
 
 abstract class LIRIntrospection extends FieldIntrospection {
 
@@ -117,33 +116,6 @@ abstract class LIRIntrospection extends FieldIntrospection {
                 assert type.isAssignableFrom(CONSTANT_CLASS) : "Cannot assign Constant to field with CONST flag:" + field;
             }
             return true;
-        }
-    }
-
-    protected static void forEach(Object obj, int directCount, long[] offsets, OperandMode mode, EnumSet<OperandFlag>[] flags, ValueProcedure proc) {
-        for (int i = 0; i < offsets.length; i++) {
-            assert LIRInstruction.ALLOWED_FLAGS.get(mode).containsAll(flags[i]);
-
-            if (i < directCount) {
-                Value value = getValue(obj, offsets[i]);
-                if (value instanceof CompositeValue) {
-                    CompositeValue composite = (CompositeValue) value;
-                    composite.forEachComponent(mode, proc);
-                } else {
-                    setValue(obj, offsets[i], proc.doValue(value, mode, flags[i]));
-                }
-            } else {
-                Value[] values = getValueArray(obj, offsets[i]);
-                for (int j = 0; j < values.length; j++) {
-                    Value value = values[j];
-                    if (value instanceof CompositeValue) {
-                        CompositeValue composite = (CompositeValue) value;
-                        composite.forEachComponent(mode, proc);
-                    } else {
-                        values[j] = proc.doValue(value, mode, flags[i]);
-                    }
-                }
-            }
         }
     }
 

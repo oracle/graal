@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.nodes.calc;
 
-import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.meta.ProfilingInfo.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
@@ -57,32 +55,27 @@ public final class IntegerBelowThanNode extends CompareNode {
     }
 
     @Override
-    public TriState evaluate(ConstantReflectionProvider constantReflection, ValueNode forX, ValueNode forY) {
+    public ValueNode canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
+        ValueNode result = super.canonical(tool, forX, forY);
+        if (result != this) {
+            return result;
+        }
         if (GraphUtil.unproxify(forX) == GraphUtil.unproxify(forY)) {
-            return TriState.FALSE;
+            return LogicConstantNode.contradiction();
         } else if (forX.stamp() instanceof IntegerStamp && forY.stamp() instanceof IntegerStamp) {
             IntegerStamp xStamp = (IntegerStamp) forX.stamp();
             IntegerStamp yStamp = (IntegerStamp) forY.stamp();
             if (yStamp.isPositive()) {
                 if (xStamp.isPositive() && xStamp.upperBound() < yStamp.lowerBound()) {
-                    return TriState.TRUE;
+                    return LogicConstantNode.tautology();
                 } else if (xStamp.isStrictlyNegative() || xStamp.lowerBound() >= yStamp.upperBound()) {
-                    return TriState.FALSE;
+                    return LogicConstantNode.contradiction();
                 }
             }
         }
-        return super.evaluate(constantReflection, forX, forY);
-    }
-
-    @Override
-    public Node canonical(CanonicalizerTool tool) {
-        Node result = super.canonical(tool);
-        if (result != this) {
-            return result;
-        }
-        if (x().isConstant() && x().asConstant().asLong() == 0) {
+        if (forX.isConstant() && forX.asConstant().asLong() == 0) {
             // 0 |<| y is the same as 0 != y
-            return graph().unique(new LogicNegationNode(CompareNode.createCompareNode(graph(), Condition.EQ, x(), y())));
+            return new LogicNegationNode(CompareNode.createCompareNode(Condition.EQ, forX, forY));
         }
         return this;
     }

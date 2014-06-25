@@ -24,10 +24,15 @@ package com.oracle.graal.replacements.nodes;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
 
+/**
+ * Determines the index of the most significant "1" bit. Note that the result is undefined if the
+ * input is zero.
+ */
 public class BitScanReverseNode extends UnaryNode implements LIRLowerable {
 
     public BitScanReverseNode(ValueNode value) {
@@ -50,6 +55,15 @@ public class BitScanReverseNode extends UnaryNode implements LIRLowerable {
         int lastMaybeSetBit = scan(valueStamp.upMask() & mask);
         max = lastMaybeSetBit;
         return updateStamp(StampFactory.forInteger(Kind.Int, min, max));
+    }
+
+    @Override
+    public ValueNode canonical(CanonicalizerTool tool, ValueNode forValue) {
+        if (forValue.isConstant()) {
+            Constant c = forValue.asConstant();
+            return ConstantNode.forInt(forValue.getKind() == Kind.Int ? scan(c.asInt()) : scan(c.asLong()));
+        }
+        return this;
     }
 
     @NodeIntrinsic

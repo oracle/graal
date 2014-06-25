@@ -373,16 +373,16 @@ public class ConditionalEliminationPhase extends Phase {
 
             if (isTrue && condition instanceof InstanceOfNode) {
                 InstanceOfNode instanceOf = (InstanceOfNode) condition;
-                ValueNode object = instanceOf.object();
+                ValueNode object = instanceOf.getValue();
                 state.addNullness(false, object);
                 state.addType(instanceOf.type(), object);
             } else if (condition instanceof IsNullNode) {
                 IsNullNode nullCheck = (IsNullNode) condition;
-                state.addNullness(isTrue, nullCheck.object());
+                state.addNullness(isTrue, nullCheck.getValue());
             } else if (condition instanceof ObjectEqualsNode) {
                 ObjectEqualsNode equals = (ObjectEqualsNode) condition;
-                ValueNode x = equals.x();
-                ValueNode y = equals.y();
+                ValueNode x = equals.getX();
+                ValueNode y = equals.getY();
                 if (isTrue) {
                     if (state.isNull(x) && !state.isNull(y)) {
                         metricObjectEqualsRegistered.increment();
@@ -438,8 +438,8 @@ public class ConditionalEliminationPhase extends Phase {
                         }
                     }
                     if (type != null) {
-                        state.addNullness(false, loadHub.object());
-                        state.addType(type, loadHub.object());
+                        state.addNullness(false, loadHub.getValue());
+                        state.addType(type, loadHub.getValue());
                     }
                 }
             }
@@ -452,16 +452,16 @@ public class ConditionalEliminationPhase extends Phase {
                     return null;
                 }
                 IntegerBelowThanNode below = (IntegerBelowThanNode) guard.condition();
-                if (below.x().getKind() == Kind.Int && below.x().isConstant() && !below.y().isConstant()) {
-                    Stamp stamp = StampTool.unsignedCompare(below.x().stamp(), below.y().stamp());
+                if (below.getX().getKind() == Kind.Int && below.getX().isConstant() && !below.getY().isConstant()) {
+                    Stamp stamp = StampTool.unsignedCompare(below.getX().stamp(), below.getY().stamp());
                     if (stamp != null) {
-                        return new GuardedStamp(below.y(), stamp, guard);
+                        return new GuardedStamp(below.getY(), stamp, guard);
                     }
                 }
-                if (below.y().getKind() == Kind.Int && below.y().isConstant() && !below.x().isConstant()) {
-                    Stamp stamp = StampTool.unsignedCompare(below.x().stamp(), below.y().stamp());
+                if (below.getY().getKind() == Kind.Int && below.getY().isConstant() && !below.getX().isConstant()) {
+                    Stamp stamp = StampTool.unsignedCompare(below.getX().stamp(), below.getY().stamp());
                     if (stamp != null) {
-                        return new GuardedStamp(below.x(), stamp, guard);
+                        return new GuardedStamp(below.getX(), stamp, guard);
                     }
                 }
             }
@@ -522,13 +522,13 @@ public class ConditionalEliminationPhase extends Phase {
             GuardNode existingGuard = null;
             if (guard.condition() instanceof IntegerBelowThanNode) {
                 IntegerBelowThanNode below = (IntegerBelowThanNode) guard.condition();
-                IntegerStamp xStamp = (IntegerStamp) below.x().stamp();
-                IntegerStamp yStamp = (IntegerStamp) below.y().stamp();
-                GuardedStamp cstamp = state.valueConstraints.get(below.x());
+                IntegerStamp xStamp = (IntegerStamp) below.getX().stamp();
+                IntegerStamp yStamp = (IntegerStamp) below.getY().stamp();
+                GuardedStamp cstamp = state.valueConstraints.get(below.getX());
                 if (cstamp != null) {
                     xStamp = (IntegerStamp) cstamp.getStamp();
                 } else {
-                    cstamp = state.valueConstraints.get(below.y());
+                    cstamp = state.valueConstraints.get(below.getY());
                     if (cstamp != null) {
                         yStamp = (IntegerStamp) cstamp.getStamp();
                     }
@@ -552,10 +552,10 @@ public class ConditionalEliminationPhase extends Phase {
                 }
             } else if (guard.condition() instanceof IntegerEqualsNode && guard.negated()) {
                 IntegerEqualsNode equals = (IntegerEqualsNode) guard.condition();
-                GuardedStamp cstamp = state.valueConstraints.get(equals.y());
-                if (cstamp != null && equals.x().isConstant()) {
+                GuardedStamp cstamp = state.valueConstraints.get(equals.getY());
+                if (cstamp != null && equals.getX().isConstant()) {
                     IntegerStamp stamp = (IntegerStamp) cstamp.getStamp();
-                    if (!stamp.contains(equals.x().asConstant().asLong())) {
+                    if (!stamp.contains(equals.getX().asConstant().asLong())) {
                         // x != n is true if n is outside the range of the stamp
                         existingGuard = cstamp.getGuard();
                         Debug.log("existing guard %s %1s proves !%1s", existingGuard, existingGuard.condition(), guard.condition());
@@ -620,7 +620,7 @@ public class ConditionalEliminationPhase extends Phase {
             } else {
                 if (condition instanceof InstanceOfNode) {
                     InstanceOfNode instanceOf = (InstanceOfNode) condition;
-                    ValueNode object = instanceOf.object();
+                    ValueNode object = instanceOf.getValue();
                     if (state.isNull(object)) {
                         metricInstanceOfRemoved.increment();
                         return falseValue;
@@ -633,7 +633,7 @@ public class ConditionalEliminationPhase extends Phase {
                     }
                 } else if (condition instanceof IsNullNode) {
                     IsNullNode isNull = (IsNullNode) condition;
-                    ValueNode object = isNull.object();
+                    ValueNode object = isNull.getValue();
                     if (state.isNull(object)) {
                         metricNullCheckRemoved.increment();
                         return trueValue;
@@ -643,8 +643,8 @@ public class ConditionalEliminationPhase extends Phase {
                     }
                 } else if (condition instanceof ObjectEqualsNode) {
                     ObjectEqualsNode equals = (ObjectEqualsNode) condition;
-                    ValueNode x = equals.x();
-                    ValueNode y = equals.y();
+                    ValueNode x = equals.getX();
+                    ValueNode y = equals.getY();
                     if (state.isNull(x) && state.isNonNull(y) || state.isNonNull(x) && state.isNull(y)) {
                         metricObjectEqualsRemoved.increment();
                         return falseValue;

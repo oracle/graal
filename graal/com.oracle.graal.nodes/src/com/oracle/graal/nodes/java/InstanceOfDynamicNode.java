@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,7 +23,6 @@
 package com.oracle.graal.nodes.java;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
@@ -34,7 +33,7 @@ import com.oracle.graal.nodes.type.*;
  * known at compile time. This is used, for instance, to intrinsify {@link Class#isInstance(Object)}
  * .
  */
-public final class InstanceOfDynamicNode extends LogicNode implements Canonicalizable, Lowerable {
+public final class InstanceOfDynamicNode extends LogicNode implements Canonicalizable.Binary<ValueNode>, Lowerable {
 
     @Input private ValueNode object;
     @Input private ValueNode mirror;
@@ -56,16 +55,14 @@ public final class InstanceOfDynamicNode extends LogicNode implements Canonicali
         tool.getLowerer().lower(this, tool);
     }
 
-    @Override
-    public Node canonical(CanonicalizerTool tool) {
-        assert object() != null : this;
-        if (mirror().isConstant()) {
-            ResolvedJavaType t = tool.getConstantReflection().asJavaType(mirror().asConstant());
+    public ValueNode canonical(CanonicalizerTool tool, ValueNode forObject, ValueNode forMirror) {
+        if (forMirror.isConstant()) {
+            ResolvedJavaType t = tool.getConstantReflection().asJavaType(forMirror.asConstant());
             if (t != null) {
                 if (t.isPrimitive()) {
-                    return LogicConstantNode.contradiction(graph());
+                    return LogicConstantNode.contradiction();
                 } else {
-                    return graph().unique(new InstanceOfNode(t, object(), null));
+                    return new InstanceOfNode(t, forObject, null);
                 }
             }
         }
@@ -77,6 +74,14 @@ public final class InstanceOfDynamicNode extends LogicNode implements Canonicali
     }
 
     public ValueNode mirror() {
+        return mirror;
+    }
+
+    public ValueNode getX() {
+        return object;
+    }
+
+    public ValueNode getY() {
         return mirror;
     }
 }

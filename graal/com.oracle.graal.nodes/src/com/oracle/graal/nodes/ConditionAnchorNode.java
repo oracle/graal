@@ -70,7 +70,7 @@ public final class ConditionAnchorNode extends FixedWithNextNode implements Cano
     public Node canonical(CanonicalizerTool tool) {
         if (condition instanceof LogicNegationNode) {
             LogicNegationNode negation = (LogicNegationNode) condition;
-            setCondition(negation.getInput());
+            setCondition(negation.getValue());
             negated = !negated;
         }
 

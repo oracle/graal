@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,10 +23,8 @@
 package com.oracle.graal.nodes.calc;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.meta.ProfilingInfo.TriState;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.calc.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
 
@@ -62,7 +60,7 @@ public abstract class CompareNode extends BinaryOpLogicNode {
      */
     public abstract boolean unorderedIsTrue();
 
-    private LogicNode optimizeConditional(Constant constant, ConditionalNode conditionalNode, ConstantReflectionProvider constantReflection, Condition cond) {
+    private ValueNode optimizeConditional(Constant constant, ConditionalNode conditionalNode, ConstantReflectionProvider constantReflection, Condition cond) {
         Constant trueConstant = conditionalNode.trueValue().asConstant();
         Constant falseConstant = conditionalNode.falseValue().asConstant();
 
@@ -71,14 +69,14 @@ public abstract class CompareNode extends BinaryOpLogicNode {
             boolean falseResult = cond.foldCondition(falseConstant, constant, constantReflection, unorderedIsTrue());
 
             if (trueResult == falseResult) {
-                return LogicConstantNode.forBoolean(trueResult, graph());
+                return LogicConstantNode.forBoolean(trueResult);
             } else {
                 if (trueResult) {
                     assert falseResult == false;
                     return conditionalNode.condition();
                 } else {
                     assert falseResult == true;
-                    return graph().unique(new LogicNegationNode(conditionalNode.condition()));
+                    return new LogicNegationNode(conditionalNode.condition());
 
                 }
             }
@@ -86,46 +84,37 @@ public abstract class CompareNode extends BinaryOpLogicNode {
         return this;
     }
 
-    protected LogicNode optimizeNormalizeCmp(Constant constant, NormalizeCompareNode normalizeNode, boolean mirrored) {
+    protected ValueNode optimizeNormalizeCmp(Constant constant, NormalizeCompareNode normalizeNode, boolean mirrored) {
         throw new GraalInternalError("NormalizeCompareNode connected to %s (%s %s %s)", this, constant, normalizeNode, mirrored);
     }
 
     @Override
-    public TriState evaluate(ConstantReflectionProvider constantReflection, ValueNode forX, ValueNode forY) {
+    public ValueNode canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
         if (forX.isConstant() && forY.isConstant()) {
-            return TriState.get(condition().foldCondition(forX.asConstant(), forY.asConstant(), constantReflection, unorderedIsTrue()));
+            return LogicConstantNode.forBoolean(condition().foldCondition(forX.asConstant(), forY.asConstant(), tool.getConstantReflection(), unorderedIsTrue()));
         }
-        return TriState.UNKNOWN;
-    }
-
-    @Override
-    public Node canonical(CanonicalizerTool tool) {
-        Node result = super.canonical(tool);
-        if (result != this) {
-            return result;
-        }
-        if (x().isConstant()) {
-            if ((result = canonicalizeSymmetricConstant(tool, x().asConstant(), y(), true)) != this) {
+        ValueNode result;
+        if (forX.isConstant()) {
+            if ((result = canonicalizeSymmetricConstant(tool, forX.asConstant(), forY, true)) != this) {
                 return result;
             }
-        } else if (y().isConstant()) {
-            if ((result = canonicalizeSymmetricConstant(tool, y().asConstant(), x(), false)) != this) {
+        } else if (forY.isConstant()) {
+            if ((result = canonicalizeSymmetricConstant(tool, forY.asConstant(), forX, false)) != this) {
                 return result;
             }
-        } else if (x() instanceof ConvertNode && y() instanceof ConvertNode) {
-            ConvertNode convertX = (ConvertNode) x();
-            ConvertNode convertY = (ConvertNode) y();
+        } else if (forX instanceof ConvertNode && forY instanceof ConvertNode) {
+            ConvertNode convertX = (ConvertNode) forX;
+            ConvertNode convertY = (ConvertNode) forY;
             if (convertX.preservesOrder(condition()) && convertY.preservesOrder(condition()) && convertX.getValue().stamp().isCompatible(convertY.getValue().stamp())) {
-                return graph().unique(duplicateModified(convertX.getValue(), convertY.getValue()));
+                return duplicateModified(convertX.getValue(), convertY.getValue());
             }
-
         }
         return this;
     }
 
     protected abstract CompareNode duplicateModified(ValueNode newX, ValueNode newY);
 
-    protected Node canonicalizeSymmetricConstant(CanonicalizerTool tool, Constant constant, ValueNode nonConstant, boolean mirrored) {
+    protected ValueNode canonicalizeSymmetricConstant(CanonicalizerTool tool, Constant constant, ValueNode nonConstant, boolean mirrored) {
         if (nonConstant instanceof ConditionalNode) {
             return optimizeConditional(constant, (ConditionalNode) nonConstant, tool.getConstantReflection(), mirrored ? condition().mirror() : condition());
         } else if (nonConstant instanceof NormalizeCompareNode) {
@@ -135,9 +124,9 @@ public abstract class CompareNode extends BinaryOpLogicNode {
             ConstantNode newConstant = canonicalConvertConstant(tool, convert, constant);
             if (newConstant != null) {
                 if (mirrored) {
-                    return graph().unique(duplicateModified(newConstant, convert.getValue()));
+                    return duplicateModified(newConstant, convert.getValue());
                 } else {
-                    return graph().unique(duplicateModified(convert.getValue(), newConstant));
+                    return duplicateModified(convert.getValue(), newConstant);
                 }
             }
         }
@@ -148,13 +137,17 @@ public abstract class CompareNode extends BinaryOpLogicNode {
         if (convert.preservesOrder(condition())) {
             Constant reverseConverted = convert.reverse(constant);
             if (convert.convert(reverseConverted).equals(constant)) {
-                return ConstantNode.forConstant(convert.getValue().stamp(), reverseConverted, tool.getMetaAccess(), convert.graph());
+                return ConstantNode.forConstant(convert.getValue().stamp(), reverseConverted, tool.getMetaAccess());
             }
         }
         return null;
     }
 
     public static CompareNode createCompareNode(StructuredGraph graph, Condition condition, ValueNode x, ValueNode y) {
+        return graph.unique(createCompareNode(condition, x, y));
+    }
+
+    public static CompareNode createCompareNode(Condition condition, ValueNode x, ValueNode y) {
         assert x.getKind() == y.getKind();
         assert condition.isCanonical() : "condition is not canonical: " + condition;
         assert !x.getKind().isNumericFloat();
@@ -176,6 +169,6 @@ public abstract class CompareNode extends BinaryOpLogicNode {
             comparison = new IntegerBelowThanNode(x, y);
         }
 
-        return graph.unique(comparison);
+        return comparison;
     }
 }

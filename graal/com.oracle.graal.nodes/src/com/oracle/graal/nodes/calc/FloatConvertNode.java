@@ -26,7 +26,6 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodes.*;
@@ -36,7 +35,7 @@ import com.oracle.graal.nodes.spi.*;
  * A {@code FloatConvert} converts between integers and floating point numbers according to Java
  * semantics.
  */
-public class FloatConvertNode extends ConvertNode implements Canonicalizable, Lowerable, ArithmeticLIRLowerable {
+public class FloatConvertNode extends ConvertNode implements Lowerable, ArithmeticLIRLowerable {
 
     private final FloatConvert op;
 
@@ -147,11 +146,11 @@ public class FloatConvertNode extends ConvertNode implements Canonicalizable, Lo
     }
 
     @Override
-    public Node canonical(CanonicalizerTool tool) {
-        if (getValue().isConstant()) {
-            return ConstantNode.forPrimitive(evalConst(getValue().asConstant()), graph());
-        } else if (getValue() instanceof FloatConvertNode) {
-            FloatConvertNode other = (FloatConvertNode) getValue();
+    public ValueNode canonical(CanonicalizerTool tool, ValueNode forValue) {
+        if (forValue.isConstant()) {
+            return ConstantNode.forConstant(evalConst(forValue.asConstant()), null);
+        } else if (forValue instanceof FloatConvertNode) {
+            FloatConvertNode other = (FloatConvertNode) forValue;
             if (other.isLossless() && other.op == this.op.reverse()) {
                 return other.getValue();
             }

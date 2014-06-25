@@ -147,7 +147,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
             setTrueSuccessor(null);
             setFalseSuccessor(null);
             LogicNegationNode negation = (LogicNegationNode) condition();
-            IfNode newIfNode = graph().add(new IfNode(negation.getInput(), falseSucc, trueSucc, 1 - trueSuccessorProbability));
+            IfNode newIfNode = graph().add(new IfNode(negation.getValue(), falseSucc, trueSucc, 1 - trueSuccessorProbability));
             predecessor().replaceFirstSuccessor(this, newIfNode);
             GraphUtil.killWithUnusedFloatingInputs(this);
             return;
@@ -259,7 +259,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         assert trueSuccessor().usages().isEmpty() && falseSuccessor().usages().isEmpty();
         if (condition() instanceof IntegerLessThanNode) {
             IntegerLessThanNode lessThan = (IntegerLessThanNode) condition();
-            Constant y = lessThan.y().stamp().asConstant();
+            Constant y = lessThan.getY().stamp().asConstant();
             if (y != null && y.asLong() == 0 && falseSuccessor().next() instanceof IfNode) {
                 IfNode ifNode2 = (IfNode) falseSuccessor().next();
                 if (ifNode2.condition() instanceof IntegerLessThanNode) {
@@ -271,24 +271,24 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                      * Convert x >= 0 && x < positive which is represented as !(x < 0) && x <
                      * <positive> into an unsigned compare.
                      */
-                    if (lessThan2.x() == lessThan.x() && lessThan2.y().stamp() instanceof IntegerStamp && ((IntegerStamp) lessThan2.y().stamp()).isPositive() &&
+                    if (lessThan2.getX() == lessThan.getX() && lessThan2.getY().stamp() instanceof IntegerStamp && ((IntegerStamp) lessThan2.getY().stamp()).isPositive() &&
                                     sameDestination(trueSuccessor(), ifNode2.falseSuccessor)) {
-                        below = graph().unique(new IntegerBelowThanNode(lessThan2.x(), lessThan2.y()));
+                        below = graph().unique(new IntegerBelowThanNode(lessThan2.getX(), lessThan2.getY()));
                         // swap direction
                         BeginNode tmp = falseSucc;
                         falseSucc = trueSucc;
                         trueSucc = tmp;
-                    } else if (lessThan2.y() == lessThan.x() && sameDestination(trueSuccessor(), ifNode2.trueSuccessor)) {
+                    } else if (lessThan2.getY() == lessThan.getX() && sameDestination(trueSuccessor(), ifNode2.trueSuccessor)) {
                         /*
                          * Convert x >= 0 && x <= positive which is represented as !(x < 0) &&
                          * !(<positive> > x), into x <| positive + 1. This can only be done for
                          * constants since there isn't a IntegerBelowEqualThanNode but that doesn't
                          * appear to be interesting.
                          */
-                        Constant positive = lessThan2.x().asConstant();
+                        Constant positive = lessThan2.getX().asConstant();
                         if (positive != null && positive.asLong() > 0 && positive.asLong() < positive.getKind().getMaxValue()) {
                             ConstantNode newLimit = ConstantNode.forIntegerKind(positive.getKind(), positive.asLong() + 1, graph());
-                            below = graph().unique(new IntegerBelowThanNode(lessThan.x(), newLimit));
+                            below = graph().unique(new IntegerBelowThanNode(lessThan.getX(), newLimit));
                         }
                     }
                     if (below != null) {
@@ -355,7 +355,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
             InstanceOfNode instanceOfA = (InstanceOfNode) a;
             if (b instanceof IsNullNode) {
                 IsNullNode isNullNode = (IsNullNode) b;
-                if (isNullNode.object() == instanceOfA.object()) {
+                if (isNullNode.getValue() == instanceOfA.getValue()) {
                     if (instanceOfA.profile() != null && instanceOfA.profile().getNullSeen() != TriState.FALSE) {
                         instanceOfA.setProfile(new JavaTypeProfile(TriState.FALSE, instanceOfA.profile().getNotRecordedProbability(), instanceOfA.profile().getTypes()));
                     }
@@ -364,7 +364,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                 }
             } else if (b instanceof InstanceOfNode) {
                 InstanceOfNode instanceOfB = (InstanceOfNode) b;
-                if (instanceOfA.object() == instanceOfB.object() && !instanceOfA.type().isInterface() && !instanceOfB.type().isInterface() &&
+                if (instanceOfA.getValue() == instanceOfB.getValue() && !instanceOfA.type().isInterface() && !instanceOfB.type().isInterface() &&
                                 !instanceOfA.type().isAssignableFrom(instanceOfB.type()) && !instanceOfB.type().isAssignableFrom(instanceOfA.type())) {
                     // Two instanceof on the same value with mutually exclusive types.
                     JavaTypeProfile profileA = instanceOfA.profile();
@@ -425,9 +425,9 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                 }
                 Condition comparableCondition = null;
                 Condition conditionB = compareB.condition();
-                if (compareB.x() == compareA.x() && compareB.y() == compareA.y()) {
+                if (compareB.getX() == compareA.getX() && compareB.getY() == compareA.getY()) {
                     comparableCondition = conditionB;
-                } else if (compareB.x() == compareA.y() && compareB.y() == compareA.x()) {
+                } else if (compareB.getX() == compareA.getY() && compareB.getY() == compareA.getX()) {
                     comparableCondition = conditionB.mirror();
                 }
 
@@ -440,13 +440,13 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                     }
                 } else if (conditionA == Condition.EQ && conditionB == Condition.EQ) {
                     boolean canSwap = false;
-                    if ((compareA.x() == compareB.x() && valuesDistinct(constantReflection, compareA.y(), compareB.y()))) {
+                    if ((compareA.getX() == compareB.getX() && valuesDistinct(constantReflection, compareA.getY(), compareB.getY()))) {
                         canSwap = true;
-                    } else if ((compareA.x() == compareB.y() && valuesDistinct(constantReflection, compareA.y(), compareB.x()))) {
+                    } else if ((compareA.getX() == compareB.getY() && valuesDistinct(constantReflection, compareA.getY(), compareB.getX()))) {
                         canSwap = true;
-                    } else if ((compareA.y() == compareB.x() && valuesDistinct(constantReflection, compareA.x(), compareB.y()))) {
+                    } else if ((compareA.getY() == compareB.getX() && valuesDistinct(constantReflection, compareA.getX(), compareB.getY()))) {
                         canSwap = true;
-                    } else if ((compareA.y() == compareB.y() && valuesDistinct(constantReflection, compareA.x(), compareB.x()))) {
+                    } else if ((compareA.getY() == compareB.getY() && valuesDistinct(constantReflection, compareA.getX(), compareB.getX()))) {
                         canSwap = true;
                     }
 
@@ -645,7 +645,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
             return false;
         }
         Node singleUsage = mergeUsages.first();
-        if (!(singleUsage instanceof ValuePhiNode) || (singleUsage != compare.x() && singleUsage != compare.y())) {
+        if (!(singleUsage instanceof ValuePhiNode) || (singleUsage != compare.getX() && singleUsage != compare.getY())) {
             return false;
         }
 
@@ -664,8 +664,8 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         List<AbstractEndNode> mergePredecessors = merge.cfgPredecessors().snapshot();
         assert phi.valueCount() == merge.forwardEndCount();
 
-        Constant[] xs = constantValues(compare.x(), merge, false);
-        Constant[] ys = constantValues(compare.y(), merge, false);
+        Constant[] xs = constantValues(compare.getX(), merge, false);
+        Constant[] ys = constantValues(compare.getY(), merge, false);
         if (xs == null || ys == null) {
             return false;
         }

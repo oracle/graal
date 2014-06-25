@@ -461,52 +461,52 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
             @Override
             protected ValueNode genIntegerAdd(Kind kind, ValueNode x, ValueNode y) {
-                return new IntegerAddNode(StampFactory.forKind(kind), x, y);
+                return new IntegerAddNode(x, y);
             }
 
             @Override
             protected ValueNode genIntegerSub(Kind kind, ValueNode x, ValueNode y) {
-                return new IntegerSubNode(StampFactory.forKind(kind), x, y);
+                return new IntegerSubNode(x, y);
             }
 
             @Override
             protected ValueNode genIntegerMul(Kind kind, ValueNode x, ValueNode y) {
-                return new IntegerMulNode(StampFactory.forKind(kind), x, y);
+                return new IntegerMulNode(x, y);
             }
 
             @Override
             protected ValueNode genFloatAdd(Kind kind, ValueNode x, ValueNode y, boolean isStrictFP) {
-                return new FloatAddNode(StampFactory.forKind(kind), x, y, isStrictFP);
+                return new FloatAddNode(x, y, isStrictFP);
             }
 
             @Override
             protected ValueNode genFloatSub(Kind kind, ValueNode x, ValueNode y, boolean isStrictFP) {
-                return new FloatSubNode(StampFactory.forKind(kind), x, y, isStrictFP);
+                return new FloatSubNode(x, y, isStrictFP);
             }
 
             @Override
             protected ValueNode genFloatMul(Kind kind, ValueNode x, ValueNode y, boolean isStrictFP) {
-                return new FloatMulNode(StampFactory.forKind(kind), x, y, isStrictFP);
+                return new FloatMulNode(x, y, isStrictFP);
             }
 
             @Override
             protected ValueNode genFloatDiv(Kind kind, ValueNode x, ValueNode y, boolean isStrictFP) {
-                return new FloatDivNode(StampFactory.forKind(kind), x, y, isStrictFP);
+                return new FloatDivNode(x, y, isStrictFP);
             }
 
             @Override
             protected ValueNode genFloatRem(Kind kind, ValueNode x, ValueNode y, boolean isStrictFP) {
-                return new FloatRemNode(StampFactory.forKind(kind), x, y, isStrictFP);
+                return new FloatRemNode(x, y, isStrictFP);
             }
 
             @Override
             protected ValueNode genIntegerDiv(Kind kind, ValueNode x, ValueNode y) {
-                return new IntegerDivNode(StampFactory.forKind(kind), x, y);
+                return new IntegerDivNode(x, y);
             }
 
             @Override
             protected ValueNode genIntegerRem(Kind kind, ValueNode x, ValueNode y) {
-                return new IntegerRemNode(StampFactory.forKind(kind), x, y);
+                return new IntegerRemNode(x, y);
             }
 
             @Override
@@ -516,32 +516,32 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
             @Override
             protected ValueNode genLeftShift(Kind kind, ValueNode x, ValueNode y) {
-                return new LeftShiftNode(StampFactory.forKind(kind), x, y);
+                return new LeftShiftNode(x, y);
             }
 
             @Override
             protected ValueNode genRightShift(Kind kind, ValueNode x, ValueNode y) {
-                return new RightShiftNode(StampFactory.forKind(kind), x, y);
+                return new RightShiftNode(x, y);
             }
 
             @Override
             protected ValueNode genUnsignedRightShift(Kind kind, ValueNode x, ValueNode y) {
-                return new UnsignedRightShiftNode(StampFactory.forKind(kind), x, y);
+                return new UnsignedRightShiftNode(x, y);
             }
 
             @Override
             protected ValueNode genAnd(Kind kind, ValueNode x, ValueNode y) {
-                return new AndNode(StampFactory.forKind(kind), x, y);
+                return new AndNode(x, y);
             }
 
             @Override
             protected ValueNode genOr(Kind kind, ValueNode x, ValueNode y) {
-                return new OrNode(StampFactory.forKind(kind), x, y);
+                return new OrNode(x, y);
             }
 
             @Override
             protected ValueNode genXor(Kind kind, ValueNode x, ValueNode y) {
-                return new XorNode(StampFactory.forKind(kind), x, y);
+                return new XorNode(x, y);
             }
 
             @Override

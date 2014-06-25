@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
-import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.replacements.*;
@@ -32,10 +31,10 @@ import com.oracle.graal.replacements.nodes.*;
 
 /**
  * {@link MacroNode Macro node} for {@link Class#cast(Object)}.
- * 
+ *
  * @see ClassSubstitutions#cast(Class, Object)
  */
-public class ClassCastNode extends MacroNode implements Canonicalizable {
+public class ClassCastNode extends MacroNode implements Canonicalizable.Binary<ValueNode> {
 
     public ClassCastNode(Invoke invoke) {
         super(invoke);
@@ -49,16 +48,21 @@ public class ClassCastNode extends MacroNode implements Canonicalizable {
         return arguments.get(1);
     }
 
+    public ValueNode getX() {
+        return getJavaClass();
+    }
+
+    public ValueNode getY() {
+        return getObject();
+    }
+
     @Override
-    public Node canonical(CanonicalizerTool tool) {
-        ValueNode javaClass = getJavaClass();
-        if (javaClass.isConstant()) {
-            ValueNode object = getObject();
-            Class<?> c = (Class<?>) HotSpotObjectConstant.asObject(javaClass.asConstant());
+    public ValueNode canonical(CanonicalizerTool tool, ValueNode forJavaClass, ValueNode forObject) {
+        if (forJavaClass.isConstant()) {
+            Class<?> c = (Class<?>) HotSpotObjectConstant.asObject(forJavaClass.asConstant());
             if (c != null && !c.isPrimitive()) {
                 HotSpotResolvedObjectType type = (HotSpotResolvedObjectType) HotSpotResolvedObjectType.fromClass(c);
-                CheckCastNode checkcast = graph().add(new CheckCastNode(type, object, null, false));
-                return checkcast;
+                return new CheckCastNode(type, forObject, null, false);
             }
         }
         return this;

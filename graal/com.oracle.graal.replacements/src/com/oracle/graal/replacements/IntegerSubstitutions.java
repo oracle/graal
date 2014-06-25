@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.replacements;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.replacements.nodes.*;
@@ -58,11 +57,11 @@ public class IntegerSubstitutions {
 
     @MethodSubstitution
     public static int divideUnsigned(int dividend, int divisor) {
-        return UnsignedDivNode.unsignedDivide(Kind.Int, dividend, divisor);
+        return UnsignedDivNode.unsignedDivide(dividend, divisor);
     }
 
     @MethodSubstitution
     public static int remainderUnsigned(int dividend, int divisor) {
-        return UnsignedRemNode.unsignedRemainder(Kind.Int, dividend, divisor);
+        return UnsignedRemNode.unsignedRemainder(dividend, divisor);
     }
 }

@@ -134,9 +134,9 @@ public class WordTypeRewriterPhase extends Phase {
      * Fold constant field reads, e.g. enum constants.
      */
     protected void rewriteLoadField(StructuredGraph graph, LoadFieldNode node) {
-        ConstantNode constant = node.asConstant(metaAccess);
+        ConstantNode constant = node.asConstant(metaAccess, node.object());
         if (constant != null) {
-            node.replaceAtUsages(constant);
+            node.replaceAtUsages(graph.unique(constant));
             graph.removeFixed(node);
         }
     }
@@ -199,7 +199,7 @@ public class WordTypeRewriterPhase extends Phase {
                 ValueNode left = arguments.get(0);
                 ValueNode right = operation.rightOperandIsInt() ? toUnsigned(graph, arguments.get(1), Kind.Int) : fromSigned(graph, arguments.get(1));
 
-                ValueNode replacement = graph.addOrUnique(createBinaryNodeInstance(operation.node(), wordKind, left, right));
+                ValueNode replacement = graph.addOrUnique(createBinaryNodeInstance(operation.node(), left, right));
                 if (replacement instanceof FixedWithNextNode) {
                     graph.addBeforeFixed(invoke.asNode(), (FixedWithNextNode) replacement);
                 }
@@ -213,7 +213,7 @@ public class WordTypeRewriterPhase extends Phase {
 
             case NOT:
                 assert arguments.size() == 1;
-                replace(invoke, graph.unique(new XorNode(StampFactory.forKind(wordKind), arguments.get(0), ConstantNode.forIntegerKind(wordKind, -1, graph))));
+                replace(invoke, graph.unique(new XorNode(arguments.get(0), ConstantNode.forIntegerKind(wordKind, -1, graph))));
                 break;
 
             case READ_POINTER:
@@ -333,10 +333,10 @@ public class WordTypeRewriterPhase extends Phase {
      * called for all Word operations which are annotated with @Operation(node = ...) and
      * encapsulates the reflective allocation of the node.
      */
-    private static ValueNode createBinaryNodeInstance(Class<? extends ValueNode> nodeClass, Kind kind, ValueNode left, ValueNode right) {
+    private static ValueNode createBinaryNodeInstance(Class<? extends ValueNode> nodeClass, ValueNode left, ValueNode right) {
         try {
-            Constructor<? extends ValueNode> constructor = nodeClass.getConstructor(Stamp.class, ValueNode.class, ValueNode.class);
-            return constructor.newInstance(StampFactory.forKind(kind), left, right);
+            Constructor<? extends ValueNode> constructor = nodeClass.getConstructor(ValueNode.class, ValueNode.class);
+            return constructor.newInstance(left, right);
         } catch (Throwable ex) {
             throw new GraalInternalError(ex).addContext(nodeClass.getName());
         }

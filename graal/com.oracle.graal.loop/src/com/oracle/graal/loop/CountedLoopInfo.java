@@ -62,7 +62,7 @@ public class CountedLoopInfo {
                 range = IntegerArithmeticNode.sub(graph, range, ConstantNode.forIntegerStamp(stamp, 1, graph));
             }
         }
-        IntegerDivNode div = graph.add(new IntegerDivNode(iv.valueNode().stamp().unrestricted(), range, iv.strideNode()));
+        IntegerDivNode div = graph.add(new IntegerDivNode(range, iv.strideNode()));
         graph.addBeforeFixed(loop.entryPoint(), div);
         ConstantNode zero = ConstantNode.forIntegerStamp(stamp, 0, graph);
         if (assumePositive) {

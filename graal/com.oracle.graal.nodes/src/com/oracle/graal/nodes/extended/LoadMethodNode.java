@@ -61,7 +61,7 @@ public final class LoadMethodNode extends FixedWithNextNode implements Lowerable
     @Override
     public Node canonical(CanonicalizerTool tool) {
         if (hub instanceof LoadHubNode) {
-            ValueNode object = ((LoadHubNode) hub).object();
+            ValueNode object = ((LoadHubNode) hub).getValue();
             ResolvedJavaType type = StampTool.typeOrNull(object);
             if (StampTool.isExactType(object)) {
                 return resolveExactMethod(tool, type);

@@ -359,7 +359,7 @@ public abstract class GuardingPiReduction extends BaseReduction {
             return false;
         }
         IsNullNode isNull = (IsNullNode) cond;
-        return isNull.object() == subject;
+        return isNull.getValue() == subject;
     }
 
     /**

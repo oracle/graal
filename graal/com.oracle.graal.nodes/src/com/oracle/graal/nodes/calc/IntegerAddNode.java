@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,15 +32,15 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
 @NodeInfo(shortName = "+")
-public class IntegerAddNode extends IntegerArithmeticNode implements Canonicalizable, NarrowableArithmeticNode {
+public class IntegerAddNode extends IntegerArithmeticNode implements NarrowableArithmeticNode {
 
-    public IntegerAddNode(Stamp stamp, ValueNode x, ValueNode y) {
-        super(stamp, x, y);
+    public IntegerAddNode(ValueNode x, ValueNode y) {
+        super(StampTool.add(x.stamp(), y.stamp()), x, y);
     }
 
     @Override
     public boolean inferStamp() {
-        return updateStamp(StampTool.add(x().stamp(), y().stamp()));
+        return updateStamp(StampTool.add(getX().stamp(), getY().stamp()));
     }
 
     @Override
@@ -50,51 +50,51 @@ public class IntegerAddNode extends IntegerArithmeticNode implements Canonicaliz
     }
 
     @Override
-    public Node canonical(CanonicalizerTool tool) {
-        if (x().isConstant() && !y().isConstant()) {
-            return graph().unique(new IntegerAddNode(stamp(), y(), x()));
+    public ValueNode canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
+        if (forX.isConstant() && !forY.isConstant()) {
+            return new IntegerAddNode(forY, forX);
         }
-        if (x() instanceof IntegerSubNode) {
-            IntegerSubNode sub = (IntegerSubNode) x();
-            if (sub.y() == y()) {
+        if (forX instanceof IntegerSubNode) {
+            IntegerSubNode sub = (IntegerSubNode) forX;
+            if (sub.getY() == forY) {
                 // (a - b) + b
-                return sub.x();
+                return sub.getX();
             }
         }
-        if (y() instanceof IntegerSubNode) {
-            IntegerSubNode sub = (IntegerSubNode) y();
-            if (sub.y() == x()) {
+        if (forY instanceof IntegerSubNode) {
+            IntegerSubNode sub = (IntegerSubNode) forY;
+            if (sub.getY() == forX) {
                 // b + (a - b)
-                return sub.x();
+                return sub.getX();
             }
         }
-        if (x().isConstant()) {
-            return ConstantNode.forPrimitive(evalConst(x().asConstant(), y().asConstant()), graph());
-        } else if (y().isConstant()) {
-            long c = y().asConstant().asLong();
+        if (forX.isConstant()) {
+            return ConstantNode.forPrimitive(evalConst(forX.asConstant(), forY.asConstant()));
+        } else if (forY.isConstant()) {
+            long c = forY.asConstant().asLong();
             if (c == 0) {
-                return x();
+                return forX;
             }
             // canonicalize expressions like "(a + 1) + 2"
-            BinaryNode reassociated = BinaryNode.reassociate(this, ValueNode.isConstantPredicate());
+            BinaryNode reassociated = BinaryNode.reassociate(this, ValueNode.isConstantPredicate(), forX, forY);
             if (reassociated != this) {
                 return reassociated;
             }
         }
-        if (x() instanceof NegateNode) {
-            return IntegerArithmeticNode.sub(graph(), y(), ((NegateNode) x()).getValue());
-        } else if (y() instanceof NegateNode) {
-            return IntegerArithmeticNode.sub(graph(), x(), ((NegateNode) y()).getValue());
+        if (forX instanceof NegateNode) {
+            return IntegerArithmeticNode.sub(forY, ((NegateNode) forX).getValue());
+        } else if (forY instanceof NegateNode) {
+            return IntegerArithmeticNode.sub(forX, ((NegateNode) forY).getValue());
         }
         return this;
     }
 
     @Override
     public void generate(NodeMappableLIRBuilder builder, ArithmeticLIRGenerator gen) {
-        Value op1 = builder.operand(x());
-        assert op1 != null : x() + ", this=" + this;
-        Value op2 = builder.operand(y());
-        if (!y().isConstant() && !FloatAddNode.livesLonger(this, y(), builder)) {
+        Value op1 = builder.operand(getX());
+        assert op1 != null : getX() + ", this=" + this;
+        Value op2 = builder.operand(getY());
+        if (!getY().isConstant() && !FloatAddNode.livesLonger(this, getY(), builder)) {
             Value op = op1;
             op1 = op2;
             op2 = op;

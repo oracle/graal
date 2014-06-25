@@ -23,7 +23,6 @@
 package com.oracle.graal.nodes.calc;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
@@ -31,34 +30,27 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 
 @NodeInfo(shortName = "|/|")
-public class UnsignedDivNode extends FixedBinaryNode implements Canonicalizable, Lowerable, LIRLowerable {
+public class UnsignedDivNode extends FixedBinaryNode implements Lowerable, LIRLowerable {
 
-    /**
-     * Used by {@code NodeIntrinsic} in {@code UnsignedMathSubstitutions}.
-     */
-    private UnsignedDivNode(Kind kind, ValueNode x, ValueNode y) {
-        this(StampFactory.forKind(kind), x, y);
-    }
-
-    public UnsignedDivNode(Stamp stamp, ValueNode x, ValueNode y) {
-        super(stamp, x, y);
+    public UnsignedDivNode(ValueNode x, ValueNode y) {
+        super(x.stamp().unrestricted(), x, y);
     }
 
     @Override
-    public Node canonical(CanonicalizerTool tool) {
-        if (x().isConstant() && y().isConstant()) {
-            long yConst = y().asConstant().asLong();
+    public ValueNode canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
+        if (forX.isConstant() && forY.isConstant()) {
+            long yConst = forY.asConstant().asLong();
             if (yConst == 0) {
                 return this; // this will trap, cannot canonicalize
             }
-            return ConstantNode.forIntegerStamp(stamp(), UnsignedMath.divide(x().asConstant().asLong(), yConst), graph());
-        } else if (y().isConstant()) {
-            long c = y().asConstant().asLong();
+            return ConstantNode.forIntegerStamp(stamp(), UnsignedMath.divide(forX.asConstant().asLong(), yConst));
+        } else if (forY.isConstant()) {
+            long c = forY.asConstant().asLong();
             if (c == 1) {
-                return x();
+                return forX;
             }
             if (CodeUtil.isPowerOf2(c)) {
-                return graph().unique(new UnsignedRightShiftNode(stamp(), x(), ConstantNode.forInt(CodeUtil.log2(c), graph())));
+                return new UnsignedRightShiftNode(forX, ConstantNode.forInt(CodeUtil.log2(c)));
             }
         }
         return this;
@@ -71,17 +63,17 @@ public class UnsignedDivNode extends FixedBinaryNode implements Canonicalizable,
 
     @Override
     public void generate(NodeLIRBuilderTool gen) {
-        gen.setResult(this, gen.getLIRGeneratorTool().emitUDiv(gen.operand(x()), gen.operand(y()), gen.state(this)));
+        gen.setResult(this, gen.getLIRGeneratorTool().emitUDiv(gen.operand(getX()), gen.operand(getY()), gen.state(this)));
     }
 
     @Override
     public boolean canDeoptimize() {
-        return !(y().stamp() instanceof IntegerStamp) || ((IntegerStamp) y().stamp()).contains(0);
+        return !(getY().stamp() instanceof IntegerStamp) || ((IntegerStamp) getY().stamp()).contains(0);
     }
 
     @NodeIntrinsic
-    public static native int unsignedDivide(@ConstantNodeParameter Kind kind, int a, int b);
+    public static native int unsignedDivide(int a, int b);
 
     @NodeIntrinsic
-    public static native long unsignedDivide(@ConstantNodeParameter Kind kind, long a, long b);
+    public static native long unsignedDivide(long a, long b);
 }

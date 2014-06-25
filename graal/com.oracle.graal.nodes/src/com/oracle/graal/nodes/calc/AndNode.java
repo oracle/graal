@@ -30,17 +30,19 @@ import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
+import com.oracle.graal.nodes.util.*;
 
 @NodeInfo(shortName = "&")
-public final class AndNode extends BitLogicNode implements Canonicalizable, NarrowableArithmeticNode {
+public final class AndNode extends BitLogicNode implements NarrowableArithmeticNode {
 
-    public AndNode(Stamp stamp, ValueNode x, ValueNode y) {
-        super(stamp, x, y);
+    public AndNode(ValueNode x, ValueNode y) {
+        super(StampTool.and(x.stamp(), y.stamp()), x, y);
+        assert x.stamp().isCompatible(y.stamp());
     }
 
     @Override
     public boolean inferStamp() {
-        return updateStamp(StampTool.and(x().stamp(), y().stamp()));
+        return updateStamp(StampTool.and(getX().stamp(), getY().stamp()));
     }
 
     @Override
@@ -50,46 +52,45 @@ public final class AndNode extends BitLogicNode implements Canonicalizable, Narr
     }
 
     @Override
-    public Node canonical(CanonicalizerTool tool) {
-        if (x() == y()) {
-            return x();
+    public ValueNode canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
+        if (GraphUtil.unproxify(forX) == GraphUtil.unproxify(forY)) {
+            return forX;
         }
-        if (x().isConstant() && !y().isConstant()) {
-            return graph().unique(new AndNode(stamp(), y(), x()));
+        if (forX.isConstant() && !forY.isConstant()) {
+            return new AndNode(forY, forX);
         }
-        if (x().isConstant()) {
-            return ConstantNode.forPrimitive(stamp(), evalConst(x().asConstant(), y().asConstant()), graph());
-        } else if (y().isConstant()) {
-            long rawY = y().asConstant().asLong();
+        if (forX.isConstant()) {
+            return ConstantNode.forPrimitive(stamp(), evalConst(forX.asConstant(), forY.asConstant()));
+        } else if (forY.isConstant()) {
+            long rawY = forY.asConstant().asLong();
             long mask = IntegerStamp.defaultMask(PrimitiveStamp.getBits(stamp()));
             if ((rawY & mask) == mask) {
-                return x();
+                return forX;
             }
             if ((rawY & mask) == 0) {
-                return ConstantNode.forIntegerStamp(stamp(), 0, graph());
+                return ConstantNode.forIntegerStamp(stamp(), 0);
             }
-            if (x() instanceof SignExtendNode) {
-                SignExtendNode ext = (SignExtendNode) x();
+            if (forX instanceof SignExtendNode) {
+                SignExtendNode ext = (SignExtendNode) forX;
                 if (rawY == ((1L << ext.getInputBits()) - 1)) {
-                    ValueNode result = graph().unique(new ZeroExtendNode(ext.getValue(), ext.getResultBits()));
-                    return result;
+                    return new ZeroExtendNode(ext.getValue(), ext.getResultBits());
                 }
             }
-            if (x().stamp() instanceof IntegerStamp) {
-                IntegerStamp xStamp = (IntegerStamp) x().stamp();
+            if (forX.stamp() instanceof IntegerStamp) {
+                IntegerStamp xStamp = (IntegerStamp) forX.stamp();
                 if (((xStamp.upMask() | xStamp.downMask()) & ~rawY) == 0) {
                     // No bits are set which are outside the mask, so the mask will have no effect.
-                    return x();
+                    return forX;
                 }
             }
 
-            return BinaryNode.reassociate(this, ValueNode.isConstantPredicate());
+            return BinaryNode.reassociate(this, ValueNode.isConstantPredicate(), forX, forY);
         }
         return this;
     }
 
     @Override
     public void generate(NodeMappableLIRBuilder builder, ArithmeticLIRGenerator gen) {
-        builder.setResult(this, gen.emitAnd(builder.operand(x()), builder.operand(y())));
+        builder.setResult(this, gen.emitAnd(builder.operand(getX()), builder.operand(getY())));
     }
 }

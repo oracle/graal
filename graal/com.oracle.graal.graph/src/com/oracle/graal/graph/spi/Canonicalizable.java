@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,5 +26,25 @@ import com.oracle.graal.graph.*;
 
 public interface Canonicalizable {
 
+    public enum CanonicalizeMethod {
+        BASE,
+        UNARY,
+        BINARY
+    }
+
     Node canonical(CanonicalizerTool tool);
+
+    public interface Unary<T extends Node> {
+        T canonical(CanonicalizerTool tool, T forValue);
+
+        T getValue();
+    }
+
+    public interface Binary<T extends Node> {
+        T canonical(CanonicalizerTool tool, T forX, T forY);
+
+        T getX();
+
+        T getY();
+    }
 }

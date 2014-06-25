@@ -114,8 +114,23 @@ public final class ConstantNode extends FloatingNode implements LIRLowerable {
         }
     }
 
+    public static ConstantNode forConstant(Constant constant, MetaAccessProvider metaAccess) {
+        if (constant.getKind().getStackKind() == Kind.Int && constant.getKind() != Kind.Int) {
+            return forInt(constant.asInt());
+        }
+        if (constant.getKind() == Kind.Object) {
+            return new ConstantNode(constant, StampFactory.forConstant(constant, metaAccess));
+        } else {
+            return createPrimitive(constant);
+        }
+    }
+
     public static ConstantNode forConstant(Stamp stamp, Constant constant, MetaAccessProvider metaAccess, StructuredGraph graph) {
         return graph.unique(new ConstantNode(constant, stamp.constant(constant, metaAccess)));
+    }
+
+    public static ConstantNode forConstant(Stamp stamp, Constant constant, MetaAccessProvider metaAccess) {
+        return new ConstantNode(constant, stamp.constant(constant, metaAccess));
     }
 
     /**
@@ -124,6 +139,14 @@ public final class ConstantNode extends FloatingNode implements LIRLowerable {
     public static ConstantNode forPrimitive(Constant constant, StructuredGraph graph) {
         assert constant.getKind() != Kind.Object;
         return forConstant(constant, null, graph);
+    }
+
+    /**
+     * Returns a node for a Java primitive.
+     */
+    public static ConstantNode forPrimitive(Constant constant) {
+        assert constant.getKind() != Kind.Object;
+        return forConstant(constant, null);
     }
 
     /**
@@ -141,6 +164,20 @@ public final class ConstantNode extends FloatingNode implements LIRLowerable {
     }
 
     /**
+     * Returns a node for a primitive of a given type.
+     */
+    public static ConstantNode forPrimitive(Stamp stamp, Constant constant) {
+        if (stamp instanceof IntegerStamp) {
+            assert constant.getKind().isNumericInteger() && stamp.getStackKind() == constant.getKind().getStackKind();
+            IntegerStamp istamp = (IntegerStamp) stamp;
+            return forIntegerBits(istamp.getBits(), constant);
+        } else {
+            assert constant.getKind().isNumericFloat() && stamp.getStackKind() == constant.getKind();
+            return forConstant(constant, null);
+        }
+    }
+
+    /**
      * Returns a node for a double constant.
      *
      * @param d the double value for which to create the instruction
@@ -148,6 +185,16 @@ public final class ConstantNode extends FloatingNode implements LIRLowerable {
      */
     public static ConstantNode forDouble(double d, StructuredGraph graph) {
         return unique(graph, createPrimitive(Constant.forDouble(d)));
+    }
+
+    /**
+     * Returns a node for a double constant.
+     *
+     * @param d the double value for which to create the instruction
+     * @return a node for a double constant
+     */
+    public static ConstantNode forDouble(double d) {
+        return createPrimitive(Constant.forDouble(d));
     }
 
     /**
@@ -161,6 +208,16 @@ public final class ConstantNode extends FloatingNode implements LIRLowerable {
     }
 
     /**
+     * Returns a node for a float constant.
+     *
+     * @param f the float value for which to create the instruction
+     * @return a node for a float constant
+     */
+    public static ConstantNode forFloat(float f) {
+        return createPrimitive(Constant.forFloat(f));
+    }
+
+    /**
      * Returns a node for an long constant.
      *
      * @param i the long value for which to create the instruction
@@ -168,6 +225,16 @@ public final class ConstantNode extends FloatingNode implements LIRLowerable {
      */
     public static ConstantNode forLong(long i, StructuredGraph graph) {
         return unique(graph, createPrimitive(Constant.forLong(i)));
+    }
+
+    /**
+     * Returns a node for an long constant.
+     *
+     * @param i the long value for which to create the instruction
+     * @return a node for an long constant
+     */
+    public static ConstantNode forLong(long i) {
+        return createPrimitive(Constant.forLong(i));
     }
 
     /**
@@ -181,6 +248,16 @@ public final class ConstantNode extends FloatingNode implements LIRLowerable {
     }
 
     /**
+     * Returns a node for an integer constant.
+     *
+     * @param i the integer value for which to create the instruction
+     * @return a node for an integer constant
+     */
+    public static ConstantNode forInt(int i) {
+        return createPrimitive(Constant.forInt(i));
+    }
+
+    /**
      * Returns a node for a boolean constant.
      *
      * @param i the boolean value for which to create the instruction
@@ -188,6 +265,16 @@ public final class ConstantNode extends FloatingNode implements LIRLowerable {
      */
     public static ConstantNode forBoolean(boolean i, StructuredGraph graph) {
         return unique(graph, createPrimitive(Constant.forInt(i ? 1 : 0)));
+    }
+
+    /**
+     * Returns a node for a boolean constant.
+     *
+     * @param i the boolean value for which to create the instruction
+     * @return a node representing the boolean
+     */
+    public static ConstantNode forBoolean(boolean i) {
+        return createPrimitive(Constant.forInt(i ? 1 : 0));
     }
 
     /**
@@ -238,6 +325,20 @@ public final class ConstantNode extends FloatingNode implements LIRLowerable {
         return forIntegerBits(bits, Constant.forPrimitiveInt(bits, value), graph);
     }
 
+    private static ConstantNode forIntegerBits(int bits, Constant constant) {
+        long value = constant.asLong();
+        long bounds = SignExtendNode.signExtend(value, bits);
+        return new ConstantNode(constant, StampFactory.forInteger(bits, bounds, bounds));
+    }
+
+    /**
+     * Returns a node for a constant integer that's not directly representable as Java primitive
+     * (e.g. short).
+     */
+    public static ConstantNode forIntegerBits(int bits, long value) {
+        return forIntegerBits(bits, Constant.forPrimitiveInt(bits, value));
+    }
+
     /**
      * Returns a node for a constant integer that's compatible to a given stamp.
      */
@@ -247,6 +348,18 @@ public final class ConstantNode extends FloatingNode implements LIRLowerable {
             return forIntegerBits(intStamp.getBits(), value, graph);
         } else {
             return forIntegerKind(stamp.getStackKind(), value, graph);
+        }
+    }
+
+    /**
+     * Returns a node for a constant integer that's compatible to a given stamp.
+     */
+    public static ConstantNode forIntegerStamp(Stamp stamp, long value) {
+        if (stamp instanceof IntegerStamp) {
+            IntegerStamp intStamp = (IntegerStamp) stamp;
+            return forIntegerBits(intStamp.getBits(), value);
+        } else {
+            return forIntegerKind(stamp.getStackKind(), value);
         }
     }
 
@@ -263,6 +376,19 @@ public final class ConstantNode extends FloatingNode implements LIRLowerable {
         }
     }
 
+    public static ConstantNode forIntegerKind(Kind kind, long value) {
+        switch (kind) {
+            case Byte:
+            case Short:
+            case Int:
+                return createPrimitive(Constant.forInt((int) value));
+            case Long:
+                return createPrimitive(Constant.forLong(value));
+            default:
+                throw GraalInternalError.shouldNotReachHere("unknown kind " + kind);
+        }
+    }
+
     public static ConstantNode forFloatingKind(Kind kind, double value, StructuredGraph graph) {
         switch (kind) {
             case Float:
@@ -274,11 +400,29 @@ public final class ConstantNode extends FloatingNode implements LIRLowerable {
         }
     }
 
+    public static ConstantNode forFloatingKind(Kind kind, double value) {
+        switch (kind) {
+            case Float:
+                return ConstantNode.forFloat((float) value);
+            case Double:
+                return ConstantNode.forDouble(value);
+            default:
+                throw GraalInternalError.shouldNotReachHere("unknown kind " + kind);
+        }
+    }
+
     /**
      * Returns a node for a constant double that's compatible to a given stamp.
      */
     public static ConstantNode forFloatingStamp(Stamp stamp, double value, StructuredGraph graph) {
         return forFloatingKind(stamp.getStackKind(), value, graph);
+    }
+
+    /**
+     * Returns a node for a constant double that's compatible to a given stamp.
+     */
+    public static ConstantNode forFloatingStamp(Stamp stamp, double value) {
+        return forFloatingKind(stamp.getStackKind(), value);
     }
 
     public static ConstantNode defaultForKind(Kind kind, StructuredGraph graph) {

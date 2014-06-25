@@ -64,8 +64,8 @@ public abstract class AMD64NodeLIRBuilder extends NodeLIRBuilder {
                 FixedWithNextNode fixedWithNextNode = (FixedWithNextNode) node;
                 if (((fixedWithNextNode instanceof IntegerDivNode) || (fixedWithNextNode instanceof IntegerRemNode)) && fixedWithNextNode.getClass() != divRem.getClass()) {
                     FixedBinaryNode otherDivRem = (FixedBinaryNode) fixedWithNextNode;
-                    if (otherDivRem.x() == divRem.x() && otherDivRem.y() == divRem.y() && !hasOperand(otherDivRem)) {
-                        Value[] results = ((AMD64LIRGenerator) gen).emitIntegerDivRem(operand(divRem.x()), operand(divRem.y()), state((DeoptimizingNode) valueNode));
+                    if (otherDivRem.getX() == divRem.getX() && otherDivRem.getY() == divRem.getY() && !hasOperand(otherDivRem)) {
+                        Value[] results = ((AMD64LIRGenerator) gen).emitIntegerDivRem(operand(divRem.getX()), operand(divRem.getY()), state((DeoptimizingNode) valueNode));
                         if (divRem instanceof IntegerDivNode) {
                             setResult(divRem, results[0]);
                             setResult(otherDivRem, results[1]);
@@ -136,7 +136,7 @@ public abstract class AMD64NodeLIRBuilder extends NodeLIRBuilder {
         // emitCompareBranchMemory expects the memory on the right, so mirror the condition if
         // that's not true. It might be mirrored again the actual compare is emitted but that's
         // ok.
-        Condition finalCondition = uncast(compare.x()) == access ? cond.mirror() : cond;
+        Condition finalCondition = uncast(compare.getX()) == access ? cond.mirror() : cond;
         return new ComplexMatchResult() {
             public Value evaluate(NodeLIRBuilder builder) {
                 LabelRef trueLabel = getLIRBlock(ifNode.trueSuccessor());
@@ -364,8 +364,8 @@ public abstract class AMD64NodeLIRBuilder extends NodeLIRBuilder {
 
     @MatchRule("(Or (LeftShift=lshift value Constant) (UnsignedRightShift=rshift value Constant))")
     public ComplexMatchResult rotateLeftConstant(LeftShiftNode lshift, UnsignedRightShiftNode rshift) {
-        if ((lshift.getShiftAmountMask() & (lshift.y().asConstant().asInt() + rshift.y().asConstant().asInt())) == 0) {
-            return builder -> getLIRGeneratorTool().emitRol(operand(lshift.x()), operand(lshift.y()));
+        if ((lshift.getShiftAmountMask() & (lshift.getY().asConstant().asInt() + rshift.getY().asConstant().asInt())) == 0) {
+            return builder -> getLIRGeneratorTool().emitRol(operand(lshift.getX()), operand(lshift.getY()));
         }
         return null;
     }

@@ -25,7 +25,6 @@ package com.oracle.graal.nodes.calc;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodes.*;
@@ -36,7 +35,7 @@ import com.oracle.graal.nodes.spi.*;
  * of a primitive value to some other incompatible stamp. The new stamp must have the same width as
  * the old stamp.
  */
-public class ReinterpretNode extends UnaryNode implements Canonicalizable, ArithmeticLIRLowerable {
+public class ReinterpretNode extends UnaryNode implements ArithmeticLIRLowerable {
 
     private ReinterpretNode(Kind to, ValueNode value) {
         this(StampFactory.forKind(to), value);
@@ -81,16 +80,16 @@ public class ReinterpretNode extends UnaryNode implements Canonicalizable, Arith
     }
 
     @Override
-    public Node canonical(CanonicalizerTool tool) {
-        if (getValue().isConstant()) {
-            return ConstantNode.forPrimitive(evalConst(getValue().asConstant()), graph());
+    public ValueNode canonical(CanonicalizerTool tool, ValueNode forValue) {
+        if (forValue.isConstant()) {
+            return ConstantNode.forConstant(evalConst(forValue.asConstant()), null);
         }
-        if (stamp().isCompatible(getValue().stamp())) {
-            return getValue();
+        if (stamp().isCompatible(forValue.stamp())) {
+            return forValue;
         }
-        if (getValue() instanceof ReinterpretNode) {
-            ReinterpretNode reinterpret = (ReinterpretNode) getValue();
-            return getValue().graph().unique(new ReinterpretNode(stamp(), reinterpret.getValue()));
+        if (forValue instanceof ReinterpretNode) {
+            ReinterpretNode reinterpret = (ReinterpretNode) forValue;
+            return new ReinterpretNode(stamp(), reinterpret.getValue());
         }
         return this;
     }
