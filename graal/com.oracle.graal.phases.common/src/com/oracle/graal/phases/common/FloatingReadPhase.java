@@ -42,7 +42,7 @@ public class FloatingReadPhase extends Phase {
         CREATE_FLOATING_READS
     }
 
-    public static class MemoryMapImpl extends MemoryMap {
+    public static class MemoryMapImpl implements MemoryMap {
 
         private final Map<LocationIdentity, MemoryNode> lastMemorySnapshot;
 
@@ -74,33 +74,13 @@ public class FloatingReadPhase extends Phase {
             }
         }
 
-        public boolean isEmpty() {
-            if (lastMemorySnapshot.size() == 0) {
-                return true;
-            }
-            if (lastMemorySnapshot.size() == 1) {
-                if (lastMemorySnapshot.get(ANY_LOCATION) instanceof StartNode) {
-                    return true;
-                }
-            }
-            return false;
-        }
-
         @Override
-        public Set<LocationIdentity> getLocations() {
+        public Collection<LocationIdentity> getLocations() {
             return lastMemorySnapshot.keySet();
         }
 
-        @Override
-        public boolean replaceLastLocationAccess(MemoryNode oldNode, MemoryNode newNode) {
-            boolean replaced = false;
-            for (Map.Entry<LocationIdentity, MemoryNode> entry : lastMemorySnapshot.entrySet()) {
-                if (entry.getValue() == oldNode) {
-                    entry.setValue(newNode);
-                    replaced = true;
-                }
-            }
-            return replaced;
+        public Map<LocationIdentity, MemoryNode> getMap() {
+            return lastMemorySnapshot;
         }
     }
 
@@ -243,7 +223,7 @@ public class FloatingReadPhase extends Phase {
             assert MemoryCheckpoint.TypeAssertion.correctType(node) : node;
 
             if (execmode == ExecutionMode.ANALYSIS_ONLY && node instanceof ReturnNode) {
-                ((ReturnNode) node).setMemoryMap(node.graph().unique(new MemoryMapImpl(state)));
+                ((ReturnNode) node).setMemoryMap(node.graph().unique(new MemoryMapNode(state.lastMemorySnapshot)));
             }
             return state;
         }

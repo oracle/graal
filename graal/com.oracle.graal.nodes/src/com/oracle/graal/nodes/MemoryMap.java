@@ -25,21 +25,21 @@ package com.oracle.graal.nodes;
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.graph.*;
-import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 
-@NodeInfo(allowedUsageTypes = {InputType.Extension})
-public abstract class MemoryMap extends FloatingNode {
+/**
+ * Maps a {@linkplain LocationIdentity location} to the last node that (potentially) wrote to the
+ * location.
+ */
+public interface MemoryMap {
 
-    public MemoryMap() {
-        super(StampFactory.forVoid());
-    }
+    /**
+     * Gets the last node that that (potentially) wrote to {@code locationIdentity}.
+     */
+    MemoryNode getLastLocationAccess(LocationIdentity locationIdentity);
 
-    public abstract MemoryNode getLastLocationAccess(LocationIdentity locationIdentity);
-
-    public abstract Set<LocationIdentity> getLocations();
-
-    public abstract boolean replaceLastLocationAccess(MemoryNode oldNode, MemoryNode newNode);
+    /**
+     * Gets the location identities in the domain of this map.
+     */
+    Collection<LocationIdentity> getLocations();
 }

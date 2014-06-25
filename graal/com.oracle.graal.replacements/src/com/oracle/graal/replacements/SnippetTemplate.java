@@ -35,6 +35,7 @@ import java.lang.reflect.*;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.*;
+import java.util.stream.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
@@ -677,38 +678,33 @@ public class SnippetTemplate {
 
         Debug.dump(snippet, "SnippetTemplate after fixing memory anchoring");
 
-        List<ReturnNode> returnNodes = new ArrayList<>(4);
-        List<MemoryMap> memMaps = new ArrayList<>(4);
         StartNode entryPointNode = snippet.start();
-        boolean anchorUsed = false;
-        for (ReturnNode retNode : snippet.getNodes(ReturnNode.class)) {
-            MemoryMap memMap = retNode.getMemoryMap();
-            anchorUsed |= memMap.replaceLastLocationAccess(snippetCopy.start(), memoryAnchor);
-            memMaps.add(memMap);
-            retNode.setMemoryMap(null);
-            returnNodes.add(retNode);
-            if (memMap.usages().isEmpty()) {
-                memMap.safeDelete();
-            }
-        }
-        if (memoryAnchor.usages().isEmpty() && !anchorUsed) {
+        if (memoryAnchor.usages().isEmpty()) {
             memoryAnchor.safeDelete();
         } else {
             snippetCopy.addAfterFixed(snippetCopy.start(), memoryAnchor);
         }
-        assert snippet.getNodes().filter(MemoryMap.class).isEmpty();
+        List<ReturnNode> returnNodes = snippet.getNodes(ReturnNode.class).snapshot();
         if (returnNodes.isEmpty()) {
             this.returnNode = null;
             this.memoryMap = null;
         } else if (returnNodes.size() == 1) {
             this.returnNode = returnNodes.get(0);
-            this.memoryMap = memMaps.get(0);
+            this.memoryMap = returnNode.getMemoryMap();
         } else {
             MergeNode merge = snippet.add(new MergeNode());
+            List<MemoryMapNode> memMaps = returnNodes.stream().map(n -> n.getMemoryMap()).collect(Collectors.toList());
             ValueNode returnValue = InliningUtil.mergeReturns(merge, returnNodes, null);
             this.returnNode = snippet.add(new ReturnNode(returnValue));
-            this.memoryMap = FloatingReadPhase.mergeMemoryMaps(merge, memMaps);
+            MemoryMapImpl mmap = FloatingReadPhase.mergeMemoryMaps(merge, memMaps);
+            this.memoryMap = snippet.unique(new MemoryMapNode(mmap.getMap()));
             merge.setNext(this.returnNode);
+
+            for (MemoryMapNode mm : memMaps) {
+                if (mm.isAlive()) {
+                    mm.safeDelete();
+                }
+            }
         }
 
         this.sideEffectNodes = curSideEffectNodes;
@@ -798,9 +794,9 @@ public class SnippetTemplate {
     private final ArrayList<Node> nodes;
 
     /**
-     * map of killing locations to memory checkpoints (nodes).
+     * Map of killing locations to memory checkpoints (nodes).
      */
-    private final MemoryMap memoryMap;
+    private final MemoryMapNode memoryMap;
 
     /**
      * Times instantiations of this template.
@@ -961,12 +957,12 @@ public class SnippetTemplate {
             // no floating reads yet, ignore locations created while lowering
             return true;
         }
-        if (memoryMap == null || ((MemoryMapImpl) memoryMap).isEmpty()) {
-            // there're no kills in the snippet graph
+        if (memoryMap == null || memoryMap.isEmpty()) {
+            // there are no kills in the snippet graph
             return true;
         }
 
-        Set<LocationIdentity> kills = new HashSet<>(((MemoryMapImpl) memoryMap).getLocations());
+        Set<LocationIdentity> kills = new HashSet<>(memoryMap.getLocations());
 
         if (replacee instanceof MemoryCheckpoint.Single) {
             // check if some node in snippet graph also kills the same location
@@ -1010,10 +1006,10 @@ public class SnippetTemplate {
         return true;
     }
 
-    private class DuplicateMapper extends MemoryMap {
+    private class DuplicateMapper implements MemoryMap {
 
         private final Map<Node, Node> duplicates;
-        @Input private StartNode replaceeStart;
+        private StartNode replaceeStart;
 
         public DuplicateMapper(Map<Node, Node> duplicates, StartNode replaceeStart) {
             this.duplicates = duplicates;
@@ -1033,13 +1029,8 @@ public class SnippetTemplate {
         }
 
         @Override
-        public Set<LocationIdentity> getLocations() {
+        public Collection<LocationIdentity> getLocations() {
             return memoryMap.getLocations();
-        }
-
-        @Override
-        public boolean replaceLastLocationAccess(MemoryNode oldNode, MemoryNode newNode) {
-            throw GraalInternalError.shouldNotReachHere();
         }
     }
 

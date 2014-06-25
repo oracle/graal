@@ -29,7 +29,7 @@ import com.oracle.graal.nodes.spi.*;
 public final class ReturnNode extends ControlSinkNode implements LIRLowerable, IterableNodeType {
 
     @Input private ValueNode result;
-    @Input(InputType.Extension) private MemoryMap memoryMap;
+    @Input(InputType.Extension) private MemoryMapNode memoryMap;
 
     public ValueNode result() {
         return result;
@@ -45,7 +45,7 @@ public final class ReturnNode extends ControlSinkNode implements LIRLowerable, I
         this(result, null);
     }
 
-    public ReturnNode(ValueNode result, MemoryMap memoryMap) {
+    public ReturnNode(ValueNode result, MemoryMapNode memoryMap) {
         super(StampFactory.forVoid());
         this.result = result;
         this.memoryMap = memoryMap;
@@ -65,12 +65,12 @@ public final class ReturnNode extends ControlSinkNode implements LIRLowerable, I
         }
     }
 
-    public void setMemoryMap(MemoryMap memoryMap) {
+    public void setMemoryMap(MemoryMapNode memoryMap) {
         updateUsages(this.memoryMap, memoryMap);
         this.memoryMap = memoryMap;
     }
 
-    public MemoryMap getMemoryMap() {
+    public MemoryMapNode getMemoryMap() {
         return memoryMap;
     }
 }
