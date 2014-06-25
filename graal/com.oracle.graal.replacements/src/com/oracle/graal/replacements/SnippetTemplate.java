@@ -678,11 +678,11 @@ public class SnippetTemplate {
         Debug.dump(snippet, "SnippetTemplate after fixing memory anchoring");
 
         List<ReturnNode> returnNodes = new ArrayList<>(4);
-        List<MemoryMapNode> memMaps = new ArrayList<>(4);
+        List<MemoryMap> memMaps = new ArrayList<>(4);
         StartNode entryPointNode = snippet.start();
         boolean anchorUsed = false;
         for (ReturnNode retNode : snippet.getNodes(ReturnNode.class)) {
-            MemoryMapNode memMap = retNode.getMemoryMap();
+            MemoryMap memMap = retNode.getMemoryMap();
             anchorUsed |= memMap.replaceLastLocationAccess(snippetCopy.start(), memoryAnchor);
             memMaps.add(memMap);
             retNode.setMemoryMap(null);
@@ -696,7 +696,7 @@ public class SnippetTemplate {
         } else {
             snippetCopy.addAfterFixed(snippetCopy.start(), memoryAnchor);
         }
-        assert snippet.getNodes().filter(MemoryMapNode.class).isEmpty();
+        assert snippet.getNodes().filter(MemoryMap.class).isEmpty();
         if (returnNodes.isEmpty()) {
             this.returnNode = null;
             this.memoryMap = null;
@@ -800,7 +800,7 @@ public class SnippetTemplate {
     /**
      * map of killing locations to memory checkpoints (nodes).
      */
-    private final MemoryMapNode memoryMap;
+    private final MemoryMap memoryMap;
 
     /**
      * Times instantiations of this template.
@@ -897,7 +897,7 @@ public class SnippetTemplate {
         /**
          * Replaces all usages of {@code oldNode} with direct or indirect usages of {@code newNode}.
          */
-        void replace(ValueNode oldNode, ValueNode newNode, MemoryMapNode mmap);
+        void replace(ValueNode oldNode, ValueNode newNode, MemoryMap mmap);
     }
 
     /**
@@ -919,7 +919,7 @@ public class SnippetTemplate {
         }
 
         @Override
-        public void replace(ValueNode oldNode, ValueNode newNode, MemoryMapNode mmap) {
+        public void replace(ValueNode oldNode, ValueNode newNode, MemoryMap mmap) {
             if (mmap != null) {
                 for (Node usage : oldNode.usages().snapshot()) {
                     LocationIdentity identity = getLocationIdentity(usage);
@@ -1010,7 +1010,7 @@ public class SnippetTemplate {
         return true;
     }
 
-    private class DuplicateMapper extends MemoryMapNode {
+    private class DuplicateMapper extends MemoryMap {
 
         private final Map<Node, Node> duplicates;
         @Input private StartNode replaceeStart;
@@ -1134,7 +1134,7 @@ public class SnippetTemplate {
             if (returnNode != null && !(replacee instanceof ControlSinkNode)) {
                 ReturnNode returnDuplicate = (ReturnNode) duplicates.get(returnNode);
                 returnValue = returnDuplicate.result();
-                MemoryMapNode mmap = new DuplicateMapper(duplicates, replaceeGraph.start());
+                MemoryMap mmap = new DuplicateMapper(duplicates, replaceeGraph.start());
                 if (returnValue == null && replacee.usages().isNotEmpty() && replacee instanceof MemoryCheckpoint) {
                     replacer.replace(replacee, null, mmap);
                 } else {

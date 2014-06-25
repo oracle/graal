@@ -31,9 +31,9 @@ import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 
 @NodeInfo(allowedUsageTypes = {InputType.Extension})
-public abstract class MemoryMapNode extends FloatingNode {
+public abstract class MemoryMap extends FloatingNode {
 
-    public MemoryMapNode() {
+    public MemoryMap() {
         super(StampFactory.forVoid());
     }
 
