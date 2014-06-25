@@ -252,21 +252,34 @@ public class LIRInstructionClass extends LIRIntrospection {
         private final OperandMode mode;
         private final int index;
         private final int subIndex;
+        private final ValuePosition superPosition;
 
-        public ValuePosition(OperandMode mode, int index, int subIndex) {
+        public static final int NO_SUBINDEX = -1;
+        public static final ValuePosition ROOT_VALUE_POSITION = null;
+
+        public ValuePosition(OperandMode mode, int index, int subIndex, ValuePosition superPosition) {
             this.mode = mode;
             this.index = index;
             this.subIndex = subIndex;
+            this.superPosition = superPosition;
         }
 
         public Value get(LIRInstruction inst) {
             return inst.getLIRInstructionClass().get(inst, this);
         }
 
+        /**
+         * @deprecated Not yet sure this is safe for {@link CompositeValue}s.
+         */
+        @Deprecated
         public EnumSet<OperandFlag> getFlags(LIRInstruction inst) {
             return inst.getLIRInstructionClass().getFlags(this);
         }
 
+        /**
+         * @deprecated Not yet sure this is safe for {@link CompositeValue}s.
+         */
+        @Deprecated
         public void set(LIRInstruction inst, Value value) {
             inst.getLIRInstructionClass().set(inst, this, value);
         }
@@ -283,9 +296,16 @@ public class LIRInstructionClass extends LIRIntrospection {
             return mode;
         }
 
+        public ValuePosition getSuperPosition() {
+            return superPosition;
+        }
+
         @Override
         public String toString() {
-            return mode.toString() + index + "/" + subIndex;
+            if (superPosition == ROOT_VALUE_POSITION) {
+                return mode.toString() + index + "/" + subIndex;
+            }
+            return superPosition.toString() + "[" + mode.toString() + index + "/" + subIndex + "]";
         }
 
         @Override
@@ -295,6 +315,7 @@ public class LIRInstructionClass extends LIRIntrospection {
             result = prime * result + index;
             result = prime * result + ((mode == null) ? 0 : mode.hashCode());
             result = prime * result + subIndex;
+            result = prime * result + ((superPosition == null) ? 0 : superPosition.hashCode());
             return result;
         }
 
@@ -319,11 +340,19 @@ public class LIRInstructionClass extends LIRIntrospection {
             if (subIndex != other.subIndex) {
                 return false;
             }
+            if (superPosition == null) {
+                if (other.superPosition != null) {
+                    return false;
+                }
+            } else if (!superPosition.equals(other.superPosition)) {
+                return false;
+            }
             return true;
         }
+
     }
 
-    protected Value get(LIRInstruction obj, ValuePosition pos) {
+    private Value getValueFromLIRInstruction(LIRInstruction obj, ValuePosition pos) {
         long[] offsets;
         int directCount;
         switch (pos.getMode()) {
@@ -346,13 +375,29 @@ public class LIRInstructionClass extends LIRIntrospection {
             default:
                 throw GraalInternalError.shouldNotReachHere("unkown OperandMode: " + pos.getMode());
         }
-        if (pos.index < directCount) {
-            return getValue(obj, offsets[pos.getIndex()]);
-        }
-        return getValueArray(obj, offsets[pos.getIndex()])[pos.getSubIndex()];
+        return getValueForPosition(obj, offsets, directCount, pos);
     }
 
-    protected void set(LIRInstruction obj, ValuePosition pos, Value value) {
+    private Value getRecursive(LIRInstruction obj, ValuePosition pos) {
+        ValuePosition superPosition = pos.getSuperPosition();
+        if (superPosition == ValuePosition.ROOT_VALUE_POSITION) {
+            // At this point we are at the top of the ValuePosition tree
+            return getValueFromLIRInstruction(obj, pos);
+        }
+        // Get the containing value
+        Value superValue = getRecursive(obj, superPosition);
+        assert superValue instanceof CompositeValue : "only CompositeValue can contain nested values " + superValue;
+        CompositeValue compValue = (CompositeValue) superValue;
+        return compValue.getValueClass().get(compValue, pos);
+    }
+
+    private Value get(LIRInstruction obj, ValuePosition pos) {
+        Value value = getRecursive(obj, pos);
+        assert !(value instanceof CompositeValue) : "should never return a CompositeValue";
+        return value;
+    }
+
+    private void set(LIRInstruction obj, ValuePosition pos, Value value) {
         long[] offsets;
         int directCount;
         switch (pos.getMode()) {
@@ -381,7 +426,7 @@ public class LIRInstructionClass extends LIRIntrospection {
         getValueArray(obj, offsets[pos.getIndex()])[pos.getSubIndex()] = value;
     }
 
-    public EnumSet<OperandFlag> getFlags(ValuePosition pos) {
+    private EnumSet<OperandFlag> getFlags(ValuePosition pos) {
         switch (pos.getMode()) {
             case USE:
                 return useFlags[pos.getIndex()];
@@ -418,19 +463,19 @@ public class LIRInstructionClass extends LIRIntrospection {
     }
 
     public final void forEachUse(LIRInstruction obj, ValuePositionProcedure proc) {
-        forEach(obj, obj, directUseCount, useOffsets, OperandMode.USE, useFlags, proc);
+        forEach(obj, obj, directUseCount, useOffsets, OperandMode.USE, useFlags, proc, ValuePosition.ROOT_VALUE_POSITION);
     }
 
     public final void forEachAlive(LIRInstruction obj, ValuePositionProcedure proc) {
-        forEach(obj, obj, directAliveCount, aliveOffsets, OperandMode.ALIVE, aliveFlags, proc);
+        forEach(obj, obj, directAliveCount, aliveOffsets, OperandMode.ALIVE, aliveFlags, proc, ValuePosition.ROOT_VALUE_POSITION);
     }
 
     public final void forEachTemp(LIRInstruction obj, ValuePositionProcedure proc) {
-        forEach(obj, obj, directTempCount, tempOffsets, OperandMode.TEMP, tempFlags, proc);
+        forEach(obj, obj, directTempCount, tempOffsets, OperandMode.TEMP, tempFlags, proc, ValuePosition.ROOT_VALUE_POSITION);
     }
 
     public final void forEachDef(LIRInstruction obj, ValuePositionProcedure proc) {
-        forEach(obj, obj, directDefCount, defOffsets, OperandMode.DEF, defFlags, proc);
+        forEach(obj, obj, directDefCount, defOffsets, OperandMode.DEF, defFlags, proc, ValuePosition.ROOT_VALUE_POSITION);
     }
 
     public final void forEachUse(LIRInstruction obj, InstructionValueProcedure proc) {
