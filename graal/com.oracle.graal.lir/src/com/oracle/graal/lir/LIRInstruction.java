@@ -314,6 +314,22 @@ public abstract class LIRInstruction {
         return false;
     }
 
+    public final void forEachInput(ValuePositionProcedure proc) {
+        instructionClass.forEachUse(this, proc);
+    }
+
+    public final void forEachAlive(ValuePositionProcedure proc) {
+        instructionClass.forEachAlive(this, proc);
+    }
+
+    public final void forEachTemp(ValuePositionProcedure proc) {
+        instructionClass.forEachTemp(this, proc);
+    }
+
+    public final void forEachOutput(ValuePositionProcedure proc) {
+        instructionClass.forEachDef(this, proc);
+    }
+
     public final void forEachInput(InstructionValueProcedure proc) {
         instructionClass.forEachUse(this, proc);
     }
