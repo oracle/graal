@@ -38,19 +38,19 @@ public class UnsignedDivNode extends FixedBinaryNode implements Canonicalizable,
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        if (x().isConstant() && y().isConstant()) {
-            long yConst = y().asConstant().asLong();
+        if (getX().isConstant() && getY().isConstant()) {
+            long yConst = getY().asConstant().asLong();
             if (yConst == 0) {
                 return this; // this will trap, cannot canonicalize
             }
-            return ConstantNode.forIntegerStamp(stamp(), UnsignedMath.divide(x().asConstant().asLong(), yConst), graph());
-        } else if (y().isConstant()) {
-            long c = y().asConstant().asLong();
+            return ConstantNode.forIntegerStamp(stamp(), UnsignedMath.divide(getX().asConstant().asLong(), yConst), graph());
+        } else if (getY().isConstant()) {
+            long c = getY().asConstant().asLong();
             if (c == 1) {
-                return x();
+                return getX();
             }
             if (CodeUtil.isPowerOf2(c)) {
-                return graph().unique(new UnsignedRightShiftNode(x(), ConstantNode.forInt(CodeUtil.log2(c), graph())));
+                return graph().unique(new UnsignedRightShiftNode(getX(), ConstantNode.forInt(CodeUtil.log2(c), graph())));
             }
         }
         return this;
@@ -63,12 +63,12 @@ public class UnsignedDivNode extends FixedBinaryNode implements Canonicalizable,
 
     @Override
     public void generate(NodeLIRBuilderTool gen) {
-        gen.setResult(this, gen.getLIRGeneratorTool().emitUDiv(gen.operand(x()), gen.operand(y()), gen.state(this)));
+        gen.setResult(this, gen.getLIRGeneratorTool().emitUDiv(gen.operand(getX()), gen.operand(getY()), gen.state(this)));
     }
 
     @Override
     public boolean canDeoptimize() {
-        return !(y().stamp() instanceof IntegerStamp) || ((IntegerStamp) y().stamp()).contains(0);
+        return !(getY().stamp() instanceof IntegerStamp) || ((IntegerStamp) getY().stamp()).contains(0);
     }
 
     @NodeIntrinsic

@@ -39,34 +39,34 @@ public class IntegerDivNode extends FixedBinaryNode implements Canonicalizable, 
 
     @Override
     public boolean inferStamp() {
-        return updateStamp(StampTool.div(x().stamp(), y().stamp()));
+        return updateStamp(StampTool.div(getX().stamp(), getY().stamp()));
     }
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        if (x().isConstant() && y().isConstant()) {
-            long y = y().asConstant().asLong();
+        if (getX().isConstant() && getY().isConstant()) {
+            long y = getY().asConstant().asLong();
             if (y == 0) {
                 return this; // this will trap, can not canonicalize
             }
-            return ConstantNode.forIntegerStamp(stamp(), x().asConstant().asLong() / y, graph());
-        } else if (y().isConstant()) {
-            long c = y().asConstant().asLong();
+            return ConstantNode.forIntegerStamp(stamp(), getX().asConstant().asLong() / y, graph());
+        } else if (getY().isConstant()) {
+            long c = getY().asConstant().asLong();
             if (c == 1) {
-                return x();
+                return getX();
             }
             if (c == -1) {
-                return graph().unique(new NegateNode(x()));
+                return graph().unique(new NegateNode(getX()));
             }
             long abs = Math.abs(c);
-            if (CodeUtil.isPowerOf2(abs) && x().stamp() instanceof IntegerStamp) {
-                ValueNode dividend = x();
-                IntegerStamp stampX = (IntegerStamp) x().stamp();
+            if (CodeUtil.isPowerOf2(abs) && getX().stamp() instanceof IntegerStamp) {
+                ValueNode dividend = getX();
+                IntegerStamp stampX = (IntegerStamp) getX().stamp();
                 int log2 = CodeUtil.log2(abs);
                 // no rounding if dividend is positive or if its low bits are always 0
                 if (stampX.canBeNegative() || (stampX.upMask() & (abs - 1)) != 0) {
                     int bits = PrimitiveStamp.getBits(stamp());
-                    RightShiftNode sign = new RightShiftNode(x(), ConstantNode.forInt(bits - 1));
+                    RightShiftNode sign = new RightShiftNode(getX(), ConstantNode.forInt(bits - 1));
                     UnsignedRightShiftNode round = new UnsignedRightShiftNode(sign, ConstantNode.forInt(bits - log2));
                     dividend = IntegerArithmeticNode.add(dividend, round);
                 }
@@ -79,13 +79,13 @@ public class IntegerDivNode extends FixedBinaryNode implements Canonicalizable, 
         }
 
         // Convert the expression ((a - a % b) / b) into (a / b).
-        if (x() instanceof IntegerSubNode) {
-            IntegerSubNode integerSubNode = (IntegerSubNode) x();
+        if (getX() instanceof IntegerSubNode) {
+            IntegerSubNode integerSubNode = (IntegerSubNode) getX();
             if (integerSubNode.getY() instanceof IntegerRemNode) {
                 IntegerRemNode integerRemNode = (IntegerRemNode) integerSubNode.getY();
-                if (integerSubNode.stamp().isCompatible(this.stamp()) && integerRemNode.stamp().isCompatible(this.stamp()) && integerSubNode.getX() == integerRemNode.x() &&
-                                this.y() == integerRemNode.y()) {
-                    return graph().add(new IntegerDivNode(integerSubNode.getX(), this.y()));
+                if (integerSubNode.stamp().isCompatible(this.stamp()) && integerRemNode.stamp().isCompatible(this.stamp()) && integerSubNode.getX() == integerRemNode.getX() &&
+                                this.getY() == integerRemNode.getY()) {
+                    return graph().add(new IntegerDivNode(integerSubNode.getX(), this.getY()));
                 }
             }
         }
@@ -107,11 +107,11 @@ public class IntegerDivNode extends FixedBinaryNode implements Canonicalizable, 
 
     @Override
     public void generate(NodeLIRBuilderTool gen) {
-        gen.setResult(this, gen.getLIRGeneratorTool().emitDiv(gen.operand(x()), gen.operand(y()), gen.state(this)));
+        gen.setResult(this, gen.getLIRGeneratorTool().emitDiv(gen.operand(getX()), gen.operand(getY()), gen.state(this)));
     }
 
     @Override
     public boolean canDeoptimize() {
-        return !(y().stamp() instanceof IntegerStamp) || ((IntegerStamp) y().stamp()).contains(0);
+        return !(getY().stamp() instanceof IntegerStamp) || ((IntegerStamp) getY().stamp()).contains(0);
     }
 }

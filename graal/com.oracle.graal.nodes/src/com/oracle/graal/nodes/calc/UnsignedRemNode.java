@@ -38,18 +38,18 @@ public class UnsignedRemNode extends FixedBinaryNode implements Canonicalizable,
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        if (x().isConstant() && y().isConstant()) {
-            long yConst = y().asConstant().asLong();
+        if (getX().isConstant() && getY().isConstant()) {
+            long yConst = getY().asConstant().asLong();
             if (yConst == 0) {
                 return this; // this will trap, cannot canonicalize
             }
-            return ConstantNode.forIntegerStamp(stamp(), UnsignedMath.remainder(x().asConstant().asLong(), yConst), graph());
-        } else if (y().isConstant()) {
-            long c = y().asConstant().asLong();
+            return ConstantNode.forIntegerStamp(stamp(), UnsignedMath.remainder(getX().asConstant().asLong(), yConst), graph());
+        } else if (getY().isConstant()) {
+            long c = getY().asConstant().asLong();
             if (c == 1) {
                 return ConstantNode.forIntegerStamp(stamp(), 0);
             } else if (CodeUtil.isPowerOf2(c)) {
-                return new AndNode(x(), ConstantNode.forIntegerStamp(stamp(), c - 1));
+                return new AndNode(getX(), ConstantNode.forIntegerStamp(stamp(), c - 1));
             }
         }
         return this;
@@ -62,12 +62,12 @@ public class UnsignedRemNode extends FixedBinaryNode implements Canonicalizable,
 
     @Override
     public void generate(NodeLIRBuilderTool gen) {
-        gen.setResult(this, gen.getLIRGeneratorTool().emitURem(gen.operand(x()), gen.operand(y()), gen.state(this)));
+        gen.setResult(this, gen.getLIRGeneratorTool().emitURem(gen.operand(getX()), gen.operand(getY()), gen.state(this)));
     }
 
     @Override
     public boolean canDeoptimize() {
-        return !(y().stamp() instanceof IntegerStamp) || ((IntegerStamp) y().stamp()).contains(0);
+        return !(getY().stamp() instanceof IntegerStamp) || ((IntegerStamp) getY().stamp()).contains(0);
     }
 
     @NodeIntrinsic

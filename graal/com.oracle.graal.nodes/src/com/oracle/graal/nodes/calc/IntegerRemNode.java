@@ -39,23 +39,23 @@ public class IntegerRemNode extends FixedBinaryNode implements Canonicalizable, 
 
     @Override
     public boolean inferStamp() {
-        return updateStamp(StampTool.rem(x().stamp(), y().stamp()));
+        return updateStamp(StampTool.rem(getX().stamp(), getY().stamp()));
     }
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        if (x().isConstant() && y().isConstant()) {
-            long y = y().asConstant().asLong();
+        if (getX().isConstant() && getY().isConstant()) {
+            long y = getY().asConstant().asLong();
             if (y == 0) {
                 return this; // this will trap, can not canonicalize
             }
-            return ConstantNode.forIntegerStamp(stamp(), x().asConstant().asLong() % y);
-        } else if (y().isConstant()) {
-            long c = y().asConstant().asLong();
+            return ConstantNode.forIntegerStamp(stamp(), getX().asConstant().asLong() % y);
+        } else if (getY().isConstant()) {
+            long c = getY().asConstant().asLong();
             if (c == 1 || c == -1) {
                 return ConstantNode.forIntegerStamp(stamp(), 0);
-            } else if (c > 0 && CodeUtil.isPowerOf2(c) && x().stamp() instanceof IntegerStamp && ((IntegerStamp) x().stamp()).isPositive()) {
-                return new AndNode(x(), ConstantNode.forIntegerStamp(stamp(), c - 1));
+            } else if (c > 0 && CodeUtil.isPowerOf2(c) && getX().stamp() instanceof IntegerStamp && ((IntegerStamp) getX().stamp()).isPositive()) {
+                return new AndNode(getX(), ConstantNode.forIntegerStamp(stamp(), c - 1));
             }
         }
         return this;
@@ -68,11 +68,11 @@ public class IntegerRemNode extends FixedBinaryNode implements Canonicalizable, 
 
     @Override
     public void generate(NodeLIRBuilderTool gen) {
-        gen.setResult(this, gen.getLIRGeneratorTool().emitRem(gen.operand(x()), gen.operand(y()), gen.state(this)));
+        gen.setResult(this, gen.getLIRGeneratorTool().emitRem(gen.operand(getX()), gen.operand(getY()), gen.state(this)));
     }
 
     @Override
     public boolean canDeoptimize() {
-        return !(y().stamp() instanceof IntegerStamp) || ((IntegerStamp) y().stamp()).contains(0);
+        return !(getY().stamp() instanceof IntegerStamp) || ((IntegerStamp) getY().stamp()).contains(0);
     }
 }
