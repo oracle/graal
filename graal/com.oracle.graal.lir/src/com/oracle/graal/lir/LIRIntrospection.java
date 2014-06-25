@@ -23,7 +23,6 @@
 package com.oracle.graal.lir;
 
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
-import static com.oracle.graal.lir.LIRInstructionClass.ValuePosition.*;
 
 import java.lang.annotation.*;
 import java.lang.reflect.*;
@@ -37,7 +36,6 @@ import com.oracle.graal.lir.LIRInstruction.InstructionValueProcedure;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
 import com.oracle.graal.lir.LIRInstruction.ValuePositionProcedure;
-import com.oracle.graal.lir.LIRInstructionClass.ValuePosition;
 
 abstract class LIRIntrospection extends FieldIntrospection {
 
@@ -156,7 +154,7 @@ abstract class LIRIntrospection extends FieldIntrospection {
 
             if (i < directCount) {
                 Value value = getValue(obj, offsets[i]);
-                doForValue(inst, mode, proc, superPosition, i, NO_SUBINDEX, value);
+                doForValue(inst, mode, proc, superPosition, i, ValuePosition.NO_SUBINDEX, value);
             } else {
                 Value[] values = getValueArray(obj, offsets[i]);
                 for (int j = 0; j < values.length; j++) {
@@ -177,11 +175,156 @@ abstract class LIRIntrospection extends FieldIntrospection {
         }
     }
 
+    /**
+     * Describes an operand slot for a {@link LIRInstructionClass}.
+     */
+    public static final class ValuePosition {
+
+        private final OperandMode mode;
+        private final int index;
+        private final int subIndex;
+        private final ValuePosition superPosition;
+
+        public static final int NO_SUBINDEX = -1;
+        public static final ValuePosition ROOT_VALUE_POSITION = null;
+
+        public ValuePosition(OperandMode mode, int index, int subIndex, ValuePosition superPosition) {
+            this.mode = mode;
+            this.index = index;
+            this.subIndex = subIndex;
+            this.superPosition = superPosition;
+        }
+
+        public Value get(LIRInstruction inst) {
+            return LIRIntrospection.get(inst, this);
+        }
+
+        public EnumSet<OperandFlag> getFlags(LIRInstruction inst) {
+            return LIRIntrospection.getFlags(inst, this);
+        }
+
+        public void set(LIRInstruction inst, Value value) {
+            LIRIntrospection.set(inst, this, value);
+        }
+
+        public int getSubIndex() {
+            return subIndex;
+        }
+
+        public int getIndex() {
+            return index;
+        }
+
+        public OperandMode getMode() {
+            return mode;
+        }
+
+        public ValuePosition getSuperPosition() {
+            return superPosition;
+        }
+
+        @Override
+        public String toString() {
+            if (superPosition == ROOT_VALUE_POSITION) {
+                return mode.toString() + index + "/" + subIndex;
+            }
+            return superPosition.toString() + "[" + mode.toString() + index + "/" + subIndex + "]";
+        }
+
+        @Override
+        public int hashCode() {
+            final int prime = 31;
+            int result = 1;
+            result = prime * result + index;
+            result = prime * result + ((mode == null) ? 0 : mode.hashCode());
+            result = prime * result + subIndex;
+            result = prime * result + ((superPosition == null) ? 0 : superPosition.hashCode());
+            return result;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) {
+                return true;
+            }
+            if (obj == null) {
+                return false;
+            }
+            if (getClass() != obj.getClass()) {
+                return false;
+            }
+            ValuePosition other = (ValuePosition) obj;
+            if (index != other.index) {
+                return false;
+            }
+            if (mode != other.mode) {
+                return false;
+            }
+            if (subIndex != other.subIndex) {
+                return false;
+            }
+            if (superPosition == null) {
+                if (other.superPosition != null) {
+                    return false;
+                }
+            } else if (!superPosition.equals(other.superPosition)) {
+                return false;
+            }
+            return true;
+        }
+
+    }
+
+    private static CompositeValue getCompositeValue(LIRInstruction inst, ValuePosition pos) {
+        ValuePosition superPosition = pos.getSuperPosition();
+        Value value;
+        if (superPosition == ValuePosition.ROOT_VALUE_POSITION) {
+            // At this point we are at the top of the ValuePosition tree
+            value = inst.getLIRInstructionClass().getValue(inst, pos);
+        } else {
+            // Get the containing value
+            value = getCompositeValue(inst, superPosition);
+        }
+        assert value instanceof CompositeValue : "only CompositeValue can contain nested values " + value;
+        return (CompositeValue) value;
+    }
+
+    private static Value get(LIRInstruction inst, ValuePosition pos) {
+        if (pos.getSuperPosition() == ValuePosition.ROOT_VALUE_POSITION) {
+            return inst.getLIRInstructionClass().getValue(inst, pos);
+        }
+        CompositeValue compValue = getCompositeValue(inst, pos);
+        return compValue.getValueClass().getValue(compValue, pos);
+    }
+
+    private static void set(LIRInstruction inst, ValuePosition pos, Value value) {
+        if (pos.getSuperPosition() == ValuePosition.ROOT_VALUE_POSITION) {
+            inst.getLIRInstructionClass().setValue(inst, pos, value);
+        }
+        CompositeValue compValue = getCompositeValue(inst, pos);
+        compValue.getValueClass().setValue(compValue, pos, value);
+    }
+
+    private static EnumSet<OperandFlag> getFlags(LIRInstruction inst, ValuePosition pos) {
+        if (pos.getSuperPosition() == ValuePosition.ROOT_VALUE_POSITION) {
+            return inst.getLIRInstructionClass().getFlags(pos);
+        }
+        CompositeValue compValue = getCompositeValue(inst, pos);
+        return compValue.getValueClass().getFlags(pos);
+    }
+
     protected static Value getValueForPosition(Object obj, long[] offsets, int directCount, ValuePosition pos) {
         if (pos.getIndex() < directCount) {
             return getValue(obj, offsets[pos.getIndex()]);
         }
         return getValueArray(obj, offsets[pos.getIndex()])[pos.getSubIndex()];
+    }
+
+    protected static void setValueForPosition(Object obj, long[] offsets, int directCount, ValuePosition pos, Value value) {
+        if (pos.getIndex() < directCount) {
+            setValue(obj, offsets[pos.getIndex()], value);
+        }
+        getValueArray(obj, offsets[pos.getIndex()])[pos.getSubIndex()] = value;
     }
 
     protected static Value getValue(Object obj, long offset) {

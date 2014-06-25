@@ -32,7 +32,6 @@ import com.oracle.graal.lir.LIRInstruction.InstructionValueProcedure;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
 import com.oracle.graal.lir.LIRInstruction.ValuePositionProcedure;
-import com.oracle.graal.lir.LIRInstructionClass.ValuePosition;
 
 /**
  * Lazily associated metadata for every {@link CompositeValue} type. The metadata includes:
@@ -162,7 +161,15 @@ public class CompositeValueClass extends LIRIntrospection {
         return result.toString();
     }
 
-    Value get(CompositeValue obj, ValuePosition pos) {
+    Value getValue(CompositeValue obj, ValuePosition pos) {
         return getValueForPosition(obj, componentOffsets, directComponentCount, pos);
+    }
+
+    void setValue(CompositeValue obj, ValuePosition pos, Value value) {
+        setValueForPosition(obj, componentOffsets, directComponentCount, pos, value);
+    }
+
+    EnumSet<OperandFlag> getFlags(ValuePosition pos) {
+        return componentFlags[pos.getIndex()];
     }
 }

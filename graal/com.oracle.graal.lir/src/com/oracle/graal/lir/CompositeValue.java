@@ -30,7 +30,7 @@ import com.oracle.graal.lir.LIRInstruction.InstructionValueProcedure;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
 import com.oracle.graal.lir.LIRInstruction.ValuePositionProcedure;
-import com.oracle.graal.lir.LIRInstructionClass.ValuePosition;
+import com.oracle.graal.lir.LIRIntrospection.ValuePosition;
 
 /**
  * Base class to represent values that need to be stored in more than one register.
