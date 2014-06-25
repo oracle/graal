@@ -32,7 +32,6 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.debug.*;
-import com.oracle.graal.lir.LIRIntrospection.ValuePosition;
 import com.oracle.graal.lir.asm.*;
 
 /**
