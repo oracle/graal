@@ -34,7 +34,7 @@ import com.oracle.graal.nodes.type.*;
 @NodeInfo(nameTemplate = "ValuePhi({i#values})")
 public class ValuePhiNode extends PhiNode implements Simplifiable {
 
-    @Input final NodeInputList<ValueNode> values = new NodeInputList<>(this);
+    @Input final NodeInputList<ValueNode> values;
 
     /**
      * Create a value phi with the specified stamp.
@@ -45,6 +45,20 @@ public class ValuePhiNode extends PhiNode implements Simplifiable {
     public ValuePhiNode(Stamp stamp, MergeNode merge) {
         super(stamp, merge);
         assert stamp != StampFactory.forVoid();
+        values = new NodeInputList<>(this);
+    }
+
+    /**
+     * Create a value phi with the specified stamp and the given values.
+     *
+     * @param stamp the stamp of the value
+     * @param merge the merge that the new phi belongs to
+     * @param values the initial values of the phi
+     */
+    public ValuePhiNode(Stamp stamp, MergeNode merge, ValueNode[] values) {
+        super(stamp, merge);
+        assert stamp != StampFactory.forVoid();
+        this.values = new NodeInputList<>(this, values);
     }
 
     @Override
