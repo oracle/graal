@@ -31,7 +31,6 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.lir.LIRInstruction.InstructionValueProcedure;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
-import com.oracle.graal.lir.LIRInstruction.ValueProcedure;
 
 /**
  * This class represents garbage collection and deoptimization information attached to a LIR
@@ -60,22 +59,6 @@ public class LIRFrameState {
     }
 
     /**
-     * Iterates the frame state and calls the {@link ValueProcedure} for every variable.
-     *
-     * @param proc The procedure called for variables.
-     */
-    public void forEachState(ValueProcedure proc) {
-        for (BytecodeFrame cur = topFrame; cur != null; cur = cur.caller()) {
-            processValues(cur.values, proc);
-        }
-        if (virtualObjects != null) {
-            for (VirtualObject obj : virtualObjects) {
-                processValues(obj.getValues(), proc);
-            }
-        }
-    }
-
-    /**
      * Iterates the frame state and calls the {@link InstructionValueProcedure} for every variable.
      *
      * @param proc The procedure called for variables.
@@ -96,20 +79,6 @@ public class LIRFrameState {
      * {@link OperandFlag#CONST} and {@link OperandFlag#ILLEGAL} need not be set.
      */
     protected static final EnumSet<OperandFlag> STATE_FLAGS = EnumSet.of(OperandFlag.REG, OperandFlag.STACK);
-
-    protected void processValues(Value[] values, ValueProcedure proc) {
-        for (int i = 0; i < values.length; i++) {
-            Value value = values[i];
-            values[i] = processValue(proc, value);
-        }
-    }
-
-    protected Value processValue(ValueProcedure proc, Value value) {
-        if (processed(value)) {
-            return proc.doValue(value, OperandMode.ALIVE, STATE_FLAGS);
-        }
-        return value;
-    }
 
     protected void processValues(LIRInstruction inst, Value[] values, InstructionValueProcedure proc) {
         for (int i = 0; i < values.length; i++) {

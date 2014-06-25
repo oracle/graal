@@ -28,7 +28,6 @@ import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.LIRInstruction.InstructionValueProcedure;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
-import com.oracle.graal.lir.LIRInstruction.ValueProcedure;
 
 /**
  * Extends {@link LIRFrameState} to handle {@link HotSpotMonitorValue}s correctly.
@@ -37,19 +36,6 @@ class HotSpotLIRFrameState extends LIRFrameState {
 
     public HotSpotLIRFrameState(BytecodeFrame topFrame, VirtualObject[] virtualObjects, LabelRef exceptionEdge) {
         super(topFrame, virtualObjects, exceptionEdge);
-    }
-
-    @Override
-    protected Value processValue(ValueProcedure proc, Value value) {
-        if (value instanceof HotSpotMonitorValue) {
-            HotSpotMonitorValue monitor = (HotSpotMonitorValue) value;
-            if (processed(monitor.getOwner())) {
-                monitor.setOwner(proc.doValue(monitor.getOwner(), OperandMode.ALIVE, STATE_FLAGS));
-            }
-            return value;
-        } else {
-            return super.processValue(proc, value);
-        }
     }
 
     @Override
