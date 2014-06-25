@@ -241,6 +241,160 @@ public class LIRInstructionClass extends LIRIntrospection {
         return str.toString();
     }
 
+    /**
+     * Describes an operand slot for a {@link LIRInstructionClass}.
+     *
+     * @see LIRInstructionClass#get(LIRInstruction, Position)
+     */
+    public static final class Position {
+
+        private final OperandMode mode;
+        private final int index;
+        private final int subIndex;
+
+        public Position(OperandMode mode, int index, int subIndex) {
+            this.mode = mode;
+            this.index = index;
+            this.subIndex = subIndex;
+        }
+
+        public Value get(LIRInstruction inst) {
+            return inst.getLIRInstructionClass().get(inst, this);
+        }
+
+        public EnumSet<OperandFlag> getFlags(LIRInstruction inst) {
+            return inst.getLIRInstructionClass().getFlags(this);
+        }
+
+        public void set(LIRInstruction inst, Value value) {
+            inst.getLIRInstructionClass().set(inst, this, value);
+        }
+
+        public int getSubIndex() {
+            return subIndex;
+        }
+
+        public int getIndex() {
+            return index;
+        }
+
+        public OperandMode getMode() {
+            return mode;
+        }
+
+        @Override
+        public String toString() {
+            return mode.toString() + index + "/" + subIndex;
+        }
+
+        @Override
+        public int hashCode() {
+            final int prime = 31;
+            int result = 1;
+            result = prime * result + index;
+            result = prime * result + ((mode == null) ? 0 : mode.hashCode());
+            result = prime * result + subIndex;
+            return result;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) {
+                return true;
+            }
+            if (obj == null) {
+                return false;
+            }
+            if (getClass() != obj.getClass()) {
+                return false;
+            }
+            Position other = (Position) obj;
+            if (index != other.index) {
+                return false;
+            }
+            if (mode != other.mode) {
+                return false;
+            }
+            if (subIndex != other.subIndex) {
+                return false;
+            }
+            return true;
+        }
+    }
+
+    protected Value get(LIRInstruction obj, Position pos) {
+        long[] offsets;
+        int directCount;
+        switch (pos.getMode()) {
+            case USE:
+                directCount = directUseCount;
+                offsets = useOffsets;
+                break;
+            case ALIVE:
+                directCount = directAliveCount;
+                offsets = aliveOffsets;
+                break;
+            case TEMP:
+                directCount = directTempCount;
+                offsets = tempOffsets;
+                break;
+            case DEF:
+                directCount = directDefCount;
+                offsets = defOffsets;
+                break;
+            default:
+                throw GraalInternalError.shouldNotReachHere("unkown OperandMode: " + pos.getMode());
+        }
+        if (pos.index < directCount) {
+            return getValue(obj, offsets[pos.getIndex()]);
+        }
+        return getValueArray(obj, offsets[pos.getIndex()])[pos.getSubIndex()];
+    }
+
+    protected void set(LIRInstruction obj, Position pos, Value value) {
+        long[] offsets;
+        int directCount;
+        switch (pos.getMode()) {
+            case USE:
+                directCount = directUseCount;
+                offsets = useOffsets;
+                break;
+            case ALIVE:
+                directCount = directAliveCount;
+                offsets = aliveOffsets;
+                break;
+            case TEMP:
+                directCount = directTempCount;
+                offsets = tempOffsets;
+                break;
+            case DEF:
+                directCount = directDefCount;
+                offsets = defOffsets;
+                break;
+            default:
+                throw GraalInternalError.shouldNotReachHere("unkown OperandMode: " + pos.getMode());
+        }
+        if (pos.index < directCount) {
+            setValue(obj, offsets[pos.getIndex()], value);
+        }
+        getValueArray(obj, offsets[pos.getIndex()])[pos.getSubIndex()] = value;
+    }
+
+    public EnumSet<OperandFlag> getFlags(Position pos) {
+        switch (pos.getMode()) {
+            case USE:
+                return useFlags[pos.getIndex()];
+            case ALIVE:
+                return aliveFlags[pos.getIndex()];
+            case TEMP:
+                return tempFlags[pos.getIndex()];
+            case DEF:
+                return defFlags[pos.getIndex()];
+            default:
+                throw GraalInternalError.shouldNotReachHere("unkown OperandMode: " + pos.getMode());
+        }
+    }
+
     public final String getOpcode(LIRInstruction obj) {
         if (opcodeConstant != null) {
             return opcodeConstant;

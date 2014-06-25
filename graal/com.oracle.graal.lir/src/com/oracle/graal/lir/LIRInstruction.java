@@ -354,4 +354,8 @@ public abstract class LIRInstruction {
     public String toString() {
         return instructionClass.toString(this);
     }
+
+    public LIRInstructionClass getLIRInstructionClass() {
+        return instructionClass;
+    }
 }
