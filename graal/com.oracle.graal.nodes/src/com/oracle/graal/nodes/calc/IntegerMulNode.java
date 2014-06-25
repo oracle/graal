@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,8 +34,9 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo(shortName = "*")
 public class IntegerMulNode extends IntegerArithmeticNode implements Canonicalizable, NarrowableArithmeticNode {
 
-    public IntegerMulNode(Stamp stamp, ValueNode x, ValueNode y) {
-        super(stamp, x, y);
+    public IntegerMulNode(ValueNode x, ValueNode y) {
+        super(x.stamp().unrestricted(), x, y);
+        assert x.stamp().isCompatible(y.stamp());
     }
 
     @Override
@@ -47,7 +48,7 @@ public class IntegerMulNode extends IntegerArithmeticNode implements Canonicaliz
     @Override
     public Node canonical(CanonicalizerTool tool) {
         if (getX().isConstant() && !getY().isConstant()) {
-            return graph().unique(new IntegerMulNode(stamp(), getY(), getX()));
+            return graph().unique(new IntegerMulNode(getY(), getX()));
         }
         if (getX().isConstant()) {
             return ConstantNode.forPrimitive(evalConst(getX().asConstant(), getY().asConstant()), graph());
@@ -61,7 +62,7 @@ public class IntegerMulNode extends IntegerArithmeticNode implements Canonicaliz
             }
             long abs = Math.abs(c);
             if (abs > 0 && CodeUtil.isPowerOf2(abs)) {
-                LeftShiftNode shift = graph().unique(new LeftShiftNode(stamp().unrestricted(), getX(), ConstantNode.forInt(CodeUtil.log2(abs), graph())));
+                LeftShiftNode shift = graph().unique(new LeftShiftNode(getX(), ConstantNode.forInt(CodeUtil.log2(abs), graph())));
                 if (c < 0) {
                     return graph().unique(new NegateNode(shift));
                 } else {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,8 +33,8 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo(shortName = ">>")
 public final class RightShiftNode extends ShiftNode implements Canonicalizable {
 
-    public RightShiftNode(Stamp stamp, ValueNode x, ValueNode y) {
-        super(stamp, x, y);
+    public RightShiftNode(ValueNode x, ValueNode y) {
+        super(x, y);
     }
 
     @Override
@@ -51,7 +51,7 @@ public final class RightShiftNode extends ShiftNode implements Canonicalizable {
     @Override
     public Node canonical(CanonicalizerTool tool) {
         if (getX().stamp() instanceof IntegerStamp && ((IntegerStamp) getX().stamp()).isPositive()) {
-            return graph().unique(new UnsignedRightShiftNode(stamp(), getX(), getY()));
+            return graph().unique(new UnsignedRightShiftNode(getX(), getY()));
         }
         if (getX().isConstant() && getY().isConstant()) {
             return ConstantNode.forPrimitive(evalConst(getX().asConstant(), getY().asConstant()), graph());
@@ -85,14 +85,14 @@ public final class RightShiftNode extends ShiftNode implements Canonicalizable {
                              * full shift for this kind
                              */
                             assert total >= mask;
-                            return graph().unique(new RightShiftNode(stamp(), other.getX(), ConstantNode.forInt(mask, graph())));
+                            return graph().unique(new RightShiftNode(other.getX(), ConstantNode.forInt(mask, graph())));
                         }
-                        return graph().unique(new RightShiftNode(stamp(), other.getX(), ConstantNode.forInt(total, graph())));
+                        return graph().unique(new RightShiftNode(other.getX(), ConstantNode.forInt(total, graph())));
                     }
                 }
             }
             if (originalAmout != amount) {
-                return graph().unique(new RightShiftNode(stamp(), getX(), ConstantNode.forInt(amount, graph())));
+                return graph().unique(new RightShiftNode(getX(), ConstantNode.forInt(amount, graph())));
             }
         }
         return this;

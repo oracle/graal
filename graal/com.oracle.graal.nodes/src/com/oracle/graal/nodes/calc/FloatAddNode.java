@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,7 +23,6 @@
 package com.oracle.graal.nodes.calc;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.lir.gen.*;
@@ -33,8 +32,8 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo(shortName = "+")
 public final class FloatAddNode extends FloatArithmeticNode implements Canonicalizable {
 
-    public FloatAddNode(Stamp stamp, ValueNode x, ValueNode y, boolean isStrictFP) {
-        super(stamp, x, y, isStrictFP);
+    public FloatAddNode(ValueNode x, ValueNode y, boolean isStrictFP) {
+        super(x.stamp().unrestricted(), x, y, isStrictFP);
     }
 
     public Constant evalConst(Constant... inputs) {
@@ -51,7 +50,7 @@ public final class FloatAddNode extends FloatArithmeticNode implements Canonical
     @Override
     public Node canonical(CanonicalizerTool tool) {
         if (getX().isConstant() && !getY().isConstant()) {
-            return graph().unique(new FloatAddNode(stamp(), getY(), getX(), isStrictFP()));
+            return graph().unique(new FloatAddNode(getY(), getX(), isStrictFP()));
         }
         if (getX().isConstant()) {
             return ConstantNode.forPrimitive(evalConst(getX().asConstant(), getY().asConstant()), graph());

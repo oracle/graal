@@ -34,8 +34,9 @@ import com.oracle.graal.nodes.type.*;
 @NodeInfo(shortName = "&")
 public final class AndNode extends BitLogicNode implements Canonicalizable, NarrowableArithmeticNode {
 
-    public AndNode(Stamp stamp, ValueNode x, ValueNode y) {
-        super(stamp, x, y);
+    public AndNode(ValueNode x, ValueNode y) {
+        super(StampTool.and(x.stamp(), y.stamp()), x, y);
+        assert x.stamp().isCompatible(y.stamp());
     }
 
     @Override
@@ -55,7 +56,7 @@ public final class AndNode extends BitLogicNode implements Canonicalizable, Narr
             return getX();
         }
         if (getX().isConstant() && !getY().isConstant()) {
-            return graph().unique(new AndNode(stamp(), getY(), getX()));
+            return graph().unique(new AndNode(getY(), getX()));
         }
         if (getX().isConstant()) {
             return ConstantNode.forPrimitive(stamp(), evalConst(getX().asConstant(), getY().asConstant()), graph());

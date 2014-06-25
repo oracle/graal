@@ -34,8 +34,9 @@ import com.oracle.graal.nodes.type.*;
 @NodeInfo(shortName = "|")
 public final class OrNode extends BitLogicNode implements Canonicalizable {
 
-    public OrNode(Stamp stamp, ValueNode x, ValueNode y) {
-        super(stamp, x, y);
+    public OrNode(ValueNode x, ValueNode y) {
+        super(StampTool.or(x.stamp(), y.stamp()), x, y);
+        assert x.stamp().isCompatible(y.stamp());
     }
 
     @Override
@@ -55,7 +56,7 @@ public final class OrNode extends BitLogicNode implements Canonicalizable {
             return getX();
         }
         if (getX().isConstant() && !getY().isConstant()) {
-            return graph().unique(new OrNode(stamp(), getY(), getX()));
+            return graph().unique(new OrNode(getY(), getX()));
         }
         if (getX().isConstant()) {
             return ConstantNode.forPrimitive(stamp(), evalConst(getX().asConstant(), getY().asConstant()), graph());

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,8 +33,8 @@ import com.oracle.graal.nodes.type.*;
 @NodeInfo(shortName = "/")
 public class IntegerDivNode extends FixedBinaryNode implements Canonicalizable, Lowerable, LIRLowerable {
 
-    public IntegerDivNode(Stamp stamp, ValueNode x, ValueNode y) {
-        super(stamp, x, y);
+    public IntegerDivNode(ValueNode x, ValueNode y) {
+        super(x.stamp().unrestricted(), x, y);
     }
 
     @Override
@@ -60,18 +60,17 @@ public class IntegerDivNode extends FixedBinaryNode implements Canonicalizable, 
             }
             long abs = Math.abs(c);
             if (CodeUtil.isPowerOf2(abs) && x().stamp() instanceof IntegerStamp) {
-                Stamp unrestricted = stamp().unrestricted();
                 ValueNode dividend = x();
                 IntegerStamp stampX = (IntegerStamp) x().stamp();
                 int log2 = CodeUtil.log2(abs);
                 // no rounding if dividend is positive or if its low bits are always 0
                 if (stampX.canBeNegative() || (stampX.upMask() & (abs - 1)) != 0) {
                     int bits = PrimitiveStamp.getBits(stamp());
-                    RightShiftNode sign = graph().unique(new RightShiftNode(unrestricted, x(), ConstantNode.forInt(bits - 1, graph())));
-                    UnsignedRightShiftNode round = graph().unique(new UnsignedRightShiftNode(unrestricted, sign, ConstantNode.forInt(bits - log2, graph())));
+                    RightShiftNode sign = graph().unique(new RightShiftNode(x(), ConstantNode.forInt(bits - 1, graph())));
+                    UnsignedRightShiftNode round = graph().unique(new UnsignedRightShiftNode(sign, ConstantNode.forInt(bits - log2, graph())));
                     dividend = IntegerArithmeticNode.add(graph(), dividend, round);
                 }
-                RightShiftNode shift = graph().unique(new RightShiftNode(unrestricted, dividend, ConstantNode.forInt(log2, graph())));
+                RightShiftNode shift = graph().unique(new RightShiftNode(dividend, ConstantNode.forInt(log2, graph())));
                 if (c < 0) {
                     return graph().unique(new NegateNode(shift));
                 }
@@ -86,7 +85,7 @@ public class IntegerDivNode extends FixedBinaryNode implements Canonicalizable, 
                 IntegerRemNode integerRemNode = (IntegerRemNode) integerSubNode.getY();
                 if (integerSubNode.stamp().isCompatible(this.stamp()) && integerRemNode.stamp().isCompatible(this.stamp()) && integerSubNode.getX() == integerRemNode.x() &&
                                 this.y() == integerRemNode.y()) {
-                    return graph().add(new IntegerDivNode(stamp(), integerSubNode.getX(), this.y()));
+                    return graph().add(new IntegerDivNode(integerSubNode.getX(), this.y()));
                 }
             }
         }

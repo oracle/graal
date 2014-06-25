@@ -39,13 +39,13 @@ import com.oracle.truffle.api.*;
 public class IntegerSubExactNode extends IntegerSubNode implements Canonicalizable, IntegerExactArithmeticNode {
 
     public IntegerSubExactNode(ValueNode x, ValueNode y) {
-        super(StampTool.sub(x.stamp(), y.stamp()), x, y);
+        super(x, y);
         assert x.stamp().isCompatible(y.stamp()) && x.stamp() instanceof IntegerStamp;
     }
 
     @Override
     public boolean inferStamp() {
-        // TODO Should probably use a specialised version which understands that it can't overflow
+        // TODO Should probably use a specialized version which understands that it can't overflow
         return updateStamp(StampTool.sub(getX().stamp(), getY().stamp()));
     }
 

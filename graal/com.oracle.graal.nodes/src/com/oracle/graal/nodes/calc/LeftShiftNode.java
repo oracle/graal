@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,7 +23,6 @@
 package com.oracle.graal.nodes.calc;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.lir.gen.*;
@@ -34,8 +33,8 @@ import com.oracle.graal.nodes.type.*;
 @NodeInfo(shortName = "<<")
 public final class LeftShiftNode extends ShiftNode implements Canonicalizable {
 
-    public LeftShiftNode(Stamp stamp, ValueNode x, ValueNode y) {
-        super(stamp, x, y);
+    public LeftShiftNode(ValueNode x, ValueNode y) {
+        super(x, y);
     }
 
     @Override
@@ -75,19 +74,19 @@ public final class LeftShiftNode extends ShiftNode implements Canonicalizable {
                         if (total != (total & mask)) {
                             return ConstantNode.forIntegerKind(getKind(), 0, graph());
                         }
-                        return graph().unique(new LeftShiftNode(stamp(), other.getX(), ConstantNode.forInt(total, graph())));
+                        return graph().unique(new LeftShiftNode(other.getX(), ConstantNode.forInt(total, graph())));
                     } else if ((other instanceof RightShiftNode || other instanceof UnsignedRightShiftNode) && otherAmount == amount) {
                         if (getKind() == Kind.Long) {
-                            return graph().unique(new AndNode(stamp(), other.getX(), ConstantNode.forLong(-1L << amount, graph())));
+                            return graph().unique(new AndNode(other.getX(), ConstantNode.forLong(-1L << amount, graph())));
                         } else {
                             assert getKind() == Kind.Int;
-                            return graph().unique(new AndNode(stamp(), other.getX(), ConstantNode.forInt(-1 << amount, graph())));
+                            return graph().unique(new AndNode(other.getX(), ConstantNode.forInt(-1 << amount, graph())));
                         }
                     }
                 }
             }
             if (originalAmout != amount) {
-                return graph().unique(new LeftShiftNode(stamp(), getX(), ConstantNode.forInt(amount, graph())));
+                return graph().unique(new LeftShiftNode(getX(), ConstantNode.forInt(amount, graph())));
             }
         }
         return this;

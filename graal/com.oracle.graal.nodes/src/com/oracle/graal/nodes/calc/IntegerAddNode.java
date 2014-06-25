@@ -34,8 +34,8 @@ import com.oracle.graal.nodes.type.*;
 @NodeInfo(shortName = "+")
 public class IntegerAddNode extends IntegerArithmeticNode implements Canonicalizable, NarrowableArithmeticNode {
 
-    public IntegerAddNode(Stamp stamp, ValueNode x, ValueNode y) {
-        super(stamp, x, y);
+    public IntegerAddNode(ValueNode x, ValueNode y) {
+        super(StampTool.add(x.stamp(), y.stamp()), x, y);
     }
 
     @Override
@@ -52,7 +52,7 @@ public class IntegerAddNode extends IntegerArithmeticNode implements Canonicaliz
     @Override
     public Node canonical(CanonicalizerTool tool) {
         if (getX().isConstant() && !getY().isConstant()) {
-            return graph().unique(new IntegerAddNode(stamp(), getY(), getX()));
+            return graph().unique(new IntegerAddNode(getY(), getX()));
         }
         if (getX() instanceof IntegerSubNode) {
             IntegerSubNode sub = (IntegerSubNode) getX();

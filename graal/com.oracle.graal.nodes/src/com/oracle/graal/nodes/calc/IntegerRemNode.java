@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,8 +33,8 @@ import com.oracle.graal.nodes.type.*;
 @NodeInfo(shortName = "%")
 public class IntegerRemNode extends FixedBinaryNode implements Canonicalizable, Lowerable, LIRLowerable {
 
-    public IntegerRemNode(Stamp stamp, ValueNode x, ValueNode y) {
-        super(stamp, x, y);
+    public IntegerRemNode(ValueNode x, ValueNode y) {
+        super(x.stamp().unrestricted(), x, y);
     }
 
     @Override
@@ -55,7 +55,7 @@ public class IntegerRemNode extends FixedBinaryNode implements Canonicalizable, 
             if (c == 1 || c == -1) {
                 return ConstantNode.forIntegerStamp(stamp(), 0, graph());
             } else if (c > 0 && CodeUtil.isPowerOf2(c) && x().stamp() instanceof IntegerStamp && ((IntegerStamp) x().stamp()).isPositive()) {
-                return graph().unique(new AndNode(stamp(), x(), ConstantNode.forIntegerStamp(stamp(), c - 1, graph())));
+                return graph().unique(new AndNode(x(), ConstantNode.forIntegerStamp(stamp(), c - 1, graph())));
             }
         }
         return this;

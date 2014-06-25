@@ -89,7 +89,7 @@ public abstract class BinaryNode extends FloatingNode {
         if (stamp instanceof IntegerStamp) {
             return IntegerArithmeticNode.add(graph, x, y);
         } else if (stamp instanceof FloatStamp) {
-            return graph.unique(new FloatAddNode(stamp, x, y, false));
+            return graph.unique(new FloatAddNode(x, y, false));
         } else {
             throw GraalInternalError.shouldNotReachHere();
         }
@@ -101,7 +101,7 @@ public abstract class BinaryNode extends FloatingNode {
         if (stamp instanceof IntegerStamp) {
             return IntegerArithmeticNode.sub(graph, x, y);
         } else if (stamp instanceof FloatStamp) {
-            return graph.unique(new FloatSubNode(stamp, x, y, false));
+            return graph.unique(new FloatSubNode(x, y, false));
         } else {
             throw GraalInternalError.shouldNotReachHere();
         }
@@ -113,7 +113,7 @@ public abstract class BinaryNode extends FloatingNode {
         if (stamp instanceof IntegerStamp) {
             return IntegerArithmeticNode.mul(graph, x, y);
         } else if (stamp instanceof FloatStamp) {
-            return graph.unique(new FloatMulNode(stamp, x, y, false));
+            return graph.unique(new FloatMulNode(x, y, false));
         } else {
             throw GraalInternalError.shouldNotReachHere();
         }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,8 +34,8 @@ import com.oracle.graal.nodes.type.*;
 @NodeInfo(shortName = "-")
 public class IntegerSubNode extends IntegerArithmeticNode implements Canonicalizable, NarrowableArithmeticNode {
 
-    public IntegerSubNode(Stamp stamp, ValueNode x, ValueNode y) {
-        super(stamp, x, y);
+    public IntegerSubNode(ValueNode x, ValueNode y) {
+        super(StampTool.sub(x.stamp(), y.stamp()), x, y);
     }
 
     @Override

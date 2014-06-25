@@ -38,7 +38,7 @@ import com.oracle.truffle.api.*;
 public class IntegerMulExactNode extends IntegerMulNode implements Canonicalizable, IntegerExactArithmeticNode {
 
     public IntegerMulExactNode(ValueNode x, ValueNode y) {
-        super(x.stamp().unrestricted(), x, y);
+        super(x, y);
         assert x.stamp().isCompatible(y.stamp()) && x.stamp() instanceof IntegerStamp;
     }
 

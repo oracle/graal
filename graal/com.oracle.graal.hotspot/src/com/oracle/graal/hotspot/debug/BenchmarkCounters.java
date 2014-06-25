@@ -386,7 +386,7 @@ public class BenchmarkCounters {
         ReadNode readArray = graph.add(new ReadNode(thread, arrayLocation, StampFactory.forKind(wordKind), BarrierType.NONE));
         ConstantLocationNode location = ConstantLocationNode.create(LocationIdentity.ANY_LOCATION, Kind.Long, Unsafe.ARRAY_LONG_INDEX_SCALE * index, graph);
         ReadNode read = graph.add(new ReadNode(readArray, location, StampFactory.forKind(Kind.Long), BarrierType.NONE));
-        IntegerAddNode add = graph.unique(new IntegerAddNode(StampFactory.forKind(Kind.Long), read, counter.getIncrement()));
+        IntegerAddNode add = graph.unique(new IntegerAddNode(read, counter.getIncrement()));
         WriteNode write = graph.add(new WriteNode(readArray, add, location, BarrierType.NONE));
 
         graph.addBeforeFixed(counter, thread);
