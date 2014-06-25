@@ -28,7 +28,7 @@ import com.oracle.graal.graph.spi.*;
 /**
  * Logic node that negates its argument.
  */
-public class LogicNegationNode extends LogicNode implements Canonicalizable {
+public class LogicNegationNode extends LogicNode implements Canonicalizable.Unary<LogicNode> {
 
     @Input(InputType.Condition) private LogicNode value;
 
@@ -41,9 +41,9 @@ public class LogicNegationNode extends LogicNode implements Canonicalizable {
     }
 
     @Override
-    public Node canonical(CanonicalizerTool tool) {
-        if (value instanceof LogicNegationNode) {
-            return ((LogicNegationNode) value).getValue();
+    public LogicNode canonical(CanonicalizerTool tool, LogicNode forValue) {
+        if (forValue instanceof LogicNegationNode) {
+            return ((LogicNegationNode) forValue).getValue();
         } else {
             return this;
         }
