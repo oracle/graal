@@ -40,7 +40,7 @@ public class IntegerSubNode extends IntegerArithmeticNode implements Canonicaliz
 
     @Override
     public boolean inferStamp() {
-        return updateStamp(StampTool.sub(x().stamp(), y().stamp()));
+        return updateStamp(StampTool.sub(getX().stamp(), getY().stamp()));
     }
 
     @Override
@@ -51,74 +51,74 @@ public class IntegerSubNode extends IntegerArithmeticNode implements Canonicaliz
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        if (x() == y()) {
+        if (getX() == getY()) {
             return ConstantNode.forIntegerStamp(stamp(), 0, graph());
         }
-        if (x() instanceof IntegerAddNode) {
-            IntegerAddNode x = (IntegerAddNode) x();
-            if (x.y() == y()) {
+        if (getX() instanceof IntegerAddNode) {
+            IntegerAddNode x = (IntegerAddNode) getX();
+            if (x.getY() == getY()) {
                 // (a + b) - b
-                return x.x();
+                return x.getX();
             }
-            if (x.x() == y()) {
+            if (x.getX() == getY()) {
                 // (a + b) - a
-                return x.y();
+                return x.getY();
             }
-        } else if (x() instanceof IntegerSubNode) {
-            IntegerSubNode x = (IntegerSubNode) x();
-            if (x.x() == y()) {
+        } else if (getX() instanceof IntegerSubNode) {
+            IntegerSubNode x = (IntegerSubNode) getX();
+            if (x.getX() == getY()) {
                 // (a - b) - a
-                return graph().unique(new NegateNode(x.y()));
+                return graph().unique(new NegateNode(x.getY()));
             }
         }
-        if (y() instanceof IntegerAddNode) {
-            IntegerAddNode y = (IntegerAddNode) y();
-            if (y.x() == x()) {
+        if (getY() instanceof IntegerAddNode) {
+            IntegerAddNode y = (IntegerAddNode) getY();
+            if (y.getX() == getX()) {
                 // a - (a + b)
-                return graph().unique(new NegateNode(y.y()));
+                return graph().unique(new NegateNode(y.getY()));
             }
-            if (y.y() == x()) {
+            if (y.getY() == getX()) {
                 // b - (a + b)
-                return graph().unique(new NegateNode(y.x()));
+                return graph().unique(new NegateNode(y.getX()));
             }
-        } else if (y() instanceof IntegerSubNode) {
-            IntegerSubNode y = (IntegerSubNode) y();
-            if (y.x() == x()) {
+        } else if (getY() instanceof IntegerSubNode) {
+            IntegerSubNode y = (IntegerSubNode) getY();
+            if (y.getX() == getX()) {
                 // a - (a - b)
-                return y.y();
+                return y.getY();
             }
         }
-        if (x().isConstant() && y().isConstant()) {
-            return ConstantNode.forPrimitive(evalConst(x().asConstant(), y().asConstant()), graph());
-        } else if (y().isConstant()) {
-            long c = y().asConstant().asLong();
+        if (getX().isConstant() && getY().isConstant()) {
+            return ConstantNode.forPrimitive(evalConst(getX().asConstant(), getY().asConstant()), graph());
+        } else if (getY().isConstant()) {
+            long c = getY().asConstant().asLong();
             if (c == 0) {
-                return x();
+                return getX();
             }
             BinaryNode reassociated = BinaryNode.reassociate(this, ValueNode.isConstantPredicate());
             if (reassociated != this) {
                 return reassociated;
             }
-            if (c < 0 || ((IntegerStamp) StampFactory.forKind(y().getKind())).contains(-c)) {
+            if (c < 0 || ((IntegerStamp) StampFactory.forKind(getY().getKind())).contains(-c)) {
                 // Adding a negative is more friendly to the backend since adds are
                 // commutative, so prefer add when it fits.
-                return IntegerArithmeticNode.add(graph(), x(), ConstantNode.forIntegerStamp(stamp(), -c, graph()));
+                return IntegerArithmeticNode.add(graph(), getX(), ConstantNode.forIntegerStamp(stamp(), -c, graph()));
             }
-        } else if (x().isConstant()) {
-            long c = x().asConstant().asLong();
+        } else if (getX().isConstant()) {
+            long c = getX().asConstant().asLong();
             if (c == 0) {
-                return graph().unique(new NegateNode(y()));
+                return graph().unique(new NegateNode(getY()));
             }
             return BinaryNode.reassociate(this, ValueNode.isConstantPredicate());
         }
-        if (y() instanceof NegateNode) {
-            return IntegerArithmeticNode.add(graph(), x(), ((NegateNode) y()).getValue());
+        if (getY() instanceof NegateNode) {
+            return IntegerArithmeticNode.add(graph(), getX(), ((NegateNode) getY()).getValue());
         }
         return this;
     }
 
     @Override
     public void generate(NodeMappableLIRBuilder builder, ArithmeticLIRGenerator gen) {
-        builder.setResult(this, gen.emitSub(builder.operand(x()), builder.operand(y())));
+        builder.setResult(this, gen.emitSub(builder.operand(getX()), builder.operand(getY())));
     }
 }

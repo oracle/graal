@@ -58,8 +58,8 @@ public class UnsignedMulHighNode extends IntegerArithmeticNode {
 
     @Override
     public void generate(NodeMappableLIRBuilder builder, ArithmeticLIRGenerator gen) {
-        Value a = builder.operand(x());
-        Value b = builder.operand(y());
+        Value a = builder.operand(getX());
+        Value b = builder.operand(getY());
         builder.setResult(this, gen.emitUMulHigh(a, b));
     }
 

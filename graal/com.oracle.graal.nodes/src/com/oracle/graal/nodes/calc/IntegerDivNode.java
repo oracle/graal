@@ -82,11 +82,11 @@ public class IntegerDivNode extends FixedBinaryNode implements Canonicalizable, 
         // Convert the expression ((a - a % b) / b) into (a / b).
         if (x() instanceof IntegerSubNode) {
             IntegerSubNode integerSubNode = (IntegerSubNode) x();
-            if (integerSubNode.y() instanceof IntegerRemNode) {
-                IntegerRemNode integerRemNode = (IntegerRemNode) integerSubNode.y();
-                if (integerSubNode.stamp().isCompatible(this.stamp()) && integerRemNode.stamp().isCompatible(this.stamp()) && integerSubNode.x() == integerRemNode.x() &&
+            if (integerSubNode.getY() instanceof IntegerRemNode) {
+                IntegerRemNode integerRemNode = (IntegerRemNode) integerSubNode.getY();
+                if (integerSubNode.stamp().isCompatible(this.stamp()) && integerRemNode.stamp().isCompatible(this.stamp()) && integerSubNode.getX() == integerRemNode.x() &&
                                 this.y() == integerRemNode.y()) {
-                    return graph().add(new IntegerDivNode(stamp(), integerSubNode.x(), this.y()));
+                    return graph().add(new IntegerDivNode(stamp(), integerSubNode.getX(), this.y()));
                 }
             }
         }

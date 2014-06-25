@@ -61,10 +61,10 @@ public final class IntegerLessThanNode extends CompareNode {
     protected LogicNode optimizeNormalizeCmp(Constant constant, NormalizeCompareNode normalizeNode, boolean mirrored) {
         assert condition() == Condition.LT;
         if (constant.getKind() == Kind.Int && constant.asInt() == 0) {
-            ValueNode a = mirrored ? normalizeNode.y() : normalizeNode.x();
-            ValueNode b = mirrored ? normalizeNode.x() : normalizeNode.y();
+            ValueNode a = mirrored ? normalizeNode.getY() : normalizeNode.getX();
+            ValueNode b = mirrored ? normalizeNode.getX() : normalizeNode.getY();
 
-            if (normalizeNode.x().getKind() == Kind.Double || normalizeNode.x().getKind() == Kind.Float) {
+            if (normalizeNode.getX().getKind() == Kind.Double || normalizeNode.getX().getKind() == Kind.Float) {
                 return graph().unique(new FloatLessThanNode(a, b, mirrored ^ normalizeNode.isUnorderedLess));
             } else {
                 return graph().unique(new IntegerLessThanNode(a, b));
@@ -95,9 +95,9 @@ public final class IntegerLessThanNode extends CompareNode {
         if (result != this) {
             return result;
         }
-        if (x().stamp() instanceof IntegerStamp && y().stamp() instanceof IntegerStamp) {
-            if (IntegerStamp.sameSign((IntegerStamp) x().stamp(), (IntegerStamp) y().stamp())) {
-                return graph().unique(new IntegerBelowThanNode(x(), y()));
+        if (getX().stamp() instanceof IntegerStamp && getY().stamp() instanceof IntegerStamp) {
+            if (IntegerStamp.sameSign((IntegerStamp) getX().stamp(), (IntegerStamp) getY().stamp())) {
+                return graph().unique(new IntegerBelowThanNode(getX(), getY()));
             }
         }
         return this;

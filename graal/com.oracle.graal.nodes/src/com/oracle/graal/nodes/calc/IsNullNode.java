@@ -52,14 +52,14 @@ public final class IsNullNode extends UnaryOpLogicNode implements Canonicalizabl
 
     @Override
     public boolean verify() {
-        assertTrue(object() != null, "is null input must not be null");
-        assertTrue(object().stamp() instanceof AbstractObjectStamp, "is null input must be an object");
+        assertTrue(getValue() != null, "is null input must not be null");
+        assertTrue(getValue().stamp() instanceof AbstractObjectStamp, "is null input must be an object");
         return super.verify();
     }
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        switch (evaluate(object())) {
+        switch (evaluate(getValue())) {
             case FALSE:
                 return LogicConstantNode.contradiction(graph());
             case TRUE:
@@ -83,7 +83,7 @@ public final class IsNullNode extends UnaryOpLogicNode implements Canonicalizabl
 
     @Override
     public void virtualize(VirtualizerTool tool) {
-        if (tool.getObjectState(object()) != null) {
+        if (tool.getObjectState(getValue()) != null) {
             tool.replaceWithValue(LogicConstantNode.contradiction(graph()));
         }
     }

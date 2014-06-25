@@ -72,10 +72,10 @@ public class AMD64HotSpotNodeLIRBuilder extends AMD64NodeLIRBuilder implements H
         Value value = gen.load(operand(valueNode));
         AMD64AddressValue address = makeCompressedAddress(compress, location);
         Condition cond = compare.condition();
-        if (access == filterCompression(compare.x())) {
+        if (access == filterCompression(compare.getX())) {
             cond = cond.mirror();
         } else {
-            assert access == filterCompression(compare.y());
+            assert access == filterCompression(compare.getY());
         }
 
         LabelRef trueLabel = getLIRBlock(ifNode.trueSuccessor());
@@ -253,7 +253,7 @@ public class AMD64HotSpotNodeLIRBuilder extends AMD64NodeLIRBuilder implements H
     @MatchRule("(If (FloatLessThan=compare value (Read=access (Compression=compress object) ConstantLocation=location)))")
     public ComplexMatchResult ifCompareCompressedMemory(IfNode root, CompareNode compare, CompressionNode compress, ValueNode value, ConstantLocationNode location, Access access) {
         if (canFormCompressedMemory(compress, location)) {
-            PlatformKind cmpKind = gen.getLIRKind(compare.x().stamp()).getPlatformKind();
+            PlatformKind cmpKind = gen.getLIRKind(compare.getX().stamp()).getPlatformKind();
             if (cmpKind instanceof Kind) {
                 Kind kind = (Kind) cmpKind;
                 return builder -> {

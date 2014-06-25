@@ -46,17 +46,17 @@ public class IntegerAddExactNode extends IntegerAddNode implements Canonicalizab
     @Override
     public boolean inferStamp() {
         // TODO Should probably use a specialised version which understands that it can't overflow
-        return updateStamp(StampTool.add(x().stamp(), y().stamp()));
+        return updateStamp(StampTool.add(getX().stamp(), getY().stamp()));
     }
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        if (x().isConstant() && !y().isConstant()) {
-            return graph().unique(new IntegerAddExactNode(y(), x()));
+        if (getX().isConstant() && !getY().isConstant()) {
+            return graph().unique(new IntegerAddExactNode(getY(), getX()));
         }
-        if (x().isConstant()) {
-            Constant xConst = x().asConstant();
-            Constant yConst = y().asConstant();
+        if (getX().isConstant()) {
+            Constant xConst = getX().asConstant();
+            Constant yConst = getY().asConstant();
             assert xConst.getKind() == yConst.getKind();
             try {
                 if (xConst.getKind() == Kind.Int) {
@@ -68,10 +68,10 @@ public class IntegerAddExactNode extends IntegerAddNode implements Canonicalizab
             } catch (ArithmeticException ex) {
                 // The operation will result in an overflow exception, so do not canonicalize.
             }
-        } else if (y().isConstant()) {
-            long c = y().asConstant().asLong();
+        } else if (getY().isConstant()) {
+            long c = getY().asConstant().asLong();
             if (c == 0) {
-                return x();
+                return getX();
             }
         }
         return this;
@@ -79,7 +79,7 @@ public class IntegerAddExactNode extends IntegerAddNode implements Canonicalizab
 
     @Override
     public IntegerExactArithmeticSplitNode createSplit(BeginNode next, BeginNode deopt) {
-        return graph().add(new IntegerAddExactSplitNode(stamp(), x(), y(), next, deopt));
+        return graph().add(new IntegerAddExactSplitNode(stamp(), getX(), getY(), next, deopt));
     }
 
     @Override

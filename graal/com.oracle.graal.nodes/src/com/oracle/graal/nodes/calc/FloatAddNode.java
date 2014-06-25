@@ -50,11 +50,11 @@ public final class FloatAddNode extends FloatArithmeticNode implements Canonical
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        if (x().isConstant() && !y().isConstant()) {
-            return graph().unique(new FloatAddNode(stamp(), y(), x(), isStrictFP()));
+        if (getX().isConstant() && !getY().isConstant()) {
+            return graph().unique(new FloatAddNode(stamp(), getY(), getX(), isStrictFP()));
         }
-        if (x().isConstant()) {
-            return ConstantNode.forPrimitive(evalConst(x().asConstant(), y().asConstant()), graph());
+        if (getX().isConstant()) {
+            return ConstantNode.forPrimitive(evalConst(getX().asConstant(), getY().asConstant()), graph());
         }
         // Constant 0.0 can't be eliminated since it can affect the sign of the result.
         return this;
@@ -62,9 +62,9 @@ public final class FloatAddNode extends FloatArithmeticNode implements Canonical
 
     @Override
     public void generate(NodeMappableLIRBuilder builder, ArithmeticLIRGenerator gen) {
-        Value op1 = builder.operand(x());
-        Value op2 = builder.operand(y());
-        if (!y().isConstant() && !livesLonger(this, y(), builder)) {
+        Value op1 = builder.operand(getX());
+        Value op2 = builder.operand(getY());
+        if (!getY().isConstant() && !livesLonger(this, getY(), builder)) {
             Value op = op1;
             op1 = op2;
             op2 = op;

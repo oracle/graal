@@ -49,7 +49,7 @@ public class IntegerTestNode extends BinaryOpLogicNode {
         if (forX.isConstant() && forY.isConstant()) {
             return TriState.get((forX.asConstant().asLong() & forY.asConstant().asLong()) == 0);
         }
-        if (x().stamp() instanceof IntegerStamp && y().stamp() instanceof IntegerStamp) {
+        if (getX().stamp() instanceof IntegerStamp && getY().stamp() instanceof IntegerStamp) {
             IntegerStamp xStamp = (IntegerStamp) forX.stamp();
             IntegerStamp yStamp = (IntegerStamp) forY.stamp();
             if ((xStamp.upMask() & yStamp.upMask()) == 0) {

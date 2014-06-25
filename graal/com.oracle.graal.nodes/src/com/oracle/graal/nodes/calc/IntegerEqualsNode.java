@@ -60,10 +60,10 @@ public final class IntegerEqualsNode extends CompareNode {
     @Override
     protected LogicNode optimizeNormalizeCmp(Constant constant, NormalizeCompareNode normalizeNode, boolean mirrored) {
         if (constant.getKind() == Kind.Int && constant.asInt() == 0) {
-            ValueNode a = mirrored ? normalizeNode.y() : normalizeNode.x();
-            ValueNode b = mirrored ? normalizeNode.x() : normalizeNode.y();
+            ValueNode a = mirrored ? normalizeNode.getY() : normalizeNode.getX();
+            ValueNode b = mirrored ? normalizeNode.getX() : normalizeNode.getY();
 
-            if (normalizeNode.x().getKind() == Kind.Double || normalizeNode.x().getKind() == Kind.Float) {
+            if (normalizeNode.getX().getKind() == Kind.Double || normalizeNode.getX().getKind() == Kind.Float) {
                 return graph().unique(new FloatEqualsNode(a, b));
             } else {
                 return graph().unique(new IntegerEqualsNode(a, b));
@@ -97,42 +97,42 @@ public final class IntegerEqualsNode extends CompareNode {
         if (constant.asLong() == 0) {
             if (nonConstant instanceof AndNode) {
                 AndNode andNode = (AndNode) nonConstant;
-                return graph().unique(new IntegerTestNode(andNode.x(), andNode.y()));
+                return graph().unique(new IntegerTestNode(andNode.getX(), andNode.getY()));
             } else if (nonConstant instanceof ShiftNode) {
                 if (nonConstant instanceof LeftShiftNode) {
                     LeftShiftNode shift = (LeftShiftNode) nonConstant;
-                    if (shift.y().isConstant()) {
+                    if (shift.getY().isConstant()) {
                         int mask = shift.getShiftAmountMask();
-                        int amount = shift.y().asConstant().asInt() & mask;
-                        if (shift.x().getKind() == Kind.Int) {
-                            return graph().unique(new IntegerTestNode(shift.x(), ConstantNode.forInt(-1 >>> amount, graph())));
+                        int amount = shift.getY().asConstant().asInt() & mask;
+                        if (shift.getX().getKind() == Kind.Int) {
+                            return graph().unique(new IntegerTestNode(shift.getX(), ConstantNode.forInt(-1 >>> amount, graph())));
                         } else {
-                            assert shift.x().getKind() == Kind.Long;
-                            return graph().unique(new IntegerTestNode(shift.x(), ConstantNode.forLong(-1L >>> amount, graph())));
+                            assert shift.getX().getKind() == Kind.Long;
+                            return graph().unique(new IntegerTestNode(shift.getX(), ConstantNode.forLong(-1L >>> amount, graph())));
                         }
                     }
                 } else if (nonConstant instanceof RightShiftNode) {
                     RightShiftNode shift = (RightShiftNode) nonConstant;
-                    if (shift.y().isConstant() && ((IntegerStamp) shift.x().stamp()).isPositive()) {
+                    if (shift.getY().isConstant() && ((IntegerStamp) shift.getX().stamp()).isPositive()) {
                         int mask = shift.getShiftAmountMask();
-                        int amount = shift.y().asConstant().asInt() & mask;
-                        if (shift.x().getKind() == Kind.Int) {
-                            return graph().unique(new IntegerTestNode(shift.x(), ConstantNode.forInt(-1 << amount, graph())));
+                        int amount = shift.getY().asConstant().asInt() & mask;
+                        if (shift.getX().getKind() == Kind.Int) {
+                            return graph().unique(new IntegerTestNode(shift.getX(), ConstantNode.forInt(-1 << amount, graph())));
                         } else {
-                            assert shift.x().getKind() == Kind.Long;
-                            return graph().unique(new IntegerTestNode(shift.x(), ConstantNode.forLong(-1L << amount, graph())));
+                            assert shift.getX().getKind() == Kind.Long;
+                            return graph().unique(new IntegerTestNode(shift.getX(), ConstantNode.forLong(-1L << amount, graph())));
                         }
                     }
                 } else if (nonConstant instanceof UnsignedRightShiftNode) {
                     UnsignedRightShiftNode shift = (UnsignedRightShiftNode) nonConstant;
-                    if (shift.y().isConstant()) {
+                    if (shift.getY().isConstant()) {
                         int mask = shift.getShiftAmountMask();
-                        int amount = shift.y().asConstant().asInt() & mask;
-                        if (shift.x().getKind() == Kind.Int) {
-                            return graph().unique(new IntegerTestNode(shift.x(), ConstantNode.forInt(-1 << amount, graph())));
+                        int amount = shift.getY().asConstant().asInt() & mask;
+                        if (shift.getX().getKind() == Kind.Int) {
+                            return graph().unique(new IntegerTestNode(shift.getX(), ConstantNode.forInt(-1 << amount, graph())));
                         } else {
-                            assert shift.x().getKind() == Kind.Long;
-                            return graph().unique(new IntegerTestNode(shift.x(), ConstantNode.forLong(-1L << amount, graph())));
+                            assert shift.getX().getKind() == Kind.Long;
+                            return graph().unique(new IntegerTestNode(shift.getX(), ConstantNode.forLong(-1L << amount, graph())));
                         }
                     }
                 }

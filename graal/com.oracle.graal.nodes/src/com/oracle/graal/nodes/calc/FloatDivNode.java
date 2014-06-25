@@ -50,14 +50,14 @@ public final class FloatDivNode extends FloatArithmeticNode implements Canonical
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        if (x().isConstant() && y().isConstant()) {
-            return ConstantNode.forPrimitive(evalConst(x().asConstant(), y().asConstant()), graph());
+        if (getX().isConstant() && getY().isConstant()) {
+            return ConstantNode.forPrimitive(evalConst(getX().asConstant(), getY().asConstant()), graph());
         }
         return this;
     }
 
     @Override
     public void generate(NodeMappableLIRBuilder builder, ArithmeticLIRGenerator gen) {
-        builder.setResult(this, gen.emitDiv(builder.operand(x()), builder.operand(y()), null));
+        builder.setResult(this, gen.emitDiv(builder.operand(getX()), builder.operand(getY()), null));
     }
 }

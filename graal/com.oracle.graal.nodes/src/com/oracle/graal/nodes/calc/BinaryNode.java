@@ -35,11 +35,11 @@ public abstract class BinaryNode extends FloatingNode {
     @Input private ValueNode x;
     @Input private ValueNode y;
 
-    public ValueNode x() {
+    public ValueNode getX() {
         return x;
     }
 
-    public ValueNode y() {
+    public ValueNode getY() {
         return y;
     }
 
@@ -63,9 +63,9 @@ public abstract class BinaryNode extends FloatingNode {
         public ValueNode getValue(BinaryNode binary) {
             switch (this) {
                 case x:
-                    return binary.x();
+                    return binary.getX();
                 case y:
-                    return binary.y();
+                    return binary.getY();
                 default:
                     throw GraalInternalError.shouldNotReachHere();
             }
@@ -74,9 +74,9 @@ public abstract class BinaryNode extends FloatingNode {
         public ValueNode getOtherValue(BinaryNode binary) {
             switch (this) {
                 case x:
-                    return binary.y();
+                    return binary.getY();
                 case y:
-                    return binary.x();
+                    return binary.getX();
                 default:
                     throw GraalInternalError.shouldNotReachHere();
             }
@@ -124,8 +124,8 @@ public abstract class BinaryNode extends FloatingNode {
     }
 
     public static ReassociateMatch findReassociate(BinaryNode binary, NodePredicate criterion) {
-        boolean resultX = criterion.apply(binary.x());
-        boolean resultY = criterion.apply(binary.y());
+        boolean resultX = criterion.apply(binary.getX());
+        boolean resultY = criterion.apply(binary.getY());
         if (resultX && !resultY) {
             return ReassociateMatch.x;
         }

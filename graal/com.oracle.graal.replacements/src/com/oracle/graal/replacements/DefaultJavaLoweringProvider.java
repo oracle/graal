@@ -589,16 +589,16 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         }
         if (offset instanceof IntegerAddNode) {
             IntegerAddNode integerAddNode = (IntegerAddNode) offset;
-            if (integerAddNode.y() instanceof ConstantNode) {
-                displacement = integerAddNode.y().asConstant().asLong();
-                offset = integerAddNode.x();
+            if (integerAddNode.getY() instanceof ConstantNode) {
+                displacement = integerAddNode.getY().asConstant().asLong();
+                offset = integerAddNode.getX();
             }
         }
 
         if (offset instanceof LeftShiftNode) {
             LeftShiftNode leftShiftNode = (LeftShiftNode) offset;
-            if (leftShiftNode.y() instanceof ConstantNode) {
-                long shift = leftShiftNode.y().asConstant().asLong();
+            if (leftShiftNode.getY() instanceof ConstantNode) {
+                long shift = leftShiftNode.getY().asConstant().asLong();
                 if (shift >= 1 && shift <= 3) {
                     if (shift == 1) {
                         indexScaling = 2;
@@ -607,7 +607,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                     } else {
                         indexScaling = 8;
                     }
-                    offset = leftShiftNode.x();
+                    offset = leftShiftNode.getX();
                 }
             }
         }

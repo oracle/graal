@@ -82,11 +82,11 @@ public final class ConditionalNode extends FloatingNode implements Canonicalizab
         // this optimizes the case where a value that can only be 0 or 1 is materialized to 0 or 1
         if (trueValue().isConstant() && falseValue().isConstant() && condition instanceof IntegerEqualsNode) {
             IntegerEqualsNode equals = (IntegerEqualsNode) condition;
-            if (equals.y().isConstant() && equals.y().asConstant().equals(Constant.INT_0) && equals.x().stamp() instanceof IntegerStamp) {
-                IntegerStamp equalsXStamp = (IntegerStamp) equals.x().stamp();
+            if (equals.getY().isConstant() && equals.getY().asConstant().equals(Constant.INT_0) && equals.getX().stamp() instanceof IntegerStamp) {
+                IntegerStamp equalsXStamp = (IntegerStamp) equals.getX().stamp();
                 if (equalsXStamp.upMask() == 1) {
                     if (trueValue().asConstant().equals(Constant.INT_0) && falseValue().asConstant().equals(Constant.INT_1)) {
-                        return IntegerConvertNode.convertUnsigned(equals.x(), stamp());
+                        return IntegerConvertNode.convertUnsigned(equals.getX(), stamp());
                     }
                 }
             }
@@ -102,7 +102,7 @@ public final class ConditionalNode extends FloatingNode implements Canonicalizab
         if (condition instanceof CompareNode && ((CompareNode) condition).condition() == Condition.EQ) {
             // optimize the pattern (x == y) ? x : y
             CompareNode compare = (CompareNode) condition;
-            if ((compare.x() == trueValue() && compare.y() == falseValue()) || (compare.x() == falseValue() && compare.y() == trueValue())) {
+            if ((compare.getX() == trueValue() && compare.getY() == falseValue()) || (compare.getX() == falseValue() && compare.getY() == trueValue())) {
                 return falseValue();
             }
         }

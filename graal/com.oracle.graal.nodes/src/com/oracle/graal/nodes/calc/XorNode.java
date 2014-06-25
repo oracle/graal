@@ -40,7 +40,7 @@ public final class XorNode extends BitLogicNode implements Canonicalizable {
 
     @Override
     public boolean inferStamp() {
-        return updateStamp(StampTool.xor(x().stamp(), y().stamp()));
+        return updateStamp(StampTool.xor(getX().stamp(), getY().stamp()));
     }
 
     @Override
@@ -51,21 +51,21 @@ public final class XorNode extends BitLogicNode implements Canonicalizable {
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        if (x() == y()) {
+        if (getX() == getY()) {
             return ConstantNode.forIntegerStamp(stamp(), 0, graph());
         }
-        if (x().isConstant() && !y().isConstant()) {
-            return graph().unique(new XorNode(stamp(), y(), x()));
+        if (getX().isConstant() && !getY().isConstant()) {
+            return graph().unique(new XorNode(stamp(), getY(), getX()));
         }
-        if (x().isConstant()) {
-            return ConstantNode.forPrimitive(stamp(), evalConst(x().asConstant(), y().asConstant()), graph());
-        } else if (y().isConstant()) {
-            long rawY = y().asConstant().asLong();
+        if (getX().isConstant()) {
+            return ConstantNode.forPrimitive(stamp(), evalConst(getX().asConstant(), getY().asConstant()), graph());
+        } else if (getY().isConstant()) {
+            long rawY = getY().asConstant().asLong();
             long mask = IntegerStamp.defaultMask(PrimitiveStamp.getBits(stamp()));
             if ((rawY & mask) == 0) {
-                return x();
+                return getX();
             } else if ((rawY & mask) == mask) {
-                return graph().unique(new NotNode(x()));
+                return graph().unique(new NotNode(getX()));
             }
             return BinaryNode.reassociate(this, ValueNode.isConstantPredicate());
         }
@@ -74,6 +74,6 @@ public final class XorNode extends BitLogicNode implements Canonicalizable {
 
     @Override
     public void generate(NodeMappableLIRBuilder builder, ArithmeticLIRGenerator gen) {
-        builder.setResult(this, gen.emitXor(builder.operand(x()), builder.operand(y())));
+        builder.setResult(this, gen.emitXor(builder.operand(getX()), builder.operand(getY())));
     }
 }

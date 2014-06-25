@@ -469,7 +469,7 @@ public final class EquationalReasoner {
      *
      */
     private LogicNode baseCaseInstanceOfNode(InstanceOfNode instanceOf) {
-        ValueNode scrutinee = GraphUtil.unproxify(instanceOf.object());
+        ValueNode scrutinee = GraphUtil.unproxify(instanceOf.getValue());
         if (!FlowUtil.hasLegalObjectStamp(scrutinee)) {
             return instanceOf;
         }
@@ -494,7 +494,7 @@ public final class EquationalReasoner {
      *
      */
     private FloatingNode baseCaseIsNullNode(IsNullNode isNu) {
-        ValueNode object = isNu.object();
+        ValueNode object = isNu.getValue();
         if (!FlowUtil.hasLegalObjectStamp(object)) {
             return isNu;
         }
@@ -513,11 +513,11 @@ public final class EquationalReasoner {
      *         otherwise the unmodified argument.
      */
     private LogicNode baseCaseObjectEqualsNode(ObjectEqualsNode equals) {
-        if (!FlowUtil.hasLegalObjectStamp(equals.x()) || !FlowUtil.hasLegalObjectStamp(equals.y())) {
+        if (!FlowUtil.hasLegalObjectStamp(equals.getX()) || !FlowUtil.hasLegalObjectStamp(equals.getY())) {
             return equals;
         }
-        ValueNode x = GraphUtil.unproxify(equals.x());
-        ValueNode y = GraphUtil.unproxify(equals.y());
+        ValueNode x = GraphUtil.unproxify(equals.getX());
+        ValueNode y = GraphUtil.unproxify(equals.getY());
         if (state.isNull(x) && state.isNonNull(y) || state.isNonNull(x) && state.isNull(y)) {
             metricObjectEqualsRemoved.increment();
             return falseConstant;

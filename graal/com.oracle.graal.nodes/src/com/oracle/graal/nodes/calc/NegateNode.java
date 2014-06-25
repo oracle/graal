@@ -77,7 +77,7 @@ public final class NegateNode extends UnaryNode implements Canonicalizable, Arit
         }
         if (getValue() instanceof IntegerSubNode) {
             IntegerSubNode sub = (IntegerSubNode) getValue();
-            return IntegerArithmeticNode.sub(graph(), sub.y(), sub.x());
+            return IntegerArithmeticNode.sub(graph(), sub.getY(), sub.getX());
         }
         return this;
     }

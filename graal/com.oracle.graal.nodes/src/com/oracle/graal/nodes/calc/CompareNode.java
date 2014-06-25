@@ -104,17 +104,17 @@ public abstract class CompareNode extends BinaryOpLogicNode {
         if (result != this) {
             return result;
         }
-        if (x().isConstant()) {
-            if ((result = canonicalizeSymmetricConstant(tool, x().asConstant(), y(), true)) != this) {
+        if (getX().isConstant()) {
+            if ((result = canonicalizeSymmetricConstant(tool, getX().asConstant(), getY(), true)) != this) {
                 return result;
             }
-        } else if (y().isConstant()) {
-            if ((result = canonicalizeSymmetricConstant(tool, y().asConstant(), x(), false)) != this) {
+        } else if (getY().isConstant()) {
+            if ((result = canonicalizeSymmetricConstant(tool, getY().asConstant(), getX(), false)) != this) {
                 return result;
             }
-        } else if (x() instanceof ConvertNode && y() instanceof ConvertNode) {
-            ConvertNode convertX = (ConvertNode) x();
-            ConvertNode convertY = (ConvertNode) y();
+        } else if (getX() instanceof ConvertNode && getY() instanceof ConvertNode) {
+            ConvertNode convertX = (ConvertNode) getX();
+            ConvertNode convertY = (ConvertNode) getY();
             if (convertX.preservesOrder(condition()) && convertY.preservesOrder(condition()) && convertX.getValue().stamp().isCompatible(convertY.getValue().stamp())) {
                 return graph().unique(duplicateModified(convertX.getValue(), convertY.getValue()));
             }

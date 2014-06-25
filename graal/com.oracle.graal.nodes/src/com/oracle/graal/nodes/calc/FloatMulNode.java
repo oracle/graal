@@ -50,20 +50,20 @@ public final class FloatMulNode extends FloatArithmeticNode implements Canonical
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        if (x().isConstant() && !y().isConstant()) {
-            return graph().unique(new FloatMulNode(stamp(), y(), x(), isStrictFP()));
+        if (getX().isConstant() && !getY().isConstant()) {
+            return graph().unique(new FloatMulNode(stamp(), getY(), getX(), isStrictFP()));
         }
-        if (x().isConstant()) {
-            return ConstantNode.forPrimitive(evalConst(x().asConstant(), y().asConstant()), graph());
+        if (getX().isConstant()) {
+            return ConstantNode.forPrimitive(evalConst(getX().asConstant(), getY().asConstant()), graph());
         }
         return this;
     }
 
     @Override
     public void generate(NodeMappableLIRBuilder builder, ArithmeticLIRGenerator gen) {
-        Value op1 = builder.operand(x());
-        Value op2 = builder.operand(y());
-        if (!y().isConstant() && !FloatAddNode.livesLonger(this, y(), builder)) {
+        Value op1 = builder.operand(getX());
+        Value op2 = builder.operand(getY());
+        if (!getY().isConstant() && !FloatAddNode.livesLonger(this, getY(), builder)) {
             Value op = op1;
             op1 = op2;
             op2 = op;

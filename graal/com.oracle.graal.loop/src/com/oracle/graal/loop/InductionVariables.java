@@ -95,10 +95,10 @@ public class InductionVariables {
     private ValueNode addSub(ValueNode op, ValueNode base) {
         if (op instanceof IntegerAddNode || op instanceof IntegerSubNode) {
             IntegerArithmeticNode aritOp = (IntegerArithmeticNode) op;
-            if (aritOp.x() == base && loop.isOutsideLoop(aritOp.y())) {
-                return aritOp.y();
-            } else if (aritOp.y() == base && loop.isOutsideLoop(aritOp.x())) {
-                return aritOp.x();
+            if (aritOp.getX() == base && loop.isOutsideLoop(aritOp.getY())) {
+                return aritOp.getY();
+            } else if (aritOp.getY() == base && loop.isOutsideLoop(aritOp.getX())) {
+                return aritOp.getX();
             }
         }
         return null;
@@ -107,16 +107,16 @@ public class InductionVariables {
     private ValueNode mul(ValueNode op, ValueNode base) {
         if (op instanceof IntegerMulNode) {
             IntegerMulNode mul = (IntegerMulNode) op;
-            if (mul.x() == base && loop.isOutsideLoop(mul.y())) {
-                return mul.y();
-            } else if (mul.y() == base && loop.isOutsideLoop(mul.x())) {
-                return mul.x();
+            if (mul.getX() == base && loop.isOutsideLoop(mul.getY())) {
+                return mul.getY();
+            } else if (mul.getY() == base && loop.isOutsideLoop(mul.getX())) {
+                return mul.getX();
             }
         }
         if (op instanceof LeftShiftNode) {
             LeftShiftNode shift = (LeftShiftNode) op;
-            if (shift.x() == base && shift.y().isConstant()) {
-                return ConstantNode.forInt(1 << shift.y().asConstant().asInt(), base.graph());
+            if (shift.getX() == base && shift.getY().isConstant()) {
+                return ConstantNode.forInt(1 << shift.getY().asConstant().asInt(), base.graph());
             }
         }
         return null;

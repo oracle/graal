@@ -44,12 +44,12 @@ public class IntegerMulExactNode extends IntegerMulNode implements Canonicalizab
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        if (x().isConstant() && !y().isConstant()) {
-            return graph().unique(new IntegerMulExactNode(y(), x()));
+        if (getX().isConstant() && !getY().isConstant()) {
+            return graph().unique(new IntegerMulExactNode(getY(), getX()));
         }
-        if (x().isConstant()) {
-            Constant xConst = x().asConstant();
-            Constant yConst = y().asConstant();
+        if (getX().isConstant()) {
+            Constant xConst = getX().asConstant();
+            Constant yConst = getY().asConstant();
             assert xConst.getKind() == yConst.getKind();
             try {
                 if (xConst.getKind() == Kind.Int) {
@@ -61,10 +61,10 @@ public class IntegerMulExactNode extends IntegerMulNode implements Canonicalizab
             } catch (ArithmeticException ex) {
                 // The operation will result in an overflow exception, so do not canonicalize.
             }
-        } else if (y().isConstant()) {
-            long c = y().asConstant().asLong();
+        } else if (getY().isConstant()) {
+            long c = getY().asConstant().asLong();
             if (c == 1) {
-                return x();
+                return getX();
             }
             if (c == 0) {
                 return ConstantNode.forIntegerStamp(stamp(), 0, graph());
@@ -75,7 +75,7 @@ public class IntegerMulExactNode extends IntegerMulNode implements Canonicalizab
 
     @Override
     public IntegerExactArithmeticSplitNode createSplit(BeginNode next, BeginNode deopt) {
-        return graph().add(new IntegerMulExactSplitNode(stamp(), x(), y(), next, deopt));
+        return graph().add(new IntegerMulExactSplitNode(stamp(), getX(), getY(), next, deopt));
     }
 
     @Override

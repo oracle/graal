@@ -33,11 +33,11 @@ public abstract class BinaryOpLogicNode extends LogicNode implements LIRLowerabl
     @Input private ValueNode x;
     @Input private ValueNode y;
 
-    public ValueNode x() {
+    public ValueNode getX() {
         return x;
     }
 
-    public ValueNode y() {
+    public ValueNode getY() {
         return y;
     }
 
@@ -67,7 +67,7 @@ public abstract class BinaryOpLogicNode extends LogicNode implements LIRLowerabl
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        switch (evaluate(tool.getConstantReflection(), x(), y())) {
+        switch (evaluate(tool.getConstantReflection(), getX(), getY())) {
             case FALSE:
                 return LogicConstantNode.contradiction(graph());
             case TRUE:

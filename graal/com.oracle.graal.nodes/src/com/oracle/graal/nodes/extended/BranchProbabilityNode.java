@@ -78,9 +78,9 @@ public class BranchProbabilityNode extends FloatingNode implements Canonicalizab
             boolean couldSet = false;
             for (IntegerEqualsNode node : this.usages().filter(IntegerEqualsNode.class)) {
                 if (node.condition() == Condition.EQ) {
-                    ValueNode other = node.x();
-                    if (node.x() == this) {
-                        other = node.y();
+                    ValueNode other = node.getX();
+                    if (node.getX() == this) {
+                        other = node.getY();
                     }
                     if (other.isConstant()) {
                         double probabilityToSet = probabilityValue;

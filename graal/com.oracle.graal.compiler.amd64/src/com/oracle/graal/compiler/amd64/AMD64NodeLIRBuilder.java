@@ -136,7 +136,7 @@ public abstract class AMD64NodeLIRBuilder extends NodeLIRBuilder {
         // emitCompareBranchMemory expects the memory on the right, so mirror the condition if
         // that's not true. It might be mirrored again the actual compare is emitted but that's
         // ok.
-        Condition finalCondition = uncast(compare.x()) == access ? cond.mirror() : cond;
+        Condition finalCondition = uncast(compare.getX()) == access ? cond.mirror() : cond;
         return new ComplexMatchResult() {
             public Value evaluate(NodeLIRBuilder builder) {
                 LabelRef trueLabel = getLIRBlock(ifNode.trueSuccessor());
@@ -364,8 +364,8 @@ public abstract class AMD64NodeLIRBuilder extends NodeLIRBuilder {
 
     @MatchRule("(Or (LeftShift=lshift value Constant) (UnsignedRightShift=rshift value Constant))")
     public ComplexMatchResult rotateLeftConstant(LeftShiftNode lshift, UnsignedRightShiftNode rshift) {
-        if ((lshift.getShiftAmountMask() & (lshift.y().asConstant().asInt() + rshift.y().asConstant().asInt())) == 0) {
-            return builder -> getLIRGeneratorTool().emitRol(operand(lshift.x()), operand(lshift.y()));
+        if ((lshift.getShiftAmountMask() & (lshift.getY().asConstant().asInt() + rshift.getY().asConstant().asInt())) == 0) {
+            return builder -> getLIRGeneratorTool().emitRol(operand(lshift.getX()), operand(lshift.getY()));
         }
         return null;
     }

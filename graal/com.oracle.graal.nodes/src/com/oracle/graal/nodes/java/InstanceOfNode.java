@@ -59,13 +59,13 @@ public class InstanceOfNode extends UnaryOpLogicNode implements Canonicalizable,
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        switch (evaluate(object())) {
+        switch (evaluate(getValue())) {
             case FALSE:
                 return LogicConstantNode.contradiction(graph());
             case TRUE:
                 return LogicConstantNode.tautology(graph());
             case UNKNOWN:
-                Stamp stamp = object().stamp();
+                Stamp stamp = getValue().stamp();
                 if (stamp instanceof ObjectStamp) {
                     ObjectStamp objectStamp = (ObjectStamp) stamp;
                     ResolvedJavaType stampType = objectStamp.type();
@@ -73,7 +73,7 @@ public class InstanceOfNode extends UnaryOpLogicNode implements Canonicalizable,
                         if (!objectStamp.nonNull()) {
                             // the instanceof matches if the object is non-null, so return true
                             // depending on the null-ness.
-                            IsNullNode isNull = graph().unique(new IsNullNode(object()));
+                            IsNullNode isNull = graph().unique(new IsNullNode(getValue()));
                             return graph().unique(new LogicNegationNode(isNull));
                         }
                     }
@@ -138,7 +138,7 @@ public class InstanceOfNode extends UnaryOpLogicNode implements Canonicalizable,
 
     @Override
     public void virtualize(VirtualizerTool tool) {
-        State state = tool.getObjectState(object());
+        State state = tool.getObjectState(getValue());
         if (state != null) {
             tool.replaceWithValue(LogicConstantNode.forBoolean(type().isAssignableFrom(state.getVirtualObject().type()), graph()));
         }

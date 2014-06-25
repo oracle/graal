@@ -80,9 +80,9 @@ public final class IntegerBelowThanNode extends CompareNode {
         if (result != this) {
             return result;
         }
-        if (x().isConstant() && x().asConstant().asLong() == 0) {
+        if (getX().isConstant() && getX().asConstant().asLong() == 0) {
             // 0 |<| y is the same as 0 != y
-            return graph().unique(new LogicNegationNode(CompareNode.createCompareNode(graph(), Condition.EQ, x(), y())));
+            return graph().unique(new LogicNegationNode(CompareNode.createCompareNode(graph(), Condition.EQ, getX(), getY())));
         }
         return this;
     }

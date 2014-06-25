@@ -40,7 +40,7 @@ public final class LeftShiftNode extends ShiftNode implements Canonicalizable {
 
     @Override
     public boolean inferStamp() {
-        return updateStamp(StampTool.leftShift(x().stamp(), y().stamp()));
+        return updateStamp(StampTool.leftShift(getX().stamp(), getY().stamp()));
     }
 
     @Override
@@ -56,38 +56,38 @@ public final class LeftShiftNode extends ShiftNode implements Canonicalizable {
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        if (x().isConstant() && y().isConstant()) {
-            return ConstantNode.forPrimitive(evalConst(x().asConstant(), y().asConstant()), graph());
-        } else if (y().isConstant()) {
-            int amount = y().asConstant().asInt();
+        if (getX().isConstant() && getY().isConstant()) {
+            return ConstantNode.forPrimitive(evalConst(getX().asConstant(), getY().asConstant()), graph());
+        } else if (getY().isConstant()) {
+            int amount = getY().asConstant().asInt();
             int originalAmout = amount;
             int mask = getShiftAmountMask();
             amount &= mask;
             if (amount == 0) {
-                return x();
+                return getX();
             }
-            if (x() instanceof ShiftNode) {
-                ShiftNode other = (ShiftNode) x();
-                if (other.y().isConstant()) {
-                    int otherAmount = other.y().asConstant().asInt() & mask;
+            if (getX() instanceof ShiftNode) {
+                ShiftNode other = (ShiftNode) getX();
+                if (other.getY().isConstant()) {
+                    int otherAmount = other.getY().asConstant().asInt() & mask;
                     if (other instanceof LeftShiftNode) {
                         int total = amount + otherAmount;
                         if (total != (total & mask)) {
                             return ConstantNode.forIntegerKind(getKind(), 0, graph());
                         }
-                        return graph().unique(new LeftShiftNode(stamp(), other.x(), ConstantNode.forInt(total, graph())));
+                        return graph().unique(new LeftShiftNode(stamp(), other.getX(), ConstantNode.forInt(total, graph())));
                     } else if ((other instanceof RightShiftNode || other instanceof UnsignedRightShiftNode) && otherAmount == amount) {
                         if (getKind() == Kind.Long) {
-                            return graph().unique(new AndNode(stamp(), other.x(), ConstantNode.forLong(-1L << amount, graph())));
+                            return graph().unique(new AndNode(stamp(), other.getX(), ConstantNode.forLong(-1L << amount, graph())));
                         } else {
                             assert getKind() == Kind.Int;
-                            return graph().unique(new AndNode(stamp(), other.x(), ConstantNode.forInt(-1 << amount, graph())));
+                            return graph().unique(new AndNode(stamp(), other.getX(), ConstantNode.forInt(-1 << amount, graph())));
                         }
                     }
                 }
             }
             if (originalAmout != amount) {
-                return graph().unique(new LeftShiftNode(stamp(), x(), ConstantNode.forInt(amount, graph())));
+                return graph().unique(new LeftShiftNode(stamp(), getX(), ConstantNode.forInt(amount, graph())));
             }
         }
         return this;
@@ -95,6 +95,6 @@ public final class LeftShiftNode extends ShiftNode implements Canonicalizable {
 
     @Override
     public void generate(NodeMappableLIRBuilder builder, ArithmeticLIRGenerator gen) {
-        builder.setResult(this, gen.emitShl(builder.operand(x()), builder.operand(y())));
+        builder.setResult(this, gen.emitShl(builder.operand(getX()), builder.operand(getY())));
     }
 }

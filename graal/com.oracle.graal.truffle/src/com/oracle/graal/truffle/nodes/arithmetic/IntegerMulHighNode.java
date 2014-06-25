@@ -58,8 +58,8 @@ public class IntegerMulHighNode extends IntegerArithmeticNode {
 
     @Override
     public boolean inferStamp() {
-        IntegerStamp xStamp = (IntegerStamp) x().stamp();
-        IntegerStamp yStamp = (IntegerStamp) y().stamp();
+        IntegerStamp xStamp = (IntegerStamp) getX().stamp();
+        IntegerStamp yStamp = (IntegerStamp) getY().stamp();
 
         Kind kind = getKind();
         assert kind == Kind.Int || kind == Kind.Long;
@@ -79,8 +79,8 @@ public class IntegerMulHighNode extends IntegerArithmeticNode {
 
     @Override
     public void generate(NodeMappableLIRBuilder builder, ArithmeticLIRGenerator gen) {
-        Value a = builder.operand(x());
-        Value b = builder.operand(y());
+        Value a = builder.operand(getX());
+        Value b = builder.operand(getY());
         builder.setResult(this, gen.emitMulHigh(a, b));
     }
 

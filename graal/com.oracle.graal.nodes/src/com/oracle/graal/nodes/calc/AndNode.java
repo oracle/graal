@@ -40,7 +40,7 @@ public final class AndNode extends BitLogicNode implements Canonicalizable, Narr
 
     @Override
     public boolean inferStamp() {
-        return updateStamp(StampTool.and(x().stamp(), y().stamp()));
+        return updateStamp(StampTool.and(getX().stamp(), getY().stamp()));
     }
 
     @Override
@@ -51,35 +51,35 @@ public final class AndNode extends BitLogicNode implements Canonicalizable, Narr
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        if (x() == y()) {
-            return x();
+        if (getX() == getY()) {
+            return getX();
         }
-        if (x().isConstant() && !y().isConstant()) {
-            return graph().unique(new AndNode(stamp(), y(), x()));
+        if (getX().isConstant() && !getY().isConstant()) {
+            return graph().unique(new AndNode(stamp(), getY(), getX()));
         }
-        if (x().isConstant()) {
-            return ConstantNode.forPrimitive(stamp(), evalConst(x().asConstant(), y().asConstant()), graph());
-        } else if (y().isConstant()) {
-            long rawY = y().asConstant().asLong();
+        if (getX().isConstant()) {
+            return ConstantNode.forPrimitive(stamp(), evalConst(getX().asConstant(), getY().asConstant()), graph());
+        } else if (getY().isConstant()) {
+            long rawY = getY().asConstant().asLong();
             long mask = IntegerStamp.defaultMask(PrimitiveStamp.getBits(stamp()));
             if ((rawY & mask) == mask) {
-                return x();
+                return getX();
             }
             if ((rawY & mask) == 0) {
                 return ConstantNode.forIntegerStamp(stamp(), 0, graph());
             }
-            if (x() instanceof SignExtendNode) {
-                SignExtendNode ext = (SignExtendNode) x();
+            if (getX() instanceof SignExtendNode) {
+                SignExtendNode ext = (SignExtendNode) getX();
                 if (rawY == ((1L << ext.getInputBits()) - 1)) {
                     ValueNode result = graph().unique(new ZeroExtendNode(ext.getValue(), ext.getResultBits()));
                     return result;
                 }
             }
-            if (x().stamp() instanceof IntegerStamp) {
-                IntegerStamp xStamp = (IntegerStamp) x().stamp();
+            if (getX().stamp() instanceof IntegerStamp) {
+                IntegerStamp xStamp = (IntegerStamp) getX().stamp();
                 if (((xStamp.upMask() | xStamp.downMask()) & ~rawY) == 0) {
                     // No bits are set which are outside the mask, so the mask will have no effect.
-                    return x();
+                    return getX();
                 }
             }
 
@@ -90,6 +90,6 @@ public final class AndNode extends BitLogicNode implements Canonicalizable, Narr
 
     @Override
     public void generate(NodeMappableLIRBuilder builder, ArithmeticLIRGenerator gen) {
-        builder.setResult(this, gen.emitAnd(builder.operand(x()), builder.operand(y())));
+        builder.setResult(this, gen.emitAnd(builder.operand(getX()), builder.operand(getY())));
     }
 }

@@ -74,10 +74,10 @@ public final class ObjectEqualsNode extends CompareNode implements Virtualizable
         if (result != this) {
             return result;
         }
-        if (StampTool.isObjectAlwaysNull(x())) {
-            return graph().unique(new IsNullNode(y()));
-        } else if (StampTool.isObjectAlwaysNull(y())) {
-            return graph().unique(new IsNullNode(x()));
+        if (StampTool.isObjectAlwaysNull(getX())) {
+            return graph().unique(new IsNullNode(getY()));
+        } else if (StampTool.isObjectAlwaysNull(getY())) {
+            return graph().unique(new IsNullNode(getX()));
         }
         return this;
     }
@@ -103,15 +103,15 @@ public final class ObjectEqualsNode extends CompareNode implements Virtualizable
 
     @Override
     public void virtualize(VirtualizerTool tool) {
-        State stateX = tool.getObjectState(x());
-        State stateY = tool.getObjectState(y());
+        State stateX = tool.getObjectState(getX());
+        State stateY = tool.getObjectState(getY());
         boolean xVirtual = stateX != null && stateX.getState() == EscapeState.Virtual;
         boolean yVirtual = stateY != null && stateY.getState() == EscapeState.Virtual;
 
         if (xVirtual && !yVirtual) {
-            virtualizeNonVirtualComparison(stateX, stateY != null ? stateY.getMaterializedValue() : y(), tool);
+            virtualizeNonVirtualComparison(stateX, stateY != null ? stateY.getMaterializedValue() : getY(), tool);
         } else if (!xVirtual && yVirtual) {
-            virtualizeNonVirtualComparison(stateY, stateX != null ? stateX.getMaterializedValue() : x(), tool);
+            virtualizeNonVirtualComparison(stateY, stateX != null ? stateX.getMaterializedValue() : getX(), tool);
         } else if (xVirtual && yVirtual) {
             boolean xIdentity = stateX.getVirtualObject().hasIdentity();
             boolean yIdentity = stateY.getVirtualObject().hasIdentity();

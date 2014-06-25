@@ -27,20 +27,15 @@ import com.oracle.graal.nodes.spi.*;
 
 public abstract class UnaryOpLogicNode extends LogicNode implements LIRLowerable {
 
-    @Input private ValueNode object;
+    @Input private ValueNode value;
 
-    public ValueNode object() {
-        return object;
+    public ValueNode getValue() {
+        return value;
     }
 
-    protected void setX(ValueNode object) {
-        updateUsages(this.object, object);
-        this.object = object;
-    }
-
-    public UnaryOpLogicNode(ValueNode object) {
-        assert object != null;
-        this.object = object;
+    public UnaryOpLogicNode(ValueNode value) {
+        assert value != null;
+        this.value = value;
     }
 
     public abstract TriState evaluate(ValueNode forObject);

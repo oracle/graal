@@ -50,11 +50,11 @@ public final class FloatSubNode extends FloatArithmeticNode implements Canonical
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        if (x() == y()) {
+        if (getX() == getY()) {
             return ConstantNode.forFloatingStamp(stamp(), 0.0f, graph());
         }
-        if (x().isConstant() && y().isConstant()) {
-            return ConstantNode.forPrimitive(evalConst(x().asConstant(), y().asConstant()), graph());
+        if (getX().isConstant() && getY().isConstant()) {
+            return ConstantNode.forPrimitive(evalConst(getX().asConstant(), getY().asConstant()), graph());
         }
         // Constant 0.0 can't be eliminated since it can affect the sign of the result.
         return this;
@@ -62,6 +62,6 @@ public final class FloatSubNode extends FloatArithmeticNode implements Canonical
 
     @Override
     public void generate(NodeMappableLIRBuilder builder, ArithmeticLIRGenerator gen) {
-        builder.setResult(this, gen.emitSub(builder.operand(x()), builder.operand(y())));
+        builder.setResult(this, gen.emitSub(builder.operand(getX()), builder.operand(getY())));
     }
 }
