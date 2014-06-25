@@ -31,7 +31,7 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
 @NodeInfo(shortName = "%")
-public class IntegerRemNode extends FixedBinaryNode implements Canonicalizable, Lowerable, LIRLowerable {
+public class IntegerRemNode extends FixedBinaryNode implements Lowerable, LIRLowerable {
 
     public IntegerRemNode(ValueNode x, ValueNode y) {
         super(x.stamp().unrestricted(), x, y);
@@ -43,19 +43,19 @@ public class IntegerRemNode extends FixedBinaryNode implements Canonicalizable, 
     }
 
     @Override
-    public Node canonical(CanonicalizerTool tool) {
-        if (getX().isConstant() && getY().isConstant()) {
-            long y = getY().asConstant().asLong();
+    public ValueNode canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
+        if (forX.isConstant() && forY.isConstant()) {
+            long y = forY.asConstant().asLong();
             if (y == 0) {
                 return this; // this will trap, can not canonicalize
             }
-            return ConstantNode.forIntegerStamp(stamp(), getX().asConstant().asLong() % y);
-        } else if (getY().isConstant()) {
-            long c = getY().asConstant().asLong();
+            return ConstantNode.forIntegerStamp(stamp(), forX.asConstant().asLong() % y);
+        } else if (forY.isConstant()) {
+            long c = forY.asConstant().asLong();
             if (c == 1 || c == -1) {
                 return ConstantNode.forIntegerStamp(stamp(), 0);
-            } else if (c > 0 && CodeUtil.isPowerOf2(c) && getX().stamp() instanceof IntegerStamp && ((IntegerStamp) getX().stamp()).isPositive()) {
-                return new AndNode(getX(), ConstantNode.forIntegerStamp(stamp(), c - 1));
+            } else if (c > 0 && CodeUtil.isPowerOf2(c) && forX.stamp() instanceof IntegerStamp && ((IntegerStamp) forX.stamp()).isPositive()) {
+                return new AndNode(forX, ConstantNode.forIntegerStamp(stamp(), c - 1));
             }
         }
         return this;
