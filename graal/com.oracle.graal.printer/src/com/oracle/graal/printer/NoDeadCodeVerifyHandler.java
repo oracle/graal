@@ -60,6 +60,7 @@ public class NoDeadCodeVerifyHandler implements DebugVerifyHandler {
         if (NDCV.getValue() != OFF) {
             StructuredGraph graph = extract(StructuredGraph.class, object);
             BasePhase<?> phase = extract(BasePhase.class, context);
+            assert phase != null : "a Phase context is required by " + getClass().getSimpleName();
             if (graph != null) {
                 List<Node> before = graph.getNodes().snapshot();
                 new DeadCodeEliminationPhase().run(graph);
@@ -70,7 +71,7 @@ public class NoDeadCodeVerifyHandler implements DebugVerifyHandler {
                     if (discovered.put(phase.getClass(), Boolean.TRUE) == null) {
                         String message = extract(String.class, context);
                         String prefix = message == null ? "" : message + ": ";
-                        String phaseClass = phase == null ? null : phase.getClass().getName();
+                        String phaseClass = phase.getClass().getName();
                         GraalInternalError error = new GraalInternalError("%sfound dead nodes in %s (phase class=%s): %s", prefix, graph, phaseClass, before);
                         if (NDCV.getValue() == INFO) {
                             System.out.println(error.getMessage());
