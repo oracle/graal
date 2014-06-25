@@ -28,9 +28,10 @@ import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.util.*;
 
 @NodeInfo(shortName = "-")
-public final class FloatSubNode extends FloatArithmeticNode implements Canonicalizable {
+public final class FloatSubNode extends FloatArithmeticNode {
 
     public FloatSubNode(ValueNode x, ValueNode y, boolean isStrictFP) {
         super(x.stamp().unrestricted(), x, y, isStrictFP);
@@ -48,12 +49,12 @@ public final class FloatSubNode extends FloatArithmeticNode implements Canonical
     }
 
     @Override
-    public Node canonical(CanonicalizerTool tool) {
-        if (getX() == getY()) {
-            return ConstantNode.forFloatingStamp(stamp(), 0.0f, graph());
+    public ValueNode canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
+        if (GraphUtil.unproxify(forX) == GraphUtil.unproxify(forY)) {
+            return ConstantNode.forFloatingStamp(stamp(), 0.0f);
         }
-        if (getX().isConstant() && getY().isConstant()) {
-            return ConstantNode.forPrimitive(evalConst(getX().asConstant(), getY().asConstant()), graph());
+        if (forX.isConstant() && forY.isConstant()) {
+            return ConstantNode.forPrimitive(evalConst(forX.asConstant(), forY.asConstant()));
         }
         // Constant 0.0 can't be eliminated since it can affect the sign of the result.
         return this;

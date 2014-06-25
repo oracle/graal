@@ -66,13 +66,13 @@ public class IntegerDivNode extends FixedBinaryNode implements Canonicalizable, 
                 // no rounding if dividend is positive or if its low bits are always 0
                 if (stampX.canBeNegative() || (stampX.upMask() & (abs - 1)) != 0) {
                     int bits = PrimitiveStamp.getBits(stamp());
-                    RightShiftNode sign = graph().unique(new RightShiftNode(x(), ConstantNode.forInt(bits - 1, graph())));
-                    UnsignedRightShiftNode round = graph().unique(new UnsignedRightShiftNode(sign, ConstantNode.forInt(bits - log2, graph())));
-                    dividend = IntegerArithmeticNode.add(graph(), dividend, round);
+                    RightShiftNode sign = new RightShiftNode(x(), ConstantNode.forInt(bits - 1));
+                    UnsignedRightShiftNode round = new UnsignedRightShiftNode(sign, ConstantNode.forInt(bits - log2));
+                    dividend = IntegerArithmeticNode.add(dividend, round);
                 }
-                RightShiftNode shift = graph().unique(new RightShiftNode(dividend, ConstantNode.forInt(log2, graph())));
+                RightShiftNode shift = new RightShiftNode(dividend, ConstantNode.forInt(log2));
                 if (c < 0) {
-                    return graph().unique(new NegateNode(shift));
+                    return new NegateNode(shift);
                 }
                 return shift;
             }

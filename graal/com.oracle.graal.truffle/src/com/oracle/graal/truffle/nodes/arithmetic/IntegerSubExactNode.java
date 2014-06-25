@@ -24,19 +24,19 @@ package com.oracle.graal.truffle.nodes.arithmetic;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
+import com.oracle.graal.nodes.util.*;
 import com.oracle.truffle.api.*;
 
 /**
  * Node representing an exact integer substraction that will throw an {@link ArithmeticException} in
  * case the addition would overflow the 32 bit range.
  */
-public class IntegerSubExactNode extends IntegerSubNode implements Canonicalizable, IntegerExactArithmeticNode {
+public class IntegerSubExactNode extends IntegerSubNode implements IntegerExactArithmeticNode {
 
     public IntegerSubExactNode(ValueNode x, ValueNode y) {
         super(x, y);
@@ -50,13 +50,13 @@ public class IntegerSubExactNode extends IntegerSubNode implements Canonicalizab
     }
 
     @Override
-    public Node canonical(CanonicalizerTool tool) {
-        if (getX() == getY()) {
-            return ConstantNode.forIntegerStamp(stamp(), 0, graph());
+    public ValueNode canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
+        if (GraphUtil.unproxify(forX) == GraphUtil.unproxify(forY)) {
+            return ConstantNode.forIntegerStamp(stamp(), 0);
         }
-        if (getX().isConstant() && getY().isConstant()) {
-            Constant xConst = getX().asConstant();
-            Constant yConst = getY().asConstant();
+        if (forX.isConstant() && forY.isConstant()) {
+            Constant xConst = forX.asConstant();
+            Constant yConst = forY.asConstant();
             assert xConst.getKind() == yConst.getKind();
             try {
                 if (xConst.getKind() == Kind.Int) {
@@ -68,10 +68,10 @@ public class IntegerSubExactNode extends IntegerSubNode implements Canonicalizab
             } catch (ArithmeticException ex) {
                 // The operation will result in an overflow exception, so do not canonicalize.
             }
-        } else if (getY().isConstant()) {
-            long c = getY().asConstant().asLong();
+        } else if (forY.isConstant()) {
+            long c = forY.asConstant().asLong();
             if (c == 0) {
-                return getX();
+                return forX;
             }
         }
         return this;

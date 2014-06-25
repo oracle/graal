@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,12 +25,13 @@ package com.oracle.graal.nodes.calc;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.iterators.*;
+import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
 
 /**
  * The {@code BinaryNode} class is the base of arithmetic and logic operations with two inputs.
  */
-public abstract class BinaryNode extends FloatingNode {
+public abstract class BinaryNode extends FloatingNode implements Canonicalizable.Binary<ValueNode> {
 
     @Input private ValueNode x;
     @Input private ValueNode y;
@@ -157,8 +158,11 @@ public abstract class BinaryNode extends FloatingNode {
      * <p>
      * This method accepts only {@linkplain #canTryReassociate(BinaryNode) reassociable} operations
      * such as +, -, *, &amp;, | and ^
+     *
+     * @param forY
+     * @param forX
      */
-    public static BinaryNode reassociate(BinaryNode node, NodePredicate criterion) {
+    public static BinaryNode reassociate(BinaryNode node, NodePredicate criterion, ValueNode forX, ValueNode forY) {
         assert canTryReassociate(node);
         ReassociateMatch match1 = findReassociate(node, criterion);
         if (match1 == null) {
@@ -203,29 +207,28 @@ public abstract class BinaryNode extends FloatingNode {
         ValueNode a = match2.getOtherValue(other);
         if (node instanceof IntegerAddNode || node instanceof IntegerSubNode) {
             BinaryNode associated;
-            StructuredGraph graph = node.graph();
             if (invertM1) {
-                associated = IntegerArithmeticNode.sub(graph, m2, m1);
+                associated = IntegerArithmeticNode.sub(m2, m1);
             } else if (invertM2) {
-                associated = IntegerArithmeticNode.sub(graph, m1, m2);
+                associated = IntegerArithmeticNode.sub(m1, m2);
             } else {
-                associated = IntegerArithmeticNode.add(graph, m1, m2);
+                associated = IntegerArithmeticNode.add(m1, m2);
             }
             if (invertA) {
-                return IntegerArithmeticNode.sub(graph, associated, a);
+                return IntegerArithmeticNode.sub(associated, a);
             }
             if (aSub) {
-                return IntegerArithmeticNode.sub(graph, a, associated);
+                return IntegerArithmeticNode.sub(a, associated);
             }
-            return IntegerArithmeticNode.add(graph, a, associated);
+            return IntegerArithmeticNode.add(a, associated);
         } else if (node instanceof IntegerMulNode) {
-            return IntegerArithmeticNode.mul(node.graph(), a, IntegerAddNode.mul(node.graph(), m1, m2));
+            return IntegerArithmeticNode.mul(a, IntegerAddNode.mul(m1, m2));
         } else if (node instanceof AndNode) {
-            return BitLogicNode.and(node.graph(), a, BitLogicNode.and(node.graph(), m1, m2));
+            return BitLogicNode.and(a, BitLogicNode.and(m1, m2));
         } else if (node instanceof OrNode) {
-            return BitLogicNode.or(node.graph(), a, BitLogicNode.or(node.graph(), m1, m2));
+            return BitLogicNode.or(a, BitLogicNode.or(m1, m2));
         } else if (node instanceof XorNode) {
-            return BitLogicNode.xor(node.graph(), a, BitLogicNode.xor(node.graph(), m1, m2));
+            return BitLogicNode.xor(a, BitLogicNode.xor(m1, m2));
         } else {
             throw GraalInternalError.shouldNotReachHere();
         }

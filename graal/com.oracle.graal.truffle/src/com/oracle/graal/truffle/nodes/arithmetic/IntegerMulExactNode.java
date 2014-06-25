@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,7 +24,6 @@ package com.oracle.graal.truffle.nodes.arithmetic;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
@@ -35,7 +34,7 @@ import com.oracle.truffle.api.*;
  * Node representing an exact integer multiplication that will throw an {@link ArithmeticException}
  * in case the addition would overflow the 32 bit range.
  */
-public class IntegerMulExactNode extends IntegerMulNode implements Canonicalizable, IntegerExactArithmeticNode {
+public class IntegerMulExactNode extends IntegerMulNode implements IntegerExactArithmeticNode {
 
     public IntegerMulExactNode(ValueNode x, ValueNode y) {
         super(x, y);
@@ -43,31 +42,31 @@ public class IntegerMulExactNode extends IntegerMulNode implements Canonicalizab
     }
 
     @Override
-    public Node canonical(CanonicalizerTool tool) {
-        if (getX().isConstant() && !getY().isConstant()) {
-            return graph().unique(new IntegerMulExactNode(getY(), getX()));
+    public ValueNode canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
+        if (forX.isConstant() && !forY.isConstant()) {
+            return new IntegerMulExactNode(forY, forX);
         }
-        if (getX().isConstant()) {
-            Constant xConst = getX().asConstant();
-            Constant yConst = getY().asConstant();
+        if (forX.isConstant()) {
+            Constant xConst = forX.asConstant();
+            Constant yConst = forY.asConstant();
             assert xConst.getKind() == yConst.getKind();
             try {
                 if (xConst.getKind() == Kind.Int) {
-                    return ConstantNode.forInt(ExactMath.multiplyExact(xConst.asInt(), yConst.asInt()), graph());
+                    return ConstantNode.forInt(ExactMath.multiplyExact(xConst.asInt(), yConst.asInt()));
                 } else {
                     assert xConst.getKind() == Kind.Long;
-                    return ConstantNode.forLong(ExactMath.multiplyExact(xConst.asLong(), yConst.asLong()), graph());
+                    return ConstantNode.forLong(ExactMath.multiplyExact(xConst.asLong(), yConst.asLong()));
                 }
             } catch (ArithmeticException ex) {
                 // The operation will result in an overflow exception, so do not canonicalize.
             }
-        } else if (getY().isConstant()) {
-            long c = getY().asConstant().asLong();
+        } else if (forY.isConstant()) {
+            long c = forY.asConstant().asLong();
             if (c == 1) {
-                return getX();
+                return forX;
             }
             if (c == 0) {
-                return ConstantNode.forIntegerStamp(stamp(), 0, graph());
+                return ConstantNode.forIntegerStamp(stamp(), 0);
             }
         }
         return this;

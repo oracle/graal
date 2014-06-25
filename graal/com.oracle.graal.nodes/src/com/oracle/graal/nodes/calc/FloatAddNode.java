@@ -30,7 +30,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 
 @NodeInfo(shortName = "+")
-public final class FloatAddNode extends FloatArithmeticNode implements Canonicalizable {
+public final class FloatAddNode extends FloatArithmeticNode {
 
     public FloatAddNode(ValueNode x, ValueNode y, boolean isStrictFP) {
         super(x.stamp().unrestricted(), x, y, isStrictFP);
@@ -48,12 +48,12 @@ public final class FloatAddNode extends FloatArithmeticNode implements Canonical
     }
 
     @Override
-    public Node canonical(CanonicalizerTool tool) {
-        if (getX().isConstant() && !getY().isConstant()) {
-            return graph().unique(new FloatAddNode(getY(), getX(), isStrictFP()));
+    public ValueNode canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
+        if (forX.isConstant() && !forY.isConstant()) {
+            return new FloatAddNode(forY, forX, isStrictFP());
         }
-        if (getX().isConstant()) {
-            return ConstantNode.forPrimitive(evalConst(getX().asConstant(), getY().asConstant()), graph());
+        if (forX.isConstant()) {
+            return ConstantNode.forConstant(evalConst(forX.asConstant(), forY.asConstant()), null);
         }
         // Constant 0.0 can't be eliminated since it can affect the sign of the result.
         return this;

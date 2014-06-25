@@ -30,9 +30,10 @@ import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
+import com.oracle.graal.nodes.util.*;
 
 @NodeInfo(shortName = "^")
-public final class XorNode extends BitLogicNode implements Canonicalizable {
+public final class XorNode extends BitLogicNode {
 
     public XorNode(ValueNode x, ValueNode y) {
         super(StampTool.xor(x.stamp(), y.stamp()), x, y);
@@ -51,24 +52,24 @@ public final class XorNode extends BitLogicNode implements Canonicalizable {
     }
 
     @Override
-    public Node canonical(CanonicalizerTool tool) {
-        if (getX() == getY()) {
-            return ConstantNode.forIntegerStamp(stamp(), 0, graph());
+    public ValueNode canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
+        if (GraphUtil.unproxify(forX) == GraphUtil.unproxify(forY)) {
+            return ConstantNode.forIntegerStamp(stamp(), 0);
         }
-        if (getX().isConstant() && !getY().isConstant()) {
-            return graph().unique(new XorNode(getY(), getX()));
+        if (forX.isConstant() && !forY.isConstant()) {
+            return new XorNode(forY, forX);
         }
-        if (getX().isConstant()) {
-            return ConstantNode.forPrimitive(stamp(), evalConst(getX().asConstant(), getY().asConstant()), graph());
-        } else if (getY().isConstant()) {
-            long rawY = getY().asConstant().asLong();
+        if (forX.isConstant()) {
+            return ConstantNode.forPrimitive(stamp(), evalConst(forX.asConstant(), forY.asConstant()));
+        } else if (forY.isConstant()) {
+            long rawY = forY.asConstant().asLong();
             long mask = IntegerStamp.defaultMask(PrimitiveStamp.getBits(stamp()));
             if ((rawY & mask) == 0) {
-                return getX();
+                return forX;
             } else if ((rawY & mask) == mask) {
-                return graph().unique(new NotNode(getX()));
+                return new NotNode(forX);
             }
-            return BinaryNode.reassociate(this, ValueNode.isConstantPredicate());
+            return BinaryNode.reassociate(this, ValueNode.isConstantPredicate(), forX, forY);
         }
         return this;
     }

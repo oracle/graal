@@ -30,9 +30,10 @@ import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
+import com.oracle.graal.nodes.util.*;
 
 @NodeInfo(shortName = "-")
-public class IntegerSubNode extends IntegerArithmeticNode implements Canonicalizable, NarrowableArithmeticNode {
+public class IntegerSubNode extends IntegerArithmeticNode implements NarrowableArithmeticNode {
 
     public IntegerSubNode(ValueNode x, ValueNode y) {
         super(StampTool.sub(x.stamp(), y.stamp()), x, y);
@@ -50,69 +51,69 @@ public class IntegerSubNode extends IntegerArithmeticNode implements Canonicaliz
     }
 
     @Override
-    public Node canonical(CanonicalizerTool tool) {
-        if (getX() == getY()) {
-            return ConstantNode.forIntegerStamp(stamp(), 0, graph());
+    public ValueNode canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
+        if (GraphUtil.unproxify(forX) == GraphUtil.unproxify(forY)) {
+            return ConstantNode.forIntegerStamp(stamp(), 0);
         }
-        if (getX() instanceof IntegerAddNode) {
-            IntegerAddNode x = (IntegerAddNode) getX();
-            if (x.getY() == getY()) {
+        if (forX instanceof IntegerAddNode) {
+            IntegerAddNode x = (IntegerAddNode) forX;
+            if (x.getY() == forY) {
                 // (a + b) - b
                 return x.getX();
             }
-            if (x.getX() == getY()) {
+            if (x.getX() == forY) {
                 // (a + b) - a
                 return x.getY();
             }
-        } else if (getX() instanceof IntegerSubNode) {
-            IntegerSubNode x = (IntegerSubNode) getX();
-            if (x.getX() == getY()) {
+        } else if (forX instanceof IntegerSubNode) {
+            IntegerSubNode x = (IntegerSubNode) forX;
+            if (x.getX() == forY) {
                 // (a - b) - a
-                return graph().unique(new NegateNode(x.getY()));
+                return new NegateNode(x.getY());
             }
         }
-        if (getY() instanceof IntegerAddNode) {
-            IntegerAddNode y = (IntegerAddNode) getY();
-            if (y.getX() == getX()) {
+        if (forY instanceof IntegerAddNode) {
+            IntegerAddNode y = (IntegerAddNode) forY;
+            if (y.getX() == forX) {
                 // a - (a + b)
-                return graph().unique(new NegateNode(y.getY()));
+                return new NegateNode(y.getY());
             }
-            if (y.getY() == getX()) {
+            if (y.getY() == forX) {
                 // b - (a + b)
-                return graph().unique(new NegateNode(y.getX()));
+                return new NegateNode(y.getX());
             }
-        } else if (getY() instanceof IntegerSubNode) {
-            IntegerSubNode y = (IntegerSubNode) getY();
-            if (y.getX() == getX()) {
+        } else if (forY instanceof IntegerSubNode) {
+            IntegerSubNode y = (IntegerSubNode) forY;
+            if (y.getX() == forX) {
                 // a - (a - b)
                 return y.getY();
             }
         }
-        if (getX().isConstant() && getY().isConstant()) {
-            return ConstantNode.forPrimitive(evalConst(getX().asConstant(), getY().asConstant()), graph());
-        } else if (getY().isConstant()) {
-            long c = getY().asConstant().asLong();
+        if (forX.isConstant() && forY.isConstant()) {
+            return ConstantNode.forPrimitive(evalConst(forX.asConstant(), forY.asConstant()));
+        } else if (forY.isConstant()) {
+            long c = forY.asConstant().asLong();
             if (c == 0) {
-                return getX();
+                return forX;
             }
-            BinaryNode reassociated = BinaryNode.reassociate(this, ValueNode.isConstantPredicate());
+            BinaryNode reassociated = BinaryNode.reassociate(this, ValueNode.isConstantPredicate(), forX, forY);
             if (reassociated != this) {
                 return reassociated;
             }
-            if (c < 0 || ((IntegerStamp) StampFactory.forKind(getY().getKind())).contains(-c)) {
+            if (c < 0 || ((IntegerStamp) StampFactory.forKind(forY.getKind())).contains(-c)) {
                 // Adding a negative is more friendly to the backend since adds are
                 // commutative, so prefer add when it fits.
-                return IntegerArithmeticNode.add(graph(), getX(), ConstantNode.forIntegerStamp(stamp(), -c, graph()));
+                return IntegerArithmeticNode.add(forX, ConstantNode.forIntegerStamp(stamp(), -c));
             }
-        } else if (getX().isConstant()) {
-            long c = getX().asConstant().asLong();
+        } else if (forX.isConstant()) {
+            long c = forX.asConstant().asLong();
             if (c == 0) {
-                return graph().unique(new NegateNode(getY()));
+                return new NegateNode(forY);
             }
-            return BinaryNode.reassociate(this, ValueNode.isConstantPredicate());
+            return BinaryNode.reassociate(this, ValueNode.isConstantPredicate(), forX, forY);
         }
-        if (getY() instanceof NegateNode) {
-            return IntegerArithmeticNode.add(graph(), getX(), ((NegateNode) getY()).getValue());
+        if (forY instanceof NegateNode) {
+            return IntegerArithmeticNode.add(forX, ((NegateNode) forY).getValue());
         }
         return this;
     }

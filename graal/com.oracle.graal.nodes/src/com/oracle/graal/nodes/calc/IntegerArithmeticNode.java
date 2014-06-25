@@ -37,11 +37,23 @@ public abstract class IntegerArithmeticNode extends BinaryNode implements Arithm
         return graph.unique(new IntegerAddNode(v1, v2));
     }
 
+    public static IntegerAddNode add(ValueNode v1, ValueNode v2) {
+        return new IntegerAddNode(v1, v2);
+    }
+
     public static IntegerMulNode mul(StructuredGraph graph, ValueNode v1, ValueNode v2) {
         return graph.unique(new IntegerMulNode(v1, v2));
     }
 
+    public static IntegerMulNode mul(ValueNode v1, ValueNode v2) {
+        return new IntegerMulNode(v1, v2);
+    }
+
     public static IntegerSubNode sub(StructuredGraph graph, ValueNode v1, ValueNode v2) {
         return graph.unique(new IntegerSubNode(v1, v2));
+    }
+
+    public static IntegerSubNode sub(ValueNode v1, ValueNode v2) {
+        return new IntegerSubNode(v1, v2);
     }
 }

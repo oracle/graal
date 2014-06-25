@@ -141,10 +141,14 @@ public class LoopEx {
             if (!BinaryNode.canTryReassociate(binary)) {
                 continue;
             }
-            BinaryNode result = BinaryNode.reassociate(binary, invariant);
+            BinaryNode result = BinaryNode.reassociate(binary, invariant, binary.getX(), binary.getY());
             if (result != binary) {
                 if (Debug.isLogEnabled()) {
                     Debug.log("%s : Reassociated %s into %s", MetaUtil.format("%H::%n", graph.method()), binary, result);
+                }
+                if (!result.isAlive()) {
+                    assert !result.isDeleted();
+                    result = graph.addOrUniqueWithInputs(result);
                 }
                 graph.replaceFloating(binary, result);
             }
