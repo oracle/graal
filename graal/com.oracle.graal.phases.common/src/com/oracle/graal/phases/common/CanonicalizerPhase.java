@@ -27,8 +27,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.graph.*;
-import com.oracle.graal.graph.Graph.Mark;
-import com.oracle.graal.graph.Graph.NodeChangedListener;
+import com.oracle.graal.graph.Graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
@@ -150,22 +149,26 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
         }
 
         private void processWorkSet(StructuredGraph graph) {
-            NodeChangedListener nodeChangedListener = new NodeChangedListener() {
+            NodeEventListener listener = new NodeEventListener() {
 
-                @Override
-                public void nodeChanged(Node node) {
+                public void nodeAdded(Node node) {
                     workList.add(node);
                 }
+
+                public void inputChanged(Node node) {
+                    workList.add(node);
+                }
+
+                public void usagesDroppedToZero(Node node) {
+                    workList.add(node);
+                }
+
             };
-            graph.trackInputChange(nodeChangedListener);
-            graph.trackUsagesDroppedZero(nodeChangedListener);
-
-            for (Node n : workList) {
-                processNode(n);
+            try (NodeEventScope nes = graph.trackNodeEvents(listener)) {
+                for (Node n : workList) {
+                    processNode(n);
+                }
             }
-
-            graph.stopTrackingInputChange();
-            graph.stopTrackingUsagesDroppedZero();
         }
 
         private void processNode(Node node) {
@@ -177,7 +180,6 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
                     return;
                 }
                 StructuredGraph graph = (StructuredGraph) node.graph();
-                Mark mark = graph.getMark();
                 if (!GraphUtil.tryKillUnused(node)) {
                     if (!tryCanonicalize(node, nodeClass)) {
                         if (node instanceof ValueNode) {
@@ -194,12 +196,6 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
                                 }
                             }
                         }
-                    }
-                }
-
-                if (!mark.isCurrent()) {
-                    for (Node newNode : graph.getNewNodes(mark)) {
-                        workList.add(newNode);
                     }
                 }
             }

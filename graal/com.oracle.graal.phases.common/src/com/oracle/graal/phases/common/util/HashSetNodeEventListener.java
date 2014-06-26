@@ -24,27 +24,47 @@ package com.oracle.graal.phases.common.util;
 
 import java.util.*;
 
-import com.oracle.graal.graph.Graph.NodeChangedListener;
+import com.oracle.graal.graph.Graph.NodeEventListener;
 import com.oracle.graal.graph.*;
 
 /**
- * A simple {@link NodeChangedListener} implementation that accumulates the changed nodes in a
+ * A simple {@link NodeEventListener} implementation that accumulates event nodes in a
  * {@link HashSet}.
  */
-public class HashSetNodeChangeListener implements NodeChangedListener {
+public class HashSetNodeEventListener implements NodeEventListener {
 
-    private final Set<Node> changedNodes;
-
-    public HashSetNodeChangeListener() {
-        this.changedNodes = new HashSet<>();
+    /**
+     * Accumulates all node events except for {@link NodeEventListener#nodeAdded(Node) node
+     * additions}.
+     */
+    public static class ExceptForAddedNodes extends HashSetNodeEventListener {
+        @Override
+        public void nodeAdded(Node node) {
+        }
     }
 
-    @Override
-    public void nodeChanged(Node node) {
-        changedNodes.add(node);
+    private final Set<Node> nodes;
+
+    public HashSetNodeEventListener() {
+        this.nodes = new HashSet<>();
     }
 
-    public Set<Node> getChangedNodes() {
-        return changedNodes;
+    public void nodeAdded(Node node) {
+        nodes.add(node);
+    }
+
+    public void inputChanged(Node node) {
+        nodes.add(node);
+    }
+
+    public void usagesDroppedToZero(Node node) {
+        nodes.add(node);
+    }
+
+    /**
+     * Gets the set of nodes that were communicated to this listener.
+     */
+    public Set<Node> getNodes() {
+        return nodes;
     }
 }

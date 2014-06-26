@@ -74,8 +74,7 @@ public class Graph {
      */
     int compressions;
 
-    NodeChangedListener inputChangedListener;
-    NodeChangedListener usagesDroppedToZeroListener;
+    NodeEventListener nodeEventListener;
     private final HashMap<CacheEntry, Node> cachedNodes = new HashMap<>();
 
     /*
@@ -302,59 +301,97 @@ public class Graph {
         return node;
     }
 
-    public interface NodeChangedListener {
+    /**
+     * Client interested in one or more node related events.
+     */
+    public interface NodeEventListener {
 
-        void nodeChanged(Node node);
+        /**
+         * Notifies this listener of a change in a node's inputs.
+         *
+         * @param node a node who has had one of its inputs changed
+         */
+        default void inputChanged(Node node) {
+        }
+
+        /**
+         * Notifies this listener of a node becoming unused.
+         *
+         * @param node a node whose {@link Node#usages()} just became empty
+         */
+        default void usagesDroppedToZero(Node node) {
+        }
+
+        /**
+         * Notifies this listener of an added node.
+         *
+         * @param node a node that was just added to the graph
+         */
+        default void nodeAdded(Node node) {
+        }
     }
 
-    private static class ChainedNodeChangedListener implements NodeChangedListener {
+    /**
+     * Registers a given {@link NodeEventListener} with the enclosing graph until this object is
+     * {@linkplain #close() closed}.
+     */
+    public final class NodeEventScope implements AutoCloseable {
+        NodeEventScope(NodeEventListener listener) {
+            if (nodeEventListener == null) {
+                nodeEventListener = listener;
+            } else {
+                nodeEventListener = new ChainedNodeEventListener(listener, nodeEventListener);
+            }
+        }
 
-        NodeChangedListener head;
-        NodeChangedListener next;
+        public void close() {
+            assert nodeEventListener != null;
+            if (nodeEventListener instanceof ChainedNodeEventListener) {
+                nodeEventListener = ((ChainedNodeEventListener) nodeEventListener).next;
+            } else {
+                nodeEventListener = null;
+            }
+        }
+    }
 
-        ChainedNodeChangedListener(NodeChangedListener head, NodeChangedListener next) {
+    private static class ChainedNodeEventListener implements NodeEventListener {
+
+        NodeEventListener head;
+        NodeEventListener next;
+
+        ChainedNodeEventListener(NodeEventListener head, NodeEventListener next) {
             this.head = head;
             this.next = next;
         }
 
-        public void nodeChanged(Node node) {
-            head.nodeChanged(node);
-            next.nodeChanged(node);
+        public void nodeAdded(Node node) {
+            head.nodeAdded(node);
+            next.nodeAdded(node);
+        }
+
+        public void inputChanged(Node node) {
+            head.inputChanged(node);
+            next.inputChanged(node);
+        }
+
+        public void usagesDroppedToZero(Node node) {
+            head.inputChanged(node);
+            next.inputChanged(node);
         }
     }
 
-    public void trackInputChange(NodeChangedListener listener) {
-        if (inputChangedListener == null) {
-            inputChangedListener = listener;
-        } else {
-            inputChangedListener = new ChainedNodeChangedListener(listener, inputChangedListener);
-        }
-    }
-
-    public void stopTrackingInputChange() {
-        assert inputChangedListener != null;
-        if (inputChangedListener instanceof ChainedNodeChangedListener) {
-            inputChangedListener = ((ChainedNodeChangedListener) inputChangedListener).next;
-        } else {
-            inputChangedListener = null;
-        }
-    }
-
-    public void trackUsagesDroppedZero(NodeChangedListener listener) {
-        if (usagesDroppedToZeroListener == null) {
-            usagesDroppedToZeroListener = listener;
-        } else {
-            usagesDroppedToZeroListener = new ChainedNodeChangedListener(listener, usagesDroppedToZeroListener);
-        }
-    }
-
-    public void stopTrackingUsagesDroppedZero() {
-        assert usagesDroppedToZeroListener != null;
-        if (usagesDroppedToZeroListener instanceof ChainedNodeChangedListener) {
-            usagesDroppedToZeroListener = ((ChainedNodeChangedListener) usagesDroppedToZeroListener).next;
-        } else {
-            usagesDroppedToZeroListener = null;
-        }
+    /**
+     * Registers a given {@link NodeEventListener} with this graph. This should be used in
+     * conjunction with try-with-resources statement as follows:
+     *
+     * <pre>
+     * try (NodeEventScope nes = graph.trackNodeEvents(listener)) {
+     *     // make changes to the graph
+     * }
+     * </pre>
+     */
+    public NodeEventScope trackNodeEvents(NodeEventListener listener) {
+        return new NodeEventScope(listener);
     }
 
     /**
@@ -811,6 +848,9 @@ public class Graph {
         }
 
         node.id = id;
+        if (nodeEventListener != null) {
+            nodeEventListener.nodeAdded(node);
+        }
         logNodeAdded(node);
     }
 

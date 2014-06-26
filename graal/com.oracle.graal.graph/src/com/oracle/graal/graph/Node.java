@@ -27,7 +27,6 @@ import static com.oracle.graal.graph.Graph.*;
 import java.lang.annotation.*;
 import java.util.*;
 
-import com.oracle.graal.graph.Graph.NodeChangedListener;
 import com.oracle.graal.graph.NodeClass.NodeClassIterator;
 import com.oracle.graal.graph.NodeClass.Position;
 import com.oracle.graal.graph.iterators.*;
@@ -559,7 +558,7 @@ public abstract class Node implements Cloneable, Formattable {
                     assert assertTrue(result, "not found in usages, old input: %s", oldInput);
                 }
             }
-            maybeNotifyChanged(this);
+            maybeNotifyInputChanged(this);
             if (newInput != null) {
                 if (newInput.recordsUsages()) {
                     newInput.addUsage(this);
@@ -629,7 +628,7 @@ public abstract class Node implements Cloneable, Formattable {
             boolean result = usage.getNodeClass().replaceFirstInput(usage, this, other);
             assert assertTrue(result, "not found in inputs, usage: %s", usage);
             if (other != null) {
-                maybeNotifyChanged(usage);
+                maybeNotifyInputChanged(usage);
                 if (other.recordsUsages()) {
                     other.addUsage(usage);
                 }
@@ -651,7 +650,7 @@ public abstract class Node implements Cloneable, Formattable {
                 boolean result = usage.getNodeClass().replaceFirstInput(usage, this, other);
                 assert assertTrue(result, "not found in inputs, usage: %s", usage);
                 if (other != null) {
-                    maybeNotifyChanged(usage);
+                    maybeNotifyInputChanged(usage);
                     if (other.recordsUsages()) {
                         other.addUsage(usage);
                     }
@@ -685,22 +684,22 @@ public abstract class Node implements Cloneable, Formattable {
         }
     }
 
-    private void maybeNotifyChanged(Node usage) {
+    private void maybeNotifyInputChanged(Node node) {
         if (graph != null) {
             assert !graph.isFrozen();
-            NodeChangedListener listener = graph.inputChangedListener;
+            NodeEventListener listener = graph.nodeEventListener;
             if (listener != null) {
-                listener.nodeChanged(usage);
+                listener.inputChanged(node);
             }
         }
     }
 
-    private void maybeNotifyZeroInputs(Node oldInput) {
+    private void maybeNotifyZeroInputs(Node node) {
         if (graph != null) {
             assert !graph.isFrozen();
-            NodeChangedListener listener = graph.usagesDroppedToZeroListener;
+            NodeEventListener listener = graph.nodeEventListener;
             if (listener != null) {
-                listener.nodeChanged(oldInput);
+                listener.usagesDroppedToZero(node);
             }
         }
     }
