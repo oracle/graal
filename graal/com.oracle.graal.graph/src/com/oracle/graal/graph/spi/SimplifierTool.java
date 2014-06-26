@@ -37,4 +37,6 @@ public interface SimplifierTool extends CanonicalizerTool {
     void addToWorkList(Node node);
 
     void addToWorkList(Iterable<? extends Node> nodes);
+
+    void removeIfUnused(Node node);
 }
