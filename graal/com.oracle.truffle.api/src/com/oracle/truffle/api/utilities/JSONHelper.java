@@ -24,6 +24,8 @@
  */
 package com.oracle.truffle.api.utilities;
 
+import java.util.*;
+
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.api.source.*;
 
@@ -118,5 +120,118 @@ public class JSONHelper {
 
     public static void restart() {
         AstJsonDumpBuilder = new StringBuilder();
+    }
+
+    public static JsonObjectBuilder object() {
+        return new JsonObjectBuilder();
+    }
+
+    public static JsonArrayBuilder array() {
+        return new JsonArrayBuilder();
+    }
+
+    public static abstract class JsonStringBuilder {
+        @Override
+        public final String toString() {
+            StringBuilder sb = new StringBuilder();
+            appendTo(sb);
+            return sb.toString();
+        }
+
+        protected abstract void appendTo(StringBuilder sb);
+
+        protected static void appendValue(StringBuilder sb, Object value) {
+            if (value instanceof JsonStringBuilder) {
+                ((JsonStringBuilder) value).appendTo(sb);
+            } else if (value instanceof Integer || value instanceof Boolean || value == null) {
+                sb.append(value);
+            } else {
+                sb.append(quote(String.valueOf(value)));
+            }
+        }
+    }
+
+    public static final class JsonObjectBuilder extends JsonStringBuilder {
+        private final Map<String, Object> contents = new LinkedHashMap<>();
+
+        private JsonObjectBuilder() {
+        }
+
+        public JsonObjectBuilder add(String key, String value) {
+            contents.put(key, value);
+            return this;
+        }
+
+        public JsonObjectBuilder add(String key, Number value) {
+            contents.put(key, value);
+            return this;
+        }
+
+        public JsonObjectBuilder add(String key, Boolean value) {
+            contents.put(key, value);
+            return this;
+        }
+
+        public JsonObjectBuilder add(String key, JsonStringBuilder value) {
+            contents.put(key, value);
+            return this;
+        }
+
+        @Override
+        protected void appendTo(StringBuilder sb) {
+            sb.append("{");
+            boolean comma = false;
+            for (Map.Entry<String, Object> entry : contents.entrySet()) {
+                if (comma) {
+                    sb.append(", ");
+                }
+                sb.append(quote(entry.getKey()));
+                sb.append(": ");
+                appendValue(sb, entry.getValue());
+                comma = true;
+            }
+            sb.append("}");
+        }
+    }
+
+    public static final class JsonArrayBuilder extends JsonStringBuilder {
+        private final List<Object> contents = new ArrayList<>();
+
+        private JsonArrayBuilder() {
+        }
+
+        public JsonArrayBuilder add(String value) {
+            contents.add(value);
+            return this;
+        }
+
+        public JsonArrayBuilder add(Number value) {
+            contents.add(value);
+            return this;
+        }
+
+        public JsonArrayBuilder add(Boolean value) {
+            contents.add(value);
+            return this;
+        }
+
+        public JsonArrayBuilder add(JsonStringBuilder value) {
+            contents.add(value);
+            return this;
+        }
+
+        @Override
+        protected void appendTo(StringBuilder sb) {
+            sb.append("[");
+            boolean comma = false;
+            for (Object value : contents) {
+                if (comma) {
+                    sb.append(", ");
+                }
+                appendValue(sb, value);
+                comma = true;
+            }
+            sb.append("]");
+        }
     }
 }
