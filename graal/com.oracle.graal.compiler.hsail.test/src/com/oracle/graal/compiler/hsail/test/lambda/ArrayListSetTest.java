@@ -43,10 +43,6 @@ public class ArrayListSetTest extends GraalKernelTester {
         dispatchLambdaKernel(NUM, (gid) -> {
             aryList.set(gid, gid);
         });
-
-        // for (int i = 0; i < NUM; i++) {
-        // System.out.println(aryList.get(i));
-        // }
     }
 
     @Override
@@ -55,6 +51,7 @@ public class ArrayListSetTest extends GraalKernelTester {
     }
 
     @Test
+    @Ignore
     public void testUsingLambdaMethod() {
         testGeneratedHsailUsingLambdaMethod();
     }
