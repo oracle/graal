@@ -228,7 +228,7 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
         private static AutoCloseable getCanonicalizeableContractAssertion(Node node) {
             boolean needsAssertion = false;
             assert (needsAssertion = true) == true;
-            if (needsAssertion && (node instanceof Canonicalizable.Unary<?> || node instanceof Canonicalizable.Binary<?>)) {
+            if (needsAssertion) {
                 Mark mark = node.graph().getMark();
                 return () -> {
                     assert mark.equals(node.graph().getMark()) : "new node created while canonicalizing " + node.getClass().getSimpleName() + " " + node + ": " +
