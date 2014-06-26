@@ -123,7 +123,7 @@ public class HSAILMathIntrinsicsNode extends FloatingNode implements Canonicaliz
     @Override
     public Node canonical(CanonicalizerTool tool) {
         if (getParameter().isConstant()) {
-            return ConstantNode.forPrimitive(evalConst(getParameter().asConstant()), graph());
+            return ConstantNode.forPrimitive(evalConst(getParameter().asConstant()));
         }
         return this;
     }

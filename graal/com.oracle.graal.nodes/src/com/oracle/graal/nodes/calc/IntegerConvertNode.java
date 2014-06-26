@@ -74,12 +74,20 @@ public abstract class IntegerConvertNode extends ConvertNode implements Arithmet
         return convert(input, stamp, false);
     }
 
+    public static ValueNode convert(ValueNode input, Stamp stamp, StructuredGraph graph) {
+        ValueNode convert = convert(input, stamp, false);
+        if (!convert.isAlive()) {
+            assert !convert.isDeleted();
+            convert = graph.addOrUnique(convert);
+        }
+        return convert;
+    }
+
     public static ValueNode convertUnsigned(ValueNode input, Stamp stamp) {
         return convert(input, stamp, true);
     }
 
     public static ValueNode convert(ValueNode input, Stamp stamp, boolean zeroExtend) {
-        StructuredGraph graph = input.graph();
         IntegerStamp fromStamp = (IntegerStamp) input.stamp();
         IntegerStamp toStamp = (IntegerStamp) stamp;
 
@@ -87,13 +95,13 @@ public abstract class IntegerConvertNode extends ConvertNode implements Arithmet
         if (toStamp.getBits() == fromStamp.getBits()) {
             result = input;
         } else if (toStamp.getBits() < fromStamp.getBits()) {
-            result = graph.unique(new NarrowNode(input, toStamp.getBits()));
+            result = new NarrowNode(input, toStamp.getBits());
         } else if (zeroExtend) {
             // toStamp.getBits() > fromStamp.getBits()
-            result = graph.unique(new ZeroExtendNode(input, toStamp.getBits()));
+            result = new ZeroExtendNode(input, toStamp.getBits());
         } else {
             // toStamp.getBits() > fromStamp.getBits()
-            result = graph.unique(new SignExtendNode(input, toStamp.getBits()));
+            result = new SignExtendNode(input, toStamp.getBits());
         }
 
         IntegerStamp resultStamp = (IntegerStamp) result.stamp();

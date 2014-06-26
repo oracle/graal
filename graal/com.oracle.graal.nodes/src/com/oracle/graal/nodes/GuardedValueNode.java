@@ -83,7 +83,7 @@ public class GuardedValueNode extends FloatingGuardedNode implements LIRLowerabl
             if (stamp().equals(object().stamp())) {
                 return object();
             } else {
-                return graph().unique(new PiNode(object(), stamp()));
+                return new PiNode(object(), stamp());
             }
         }
         return this;

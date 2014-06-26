@@ -38,7 +38,7 @@ public final class LoadIndexedFinalNode extends AccessIndexedNode implements Can
 
     /**
      * Creates a new {@link LoadIndexedFinalNode}.
-     * 
+     *
      * @param array the instruction producing the array
      * @param index the instruction producing the index
      * @param elementKind the element type
@@ -52,7 +52,7 @@ public final class LoadIndexedFinalNode extends AccessIndexedNode implements Can
         if (array().isConstant() && index().isConstant()) {
             Constant constant = tool.getConstantReflection().readArrayElement(array().asConstant(), index().asConstant().asInt());
             if (constant != null) {
-                return ConstantNode.forConstant(constant, tool.getMetaAccess(), graph());
+                return ConstantNode.forConstant(constant, tool.getMetaAccess());
             }
         }
         return this;

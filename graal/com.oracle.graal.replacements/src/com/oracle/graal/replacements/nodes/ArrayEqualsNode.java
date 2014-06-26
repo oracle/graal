@@ -66,7 +66,7 @@ public class ArrayEqualsNode extends FixedWithNextNode implements LIRLowerable, 
             return null;
         }
         if (GraphUtil.unproxify(array1) == GraphUtil.unproxify(array2)) {
-            return ConstantNode.forBoolean(true, graph());
+            return ConstantNode.forBoolean(true);
         }
         return this;
     }

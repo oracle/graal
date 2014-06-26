@@ -69,7 +69,7 @@ public final class FloatingReadNode extends FloatingAccessNode implements Iterab
     @Override
     public Node canonical(CanonicalizerTool tool) {
         if (object() instanceof PiNode && ((PiNode) object()).getGuard() == getGuard()) {
-            return graph().unique(new FloatingReadNode(((PiNode) object()).getOriginalNode(), location(), getLastLocationAccess(), stamp(), getGuard(), getBarrierType()));
+            return new FloatingReadNode(((PiNode) object()).getOriginalNode(), location(), getLastLocationAccess(), stamp(), getGuard(), getBarrierType());
         }
         return ReadNode.canonicalizeRead(this, location(), object(), tool);
     }

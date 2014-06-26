@@ -52,7 +52,7 @@ public abstract class PureFunctionMacroNode extends MacroNode implements Canonic
             if (param.isConstant()) {
                 Constant constant = evaluate(param.asConstant(), tool.getMetaAccess());
                 if (constant != null) {
-                    return ConstantNode.forConstant(constant, tool.getMetaAccess(), graph());
+                    return ConstantNode.forConstant(constant, tool.getMetaAccess());
                 }
             }
         }

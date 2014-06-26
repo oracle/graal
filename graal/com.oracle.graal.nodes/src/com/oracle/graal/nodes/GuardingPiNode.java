@@ -118,19 +118,19 @@ public class GuardingPiNode extends FixedWithNextNode implements Lowerable, Virt
     public Node canonical(CanonicalizerTool tool) {
         if (stamp() == StampFactory.illegal(object.getKind())) {
             // The guard always fails
-            return graph().add(new DeoptimizeNode(action, reason));
+            return new DeoptimizeNode(action, reason);
         }
         if (condition instanceof LogicConstantNode) {
             LogicConstantNode c = (LogicConstantNode) condition;
             if (c.getValue() == negated) {
                 // The guard always fails
-                return graph().add(new DeoptimizeNode(action, reason));
+                return new DeoptimizeNode(action, reason);
             } else if (stamp().equals(object().stamp())) {
                 // The guard always succeeds, and does not provide new type information
                 return object;
             } else {
                 // The guard always succeeds, and provides new type information
-                return graph().unique(new PiNode(object, stamp()));
+                return new PiNode(object, stamp());
             }
         }
         return this;

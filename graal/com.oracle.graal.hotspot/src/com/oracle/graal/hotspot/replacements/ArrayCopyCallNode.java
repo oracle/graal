@@ -129,7 +129,7 @@ public final class ArrayCopyCallNode extends AbstractMemoryCheckpoint implements
             ValueNode destAddr = computeBase(getDestination(), getDestinationPosition());
             ValueNode len = getLength();
             if (len.stamp().getStackKind() != Kind.Long) {
-                len = IntegerConvertNode.convert(len, StampFactory.forKind(Kind.Long));
+                len = IntegerConvertNode.convert(len, StampFactory.forKind(Kind.Long), graph());
             }
             ForeignCallNode call = graph.add(new ForeignCallNode(Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend().getForeignCalls(), desc, srcAddr, destAddr, len));
             call.setStateAfter(stateAfter());

@@ -56,7 +56,7 @@ public class ClassGetClassLoader0Node extends MacroNode implements Canonicalizab
                  * We can't call that directly so just call getClassLoader.
                  */
                 ClassLoader classLoader = c.getClassLoader();
-                return ConstantNode.forConstant(HotSpotObjectConstant.forObject(classLoader), tool.getMetaAccess(), graph());
+                return ConstantNode.forConstant(HotSpotObjectConstant.forObject(classLoader), tool.getMetaAccess());
             }
         }
         return this;

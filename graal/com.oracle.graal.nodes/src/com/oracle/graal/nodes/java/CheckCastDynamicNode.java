@@ -95,7 +95,7 @@ public final class CheckCastDynamicNode extends FixedWithNextNode implements Can
         if (forHub.isConstant()) {
             ResolvedJavaType t = tool.getConstantReflection().asJavaType(forHub.asConstant());
             if (t != null) {
-                return graph().add(new CheckCastNode(t, forObject, null, forStoreCheck));
+                return new CheckCastNode(t, forObject, null, forStoreCheck);
             }
         }
         return this;

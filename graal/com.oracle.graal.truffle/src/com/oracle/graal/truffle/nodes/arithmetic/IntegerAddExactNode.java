@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -59,10 +59,10 @@ public class IntegerAddExactNode extends IntegerAddNode implements IntegerExactA
             assert xConst.getKind() == yConst.getKind();
             try {
                 if (xConst.getKind() == Kind.Int) {
-                    return ConstantNode.forInt(ExactMath.addExact(xConst.asInt(), yConst.asInt()), graph());
+                    return ConstantNode.forInt(ExactMath.addExact(xConst.asInt(), yConst.asInt()));
                 } else {
                     assert xConst.getKind() == Kind.Long;
-                    return ConstantNode.forLong(ExactMath.addExact(xConst.asLong(), yConst.asLong()), graph());
+                    return ConstantNode.forLong(ExactMath.addExact(xConst.asLong(), yConst.asLong()));
                 }
             } catch (ArithmeticException ex) {
                 // The operation will result in an overflow exception, so do not canonicalize.

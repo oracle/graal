@@ -124,12 +124,12 @@ public class BasicInductionVariable extends InductionVariable {
         ValueNode stride = strideNode();
         ValueNode initNode = this.initNode();
         if (!fromStamp.isCompatible(stamp)) {
-            stride = IntegerConvertNode.convert(stride, stamp);
-            initNode = IntegerConvertNode.convert(initNode, stamp);
+            stride = IntegerConvertNode.convert(stride, stamp, graph());
+            initNode = IntegerConvertNode.convert(initNode, stamp, graph());
         }
         ValueNode maxTripCount = loop.counted().maxTripCountNode(assumePositiveTripCount);
         if (!maxTripCount.stamp().isCompatible(stamp)) {
-            maxTripCount = IntegerConvertNode.convert(maxTripCount, stamp);
+            maxTripCount = IntegerConvertNode.convert(maxTripCount, stamp, graph());
         }
         return IntegerArithmeticNode.add(graph, IntegerArithmeticNode.mul(graph, stride, IntegerArithmeticNode.sub(graph, maxTripCount, ConstantNode.forIntegerStamp(stamp, 1, graph))), initNode);
     }
@@ -139,7 +139,7 @@ public class BasicInductionVariable extends InductionVariable {
         Stamp stamp = phi.stamp();
         ValueNode maxTripCount = loop.counted().maxTripCountNode(false);
         if (!maxTripCount.stamp().isCompatible(stamp)) {
-            maxTripCount = IntegerConvertNode.convert(maxTripCount, stamp);
+            maxTripCount = IntegerConvertNode.convert(maxTripCount, stamp, graph());
         }
         return IntegerArithmeticNode.add(graph(), IntegerArithmeticNode.mul(graph(), strideNode(), maxTripCount), initNode());
     }

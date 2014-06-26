@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,7 +33,7 @@ import com.oracle.graal.replacements.nodes.*;
 
 /**
  * {@link MacroNode Macro node} for {@link Class#isInstance(Object)}.
- * 
+ *
  * @see ClassSubstitutions#isInstance(Class, Object)
  */
 public class ClassIsInstanceNode extends MacroNode implements Canonicalizable {
@@ -58,15 +58,15 @@ public class ClassIsInstanceNode extends MacroNode implements Canonicalizable {
             Class<?> c = (Class<?>) HotSpotObjectConstant.asObject(javaClass.asConstant());
             if (c != null) {
                 if (c.isPrimitive()) {
-                    return ConstantNode.forBoolean(false, graph());
+                    return ConstantNode.forBoolean(false);
                 }
                 if (object.isConstant()) {
                     Object o = HotSpotObjectConstant.asObject(object.asConstant());
-                    return ConstantNode.forBoolean(o != null && c.isInstance(o), graph());
+                    return ConstantNode.forBoolean(o != null && c.isInstance(o));
                 }
                 HotSpotResolvedObjectType type = (HotSpotResolvedObjectType) HotSpotResolvedObjectType.fromClass(c);
-                InstanceOfNode instanceOf = graph().unique(new InstanceOfNode(type, object, null));
-                return graph().unique(new ConditionalNode(instanceOf, ConstantNode.forBoolean(true, graph()), ConstantNode.forBoolean(false, graph())));
+                InstanceOfNode instanceOf = new InstanceOfNode(type, object, null);
+                return new ConditionalNode(instanceOf, ConstantNode.forBoolean(true), ConstantNode.forBoolean(false));
             }
         }
         return this;
