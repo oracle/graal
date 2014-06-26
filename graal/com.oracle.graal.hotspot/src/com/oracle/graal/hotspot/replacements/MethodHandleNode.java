@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -38,12 +38,13 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.type.*;
+import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.replacements.nodes.*;
 
 /**
  * Node for invocation methods defined on the class {@link MethodHandle}.
  */
-public class MethodHandleNode extends MacroNode implements Canonicalizable {
+public class MethodHandleNode extends MacroNode implements Simplifiable {
 
     /** The method that this node is representing. */
     private final IntrinsicMethod intrinsicMethod;
@@ -81,7 +82,7 @@ public class MethodHandleNode extends MacroNode implements Canonicalizable {
     }
 
     @Override
-    public Node canonical(CanonicalizerTool tool) {
+    public void simplify(SimplifierTool tool) {
         InvokeNode invoke;
         switch (intrinsicMethod) {
             case INVOKE_BASIC:
@@ -97,9 +98,11 @@ public class MethodHandleNode extends MacroNode implements Canonicalizable {
                 throw GraalInternalError.shouldNotReachHere();
         }
         if (invoke != null) {
-            return invoke;
+            FixedNode next = next();
+            replaceAtUsages(invoke);
+            GraphUtil.removeFixedWithUnusedInputs(this);
+            graph().addBeforeFixed(next, invoke);
         }
-        return this;
     }
 
     /**
