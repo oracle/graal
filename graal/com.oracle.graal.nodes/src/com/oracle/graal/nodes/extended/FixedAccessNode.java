@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -64,19 +64,20 @@ public abstract class FixedAccessNode extends DeoptimizingFixedWithNextNode impl
     }
 
     public FixedAccessNode(ValueNode object, ValueNode location, Stamp stamp) {
-        this(object, location, stamp, null, BarrierType.NONE);
+        this(object, location, stamp, BarrierType.NONE);
     }
 
     public FixedAccessNode(ValueNode object, ValueNode location, Stamp stamp, BarrierType barrierType) {
-        this(object, location, stamp, null, barrierType);
+        this(object, location, stamp, null, barrierType, false, null);
     }
 
-    public FixedAccessNode(ValueNode object, ValueNode location, Stamp stamp, GuardingNode guard, BarrierType barrierType) {
-        super(stamp);
+    public FixedAccessNode(ValueNode object, ValueNode location, Stamp stamp, GuardingNode guard, BarrierType barrierType, boolean nullCheck, FrameState stateBefore) {
+        super(stamp, stateBefore);
         this.object = object;
         this.location = location;
         this.guard = guard;
         this.barrierType = barrierType;
+        this.nullCheck = nullCheck;
     }
 
     @Override

@@ -37,11 +37,15 @@ import com.oracle.graal.nodes.virtual.*;
 public final class ReadNode extends FloatableAccessNode implements LIRLowerable, Canonicalizable, PiPushable, Virtualizable, GuardingNode {
 
     public ReadNode(ValueNode object, ValueNode location, Stamp stamp, BarrierType barrierType) {
-        super(object, location, stamp, barrierType);
+        super(object, location, stamp, null, barrierType);
     }
 
     public ReadNode(ValueNode object, ValueNode location, Stamp stamp, GuardingNode guard, BarrierType barrierType) {
         super(object, location, stamp, guard, barrierType);
+    }
+
+    public ReadNode(ValueNode object, ValueNode location, Stamp stamp, GuardingNode guard, BarrierType barrierType, boolean nullCheck, FrameState stateBefore) {
+        super(object, location, stamp, guard, barrierType, nullCheck, stateBefore);
     }
 
     private ReadNode(ValueNode object, ValueNode location, ValueNode guard, BarrierType barrierType) {
@@ -63,10 +67,7 @@ public final class ReadNode extends FloatableAccessNode implements LIRLowerable,
     @Override
     public Node canonical(CanonicalizerTool tool) {
         if (object() instanceof PiNode && ((PiNode) object()).getGuard() == getGuard()) {
-            ReadNode readNode = graph().add(new ReadNode(((PiNode) object()).getOriginalNode(), location(), stamp(), getGuard(), getBarrierType()));
-            readNode.setNullCheck(getNullCheck());
-            readNode.setStateBefore(stateBefore());
-            return readNode;
+            return new ReadNode(((PiNode) object()).getOriginalNode(), location(), stamp(), getGuard(), getBarrierType(), getNullCheck(), stateBefore());
         }
         return canonicalizeRead(this, location(), object(), tool);
     }
@@ -87,7 +88,7 @@ public final class ReadNode extends FloatableAccessNode implements LIRLowerable,
             GuardingNode guard = ((Access) read).getGuard();
             if (guard != null && !(guard instanceof FixedNode)) {
                 // The guard is necessary even if the read goes away.
-                return read.graph().add(new ValueAnchorNode((ValueNode) guard));
+                return new ValueAnchorNode((ValueNode) guard);
             } else {
                 // Read without usages or guard can be safely removed.
                 return null;
@@ -109,7 +110,7 @@ public final class ReadNode extends FloatableAccessNode implements LIRLowerable,
                             constant = tool.getConstantReflection().readUnsafeConstant(Kind.Object, base, displacement);
                         }
                         if (constant != null) {
-                            return ConstantNode.forConstant(read.stamp(), constant, metaAccess, read.graph());
+                            return ConstantNode.forConstant(read.stamp(), constant, metaAccess);
                         }
                     }
                 }
