@@ -35,15 +35,15 @@ import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.ValuePositionProcedure;
 import com.oracle.graal.lir.asm.*;
 
-public class ValuePositionTest {
+public class ValuePositionTest1 {
 
     private static class NestedCompositeValue extends CompositeValue {
 
         private static final long serialVersionUID = -8804214200173503527L;
         @Component({REG, OperandFlag.ILLEGAL}) protected Value value;
 
-        public NestedCompositeValue(LIRKind kind, Value value) {
-            super(kind);
+        public NestedCompositeValue(Value value) {
+            super(LIRKind.Illegal);
             this.value = value;
         }
 
@@ -53,10 +53,11 @@ public class ValuePositionTest {
 
         private static final long serialVersionUID = -645435039553382737L;
         private final int id;
+        private static int counter = 1;
 
-        protected DummyValue(LIRKind lirKind, int id) {
-            super(lirKind);
-            this.id = id;
+        protected DummyValue() {
+            super(LIRKind.Illegal);
+            this.id = counter++;
         }
 
         @Override
@@ -101,10 +102,10 @@ public class ValuePositionTest {
 
     }
 
-    private static LIRInstruction createNestedOp(LIRKind kind, Value value, int nestingLevel) {
-        NestedCompositeValue compValue = new NestedCompositeValue(kind, value);
+    private static LIRInstruction createNestedOp(Value value, int nestingLevel) {
+        NestedCompositeValue compValue = new NestedCompositeValue(value);
         for (int i = 0; i < nestingLevel; i++) {
-            compValue = new NestedCompositeValue(kind, compValue);
+            compValue = new NestedCompositeValue(compValue);
         }
         TestOp op = new TestOp(compValue);
         return op;
@@ -112,9 +113,8 @@ public class ValuePositionTest {
 
     @Test
     public void nestedTest0() {
-        LIRKind kind = LIRKind.Illegal;
-        DummyValue dummyValue = new DummyValue(kind, 0);
-        LIRInstruction op = createNestedOp(kind, dummyValue, 0);
+        DummyValue dummyValue = new DummyValue();
+        LIRInstruction op = createNestedOp(dummyValue, 0);
 
         List<ValuePosition> positions = new ArrayList<>();
 
@@ -132,9 +132,8 @@ public class ValuePositionTest {
 
     @Test
     public void nestedTest1() {
-        LIRKind kind = LIRKind.Illegal;
-        DummyValue dummyValue = new DummyValue(kind, 0);
-        LIRInstruction op = createNestedOp(kind, dummyValue, 1);
+        DummyValue dummyValue = new DummyValue();
+        LIRInstruction op = createNestedOp(dummyValue, 1);
 
         List<ValuePosition> positions = new ArrayList<>();
 
@@ -152,9 +151,8 @@ public class ValuePositionTest {
 
     @Test
     public void nestedTest2() {
-        LIRKind kind = LIRKind.Illegal;
-        DummyValue dummyValue = new DummyValue(kind, 0);
-        LIRInstruction op = createNestedOp(kind, dummyValue, 2);
+        DummyValue dummyValue = new DummyValue();
+        LIRInstruction op = createNestedOp(dummyValue, 2);
 
         List<ValuePosition> positions = new ArrayList<>();
 
