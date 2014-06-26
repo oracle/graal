@@ -87,11 +87,6 @@ public class ShortCircuitOrNode extends LogicNode implements IterableNodeType, C
         }
     }
 
-    @Override
-    public Node canonical(CanonicalizerTool tool) {
-        return canonical(tool, getX(), getY());
-    }
-
     public LogicNode canonical(CanonicalizerTool tool, LogicNode forX, LogicNode forY) {
         ShortCircuitOrNode ret = canonicalizeNegation(forX, forY);
         if (ret != this) {
