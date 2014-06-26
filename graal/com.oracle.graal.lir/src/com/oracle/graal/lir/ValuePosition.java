@@ -47,24 +47,13 @@ public final class ValuePosition {
         this.superPosition = superPosition;
     }
 
-    private static CompositeValue getCompositeValue(LIRInstruction inst, ValuePosition pos) {
-        Value value;
-        if (pos.isCompositePosition()) {
-            value = getCompositeValue(inst, pos.getSuperPosition());
-        } else {
-            value = inst.getLIRInstructionClass().getValue(inst, pos);
-        }
-        assert value instanceof CompositeValue : "only CompositeValue can contain nested values " + value;
-        return (CompositeValue) value;
-    }
-
     public boolean isCompositePosition() {
         return superPosition != ROOT_VALUE_POSITION;
     }
 
     public Value get(LIRInstruction inst) {
         if (isCompositePosition()) {
-            CompositeValue compValue = getCompositeValue(inst, this);
+            CompositeValue compValue = (CompositeValue) superPosition.get(inst);
             return compValue.getValueClass().getValue(compValue, this);
         }
         return inst.getLIRInstructionClass().getValue(inst, this);
@@ -72,7 +61,7 @@ public final class ValuePosition {
 
     public EnumSet<OperandFlag> getFlags(LIRInstruction inst) {
         if (isCompositePosition()) {
-            CompositeValue compValue = getCompositeValue(inst, this);
+            CompositeValue compValue = (CompositeValue) superPosition.get(inst);
             return compValue.getValueClass().getFlags(this);
         }
         return inst.getLIRInstructionClass().getFlags(this);
@@ -80,7 +69,7 @@ public final class ValuePosition {
 
     public void set(LIRInstruction inst, Value value) {
         if (isCompositePosition()) {
-            CompositeValue compValue = getCompositeValue(inst, this);
+            CompositeValue compValue = (CompositeValue) superPosition.get(inst);
             compValue.getValueClass().setValue(compValue, this, value);
         } else {
             inst.getLIRInstructionClass().setValue(inst, this, value);
