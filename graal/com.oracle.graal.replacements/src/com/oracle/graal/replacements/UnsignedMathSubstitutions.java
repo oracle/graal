@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,7 +27,6 @@ import static com.oracle.graal.nodes.calc.ConditionalNode.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.replacements.*;
-import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.nodes.calc.*;
 
 /**
@@ -99,7 +98,7 @@ public class UnsignedMathSubstitutions {
      */
     @MethodSubstitution
     public static int divide(int a, int b) {
-        return unsignedDivide(a, b);
+        return UnsignedDivNode.unsignedDivide(a, b);
     }
 
     /**
@@ -107,7 +106,7 @@ public class UnsignedMathSubstitutions {
      */
     @MethodSubstitution
     public static int remainder(int a, int b) {
-        return unsignedRemainder(a, b);
+        return UnsignedRemNode.unsignedRemainder(a, b);
     }
 
     /**
@@ -115,7 +114,7 @@ public class UnsignedMathSubstitutions {
      */
     @MethodSubstitution
     public static long divide(long a, long b) {
-        return unsignedDivide(a, b);
+        return UnsignedDivNode.unsignedDivide(a, b);
     }
 
     /**
@@ -123,18 +122,6 @@ public class UnsignedMathSubstitutions {
      */
     @MethodSubstitution
     public static long remainder(long a, long b) {
-        return unsignedRemainder(a, b);
+        return UnsignedRemNode.unsignedRemainder(a, b);
     }
-
-    @NodeIntrinsic(UnsignedDivNode.class)
-    private static native int unsignedDivide(int a, int b);
-
-    @NodeIntrinsic(UnsignedDivNode.class)
-    private static native long unsignedDivide(long a, long b);
-
-    @NodeIntrinsic(UnsignedRemNode.class)
-    private static native int unsignedRemainder(int a, int b);
-
-    @NodeIntrinsic(UnsignedRemNode.class)
-    private static native long unsignedRemainder(long a, long b);
 }
