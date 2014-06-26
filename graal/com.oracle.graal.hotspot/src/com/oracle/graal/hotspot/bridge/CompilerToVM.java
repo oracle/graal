@@ -359,4 +359,6 @@ public interface CompilerToVM {
     void resolveInvokeDynamic(long metaspaceConstantPool, int index);
 
     int getVtableIndexForInterface(long metaspaceKlass, long metaspaceMethod);
+
+    boolean shouldDebugNonSafepoints();
 }

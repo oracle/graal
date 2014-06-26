@@ -72,6 +72,10 @@ public class GraphBuilderConfiguration {
         return new GraphBuilderConfiguration(false, false, false);
     }
 
+    public static GraphBuilderConfiguration getInfopointDefault() {
+        return new GraphBuilderConfiguration(false, false, true);
+    }
+
     public static GraphBuilderConfiguration getEagerDefault() {
         return new GraphBuilderConfiguration(true, false, false);
     }

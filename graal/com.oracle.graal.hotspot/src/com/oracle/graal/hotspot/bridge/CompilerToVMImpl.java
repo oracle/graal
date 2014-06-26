@@ -197,4 +197,6 @@ public class CompilerToVMImpl implements CompilerToVM {
     public native void resolveInvokeDynamic(long metaspaceConstantPool, int index);
 
     public native int getVtableIndexForInterface(long metaspaceKlass, long metaspaceMethod);
+
+    public native boolean shouldDebugNonSafepoints();
 }

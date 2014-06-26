@@ -241,6 +241,11 @@ public class CompilationTask implements Runnable, Comparable<Object> {
     protected PhaseSuite<HighTierContext> getGraphBuilderSuite(HotSpotProviders providers) {
         PhaseSuite<HighTierContext> suite = providers.getSuites().getDefaultGraphBuilderSuite();
 
+        if (HotSpotGraalRuntime.runtime().getCompilerToVM().shouldDebugNonSafepoints()) {
+            // need to tweak the graph builder config
+            suite.findPhase(GraphBuilderPhase.class).set(new GraphBuilderPhase(GraphBuilderConfiguration.getInfopointDefault()));
+        }
+
         boolean osrCompilation = entryBCI != StructuredGraph.INVOCATION_ENTRY_BCI;
         if (osrCompilation) {
             suite = suite.copy();
