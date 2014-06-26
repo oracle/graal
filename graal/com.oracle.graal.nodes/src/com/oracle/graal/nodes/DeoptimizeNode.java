@@ -35,10 +35,11 @@ public class DeoptimizeNode extends AbstractDeoptimizeNode implements Lowerable,
     private final Constant speculation;
 
     public DeoptimizeNode(DeoptimizationAction action, DeoptimizationReason reason) {
-        this(action, reason, 0, Constant.NULL_OBJECT);
+        this(action, reason, 0, Constant.NULL_OBJECT, null);
     }
 
-    public DeoptimizeNode(DeoptimizationAction action, DeoptimizationReason reason, int debugId, Constant speculation) {
+    public DeoptimizeNode(DeoptimizationAction action, DeoptimizationReason reason, int debugId, Constant speculation, FrameState stateBefore) {
+        super(stateBefore);
         assert action != null;
         assert reason != null;
         assert speculation.getKind() == Kind.Object;

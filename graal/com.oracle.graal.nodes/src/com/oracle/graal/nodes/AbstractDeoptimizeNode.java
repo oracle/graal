@@ -28,7 +28,7 @@ import com.oracle.graal.graph.*;
 
 /**
  * This node represents an unconditional explicit request for immediate deoptimization.
- * 
+ *
  * After this node, execution will continue using a fallback execution engine (such as an
  * interpreter) at the position described by the {@link #stateBefore() deoptimization state}.
  */
@@ -38,6 +38,11 @@ public abstract class AbstractDeoptimizeNode extends ControlSinkNode implements 
 
     public AbstractDeoptimizeNode() {
         super(StampFactory.forVoid());
+    }
+
+    public AbstractDeoptimizeNode(FrameState stateBefore) {
+        super(StampFactory.forVoid());
+        this.stateBefore = stateBefore;
     }
 
     @Override

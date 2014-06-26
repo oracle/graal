@@ -158,7 +158,7 @@ public class GuardLoweringPhase extends BasePhase<MidTierContext> {
             StructuredGraph graph = guard.graph();
             BeginNode fastPath = graph.add(new BeginNode());
             @SuppressWarnings("deprecation")
-            DeoptimizeNode deopt = graph.add(new DeoptimizeNode(guard.action(), guard.reason(), useGuardIdAsDebugId ? guard.getId() : 0, guard.getSpeculation()));
+            DeoptimizeNode deopt = graph.add(new DeoptimizeNode(guard.action(), guard.reason(), useGuardIdAsDebugId ? guard.getId() : 0, guard.getSpeculation(), null));
             BeginNode deoptBranch = BeginNode.begin(deopt);
             BeginNode trueSuccessor;
             BeginNode falseSuccessor;
