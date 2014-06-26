@@ -185,8 +185,9 @@ abstract class LIRIntrospection extends FieldIntrospection {
     protected static void setValueForPosition(Object obj, long[] offsets, int directCount, ValuePosition pos, Value value) {
         if (pos.getIndex() < directCount) {
             setValue(obj, offsets[pos.getIndex()], value);
+        } else {
+            getValueArray(obj, offsets[pos.getIndex()])[pos.getSubIndex()] = value;
         }
-        getValueArray(obj, offsets[pos.getIndex()])[pos.getSubIndex()] = value;
     }
 
     protected static Value getValue(Object obj, long offset) {

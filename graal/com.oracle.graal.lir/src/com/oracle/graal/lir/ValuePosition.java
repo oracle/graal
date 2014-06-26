@@ -82,8 +82,9 @@ public final class ValuePosition {
         if (isCompositePosition()) {
             CompositeValue compValue = getCompositeValue(inst, this);
             compValue.getValueClass().setValue(compValue, this, value);
+        } else {
+            inst.getLIRInstructionClass().setValue(inst, this, value);
         }
-        inst.getLIRInstructionClass().setValue(inst, this, value);
     }
 
     public int getSubIndex() {
