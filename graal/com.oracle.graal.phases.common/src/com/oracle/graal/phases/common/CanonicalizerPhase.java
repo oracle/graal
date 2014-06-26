@@ -304,6 +304,7 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
                 if (node instanceof FloatingNode) {
                     if (canonical == null) {
                         // case 1
+                        node.replaceAtUsages(null);
                         graph.removeFloating((FloatingNode) node);
                     } else {
                         // case 2
@@ -328,6 +329,7 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
                         tool.addToWorkList(fixedWithNext.next());
                         if (canonical == null) {
                             // case 3
+                            node.replaceAtUsages(null);
                             graph.removeFixed(fixedWithNext);
                         } else if (canonical instanceof FloatingNode) {
                             // case 4
