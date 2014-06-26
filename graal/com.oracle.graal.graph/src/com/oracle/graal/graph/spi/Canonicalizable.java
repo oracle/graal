@@ -26,25 +26,27 @@ import com.oracle.graal.graph.*;
 
 public interface Canonicalizable {
 
-    public enum CanonicalizeMethod {
-        BASE,
-        UNARY,
-        BINARY
-    }
-
     Node canonical(CanonicalizerTool tool);
 
-    public interface Unary<T extends Node> {
-        T canonical(CanonicalizerTool tool, T forValue);
+    public interface Unary<T extends Node> extends Canonicalizable {
+        Node canonical(CanonicalizerTool tool, T forValue);
 
         T getValue();
+
+        default Node canonical(CanonicalizerTool tool) {
+            return canonical(tool, getValue());
+        }
     }
 
-    public interface Binary<T extends Node> {
-        T canonical(CanonicalizerTool tool, T forX, T forY);
+    public interface Binary<T extends Node> extends Canonicalizable {
+        Node canonical(CanonicalizerTool tool, T forX, T forY);
 
         T getX();
 
         T getY();
+
+        default Node canonical(CanonicalizerTool tool) {
+            return canonical(tool, getX(), getY());
+        }
     }
 }

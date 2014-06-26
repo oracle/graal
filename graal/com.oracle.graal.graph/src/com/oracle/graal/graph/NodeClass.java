@@ -35,7 +35,6 @@ import com.oracle.graal.graph.Node.Input;
 import com.oracle.graal.graph.Node.Successor;
 import com.oracle.graal.graph.Node.Verbosity;
 import com.oracle.graal.graph.spi.*;
-import com.oracle.graal.graph.spi.Canonicalizable.CanonicalizeMethod;
 
 /**
  * Metadata for every {@link Node} type. The metadata includes:
@@ -103,7 +102,7 @@ public final class NodeClass extends FieldIntrospection {
     /**
      * Determines if this node type implements {@link Canonicalizable}.
      */
-    private final CanonicalizeMethod canonicalizeMethod;
+    private final boolean isCanonicalizable;
 
     /**
      * Determines if this node type implements {@link Simplifiable}.
@@ -117,16 +116,10 @@ public final class NodeClass extends FieldIntrospection {
     public NodeClass(Class<?> clazz, CalcOffset calcOffset, int[] presetIterableIds, int presetIterableId) {
         super(clazz);
         assert NODE_CLASS.isAssignableFrom(clazz);
-        if (Canonicalizable.Unary.class.isAssignableFrom(clazz)) {
-            assert !Canonicalizable.Binary.class.isAssignableFrom(clazz) && !Canonicalizable.class.isAssignableFrom(clazz) : clazz;
-            this.canonicalizeMethod = CanonicalizeMethod.UNARY;
-        } else if (Canonicalizable.Binary.class.isAssignableFrom(clazz)) {
-            assert !Canonicalizable.class.isAssignableFrom(clazz) : clazz;
-            this.canonicalizeMethod = CanonicalizeMethod.BINARY;
-        } else if (Canonicalizable.class.isAssignableFrom(clazz)) {
-            this.canonicalizeMethod = CanonicalizeMethod.BASE;
-        } else {
-            this.canonicalizeMethod = null;
+
+        this.isCanonicalizable = Canonicalizable.class.isAssignableFrom(clazz);
+        if (Canonicalizable.Unary.class.isAssignableFrom(clazz) || Canonicalizable.Binary.class.isAssignableFrom(clazz)) {
+            assert Canonicalizable.Unary.class.isAssignableFrom(clazz) ^ Canonicalizable.Binary.class.isAssignableFrom(clazz) : clazz + " should implement either Unary or Binary, not both";
         }
 
         this.isSimplifiable = Simplifiable.class.isAssignableFrom(clazz);
@@ -261,8 +254,8 @@ public final class NodeClass extends FieldIntrospection {
     /**
      * Determines if this node type implements {@link Canonicalizable}.
      */
-    public CanonicalizeMethod getCanonicalizeMethod() {
-        return canonicalizeMethod;
+    public boolean isCanonicalizable() {
+        return isCanonicalizable;
     }
 
     /**

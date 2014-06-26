@@ -27,7 +27,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.DebugMetric;
 import com.oracle.graal.graph.Node;
-import com.oracle.graal.graph.spi.CanonicalizerTool;
+import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.compiler.common.type.ObjectStamp;
 import com.oracle.graal.phases.graph.SinglePassNodeIterator;
@@ -140,9 +140,8 @@ public abstract class BaseReduction extends SinglePassNodeIterator<State> {
      * One of the promises of
      * {@link com.oracle.graal.phases.common.cfs.EquationalReasoner#deverbosify(com.oracle.graal.graph.Node)}
      * is that a "maximally reduced" node is returned. That is achieved in part by leveraging
-     * {@link com.oracle.graal.graph.Node#canonical(com.oracle.graal.graph.spi.CanonicalizerTool)}.
-     * Doing so, in turn, requires this subclass of
-     * {@link com.oracle.graal.graph.spi.CanonicalizerTool}.
+     * {@link Canonicalizable#canonical(com.oracle.graal.graph.spi.CanonicalizerTool)}. Doing so, in
+     * turn, requires this subclass of {@link com.oracle.graal.graph.spi.CanonicalizerTool}.
      * </p>
      */
     public final class Tool implements CanonicalizerTool {
