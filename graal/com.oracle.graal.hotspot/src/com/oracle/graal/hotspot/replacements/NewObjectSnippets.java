@@ -420,13 +420,14 @@ public class NewObjectSnippets implements Snippets {
 
             Arguments args = new Arguments(allocateArray, graph.getGuardsStage(), tool.getLoweringStage());
             args.add("hub", hub);
-            args.add("length", newArrayNode.length());
+            ValueNode length = newArrayNode.length();
+            args.add("length", length.isAlive() ? length : graph.addOrUniqueWithInputs(length));
             args.add("prototypeMarkWord", arrayType.prototypeMarkWord());
             args.addConst("headerSize", headerSize);
             args.addConst("log2ElementSize", log2ElementSize);
             args.addConst("fillContents", newArrayNode.fillContents());
             args.addConst("threadRegister", registers.getThreadRegister());
-            args.addConst("maybeUnroll", newArrayNode.length().isConstant());
+            args.addConst("maybeUnroll", length.isConstant());
             args.addConst("typeContext", ProfileAllocations.getValue() ? toJavaName(arrayType, false) : "");
 
             SnippetTemplate template = template(args);
@@ -445,9 +446,11 @@ public class NewObjectSnippets implements Snippets {
         }
 
         public void lower(DynamicNewArrayNode newArrayNode, HotSpotRegistersProvider registers, LoweringTool tool) {
+            StructuredGraph graph = newArrayNode.graph();
             Arguments args = new Arguments(allocateArrayDynamic, newArrayNode.graph().getGuardsStage(), tool.getLoweringStage());
             args.add("elementType", newArrayNode.getElementType());
-            args.add("length", newArrayNode.length());
+            ValueNode length = newArrayNode.length();
+            args.add("length", length.isAlive() ? length : graph.addOrUniqueWithInputs(length));
             args.addConst("fillContents", newArrayNode.fillContents());
             args.addConst("threadRegister", registers.getThreadRegister());
 

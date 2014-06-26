@@ -313,12 +313,13 @@ public class HSAILNewObjectSnippets extends NewObjectSnippets {
 
             Arguments args = new Arguments(allocateArray, graph.getGuardsStage(), tool.getLoweringStage());
             args.add("hub", hub);
-            args.add("length", newArrayNode.length());
+            ValueNode length = newArrayNode.length();
+            args.add("length", length.isAlive() ? length : graph.addOrUniqueWithInputs(length));
             args.add("prototypeMarkWord", arrayType.prototypeMarkWord());
             args.addConst("headerSize", headerSize);
             args.addConst("log2ElementSize", log2ElementSize);
             args.addConst("fillContents", newArrayNode.fillContents());
-            args.addConst("maybeUnroll", newArrayNode.length().isConstant());
+            args.addConst("maybeUnroll", length.isConstant());
             args.addConst("typeContext", MetaUtil.toJavaName(arrayType, false));
 
             SnippetTemplate template = template(args);

@@ -365,7 +365,7 @@ public class SnippetTemplate {
         }
 
         public ValueNode length() {
-            return ConstantNode.forInt(varargs.length, graph());
+            return ConstantNode.forInt(varargs.length);
         }
     }
 

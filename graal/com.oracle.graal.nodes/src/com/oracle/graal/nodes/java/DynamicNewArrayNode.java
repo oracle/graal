@@ -58,7 +58,8 @@ public class DynamicNewArrayNode extends AbstractNewArrayNode {
         if (isAlive() && elementType.isConstant()) {
             ResolvedJavaType javaType = tool.getConstantReflection().asJavaType(elementType.asConstant());
             if (javaType != null && !javaType.equals(tool.getMetaAccess().lookupJavaType(void.class))) {
-                NewArrayNode newArray = graph().add(new NewArrayNode(javaType, length(), fillContents()));
+                ValueNode length = length();
+                NewArrayNode newArray = graph().add(new NewArrayNode(javaType, length.isAlive() ? length : graph().addOrUniqueWithInputs(length), fillContents()));
                 List<Node> snapshot = inputs().snapshot();
                 graph().replaceFixedWithFixed(this, newArray);
                 for (Node input : snapshot) {
