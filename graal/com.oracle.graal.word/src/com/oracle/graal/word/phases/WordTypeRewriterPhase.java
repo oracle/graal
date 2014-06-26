@@ -134,9 +134,9 @@ public class WordTypeRewriterPhase extends Phase {
      * Fold constant field reads, e.g. enum constants.
      */
     protected void rewriteLoadField(StructuredGraph graph, LoadFieldNode node) {
-        ConstantNode constant = node.asConstant(metaAccess);
+        ConstantNode constant = node.asConstant(metaAccess, node.object());
         if (constant != null) {
-            node.replaceAtUsages(constant);
+            node.replaceAtUsages(graph.unique(constant));
             graph.removeFixed(node);
         }
     }
