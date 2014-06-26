@@ -41,9 +41,14 @@ public class UnsafeStoreNode extends UnsafeAccessNode implements StateSplit, Low
     @Input(InputType.State) private FrameState stateAfter;
 
     public UnsafeStoreNode(ValueNode object, ValueNode offset, ValueNode value, Kind accessKind, LocationIdentity locationIdentity) {
+        this(object, offset, value, accessKind, locationIdentity, null);
+    }
+
+    public UnsafeStoreNode(ValueNode object, ValueNode offset, ValueNode value, Kind accessKind, LocationIdentity locationIdentity, FrameState stateAfter) {
         super(StampFactory.forVoid(), object, offset, accessKind, locationIdentity);
-        assert accessKind != Kind.Void && accessKind != Kind.Illegal;
         this.value = value;
+        this.stateAfter = stateAfter;
+        assert accessKind != Kind.Void && accessKind != Kind.Illegal;
     }
 
     public FrameState stateAfter() {
