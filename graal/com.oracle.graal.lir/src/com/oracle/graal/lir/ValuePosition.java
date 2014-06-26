@@ -35,25 +35,25 @@ public final class ValuePosition {
     private final OperandMode mode;
     private final int index;
     private final int subIndex;
-    private final ValuePosition superPosition;
+    private final ValuePosition outerPosition;
 
     public static final int NO_SUBINDEX = -1;
     public static final ValuePosition ROOT_VALUE_POSITION = null;
 
-    public ValuePosition(OperandMode mode, int index, int subIndex, ValuePosition superPosition) {
+    public ValuePosition(OperandMode mode, int index, int subIndex, ValuePosition outerPosition) {
         this.mode = mode;
         this.index = index;
         this.subIndex = subIndex;
-        this.superPosition = superPosition;
+        this.outerPosition = outerPosition;
     }
 
     public boolean isCompositePosition() {
-        return superPosition != ROOT_VALUE_POSITION;
+        return outerPosition != ROOT_VALUE_POSITION;
     }
 
     public Value get(LIRInstruction inst) {
         if (isCompositePosition()) {
-            CompositeValue compValue = (CompositeValue) superPosition.get(inst);
+            CompositeValue compValue = (CompositeValue) outerPosition.get(inst);
             return compValue.getValueClass().getValue(compValue, this);
         }
         return inst.getLIRInstructionClass().getValue(inst, this);
@@ -61,7 +61,7 @@ public final class ValuePosition {
 
     public EnumSet<OperandFlag> getFlags(LIRInstruction inst) {
         if (isCompositePosition()) {
-            CompositeValue compValue = (CompositeValue) superPosition.get(inst);
+            CompositeValue compValue = (CompositeValue) outerPosition.get(inst);
             return compValue.getValueClass().getFlags(this);
         }
         return inst.getLIRInstructionClass().getFlags(this);
@@ -69,7 +69,7 @@ public final class ValuePosition {
 
     public void set(LIRInstruction inst, Value value) {
         if (isCompositePosition()) {
-            CompositeValue compValue = (CompositeValue) superPosition.get(inst);
+            CompositeValue compValue = (CompositeValue) outerPosition.get(inst);
             compValue.getValueClass().setValue(compValue, this, value);
         } else {
             inst.getLIRInstructionClass().setValue(inst, this, value);
@@ -89,15 +89,15 @@ public final class ValuePosition {
     }
 
     public ValuePosition getSuperPosition() {
-        return superPosition;
+        return outerPosition;
     }
 
     @Override
     public String toString() {
-        if (superPosition == ROOT_VALUE_POSITION) {
-            return mode.toString() + index + "/" + subIndex;
+        if (outerPosition == ROOT_VALUE_POSITION) {
+            return mode.toString() + "(" + index + (subIndex < 0 ? "" : "/" + subIndex) + ")";
         }
-        return superPosition.toString() + "[" + mode.toString() + index + "/" + subIndex + "]";
+        return outerPosition.toString() + "[" + mode.toString() + "(" + index + (subIndex < 0 ? "" : "/" + subIndex) + ")]";
     }
 
     @Override
@@ -107,7 +107,7 @@ public final class ValuePosition {
         result = prime * result + index;
         result = prime * result + ((mode == null) ? 0 : mode.hashCode());
         result = prime * result + subIndex;
-        result = prime * result + ((superPosition == null) ? 0 : superPosition.hashCode());
+        result = prime * result + ((outerPosition == null) ? 0 : outerPosition.hashCode());
         return result;
     }
 
@@ -132,11 +132,11 @@ public final class ValuePosition {
         if (subIndex != other.subIndex) {
             return false;
         }
-        if (superPosition == null) {
-            if (other.superPosition != null) {
+        if (outerPosition == null) {
+            if (other.outerPosition != null) {
                 return false;
             }
-        } else if (!superPosition.equals(other.superPosition)) {
+        } else if (!outerPosition.equals(other.outerPosition)) {
             return false;
         }
         return true;

@@ -59,8 +59,8 @@ public abstract class CompositeValue extends Value {
         valueClass.forEachComponent(inst, this, mode, proc);
     }
 
-    public final void forEachComponent(LIRInstruction inst, OperandMode mode, ValuePositionProcedure proc, ValuePosition superPosition) {
-        valueClass.forEachComponent(inst, this, mode, proc, superPosition);
+    public final void forEachComponent(LIRInstruction inst, OperandMode mode, ValuePositionProcedure proc, ValuePosition outerPosition) {
+        valueClass.forEachComponent(inst, this, mode, proc, outerPosition);
     }
 
     @Override

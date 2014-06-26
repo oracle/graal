@@ -148,25 +148,25 @@ abstract class LIRIntrospection extends FieldIntrospection {
     }
 
     protected static void forEach(LIRInstruction inst, Object obj, int directCount, long[] offsets, OperandMode mode, EnumSet<OperandFlag>[] flags, ValuePositionProcedure proc,
-                    ValuePosition superPosition) {
+                    ValuePosition outerPosition) {
         for (int i = 0; i < offsets.length; i++) {
             assert LIRInstruction.ALLOWED_FLAGS.get(mode).containsAll(flags[i]);
 
             if (i < directCount) {
                 Value value = getValue(obj, offsets[i]);
-                doForValue(inst, mode, proc, superPosition, i, ValuePosition.NO_SUBINDEX, value);
+                doForValue(inst, mode, proc, outerPosition, i, ValuePosition.NO_SUBINDEX, value);
             } else {
                 Value[] values = getValueArray(obj, offsets[i]);
                 for (int j = 0; j < values.length; j++) {
                     Value value = values[j];
-                    doForValue(inst, mode, proc, superPosition, i, j, value);
+                    doForValue(inst, mode, proc, outerPosition, i, j, value);
                 }
             }
         }
     }
 
-    private static void doForValue(LIRInstruction inst, OperandMode mode, ValuePositionProcedure proc, ValuePosition superPosition, int index, int subIndex, Value value) {
-        ValuePosition position = new ValuePosition(mode, index, subIndex, superPosition);
+    private static void doForValue(LIRInstruction inst, OperandMode mode, ValuePositionProcedure proc, ValuePosition outerPosition, int index, int subIndex, Value value) {
+        ValuePosition position = new ValuePosition(mode, index, subIndex, outerPosition);
         if (value instanceof CompositeValue) {
             CompositeValue composite = (CompositeValue) value;
             composite.forEachComponent(inst, mode, proc, position);
