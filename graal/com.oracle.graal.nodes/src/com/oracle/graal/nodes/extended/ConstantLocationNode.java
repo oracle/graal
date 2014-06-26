@@ -43,6 +43,10 @@ public final class ConstantLocationNode extends LocationNode {
         return graph.unique(new ConstantLocationNode(identity, kind, displacement));
     }
 
+    public static ConstantLocationNode create(LocationIdentity identity, Kind kind, long displacement) {
+        return new ConstantLocationNode(identity, kind, displacement);
+    }
+
     private ConstantLocationNode(LocationIdentity identity, Kind kind, long displacement) {
         super(StampFactory.forVoid());
         assert kind != Kind.Illegal && kind != Kind.Void;
