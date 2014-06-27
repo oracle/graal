@@ -141,6 +141,7 @@ public class GenGraalRuntimeInlineHpp {
         lengths.add("PrintFlags".length());
 
         out.println("bool GraalRuntime::set_option(KlassHandle hotSpotOptionsClass, char* name, int name_len, const char* value, TRAPS) {");
+        out.println("  bool check_only = hotSpotOptionsClass.is_null();");
         out.println("  if (value != NULL && (value[0] == '+' || value[0] == '-')) {");
         out.println("    // boolean options");
         genMatchers(out, lengths, options, true);
@@ -164,7 +165,7 @@ public class GenGraalRuntimeInlineHpp {
                 out.println("    case " + len + ":");
                 out.printf("      if (strncmp(name, \"PrintFlags\", %d) == 0) {%n", len);
                 out.println("        if (value[0] == '+') {");
-                out.println("          if (hotSpotOptionsClass.is_null()) {");
+                out.println("          if (check_only) {");
                 out.println("            TempNewSymbol name = SymbolTable::new_symbol(\"Lcom/oracle/graal/hotspot/HotSpotOptions;\", THREAD);");
                 out.println("            hotSpotOptionsClass = SystemDictionary::resolve_or_fail(name, true, CHECK_(true));");
                 out.println("          }");
@@ -185,21 +186,21 @@ public class GenGraalRuntimeInlineHpp {
                     if (isBoolean) {
                         out.printf("        Handle option = get_OptionValue(\"L%s;\", \"%s\", \"L%s;\", CHECK_(true));%n", toInternalName(declaringClass), desc.getFieldName(),
                                         toInternalName(getFieldType(desc)));
-                        out.println("        if (!hotSpotOptionsClass.is_null()) {");
+                        out.println("        if (!check_only) {");
                         out.println("          set_option_helper(hotSpotOptionsClass, name, name_len, option, value[0], Handle(), 0L);");
                         out.println("        }");
                     } else if (desc.getType() == String.class) {
                         out.println("        check_required_value(name, name_len, value, CHECK_(true));");
                         out.printf("        Handle option = get_OptionValue(\"L%s;\", \"%s\", \"L%s;\", CHECK_(true));%n", toInternalName(declaringClass), desc.getFieldName(),
                                         toInternalName(getFieldType(desc)));
-                        out.println("        if (!hotSpotOptionsClass.is_null()) {");
+                        out.println("        if (!check_only) {");
                         out.println("          Handle stringValue = java_lang_String::create_from_str(value, CHECK_(true));");
                         out.println("          set_option_helper(hotSpotOptionsClass, name, name_len, option, 's', stringValue, 0L);");
                         out.println("        }");
                     } else {
                         char spec = getPrimitiveSpecChar(desc);
                         out.println("        jlong primitiveValue = parse_primitive_option_value('" + spec + "', name, name_len, value, CHECK_(true));");
-                        out.println("        if (!hotSpotOptionsClass.is_null()) {");
+                        out.println("        if (!check_only) {");
                         out.printf("          Handle option = get_OptionValue(\"L%s;\", \"%s\", \"L%s;\", CHECK_(true));%n", toInternalName(declaringClass), desc.getFieldName(),
                                         toInternalName(getFieldType(desc)));
                         out.println("          set_option_helper(hotSpotOptionsClass, name, name_len, option, '" + spec + "', Handle(), primitiveValue);");
