@@ -63,6 +63,10 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
         this.customCanonicalizer = customCanonicalizer;
     }
 
+    public boolean getCanonicalizeReads() {
+        return canonicalizeReads;
+    }
+
     @Override
     protected void run(StructuredGraph graph, PhaseContext context) {
         new Instance(context, canonicalizeReads, customCanonicalizer).run(graph);
