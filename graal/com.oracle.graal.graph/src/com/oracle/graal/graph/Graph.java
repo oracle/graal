@@ -26,7 +26,6 @@ import java.util.*;
 
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.debug.*;
-import com.oracle.graal.graph.GraphEvent.NodeEvent;
 import com.oracle.graal.graph.Node.ValueNumberable;
 import com.oracle.graal.graph.NodeClass.NodeClassIterator;
 import com.oracle.graal.graph.NodeClass.Position;
@@ -38,8 +37,6 @@ import com.oracle.graal.graph.iterators.*;
 public class Graph {
 
     public final String name;
-
-    private static final boolean TIME_TRAVEL = false;
 
     /**
      * The set of nodes in the graph, ordered by {@linkplain #register(Node) registration} time.
@@ -67,7 +64,6 @@ public class Graph {
     private final ArrayList<Node> nodeCacheLast;
     private int nodesDeletedSinceLastCompression;
     private int nodesDeletedBeforeLastCompression;
-    private GraphEventLog eventLog;
 
     /**
      * The number of times this graph has been compressed.
@@ -851,36 +847,11 @@ public class Graph {
         if (nodeEventListener != null) {
             nodeEventListener.nodeAdded(node);
         }
-        logNodeAdded(node);
-    }
-
-    void logNodeAdded(Node node) {
-        if (TIME_TRAVEL) {
-            log(new GraphEvent.NodeEvent(node, GraphEvent.NodeEvent.Type.ADDED));
-        }
-    }
-
-    void logNodeDeleted(Node node) {
-        if (TIME_TRAVEL) {
-            log(new GraphEvent.NodeEvent(node, GraphEvent.NodeEvent.Type.DELETED));
-        }
-    }
-
-    private void log(NodeEvent nodeEvent) {
-        if (eventLog == null) {
-            eventLog = new GraphEventLog();
-        }
-        eventLog.add(nodeEvent);
-    }
-
-    public GraphEventLog getEventLog() {
-        return eventLog;
     }
 
     void unregister(Node node) {
         assert !isFrozen();
         assert !node.isDeleted() : "cannot delete a node twice! node=" + node;
-        logNodeDeleted(node);
         nodes[node.id] = null;
         nodesDeletedSinceLastCompression++;
 
