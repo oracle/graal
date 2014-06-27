@@ -298,9 +298,38 @@ public class Graph {
     }
 
     /**
+     * The type of events sent to a {@link NodeEventListener}.
+     */
+    public enum NodeEvent {
+        /**
+         * A node's input is changed.
+         */
+        INPUT_CHANGED,
+
+        /**
+         * A node's {@linkplain Node#usages() usages} count dropped to zero.
+         */
+        ZERO_USAGES,
+
+        /**
+         * A node was added to a graph.
+         */
+        NODE_ADDED;
+    }
+
+    /**
      * Client interested in one or more node related events.
      */
     public interface NodeEventListener {
+
+        /**
+         * Default handler for events.
+         *
+         * @param e an event
+         * @param node the node related to {@code e}
+         */
+        default void event(NodeEvent e, Node node) {
+        }
 
         /**
          * Notifies this listener of a change in a node's inputs.
@@ -308,6 +337,7 @@ public class Graph {
          * @param node a node who has had one of its inputs changed
          */
         default void inputChanged(Node node) {
+            event(NodeEvent.INPUT_CHANGED, node);
         }
 
         /**
@@ -316,6 +346,7 @@ public class Graph {
          * @param node a node whose {@link Node#usages()} just became empty
          */
         default void usagesDroppedToZero(Node node) {
+            event(NodeEvent.ZERO_USAGES, node);
         }
 
         /**
@@ -324,6 +355,7 @@ public class Graph {
          * @param node a node that was just added to the graph
          */
         default void nodeAdded(Node node) {
+            event(NodeEvent.NODE_ADDED, node);
         }
     }
 

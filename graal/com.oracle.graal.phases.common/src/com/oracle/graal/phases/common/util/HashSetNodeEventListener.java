@@ -24,7 +24,7 @@ package com.oracle.graal.phases.common.util;
 
 import java.util.*;
 
-import com.oracle.graal.graph.Graph.NodeEventListener;
+import com.oracle.graal.graph.Graph.*;
 import com.oracle.graal.graph.*;
 
 /**
@@ -33,32 +33,38 @@ import com.oracle.graal.graph.*;
  */
 public class HashSetNodeEventListener implements NodeEventListener {
 
-    /**
-     * Accumulates all node events except for {@link NodeEventListener#nodeAdded(Node) node
-     * additions}.
-     */
-    public static class ExceptForAddedNodes extends HashSetNodeEventListener {
-        @Override
-        public void nodeAdded(Node node) {
-        }
-    }
-
     private final Set<Node> nodes;
+    private final Set<NodeEvent> filter;
 
+    /**
+     * Creates a {@link NodeEventListener} that collects nodes from all events.
+     */
     public HashSetNodeEventListener() {
         this.nodes = new HashSet<>();
+        this.filter = EnumSet.allOf(NodeEvent.class);
     }
 
-    public void nodeAdded(Node node) {
-        nodes.add(node);
+    /**
+     * Creates a {@link NodeEventListener} that collects nodes from all events that match a given
+     * filter.
+     */
+    public HashSetNodeEventListener(Set<NodeEvent> filter) {
+        this.nodes = new HashSet<>();
+        this.filter = filter;
     }
 
-    public void inputChanged(Node node) {
-        nodes.add(node);
+    /**
+     * Excludes a given event from those for which nodes are collected.
+     */
+    public HashSetNodeEventListener exclude(NodeEvent e) {
+        filter.remove(e);
+        return this;
     }
 
-    public void usagesDroppedToZero(Node node) {
-        nodes.add(node);
+    public void event(NodeEvent e, Node node) {
+        if (filter.contains(e)) {
+            nodes.add(node);
+        }
     }
 
     /**
