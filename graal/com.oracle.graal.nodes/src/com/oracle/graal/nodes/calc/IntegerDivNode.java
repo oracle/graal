@@ -34,7 +34,7 @@ import com.oracle.graal.nodes.type.*;
 public class IntegerDivNode extends FixedBinaryNode implements Lowerable, LIRLowerable {
 
     public IntegerDivNode(ValueNode x, ValueNode y) {
-        super(x.stamp().unrestricted(), x, y);
+        super(StampTool.div(x.stamp(), y.stamp()), x, y);
     }
 
     @Override
