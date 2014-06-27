@@ -207,7 +207,7 @@ public class HotSpotOptions {
         if (!matches.isEmpty()) {
             System.err.println("Did you mean one of the following?");
             for (OptionDescriptor match : matches) {
-                boolean isBoolean = match.getType() == boolean.class;
+                boolean isBoolean = match.getType() == boolean.class || match.getType() == Boolean.class;
                 System.err.println(String.format("    %s%s%s", isBoolean ? "(+/-)" : "", match.getName(), isBoolean ? "" : "=<value>"));
             }
         }
