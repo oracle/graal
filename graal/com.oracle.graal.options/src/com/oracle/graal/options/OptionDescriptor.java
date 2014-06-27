@@ -42,11 +42,13 @@ public class OptionDescriptor {
         this.option = option;
         this.declaringClass = declaringClass;
         this.fieldName = fieldName;
+        assert !type.isPrimitive() : "must used boxed type instead of " + type;
         option.setDescriptor(this);
     }
 
     /**
-     * Gets the type of values stored in the option.
+     * Gets the type of values stored in the option. This will be the boxed type for a primitive
+     * option.
      */
     public Class<?> getType() {
         return type;
