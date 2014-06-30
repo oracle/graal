@@ -32,6 +32,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.virtual.*;
 
 public class GraphUtil {
 
@@ -39,7 +40,7 @@ public class GraphUtil {
 
         @Override
         public final boolean apply(Node n) {
-            return n instanceof FloatingNode || n instanceof VirtualState || n instanceof CallTargetNode;
+            return n instanceof FloatingNode || n instanceof VirtualState || n instanceof CallTargetNode || n instanceof VirtualObjectNode;
         }
     };
 
