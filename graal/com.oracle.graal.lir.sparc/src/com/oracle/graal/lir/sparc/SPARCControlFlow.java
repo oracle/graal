@@ -332,6 +332,7 @@ public class SPARCControlFlow {
         }
     }
 
+    @SuppressWarnings("unused")
     private static void cmove(CompilationResultBuilder crb, SPARCMacroAssembler masm, Kind kind, Value result, ConditionFlag cond, Value other) {
         if (!isRegister(other)) {
             SPARCMove.move(crb, masm, result, other);
@@ -371,8 +372,11 @@ public class SPARCControlFlow {
                     case F_Unordered:
                         fc = FCond.Fbu;
                         break;
+                    default:
+                        GraalInternalError.shouldNotReachHere("Unknown condition code " + cond);
+                        break;
                 }
-                new Fbfcc(masm, fc, true, 2).equals(masm);
+                new Fbfcc(masm, fc, true, 2);
                 SPARCMove.move(crb, masm, result, other);
                 break;
             default:

@@ -26,11 +26,9 @@ import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 import static com.oracle.graal.sparc.SPARC.*;
 import static com.oracle.graal.api.code.ValueUtil.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.sparc.*;
-import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Mov;
-import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Setx;
+import com.oracle.graal.asm.sparc.SPARCMacroAssembler.*;
 import com.oracle.graal.asm.sparc.SPARCAssembler.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
@@ -53,7 +51,7 @@ final class SPARCHotSpotPatchReturnAddressOp extends SPARCLIRInstruction {
         // FIXME This is non-trivial. On SPARC we need to flush all register windows first before we
         // can patch the return address (see: frame::patch_pc).
         new Flushw().emit(masm);
-        int frameSize = crb.frameMap.frameSize();
+// int frameSize = crb.frameMap.frameSize();
 // new SPARCAssembler.Ldx(new SPARCAddress(o7, 1), g3).emit(masm);
         // new Setx(8 * 15 - 1, g4, false).emit(masm);
         new Mov(asLongReg(address), g4).emit(masm);
