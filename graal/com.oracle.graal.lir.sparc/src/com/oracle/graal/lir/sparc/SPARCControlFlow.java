@@ -40,6 +40,8 @@ import com.oracle.graal.asm.sparc.SPARCAssembler.Bpleu;
 import com.oracle.graal.asm.sparc.SPARCAssembler.Bpne;
 import com.oracle.graal.asm.sparc.SPARCAssembler.CC;
 import com.oracle.graal.asm.sparc.SPARCAssembler.ConditionFlag;
+import com.oracle.graal.asm.sparc.SPARCAssembler.FCond;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Fbfcc;
 import com.oracle.graal.asm.sparc.SPARCAssembler.Movcc;
 import com.oracle.graal.asm.sparc.SPARCAssembler.Sub;
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Bpgeu;
@@ -320,19 +322,17 @@ public class SPARCControlFlow {
             // check that we don't overwrite an input operand before it is used.
             assert !result.equals(trueValue);
 
-            SPARCMove.move(crb, masm, result, falseValue);
-            cmove(crb, masm, kind, result, condition, trueValue);
-
-            if (unorderedIsTrue && !trueOnUnordered(condition)) {
-                // cmove(crb, masm, result, ConditionFlag.Parity, trueValue);
-                throw GraalInternalError.unimplemented();
-            } else if (!unorderedIsTrue && trueOnUnordered(condition)) {
-                // cmove(crb, masm, result, ConditionFlag.Parity, falseValue);
-                throw GraalInternalError.unimplemented();
+            SPARCMove.move(crb, masm, result, trueValue);
+            cmove(crb, masm, kind, result, condition, falseValue);
+            // TODO: This may be omitted, when doing the right check beforehand (There are
+            // instructions which control the unordered behavior as well)
+            if (!unorderedIsTrue) {
+                cmove(crb, masm, kind, result, ConditionFlag.F_Unordered, falseValue);
             }
         }
     }
 
+    @SuppressWarnings("unused")
     private static void cmove(CompilationResultBuilder crb, SPARCMacroAssembler masm, Kind kind, Value result, ConditionFlag cond, Value other) {
         if (!isRegister(other)) {
             SPARCMove.move(crb, masm, result, other);
@@ -346,6 +346,38 @@ public class SPARCControlFlow {
             case Long:
             case Object:
                 new Movcc(cond, CC.Xcc, asRegister(other), asRegister(result)).emit(masm);
+                break;
+            case Float:
+            case Double:
+                FCond fc = null;
+                switch (cond) {
+                    case Equal:
+                        fc = FCond.Fbne;
+                        break;
+                    case Greater:
+                        fc = FCond.Fble;
+                        break;
+                    case GreaterEqual:
+                        fc = FCond.Fbl;
+                        break;
+                    case Less:
+                        fc = FCond.Fbge;
+                        break;
+                    case LessEqual:
+                        fc = FCond.Fbg;
+                        break;
+                    case F_Ordered:
+                        fc = FCond.Fbo;
+                        break;
+                    case F_Unordered:
+                        fc = FCond.Fbu;
+                        break;
+                    default:
+                        GraalInternalError.shouldNotReachHere("Unknown condition code " + cond);
+                        break;
+                }
+                new Fbfcc(masm, fc, true, 2);
+                SPARCMove.move(crb, masm, result, other);
                 break;
             default:
                 throw GraalInternalError.shouldNotReachHere();
@@ -382,24 +414,15 @@ public class SPARCControlFlow {
             case NE:
                 return ConditionFlag.NotEqual;
             case LT:
+                return ConditionFlag.Less;
             case LE:
+                return ConditionFlag.LessEqual;
             case GE:
+                return ConditionFlag.GreaterEqual;
             case GT:
+                return ConditionFlag.Greater;
             default:
-                throw GraalInternalError.shouldNotReachHere();
-        }
-    }
-
-    private static boolean trueOnUnordered(ConditionFlag condition) {
-        switch (condition) {
-            case NotEqual:
-            case Less:
-                return false;
-            case Equal:
-            case GreaterEqual:
-                return true;
-            default:
-                throw GraalInternalError.shouldNotReachHere();
+                throw GraalInternalError.shouldNotReachHere("Unimplemented for " + cond);
         }
     }
 }

@@ -49,4 +49,14 @@ public class BC_fadd extends JTTTest {
         runTest("test", 253.11f, 54.43f);
     }
 
+    @Test
+    public void run3() throws Throwable {
+        runTest("test", Float.MAX_VALUE, Float.MIN_VALUE);
+    }
+
+    @Test
+    public void run4() throws Throwable {
+        runTest("test", Float.MAX_VALUE / 2, Float.MAX_VALUE / 2);
+    }
+
 }

@@ -22,29 +22,27 @@
  */
 package com.oracle.graal.hotspot.sparc;
 
-import static com.oracle.graal.asm.sparc.SPARCMacroAssembler.*;
 import static com.oracle.graal.sparc.SPARC.*;
 
-import com.oracle.graal.asm.sparc.*;
-import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.asm.*;
-import com.oracle.graal.lir.sparc.*;
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.hotspot.*;
+import com.oracle.graal.hotspot.meta.*;
+import com.oracle.graal.hotspot.stubs.*;
 
-/**
- * Pops the current frame off the stack including the return address.
- */
-@Opcode("LEAVE_DEOPTIMIZED_STACK_FRAME")
-final class SPARCHotSpotLeaveDeoptimizedStackFrameOp extends SPARCLIRInstruction {
+final class SPARCUncommonTrapStub extends UncommonTrapStub {
+
+    private RegisterConfig registerConfig;
+
+    public SPARCUncommonTrapStub(HotSpotProviders providers, TargetDescription target, HotSpotForeignCallLinkage linkage) {
+        super(providers, target, linkage);
+        // This is basically the maximum we can spare. All other G and O register are used.
+        Register[] allocatable = new Register[]{g1, g3, g4, g5, o0, o1, o2, o3, o4};
+        registerConfig = new SPARCHotSpotRegisterConfig(target, allocatable);
+    }
 
     @Override
-    public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
-        // Save O registers over restore.
-        new Mov(o0, i0).emit(masm);
-        new Mov(o1, i1).emit(masm);
-        new Mov(o2, i2).emit(masm);
-        new Mov(o3, i3).emit(masm);
-        new Mov(o4, i4).emit(masm);
-
-        new RestoreWindow().emit(masm);
+    public RegisterConfig getRegisterConfig() {
+        return registerConfig;
     }
+
 }

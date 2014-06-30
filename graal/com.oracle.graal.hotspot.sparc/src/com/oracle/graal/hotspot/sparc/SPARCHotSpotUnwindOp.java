@@ -49,6 +49,9 @@ final class SPARCHotSpotUnwindOp extends SPARCHotSpotEpilogueOp {
 
     @Override
     public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
+        // This Frame is left but the called unwind (which is sibling) method needs the exception as
+        // input in i0
+        new Mov(o0, i0).emit(masm);
         leaveFrame(crb);
 
         ForeignCallLinkage linkage = crb.foreignCalls.lookupForeignCall(UNWIND_EXCEPTION_TO_CALLER);
@@ -59,7 +62,6 @@ final class SPARCHotSpotUnwindOp extends SPARCHotSpotEpilogueOp {
         // Get return address (is in o7 after leave).
         Register returnAddress = asRegister(cc.getArgument(1));
         new Mov(o7, returnAddress).emit(masm);
-
         Register scratch = g5;
         SPARCCall.indirectJmp(crb, masm, scratch, linkage);
     }

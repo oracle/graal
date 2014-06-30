@@ -60,9 +60,17 @@ public enum SPARCCompare {
         @Override
         protected void verify() {
             super.verify();
-            assert (name().startsWith("I") && x.getKind() == Kind.Int && y.getKind().getStackKind() == Kind.Int) || (name().startsWith("L") && x.getKind() == Kind.Long && y.getKind() == Kind.Long) ||
-                            (name().startsWith("A") && x.getKind() == Kind.Object && y.getKind() == Kind.Object) ||
-                            (name().startsWith("F") && x.getKind() == Kind.Float && y.getKind() == Kind.Float) || (name().startsWith("D") && x.getKind() == Kind.Double && y.getKind() == Kind.Double);
+
+            // @formatter:off
+            assert  (name().startsWith("I") && (x.getKind() == Kind.Int || x.getKind()==Kind.Byte) &&
+                            (y.getKind().getStackKind() == Kind.Int || y.getKind().getStackKind() == Kind.Byte)) ||
+                    (name().startsWith("L") && x.getKind() == Kind.Long && y.getKind() == Kind.Long) ||
+                    (name().startsWith("A") && x.getKind() == Kind.Object && y.getKind() == Kind.Object) ||
+                    (name().startsWith("F") && x.getKind() == Kind.Float && y.getKind() == Kind.Float) ||
+                    (name().startsWith("D") && x.getKind() == Kind.Double && y.getKind() == Kind.Double)
+                    : "Name; " + name() + " x: " + x + " y: " + y;
+
+            // @formatter:on
         }
     }
 
@@ -79,11 +87,11 @@ public enum SPARCCompare {
                     new Cmp(asObjectReg(x), asObjectReg(y)).emit(masm);
                     break;
                 case FCMP:
-                    // masm.ucomiss(asFloatReg(x), asFloatReg(y));
-                    // break;
+                    new Fcmp(CC.Fcc0, Opfs.Fcmps, asFloatReg(x), asFloatReg(y)).emit(masm);
+                    break;
                 case DCMP:
-                    // masm.ucomisd(asDoubleReg(x), asDoubleReg(y));
-                    // break;
+                    new Fcmp(CC.Fcc0, Opfs.Fcmpd, asDoubleReg(x), asDoubleReg(y)).emit(masm);
+                    break;
                 default:
                     throw GraalInternalError.shouldNotReachHere();
             }
@@ -106,11 +114,11 @@ public enum SPARCCompare {
                         throw GraalInternalError.shouldNotReachHere("Only null object constants are allowed in comparisons");
                     }
                 case FCMP:
-                    // masm.ucomiss(asFloatReg(x), (AMD64Address) crb.asFloatConstRef(y));
-                    // break;
+                    new Fcmp(CC.Fcc0, Opfs.Fcmps, asFloatReg(x), asFloatReg(y)).emit(masm);
+                    break;
                 case DCMP:
-                    // masm.ucomisd(asDoubleReg(x), (AMD64Address) crb.asDoubleConstRef(y));
-                    // break;
+                    new Fcmp(CC.Fcc0, Opfs.Fcmpd, asDoubleReg(x), asDoubleReg(y)).emit(masm);
+                    break;
                 default:
                     throw GraalInternalError.shouldNotReachHere();
             }

@@ -69,7 +69,7 @@ public abstract class HotSpotForeignCallsProviderImpl implements HotSpotForeignC
 
     /**
      * Creates and registers the details for linking a foreign call to a {@link Stub}.
-     * 
+     *
      * @param descriptor the signature of the call to the stub
      * @param reexecutable specifies if the stub call can be re-executed without (meaningful) side
      *            effects. Deoptimization will not return to a point before a stub call that cannot
@@ -83,7 +83,7 @@ public abstract class HotSpotForeignCallsProviderImpl implements HotSpotForeignC
 
     /**
      * Creates and registers the linkage for a foreign call.
-     * 
+     *
      * @param descriptor the signature of the foreign call
      * @param address the address of the code to call
      * @param outgoingCcType outgoing (caller) calling convention type
@@ -104,7 +104,7 @@ public abstract class HotSpotForeignCallsProviderImpl implements HotSpotForeignC
 
     /**
      * Creates a {@linkplain ForeignCallStub stub} for a foreign call.
-     * 
+     *
      * @param descriptor the signature of the call to the stub
      * @param address the address of the foreign code to call
      * @param prependThread true if the JavaThread value for the current thread is to be prepended

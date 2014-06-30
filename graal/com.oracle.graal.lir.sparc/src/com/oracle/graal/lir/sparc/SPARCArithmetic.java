@@ -28,38 +28,12 @@ import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.sparc.*;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Add;
-import com.oracle.graal.asm.sparc.SPARCAssembler.And;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Faddd;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Fadds;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Fdivd;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Fdivs;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Fdtoi;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Fmuld;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Fmuls;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Fnegd;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Fnegs;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Fstoi;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Fsubd;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Fsubs;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Mulx;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Or;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Sdivx;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Sll;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Sllx;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Sra;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Srax;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Srl;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Srlx;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Sub;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Xor;
-import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Neg;
-import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Not;
-import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Signx;
+import com.oracle.graal.asm.sparc.SPARCMacroAssembler.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.gen.*;
+import com.oracle.graal.sparc.*;
 
 public enum SPARCArithmetic {
     // @formatter:off
@@ -150,17 +124,23 @@ public enum SPARCArithmetic {
         @Def({REG}) protected Value result;
         @Use({REG, CONST}) protected Value x;
         @Alive({REG, CONST}) protected Value y;
+        @State LIRFrameState state;
 
         public BinaryRegReg(SPARCArithmetic opcode, Value result, Value x, Value y) {
+            this(opcode, result, x, y, null);
+        }
+
+        public BinaryRegReg(SPARCArithmetic opcode, Value result, Value x, Value y, LIRFrameState state) {
             this.opcode = opcode;
             this.result = result;
             this.x = x;
             this.y = y;
+            this.state = state;
         }
 
         @Override
         public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
-            emit(crb, masm, opcode, result, x, y, null);
+            emit(crb, masm, opcode, result, x, y, state);
         }
 
         @Override
@@ -288,9 +268,9 @@ public enum SPARCArithmetic {
         }
     }
 
-    public static void emit(CompilationResultBuilder crb, SPARCAssembler masm, SPARCArithmetic opcode, Value dst, Value src1, Value src2, LIRFrameState info) {
+    public static void emit(CompilationResultBuilder crb, SPARCMacroAssembler masm, SPARCArithmetic opcode, Value dst, Value src1, Value src2, LIRFrameState info) {
         int exceptionOffset = -1;
-        if (isConstant(src1)) {
+        if (isConstant(src1) && !isConstant(src2)) {
             switch (opcode) {
                 case ISUB:
                     assert isSimm13(crb.asIntConst(src1));
@@ -303,6 +283,13 @@ public enum SPARCArithmetic {
                     throw GraalInternalError.unimplemented();
                     // new Sdivx(masm, asIntReg(src1), asIntReg(src2),
                     // asIntReg(dst));
+                case LDIV:
+                    int c = crb.asIntConst(src1);
+                    assert isSimm13(c);
+                    exceptionOffset = masm.position();
+                    new Sdivx(asLongReg(src2), c, asLongReg(dst)).emit(masm);
+                    new Mulx(asLongReg(src1), asLongReg(dst), asLongReg(dst)).emit(masm);
+                    break;
                 case FSUB:
                 case FDIV:
                 case DSUB:
@@ -330,7 +317,7 @@ public enum SPARCArithmetic {
                     new Sdivx(asIntReg(src1), crb.asIntConst(src2), asIntReg(dst)).emit(masm);
                     break;
                 case IAND:
-                    assert isSimm13(crb.asIntConst(src2));
+                    assert isSimm13(crb.asIntConst(src2)) : src2;
                     new And(asIntReg(src1), crb.asIntConst(src2), asIntReg(dst)).emit(masm);
                     break;
                 case ISHL:
@@ -366,7 +353,17 @@ public enum SPARCArithmetic {
                     new Mulx(asLongReg(src1), crb.asIntConst(src2), asLongReg(dst)).emit(masm);
                     break;
                 case LDIV:
-                    throw GraalInternalError.unimplemented();
+                    int c = crb.asIntConst(src2);
+                    exceptionOffset = masm.position();
+                    if (c == 0) { // Generate div by zero trap
+                        new Sdivx(SPARC.g0, 0, asLongReg(dst)).emit(masm);
+                    } else if (isConstant(src1)) { // Both are const, therefore just load the const
+                        new Setx(crb.asIntConst(src1) / c, asLongReg(dst), false).emit(masm);
+                    } else { // Otherwise try to divide
+                        assert isSimm13(crb.asLongConst(src2));
+                        new Sdivx(asLongReg(src1), crb.asIntConst(src2), asLongReg(dst)).emit(masm);
+                    }
+                    break;
                 case LUDIV:
                     throw GraalInternalError.unimplemented();
                 case LAND:
@@ -431,10 +428,10 @@ public enum SPARCArithmetic {
                     new Sll(asIntReg(src1), asIntReg(src2), asIntReg(dst)).emit(masm);
                     break;
                 case ISHR:
-                    new Srl(asIntReg(src1), asIntReg(src2), asIntReg(dst)).emit(masm);
+                    new Sra(asIntReg(src1), asIntReg(src2), asIntReg(dst)).emit(masm);
                     break;
                 case IUSHR:
-                    new Sra(asIntReg(src1), asIntReg(src2), asIntReg(dst)).emit(masm);
+                    new Srl(asIntReg(src1), asIntReg(src2), asIntReg(dst)).emit(masm);
                     break;
                 case IREM:
                     throw GraalInternalError.unimplemented();
@@ -448,6 +445,7 @@ public enum SPARCArithmetic {
                     new Mulx(asLongReg(src1), asLongReg(src2), asLongReg(dst)).emit(masm);
                     break;
                 case LDIV:
+                    exceptionOffset = masm.position();
                     new Sdivx(asLongReg(src1), asLongReg(src2), asLongReg(dst)).emit(masm);
                     break;
                 case LUDIV:
@@ -502,16 +500,42 @@ public enum SPARCArithmetic {
                     throw GraalInternalError.shouldNotReachHere();
             }
         }
-
         if (info != null) {
             assert exceptionOffset != -1;
             crb.recordImplicitException(exceptionOffset, info);
         }
     }
 
-    public static void emit(CompilationResultBuilder crb, SPARCAssembler masm, SPARCArithmetic opcode, Value dst, Value src1, Value src2, Value scratch1, Value scratch2, LIRFrameState info) {
+    public static void emit(CompilationResultBuilder crb, SPARCMacroAssembler masm, SPARCArithmetic opcode, Value dst, Value src1, Value src2, Value scratch1, Value scratch2, LIRFrameState info) {
         int exceptionOffset = -1;
-        if (isConstant(src1)) {
+        if (isConstant(src1) && isConstant(src2)) {
+            switch (opcode) {
+                case IREM: {
+                    int a = crb.asIntConst(src1);
+                    int b = crb.asIntConst(src2);
+                    if (b == 0) {
+                        exceptionOffset = masm.position();
+                        new Sdivx(SPARC.g0, 0, asIntReg(dst)).emit(masm);
+                    } else {
+                        new Setx(a % b, asIntReg(dst), false).emit(masm);
+                    }
+                }
+                    break;
+                case LREM: {
+                    long a = crb.asLongConst(src1);
+                    long b = crb.asLongConst(src2);
+                    if (b == 0) {
+                        exceptionOffset = masm.position();
+                        new Sdivx(SPARC.g0, 0, asLongReg(dst)).emit(masm);
+                    } else {
+                        new Setx(a % b, asLongReg(dst), false).emit(masm);
+                    }
+                }
+                    break;
+                default:
+                    throw GraalInternalError.shouldNotReachHere("not implemented");
+            }
+        } else if (isConstant(src1)) {
             switch (opcode) {
                 default:
                     throw GraalInternalError.shouldNotReachHere();
@@ -521,12 +545,14 @@ public enum SPARCArithmetic {
                 case IREM:
                     assert isSimm13(crb.asIntConst(src2));
                     new Sra(asIntReg(src1), 0, asIntReg(src1)).emit(masm);
+                    exceptionOffset = masm.position();
                     new Sdivx(asIntReg(src1), crb.asIntConst(src2), asIntReg(scratch1)).emit(masm);
                     new Mulx(asIntReg(scratch1), crb.asIntConst(src2), asIntReg(scratch2)).emit(masm);
                     new Sub(asIntReg(src1), asIntReg(scratch2), asIntReg(dst)).emit(masm);
                     break;
                 case LREM:
                     assert isSimm13(crb.asIntConst(src2));
+                    exceptionOffset = masm.position();
                     new Sdivx(asLongReg(src1), crb.asIntConst(src2), asLongReg(scratch1)).emit(masm);
                     new Mulx(asLongReg(scratch1), crb.asIntConst(src2), asLongReg(scratch2)).emit(masm);
                     new Sub(asLongReg(src1), asLongReg(scratch2), asLongReg(dst)).emit(masm);
@@ -539,6 +565,17 @@ public enum SPARCArithmetic {
         } else {
             switch (opcode) {
                 case LREM:
+                    exceptionOffset = masm.position();
+                    new Sdivx(asLongReg(src1), asLongReg(src2), asLongReg(scratch1)).emit(masm);
+                    new Mulx(asLongReg(scratch1), asLongReg(src2), asLongReg(scratch2)).emit(masm);
+                    new Sub(asLongReg(src1), asLongReg(scratch2), asLongReg(dst)).emit(masm);
+                    break;
+                case IREM:
+                    exceptionOffset = masm.position();
+                    new Sdivx(asIntReg(src1), asIntReg(src2), asIntReg(scratch1)).emit(masm);
+                    new Mulx(asIntReg(scratch1), asIntReg(src2), asIntReg(scratch2)).emit(masm);
+                    new Sub(asIntReg(src1), asIntReg(scratch2), asIntReg(dst)).emit(masm);
+                    break;
                 case LUREM:
                     throw GraalInternalError.unimplemented();
                 default:
@@ -560,11 +597,27 @@ public enum SPARCArithmetic {
                 case INEG:
                     new Neg(asIntReg(src), asIntReg(dst)).emit(masm);
                     break;
+                case LNEG:
+                    new Neg(asLongReg(src), asLongReg(dst)).emit(masm);
+                    break;
                 case INOT:
                     new Not(asIntReg(src), asIntReg(dst)).emit(masm);
                     break;
                 case LNOT:
                     new Not(asLongReg(src), asLongReg(dst)).emit(masm);
+                    break;
+                case D2F:
+                    new Fdtos(asDoubleReg(src), asFloatReg(dst)).emit(masm);
+                    break;
+                case L2D:
+                    if (src.getPlatformKind() == Kind.Long) {
+                        new Movxtod(asLongReg(src), asDoubleReg(dst)).emit(masm);
+                        new Fxtod(masm, asDoubleReg(dst), asDoubleReg(dst));
+                    } else if (src.getPlatformKind() == Kind.Double) {
+                        new Fxtod(masm, asDoubleReg(src), asDoubleReg(dst));
+                    } else {
+                        throw GraalInternalError.shouldNotReachHere("cannot handle source register " + src.getPlatformKind());
+                    }
                     break;
                 case I2L:
                     new Signx(asIntReg(src), asLongReg(dst)).emit(masm);
@@ -572,19 +625,62 @@ public enum SPARCArithmetic {
                 case L2I:
                     new Signx(asLongReg(src), asIntReg(dst)).emit(masm);
                     break;
+                case B2L:
+                    new Sllx(asIntReg(src), 56, asLongReg(dst)).emit(masm);
+                    new Srax(asLongReg(dst), 56, asLongReg(dst)).emit(masm);
+                    break;
+                case S2L:
+                    new Sllx(asIntReg(src), 48, asLongReg(dst)).emit(masm);
+                    new Srax(asLongReg(dst), 48, asLongReg(dst)).emit(masm);
+                    break;
                 case B2I:
                     new Sll(asIntReg(src), 24, asIntReg(dst)).emit(masm);
-                    new Srl(asIntReg(dst), 24, asIntReg(dst)).emit(masm);
+                    new Sra(asIntReg(dst), 24, asIntReg(dst)).emit(masm);
                     break;
                 case S2I:
                     new Sll(asIntReg(src), 16, asIntReg(dst)).emit(masm);
-                    new Srl(asIntReg(dst), 16, asIntReg(dst)).emit(masm);
+                    new Sra(asIntReg(dst), 16, asIntReg(dst)).emit(masm);
                     break;
                 case I2F:
-                    new Fstoi(masm, asIntReg(src), asFloatReg(dst));
+                    if (src.getPlatformKind() == Kind.Int) {
+                        new Movwtos(asIntReg(src), asFloatReg(dst)).emit(masm);
+                        new Fitos(masm, asFloatReg(dst), asFloatReg(dst));
+                    } else if (src.getPlatformKind() == Kind.Float) {
+                        new Fitos(masm, asFloatReg(src), asFloatReg(dst));
+                    } else {
+                        throw GraalInternalError.shouldNotReachHere("cannot handle source register " + src.getPlatformKind());
+                    }
                     break;
-                case I2D:
-                    new Fdtoi(masm, asIntReg(src), asDoubleReg(dst));
+                case F2D:
+                    new Fstod(masm, asFloatReg(src), asDoubleReg(dst));
+                    break;
+                case F2L:
+                    new Fcmp(CC.Fcc0, Opfs.Fcmps, asFloatReg(dst), asFloatReg(dst)).emit(masm);
+                    new Fbfcc(masm, FCond.Fbo, false, 4);
+                    new Fstox(masm, asFloatReg(src), asFloatReg(dst));
+                    new Fitos(masm, asFloatReg(dst), asFloatReg(dst));
+                    new Fsubs(asFloatReg(dst), asFloatReg(dst), asFloatReg(dst)).emit(masm);
+                    break;
+                case F2I:
+                    new Fcmp(CC.Fcc0, Opfs.Fcmps, asFloatReg(dst), asFloatReg(dst)).emit(masm);
+                    new Fbfcc(masm, FCond.Fbo, false, 4);
+                    new Fstoi(masm, asFloatReg(src), asFloatReg(dst));
+                    new Fitos(masm, asFloatReg(dst), asFloatReg(dst));
+                    new Fsubs(asFloatReg(dst), asFloatReg(dst), asFloatReg(dst)).emit(masm);
+                    break;
+                case D2L:
+                    new Fcmp(CC.Fcc0, Opfs.Fcmpd, asDoubleReg(dst), asDoubleReg(dst)).emit(masm);
+                    new Fbfcc(masm, FCond.Fbo, false, 4);
+                    new Fdtox(masm, asDoubleReg(src), asDoubleReg(dst));
+                    new Fxtod(masm, asDoubleReg(dst), asDoubleReg(dst));
+                    new Fsubd(asDoubleReg(dst), asDoubleReg(dst), asDoubleReg(dst)).emit(masm);
+                    break;
+                case D2I:
+                    new Fcmp(CC.Fcc0, Opfs.Fcmpd, asDoubleReg(dst), asDoubleReg(dst)).emit(masm);
+                    new Fbfcc(masm, FCond.Fbo, false, 4);
+                    new Fdtoi(masm, asDoubleReg(src), asDoubleReg(dst));
+                    new Fitod(masm, asDoubleReg(dst), asDoubleReg(dst));
+                    new Fsubd(asDoubleReg(dst), asDoubleReg(dst), asDoubleReg(dst)).emit(masm);
                     break;
                 case FNEG:
                     new Fnegs(masm, asFloatReg(src), asFloatReg(dst));

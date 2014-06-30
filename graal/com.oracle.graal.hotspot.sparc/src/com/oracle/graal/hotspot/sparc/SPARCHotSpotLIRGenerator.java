@@ -290,6 +290,19 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
         return result;
     }
 
+    @Override
+    public Value emitDeoptimizationFetchUnrollInfoCall(SaveRegistersOp saveRegisterOp) {
+        ForeignCallLinkage linkage = getForeignCalls().lookupForeignCall(FETCH_UNROLL_INFO);
+
+        Register threadRegister = getProviders().getRegisters().getThreadRegister();
+        Register stackPointerRegister = getProviders().getRegisters().getStackPointerRegister();
+        append(new SPARCHotSpotCRuntimeCallPrologueOp(config.threadLastJavaSpOffset(), threadRegister, stackPointerRegister));
+        Variable result = super.emitForeignCall(linkage, null, threadRegister.asValue(LIRKind.value(Kind.Long)));
+        append(new SPARCHotSpotCRuntimeCallEpilogueOp(config.threadLastJavaSpOffset(), config.threadLastJavaPcOffset(), config.threadJavaFrameAnchorFlagsOffset(), threadRegister));
+
+        return result;
+    }
+
     public void emitNullCheck(Value address, LIRFrameState state) {
         assert address.getKind() == Kind.Object : address + " - " + address.getKind() + " not an object!";
         append(new NullCheckOp(load(address), state));

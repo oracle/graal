@@ -28,12 +28,13 @@ import com.oracle.graal.asm.sparc.*;
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
+import com.oracle.graal.lir.sparc.*;
 
 /**
  * Pops the current frame off the stack.
  */
 @Opcode("LEAVE_CURRENT_STACK_FRAME")
-final class SPARCHotSpotLeaveCurrentStackFrameOp extends SPARCHotSpotEpilogueOp {
+final class SPARCHotSpotLeaveCurrentStackFrameOp extends SPARCLIRInstruction {
 
     @Override
     public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
@@ -44,6 +45,6 @@ final class SPARCHotSpotLeaveCurrentStackFrameOp extends SPARCHotSpotEpilogueOp 
         new Mov(o3, i3).emit(masm);
         new Mov(o4, i4).emit(masm);
 
-        leaveFrame(crb);
+        crb.frameContext.leave(crb);
     }
 }

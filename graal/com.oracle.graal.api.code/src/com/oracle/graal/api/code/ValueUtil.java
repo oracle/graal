@@ -107,17 +107,17 @@ public final class ValueUtil {
     }
 
     public static Register asObjectReg(Value value) {
-        assert value.getKind() == Kind.Object;
+        assert value.getKind() == Kind.Object : value.getKind();
         return asRegister(value);
     }
 
     public static Register asFloatReg(Value value) {
-        assert value.getKind() == Kind.Float;
+        assert value.getKind() == Kind.Float : value.getKind();
         return asRegister(value);
     }
 
     public static Register asDoubleReg(Value value) {
-        assert value.getKind() == Kind.Double;
+        assert value.getKind() == Kind.Double : value.getKind();
         return asRegister(value);
     }
 
