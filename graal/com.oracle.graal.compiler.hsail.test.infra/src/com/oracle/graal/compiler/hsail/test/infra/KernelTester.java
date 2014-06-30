@@ -130,21 +130,14 @@ public abstract class KernelTester extends GraalTest {
         hsailMode = HsailMode.COMPILED;
         useLambdaMethod = false;
 
-        if (okraLibExists == false) {
-            // The okra native lib is not loaded yet, try to load the OkraContext
-            // explicitly and report a more useful error if there is a problem
-            try {
-                Class.forName("OkraContext");
-            } catch (Exception e) {
-                logger.info("Okra native library cannot be found or loaded while running" + this.getClass().getSimpleName());
-                this.okraLibExists = false;
-                return;
-            }
+        this.okraLibExists = okraLibExists || OkraUtil.okraLibExists();
+        if (!this.okraLibExists) {
+            logger.info("Okra native library cannot be found or loaded while running" + this.getClass().getSimpleName());
+            return;
         }
 
-        // Control which okra instances can run the tests (is Simulator is static).
+        // Control which okra instances can run the tests (isSimulator is static).
         onSimulator = OkraContext.isSimulator();
-        this.okraLibExists = okraLibExists;
     }
 
     public abstract void runTest();
