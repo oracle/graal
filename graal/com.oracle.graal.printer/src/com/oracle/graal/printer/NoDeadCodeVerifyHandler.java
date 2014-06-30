@@ -25,6 +25,7 @@ package com.oracle.graal.printer;
 import static com.oracle.graal.printer.NoDeadCodeVerifyHandler.Options.*;
 
 import java.util.*;
+import java.util.concurrent.*;
 
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.debug.*;
@@ -52,6 +53,12 @@ public class NoDeadCodeVerifyHandler implements DebugVerifyHandler {
         // @formatter:on
     }
 
+    /**
+     * Only the first instance of failure at any point is shown. This will also be removed once all
+     * phases clean up their own dead code.
+     */
+    private static final Map<String, Boolean> discovered = new ConcurrentHashMap<>();
+
     public void verify(Object object, String message) {
         if (NDCV.getValue() != OFF && object instanceof StructuredGraph) {
             StructuredGraph graph = (StructuredGraph) object;
@@ -60,16 +67,20 @@ public class NoDeadCodeVerifyHandler implements DebugVerifyHandler {
             List<Node> after = graph.getNodes().snapshot();
             assert after.size() <= before.size();
             if (before.size() != after.size()) {
-                before.removeAll(after);
-                String prefix = message == null ? "" : message + ": ";
-                GraalInternalError error = new GraalInternalError("%sfound dead nodes in %s: %s", prefix, graph, before);
-                if (NDCV.getValue() == INFO) {
-                    System.out.println(error.getMessage());
-                } else if (NDCV.getValue() == VERBOSE) {
-                    error.printStackTrace(System.out);
-                } else {
-                    assert NDCV.getValue() == FATAL;
-                    throw error;
+                if (discovered.put(message, Boolean.TRUE) == null) {
+                    System.out.println("MESSAGE: " + message);
+
+                    before.removeAll(after);
+                    String prefix = message == null ? "" : message + ": ";
+                    GraalInternalError error = new GraalInternalError("%sfound dead nodes in %s: %s", prefix, graph, before);
+                    if (NDCV.getValue() == INFO) {
+                        System.out.println(error.getMessage());
+                    } else if (NDCV.getValue() == VERBOSE) {
+                        error.printStackTrace(System.out);
+                    } else {
+                        assert NDCV.getValue() == FATAL;
+                        throw error;
+                    }
                 }
             }
         }
