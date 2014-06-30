@@ -68,7 +68,7 @@ public class HashSetNodeEventListener implements NodeEventListener {
     }
 
     /**
-     * Gets the set of nodes that were communicated to this listener.
+     * Gets the set being used to accumulate the nodes communicated to this listener.
      */
     public Set<Node> getNodes() {
         return nodes;
