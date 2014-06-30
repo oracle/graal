@@ -24,7 +24,7 @@ package com.oracle.graal.phases.common.util;
 
 import java.util.*;
 
-import com.oracle.graal.graph.Graph.NodeEventListener;
+import com.oracle.graal.graph.Graph.*;
 import com.oracle.graal.graph.*;
 
 /**
@@ -33,36 +33,42 @@ import com.oracle.graal.graph.*;
  */
 public class HashSetNodeEventListener implements NodeEventListener {
 
+    private final Set<Node> nodes;
+    private final Set<NodeEvent> filter;
+
     /**
-     * Accumulates all node events except for {@link NodeEventListener#nodeAdded(Node) node
-     * additions}.
+     * Creates a {@link NodeEventListener} that collects nodes from all events.
      */
-    public static class ExceptForAddedNodes extends HashSetNodeEventListener {
-        @Override
-        public void nodeAdded(Node node) {
+    public HashSetNodeEventListener() {
+        this.nodes = new HashSet<>();
+        this.filter = EnumSet.allOf(NodeEvent.class);
+    }
+
+    /**
+     * Creates a {@link NodeEventListener} that collects nodes from all events that match a given
+     * filter.
+     */
+    public HashSetNodeEventListener(Set<NodeEvent> filter) {
+        this.nodes = new HashSet<>();
+        this.filter = filter;
+    }
+
+    /**
+     * Excludes a given event from those for which nodes are collected.
+     */
+    public HashSetNodeEventListener exclude(NodeEvent e) {
+        filter.remove(e);
+        return this;
+    }
+
+    public void event(NodeEvent e, Node node) {
+        if (filter.contains(e)) {
+            nodes.add(node);
         }
     }
 
-    private final Set<Node> nodes;
-
-    public HashSetNodeEventListener() {
-        this.nodes = new HashSet<>();
-    }
-
-    public void nodeAdded(Node node) {
-        nodes.add(node);
-    }
-
-    public void inputChanged(Node node) {
-        nodes.add(node);
-    }
-
-    public void usagesDroppedToZero(Node node) {
-        nodes.add(node);
-    }
-
     /**
-     * Gets the set of nodes that were communicated to this listener.
+     * Gets the set being used to accumulate the nodes communicated to this listener.
      */
     public Set<Node> getNodes() {
         return nodes;

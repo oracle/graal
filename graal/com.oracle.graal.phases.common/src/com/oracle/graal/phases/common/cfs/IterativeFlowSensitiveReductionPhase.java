@@ -22,13 +22,15 @@
  */
 package com.oracle.graal.phases.common.cfs;
 
+import static com.oracle.graal.graph.Graph.NodeEvent.*;
+
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.graph.Graph.NodeEventScope;
 import com.oracle.graal.graph.*;
-import com.oracle.graal.graph.Graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.*;
-import com.oracle.graal.phases.common.CanonicalizerPhase;
+import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.common.util.*;
 import com.oracle.graal.phases.tiers.*;
 
@@ -47,7 +49,7 @@ public class IterativeFlowSensitiveReductionPhase extends BasePhase<PhaseContext
     @Override
     protected void run(StructuredGraph graph, PhaseContext context) {
         FlowSensitiveReductionPhase eliminate = new FlowSensitiveReductionPhase(context.getMetaAccess());
-        HashSetNodeEventListener listener = new HashSetNodeEventListener.ExceptForAddedNodes();
+        HashSetNodeEventListener listener = new HashSetNodeEventListener().exclude(NODE_ADDED);
         int count = 1;
         while (true) {
             try (NodeEventScope nes = graph.trackNodeEvents(listener)) {

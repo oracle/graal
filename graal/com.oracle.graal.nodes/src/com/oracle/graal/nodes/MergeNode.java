@@ -163,6 +163,9 @@ public class MergeNode extends BeginStateSplitNode implements IterableNodeType, 
             int numEnds = this.forwardEndCount();
             for (int i = 0; i < numEnds - 1; i++) {
                 AbstractEndNode end = forwardEndAt(numEnds - 1 - i);
+                if (tool != null) {
+                    tool.addToWorkList(end);
+                }
                 AbstractEndNode newEnd;
                 if (merge instanceof LoopBeginNode) {
                     newEnd = graph().add(new LoopEndNode((LoopBeginNode) merge));
@@ -207,6 +210,9 @@ public class MergeNode extends BeginStateSplitNode implements IterableNodeType, 
             List<AbstractEndNode> endNodes = forwardEnds().snapshot();
             for (AbstractEndNode end : endNodes) {
                 ReturnNode newReturn = graph().add(new ReturnNode(returnValuePhi == null ? returnNode.result() : returnValuePhi.valueAt(end)));
+                if (tool != null) {
+                    tool.addToWorkList(end.predecessor());
+                }
                 end.replaceAtPredecessor(newReturn);
             }
             GraphUtil.killCFG(this);

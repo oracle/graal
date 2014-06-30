@@ -31,7 +31,7 @@ import com.oracle.graal.nodes.*;
  * This node class can be used to create {@link MacroNode}s for simple pure functions like
  * {@link System#identityHashCode(Object)}.
  */
-public abstract class PureFunctionMacroNode extends MacroNode implements Canonicalizable {
+public abstract class PureFunctionMacroNode extends MacroStateSplitNode implements Canonicalizable {
 
     public PureFunctionMacroNode(Invoke invoke) {
         super(invoke);

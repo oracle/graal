@@ -33,7 +33,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.replacements.nodes.*;
 
-public class CallSiteTargetNode extends MacroNode implements Canonicalizable, Lowerable {
+public class CallSiteTargetNode extends MacroStateSplitNode implements Canonicalizable, Lowerable {
 
     public CallSiteTargetNode(Invoke invoke) {
         super(invoke);

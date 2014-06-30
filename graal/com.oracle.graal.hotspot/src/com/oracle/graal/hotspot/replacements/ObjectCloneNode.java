@@ -39,7 +39,7 @@ import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.virtual.*;
 import com.oracle.graal.replacements.nodes.*;
 
-public class ObjectCloneNode extends MacroNode implements VirtualizableAllocation, ArrayLengthProvider {
+public class ObjectCloneNode extends MacroStateSplitNode implements VirtualizableAllocation, ArrayLengthProvider {
 
     public ObjectCloneNode(Invoke invoke) {
         super(invoke);
@@ -107,7 +107,7 @@ public class ObjectCloneNode extends MacroNode implements VirtualizableAllocatio
     /*
      * Looks at the given stamp and determines if it is an exact type (or can be assumed to be an
      * exact type) and if it is a cloneable type.
-     * 
+     *
      * If yes, then the exact type is returned, otherwise it returns null.
      */
     private static ResolvedJavaType getConcreteType(Stamp stamp, Assumptions assumptions, MetaAccessProvider metaAccess) {

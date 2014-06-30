@@ -25,11 +25,13 @@ package com.oracle.graal.lir;
 import java.lang.reflect.*;
 import java.util.*;
 
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.lir.CompositeValue.Component;
 import com.oracle.graal.lir.LIRInstruction.InstructionValueProcedure;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
+import com.oracle.graal.lir.LIRInstruction.ValuePositionProcedure;
 
 /**
  * Lazily associated metadata for every {@link CompositeValue} type. The metadata includes:
@@ -143,6 +145,10 @@ public class CompositeValueClass extends LIRIntrospection {
         forEach(inst, obj, directComponentCount, componentOffsets, mode, componentFlags, proc);
     }
 
+    public final void forEachComponent(LIRInstruction inst, CompositeValue obj, OperandMode mode, ValuePositionProcedure proc, ValuePosition outerPosition) {
+        forEach(inst, obj, directComponentCount, componentOffsets, mode, componentFlags, proc, outerPosition);
+    }
+
     public String toString(CompositeValue obj) {
         StringBuilder result = new StringBuilder();
 
@@ -153,5 +159,17 @@ public class CompositeValueClass extends LIRIntrospection {
         }
 
         return result.toString();
+    }
+
+    Value getValue(CompositeValue obj, ValuePosition pos) {
+        return getValueForPosition(obj, componentOffsets, directComponentCount, pos);
+    }
+
+    void setValue(CompositeValue obj, ValuePosition pos, Value value) {
+        setValueForPosition(obj, componentOffsets, directComponentCount, pos, value);
+    }
+
+    EnumSet<OperandFlag> getFlags(ValuePosition pos) {
+        return componentFlags[pos.getIndex()];
     }
 }

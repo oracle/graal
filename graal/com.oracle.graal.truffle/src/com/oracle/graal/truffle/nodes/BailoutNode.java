@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,6 +26,7 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.replacements.nodes.*;
 
 public class BailoutNode extends MacroNode implements Canonicalizable {
@@ -35,13 +36,20 @@ public class BailoutNode extends MacroNode implements Canonicalizable {
         assert arguments.size() == 1;
     }
 
+    public ValueNode getMessage() {
+        return arguments.get(0);
+    }
+
+    @Override
+    public void lower(LoweringTool tool) {
+        throw new BailoutException("bailout (message is not compile-time constant, so no additional information is available)");
+    }
+
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        ValueNode arg = arguments.get(0);
-        String message = "";
-        if (arg.isConstant()) {
-            message = arg.asConstant().toValueString();
+        if (getMessage().isConstant()) {
+            throw new BailoutException(getMessage().asConstant().toValueString());
         }
-        throw new BailoutException(message);
+        return this;
     }
 }

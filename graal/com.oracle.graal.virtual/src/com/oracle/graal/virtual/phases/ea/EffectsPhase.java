@@ -91,7 +91,7 @@ public abstract class EffectsPhase<PhaseContextT extends PhaseContext> extends B
                 }
 
                 // apply the effects collected during this iteration
-                HashSetNodeEventListener listener = new HashSetNodeEventListener.ExceptForAddedNodes();
+                HashSetNodeEventListener listener = new HashSetNodeEventListener();
                 try (NodeEventScope nes = graph.trackNodeEvents(listener)) {
                     closure.applyEffects();
                 }

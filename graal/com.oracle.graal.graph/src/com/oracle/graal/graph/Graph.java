@@ -26,7 +26,6 @@ import java.util.*;
 
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.debug.*;
-import com.oracle.graal.graph.GraphEvent.NodeEvent;
 import com.oracle.graal.graph.Node.ValueNumberable;
 import com.oracle.graal.graph.NodeClass.NodeClassIterator;
 import com.oracle.graal.graph.NodeClass.Position;
@@ -38,8 +37,6 @@ import com.oracle.graal.graph.iterators.*;
 public class Graph {
 
     public final String name;
-
-    private static final boolean TIME_TRAVEL = false;
 
     /**
      * The set of nodes in the graph, ordered by {@linkplain #register(Node) registration} time.
@@ -67,7 +64,6 @@ public class Graph {
     private final ArrayList<Node> nodeCacheLast;
     private int nodesDeletedSinceLastCompression;
     private int nodesDeletedBeforeLastCompression;
-    private GraphEventLog eventLog;
 
     /**
      * The number of times this graph has been compressed.
@@ -302,9 +298,38 @@ public class Graph {
     }
 
     /**
+     * The type of events sent to a {@link NodeEventListener}.
+     */
+    public enum NodeEvent {
+        /**
+         * A node's input is changed.
+         */
+        INPUT_CHANGED,
+
+        /**
+         * A node's {@linkplain Node#usages() usages} count dropped to zero.
+         */
+        ZERO_USAGES,
+
+        /**
+         * A node was added to a graph.
+         */
+        NODE_ADDED;
+    }
+
+    /**
      * Client interested in one or more node related events.
      */
     public interface NodeEventListener {
+
+        /**
+         * Default handler for events.
+         *
+         * @param e an event
+         * @param node the node related to {@code e}
+         */
+        default void event(NodeEvent e, Node node) {
+        }
 
         /**
          * Notifies this listener of a change in a node's inputs.
@@ -312,6 +337,7 @@ public class Graph {
          * @param node a node who has had one of its inputs changed
          */
         default void inputChanged(Node node) {
+            event(NodeEvent.INPUT_CHANGED, node);
         }
 
         /**
@@ -320,6 +346,7 @@ public class Graph {
          * @param node a node whose {@link Node#usages()} just became empty
          */
         default void usagesDroppedToZero(Node node) {
+            event(NodeEvent.ZERO_USAGES, node);
         }
 
         /**
@@ -328,6 +355,7 @@ public class Graph {
          * @param node a node that was just added to the graph
          */
         default void nodeAdded(Node node) {
+            event(NodeEvent.NODE_ADDED, node);
         }
     }
 
@@ -375,8 +403,8 @@ public class Graph {
         }
 
         public void usagesDroppedToZero(Node node) {
-            head.inputChanged(node);
-            next.inputChanged(node);
+            head.usagesDroppedToZero(node);
+            next.usagesDroppedToZero(node);
         }
     }
 
@@ -851,36 +879,11 @@ public class Graph {
         if (nodeEventListener != null) {
             nodeEventListener.nodeAdded(node);
         }
-        logNodeAdded(node);
-    }
-
-    void logNodeAdded(Node node) {
-        if (TIME_TRAVEL) {
-            log(new GraphEvent.NodeEvent(node, GraphEvent.NodeEvent.Type.ADDED));
-        }
-    }
-
-    void logNodeDeleted(Node node) {
-        if (TIME_TRAVEL) {
-            log(new GraphEvent.NodeEvent(node, GraphEvent.NodeEvent.Type.DELETED));
-        }
-    }
-
-    private void log(NodeEvent nodeEvent) {
-        if (eventLog == null) {
-            eventLog = new GraphEventLog();
-        }
-        eventLog.add(nodeEvent);
-    }
-
-    public GraphEventLog getEventLog() {
-        return eventLog;
     }
 
     void unregister(Node node) {
         assert !isFrozen();
         assert !node.isDeleted() : "cannot delete a node twice! node=" + node;
-        logNodeDeleted(node);
         nodes[node.id] = null;
         nodesDeletedSinceLastCompression++;
 
