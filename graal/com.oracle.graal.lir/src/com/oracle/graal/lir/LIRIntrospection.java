@@ -35,6 +35,7 @@ import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.lir.LIRInstruction.InstructionValueProcedure;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
+import com.oracle.graal.lir.LIRInstruction.ValuePositionProcedure;
 
 abstract class LIRIntrospection extends FieldIntrospection {
 
@@ -143,6 +144,49 @@ abstract class LIRIntrospection extends FieldIntrospection {
                     }
                 }
             }
+        }
+    }
+
+    protected static void forEach(LIRInstruction inst, Object obj, int directCount, long[] offsets, OperandMode mode, EnumSet<OperandFlag>[] flags, ValuePositionProcedure proc,
+                    ValuePosition outerPosition) {
+        for (int i = 0; i < offsets.length; i++) {
+            assert LIRInstruction.ALLOWED_FLAGS.get(mode).containsAll(flags[i]);
+
+            if (i < directCount) {
+                Value value = getValue(obj, offsets[i]);
+                doForValue(inst, mode, proc, outerPosition, i, ValuePosition.NO_SUBINDEX, value);
+            } else {
+                Value[] values = getValueArray(obj, offsets[i]);
+                for (int j = 0; j < values.length; j++) {
+                    Value value = values[j];
+                    doForValue(inst, mode, proc, outerPosition, i, j, value);
+                }
+            }
+        }
+    }
+
+    private static void doForValue(LIRInstruction inst, OperandMode mode, ValuePositionProcedure proc, ValuePosition outerPosition, int index, int subIndex, Value value) {
+        ValuePosition position = new ValuePosition(mode, index, subIndex, outerPosition);
+        if (value instanceof CompositeValue) {
+            CompositeValue composite = (CompositeValue) value;
+            composite.forEachComponent(inst, mode, proc, position);
+        } else {
+            proc.doValue(inst, position);
+        }
+    }
+
+    protected static Value getValueForPosition(Object obj, long[] offsets, int directCount, ValuePosition pos) {
+        if (pos.getIndex() < directCount) {
+            return getValue(obj, offsets[pos.getIndex()]);
+        }
+        return getValueArray(obj, offsets[pos.getIndex()])[pos.getSubIndex()];
+    }
+
+    protected static void setValueForPosition(Object obj, long[] offsets, int directCount, ValuePosition pos, Value value) {
+        if (pos.getIndex() < directCount) {
+            setValue(obj, offsets[pos.getIndex()], value);
+        } else {
+            getValueArray(obj, offsets[pos.getIndex()])[pos.getSubIndex()] = value;
         }
     }
 

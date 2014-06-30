@@ -34,7 +34,7 @@ import com.oracle.graal.nodes.type.*;
 public class IntegerRemNode extends FixedBinaryNode implements Lowerable, LIRLowerable {
 
     public IntegerRemNode(ValueNode x, ValueNode y) {
-        super(x.stamp().unrestricted(), x, y);
+        super(StampTool.rem(x.stamp(), y.stamp()), x, y);
     }
 
     @Override

@@ -202,13 +202,22 @@ public class HotSpotOptions {
     }
 
     protected static void printNoMatchMessage(String optionName) {
-        System.err.println("Could not find option " + optionName + " (use -G:+PrintFlags to see Graal options)");
-        List<OptionDescriptor> matches = fuzzyMatch(optionName);
-        if (!matches.isEmpty()) {
-            System.err.println("Did you mean one of the following?");
-            for (OptionDescriptor match : matches) {
-                boolean isBoolean = match.getType() == boolean.class;
-                System.err.println(String.format("    %s%s%s", isBoolean ? "(+/-)" : "", match.getName(), isBoolean ? "" : "=<value>"));
+        OptionDescriptor desc = options.get(optionName);
+        if (desc != null) {
+            if (desc.getType() == Boolean.class) {
+                System.err.println("Boolean option " + optionName + " must be prefixed with '+' or '-'");
+            } else {
+                System.err.println(desc.getType().getSimpleName() + " option " + optionName + " must not be prefixed with '+' or '-'");
+            }
+        } else {
+            System.err.println("Could not find option " + optionName + " (use -G:+PrintFlags to see Graal options)");
+            List<OptionDescriptor> matches = fuzzyMatch(optionName);
+            if (!matches.isEmpty()) {
+                System.err.println("Did you mean one of the following?");
+                for (OptionDescriptor match : matches) {
+                    boolean isBoolean = match.getType() == Boolean.class;
+                    System.err.println(String.format("    %s%s%s", isBoolean ? "(+/-)" : "", match.getName(), isBoolean ? "" : "=<value>"));
+                }
             }
         }
     }

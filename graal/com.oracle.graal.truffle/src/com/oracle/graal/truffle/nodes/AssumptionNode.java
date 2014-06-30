@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,8 +25,11 @@ package com.oracle.graal.truffle.nodes;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.api.runtime.*;
+import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.replacements.nodes.*;
 import com.oracle.graal.truffle.*;
 
@@ -47,6 +50,11 @@ public class AssumptionNode extends MacroNode implements com.oracle.graal.graph.
          * the compiler-VM separation of object constants.
          */
         return Graal.getRequiredCapability(SnippetReflectionProvider.class);
+    }
+
+    @Override
+    public void lower(LoweringTool tool) {
+        throw new GraalInternalError(GraphUtil.approxSourceException(this, new RuntimeException("assumption could not be evaluated to a constant")));
     }
 
     @Override

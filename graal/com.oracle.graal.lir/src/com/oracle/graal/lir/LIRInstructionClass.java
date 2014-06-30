@@ -32,6 +32,7 @@ import com.oracle.graal.lir.LIRInstruction.InstructionValueProcedure;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
 import com.oracle.graal.lir.LIRInstruction.StateProcedure;
+import com.oracle.graal.lir.LIRInstruction.ValuePositionProcedure;
 
 public class LIRInstructionClass extends LIRIntrospection {
 
@@ -241,6 +242,73 @@ public class LIRInstructionClass extends LIRIntrospection {
         return str.toString();
     }
 
+    Value getValue(LIRInstruction obj, ValuePosition pos) {
+        long[] offsets;
+        int directCount;
+        switch (pos.getMode()) {
+            case USE:
+                directCount = directUseCount;
+                offsets = useOffsets;
+                break;
+            case ALIVE:
+                directCount = directAliveCount;
+                offsets = aliveOffsets;
+                break;
+            case TEMP:
+                directCount = directTempCount;
+                offsets = tempOffsets;
+                break;
+            case DEF:
+                directCount = directDefCount;
+                offsets = defOffsets;
+                break;
+            default:
+                throw GraalInternalError.shouldNotReachHere("unkown OperandMode: " + pos.getMode());
+        }
+        return getValueForPosition(obj, offsets, directCount, pos);
+    }
+
+    void setValue(LIRInstruction obj, ValuePosition pos, Value value) {
+        long[] offsets;
+        int directCount;
+        switch (pos.getMode()) {
+            case USE:
+                directCount = directUseCount;
+                offsets = useOffsets;
+                break;
+            case ALIVE:
+                directCount = directAliveCount;
+                offsets = aliveOffsets;
+                break;
+            case TEMP:
+                directCount = directTempCount;
+                offsets = tempOffsets;
+                break;
+            case DEF:
+                directCount = directDefCount;
+                offsets = defOffsets;
+                break;
+            default:
+                throw GraalInternalError.shouldNotReachHere("unkown OperandMode: " + pos.getMode());
+        }
+        setValueForPosition(obj, offsets, directCount, pos, value);
+    }
+
+    EnumSet<OperandFlag> getFlags(ValuePosition pos) {
+        switch (pos.getMode()) {
+            case USE:
+                return useFlags[pos.getIndex()];
+            case ALIVE:
+                return aliveFlags[pos.getIndex()];
+            case TEMP:
+                return tempFlags[pos.getIndex()];
+            case DEF:
+                return defFlags[pos.getIndex()];
+            default:
+                throw GraalInternalError.shouldNotReachHere("unkown OperandMode: " + pos.getMode());
+        }
+    }
+
     public final String getOpcode(LIRInstruction obj) {
         if (opcodeConstant != null) {
             return opcodeConstant;
@@ -260,6 +328,22 @@ public class LIRInstructionClass extends LIRIntrospection {
             }
         }
         return false;
+    }
+
+    public final void forEachUse(LIRInstruction obj, ValuePositionProcedure proc) {
+        forEach(obj, obj, directUseCount, useOffsets, OperandMode.USE, useFlags, proc, ValuePosition.ROOT_VALUE_POSITION);
+    }
+
+    public final void forEachAlive(LIRInstruction obj, ValuePositionProcedure proc) {
+        forEach(obj, obj, directAliveCount, aliveOffsets, OperandMode.ALIVE, aliveFlags, proc, ValuePosition.ROOT_VALUE_POSITION);
+    }
+
+    public final void forEachTemp(LIRInstruction obj, ValuePositionProcedure proc) {
+        forEach(obj, obj, directTempCount, tempOffsets, OperandMode.TEMP, tempFlags, proc, ValuePosition.ROOT_VALUE_POSITION);
+    }
+
+    public final void forEachDef(LIRInstruction obj, ValuePositionProcedure proc) {
+        forEach(obj, obj, directDefCount, defOffsets, OperandMode.DEF, defFlags, proc, ValuePosition.ROOT_VALUE_POSITION);
     }
 
     public final void forEachUse(LIRInstruction obj, InstructionValueProcedure proc) {

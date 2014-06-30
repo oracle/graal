@@ -64,7 +64,12 @@ public final class TruffleCacheImpl implements TruffleCache {
     private final HashMap<List<Object>, StructuredGraph> cache = new HashMap<>();
     private final HashMap<List<Object>, Long> lastUsed = new HashMap<>();
     private final StructuredGraph markerGraph = new StructuredGraph();
+
     private final ResolvedJavaType stringBuilderClass;
+    private final ResolvedJavaType runtimeExceptionClass;
+    private final ResolvedJavaType assertionErrorClass;
+    private final ResolvedJavaType controlFlowExceptionClass;
+
     private final ResolvedJavaMethod callBoundaryMethod;
     private long counter;
 
@@ -73,7 +78,12 @@ public final class TruffleCacheImpl implements TruffleCache {
         this.config = config;
         this.configForRootGraph = configForRootGraph;
         this.optimisticOptimizations = optimisticOptimizations;
+
         this.stringBuilderClass = providers.getMetaAccess().lookupJavaType(StringBuilder.class);
+        this.runtimeExceptionClass = providers.getMetaAccess().lookupJavaType(RuntimeException.class);
+        this.assertionErrorClass = providers.getMetaAccess().lookupJavaType(AssertionError.class);
+        this.controlFlowExceptionClass = providers.getMetaAccess().lookupJavaType(ControlFlowException.class);
+
         try {
             callBoundaryMethod = providers.getMetaAccess().lookupJavaMethod(OptimizedCallTarget.class.getDeclaredMethod("callRoot", Object[].class));
         } catch (NoSuchMethodException ex) {
@@ -249,10 +259,12 @@ public final class TruffleCacheImpl implements TruffleCache {
 
     private boolean tryCutOffRuntimeExceptions(MethodCallTargetNode methodCallTargetNode) {
         if (methodCallTargetNode.targetMethod().isConstructor()) {
-            ResolvedJavaType runtimeException = providers.getMetaAccess().lookupJavaType(RuntimeException.class);
-            ResolvedJavaType controlFlowException = providers.getMetaAccess().lookupJavaType(ControlFlowException.class);
+            ResolvedJavaType declaringClass = methodCallTargetNode.targetMethod().getDeclaringClass();
             ResolvedJavaType exceptionType = Objects.requireNonNull(StampTool.typeOrNull(methodCallTargetNode.receiver().stamp()));
-            if (runtimeException.isAssignableFrom(methodCallTargetNode.targetMethod().getDeclaringClass()) && !controlFlowException.isAssignableFrom(exceptionType)) {
+
+            boolean removeAllocation = runtimeExceptionClass.isAssignableFrom(declaringClass) || assertionErrorClass.isAssignableFrom(declaringClass);
+            boolean isCFGException = controlFlowExceptionClass.isAssignableFrom(exceptionType);
+            if (removeAllocation && !isCFGException) {
                 DeoptimizeNode deoptNode = methodCallTargetNode.graph().add(new DeoptimizeNode(DeoptimizationAction.InvalidateRecompile, DeoptimizationReason.UnreachedCode));
                 FixedNode invokeNode = methodCallTargetNode.invoke().asNode();
                 invokeNode.replaceAtPredecessor(deoptNode);
