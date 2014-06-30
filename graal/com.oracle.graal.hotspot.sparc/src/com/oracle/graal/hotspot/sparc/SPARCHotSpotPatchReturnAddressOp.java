@@ -51,8 +51,8 @@ final class SPARCHotSpotPatchReturnAddressOp extends SPARCLIRInstruction {
         // FIXME This is non-trivial. On SPARC we need to flush all register windows first before we
         // can patch the return address (see: frame::patch_pc).
         new Flushw().emit(masm);
-// int frameSize = crb.frameMap.frameSize();
-// new SPARCAssembler.Ldx(new SPARCAddress(o7, 1), g3).emit(masm);
+        // int frameSize = crb.frameMap.frameSize();
+        // new SPARCAssembler.Ldx(new SPARCAddress(o7, 1), g3).emit(masm);
         // new Setx(8 * 15 - 1, g4, false).emit(masm);
         new Mov(asLongReg(address), g4).emit(masm);
         new Save(sp, -2000, sp).emit(masm);

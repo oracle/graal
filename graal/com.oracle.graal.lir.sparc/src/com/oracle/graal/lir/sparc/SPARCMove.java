@@ -400,7 +400,7 @@ public class SPARCMove {
         final Register src = asRegister(input);
         final Register dst = asRegister(result);
         // implicit conversions between double and float registers can happen in the "same Register"
-// f0->d0
+        // f0->d0
         boolean isFloatToDoubleConversion = result.getKind() == Kind.Double && input.getKind() == Kind.Float;
         if (src.equals(dst) && !isFloatToDoubleConversion) {
             return;
