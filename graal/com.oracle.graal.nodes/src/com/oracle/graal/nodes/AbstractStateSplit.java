@@ -30,7 +30,7 @@ import com.oracle.graal.graph.*;
  */
 public abstract class AbstractStateSplit extends FixedWithNextNode implements StateSplit {
 
-    @Input(InputType.State) private FrameState stateAfter;
+    @OptionalInput(InputType.State) private FrameState stateAfter;
 
     public FrameState stateAfter() {
         return stateAfter;

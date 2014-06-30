@@ -39,8 +39,8 @@ import com.oracle.graal.nodes.util.*;
 public final class InvokeNode extends AbstractMemoryCheckpoint implements Invoke, LIRLowerable, MemoryCheckpoint.Single, IterableNodeType {
 
     @Input(InputType.Extension) private CallTargetNode callTarget;
-    @Input(InputType.State) private FrameState stateDuring;
-    @Input(InputType.Guard) private GuardingNode guard;
+    @OptionalInput(InputType.State) private FrameState stateDuring;
+    @OptionalInput(InputType.Guard) private GuardingNode guard;
     private final int bci;
     private boolean polymorphic;
     private boolean useForInlining;

@@ -38,7 +38,7 @@ import com.oracle.graal.nodes.spi.*;
 public class ForeignCallNode extends AbstractMemoryCheckpoint implements LIRLowerable, DeoptimizingNode.DeoptDuring, MemoryCheckpoint.Multi {
 
     @Input private final NodeInputList<ValueNode> arguments;
-    @Input(InputType.State) private FrameState stateDuring;
+    @OptionalInput(InputType.State) private FrameState stateDuring;
     private final ForeignCallsProvider foreignCalls;
 
     private final ForeignCallDescriptor descriptor;

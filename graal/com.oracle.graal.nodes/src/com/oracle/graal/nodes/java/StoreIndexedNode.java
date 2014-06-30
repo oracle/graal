@@ -35,7 +35,7 @@ import com.oracle.graal.nodes.type.*;
 public final class StoreIndexedNode extends AccessIndexedNode implements StateSplit, Lowerable, Virtualizable {
 
     @Input private ValueNode value;
-    @Input(InputType.State) private FrameState stateAfter;
+    @OptionalInput(InputType.State) private FrameState stateAfter;
 
     public FrameState stateAfter() {
         return stateAfter;

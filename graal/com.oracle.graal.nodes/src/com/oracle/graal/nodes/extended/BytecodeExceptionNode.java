@@ -36,7 +36,6 @@ public class BytecodeExceptionNode extends AbstractMemoryCheckpoint implements L
 
     private final Class<? extends Throwable> exceptionClass;
     @Input private final NodeInputList<ValueNode> arguments;
-    @Input private FrameState deoptState;
 
     public BytecodeExceptionNode(MetaAccessProvider metaAccess, Class<? extends Throwable> exceptionClass, ValueNode... arguments) {
         super(StampFactory.exactNonNull(metaAccess.lookupJavaType(exceptionClass)));

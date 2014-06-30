@@ -36,7 +36,7 @@ import com.oracle.graal.nodes.virtual.*;
 public final class StoreFieldNode extends AccessFieldNode implements StateSplit, VirtualizableRoot {
 
     @Input private ValueNode value;
-    @Input(InputType.State) private FrameState stateAfter;
+    @OptionalInput(InputType.State) private FrameState stateAfter;
 
     public FrameState stateAfter() {
         return stateAfter;

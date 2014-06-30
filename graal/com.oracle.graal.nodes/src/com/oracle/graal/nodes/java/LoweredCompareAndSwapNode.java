@@ -37,7 +37,7 @@ public class LoweredCompareAndSwapNode extends FixedAccessNode implements StateS
 
     @Input private ValueNode expectedValue;
     @Input private ValueNode newValue;
-    @Input(InputType.State) private FrameState stateAfter;
+    @OptionalInput(InputType.State) private FrameState stateAfter;
 
     public FrameState stateAfter() {
         return stateAfter;

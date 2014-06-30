@@ -35,7 +35,7 @@ import com.oracle.graal.nodes.spi.*;
  */
 public final class FloatingReadNode extends FloatingAccessNode implements IterableNodeType, LIRLowerable, Canonicalizable {
 
-    @Input(InputType.Memory) private MemoryNode lastLocationAccess;
+    @OptionalInput(InputType.Memory) private MemoryNode lastLocationAccess;
 
     public FloatingReadNode(ValueNode object, LocationNode location, MemoryNode lastLocationAccess, Stamp stamp) {
         this(object, location, lastLocationAccess, stamp, null, BarrierType.NONE);

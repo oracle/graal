@@ -84,6 +84,7 @@ public final class NodeClass extends FieldIntrospection {
     private final int directInputCount;
     private final long[] inputOffsets;
     private final InputType[] inputTypes;
+    private final boolean[] inputOptional;
     private final int directSuccessorCount;
     private final long[] successorOffsets;
     private final Class<?>[] dataTypes;
@@ -130,9 +131,11 @@ public final class NodeClass extends FieldIntrospection {
         directInputCount = scanner.inputOffsets.size();
         inputOffsets = sortedLongCopy(scanner.inputOffsets, scanner.inputListOffsets);
         inputTypes = new InputType[inputOffsets.length];
+        inputOptional = new boolean[inputOffsets.length];
         for (int i = 0; i < inputOffsets.length; i++) {
             inputTypes[i] = scanner.types.get(inputOffsets[i]);
             assert inputTypes[i] != null;
+            inputOptional[i] = scanner.optionalInputs.contains(inputOffsets[i]);
         }
         directSuccessorCount = scanner.successorOffsets.size();
         successorOffsets = sortedLongCopy(scanner.successorOffsets, scanner.successorListOffsets);
@@ -281,6 +284,7 @@ public final class NodeClass extends FieldIntrospection {
         public final ArrayList<Long> successorListOffsets = new ArrayList<>();
         public final HashMap<Long, InputType> types = new HashMap<>();
         public final HashMap<Long, String> names = new HashMap<>();
+        public final HashSet<Long> optionalInputs = new HashSet<>();
 
         protected FieldScanner(CalcOffset calc) {
             super(calc);
@@ -288,9 +292,9 @@ public final class NodeClass extends FieldIntrospection {
 
         @Override
         protected void scanField(Field field, Class<?> type, long offset) {
-            if (field.isAnnotationPresent(Node.Input.class)) {
+            if (field.isAnnotationPresent(Node.Input.class) || field.isAnnotationPresent(Node.OptionalInput.class)) {
                 assert !field.isAnnotationPresent(Node.Successor.class) : "field cannot be both input and successor";
-                Input inputAnnotation = field.getAnnotation(Node.Input.class);
+                assert field.isAnnotationPresent(Node.Input.class) ^ field.isAnnotationPresent(Node.OptionalInput.class) : "inputs can either be optional or non-optional";
                 if (INPUT_LIST_CLASS.isAssignableFrom(type)) {
                     GraalInternalError.guarantee(Modifier.isFinal(field.getModifiers()), "NodeInputList input field %s should be final", field);
                     GraalInternalError.guarantee(!Modifier.isPublic(field.getModifiers()), "NodeInputList input field %s should not be public", field);
@@ -301,8 +305,15 @@ public final class NodeClass extends FieldIntrospection {
                     GraalInternalError.guarantee(Modifier.isPrivate(field.getModifiers()), "Node input field %s should be private", field);
                     inputOffsets.add(offset);
                 }
-                types.put(offset, inputAnnotation.value());
+                if (field.isAnnotationPresent(Node.Input.class)) {
+                    types.put(offset, field.getAnnotation(Node.Input.class).value());
+                } else {
+                    types.put(offset, field.getAnnotation(Node.OptionalInput.class).value());
+                }
                 names.put(offset, field.getName());
+                if (field.isAnnotationPresent(Node.OptionalInput.class)) {
+                    optionalInputs.add(offset);
+                }
             } else if (field.isAnnotationPresent(Node.Successor.class)) {
                 if (SUCCESSOR_LIST_CLASS.isAssignableFrom(type)) {
                     GraalInternalError.guarantee(Modifier.isFinal(field.getModifiers()), "NodeSuccessorList successor field % should be final", field);
@@ -376,6 +387,10 @@ public final class NodeClass extends FieldIntrospection {
 
         public String getInputName(Node node) {
             return node.getNodeClass().getName(this);
+        }
+
+        public boolean isInputOptional(Node node) {
+            return node.getNodeClass().isInputOptional(this);
         }
 
         public void set(Node node, Node value) {
@@ -466,8 +481,8 @@ public final class NodeClass extends FieldIntrospection {
      */
     public abstract static class NodeClassIterator implements Iterator<Node> {
         protected final Node node;
-        private int index;
-        private int subIndex;
+        protected int index;
+        protected int subIndex;
 
         /**
          * Creates an iterator that will iterate over fields in the given node.
@@ -580,6 +595,32 @@ public final class NodeClass extends FieldIntrospection {
         @Override
         protected NodeClass getNodeClass() {
             return NodeClass.this;
+        }
+    }
+
+    private class NodeClassAllInputsIterator extends NodeClassInputsIterator {
+        NodeClassAllInputsIterator(Node node) {
+            super(node, true);
+        }
+
+        @Override
+        void forward() {
+            if (index < getDirectCount()) {
+                index++;
+                if (index < getDirectCount()) {
+                    return;
+                }
+            } else {
+                subIndex++;
+            }
+            while (index < getOffsets().length) {
+                NodeList<Node> list = getNodeList(node, getOffsets()[index]);
+                if (subIndex < list.size()) {
+                    return;
+                }
+                subIndex = 0;
+                index++;
+            }
         }
     }
 
@@ -892,6 +933,11 @@ public final class NodeClass extends FieldIntrospection {
         return inputTypes[pos.getIndex()];
     }
 
+    public boolean isInputOptional(Position pos) {
+        assert pos.isInput();
+        return inputOptional[pos.getIndex()];
+    }
+
     public NodeList<?> getNodeList(Node node, Position pos) {
         long offset = pos.isInput() ? inputOffsets[pos.getIndex()] : successorOffsets[pos.getIndex()];
         assert pos.getSubIndex() == NODE_LIST;
@@ -1100,6 +1146,10 @@ public final class NodeClass extends FieldIntrospection {
                 } else {
                     return new NodeClassInputsIterator(node);
                 }
+            }
+
+            public NodeClassIterator withNullIterator() {
+                return new NodeClassAllInputsIterator(node);
             }
 
             @Override

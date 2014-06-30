@@ -31,8 +31,8 @@ import com.oracle.graal.nodes.*;
 public abstract class AbstractWriteNode extends FixedAccessNode implements StateSplit, MemoryCheckpoint.Single, MemoryAccess, GuardingNode {
 
     @Input private ValueNode value;
-    @Input(InputType.State) private FrameState stateAfter;
-    @Input(InputType.Memory) private Node lastLocationAccess;
+    @OptionalInput(InputType.State) private FrameState stateAfter;
+    @OptionalInput(InputType.Memory) private Node lastLocationAccess;
 
     private final boolean initialization;
 

@@ -39,9 +39,9 @@ public class InvokeWithExceptionNode extends ControlSplitNode implements Invoke,
     @Successor private BeginNode next;
     @Successor private BeginNode exceptionEdge;
     @Input(InputType.Extension) private CallTargetNode callTarget;
-    @Input(InputType.State) private FrameState stateDuring;
-    @Input(InputType.State) private FrameState stateAfter;
-    @Input(InputType.Guard) private GuardingNode guard;
+    @OptionalInput(InputType.State) private FrameState stateDuring;
+    @OptionalInput(InputType.State) private FrameState stateAfter;
+    @OptionalInput(InputType.Guard) private GuardingNode guard;
     private final int bci;
     private boolean polymorphic;
     private boolean useForInlining;

@@ -34,7 +34,7 @@ import com.oracle.graal.graph.*;
  */
 public abstract class AbstractDeoptimizeNode extends ControlSinkNode implements IterableNodeType, DeoptimizingNode.DeoptBefore {
 
-    @Input(InputType.State) private FrameState stateBefore;
+    @OptionalInput(InputType.State) private FrameState stateBefore;
 
     public AbstractDeoptimizeNode() {
         super(StampFactory.forVoid());

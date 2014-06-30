@@ -39,7 +39,7 @@ public class LoopBeginNode extends MergeNode implements IterableNodeType, LIRLow
     private double loopFrequency;
     private int nextEndIndex;
     private int unswitches;
-    @Input(InputType.Guard) private GuardingNode overflowGuard;
+    @OptionalInput(InputType.Guard) private GuardingNode overflowGuard;
 
     public LoopBeginNode() {
         loopFrequency = 1;

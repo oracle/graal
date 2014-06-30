@@ -40,7 +40,7 @@ public final class UnsafeArrayCopyNode extends ArrayRangeWriteNode implements Lo
     @Input private ValueNode dest;
     @Input private ValueNode destPos;
     @Input private ValueNode length;
-    @Input private ValueNode layoutHelper;
+    @OptionalInput private ValueNode layoutHelper;
 
     private Kind elementKind;
 

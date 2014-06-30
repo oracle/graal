@@ -37,7 +37,7 @@ import com.oracle.graal.nodes.spi.*;
  */
 public final class RegisterFinalizerNode extends AbstractStateSplit implements Canonicalizable.Unary<ValueNode>, LIRLowerable, Virtualizable, DeoptimizingNode.DeoptAfter {
 
-    @Input(InputType.State) private FrameState deoptState;
+    @OptionalInput(InputType.State) private FrameState deoptState;
     @Input private ValueNode value;
 
     public RegisterFinalizerNode(ValueNode value) {

@@ -28,7 +28,7 @@ import com.oracle.graal.nodes.extended.*;
 
 public class G1PreWriteBarrier extends WriteBarrier implements DeoptimizingNode.DeoptBefore {
 
-    @Input(InputType.State) private FrameState stateBefore;
+    @OptionalInput(InputType.State) private FrameState stateBefore;
     private final boolean nullCheck;
     private final boolean doLoad;
 
