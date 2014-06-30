@@ -33,6 +33,7 @@ import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.gen.*;
+import com.oracle.graal.sparc.*;
 
 public enum SPARCArithmetic {
     // @formatter:off
@@ -123,17 +124,23 @@ public enum SPARCArithmetic {
         @Def({REG}) protected Value result;
         @Use({REG, CONST}) protected Value x;
         @Alive({REG, CONST}) protected Value y;
+        @State LIRFrameState state;
 
         public BinaryRegReg(SPARCArithmetic opcode, Value result, Value x, Value y) {
+            this(opcode, result, x, y, null);
+        }
+
+        public BinaryRegReg(SPARCArithmetic opcode, Value result, Value x, Value y, LIRFrameState state) {
             this.opcode = opcode;
             this.result = result;
             this.x = x;
             this.y = y;
+            this.state = state;
         }
 
         @Override
         public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
-            emit(crb, masm, opcode, result, x, y, null);
+            emit(crb, masm, opcode, result, x, y, state);
         }
 
         @Override
@@ -261,9 +268,9 @@ public enum SPARCArithmetic {
         }
     }
 
-    public static void emit(CompilationResultBuilder crb, SPARCAssembler masm, SPARCArithmetic opcode, Value dst, Value src1, Value src2, LIRFrameState info) {
+    public static void emit(CompilationResultBuilder crb, SPARCMacroAssembler masm, SPARCArithmetic opcode, Value dst, Value src1, Value src2, LIRFrameState info) {
         int exceptionOffset = -1;
-        if (isConstant(src1)) {
+        if (isConstant(src1) && !isConstant(src2)) {
             switch (opcode) {
                 case ISUB:
                     assert isSimm13(crb.asIntConst(src1));
@@ -276,6 +283,13 @@ public enum SPARCArithmetic {
                     throw GraalInternalError.unimplemented();
                     // new Sdivx(masm, asIntReg(src1), asIntReg(src2),
                     // asIntReg(dst));
+                case LDIV:
+                    int c = crb.asIntConst(src1);
+                    assert isSimm13(c);
+                    exceptionOffset = masm.position();
+                    new Sdivx(asLongReg(src2), c, asLongReg(dst)).emit(masm);
+                    new Mulx(asLongReg(src1), asLongReg(dst), asLongReg(dst)).emit(masm);
+                    break;
                 case FSUB:
                 case FDIV:
                 case DSUB:
@@ -339,7 +353,17 @@ public enum SPARCArithmetic {
                     new Mulx(asLongReg(src1), crb.asIntConst(src2), asLongReg(dst)).emit(masm);
                     break;
                 case LDIV:
-                    throw GraalInternalError.unimplemented();
+                    int c = crb.asIntConst(src2);
+                    exceptionOffset = masm.position();
+                    if (c == 0) { // Generate div by zero trap
+                        new Sdivx(SPARC.g0, 0, asLongReg(dst)).emit(masm);
+                    } else if (isConstant(src1)) { // Both are const, therefore just load the const
+                        new Setx(crb.asIntConst(src1) / c, asLongReg(dst), false).emit(masm);
+                    } else { // Otherwise try to divide
+                        assert isSimm13(crb.asLongConst(src2));
+                        new Sdivx(asLongReg(src1), crb.asIntConst(src2), asLongReg(dst)).emit(masm);
+                    }
+                    break;
                 case LUDIV:
                     throw GraalInternalError.unimplemented();
                 case LAND:
@@ -421,6 +445,7 @@ public enum SPARCArithmetic {
                     new Mulx(asLongReg(src1), asLongReg(src2), asLongReg(dst)).emit(masm);
                     break;
                 case LDIV:
+                    exceptionOffset = masm.position();
                     new Sdivx(asLongReg(src1), asLongReg(src2), asLongReg(dst)).emit(masm);
                     break;
                 case LUDIV:
@@ -475,16 +500,42 @@ public enum SPARCArithmetic {
                     throw GraalInternalError.shouldNotReachHere();
             }
         }
-
         if (info != null) {
             assert exceptionOffset != -1;
             crb.recordImplicitException(exceptionOffset, info);
         }
     }
 
-    public static void emit(CompilationResultBuilder crb, SPARCAssembler masm, SPARCArithmetic opcode, Value dst, Value src1, Value src2, Value scratch1, Value scratch2, LIRFrameState info) {
+    public static void emit(CompilationResultBuilder crb, SPARCMacroAssembler masm, SPARCArithmetic opcode, Value dst, Value src1, Value src2, Value scratch1, Value scratch2, LIRFrameState info) {
         int exceptionOffset = -1;
-        if (isConstant(src1)) {
+        if (isConstant(src1) && isConstant(src2)) {
+            switch (opcode) {
+                case IREM: {
+                    int a = crb.asIntConst(src1);
+                    int b = crb.asIntConst(src2);
+                    if (b == 0) {
+                        exceptionOffset = masm.position();
+                        new Sdivx(SPARC.g0, 0, asIntReg(dst)).emit(masm);
+                    } else {
+                        new Setx(a % b, asIntReg(dst), false).emit(masm);
+                    }
+                }
+                    break;
+                case LREM: {
+                    long a = crb.asLongConst(src1);
+                    long b = crb.asLongConst(src2);
+                    if (b == 0) {
+                        exceptionOffset = masm.position();
+                        new Sdivx(SPARC.g0, 0, asLongReg(dst)).emit(masm);
+                    } else {
+                        new Setx(a % b, asLongReg(dst), false).emit(masm);
+                    }
+                }
+                    break;
+                default:
+                    throw GraalInternalError.shouldNotReachHere("not implemented");
+            }
+        } else if (isConstant(src1)) {
             switch (opcode) {
                 default:
                     throw GraalInternalError.shouldNotReachHere();
@@ -494,12 +545,14 @@ public enum SPARCArithmetic {
                 case IREM:
                     assert isSimm13(crb.asIntConst(src2));
                     new Sra(asIntReg(src1), 0, asIntReg(src1)).emit(masm);
+                    exceptionOffset = masm.position();
                     new Sdivx(asIntReg(src1), crb.asIntConst(src2), asIntReg(scratch1)).emit(masm);
                     new Mulx(asIntReg(scratch1), crb.asIntConst(src2), asIntReg(scratch2)).emit(masm);
                     new Sub(asIntReg(src1), asIntReg(scratch2), asIntReg(dst)).emit(masm);
                     break;
                 case LREM:
                     assert isSimm13(crb.asIntConst(src2));
+                    exceptionOffset = masm.position();
                     new Sdivx(asLongReg(src1), crb.asIntConst(src2), asLongReg(scratch1)).emit(masm);
                     new Mulx(asLongReg(scratch1), crb.asIntConst(src2), asLongReg(scratch2)).emit(masm);
                     new Sub(asLongReg(src1), asLongReg(scratch2), asLongReg(dst)).emit(masm);
@@ -512,14 +565,14 @@ public enum SPARCArithmetic {
         } else {
             switch (opcode) {
                 case LREM:
-                    new Sdivx(asLongReg(src1), asLongReg(src2), asLongReg(scratch1)).emit(masm);
                     exceptionOffset = masm.position();
+                    new Sdivx(asLongReg(src1), asLongReg(src2), asLongReg(scratch1)).emit(masm);
                     new Mulx(asLongReg(scratch1), asLongReg(src2), asLongReg(scratch2)).emit(masm);
                     new Sub(asLongReg(src1), asLongReg(scratch2), asLongReg(dst)).emit(masm);
                     break;
                 case IREM:
-                    new Sdivx(asIntReg(src1), asIntReg(src2), asIntReg(scratch1)).emit(masm);
                     exceptionOffset = masm.position();
+                    new Sdivx(asIntReg(src1), asIntReg(src2), asIntReg(scratch1)).emit(masm);
                     new Mulx(asIntReg(scratch1), asIntReg(src2), asIntReg(scratch2)).emit(masm);
                     new Sub(asIntReg(src1), asIntReg(scratch2), asIntReg(dst)).emit(masm);
                     break;

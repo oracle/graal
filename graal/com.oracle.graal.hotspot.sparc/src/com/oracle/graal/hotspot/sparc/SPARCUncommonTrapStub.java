@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,48 +20,29 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-/*
- */
+package com.oracle.graal.hotspot.sparc;
 
-package com.oracle.graal.jtt.except;
+import static com.oracle.graal.sparc.SPARC.*;
 
-import org.junit.*;
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.hotspot.*;
+import com.oracle.graal.hotspot.meta.*;
+import com.oracle.graal.hotspot.stubs.*;
 
-import com.oracle.graal.jtt.*;
+final class SPARCUncommonTrapStub extends UncommonTrapStub {
 
-public class BC_ldiv2 extends JTTTest {
+    private RegisterConfig registerConfig;
 
-    public static long test(long a, long b) {
-        try {
-            return a / b;
-        } catch (Exception e) {
-            return -11;
-        }
+    public SPARCUncommonTrapStub(HotSpotProviders providers, TargetDescription target, HotSpotForeignCallLinkage linkage) {
+        super(providers, target, linkage);
+        // This is basically the maximum we can spare. All other G and O register are used.
+        Register[] allocatable = new Register[]{g1, g3, g4, g5, o0, o1, o2, o3, o4};
+        registerConfig = new SPARCHotSpotRegisterConfig(target, allocatable);
     }
 
-    @Test
-    public void run0() throws Throwable {
-        runTest("test", 1L, 2L);
-    }
-
-    @Test
-    public void run1() throws Throwable {
-        runTest("test", 11L, 0L);
-    }
-
-    @Test
-    public void run2() throws Throwable {
-        runTest("test", 11L, 1000000000000L);
-    }
-
-    @Test
-    public void run3() throws Throwable {
-        runTest("test", 1000000000000L, 11L);
-    }
-
-    @Test
-    public void run4() throws Throwable {
-        runTest("test", 1000000000000L, 0L);
+    @Override
+    public RegisterConfig getRegisterConfig() {
+        return registerConfig;
     }
 
 }
