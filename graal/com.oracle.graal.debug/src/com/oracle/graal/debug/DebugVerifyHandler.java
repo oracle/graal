@@ -31,25 +31,7 @@ public interface DebugVerifyHandler {
      * Verifies that a given object satisfies some invariants.
      *
      * @param object object to verify
-     * @param context object(s) describing the context of verification
+     * @param message description of verification context
      */
-    void verify(Object object, Object... context);
-
-    /**
-     * Extracts the first object of a given type from a verification input object.
-     */
-    default <T> T extract(Class<T> type, Object input) {
-        if (type.isInstance(input)) {
-            return type.cast(input);
-        }
-        if (input instanceof Object[]) {
-            for (Object nestedContext : (Object[]) input) {
-                T object = extract(type, nestedContext);
-                if (object != null) {
-                    return object;
-                }
-            }
-        }
-        return null;
-    }
+    void verify(Object object, String message);
 }

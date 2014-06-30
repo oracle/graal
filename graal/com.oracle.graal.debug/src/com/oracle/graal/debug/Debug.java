@@ -90,7 +90,7 @@ public class Debug {
      * Determines if verification is enabled in the current method, regardless of the
      * {@linkplain Debug#currentScope() current debug scope}.
      *
-     * @see Debug#verify(Object, Object)
+     * @see Debug#verify(Object, String)
      */
     public static boolean isVerifyEnabledForMethod() {
         if (!ENABLED) {
@@ -107,7 +107,7 @@ public class Debug {
      * Determines if verification is enabled in the {@linkplain Debug#currentScope() current debug
      * scope}.
      *
-     * @see Debug#verify(Object, Object)
+     * @see Debug#verify(Object, String)
      */
     public static boolean isVerifyEnabled() {
         return ENABLED && DebugScope.getInstance().isVerifyEnabled();
@@ -491,13 +491,13 @@ public class Debug {
      * config} to perform verification on a given object.
      *
      * @param object object to verify
-     * @param context object describing the context of verification
+     * @param message description of verification context
      *
-     * @see DebugVerifyHandler#verify(Object, Object...)
+     * @see DebugVerifyHandler#verify(Object, String)
      */
-    public static void verify(Object object, Object context) {
+    public static void verify(Object object, String message) {
         if (ENABLED && DebugScope.getInstance().isVerifyEnabled()) {
-            DebugScope.getInstance().verify(object, context);
+            DebugScope.getInstance().verify(object, message);
         }
     }
 
@@ -506,28 +506,28 @@ public class Debug {
      * config} to perform verification on a given object.
      *
      * @param object object to verify
-     * @param context1 first object describing the context of verification
-     * @param context2 second object describing the context of verification
+     * @param format a format string for the description of the verification context
+     * @param arg the argument referenced by the format specifiers in {@code format}
      *
-     * @see DebugVerifyHandler#verify(Object, Object...)
+     * @see DebugVerifyHandler#verify(Object, String)
      */
-    public static void verify(Object object, Object context1, Object context2) {
+    public static void verify(Object object, String format, Object arg) {
         if (ENABLED && DebugScope.getInstance().isVerifyEnabled()) {
-            DebugScope.getInstance().verify(object, context1, context2);
+            DebugScope.getInstance().verify(object, format, arg);
         }
     }
 
     /**
-     * This override exists to catch cases when {@link #verify(Object, Object)} is called with one
-     * argument bound to a varargs method parameter. It will bind to this method instead of the
-     * single arg variant and produce a deprecation warning instead of silently wrapping the
+     * This override exists to catch cases when {@link #verify(Object, String, Object)} is called
+     * with one argument bound to a varargs method parameter. It will bind to this method instead of
+     * the single arg variant and produce a deprecation warning instead of silently wrapping the
      * Object[] inside of another Object[].
      */
     @Deprecated
-    public static void verify(Object object, Object[] args) {
+    public static void verify(Object object, String format, Object[] args) {
         assert false : "shouldn't use this";
         if (ENABLED && DebugScope.getInstance().isVerifyEnabled()) {
-            DebugScope.getInstance().verify(object, args);
+            DebugScope.getInstance().verify(object, format, args);
         }
     }
 

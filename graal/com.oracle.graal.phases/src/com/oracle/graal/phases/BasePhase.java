@@ -101,7 +101,7 @@ public abstract class BasePhase<C> {
                 Debug.dump(graph, "After phase %s", getName());
             }
             if (Debug.isVerifyEnabled()) {
-                Debug.verify(graph, this, "After phase " + getName());
+                Debug.verify(graph, "After phase %s", getName());
             }
             assert graph.verify();
         } catch (Throwable t) {
