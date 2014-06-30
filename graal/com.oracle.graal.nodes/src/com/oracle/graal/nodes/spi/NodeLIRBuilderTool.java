@@ -68,13 +68,5 @@ public interface NodeLIRBuilderTool extends NodeMappableLIRBuilder {
 
     Value[] visitInvokeArguments(CallingConvention cc, Collection<ValueNode> arguments);
 
-    Variable newVariable(Kind kind);
-
-    void emitArrayEquals(Kind kind, Variable result, Value array1, Value array2, Value length);
-
-    void emitBitCount(Variable result, Value operand);
-
-    void emitBitScanForward(Variable result, Value operand);
-
     void doBlock(Block block, StructuredGraph graph, BlockMap<List<ScheduledNode>> blockMap);
 }

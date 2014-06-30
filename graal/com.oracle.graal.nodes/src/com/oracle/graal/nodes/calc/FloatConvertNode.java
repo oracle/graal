@@ -26,7 +26,6 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodes.*;
@@ -36,7 +35,7 @@ import com.oracle.graal.nodes.spi.*;
  * A {@code FloatConvert} converts between integers and floating point numbers according to Java
  * semantics.
  */
-public class FloatConvertNode extends ConvertNode implements Canonicalizable, Lowerable, ArithmeticLIRLowerable {
+public class FloatConvertNode extends ConvertNode implements Lowerable, ArithmeticLIRLowerable {
 
     private final FloatConvert op;
 
@@ -95,7 +94,7 @@ public class FloatConvertNode extends ConvertNode implements Canonicalizable, Lo
 
     @Override
     public boolean inferStamp() {
-        return updateStamp(createStamp(op, getInput()));
+        return updateStamp(createStamp(op, getValue()));
     }
 
     private static Constant convert(FloatConvert op, Constant value) {
@@ -147,13 +146,13 @@ public class FloatConvertNode extends ConvertNode implements Canonicalizable, Lo
     }
 
     @Override
-    public Node canonical(CanonicalizerTool tool) {
-        if (getInput().isConstant()) {
-            return ConstantNode.forPrimitive(evalConst(getInput().asConstant()), graph());
-        } else if (getInput() instanceof FloatConvertNode) {
-            FloatConvertNode other = (FloatConvertNode) getInput();
+    public ValueNode canonical(CanonicalizerTool tool, ValueNode forValue) {
+        if (forValue.isConstant()) {
+            return ConstantNode.forConstant(evalConst(forValue.asConstant()), null);
+        } else if (forValue instanceof FloatConvertNode) {
+            FloatConvertNode other = (FloatConvertNode) forValue;
             if (other.isLossless() && other.op == this.op.reverse()) {
-                return other.getInput();
+                return other.getValue();
             }
         }
         return this;
@@ -164,6 +163,6 @@ public class FloatConvertNode extends ConvertNode implements Canonicalizable, Lo
     }
 
     public void generate(NodeMappableLIRBuilder builder, ArithmeticLIRGenerator gen) {
-        builder.setResult(this, gen.emitFloatConvert(op, builder.operand(getInput())));
+        builder.setResult(this, gen.emitFloatConvert(op, builder.operand(getValue())));
     }
 }

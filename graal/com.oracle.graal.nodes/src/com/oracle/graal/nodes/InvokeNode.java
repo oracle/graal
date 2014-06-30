@@ -165,9 +165,9 @@ public final class InvokeNode extends AbstractMemoryCheckpoint implements Invoke
         } else {
             graph().replaceFixed(this, node);
         }
-        call.safeDelete();
+        GraphUtil.killWithUnusedFloatingInputs(call);
         if (stateAfter.usages().isEmpty()) {
-            stateAfter.safeDelete();
+            GraphUtil.killWithUnusedFloatingInputs(stateAfter);
         }
     }
 

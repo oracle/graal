@@ -30,7 +30,7 @@ import com.oracle.graal.jtt.*;
 
 public final class Object_equals01 extends JTTTest {
 
-    public static Object_equals01 field = new Object_equals01();
+    public static DummyTestClass field = new DummyTestClass();
 
     public static boolean test(int i) {
         final Object obj1 = new Object();

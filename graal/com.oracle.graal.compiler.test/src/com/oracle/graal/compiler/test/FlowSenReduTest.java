@@ -384,7 +384,7 @@ public class FlowSenReduTest extends GraalCompilerTest {
 
     public StructuredGraph visualize(StructuredGraph graph, String title) {
         DebugConfig debugConfig = DebugScope.getConfig();
-        DebugConfig fixedConfig = Debug.fixedConfig(false, true, false, false, false, debugConfig.dumpHandlers(), debugConfig.output());
+        DebugConfig fixedConfig = Debug.fixedConfig(false, true, false, false, false, false, debugConfig.dumpHandlers(), debugConfig.verifyHandlers(), debugConfig.output());
         try (DebugConfigScope s = Debug.setConfig(fixedConfig)) {
             Debug.dump(graph, title);
 

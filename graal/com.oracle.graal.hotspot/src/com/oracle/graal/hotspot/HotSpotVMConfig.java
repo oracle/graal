@@ -1029,9 +1029,10 @@ public class HotSpotVMConfig extends CompilerObject {
      */
     @HotSpotVMField(name = "Hsail::HSAILDeoptimizationInfo::_notice_safepoints", type = "jint*", get = HotSpotVMField.Type.OFFSET) @Stable public int hsailNoticeSafepointsOffset;
     @HotSpotVMField(name = "Hsail::HSAILDeoptimizationInfo::_deopt_occurred", type = "jint", get = HotSpotVMField.Type.OFFSET) @Stable public int hsailDeoptOccurredOffset;
-    @HotSpotVMField(name = "Hsail::HSAILDeoptimizationInfo::_never_ran_array", type = "jboolean *", get = HotSpotVMField.Type.OFFSET) @Stable public int hsailNeverRanArrayOffset;
+    @HotSpotVMField(name = "Hsail::HSAILDeoptimizationInfo::_never_ran_array", type = "jboolean*", get = HotSpotVMField.Type.OFFSET) @Stable public int hsailNeverRanArrayOffset;
     @HotSpotVMField(name = "Hsail::HSAILDeoptimizationInfo::_deopt_next_index", type = "jint", get = HotSpotVMField.Type.OFFSET) @Stable public int hsailDeoptNextIndexOffset;
-    @HotSpotVMField(name = "Hsail::HSAILDeoptimizationInfo::_donor_threads", type = "JavaThread**", get = HotSpotVMField.Type.OFFSET) @Stable public int hsailDonorThreadsOffset;
+    @HotSpotVMField(name = "Hsail::HSAILDeoptimizationInfo::_alloc_info", type = "HSAILAllocationInfo*", get = HotSpotVMField.Type.OFFSET) @Stable public int hsailAllocInfoOffset;
+    @HotSpotVMField(name = "Hsail::HSAILDeoptimizationInfo::_cur_tlab_info", type = "HSAILTlabInfo**", get = HotSpotVMField.Type.OFFSET) @Stable public int hsailCurTlabInfoOffset;
 
     @HotSpotVMField(name = "Hsail::HSAILKernelDeoptimization::_workitemid", type = "jint", get = HotSpotVMField.Type.OFFSET) @Stable public int hsailDeoptimizationWorkItem;
     @HotSpotVMField(name = "Hsail::HSAILKernelDeoptimization::_actionAndReason", type = "jint", get = HotSpotVMField.Type.OFFSET) @Stable public int hsailDeoptimizationReason;
@@ -1042,6 +1043,20 @@ public class HotSpotVMConfig extends CompilerObject {
     @HotSpotVMType(name = "HSAILFrame", get = HotSpotVMType.Type.SIZE) @Stable public int hsailFrameHeaderSize;
     @HotSpotVMType(name = "Hsail::HSAILKernelDeoptimization", get = HotSpotVMType.Type.SIZE) @Stable public int hsailKernelDeoptimizationHeaderSize;
     @HotSpotVMType(name = "Hsail::HSAILDeoptimizationInfo", get = HotSpotVMType.Type.SIZE) @Stable public int hsailDeoptimizationInfoHeaderSize;
+
+    @HotSpotVMField(name = "HSAILAllocationInfo::_tlab_infos_pool_start", type = "HSAILTlabInfo*", get = HotSpotVMField.Type.OFFSET) @Stable public int hsailAllocInfoTlabInfosPoolStartOffset;
+    @HotSpotVMField(name = "HSAILAllocationInfo::_tlab_infos_pool_next", type = "HSAILTlabInfo*", get = HotSpotVMField.Type.OFFSET) @Stable public int hsailAllocInfoTlabInfosPoolNextOffset;
+    @HotSpotVMField(name = "HSAILAllocationInfo::_tlab_infos_pool_end", type = "HSAILTlabInfo*", get = HotSpotVMField.Type.OFFSET) @Stable public int hsailAllocInfoTlabInfosPoolEndOffset;
+    @HotSpotVMField(name = "HSAILAllocationInfo::_tlab_align_reserve_bytes", type = "size_t", get = HotSpotVMField.Type.OFFSET) @Stable public int hsailAllocInfoTlabAlignReserveBytesOffset;
+
+    @HotSpotVMField(name = "HSAILTlabInfo::_start", type = "HeapWord*", get = HotSpotVMField.Type.OFFSET) @Stable public int hsailTlabInfoStartOffset;
+    @HotSpotVMField(name = "HSAILTlabInfo::_top", type = "HeapWord*", get = HotSpotVMField.Type.OFFSET) @Stable public int hsailTlabInfoTopOffset;
+    @HotSpotVMField(name = "HSAILTlabInfo::_end", type = "HeapWord*", get = HotSpotVMField.Type.OFFSET) @Stable public int hsailTlabInfoEndOffset;
+    @HotSpotVMField(name = "HSAILTlabInfo::_last_good_top", type = "HeapWord*", get = HotSpotVMField.Type.OFFSET) @Stable public int hsailTlabInfoLastGoodTopOffset;
+    @HotSpotVMField(name = "HSAILTlabInfo::_original_top", type = "HeapWord*", get = HotSpotVMField.Type.OFFSET) @Stable public int hsailTlabInfoOriginalTopOffset;
+    @HotSpotVMField(name = "HSAILTlabInfo::_donor_thread", type = "JavaThread*", get = HotSpotVMField.Type.OFFSET) @Stable public int hsailTlabInfoDonorThreadOffset;
+    @HotSpotVMField(name = "HSAILTlabInfo::_alloc_info", type = "HSAILAllocationInfo*", get = HotSpotVMField.Type.OFFSET) @Stable public int hsailTlabInfoAllocInfoOffset;
+    @HotSpotVMType(name = "HSAILTlabInfo", get = HotSpotVMType.Type.SIZE) @Stable public int hsailTlabInfoSize;
 
     /**
      * Mark word right shift to get identity hash code.
@@ -1390,14 +1405,14 @@ public class HotSpotVMConfig extends CompilerObject {
     @HotSpotVMField(name = "StubRoutines::_arrayof_jshort_arraycopy", type = "address", get = HotSpotVMField.Type.VALUE) @Stable public long jshortAlignedArraycopy;
     @HotSpotVMField(name = "StubRoutines::_arrayof_jint_arraycopy", type = "address", get = HotSpotVMField.Type.VALUE) @Stable public long jintAlignedArraycopy;
     @HotSpotVMField(name = "StubRoutines::_arrayof_jlong_arraycopy", type = "address", get = HotSpotVMField.Type.VALUE) @Stable public long jlongAlignedArraycopy;
-    @HotSpotVMField(name = "StubRoutines::_arrayof_oop_arraycopy", type = "address", get = HotSpotVMField.Type.VALUE) @Stable public long alignedOopAlignedArraycopy;
-    @HotSpotVMField(name = "StubRoutines::_arrayof_oop_arraycopy_uninit", type = "address", get = HotSpotVMField.Type.VALUE) @Stable public long alignedOopArraycopyUninit;
+    @HotSpotVMField(name = "StubRoutines::_arrayof_oop_arraycopy", type = "address", get = HotSpotVMField.Type.VALUE) @Stable public long oopAlignedArraycopy;
+    @HotSpotVMField(name = "StubRoutines::_arrayof_oop_arraycopy_uninit", type = "address", get = HotSpotVMField.Type.VALUE) @Stable public long oopAlignedArraycopyUninit;
     @HotSpotVMField(name = "StubRoutines::_arrayof_jbyte_disjoint_arraycopy", type = "address", get = HotSpotVMField.Type.VALUE) @Stable public long jbyteAlignedDisjointArraycopy;
     @HotSpotVMField(name = "StubRoutines::_arrayof_jshort_disjoint_arraycopy", type = "address", get = HotSpotVMField.Type.VALUE) @Stable public long jshortAlignedDisjointArraycopy;
     @HotSpotVMField(name = "StubRoutines::_arrayof_jint_disjoint_arraycopy", type = "address", get = HotSpotVMField.Type.VALUE) @Stable public long jintAlignedDisjointArraycopy;
     @HotSpotVMField(name = "StubRoutines::_arrayof_jlong_disjoint_arraycopy", type = "address", get = HotSpotVMField.Type.VALUE) @Stable public long jlongAlignedDisjointArraycopy;
-    @HotSpotVMField(name = "StubRoutines::_arrayof_oop_disjoint_arraycopy", type = "address", get = HotSpotVMField.Type.VALUE) @Stable public long alignedOopDisjointArraycopy;
-    @HotSpotVMField(name = "StubRoutines::_arrayof_oop_disjoint_arraycopy_uninit", type = "address", get = HotSpotVMField.Type.VALUE) @Stable public long alignedOopDisjointArraycopyUninit;
+    @HotSpotVMField(name = "StubRoutines::_arrayof_oop_disjoint_arraycopy", type = "address", get = HotSpotVMField.Type.VALUE) @Stable public long oopAlignedDisjointArraycopy;
+    @HotSpotVMField(name = "StubRoutines::_arrayof_oop_disjoint_arraycopy_uninit", type = "address", get = HotSpotVMField.Type.VALUE) @Stable public long oopAlignedDisjointArraycopyUninit;
     @HotSpotVMField(name = "StubRoutines::_checkcast_arraycopy", type = "address", get = HotSpotVMField.Type.VALUE) @Stable public long checkcastArraycopy;
     @HotSpotVMField(name = "StubRoutines::_checkcast_arraycopy_uninit", type = "address", get = HotSpotVMField.Type.VALUE) @Stable public long checkcastArraycopyUninit;
     @HotSpotVMField(name = "StubRoutines::_unsafe_arraycopy", type = "address", get = HotSpotVMField.Type.VALUE) @Stable public long unsafeArraycopy;
@@ -1409,9 +1424,9 @@ public class HotSpotVMConfig extends CompilerObject {
     @HotSpotVMValue(expression = "GraalRuntime::dynamic_new_array", get = HotSpotVMValue.Type.ADDRESS) @Stable public long dynamicNewArrayAddress;
     @HotSpotVMValue(expression = "GraalRuntime::dynamic_new_instance", get = HotSpotVMValue.Type.ADDRESS) @Stable public long dynamicNewInstanceAddress;
     @HotSpotVMValue(expression = "GraalRuntime::thread_is_interrupted", get = HotSpotVMValue.Type.ADDRESS) @Stable public long threadIsInterruptedAddress;
-    @HotSpotVMValue(expression = "GraalRuntime::vm_message", get = HotSpotVMValue.Type.ADDRESS) @Stable public long vmMessageAddress;
+    @HotSpotVMValue(expression = "GraalRuntime::vm_message", signature = "(unsigned char, long, long, long, long)", get = HotSpotVMValue.Type.ADDRESS) @Stable public long vmMessageAddress;
     @HotSpotVMValue(expression = "GraalRuntime::identity_hash_code", get = HotSpotVMValue.Type.ADDRESS) @Stable public long identityHashCodeAddress;
-    @HotSpotVMValue(expression = "GraalRuntime::exception_handler_for_pc", get = HotSpotVMValue.Type.ADDRESS) @Stable public long exceptionHandlerForPcAddress;
+    @HotSpotVMValue(expression = "GraalRuntime::exception_handler_for_pc", signature = "(JavaThread*)", get = HotSpotVMValue.Type.ADDRESS) @Stable public long exceptionHandlerForPcAddress;
     @HotSpotVMValue(expression = "GraalRuntime::monitorenter", get = HotSpotVMValue.Type.ADDRESS) @Stable public long monitorenterAddress;
     @HotSpotVMValue(expression = "GraalRuntime::monitorexit", get = HotSpotVMValue.Type.ADDRESS) @Stable public long monitorexitAddress;
     @HotSpotVMValue(expression = "GraalRuntime::create_null_exception", get = HotSpotVMValue.Type.ADDRESS) @Stable public long createNullPointerExceptionAddress;
@@ -1437,9 +1452,9 @@ public class HotSpotVMConfig extends CompilerObject {
 
     @HotSpotVMValue(expression = "(jint) GraalCounterSize") @Stable public int graalCountersSize;
 
-    @HotSpotVMValue(expression = "Deoptimization::fetch_unroll_info", get = HotSpotVMValue.Type.ADDRESS) @Stable public long deoptimizationFetchUnrollInfo;
+    @HotSpotVMValue(expression = "Deoptimization::fetch_unroll_info", signature = "(JavaThread*)", get = HotSpotVMValue.Type.ADDRESS) @Stable public long deoptimizationFetchUnrollInfo;
     @HotSpotVMValue(expression = "Deoptimization::uncommon_trap", get = HotSpotVMValue.Type.ADDRESS) @Stable public long deoptimizationUncommonTrap;
-    @HotSpotVMValue(expression = "Deoptimization::unpack_frames", get = HotSpotVMValue.Type.ADDRESS) @Stable public long deoptimizationUnpackFrames;
+    @HotSpotVMValue(expression = "Deoptimization::unpack_frames", signature = "(JavaThread*, int)", get = HotSpotVMValue.Type.ADDRESS) @Stable public long deoptimizationUnpackFrames;
 
     @HotSpotVMConstant(name = "Deoptimization::Reason_none") @Stable public int deoptReasonNone;
     @HotSpotVMConstant(name = "Deoptimization::Reason_null_check") @Stable public int deoptReasonNullCheck;
@@ -1583,5 +1598,36 @@ public class HotSpotVMConfig extends CompilerObject {
                 return false;
             }
         }
+    }
+
+    /**
+     * Returns the name of the C/C++ function that is associated (via HotSpotVMValue annotation)
+     * with the HotSpotVMConfig object's field containing {@code foreignCalltargetAddress}; returns
+     * null if no field holds the provided address.
+     *
+     * @param foreignCallTargetAddress address of foreign call target
+     * @return C/C++ symbol name or null
+     */
+    public String getCSymbol(long foreignCallTargetAddress) {
+        for (Field f : HotSpotVMConfig.class.getDeclaredFields()) {
+            if (f.isAnnotationPresent(HotSpotVMValue.class)) {
+                HotSpotVMValue annotation = f.getAnnotation(HotSpotVMValue.class);
+
+                if (annotation.get() == HotSpotVMValue.Type.ADDRESS) {
+                    try {
+                        if (foreignCallTargetAddress == f.getLong(this)) {
+                            return (annotation.expression() + annotation.signature());
+                        }
+                    } catch (IllegalArgumentException e1) {
+                        // TODO Auto-generated catch block
+                        e1.printStackTrace();
+                    } catch (IllegalAccessException e1) {
+                        // TODO Auto-generated catch block
+                        e1.printStackTrace();
+                    }
+                }
+            }
+        }
+        return null;
     }
 }

@@ -40,13 +40,14 @@ public class LoopTransformHighPhase extends Phase {
             if (LoopPeeling.getValue()) {
                 ToDoubleFunction<FixedNode> probabilities = new FixedNodeProbabilityCache();
                 LoopsData data = new LoopsData(graph);
-                for (LoopEx loop : data.outterFirst()) {
+                for (LoopEx loop : data.outerFirst()) {
                     if (LoopPolicies.shouldPeel(loop, probabilities)) {
                         Debug.log("Peeling %s", loop);
                         LoopTransformations.peel(loop);
                         Debug.dump(graph, "After peeling %s", loop);
                     }
                 }
+                data.deleteUnusedNodes();
             }
         }
     }

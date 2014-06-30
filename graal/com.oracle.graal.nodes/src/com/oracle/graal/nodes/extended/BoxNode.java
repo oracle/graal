@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,7 +26,6 @@ import java.util.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
@@ -39,23 +38,17 @@ import com.oracle.graal.nodes.virtual.*;
  * This node represents the boxing of a primitive value. This corresponds to a call to the valueOf
  * methods in Integer, Long, etc.
  */
-public class BoxNode extends FloatingNode implements VirtualizableAllocation, Lowerable, Canonicalizable {
+public class BoxNode extends UnaryNode implements VirtualizableAllocation, Lowerable {
 
-    @Input private ValueNode value;
     private final Kind boxingKind;
 
     public BoxNode(ValueNode value, ResolvedJavaType resultType, Kind boxingKind) {
-        super(StampFactory.exactNonNull(resultType));
-        this.value = value;
+        super(StampFactory.exactNonNull(resultType), value);
         this.boxingKind = boxingKind;
     }
 
     public Kind getBoxingKind() {
         return boxingKind;
-    }
-
-    public ValueNode getValue() {
-        return value;
     }
 
     @Override
@@ -64,14 +57,11 @@ public class BoxNode extends FloatingNode implements VirtualizableAllocation, Lo
     }
 
     @Override
-    public Node canonical(CanonicalizerTool tool) {
+    public ValueNode canonical(CanonicalizerTool tool, ValueNode forValue) {
         /*
          * Constant values are not canonicalized into their constant boxing objects because this
          * would mean that the information that they came from a valueOf is lost.
          */
-        if (usages().isEmpty()) {
-            return null;
-        }
         return this;
     }
 

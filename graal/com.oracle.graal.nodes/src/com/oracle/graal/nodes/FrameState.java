@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,6 +26,7 @@ import java.util.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.nodes.java.*;
@@ -39,6 +40,8 @@ import com.oracle.graal.nodes.virtual.*;
  */
 @NodeInfo(nameTemplate = "FrameState@{p#method/s}:{p#bci}")
 public final class FrameState extends VirtualState implements IterableNodeType {
+
+    private static final DebugMetric METRIC_FRAMESTATE_COUNT = Debug.metric("FrameStateCount");
 
     protected final int localsSize;
 
@@ -97,6 +100,7 @@ public final class FrameState extends VirtualState implements IterableNodeType {
         this.duringCall = duringCall;
         assert !this.rethrowException || this.stackSize == 1 : "must have exception on top of the stack";
         assert this.locksSize() == this.monitorIds.size();
+        METRIC_FRAMESTATE_COUNT.increment();
     }
 
     /**

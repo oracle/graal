@@ -85,9 +85,11 @@ public class MonitorGraphTest extends GraalCompilerTest {
     private StructuredGraph parseAndProcess(String snippet) {
         StructuredGraph graph = parse(snippet);
         ParameterNode param = graph.getNodes(ParameterNode.class).first();
-        ConstantNode constant = ConstantNode.forInt(0, graph);
-        for (Node n : param.usages().filter(isNotA(FrameState.class)).snapshot()) {
-            n.replaceFirstInput(param, constant);
+        if (param != null) {
+            ConstantNode constant = ConstantNode.forInt(0, graph);
+            for (Node n : param.usages().filter(isNotA(FrameState.class)).snapshot()) {
+                n.replaceFirstInput(param, constant);
+            }
         }
         Map<Invoke, Double> hints = new HashMap<>();
         for (Invoke invoke : graph.getInvokes()) {

@@ -31,7 +31,7 @@ import com.oracle.graal.replacements.nodes.*;
 
 /**
  * {@link MacroNode Macro node} for {@link Class#isInterface()}.
- * 
+ *
  * @see ClassSubstitutions#isInterface(Class)
  */
 public class ClassIsInterfaceNode extends MacroNode implements Canonicalizable {
@@ -50,7 +50,7 @@ public class ClassIsInterfaceNode extends MacroNode implements Canonicalizable {
         if (javaClass.isConstant()) {
             Class<?> c = (Class<?>) HotSpotObjectConstant.asObject(javaClass.asConstant());
             if (c != null) {
-                return ConstantNode.forBoolean(c.isInterface(), graph());
+                return ConstantNode.forBoolean(c.isInterface());
             }
         }
         return this;

@@ -31,18 +31,18 @@ import com.oracle.graal.jtt.*;
  */
 public class Fold_InstanceOf01 extends JTTTest {
 
-    static final Object object = new Fold_InstanceOf01();
+    static final Object object = new DummyTestClass();
 
     public static boolean test(int arg) {
         if (arg == 0) {
-            return object instanceof Fold_InstanceOf01;
+            return object instanceof DummyTestClass;
         }
         if (arg == 1) {
-            Object obj = new Fold_InstanceOf01();
-            return obj instanceof Fold_InstanceOf01;
+            Object obj = new DummyTestClass();
+            return obj instanceof DummyTestClass;
         }
         if (arg == 2) {
-            return null instanceof Fold_InstanceOf01;
+            return null instanceof DummyTestClass;
         }
         return false;
     }

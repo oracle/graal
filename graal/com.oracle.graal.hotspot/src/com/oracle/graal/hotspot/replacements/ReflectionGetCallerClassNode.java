@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -53,7 +53,7 @@ public class ReflectionGetCallerClassNode extends MacroNode implements Canonical
         ConstantNode callerClassNode = getCallerClassNode(tool.getMetaAccess());
 
         if (callerClassNode != null) {
-            graph().replaceFixedWithFloating(this, callerClassNode);
+            graph().replaceFixedWithFloating(this, graph().addOrUniqueWithInputs(callerClassNode));
         } else {
             InvokeNode invoke = createInvoke();
             graph().replaceFixedWithFixed(this, invoke);
@@ -64,7 +64,7 @@ public class ReflectionGetCallerClassNode extends MacroNode implements Canonical
     /**
      * If inlining is deep enough this method returns a {@link ConstantNode} of the caller class by
      * walking the the stack.
-     * 
+     *
      * @param metaAccess
      * @return ConstantNode of the caller class, or null
      */
@@ -94,7 +94,7 @@ public class ReflectionGetCallerClassNode extends MacroNode implements Canonical
                     if (!method.ignoredBySecurityStackWalk()) {
                         // We have reached the desired frame; return the holder class.
                         HotSpotResolvedObjectType callerClass = method.getDeclaringClass();
-                        return ConstantNode.forConstant(HotSpotObjectConstant.forObject(callerClass.mirror()), metaAccess, graph());
+                        return ConstantNode.forConstant(HotSpotObjectConstant.forObject(callerClass.mirror()), metaAccess);
                     }
                     break;
             }

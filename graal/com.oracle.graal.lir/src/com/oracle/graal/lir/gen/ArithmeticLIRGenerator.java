@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,7 +32,7 @@ import com.oracle.graal.lir.*;
  */
 public interface ArithmeticLIRGenerator {
 
-    PlatformKind getPlatformKind(Stamp stamp);
+    LIRKind getLIRKind(Stamp stamp);
 
     Value emitNegate(Value input);
 
@@ -70,7 +70,7 @@ public interface ArithmeticLIRGenerator {
 
     Value emitFloatConvert(FloatConvert op, Value inputVal);
 
-    Value emitReinterpret(PlatformKind to, Value inputVal);
+    Value emitReinterpret(LIRKind to, Value inputVal);
 
     Value emitNarrow(Value inputVal, int bits);
 

@@ -120,6 +120,7 @@ public class PartialEvaluationTest extends GraalCompilerTest {
                             }
                         }
                     }
+                    loopsData.deleteUnusedNodes();
                 } while (unrolled);
             }
 
@@ -138,7 +139,7 @@ public class PartialEvaluationTest extends GraalCompilerTest {
 
             @Override
             public int compare(LoopEx o1, LoopEx o2) {
-                return o2.lirLoop().getDepth() - o1.lirLoop().getDepth();
+                return o2.loop().getDepth() - o1.loop().getDepth();
             }
         });
         return sortedLoops;

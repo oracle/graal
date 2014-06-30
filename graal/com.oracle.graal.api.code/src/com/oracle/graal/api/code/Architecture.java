@@ -34,11 +34,11 @@ import com.oracle.graal.api.meta.*;
 public abstract class Architecture {
 
     /**
-     * The number of bits required in a bit map covering all the registers that may store
-     * references. The bit position of a register in the map is the register's
-     * {@linkplain Register#number number}.
+     * The number of entries required in a {@link ReferenceMap} covering all the registers that may
+     * store references. The index of a register in the reference map is given by
+     * {@link Register#getReferenceMapIndex()}.
      */
-    private final int registerReferenceMapBitCount;
+    private final int registerReferenceMapSize;
 
     /**
      * Represents the natural size of words (typically registers and pointers) of this architecture,
@@ -85,7 +85,7 @@ public abstract class Architecture {
     private final int returnAddressSize;
 
     protected Architecture(String name, int wordSize, ByteOrder byteOrder, boolean unalignedMemoryAccess, Register[] registers, int implicitMemoryBarriers, int nativeCallDisplacementOffset,
-                    int registerReferenceMapBitCount, int returnAddressSize) {
+                    int registerReferenceMapSize, int returnAddressSize) {
         this.name = name;
         this.registers = registers;
         this.wordSize = wordSize;
@@ -93,13 +93,13 @@ public abstract class Architecture {
         this.unalignedMemoryAccess = unalignedMemoryAccess;
         this.implicitMemoryBarriers = implicitMemoryBarriers;
         this.machineCodeCallDisplacementOffset = nativeCallDisplacementOffset;
-        this.registerReferenceMapBitCount = registerReferenceMapBitCount;
+        this.registerReferenceMapSize = registerReferenceMapSize;
         this.returnAddressSize = returnAddressSize;
     }
 
     /**
      * Converts this architecture to a string.
-     * 
+     *
      * @return the string representation of this architecture
      */
     @Override
@@ -107,8 +107,8 @@ public abstract class Architecture {
         return getName().toLowerCase();
     }
 
-    public int getRegisterReferenceMapBitCount() {
-        return registerReferenceMapBitCount;
+    public int getRegisterReferenceMapSize() {
+        return registerReferenceMapSize;
     }
 
     /**
@@ -163,7 +163,7 @@ public abstract class Architecture {
     /**
      * Determines the barriers in a given barrier mask that are explicitly required on this
      * architecture.
-     * 
+     *
      * @param barriers a mask of the barrier constants
      * @return the value of {@code barriers} minus the barriers unnecessary on this architecture
      */
@@ -173,9 +173,9 @@ public abstract class Architecture {
 
     /**
      * Gets the size in bytes of the specified kind for this target.
-     * 
+     *
      * @param kind the kind for which to get the size
-     * 
+     *
      * @return the size in bytes of {@code kind}
      */
     public int getSizeInBytes(PlatformKind kind) {
@@ -205,7 +205,7 @@ public abstract class Architecture {
 
     /**
      * Determine whether a kind can be stored in a register of a given category.
-     * 
+     *
      * @param category the category of the register
      * @param kind the kind that should be stored in the register
      */
@@ -213,7 +213,7 @@ public abstract class Architecture {
 
     /**
      * Return the largest kind that can be stored in a register of a given category.
-     * 
+     *
      * @param category the category of the register
      * @return the largest kind that can be stored in a register {@code category}
      */

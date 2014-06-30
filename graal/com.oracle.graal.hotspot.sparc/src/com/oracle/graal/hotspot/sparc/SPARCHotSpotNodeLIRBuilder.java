@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -52,7 +52,7 @@ public class SPARCHotSpotNodeLIRBuilder extends SPARCNodeLIRBuilder implements H
 
     @Override
     protected DebugInfoBuilder createDebugInfoBuilder(StructuredGraph graph, NodeMap<Value> nodeOperands) {
-        HotSpotLockStack lockStack = new HotSpotLockStack(gen.getResult().getFrameMap(), Kind.Long);
+        HotSpotLockStack lockStack = new HotSpotLockStack(gen.getResult().getFrameMap(), LIRKind.value(Kind.Long));
         return new HotSpotDebugInfoBuilder(nodeOperands, lockStack);
     }
 
@@ -68,17 +68,17 @@ public class SPARCHotSpotNodeLIRBuilder extends SPARCNodeLIRBuilder implements H
 
     @Override
     public void visitDirectCompareAndSwap(DirectCompareAndSwapNode x) {
-        Kind kind = x.newValue().getKind();
-        assert kind == x.expectedValue().getKind();
-
         Variable address = gen.load(operand(x.object()));
         Value offset = operand(x.offset());
         Variable cmpValue = (Variable) gen.loadNonConst(operand(x.expectedValue()));
         Variable newValue = gen.load(operand(x.newValue()));
 
+        LIRKind kind = cmpValue.getLIRKind();
+        assert kind.equals(newValue.getLIRKind());
+
         if (ValueUtil.isConstant(offset)) {
             assert !gen.getCodeCache().needsDataPatch(asConstant(offset));
-            Variable longAddress = newVariable(Kind.Long);
+            Variable longAddress = gen.newVariable(LIRKind.value(Kind.Long));
             gen.emitMove(longAddress, address);
             address = getGen().emitAdd(longAddress, asConstant(offset));
         } else {
@@ -88,10 +88,7 @@ public class SPARCHotSpotNodeLIRBuilder extends SPARCNodeLIRBuilder implements H
         }
 
         append(new CompareAndSwapOp(address, cmpValue, newValue));
-
-        Variable result = newVariable(x.getKind());
-        gen.emitMove(result, newValue);
-        setResult(x, result);
+        setResult(x, gen.emitMove(newValue));
     }
 
     @Override

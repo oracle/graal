@@ -42,7 +42,7 @@ public class DynamicNewInstanceNode extends AbstractNewObjectNode implements Can
         if (clazz.isConstant()) {
             ResolvedJavaType type = tool.getConstantReflection().asJavaType(clazz.asConstant());
             if (type != null && type.isInitialized()) {
-                return graph().add(new NewInstanceNode(type, fillContents()));
+                return new NewInstanceNode(type, fillContents());
             }
         }
         return this;

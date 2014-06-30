@@ -332,11 +332,20 @@ public final class EquationalReasoner {
         }
         FlowUtil.inferStampAndCheck(changed);
         added.add(changed);
-        ValueNode canon = (ValueNode) changed.canonical(tool);
-        // might be already in `added`, no problem adding it again.
-        added.add(canon);
-        rememberSubstitution(f, canon);
-        return canon;
+
+        if (changed instanceof Canonicalizable) {
+            ValueNode canon = (ValueNode) ((Canonicalizable) changed).canonical(tool);
+            if (canon != null && !canon.isAlive()) {
+                assert !canon.isDeleted();
+                canon = graph.addOrUniqueWithInputs(canon);
+            }
+            // might be already in `added`, no problem adding it again.
+            added.add(canon);
+            rememberSubstitution(f, canon);
+            return canon;
+        } else {
+            return changed;
+        }
     }
 
     /**
@@ -445,7 +454,7 @@ public final class EquationalReasoner {
      *
      */
     private LogicNode baseCaseInstanceOfNode(InstanceOfNode instanceOf) {
-        ValueNode scrutinee = GraphUtil.unproxify(instanceOf.object());
+        ValueNode scrutinee = GraphUtil.unproxify(instanceOf.getValue());
         if (!FlowUtil.hasLegalObjectStamp(scrutinee)) {
             return instanceOf;
         }
@@ -470,7 +479,7 @@ public final class EquationalReasoner {
      *
      */
     private FloatingNode baseCaseIsNullNode(IsNullNode isNu) {
-        ValueNode object = isNu.object();
+        ValueNode object = isNu.getValue();
         if (!FlowUtil.hasLegalObjectStamp(object)) {
             return isNu;
         }
@@ -489,11 +498,11 @@ public final class EquationalReasoner {
      *         otherwise the unmodified argument.
      */
     private LogicNode baseCaseObjectEqualsNode(ObjectEqualsNode equals) {
-        if (!FlowUtil.hasLegalObjectStamp(equals.x()) || !FlowUtil.hasLegalObjectStamp(equals.y())) {
+        if (!FlowUtil.hasLegalObjectStamp(equals.getX()) || !FlowUtil.hasLegalObjectStamp(equals.getY())) {
             return equals;
         }
-        ValueNode x = GraphUtil.unproxify(equals.x());
-        ValueNode y = GraphUtil.unproxify(equals.y());
+        ValueNode x = GraphUtil.unproxify(equals.getX());
+        ValueNode y = GraphUtil.unproxify(equals.getY());
         if (state.isNull(x) && state.isNonNull(y) || state.isNonNull(x) && state.isNull(y)) {
             metricObjectEqualsRemoved.increment();
             return falseConstant;
@@ -629,7 +638,7 @@ public final class EquationalReasoner {
         }
         TypeProfileProxyNode profile = (TypeProfileProxyNode) object;
         ObjectStamp outgoinStamp = (ObjectStamp) profile.stamp();
-        ObjectStamp payloadStamp = (ObjectStamp) profile.getObject().stamp();
+        ObjectStamp payloadStamp = (ObjectStamp) profile.getValue().stamp();
         if (payloadStamp.nonNull() && !outgoinStamp.nonNull()) {
             profile.setStamp(FlowUtil.asNonNullStamp(outgoinStamp));
         }

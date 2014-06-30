@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,10 +26,7 @@ import static com.oracle.graal.compiler.common.calc.Condition.*;
 import static com.oracle.graal.nodes.calc.ConditionalNode.*;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
-import com.oracle.graal.graph.Node.ConstantNodeParameter;
-import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.nodes.calc.*;
 
 /**
@@ -101,7 +98,7 @@ public class UnsignedMathSubstitutions {
      */
     @MethodSubstitution
     public static int divide(int a, int b) {
-        return unsignedDivide(Kind.Int, a, b);
+        return UnsignedDivNode.unsignedDivide(a, b);
     }
 
     /**
@@ -109,7 +106,7 @@ public class UnsignedMathSubstitutions {
      */
     @MethodSubstitution
     public static int remainder(int a, int b) {
-        return unsignedRemainder(Kind.Int, a, b);
+        return UnsignedRemNode.unsignedRemainder(a, b);
     }
 
     /**
@@ -117,7 +114,7 @@ public class UnsignedMathSubstitutions {
      */
     @MethodSubstitution
     public static long divide(long a, long b) {
-        return unsignedDivide(Kind.Long, a, b);
+        return UnsignedDivNode.unsignedDivide(a, b);
     }
 
     /**
@@ -125,18 +122,6 @@ public class UnsignedMathSubstitutions {
      */
     @MethodSubstitution
     public static long remainder(long a, long b) {
-        return unsignedRemainder(Kind.Long, a, b);
+        return UnsignedRemNode.unsignedRemainder(a, b);
     }
-
-    @NodeIntrinsic(UnsignedDivNode.class)
-    private static native int unsignedDivide(@ConstantNodeParameter Kind kind, int a, int b);
-
-    @NodeIntrinsic(UnsignedDivNode.class)
-    private static native long unsignedDivide(@ConstantNodeParameter Kind kind, long a, long b);
-
-    @NodeIntrinsic(UnsignedRemNode.class)
-    private static native int unsignedRemainder(@ConstantNodeParameter Kind kind, int a, int b);
-
-    @NodeIntrinsic(UnsignedRemNode.class)
-    private static native long unsignedRemainder(@ConstantNodeParameter Kind kind, long a, long b);
 }

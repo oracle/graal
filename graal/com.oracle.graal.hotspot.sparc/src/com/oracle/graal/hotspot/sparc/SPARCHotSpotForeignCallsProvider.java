@@ -52,10 +52,10 @@ public class SPARCHotSpotForeignCallsProvider extends HotSpotHostForeignCallsPro
         // The calling convention for the exception handler stub is (only?) defined in
         // TemplateInterpreterGenerator::generate_throw_exception()
         // in templateInterpreter_sparc.cpp around line 1925
-        RegisterValue outgoingException = o0.asValue(Kind.Object);
-        RegisterValue outgoingExceptionPc = o1.asValue(word);
-        RegisterValue incomingException = i0.asValue(Kind.Object);
-        RegisterValue incomingExceptionPc = i1.asValue(word);
+        RegisterValue outgoingException = o0.asValue(target.getLIRKind(Kind.Object));
+        RegisterValue outgoingExceptionPc = o1.asValue(target.getLIRKind(word));
+        RegisterValue incomingException = i0.asValue(target.getLIRKind(Kind.Object));
+        RegisterValue incomingExceptionPc = i1.asValue(LIRKind.value(word));
         CallingConvention outgoingExceptionCc = new CallingConvention(0, ILLEGAL, outgoingException, outgoingExceptionPc);
         CallingConvention incomingExceptionCc = new CallingConvention(0, ILLEGAL, incomingException, incomingExceptionPc);
         register(new HotSpotForeignCallLinkage(EXCEPTION_HANDLER, 0L, PRESERVES_REGISTERS, LEAF_NOFP, outgoingExceptionCc, incomingExceptionCc, NOT_REEXECUTABLE, ANY_LOCATION));

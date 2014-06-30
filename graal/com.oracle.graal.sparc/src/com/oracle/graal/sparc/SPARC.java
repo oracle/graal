@@ -36,7 +36,6 @@ import com.oracle.graal.api.meta.*;
 public class SPARC extends Architecture {
 
     public static final RegisterCategory CPU = new RegisterCategory("CPU");
-    public static final RegisterCategory FPU = new RegisterCategory("FPU");
 
     // General purpose registers
     public static final Register r0 = new Register(0, 0, "g0", CPU);
@@ -123,6 +122,8 @@ public class SPARC extends Architecture {
     };
     // @formatter:on
 
+    public static final RegisterCategory FPU = new RegisterCategory("FPU", cpuRegisters.length);
+
     // Floating point registers
     public static final Register f0 = new Register(32, 0, "f0", FPU);
     public static final Register f1 = new Register(33, 1, "f1", FPU);
@@ -194,12 +195,12 @@ public class SPARC extends Architecture {
     }
 
     @Override
-    public boolean canStoreValue(RegisterCategory category, PlatformKind platformKind) {
-        if (!(platformKind instanceof Kind)) {
+    public boolean canStoreValue(RegisterCategory category, PlatformKind lirKind) {
+        if (!(lirKind instanceof Kind)) {
             return false;
         }
 
-        Kind kind = (Kind) platformKind;
+        Kind kind = (Kind) lirKind;
         if (category == CPU) {
             switch (kind) {
                 case Boolean:

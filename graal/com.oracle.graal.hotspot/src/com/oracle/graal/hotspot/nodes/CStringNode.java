@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -44,7 +44,7 @@ public final class CStringNode extends FloatingNode implements LIRLowerable {
     }
 
     public static AllocatableValue emitCString(NodeLIRBuilderTool gen, String value) {
-        AllocatableValue dst = gen.getLIRGeneratorTool().newVariable(gen.getLIRGeneratorTool().target().wordKind);
+        AllocatableValue dst = gen.getLIRGeneratorTool().newVariable(LIRKind.value(gen.getLIRGeneratorTool().target().wordKind));
         gen.getLIRGeneratorTool().emitData(dst, toCString(value));
         return dst;
     }

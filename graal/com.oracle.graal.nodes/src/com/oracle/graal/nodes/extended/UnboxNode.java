@@ -24,29 +24,22 @@ package com.oracle.graal.nodes.extended;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
 
-public class UnboxNode extends FloatingNode implements Virtualizable, Lowerable, Canonicalizable {
+public class UnboxNode extends UnaryNode implements Virtualizable, Lowerable {
 
-    @Input private ValueNode value;
     private final Kind boxingKind;
 
     public UnboxNode(ValueNode value, Kind boxingKind) {
-        super(StampFactory.forKind(boxingKind.getStackKind()));
-        this.value = value;
+        super(StampFactory.forKind(boxingKind.getStackKind()), value);
         this.boxingKind = boxingKind;
     }
 
     public Kind getBoxingKind() {
         return boxingKind;
-    }
-
-    public ValueNode getValue() {
-        return value;
     }
 
     @Override
@@ -56,7 +49,7 @@ public class UnboxNode extends FloatingNode implements Virtualizable, Lowerable,
 
     @Override
     public void virtualize(VirtualizerTool tool) {
-        State state = tool.getObjectState(value);
+        State state = tool.getObjectState(getValue());
         if (state != null && state.getState() == EscapeState.Virtual) {
             ResolvedJavaType objectType = state.getVirtualObject().type();
             ResolvedJavaType expectedType = tool.getMetaAccessProvider().lookupJavaType(boxingKind.toBoxedJavaClass());
@@ -67,21 +60,18 @@ public class UnboxNode extends FloatingNode implements Virtualizable, Lowerable,
     }
 
     @Override
-    public Node canonical(CanonicalizerTool tool) {
-        if (value.isConstant()) {
-            Constant constant = value.asConstant();
+    public ValueNode canonical(CanonicalizerTool tool, ValueNode forValue) {
+        if (forValue.isConstant()) {
+            Constant constant = forValue.asConstant();
             Constant unboxed = tool.getConstantReflection().unboxPrimitive(constant);
             if (unboxed != null && unboxed.getKind() == boxingKind) {
-                return ConstantNode.forConstant(unboxed, tool.getMetaAccess(), graph());
+                return ConstantNode.forConstant(unboxed, tool.getMetaAccess());
             }
-        } else if (value instanceof BoxNode) {
-            BoxNode box = (BoxNode) value;
+        } else if (forValue instanceof BoxNode) {
+            BoxNode box = (BoxNode) forValue;
             if (boxingKind == box.getBoxingKind()) {
                 return box.getValue();
             }
-        }
-        if (usages().isEmpty()) {
-            return null;
         }
         return this;
     }

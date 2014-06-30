@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,12 +22,11 @@
  */
 package com.oracle.graal.nodes.calc;
 
-import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.meta.ProfilingInfo.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.util.*;
 
@@ -57,17 +56,21 @@ public final class FloatEqualsNode extends CompareNode {
     }
 
     @Override
-    public TriState evaluate(ConstantReflectionProvider constantReflection, ValueNode forX, ValueNode forY) {
+    public ValueNode canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
+        ValueNode result = super.canonical(tool, forX, forY);
+        if (result != this) {
+            return result;
+        }
         if (forX.stamp() instanceof FloatStamp && forY.stamp() instanceof FloatStamp) {
             FloatStamp xStamp = (FloatStamp) forX.stamp();
             FloatStamp yStamp = (FloatStamp) forY.stamp();
             if (GraphUtil.unproxify(forX) == GraphUtil.unproxify(forY) && xStamp.isNonNaN() && yStamp.isNonNaN()) {
-                return TriState.TRUE;
+                return LogicConstantNode.tautology();
             } else if (xStamp.alwaysDistinct(yStamp)) {
-                return TriState.FALSE;
+                return LogicConstantNode.contradiction();
             }
         }
-        return super.evaluate(constantReflection, forX, forY);
+        return this;
     }
 
     @Override

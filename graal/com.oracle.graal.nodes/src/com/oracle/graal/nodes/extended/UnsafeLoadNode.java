@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -76,12 +76,12 @@ public class UnsafeLoadNode extends UnsafeAccessNode implements Lowerable, Virtu
 
     @Override
     protected ValueNode cloneAsFieldAccess(ResolvedJavaField field) {
-        return this.graph().add(new LoadFieldNode(object(), field));
+        return new LoadFieldNode(object(), field);
     }
 
     @Override
     protected ValueNode cloneAsArrayAccess(ValueNode location, LocationIdentity identity) {
-        return this.graph().add(new UnsafeLoadNode(object(), location, accessKind(), identity));
+        return new UnsafeLoadNode(object(), location, accessKind(), identity);
     }
 
     @SuppressWarnings({"unchecked", "unused"})

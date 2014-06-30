@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,7 +25,6 @@ package com.oracle.graal.nodes.calc;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
 
 public abstract class IntegerArithmeticNode extends BinaryNode implements ArithmeticLIRLowerable {
 
@@ -35,15 +34,26 @@ public abstract class IntegerArithmeticNode extends BinaryNode implements Arithm
     }
 
     public static IntegerAddNode add(StructuredGraph graph, ValueNode v1, ValueNode v2) {
-        return graph.unique(new IntegerAddNode(StampTool.add(v1.stamp(), v2.stamp()), v1, v2));
+        return graph.unique(new IntegerAddNode(v1, v2));
+    }
+
+    public static IntegerAddNode add(ValueNode v1, ValueNode v2) {
+        return new IntegerAddNode(v1, v2);
     }
 
     public static IntegerMulNode mul(StructuredGraph graph, ValueNode v1, ValueNode v2) {
-        assert v1.stamp().isCompatible(v2.stamp());
-        return graph.unique(new IntegerMulNode(v1.stamp().unrestricted(), v1, v2));
+        return graph.unique(new IntegerMulNode(v1, v2));
+    }
+
+    public static IntegerMulNode mul(ValueNode v1, ValueNode v2) {
+        return new IntegerMulNode(v1, v2);
     }
 
     public static IntegerSubNode sub(StructuredGraph graph, ValueNode v1, ValueNode v2) {
-        return graph.unique(new IntegerSubNode(StampTool.sub(v1.stamp(), v2.stamp()), v1, v2));
+        return graph.unique(new IntegerSubNode(v1, v2));
+    }
+
+    public static IntegerSubNode sub(ValueNode v1, ValueNode v2) {
+        return new IntegerSubNode(v1, v2);
     }
 }

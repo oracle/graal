@@ -87,7 +87,7 @@ public interface CompilerToVM {
      * @return the metaspace Method result or 0 is there is no unique concrete method for
      *         {@code metaspaceMethod}
      */
-    long findUniqueConcreteMethod(long metaspaceMethod);
+    long findUniqueConcreteMethod(long actualHolderMetaspaceKlass, long metaspaceMethod);
 
     /**
      * Returns the implementor for the given interface class.
@@ -359,4 +359,6 @@ public interface CompilerToVM {
     void resolveInvokeDynamic(long metaspaceConstantPool, int index);
 
     int getVtableIndexForInterface(long metaspaceKlass, long metaspaceMethod);
+
+    boolean shouldDebugNonSafepoints();
 }

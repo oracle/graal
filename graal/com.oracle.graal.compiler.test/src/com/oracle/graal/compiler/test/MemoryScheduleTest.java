@@ -651,7 +651,7 @@ public class MemoryScheduleTest extends GraphScheduleTest {
                 MidTierContext midContext = new MidTierContext(getProviders(), assumptions, getCodeCache().getTarget(), OptimisticOptimizations.ALL, graph.method().getProfilingInfo(), null);
                 new GuardLoweringPhase().apply(graph, midContext);
                 new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.MID_TIER).apply(graph, midContext);
-                new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.MID_TIER).apply(graph, midContext);
+                new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.LOW_TIER).apply(graph, midContext);
 
                 SchedulePhase schedule = new SchedulePhase(schedulingStrategy, memsched);
                 schedule.apply(graph);

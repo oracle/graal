@@ -22,16 +22,14 @@
  */
 package com.oracle.graal.nodes.calc;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 
 /**
  * An {@code IntegerConvert} converts an integer to an integer of different width.
  */
-public abstract class IntegerConvertNode extends ConvertNode implements ArithmeticLIRLowerable, Canonicalizable {
+public abstract class IntegerConvertNode extends ConvertNode implements ArithmeticLIRLowerable {
 
     private final int resultBits;
 
@@ -45,8 +43,8 @@ public abstract class IntegerConvertNode extends ConvertNode implements Arithmet
     }
 
     public int getInputBits() {
-        if (getInput().stamp() instanceof IntegerStamp) {
-            return ((IntegerStamp) getInput().stamp()).getBits();
+        if (getValue().stamp() instanceof IntegerStamp) {
+            return ((IntegerStamp) getValue().stamp()).getBits();
         } else {
             return 0;
         }
@@ -60,22 +58,29 @@ public abstract class IntegerConvertNode extends ConvertNode implements Arithmet
         }
     }
 
-    protected ValueNode canonicalConvert() {
-        if (getInput().stamp() instanceof IntegerStamp) {
-            int inputBits = ((IntegerStamp) getInput().stamp()).getBits();
+    protected ValueNode canonicalConvert(ValueNode value) {
+        if (value.stamp() instanceof IntegerStamp) {
+            int inputBits = ((IntegerStamp) value.stamp()).getBits();
             if (inputBits == resultBits) {
-                return getInput();
-            } else if (getInput().isConstant()) {
-                Constant ret = evalConst(getInput().asConstant());
-                return ConstantNode.forIntegerBits(resultBits, ret.asLong(), graph());
+                return value;
+            } else if (value.isConstant()) {
+                return ConstantNode.forIntegerBits(resultBits, evalConst(value.asConstant()).asLong());
             }
         }
-
-        return null;
+        return this;
     }
 
     public static ValueNode convert(ValueNode input, Stamp stamp) {
         return convert(input, stamp, false);
+    }
+
+    public static ValueNode convert(ValueNode input, Stamp stamp, StructuredGraph graph) {
+        ValueNode convert = convert(input, stamp, false);
+        if (!convert.isAlive()) {
+            assert !convert.isDeleted();
+            convert = graph.addOrUnique(convert);
+        }
+        return convert;
     }
 
     public static ValueNode convertUnsigned(ValueNode input, Stamp stamp) {
@@ -83,7 +88,6 @@ public abstract class IntegerConvertNode extends ConvertNode implements Arithmet
     }
 
     public static ValueNode convert(ValueNode input, Stamp stamp, boolean zeroExtend) {
-        StructuredGraph graph = input.graph();
         IntegerStamp fromStamp = (IntegerStamp) input.stamp();
         IntegerStamp toStamp = (IntegerStamp) stamp;
 
@@ -91,13 +95,13 @@ public abstract class IntegerConvertNode extends ConvertNode implements Arithmet
         if (toStamp.getBits() == fromStamp.getBits()) {
             result = input;
         } else if (toStamp.getBits() < fromStamp.getBits()) {
-            result = graph.unique(new NarrowNode(input, toStamp.getBits()));
+            result = new NarrowNode(input, toStamp.getBits());
         } else if (zeroExtend) {
             // toStamp.getBits() > fromStamp.getBits()
-            result = graph.unique(new ZeroExtendNode(input, toStamp.getBits()));
+            result = new ZeroExtendNode(input, toStamp.getBits());
         } else {
             // toStamp.getBits() > fromStamp.getBits()
-            result = graph.unique(new SignExtendNode(input, toStamp.getBits()));
+            result = new SignExtendNode(input, toStamp.getBits());
         }
 
         IntegerStamp resultStamp = (IntegerStamp) result.stamp();

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -42,23 +42,23 @@ public final class HSAILAddressValue extends CompositeValue {
 
     /**
      * Creates an {@link HSAILAddressValue} with given base register and no displacement.
-     * 
+     *
      * @param kind the kind of the value being addressed
      * @param base the base register
      */
-    public HSAILAddressValue(Kind kind, AllocatableValue base) {
+    public HSAILAddressValue(LIRKind kind, AllocatableValue base) {
         this(kind, base, 0);
     }
 
     /**
      * Creates an {@link HSAILAddressValue} with given base register and a displacement. This is the
      * most general constructor.
-     * 
+     *
      * @param kind the kind of the value being addressed
      * @param base the base register
      * @param displacement the displacement
      */
-    public HSAILAddressValue(Kind kind, AllocatableValue base, long displacement) {
+    public HSAILAddressValue(LIRKind kind, AllocatableValue base, long displacement) {
         super(kind);
         this.base = base;
         this.displacement = displacement;
@@ -92,7 +92,7 @@ public final class HSAILAddressValue extends CompositeValue {
     public boolean equals(Object obj) {
         if (obj instanceof HSAILAddressValue) {
             HSAILAddressValue addr = (HSAILAddressValue) obj;
-            return getKind() == addr.getKind() && displacement == addr.displacement && base.equals(addr.base);
+            return getLIRKind().equals(addr.getLIRKind()) && displacement == addr.displacement && base.equals(addr.base);
         }
         return false;
     }

@@ -22,10 +22,13 @@
  */
 package com.oracle.graal.truffle.nodes.arithmetic;
 
+import java.util.function.*;
+
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
@@ -56,10 +59,45 @@ public class IntegerMulHighNode extends IntegerArithmeticNode {
         }
     }
 
+    /**
+     * Determines the minimum and maximum result of this node for the given inputs and returns the
+     * result of the given BiFunction on the minimum and maximum values.
+     */
+    private <T> T processExtremes(ValueNode forX, ValueNode forY, BiFunction<Long, Long, T> op) {
+        IntegerStamp xStamp = (IntegerStamp) forX.stamp();
+        IntegerStamp yStamp = (IntegerStamp) forY.stamp();
+
+        Kind kind = getKind();
+        assert kind == Kind.Int || kind == Kind.Long;
+        long[] xExtremes = {xStamp.lowerBound(), xStamp.upperBound()};
+        long[] yExtremes = {yStamp.lowerBound(), yStamp.upperBound()};
+        long min = Long.MAX_VALUE;
+        long max = Long.MIN_VALUE;
+        for (long a : xExtremes) {
+            for (long b : yExtremes) {
+                long result = kind == Kind.Int ? ExactMath.multiplyHigh((int) a, (int) b) : ExactMath.multiplyHigh(a, b);
+                min = Math.min(min, result);
+                max = Math.max(max, result);
+            }
+        }
+        return op.apply(min, max);
+    }
+
+    @Override
+    public boolean inferStamp() {
+        return updateStamp(processExtremes(getX(), getY(), (min, max) -> StampFactory.forInteger(getKind(), min, max)));
+    }
+
+    @SuppressWarnings("cast")
+    @Override
+    public ValueNode canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
+        return processExtremes(forX, forY, (min, max) -> min == (long) max ? ConstantNode.forIntegerKind(getKind(), min) : this);
+    }
+
     @Override
     public void generate(NodeMappableLIRBuilder builder, ArithmeticLIRGenerator gen) {
-        Value a = builder.operand(x());
-        Value b = builder.operand(y());
+        Value a = builder.operand(getX());
+        Value b = builder.operand(getY());
         builder.setResult(this, gen.emitMulHigh(a, b));
     }
 

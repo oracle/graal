@@ -22,18 +22,16 @@
  */
 package com.oracle.graal.phases.common.cfs;
 
-import com.oracle.graal.api.code.Assumptions;
-import com.oracle.graal.api.meta.*;
-import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.DebugMetric;
-import com.oracle.graal.graph.Node;
-import com.oracle.graal.graph.spi.CanonicalizerTool;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.compiler.common.type.ObjectStamp;
-import com.oracle.graal.phases.graph.SinglePassNodeIterator;
-import com.oracle.graal.phases.tiers.PhaseContext;
+import java.util.*;
 
-import java.util.ArrayList;
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.debug.*;
+import com.oracle.graal.graph.spi.*;
+import com.oracle.graal.nodes.*;
+import com.oracle.graal.phases.graph.*;
+import com.oracle.graal.phases.tiers.*;
 
 /**
  * <p>
@@ -140,9 +138,8 @@ public abstract class BaseReduction extends SinglePassNodeIterator<State> {
      * One of the promises of
      * {@link com.oracle.graal.phases.common.cfs.EquationalReasoner#deverbosify(com.oracle.graal.graph.Node)}
      * is that a "maximally reduced" node is returned. That is achieved in part by leveraging
-     * {@link com.oracle.graal.graph.Node#canonical(com.oracle.graal.graph.spi.CanonicalizerTool)}.
-     * Doing so, in turn, requires this subclass of
-     * {@link com.oracle.graal.graph.spi.CanonicalizerTool}.
+     * {@link Canonicalizable#canonical(com.oracle.graal.graph.spi.CanonicalizerTool)}. Doing so, in
+     * turn, requires this subclass of {@link com.oracle.graal.graph.spi.CanonicalizerTool}.
      * </p>
      */
     public final class Tool implements CanonicalizerTool {
@@ -166,16 +163,6 @@ public abstract class BaseReduction extends SinglePassNodeIterator<State> {
         @Override
         public ConstantReflectionProvider getConstantReflection() {
             return context.getConstantReflection();
-        }
-
-        /**
-         * Postpone
-         * {@link com.oracle.graal.nodes.util.GraphUtil#tryKillUnused(com.oracle.graal.graph.Node)}
-         * until {@link FlowSensitiveReduction#finished()} for the reasons covered there.
-         */
-        @Override
-        public void removeIfUnused(Node node) {
-            // GraphUtil.tryKillUnused(node);
         }
 
         @Override

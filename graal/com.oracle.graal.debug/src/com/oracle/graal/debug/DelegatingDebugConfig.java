@@ -55,6 +55,14 @@ public class DelegatingDebugConfig implements DebugConfig {
          */
         DUMP_METHOD,
         /**
+         * @see Debug#isVerifyEnabled()
+         */
+        VERIFY,
+        /**
+         * @see Debug#isVerifyEnabledForMethod()
+         */
+        VERIFY_METHOD,
+        /**
          * @see Debug#isMeterEnabled()
          */
         METER,
@@ -155,6 +163,23 @@ public class DelegatingDebugConfig implements DebugConfig {
     }
 
     @Override
+    public boolean isVerifyEnabled() {
+        Boolean fs = featureState.get(Feature.VERIFY);
+        if (fs == null) {
+            return delegate.isVerifyEnabled();
+        }
+        return fs.booleanValue();
+    }
+
+    public boolean isVerifyEnabledForMethod() {
+        Boolean fs = featureState.get(Feature.VERIFY_METHOD);
+        if (fs == null) {
+            return delegate.isVerifyEnabledForMethod();
+        }
+        return fs.booleanValue();
+    }
+
+    @Override
     public boolean isTimeEnabled() {
         Boolean fs = featureState.get(Feature.TIME);
         if (fs == null) {
@@ -175,6 +200,11 @@ public class DelegatingDebugConfig implements DebugConfig {
     @Override
     public Collection<DebugDumpHandler> dumpHandlers() {
         return delegate.dumpHandlers();
+    }
+
+    @Override
+    public Collection<DebugVerifyHandler> verifyHandlers() {
+        return delegate.verifyHandlers();
     }
 
     @Override

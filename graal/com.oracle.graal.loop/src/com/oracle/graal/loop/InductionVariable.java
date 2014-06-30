@@ -62,7 +62,7 @@ public abstract class InductionVariable {
     public abstract Direction direction();
 
     /**
-     * Returns the value node that is described by this InductionVariable instance.
+     * Returns the value node that is described by this induction variable.
      */
     public abstract ValueNode valueNode();
 
@@ -104,4 +104,10 @@ public abstract class InductionVariable {
      * induction variable at the loop exit.
      */
     public abstract ValueNode exitValueNode();
+
+    /**
+     * Deletes any nodes created within the scope of this object that have no usages.
+     */
+    public void deleteUnusedNodes() {
+    }
 }

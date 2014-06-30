@@ -49,7 +49,7 @@ final class PartialEvaluatorCanonicalizer implements CanonicalizerPhase.CustomCa
                                 loadFieldNode.field().getAnnotation(CompilerDirectives.CompilationFinal.class) != null) {
                     Constant constant = loadFieldNode.field().readValue(loadFieldNode.object().asConstant());
                     assert verifyFieldValue(loadFieldNode.field(), constant);
-                    return ConstantNode.forConstant(constant, metaAccess, loadFieldNode.graph());
+                    return ConstantNode.forConstant(constant, metaAccess);
                 }
             }
         } else if (node instanceof LoadIndexedNode) {
@@ -59,7 +59,7 @@ final class PartialEvaluatorCanonicalizer implements CanonicalizerPhase.CustomCa
 
                 Constant constant = constantReflection.readArrayElement(loadIndexedNode.array().asConstant(), index);
                 if (constant != null) {
-                    return ConstantNode.forConstant(constant, metaAccess, loadIndexedNode.graph());
+                    return ConstantNode.forConstant(constant, metaAccess);
                 }
             }
         }

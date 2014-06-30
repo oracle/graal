@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -54,7 +54,7 @@ public final class WriteRegisterNode extends FixedWithNextNode implements LIRLow
     @Override
     public void generate(NodeLIRBuilderTool generator) {
         Value val = generator.operand(value);
-        generator.getLIRGeneratorTool().emitMove(register.asValue(val.getKind()), val);
+        generator.getLIRGeneratorTool().emitMove(register.asValue(val.getLIRKind()), val);
     }
 
     @Override

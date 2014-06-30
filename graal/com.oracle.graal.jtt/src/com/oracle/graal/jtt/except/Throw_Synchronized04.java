@@ -30,18 +30,20 @@ import com.oracle.graal.jtt.*;
 
 public class Throw_Synchronized04 extends JTTTest {
 
-    static final Throw_Synchronized04 object = new Throw_Synchronized04();
+    private static class TestClass {
+        @SuppressWarnings("unused")
+        public synchronized boolean test2(int i) throws Exception {
+            throw new Exception();
+        }
+    }
+
+    static final TestClass object = new TestClass();
 
     public static boolean test(int i) throws Exception {
         if (i == 0) {
             return true;
         }
         return object.test2(i);
-    }
-
-    @SuppressWarnings("unused")
-    public synchronized boolean test2(int i) throws Exception {
-        throw new Exception();
     }
 
     @Test

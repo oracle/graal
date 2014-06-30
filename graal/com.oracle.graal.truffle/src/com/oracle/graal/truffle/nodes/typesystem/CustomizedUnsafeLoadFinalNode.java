@@ -59,7 +59,7 @@ public class CustomizedUnsafeLoadFinalNode extends FixedWithNextNode implements 
     public Node canonical(CanonicalizerTool tool) {
         if (object.isConstant() && !object.isNullConstant() && offset.isConstant() && condition.isConstant() && condition.asConstant().asInt() == 1) {
             Constant constant = tool.getConstantReflection().readUnsafeConstant(accessKind, object.asConstant(), offset.asConstant().asLong());
-            return ConstantNode.forConstant(constant, tool.getMetaAccess(), graph());
+            return ConstantNode.forConstant(constant, tool.getMetaAccess());
         }
         return this;
     }

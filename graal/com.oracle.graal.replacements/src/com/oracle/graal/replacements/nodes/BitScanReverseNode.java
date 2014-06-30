@@ -24,31 +24,44 @@ package com.oracle.graal.replacements.nodes;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
-import com.oracle.graal.lir.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
 
-public class BitScanReverseNode extends FloatingNode implements LIRLowerable, Canonicalizable {
-
-    @Input private ValueNode value;
+/**
+ * Determines the index of the most significant "1" bit. Note that the result is undefined if the
+ * input is zero.
+ */
+public class BitScanReverseNode extends UnaryNode implements LIRLowerable {
 
     public BitScanReverseNode(ValueNode value) {
-        super(StampFactory.forInteger(Kind.Int, 0, ((PrimitiveStamp) value.stamp()).getBits()));
-        this.value = value;
+        super(StampFactory.forInteger(Kind.Int, 0, ((PrimitiveStamp) value.stamp()).getBits()), value);
+        assert value.getKind() == Kind.Int || value.getKind() == Kind.Long;
     }
 
     @Override
-    public Node canonical(CanonicalizerTool tool) {
-        if (value.isConstant()) {
-            Constant c = value.asConstant();
-            if (c.getKind() == Kind.Int) {
-                return ConstantNode.forInt(31 - Integer.numberOfLeadingZeros(c.asInt()), graph());
-            } else if (c.getKind() == Kind.Long) {
-                return ConstantNode.forInt(63 - Long.numberOfLeadingZeros(c.asLong()), graph());
-            }
+    public boolean inferStamp() {
+        IntegerStamp valueStamp = (IntegerStamp) getValue().stamp();
+        int min;
+        int max;
+        long mask = IntegerStamp.defaultMask(valueStamp.getBits());
+        int lastAlwaysSetBit = scan(valueStamp.downMask() & mask);
+        if (lastAlwaysSetBit == -1) {
+            min = -1;
+        } else {
+            min = lastAlwaysSetBit;
+        }
+        int lastMaybeSetBit = scan(valueStamp.upMask() & mask);
+        max = lastMaybeSetBit;
+        return updateStamp(StampFactory.forInteger(Kind.Int, min, max));
+    }
+
+    @Override
+    public ValueNode canonical(CanonicalizerTool tool, ValueNode forValue) {
+        if (forValue.isConstant()) {
+            Constant c = forValue.asConstant();
+            return ConstantNode.forInt(forValue.getKind() == Kind.Int ? scan(c.asInt()) : scan(c.asLong()));
         }
         return this;
     }
@@ -79,8 +92,7 @@ public class BitScanReverseNode extends FloatingNode implements LIRLowerable, Ca
 
     @Override
     public void generate(NodeLIRBuilderTool gen) {
-        Variable result = gen.newVariable(Kind.Int);
-        gen.getLIRGeneratorTool().emitBitScanReverse(result, gen.operand(value));
+        Value result = gen.getLIRGeneratorTool().emitBitScanReverse(gen.operand(getValue()));
         gen.setResult(this, result);
     }
 

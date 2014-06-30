@@ -22,105 +22,31 @@
  */
 package com.oracle.graal.phases.common.inlining.walker;
 
-import com.oracle.graal.api.meta.MetaUtil;
 import com.oracle.graal.api.meta.ResolvedJavaMethod;
-import com.oracle.graal.nodes.FixedNode;
-import com.oracle.graal.nodes.Invoke;
 import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.phases.graph.FixedNodeProbabilityCache;
-
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.function.ToDoubleFunction;
-
-import static com.oracle.graal.compiler.common.GraalOptions.CapInheritedRelevance;
 
 /**
  * Information about a graph that will potentially be inlined. This includes tracking the
  * invocations in graph that will subject to inlining themselves.
  */
-public class CallsiteHolder {
-
-    private final StructuredGraph graph;
-    private final LinkedList<Invoke> remainingInvokes;
-    private final double probability;
-    private final double relevance;
-
-    private final ToDoubleFunction<FixedNode> probabilities;
-    private final ComputeInliningRelevance computeInliningRelevance;
-
-    public CallsiteHolder(StructuredGraph graph, double probability, double relevance) {
-        this.graph = graph;
-        this.probability = probability;
-        this.relevance = relevance;
-        if (graph == null) {
-            remainingInvokes = new LinkedList<>();
-            probabilities = null;
-            computeInliningRelevance = null;
-        } else {
-            remainingInvokes = new InliningIterator(graph).apply();
-            assert remainingInvokes.size() == count(graph.getInvokes());
-            if (remainingInvokes.isEmpty()) {
-                probabilities = null;
-                computeInliningRelevance = null;
-            } else {
-                probabilities = new FixedNodeProbabilityCache();
-                computeInliningRelevance = new ComputeInliningRelevance(graph, probabilities);
-                computeProbabilities();
-            }
-        }
-    }
-
-    private static int count(Iterable<Invoke> invokes) {
-        int count = 0;
-        Iterator<Invoke> iterator = invokes.iterator();
-        while (iterator.hasNext()) {
-            iterator.next();
-            count++;
-        }
-        return count;
-    }
+public abstract class CallsiteHolder {
 
     /**
      * Gets the method associated with the {@linkplain #graph() graph} represented by this object.
      */
-    public ResolvedJavaMethod method() {
-        return graph == null ? null : graph.method();
-    }
+    public abstract ResolvedJavaMethod method();
 
-    public boolean hasRemainingInvokes() {
-        return !remainingInvokes.isEmpty();
-    }
+    /**
+     * The stack realized by {@link InliningData} grows upon {@link InliningData#moveForward()}
+     * deciding to explore (depth-first) a callsite of the graph associated to this
+     * {@link CallsiteHolder}. The list of not-yet-considered callsites is managed by
+     * {@link CallsiteHolderExplorable}, and this method reports whether any such candidates remain.
+     */
+    public abstract boolean hasRemainingInvokes();
 
     /**
      * The graph about which this object contains inlining information.
      */
-    public StructuredGraph graph() {
-        return graph;
-    }
+    public abstract StructuredGraph graph();
 
-    public Invoke popInvoke() {
-        return remainingInvokes.removeFirst();
-    }
-
-    public void pushInvoke(Invoke invoke) {
-        remainingInvokes.push(invoke);
-    }
-
-    public void computeProbabilities() {
-        computeInliningRelevance.compute();
-    }
-
-    public double invokeProbability(Invoke invoke) {
-        return probability * probabilities.applyAsDouble(invoke.asNode());
-    }
-
-    public double invokeRelevance(Invoke invoke) {
-        return Math.min(CapInheritedRelevance.getValue(), relevance) * computeInliningRelevance.getRelevance(invoke);
-    }
-
-    @Override
-    public String toString() {
-        return (graph != null ? MetaUtil.format("%H.%n(%p)", method()) : "<null method>") + remainingInvokes;
-    }
 }

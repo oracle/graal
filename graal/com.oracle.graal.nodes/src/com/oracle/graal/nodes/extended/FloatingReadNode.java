@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -62,14 +62,14 @@ public final class FloatingReadNode extends FloatingAccessNode implements Iterab
     @Override
     public void generate(NodeLIRBuilderTool gen) {
         Value address = location().generateAddress(gen, gen.getLIRGeneratorTool(), gen.operand(object()));
-        PlatformKind readKind = gen.getLIRGeneratorTool().getPlatformKind(stamp());
+        LIRKind readKind = gen.getLIRGeneratorTool().getLIRKind(stamp());
         gen.setResult(this, gen.getLIRGeneratorTool().emitLoad(readKind, address, null));
     }
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
         if (object() instanceof PiNode && ((PiNode) object()).getGuard() == getGuard()) {
-            return graph().unique(new FloatingReadNode(((PiNode) object()).getOriginalNode(), location(), getLastLocationAccess(), stamp(), getGuard(), getBarrierType()));
+            return new FloatingReadNode(((PiNode) object()).getOriginalNode(), location(), getLastLocationAccess(), stamp(), getGuard(), getBarrierType());
         }
         return ReadNode.canonicalizeRead(this, location(), object(), tool);
     }

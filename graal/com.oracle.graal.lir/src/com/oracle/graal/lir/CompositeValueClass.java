@@ -27,9 +27,9 @@ import java.util.*;
 
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.lir.CompositeValue.Component;
+import com.oracle.graal.lir.LIRInstruction.InstructionValueProcedure;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
-import com.oracle.graal.lir.LIRInstruction.ValueProcedure;
 
 /**
  * Lazily associated metadata for every {@link CompositeValue} type. The metadata includes:
@@ -139,8 +139,8 @@ public class CompositeValueClass extends LIRIntrospection {
         return str.toString();
     }
 
-    public final void forEachComponent(CompositeValue obj, OperandMode mode, ValueProcedure proc) {
-        forEach(obj, directComponentCount, componentOffsets, mode, componentFlags, proc);
+    public final void forEachComponent(LIRInstruction inst, CompositeValue obj, OperandMode mode, InstructionValueProcedure proc) {
+        forEach(inst, obj, directComponentCount, componentOffsets, mode, componentFlags, proc);
     }
 
     public String toString(CompositeValue obj) {

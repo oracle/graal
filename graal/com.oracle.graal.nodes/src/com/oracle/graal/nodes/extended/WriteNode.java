@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -53,7 +53,7 @@ public final class WriteNode extends AbstractWriteNode implements LIRLowerable, 
         } else {
             v = gen.operand(value());
         }
-        PlatformKind writeKind = gen.getLIRGeneratorTool().getPlatformKind(value().stamp());
+        LIRKind writeKind = gen.getLIRGeneratorTool().getLIRKind(value().stamp());
         gen.getLIRGeneratorTool().emitStore(writeKind, address, v, gen.state(this));
     }
 

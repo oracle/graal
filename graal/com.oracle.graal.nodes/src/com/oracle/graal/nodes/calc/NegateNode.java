@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,7 +24,6 @@ package com.oracle.graal.nodes.calc;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodes.*;
@@ -34,27 +33,20 @@ import com.oracle.graal.nodes.type.*;
 /**
  * The {@code NegateNode} node negates its operand.
  */
-public final class NegateNode extends FloatingNode implements Canonicalizable, ArithmeticLIRLowerable, NarrowableArithmeticNode {
-
-    @Input private ValueNode x;
-
-    public ValueNode x() {
-        return x;
-    }
+public final class NegateNode extends UnaryNode implements ArithmeticLIRLowerable, NarrowableArithmeticNode {
 
     @Override
     public boolean inferStamp() {
-        return updateStamp(StampTool.negate(x().stamp()));
+        return updateStamp(StampTool.negate(getValue().stamp()));
     }
 
     /**
      * Creates new NegateNode instance.
      *
-     * @param x the instruction producing the value that is input to this instruction
+     * @param value the instruction producing the value that is input to this instruction
      */
-    public NegateNode(ValueNode x) {
-        super(StampTool.negate(x.stamp()));
-        this.x = x;
+    public NegateNode(ValueNode value) {
+        super(StampTool.negate(value.stamp()), value);
     }
 
     public Constant evalConst(Constant... inputs) {
@@ -75,22 +67,22 @@ public final class NegateNode extends FloatingNode implements Canonicalizable, A
     }
 
     @Override
-    public Node canonical(CanonicalizerTool tool) {
-        if (x().isConstant()) {
-            return ConstantNode.forPrimitive(evalConst(x.asConstant()), graph());
+    public ValueNode canonical(CanonicalizerTool tool, ValueNode forValue) {
+        if (forValue.isConstant()) {
+            return ConstantNode.forConstant(evalConst(forValue.asConstant()), null);
         }
-        if (x() instanceof NegateNode) {
-            return ((NegateNode) x()).x();
+        if (forValue instanceof NegateNode) {
+            return ((NegateNode) forValue).getValue();
         }
-        if (x() instanceof IntegerSubNode) {
-            IntegerSubNode sub = (IntegerSubNode) x;
-            return IntegerArithmeticNode.sub(graph(), sub.y(), sub.x());
+        if (forValue instanceof IntegerSubNode) {
+            IntegerSubNode sub = (IntegerSubNode) forValue;
+            return new IntegerSubNode(sub.getY(), sub.getX());
         }
         return this;
     }
 
     @Override
     public void generate(NodeMappableLIRBuilder builder, ArithmeticLIRGenerator gen) {
-        builder.setResult(this, gen.emitNegate(builder.operand(x())));
+        builder.setResult(this, gen.emitNegate(builder.operand(getValue())));
     }
 }

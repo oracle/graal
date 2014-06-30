@@ -40,6 +40,8 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.options.*;
 import com.oracle.graal.printer.*;
 
+//JaCoCo Exclude
+
 /**
  * A queue for running {@link CompilationTask}s on background compilation thread(s). The singleton
  * {@linkplain #queue() instance} is created the first time this class is accessed.
@@ -51,6 +53,10 @@ public class CompilationQueue {
 
     static {
         try (InitTimer t = timer("initialize CompilationQueue")) {
+
+            // The Graal runtime needs to be initialized here to avoid
+            // issues re-entering Java code during compilation scheduling.
+            HotSpotGraalRuntime.runtime();
 
             // Must be first to ensure any options accessed by the rest of the class
             // initializer are initialized from the command line.

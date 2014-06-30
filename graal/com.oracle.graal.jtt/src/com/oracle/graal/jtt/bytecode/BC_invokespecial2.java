@@ -33,15 +33,17 @@ import com.oracle.graal.jtt.*;
  */
 public class BC_invokespecial2 extends JTTTest {
 
-    static BC_invokespecial2 object = new BC_invokespecial2();
+    private static class TestClass {
+        @SuppressWarnings("static-method")
+        private int id(int i) {
+            return 4 + i;
+        }
+    }
+
+    static TestClass object = new TestClass();
 
     public static int test(int a) {
         return 3 + object.id(a);
-    }
-
-    @SuppressWarnings("static-method")
-    private int id(int i) {
-        return 4 + i;
     }
 
     @Test

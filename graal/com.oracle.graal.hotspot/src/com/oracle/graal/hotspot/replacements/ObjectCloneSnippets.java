@@ -36,10 +36,14 @@ public class ObjectCloneSnippets implements Snippets {
     public static final EnumMap<Kind, Method> arrayCloneMethods = new EnumMap<>(Kind.class);
 
     static {
+        arrayCloneMethods.put(Kind.Boolean, getCloneMethod("booleanArrayClone", boolean[].class));
         arrayCloneMethods.put(Kind.Byte, getCloneMethod("byteArrayClone", byte[].class));
         arrayCloneMethods.put(Kind.Char, getCloneMethod("charArrayClone", char[].class));
+        arrayCloneMethods.put(Kind.Short, getCloneMethod("shortArrayClone", short[].class));
         arrayCloneMethods.put(Kind.Int, getCloneMethod("intArrayClone", int[].class));
+        arrayCloneMethods.put(Kind.Float, getCloneMethod("floatArrayClone", float[].class));
         arrayCloneMethods.put(Kind.Long, getCloneMethod("longArrayClone", long[].class));
+        arrayCloneMethods.put(Kind.Double, getCloneMethod("doubleArrayClone", double[].class));
         arrayCloneMethods.put(Kind.Object, getCloneMethod("objectArrayClone", Object[].class));
     }
 
@@ -52,47 +56,65 @@ public class ObjectCloneSnippets implements Snippets {
     }
 
     @Snippet(removeAllFrameStates = true)
+    public static boolean[] booleanArrayClone(boolean[] src) {
+        boolean[] result = (boolean[]) NewArrayNode.newUninitializedArray(Boolean.TYPE, src.length);
+        ArrayCopyCallNode.disjointArraycopy(src, 0, result, 0, src.length, Kind.Boolean);
+        return result;
+    }
+
+    @Snippet(removeAllFrameStates = true)
     public static byte[] byteArrayClone(byte[] src) {
-        byte[] result = new byte[src.length];
-        for (int i = 0; i < result.length; i++) {
-            result[i] = src[i];
-        }
+        byte[] result = (byte[]) NewArrayNode.newUninitializedArray(Byte.TYPE, src.length);
+        ArrayCopyCallNode.disjointArraycopy(src, 0, result, 0, src.length, Kind.Byte);
+        return result;
+    }
+
+    @Snippet(removeAllFrameStates = true)
+    public static short[] shortArrayClone(short[] src) {
+        short[] result = (short[]) NewArrayNode.newUninitializedArray(Short.TYPE, src.length);
+        ArrayCopyCallNode.disjointArraycopy(src, 0, result, 0, src.length, Kind.Short);
         return result;
     }
 
     @Snippet(removeAllFrameStates = true)
     public static char[] charArrayClone(char[] src) {
-        char[] result = new char[src.length];
-        for (int i = 0; i < result.length; i++) {
-            result[i] = src[i];
-        }
+        char[] result = (char[]) NewArrayNode.newUninitializedArray(Character.TYPE, src.length);
+        ArrayCopyCallNode.disjointArraycopy(src, 0, result, 0, src.length, Kind.Char);
         return result;
     }
 
     @Snippet(removeAllFrameStates = true)
     public static int[] intArrayClone(int[] src) {
-        int[] result = new int[src.length];
-        for (int i = 0; i < result.length; i++) {
-            result[i] = src[i];
-        }
+        int[] result = (int[]) NewArrayNode.newUninitializedArray(Integer.TYPE, src.length);
+        ArrayCopyCallNode.disjointArraycopy(src, 0, result, 0, src.length, Kind.Int);
+        return result;
+    }
+
+    @Snippet(removeAllFrameStates = true)
+    public static float[] floatArrayClone(float[] src) {
+        float[] result = (float[]) NewArrayNode.newUninitializedArray(Float.TYPE, src.length);
+        ArrayCopyCallNode.disjointArraycopy(src, 0, result, 0, src.length, Kind.Float);
         return result;
     }
 
     @Snippet(removeAllFrameStates = true)
     public static long[] longArrayClone(long[] src) {
-        long[] result = new long[src.length];
-        for (int i = 0; i < result.length; i++) {
-            result[i] = src[i];
-        }
+        long[] result = (long[]) NewArrayNode.newUninitializedArray(Long.TYPE, src.length);
+        ArrayCopyCallNode.disjointArraycopy(src, 0, result, 0, src.length, Kind.Long);
+        return result;
+    }
+
+    @Snippet(removeAllFrameStates = true)
+    public static double[] doubleArrayClone(double[] src) {
+        double[] result = (double[]) NewArrayNode.newUninitializedArray(Double.TYPE, src.length);
+        ArrayCopyCallNode.disjointArraycopy(src, 0, result, 0, src.length, Kind.Double);
         return result;
     }
 
     @Snippet(removeAllFrameStates = true)
     public static Object[] objectArrayClone(Object[] src) {
-        Object[] result = (Object[]) DynamicNewArrayNode.newArray(GuardingPiNode.guardingNonNull(src.getClass().getComponentType()), src.length);
-        for (int i = 0; i < result.length; i++) {
-            result[i] = src[i];
-        }
+        Object[] result = (Object[]) DynamicNewArrayNode.newUninitializedArray(GuardingPiNode.guardingNonNull(src.getClass().getComponentType()), src.length);
+        ArrayCopyCallNode.disjointUninitializedArraycopy(src, 0, result, 0, src.length, Kind.Object);
         return result;
     }
 }

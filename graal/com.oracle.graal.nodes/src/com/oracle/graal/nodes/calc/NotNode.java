@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,7 +24,6 @@ package com.oracle.graal.nodes.calc;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodes.*;
@@ -34,17 +33,11 @@ import com.oracle.graal.nodes.type.*;
 /**
  * Binary negation of long or integer values.
  */
-public final class NotNode extends FloatingNode implements Canonicalizable, ArithmeticLIRLowerable, NarrowableArithmeticNode {
-
-    @Input private ValueNode x;
-
-    public ValueNode x() {
-        return x;
-    }
+public final class NotNode extends UnaryNode implements ArithmeticLIRLowerable, NarrowableArithmeticNode {
 
     @Override
     public boolean inferStamp() {
-        return updateStamp(StampTool.not(x().stamp()));
+        return updateStamp(StampTool.not(getValue().stamp()));
     }
 
     @Override
@@ -59,23 +52,22 @@ public final class NotNode extends FloatingNode implements Canonicalizable, Arit
      * @param x the instruction producing the value that is input to this instruction
      */
     public NotNode(ValueNode x) {
-        super(StampTool.not(x.stamp()));
-        this.x = x;
+        super(StampTool.not(x.stamp()), x);
     }
 
     @Override
-    public Node canonical(CanonicalizerTool tool) {
-        if (x().isConstant()) {
-            return ConstantNode.forPrimitive(evalConst(x().asConstant()), graph());
+    public ValueNode canonical(CanonicalizerTool tool, ValueNode forValue) {
+        if (forValue.isConstant()) {
+            return ConstantNode.forConstant(evalConst(forValue.asConstant()), null);
         }
-        if (x() instanceof NotNode) {
-            return ((NotNode) x()).x();
+        if (forValue instanceof NotNode) {
+            return ((NotNode) forValue).getValue();
         }
         return this;
     }
 
     @Override
     public void generate(NodeMappableLIRBuilder builder, ArithmeticLIRGenerator gen) {
-        builder.setResult(this, gen.emitNot(builder.operand(x())));
+        builder.setResult(this, gen.emitNot(builder.operand(getValue())));
     }
 }

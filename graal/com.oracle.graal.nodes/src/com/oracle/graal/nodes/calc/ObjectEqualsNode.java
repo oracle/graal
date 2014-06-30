@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,7 +23,6 @@
 package com.oracle.graal.nodes.calc;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.meta.ProfilingInfo.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
@@ -58,26 +57,20 @@ public final class ObjectEqualsNode extends CompareNode implements Virtualizable
     }
 
     @Override
-    public TriState evaluate(ConstantReflectionProvider constantReflection, ValueNode forX, ValueNode forY) {
-        if (GraphUtil.unproxify(forX) == GraphUtil.unproxify(forY)) {
-            return TriState.TRUE;
-        } else if (forX.stamp().alwaysDistinct(forY.stamp())) {
-            return TriState.FALSE;
-        } else {
-            return super.evaluate(constantReflection, forX, forY);
-        }
-    }
-
-    @Override
-    public Node canonical(CanonicalizerTool tool) {
-        Node result = super.canonical(tool);
+    public ValueNode canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
+        ValueNode result = super.canonical(tool, forX, forY);
         if (result != this) {
             return result;
         }
-        if (StampTool.isObjectAlwaysNull(x())) {
-            return graph().unique(new IsNullNode(y()));
-        } else if (StampTool.isObjectAlwaysNull(y())) {
-            return graph().unique(new IsNullNode(x()));
+        if (GraphUtil.unproxify(forX) == GraphUtil.unproxify(forY)) {
+            return LogicConstantNode.tautology();
+        } else if (forX.stamp().alwaysDistinct(forY.stamp())) {
+            return LogicConstantNode.contradiction();
+        }
+        if (StampTool.isObjectAlwaysNull(forX)) {
+            return new IsNullNode(forY);
+        } else if (StampTool.isObjectAlwaysNull(forY)) {
+            return new IsNullNode(forX);
         }
         return this;
     }
@@ -103,15 +96,15 @@ public final class ObjectEqualsNode extends CompareNode implements Virtualizable
 
     @Override
     public void virtualize(VirtualizerTool tool) {
-        State stateX = tool.getObjectState(x());
-        State stateY = tool.getObjectState(y());
+        State stateX = tool.getObjectState(getX());
+        State stateY = tool.getObjectState(getY());
         boolean xVirtual = stateX != null && stateX.getState() == EscapeState.Virtual;
         boolean yVirtual = stateY != null && stateY.getState() == EscapeState.Virtual;
 
         if (xVirtual && !yVirtual) {
-            virtualizeNonVirtualComparison(stateX, stateY != null ? stateY.getMaterializedValue() : y(), tool);
+            virtualizeNonVirtualComparison(stateX, stateY != null ? stateY.getMaterializedValue() : getY(), tool);
         } else if (!xVirtual && yVirtual) {
-            virtualizeNonVirtualComparison(stateY, stateX != null ? stateX.getMaterializedValue() : x(), tool);
+            virtualizeNonVirtualComparison(stateY, stateX != null ? stateX.getMaterializedValue() : getX(), tool);
         } else if (xVirtual && yVirtual) {
             boolean xIdentity = stateX.getVirtualObject().hasIdentity();
             boolean yIdentity = stateY.getVirtualObject().hasIdentity();
@@ -119,7 +112,7 @@ public final class ObjectEqualsNode extends CompareNode implements Virtualizable
                 /*
                  * One of the two objects has identity, the other doesn't. In code, this looks like
                  * "Integer.valueOf(a) == new Integer(b)", which is always false.
-                 *
+                 * 
                  * In other words: an object created via valueOf can never be equal to one created
                  * by new in the same compilation unit.
                  */

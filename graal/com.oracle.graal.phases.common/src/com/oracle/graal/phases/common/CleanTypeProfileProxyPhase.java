@@ -30,7 +30,7 @@ public class CleanTypeProfileProxyPhase extends Phase {
     @Override
     protected void run(StructuredGraph graph) {
         for (TypeProfileProxyNode proxy : graph.getNodes(TypeProfileProxyNode.class)) {
-            graph.replaceFloating(proxy, proxy.getObject());
+            graph.replaceFloating(proxy, proxy.getValue());
         }
         assert graph.getNodes(TypeProfileProxyNode.class).count() == 0;
     }

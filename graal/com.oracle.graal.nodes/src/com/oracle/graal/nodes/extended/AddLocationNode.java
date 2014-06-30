@@ -36,16 +36,16 @@ import com.oracle.graal.nodes.spi.*;
  * [(base + x) + y] where base is a node and x and y are location nodes.
  */
 @NodeInfo(nameTemplate = "AddLoc {p#locationIdentity/s}")
-public final class AddLocationNode extends LocationNode implements Canonicalizable {
+public final class AddLocationNode extends LocationNode implements Canonicalizable.Binary<LocationNode> {
 
     @Input(InputType.Association) private ValueNode x;
     @Input(InputType.Association) private ValueNode y;
 
-    protected LocationNode getX() {
+    public LocationNode getX() {
         return (LocationNode) x;
     }
 
-    protected LocationNode getY() {
+    public LocationNode getY() {
         return (LocationNode) y;
     }
 
@@ -70,21 +70,20 @@ public final class AddLocationNode extends LocationNode implements Canonicalizab
         return getX().getLocationIdentity();
     }
 
-    @Override
-    public Node canonical(CanonicalizerTool tool) {
-        if (x instanceof ConstantLocationNode) {
-            return canonical((ConstantLocationNode) x, getY());
+    public LocationNode canonical(CanonicalizerTool tool, LocationNode forX, LocationNode forY) {
+        if (forX instanceof ConstantLocationNode) {
+            return canonical((ConstantLocationNode) forX, forY);
         }
-        if (y instanceof ConstantLocationNode) {
-            return canonical((ConstantLocationNode) y, getX());
+        if (forY instanceof ConstantLocationNode) {
+            return canonical((ConstantLocationNode) forY, forX);
         }
-        if (x instanceof IndexedLocationNode && y instanceof IndexedLocationNode) {
-            IndexedLocationNode xIdx = (IndexedLocationNode) x;
-            IndexedLocationNode yIdx = (IndexedLocationNode) y;
+        if (forX instanceof IndexedLocationNode && forY instanceof IndexedLocationNode) {
+            IndexedLocationNode xIdx = (IndexedLocationNode) forX;
+            IndexedLocationNode yIdx = (IndexedLocationNode) forY;
             if (xIdx.getIndexScaling() == yIdx.getIndexScaling()) {
                 long displacement = xIdx.getDisplacement() + yIdx.getDisplacement();
-                ValueNode index = IntegerArithmeticNode.add(graph(), xIdx.getIndex(), yIdx.getIndex());
-                return IndexedLocationNode.create(getLocationIdentity(), getValueKind(), displacement, index, graph(), xIdx.getIndexScaling());
+                ValueNode index = IntegerArithmeticNode.add(xIdx.getIndex(), yIdx.getIndex());
+                return IndexedLocationNode.create(getLocationIdentity(), getValueKind(), displacement, index, xIdx.getIndexScaling());
             }
         }
         return this;
@@ -93,15 +92,15 @@ public final class AddLocationNode extends LocationNode implements Canonicalizab
     private LocationNode canonical(ConstantLocationNode constant, LocationNode other) {
         if (other instanceof ConstantLocationNode) {
             ConstantLocationNode otherConst = (ConstantLocationNode) other;
-            return ConstantLocationNode.create(getLocationIdentity(), getValueKind(), otherConst.getDisplacement() + constant.getDisplacement(), graph());
+            return ConstantLocationNode.create(getLocationIdentity(), getValueKind(), otherConst.getDisplacement() + constant.getDisplacement());
         } else if (other instanceof IndexedLocationNode) {
             IndexedLocationNode otherIdx = (IndexedLocationNode) other;
-            return IndexedLocationNode.create(getLocationIdentity(), getValueKind(), otherIdx.getDisplacement() + constant.getDisplacement(), otherIdx.getIndex(), graph(), otherIdx.getIndexScaling());
+            return IndexedLocationNode.create(getLocationIdentity(), getValueKind(), otherIdx.getDisplacement() + constant.getDisplacement(), otherIdx.getIndex(), otherIdx.getIndexScaling());
         } else if (other instanceof AddLocationNode) {
             AddLocationNode otherAdd = (AddLocationNode) other;
             LocationNode newInner = otherAdd.canonical(constant, otherAdd.getX());
             if (newInner != otherAdd) {
-                return AddLocationNode.create(newInner, otherAdd.getY(), graph());
+                return new AddLocationNode(newInner, otherAdd.getY());
             }
         }
         return this;

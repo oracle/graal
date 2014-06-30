@@ -24,7 +24,6 @@ package com.oracle.graal.nodes.java;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
@@ -33,11 +32,15 @@ import com.oracle.graal.nodes.util.*;
 /**
  * The {@code ArrayLength} instruction gets the length of an array.
  */
-public final class ArrayLengthNode extends FixedWithNextNode implements Canonicalizable, Lowerable, Virtualizable {
+public final class ArrayLengthNode extends FixedWithNextNode implements Canonicalizable.Unary<ValueNode>, Lowerable, Virtualizable {
 
     @Input private ValueNode array;
 
     public ValueNode array() {
+        return array;
+    }
+
+    public ValueNode getValue() {
         return array;
     }
 
@@ -46,9 +49,8 @@ public final class ArrayLengthNode extends FixedWithNextNode implements Canonica
         this.array = array;
     }
 
-    @Override
-    public Node canonical(CanonicalizerTool tool) {
-        ValueNode length = readArrayLength(graph(), array(), tool.getConstantReflection());
+    public ValueNode canonical(CanonicalizerTool tool, ValueNode forValue) {
+        ValueNode length = readArrayLength(forValue, tool.getConstantReflection());
         if (length != null) {
             return length;
         }
@@ -60,7 +62,7 @@ public final class ArrayLengthNode extends FixedWithNextNode implements Canonica
      *
      * @return a node representing the length of {@code array} or null if it is not available
      */
-    public static ValueNode readArrayLength(StructuredGraph graph, ValueNode originalArray, ConstantReflectionProvider constantReflection) {
+    public static ValueNode readArrayLength(ValueNode originalArray, ConstantReflectionProvider constantReflection) {
         ArrayLengthProvider foundArrayLengthProvider = null;
         ValueNode result = originalArray;
         while (true) {
@@ -87,7 +89,7 @@ public final class ArrayLengthNode extends FixedWithNextNode implements Canonica
             if (constantValue != null && constantValue.isNonNull()) {
                 Integer constantLength = constantReflection.readArrayLength(constantValue);
                 if (constantLength != null) {
-                    return ConstantNode.forInt(constantLength, graph);
+                    return ConstantNode.forInt(constantLength);
                 }
             }
         }

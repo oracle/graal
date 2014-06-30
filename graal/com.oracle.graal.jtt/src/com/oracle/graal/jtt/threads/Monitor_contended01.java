@@ -28,17 +28,35 @@ import org.junit.*;
 
 import com.oracle.graal.jtt.*;
 
-public final class Monitor_contended01 extends JTTTest implements Runnable {
+public final class Monitor_contended01 extends JTTTest {
+
+    private static class TestClass implements Runnable {
+        boolean started = false;
+        boolean acquired = false;
+
+        public void run() {
+            // signal that we have started up so first thread will release lock
+            synchronized (cond) {
+                started = true;
+                cond.notifyAll();
+            }
+            synchronized (obj) {
+
+            }
+            // signal that we have successfully acquired and released the monitor
+            synchronized (cond) {
+                acquired = true;
+                cond.notifyAll();
+            }
+        }
+    }
 
     static final Object cond = new Object();
     static final Object obj = new Object();
 
-    boolean started = false;
-    boolean acquired = false;
-
     public static boolean test() throws InterruptedException {
         // test contention for monitor
-        final Monitor_contended01 object = new Monitor_contended01();
+        final TestClass object = new TestClass();
         synchronized (obj) {
             new Thread(object).start();
             // wait for other thread to startup and contend
@@ -54,22 +72,6 @@ public final class Monitor_contended01 extends JTTTest implements Runnable {
             cond.wait(1000);
         }
         return object.acquired;
-    }
-
-    public void run() {
-        // signal that we have started up so first thread will release lock
-        synchronized (cond) {
-            started = true;
-            cond.notifyAll();
-        }
-        synchronized (obj) {
-
-        }
-        // signal that we have successfully acquired and released the monitor
-        synchronized (cond) {
-            acquired = true;
-            cond.notifyAll();
-        }
     }
 
     @Test(timeout = 20000)

@@ -33,6 +33,7 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.MoveOp;
 import com.oracle.graal.lir.asm.*;
+import com.oracle.graal.hsail.*;
 
 /**
  * Implementation of move instructions.
@@ -167,6 +168,25 @@ public class HSAILMove {
             HSAILAddress addr = address.toAddress();
             masm.emitLoad(kind, result, addr);
         }
+
+        public boolean usesThreadRegister() {
+            return (address.toAddress().getBase().equals(HSAIL.threadRegister));
+        }
+    }
+
+    /**
+     * A LoadOp that uses the HSAIL ld_acq instruction
+     */
+    public static class LoadAcquireOp extends LoadOp {
+        public LoadAcquireOp(Kind kind, AllocatableValue result, HSAILAddressValue address, LIRFrameState state) {
+            super(kind, result, address, state);
+        }
+
+        @Override
+        public void emitMemAccess(HSAILAssembler masm) {
+            HSAILAddress addr = address.toAddress();
+            masm.emitLoadAcquire(result, addr);
+        }
     }
 
     public static class StoreOp extends MemOp {
@@ -183,6 +203,22 @@ public class HSAILMove {
             assert isRegister(input);
             HSAILAddress addr = address.toAddress();
             masm.emitStore(kind, input, addr);
+        }
+    }
+
+    /**
+     * A StoreOp that uses the HSAIL st_rel instruction
+     */
+    public static class StoreReleaseOp extends StoreOp {
+        public StoreReleaseOp(Kind kind, HSAILAddressValue address, AllocatableValue input, LIRFrameState state) {
+            super(kind, address, input, state);
+        }
+
+        @Override
+        public void emitMemAccess(HSAILAssembler masm) {
+            assert isRegister(input);
+            HSAILAddress addr = address.toAddress();
+            masm.emitStoreRelease(input, addr);
         }
     }
 
@@ -462,6 +498,20 @@ public class HSAILMove {
             }
         } else {
             throw GraalInternalError.shouldNotReachHere();
+        }
+    }
+
+    public static class WorkItemAbsIdOp extends HSAILLIRInstruction {
+
+        @Def({REG}) protected AllocatableValue result;
+
+        public WorkItemAbsIdOp(AllocatableValue result) {
+            this.result = result;
+        }
+
+        @Override
+        public void emitCode(CompilationResultBuilder crb, HSAILAssembler masm) {
+            masm.emitWorkItemAbsId(result);
         }
     }
 

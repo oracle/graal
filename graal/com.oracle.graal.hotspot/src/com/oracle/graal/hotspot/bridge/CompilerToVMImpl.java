@@ -68,7 +68,7 @@ public class CompilerToVMImpl implements CompilerToVM {
     public native boolean hasBalancedMonitors(long metaspaceMethod);
 
     @Override
-    public native long findUniqueConcreteMethod(long metaspaceMethod);
+    public native long findUniqueConcreteMethod(long actualHolderMetaspaceKlass, long metaspaceMethod);
 
     @Override
     public native long getKlassImplementor(long metaspaceKlass);
@@ -197,4 +197,6 @@ public class CompilerToVMImpl implements CompilerToVM {
     public native void resolveInvokeDynamic(long metaspaceConstantPool, int index);
 
     public native int getVtableIndexForInterface(long metaspaceKlass, long metaspaceMethod);
+
+    public native boolean shouldDebugNonSafepoints();
 }

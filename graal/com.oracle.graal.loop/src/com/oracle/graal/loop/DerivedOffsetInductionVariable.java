@@ -72,7 +72,7 @@ public class DerivedOffsetInductionVariable extends InductionVariable {
 
     @Override
     public long constantStride() {
-        if (value instanceof IntegerSubNode && base.valueNode() == value.y()) {
+        if (value instanceof IntegerSubNode && base.valueNode() == value.getY()) {
             return -base.constantStride();
         }
         return base.constantStride();
@@ -85,7 +85,7 @@ public class DerivedOffsetInductionVariable extends InductionVariable {
 
     @Override
     public ValueNode strideNode() {
-        if (value instanceof IntegerSubNode && base.valueNode() == value.y()) {
+        if (value instanceof IntegerSubNode && base.valueNode() == value.getY()) {
             return graph().unique(new NegateNode(base.strideNode()));
         }
         return base.strideNode();
@@ -93,7 +93,7 @@ public class DerivedOffsetInductionVariable extends InductionVariable {
 
     @Override
     public ValueNode extremumNode(boolean assumePositiveTripCount, Stamp stamp) {
-        return op(base.extremumNode(assumePositiveTripCount, stamp), IntegerConvertNode.convert(offset, stamp));
+        return op(base.extremumNode(assumePositiveTripCount, stamp), IntegerConvertNode.convert(offset, stamp, graph()));
     }
 
     @Override
@@ -116,10 +116,10 @@ public class DerivedOffsetInductionVariable extends InductionVariable {
             return b + o;
         }
         if (value instanceof IntegerSubNode) {
-            if (base.valueNode() == value.x()) {
+            if (base.valueNode() == value.getX()) {
                 return b - o;
             } else {
-                assert base.valueNode() == value.y();
+                assert base.valueNode() == value.getY();
                 return o - b;
             }
         }
@@ -131,10 +131,10 @@ public class DerivedOffsetInductionVariable extends InductionVariable {
             return IntegerArithmeticNode.add(graph(), b, o);
         }
         if (value instanceof IntegerSubNode) {
-            if (base.valueNode() == value.x()) {
+            if (base.valueNode() == value.getX()) {
                 return IntegerArithmeticNode.sub(graph(), b, o);
             } else {
-                assert base.valueNode() == value.y();
+                assert base.valueNode() == value.getY();
                 return IntegerArithmeticNode.sub(graph(), o, b);
             }
         }

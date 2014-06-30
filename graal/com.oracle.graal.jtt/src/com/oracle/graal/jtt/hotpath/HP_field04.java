@@ -31,29 +31,31 @@ import com.oracle.graal.jtt.*;
  */
 public class HP_field04 extends JTTTest {
 
-    public byte b;
-    public char c;
-    public short s;
-    public int i;
-    public long l;
-    public float f;
-    public double d;
+    private static class TestClass {
+        public byte b;
+        public char c;
+        public short s;
+        public int i;
+        public long l;
+        public float f;
+        public double d;
 
-    public static int test(int count) {
-        return new HP_field04().run(count);
+        public int run(int count) {
+            for (int x = 0; x <= count; x++) {
+                b += x;
+                c += x;
+                s += x;
+                i += x;
+                l += x;
+                f += x;
+                d += x;
+            }
+            return (int) (b + c + s + i + l + f + d);
+        }
     }
 
-    public int run(int count) {
-        for (int x = 0; x <= count; x++) {
-            b += x;
-            c += x;
-            s += x;
-            i += x;
-            l += x;
-            f += x;
-            d += x;
-        }
-        return (int) (b + c + s + i + l + f + d);
+    public static int test(int count) {
+        return new TestClass().run(count);
     }
 
     @Test

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,17 +25,17 @@ package com.oracle.graal.truffle.nodes.typesystem;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
+import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.truffle.nodes.asserts.*;
 import com.oracle.truffle.api.*;
 
 /**
  * Macro node for method {@link CompilerDirectives#unsafeCast(Object, Class, boolean, boolean)}.
  */
-public class UnsafeTypeCastMacroNode extends NeverPartOfCompilationNode implements Canonicalizable {
+public class UnsafeTypeCastMacroNode extends NeverPartOfCompilationNode implements Simplifiable {
 
     private static final int OBJECT_ARGUMENT_INDEX = 0;
     private static final int CLASS_ARGUMENT_INDEX = 1;
@@ -49,22 +49,25 @@ public class UnsafeTypeCastMacroNode extends NeverPartOfCompilationNode implemen
     }
 
     @Override
-    public Node canonical(CanonicalizerTool tool) {
+    public void simplify(SimplifierTool tool) {
         ValueNode classArgument = arguments.get(CLASS_ARGUMENT_INDEX);
         ValueNode nonNullArgument = arguments.get(NONNULL_ARGUMENT_INDEX);
         if (classArgument.isConstant() && nonNullArgument.isConstant()) {
             ValueNode objectArgument = arguments.get(OBJECT_ARGUMENT_INDEX);
             ValueNode conditionArgument = arguments.get(CONDITION_ARGUMENT_INDEX);
             ResolvedJavaType lookupJavaType = tool.getConstantReflection().asJavaType(classArgument.asConstant());
+            tool.addToWorkList(usages());
             if (lookupJavaType == null) {
-                return objectArgument;
+                replaceAtUsages(objectArgument);
+                GraphUtil.removeFixedWithUnusedInputs(this);
+            } else {
+                Stamp stamp = StampFactory.declared(lookupJavaType, nonNullArgument.asConstant().asInt() != 0);
+                ConditionAnchorNode valueAnchorNode = graph().add(
+                                new ConditionAnchorNode(CompareNode.createCompareNode(graph(), Condition.EQ, conditionArgument, ConstantNode.forBoolean(true, graph()))));
+                PiNode piCast = graph().unique(new PiNode(objectArgument, stamp, valueAnchorNode));
+                replaceAtUsages(piCast);
+                graph().replaceFixedWithFixed(this, valueAnchorNode);
             }
-            Stamp stamp = StampFactory.declared(lookupJavaType, nonNullArgument.asConstant().asInt() != 0);
-            ConditionAnchorNode valueAnchorNode = graph().add(new ConditionAnchorNode(CompareNode.createCompareNode(graph(), Condition.EQ, conditionArgument, ConstantNode.forBoolean(true, graph()))));
-            PiNode piCast = graph().unique(new PiNode(objectArgument, stamp, valueAnchorNode));
-            this.replaceAtUsages(piCast);
-            return valueAnchorNode;
         }
-        return this;
     }
 }

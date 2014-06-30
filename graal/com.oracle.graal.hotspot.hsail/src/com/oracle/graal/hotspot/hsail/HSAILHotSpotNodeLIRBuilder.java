@@ -78,11 +78,11 @@ public class HSAILHotSpotNodeLIRBuilder extends HSAILNodeLIRBuilder implements H
     }
 
     public void visitDirectCompareAndSwap(DirectCompareAndSwapNode x) {
-        Kind kind = x.newValue().getKind();
-        assert kind == x.expectedValue().getKind();
-
         Variable expected = getGen().load(operand(x.expectedValue()));
         Variable newVal = getGen().load(operand(x.newValue()));
+
+        LIRKind kind = newVal.getLIRKind();
+        assert kind.equals(expected.getLIRKind());
 
         int disp = 0;
         HSAILAddressValue address;
@@ -95,8 +95,8 @@ public class HSAILHotSpotNodeLIRBuilder extends HSAILNodeLIRBuilder implements H
             throw GraalInternalError.shouldNotReachHere("NYI");
         }
 
-        Variable casResult = newVariable(kind);
-        append(new CompareAndSwapOp(kind, casResult, address, expected, newVal));
+        Variable casResult = gen.newVariable(kind);
+        append(new CompareAndSwapOp((Kind) kind.getPlatformKind(), casResult, address, expected, newVal));
 
         setResult(x, casResult);
     }

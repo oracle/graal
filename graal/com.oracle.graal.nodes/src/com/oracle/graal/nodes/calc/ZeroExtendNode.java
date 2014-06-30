@@ -25,7 +25,6 @@ package com.oracle.graal.nodes.calc;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodes.*;
@@ -78,28 +77,28 @@ public class ZeroExtendNode extends IntegerConvertNode {
     }
 
     @Override
-    public Node canonical(CanonicalizerTool tool) {
-        ValueNode ret = canonicalConvert();
-        if (ret != null) {
+    public ValueNode canonical(CanonicalizerTool tool, ValueNode forValue) {
+        ValueNode ret = canonicalConvert(forValue);
+        if (ret != this) {
             return ret;
         }
 
-        if (getInput() instanceof ZeroExtendNode) {
+        if (forValue instanceof ZeroExtendNode) {
             // xxxx -(zero-extend)-> 0000 xxxx -(zero-extend)-> 00000000 0000xxxx
             // ==> xxxx -(zero-extend)-> 00000000 0000xxxx
-            ZeroExtendNode other = (ZeroExtendNode) getInput();
-            return graph().unique(new ZeroExtendNode(other.getInput(), getResultBits()));
+            ZeroExtendNode other = (ZeroExtendNode) forValue;
+            return new ZeroExtendNode(other.getValue(), getResultBits());
         }
-        if (getInput() instanceof NarrowNode) {
-            NarrowNode narrow = (NarrowNode) getInput();
-            Stamp inputStamp = narrow.getInput().stamp();
+        if (forValue instanceof NarrowNode) {
+            NarrowNode narrow = (NarrowNode) forValue;
+            Stamp inputStamp = narrow.getValue().stamp();
             if (inputStamp instanceof IntegerStamp && inputStamp.isCompatible(stamp())) {
                 IntegerStamp istamp = (IntegerStamp) inputStamp;
                 long mask = IntegerStamp.defaultMask(PrimitiveStamp.getBits(narrow.stamp()));
                 if (((istamp.upMask() | istamp.downMask()) & ~mask) == 0) {
                     // The original value is in the range of the masked zero extended result so
                     // simply return the original input.
-                    return narrow.getInput();
+                    return narrow.getValue();
                 }
             }
         }
@@ -109,11 +108,11 @@ public class ZeroExtendNode extends IntegerConvertNode {
 
     @Override
     public boolean inferStamp() {
-        return updateStamp(StampTool.zeroExtend(getInput().stamp(), getResultBits()));
+        return updateStamp(StampTool.zeroExtend(getValue().stamp(), getResultBits()));
     }
 
     @Override
     public void generate(NodeMappableLIRBuilder builder, ArithmeticLIRGenerator gen) {
-        builder.setResult(this, gen.emitZeroExtend(builder.operand(getInput()), getInputBits(), getResultBits()));
+        builder.setResult(this, gen.emitZeroExtend(builder.operand(getValue()), getInputBits(), getResultBits()));
     }
 }

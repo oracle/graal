@@ -50,6 +50,8 @@ public abstract class NodeWorkList implements Iterable<Node> {
 
     public abstract void add(Node node);
 
+    public abstract boolean contains(Node node);
+
     private abstract class QueueConsumingIterator implements Iterator<Node> {
 
         protected void dropDeleted() {
@@ -140,6 +142,20 @@ public abstract class NodeWorkList implements Iterable<Node> {
             }
         }
 
+        @Override
+        public boolean contains(Node node) {
+            if (inQueue != null) {
+                return inQueue.isMarked(node);
+            } else {
+                for (Node queuedNode : worklist) {
+                    if (queuedNode == node) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+        }
+
         private boolean checkInfiniteWork(Node node) {
             if (lastPull == node) {
                 if (firstNoChange == null) {
@@ -183,6 +199,11 @@ public abstract class NodeWorkList implements Iterable<Node> {
                     worklist.add(node);
                 }
             }
+        }
+
+        @Override
+        public boolean contains(Node node) {
+            return visited.isMarked(node);
         }
 
         @Override

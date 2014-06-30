@@ -30,9 +30,11 @@ import com.oracle.graal.jtt.*;
 
 public class BC_getfield1 extends JTTTest {
 
-    private int field = 13;
+    private static class TestClass {
+        private int field = 13;
+    }
 
-    public static void test(BC_getfield1 arg) {
+    public static void test(TestClass arg) {
         @SuppressWarnings("unused")
         int i = arg.field;
     }
@@ -50,7 +52,7 @@ public class BC_getfield1 extends JTTTest {
 
     @Test
     public void run2() throws Throwable {
-        runTest("test", new BC_getfield1());
+        runTest("test", new TestClass());
     }
 
 }

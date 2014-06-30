@@ -35,7 +35,6 @@ import com.oracle.graal.compiler.alloc.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.common.cfg.*;
-import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.debug.*;
@@ -482,7 +481,7 @@ public class BaselineBytecodeParser extends AbstractBytecodeParser<Value, Baseli
             Value classRef = lirBuilder.getClassConstant(field.getDeclaringClass());
             long displacement = lirBuilder.getFieldOffset(field);
             Value address = gen.emitAddress(classRef, displacement, Value.ILLEGAL, 0);
-            PlatformKind readKind = gen.getPlatformKind(StampFactory.forKind(field.getKind()));
+            LIRKind readKind = backend.getTarget().getLIRKind(field.getKind());
             LIRFrameState state = createFrameState(frameState);
             return gen.emitLoad(readKind, address, state);
         }
@@ -506,7 +505,7 @@ public class BaselineBytecodeParser extends AbstractBytecodeParser<Value, Baseli
         emitNullCheck(array);
         long displacement = lirBuilder.getArrayLengthOffset();
         Value address = gen.emitAddress(array, displacement, Value.ILLEGAL, 0);
-        PlatformKind readKind = gen.getPlatformKind(StampFactory.forKind(Kind.Int));
+        LIRKind readKind = backend.getTarget().getLIRKind(Kind.Int);
         LIRFrameState state = createFrameState(frameState);
         return gen.emitLoad(readKind, address, state);
     }
@@ -682,7 +681,7 @@ public class BaselineBytecodeParser extends AbstractBytecodeParser<Value, Baseli
         for (int i = 0; i < frameState.stackSize(); i++) {
             Value src = frameState.stackAt(i);
             if (src instanceof Constant) {
-                AllocatableValue dst = gen.newVariable(src.getPlatformKind());
+                AllocatableValue dst = gen.newVariable(src.getLIRKind());
                 gen.emitMove(dst, src);
                 frameState.storeStack(i, dst);
                 Debug.log("introduce new variabe %s for stackslot %d (end of block %s", dst, i, currentBlock);
@@ -691,7 +690,7 @@ public class BaselineBytecodeParser extends AbstractBytecodeParser<Value, Baseli
         for (int i = 0; i < frameState.localsSize(); i++) {
             Value src = frameState.localAt(i);
             if (src instanceof Constant) {
-                AllocatableValue dst = gen.newVariable(src.getPlatformKind());
+                AllocatableValue dst = gen.newVariable(src.getLIRKind());
                 gen.emitMove(dst, src);
                 frameState.storeLocal(i, dst);
                 Debug.log("introduce new variabe %s for local %d (end of block %s", dst, i, currentBlock);

@@ -32,9 +32,9 @@ import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.LIRInstruction.InstructionValueProcedure;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
-import com.oracle.graal.lir.LIRInstruction.ValueProcedure;
 import com.oracle.graal.phases.util.*;
 
 /**
@@ -187,6 +187,38 @@ final class RegisterVerifier {
     }
 
     void processOperations(List<LIRInstruction> ops, final Interval[] inputState) {
+        InstructionValueProcedure useProc = new InstructionValueProcedure() {
+
+            @Override
+            public Value doValue(LIRInstruction op, Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
+                if (LinearScan.isVariableOrRegister(operand) && allocator.isProcessed(operand)) {
+                    Interval interval = intervalAt(operand);
+                    if (op.id() != -1) {
+                        interval = interval.getSplitChildAtOpId(op.id(), mode, allocator);
+                    }
+
+                    assert checkState(inputState, interval.location(), interval.splitParent());
+                }
+                return operand;
+            }
+        };
+
+        InstructionValueProcedure defProc = new InstructionValueProcedure() {
+
+            @Override
+            public Value doValue(LIRInstruction op, Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
+                if (LinearScan.isVariableOrRegister(operand) && allocator.isProcessed(operand)) {
+                    Interval interval = intervalAt(operand);
+                    if (op.id() != -1) {
+                        interval = interval.getSplitChildAtOpId(op.id(), mode, allocator);
+                    }
+
+                    statePut(inputState, interval.location(), interval.splitParent());
+                }
+                return operand;
+            }
+        };
+
         // visit all instructions of the block
         for (int i = 0; i < ops.size(); i++) {
             final LIRInstruction op = ops.get(i);
@@ -194,38 +226,6 @@ final class RegisterVerifier {
             if (Debug.isLogEnabled()) {
                 Debug.log("%s", op.toStringWithIdPrefix());
             }
-
-            ValueProcedure useProc = new ValueProcedure() {
-
-                @Override
-                public Value doValue(Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
-                    if (LinearScan.isVariableOrRegister(operand) && allocator.isProcessed(operand)) {
-                        Interval interval = intervalAt(operand);
-                        if (op.id() != -1) {
-                            interval = interval.getSplitChildAtOpId(op.id(), mode, allocator);
-                        }
-
-                        assert checkState(inputState, interval.location(), interval.splitParent());
-                    }
-                    return operand;
-                }
-            };
-
-            ValueProcedure defProc = new ValueProcedure() {
-
-                @Override
-                public Value doValue(Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
-                    if (LinearScan.isVariableOrRegister(operand) && allocator.isProcessed(operand)) {
-                        Interval interval = intervalAt(operand);
-                        if (op.id() != -1) {
-                            interval = interval.getSplitChildAtOpId(op.id(), mode, allocator);
-                        }
-
-                        statePut(inputState, interval.location(), interval.splitParent());
-                    }
-                    return operand;
-                }
-            };
 
             // check if input operands are correct
             op.forEachInput(useProc);

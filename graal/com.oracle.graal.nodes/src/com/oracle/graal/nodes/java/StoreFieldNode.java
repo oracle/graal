@@ -68,6 +68,12 @@ public final class StoreFieldNode extends AccessFieldNode implements StateSplit,
         this.value = value;
     }
 
+    public StoreFieldNode(ValueNode object, ResolvedJavaField field, ValueNode value, FrameState stateAfter) {
+        super(StampFactory.forVoid(), object, field);
+        this.value = value;
+        this.stateAfter = stateAfter;
+    }
+
     @Override
     public void virtualize(VirtualizerTool tool) {
         State state = tool.getObjectState(object());

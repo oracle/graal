@@ -84,7 +84,7 @@ public class IntegerStamp extends PrimitiveStamp {
     }
 
     @Override
-    public PlatformKind getPlatformKind(PlatformKindTool tool) {
+    public LIRKind getLIRKind(LIRKindTool tool) {
         return tool.getIntegerKind(getBits());
     }
 

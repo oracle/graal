@@ -27,7 +27,6 @@ import static com.oracle.graal.graph.Graph.*;
 import java.lang.annotation.*;
 import java.util.*;
 
-import com.oracle.graal.graph.Graph.NodeChangedListener;
 import com.oracle.graal.graph.NodeClass.NodeClassIterator;
 import com.oracle.graal.graph.NodeClass.Position;
 import com.oracle.graal.graph.iterators.*;
@@ -559,12 +558,13 @@ public abstract class Node implements Cloneable, Formattable {
                     assert assertTrue(result, "not found in usages, old input: %s", oldInput);
                 }
             }
+            maybeNotifyInputChanged(this);
             if (newInput != null) {
                 if (newInput.recordsUsages()) {
-                    maybeNotifyChanged(this);
                     newInput.addUsage(this);
                 }
-            } else if (oldInput != null && oldInput.recordsUsages() && oldInput.usages().isEmpty()) {
+            }
+            if (oldInput != null && oldInput.recordsUsages() && oldInput.usages().isEmpty()) {
                 maybeNotifyZeroInputs(oldInput);
             }
         }
@@ -628,7 +628,7 @@ public abstract class Node implements Cloneable, Formattable {
             boolean result = usage.getNodeClass().replaceFirstInput(usage, this, other);
             assert assertTrue(result, "not found in inputs, usage: %s", usage);
             if (other != null) {
-                maybeNotifyChanged(usage);
+                maybeNotifyInputChanged(usage);
                 if (other.recordsUsages()) {
                     other.addUsage(usage);
                 }
@@ -650,7 +650,7 @@ public abstract class Node implements Cloneable, Formattable {
                 boolean result = usage.getNodeClass().replaceFirstInput(usage, this, other);
                 assert assertTrue(result, "not found in inputs, usage: %s", usage);
                 if (other != null) {
-                    maybeNotifyChanged(usage);
+                    maybeNotifyInputChanged(usage);
                     if (other.recordsUsages()) {
                         other.addUsage(usage);
                     }
@@ -684,22 +684,22 @@ public abstract class Node implements Cloneable, Formattable {
         }
     }
 
-    private void maybeNotifyChanged(Node usage) {
+    private void maybeNotifyInputChanged(Node node) {
         if (graph != null) {
             assert !graph.isFrozen();
-            NodeChangedListener listener = graph.inputChangedListener;
+            NodeEventListener listener = graph.nodeEventListener;
             if (listener != null) {
-                listener.nodeChanged(usage);
+                listener.inputChanged(node);
             }
         }
     }
 
-    private void maybeNotifyZeroInputs(Node oldInput) {
+    private void maybeNotifyZeroInputs(Node node) {
         if (graph != null) {
             assert !graph.isFrozen();
-            NodeChangedListener listener = graph.usagesDroppedToZeroListener;
+            NodeEventListener listener = graph.nodeEventListener;
             if (listener != null) {
-                listener.nodeChanged(oldInput);
+                listener.usagesDroppedToZero(node);
             }
         }
     }
@@ -735,9 +735,7 @@ public abstract class Node implements Cloneable, Formattable {
         }
     }
 
-    public void clearInputs() {
-        assert assertFalse(isDeleted(), "cannot clear inputs of deleted node");
-
+    private void unregisterInputs() {
         for (Node input : inputs()) {
             if (input.recordsUsages()) {
                 removeThisFromUsages(input);
@@ -746,6 +744,12 @@ public abstract class Node implements Cloneable, Formattable {
                 }
             }
         }
+    }
+
+    public void clearInputs() {
+        assert assertFalse(isDeleted(), "cannot clear inputs of deleted node");
+
+        unregisterInputs();
         getNodeClass().clearInputs(this);
     }
 
@@ -753,13 +757,17 @@ public abstract class Node implements Cloneable, Formattable {
         return n.removeUsage(this);
     }
 
-    public void clearSuccessors() {
-        assert assertFalse(isDeleted(), "cannot clear successors of deleted node");
-
+    private void unregisterSuccessors() {
         for (Node successor : successors()) {
             assert assertTrue(successor.predecessor == this, "wrong predecessor in old successor (%s): %s", successor, successor.predecessor);
             successor.predecessor = null;
         }
+    }
+
+    public void clearSuccessors() {
+        assert assertFalse(isDeleted(), "cannot clear successors of deleted node");
+
+        unregisterSuccessors();
         getNodeClass().clearSuccessors(this);
     }
 
@@ -777,8 +785,8 @@ public abstract class Node implements Cloneable, Formattable {
      */
     public void safeDelete() {
         assert checkDeletion();
-        clearInputs();
-        clearSuccessors();
+        unregisterInputs();
+        unregisterSuccessors();
         graph.unregister(this);
         id = DELETED_ID_START - id;
         assert isDeleted();
@@ -798,17 +806,6 @@ public abstract class Node implements Cloneable, Formattable {
 
     public final Node clone(Graph into) {
         return clone(into, true);
-    }
-
-    /**
-     * Must be overridden by subclasses that implement {@link Canonicalizable}. The implementation
-     * in {@link Node} exists to obviate the need to cast a node before invoking
-     * {@link Canonicalizable#canonical(CanonicalizerTool)}.
-     *
-     * @param tool
-     */
-    public Node canonical(CanonicalizerTool tool) {
-        throw new UnsupportedOperationException();
     }
 
     /**

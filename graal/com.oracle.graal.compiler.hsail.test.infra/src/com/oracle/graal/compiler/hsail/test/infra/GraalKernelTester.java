@@ -152,13 +152,17 @@ public abstract class GraalKernelTester extends KernelTester {
         return true;
     }
 
+    HotSpotNmethod installedCode;
+
     @Override
     protected void dispatchKernelOkra(int range, Object... args) {
         HSAILHotSpotBackend backend = getHSAILBackend();
         if (backend.isDeviceInitialized()) {
             try {
-                HotSpotNmethod code = backend.compileAndInstallKernel(testMethod);
-                backend.executeKernel(code, range, args);
+                if (installedCode == null) {
+                    installedCode = backend.compileAndInstallKernel(testMethod);
+                }
+                backend.executeKernel(installedCode, range, args);
             } catch (InvalidInstalledCodeException e) {
                 Debug.log("WARNING:Invalid installed code: " + e);
                 e.printStackTrace();

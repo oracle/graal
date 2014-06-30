@@ -26,7 +26,7 @@ import com.oracle.graal.api.code.BailoutException;
 import com.oracle.graal.nodes.FixedNode;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.spi.Replacements;
-import com.oracle.graal.phases.common.inlining.info.InlineInfo;
+import com.oracle.graal.phases.common.inlining.walker.MethodInvocation;
 
 import java.util.function.ToDoubleFunction;
 
@@ -41,8 +41,7 @@ public final class InlineEverythingPolicy implements InliningPolicy {
         return true;
     }
 
-    public boolean isWorthInlining(ToDoubleFunction<FixedNode> probabilities, Replacements replacements, InlineInfo info, int inliningDepth, double probability, double relevance,
-                    boolean fullyProcessed) {
+    public boolean isWorthInlining(ToDoubleFunction<FixedNode> probabilities, Replacements replacements, MethodInvocation invocation, int inliningDepth, boolean fullyProcessed) {
         return true;
     }
 }

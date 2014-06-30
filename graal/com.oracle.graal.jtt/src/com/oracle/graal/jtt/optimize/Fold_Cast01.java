@@ -31,20 +31,22 @@ import com.oracle.graal.jtt.*;
  */
 public class Fold_Cast01 extends JTTTest {
 
-    static final Object object = new Fold_Cast01();
+    private static class TestClass {
+        int field = 9;
+    }
 
-    int field = 9;
+    static final Object object = new TestClass();
 
     public static int test(int arg) {
         if (arg == 0) {
-            return ((Fold_Cast01) object).field;
+            return ((TestClass) object).field;
         }
         if (arg == 1) {
-            Object obj = new Fold_Cast01();
-            return ((Fold_Cast01) obj).field;
+            Object obj = new TestClass();
+            return ((TestClass) obj).field;
         }
         if (arg == 2) {
-            return ((Fold_Cast01) null).field;
+            return ((TestClass) null).field;
         }
         return 0;
     }

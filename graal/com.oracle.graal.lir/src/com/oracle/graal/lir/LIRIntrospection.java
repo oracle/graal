@@ -32,9 +32,9 @@ import java.util.Map.Entry;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
+import com.oracle.graal.lir.LIRInstruction.InstructionValueProcedure;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
-import com.oracle.graal.lir.LIRInstruction.ValueProcedure;
 
 abstract class LIRIntrospection extends FieldIntrospection {
 
@@ -119,7 +119,7 @@ abstract class LIRIntrospection extends FieldIntrospection {
         }
     }
 
-    protected static void forEach(Object obj, int directCount, long[] offsets, OperandMode mode, EnumSet<OperandFlag>[] flags, ValueProcedure proc) {
+    protected static void forEach(LIRInstruction inst, Object obj, int directCount, long[] offsets, OperandMode mode, EnumSet<OperandFlag>[] flags, InstructionValueProcedure proc) {
         for (int i = 0; i < offsets.length; i++) {
             assert LIRInstruction.ALLOWED_FLAGS.get(mode).containsAll(flags[i]);
 
@@ -127,9 +127,9 @@ abstract class LIRIntrospection extends FieldIntrospection {
                 Value value = getValue(obj, offsets[i]);
                 if (value instanceof CompositeValue) {
                     CompositeValue composite = (CompositeValue) value;
-                    composite.forEachComponent(mode, proc);
+                    composite.forEachComponent(inst, mode, proc);
                 } else {
-                    setValue(obj, offsets[i], proc.doValue(value, mode, flags[i]));
+                    setValue(obj, offsets[i], proc.doValue(inst, value, mode, flags[i]));
                 }
             } else {
                 Value[] values = getValueArray(obj, offsets[i]);
@@ -137,9 +137,9 @@ abstract class LIRIntrospection extends FieldIntrospection {
                     Value value = values[j];
                     if (value instanceof CompositeValue) {
                         CompositeValue composite = (CompositeValue) value;
-                        composite.forEachComponent(mode, proc);
+                        composite.forEachComponent(inst, mode, proc);
                     } else {
-                        values[j] = proc.doValue(value, mode, flags[i]);
+                        values[j] = proc.doValue(inst, value, mode, flags[i]);
                     }
                 }
             }

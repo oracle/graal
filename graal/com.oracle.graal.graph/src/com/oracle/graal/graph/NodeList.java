@@ -77,6 +77,24 @@ public abstract class NodeList<T extends Node> extends AbstractList<T> implement
         }
     }
 
+    protected NodeList(Collection<? extends NodeInterface> elements) {
+        if (elements == null || elements.isEmpty()) {
+            this.size = 0;
+            this.nodes = EMPTY_NODE_ARRAY;
+            this.initialSize = 0;
+        } else {
+            this.size = elements.size();
+            this.initialSize = elements.size();
+            this.nodes = new Node[elements.size()];
+            int i = 0;
+            for (NodeInterface n : elements) {
+                this.nodes[i] = n.asNode();
+                assert this.nodes[i] == null || !this.nodes[i].isDeleted();
+                i++;
+            }
+        }
+    }
+
     protected abstract void update(T oldNode, T newNode);
 
     @Override
@@ -134,6 +152,12 @@ public abstract class NodeList<T extends Node> extends AbstractList<T> implement
         update((T) nodes[index], node);
         nodes[index] = node;
         return oldValue;
+    }
+
+    void initialize(int index, T node) {
+        incModCount();
+        assert index < size();
+        nodes[index] = node;
     }
 
     void copy(NodeList<T> other) {

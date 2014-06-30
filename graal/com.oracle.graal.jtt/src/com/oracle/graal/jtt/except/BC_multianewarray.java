@@ -35,7 +35,7 @@ public class BC_multianewarray extends JTTTest {
 
     @SuppressWarnings("unused")
     public static int test(int a, int b) {
-        final BC_multianewarray[][] v = new BC_multianewarray[a][b];
+        final DummyTestClass[][] v = new DummyTestClass[a][b];
         if (v != null) {
             return a;
         }

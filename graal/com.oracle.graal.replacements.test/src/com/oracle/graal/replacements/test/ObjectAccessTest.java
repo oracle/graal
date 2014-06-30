@@ -114,7 +114,7 @@ public class ObjectAccessTest extends GraalCompilerTest implements Snippets {
             SignExtendNode convert = (SignExtendNode) location.getIndex();
             Assert.assertEquals(convert.getInputBits(), 32);
             Assert.assertEquals(convert.getResultBits(), 64);
-            Assert.assertEquals(graph.getParameter(1), convert.getInput());
+            Assert.assertEquals(graph.getParameter(1), convert.getValue());
         } else {
             Assert.assertEquals(graph.getParameter(1), location.getIndex());
         }
@@ -138,7 +138,7 @@ public class ObjectAccessTest extends GraalCompilerTest implements Snippets {
             SignExtendNode convert = (SignExtendNode) location.getIndex();
             Assert.assertEquals(convert.getInputBits(), 32);
             Assert.assertEquals(convert.getResultBits(), 64);
-            Assert.assertEquals(graph.getParameter(1), convert.getInput());
+            Assert.assertEquals(graph.getParameter(1), convert.getValue());
         } else {
             Assert.assertEquals(graph.getParameter(1), location.getIndex());
         }

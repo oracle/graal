@@ -65,11 +65,6 @@ public class GuardNode extends FloatingAnchoredNode implements Canonicalizable, 
         return condition;
     }
 
-    public void setCondition(LogicNode x) {
-        updateUsages(condition, x);
-        condition = x;
-    }
-
     public boolean negated() {
         return negated;
     }
@@ -103,11 +98,11 @@ public class GuardNode extends FloatingAnchoredNode implements Canonicalizable, 
     public Node canonical(CanonicalizerTool tool) {
         if (condition() instanceof LogicNegationNode) {
             LogicNegationNode negation = (LogicNegationNode) condition();
-            return graph().unique(new GuardNode(negation.getInput(), getAnchor(), reason, action, !negated, speculation));
-        } else if (condition() instanceof LogicConstantNode) {
+            return new GuardNode(negation.getValue(), getAnchor(), reason, action, !negated, speculation);
+        }
+        if (condition() instanceof LogicConstantNode) {
             LogicConstantNode c = (LogicConstantNode) condition();
             if (c.getValue() != negated) {
-                this.replaceAtUsages(null);
                 return null;
             }
         }

@@ -35,7 +35,7 @@ public class BC_anewarray extends JTTTest {
 
     @SuppressWarnings("unused")
     public static int test(int a) {
-        final BC_anewarray[] v = new BC_anewarray[a];
+        final DummyTestClass[] v = new DummyTestClass[a];
         if (v != null) {
             return a;
         }

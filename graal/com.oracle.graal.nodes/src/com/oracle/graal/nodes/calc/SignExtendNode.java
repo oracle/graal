@@ -24,7 +24,6 @@ package com.oracle.graal.nodes.calc;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodes.*;
@@ -68,32 +67,32 @@ public class SignExtendNode extends IntegerConvertNode {
     }
 
     @Override
-    public Node canonical(CanonicalizerTool tool) {
-        ValueNode ret = canonicalConvert();
-        if (ret != null) {
+    public ValueNode canonical(CanonicalizerTool tool, ValueNode forValue) {
+        ValueNode ret = canonicalConvert(forValue);
+        if (ret != this) {
             return ret;
         }
 
-        if (getInput() instanceof SignExtendNode) {
+        if (forValue instanceof SignExtendNode) {
             // sxxx -(sign-extend)-> ssss sxxx -(sign-extend)-> ssssssss sssssxxx
             // ==> sxxx -(sign-extend)-> ssssssss sssssxxx
-            SignExtendNode other = (SignExtendNode) getInput();
-            return graph().unique(new SignExtendNode(other.getInput(), getResultBits()));
-        } else if (getInput() instanceof ZeroExtendNode) {
-            ZeroExtendNode other = (ZeroExtendNode) getInput();
+            SignExtendNode other = (SignExtendNode) forValue;
+            return new SignExtendNode(other.getValue(), getResultBits());
+        } else if (forValue instanceof ZeroExtendNode) {
+            ZeroExtendNode other = (ZeroExtendNode) forValue;
             if (other.getResultBits() > other.getInputBits()) {
                 // sxxx -(zero-extend)-> 0000 sxxx -(sign-extend)-> 00000000 0000sxxx
                 // ==> sxxx -(zero-extend)-> 00000000 0000sxxx
-                return graph().unique(new ZeroExtendNode(other.getInput(), getResultBits()));
+                return new ZeroExtendNode(other.getValue(), getResultBits());
             }
         }
 
-        if (getInput().stamp() instanceof IntegerStamp) {
-            IntegerStamp inputStamp = (IntegerStamp) getInput().stamp();
+        if (forValue.stamp() instanceof IntegerStamp) {
+            IntegerStamp inputStamp = (IntegerStamp) forValue.stamp();
             if ((inputStamp.upMask() & (1L << (getInputBits() - 1))) == 0L) {
                 // 0xxx -(sign-extend)-> 0000 0xxx
                 // ==> 0xxx -(zero-extend)-> 0000 0xxx
-                return graph().unique(new ZeroExtendNode(getInput(), getResultBits()));
+                return new ZeroExtendNode(forValue, getResultBits());
             }
         }
 
@@ -102,11 +101,11 @@ public class SignExtendNode extends IntegerConvertNode {
 
     @Override
     public boolean inferStamp() {
-        return updateStamp(StampTool.signExtend(getInput().stamp(), getResultBits()));
+        return updateStamp(StampTool.signExtend(getValue().stamp(), getResultBits()));
     }
 
     @Override
     public void generate(NodeMappableLIRBuilder builder, ArithmeticLIRGenerator gen) {
-        builder.setResult(this, gen.emitSignExtend(builder.operand(getInput()), getInputBits(), getResultBits()));
+        builder.setResult(this, gen.emitSignExtend(builder.operand(getValue()), getInputBits(), getResultBits()));
     }
 }

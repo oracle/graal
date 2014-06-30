@@ -50,8 +50,7 @@ public class EscapingNewStringConcatTest extends EscapingNewBase {
         myOutArray[gid] = inArray[(gid + NUM / 2) % NUM] + inArray[gid];
     }
 
-    // Node implementing Lowerable not handled in HSAIL Backend: 6274|MonitorEnter
-    @Ignore
+    @Ignore("emitDirectCall unimplemented")
     @Test
     public void test() {
         try (DebugConfigScope s = disableIntercept()) {

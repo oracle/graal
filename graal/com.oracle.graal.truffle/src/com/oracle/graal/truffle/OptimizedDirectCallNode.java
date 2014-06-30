@@ -72,6 +72,14 @@ public final class OptimizedDirectCallNode extends DirectCallNode implements Mat
         }
     }
 
+    public void resetInlining() {
+        CompilerAsserts.neverPartOfCompilation();
+        if (inlined) {
+            inlined = false;
+            getCurrentCallTarget().invalidateInlining();
+        }
+    }
+
     @Override
     public boolean isInlinable() {
         return true;
@@ -219,4 +227,5 @@ public final class OptimizedDirectCallNode extends DirectCallNode implements Mat
     public static OptimizedDirectCallNode create(OptimizedCallTarget target) {
         return new OptimizedDirectCallNode(target);
     }
+
 }

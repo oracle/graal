@@ -31,24 +31,26 @@ import org.junit.*;
 
 import com.oracle.graal.jtt.*;
 
-public class Thread_join02 extends JTTTest implements Runnable {
+public class Thread_join02 extends JTTTest {
+
+    private static class TestClass implements Runnable {
+        public void run() {
+            try {
+                Thread.sleep(200);
+            } catch (InterruptedException ex) {
+            }
+            cont = false;
+        }
+    }
 
     static volatile boolean cont;
 
     public static boolean test() throws InterruptedException {
         cont = true;
-        final Thread thread = new Thread(new Thread_join02());
+        final Thread thread = new Thread(new TestClass());
         thread.start();
         thread.join();
         return cont;
-    }
-
-    public void run() {
-        try {
-            Thread.sleep(200);
-        } catch (InterruptedException ex) {
-        }
-        cont = false;
     }
 
     @Test(timeout = 20000)

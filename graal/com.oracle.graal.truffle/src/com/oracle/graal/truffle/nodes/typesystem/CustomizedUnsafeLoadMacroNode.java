@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -62,10 +62,9 @@ public class CustomizedUnsafeLoadMacroNode extends NeverPartOfCompilationNode im
             } else {
                 locationIdentity = ObjectLocationIdentity.create(locationArgument.asConstant());
             }
-            CompareNode compare = CompareNode.createCompareNode(graph(), Condition.EQ, conditionArgument, ConstantNode.forBoolean(true, graph()));
+            CompareNode compare = CompareNode.createCompareNode(Condition.EQ, conditionArgument, ConstantNode.forBoolean(true));
             Kind returnKind = this.getTargetMethod().getSignature().getReturnKind();
-            Node result = graph().add(new UnsafeLoadNode(objectArgument, offsetArgument, returnKind, locationIdentity, compare));
-            return result;
+            return new UnsafeLoadNode(objectArgument, offsetArgument, returnKind, locationIdentity, compare);
         }
         return this;
     }

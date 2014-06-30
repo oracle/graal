@@ -34,7 +34,7 @@ import com.oracle.graal.nodes.cfg.*;
 
 public class LoopsData {
 
-    private Map<Loop<Block>, LoopEx> lirLoopToEx = newIdentityMap();
+    private Map<Loop<Block>, LoopEx> loopToEx = newIdentityMap();
     private Map<LoopBeginNode, LoopEx> loopBeginToEx = newNodeIdentityMap();
     private ControlFlowGraph cfg;
 
@@ -45,15 +45,15 @@ public class LoopsData {
             throw Debug.handle(e);
         }
 
-        for (Loop<Block> lirLoop : cfg.getLoops()) {
-            LoopEx ex = new LoopEx(lirLoop, this);
-            lirLoopToEx.put(lirLoop, ex);
+        for (Loop<Block> loop : cfg.getLoops()) {
+            LoopEx ex = new LoopEx(loop, this);
+            loopToEx.put(loop, ex);
             loopBeginToEx.put(ex.loopBegin(), ex);
         }
     }
 
-    public LoopEx loop(Loop<?> lirLoop) {
-        return lirLoopToEx.get(lirLoop);
+    public LoopEx loop(Loop<?> loop) {
+        return loopToEx.get(loop);
     }
 
     public LoopEx loop(LoopBeginNode loopBegin) {
@@ -61,16 +61,16 @@ public class LoopsData {
     }
 
     public Collection<LoopEx> loops() {
-        return lirLoopToEx.values();
+        return loopToEx.values();
     }
 
-    public List<LoopEx> outterFirst() {
+    public List<LoopEx> outerFirst() {
         ArrayList<LoopEx> loops = new ArrayList<>(loops());
         Collections.sort(loops, new Comparator<LoopEx>() {
 
             @Override
             public int compare(LoopEx o1, LoopEx o2) {
-                return o1.lirLoop().getDepth() - o2.lirLoop().getDepth();
+                return o1.loop().getDepth() - o2.loop().getDepth();
             }
         });
         return loops;
@@ -82,7 +82,7 @@ public class LoopsData {
 
             @Override
             public int compare(LoopEx o1, LoopEx o2) {
-                return o2.lirLoop().getDepth() - o1.lirLoop().getDepth();
+                return o2.loop().getDepth() - o1.loop().getDepth();
             }
         });
         return loops;
@@ -120,5 +120,14 @@ public class LoopsData {
             }
         }
         return match;
+    }
+
+    /**
+     * Deletes any nodes created within the scope of this object that have no usages.
+     */
+    public void deleteUnusedNodes() {
+        for (LoopEx loop : loops()) {
+            loop.deleteUnusedNodes();
+        }
     }
 }

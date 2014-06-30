@@ -86,8 +86,8 @@ public class WordTypeVerificationPhase extends Phase {
                     MethodCallTargetNode callTarget = (MethodCallTargetNode) usage;
                     verifyInvoke(node, callTarget);
                 } else if (usage instanceof ObjectEqualsNode) {
-                    verify(!isWord(node) || ((ObjectEqualsNode) usage).x() != node, node, usage, "cannot use word type in comparison");
-                    verify(!isWord(node) || ((ObjectEqualsNode) usage).y() != node, node, usage, "cannot use word type in comparison");
+                    verify(!isWord(node) || ((ObjectEqualsNode) usage).getX() != node, node, usage, "cannot use word type in comparison");
+                    verify(!isWord(node) || ((ObjectEqualsNode) usage).getY() != node, node, usage, "cannot use word type in comparison");
                 } else if (usage instanceof ArrayLengthNode) {
                     verify(!isWord(node) || ((ArrayLengthNode) usage).array() != node, node, usage, "cannot get array length from word value");
                 } else if (usage instanceof ValuePhiNode) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -72,7 +72,7 @@ public class HSAILHotSpotBackendFactory implements HotSpotBackendFactory {
         final int stackFrameAlignment = 8;
         final int implicitNullCheckLimit = 0;
         final boolean inlineObjects = true;
-        return new HotSpotTargetDescription(new HSAIL(), true, stackFrameAlignment, implicitNullCheckLimit, inlineObjects, Kind.Int);
+        return new HotSpotTargetDescription(new HSAIL(), true, stackFrameAlignment, implicitNullCheckLimit, inlineObjects);
     }
 
     public String getArchitecture() {

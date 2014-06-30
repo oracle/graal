@@ -98,7 +98,7 @@ public class AMD64FrameMap extends FrameMap {
     }
 
     @Override
-    protected StackSlot allocateNewSpillSlot(PlatformKind kind, int additionalOffset) {
+    protected StackSlot allocateNewSpillSlot(LIRKind kind, int additionalOffset) {
         return StackSlot.get(kind, -spillSize + additionalOffset, true);
     }
 }

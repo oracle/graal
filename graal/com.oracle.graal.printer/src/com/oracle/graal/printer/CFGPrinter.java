@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -532,7 +532,7 @@ class CFGPrinter extends CompilationPrinter {
     }
 
     private void printInterval(Interval interval) {
-        out.printf("%s %s ", interval.operand, (isRegister(interval.operand) ? "fixed" : interval.kind().name()));
+        out.printf("%s %s ", interval.operand, (isRegister(interval.operand) ? "fixed" : interval.kind()));
         if (isRegister(interval.operand)) {
             out.printf("\"[%s|%c]\"", interval.operand, interval.operand.getKind().getTypeChar());
         } else {

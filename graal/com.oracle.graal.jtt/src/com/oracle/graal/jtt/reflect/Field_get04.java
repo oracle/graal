@@ -30,34 +30,36 @@ import com.oracle.graal.jtt.*;
  */
 public class Field_get04 extends JTTTest {
 
-    private static final Field_get04 object = new Field_get04();
+    private static class TestClass {
+        public final byte byteField = 11;
+        public final short shortField = 12;
+        public final char charField = 13;
+        public final int intField = 14;
+        public final long longField = 15;
+        public final float floatField = 16;
+        public final double doubleField = 17;
+        public final boolean booleanField = true;
+    }
 
-    public final byte byteField = 11;
-    public final short shortField = 12;
-    public final char charField = 13;
-    public final int intField = 14;
-    public final long longField = 15;
-    public final float floatField = 16;
-    public final double doubleField = 17;
-    public final boolean booleanField = true;
+    private static final TestClass object = new TestClass();
 
     public static boolean test(int arg) throws NoSuchFieldException, IllegalAccessException {
         if (arg == 0) {
-            return Field_get04.class.getField("byteField").getByte(object) == object.byteField;
+            return TestClass.class.getField("byteField").getByte(object) == object.byteField;
         } else if (arg == 1) {
-            return Field_get04.class.getField("shortField").getShort(object) == object.shortField;
+            return TestClass.class.getField("shortField").getShort(object) == object.shortField;
         } else if (arg == 2) {
-            return Field_get04.class.getField("charField").getChar(object) == object.charField;
+            return TestClass.class.getField("charField").getChar(object) == object.charField;
         } else if (arg == 3) {
-            return Field_get04.class.getField("intField").getInt(object) == object.intField;
+            return TestClass.class.getField("intField").getInt(object) == object.intField;
         } else if (arg == 4) {
-            return Field_get04.class.getField("longField").getLong(object) == object.longField;
+            return TestClass.class.getField("longField").getLong(object) == object.longField;
         } else if (arg == 5) {
-            return Field_get04.class.getField("floatField").getFloat(object) == object.floatField;
+            return TestClass.class.getField("floatField").getFloat(object) == object.floatField;
         } else if (arg == 6) {
-            return Field_get04.class.getField("doubleField").getDouble(object) == object.doubleField;
+            return TestClass.class.getField("doubleField").getDouble(object) == object.doubleField;
         } else if (arg == 7) {
-            return Field_get04.class.getField("booleanField").getBoolean(object) == object.booleanField;
+            return TestClass.class.getField("booleanField").getBoolean(object) == object.booleanField;
         }
         return false;
     }

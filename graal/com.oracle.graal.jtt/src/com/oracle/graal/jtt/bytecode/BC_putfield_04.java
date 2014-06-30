@@ -30,9 +30,11 @@ import com.oracle.graal.jtt.*;
  */
 public class BC_putfield_04 extends JTTTest {
 
-    private static BC_putfield_04 object = new BC_putfield_04();
+    private static class TestClass {
+        private volatile Object field;
+    }
 
-    private volatile Object field;
+    private static TestClass object = new TestClass();
 
     public static Object test(Object arg) {
         object.field = arg;

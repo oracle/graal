@@ -49,6 +49,7 @@ import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.replacements.*;
+import com.oracle.graal.replacements.nodes.*;
 
 /**
  * HotSpot implementation of {@link LoweringProvider}.
@@ -66,6 +67,7 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
     protected WriteBarrierSnippets.Templates writeBarrierSnippets;
     protected LoadExceptionObjectSnippets.Templates exceptionObjectSnippets;
     protected UnsafeLoadSnippets.Templates unsafeLoadSnippets;
+    protected AssertionSnippets.Templates assertionSnippets;
 
     public DefaultHotSpotLoweringProvider(HotSpotGraalRuntime runtime, MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls, HotSpotRegistersProvider registers, TargetDescription target) {
         super(metaAccess, target);
@@ -85,6 +87,7 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
         writeBarrierSnippets = new WriteBarrierSnippets.Templates(providers, target, config.useCompressedOops ? config.getOopEncoding() : null);
         exceptionObjectSnippets = new LoadExceptionObjectSnippets.Templates(providers, target);
         unsafeLoadSnippets = new UnsafeLoadSnippets.Templates(providers, target);
+        assertionSnippets = new AssertionSnippets.Templates(providers, target);
         providers.getReplacements().registerSnippetTemplateCache(new UnsafeArrayCopySnippets.Templates(providers, target));
     }
 
@@ -158,6 +161,8 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
             }
         } else if (n instanceof LoadExceptionObjectNode) {
             exceptionObjectSnippets.lower((LoadExceptionObjectNode) n, registers, tool);
+        } else if (n instanceof AssertionNode) {
+            assertionSnippets.lower((AssertionNode) n, tool);
         } else if (n instanceof IntegerDivNode || n instanceof IntegerRemNode || n instanceof UnsignedDivNode || n instanceof UnsignedRemNode) {
             // Nothing to do for division nodes. The HotSpot signal handler catches divisions by
             // zero and the MIN_VALUE / -1 cases.

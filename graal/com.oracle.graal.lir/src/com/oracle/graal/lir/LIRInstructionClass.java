@@ -28,10 +28,10 @@ import java.util.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
+import com.oracle.graal.lir.LIRInstruction.InstructionValueProcedure;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
 import com.oracle.graal.lir.LIRInstruction.StateProcedure;
-import com.oracle.graal.lir.LIRInstruction.ValueProcedure;
 
 public class LIRInstructionClass extends LIRIntrospection {
 
@@ -262,27 +262,27 @@ public class LIRInstructionClass extends LIRIntrospection {
         return false;
     }
 
-    public final void forEachUse(LIRInstruction obj, ValueProcedure proc) {
-        forEach(obj, directUseCount, useOffsets, OperandMode.USE, useFlags, proc);
+    public final void forEachUse(LIRInstruction obj, InstructionValueProcedure proc) {
+        forEach(obj, obj, directUseCount, useOffsets, OperandMode.USE, useFlags, proc);
     }
 
-    public final void forEachAlive(LIRInstruction obj, ValueProcedure proc) {
-        forEach(obj, directAliveCount, aliveOffsets, OperandMode.ALIVE, aliveFlags, proc);
+    public final void forEachAlive(LIRInstruction obj, InstructionValueProcedure proc) {
+        forEach(obj, obj, directAliveCount, aliveOffsets, OperandMode.ALIVE, aliveFlags, proc);
     }
 
-    public final void forEachTemp(LIRInstruction obj, ValueProcedure proc) {
-        forEach(obj, directTempCount, tempOffsets, OperandMode.TEMP, tempFlags, proc);
+    public final void forEachTemp(LIRInstruction obj, InstructionValueProcedure proc) {
+        forEach(obj, obj, directTempCount, tempOffsets, OperandMode.TEMP, tempFlags, proc);
     }
 
-    public final void forEachDef(LIRInstruction obj, ValueProcedure proc) {
-        forEach(obj, directDefCount, defOffsets, OperandMode.DEF, defFlags, proc);
+    public final void forEachDef(LIRInstruction obj, InstructionValueProcedure proc) {
+        forEach(obj, obj, directDefCount, defOffsets, OperandMode.DEF, defFlags, proc);
     }
 
-    public final void forEachState(LIRInstruction obj, ValueProcedure proc) {
+    public final void forEachState(LIRInstruction obj, InstructionValueProcedure proc) {
         for (int i = 0; i < stateOffsets.length; i++) {
             LIRFrameState state = getState(obj, stateOffsets[i]);
             if (state != null) {
-                state.forEachState(proc);
+                state.forEachState(obj, proc);
             }
         }
     }
@@ -296,7 +296,7 @@ public class LIRInstructionClass extends LIRIntrospection {
         }
     }
 
-    public final Value forEachRegisterHint(LIRInstruction obj, OperandMode mode, ValueProcedure proc) {
+    public final Value forEachRegisterHint(LIRInstruction obj, OperandMode mode, InstructionValueProcedure proc) {
         int hintDirectCount = 0;
         long[] hintOffsets = null;
         if (mode == OperandMode.USE) {
@@ -312,7 +312,7 @@ public class LIRInstructionClass extends LIRIntrospection {
         for (int i = 0; i < hintOffsets.length; i++) {
             if (i < hintDirectCount) {
                 Value hintValue = getValue(obj, hintOffsets[i]);
-                Value result = proc.doValue(hintValue, null, null);
+                Value result = proc.doValue(obj, hintValue, null, null);
                 if (result != null) {
                     return result;
                 }
@@ -320,7 +320,7 @@ public class LIRInstructionClass extends LIRIntrospection {
                 Value[] hintValues = getValueArray(obj, hintOffsets[i]);
                 for (int j = 0; j < hintValues.length; j++) {
                     Value hintValue = hintValues[j];
-                    Value result = proc.doValue(hintValue, null, null);
+                    Value result = proc.doValue(obj, hintValue, null, null);
                     if (result != null) {
                         return result;
                     }

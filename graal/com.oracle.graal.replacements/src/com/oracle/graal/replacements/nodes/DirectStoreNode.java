@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -50,7 +50,16 @@ public class DirectStoreNode extends FixedWithNextNode implements LIRLowerable {
     @Override
     public void generate(NodeLIRBuilderTool gen) {
         Value v = gen.operand(value);
-        gen.getLIRGeneratorTool().emitStore(kind, gen.operand(address), v, null);
+        LIRKind lirKind = gen.getLIRGeneratorTool().target().getLIRKind(kind);
+        gen.getLIRGeneratorTool().emitStore(lirKind, gen.operand(address), v, null);
+    }
+
+    protected ValueNode getAddress() {
+        return address;
+    }
+
+    protected ValueNode getValue() {
+        return value;
     }
 
     /*

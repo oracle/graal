@@ -30,19 +30,21 @@ import com.oracle.graal.jtt.*;
  */
 public class BC_invokevirtual02 extends JTTTest {
 
-    private static final BC_invokevirtual02 obj = new BC_invokevirtual02();
+    private static class TestClass {
+        @SuppressWarnings("static-method")
+        public final boolean method() {
+            return true;
+        }
+    }
+
+    private static final TestClass obj = new TestClass();
 
     public static boolean test(int arg) {
-        BC_invokevirtual02 object = null;
+        TestClass object = null;
         if (arg == 0) {
             object = obj;
         }
         return object.method();
-    }
-
-    @SuppressWarnings("static-method")
-    public final boolean method() {
-        return true;
     }
 
     @Test

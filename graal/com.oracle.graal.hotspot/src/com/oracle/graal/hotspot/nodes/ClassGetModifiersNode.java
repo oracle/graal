@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,7 +31,7 @@ import com.oracle.graal.replacements.nodes.*;
 
 /**
  * {@link MacroNode Macro node} for {@link Class#getModifiers()}.
- * 
+ *
  * @see ClassSubstitutions#getModifiers(Class)
  */
 public class ClassGetModifiersNode extends MacroNode implements Canonicalizable {
@@ -50,7 +50,7 @@ public class ClassGetModifiersNode extends MacroNode implements Canonicalizable 
         if (javaClass.isConstant()) {
             Class<?> c = (Class<?>) HotSpotObjectConstant.asObject(javaClass.asConstant());
             if (c != null) {
-                return ConstantNode.forInt(c.getModifiers(), graph());
+                return ConstantNode.forInt(c.getModifiers());
             }
         }
         return this;

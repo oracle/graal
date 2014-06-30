@@ -109,7 +109,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         StructuredGraph graph = loadField.graph();
         ResolvedJavaField field = loadField.field();
         ValueNode object = loadField.isStatic() ? staticFieldBase(graph, field) : loadField.object();
-        Stamp loadStamp = loadStamp(loadField.stamp(), field.getKind(), true);
+        Stamp loadStamp = loadStamp(loadField.stamp(), field.getKind());
         ConstantLocationNode location = createFieldLocation(graph, field, false);
         assert location != null : "Field that is loaded must not be eliminated";
 
@@ -158,7 +158,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         StructuredGraph graph = loadIndexed.graph();
         Kind elementKind = loadIndexed.elementKind();
         LocationNode location = createArrayLocation(graph, elementKind, loadIndexed.index(), false);
-        Stamp loadStamp = loadStamp(loadIndexed.stamp(), elementKind, true);
+        Stamp loadStamp = loadStamp(loadIndexed.stamp(), elementKind);
 
         ReadNode memoryRead = graph.add(new ReadNode(loadIndexed.array(), location, loadStamp, BarrierType.NONE));
         ValueNode readValue = implicitLoadConvert(graph, elementKind, memoryRead);
@@ -223,7 +223,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         if (graph.getGuardsStage().ordinal() < StructuredGraph.GuardsStage.FIXED_DEOPTS.ordinal()) {
             return;
         }
-        ValueNode hub = createReadHub(graph, loadHub.object(), loadHub.getGuard());
+        ValueNode hub = createReadHub(graph, loadHub.getValue(), loadHub.getGuard());
         graph.replaceFloating(loadHub, hub);
     }
 
@@ -273,7 +273,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
     }
 
     protected ReadNode createUnsafeRead(StructuredGraph graph, UnsafeLoadNode load, GuardingNode guard) {
-        boolean compressible = (!load.object().isNullConstant() && load.accessKind() == Kind.Object);
+        boolean compressible = load.accessKind() == Kind.Object;
         Kind readKind = load.accessKind();
         LocationNode location = createLocation(load);
         Stamp loadStamp = loadStamp(load.stamp(), readKind, compressible);
@@ -503,6 +503,10 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
 
     protected abstract LocationIdentity initLocationIdentity();
 
+    public Stamp loadStamp(Stamp stamp, Kind kind) {
+        return loadStamp(stamp, kind, true);
+    }
+
     protected Stamp loadStamp(Stamp stamp, Kind kind, @SuppressWarnings("unused") boolean compressible) {
         switch (kind) {
             case Boolean:
@@ -580,21 +584,21 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
             SignExtendNode extend = (SignExtendNode) offset;
             if (extend.getResultBits() == 64) {
                 signExtend = true;
-                offset = extend.getInput();
+                offset = extend.getValue();
             }
         }
         if (offset instanceof IntegerAddNode) {
             IntegerAddNode integerAddNode = (IntegerAddNode) offset;
-            if (integerAddNode.y() instanceof ConstantNode) {
-                displacement = integerAddNode.y().asConstant().asLong();
-                offset = integerAddNode.x();
+            if (integerAddNode.getY() instanceof ConstantNode) {
+                displacement = integerAddNode.getY().asConstant().asLong();
+                offset = integerAddNode.getX();
             }
         }
 
         if (offset instanceof LeftShiftNode) {
             LeftShiftNode leftShiftNode = (LeftShiftNode) offset;
-            if (leftShiftNode.y() instanceof ConstantNode) {
-                long shift = leftShiftNode.y().asConstant().asLong();
+            if (leftShiftNode.getY() instanceof ConstantNode) {
+                long shift = leftShiftNode.getY().asConstant().asLong();
                 if (shift >= 1 && shift <= 3) {
                     if (shift == 1) {
                         indexScaling = 2;
@@ -603,7 +607,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                     } else {
                         indexScaling = 8;
                     }
-                    offset = leftShiftNode.x();
+                    offset = leftShiftNode.getX();
                 }
             }
         }
@@ -622,13 +626,15 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
     protected GuardingNode createBoundsCheck(AccessIndexedNode n, LoweringTool tool) {
         StructuredGraph graph = n.graph();
         ValueNode array = n.array();
-        ValueNode arrayLength = readArrayLength(n.graph(), array, tool.getConstantReflection());
+        ValueNode arrayLength = readArrayLength(array, tool.getConstantReflection());
         if (arrayLength == null) {
             Stamp stamp = StampFactory.positiveInt();
             ReadNode readArrayLength = graph.add(new ReadNode(array, ConstantLocationNode.create(ARRAY_LENGTH_LOCATION, Kind.Int, arrayLengthOffset(), graph), stamp, BarrierType.NONE));
             graph.addBeforeFixed(n, readArrayLength);
             readArrayLength.setGuard(createNullCheck(array, readArrayLength, tool));
             arrayLength = readArrayLength;
+        } else {
+            arrayLength = arrayLength.isAlive() ? arrayLength : graph.addOrUniqueWithInputs(arrayLength);
         }
 
         if (arrayLength.isConstant() && n.index().isConstant()) {

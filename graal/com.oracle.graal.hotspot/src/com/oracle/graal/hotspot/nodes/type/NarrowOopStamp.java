@@ -30,22 +30,6 @@ import com.oracle.graal.hotspot.meta.*;
 
 public class NarrowOopStamp extends AbstractObjectStamp {
 
-    public static final PlatformKind NarrowOop = new PlatformKind() {
-
-        public String name() {
-            return "NarrowOop";
-        }
-
-        @Override
-        public String toString() {
-            return name();
-        }
-
-        public Constant getDefaultValue() {
-            return HotSpotCompressedNullConstant.COMPRESSED_NULL;
-        }
-    };
-
     private final CompressEncoding encoding;
 
     public NarrowOopStamp(ResolvedJavaType type, boolean exactType, boolean nonNull, boolean alwaysNull, CompressEncoding encoding) {
@@ -71,8 +55,8 @@ public class NarrowOopStamp extends AbstractObjectStamp {
     }
 
     @Override
-    public PlatformKind getPlatformKind(PlatformKindTool tool) {
-        return NarrowOop;
+    public LIRKind getLIRKind(LIRKindTool tool) {
+        return LIRKind.reference(Kind.Int);
     }
 
     @Override
@@ -116,5 +100,14 @@ public class NarrowOopStamp extends AbstractObjectStamp {
             return false;
         }
         return super.equals(other);
+    }
+
+    @Override
+    public Constant asConstant() {
+        if (alwaysNull()) {
+            return HotSpotCompressedNullConstant.COMPRESSED_NULL;
+        } else {
+            return null;
+        }
     }
 }

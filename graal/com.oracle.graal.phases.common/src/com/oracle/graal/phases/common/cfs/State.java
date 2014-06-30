@@ -647,7 +647,7 @@ public final class State extends MergeableState<State> implements Cloneable {
         }
 
         if (condition instanceof LogicNegationNode) {
-            addFact(!isTrue, ((LogicNegationNode) condition).getInput(), anchor);
+            addFact(!isTrue, ((LogicNegationNode) condition).getValue(), anchor);
         } else if (condition instanceof ShortCircuitOrNode) {
             /*
              * We can register the conditions being or-ed as long as the anchor is a fixed node,
@@ -677,7 +677,7 @@ public final class State extends MergeableState<State> implements Cloneable {
             addFactInstanceOf(isTrue, (InstanceOfNode) condition, anchor);
         } else if (condition instanceof IsNullNode) {
             IsNullNode nullCheck = (IsNullNode) condition;
-            addNullness(isTrue, nullCheck.object(), anchor);
+            addNullness(isTrue, nullCheck.getValue(), anchor);
         } else if (condition instanceof ObjectEqualsNode) {
             addFactObjectEqualsNode(isTrue, (ObjectEqualsNode) condition, anchor);
         } else {
@@ -692,7 +692,7 @@ public final class State extends MergeableState<State> implements Cloneable {
      *
      */
     private void addFactInstanceOf(boolean isTrue, InstanceOfNode instanceOf, GuardingNode anchor) {
-        ValueNode object = instanceOf.object();
+        ValueNode object = instanceOf.getValue();
         if (isTrue) {
             if (knownNotToPassInstanceOf(object, instanceOf.type())) {
                 impossiblePath();
@@ -710,15 +710,15 @@ public final class State extends MergeableState<State> implements Cloneable {
     }
 
     private void addFactObjectEqualsNode(boolean isTrue, ObjectEqualsNode equals, GuardingNode anchor) {
-        if (isDependencyTainted(equals.x(), anchor)) {
+        if (isDependencyTainted(equals.getX(), anchor)) {
             return;
         }
-        if (isDependencyTainted(equals.y(), anchor)) {
+        if (isDependencyTainted(equals.getY(), anchor)) {
             return;
         }
         assert anchor instanceof FixedNode;
-        ValueNode x = GraphUtil.unproxify(equals.x());
-        ValueNode y = GraphUtil.unproxify(equals.y());
+        ValueNode x = GraphUtil.unproxify(equals.getX());
+        ValueNode y = GraphUtil.unproxify(equals.getY());
         if (isTrue) {
             if (isNull(x) && isNonNull(y)) {
                 impossiblePath();
@@ -730,12 +730,12 @@ public final class State extends MergeableState<State> implements Cloneable {
             }
             if (isNull(x) || isNull(y)) {
                 metricObjectEqualsRegistered.increment();
-                addNullness(true, equals.x(), anchor);
-                addNullness(true, equals.y(), anchor);
+                addNullness(true, equals.getX(), anchor);
+                addNullness(true, equals.getY(), anchor);
             } else if (isNonNull(x) || isNonNull(y)) {
                 metricObjectEqualsRegistered.increment();
-                addNullness(false, equals.x(), anchor);
-                addNullness(false, equals.y(), anchor);
+                addNullness(false, equals.getX(), anchor);
+                addNullness(false, equals.getY(), anchor);
             }
             Witness wx = typeInfo(x);
             Witness wy = typeInfo(y);
@@ -748,8 +748,8 @@ public final class State extends MergeableState<State> implements Cloneable {
                 if (best != null) {
                     assert !best.isInterface();
                     // type tightening is enough, nullness already taken care of
-                    trackCC(equals.x(), best, anchor);
-                    trackCC(equals.y(), best, anchor);
+                    trackCC(equals.getX(), best, anchor);
+                    trackCC(equals.getY(), best, anchor);
                 }
             } else if (wx == null) {
                 typeRefinements.put(x, new Witness(wy));
@@ -759,10 +759,10 @@ public final class State extends MergeableState<State> implements Cloneable {
         } else {
             if (isNull(x) && !isNonNull(y)) {
                 metricObjectEqualsRegistered.increment();
-                addNullness(false, equals.y(), anchor);
+                addNullness(false, equals.getY(), anchor);
             } else if (!isNonNull(x) && isNull(y)) {
                 metricObjectEqualsRegistered.increment();
-                addNullness(false, equals.x(), anchor);
+                addNullness(false, equals.getX(), anchor);
             }
         }
     }
@@ -911,20 +911,20 @@ public final class State extends MergeableState<State> implements Cloneable {
     private Evidence outcomeIsNullNode(boolean isTrue, IsNullNode isNullNode) {
         if (isTrue) {
             // grab an anchor attesting nullness
-            final GuardingNode replacement = nonTrivialNullAnchor(isNullNode.object());
+            final GuardingNode replacement = nonTrivialNullAnchor(isNullNode.getValue());
             if (replacement != null) {
                 return new Evidence(replacement);
             }
-            if (isNonNull(isNullNode.object())) {
+            if (isNonNull(isNullNode.getValue())) {
                 return Evidence.COUNTEREXAMPLE;
             }
         } else {
             // grab an anchor attesting non-nullness
-            final Witness w = typeInfo(isNullNode.object());
+            final Witness w = typeInfo(isNullNode.getValue());
             if (w != null && w.isNonNull()) {
                 return new Evidence(w.guard());
             }
-            if (isNull(isNullNode.object())) {
+            if (isNull(isNullNode.getValue())) {
                 return Evidence.COUNTEREXAMPLE;
             }
         }
@@ -936,9 +936,9 @@ public final class State extends MergeableState<State> implements Cloneable {
      * Utility method for {@link #outcome(boolean, com.oracle.graal.nodes.LogicNode)}
      */
     private Evidence outcomeInstanceOfNode(boolean isTrue, InstanceOfNode iOf) {
-        final Witness w = typeInfo(iOf.object());
+        final Witness w = typeInfo(iOf.getValue());
         if (isTrue) {
-            if (isNull(iOf.object())) {
+            if (isNull(iOf.getValue())) {
                 return Evidence.COUNTEREXAMPLE;
             }
             // grab an anchor attesting instanceof
@@ -957,7 +957,7 @@ public final class State extends MergeableState<State> implements Cloneable {
         } else {
             // grab an anchor attesting not-instanceof
             // (1 of 2) attempt determining nullness
-            final GuardingNode nullGuard = nonTrivialNullAnchor(iOf.object());
+            final GuardingNode nullGuard = nonTrivialNullAnchor(iOf.getValue());
             if (nullGuard != null) {
                 return new Evidence(nullGuard);
             }

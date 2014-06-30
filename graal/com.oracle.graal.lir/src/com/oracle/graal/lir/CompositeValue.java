@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,9 +26,9 @@ import java.lang.annotation.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
+import com.oracle.graal.lir.LIRInstruction.InstructionValueProcedure;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
-import com.oracle.graal.lir.LIRInstruction.ValueProcedure;
 
 /**
  * Base class to represent values that need to be stored in more than one register.
@@ -48,14 +48,14 @@ public abstract class CompositeValue extends Value {
 
     private static final DebugMetric COMPOSITE_VALUE_COUNT = Debug.metric("CompositeValues");
 
-    public CompositeValue(PlatformKind kind) {
+    public CompositeValue(LIRKind kind) {
         super(kind);
         COMPOSITE_VALUE_COUNT.increment();
         valueClass = CompositeValueClass.get(getClass());
     }
 
-    public final void forEachComponent(OperandMode mode, ValueProcedure proc) {
-        valueClass.forEachComponent(this, mode, proc);
+    public final void forEachComponent(LIRInstruction inst, OperandMode mode, InstructionValueProcedure proc) {
+        valueClass.forEachComponent(inst, this, mode, proc);
     }
 
     @Override

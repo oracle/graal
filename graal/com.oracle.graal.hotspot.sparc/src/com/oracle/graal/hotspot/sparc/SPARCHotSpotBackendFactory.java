@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -42,7 +42,7 @@ public class SPARCHotSpotBackendFactory implements HotSpotBackendFactory {
         final int stackFrameAlignment = 16;
         final int implicitNullCheckLimit = 4096;
         final boolean inlineObjects = true;
-        return new HotSpotTargetDescription(createArchitecture(), true, stackFrameAlignment, implicitNullCheckLimit, inlineObjects, Kind.Int);
+        return new HotSpotTargetDescription(createArchitecture(), true, stackFrameAlignment, implicitNullCheckLimit, inlineObjects);
     }
 
     public HotSpotBackend createBackend(HotSpotGraalRuntime runtime, HotSpotBackend host) {

@@ -20,6 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+//JaCoCo Exclude
 package com.oracle.graal.nodes.java;
 
 import java.lang.reflect.*;
@@ -57,7 +58,8 @@ public class DynamicNewArrayNode extends AbstractNewArrayNode {
         if (isAlive() && elementType.isConstant()) {
             ResolvedJavaType javaType = tool.getConstantReflection().asJavaType(elementType.asConstant());
             if (javaType != null && !javaType.equals(tool.getMetaAccess().lookupJavaType(void.class))) {
-                NewArrayNode newArray = graph().add(new NewArrayNode(javaType, length(), fillContents()));
+                ValueNode length = length();
+                NewArrayNode newArray = graph().add(new NewArrayNode(javaType, length.isAlive() ? length : graph().addOrUniqueWithInputs(length), fillContents()));
                 List<Node> snapshot = inputs().snapshot();
                 graph().replaceFixedWithFixed(this, newArray);
                 for (Node input : snapshot) {
@@ -72,4 +74,12 @@ public class DynamicNewArrayNode extends AbstractNewArrayNode {
     public static Object newArray(Class<?> componentType, int length) {
         return Array.newInstance(componentType, length);
     }
+
+    @NodeIntrinsic
+    private static native Object newArray(Class<?> componentType, int length, @ConstantNodeParameter boolean fillContents);
+
+    public static Object newUninitializedArray(Class<?> componentType, int length) {
+        return newArray(componentType, length, false);
+    }
+
 }

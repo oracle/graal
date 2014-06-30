@@ -33,13 +33,62 @@ import com.oracle.graal.jtt.*;
 @SuppressWarnings("unused")
 public class Conditional01 extends JTTTest {
 
+    private static class TestClass {
+        private int nextPC;
+        private int pc;
+        private boolean aC;
+        private boolean aH;
+        private boolean aN;
+        private boolean aZ;
+        private boolean aV;
+        private boolean aS;
+        private int cyclesConsumed;
+        private int[] sram = new int[RAM_SIZE];
+
+        public void visit(CPC i) {
+            nextPC = pc + 2;
+            int tmp0 = getRegisterByte(i.r1);
+            int tmp1 = getRegisterByte(i.r2);
+            int tmp2 = bit(aC);
+            int tmp3 = tmp0 - tmp1 - tmp2;
+            boolean tmp4 = ((tmp0 & 128) != 0);
+            boolean tmp5 = ((tmp1 & 128) != 0);
+            boolean tmp6 = ((tmp3 & 128) != 0);
+            boolean tmp7 = ((tmp0 & 8) != 0);
+            boolean tmp8 = ((tmp1 & 8) != 0);
+            boolean tmp9 = ((tmp3 & 8) != 0);
+            aH = !tmp7 && tmp8 || tmp8 && tmp9 || tmp9 && !tmp7;
+            aC = !tmp4 && tmp5 || tmp5 && tmp6 || tmp6 && !tmp4;
+            aN = tmp6;
+            aZ = low(tmp3) == 0 && aZ;
+            aV = tmp4 && !tmp5 && !tmp6 || !tmp4 && tmp5 && tmp6;
+            aS = (aN != aV);
+            cyclesConsumed++;
+        }
+
+        public int getRegisterByte(Register r1) {
+            if ((r1.val % 10) == 0) {
+                return sram[r1.num];
+            }
+            return r1.val;
+        }
+
+        public int low(int tmp3) {
+            return tmp3 & 0x01;
+        }
+
+        public int bit(boolean c2) {
+            return c2 ? 1 : 0;
+        }
+    }
+
     private static final int RAM_SIZE = 0x100;
     private static final int init = new Random().nextInt();
     private static final int init1 = new Register().val;
     private static final Register init2 = new CPC().r1;
 
     public static int test(int arg) {
-        Conditional01 c = new Conditional01();
+        TestClass c = new TestClass();
         Random rnd = new Random();
         for (int i = 0; i < arg; i++) {
             CPC i2 = new CPC();
@@ -69,53 +118,6 @@ public class Conditional01 extends JTTTest {
         public Register r1;
         public Register r2;
 
-    }
-
-    private int nextPC;
-    private int pc;
-    private boolean aC;
-    private boolean aH;
-    private boolean aN;
-    private boolean aZ;
-    private boolean aV;
-    private boolean aS;
-    private int cyclesConsumed;
-    private int[] sram = new int[RAM_SIZE];
-
-    public void visit(CPC i) {
-        nextPC = pc + 2;
-        int tmp0 = getRegisterByte(i.r1);
-        int tmp1 = getRegisterByte(i.r2);
-        int tmp2 = bit(aC);
-        int tmp3 = tmp0 - tmp1 - tmp2;
-        boolean tmp4 = ((tmp0 & 128) != 0);
-        boolean tmp5 = ((tmp1 & 128) != 0);
-        boolean tmp6 = ((tmp3 & 128) != 0);
-        boolean tmp7 = ((tmp0 & 8) != 0);
-        boolean tmp8 = ((tmp1 & 8) != 0);
-        boolean tmp9 = ((tmp3 & 8) != 0);
-        aH = !tmp7 && tmp8 || tmp8 && tmp9 || tmp9 && !tmp7;
-        aC = !tmp4 && tmp5 || tmp5 && tmp6 || tmp6 && !tmp4;
-        aN = tmp6;
-        aZ = low(tmp3) == 0 && aZ;
-        aV = tmp4 && !tmp5 && !tmp6 || !tmp4 && tmp5 && tmp6;
-        aS = (aN != aV);
-        cyclesConsumed++;
-    }
-
-    public int getRegisterByte(Register r1) {
-        if ((r1.val % 10) == 0) {
-            return sram[r1.num];
-        }
-        return r1.val;
-    }
-
-    public int low(int tmp3) {
-        return tmp3 & 0x01;
-    }
-
-    public int bit(boolean c2) {
-        return c2 ? 1 : 0;
     }
 
     @Test

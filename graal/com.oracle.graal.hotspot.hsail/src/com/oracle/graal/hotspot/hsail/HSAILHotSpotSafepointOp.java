@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -61,23 +61,23 @@ public class HSAILHotSpotSafepointOp extends HSAILLIRInstruction implements HSAI
             masm.emitComment(" /* HSAIL safepoint bci=" + frameState.debugInfo().getBytecodePosition().getBCI() + ", frameState=" + frameState + " */");
             String afterSafepointLabel = "@LAfterSafepoint_at_pos_" + codeBufferPos;
 
-            AllocatableValue scratch64 = HSAIL.d16.asValue(Kind.Object);
-            AllocatableValue spAddrReg = HSAIL.d17.asValue(Kind.Object);
-            AllocatableValue scratch32 = HSAIL.s34.asValue(Kind.Int);
+            AllocatableValue scratch64 = HSAIL.d16.asValue(LIRKind.reference(Kind.Object));
+            AllocatableValue spAddrReg = HSAIL.d17.asValue(LIRKind.reference(Kind.Object));
+            AllocatableValue scratch32 = HSAIL.s34.asValue(LIRKind.value(Kind.Int));
             masm.emitLoadKernelArg(scratch64, masm.getDeoptInfoName(), "u64");
 
             // Build address of noticeSafepoints field
-            HSAILAddress noticeSafepointsAddr = new HSAILAddressValue(Kind.Object, scratch64, offsetToNoticeSafepoints).toAddress();
+            HSAILAddress noticeSafepointsAddr = new HSAILAddressValue(LIRKind.value(Kind.Long), scratch64, offsetToNoticeSafepoints).toAddress();
             masm.emitLoad(Kind.Object, spAddrReg, noticeSafepointsAddr);
 
             // Load int value from that field
-            HSAILAddress noticeSafepointsIntAddr = new HSAILAddressValue(Kind.Int, spAddrReg, 0).toAddress();
+            HSAILAddress noticeSafepointsIntAddr = new HSAILAddressValue(LIRKind.value(Kind.Long), spAddrReg, 0).toAddress();
             masm.emitLoadAcquire(scratch32, noticeSafepointsIntAddr);
             masm.emitCompare(Kind.Int, scratch32, Constant.forInt(0), "eq", false, false);
             masm.cbr(afterSafepointLabel);
 
-            AllocatableValue actionAndReasonReg = HSAIL.actionAndReasonReg.asValue(Kind.Int);
-            AllocatableValue codeBufferOffsetReg = HSAIL.codeBufferOffsetReg.asValue(Kind.Int);
+            AllocatableValue actionAndReasonReg = HSAIL.actionAndReasonReg.asValue(LIRKind.value(Kind.Int));
+            AllocatableValue codeBufferOffsetReg = HSAIL.codeBufferOffsetReg.asValue(LIRKind.value(Kind.Int));
             masm.emitMov(Kind.Int, actionAndReasonReg, actionAndReason);
             masm.emitMov(Kind.Int, codeBufferOffsetReg, Constant.forInt(codeBufferPos));
             masm.emitJumpToLabelName(masm.getDeoptLabelName());

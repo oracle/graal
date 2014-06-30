@@ -31,13 +31,15 @@ import com.oracle.graal.jtt.*;
  */
 public class NCE_01 extends JTTTest {
 
-    public static NCE_01 object = new NCE_01();
+    private static class TestClass {
+        int field1 = 22;
+        int field2 = 23;
+    }
 
-    int field1 = 22;
-    int field2 = 23;
+    public static TestClass object = new TestClass();
 
     public static int test() {
-        NCE_01 o = object;
+        TestClass o = object;
         int i = o.field1;
         // expected null check elimination here
         return o.field2 + i;

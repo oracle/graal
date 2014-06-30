@@ -483,7 +483,10 @@ public class ReplacementsImpl implements Replacements {
             if (!SnippetTemplate.hasConstantParameter(method)) {
                 NodeIntrinsificationVerificationPhase.verify(graph);
             }
+            int sideEffectCount = 0;
+            assert (sideEffectCount = graph.getNodes().filter(e -> e instanceof StateSplit && ((StateSplit) e).hasSideEffect()).count()) >= 0;
             new ConvertDeoptimizeToGuardPhase().apply(graph);
+            assert sideEffectCount == graph.getNodes().filter(e -> e instanceof StateSplit && ((StateSplit) e).hasSideEffect()).count() : "deleted side effecting node";
 
             switch (frameStateProcessing) {
                 case Removal:
@@ -586,7 +589,7 @@ public class ReplacementsImpl implements Replacements {
                         if (isInlinable(substitutedMethod)) {
                             final StructuredGraph originalGraph = buildInitialGraph(substitutedMethod);
                             Mark mark = graph.getMark();
-                            InliningUtil.inline(callTarget.invoke(), originalGraph, true);
+                            InliningUtil.inline(callTarget.invoke(), originalGraph, true, null);
                             for (MethodCallTargetNode inlinedCallTarget : graph.getNewNodes(mark).filter(MethodCallTargetNode.class)) {
                                 if (doNotInline == null) {
                                     doNotInline = new HashSet<>();
@@ -620,7 +623,7 @@ public class ReplacementsImpl implements Replacements {
                                     targetGraph = parseGraph(callee, policy, inliningDepth + 1);
                                 }
                                 Object beforeInlineData = beforeInline(callTarget, targetGraph);
-                                InliningUtil.inline(callTarget.invoke(), targetGraph, true);
+                                InliningUtil.inline(callTarget.invoke(), targetGraph, true, null);
                                 Debug.dump(graph, "after inlining %s", callee);
                                 afterInline(graph, targetGraph, beforeInlineData);
                             }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -41,6 +41,7 @@ import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.LIRInstruction.InstructionValueProcedure;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
 import com.oracle.graal.lir.LIRInstruction.StateProcedure;
@@ -959,13 +960,13 @@ public final class LinearScan {
         }
     }
 
-    void addUse(AllocatableValue operand, int from, int to, RegisterPriority registerPriority, PlatformKind kind) {
+    void addUse(AllocatableValue operand, int from, int to, RegisterPriority registerPriority, LIRKind kind) {
         if (!isProcessed(operand)) {
             return;
         }
 
         Interval interval = getOrCreateInterval(operand);
-        if (kind != Kind.Illegal) {
+        if (!kind.equals(LIRKind.Illegal)) {
             interval.setKind(kind);
         }
 
@@ -977,13 +978,13 @@ public final class LinearScan {
         Debug.log("add use: %s, from %d to %d (%s)", interval, from, to, registerPriority.name());
     }
 
-    void addTemp(AllocatableValue operand, int tempPos, RegisterPriority registerPriority, PlatformKind kind) {
+    void addTemp(AllocatableValue operand, int tempPos, RegisterPriority registerPriority, LIRKind kind) {
         if (!isProcessed(operand)) {
             return;
         }
 
         Interval interval = getOrCreateInterval(operand);
-        if (kind != Kind.Illegal) {
+        if (!kind.equals(LIRKind.Illegal)) {
             interval.setKind(kind);
         }
 
@@ -998,14 +999,14 @@ public final class LinearScan {
         return !isRegister(operand) || attributes(asRegister(operand)).isAllocatable();
     }
 
-    void addDef(AllocatableValue operand, LIRInstruction op, RegisterPriority registerPriority, PlatformKind kind) {
+    void addDef(AllocatableValue operand, LIRInstruction op, RegisterPriority registerPriority, LIRKind kind) {
         if (!isProcessed(operand)) {
             return;
         }
         int defPos = op.id();
 
         Interval interval = getOrCreateInterval(operand);
-        if (kind != Kind.Illegal) {
+        if (!kind.equals(LIRKind.Illegal)) {
             interval.setKind(kind);
         }
 
@@ -1123,6 +1124,70 @@ public final class LinearScan {
     void buildIntervals() {
 
         try (Indent indent = Debug.logAndIndent("build intervals")) {
+            InstructionValueProcedure outputProc = new InstructionValueProcedure() {
+
+                @Override
+                public Value doValue(LIRInstruction op, Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
+                    if (isVariableOrRegister(operand)) {
+                        addDef((AllocatableValue) operand, op, registerPriorityOfOutputOperand(op), operand.getLIRKind());
+                        addRegisterHint(op, operand, mode, flags, true);
+                    }
+                    return operand;
+                }
+            };
+
+            InstructionValueProcedure tempProc = new InstructionValueProcedure() {
+
+                @Override
+                public Value doValue(LIRInstruction op, Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
+                    if (isVariableOrRegister(operand)) {
+                        addTemp((AllocatableValue) operand, op.id(), RegisterPriority.MustHaveRegister, operand.getLIRKind());
+                        addRegisterHint(op, operand, mode, flags, false);
+                    }
+                    return operand;
+                }
+            };
+
+            InstructionValueProcedure aliveProc = new InstructionValueProcedure() {
+
+                @Override
+                public Value doValue(LIRInstruction op, Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
+                    if (isVariableOrRegister(operand)) {
+                        RegisterPriority p = registerPriorityOfInputOperand(flags);
+                        final int opId = op.id();
+                        final int blockFrom = getFirstLirInstructionId((blockForId(opId)));
+                        addUse((AllocatableValue) operand, blockFrom, opId + 1, p, operand.getLIRKind());
+                        addRegisterHint(op, operand, mode, flags, false);
+                    }
+                    return operand;
+                }
+            };
+
+            InstructionValueProcedure inputProc = new InstructionValueProcedure() {
+
+                @Override
+                public Value doValue(LIRInstruction op, Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
+                    if (isVariableOrRegister(operand)) {
+                        final int opId = op.id();
+                        final int blockFrom = getFirstLirInstructionId((blockForId(opId)));
+                        RegisterPriority p = registerPriorityOfInputOperand(flags);
+                        addUse((AllocatableValue) operand, blockFrom, opId, p, operand.getLIRKind());
+                        addRegisterHint(op, operand, mode, flags, false);
+                    }
+                    return operand;
+                }
+            };
+
+            InstructionValueProcedure stateProc = new InstructionValueProcedure() {
+
+                @Override
+                public Value doValue(LIRInstruction op, Value operand) {
+                    final int opId = op.id();
+                    final int blockFrom = getFirstLirInstructionId((blockForId(opId)));
+                    addUse((AllocatableValue) operand, blockFrom, opId + 1, RegisterPriority.None, operand.getLIRKind());
+                    return operand;
+                }
+            };
 
             // create a list with all caller-save registers (cpu, fpu, xmm)
             Register[] callerSaveRegs = frameMap.registerConfig.getCallerSaveRegisters();
@@ -1147,7 +1212,7 @@ public final class LinearScan {
                         AllocatableValue operand = intervalFor(operandNum).operand;
                         Debug.log("live in %d: %s", operandNum, operand);
 
-                        addUse(operand, blockFrom, blockTo + 2, RegisterPriority.None, Kind.Illegal);
+                        addUse(operand, blockFrom, blockTo + 2, RegisterPriority.None, LIRKind.Illegal);
 
                         // add special use positions for loop-end blocks when the
                         // interval is used anywhere inside this loop. It's possible
@@ -1171,72 +1236,23 @@ public final class LinearScan {
                             if (op.destroysCallerSavedRegisters()) {
                                 for (Register r : callerSaveRegs) {
                                     if (attributes(r).isAllocatable()) {
-                                        addTemp(r.asValue(), opId, RegisterPriority.None, Kind.Illegal);
+                                        addTemp(r.asValue(), opId, RegisterPriority.None, LIRKind.Illegal);
                                     }
                                 }
                                 Debug.log("operation destroys all caller-save registers");
                             }
 
-                            op.forEachOutput(new ValueProcedure() {
-
-                                @Override
-                                public Value doValue(Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
-                                    if (isVariableOrRegister(operand)) {
-                                        addDef((AllocatableValue) operand, op, registerPriorityOfOutputOperand(op), operand.getPlatformKind());
-                                        addRegisterHint(op, operand, mode, flags, true);
-                                    }
-                                    return operand;
-                                }
-                            });
-                            op.forEachTemp(new ValueProcedure() {
-
-                                @Override
-                                public Value doValue(Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
-                                    if (isVariableOrRegister(operand)) {
-                                        addTemp((AllocatableValue) operand, opId, RegisterPriority.MustHaveRegister, operand.getPlatformKind());
-                                        addRegisterHint(op, operand, mode, flags, false);
-                                    }
-                                    return operand;
-                                }
-                            });
-                            op.forEachAlive(new ValueProcedure() {
-
-                                @Override
-                                public Value doValue(Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
-                                    if (isVariableOrRegister(operand)) {
-                                        RegisterPriority p = registerPriorityOfInputOperand(flags);
-                                        addUse((AllocatableValue) operand, blockFrom, opId + 1, p, operand.getPlatformKind());
-                                        addRegisterHint(op, operand, mode, flags, false);
-                                    }
-                                    return operand;
-                                }
-                            });
-                            op.forEachInput(new ValueProcedure() {
-
-                                @Override
-                                public Value doValue(Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
-                                    if (isVariableOrRegister(operand)) {
-                                        RegisterPriority p = registerPriorityOfInputOperand(flags);
-                                        addUse((AllocatableValue) operand, blockFrom, opId, p, operand.getPlatformKind());
-                                        addRegisterHint(op, operand, mode, flags, false);
-                                    }
-                                    return operand;
-                                }
-                            });
+                            op.forEachOutput(outputProc);
+                            op.forEachTemp(tempProc);
+                            op.forEachAlive(aliveProc);
+                            op.forEachInput(inputProc);
 
                             // Add uses of live locals from interpreter's point of view for proper
                             // debug information generation
                             // Treat these operands as temp values (if the live range is extended
                             // to a call site, the value would be in a register at
                             // the call otherwise)
-                            op.forEachState(new ValueProcedure() {
-
-                                @Override
-                                public Value doValue(Value operand) {
-                                    addUse((AllocatableValue) operand, blockFrom, opId + 1, RegisterPriority.None, operand.getPlatformKind());
-                                    return operand;
-                                }
-                            });
+                            op.forEachState(stateProc);
 
                             // special steps for some instructions (especially moves)
                             handleMethodArguments(op);
@@ -1682,48 +1698,61 @@ public final class LinearScan {
         return attributes(asRegister(operand)).isCallerSave();
     }
 
+    private InstructionValueProcedure debugInfoProc = new InstructionValueProcedure() {
+
+        @Override
+        public Value doValue(LIRInstruction op, Value operand) {
+            int tempOpId = op.id();
+            OperandMode mode = OperandMode.USE;
+            AbstractBlock<?> block = blockForId(tempOpId);
+            if (block.getSuccessorCount() == 1 && tempOpId == getLastLirInstructionId(block)) {
+                // generating debug information for the last instruction of a block.
+                // if this instruction is a branch, spill moves are inserted before this branch
+                // and so the wrong operand would be returned (spill moves at block boundaries
+                // are not
+                // considered in the live ranges of intervals)
+                // Solution: use the first opId of the branch target block instead.
+                final LIRInstruction instr = ir.getLIRforBlock(block).get(ir.getLIRforBlock(block).size() - 1);
+                if (instr instanceof StandardOp.JumpOp) {
+                    if (blockData.get(block).liveOut.get(operandNumber(operand))) {
+                        tempOpId = getFirstLirInstructionId(block.getSuccessors().iterator().next());
+                        mode = OperandMode.DEF;
+                    }
+                }
+            }
+
+            // Get current location of operand
+            // The operand must be live because debug information is considered when building
+            // the intervals
+            // if the interval is not live, colorLirOperand will cause an assert on failure
+            Value result = colorLirOperand((Variable) operand, tempOpId, mode);
+            assert !hasCall(tempOpId) || isStackSlot(result) || isConstant(result) || !isCallerSave(result) : "cannot have caller-save register operands at calls";
+            return result;
+        }
+    };
+
     private void computeDebugInfo(IntervalWalker iw, final LIRInstruction op, LIRFrameState info) {
         info.initDebugInfo(frameMap, !op.destroysCallerSavedRegisters() || !callKillsRegisters);
         markFrameLocations(iw, op, info);
 
-        info.forEachState(new ValueProcedure() {
-
-            @Override
-            public Value doValue(Value operand) {
-                int tempOpId = op.id();
-                OperandMode mode = OperandMode.USE;
-                AbstractBlock<?> block = blockForId(tempOpId);
-                if (block.getSuccessorCount() == 1 && tempOpId == getLastLirInstructionId(block)) {
-                    // generating debug information for the last instruction of a block.
-                    // if this instruction is a branch, spill moves are inserted before this branch
-                    // and so the wrong operand would be returned (spill moves at block boundaries
-                    // are not
-                    // considered in the live ranges of intervals)
-                    // Solution: use the first opId of the branch target block instead.
-                    final LIRInstruction instr = ir.getLIRforBlock(block).get(ir.getLIRforBlock(block).size() - 1);
-                    if (instr instanceof StandardOp.JumpOp) {
-                        if (blockData.get(block).liveOut.get(operandNumber(operand))) {
-                            tempOpId = getFirstLirInstructionId(block.getSuccessors().iterator().next());
-                            mode = OperandMode.DEF;
-                        }
-                    }
-                }
-
-                // Get current location of operand
-                // The operand must be live because debug information is considered when building
-                // the intervals
-                // if the interval is not live, colorLirOperand will cause an assert on failure
-                Value result = colorLirOperand((Variable) operand, tempOpId, mode);
-                assert !hasCall(tempOpId) || isStackSlot(result) || isConstant(result) || !isCallerSave(result) : "cannot have caller-save register operands at calls";
-                return result;
-            }
-        });
+        info.forEachState(op, debugInfoProc);
         info.finish(op, frameMap);
     }
 
     private void assignLocations(List<LIRInstruction> instructions, final IntervalWalker iw) {
         int numInst = instructions.size();
         boolean hasDead = false;
+
+        InstructionValueProcedure assignProc = new InstructionValueProcedure() {
+
+            @Override
+            public Value doValue(LIRInstruction op, Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
+                if (isVariable(operand)) {
+                    return colorLirOperand((Variable) operand, op.id(), mode);
+                }
+                return operand;
+            }
+        };
 
         for (int j = 0; j < numInst; j++) {
             final LIRInstruction op = instructions.get(j);
@@ -1748,17 +1777,6 @@ public final class LinearScan {
                     continue;
                 }
             }
-
-            ValueProcedure assignProc = new ValueProcedure() {
-
-                @Override
-                public Value doValue(Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
-                    if (isVariable(operand)) {
-                        return colorLirOperand((Variable) operand, op.id(), mode);
-                    }
-                    return operand;
-                }
-            };
 
             op.forEachInput(assignProc);
             op.forEachAlive(assignProc);
@@ -1918,7 +1936,7 @@ public final class LinearScan {
                     throw new GraalInternalError("");
                 }
 
-                if (isVariable(i1.operand) && i1.kind() == Kind.Illegal) {
+                if (isVariable(i1.operand) && i1.kind().equals(LIRKind.Illegal)) {
                     Debug.log("Interval %d has no type assigned", i1.operandNumber);
                     Debug.log(i1.logString(this));
                     throw new GraalInternalError("");

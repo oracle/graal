@@ -32,11 +32,26 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.common.CanonicalizerPhase;
 import com.oracle.graal.phases.common.DeadCodeEliminationPhase;
+import com.oracle.graal.phases.common.cfs.FlowUtil;
 import com.oracle.graal.phases.common.inlining.InliningUtil;
 import com.oracle.graal.phases.tiers.HighTierContext;
 
 import static com.oracle.graal.compiler.common.GraalOptions.OptCanonicalizer;
 
+/**
+ * <p>
+ * Represents a feasible concrete target for inlining, whose graph has been copied already and thus
+ * can be modified without affecting the original (usually cached) version.
+ * </p>
+ *
+ * <p>
+ * Instances of this class don't make sense in isolation but as part of an
+ * {@link com.oracle.graal.phases.common.inlining.info.InlineInfo InlineInfo}.
+ * </p>
+ *
+ * @see com.oracle.graal.phases.common.inlining.walker.InliningData#moveForward()
+ * @see com.oracle.graal.phases.common.inlining.walker.CallsiteHolderExplorable
+ */
 public class InlineableGraph implements Inlineable {
 
     private final StructuredGraph graph;
@@ -73,6 +88,7 @@ public class InlineableGraph implements Inlineable {
         try (Debug.Scope s = Debug.scope("InlineGraph", graph)) {
 
             ArrayList<Node> parameterUsages = replaceParamsWithMoreInformativeArguments(invoke, context);
+            parameterUsages = rewireParamsForDuplicateArguments(invoke, parameterUsages);
             if (parameterUsages != null && OptCanonicalizer.getValue()) {
                 assert !parameterUsages.isEmpty() : "The caller didn't have more information about arguments after all";
                 canonicalizer.applyIncremental(graph, context, parameterUsages);
@@ -89,16 +105,62 @@ public class InlineableGraph implements Inlineable {
         }
     }
 
-    private static boolean isArgMoreInformativeThanParam(ValueNode arg, ParameterNode param) {
-        if (arg.isConstant()) {
-            return true;
-        } else {
-            Stamp joinedStamp = param.stamp().join(arg.stamp());
-            if (joinedStamp != null && !joinedStamp.equals(param.stamp())) {
-                return true;
+    /**
+     * This method detects duplicate arguments (therefore corresponding to different
+     * {@link ParameterNode}s) and updates the graph to make all of their usages refer to the first
+     * one of them.
+     *
+     * @return a (possibly updated) list of nodes for incremental canonicalization.
+     */
+    private ArrayList<Node> rewireParamsForDuplicateArguments(Invoke invoke, ArrayList<Node> parameterUsages0) {
+        ArrayList<Node> parameterUsages = parameterUsages0;
+        ArrayList<ParameterNode> params = new ArrayList<>();
+        List<ValueNode> originalArgs = invoke.callTarget().arguments();
+        List<ValueNode> argsInEffect = new ArrayList<>();
+        // some param-nodes might have been deleted by replaceParamsWithMoreInformativeArguments()
+        // that's why we obtain an up-to-date list
+        for (ParameterNode p : graph.getNodes(ParameterNode.class)) {
+            if (!FlowUtil.lacksUsages(p)) {
+                params.add(p);
+                argsInEffect.add(originalArgs.get(p.index()));
             }
         }
-        return false;
+        // argsInEffect and params paired by position
+        assert params.size() == argsInEffect.size();
+        int argIdx = 0;
+        for (ValueNode arg : argsInEffect) {
+            int firstOccurrrence = argsInEffect.indexOf(arg);
+            assert firstOccurrrence >= 0;
+            if (firstOccurrrence < argIdx) {
+                ParameterNode survivingParam = params.get(firstOccurrrence);
+                assert survivingParam.isAlive();
+                ParameterNode duplicateParam = params.get(argIdx);
+                assert duplicateParam.isAlive();
+                assert survivingParam != duplicateParam;
+                assert !isArgMoreInformativeThanParam(arg, survivingParam);
+                parameterUsages = trackParameterUsages(duplicateParam, parameterUsages);
+                // replaceFloating() deletes the duplicate param, unlike replaceAtUsages()
+                graph.replaceFloating(duplicateParam, survivingParam);
+            }
+            argIdx++;
+        }
+        return parameterUsages;
+    }
+
+    private static boolean isArgMoreInformativeThanParam(ValueNode arg, ParameterNode param) {
+        return arg.isConstant() || canStampBeImproved(arg, param);
+    }
+
+    private static boolean canStampBeImproved(ValueNode arg, ParameterNode param) {
+        return improvedStamp(arg, param) != null;
+    }
+
+    private static Stamp improvedStamp(ValueNode arg, ParameterNode param) {
+        Stamp joinedStamp = param.stamp().join(arg.stamp());
+        if (joinedStamp == null || joinedStamp.equals(param.stamp())) {
+            return null;
+        }
+        return joinedStamp;
     }
 
     /**
@@ -140,9 +202,9 @@ public class InlineableGraph implements Inlineable {
                     graph.replaceFloating(param, ConstantNode.forConstant(constant, context.getMetaAccess(), graph));
                     // param-node gone, leaving a gap in the sequence given by param.index()
                 } else {
-                    Stamp joinedStamp = param.stamp().join(arg.stamp());
-                    if (joinedStamp != null && !joinedStamp.equals(param.stamp())) {
-                        param.setStamp(joinedStamp);
+                    Stamp impro = improvedStamp(arg, param);
+                    if (impro != null) {
+                        param.setStamp(impro);
                         parameterUsages = trackParameterUsages(param, parameterUsages);
                     } else {
                         assert !isArgMoreInformativeThanParam(arg, param);

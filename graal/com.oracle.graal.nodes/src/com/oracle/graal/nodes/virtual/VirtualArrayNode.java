@@ -146,6 +146,6 @@ public class VirtualArrayNode extends VirtualObjectNode implements ArrayLengthPr
     }
 
     public ValueNode length() {
-        return ConstantNode.forInt(length, graph());
+        return ConstantNode.forInt(length);
     }
 }

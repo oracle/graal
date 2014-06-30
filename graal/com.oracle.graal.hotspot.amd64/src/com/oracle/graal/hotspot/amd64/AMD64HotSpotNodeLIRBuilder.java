@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,9 +30,9 @@ import com.oracle.graal.amd64.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
-import com.oracle.graal.asm.amd64.AMD64Address.Scale;
 import com.oracle.graal.compiler.amd64.*;
 import com.oracle.graal.compiler.common.calc.*;
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.match.*;
 import com.oracle.graal.debug.*;
@@ -63,49 +63,19 @@ public class AMD64HotSpotNodeLIRBuilder extends AMD64NodeLIRBuilder implements H
             result = ((PiNode) result).getOriginalNode();
         }
         if (result instanceof CompressionNode) {
-            result = ((CompressionNode) result).getInput();
+            result = ((CompressionNode) result).getValue();
         }
         return result;
-    }
-
-    private void emitCompareMemoryObject(IfNode ifNode, ValueNode valueNode, Access access, CompareNode compare) {
-        Value value;
-        // This works by embedding the compressed form for constants, so force a constant instead of
-        // respecting what operand() would return.
-        if (valueNode.isConstant()) {
-            value = valueNode.asConstant();
-        } else {
-            value = gen.load(operand(valueNode));
-        }
-        AMD64AddressValue address = makeAddress(access);
-
-        Condition cond = compare.condition();
-        Value left;
-        Value right;
-        if (access == filterCompression(compare.x())) {
-            left = value;
-            right = address;
-        } else {
-            assert access == filterCompression(compare.y());
-            left = address;
-            right = value;
-            cond = cond.mirror();
-        }
-
-        LabelRef trueLabel = getLIRBlock(ifNode.trueSuccessor());
-        LabelRef falseLabel = getLIRBlock(ifNode.falseSuccessor());
-        double trueLabelProbability = ifNode.probability(ifNode.trueSuccessor());
-        getGen().emitCompareBranchMemoryCompressed(left, right, cond, trueLabel, falseLabel, trueLabelProbability, getState(access));
     }
 
     private void emitCompareCompressedMemory(Kind kind, IfNode ifNode, ValueNode valueNode, CompressionNode compress, ConstantLocationNode location, Access access, CompareNode compare) {
         Value value = gen.load(operand(valueNode));
         AMD64AddressValue address = makeCompressedAddress(compress, location);
         Condition cond = compare.condition();
-        if (access == filterCompression(compare.x())) {
+        if (access == filterCompression(compare.getX())) {
             cond = cond.mirror();
         } else {
-            assert access == filterCompression(compare.y());
+            assert access == filterCompression(compare.getY());
         }
 
         LabelRef trueLabel = getLIRBlock(ifNode.trueSuccessor());
@@ -135,7 +105,7 @@ public class AMD64HotSpotNodeLIRBuilder extends AMD64NodeLIRBuilder implements H
 
     @Override
     protected DebugInfoBuilder createDebugInfoBuilder(StructuredGraph graph, NodeMap<Value> nodeOperands) {
-        HotSpotLockStack lockStack = new HotSpotLockStack(gen.getResult().getFrameMap(), Kind.Long);
+        HotSpotLockStack lockStack = new HotSpotLockStack(gen.getResult().getFrameMap(), LIRKind.value(Kind.Long));
         return new HotSpotDebugInfoBuilder(nodeOperands, lockStack);
     }
 
@@ -154,7 +124,7 @@ public class AMD64HotSpotNodeLIRBuilder extends AMD64NodeLIRBuilder implements H
                 }
             }
         }
-        params[params.length - 1] = rbp.asValue(Kind.Long);
+        params[params.length - 1] = rbp.asValue(LIRKind.value(Kind.Long));
 
         gen.emitIncomingValues(params);
 
@@ -237,38 +207,28 @@ public class AMD64HotSpotNodeLIRBuilder extends AMD64NodeLIRBuilder implements H
 
     @Override
     public void visitDirectCompareAndSwap(DirectCompareAndSwapNode x) {
-        Kind kind = x.newValue().getKind();
-        assert kind == x.expectedValue().getKind();
-
         Value expected = gen.loadNonConst(operand(x.expectedValue()));
         Variable newVal = gen.load(operand(x.newValue()));
+        assert expected.getLIRKind().equals(newVal.getLIRKind());
 
-        int disp = 0;
-        AMD64AddressValue address;
-        Value index = operand(x.offset());
-        if (ValueUtil.isConstant(index) && NumUtil.isInt(ValueUtil.asConstant(index).asLong() + disp)) {
-            assert !gen.getCodeCache().needsDataPatch(asConstant(index));
-            disp += (int) ValueUtil.asConstant(index).asLong();
-            address = new AMD64AddressValue(kind, gen.load(operand(x.object())), disp);
-        } else {
-            address = new AMD64AddressValue(kind, gen.load(operand(x.object())), gen.load(index), Scale.Times1, disp);
-        }
+        AMD64AddressValue address = getGen().emitAddress(operand(x.object()), 0, operand(x.offset()), 1);
 
-        RegisterValue raxLocal = AMD64.rax.asValue(kind);
+        RegisterValue raxLocal = AMD64.rax.asValue(expected.getLIRKind());
         gen.emitMove(raxLocal, expected);
-        append(new CompareAndSwapOp(kind, raxLocal, address, raxLocal, newVal));
+        append(new CompareAndSwapOp(expected.getKind(), raxLocal, address, raxLocal, newVal));
 
-        Variable result = newVariable(x.getKind());
-        gen.emitMove(result, raxLocal);
-        setResult(x, result);
+        setResult(x, gen.emitMove(raxLocal));
     }
 
     boolean canFormCompressedMemory(CompressionNode compress, ConstantLocationNode location) {
         HotSpotVMConfig config = HotSpotGraalRuntime.runtime().getConfig();
         if (config.useCompressedOops && compress.getEncoding().shift <= 3 && NumUtil.isInt(location.getDisplacement())) {
-            PlatformKind objectKind = compress.getInput().stamp().getPlatformKind(getGen());
-            if (objectKind == NarrowOopStamp.NarrowOop || objectKind == Kind.Int && config.narrowKlassBase == config.narrowOopBase) {
+            Stamp compressedStamp = compress.getValue().stamp();
+            if (compressedStamp instanceof NarrowOopStamp) {
                 return true;
+            } else if (compressedStamp instanceof IntegerStamp) {
+                IntegerStamp is = (IntegerStamp) compressedStamp;
+                return is.getBits() == 32 && config.narrowKlassBase == config.narrowOopBase;
             }
         }
         return false;
@@ -276,27 +236,9 @@ public class AMD64HotSpotNodeLIRBuilder extends AMD64NodeLIRBuilder implements H
 
     private AMD64AddressValue makeCompressedAddress(CompressionNode compress, ConstantLocationNode location) {
         assert canFormCompressedMemory(compress, location);
-        AMD64AddressValue address = getGen().emitAddress(getGen().getProviders().getRegisters().getHeapBaseRegister().asValue(), location.getDisplacement(), operand(compress.getInput()),
+        AMD64AddressValue address = getGen().emitAddress(getGen().getProviders().getRegisters().getHeapBaseRegister().asValue(), location.getDisplacement(), operand(compress.getValue()),
                         1 << compress.getEncoding().shift);
         return address;
-    }
-
-    @MatchRule("(If (ObjectEquals=compare Constant=value (Pi (Compression Read=access))))")
-    @MatchRule("(If (ObjectEquals=compare Constant=value (Pi (Compression FloatingRead=access))))")
-    @MatchRule("(If (ObjectEquals=compare (Compression value) (Pi (Compression Read=access))))")
-    @MatchRule("(If (ObjectEquals=compare (Compression value) (Pi (Compression FloatingRead=access))))")
-    @MatchRule("(If (ObjectEquals=compare Constant=value (Compression Read=access)))")
-    @MatchRule("(If (ObjectEquals=compare Constant=value (Compression FloatingRead=access)))")
-    @MatchRule("(If (ObjectEquals=compare (Compression value) (Compression Read=access)))")
-    @MatchRule("(If (ObjectEquals=compare (Compression value) (Compression FloatingRead=access)))")
-    public ComplexMatchResult ifCompareMemoryObject(IfNode root, CompareNode compare, ValueNode value, Access access) {
-        if (HotSpotGraalRuntime.runtime().getConfig().useCompressedOops) {
-            return builder -> {
-                emitCompareMemoryObject(root, value, access, compare);
-                return null;
-            };
-        }
-        return null;
     }
 
     @MatchRule("(If (IntegerEquals=compare value (FloatingRead=access (Compression=compress object) ConstantLocation=location)))")
@@ -311,7 +253,7 @@ public class AMD64HotSpotNodeLIRBuilder extends AMD64NodeLIRBuilder implements H
     @MatchRule("(If (FloatLessThan=compare value (Read=access (Compression=compress object) ConstantLocation=location)))")
     public ComplexMatchResult ifCompareCompressedMemory(IfNode root, CompareNode compare, CompressionNode compress, ValueNode value, ConstantLocationNode location, Access access) {
         if (canFormCompressedMemory(compress, location)) {
-            PlatformKind cmpKind = gen.getPlatformKind(compare.x().stamp());
+            PlatformKind cmpKind = gen.getLIRKind(compare.getX().stamp()).getPlatformKind();
             if (cmpKind instanceof Kind) {
                 Kind kind = (Kind) cmpKind;
                 return builder -> {
@@ -358,7 +300,7 @@ public class AMD64HotSpotNodeLIRBuilder extends AMD64NodeLIRBuilder implements H
     @MatchRule("(FloatingRead (Pi (Compression=compress object)) ConstantLocation=location)")
     public ComplexMatchResult readCompressed(Access root, CompressionNode compress, ConstantLocationNode location) {
         if (canFormCompressedMemory(compress, location)) {
-            PlatformKind readKind = getGen().getPlatformKind(root.asNode().stamp());
+            LIRKind readKind = getGen().getLIRKind(root.asNode().stamp());
             return builder -> {
                 return getGen().emitLoad(readKind, makeCompressedAddress(compress, location), getState(root));
             };
@@ -370,7 +312,7 @@ public class AMD64HotSpotNodeLIRBuilder extends AMD64NodeLIRBuilder implements H
     @MatchRule("(Write (Pi (Compression=compress object)) ConstantLocation=location value)")
     public ComplexMatchResult writeCompressed(Access root, CompressionNode compress, ConstantLocationNode location, ValueNode value) {
         if (canFormCompressedMemory(compress, location)) {
-            PlatformKind readKind = getGen().getPlatformKind(value.asNode().stamp());
+            LIRKind readKind = getGen().getLIRKind(value.asNode().stamp());
             return builder -> {
                 getGen().emitStore(readKind, makeCompressedAddress(compress, location), operand(value), getState(root));
                 return null;

@@ -185,7 +185,7 @@ public class AMD64Assembler extends Assembler {
     }
 
     private void emitArithImm8(int op, Register dst, int imm8) {
-        int encode = prefixAndEncode(op, dst.encoding, true);
+        int encode = prefixAndEncode(op, false, dst.encoding, true);
         emitByte(0x80);
         emitByte(0xC0 | encode);
         emitByte(imm8);
@@ -560,7 +560,7 @@ public class AMD64Assembler extends Assembler {
     }
 
     public final void cmpb(Register dst, Register src) {
-        int encode = prefixAndEncode(dst.encoding, src.encoding, true);
+        int encode = prefixAndEncode(dst.encoding, true, src.encoding, true);
         emitByte(0x3A);
         emitByte(0xC0 | encode);
     }
@@ -1137,7 +1137,7 @@ public class AMD64Assembler extends Assembler {
     }
 
     public final void movsbl(Register dst, Register src) {
-        int encode = prefixAndEncode(dst.encoding, src.encoding, true);
+        int encode = prefixAndEncode(dst.encoding, false, src.encoding, true);
         emitByte(0x0F);
         emitByte(0xBE);
         emitByte(0xC0 | encode);
@@ -2042,17 +2042,17 @@ public class AMD64Assembler extends Assembler {
     }
 
     private int prefixAndEncode(int dstEnc, int srcEnc) {
-        return prefixAndEncode(dstEnc, srcEnc, false);
+        return prefixAndEncode(dstEnc, false, srcEnc, false);
     }
 
-    private int prefixAndEncode(int dstEncoding, int srcEncoding, boolean byteinst) {
+    private int prefixAndEncode(int dstEncoding, boolean dstIsByte, int srcEncoding, boolean srcIsByte) {
         int srcEnc = srcEncoding;
         int dstEnc = dstEncoding;
         if (dstEnc < 8) {
             if (srcEnc >= 8) {
                 emitByte(Prefix.REXB);
                 srcEnc -= 8;
-            } else if (byteinst && srcEnc >= 4) {
+            } else if ((srcIsByte && srcEnc >= 4) || (dstIsByte && dstEnc >= 4)) {
                 emitByte(Prefix.REX);
             }
         } else {

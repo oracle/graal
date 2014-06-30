@@ -31,7 +31,7 @@ import com.oracle.graal.jtt.*;
 public class BC_multianewarray02 extends JTTTest {
 
     public static int test(int a) {
-        final BC_multianewarray02[][][][] v = new BC_multianewarray02[3][3][3][3];
+        final DummyTestClass[][][][] v = new DummyTestClass[3][3][3][3];
         return v != null ? a : -1;
     }
 

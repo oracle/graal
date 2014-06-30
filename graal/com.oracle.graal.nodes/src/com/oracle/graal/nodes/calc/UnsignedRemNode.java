@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,7 +23,6 @@
 package com.oracle.graal.nodes.calc;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
@@ -31,34 +30,26 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 
 @NodeInfo(shortName = "|%|")
-public class UnsignedRemNode extends FixedBinaryNode implements Canonicalizable, Lowerable, LIRLowerable {
+public class UnsignedRemNode extends FixedBinaryNode implements Lowerable, LIRLowerable {
 
-    /**
-     * Used by {@code NodeIntrinsic} in {@code UnsignedMathSubstitutions}.
-     */
-    @SuppressWarnings("unused")
-    private UnsignedRemNode(Kind kind, ValueNode x, ValueNode y) {
-        this(StampFactory.forKind(kind), x, y);
-    }
-
-    public UnsignedRemNode(Stamp stamp, ValueNode x, ValueNode y) {
-        super(stamp, x, y);
+    public UnsignedRemNode(ValueNode x, ValueNode y) {
+        super(x.stamp().unrestricted(), x, y);
     }
 
     @Override
-    public Node canonical(CanonicalizerTool tool) {
-        if (x().isConstant() && y().isConstant()) {
-            long yConst = y().asConstant().asLong();
+    public ValueNode canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
+        if (forX.isConstant() && forY.isConstant()) {
+            long yConst = forY.asConstant().asLong();
             if (yConst == 0) {
                 return this; // this will trap, cannot canonicalize
             }
-            return ConstantNode.forIntegerStamp(stamp(), UnsignedMath.remainder(x().asConstant().asLong(), yConst), graph());
-        } else if (y().isConstant()) {
-            long c = y().asConstant().asLong();
+            return ConstantNode.forIntegerStamp(stamp(), UnsignedMath.remainder(forX.asConstant().asLong(), yConst));
+        } else if (forY.isConstant()) {
+            long c = forY.asConstant().asLong();
             if (c == 1) {
-                return ConstantNode.forIntegerStamp(stamp(), 0, graph());
+                return ConstantNode.forIntegerStamp(stamp(), 0);
             } else if (CodeUtil.isPowerOf2(c)) {
-                return graph().unique(new AndNode(stamp(), x(), ConstantNode.forIntegerStamp(stamp(), c - 1, graph())));
+                return new AndNode(forX, ConstantNode.forIntegerStamp(stamp(), c - 1));
             }
         }
         return this;
@@ -71,11 +62,17 @@ public class UnsignedRemNode extends FixedBinaryNode implements Canonicalizable,
 
     @Override
     public void generate(NodeLIRBuilderTool gen) {
-        gen.setResult(this, gen.getLIRGeneratorTool().emitURem(gen.operand(x()), gen.operand(y()), gen.state(this)));
+        gen.setResult(this, gen.getLIRGeneratorTool().emitURem(gen.operand(getX()), gen.operand(getY()), gen.state(this)));
     }
 
     @Override
     public boolean canDeoptimize() {
-        return !(y().stamp() instanceof IntegerStamp) || ((IntegerStamp) y().stamp()).contains(0);
+        return !(getY().stamp() instanceof IntegerStamp) || ((IntegerStamp) getY().stamp()).contains(0);
     }
+
+    @NodeIntrinsic
+    public static native int unsignedRemainder(int a, int b);
+
+    @NodeIntrinsic
+    public static native long unsignedRemainder(long a, long b);
 }

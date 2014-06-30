@@ -30,9 +30,12 @@ import com.oracle.graal.jtt.*;
  */
 public class BC_instanceof extends JTTTest {
 
+    private static class TestClass {
+    }
+
     static Object object2 = new Object();
     static Object object3 = "";
-    static Object object4 = new BC_instanceof();
+    static Object object4 = new TestClass();
 
     public static boolean test(int arg) {
         Object obj;
@@ -45,7 +48,7 @@ public class BC_instanceof extends JTTTest {
         } else {
             obj = null;
         }
-        return obj instanceof BC_instanceof;
+        return obj instanceof TestClass;
     }
 
     @Test

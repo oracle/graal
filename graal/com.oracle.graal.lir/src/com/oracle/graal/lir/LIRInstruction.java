@@ -46,12 +46,44 @@ public abstract class LIRInstruction {
      * methods. Clients of the class must only call the doValue method that takes additional
      * parameters.
      */
-    public abstract static class ValueProcedure {
+    public abstract static class InstructionValueProcedure {
 
         /**
          * Iterator method to be overwritten. This version of the iterator does not take additional
          * parameters to keep the signature short.
-         * 
+         *
+         * @param instruction The current instruction.
+         * @param value The value that is iterated.
+         * @return The new value to replace the value that was passed in.
+         */
+        protected Value doValue(LIRInstruction instruction, Value value) {
+            throw GraalInternalError.shouldNotReachHere("One of the doValue() methods must be overwritten");
+        }
+
+        /**
+         * Iterator method to be overwritten. This version of the iterator gets additional
+         * parameters about the processed value.
+         *
+         * @param instruction The current instruction.
+         * @param value The value that is iterated.
+         * @param mode The operand mode for the value.
+         * @param flags A set of flags for the value.
+         * @return The new value to replace the value that was passed in.
+         */
+        public Value doValue(LIRInstruction instruction, Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
+            return doValue(instruction, value);
+        }
+    }
+
+    /**
+     * Similar to {@link InstructionValueProcedure} but without an {@link LIRInstruction} parameter.
+     */
+    public abstract static class ValueProcedure extends InstructionValueProcedure {
+
+        /**
+         * Iterator method to be overwritten. This version of the iterator does not take additional
+         * parameters to keep the signature short.
+         *
          * @param value The value that is iterated.
          * @return The new value to replace the value that was passed in.
          */
@@ -62,14 +94,24 @@ public abstract class LIRInstruction {
         /**
          * Iterator method to be overwritten. This version of the iterator gets additional
          * parameters about the processed value.
-         * 
+         *
          * @param value The value that is iterated.
          * @param mode The operand mode for the value.
          * @param flags A set of flags for the value.
          * @return The new value to replace the value that was passed in.
          */
-        public Value doValue(Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
+        protected Value doValue(Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
             return doValue(value);
+        }
+
+        @Override
+        final protected Value doValue(LIRInstruction instruction, Value value) {
+            throw GraalInternalError.shouldNotReachHere("This doValue() methods should never be called");
+        }
+
+        @Override
+        final public Value doValue(LIRInstruction instruction, Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
+            return doValue(value, mode, flags);
         }
     }
 
@@ -255,23 +297,23 @@ public abstract class LIRInstruction {
         return false;
     }
 
-    public final void forEachInput(ValueProcedure proc) {
+    public final void forEachInput(InstructionValueProcedure proc) {
         instructionClass.forEachUse(this, proc);
     }
 
-    public final void forEachAlive(ValueProcedure proc) {
+    public final void forEachAlive(InstructionValueProcedure proc) {
         instructionClass.forEachAlive(this, proc);
     }
 
-    public final void forEachTemp(ValueProcedure proc) {
+    public final void forEachTemp(InstructionValueProcedure proc) {
         instructionClass.forEachTemp(this, proc);
     }
 
-    public final void forEachOutput(ValueProcedure proc) {
+    public final void forEachOutput(InstructionValueProcedure proc) {
         instructionClass.forEachDef(this, proc);
     }
 
-    public final void forEachState(ValueProcedure proc) {
+    public final void forEachState(InstructionValueProcedure proc) {
         instructionClass.forEachState(this, proc);
     }
 
@@ -286,7 +328,7 @@ public abstract class LIRInstruction {
      * Subclasses can override this method. The default implementation processes all Input operands
      * as the hints for an Output operand, and all Output operands as the hints for an Input
      * operand.
-     * 
+     *
      * @param value The value the hints are needed for.
      * @param mode The operand mode of the value.
      * @param proc The procedure invoked for all the hints. If the procedure returns a non-null
@@ -294,7 +336,7 @@ public abstract class LIRInstruction {
      *            clients can stop the iteration once a suitable hint has been found.
      * @return The non-null value returned by the procedure, or null.
      */
-    public Value forEachRegisterHint(Value value, OperandMode mode, ValueProcedure proc) {
+    public Value forEachRegisterHint(Value value, OperandMode mode, InstructionValueProcedure proc) {
         return instructionClass.forEachRegisterHint(this, mode, proc);
     }
 

@@ -43,29 +43,31 @@ public class Field_get03 extends JTTTest {
 
     static {
         try {
-            ByteField = Field_get03.class.getField("byteField");
-            ShortField = Field_get03.class.getField("shortField");
-            CharField = Field_get03.class.getField("charField");
-            IntField = Field_get03.class.getField("intField");
-            LongField = Field_get03.class.getField("longField");
-            FloatField = Field_get03.class.getField("floatField");
-            DoubleField = Field_get03.class.getField("doubleField");
-            BooleanField = Field_get03.class.getField("booleanField");
+            ByteField = TestClass.class.getField("byteField");
+            ShortField = TestClass.class.getField("shortField");
+            CharField = TestClass.class.getField("charField");
+            IntField = TestClass.class.getField("intField");
+            LongField = TestClass.class.getField("longField");
+            FloatField = TestClass.class.getField("floatField");
+            DoubleField = TestClass.class.getField("doubleField");
+            BooleanField = TestClass.class.getField("booleanField");
         } catch (SecurityException | NoSuchFieldException e) {
             throw new RuntimeException(e);
         }
     }
 
-    private static final Field_get03 object = new Field_get03();
+    private static class TestClass {
+        public final byte byteField = 11;
+        public final short shortField = 12;
+        public final char charField = 13;
+        public final int intField = 14;
+        public final long longField = 15;
+        public final float floatField = 16;
+        public final double doubleField = 17;
+        public final boolean booleanField = true;
+    }
 
-    public final byte byteField = 11;
-    public final short shortField = 12;
-    public final char charField = 13;
-    public final int intField = 14;
-    public final long longField = 15;
-    public final float floatField = 16;
-    public final double doubleField = 17;
-    public final boolean booleanField = true;
+    private static final TestClass object = new TestClass();
 
     public static boolean test(int arg) throws IllegalAccessException {
         if (arg == 0) {

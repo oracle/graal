@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,54 +24,54 @@ package com.oracle.graal.truffle.nodes.arithmetic;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
+import com.oracle.graal.nodes.util.*;
 import com.oracle.truffle.api.*;
 
 /**
  * Node representing an exact integer substraction that will throw an {@link ArithmeticException} in
  * case the addition would overflow the 32 bit range.
  */
-public class IntegerSubExactNode extends IntegerSubNode implements Canonicalizable, IntegerExactArithmeticNode {
+public class IntegerSubExactNode extends IntegerSubNode implements IntegerExactArithmeticNode {
 
     public IntegerSubExactNode(ValueNode x, ValueNode y) {
-        super(StampTool.sub(x.stamp(), y.stamp()), x, y);
+        super(x, y);
         assert x.stamp().isCompatible(y.stamp()) && x.stamp() instanceof IntegerStamp;
     }
 
     @Override
     public boolean inferStamp() {
-        // TODO Should probably use a specialised version which understands that it can't overflow
-        return updateStamp(StampTool.sub(x().stamp(), y().stamp()));
+        // TODO Should probably use a specialized version which understands that it can't overflow
+        return updateStamp(StampTool.sub(getX().stamp(), getY().stamp()));
     }
 
     @Override
-    public Node canonical(CanonicalizerTool tool) {
-        if (x() == y()) {
-            return ConstantNode.forIntegerStamp(stamp(), 0, graph());
+    public ValueNode canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
+        if (GraphUtil.unproxify(forX) == GraphUtil.unproxify(forY)) {
+            return ConstantNode.forIntegerStamp(stamp(), 0);
         }
-        if (x().isConstant() && y().isConstant()) {
-            Constant xConst = x().asConstant();
-            Constant yConst = y().asConstant();
+        if (forX.isConstant() && forY.isConstant()) {
+            Constant xConst = forX.asConstant();
+            Constant yConst = forY.asConstant();
             assert xConst.getKind() == yConst.getKind();
             try {
                 if (xConst.getKind() == Kind.Int) {
-                    return ConstantNode.forInt(ExactMath.subtractExact(xConst.asInt(), yConst.asInt()), graph());
+                    return ConstantNode.forInt(ExactMath.subtractExact(xConst.asInt(), yConst.asInt()));
                 } else {
                     assert xConst.getKind() == Kind.Long;
-                    return ConstantNode.forLong(ExactMath.subtractExact(xConst.asLong(), yConst.asLong()), graph());
+                    return ConstantNode.forLong(ExactMath.subtractExact(xConst.asLong(), yConst.asLong()));
                 }
             } catch (ArithmeticException ex) {
                 // The operation will result in an overflow exception, so do not canonicalize.
             }
-        } else if (y().isConstant()) {
-            long c = y().asConstant().asLong();
+        } else if (forY.isConstant()) {
+            long c = forY.asConstant().asLong();
             if (c == 0) {
-                return x();
+                return forX;
             }
         }
         return this;
@@ -79,7 +79,7 @@ public class IntegerSubExactNode extends IntegerSubNode implements Canonicalizab
 
     @Override
     public IntegerExactArithmeticSplitNode createSplit(BeginNode next, BeginNode deopt) {
-        return graph().add(new IntegerSubExactSplitNode(stamp(), x(), y(), next, deopt));
+        return graph().add(new IntegerSubExactSplitNode(stamp(), getX(), getY(), next, deopt));
     }
 
     @Override

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -52,7 +52,7 @@ public class SPARCHotSpotSafepointOp extends SPARCLIRInstruction {
     public SPARCHotSpotSafepointOp(LIRFrameState state, HotSpotVMConfig config, LIRGeneratorTool tool) {
         this.state = state;
         this.config = config;
-        temp = tool.newVariable(tool.target().wordKind);
+        temp = tool.newVariable(LIRKind.value(tool.target().wordKind));
     }
 
     @Override

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -197,12 +197,12 @@ public class PTX extends Architecture {
     }
 
     @Override
-    public boolean canStoreValue(RegisterCategory category, PlatformKind platformKind) {
-        if (!(platformKind instanceof Kind)) {
+    public boolean canStoreValue(RegisterCategory category, PlatformKind lirKind) {
+        if (!(lirKind instanceof Kind)) {
             return false;
         }
 
-        Kind kind = (Kind) platformKind;
+        Kind kind = (Kind) lirKind;
         if (category == REG) {
             switch (kind) {
                 case Boolean:

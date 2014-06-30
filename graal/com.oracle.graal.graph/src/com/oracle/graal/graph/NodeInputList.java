@@ -49,6 +49,12 @@ public final class NodeInputList<T extends Node> extends NodeList<T> {
         this.self = self;
     }
 
+    public NodeInputList(Node self, Collection<? extends NodeInterface> elements) {
+        super(elements);
+        assert self.usages().isEmpty();
+        this.self = self;
+    }
+
     @Override
     protected void update(T oldNode, T newNode) {
         self.updateUsages(oldNode, newNode);

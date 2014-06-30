@@ -31,14 +31,16 @@ import com.oracle.graal.jtt.*;
  */
 public class NCE_04 extends JTTTest {
 
-    private static boolean cond = true;
-    public static NCE_04 object = new NCE_04();
+    public static class TestClass {
+        int field1;
+        int field2 = 23;
+    }
 
-    int field1;
-    int field2 = 23;
+    private static boolean cond = true;
+    public static TestClass object = new TestClass();
 
     public static int test() {
-        NCE_04 o = object;
+        TestClass o = object;
         if (cond) {
             o.field1 = 22;
         } else {

@@ -28,17 +28,19 @@ import org.junit.*;
 
 import com.oracle.graal.jtt.*;
 
-public class Object_clone02 extends JTTTest implements Cloneable {
+public class Object_clone02 extends JTTTest {
 
-    static final Object_clone02 field = new Object_clone02();
+    private static class TestClass implements Cloneable {
+        @SuppressWarnings("unused")
+        private boolean tryClone(int i) throws CloneNotSupportedException {
+            return this == this.clone();
+        }
+    }
+
+    static final TestClass field = new TestClass();
 
     public static boolean test(int i) throws CloneNotSupportedException {
         return field.tryClone(i);
-    }
-
-    @SuppressWarnings("unused")
-    private boolean tryClone(int i) throws CloneNotSupportedException {
-        return this == this.clone();
     }
 
     @Test

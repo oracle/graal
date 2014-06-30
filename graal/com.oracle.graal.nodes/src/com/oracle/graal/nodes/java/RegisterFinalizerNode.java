@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,33 +35,33 @@ import com.oracle.graal.nodes.spi.*;
  * This node is used to perform the finalizer registration at the end of the java.lang.Object
  * constructor.
  */
-public final class RegisterFinalizerNode extends AbstractStateSplit implements Canonicalizable, LIRLowerable, Virtualizable, DeoptimizingNode.DeoptAfter {
+public final class RegisterFinalizerNode extends AbstractStateSplit implements Canonicalizable.Unary<ValueNode>, LIRLowerable, Virtualizable, DeoptimizingNode.DeoptAfter {
 
     @Input(InputType.State) private FrameState deoptState;
-    @Input private ValueNode object;
+    @Input private ValueNode value;
 
-    public ValueNode object() {
-        return object;
+    public RegisterFinalizerNode(ValueNode value) {
+        super(StampFactory.forVoid());
+        this.value = value;
     }
 
-    public RegisterFinalizerNode(ValueNode object) {
-        super(StampFactory.forVoid());
-        this.object = object;
+    public ValueNode getValue() {
+        return value;
     }
 
     @Override
     public void generate(NodeLIRBuilderTool gen) {
         ForeignCallLinkage linkage = gen.getLIRGeneratorTool().getForeignCalls().lookupForeignCall(REGISTER_FINALIZER);
-        gen.getLIRGeneratorTool().emitForeignCall(linkage, gen.state(this), gen.operand(object()));
+        gen.getLIRGeneratorTool().emitForeignCall(linkage, gen.state(this), gen.operand(getValue()));
     }
 
     @Override
-    public Node canonical(CanonicalizerTool tool) {
-        if (!(object.stamp() instanceof ObjectStamp)) {
+    public ValueNode canonical(CanonicalizerTool tool, ValueNode forValue) {
+        if (!(forValue.stamp() instanceof ObjectStamp)) {
             return this;
         }
 
-        ObjectStamp stamp = (ObjectStamp) object.stamp();
+        ObjectStamp stamp = (ObjectStamp) forValue.stamp();
 
         boolean needsCheck = true;
         if (stamp.isExactType()) {
@@ -84,7 +84,7 @@ public final class RegisterFinalizerNode extends AbstractStateSplit implements C
 
     @Override
     public void virtualize(VirtualizerTool tool) {
-        State state = tool.getObjectState(object);
+        State state = tool.getObjectState(getValue());
         if (state != null && !state.getVirtualObject().type().hasFinalizer()) {
             tool.delete();
         }

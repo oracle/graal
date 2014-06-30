@@ -33,7 +33,7 @@ public class DeadCodeEliminationPhase extends Phase {
     private static final DebugMetric metricNodesRemoved = Debug.metric("NodesRemoved");
 
     @Override
-    protected void run(StructuredGraph graph) {
+    public void run(StructuredGraph graph) {
         NodeFlood flood = graph.createNodeFlood();
 
         flood.add(graph.start());

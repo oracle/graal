@@ -45,7 +45,7 @@ class CastCheckExtractor {
     private static CastCheckExtractor extractCastCheckInfo(LogicNode x, LogicNode y) {
         if (x instanceof IsNullNode) {
             IsNullNode isNull = (IsNullNode) x;
-            ValueNode subject = isNull.object();
+            ValueNode subject = isNull.getValue();
             if (isInstanceOfCheckOn(y, subject)) {
                 InstanceOfNode iOf = (InstanceOfNode) y;
                 return new CastCheckExtractor(iOf.type(), subject);
@@ -82,6 +82,6 @@ class CastCheckExtractor {
             return false;
         }
         InstanceOfNode io = (InstanceOfNode) cond;
-        return io.object() == subject;
+        return io.getValue() == subject;
     }
 }

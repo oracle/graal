@@ -31,10 +31,12 @@ import com.oracle.graal.jtt.*;
  */
 public class VN_Field02 extends JTTTest {
 
-    private static boolean cond = true;
-    static final VN_Field02 object = new VN_Field02();
+    private static class TestClass {
+        int field = 9;
+    }
 
-    int field = 9;
+    private static boolean cond = true;
+    static final TestClass object = new TestClass();
 
     public static int test(int arg) {
         if (arg == 0) {
@@ -50,7 +52,7 @@ public class VN_Field02 extends JTTTest {
     }
 
     private static int test1() {
-        VN_Field02 a = object;
+        TestClass a = object;
         int c = a.field;
         if (cond) {
             return c + a.field;
@@ -59,9 +61,9 @@ public class VN_Field02 extends JTTTest {
     }
 
     private static int test2() {
-        VN_Field02 a = object;
+        TestClass a = object;
         if (cond) {
-            VN_Field02 b = object;
+            TestClass b = object;
             return a.field + b.field;
         }
         return 0;
@@ -69,9 +71,9 @@ public class VN_Field02 extends JTTTest {
 
     @SuppressWarnings("all")
     private static int test3() {
-        VN_Field02 a = null;
+        TestClass a = null;
         if (cond) {
-            VN_Field02 b = null;
+            TestClass b = null;
             return a.field + b.field;
         }
         return 0;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -61,10 +61,7 @@ public class CustomizedUnsafeStoreMacroNode extends NeverPartOfCompilationNode i
                 locationIdentity = ObjectLocationIdentity.create(locationArgument.asConstant());
             }
 
-            UnsafeStoreNode unsafeStoreNode = graph().add(
-                            new UnsafeStoreNode(objectArgument, offsetArgument, valueArgument, this.getTargetMethod().getSignature().getParameterKind(VALUE_ARGUMENT_INDEX), locationIdentity));
-            unsafeStoreNode.setStateAfter(this.stateAfter());
-            return unsafeStoreNode;
+            return new UnsafeStoreNode(objectArgument, offsetArgument, valueArgument, this.getTargetMethod().getSignature().getParameterKind(VALUE_ARGUMENT_INDEX), locationIdentity, stateAfter());
         }
         return this;
     }

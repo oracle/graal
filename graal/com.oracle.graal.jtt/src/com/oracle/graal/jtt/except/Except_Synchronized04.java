@@ -30,27 +30,30 @@ import com.oracle.graal.jtt.*;
 
 public class Except_Synchronized04 extends JTTTest {
 
-    static final Except_Synchronized04 object = new Except_Synchronized04();
+    private static class TestClass {
 
-    final int x = 1;
+        final int x = 1;
+
+        @SuppressWarnings("all")
+        public int test2(int i) throws Exception {
+            try {
+                synchronized (Except_Synchronized04.class) {
+                    TestClass object = null;
+                    return object.x;
+                }
+            } catch (NullPointerException e) {
+                return 2;
+            }
+        }
+    }
+
+    static final TestClass object = new TestClass();
 
     public static int test(int i) throws Exception {
         if (i == 0) {
             return 0;
         }
         return object.test2(i);
-    }
-
-    @SuppressWarnings("all")
-    public int test2(int i) throws Exception {
-        try {
-            synchronized (Except_Synchronized04.class) {
-                Except_Synchronized04 object = null;
-                return object.x;
-            }
-        } catch (NullPointerException e) {
-            return 2;
-        }
     }
 
     @Test

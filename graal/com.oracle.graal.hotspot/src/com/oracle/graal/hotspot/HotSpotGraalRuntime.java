@@ -52,7 +52,6 @@ import com.oracle.graal.hotspot.debug.*;
 import com.oracle.graal.hotspot.events.*;
 import com.oracle.graal.hotspot.logging.*;
 import com.oracle.graal.hotspot.meta.*;
-import com.oracle.graal.java.*;
 import com.oracle.graal.options.*;
 import com.oracle.graal.printer.*;
 import com.oracle.graal.replacements.*;
@@ -124,9 +123,9 @@ public final class HotSpotGraalRuntime implements GraalRuntime, RuntimeProvider,
 
         TTY.initialize(Options.LogFile.getStream());
 
-        if (Log.getValue() == null && Meter.getValue() == null && Time.getValue() == null && Dump.getValue() == null) {
+        if (Log.getValue() == null && Meter.getValue() == null && Time.getValue() == null && Dump.getValue() == null && Verify.getValue() == null) {
             if (MethodFilter.getValue() != null) {
-                TTY.println("WARNING: Ignoring MethodFilter option since Log, Meter, Time and Dump options are all null");
+                TTY.println("WARNING: Ignoring MethodFilter option since Log, Meter, Time, Dump and Verify options are all null");
             }
         }
 
@@ -146,9 +145,6 @@ public final class HotSpotGraalRuntime implements GraalRuntime, RuntimeProvider,
                 }
             }
         }
-
-        final HotSpotProviders hostProviders = hostBackend.getProviders();
-        assert VerifyOptionsPhase.checkOptions(hostProviders.getMetaAccess());
 
         // Complete initialization of backends
         try (InitTimer st = timer(hostBackend.getTarget().arch.getName(), ".completeInitialization")) {
@@ -173,7 +169,7 @@ public final class HotSpotGraalRuntime implements GraalRuntime, RuntimeProvider,
         @Option(help = "The runtime configuration to use")
         static final OptionValue<String> GraalRuntime = new OptionValue<>("");
 
-        @Option(help = "File to which logging is sent")
+        @Option(help = "File to which logging is sent.  A %p in the name will be replaced with a string identifying the process, usually the process id.")
         public static final PrintStreamOption LogFile = new PrintStreamOption();
         // @formatter:on
     }

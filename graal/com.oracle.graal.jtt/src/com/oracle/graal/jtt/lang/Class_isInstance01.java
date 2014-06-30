@@ -32,7 +32,7 @@ public final class Class_isInstance01 extends JTTTest {
 
     static final String string = "";
     static final Object obj = new Object();
-    static final Class_isInstance01 thisObject = new Class_isInstance01();
+    static final DummyTestClass thisObject = new DummyTestClass();
 
     public static boolean test(int i) {
         Object object = null;

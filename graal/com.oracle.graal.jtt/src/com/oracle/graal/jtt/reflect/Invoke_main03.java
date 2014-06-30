@@ -32,21 +32,23 @@ import com.oracle.graal.jtt.*;
  */
 public class Invoke_main03 extends JTTTest {
 
+    public static class TestClass {
+        public static void main(String[] args) {
+            field = args[0];
+        }
+    }
+
     static String field;
 
     public static String test(String input) throws IllegalAccessException, InvocationTargetException {
         field = null;
         final String[] args = {input};
-        for (Method m : Invoke_main03.class.getDeclaredMethods()) {
+        for (Method m : TestClass.class.getDeclaredMethods()) {
             if ("main".equals(m.getName())) {
                 m.invoke(null, new Object[]{args});
             }
         }
         return field;
-    }
-
-    public static void main(String[] args) {
-        field = args[0];
     }
 
     @Test

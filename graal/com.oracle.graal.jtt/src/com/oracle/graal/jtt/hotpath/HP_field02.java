@@ -32,25 +32,27 @@ import com.oracle.graal.jtt.*;
  */
 public class HP_field02 extends JTTTest {
 
-    public int a;
-    public int b;
-    public int c;
+    private static class TestClass {
+        public int a;
+        public int b;
+        public int c;
 
-    public static int test(int count) {
-        return new HP_field02().run(count);
+        public int run(int count) {
+            for (int i = 0; i <= count; i++) {
+                if (i > 5) {
+                    a += i;
+                } else if (i > 7) {
+                    b += i;
+                } else {
+                    c += i;
+                }
+            }
+            return a + b + c;
+        }
     }
 
-    public int run(int count) {
-        for (int i = 0; i <= count; i++) {
-            if (i > 5) {
-                a += i;
-            } else if (i > 7) {
-                b += i;
-            } else {
-                c += i;
-            }
-        }
-        return a + b + c;
+    public static int test(int count) {
+        return new TestClass().run(count);
     }
 
     @Test

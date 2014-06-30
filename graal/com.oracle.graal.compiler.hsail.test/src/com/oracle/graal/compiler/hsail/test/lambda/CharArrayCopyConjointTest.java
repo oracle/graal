@@ -20,18 +20,36 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.common.spi;
+package com.oracle.graal.compiler.hsail.test.lambda;
 
-import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.hsail.test.infra.*;
+
+import org.junit.*;
 
 /**
- * This interface can be used to access platform and VM specific kinds.
+ * Tests copying a char array where src and dest overlap.
  */
-public interface PlatformKindTool {
+public class CharArrayCopyConjointTest extends GraalKernelTester {
 
-    PlatformKind getIntegerKind(int bits);
+    final static int MAXOUTSIZ = 100;
+    final static int NUM = 20;
 
-    PlatformKind getFloatingKind(int bits);
+    @Result char[][] outArray = new char[NUM][MAXOUTSIZ];
 
-    PlatformKind getObjectKind();
+    @Override
+    public void runTest() {
+        for (int i = 0; i < NUM; i++) {
+            for (int j = 0; j < outArray[i].length; j++) {
+                outArray[i][j] = (char) (i + j);
+            }
+        }
+        dispatchLambdaKernel(NUM, (gid) -> {
+            System.arraycopy(outArray[gid], 0, outArray[gid], gid % NUM, NUM);
+        });
+    }
+
+    @Test
+    public void testUsingLambdaMethod() {
+        testGeneratedHsailUsingLambdaMethod();
+    }
 }

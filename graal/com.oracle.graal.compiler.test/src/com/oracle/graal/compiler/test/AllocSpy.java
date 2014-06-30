@@ -39,11 +39,11 @@ import com.google.monitoring.runtime.instrumentation.*;
  * trace is governed by the value of the "AllocSpy.ContextSize" system property (default is 5).
  * <p>
  * Using this facility requires using -javaagent on the command line. For example:
- * 
+ *
  * <pre>
  * mx --vm server unittest -javaagent:lib/java-allocation-instrumenter.jar -dsa -DAllocSpy.ContextSize=6 BC_iadd2
  * </pre>
- * 
+ *
  * @see #SampleBytes
  * @see #SampleInstances
  * @see #HistogramLimit
@@ -237,8 +237,8 @@ final class AllocSpy implements AutoCloseable {
                     } else {
                         if (!excludeFrame(className)) {
                             sb.append("type=").append(desc);
-                            if (count != 1) {
-                                sb.append("[]");
+                            if (count != -1) {
+                                sb.append('[').append(count).append(']');
                             }
                             append(sb.append('\n'), e);
                         }

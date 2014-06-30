@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,9 +23,6 @@
 package com.oracle.graal.lir.gen;
 
 import static com.oracle.graal.api.code.ValueUtil.*;
-import static com.oracle.graal.api.meta.Value.*;
-import static com.oracle.graal.compiler.common.GraalOptions.*;
-import static com.oracle.graal.lir.LIR.*;
 import static com.oracle.graal.lir.LIRValueUtil.*;
 
 import java.util.*;
@@ -42,13 +39,12 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.BlockEndOp;
 import com.oracle.graal.lir.StandardOp.LabelOp;
-import com.oracle.graal.lir.StandardOp.NoOp;
 import com.oracle.graal.options.*;
 
 /**
  * This class traverses the HIR instructions and generates LIR instructions from them.
  */
-public abstract class LIRGenerator implements LIRGeneratorTool, PlatformKindTool {
+public abstract class LIRGenerator implements LIRGeneratorTool, LIRKindTool {
 
     public static class Options {
         // @formatter:off
@@ -63,97 +59,6 @@ public abstract class LIRGenerator implements LIRGeneratorTool, PlatformKindTool
     private final CallingConvention cc;
 
     private AbstractBlock<?> currentBlock;
-
-    /**
-     * Handle for an operation that loads a constant into a variable. The operation starts in the
-     * first block where the constant is used but will eventually be
-     * {@linkplain LIRGenerator#insertConstantLoads() moved} to a block dominating all usages of the
-     * constant.
-     */
-    public static class LoadConstant implements Comparable<LoadConstant> {
-        /**
-         * The index of {@link #op} within {@link #block}'s instruction list or -1 if {@code op} is
-         * to be moved to a dominator block.
-         */
-        int index;
-
-        /**
-         * The operation that loads the constant.
-         */
-        private final LIRInstruction op;
-
-        /**
-         * The block that does or will contain {@link #op}. This is initially the block where the
-         * first usage of the constant is seen during LIR generation.
-         */
-        AbstractBlock<?> block;
-
-        /**
-         * The variable into which the constant is loaded.
-         */
-        final Variable variable;
-
-        public LoadConstant(Variable variable, AbstractBlock<?> block, int index, LIRInstruction op) {
-            this.variable = variable;
-            this.block = block;
-            this.index = index;
-            this.op = op;
-        }
-
-        /**
-         * Sorts {@link LoadConstant} objects according to their enclosing blocks. This is used to
-         * group loads per block in {@link LIRGenerator#insertConstantLoads()}.
-         */
-        public int compareTo(LoadConstant o) {
-            if (block.getId() < o.block.getId()) {
-                return -1;
-            }
-            if (block.getId() > o.block.getId()) {
-                return 1;
-            }
-            return 0;
-        }
-
-        @Override
-        public String toString() {
-            return block + "#" + op;
-        }
-
-        /**
-         * Removes the {@link #op} from its original location if it is still at that location.
-         */
-        public void unpin(LIR lir) {
-            if (index >= 0) {
-                // Replace the move with a filler op so that the operation
-                // list does not need to be adjusted.
-                List<LIRInstruction> instructions = lir.getLIRforBlock(block);
-                instructions.set(index, new NoOp(null, -1));
-                index = -1;
-            }
-        }
-
-        public AbstractBlock<?> getBlock() {
-            return block;
-        }
-
-        public void setBlock(AbstractBlock<?> block) {
-            this.block = block;
-        }
-
-        public Variable getVariable() {
-            return variable;
-        }
-
-        public int getIndex() {
-            return index;
-        }
-
-        public void setIndex(int index) {
-            this.index = index;
-        }
-    }
-
-    private Map<Constant, LoadConstant> constantLoads;
 
     private LIRGenerationResult res;
 
@@ -198,12 +103,12 @@ public abstract class LIRGenerator implements LIRGeneratorTool, PlatformKindTool
     /**
      * Creates a new {@linkplain Variable variable}.
      *
-     * @param platformKind The kind of the new variable.
+     * @param lirKind The kind of the new variable.
      * @return a new variable
      */
     @Override
-    public Variable newVariable(PlatformKind platformKind) {
-        return new Variable(platformKind, res.getLIR().nextVariable());
+    public Variable newVariable(LIRKind lirKind) {
+        return new Variable(lirKind, res.getLIR().nextVariable());
     }
 
     @Override
@@ -250,11 +155,8 @@ public abstract class LIRGenerator implements LIRGeneratorTool, PlatformKindTool
      * @return the operand representing the ABI defined location used return a value of kind
      *         {@code kind}
      */
-    public AllocatableValue resultOperandFor(Kind kind) {
-        if (kind == Kind.Void) {
-            return ILLEGAL;
-        }
-        return res.getFrameMap().registerConfig.getReturnRegister(kind).asValue(kind);
+    public AllocatableValue resultOperandFor(LIRKind kind) {
+        return res.getFrameMap().registerConfig.getReturnRegister((Kind) kind.getPlatformKind()).asValue(kind);
     }
 
     public void append(LIRInstruction op) {
@@ -328,10 +230,11 @@ public abstract class LIRGenerator implements LIRGeneratorTool, PlatformKindTool
         if (value.getKind().getStackKind() != value.getKind()) {
             // We only have stack-kinds in the LIR, so convert the operand kind for values from the
             // calling convention.
+            LIRKind stackKind = value.getLIRKind().changeType(value.getKind().getStackKind());
             if (isRegister(value)) {
-                return asRegister(value).asValue(value.getKind().getStackKind());
+                return asRegister(value).asValue(stackKind);
             } else if (isStackSlot(value)) {
-                return StackSlot.get(value.getKind().getStackKind(), asStackSlot(value).getRawOffset(), asStackSlot(value).getRawAddFrameSize());
+                return StackSlot.get(stackKind, asStackSlot(value).getRawOffset(), asStackSlot(value).getRawAddFrameSize());
             } else {
                 throw GraalInternalError.shouldNotReachHere();
             }
@@ -409,83 +312,6 @@ public abstract class LIRGenerator implements LIRGeneratorTool, PlatformKindTool
 
     @Override
     public void beforeRegisterAllocation() {
-        insertConstantLoads();
-    }
-
-    /**
-     * Moves deferred {@linkplain LoadConstant loads} of constants into blocks dominating all usages
-     * of the constant. Any operations inserted into a block are guaranteed to be immediately prior
-     * to the first control flow instruction near the end of the block.
-     */
-    private void insertConstantLoads() {
-        if (constantLoads != null) {
-            // Remove loads where all usages are in the same block.
-            for (Iterator<Map.Entry<Constant, LoadConstant>> iter = constantLoads.entrySet().iterator(); iter.hasNext();) {
-                LoadConstant lc = iter.next().getValue();
-
-                // Move loads of constant outside of loops
-                if (OptScheduleOutOfLoops.getValue()) {
-                    AbstractBlock<?> outOfLoopDominator = lc.block;
-                    while (outOfLoopDominator.getLoop() != null) {
-                        outOfLoopDominator = outOfLoopDominator.getDominator();
-                    }
-                    if (outOfLoopDominator != lc.block) {
-                        lc.unpin(res.getLIR());
-                        lc.block = outOfLoopDominator;
-                    }
-                }
-
-                if (lc.index != -1) {
-                    assert res.getLIR().getLIRforBlock(lc.block).get(lc.index) == lc.op;
-                    iter.remove();
-                }
-            }
-            if (constantLoads.isEmpty()) {
-                return;
-            }
-
-            // Sorting groups the loads per block.
-            LoadConstant[] groupedByBlock = constantLoads.values().toArray(new LoadConstant[constantLoads.size()]);
-            Arrays.sort(groupedByBlock);
-
-            int groupBegin = 0;
-            while (true) {
-                int groupEnd = groupBegin + 1;
-                AbstractBlock<?> block = groupedByBlock[groupBegin].block;
-                while (groupEnd < groupedByBlock.length && groupedByBlock[groupEnd].block == block) {
-                    groupEnd++;
-                }
-                int groupSize = groupEnd - groupBegin;
-
-                List<LIRInstruction> ops = res.getLIR().getLIRforBlock(block);
-                int lastIndex = ops.size() - 1;
-                assert ops.get(lastIndex) instanceof BlockEndOp;
-                int insertionIndex = lastIndex;
-                for (int i = Math.max(0, lastIndex - MAX_EXCEPTION_EDGE_OP_DISTANCE_FROM_END); i < lastIndex; i++) {
-                    if (getExceptionEdge(ops.get(i)) != null) {
-                        insertionIndex = i;
-                        break;
-                    }
-                }
-
-                if (groupSize == 1) {
-                    ops.add(insertionIndex, groupedByBlock[groupBegin].op);
-                } else {
-                    assert groupSize > 1;
-                    List<LIRInstruction> moves = new ArrayList<>(groupSize);
-                    for (int i = groupBegin; i < groupEnd; i++) {
-                        moves.add(groupedByBlock[i].op);
-                    }
-                    ops.addAll(insertionIndex, moves);
-                }
-
-                if (groupEnd == groupedByBlock.length) {
-                    break;
-                }
-                groupBegin = groupEnd;
-            }
-            constantLoads = null;
-        }
     }
 
     /**
@@ -520,47 +346,47 @@ public abstract class LIRGenerator implements LIRGeneratorTool, PlatformKindTool
     /**
      * Default implementation: Return the Java stack kind for each stamp.
      */
-    public PlatformKind getPlatformKind(Stamp stamp) {
-        return stamp.getPlatformKind(this);
+    public LIRKind getLIRKind(Stamp stamp) {
+        return stamp.getLIRKind(this);
     }
 
-    public PlatformKind getIntegerKind(int bits) {
+    public LIRKind getIntegerKind(int bits) {
         if (bits <= 8) {
-            return Kind.Byte;
+            return LIRKind.value(Kind.Byte);
         } else if (bits <= 16) {
-            return Kind.Short;
+            return LIRKind.value(Kind.Short);
         } else if (bits <= 32) {
-            return Kind.Int;
+            return LIRKind.value(Kind.Int);
         } else {
             assert bits <= 64;
-            return Kind.Long;
+            return LIRKind.value(Kind.Long);
         }
     }
 
-    public PlatformKind getFloatingKind(int bits) {
+    public LIRKind getFloatingKind(int bits) {
         switch (bits) {
             case 32:
-                return Kind.Float;
+                return LIRKind.value(Kind.Float);
             case 64:
-                return Kind.Double;
+                return LIRKind.value(Kind.Double);
             default:
                 throw GraalInternalError.shouldNotReachHere();
         }
     }
 
-    public PlatformKind getObjectKind() {
-        return Kind.Object;
+    public LIRKind getObjectKind() {
+        return LIRKind.reference(Kind.Object);
     }
 
-    public abstract void emitBitCount(Variable result, Value operand);
-
-    public abstract void emitBitScanForward(Variable result, Value operand);
-
-    public abstract void emitBitScanReverse(Variable result, Value operand);
-
-    public abstract void emitByteSwap(Variable result, Value operand);
-
-    public abstract void emitArrayEquals(Kind kind, Variable result, Value array1, Value array2, Value length);
+    protected LIRKind getAddressKind(Value base, long displacement, Value index) {
+        if (base.getLIRKind().isValue() && (index.equals(Value.ILLEGAL) || index.getLIRKind().isValue())) {
+            return LIRKind.value(target().wordKind);
+        } else if (base.getLIRKind().isReference(0) && displacement == 0L && index.equals(Value.ILLEGAL)) {
+            return LIRKind.reference(target().wordKind);
+        } else {
+            return LIRKind.derivedReference(target().wordKind);
+        }
+    }
 
     public AbstractBlock<?> getCurrentBlock() {
         return currentBlock;
@@ -572,13 +398,5 @@ public abstract class LIRGenerator implements LIRGeneratorTool, PlatformKindTool
 
     public LIRGenerationResult getResult() {
         return res;
-    }
-
-    public Map<Constant, LoadConstant> getConstantLoads() {
-        return constantLoads;
-    }
-
-    public void setConstantLoads(Map<Constant, LoadConstant> constantLoads) {
-        this.constantLoads = constantLoads;
     }
 }

@@ -213,14 +213,8 @@ public abstract class GraalCompilerTest extends GraalTest {
     protected int countUnusedConstants(StructuredGraph graph) {
         int total = 0;
         for (ConstantNode node : getConstantNodes(graph)) {
-            if (!ConstantNodeRecordsUsages) {
-                if (node.gatherUsages(graph).isEmpty()) {
-                    total++;
-                }
-            } else {
-                if (node.usages().isEmpty()) {
-                    total++;
-                }
+            if (node.usages().isEmpty()) {
+                total++;
             }
         }
         return total;
@@ -275,7 +269,7 @@ public abstract class GraalCompilerTest extends GraalTest {
             }
             result.append("\n");
             for (Node node : schedule.getBlockToNodesMap().get(block)) {
-                if (node.recordsUsages()) {
+                if (node.isAlive() && node.recordsUsages()) {
                     if (!excludeVirtual || !(node instanceof VirtualObjectNode || node instanceof ProxyNode)) {
                         int id;
                         if (canonicalId.get(node) != null) {

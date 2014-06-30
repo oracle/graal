@@ -94,11 +94,14 @@ public abstract class BasePhase<C> {
 
     public final void apply(final StructuredGraph graph, final C context, final boolean dumpGraph) {
         try (TimerCloseable a = timer.start(); Scope s = Debug.scope(getClass(), this); Closeable c = memUseTracker.start()) {
-            BasePhase.this.run(graph, context);
+            this.run(graph, context);
             executionCount.increment();
             inputNodesCount.add(graph.getNodeCount());
             if (dumpGraph && Debug.isDumpEnabled()) {
                 Debug.dump(graph, "After phase %s", getName());
+            }
+            if (Debug.isVerifyEnabled()) {
+                Debug.verify(graph, this, "After phase " + getName());
             }
             assert graph.verify();
         } catch (Throwable t) {

@@ -141,7 +141,7 @@ public abstract class InstanceOfSnippetsTemplates extends AbstractTemplates {
                 assert testValue.isConstant();
                 return LogicConstantNode.forBoolean(result.asConstant().equals(testValue.asConstant()), result.graph());
             }
-            if (condition == null || condition.y() != testValue) {
+            if (condition == null || condition.getY() != testValue) {
                 // Re-use previously generated condition if the trueValue for the test is the same
                 condition = createCompareNode(result.graph(), Condition.EQ, result, testValue);
             }
@@ -208,7 +208,7 @@ public abstract class InstanceOfSnippetsTemplates extends AbstractTemplates {
         }
 
         @Override
-        public void replace(ValueNode oldNode, ValueNode newNode, MemoryMapNode mmap) {
+        public void replace(ValueNode oldNode, ValueNode newNode, MemoryMap mmap) {
             assert newNode instanceof PhiNode;
             assert oldNode == instanceOf;
             newNode.inferStamp();
@@ -234,19 +234,17 @@ public abstract class InstanceOfSnippetsTemplates extends AbstractTemplates {
         public void replaceUsingInstantiation() {
             ValueNode newValue = instantiation.asMaterialization(usage.graph(), trueValue, falseValue);
             usage.replaceAtUsages(newValue);
-            usage.clearInputs();
             assert usage.usages().isEmpty();
             GraphUtil.killWithUnusedFloatingInputs(usage);
         }
 
         @Override
-        public void replace(ValueNode oldNode, ValueNode newNode, MemoryMapNode mmap) {
+        public void replace(ValueNode oldNode, ValueNode newNode, MemoryMap mmap) {
             assert newNode instanceof PhiNode;
             assert oldNode == instanceOf;
             newNode.inferStamp();
             instantiation.initialize(newNode, trueValue, falseValue);
             usage.replaceAtUsages(newNode);
-            usage.clearInputs();
             assert usage.usages().isEmpty();
             GraphUtil.killWithUnusedFloatingInputs(usage);
         }

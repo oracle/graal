@@ -82,6 +82,9 @@ public class ClassSubstitutions {
         return klass.equal(0);
     }
 
+    @MacroSubstitution(macro = ClassGetClassLoader0Node.class, isStatic = false)
+    public static native ClassLoader getClassLoader0(Class<?> thisObj);
+
     @MacroSubstitution(macro = ClassGetSuperclassNode.class, isStatic = false)
     @MethodSubstitution(isStatic = false)
     public static Class<?> getSuperclass(final Class<?> thisObj) {

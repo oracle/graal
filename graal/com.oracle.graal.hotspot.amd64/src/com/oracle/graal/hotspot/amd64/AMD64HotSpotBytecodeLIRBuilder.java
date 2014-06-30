@@ -64,7 +64,7 @@ public class AMD64HotSpotBytecodeLIRBuilder extends BytecodeLIRBuilder {
                 }
             }
         }
-        params[params.length - 1] = rbp.asValue(Kind.Long);
+        params[params.length - 1] = rbp.asValue(LIRKind.value(Kind.Long));
 
         gen.emitIncomingValues(params);
 

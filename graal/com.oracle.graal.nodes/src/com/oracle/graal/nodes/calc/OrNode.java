@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,17 +30,19 @@ import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
+import com.oracle.graal.nodes.util.*;
 
 @NodeInfo(shortName = "|")
-public final class OrNode extends BitLogicNode implements Canonicalizable {
+public final class OrNode extends BitLogicNode {
 
-    public OrNode(Stamp stamp, ValueNode x, ValueNode y) {
-        super(stamp, x, y);
+    public OrNode(ValueNode x, ValueNode y) {
+        super(StampTool.or(x.stamp(), y.stamp()), x, y);
+        assert x.stamp().isCompatible(y.stamp());
     }
 
     @Override
     public boolean inferStamp() {
-        return updateStamp(StampTool.or(x().stamp(), y().stamp()));
+        return updateStamp(StampTool.or(getX().stamp(), getY().stamp()));
     }
 
     @Override
@@ -50,31 +52,31 @@ public final class OrNode extends BitLogicNode implements Canonicalizable {
     }
 
     @Override
-    public Node canonical(CanonicalizerTool tool) {
-        if (x() == y()) {
-            return x();
+    public ValueNode canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
+        if (GraphUtil.unproxify(forX) == GraphUtil.unproxify(forY)) {
+            return forX;
         }
-        if (x().isConstant() && !y().isConstant()) {
-            return graph().unique(new OrNode(stamp(), y(), x()));
+        if (forX.isConstant() && !forY.isConstant()) {
+            return new OrNode(forY, forX);
         }
-        if (x().isConstant()) {
-            return ConstantNode.forPrimitive(stamp(), evalConst(x().asConstant(), y().asConstant()), graph());
-        } else if (y().isConstant()) {
-            long rawY = y().asConstant().asLong();
+        if (forX.isConstant()) {
+            return ConstantNode.forPrimitive(stamp(), evalConst(forX.asConstant(), forY.asConstant()));
+        } else if (forY.isConstant()) {
+            long rawY = forY.asConstant().asLong();
             long mask = IntegerStamp.defaultMask(PrimitiveStamp.getBits(stamp()));
             if ((rawY & mask) == mask) {
-                return ConstantNode.forIntegerStamp(stamp(), mask, graph());
+                return ConstantNode.forIntegerStamp(stamp(), mask);
             }
             if ((rawY & mask) == 0) {
-                return x();
+                return forX;
             }
-            return BinaryNode.reassociate(this, ValueNode.isConstantPredicate());
+            return BinaryNode.reassociate(this, ValueNode.isConstantPredicate(), forX, forY);
         }
         return this;
     }
 
     @Override
     public void generate(NodeMappableLIRBuilder builder, ArithmeticLIRGenerator gen) {
-        builder.setResult(this, gen.emitOr(builder.operand(x()), builder.operand(y())));
+        builder.setResult(this, gen.emitOr(builder.operand(getX()), builder.operand(getY())));
     }
 }

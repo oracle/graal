@@ -51,10 +51,9 @@ public abstract class Stamp {
     public abstract Kind getStackKind();
 
     /**
-     * Gets a platform dependent {@link PlatformKind} that can be used to store a value of this
-     * stamp.
+     * Gets a platform dependent {@link LIRKind} that can be used to store a value of this stamp.
      */
-    public abstract PlatformKind getPlatformKind(PlatformKindTool tool);
+    public abstract LIRKind getLIRKind(LIRKindTool tool);
 
     /**
      * Returns the union of this stamp and the given stamp. Typically used to create stamps for phi

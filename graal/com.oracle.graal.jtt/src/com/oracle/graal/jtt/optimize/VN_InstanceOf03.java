@@ -33,17 +33,17 @@ public class VN_InstanceOf03 extends JTTTest {
 
     private static boolean cond = true;
 
-    static final Object object = new VN_InstanceOf03();
+    static final Object object = new DummyTestClass();
 
     public static boolean test() {
         return foo();
     }
 
     private static boolean foo() {
-        Object obj = new VN_InstanceOf03();
-        boolean a = obj instanceof VN_InstanceOf03;
+        Object obj = new DummyTestClass();
+        boolean a = obj instanceof DummyTestClass;
         if (cond) {
-            boolean b = obj instanceof VN_InstanceOf03;
+            boolean b = obj instanceof DummyTestClass;
             return a | b;
         }
         return false;

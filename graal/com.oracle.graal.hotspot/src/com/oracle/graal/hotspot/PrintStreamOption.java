@@ -23,6 +23,7 @@
 package com.oracle.graal.hotspot;
 
 import java.io.*;
+import java.lang.management.*;
 
 import com.oracle.graal.options.*;
 
@@ -44,6 +45,30 @@ public class PrintStreamOption extends OptionValue<String> {
     private volatile PrintStream ps;
 
     /**
+     * Replace any instance of %p with a an identifying name. Try to get it from the RuntimeMXBean
+     * name.
+     * 
+     * @return the name of the file to log to
+     */
+    private String getFilename() {
+        String name = getValue();
+        if (name.contains("%p")) {
+            String runtimeName = ManagementFactory.getRuntimeMXBean().getName();
+            try {
+                int index = runtimeName.indexOf('@');
+                if (index != -1) {
+                    long pid = Long.parseLong(runtimeName.substring(0, index));
+                    runtimeName = Long.toString(pid);
+                }
+                name = name.replaceAll("%p", runtimeName);
+            } catch (NumberFormatException e) {
+
+            }
+        }
+        return name;
+    }
+
+    /**
      * Gets the print stream configured by this option.
      */
     public PrintStream getStream() {
@@ -53,7 +78,7 @@ public class PrintStreamOption extends OptionValue<String> {
                     if (ps == null) {
                         try {
                             final boolean enableAutoflush = true;
-                            ps = new PrintStream(new FileOutputStream(getValue()), enableAutoflush);
+                            ps = new PrintStream(new FileOutputStream(getFilename()), enableAutoflush);
                         } catch (FileNotFoundException e) {
                             throw new RuntimeException("couldn't open file: " + getValue(), e);
                         }

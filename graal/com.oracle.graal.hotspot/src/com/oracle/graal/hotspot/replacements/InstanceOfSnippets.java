@@ -223,7 +223,7 @@ public class InstanceOfSnippets implements Snippets {
         protected Arguments makeArguments(InstanceOfUsageReplacer replacer, LoweringTool tool) {
             if (replacer.instanceOf instanceof InstanceOfNode) {
                 InstanceOfNode instanceOf = (InstanceOfNode) replacer.instanceOf;
-                ValueNode object = instanceOf.object();
+                ValueNode object = instanceOf.getValue();
                 TypeCheckHints hintInfo = new TypeCheckHints(instanceOf.type(), instanceOf.profile(), tool.assumptions(), TypeCheckMinProfileHitProbability.getValue(), TypeCheckMaxHints.getValue());
                 final HotSpotResolvedObjectType type = (HotSpotResolvedObjectType) instanceOf.type();
                 ConstantNode hub = ConstantNode.forConstant(type.klass(), providers.getMetaAccess(), instanceOf.graph());

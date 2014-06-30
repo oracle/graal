@@ -29,6 +29,7 @@ import com.oracle.graal.nodes.java.MethodCallTargetNode;
 
 import java.util.ArrayDeque;
 import java.util.Deque;
+import java.util.Iterator;
 import java.util.LinkedList;
 
 /**
@@ -81,6 +82,7 @@ public class InliningIterator {
             }
         }
 
+        assert invokes.size() == count(start.graph().getInvokes());
         return invokes;
     }
 
@@ -126,5 +128,15 @@ public class InliningIterator {
             }
         }
         return true;
+    }
+
+    private static int count(Iterable<Invoke> invokes) {
+        int count = 0;
+        Iterator<Invoke> iterator = invokes.iterator();
+        while (iterator.hasNext()) {
+            iterator.next();
+            count++;
+        }
+        return count;
     }
 }

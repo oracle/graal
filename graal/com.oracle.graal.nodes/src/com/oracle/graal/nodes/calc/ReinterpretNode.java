@@ -25,7 +25,6 @@ package com.oracle.graal.nodes.calc;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodes.*;
@@ -36,22 +35,15 @@ import com.oracle.graal.nodes.spi.*;
  * of a primitive value to some other incompatible stamp. The new stamp must have the same width as
  * the old stamp.
  */
-public class ReinterpretNode extends FloatingNode implements Canonicalizable, ArithmeticLIRLowerable {
-
-    @Input private ValueNode value;
-
-    public ValueNode value() {
-        return value;
-    }
+public class ReinterpretNode extends UnaryNode implements ArithmeticLIRLowerable {
 
     private ReinterpretNode(Kind to, ValueNode value) {
         this(StampFactory.forKind(to), value);
     }
 
     public ReinterpretNode(Stamp to, ValueNode value) {
-        super(to);
+        super(to, value);
         assert to instanceof PrimitiveStamp;
-        this.value = value;
     }
 
     public Constant evalConst(Constant... inputs) {
@@ -88,24 +80,24 @@ public class ReinterpretNode extends FloatingNode implements Canonicalizable, Ar
     }
 
     @Override
-    public Node canonical(CanonicalizerTool tool) {
-        if (value.isConstant()) {
-            return ConstantNode.forPrimitive(evalConst(value.asConstant()), graph());
+    public ValueNode canonical(CanonicalizerTool tool, ValueNode forValue) {
+        if (forValue.isConstant()) {
+            return ConstantNode.forConstant(evalConst(forValue.asConstant()), null);
         }
-        if (stamp().isCompatible(value.stamp())) {
-            return value;
+        if (stamp().isCompatible(forValue.stamp())) {
+            return forValue;
         }
-        if (value instanceof ReinterpretNode) {
-            ReinterpretNode reinterpret = (ReinterpretNode) value;
-            return value.graph().unique(new ReinterpretNode(stamp(), reinterpret.value()));
+        if (forValue instanceof ReinterpretNode) {
+            ReinterpretNode reinterpret = (ReinterpretNode) forValue;
+            return new ReinterpretNode(stamp(), reinterpret.getValue());
         }
         return this;
     }
 
     @Override
     public void generate(NodeMappableLIRBuilder builder, ArithmeticLIRGenerator gen) {
-        PlatformKind kind = gen.getPlatformKind(stamp());
-        builder.setResult(this, gen.emitReinterpret(kind, builder.operand(value())));
+        LIRKind kind = gen.getLIRKind(stamp());
+        builder.setResult(this, gen.emitReinterpret(kind, builder.operand(getValue())));
     }
 
     public static ValueNode reinterpret(Kind toKind, ValueNode value) {

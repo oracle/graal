@@ -214,7 +214,7 @@ public class PartialEvaluator {
                                     expansionLogger.preExpand(methodCallTargetNode, inlineGraph);
                                 }
                                 List<Node> canonicalizedNodes = methodCallTargetNode.invoke().asNode().usages().snapshot();
-                                Map<Node, Node> inlined = InliningUtil.inline(methodCallTargetNode.invoke(), inlineGraph, false);
+                                Map<Node, Node> inlined = InliningUtil.inline(methodCallTargetNode.invoke(), inlineGraph, false, canonicalizedNodes);
                                 if (TraceTruffleExpansion.getValue()) {
                                     expansionLogger.postExpand(inlined);
                                 }
@@ -280,6 +280,7 @@ public class PartialEvaluator {
                             break;
                         }
                     }
+                    loopsData.deleteUnusedNodes();
                 } while (unrolled);
             } catch (Throwable e) {
                 throw Debug.handle(e);
@@ -297,7 +298,7 @@ public class PartialEvaluator {
 
             @Override
             public int compare(LoopEx o1, LoopEx o2) {
-                return o2.lirLoop().getDepth() - o1.lirLoop().getDepth();
+                return o2.loop().getDepth() - o1.loop().getDepth();
             }
         });
         return sortedLoops;

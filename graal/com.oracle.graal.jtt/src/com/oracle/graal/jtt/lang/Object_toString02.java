@@ -33,7 +33,14 @@ import com.oracle.graal.jtt.*;
 
 public class Object_toString02 extends JTTTest {
 
-    static final Object obj = new Object_toString02();
+    private static class TestClass {
+        @Override
+        public String toString() {
+            return "XYZ";
+        }
+    }
+
+    static final Object obj = new TestClass();
 
     public static String test(int i) {
         Object object = null;
@@ -45,11 +52,6 @@ public class Object_toString02 extends JTTTest {
             object = "string".getClass();
         }
         return object.toString();
-    }
-
-    @Override
-    public String toString() {
-        return "XYZ";
     }
 
     @Test
