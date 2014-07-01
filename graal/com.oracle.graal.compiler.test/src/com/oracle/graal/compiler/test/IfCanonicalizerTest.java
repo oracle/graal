@@ -203,6 +203,7 @@ public class IfCanonicalizerTest extends GraalCompilerTest {
         new CanonicalizerPhase(true).apply(graph, new PhaseContext(getProviders(), new Assumptions(false)));
         for (FrameState fs : param.usages().filter(FrameState.class).snapshot()) {
             fs.replaceFirstInput(param, null);
+            param.safeDelete();
         }
         StructuredGraph referenceGraph = parse(REFERENCE_SNIPPET);
         assertEquals(referenceGraph, graph);
