@@ -113,21 +113,26 @@ public class LoopFragmentInside extends LoopFragment {
             for (PhiNode phi : loopBegin.phis()) {
                 nodes.clear(phi);
             }
+            clearStateNodes(loopBegin);
             for (LoopExitNode exit : exits()) {
-                FrameState exitState = exit.stateAfter();
-                if (exitState != null) {
-                    exitState.applyToVirtual(v -> {
-                        if (v.usages().filter(n -> nodes.isMarked(n) && n != exit).isEmpty()) {
-                            nodes.clear(v);
-                        }
-                    });
-                }
+                clearStateNodes(exit);
                 for (ProxyNode proxy : exit.proxies()) {
                     nodes.clear(proxy);
                 }
             }
         }
         return nodes;
+    }
+
+    private void clearStateNodes(StateSplit stateSplit) {
+        FrameState loopState = stateSplit.stateAfter();
+        if (loopState != null) {
+            loopState.applyToVirtual(v -> {
+                if (v.usages().filter(n -> nodes.isMarked(n) && n != stateSplit).isEmpty()) {
+                    nodes.clear(v);
+                }
+            });
+        }
     }
 
     public NodeIterable<LoopExitNode> exits() {
@@ -202,14 +207,12 @@ public class LoopFragmentInside extends LoopFragment {
 
         NodeBitMap usagesToPatch = nodes.copy();
         for (LoopExitNode exit : exits()) {
-            FrameState exitState = exit.stateAfter();
-            if (exitState != null) {
-                exitState.applyToVirtual(v -> usagesToPatch.markAndGrow(v));
-            }
+            markStateNodes(exit, usagesToPatch);
             for (ProxyNode proxy : exit.proxies()) {
                 usagesToPatch.markAndGrow(proxy);
             }
         }
+        markStateNodes(loopBegin, usagesToPatch);
 
         for (PhiNode phi : loopBegin.phis().snapshot()) {
             if (phi.usages().isEmpty()) {
@@ -256,6 +259,13 @@ public class LoopFragmentInside extends LoopFragment {
             if (deadPhi.isAlive()) {
                 GraphUtil.killWithUnusedFloatingInputs(deadPhi);
             }
+        }
+    }
+
+    private static void markStateNodes(StateSplit stateSplit, NodeBitMap marks) {
+        FrameState exitState = stateSplit.stateAfter();
+        if (exitState != null) {
+            exitState.applyToVirtual(v -> marks.markAndGrow(v));
         }
     }
 
