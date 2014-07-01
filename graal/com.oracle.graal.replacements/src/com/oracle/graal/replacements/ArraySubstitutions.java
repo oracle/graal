@@ -36,6 +36,9 @@ public class ArraySubstitutions {
     public static Object newInstance(Class<?> componentType, int length) throws NegativeArraySizeException {
         // The error cases must be handled here since DynamicNewArrayNode can only deoptimize the
         // caller in response to exceptions.
+        if (length < 0) {
+            throw new NegativeArraySizeException();
+        }
         if (componentType == void.class) {
             throw new IllegalArgumentException();
         }
