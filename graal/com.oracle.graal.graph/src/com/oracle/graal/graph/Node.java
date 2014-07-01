@@ -59,10 +59,10 @@ public abstract class Node implements Cloneable, Formattable {
     static final int ALIVE_ID_START = 0;
 
     /**
-     * Denotes a non-optional node input. This should be applied to exactly the fields of a node
-     * that are of type {@link Node} or {@link NodeInputList}. Nodes that update fields of type
-     * {@link Node} outside of their constructor should call {@link Node#updateUsages(Node, Node)}
-     * just prior to doing the update of the input.
+     * Denotes a non-optional (non-null) node input. This should be applied to exactly the fields of
+     * a node that are of type {@link Node} or {@link NodeInputList}. Nodes that update fields of
+     * type {@link Node} outside of their constructor should call
+     * {@link Node#updateUsages(Node, Node)} just prior to doing the update of the input.
      */
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.FIELD)
@@ -71,8 +71,8 @@ public abstract class Node implements Cloneable, Formattable {
     }
 
     /**
-     * Denotes an optional node input. This should be applied to exactly the fields of a node that
-     * are of type {@link Node} or {@link NodeInputList}. Nodes that update fields of type
+     * Denotes an optional (nullable) node input. This should be applied to exactly the fields of a
+     * node that are of type {@link Node} or {@link NodeInputList}. Nodes that update fields of type
      * {@link Node} outside of their constructor should call {@link Node#updateUsages(Node, Node)}
      * just prior to doing the update of the input.
      */

@@ -624,6 +624,32 @@ public final class NodeClass extends FieldIntrospection {
         }
     }
 
+    private class NodeClassAllSuccessorsIterator extends NodeClassSuccessorsIterator {
+        NodeClassAllSuccessorsIterator(Node node) {
+            super(node, true);
+        }
+
+        @Override
+        void forward() {
+            if (index < getDirectCount()) {
+                index++;
+                if (index < getDirectCount()) {
+                    return;
+                }
+            } else {
+                subIndex++;
+            }
+            while (index < getOffsets().length) {
+                NodeList<Node> list = getNodeList(node, getOffsets()[index]);
+                if (subIndex < list.size()) {
+                    return;
+                }
+                subIndex = 0;
+                index++;
+            }
+        }
+    }
+
     private final class NodeClassInputsWithModCountIterator extends NodeClassInputsIterator {
         private final int modCount;
 
@@ -1170,6 +1196,10 @@ public final class NodeClass extends FieldIntrospection {
                 } else {
                     return new NodeClassSuccessorsIterator(node);
                 }
+            }
+
+            public NodeClassIterator withNullIterator() {
+                return new NodeClassAllSuccessorsIterator(node);
             }
 
             @Override
