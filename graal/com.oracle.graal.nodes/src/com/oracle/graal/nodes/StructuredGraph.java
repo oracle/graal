@@ -109,6 +109,21 @@ public class StructuredGraph extends Graph {
         this.entryBCI = entryBCI;
     }
 
+    public Stamp getReturnStamp() {
+        Stamp returnStamp = null;
+        for (ReturnNode returnNode : getNodes(ReturnNode.class)) {
+            ValueNode result = returnNode.result();
+            if (result != null) {
+                if (returnStamp == null) {
+                    returnStamp = result.stamp();
+                } else {
+                    returnStamp = returnStamp.meet(result.stamp());
+                }
+            }
+        }
+        return returnStamp;
+    }
+
     @Override
     public String toString() {
         StringBuilder buf = new StringBuilder(getClass().getSimpleName() + ":" + graphId);
