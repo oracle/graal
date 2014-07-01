@@ -41,6 +41,25 @@ public interface JavaType {
     String getName();
 
     /**
+     * Returns an unqualified name of this type.
+     *
+     * <pre>
+     *     "Object"
+     *     "Integer"
+     * </pre>
+     */
+    default String getUnqualifiedName() {
+        String name = getName();
+        if (name.indexOf('/') != -1) {
+            name = name.substring(name.lastIndexOf('/') + 1);
+        }
+        if (name.endsWith(";")) {
+            name = name.substring(0, name.length() - 1);
+        }
+        return name;
+    }
+
+    /**
      * For array types, gets the type of the components, or {@code null} if this is not an array
      * type. This method is analogous to {@link Class#getComponentType()}.
      */
