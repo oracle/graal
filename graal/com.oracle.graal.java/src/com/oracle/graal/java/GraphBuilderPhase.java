@@ -278,6 +278,14 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                             n.safeDelete();
                         }
                     }
+
+                    // remove dead parameters
+                    for (ParameterNode param : currentGraph.getNodes(ParameterNode.class)) {
+                        if (param.usages().isEmpty()) {
+                            assert param.inputs().isEmpty();
+                            param.safeDelete();
+                        }
+                    }
                 }
             }
 
@@ -308,7 +316,6 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             protected void handleUnresolvedLoadConstant(JavaType type) {
                 assert !graphBuilderConfig.eagerResolving();
                 append(new DeoptimizeNode(InvalidateRecompile, Unresolved));
-                frameState.push(Kind.Object, appendConstant(Constant.NULL_OBJECT));
             }
 
             /**
@@ -343,7 +350,6 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             protected void handleUnresolvedNewInstance(JavaType type) {
                 assert !graphBuilderConfig.eagerResolving();
                 append(new DeoptimizeNode(InvalidateRecompile, Unresolved));
-                frameState.apush(appendConstant(Constant.NULL_OBJECT));
             }
 
             /**
@@ -354,7 +360,6 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             protected void handleUnresolvedNewObjectArray(JavaType type, ValueNode length) {
                 assert !graphBuilderConfig.eagerResolving();
                 append(new DeoptimizeNode(InvalidateRecompile, Unresolved));
-                frameState.apush(appendConstant(Constant.NULL_OBJECT));
             }
 
             /**
@@ -365,7 +370,6 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             protected void handleUnresolvedNewMultiArray(JavaType type, List<ValueNode> dims) {
                 assert !graphBuilderConfig.eagerResolving();
                 append(new DeoptimizeNode(InvalidateRecompile, Unresolved));
-                frameState.apush(appendConstant(Constant.NULL_OBJECT));
             }
 
             /**
@@ -376,9 +380,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             @Override
             protected void handleUnresolvedLoadField(JavaField field, ValueNode receiver) {
                 assert !graphBuilderConfig.eagerResolving();
-                Kind kind = field.getKind();
                 append(new DeoptimizeNode(InvalidateRecompile, Unresolved));
-                frameState.push(kind.getStackKind(), appendConstant(Constant.defaultForKind(kind)));
             }
 
             /**
@@ -403,15 +405,13 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 append(new DeoptimizeNode(InvalidateRecompile, Unresolved));
             }
 
+            /**
+             * @param javaMethod
+             * @param invokeKind
+             */
             protected void handleUnresolvedInvoke(JavaMethod javaMethod, InvokeKind invokeKind) {
                 assert !graphBuilderConfig.eagerResolving();
-                boolean withReceiver = invokeKind != InvokeKind.Static;
                 append(new DeoptimizeNode(InvalidateRecompile, Unresolved));
-                frameState.popArguments(javaMethod.getSignature().getParameterSlots(withReceiver), javaMethod.getSignature().getParameterCount(withReceiver));
-                Kind kind = javaMethod.getSignature().getReturnKind();
-                if (kind != Kind.Void) {
-                    frameState.push(kind.getStackKind(), appendConstant(Constant.defaultForKind(kind)));
-                }
             }
 
             private DispatchBeginNode handleException(ValueNode exceptionObject, int bci) {
