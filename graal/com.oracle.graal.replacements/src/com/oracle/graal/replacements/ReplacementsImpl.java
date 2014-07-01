@@ -242,7 +242,7 @@ public class ReplacementsImpl implements Replacements {
             try (TimerCloseable a = SnippetPreparationTime.start()) {
                 FrameStateProcessing frameStateProcessing = method.getAnnotation(Snippet.class).removeAllFrameStates() ? FrameStateProcessing.Removal
                                 : FrameStateProcessing.CollapseFrameForSingleSideEffect;
-                StructuredGraph newGraph = makeGraph(method, recursiveEntry, recursiveEntry, inliningPolicy(method), frameStateProcessing);
+                StructuredGraph newGraph = makeGraph(method, recursiveEntry, inliningPolicy(method), frameStateProcessing);
                 Debug.metric("SnippetNodeCount[%#s]", method).add(newGraph.getNodeCount());
                 if (!UseSnippetGraphCache) {
                     return newGraph;
@@ -278,7 +278,7 @@ public class ReplacementsImpl implements Replacements {
         }
         StructuredGraph graph = graphs.get(substitute);
         if (graph == null) {
-            graph = makeGraph(substitute, original, substitute, inliningPolicy(substitute), FrameStateProcessing.None);
+            graph = makeGraph(substitute, original, inliningPolicy(substitute), FrameStateProcessing.None);
             graph.freeze();
             graphs.putIfAbsent(substitute, graph);
             graph = graphs.get(substitute);
@@ -405,15 +405,15 @@ public class ReplacementsImpl implements Replacements {
      * @param policy the inlining policy to use during preprocessing
      * @param frameStateProcessing controls how {@link FrameState FrameStates} should be handled.
      */
-    public StructuredGraph makeGraph(ResolvedJavaMethod method, ResolvedJavaMethod original, ResolvedJavaMethod recursiveEntry, SnippetInliningPolicy policy, FrameStateProcessing frameStateProcessing) {
-        return createGraphMaker(method, original, recursiveEntry, frameStateProcessing).makeGraph(policy);
+    public StructuredGraph makeGraph(ResolvedJavaMethod method, ResolvedJavaMethod original, SnippetInliningPolicy policy, FrameStateProcessing frameStateProcessing) {
+        return createGraphMaker(method, original, frameStateProcessing).makeGraph(policy);
     }
 
     /**
      * Can be overridden to return an object that specializes various parts of graph preprocessing.
      */
-    protected GraphMaker createGraphMaker(ResolvedJavaMethod substitute, ResolvedJavaMethod original, ResolvedJavaMethod recursiveEntry, FrameStateProcessing frameStateProcessing) {
-        return new GraphMaker(substitute, original, recursiveEntry, frameStateProcessing);
+    protected GraphMaker createGraphMaker(ResolvedJavaMethod substitute, ResolvedJavaMethod original, FrameStateProcessing frameStateProcessing) {
+        return new GraphMaker(substitute, original, frameStateProcessing);
     }
 
     /**
@@ -437,24 +437,20 @@ public class ReplacementsImpl implements Replacements {
         protected final ResolvedJavaMethod method;
 
         /**
-         * The method which is used when a call to {@link #recursiveEntry} is found.
+         * The original method which {@link #method} is substituting. Calls to {@link #method} or
+         * {@link #substitutedMethod} will be replaced with a forced inline of
+         * {@link #substitutedMethod}.
          */
         protected final ResolvedJavaMethod substitutedMethod;
-
-        /**
-         * The method which is used to detect a recursive call.
-         */
-        protected final ResolvedJavaMethod recursiveEntry;
 
         /**
          * Controls how FrameStates are processed.
          */
         private FrameStateProcessing frameStateProcessing;
 
-        protected GraphMaker(ResolvedJavaMethod substitute, ResolvedJavaMethod substitutedMethod, ResolvedJavaMethod recursiveEntry, FrameStateProcessing frameStateProcessing) {
+        protected GraphMaker(ResolvedJavaMethod substitute, ResolvedJavaMethod substitutedMethod, FrameStateProcessing frameStateProcessing) {
             this.method = substitute;
             this.substitutedMethod = substitutedMethod;
-            this.recursiveEntry = recursiveEntry;
             this.frameStateProcessing = frameStateProcessing;
         }
 
@@ -484,9 +480,9 @@ public class ReplacementsImpl implements Replacements {
                 NodeIntrinsificationVerificationPhase.verify(graph);
             }
             int sideEffectCount = 0;
-            assert (sideEffectCount = graph.getNodes().filter(e -> e instanceof StateSplit && ((StateSplit) e).hasSideEffect()).count()) >= 0;
+            assert (sideEffectCount = graph.getNodes().filter(e -> hasSideEffect(e)).count()) >= 0;
             new ConvertDeoptimizeToGuardPhase().apply(graph);
-            assert sideEffectCount == graph.getNodes().filter(e -> e instanceof StateSplit && ((StateSplit) e).hasSideEffect()).count() : "deleted side effecting node";
+            assert sideEffectCount == graph.getNodes().filter(e -> hasSideEffect(e)).count() : "deleted side effecting node";
 
             switch (frameStateProcessing) {
                 case Removal:
@@ -501,6 +497,35 @@ public class ReplacementsImpl implements Replacements {
                     break;
             }
             new DeadCodeEliminationPhase().apply(graph);
+        }
+
+        /**
+         * Filter nodes has side effects and shouldn't be deleted from snippets when converting
+         * deoptimizations to guards. Currently this only allows exception constructors to be
+         * eliminated to cover the case when Java assertions are in the inlined code.
+         *
+         * @param node
+         * @return true for nodes that have side effects and are unsafe to delete
+         */
+        private boolean hasSideEffect(Node node) {
+            if (node instanceof StateSplit) {
+                if (((StateSplit) node).hasSideEffect()) {
+                    if (node instanceof Invoke) {
+                        CallTargetNode callTarget = ((Invoke) node).callTarget();
+                        if (callTarget instanceof MethodCallTargetNode) {
+                            ResolvedJavaMethod targetMethod = ((MethodCallTargetNode) callTarget).targetMethod();
+                            if (targetMethod.isConstructor()) {
+                                ResolvedJavaType throwableType = providers.getMetaAccess().lookupJavaType(Throwable.class);
+                                return !throwableType.isAssignableFrom(targetMethod.getDeclaringClass());
+                            }
+                        }
+                    }
+                    // Not an exception constructor call
+                    return true;
+                }
+            }
+            // Not a StateSplit
+            return false;
         }
 
         private static final int MAX_GRAPH_INLINING_DEPTH = 100; // more than enough
@@ -585,7 +610,11 @@ public class ReplacementsImpl implements Replacements {
                         continue;
                     }
                     ResolvedJavaMethod callee = callTarget.targetMethod();
-                    if (callee.equals(recursiveEntry)) {
+                    if (substitutedMethod != null && (callee.equals(method) || callee.equals(substitutedMethod))) {
+                        /*
+                         * Ensure that calls to the original method inside of a substitution ends up
+                         * calling it instead of the Graal substitution.
+                         */
                         if (isInlinable(substitutedMethod)) {
                             final StructuredGraph originalGraph = buildInitialGraph(substitutedMethod);
                             Mark mark = graph.getMark();

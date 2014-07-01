@@ -61,7 +61,7 @@ public class PointerTest extends GraalCompilerTest implements Snippets {
     @Override
     protected StructuredGraph parse(Method m) {
         ResolvedJavaMethod resolvedMethod = getMetaAccess().lookupJavaMethod(m);
-        return installer.makeGraph(resolvedMethod, null, resolvedMethod, inliningPolicy.get(), FrameStateProcessing.CollapseFrameForSingleSideEffect);
+        return installer.makeGraph(resolvedMethod, null, inliningPolicy.get(), FrameStateProcessing.CollapseFrameForSingleSideEffect);
     }
 
     @Test
