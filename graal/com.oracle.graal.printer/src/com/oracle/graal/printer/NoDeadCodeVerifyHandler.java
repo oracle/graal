@@ -68,8 +68,6 @@ public class NoDeadCodeVerifyHandler implements DebugVerifyHandler {
             assert after.size() <= before.size();
             if (before.size() != after.size()) {
                 if (discovered.put(message, Boolean.TRUE) == null) {
-                    System.out.println("MESSAGE: " + message);
-
                     before.removeAll(after);
                     String prefix = message == null ? "" : message + ": ";
                     GraalInternalError error = new GraalInternalError("%sfound dead nodes in %s: %s", prefix, graph, before);
