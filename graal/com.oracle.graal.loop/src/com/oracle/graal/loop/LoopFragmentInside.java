@@ -32,6 +32,7 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.VirtualState.NodeClosure;
+import com.oracle.graal.nodes.util.*;
 
 public class LoopFragmentInside extends LoopFragment {
 
@@ -248,6 +249,12 @@ public class LoopFragmentInside extends LoopFragment {
                         phi.setValueAt(i, newV);
                     }
                 }
+            }
+        }
+
+        for (PhiNode deadPhi : loopBegin.phis().filter(n -> n.usages().isEmpty()).snapshot()) {
+            if (deadPhi.isAlive()) {
+                GraphUtil.killWithUnusedFloatingInputs(deadPhi);
             }
         }
     }
