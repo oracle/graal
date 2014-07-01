@@ -532,7 +532,7 @@ class CFGPrinter extends CompilationPrinter {
     }
 
     private void printInterval(Interval interval) {
-        out.printf("%s %s ", interval.operand, (isRegister(interval.operand) ? "fixed" : interval.kind()));
+        out.printf("%s %s ", interval.operand, (isRegister(interval.operand) ? "fixed" : interval.kind().getPlatformKind()));
         if (isRegister(interval.operand)) {
             out.printf("\"[%s|%c]\"", interval.operand, interval.operand.getKind().getTypeChar());
         } else {
