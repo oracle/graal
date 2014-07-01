@@ -108,6 +108,5 @@ public abstract class InductionVariable {
     /**
      * Deletes any nodes created within the scope of this object that have no usages.
      */
-    public void deleteUnusedNodes() {
-    }
+    public abstract void deleteUnusedNodes();
 }

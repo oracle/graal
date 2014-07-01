@@ -140,4 +140,8 @@ public class DerivedOffsetInductionVariable extends InductionVariable {
         }
         throw GraalInternalError.shouldNotReachHere();
     }
+
+    @Override
+    public void deleteUnusedNodes() {
+    }
 }

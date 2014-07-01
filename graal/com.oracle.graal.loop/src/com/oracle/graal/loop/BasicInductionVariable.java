@@ -153,4 +153,8 @@ public class BasicInductionVariable extends InductionVariable {
     public long constantExtremum() {
         return constantStride() * (loop.counted().constantMaxTripCount() - 1) + constantInit();
     }
+
+    @Override
+    public void deleteUnusedNodes() {
+    }
 }
