@@ -622,10 +622,43 @@ public final class LinearScan {
                                      */
                                     assert isBlockBegin(opId) && j == 0 : "SpillInDominator spill position must be at the beginning of a block!";
                                     int pos = 1;
-                                    while (instructions.get(pos).id() == -1) {
-                                        pos++;
+
+                                    if (block.getPredecessorCount() == 1) {
+                                        /*
+                                         * We need to be careful because data flow resolution code
+                                         * might have been inserted.
+                                         */
+                                        while (instructions.get(pos).id() == -1) {
+                                            pos++;
+                                        }
+                                        assert pos < instructions.size() : String.format("Cannot move spill move out of the current block! (pos: %d, #inst: %d, block: %s", pos, instructions.size(),
+                                                        block);
+                                        if (pos > 1 && pos == instructions.size() - 1) {
+                                            /*
+                                             * We are at the end of the block and there were
+                                             * resolution moves.
+                                             */
+                                            if (block.getSuccessorCount() > 1) {
+                                                /*
+                                                 * The current block might have resolution code for
+                                                 * the incoming and the outgoing edge. To ensure
+                                                 * that we use the right location and do not
+                                                 * overwrite an outgoing location we take the
+                                                 * location at the end of the (only) predecessor
+                                                 * block.
+                                                 */
+                                                AbstractBlock<?> pred = block.getPredecessors().get(0);
+                                                if (pred.getSuccessorCount() <= 1) {
+                                                    // TODO (je) fall back to spill at definition
+                                                    throw new GraalInternalError("Cannot find a position for the spill in dominator move! " + pred + "->" + block);
+                                                }
+                                                int lastId = getLastLirInstructionId(pred);
+                                                AllocatableValue predFromLocation = interval.getSplitChildAtOpId(lastId, OperandMode.DEF, this).location();
+                                                fromLocation = predFromLocation;
+                                                pos = 1;
+                                            }
+                                        }
                                     }
-                                    assert pos < instructions.size() : String.format("Cannot move spill move out of the current block! (pos: %d, #inst: %d, block: %s", pos, instructions.size(), block);
                                     insertionBuffer.append(pos, ir.getSpillMoveFactory().createMove(toLocation, fromLocation));
                                 } else {
                                     insertionBuffer.append(j + 1, ir.getSpillMoveFactory().createMove(toLocation, fromLocation));
