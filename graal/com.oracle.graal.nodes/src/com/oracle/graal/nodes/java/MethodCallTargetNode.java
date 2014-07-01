@@ -140,6 +140,10 @@ public class MethodCallTargetNode extends CallTargetNode implements IterableNode
             // check if the type of the receiver can narrow the result
             ValueNode receiver = receiver();
             ResolvedJavaType type = StampTool.typeOrNull(receiver);
+            if (type == null && invokeKind == InvokeKind.Virtual) {
+                // For virtual calls, we are guaranteed to receive a correct receiver type.
+                type = targetMethod.getDeclaringClass();
+            }
             if (type != null && (invoke().stateAfter() != null || invoke().stateDuring() != null)) {
                 /*
                  * either the holder class is exact, or the receiver object has an exact type, or
