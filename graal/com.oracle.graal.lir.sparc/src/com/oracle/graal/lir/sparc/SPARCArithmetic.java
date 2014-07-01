@@ -251,8 +251,8 @@ public enum SPARCArithmetic {
             this.result = result;
             this.x = x;
             this.y = y;
-            this.scratch1 = gen.newVariable(x.getLIRKind());
-            this.scratch2 = gen.newVariable(x.getLIRKind());
+            this.scratch1 = gen.newVariable(LIRKind.derive(x, y));
+            this.scratch2 = gen.newVariable(LIRKind.derive(x, y));
             this.state = state;
         }
 

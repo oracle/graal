@@ -62,7 +62,7 @@ public class SPARCBitManipulationOp extends SPARCLIRInstruction {
         this.result = result;
         this.input = input;
         if (opcode == IntrinsicOpcode.IBSR || opcode == IntrinsicOpcode.LBSR) {
-            scratch = gen.newVariable(input.getLIRKind());
+            scratch = gen.newVariable(LIRKind.derive(input));
         }
     }
 

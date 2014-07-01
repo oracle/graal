@@ -192,7 +192,7 @@ public class PTXLIRGenerator extends LIRGenerator {
                 if (baseRegister.equals(Value.ILLEGAL)) {
                     baseRegister = asAllocatable(indexRegister);
                 } else {
-                    Variable longBaseRegister = newVariable(LIRKind.value(Kind.Long));
+                    Variable longBaseRegister = newVariable(LIRKind.derivedReference(Kind.Long));
                     emitMove(longBaseRegister, baseRegister);
                     baseRegister = emitAdd(longBaseRegister, indexRegister);
                 }
@@ -370,7 +370,7 @@ public class PTXLIRGenerator extends LIRGenerator {
 
     @Override
     public Variable emitNegate(Value input) {
-        Variable result = newVariable(input.getLIRKind());
+        Variable result = newVariable(LIRKind.derive(input));
         switch (input.getKind()) {
             case Int:
                 append(new Op1Stack(INEG, result, input));
@@ -389,7 +389,7 @@ public class PTXLIRGenerator extends LIRGenerator {
 
     @Override
     public Variable emitNot(Value input) {
-        Variable result = newVariable(input.getLIRKind());
+        Variable result = newVariable(LIRKind.derive(input));
         switch (input.getKind()) {
             case Int:
                 append(new Op1Stack(INOT, result, input));
@@ -405,7 +405,7 @@ public class PTXLIRGenerator extends LIRGenerator {
 
     @Override
     public Variable emitAdd(Value a, Value b) {
-        Variable result = newVariable(a.getLIRKind());
+        Variable result = newVariable(LIRKind.derive(a, b));
         switch (a.getKind()) {
             case Int:
                 append(new Op2Stack(IADD, result, a, loadNonConst(b)));
@@ -427,7 +427,7 @@ public class PTXLIRGenerator extends LIRGenerator {
 
     @Override
     public Variable emitSub(Value a, Value b) {
-        Variable result = newVariable(a.getLIRKind());
+        Variable result = newVariable(LIRKind.derive(a, b));
         switch (a.getKind()) {
             case Int:
                 append(new Op2Stack(ISUB, result, a, loadNonConst(b)));
@@ -449,7 +449,7 @@ public class PTXLIRGenerator extends LIRGenerator {
 
     @Override
     public Variable emitMul(Value a, Value b) {
-        Variable result = newVariable(a.getLIRKind());
+        Variable result = newVariable(LIRKind.derive(a, b));
         switch (a.getKind()) {
             case Int:
                 append(new Op2Reg(IMUL, result, a, loadNonConst(b)));
@@ -481,7 +481,7 @@ public class PTXLIRGenerator extends LIRGenerator {
 
     @Override
     public Value emitDiv(Value a, Value b, LIRFrameState state) {
-        Variable result = newVariable(a.getLIRKind());
+        Variable result = newVariable(LIRKind.derive(a, b));
         switch (a.getKind()) {
             case Int:
                 append(new Op2Reg(IDIV, result, a, loadNonConst(b)));
@@ -503,7 +503,7 @@ public class PTXLIRGenerator extends LIRGenerator {
 
     @Override
     public Value emitRem(Value a, Value b, LIRFrameState state) {
-        Variable result = newVariable(a.getLIRKind());
+        Variable result = newVariable(LIRKind.derive(a, b));
         switch (a.getKind()) {
             case Int:
                 append(new Op2Reg(IREM, result, a, loadNonConst(b)));
@@ -529,7 +529,7 @@ public class PTXLIRGenerator extends LIRGenerator {
 
     @Override
     public Variable emitAnd(Value a, Value b) {
-        Variable result = newVariable(a.getLIRKind());
+        Variable result = newVariable(LIRKind.derive(a, b));
         switch (a.getKind()) {
             case Int:
                 append(new Op2Stack(IAND, result, a, loadNonConst(b)));
@@ -545,7 +545,7 @@ public class PTXLIRGenerator extends LIRGenerator {
 
     @Override
     public Variable emitOr(Value a, Value b) {
-        Variable result = newVariable(a.getLIRKind());
+        Variable result = newVariable(LIRKind.derive(a, b));
         switch (a.getKind()) {
             case Int:
                 append(new Op2Stack(IOR, result, a, loadNonConst(b)));
@@ -561,7 +561,7 @@ public class PTXLIRGenerator extends LIRGenerator {
 
     @Override
     public Variable emitXor(Value a, Value b) {
-        Variable result = newVariable(a.getLIRKind());
+        Variable result = newVariable(LIRKind.derive(a, b));
         switch (a.getKind()) {
             case Int:
                 append(new Op2Stack(IXOR, result, a, loadNonConst(b)));
@@ -577,7 +577,7 @@ public class PTXLIRGenerator extends LIRGenerator {
 
     @Override
     public Variable emitShl(Value a, Value b) {
-        Variable result = newVariable(a.getLIRKind());
+        Variable result = newVariable(LIRKind.derive(a, b).changeType(a.getPlatformKind()));
         switch (a.getKind()) {
             case Int:
                 append(new Op2Stack(ISHL, result, a, loadNonConst(b)));
@@ -593,7 +593,7 @@ public class PTXLIRGenerator extends LIRGenerator {
 
     @Override
     public Variable emitShr(Value a, Value b) {
-        Variable result = newVariable(a.getLIRKind());
+        Variable result = newVariable(LIRKind.derive(a, b).changeType(a.getPlatformKind()));
         switch (a.getKind()) {
             case Int:
                 append(new Op2Stack(ISHR, result, a, loadNonConst(b)));
@@ -609,7 +609,7 @@ public class PTXLIRGenerator extends LIRGenerator {
 
     @Override
     public Variable emitUShr(Value a, Value b) {
-        Variable result = newVariable(a.getLIRKind());
+        Variable result = newVariable(LIRKind.derive(a, b).changeType(a.getPlatformKind()));
         switch (a.getKind()) {
             case Int:
                 append(new ShiftOp(IUSHR, result, a, b));
@@ -625,7 +625,7 @@ public class PTXLIRGenerator extends LIRGenerator {
 
     public Variable emitConvertOp(Kind from, Kind to, Value inputVal) {
         Variable input = load(inputVal);
-        Variable result = newVariable(LIRKind.value(to));
+        Variable result = newVariable(LIRKind.derive(inputVal).changeType(to));
         append(new ConvertOp(result, input, to, from));
         return result;
     }
@@ -708,17 +708,17 @@ public class PTXLIRGenerator extends LIRGenerator {
             return inputVal;
         } else if (fromBits > 32) {
             assert inputVal.getKind() == Kind.Long;
-            Variable result = newVariable(LIRKind.value(Kind.Long));
+            Variable result = newVariable(LIRKind.derive(inputVal).changeType(Kind.Long));
             long mask = IntegerStamp.defaultMask(fromBits);
             append(new Op2Stack(LAND, result, inputVal, Constant.forLong(mask)));
             return result;
         } else {
             assert inputVal.getKind() == Kind.Int;
-            Variable result = newVariable(LIRKind.value(Kind.Int));
+            Variable result = newVariable(LIRKind.derive(inputVal).changeType(Kind.Int));
             int mask = (int) IntegerStamp.defaultMask(fromBits);
             append(new Op2Stack(IAND, result, inputVal, Constant.forInt(mask)));
             if (toBits > 32) {
-                Variable longResult = newVariable(LIRKind.value(Kind.Long));
+                Variable longResult = newVariable(LIRKind.derive(inputVal).changeType(Kind.Long));
                 emitMove(longResult, result);
                 return longResult;
             } else {
@@ -751,7 +751,7 @@ public class PTXLIRGenerator extends LIRGenerator {
 
     @Override
     public Value emitBitCount(Value value) {
-        Variable result = newVariable(LIRKind.value(Kind.Int));
+        Variable result = newVariable(LIRKind.derive(value).changeType(Kind.Int));
         if (value.getKind().getStackKind() == Kind.Int) {
             append(new PTXBitManipulationOp(IPOPCNT, result, value));
         } else {

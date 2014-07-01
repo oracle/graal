@@ -350,9 +350,7 @@ public enum AMD64Arithmetic {
         @Use({REG}) public AllocatableValue x;
         @Use({REG, STACK}) public AllocatableValue y;
 
-        public MulHighOp(AMD64Arithmetic opcode, AllocatableValue y) {
-            LIRKind kind = y.getLIRKind();
-
+        public MulHighOp(AMD64Arithmetic opcode, LIRKind kind, AllocatableValue y) {
             this.opcode = opcode;
             this.x = AMD64.rax.asValue(kind);
             this.y = y;
@@ -403,16 +401,16 @@ public enum AMD64Arithmetic {
     public static class DivRemOp extends AMD64LIRInstruction {
 
         @Opcode private final AMD64Arithmetic opcode;
-        @Def protected AllocatableValue divResult;
-        @Def protected AllocatableValue remResult;
+        @Def public AllocatableValue divResult;
+        @Def public AllocatableValue remResult;
         @Use protected AllocatableValue x;
         @Alive protected AllocatableValue y;
         @State protected LIRFrameState state;
 
         public DivRemOp(AMD64Arithmetic opcode, AllocatableValue x, AllocatableValue y, LIRFrameState state) {
             this.opcode = opcode;
-            this.divResult = AMD64.rax.asValue(x.getLIRKind());
-            this.remResult = AMD64.rdx.asValue(x.getLIRKind());
+            this.divResult = AMD64.rax.asValue(LIRKind.derive(x, y));
+            this.remResult = AMD64.rdx.asValue(LIRKind.derive(x, y));
             this.x = x;
             this.y = y;
             this.state = state;

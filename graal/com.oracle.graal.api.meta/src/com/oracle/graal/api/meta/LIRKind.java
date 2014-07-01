@@ -71,12 +71,37 @@ public final class LIRKind {
     }
 
     /**
+     * Derive a new type from inputs. The result will have the {@link PlatformKind} of one of the
+     * inputs. If all inputs are values, the result is a value. Otherwise, the result is a derived
+     * reference.
+     *
+     * This method should be used to construct the result {@link LIRKind} of any operation that
+     * modifies values (e.g. arithmetics).
+     */
+    public static LIRKind derive(Value... inputs) {
+        assert inputs.length > 0;
+        for (Value input : inputs) {
+            LIRKind kind = input.getLIRKind();
+            if (kind.isDerivedReference()) {
+                return kind;
+            } else if (!kind.isValue()) {
+                return kind.makeDerivedReference();
+            }
+        }
+
+        // all inputs are values, just return one of them
+        return inputs[0].getLIRKind();
+    }
+
+    /**
      * Create a new {@link LIRKind} with the same reference information and a new
      * {@linkplain #getPlatformKind platform kind}. If the new kind is a longer vector than this,
      * the new elements are marked as untracked values.
      */
     public LIRKind changeType(PlatformKind newPlatformKind) {
-        if (isDerivedReference()) {
+        if (newPlatformKind == platformKind) {
+            return this;
+        } else if (isDerivedReference()) {
             return derivedReference(newPlatformKind);
         } else if (referenceMask == 0) {
             // value type
