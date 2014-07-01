@@ -66,10 +66,26 @@ public final class ReadNode extends FloatableAccessNode implements LIRLowerable,
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
+        if (usages().isEmpty()) {
+            GuardingNode guard = getGuard();
+            if (guard != null && !(guard instanceof FixedNode)) {
+                // The guard is necessary even if the read goes away.
+                return new ValueAnchorNode((ValueNode) guard);
+            } else {
+                // Read without usages or guard can be safely removed.
+                return null;
+            }
+        }
         if (object() instanceof PiNode && ((PiNode) object()).getGuard() == getGuard()) {
             return new ReadNode(((PiNode) object()).getOriginalNode(), location(), stamp(), getGuard(), getBarrierType(), getNullCheck(), stateBefore());
         }
-        return canonicalizeRead(this, location(), object(), tool);
+        if (!getNullCheck()) {
+            return canonicalizeRead(this, location(), object(), tool);
+        } else {
+            // if this read is a null check, then replacing it with the value is incorrect for
+            // guard-type usages
+            return this;
+        }
     }
 
     @Override
@@ -84,16 +100,6 @@ public final class ReadNode extends FloatableAccessNode implements LIRLowerable,
 
     public static ValueNode canonicalizeRead(ValueNode read, LocationNode location, ValueNode object, CanonicalizerTool tool) {
         MetaAccessProvider metaAccess = tool.getMetaAccess();
-        if (read.usages().isEmpty()) {
-            GuardingNode guard = ((Access) read).getGuard();
-            if (guard != null && !(guard instanceof FixedNode)) {
-                // The guard is necessary even if the read goes away.
-                return new ValueAnchorNode((ValueNode) guard);
-            } else {
-                // Read without usages or guard can be safely removed.
-                return null;
-            }
-        }
         if (tool.canonicalizeReads()) {
             if (metaAccess != null && object != null && object.isConstant()) {
                 if ((location.getLocationIdentity() == LocationIdentity.FINAL_LOCATION || location.getLocationIdentity() == LocationIdentity.ARRAY_LENGTH_LOCATION) &&
