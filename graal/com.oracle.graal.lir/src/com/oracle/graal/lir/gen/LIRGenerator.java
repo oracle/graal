@@ -100,12 +100,6 @@ public abstract class LIRGenerator implements LIRGeneratorTool, LIRKindTool {
         return providers.getForeignCalls();
     }
 
-    /**
-     * Creates a new {@linkplain Variable variable}.
-     *
-     * @param lirKind The kind of the new variable.
-     * @return a new variable
-     */
     @Override
     public Variable newVariable(LIRKind lirKind) {
         return new Variable(lirKind, res.getLIR().nextVariable());

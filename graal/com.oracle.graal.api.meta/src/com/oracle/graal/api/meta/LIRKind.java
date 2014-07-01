@@ -26,6 +26,32 @@ package com.oracle.graal.api.meta;
  * Represents the type of values in the LIR. It is composed of a {@link PlatformKind} that gives the
  * low level representation of the value, and a {@link #referenceMask} that describes the location
  * of object references in the value.
+ *
+ * <h2>Constructing {@link LIRKind} instances</h2>
+ *
+ * During LIR generation, every new {@link Value} should get a {@link LIRKind} of the correct
+ * {@link PlatformKind} that also contains the correct reference information. {@linkplain LIRKind
+ * LIRKinds} should be created as follows:
+ *
+ * <p>
+ * If the result value is created from one or more input values, the {@link LIRKind} should be
+ * created with {@link LIRKind#derive}(inputs). If the result has a different {@link PlatformKind}
+ * than the inputs, {@link LIRKind#derive}(inputs).{@link #changeType}(resultKind) should be used.
+ * <p>
+ * If the result is an exact copy of one of the inputs, {@link Value#getLIRKind()} can be used. Note
+ * that this is only correct for move-like operations, like conditional move or compare-and-swap.
+ * For convert operations, {@link LIRKind#derive} should be used.
+ * <p>
+ * If it is known that the result will be a reference (e.g. pointer arithmetic where the end result
+ * is a valid oop), {@link LIRKind#reference} should be used.
+ * <p>
+ * If it is known that the result will neither be a reference nor be derived from a reference,
+ * {@link LIRKind#value} can be used. If the operation producing this value has inputs, this is very
+ * likely wrong, and {@link LIRKind#derive} should be used instead.
+ * <p>
+ * If it is known that the result is derived from a reference, {@link LIRKind#derivedReference} can
+ * be used. In most cases, {@link LIRKind#derive} should be used instead, since it is able to detect
+ * this automatically.
  */
 public final class LIRKind {
 
@@ -45,7 +71,9 @@ public final class LIRKind {
     }
 
     /**
-     * Create a {@link LIRKind} of type {@code platformKind} that contains a primitive value.
+     * Create a {@link LIRKind} of type {@code platformKind} that contains a primitive value. Should
+     * be only used when it's guaranteed that the value is not even indirectly derived from a
+     * reference. Otherwise, {@link #derive(Value...)} should be used instead.
      */
     public static LIRKind value(PlatformKind platformKind) {
         assert platformKind != Kind.Object : "Object should always be used as reference type";
@@ -64,7 +92,9 @@ public final class LIRKind {
 
     /**
      * Create a {@link LIRKind} of type {@code platformKind} that contains a value that is derived
-     * from a reference. Values of this {@link LIRKind} can not be live at safepoints.
+     * from a reference. Values of this {@link LIRKind} can not be live at safepoints. In most
+     * cases, this should not be called directly. {@link #derive} should be used instead to
+     * automatically propagate this information.
      */
     public static LIRKind derivedReference(PlatformKind platformKind) {
         return new LIRKind(platformKind, DERIVED_REFERENCE);

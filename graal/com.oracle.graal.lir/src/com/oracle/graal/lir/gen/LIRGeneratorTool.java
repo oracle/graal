@@ -106,6 +106,14 @@ public interface LIRGeneratorTool extends ArithmeticLIRGenerator {
 
     RegisterAttributes attributes(Register register);
 
+    /**
+     * Create a new {@link Variable}.
+     *
+     * @param kind The type of the value that will be stored in this {@link Variable}. See
+     *            {@link LIRKind} for documentation on what to pass here. Note that in most cases,
+     *            simply passing {@link Value#getLIRKind()} is wrong.
+     * @return A new {@link Variable}.
+     */
     Variable newVariable(LIRKind kind);
 
     Variable emitMove(Value input);
