@@ -239,11 +239,7 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
                                     node.graph().getNewNodes(mark).snapshot();
                 };
             } else {
-                return new AutoCloseable() {
-                    public void close() throws Exception {
-                        // nothing to do
-                    }
-                };
+                return null;
             }
         }
 
