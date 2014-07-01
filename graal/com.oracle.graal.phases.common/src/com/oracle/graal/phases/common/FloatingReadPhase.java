@@ -23,14 +23,20 @@
 package com.oracle.graal.phases.common;
 
 import static com.oracle.graal.api.meta.LocationIdentity.*;
+import static com.oracle.graal.graph.Graph.NodeEvent.*;
 import static com.oracle.graal.graph.util.CollectionsAccess.*;
 
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.graph.Graph.NodeEventScope;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.*;
+import com.oracle.graal.phases.common.util.*;
 import com.oracle.graal.phases.graph.*;
 import com.oracle.graal.phases.graph.ReentrantNodeIterator.LoopInfo;
 import com.oracle.graal.phases.graph.ReentrantNodeIterator.NodeIteratorClosure;
@@ -94,11 +100,42 @@ public class FloatingReadPhase extends Phase {
         this.execmode = execmode;
     }
 
+    /**
+     * Removes nodes from a given set that (transitively) have a usage outside the set.
+     */
+    private static Set<Node> removeExternallyUsedNodes(Set<Node> set) {
+        boolean change;
+        do {
+            change = false;
+            for (Iterator<Node> iter = set.iterator(); iter.hasNext();) {
+                Node node = iter.next();
+                for (Node usage : node.usages()) {
+                    if (!set.contains(usage)) {
+                        change = true;
+                        iter.remove();
+                        break;
+                    }
+                }
+            }
+        } while (change);
+        return set;
+    }
+
     @Override
     protected void run(StructuredGraph graph) {
         Map<LoopBeginNode, Set<LocationIdentity>> modifiedInLoops = newNodeIdentityMap();
         ReentrantNodeIterator.apply(new CollectMemoryCheckpointsClosure(modifiedInLoops), graph.start(), new HashSet<LocationIdentity>());
-        ReentrantNodeIterator.apply(new FloatingReadClosure(modifiedInLoops, execmode), graph.start(), new MemoryMapImpl(graph.start()));
+        HashSetNodeEventListener listener = new HashSetNodeEventListener(EnumSet.of(NODE_ADDED, ZERO_USAGES));
+        try (NodeEventScope nes = graph.trackNodeEvents(listener)) {
+            ReentrantNodeIterator.apply(new FloatingReadClosure(modifiedInLoops, execmode), graph.start(), new MemoryMapImpl(graph.start()));
+        }
+
+        for (Node n : removeExternallyUsedNodes(listener.getNodes())) {
+            if (n.isAlive() && n instanceof FloatingNode) {
+                n.replaceAtUsages(null);
+                GraphUtil.killWithUnusedFloatingInputs(n);
+            }
+        }
         if (execmode == ExecutionMode.CREATE_FLOATING_READS) {
             assert !graph.isAfterFloatingReadPhase();
             graph.setAfterFloatingReadPhase(true);
