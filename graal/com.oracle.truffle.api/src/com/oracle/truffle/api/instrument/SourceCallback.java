@@ -34,4 +34,17 @@ public interface SourceCallback {
     public void startLoading(Source source);
 
     public void endLoading(Source source);
+
+    /**
+     * Inert (singleton) implementation of {@link SourceCallback}.
+     */
+    SourceCallback NULL = new SourceCallback() {
+
+        public void startLoading(Source source) {
+        }
+
+        public void endLoading(Source source) {
+        }
+
+    };
 }
