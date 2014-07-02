@@ -191,7 +191,8 @@ final class RegisterVerifier {
 
             @Override
             public Value doValue(LIRInstruction op, Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
-                if (LinearScan.isVariableOrRegister(operand) && allocator.isProcessed(operand)) {
+                // op.id() == -2 are spill moves inserted by the spill position optimization
+                if (LinearScan.isVariableOrRegister(operand) && allocator.isProcessed(operand) && op.id() != -2) {
                     Interval interval = intervalAt(operand);
                     if (op.id() != -1) {
                         interval = interval.getSplitChildAtOpId(op.id(), mode, allocator);
