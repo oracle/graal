@@ -46,17 +46,16 @@ public class HotSpotNmethod extends HotSpotInstalledCode {
 
     private final boolean isDefault;
     private final boolean isExternal;
-    private final String name;
 
     public HotSpotNmethod(HotSpotResolvedJavaMethod method, String name, boolean isDefault) {
         this(method, name, isDefault, false);
     }
 
     public HotSpotNmethod(HotSpotResolvedJavaMethod method, String name, boolean isDefault, boolean isExternal) {
+        super(name);
         this.method = method;
         this.isDefault = isDefault;
         this.isExternal = isExternal;
-        this.name = name;
     }
 
     public boolean isDefault() {

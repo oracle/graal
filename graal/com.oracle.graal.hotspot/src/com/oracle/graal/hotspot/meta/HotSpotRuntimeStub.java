@@ -35,6 +35,7 @@ public class HotSpotRuntimeStub extends HotSpotInstalledCode {
     private final Stub stub;
 
     public HotSpotRuntimeStub(Stub stub) {
+        super(stub.toString());
         this.stub = stub;
     }
 

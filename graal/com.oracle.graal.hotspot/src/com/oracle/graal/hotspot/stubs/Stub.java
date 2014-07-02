@@ -157,7 +157,7 @@ public abstract class Stub {
                 CallingConvention incomingCc = linkage.getIncomingCallingConvention();
                 TargetDescription target = codeCache.getTarget();
 
-                compResult = new CompilationResult();
+                compResult = new CompilationResult(toString());
                 try (Scope s0 = Debug.scope("StubCompilation", graph, providers.getCodeCache())) {
                     Assumptions assumptions = new Assumptions(OptAssumptions.getValue());
                     SchedulePhase schedule = emitFrontEnd(providers, target, graph, assumptions, null, providers.getSuites().getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL,

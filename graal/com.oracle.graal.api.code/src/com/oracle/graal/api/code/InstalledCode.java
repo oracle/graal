@@ -38,6 +38,12 @@ public class InstalledCode {
      */
     private long version;
 
+    protected final String name;
+
+    public InstalledCode(String name) {
+        this.name = name;
+    }
+
     /**
      * @return the address of this code blob
      */

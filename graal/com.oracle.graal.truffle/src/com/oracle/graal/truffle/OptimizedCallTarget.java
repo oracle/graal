@@ -63,6 +63,7 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
     }
 
     public OptimizedCallTarget(RootNode rootNode, GraalTruffleRuntime runtime, int invokeCounter, int compilationThreshold, CompilationPolicy compilationPolicy, SpeculationLog speculationLog) {
+        super(rootNode.toString());
         this.runtime = runtime;
         this.speculationLog = speculationLog;
         this.rootNode = rootNode;
