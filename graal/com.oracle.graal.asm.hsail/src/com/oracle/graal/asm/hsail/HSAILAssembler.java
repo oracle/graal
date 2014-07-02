@@ -98,12 +98,7 @@ public abstract class HSAILAssembler extends AbstractHSAILAssembler {
     }
 
     private void emitAddrOp(String instr, Value reg, HSAILAddress addr) {
-        String storeValue = null;
-        if (reg instanceof RegisterValue) {
-            storeValue = HSAIL.mapRegister(reg);
-        } else if (reg instanceof Constant) {
-            storeValue = ((Constant) reg).toValueString();
-        }
+        String storeValue = mapRegOrConstToString(reg);
         emitString(instr + " " + storeValue + ", " + mapAddress(addr) + ";");
     }
 
@@ -163,11 +158,11 @@ public abstract class HSAILAssembler extends AbstractHSAILAssembler {
     }
 
     public final void emitStoreImmediate(float src, HSAILAddress addr) {
-        storeImmediateImpl("f32", Float.toString(src), addr);
+        storeImmediateImpl("f32", floatToString(src), addr);
     }
 
     public final void emitStoreImmediate(double src, HSAILAddress addr) {
-        storeImmediateImpl("f64", Double.toString(src), addr);
+        storeImmediateImpl("f64", doubleToString(src), addr);
     }
 
     public final void emitSpillLoad(Kind kind, Value dest, Value src) {
@@ -302,7 +297,12 @@ public abstract class HSAILAssembler extends AbstractHSAILAssembler {
     }
 
     public void emitConvert(Value dest, Value src, String destType, String srcType) {
-        String prefix = (destType.equals("f32") && srcType.equals("f64")) ? "cvt_near_" : "cvt_";
+        String prefix = "cvt_";
+        if (destType.equals("f32") && srcType.equals("f64")) {
+            prefix = "cvt_near_";
+        } else if (srcType.startsWith("f") && (destType.startsWith("s") || destType.startsWith("u"))) {
+            prefix = "cvt_zeroi_sat_";
+        }
         emitString(prefix + destType + "_" + srcType + " " + HSAIL.mapRegister(dest) + ", " + HSAIL.mapRegister(src) + ";");
     }
 
@@ -327,6 +327,26 @@ public abstract class HSAILAssembler extends AbstractHSAILAssembler {
         return "[$d" + addr.getBase().encoding() + " + " + addr.getDisplacement() + "]";
     }
 
+    private static String doubleToString(double dval) {
+        long lval = Double.doubleToRawLongBits(dval);
+        long lvalIgnoreSign = lval & 0x7fffffffffffffffL;
+        if (lvalIgnoreSign >= 0x7ff0000000000000L) {
+            return "0D" + String.format("%16x", lval);
+        } else {
+            return Double.toString(dval);
+        }
+    }
+
+    private static String floatToString(float fval) {
+        int ival = Float.floatToRawIntBits(fval);
+        int ivalIgnoreSign = ival & 0x7fffffff;
+        if (ivalIgnoreSign >= 0x7f800000) {
+            return "0F" + String.format("%8x", ival);
+        } else {
+            return Float.toString(fval) + "f";
+        }
+    }
+
     private static String mapRegOrConstToString(Value src) {
         if (!isConstant(src)) {
             return HSAIL.mapRegister(src);
@@ -337,9 +357,9 @@ public abstract class HSAILAssembler extends AbstractHSAILAssembler {
                 case Int:
                     return Integer.toString(consrc.asInt());
                 case Float:
-                    return Float.toString(consrc.asFloat()) + "f";
+                    return floatToString(consrc.asFloat());
                 case Double:
-                    return Double.toString(consrc.asDouble());
+                    return doubleToString(consrc.asDouble());
                 case Long:
                     return "0x" + Long.toHexString(consrc.asLong());
                 case Object:

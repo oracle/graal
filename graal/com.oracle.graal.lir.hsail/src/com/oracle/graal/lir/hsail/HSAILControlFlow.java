@@ -301,7 +301,7 @@ public class HSAILControlFlow {
         @Use({REG, CONST}) protected Value right;
         protected final Condition condition;
 
-        public CondMoveOp(HSAILCompare opcode, Variable left, Variable right, Variable result, Condition condition, Value trueValue, Value falseValue) {
+        public CondMoveOp(HSAILCompare opcode, Variable left, Value right, Variable result, Condition condition, Value trueValue, Value falseValue) {
             this.opcode = opcode;
             this.result = result;
             this.left = left;

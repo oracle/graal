@@ -34,7 +34,7 @@ public class HSAILMathSubstitutions {
 
     /**
      * Substitution for {@link Math#abs(int)}.
-     * 
+     *
      * @param x the input
      * @return the result of the computation
      */
@@ -45,7 +45,7 @@ public class HSAILMathSubstitutions {
 
     /**
      * Substitution for {@link Math#abs(long)}.
-     * 
+     *
      * @param x the input
      * @return the result of the computation
      */
@@ -56,7 +56,7 @@ public class HSAILMathSubstitutions {
 
     /**
      * Substitution for {@link Math#abs(float)}.
-     * 
+     *
      * @param x the input
      * @return the result of the computation
      */
@@ -67,7 +67,7 @@ public class HSAILMathSubstitutions {
 
     /**
      * Substitution for {@link Math#abs(double)}.
-     * 
+     *
      * @param x the input
      * @return the result of the computation
      */
@@ -78,7 +78,7 @@ public class HSAILMathSubstitutions {
 
     /**
      * Substitution for Math.ceil(double).
-     * 
+     *
      * @param x the input
      * @return the result of the computation
      */
@@ -89,7 +89,7 @@ public class HSAILMathSubstitutions {
 
     /**
      * Substitution for {@link Math#floor(double)}.
-     * 
+     *
      * @param x the input
      * @return the result of the computation
      */
@@ -100,7 +100,7 @@ public class HSAILMathSubstitutions {
 
     /**
      * Substitution for {@link Math#rint(double)}.
-     * 
+     *
      * @param x the input
      * @return the result of the computation
      */
@@ -111,7 +111,7 @@ public class HSAILMathSubstitutions {
 
     /**
      * Substitution for {@link Math#sqrt(double)}.
-     * 
+     *
      * @param x the input
      * @return the result of the computation
      */
@@ -119,4 +119,100 @@ public class HSAILMathSubstitutions {
     public static double sqrt(double x) {
         return HSAILMathIntrinsicsNode.compute(x, HSAILArithmetic.SQRT);
     }
+
+    /**
+     * Methods below this point are more complicated transcendentals and such and use
+     * {@link JStrictMath} for method substitution.
+     */
+
+    @MethodSubstitution
+    public static double sin(double x) {
+        return JStrictMath.sin(x);
+    }
+
+    @MethodSubstitution
+    public static double cos(double x) {
+        return JStrictMath.cos(x);
+    }
+
+    @MethodSubstitution
+    public static double tan(double x) {
+        return JStrictMath.tan(x);
+    }
+
+    @MethodSubstitution
+    public static double exp(double x) {
+        return JStrictMath.exp(x);
+    }
+
+    @MethodSubstitution
+    public static double expm1(double x) {
+        return JStrictMath.expm1(x);
+    }
+
+    @MethodSubstitution
+    public static double log(double x) {
+        return JStrictMath.log(x);
+    }
+
+    @MethodSubstitution
+    public static double log10(double x) {
+        return JStrictMath.log10(x);
+    }
+
+    @MethodSubstitution
+    public static double cbrt(double x) {
+        return JStrictMath.cbrt(x);
+    }
+
+    @MethodSubstitution
+    public static double asin(double x) {
+        return JStrictMath.asin(x);
+    }
+
+    @MethodSubstitution
+    public static double acos(double x) {
+        return JStrictMath.acos(x);
+    }
+
+    @MethodSubstitution
+    public static double atan(double x) {
+        return JStrictMath.atan(x);
+    }
+
+    @MethodSubstitution
+    public static double atan2(double x, double y) {
+        return JStrictMath.atan2(x, y);
+    }
+
+    @MethodSubstitution
+    public static double pow(double x, double y) {
+        return JStrictMath.pow(x, y);
+    }
+
+    @MethodSubstitution
+    public static double IEEEremainder(double x, double y) {
+        return JStrictMath.IEEEremainder(x, y);
+    }
+
+    @MethodSubstitution
+    public static double sinh(double x) {
+        return JStrictMath.sinh(x);
+    }
+
+    @MethodSubstitution
+    public static double cosh(double x) {
+        return JStrictMath.cosh(x);
+    }
+
+    @MethodSubstitution
+    public static double tanh(double x) {
+        return JStrictMath.tanh(x);
+    }
+
+    @MethodSubstitution
+    public static double hypot(double x, double y) {
+        return JStrictMath.hypot(x, y);
+    }
+
 }

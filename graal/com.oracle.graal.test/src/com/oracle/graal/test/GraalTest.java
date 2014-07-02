@@ -28,6 +28,7 @@ import java.util.*;
 
 import org.junit.*;
 import org.junit.internal.*;
+import static org.junit.Assert.*;
 
 /**
  * Base class for Graal tests.
@@ -87,7 +88,11 @@ public class GraalTest {
      * @param message the identifying message for the {@link AssertionError}
      */
     protected void assertDeepEquals(String message, Object expected, Object actual) {
-        assertDeepEquals(message, expected, actual, equalFloatsOrDoublesDelta());
+        if (ulpsDelta() > 0) {
+            assertDeepEquals(message, expected, actual, ulpsDelta());
+        } else {
+            assertDeepEquals(message, expected, actual, equalFloatsOrDoublesDelta());
+        }
     }
 
     /**
@@ -145,12 +150,72 @@ public class GraalTest {
     }
 
     /**
+     * Compares two given values for equality, doing a recursive test if both values are arrays of
+     * the same type. Uses {@linkplain StrictMath#ulp(float) ULP}s for comparison of floats.
+     *
+     * @param message the identifying message for the {@link AssertionError}
+     * @param ulpsDelta the maximum allowed ulps difference between two doubles or floats for which
+     *            both numbers are still considered equal.
+     */
+    protected void assertDeepEquals(String message, Object expected, Object actual, int ulpsDelta) {
+        ComparisonCriteria doubleUlpsDeltaCriteria = new ComparisonCriteria() {
+            @Override
+            protected void assertElementsEqual(Object e, Object a) {
+                assertTrue(message, e instanceof Double && a instanceof Double);
+                // determine acceptable error based on whether it is a normal number or a NaN/Inf
+                double de = (Double) e;
+                double epsilon = (!Double.isNaN(de) && Double.isFinite(de) ? ulpsDelta * Math.ulp(de) : 0);
+                Assert.assertEquals(message, (Double) e, (Double) a, epsilon);
+            }
+        };
+
+        ComparisonCriteria floatUlpsDeltaCriteria = new ComparisonCriteria() {
+            @Override
+            protected void assertElementsEqual(Object e, Object a) {
+                assertTrue(message, e instanceof Float && a instanceof Float);
+                // determine acceptable error based on whether it is a normal number or a NaN/Inf
+                float fe = (Float) e;
+                float epsilon = (!Float.isNaN(fe) && Float.isFinite(fe) ? ulpsDelta * Math.ulp(fe) : 0);
+                Assert.assertEquals(message, (Float) e, (Float) a, epsilon);
+            }
+        };
+
+        if (expected != null && actual != null) {
+            Class<?> expectedClass = expected.getClass();
+            Class<?> actualClass = actual.getClass();
+            if (expectedClass.isArray()) {
+                Assert.assertEquals(message, expectedClass, actualClass);
+                if (expected instanceof double[] || expected instanceof Object[]) {
+                    doubleUlpsDeltaCriteria.arrayEquals(message, expected, actual);
+                    return;
+                } else if (expected instanceof float[] || expected instanceof Object[]) {
+                    floatUlpsDeltaCriteria.arrayEquals(message, expected, actual);
+                    return;
+                }
+            } else if (expectedClass.equals(double.class) && actualClass.equals(double.class)) {
+                doubleUlpsDeltaCriteria.arrayEquals(message, expected, actual);
+                return;
+            } else if (expectedClass.equals(float.class) && actualClass.equals(float.class)) {
+                floatUlpsDeltaCriteria.arrayEquals(message, expected, actual);
+                return;
+            }
+        }
+        // anything else just use the non-ulps version
+        assertDeepEquals(message, expected, actual, equalFloatsOrDoublesDelta());
+    }
+
+    /**
      * Gets the value used by {@link #assertDeepEquals(Object, Object)} and
      * {@link #assertDeepEquals(String, Object, Object)} for the maximum delta between two doubles
      * or floats for which both numbers are still considered equal.
      */
     protected double equalFloatsOrDoublesDelta() {
         return 0.0D;
+    }
+
+    // unless overridden ulpsDelta is not used
+    protected int ulpsDelta() {
+        return 0;
     }
 
     @SuppressWarnings("serial")
