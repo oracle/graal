@@ -41,10 +41,10 @@ import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.LIRInstruction.InstructionStateProcedure;
 import com.oracle.graal.lir.LIRInstruction.InstructionValueProcedure;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
-import com.oracle.graal.lir.LIRInstruction.StateProcedure;
 import com.oracle.graal.lir.LIRInstruction.ValueProcedure;
 import com.oracle.graal.lir.StandardOp.MoveOp;
 import com.oracle.graal.nodes.*;
@@ -1753,6 +1753,13 @@ public final class LinearScan {
                 return operand;
             }
         };
+        InstructionStateProcedure stateProc = new InstructionStateProcedure() {
+
+            @Override
+            protected void doState(LIRInstruction op, LIRFrameState state) {
+                computeDebugInfo(iw, op, state);
+            }
+        };
 
         for (int j = 0; j < numInst; j++) {
             final LIRInstruction op = instructions.get(j);
@@ -1784,13 +1791,7 @@ public final class LinearScan {
             op.forEachOutput(assignProc);
 
             // compute reference map and debug information
-            op.forEachState(new StateProcedure() {
-
-                @Override
-                protected void doState(LIRFrameState state) {
-                    computeDebugInfo(iw, op, state);
-                }
-            });
+            op.forEachState(stateProc);
 
             // remove useless moves
             if (move != null) {
