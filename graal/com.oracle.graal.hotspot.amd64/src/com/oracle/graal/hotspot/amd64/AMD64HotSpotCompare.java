@@ -26,6 +26,7 @@ import static com.oracle.graal.api.code.ValueUtil.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.asm.*;
 import com.oracle.graal.asm.amd64.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.hotspot.data.*;
@@ -109,8 +110,11 @@ public class AMD64HotSpotCompare {
                     // compressed metaspace pointer
                     crb.recordInlineDataInCode(new MetaspaceData(0, y.asInt(), HotSpotMetaspaceConstant.getMetaspaceObject(y), true));
                     masm.cmpl(address.toAddress(), y.asInt());
-                } else {
+                } else if (y.getKind() == Kind.Long && NumUtil.is32bit(y.asLong())) {
                     // uncompressed metaspace pointer
+                    crb.recordInlineDataInCode(new MetaspaceData(0, y.asLong(), HotSpotMetaspaceConstant.getMetaspaceObject(y), false));
+                    masm.cmpq(address.toAddress(), (int) y.asLong());
+                } else {
                     throw GraalInternalError.shouldNotReachHere();
                 }
             } else {

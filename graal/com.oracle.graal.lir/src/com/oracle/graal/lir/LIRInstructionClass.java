@@ -28,10 +28,10 @@ import java.util.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
+import com.oracle.graal.lir.LIRInstruction.InstructionStateProcedure;
 import com.oracle.graal.lir.LIRInstruction.InstructionValueProcedure;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
-import com.oracle.graal.lir.LIRInstruction.StateProcedure;
 import com.oracle.graal.lir.LIRInstruction.ValuePositionProcedure;
 
 public class LIRInstructionClass extends LIRIntrospection {
@@ -371,11 +371,11 @@ public class LIRInstructionClass extends LIRIntrospection {
         }
     }
 
-    public final void forEachState(LIRInstruction obj, StateProcedure proc) {
+    public final void forEachState(LIRInstruction obj, InstructionStateProcedure proc) {
         for (int i = 0; i < stateOffsets.length; i++) {
             LIRFrameState state = getState(obj, stateOffsets[i]);
             if (state != null) {
-                proc.doState(state);
+                proc.doState(obj, state);
             }
         }
     }
