@@ -154,7 +154,7 @@ public class NewObjectSnippets implements Snippets {
     public static Object allocateInstanceDynamic(Class<?> type, @ConstantParameter boolean fillContents, @ConstantParameter Register threadRegister, @ConstantParameter String typeContext) {
         Word hub = loadWordFromObject(type, klassOffset());
         if (probability(FAST_PATH_PROBABILITY, !hub.equal(Word.zero()))) {
-            if (probability(FAST_PATH_PROBABILITY, isKlassFullyInitialized(hub))) {
+            if (probability(FAST_PATH_PROBABILITY, isInstanceKlassFullyInitialized(hub))) {
                 int layoutHelper = readLayoutHelper(hub);
                 /*
                  * src/share/vm/oops/klass.hpp: For instances, layout helper is a positive number,

@@ -41,7 +41,7 @@ public class DynamicNewInstanceNode extends AbstractNewObjectNode implements Can
     public Node canonical(CanonicalizerTool tool) {
         if (clazz.isConstant()) {
             ResolvedJavaType type = tool.getConstantReflection().asJavaType(clazz.asConstant());
-            if (type != null && type.isInitialized()) {
+            if (type != null && type.isInitialized() && !type.isArray() && !type.isInterface() && !type.isPrimitive()) {
                 return new NewInstanceNode(type, fillContents());
             }
         }

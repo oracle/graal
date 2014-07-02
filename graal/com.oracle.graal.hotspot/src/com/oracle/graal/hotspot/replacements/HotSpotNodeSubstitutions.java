@@ -42,6 +42,6 @@ public class HotSpotNodeSubstitutions {
         // so we are guaranteed to read a non-null value here. As long as NodeClass
         // is final, the stamp of the PiNode below will automatically be exact.
         Word klass = loadHub(node);
-        return piCastNonNull(klass.readObject(Word.signed(klassNodeClassOffset()), KLASS_NODE_CLASS), NodeClass.class);
+        return piCastNonNull(klass.readObject(Word.signed(instanceKlassNodeClassOffset()), KLASS_NODE_CLASS), NodeClass.class);
     }
 }

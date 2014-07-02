@@ -42,20 +42,20 @@ public class NewInstanceNode extends AbstractNewObjectNode implements Virtualiza
 
     /**
      * Constructs a NewInstanceNode.
-     * 
+     *
      * @param type the class being allocated
      * @param fillContents determines whether the new object's fields should be initialized to
      *            zero/null.
      */
     public NewInstanceNode(ResolvedJavaType type, boolean fillContents) {
         super(StampFactory.exactNonNull(type), fillContents);
-        assert !type.isArray();
+        assert !type.isArray() && !type.isInterface() && !type.isPrimitive();
         this.instanceClass = type;
     }
 
     /**
      * Gets the instance class being allocated by this node.
-     * 
+     *
      * @return the instance class allocated
      */
     public ResolvedJavaType instanceClass() {

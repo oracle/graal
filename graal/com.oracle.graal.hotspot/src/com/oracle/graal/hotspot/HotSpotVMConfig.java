@@ -865,14 +865,14 @@ public class HotSpotVMConfig extends CompilerObject {
     @HotSpotVMField(name = "Array<Klass*>::_length", type = "int", get = HotSpotVMField.Type.OFFSET) @Stable public int metaspaceArrayLengthOffset;
     @HotSpotVMField(name = "Array<Klass*>::_data[0]", type = "Klass*", get = HotSpotVMField.Type.OFFSET) @Stable public int metaspaceArrayBaseOffset;
 
-    @HotSpotVMField(name = "InstanceKlass::_graal_node_class", type = "oop", get = HotSpotVMField.Type.OFFSET) @Stable public int klassNodeClassOffset;
-    @HotSpotVMField(name = "InstanceKlass::_source_file_name_index", type = "u2", get = HotSpotVMField.Type.OFFSET) @Stable public int klassSourceFileNameIndexOffset;
-    @HotSpotVMField(name = "InstanceKlass::_init_state", type = "u1", get = HotSpotVMField.Type.OFFSET) @Stable public int klassStateOffset;
+    @HotSpotVMField(name = "InstanceKlass::_graal_node_class", type = "oop", get = HotSpotVMField.Type.OFFSET) @Stable public int instanceKlassNodeClassOffset;
+    @HotSpotVMField(name = "InstanceKlass::_source_file_name_index", type = "u2", get = HotSpotVMField.Type.OFFSET) @Stable public int instanceKlassSourceFileNameIndexOffset;
+    @HotSpotVMField(name = "InstanceKlass::_init_state", type = "u1", get = HotSpotVMField.Type.OFFSET) @Stable public int instanceKlassInitStateOffset;
     @HotSpotVMField(name = "InstanceKlass::_constants", type = "ConstantPool*", get = HotSpotVMField.Type.OFFSET) @Stable public int instanceKlassConstantsOffset;
     @HotSpotVMField(name = "InstanceKlass::_fields", type = "Array<u2>*", get = HotSpotVMField.Type.OFFSET) @Stable public int instanceKlassFieldsOffset;
 
-    @HotSpotVMConstant(name = "InstanceKlass::linked") @Stable public int klassStateLinked;
-    @HotSpotVMConstant(name = "InstanceKlass::fully_initialized") @Stable public int klassStateFullyInitialized;
+    @HotSpotVMConstant(name = "InstanceKlass::linked") @Stable public int instanceKlassStateLinked;
+    @HotSpotVMConstant(name = "InstanceKlass::fully_initialized") @Stable public int instanceKlassStateFullyInitialized;
 
     @HotSpotVMField(name = "ObjArrayKlass::_element_klass", type = "Klass*", get = HotSpotVMField.Type.OFFSET) @Stable public int arrayClassElementOffset;
 
