@@ -121,19 +121,29 @@ public abstract class LIRInstruction {
         }
 
         @Override
-        final protected Value doValue(LIRInstruction instruction, Value value) {
+        protected final Value doValue(LIRInstruction instruction, Value value) {
             throw GraalInternalError.shouldNotReachHere("This doValue() methods should never be called");
         }
 
         @Override
-        final public Value doValue(LIRInstruction instruction, Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
+        public final Value doValue(LIRInstruction instruction, Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
             return doValue(value, mode, flags);
         }
     }
 
-    public abstract static class StateProcedure {
+    public abstract static class InstructionStateProcedure {
+
+        protected abstract void doState(LIRInstruction instruction, LIRFrameState state);
+    }
+
+    public abstract static class StateProcedure extends InstructionStateProcedure {
 
         protected abstract void doState(LIRFrameState state);
+
+        @Override
+        protected final void doState(LIRInstruction instruction, LIRFrameState state) {
+            doState(state);
+        }
     }
 
     /**
@@ -349,7 +359,7 @@ public abstract class LIRInstruction {
         instructionClass.forEachState(this, proc);
     }
 
-    public final void forEachState(StateProcedure proc) {
+    public final void forEachState(InstructionStateProcedure proc) {
         instructionClass.forEachState(this, proc);
     }
 
