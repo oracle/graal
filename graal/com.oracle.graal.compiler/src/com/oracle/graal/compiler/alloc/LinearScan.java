@@ -68,6 +68,7 @@ public final class LinearScan {
 
     boolean callKillsRegisters;
 
+    public static final int DOMINATOR_SPILL_MOVE_ID = -2;
     private static final int SPLIT_INTERVALS_CAPACITY_RIGHT_SHIFT = 1;
 
     public static class Options {
@@ -2002,7 +2003,7 @@ public final class LinearScan {
                                 AllocatableValue fromLocation = interval.getSplitChildAtOpId(spillOpId, OperandMode.DEF, this).location();
                                 AllocatableValue toLocation = canonicalSpillOpr(interval);
                                 LIRInstruction move = ir.getSpillMoveFactory().createMove(toLocation, fromLocation);
-                                move.setId(-2);
+                                move.setId(DOMINATOR_SPILL_MOVE_ID);
                                 /*
                                  * We can use the insertion buffer directly because we always insert
                                  * at position 1.
