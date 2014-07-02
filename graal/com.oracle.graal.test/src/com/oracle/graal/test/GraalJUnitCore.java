@@ -33,10 +33,11 @@ import org.junit.runner.notification.*;
 public class GraalJUnitCore {
 
     /**
-     * Run the tests contained in the classes named in the <code>args</code>. If all tests run
-     * successfully, exit with a status of 0. Otherwise exit with a status of 1. Write feedback
-     * while tests are running and write stack traces for all failed tests after the tests all
-     * complete.
+     * Run the tests contained in the classes named in the <code>args</code>. A single test method
+     * can be specified by adding #method after the class name. Only a single test can be run in
+     * this way. If all tests run successfully, exit with a status of 0. Otherwise exit with a
+     * status of 1. Write feedback while tests are running and write stack traces for all failed
+     * tests after the tests all complete.
      *
      * @param args names of classes in which to find tests to run
      */
@@ -46,6 +47,7 @@ public class GraalJUnitCore {
         system.out().println("GraalJUnitCore");
         system.out().println("JUnit version " + Version.id());
         List<Class<?>> classes = new ArrayList<>();
+        String methodName = null;
         List<Failure> missingClasses = new ArrayList<>();
         boolean verbose = false;
         boolean enableTiming = false;
@@ -70,6 +72,27 @@ public class GraalJUnitCore {
                 }
 
             } else {
+                /*
+                 * Entries of the form class#method are handled specially. Only one can be specified
+                 * on the command line as there's no obvious way to build a runner for multiple
+                 * ones.
+                 */
+                if (methodName != null) {
+                    system.out().println("Only a single class and method can be specified: " + each);
+                    System.exit(1);
+                } else if (each.contains("#")) {
+                    String[] pair = each.split("#");
+                    if (pair.length != 2) {
+                        system.out().println("Malformed class and method request: " + each);
+                        System.exit(1);
+                    } else if (classes.size() != 0) {
+                        system.out().println("Only a single class and method can be specified: " + each);
+                        System.exit(1);
+                    } else {
+                        methodName = pair[1];
+                        each = pair[0];
+                    }
+                }
                 try {
                     classes.add(Class.forName(each));
                 } catch (ClassNotFoundException e) {
@@ -99,7 +122,13 @@ public class GraalJUnitCore {
             graalListener = new GCAfterTestDecorator(graalListener);
         }
         junitCore.addListener(GraalTextListener.createRunListener(graalListener));
-        Result result = junitCore.run(classes.toArray(new Class[0]));
+        Request request;
+        if (methodName == null) {
+            request = Request.classes(classes.toArray(new Class[0]));
+        } else {
+            request = Request.method(classes.get(0), methodName);
+        }
+        Result result = junitCore.run(request);
         for (Failure each : missingClasses) {
             result.getFailures().add(each);
         }
