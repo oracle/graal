@@ -680,9 +680,25 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 return new StoreFieldNode(receiver, field, value);
             }
 
+            /**
+             * Ensure that concrete classes are at least linked before generating an invoke.
+             * Interfaces may never be linked so simply return true for them.
+             *
+             * @param target
+             * @return true if the declared holder is an interface or is linked
+             */
+            private boolean callTargetIsResolved(JavaMethod target) {
+                if (target instanceof ResolvedJavaMethod) {
+                    ResolvedJavaMethod resolvedTarget = (ResolvedJavaMethod) target;
+                    ResolvedJavaType resolvedType = resolvedTarget.getDeclaringClass();
+                    return resolvedType.isInterface() || resolvedType.isLinked();
+                }
+                return false;
+            }
+
             @Override
             protected void genInvokeStatic(JavaMethod target) {
-                if (target instanceof ResolvedJavaMethod) {
+                if (callTargetIsResolved(target)) {
                     ResolvedJavaMethod resolvedTarget = (ResolvedJavaMethod) target;
                     ResolvedJavaType holder = resolvedTarget.getDeclaringClass();
                     if (!holder.isInitialized() && ResolveClassBeforeStaticInvoke.getValue()) {
@@ -698,7 +714,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
             @Override
             protected void genInvokeInterface(JavaMethod target) {
-                if (target instanceof ResolvedJavaMethod) {
+                if (callTargetIsResolved(target)) {
                     ValueNode[] args = frameState.popArguments(target.getSignature().getParameterSlots(true), target.getSignature().getParameterCount(true));
                     appendInvoke(InvokeKind.Interface, (ResolvedJavaMethod) target, args);
                 } else {
@@ -722,7 +738,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
             @Override
             protected void genInvokeVirtual(JavaMethod target) {
-                if (target instanceof ResolvedJavaMethod) {
+                if (callTargetIsResolved(target)) {
                     /*
                      * Special handling for runtimes that rewrite an invocation of
                      * MethodHandle.invoke(...) or MethodHandle.invokeExact(...) to a static
@@ -749,7 +765,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
             @Override
             protected void genInvokeSpecial(JavaMethod target) {
-                if (target instanceof ResolvedJavaMethod) {
+                if (callTargetIsResolved(target)) {
                     assert target != null;
                     assert target.getSignature() != null;
                     ValueNode[] args = frameState.popArguments(target.getSignature().getParameterSlots(true), target.getSignature().getParameterCount(true));
