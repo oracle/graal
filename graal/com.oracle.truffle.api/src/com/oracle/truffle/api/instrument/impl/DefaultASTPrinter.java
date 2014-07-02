@@ -75,11 +75,11 @@ public class DefaultASTPrinter implements ASTPrinter {
                 p.print(src.getSource().getName() + ":" + src.getStartLine());
             }
         }
-        if (node instanceof PhylumTagged) {
-            final PhylumTagged taggedNode = (PhylumTagged) node;
+        if (node instanceof SyntaxTagged) {
+            final SyntaxTagged taggedNode = (SyntaxTagged) node;
             p.print("[");
             String prefix = "";
-            for (PhylumTag tag : taggedNode.getPhylumTags()) {
+            for (SyntaxTag tag : taggedNode.getSyntaxTags()) {
                 p.print(prefix);
                 prefix = ",";
                 p.print(tag.toString());

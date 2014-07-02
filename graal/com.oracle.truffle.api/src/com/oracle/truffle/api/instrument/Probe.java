@@ -32,7 +32,7 @@ import com.oracle.truffle.api.source.*;
  * associated with programmer-facing tools, there should be no more than one probe associated with a
  * particular piece of source code syntax (i.e. a {@link SourceSection}).
  * <p>
- * Any {@linkplain PhylumTag tags} associated with a particular piece of source code syntax are
+ * Any {@linkplain SyntaxTag tags} associated with a particular piece of source code syntax are
  * managed by the probe.
  * <p>
  * When ASTs are copied, it is presumed that the probe for a site is shared by all AST nodes
@@ -52,7 +52,7 @@ import com.oracle.truffle.api.source.*;
  * @see Instrument
  * @see Wrapper
  */
-public interface Probe extends ExecutionEvents, PhylumTagged {
+public interface Probe extends ExecutionEvents, SyntaxTagged {
 
     /**
      * The source location with which this probe is (presumably uniquely) associated.
@@ -63,7 +63,7 @@ public interface Probe extends ExecutionEvents, PhylumTagged {
      * Mark this probe as being associated with an AST node in some category useful for debugging
      * and other tools.
      */
-    void tagAs(PhylumTag tag);
+    void tagAs(SyntaxTag tag);
 
     /**
      * Adds an instrument to this probe.

@@ -45,6 +45,6 @@ public interface ProbeListener {
      * Notifies that a (fully constructed) {@link Probe} has been tagged. A subsequent marking with
      * the same tag is idempotent and generates no notification.
      */
-    void probeTaggedAs(Probe probe, PhylumTag tag);
+    void probeTaggedAs(Probe probe, SyntaxTag tag);
 
 }

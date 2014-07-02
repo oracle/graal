@@ -41,7 +41,7 @@ import com.oracle.truffle.api.source.*;
 public abstract class InstrumentationNode extends Node implements ExecutionEvents {
 
     interface ProbeCallback {
-        void newTagAdded(ProbeImpl probe, PhylumTag tag);
+        void newTagAdded(ProbeImpl probe, SyntaxTag tag);
     }
 
     /**
@@ -200,7 +200,7 @@ public abstract class InstrumentationNode extends Node implements ExecutionEvent
      * An instance is intended to be shared by every clone of the AST node with which it is
      * originally attached, so it holds no parent pointer.
      * <p>
-     * May be categorized by one or more {@linkplain PhylumTag tags}, signifying information useful
+     * May be categorized by one or more {@linkplain SyntaxTag tags}, signifying information useful
      * for instrumentation about its AST location(s).
      */
     static final class ProbeImpl extends InstrumentationNode implements Probe {
@@ -215,9 +215,9 @@ public abstract class InstrumentationNode extends Node implements ExecutionEvent
         // TODO (mlvdv) assumption model broken
         @CompilerDirectives.CompilationFinal private Assumption probeUnchanged;
 
-        @CompilerDirectives.CompilationFinal private PhylumTrap trap = null;
+        @CompilerDirectives.CompilationFinal private SyntaxTagTrap trap = null;
 
-        private final ArrayList<PhylumTag> tags = new ArrayList<>();
+        private final ArrayList<SyntaxTag> tags = new ArrayList<>();
 
         private ProbeImpl(SourceSection sourceSection, ProbeCallback probeCallback) {
             this.probeCallback = probeCallback;
@@ -231,7 +231,7 @@ public abstract class InstrumentationNode extends Node implements ExecutionEvent
         }
 
         @SlowPath
-        public void tagAs(PhylumTag tag) {
+        public void tagAs(SyntaxTag tag) {
             assert tag != null;
             if (!tags.contains(tag)) {
                 tags.add(tag);
@@ -239,12 +239,12 @@ public abstract class InstrumentationNode extends Node implements ExecutionEvent
             }
         }
 
-        public boolean isTaggedAs(PhylumTag tag) {
+        public boolean isTaggedAs(SyntaxTag tag) {
             assert tag != null;
             return tags.contains(tag);
         }
 
-        public Iterable<PhylumTag> getPhylumTags() {
+        public Iterable<SyntaxTag> getSyntaxTags() {
             return tags;
         }
 
@@ -275,7 +275,7 @@ public abstract class InstrumentationNode extends Node implements ExecutionEvent
         }
 
         @SlowPath
-        void setTrap(PhylumTrap trap) {
+        void setTrap(SyntaxTagTrap trap) {
             assert trap == null || isTaggedAs(trap.getTag());
             probeUnchanged.invalidate();
             this.trap = trap;
@@ -288,7 +288,7 @@ public abstract class InstrumentationNode extends Node implements ExecutionEvent
                     CompilerDirectives.transferToInterpreter();
                 }
                 if (trap != null) {
-                    trap.phylumTrappedAt(astNode, frame.materialize());
+                    trap.tagTrappedAt(astNode, frame.materialize());
                 }
                 if (next != null) {
                     next.internalEnter(astNode, frame);

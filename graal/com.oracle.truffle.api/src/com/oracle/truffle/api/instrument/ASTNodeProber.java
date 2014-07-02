@@ -47,7 +47,7 @@ public interface ASTNodeProber {
      * {@link ExecutionEvents} at the wrapped AST node.</li>
      * <li>if the argument is itself a {@link Wrapper}, i.e. if the AST node at this site has
      * already been wrapped, then the wrapper is returned (with the possible addition of a
-     * {@linkplain PhylumTag tag}).</li>
+     * {@linkplain SyntaxTag tag}).</li>
      * </ul>
      *
      * @param astNode an AST node to which instrumentation might be applied
@@ -59,5 +59,5 @@ public interface ASTNodeProber {
      *         {@code astNode}) with an associated {@link Probe} .
      */
 
-    Node probeAs(Node astNode, PhylumTag tag, Object... args);
+    Node probeAs(Node astNode, SyntaxTag tag, Object... args);
 }

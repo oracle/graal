@@ -55,20 +55,20 @@ public final class ProbeManager {
     /**
      * When non-null, "enter" events with matching tags will trigger a callback.
      */
-    private PhylumTrap phylumTrap = null;
+    private SyntaxTagTrap tagTrap = null;
 
     public ProbeManager() {
         this.probeCallback = new ProbeCallback() {
             /**
              * Receives (from the {@link Probe} implementation) and distributes notification that a
-             * {@link Probe} has acquired a new {@linkplain PhylumTag tag}.
+             * {@link Probe} has acquired a new {@linkplain SyntaxTag tag}.
              */
-            public void newTagAdded(ProbeImpl probe, PhylumTag tag) {
+            public void newTagAdded(ProbeImpl probe, SyntaxTag tag) {
                 for (ProbeListener listener : probeListeners) {
                     listener.probeTaggedAs(probe, tag);
                 }
-                if (phylumTrap != null && tag == phylumTrap.getTag()) {
-                    probe.setTrap(phylumTrap);
+                if (tagTrap != null && tag == tagTrap.getTag()) {
+                    probe.setTrap(tagTrap);
                 }
             }
         };
@@ -124,7 +124,7 @@ public final class ProbeManager {
         return srcToProbe.get(sourceSection) != null;
     }
 
-    public Collection<Probe> findProbesTaggedAs(PhylumTag tag) {
+    public Collection<Probe> findProbesTaggedAs(SyntaxTag tag) {
         final List<Probe> probes = new ArrayList<>();
         for (Probe probe : srcToProbe.values()) {
             if (tag == null || probe.isTaggedAs(tag)) {
@@ -142,31 +142,31 @@ public final class ProbeManager {
         return new ArrayList<>(probes);
     }
 
-    public void setPhylumTrap(PhylumTrap trap) {
-        assert trap != null;
-        if (this.phylumTrap != null) {
+    public void setTagTrap(SyntaxTagTrap tagTrap) {
+        assert tagTrap != null;
+        if (this.tagTrap != null) {
             throw new IllegalStateException("trap already set");
         }
-        this.phylumTrap = trap;
+        this.tagTrap = tagTrap;
 
-        PhylumTag tag = trap.getTag();
+        SyntaxTag tag = tagTrap.getTag();
         for (ProbeImpl probe : srcToProbe.values()) {
             if (probe.isTaggedAs(tag)) {
-                probe.setTrap(trap);
+                probe.setTrap(tagTrap);
             }
         }
     }
 
-    public void clearPhylumTrap() {
-        if (this.phylumTrap == null) {
+    public void clearTagTrap() {
+        if (this.tagTrap == null) {
             throw new IllegalStateException("no trap set");
         }
         for (ProbeImpl probe : srcToProbe.values()) {
-            if (probe.isTaggedAs(phylumTrap.getTag())) {
+            if (probe.isTaggedAs(tagTrap.getTag())) {
                 probe.setTrap(null);
             }
         }
-        phylumTrap = null;
+        tagTrap = null;
     }
 
 }

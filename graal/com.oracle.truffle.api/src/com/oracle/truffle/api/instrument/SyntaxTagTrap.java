@@ -30,20 +30,20 @@ import com.oracle.truffle.api.nodes.*;
 /**
  * A trap that can be set to interrupt execution at probed nodes carrying a specific tag.
  */
-public abstract class PhylumTrap {
+public abstract class SyntaxTagTrap {
 
-    private final PhylumTag tag;
+    private final SyntaxTag tag;
 
-    protected PhylumTrap(PhylumTag tag) {
+    protected SyntaxTagTrap(SyntaxTag tag) {
         this.tag = tag;
     }
 
-    public final PhylumTag getTag() {
+    public final SyntaxTag getTag() {
         return tag;
     }
 
     /**
      * Callback that will be received whenever execution enters a node with the specified tag.
      */
-    public abstract void phylumTrappedAt(Node node, MaterializedFrame frame);
+    public abstract void tagTrappedAt(Node node, MaterializedFrame frame);
 }

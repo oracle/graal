@@ -25,24 +25,24 @@
 package com.oracle.truffle.api.instrument;
 
 /**
- * Information about a guest language program element in a Truffle that can be marked as belonging
- * to 0 or more {@linkplain PhylumTag tags}.
+ * Information about a guest language program element in a Truffle AST that can be marked as
+ * belonging to 0 or more {@linkplain SyntaxTag tags}.
  * <p>
  * <strong>Disclaimer:</strong> experimental interface under development.
  *
  * @see Probe
  * @see Wrapper
  */
-public interface PhylumTagged {
+public interface SyntaxTagged {
 
     /**
      * Is this node tagged as belonging to a particular category of language constructs?
      */
-    boolean isTaggedAs(PhylumTag tag);
+    boolean isTaggedAs(SyntaxTag tag);
 
     /**
      * In which categories has this node been tagged (<em>empty set</em> if none).
      */
-    Iterable<PhylumTag> getPhylumTags();
+    Iterable<SyntaxTag> getSyntaxTags();
 
 }
