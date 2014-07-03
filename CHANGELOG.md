@@ -6,6 +6,8 @@
 * Added supported for new 'jrelibrary' dependency type in mx/projects.
 * Java projects with compliance level higher than the JDKs specified by JAVA_HOME and EXTRA_JAVA_HOMES are ignored once mx/projects has been processed.
 * ResolvedJavaType.resolveMethod now takes a context type used to perform access checks. It now works correctly regarding default methods.
+* Removed Java based compilation queue (CompilationQueue.java).
+* Enabled use of separate class loader (via -XX:+UseGraalClassLoader) for classes loaded from graal.jar to hide them from application classes.
 
 ### Truffle
 * `truffle.jar`: strip out build-time only dependency into a seperated JAR file (`truffle-dsl-processor.jar`)
