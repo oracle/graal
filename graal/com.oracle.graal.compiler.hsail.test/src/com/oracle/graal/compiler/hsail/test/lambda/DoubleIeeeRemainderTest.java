@@ -40,10 +40,6 @@ public class DoubleIeeeRemainderTest extends DoubleTwoInputMathBase {
         dispatchLambdaKernel(size * size, (gid) -> {
             bigOutArray[gid] = Math.IEEEremainder(inArray1[gid], inArray2[gid]);
         });
-
-        for (int i = 0; i < 300; i++) {
-            System.out.println(i + "| " + inArray1[i] + ", " + inArray2[i] + " -> " + bigOutArray[i]);
-        }
     }
 
     @Test
