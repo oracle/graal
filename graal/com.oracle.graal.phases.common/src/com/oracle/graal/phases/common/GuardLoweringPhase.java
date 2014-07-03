@@ -98,8 +98,14 @@ public class GuardLoweringPhase extends BasePhase<MidTierContext> {
                     access.setGuard(null);
                     FixedAccessNode fixedAccess;
                     if (access instanceof FloatingAccessNode) {
-                        fixedAccess = ((FloatingAccessNode) access).asFixedNode();
+                        FloatingAccessNode floatingAccessNode = (FloatingAccessNode) access;
+                        MemoryNode lastLocationAccess = floatingAccessNode.getLastLocationAccess();
+                        fixedAccess = floatingAccessNode.asFixedNode();
                         replaceCurrent(fixedAccess);
+                        if (lastLocationAccess != null) {
+                            // fixed accesses are not currently part of the memory graph
+                            GraphUtil.tryKillUnused(lastLocationAccess.asNode());
+                        }
                     } else {
                         fixedAccess = (FixedAccessNode) access;
                     }
