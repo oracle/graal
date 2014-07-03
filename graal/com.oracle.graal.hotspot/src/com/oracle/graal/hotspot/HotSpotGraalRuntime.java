@@ -28,13 +28,11 @@ import static com.oracle.graal.compiler.common.UnsafeAccess.*;
 import static com.oracle.graal.hotspot.CompileTheWorld.Options.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.Options.*;
 import static com.oracle.graal.hotspot.InitTimer.*;
-import static sun.reflect.Reflection.*;
 
 import java.lang.reflect.*;
 import java.util.*;
 
 import sun.misc.*;
-import sun.reflect.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.stack.*;
@@ -79,22 +77,12 @@ public final class HotSpotGraalRuntime implements GraalRuntime, RuntimeProvider,
             // Why deferred initialization? See comment in completeInitialization().
             instance.completeInitialization();
         }
-
-        registerFieldsToFilter(HotSpotGraalRuntime.class, "instance");
     }
 
     /**
      * Gets the singleton {@link HotSpotGraalRuntime} object.
      */
-    @CallerSensitive
     public static HotSpotGraalRuntime runtime() {
-        SecurityManager sm = System.getSecurityManager();
-        if (sm != null) {
-            Class<?> cc = Reflection.getCallerClass();
-            if (cc != null && cc.getClassLoader() != null) {
-                sm.checkPermission(Graal.ACCESS_PERMISSION);
-            }
-        }
         assert instance != null;
         return instance;
     }
