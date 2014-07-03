@@ -711,19 +711,14 @@ public class HotSpotVMConfig extends CompilerObject {
     @HotSpotVMFlag(name = "CITime") @Stable public boolean ciTime;
     @HotSpotVMFlag(name = "CITimeEach") @Stable public boolean ciTimeEach;
     @HotSpotVMFlag(name = "CompileThreshold") @Stable public long compileThreshold;
-    @HotSpotVMFlag(name = "CompileTheWorld") @Stable public boolean compileTheWorld;
     @HotSpotVMFlag(name = "CompileTheWorldStartAt", optional = true) @Stable public int compileTheWorldStartAt;
     @HotSpotVMFlag(name = "CompileTheWorldStopAt", optional = true) @Stable public int compileTheWorldStopAt;
     @HotSpotVMFlag(name = "DontCompileHugeMethods") @Stable public boolean dontCompileHugeMethods;
     @HotSpotVMFlag(name = "HugeMethodLimit") @Stable public int hugeMethodLimit;
-    @HotSpotVMFlag(name = "PrintCompilation") @Stable public boolean printCompilation;
-    @HotSpotVMFlag(name = "CIPrintCompilerName") @Stable public boolean printCompilerName;
     @HotSpotVMFlag(name = "PrintInlining") @Stable public boolean printInlining;
     @HotSpotVMFlag(name = "GraalUseFastLocking") @Stable public boolean useFastLocking;
-    @HotSpotVMFlag(name = "UseGraalCompilationQueue", optional = true) @Stable public boolean useGraalCompilationQueue;
     @HotSpotVMFlag(name = "ForceUnreachable") @Stable public boolean forceUnreachable;
     @HotSpotVMFlag(name = "GPUOffload") @Stable public boolean gpuOffload;
-    @HotSpotVMFlag(name = "TieredCompilation") @Stable public boolean tieredCompilation;
 
     @HotSpotVMFlag(name = "UseTLAB") @Stable public boolean useTLAB;
     @HotSpotVMFlag(name = "UseBiasedLocking") @Stable public boolean useBiasedLocking;
@@ -1068,11 +1063,6 @@ public class HotSpotVMConfig extends CompilerObject {
      */
     @HotSpotVMConstant(name = "markOopDesc::no_hash") @Stable public int uninitializedIdentityHashCodeValue;
 
-    /**
-     * Used for marking a Method object as queued for compilation.
-     */
-    @HotSpotVMConstant(name = "JVM_ACC_QUEUED") @Stable public int methodQueuedForCompilationBit;
-
     @HotSpotVMField(name = "Method::_access_flags", type = "AccessFlags", get = HotSpotVMField.Type.OFFSET) @Stable public int methodAccessFlagsOffset;
     @HotSpotVMField(name = "Method::_constMethod", type = "ConstMethod*", get = HotSpotVMField.Type.OFFSET) @Stable public int methodConstMethodOffset;
     @HotSpotVMField(name = "Method::_intrinsic_id", type = "u1", get = HotSpotVMField.Type.OFFSET) @Stable public int methodIntrinsicIdOffset;
@@ -1090,7 +1080,6 @@ public class HotSpotVMConfig extends CompilerObject {
     @HotSpotVMConstant(name = "JVM_ACC_MONITOR_MATCH") @Stable public int jvmAccMonitorMatch;
     @HotSpotVMConstant(name = "JVM_ACC_HAS_MONITOR_BYTECODES") @Stable public int jvmAccHasMonitorBytecodes;
 
-    @HotSpotVMField(name = "CompileTask::_compile_id", type = "uint", get = HotSpotVMField.Type.OFFSET) @Stable public int compileTaskCompileIdOffset;
     @HotSpotVMField(name = "CompileTask::_num_inlined_bytecodes", type = "int", get = HotSpotVMField.Type.OFFSET) @Stable public int compileTaskNumInlinedBytecodesOffset;
 
     /**

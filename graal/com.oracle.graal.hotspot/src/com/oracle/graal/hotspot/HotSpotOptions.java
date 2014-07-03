@@ -23,7 +23,6 @@
 package com.oracle.graal.hotspot;
 
 import static com.oracle.graal.compiler.GraalDebugConfig.*;
-import static com.oracle.graal.hotspot.CompilationQueue.Options.*;
 import static com.oracle.graal.hotspot.HotSpotOptionsLoader.*;
 import static java.lang.Double.*;
 
@@ -53,10 +52,7 @@ public class HotSpotOptions {
 
     static {
         boolean timeCompilations = parseVMOptions();
-        if (timeCompilations || PrintCompRate.getValue() != 0) {
-            if (timeCompilations && PrintCompRate.getValue() != 0) {
-                throw new GraalInternalError("PrintCompRate is incompatible with CITime and CITimeEach");
-            }
+        if (timeCompilations) {
             unconditionallyEnableTimerOrMetric(InliningUtil.class, "InlinedBytecodes");
             unconditionallyEnableTimerOrMetric(CompilationTask.class, "CompilationTime");
         }

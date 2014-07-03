@@ -174,11 +174,7 @@ public final class GraalOptions {
     public static final OptionValue<String> DecompileAfterPhase = new OptionValue<>(null);
 
     // HotSpot command line options
-    @Option(help = "")
-    public static final OptionValue<Boolean> HotSpotPrintCompilation = new OptionValue<>(false);
-    @Option(help = "")
-    public static final OptionValue<Boolean> HotSpotCIPrintCompilerName = new OptionValue<>(false);
-    @Option(help = "")
+    @Option(help = "Print inlining optimizations")
     public static final OptionValue<Boolean> HotSpotPrintInlining = new OptionValue<>(false);
 
     // Register allocator debugging

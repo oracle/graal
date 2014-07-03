@@ -289,7 +289,7 @@ public final class CompileTheWorld {
                     if (classFileCounter >= startAt) {
                         println("CompileTheWorld (%d) : %s", classFileCounter, className);
 
-                        // Enqueue each constructor/method in the class for compilation.
+                        // Compile each constructor/method in the class.
                         for (Constructor<?> constructor : javaClass.getDeclaredConstructors()) {
                             HotSpotResolvedJavaMethod javaMethod = (HotSpotResolvedJavaMethod) metaAccess.lookupJavaConstructor(constructor);
                             if (canBeCompiled(javaMethod, constructor.getModifiers())) {
@@ -317,7 +317,7 @@ public final class CompileTheWorld {
     class CTWCompilationTask extends CompilationTask {
 
         CTWCompilationTask(HotSpotBackend backend, HotSpotResolvedJavaMethod method) {
-            super(null, backend, method, INVOCATION_ENTRY_BCI, 0L, false);
+            super(backend, method, INVOCATION_ENTRY_BCI, 0L, method.allocateCompileId(INVOCATION_ENTRY_BCI));
         }
 
         /**

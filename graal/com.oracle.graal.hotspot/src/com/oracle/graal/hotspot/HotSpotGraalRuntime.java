@@ -276,16 +276,9 @@ public final class HotSpotGraalRuntime implements GraalRuntime, RuntimeProvider,
 
         CompileTheWorld.Options.overrideWithNativeOptions(config);
 
-        // Only set HotSpotPrintCompilation and HotSpotPrintInlining if they still have their
-        // default value (false).
-        if (HotSpotPrintCompilation.getValue() == false) {
-            HotSpotPrintCompilation.setValue(config.printCompilation);
-        }
+        // Only set HotSpotPrintInlining if it still has its default value (false).
         if (HotSpotPrintInlining.getValue() == false) {
             HotSpotPrintInlining.setValue(config.printInlining);
-        }
-        if (HotSpotCIPrintCompilerName.getValue() == false) {
-            HotSpotCIPrintCompilerName.setValue(config.printCompilerName);
         }
 
         if (Boolean.valueOf(System.getProperty("graal.printconfig"))) {
