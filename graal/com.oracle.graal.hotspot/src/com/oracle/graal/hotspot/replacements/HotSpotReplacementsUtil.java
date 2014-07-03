@@ -26,7 +26,6 @@ import static com.oracle.graal.compiler.common.UnsafeAccess.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 import static com.oracle.graal.hotspot.meta.HotSpotForeignCallsProviderImpl.*;
 import static com.oracle.graal.nodes.extended.BranchProbabilityNode.*;
-import sun.misc.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
@@ -260,7 +259,7 @@ public class HotSpotReplacementsUtil {
 
     @Fold
     public static int pageSize() {
-        return Unsafe.getUnsafe().pageSize();
+        return unsafe.pageSize();
     }
 
     @Fold
