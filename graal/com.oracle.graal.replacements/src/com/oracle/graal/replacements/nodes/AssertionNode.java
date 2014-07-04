@@ -61,6 +61,10 @@ public class AssertionNode extends FixedWithNextNode implements Lowerable, Canon
         if (value.isConstant() && value.asConstant().asInt() != 0) {
             return null;
         }
+        /*
+         * Assertions with a constant "false" value do not immediately cause an error, since they
+         * may be unreachable and could thus be removed by later optimizations.
+         */
         return this;
     }
 
@@ -73,9 +77,9 @@ public class AssertionNode extends FixedWithNextNode implements Lowerable, Canon
     public void generate(NodeLIRBuilderTool generator) {
         assert compileTimeAssertion;
         if (value.isConstant() && value.asConstant().asInt() == 0) {
-            throw new GraalInternalError("failed compile-time assertion: %s", message);
+            throw new GraalInternalError("%s: failed compile-time assertion: %s", this, message);
         } else {
-            throw new GraalInternalError("failed compile-time assertion (value %s): %s", value, message);
+            throw new GraalInternalError("%s: failed compile-time assertion (value %s): %s", this, value, message);
         }
     }
 
