@@ -13,6 +13,7 @@
 * New flag -G:+TraceTruffleCompilationCallTree to print the tree of inlined calls before compilation.
 * `truffle.jar`: strip out build-time only dependency into a seperated JAR file (`truffle-dsl-processor.jar`)
 * New flag -G:+TraceTruffleCompilationAST to print the AST before compilation.
+* New experimental TypedObject interface added.
 * ...
 
 ## Version 0.3
