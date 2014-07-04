@@ -76,6 +76,34 @@ public final class OptimizedCallTargetLog {
         }
     }
 
+    public static void logTruffleCalls(OptimizedCallTarget compilable) {
+        compilable.getRootNode().accept(new NodeVisitor() {
+
+            int depth = 1;
+
+            public boolean visit(Node node) {
+                if (node instanceof OptimizedDirectCallNode) {
+                    OptimizedDirectCallNode callNode = ((OptimizedDirectCallNode) node);
+                    String dispatched = !callNode.isInlined() ? " <dispatched>" : "";
+                    Map<String, Object> properties = new LinkedHashMap<>();
+                    addASTSizeProperty(callNode.getCurrentCallTarget(), properties);
+                    properties.putAll(callNode.getCurrentCallTarget().getDebugProperties());
+
+                    log((depth * 2), "call", callNode.getCurrentCallTarget().toString() + dispatched, properties);
+
+                    if (callNode.isInlined()) {
+                        depth++;
+                        callNode.getCurrentRootNode().accept(this);
+                        depth--;
+                    }
+                } else if (node instanceof OptimizedIndirectCallNode) {
+                    log((depth * 2), "call", "<indirect>", new LinkedHashMap<String, Object>());
+                }
+                return true;
+            }
+        });
+    }
+
     private static List<OptimizedDirectCallNode> searchCallNodes(final OptimizedCallTarget target) {
         final List<OptimizedDirectCallNode> callNodes = new ArrayList<>();
         target.getRootNode().accept(new NodeVisitor() {

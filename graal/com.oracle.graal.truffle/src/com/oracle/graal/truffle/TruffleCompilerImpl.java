@@ -114,8 +114,12 @@ public class TruffleCompilerImpl {
         if (TraceTruffleCompilation.getValue() || TraceTruffleCompilationAST.getValue()) {
             OptimizedCallTargetLog.logOptimizingStart(compilable);
             if (TraceTruffleCompilationAST.getValue()) {
-                NodeUtil.printCompactTree(OptimizedCallTarget.OUT, compilable.getRootNode());
+                OptimizedCallUtils.printCompactTree(OptimizedCallTarget.OUT, compilable.getRootNode());
             }
+        }
+        if (TraceTruffleCompilationCallTree.getValue()) {
+            OptimizedCallTargetLog.log(0, "opt call tree", compilable.toString(), compilable.getDebugProperties());
+            OptimizedCallTargetLog.logTruffleCalls(compilable);
         }
 
         long timeCompilationStarted = System.nanoTime();
@@ -133,6 +137,10 @@ public class TruffleCompilerImpl {
         CompilationResult compilationResult = compileMethodHelper(graph, assumptions, compilable.toString(), compilable.getSpeculationLog(), compilable);
         long timeCompilationFinished = System.nanoTime();
         int nodeCountLowered = graph.getNodeCount();
+
+        if (Thread.currentThread().isInterrupted()) {
+            return;
+        }
 
         if (TraceTruffleCompilation.getValue()) {
             int calls = OptimizedCallUtils.countCalls(compilable);

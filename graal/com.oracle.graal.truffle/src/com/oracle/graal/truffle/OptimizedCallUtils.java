@@ -22,8 +22,12 @@
  */
 package com.oracle.graal.truffle;
 
+import java.io.*;
+
 import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.nodes.NodeUtil.NodeClass;
 import com.oracle.truffle.api.nodes.NodeUtil.NodeCountFilter;
+import com.oracle.truffle.api.nodes.NodeUtil.NodeField;
 
 class OptimizedCallUtils {
 
@@ -54,4 +58,54 @@ class OptimizedCallUtils {
             }
         }, inlined);
     }
+
+    public static void printCompactTree(OutputStream out, Node node) {
+        printCompactTree(new PrintWriter(out), null, node, 1);
+    }
+
+    private static void printCompactTree(PrintWriter p, Node parent, Node node, int level) {
+        if (node == null) {
+            return;
+        }
+        for (int i = 0; i < level; i++) {
+            p.print("  ");
+        }
+        if (parent == null) {
+            p.println(node.getClass().getSimpleName());
+        } else {
+            String fieldName = "unknownField";
+            NodeField[] fields = NodeClass.get(parent.getClass()).getFields();
+            for (NodeField field : fields) {
+                Object value = field.loadValue(parent);
+                if (value == node) {
+                    fieldName = field.getName();
+                    break;
+                } else if (value instanceof Node[]) {
+                    int index = 0;
+                    for (Node arrayNode : (Node[]) value) {
+                        if (arrayNode == node) {
+                            fieldName = field.getName() + "[" + index + "]";
+                            break;
+                        }
+                        index++;
+                    }
+                }
+            }
+            p.print(fieldName);
+            p.print(" = ");
+            p.println(node.getClass().getSimpleName());
+        }
+
+        for (Node child : node.getChildren()) {
+            printCompactTree(p, node, child, level + 1);
+        }
+        if (node instanceof OptimizedDirectCallNode) {
+            OptimizedDirectCallNode callNode = (OptimizedDirectCallNode) node;
+            if (callNode.isInlined()) {
+                printCompactTree(p, node, callNode.getCurrentRootNode(), level + 1);
+            }
+        }
+        p.flush();
+    }
+
 }
