@@ -199,4 +199,6 @@ public class CompilerToVMImpl implements CompilerToVM {
     public native int getVtableIndexForInterface(long metaspaceKlass, long metaspaceMethod);
 
     public native boolean shouldDebugNonSafepoints();
+
+    public native void writeDebugOutput(byte[] bytes, int offset, int length);
 }

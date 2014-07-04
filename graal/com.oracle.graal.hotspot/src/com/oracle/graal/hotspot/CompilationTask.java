@@ -349,7 +349,7 @@ public class CompilationTask {
 
         // Ensure a debug configuration for this thread is initialized
         if (Debug.isEnabled() && DebugScope.getConfig() == null) {
-            DebugEnvironment.initialize(System.out);
+            DebugEnvironment.initialize(TTY.cachedOut);
         }
 
         HotSpotResolvedJavaMethod method = HotSpotResolvedJavaMethod.fromMetaspace(metaspaceMethod);

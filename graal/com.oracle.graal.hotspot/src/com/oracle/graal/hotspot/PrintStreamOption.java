@@ -25,6 +25,7 @@ package com.oracle.graal.hotspot;
 import java.io.*;
 import java.lang.management.*;
 
+import com.oracle.graal.hotspot.bridge.*;
 import com.oracle.graal.options.*;
 
 /**
@@ -40,14 +41,14 @@ public class PrintStreamOption extends OptionValue<String> {
      * The print stream to which output will be written.
      *
      * Declared {@code volatile} to enable safe use of double-checked locking in
-     * {@link #getStream()} and {@link #setValue(Object)}.
+     * {@link #getStream(CompilerToVM)} and {@link #setValue(Object)}.
      */
     private volatile PrintStream ps;
 
     /**
      * Replace any instance of %p with a an identifying name. Try to get it from the RuntimeMXBean
      * name.
-     * 
+     *
      * @return the name of the file to log to
      */
     private String getFilename() {
@@ -69,9 +70,10 @@ public class PrintStreamOption extends OptionValue<String> {
     }
 
     /**
-     * Gets the print stream configured by this option.
+     * Gets the print stream configured by this option. If no file is configured, the print stream
+     * will output to {@link CompilerToVM#writeDebugOutput(byte[], int, int)}.
      */
-    public PrintStream getStream() {
+    public PrintStream getStream(final CompilerToVM compilerToVM) {
         if (ps == null) {
             if (getValue() != null) {
                 synchronized (this) {
@@ -85,7 +87,25 @@ public class PrintStreamOption extends OptionValue<String> {
                     }
                 }
             } else {
-                ps = System.out;
+                OutputStream ttyOut = new OutputStream() {
+                    @Override
+                    public void write(byte[] b, int off, int len) throws IOException {
+                        if (b == null) {
+                            throw new NullPointerException();
+                        } else if (off < 0 || off > b.length || len < 0 || (off + len) > b.length || (off + len) < 0) {
+                            throw new IndexOutOfBoundsException();
+                        } else if (len == 0) {
+                            return;
+                        }
+                        compilerToVM.writeDebugOutput(b, off, len);
+                    }
+
+                    @Override
+                    public void write(int b) throws IOException {
+                        write(new byte[]{(byte) b}, 0, 1);
+                    }
+                };
+                ps = new PrintStream(ttyOut);
             }
         }
         return ps;

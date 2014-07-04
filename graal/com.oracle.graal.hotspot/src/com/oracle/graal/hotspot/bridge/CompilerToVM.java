@@ -361,4 +361,6 @@ public interface CompilerToVM {
     int getVtableIndexForInterface(long metaspaceKlass, long metaspaceMethod);
 
     boolean shouldDebugNonSafepoints();
+
+    void writeDebugOutput(byte[] bytes, int offset, int length);
 }

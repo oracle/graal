@@ -109,7 +109,7 @@ public final class HotSpotGraalRuntime implements GraalRuntime, RuntimeProvider,
 
         this.compilerToVm = toVM;
 
-        TTY.initialize(Options.LogFile.getStream());
+        TTY.initialize(Options.LogFile.getStream(compilerToVm));
 
         if (Log.getValue() == null && Meter.getValue() == null && Time.getValue() == null && Dump.getValue() == null && Verify.getValue() == null) {
             if (MethodFilter.getValue() != null) {
@@ -118,7 +118,7 @@ public final class HotSpotGraalRuntime implements GraalRuntime, RuntimeProvider,
         }
 
         if (Debug.isEnabled()) {
-            DebugEnvironment.initialize(LogFile.getStream());
+            DebugEnvironment.initialize(TTY.cachedOut);
 
             String summary = DebugValueSummary.getValue();
             if (summary != null) {

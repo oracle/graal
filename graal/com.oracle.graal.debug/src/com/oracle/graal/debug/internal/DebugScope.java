@@ -42,20 +42,28 @@ public final class DebugScope implements Debug.Scope {
             this.indent = (parentIndent == null ? "" : parentIndent.indent + INDENTATION_INCREMENT);
         }
 
-        private void printScopeName() {
+        private void printScopeName(StringBuilder str) {
             if (logScopeName) {
                 if (parentIndent != null) {
-                    parentIndent.printScopeName();
+                    parentIndent.printScopeName(str);
                 }
-                output.println(indent + "[thread:" + Thread.currentThread().getId() + "] scope: " + qualifiedName);
+                str.append(indent).append("[thread:").append(Thread.currentThread().getId()).append("] scope: ").append(qualifiedName).append(System.lineSeparator());
                 logScopeName = false;
             }
         }
 
         public void log(String msg, Object... args) {
             if (isLogEnabled()) {
-                printScopeName();
-                output.println(indent + String.format(msg, args));
+                StringBuilder str = new StringBuilder();
+                printScopeName(str);
+                str.append(indent);
+                if (args.length == 0) {
+                    str.append(msg);
+                } else {
+                    str.append(String.format(msg, args));
+                }
+                str.append(System.lineSeparator());
+                output.append(str);
                 lastUsedIndent = this;
             }
         }
@@ -132,7 +140,7 @@ public final class DebugScope implements Debug.Scope {
 
         // Be pragmatic: provide a default log stream to prevent a crash if the stream is not
         // set while logging
-        this.output = System.out;
+        this.output = TTY.cachedOut;
         assert context != null;
 
         if (parent != null) {
@@ -181,13 +189,6 @@ public final class DebugScope implements Debug.Scope {
 
     public void log(String msg, Object... args) {
         lastUsedIndent.log(msg, args);
-    }
-
-    public void printf(String msg, Object... args) {
-        if (isLogEnabled()) {
-            lastUsedIndent.printScopeName();
-            output.printf(msg, args);
-        }
     }
 
     public void dump(Object object, String formatString, Object... args) {
@@ -293,7 +294,7 @@ public final class DebugScope implements Debug.Scope {
 
             // Be pragmatic: provide a default log stream to prevent a crash if the stream is not
             // set while logging
-            output = System.out;
+            output = TTY.cachedOut;
         } else {
             meterEnabled = config.isMeterEnabled();
             memUseTrackingEnabled = config.isMemUseTrackingEnabled();
