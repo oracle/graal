@@ -88,7 +88,7 @@ public final class OptimizedCallTargetLog {
                     Map<String, Object> properties = new LinkedHashMap<>();
                     addASTSizeProperty(callNode.getCurrentCallTarget(), properties);
                     properties.putAll(callNode.getCurrentCallTarget().getDebugProperties());
-
+                    properties.put("Stamp", callNode.getCurrentCallTarget().getArgumentStamp());
                     log((depth * 2), "call", callNode.getCurrentCallTarget().toString() + dispatched, properties);
 
                     if (callNode.isInlined()) {

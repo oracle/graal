@@ -58,6 +58,9 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
 
     private final RootNode rootNode;
 
+    private final Map<TruffleStamp, OptimizedCallTarget> splitVersions = new HashMap<>();
+    private TruffleStamp argumentStamp = DefaultTruffleStamp.getInstance();
+
     public final RootNode getRootNode() {
         return rootNode;
     }
@@ -74,6 +77,34 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
         if (TruffleCallTargetProfiling.getValue()) {
             registerCallTarget(this);
         }
+    }
+
+    public final void mergeArgumentStamp(TruffleStamp p) {
+        this.argumentStamp = this.argumentStamp.join(p);
+    }
+
+    public final TruffleStamp getArgumentStamp() {
+        return argumentStamp;
+    }
+
+    private int splitIndex;
+
+    public int getSplitIndex() {
+        return splitIndex;
+    }
+
+    public OptimizedCallTarget split() {
+        if (!getRootNode().isSplittable()) {
+            return null;
+        }
+        OptimizedCallTarget splitTarget = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(getRootNode().split());
+        splitTarget.splitSource = this;
+        splitTarget.splitIndex = splitIndex++;
+        return splitTarget;
+    }
+
+    public Map<TruffleStamp, OptimizedCallTarget> getSplitVersions() {
+        return splitVersions;
     }
 
     public SpeculationLog getSpeculationLog() {
@@ -133,6 +164,7 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
             logOptimizedInvalidated(this, oldNode, newNode, reason);
         }
         cancelInstalledTask(oldNode, newNode, reason);
+        invalidateInlining();
     }
 
     public void invalidateInlining() {
@@ -233,10 +265,10 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
     public String toString() {
         String superString = rootNode.toString();
         if (isValid()) {
-            superString += " <compiled>";
+            superString += " <opt>";
         }
         if (splitSource != null) {
-            superString += " <split>";
+            superString += " <split-" + splitIndex + "-" + argumentStamp.toStringShort() + ">";
         }
         return superString;
     }
@@ -334,4 +366,5 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
         return properties;
 
     }
+
 }

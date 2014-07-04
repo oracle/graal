@@ -14,6 +14,12 @@
 * `truffle.jar`: strip out build-time only dependency into a seperated JAR file (`truffle-dsl-processor.jar`)
 * New flag -G:+TraceTruffleCompilationAST to print the AST before compilation.
 * New experimental TypedObject interface added.
+* Renamed flag -G:+TruffleSplittingEnabled to -G:+TruffleSplitting
+* New flag -G:+TruffleSplittingNew to enable the experimental splitting mode based on function arguments.
+* New flag -G:+TruffleSplittingTypedInstanceStamps to enable splitting for TypedObject instances.
+* New flag -G:+TruffleSplittingClassInstanceStamps to enable splitting for Java object instances except TypedObject.
+* New flag -G:TruffleSplittingStartCallCount=3 which sets the number of minimal calls until splitting is performed.
+* New flag -G:-TruffleSplittingAggressive if enabled splits every function call.
 * ...
 
 ## Version 0.3

@@ -63,8 +63,22 @@ public class TruffleCompilerOptions {
     public static final OptionValue<Double> TruffleInliningMinFrequency = new OptionValue<>(0.3);
     @Option(help = "Allow inlining of less hot candidates if tree size is small")
     public static final OptionValue<Integer> TruffleInliningTrivialSize = new OptionValue<>(10);
+
     @Option(help = "Enable call target splitting")
-    public static final OptionValue<Boolean> TruffleSplittingEnabled = new OptionValue<>(true);
+    public static final OptionValue<Boolean> TruffleSplitting = new OptionValue<>(true);
+    @Option(help = "Experimental: Enable the new version of truffle splitting.")
+    public static final OptionValue<Boolean> TruffleSplittingNew = new OptionValue<>(false);
+    @Option(help = "Experimental. New splitting only: Whether or not splitting should be based instance comparisons of non TypedObjects")
+    public static final OptionValue<Boolean> TruffleSplittingClassInstanceStamps = new OptionValue<>(true);
+    @Option(help = "Experimental. New splitting only: Whether or not splitting should be based instance comparisons of TypedObjects")
+    public static final OptionValue<Boolean> TruffleSplittingTypeInstanceStamps = new OptionValue<>(true);
+    @Option(help = "Experimental. New splitting only: The number of calls until splitting is performed. ")
+    public static final OptionValue<Integer> TruffleSplittingStartCallCount = new OptionValue<>(3);
+    @Option(help = "Experimental. New splitting only: Split everything aggressively. ")
+    public static final OptionValue<Boolean> TruffleSplittingAggressive = new OptionValue<>(false);
+
+
+
     @Option(help = "Disable call target splitting if tree size exceeds this limit")
     public static final OptionValue<Integer> TruffleSplittingMaxCalleeSize = new OptionValue<>(100);
     @Option(help = "Number of most recently used methods in truffle cache")
