@@ -500,9 +500,9 @@ public class ReplacementsImpl implements Replacements {
         }
 
         /**
-         * Filter nodes has side effects and shouldn't be deleted from snippets when converting
-         * deoptimizations to guards. Currently this only allows exception constructors to be
-         * eliminated to cover the case when Java assertions are in the inlined code.
+         * Filter nodes which have side effects and shouldn't be deleted from snippets when
+         * converting deoptimizations to guards. Currently this only allows exception constructors
+         * to be eliminated to cover the case when Java assertions are in the inlined code.
          *
          * @param node
          * @return true for nodes that have side effects and are unsafe to delete
