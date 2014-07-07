@@ -188,7 +188,7 @@ public final class GraphOrder {
                                 }
                             }
                         } else if (node instanceof LoopExitNode) {
-                            if (!graph.isAfterFloatingReadPhase()) {
+                            if (graph.hasValueProxies()) {
                                 // loop contents are only accessible via proxies at the exit
                                 currentState.clearAll();
                                 currentState.markAll(loopEntryStates.get(((LoopExitNode) node).loopBegin()));

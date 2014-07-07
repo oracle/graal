@@ -44,5 +44,6 @@ public class RemoveValueProxyPhase extends Phase {
                 }
             }
         }
+        graph.setHasValueProxies(false);
     }
 }

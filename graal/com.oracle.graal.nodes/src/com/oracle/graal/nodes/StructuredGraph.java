@@ -78,6 +78,7 @@ public class StructuredGraph extends Graph {
     private final int entryBCI;
     private GuardsStage guardsStage = GuardsStage.FLOATING_GUARDS;
     private boolean isAfterFloatingReadPhase = false;
+    private boolean hasValueProxies = true;
 
     /**
      * Creates a new Graph containing a single {@link BeginNode} as the {@link #start() start} node.
@@ -428,5 +429,14 @@ public class StructuredGraph extends Graph {
     public void setAfterFloatingReadPhase(boolean state) {
         assert state : "cannot 'unapply' floating read phase on graph";
         isAfterFloatingReadPhase = state;
+    }
+
+    public boolean hasValueProxies() {
+        return hasValueProxies;
+    }
+
+    public void setHasValueProxies(boolean state) {
+        assert !state : "cannot 'unapply' value proxy removal on graph";
+        hasValueProxies = state;
     }
 }
