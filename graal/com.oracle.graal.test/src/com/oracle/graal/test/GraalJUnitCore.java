@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.test;
 
+import java.io.*;
 import java.util.*;
 
 import junit.runner.*;
@@ -54,7 +55,7 @@ public class GraalJUnitCore {
         boolean color = false;
         boolean eagerStackTrace = false;
         boolean gcAfterTest = false;
-        for (String each : args) {
+        for (String each : expandArgs(args)) {
             if (each.charAt(0) == '-') {
                 // command line arguments
                 if (each.contentEquals("-JUnitVerbose")) {
@@ -133,5 +134,61 @@ public class GraalJUnitCore {
             result.getFailures().add(each);
         }
         System.exit(result.wasSuccessful() ? 0 : 1);
+    }
+
+    /**
+     * Expand any arguments starting with @ and return the resulting argument array.
+     *
+     * @param args
+     * @return the expanded argument array
+     */
+    private static String[] expandArgs(String[] args) {
+        List<String> result = null;
+        for (int i = 0; i < args.length; i++) {
+            String arg = args[i];
+            if (arg.length() > 0 && arg.charAt(0) == '@') {
+                if (result == null) {
+                    result = new ArrayList<>();
+                    for (int j = 0; j < i; j++) {
+                        result.add(args[j]);
+                    }
+                    expandArg(arg.substring(1), result);
+                }
+            } else if (result != null) {
+                result.add(arg);
+            }
+        }
+        return result != null ? result.toArray(new String[0]) : args;
+    }
+
+    /**
+     * Add each line from {@code filename} to the list {@code args}.
+     *
+     * @param filename
+     * @param args
+     */
+    private static void expandArg(String filename, List<String> args) {
+        BufferedReader br = null;
+        try {
+            br = new BufferedReader(new FileReader(filename));
+
+            String buf;
+            while ((buf = br.readLine()) != null) {
+                args.add(buf);
+            }
+            br.close();
+        } catch (IOException ioe) {
+            ioe.printStackTrace();
+            System.exit(2);
+        } finally {
+            try {
+                if (br != null) {
+                    br.close();
+                }
+            } catch (IOException ioe) {
+                ioe.printStackTrace();
+                System.exit(3);
+            }
+        }
     }
 }
