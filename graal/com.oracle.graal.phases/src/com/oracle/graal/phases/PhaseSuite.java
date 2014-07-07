@@ -53,17 +53,21 @@ public class PhaseSuite<C> extends BasePhase<C> {
 
     public final ListIterator<BasePhase<? super C>> findPhase(Class<? extends BasePhase<? super C>> phaseClass) {
         ListIterator<BasePhase<? super C>> it = phases.listIterator();
-        findNextPhase(it, phaseClass);
-        return it;
+        if (findNextPhase(it, phaseClass)) {
+            return it;
+        } else {
+            return null;
+        }
     }
 
-    public static <C> void findNextPhase(ListIterator<BasePhase<? super C>> it, Class<? extends BasePhase<? super C>> phaseClass) {
+    public static <C> boolean findNextPhase(ListIterator<BasePhase<? super C>> it, Class<? extends BasePhase<? super C>> phaseClass) {
         while (it.hasNext()) {
             BasePhase<? super C> phase = it.next();
             if (phaseClass.isInstance(phase)) {
-                break;
+                return true;
             }
         }
+        return false;
     }
 
     @Override
