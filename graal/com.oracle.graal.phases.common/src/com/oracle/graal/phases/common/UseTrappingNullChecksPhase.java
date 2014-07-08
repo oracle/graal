@@ -129,9 +129,13 @@ public class UseTrappingNullChecksPhase extends BasePhase<LowTierContext> {
 
     private static void checkPredecessor(AbstractDeoptimizeNode deopt, Node predecessor, DeoptimizationReason deoptimizationReason) {
         Node current = predecessor;
-        Node branch = null;
+        BeginNode branch = null;
         while (current instanceof BeginNode) {
-            branch = current;
+            branch = (BeginNode) current;
+            if (branch.anchored().isNotEmpty()) {
+                // some input of the deopt framestate is anchored to this branch
+                return;
+            }
             current = current.predecessor();
         }
         if (current instanceof IfNode) {
