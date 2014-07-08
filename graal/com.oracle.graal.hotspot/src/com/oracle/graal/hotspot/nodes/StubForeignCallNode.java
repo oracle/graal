@@ -83,12 +83,4 @@ public class StubForeignCallNode extends FixedWithNextNode implements LIRLowerab
         }
         return super.toString(verbosity);
     }
-
-    public MemoryCheckpoint asMemoryCheckpoint() {
-        return this;
-    }
-
-    public MemoryPhiNode asMemoryPhi() {
-        return null;
-    }
 }

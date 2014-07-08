@@ -92,12 +92,4 @@ public abstract class AbstractWriteNode extends FixedAccessNode implements State
         updateUsages(lastLocationAccess, newLla);
         lastLocationAccess = newLla;
     }
-
-    public MemoryCheckpoint asMemoryCheckpoint() {
-        return this;
-    }
-
-    public MemoryPhiNode asMemoryPhi() {
-        return null;
-    }
 }

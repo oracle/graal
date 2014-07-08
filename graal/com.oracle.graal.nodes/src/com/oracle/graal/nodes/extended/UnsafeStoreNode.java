@@ -120,14 +120,6 @@ public class UnsafeStoreNode extends UnsafeAccessNode implements StateSplit, Low
         return stateAfter;
     }
 
-    public MemoryCheckpoint asMemoryCheckpoint() {
-        return this;
-    }
-
-    public MemoryPhiNode asMemoryPhi() {
-        return null;
-    }
-
     // specialized on value type until boxing/unboxing is sorted out in intrinsification
 
     @SuppressWarnings("unused")

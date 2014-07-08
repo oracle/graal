@@ -63,14 +63,6 @@ public class MemoryProxyNode extends ProxyNode implements MemoryProxy, LIRLowera
         return (MemoryNode) value();
     }
 
-    public MemoryCheckpoint asMemoryCheckpoint() {
-        return getOriginalMemoryNode().asMemoryCheckpoint();
-    }
-
-    public MemoryPhiNode asMemoryPhi() {
-        return getOriginalMemoryNode().asMemoryPhi();
-    }
-
     public Node getOriginalNode() {
         return value.asNode();
     }

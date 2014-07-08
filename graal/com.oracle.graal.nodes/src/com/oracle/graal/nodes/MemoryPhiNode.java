@@ -45,14 +45,6 @@ public class MemoryPhiNode extends PhiNode implements MemoryNode {
         return locationIdentity;
     }
 
-    public MemoryCheckpoint asMemoryCheckpoint() {
-        return null;
-    }
-
-    public MemoryPhiNode asMemoryPhi() {
-        return this;
-    }
-
     @Override
     public NodeInputList<ValueNode> values() {
         return values;

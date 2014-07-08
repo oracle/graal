@@ -69,14 +69,6 @@ public class LoweredAtomicReadAndWriteNode extends FixedAccessNode implements St
         gen.setResult(this, result);
     }
 
-    public MemoryCheckpoint asMemoryCheckpoint() {
-        return this;
-    }
-
-    public MemoryPhiNode asMemoryPhi() {
-        return null;
-    }
-
     public boolean canNullCheck() {
         return false;
     }

@@ -70,12 +70,4 @@ public class ExceptionObjectNode extends DispatchBeginNode implements Lowerable,
         assertTrue(stateAfter() != null, "an exception handler needs a frame state");
         return super.verify();
     }
-
-    public MemoryCheckpoint asMemoryCheckpoint() {
-        return this;
-    }
-
-    public MemoryPhiNode asMemoryPhi() {
-        return null;
-    }
 }

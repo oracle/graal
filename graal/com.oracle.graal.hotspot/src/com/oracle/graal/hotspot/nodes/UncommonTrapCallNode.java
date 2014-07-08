@@ -70,12 +70,4 @@ public class UncommonTrapCallNode extends FixedWithNextNode implements LIRLowera
 
     @NodeIntrinsic
     public static native Word uncommonTrap(long registerSaver, int trapRequest);
-
-    public MemoryCheckpoint asMemoryCheckpoint() {
-        return null;
-    }
-
-    public MemoryPhiNode asMemoryPhi() {
-        return null;
-    }
 }
