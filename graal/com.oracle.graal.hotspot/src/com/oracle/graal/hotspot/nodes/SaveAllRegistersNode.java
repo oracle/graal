@@ -24,15 +24,18 @@ package com.oracle.graal.hotspot.nodes;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.lir.StandardOp.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 
 /**
  * Saves all allocatable registers.
  */
-public class SaveAllRegistersNode extends FixedWithNextNode implements LIRLowerable {
+@NodeInfo(allowedUsageTypes = {InputType.Memory})
+public class SaveAllRegistersNode extends FixedWithNextNode implements LIRLowerable, MemoryCheckpoint.Single {
 
     private SaveRegistersOp saveRegistersOp;
 
@@ -59,4 +62,8 @@ public class SaveAllRegistersNode extends FixedWithNextNode implements LIRLowera
      */
     @NodeIntrinsic
     public static native long saveAllRegisters();
+
+    public LocationIdentity getLocationIdentity() {
+        return LocationIdentity.ANY_LOCATION;
+    }
 }
