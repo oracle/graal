@@ -32,8 +32,11 @@ public class Factory {
 
     /**
      * Creates a new class loader for loading classes in {@code graal.jar}.
+     *
+     * Called from the VM.
      */
-    public static ClassLoader newClassLoader() throws MalformedURLException {
+    @SuppressWarnings("unused")
+    private static ClassLoader newClassLoader() throws MalformedURLException {
         URL[] urls = {getGraalJarUrl()};
         return URLClassLoader.newInstance(urls);
     }
