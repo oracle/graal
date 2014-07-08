@@ -77,6 +77,8 @@ import com.oracle.graal.word.*;
  */
 public class UncommonTrapStub extends SnippetStub {
 
+    public static final LocationIdentity STACK_BANG_LOCATION = new NamedLocationIdentity("stack bang");
+
     private final TargetDescription target;
 
     public UncommonTrapStub(HotSpotProviders providers, TargetDescription target, HotSpotForeignCallLinkage linkage) {
@@ -152,7 +154,7 @@ public class UncommonTrapStub extends SnippetStub {
         Word stackPointer = readRegister(stackPointerRegister);
 
         for (int i = 1; i < bangPages; i++) {
-            stackPointer.writeInt((-i * pageSize()) + stackBias(), 0);
+            stackPointer.writeInt((-i * pageSize()) + stackBias(), 0, STACK_BANG_LOCATION);
         }
 
         // Load number of interpreter frames.
