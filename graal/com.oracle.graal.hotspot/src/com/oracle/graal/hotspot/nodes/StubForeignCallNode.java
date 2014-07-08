@@ -22,10 +22,13 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
+import java.util.*;
+
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.hotspot.replacements.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
@@ -54,7 +57,10 @@ public class StubForeignCallNode extends FixedWithNextNode implements LIRLowerab
 
     @Override
     public LocationIdentity[] getLocationIdentities() {
-        return foreignCalls.getKilledLocations(descriptor);
+        LocationIdentity[] killedLocations = foreignCalls.getKilledLocations(descriptor);
+        killedLocations = Arrays.copyOf(killedLocations, killedLocations.length + 1);
+        killedLocations[killedLocations.length - 1] = HotSpotReplacementsUtil.PENDING_EXCEPTION_LOCATION;
+        return killedLocations;
     }
 
     protected Value[] operands(NodeLIRBuilderTool gen) {
