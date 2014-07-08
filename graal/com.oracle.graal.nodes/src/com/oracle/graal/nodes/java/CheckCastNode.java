@@ -103,6 +103,7 @@ public class CheckCastNode extends FixedWithNextNode implements Canonicalizable,
             stamp = ((ObjectStamp) object().stamp()).castTo((ObjectStamp) stamp);
         }
         ValueNode condition;
+        ValueNode theValue = object;
         if (stamp instanceof IllegalStamp) {
             // This is a check cast that will always fail
             condition = LogicConstantNode.contradiction(graph());
@@ -116,6 +117,12 @@ public class CheckCastNode extends FixedWithNextNode implements Canonicalizable,
                 InstanceOfNode typeTest = graph().addWithoutUnique(new InstanceOfNode(type, nullGuarded, profile));
                 graph().addBeforeFixed(this, nullCheck);
                 condition = typeTest;
+                /*
+                 * The PiNode is injecting an extra guard into the type so make sure it's used in
+                 * the GuardingPi, otherwise we can lose the null guard if the InstanceOf is
+                 * optimized away.
+                 */
+                theValue = nullGuarded;
                 stamp = stamp.join(StampFactory.objectNonNull());
                 nullCheck.lower(tool);
             } else {
@@ -125,7 +132,7 @@ public class CheckCastNode extends FixedWithNextNode implements Canonicalizable,
                 condition = LogicNode.or(graph().unique(new IsNullNode(object)), typeTest, shortCircuitProbability);
             }
         }
-        GuardingPiNode checkedObject = graph().add(new GuardingPiNode(object, condition, false, forStoreCheck ? ArrayStoreException : ClassCastException, InvalidateReprofile, stamp));
+        GuardingPiNode checkedObject = graph().add(new GuardingPiNode(theValue, condition, false, forStoreCheck ? ArrayStoreException : ClassCastException, InvalidateReprofile, stamp));
         graph().replaceFixedWithFixed(this, checkedObject);
         checkedObject.lower(tool);
     }
