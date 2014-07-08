@@ -46,6 +46,7 @@ public final class DefaultTruffleStamp {
             return ArrayStamp.INSTANCE.joinValue(value);
         } else if (!useInstanceStamps(value)) {
             Object type = getTypeIdentifier(value);
+            assert value != null;
             if (type != NO_TYPE) {
                 return new TypeStamp(value.getClass(), type);
             } else {
@@ -57,6 +58,9 @@ public final class DefaultTruffleStamp {
     }
 
     private static boolean useInstanceStamps(Object value) {
+        if (value == null) {
+            return true;
+        }
         if (TruffleCompilerOptions.TruffleSplittingTypeInstanceStamps.getValue()) {
             if (value instanceof TypedObject) {
                 return true;
