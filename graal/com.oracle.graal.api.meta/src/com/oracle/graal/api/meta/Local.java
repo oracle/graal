@@ -32,5 +32,5 @@ public interface Local {
 
     String getName();
 
-    ResolvedJavaType getType();
+    JavaType getType();
 }

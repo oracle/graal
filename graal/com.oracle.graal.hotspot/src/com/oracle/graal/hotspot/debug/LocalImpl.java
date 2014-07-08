@@ -33,19 +33,14 @@ public class LocalImpl implements Local {
     private final int startBci;
     private final int endBci;
     private final int slot;
-    private final ResolvedJavaType resolvedType;
+    private final JavaType type;
 
     public LocalImpl(String name, String type, HotSpotResolvedObjectType holder, int startBci, int endBci, int slot) {
         this.name = name;
         this.startBci = startBci;
         this.endBci = endBci;
         this.slot = slot;
-        JavaType t = runtime().lookupType(type, holder, true);
-        if (t instanceof ResolvedJavaType) {
-            this.resolvedType = (ResolvedJavaType) runtime().lookupType(type, holder, false);
-        } else {
-            throw new AssertionError(t.getClass() + " is not a ResolvedJavaType");
-        }
+        this.type = runtime().lookupType(type, holder, false);
     }
 
     @Override
@@ -64,8 +59,8 @@ public class LocalImpl implements Local {
     }
 
     @Override
-    public ResolvedJavaType getType() {
-        return resolvedType;
+    public JavaType getType() {
+        return type;
     }
 
     @Override
@@ -79,7 +74,7 @@ public class LocalImpl implements Local {
             return false;
         }
         LocalImpl that = (LocalImpl) obj;
-        return this.name.equals(that.name) && this.startBci == that.startBci && this.endBci == that.endBci && this.slot == that.slot && this.resolvedType.equals(that.resolvedType);
+        return this.name.equals(that.name) && this.startBci == that.startBci && this.endBci == that.endBci && this.slot == that.slot && this.type.equals(that.type);
     }
 
     @Override
@@ -89,6 +84,6 @@ public class LocalImpl implements Local {
 
     @Override
     public String toString() {
-        return "LocalImpl<name=" + name + ", resolvedType=" + resolvedType + ", startBci=" + startBci + ", endBci=" + endBci + ", slot=" + slot + ">";
+        return "LocalImpl<name=" + name + ", resolvedType=" + type + ", startBci=" + startBci + ", endBci=" + endBci + ", slot=" + slot + ">";
     }
 }
