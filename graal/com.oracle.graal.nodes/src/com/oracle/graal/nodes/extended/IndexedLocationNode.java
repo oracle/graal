@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.nodes.extended;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
@@ -29,6 +30,7 @@ import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.type.*;
 
 /**
  * Location node that has a displacement and a scaled index. Can represent locations in the form of
@@ -98,6 +100,13 @@ public final class IndexedLocationNode extends LocationNode implements Canonical
             return ConstantLocationNode.create(getLocationIdentity(), getValueKind(), index.asConstant().asLong() * indexScaling + displacement);
         }
         return this;
+    }
+
+    @Override
+    public IntegerStamp getDisplacementStamp() {
+        assert indexScaling > 0 && CodeUtil.isPowerOf2(indexScaling);
+        int scale = CodeUtil.log2(indexScaling);
+        return (IntegerStamp) StampTool.add(StampFactory.forInteger(64, displacement, displacement), StampTool.leftShift(index.stamp(), StampFactory.forInteger(64, scale, scale)));
     }
 
     @Override
