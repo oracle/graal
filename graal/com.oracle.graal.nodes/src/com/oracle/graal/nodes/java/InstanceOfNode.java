@@ -72,11 +72,14 @@ public class InstanceOfNode extends UnaryOpLogicNode implements Lowerable, Virtu
             if (result != null) {
                 return result;
             }
-            ResolvedJavaType exact = stampType.findUniqueConcreteSubtype();
-            if (exact != null) {
-                result = checkInstanceOf(forValue, exact, objectStamp.nonNull(), true);
-                if (result != null) {
-                    return result;
+            if (tool.assumptions() != null && tool.assumptions().useOptimisticAssumptions()) {
+                ResolvedJavaType exact = stampType.findUniqueConcreteSubtype();
+                if (exact != null) {
+                    result = checkInstanceOf(forValue, exact, objectStamp.nonNull(), true);
+                    if (result != null) {
+                        tool.assumptions().recordConcreteSubtype(stampType, exact);
+                        return result;
+                    }
                 }
             }
         }
