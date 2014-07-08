@@ -68,36 +68,51 @@ public class InstanceOfNode extends UnaryOpLogicNode implements Lowerable, Virtu
 
         ResolvedJavaType stampType = objectStamp.type();
         if (stampType != null) {
-            boolean subType = type().isAssignableFrom(stampType);
-            if (subType) {
-                if (objectStamp.nonNull()) {
-                    // the instanceOf matches, so return true
-                    return LogicConstantNode.tautology();
-                }
-            } else {
-                if (objectStamp.isExactType()) {
-                    // since this type check failed for an exact type we know that it can never
-                    // succeed at run time. we also don't care about null values, since they will
-                    // also make the check fail.
-                    return LogicConstantNode.contradiction();
-                } else {
-                    boolean superType = stampType.isAssignableFrom(type());
-                    if (!superType && !stampType.isInterface() && !type().isInterface()) {
-                        return LogicConstantNode.contradiction();
-                    }
-                    // since the subtype comparison was only performed on a declared type we don't
-                    // really know if it might be true at run time...
+            ValueNode result = checkInstanceOf(forValue, stampType, objectStamp.nonNull(), objectStamp.isExactType());
+            if (result != null) {
+                return result;
+            }
+            ResolvedJavaType exact = stampType.findUniqueConcreteSubtype();
+            if (exact != null) {
+                result = checkInstanceOf(forValue, exact, objectStamp.nonNull(), true);
+                if (result != null) {
+                    return result;
                 }
             }
         }
-        if (stampType != null && type().isAssignableFrom(stampType)) {
-            if (!objectStamp.nonNull()) {
+        return this;
+    }
+
+    private ValueNode checkInstanceOf(ValueNode forValue, ResolvedJavaType inputType, boolean nonNull, boolean exactType) {
+        boolean subType = type().isAssignableFrom(inputType);
+        if (subType) {
+            if (nonNull) {
+                // the instanceOf matches, so return true
+                return LogicConstantNode.tautology();
+            }
+        } else {
+            if (exactType) {
+                // since this type check failed for an exact type we know that it can never
+                // succeed at run time. we also don't care about null values, since they will
+                // also make the check fail.
+                return LogicConstantNode.contradiction();
+            } else {
+                boolean superType = inputType.isAssignableFrom(type());
+                if (!superType && !inputType.isInterface() && !type().isInterface()) {
+                    return LogicConstantNode.contradiction();
+                }
+                // since the subtype comparison was only performed on a declared type we don't
+                // really know if it might be true at run time...
+            }
+        }
+        if (type().isAssignableFrom(inputType)) {
+            if (!nonNull) {
                 // the instanceof matches if the object is non-null, so return true
                 // depending on the null-ness.
                 return new LogicNegationNode(new IsNullNode(forValue));
             }
         }
-        return this;
+        return null;
     }
 
     /**
