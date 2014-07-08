@@ -166,7 +166,7 @@ public class GenGraalRuntimeInlineHpp {
                 out.printf("      if (strncmp(name, \"PrintFlags\", %d) == 0) {%n", len);
                 out.println("        if (value[0] == '+') {");
                 out.println("          if (check_only) {");
-                out.println("            TempNewSymbol name = SymbolTable::new_symbol(\"Lcom/oracle/graal/hotspot/HotSpotOptions;\", THREAD);");
+                out.println("            TempNewSymbol name = SymbolTable::new_symbol(\"Lcom/oracle/graal/hotspot/HotSpotOptions;\", CHECK_(true));");
                 out.println("            hotSpotOptionsClass = SystemDictionary::resolve_or_fail(name, true, CHECK_(true));");
                 out.println("          }");
                 out.println("          set_option_helper(hotSpotOptionsClass, name, name_len, Handle(), '?', Handle(), 0L);");
