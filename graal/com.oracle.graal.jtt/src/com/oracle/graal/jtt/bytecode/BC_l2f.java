@@ -49,4 +49,14 @@ public class BC_l2f extends JTTTest {
         runTest("test", -74652389L);
     }
 
+    @Test
+    public void run3() throws Throwable {
+        runTest("test", Long.MAX_VALUE);
+    }
+
+    @Test
+    public void run4() throws Throwable {
+        runTest("test", Long.MIN_VALUE);
+    }
+
 }

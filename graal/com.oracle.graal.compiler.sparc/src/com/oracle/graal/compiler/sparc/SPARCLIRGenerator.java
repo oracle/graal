@@ -609,7 +609,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
                 append(new BinaryRegReg(IDIV, result, a, loadNonConst(b)));
                 break;
             case Long:
-                append(new BinaryRegReg(LDIV, result, a, loadNonConst(b)));
+                append(new BinaryRegReg(LDIV, result, a, loadNonConst(b), state));
                 break;
             case Float:
                 append(new Op2Stack(FDIV, result, a, loadNonConst(b)));
@@ -825,13 +825,21 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
                 conversionInstruction = F2I;
                 break;
             case I2D:
-                return emitConvert2Op(LIRKind.derive(inputVal).changeType(Kind.Double), I2D, input);
+            // Implemented in two steps, as this consists of sign extension and then move the
+            // bits over to the double register and then convert to double, in fact this does
+            // not generate any overhead in generated code
+            {
+                AllocatableValue tmp = emitConvert2Op(LIRKind.derive(inputVal).changeType(Kind.Long), I2L, input);
+                return emitConvert2Op(LIRKind.derive(inputVal).changeType(Kind.Double), L2D, tmp);
+            }
             case I2F:
                 return emitConvert2Op(LIRKind.derive(inputVal).changeType(Kind.Float), I2F, input);
             case L2D:
                 return emitConvert2Op(LIRKind.derive(inputVal).changeType(Kind.Double), L2D, input);
-            case L2F:
-                return emitConvert2Op(LIRKind.derive(inputVal).changeType(Kind.Float), L2F, input);
+            case L2F: {
+                AllocatableValue tmp = emitConvert2Op(LIRKind.derive(inputVal).changeType(Kind.Double), L2D, input);
+                return emitConvert2Op(LIRKind.derive(inputVal).changeType(Kind.Float), D2F, tmp);
+            }
             default:
                 throw GraalInternalError.shouldNotReachHere();
         }
