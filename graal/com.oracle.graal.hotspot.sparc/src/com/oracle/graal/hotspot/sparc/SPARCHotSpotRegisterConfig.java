@@ -220,17 +220,6 @@ public class SPARCHotSpotRegisterConfig implements RegisterConfig {
                         locations[i] = register.asValue(target.getLIRKind(kind));
                     }
                     break;
-                case Double:
-                    if (!stackOnly && currentFloating < fpuParameterRegisters.length) {
-                        if (currentFloating % 2 != 0) {
-                            // Make register number even to be a double reg
-                            currentFloating++;
-                        }
-                        Register register = fpuParameterRegisters[currentFloating];
-                        currentFloating += 2; // Only every second is a double register
-                        locations[i] = register.asValue(kind);
-                    }
-                    break;
                 case Float:
                     if (!stackOnly && currentFloating < fpuParameterRegisters.length) {
                         Register register = fpuParameterRegisters[currentFloating++];
