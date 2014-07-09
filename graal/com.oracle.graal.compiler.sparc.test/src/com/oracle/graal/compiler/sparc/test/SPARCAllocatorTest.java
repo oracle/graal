@@ -22,11 +22,18 @@
  */
 package com.oracle.graal.compiler.sparc.test;
 
+import static org.junit.Assume.*;
+
 import org.junit.*;
 
 import com.oracle.graal.compiler.test.backend.*;
 
 public class SPARCAllocatorTest extends AllocatorTest {
+
+    @Before
+    public void setUp() {
+        assumeTrue(isArchitecture("SPARC"));
+    }
 
     @Test
     public void test1() {
