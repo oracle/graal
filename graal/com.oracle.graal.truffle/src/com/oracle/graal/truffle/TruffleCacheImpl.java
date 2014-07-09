@@ -67,7 +67,7 @@ public final class TruffleCacheImpl implements TruffleCache {
 
     private final ResolvedJavaType stringBuilderClass;
     private final ResolvedJavaType runtimeExceptionClass;
-    private final ResolvedJavaType assertionErrorClass;
+    private final ResolvedJavaType errorClass;
     private final ResolvedJavaType controlFlowExceptionClass;
 
     private final ResolvedJavaMethod callBoundaryMethod;
@@ -81,7 +81,7 @@ public final class TruffleCacheImpl implements TruffleCache {
 
         this.stringBuilderClass = providers.getMetaAccess().lookupJavaType(StringBuilder.class);
         this.runtimeExceptionClass = providers.getMetaAccess().lookupJavaType(RuntimeException.class);
-        this.assertionErrorClass = providers.getMetaAccess().lookupJavaType(AssertionError.class);
+        this.errorClass = providers.getMetaAccess().lookupJavaType(Error.class);
         this.controlFlowExceptionClass = providers.getMetaAccess().lookupJavaType(ControlFlowException.class);
 
         try {
@@ -192,7 +192,7 @@ public final class TruffleCacheImpl implements TruffleCache {
                                 if (macroSubstitution != null) {
                                     InliningUtil.inlineMacroNode(methodCallTargetNode.invoke(), methodCallTargetNode.targetMethod(), macroSubstitution);
                                 } else {
-                                    tryCutOffRuntimeExceptions(methodCallTargetNode);
+                                    tryCutOffRuntimeExceptionsAndErrors(methodCallTargetNode);
                                 }
                             }
                         }
@@ -257,12 +257,12 @@ public final class TruffleCacheImpl implements TruffleCache {
         InliningUtil.inline(invoke, inlineGraph, true, null);
     }
 
-    private boolean tryCutOffRuntimeExceptions(MethodCallTargetNode methodCallTargetNode) {
+    private boolean tryCutOffRuntimeExceptionsAndErrors(MethodCallTargetNode methodCallTargetNode) {
         if (methodCallTargetNode.targetMethod().isConstructor()) {
             ResolvedJavaType declaringClass = methodCallTargetNode.targetMethod().getDeclaringClass();
             ResolvedJavaType exceptionType = Objects.requireNonNull(StampTool.typeOrNull(methodCallTargetNode.receiver().stamp()));
 
-            boolean removeAllocation = runtimeExceptionClass.isAssignableFrom(declaringClass) || assertionErrorClass.isAssignableFrom(declaringClass);
+            boolean removeAllocation = runtimeExceptionClass.isAssignableFrom(declaringClass) || errorClass.isAssignableFrom(declaringClass);
             boolean isControlFlowException = controlFlowExceptionClass.isAssignableFrom(exceptionType);
             if (removeAllocation && !isControlFlowException) {
                 DeoptimizeNode deoptNode = methodCallTargetNode.graph().add(new DeoptimizeNode(DeoptimizationAction.InvalidateRecompile, DeoptimizationReason.UnreachedCode));
