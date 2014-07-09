@@ -42,7 +42,7 @@ public class NeverPartOfCompilationNode extends MacroNode implements IterableNod
     }
 
     public final String getMessage() {
-        return message;
+        return message + " " + arguments.toString();
     }
 
     @Override
