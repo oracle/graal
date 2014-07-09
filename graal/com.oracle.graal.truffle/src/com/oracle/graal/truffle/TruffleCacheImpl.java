@@ -263,8 +263,8 @@ public final class TruffleCacheImpl implements TruffleCache {
             ResolvedJavaType exceptionType = Objects.requireNonNull(StampTool.typeOrNull(methodCallTargetNode.receiver().stamp()));
 
             boolean removeAllocation = runtimeExceptionClass.isAssignableFrom(declaringClass) || assertionErrorClass.isAssignableFrom(declaringClass);
-            boolean isCFGException = controlFlowExceptionClass.isAssignableFrom(exceptionType);
-            if (removeAllocation && !isCFGException) {
+            boolean isControlFlowException = controlFlowExceptionClass.isAssignableFrom(exceptionType);
+            if (removeAllocation && !isControlFlowException) {
                 DeoptimizeNode deoptNode = methodCallTargetNode.graph().add(new DeoptimizeNode(DeoptimizationAction.InvalidateRecompile, DeoptimizationReason.UnreachedCode));
                 FixedNode invokeNode = methodCallTargetNode.invoke().asNode();
                 invokeNode.replaceAtPredecessor(deoptNode);
