@@ -542,15 +542,12 @@ public final class NodeUtil {
         return null;
     }
 
-    public static <T extends Node> List<T> findAllNodeInstances(final Node root, final Class<T> clazz) {
+    public static <T> List<T> findAllNodeInstances(final Node root, final Class<T> clazz) {
         final List<T> nodeList = new ArrayList<>();
         root.accept(new NodeVisitor() {
-
-            @SuppressWarnings("unchecked")
-            @Override
             public boolean visit(Node node) {
                 if (clazz.isInstance(node)) {
-                    nodeList.add((T) node);
+                    nodeList.add(clazz.cast(node));
                 }
                 return true;
             }
@@ -558,53 +555,15 @@ public final class NodeUtil {
         return nodeList;
     }
 
-    // Don't visit found node instances.
-    public static <T extends Node> List<T> findNodeInstancesShallow(final Node root, final Class<T> clazz) {
+    /**
+     * Like {@link #findAllNodeInstances(Node, Class)} but do not visit children of found nodes.
+     */
+    public static <T> List<T> findNodeInstancesShallow(final Node root, final Class<T> clazz) {
         final List<T> nodeList = new ArrayList<>();
         root.accept(new NodeVisitor() {
-
-            @SuppressWarnings("unchecked")
-            @Override
             public boolean visit(Node node) {
                 if (clazz.isInstance(node)) {
-                    nodeList.add((T) node);
-                    return false;
-                }
-                return true;
-            }
-        });
-        return nodeList;
-    }
-
-    /** Find node instances within current function only (not in nested functions). */
-    public static <T extends Node> List<T> findNodeInstancesInFunction(final Node root, final Class<T> clazz) {
-        final List<T> nodeList = new ArrayList<>();
-        root.accept(new NodeVisitor() {
-
-            @SuppressWarnings("unchecked")
-            @Override
-            public boolean visit(Node node) {
-                if (clazz.isInstance(node)) {
-                    nodeList.add((T) node);
-                } else if (node instanceof RootNode && node != root) {
-                    return false;
-                }
-                return true;
-            }
-        });
-        return nodeList;
-    }
-
-    public static <I> List<I> findNodeInstancesInFunctionInterface(final Node root, final Class<I> clazz) {
-        final List<I> nodeList = new ArrayList<>();
-        root.accept(new NodeVisitor() {
-
-            @SuppressWarnings("unchecked")
-            @Override
-            public boolean visit(Node node) {
-                if (clazz.isInstance(node)) {
-                    nodeList.add((I) node);
-                } else if (node instanceof RootNode && node != root) {
+                    nodeList.add(clazz.cast(node));
                     return false;
                 }
                 return true;
