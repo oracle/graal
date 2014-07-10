@@ -246,7 +246,8 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                     }
                 }
             }
-        } while (false);
+            break;
+        } while (true);
     }
 
     /**
