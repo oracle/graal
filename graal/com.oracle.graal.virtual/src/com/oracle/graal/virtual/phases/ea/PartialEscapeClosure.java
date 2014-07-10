@@ -457,6 +457,9 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                             phis[valueIndex] = new ValuePhiNode(values[valueIndex].stamp().unrestricted(), merge);
                         }
                     }
+                    if (phis[valueIndex] != null && !phis[valueIndex].stamp().isCompatible(values[valueIndex].stamp())) {
+                        phis[valueIndex] = new ValuePhiNode(values[valueIndex].stamp().unrestricted(), merge);
+                    }
                     if (twoSlotKinds != null && twoSlotKinds[valueIndex] != null) {
                         // skip an entry after a long/double value that occupies two int slots
                         valueIndex++;
