@@ -106,7 +106,8 @@ public final class IndexedLocationNode extends LocationNode implements Canonical
     public IntegerStamp getDisplacementStamp() {
         assert indexScaling > 0 && CodeUtil.isPowerOf2(indexScaling);
         int scale = CodeUtil.log2(indexScaling);
-        return (IntegerStamp) StampTool.add(StampFactory.forInteger(64, displacement, displacement), StampTool.leftShift(index.stamp(), StampFactory.forInteger(64, scale, scale)));
+        return (IntegerStamp) StampTool.add(StampFactory.forInteger(64, displacement, displacement),
+                        StampTool.signExtend(StampTool.leftShift(index.stamp(), StampFactory.forInteger(64, scale, scale)), 64));
     }
 
     @Override
