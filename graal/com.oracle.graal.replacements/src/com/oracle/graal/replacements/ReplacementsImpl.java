@@ -350,7 +350,7 @@ public class ReplacementsImpl implements Replacements {
             original = metaAccess.lookupJavaConstructor((Constructor<?>) originalMember);
         }
         if (Debug.isLogEnabled()) {
-            Debug.log("substitution: %s --> %s", MetaUtil.format("%H.%n(%p) %r", original), MetaUtil.format("%H.%n(%p) %r", substitute));
+            Debug.log("substitution: %s --> %s", original.format("%H.%n(%p) %r"), substitute.format("%H.%n(%p) %r"));
         }
 
         cr.methodSubstitutions.put(original, substitute);
@@ -645,8 +645,8 @@ public class ReplacementsImpl implements Replacements {
                                     targetGraph = intrinsicGraph;
                                 } else {
                                     if (callee.getName().startsWith("$jacoco")) {
-                                        throw new GraalInternalError("Parsing call to JaCoCo instrumentation method " + format("%H.%n(%p)", callee) + " from " + format("%H.%n(%p)", methodToParse) +
-                                                        " while preparing replacement " + format("%H.%n(%p)", method) + ". Placing \"//JaCoCo Exclude\" anywhere in " +
+                                        throw new GraalInternalError("Parsing call to JaCoCo instrumentation method " + callee.format("%H.%n(%p)") + " from " + methodToParse.format("%H.%n(%p)") +
+                                                        " while preparing replacement " + method.format("%H.%n(%p)") + ". Placing \"//JaCoCo Exclude\" anywhere in " +
                                                         methodToParse.getDeclaringClass().getSourceFileName() + " should fix this.");
                                     }
                                     targetGraph = parseGraph(callee, policy, inliningDepth + 1);

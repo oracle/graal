@@ -475,7 +475,7 @@ public abstract class GraalCompilerTest extends GraalTest {
             try (Scope s = Debug.scope("CodeInstall", getCodeCache(), javaMethod)) {
                 installedCode = addMethod(javaMethod, compResult);
                 if (installedCode == null) {
-                    throw new GraalInternalError("Could not install code for " + MetaUtil.format("%H.%n(%p)", javaMethod));
+                    throw new GraalInternalError("Could not install code for " + javaMethod.format("%H.%n(%p)"));
                 }
             } catch (Throwable e) {
                 throw Debug.handle(e);
@@ -637,7 +637,7 @@ public abstract class GraalCompilerTest extends GraalTest {
             try (Scope s = Debug.scope("CodeInstall", getCodeCache(), method)) {
                 installedCode = addMethod(method, compResult);
                 if (installedCode == null) {
-                    throw new GraalInternalError("Could not install code for " + MetaUtil.format("%H.%n(%p)", method));
+                    throw new GraalInternalError("Could not install code for " + method.format("%H.%n(%p)"));
                 }
             } catch (Throwable e) {
                 throw Debug.handle(e);

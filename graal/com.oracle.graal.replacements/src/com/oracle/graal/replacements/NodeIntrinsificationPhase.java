@@ -204,7 +204,7 @@ public class NodeIntrinsificationPhase extends Phase {
             result = providers.getMetaAccess().lookupJavaType(intrinsic.value());
         }
         assert providers.getMetaAccess().lookupJavaType(ValueNode.class).isAssignableFrom(result) : "Node intrinsic class " + result.toJavaName(false) + " derived from @" +
-                        NodeIntrinsic.class.getSimpleName() + " annotation on " + format("%H.%n(%p)", target) + " is not a subclass of " + ValueNode.class;
+                        NodeIntrinsic.class.getSimpleName() + " annotation on " + target.format("%H.%n(%p)") + " is not a subclass of " + ValueNode.class;
         return result;
     }
 
@@ -279,7 +279,7 @@ public class NodeIntrinsificationPhase extends Phase {
                 } else if (signature[i].equals(metaAccess.lookupJavaType(SnippetReflectionProvider.class))) {
                     injected[injected.length - 1] = snippetReflection.forObject(snippetReflection);
                 } else {
-                    throw new GraalInternalError("Cannot handle injected argument of type %s in %s", signature[i].toJavaName(), format("%H.%n(%p)", c));
+                    throw new GraalInternalError("Cannot handle injected argument of type %s in %s", signature[i].toJavaName(), c.format("%H.%n(%p)"));
                 }
             } else {
                 if (i > 0) {

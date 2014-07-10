@@ -115,7 +115,7 @@ public class BenchmarkCounters {
         String group = counter.getGroup();
         if (counter.isWithContext()) {
             StructuredGraph graph = counter.graph();
-            name = counter.getName() + " @ " + graph.graphId() + ":" + (graph.method() == null ? "" : MetaUtil.format("%h.%n", graph.method()));
+            name = counter.getName() + " @ " + graph.graphId() + ":" + (graph.method() == null ? "" : graph.method().format("%h.%n"));
             if (graph.name != null) {
                 name += " (" + graph.name + ")";
             }

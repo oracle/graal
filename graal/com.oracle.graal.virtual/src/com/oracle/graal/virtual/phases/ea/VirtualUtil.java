@@ -120,10 +120,10 @@ public final class VirtualUtil {
         if (filter != null) {
             if (filter.startsWith("~")) {
                 ResolvedJavaMethod method = graph.method();
-                return method == null || !MetaUtil.format("%H.%n", method).contains(filter.substring(1));
+                return method == null || !method.format("%H.%n").contains(filter.substring(1));
             } else {
                 ResolvedJavaMethod method = graph.method();
-                return method != null && MetaUtil.format("%H.%n", method).contains(filter);
+                return method != null && method.format("%H.%n").contains(filter);
             }
         }
         return true;

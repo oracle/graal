@@ -106,8 +106,8 @@ public class CompilationPrinter implements Closeable {
      */
     public void printCompilation(JavaMethod method) {
         begin("compilation");
-        out.print("name \" ").print(MetaUtil.format("%H::%n", method)).println('"');
-        out.print("method \"").print(MetaUtil.format("%f %r %H.%n(%p)", method)).println('"');
+        out.print("name \" ").print(method.format("%H::%n")).println('"');
+        out.print("method \"").print(method.format("%f %r %H.%n(%p)")).println('"');
         out.print("date ").println(System.currentTimeMillis());
         end("compilation");
     }

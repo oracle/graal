@@ -118,7 +118,7 @@ public class TypeGuardInlineInfo extends AbstractInlineInfo {
 
     @Override
     public String toString() {
-        return "type-checked with type " + type.getName() + " and method " + MetaUtil.format("%H.%n(%p):%r", concrete);
+        return "type-checked with type " + type.getName() + " and method " + concrete.format("%H.%n(%p):%r");
     }
 
     public boolean shouldInline() {

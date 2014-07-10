@@ -86,7 +86,7 @@ public class BaselineBytecodeParser extends AbstractBytecodeParser<Value, Baseli
     @Override
     protected void build() {
         if (PrintProfilingInformation.getValue()) {
-            TTY.println("Profiling info for " + MetaUtil.format("%H.%n(%p)", method));
+            TTY.println("Profiling info for " + method.format("%H.%n(%p)"));
             TTY.println(MetaUtil.indent(MetaUtil.profileToString(profilingInfo, method, CodeUtil.NEW_LINE), "  "));
         }
 

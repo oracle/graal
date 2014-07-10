@@ -1058,7 +1058,7 @@ public final class BciBlockMapping {
         BciBlockMapping map = new BciBlockMapping(method);
         map.build();
         if (Debug.isDumpEnabled()) {
-            Debug.dump(map, MetaUtil.format("After block building %f %R %H.%n(%P)", method));
+            Debug.dump(map, method.format("After block building %f %R %H.%n(%P)"));
         }
 
         return map;

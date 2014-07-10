@@ -423,8 +423,8 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
             long metaspaceMethodData = unsafeReadWord(metaspaceMethod + runtime().getConfig().methodDataOffset);
             if (metaspaceMethodData != 0) {
                 methodData = new HotSpotMethodData(metaspaceMethodData);
-                if (TraceMethodDataFilter != null && MetaUtil.format("%H.%n", this).contains(TraceMethodDataFilter)) {
-                    TTY.println("Raw method data for " + MetaUtil.format("%H.%n(%p)", this) + ":");
+                if (TraceMethodDataFilter != null && this.format("%H.%n").contains(TraceMethodDataFilter)) {
+                    TTY.println("Raw method data for " + this.format("%H.%n(%p)") + ":");
                     TTY.println(methodData.toString());
                 }
             }

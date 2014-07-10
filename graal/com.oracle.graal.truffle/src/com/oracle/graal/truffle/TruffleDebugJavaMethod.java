@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.truffle;
 
-import static com.oracle.graal.api.meta.MetaUtil.*;
-
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
 import com.oracle.truffle.api.*;
@@ -127,6 +125,6 @@ public class TruffleDebugJavaMethod implements JavaMethod {
 
     @Override
     public String toString() {
-        return format("Truffle<%n(%p)>", this);
+        return format("Truffle<%n(%p)>");
     }
 }

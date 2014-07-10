@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.api.code;
 
-import static com.oracle.graal.api.meta.MetaUtil.*;
-
 import java.io.*;
 import java.lang.invoke.*;
 import java.util.*;
@@ -174,7 +172,7 @@ public final class Assumptions implements Serializable, Iterable<Assumptions.Ass
 
         @Override
         public String toString() {
-            return "ConcreteMethod[method=" + format("%H.%n(%p)", method) + ", context=" + context.toJavaName() + ", impl=" + format("%H.%n(%p)", impl) + "]";
+            return "ConcreteMethod[method=" + method.format("%H.%n(%p)") + ", context=" + context.toJavaName() + ", impl=" + impl.format("%H.%n(%p)") + "]";
         }
     }
 
@@ -207,7 +205,7 @@ public final class Assumptions implements Serializable, Iterable<Assumptions.Ass
 
         @Override
         public String toString() {
-            return "MethodContents[method=" + format("%H.%n(%p)", method) + "]";
+            return "MethodContents[method=" + method.format("%H.%n(%p)") + "]";
         }
     }
 

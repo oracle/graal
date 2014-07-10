@@ -664,7 +664,7 @@ public final class HotSpotMethodData extends CompilerObject {
             super.appendTo(sb.append(format("exception_seen(%s) ", getExceptionSeen(data, pos))), data, pos).append(format("%nmethod_entries(%d)", profile.entries));
             for (int i = 0; i < profile.entries; i++) {
                 long count = profile.counts[i];
-                sb.append(format("%n  %s (%d, %4.2f)", MetaUtil.format("%H.%n(%p)", profile.items[i]), count, (double) count / profile.totalCount));
+                sb.append(format("%n  %s (%d, %4.2f)", profile.items[i].format("%H.%n(%p)"), count, (double) count / profile.totalCount));
             }
             return sb;
         }
