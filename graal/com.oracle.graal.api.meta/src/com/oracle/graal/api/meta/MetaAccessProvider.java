@@ -31,11 +31,25 @@ public interface MetaAccessProvider {
 
     /**
      * Returns the resolved Java type representing a given Java class.
-     * 
+     *
      * @param clazz the Java class object
      * @return the resolved Java type object
      */
     ResolvedJavaType lookupJavaType(Class<?> clazz);
+
+    /**
+     * Returns the resolved Java types representing some given Java classes.
+     *
+     * @param classes the Java class objects
+     * @return the resolved Java type objects
+     */
+    default ResolvedJavaType[] lookupJavaTypes(Class<?>[] classes) {
+        ResolvedJavaType[] result = new ResolvedJavaType[classes.length];
+        for (int i = 0; i < result.length; i++) {
+            result[i] = lookupJavaType(classes[i]);
+        }
+        return result;
+    }
 
     /**
      * Provides the {@link ResolvedJavaMethod} for a {@link Method} obtained via reflection.
@@ -54,14 +68,14 @@ public interface MetaAccessProvider {
 
     /**
      * Returns the resolved Java type of the given {@link Constant} object.
-     * 
+     *
      * @return {@code null} if {@code constant.isNull() || !constant.kind.isObject()}
      */
     ResolvedJavaType lookupJavaType(Constant constant);
 
     /**
      * Returns the number of bytes occupied by this constant value or constant object.
-     * 
+     *
      * @param constant the constant whose bytes should be measured
      * @return the number of bytes occupied by this constant
      */
@@ -77,11 +91,11 @@ public interface MetaAccessProvider {
 
     /**
      * Encodes a deoptimization action and a deoptimization reason in an integer value.
-     * 
+     *
      * @param debugId an integer that can be used to track the origin of a deoptimization at
      *            runtime. There is no guarantee that the runtime will use this value. The runtime
      *            may even keep fewer than 32 bits.
-     * 
+     *
      * @return the encoded value as an integer
      */
     Constant encodeDeoptActionAndReason(DeoptimizationAction action, DeoptimizationReason reason, int debugId);

@@ -154,17 +154,6 @@ public class MetaUtil {
     }
 
     /**
-     * Calls {@link MetaAccessProvider#lookupJavaType(Class)} on an array of classes.
-     */
-    public static ResolvedJavaType[] lookupJavaTypes(MetaAccessProvider metaAccess, Class<?>[] classes) {
-        ResolvedJavaType[] result = new ResolvedJavaType[classes.length];
-        for (int i = 0; i < result.length; i++) {
-            result[i] = metaAccess.lookupJavaType(classes[i]);
-        }
-        return result;
-    }
-
-    /**
      * Extends the functionality of {@link Class#getSimpleName()} to include a non-empty string for
      * anonymous and local classes.
      *
