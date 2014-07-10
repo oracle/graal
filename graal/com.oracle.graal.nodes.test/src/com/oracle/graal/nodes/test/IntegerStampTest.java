@@ -299,4 +299,16 @@ public class IntegerStampTest {
         assertFalse(new IntegerStamp(32, 0, 0xff00, 0, 0xff00).join(new IntegerStamp(32, 1, 0xff, 0x00, 0xff)).isLegal());
         assertFalse(new IntegerStamp(32, 0x100, 0xff00, 0, 0xff00).join(new IntegerStamp(32, 0, 0xff, 0x00, 0xff)).isLegal());
     }
+
+    @Test
+    public void testShiftLeft() {
+        assertEquals(new IntegerStamp(32, 0, 0x1ff, 0, 0x1ff), StampTool.leftShift(new IntegerStamp(32, 0, 0xff, 0, 0xff), new IntegerStamp(32, 0, 1, 0, 1)));
+        assertEquals(new IntegerStamp(32, 0, 0x1fe0, 0, 0x1fe0), StampTool.leftShift(new IntegerStamp(32, 0, 0xff, 0, 0xff), new IntegerStamp(32, 5, 5, 5, 5)));
+        assertEquals(new IntegerStamp(32, 0x1e0, 0x1fe0, 0, 0x1fe0), StampTool.leftShift(new IntegerStamp(32, 0xf, 0xff, 0, 0xff), new IntegerStamp(32, 5, 5, 5, 5)));
+
+        assertEquals(new IntegerStamp(64, 0, 0x1ff, 0, 0x1ff), StampTool.leftShift(new IntegerStamp(64, 0, 0xff, 0, 0xff), new IntegerStamp(32, 0, 1, 0, 1)));
+        assertEquals(new IntegerStamp(64, 0, 0x1fe0, 0, 0x1fe0), StampTool.leftShift(new IntegerStamp(64, 0, 0xff, 0, 0xff), new IntegerStamp(32, 5, 5, 5, 5)));
+        assertEquals(new IntegerStamp(64, 0x1e0, 0x1fe0, 0, 0x1fe0), StampTool.leftShift(new IntegerStamp(64, 0xf, 0xff, 0, 0xff), new IntegerStamp(32, 5, 5, 5, 5)));
+
+    }
 }
