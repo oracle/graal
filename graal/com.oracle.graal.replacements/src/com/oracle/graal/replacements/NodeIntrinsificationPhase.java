@@ -165,7 +165,7 @@ public class NodeIntrinsificationPhase extends Phase {
                 parameterIndex--;
             }
             ValueNode argument = arguments.get(i);
-            if (folding || getParameterAnnotation(ConstantNodeParameter.class, parameterIndex, target) != null) {
+            if (folding || target.getParameterAnnotation(ConstantNodeParameter.class, parameterIndex) != null) {
                 if (!(argument instanceof ConstantNode)) {
                     return null;
                 }
@@ -254,7 +254,7 @@ public class NodeIntrinsificationPhase extends Phase {
 
     private static boolean containsInjected(ResolvedJavaMethod c, int start, int end) {
         for (int i = start; i < end; i++) {
-            if (getParameterAnnotation(InjectedNodeParameter.class, i, c) != null) {
+            if (c.getParameterAnnotation(InjectedNodeParameter.class, i) != null) {
                 return true;
             }
         }
@@ -268,7 +268,7 @@ public class NodeIntrinsificationPhase extends Phase {
         ResolvedJavaType[] signature = resolveJavaTypes(signatureToTypes(c.getSignature(), null), c.getDeclaringClass());
         MetaAccessProvider metaAccess = providers.getMetaAccess();
         for (int i = 0; i < signature.length; i++) {
-            if (getParameterAnnotation(InjectedNodeParameter.class, i, c) != null) {
+            if (c.getParameterAnnotation(InjectedNodeParameter.class, i) != null) {
                 injected = injected == null ? new Constant[1] : Arrays.copyOf(injected, injected.length + 1);
                 if (signature[i].equals(metaAccess.lookupJavaType(MetaAccessProvider.class))) {
                     injected[injected.length - 1] = snippetReflection.forObject(metaAccess);

@@ -91,8 +91,8 @@ public class SnippetTemplate {
                 constantParameters = new boolean[count];
                 varargsParameters = new boolean[count];
                 for (int i = 0; i < count; i++) {
-                    constantParameters[i] = MetaUtil.getParameterAnnotation(ConstantParameter.class, i, method) != null;
-                    varargsParameters[i] = MetaUtil.getParameterAnnotation(VarargsParameter.class, i, method) != null;
+                    constantParameters[i] = method.getParameterAnnotation(ConstantParameter.class, i) != null;
+                    varargsParameters[i] = method.getParameterAnnotation(VarargsParameter.class, i) != null;
 
                     assert !constantParameters[i] || !varargsParameters[i] : "Parameter cannot be annotated with both @" + ConstantParameter.class.getSimpleName() + " and @" +
                                     VarargsParameter.class.getSimpleName();

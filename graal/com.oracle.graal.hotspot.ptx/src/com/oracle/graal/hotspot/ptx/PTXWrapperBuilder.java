@@ -25,12 +25,12 @@ package com.oracle.graal.hotspot.ptx;
 import static com.oracle.graal.api.meta.DeoptimizationAction.*;
 import static com.oracle.graal.api.meta.DeoptimizationReason.*;
 import static com.oracle.graal.api.meta.LocationIdentity.*;
-import static com.oracle.graal.api.meta.MetaUtil.*;
 import static com.oracle.graal.asm.NumUtil.*;
 import static com.oracle.graal.hotspot.ptx.PTXHotSpotBackend.*;
 import static com.oracle.graal.hotspot.ptx.PTXWrapperBuilder.LaunchArg.*;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 import static com.oracle.graal.nodes.ConstantNode.*;
+
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
@@ -324,7 +324,7 @@ public class PTXWrapperBuilder extends GraphKit {
      */
     private void updateDimArg(ResolvedJavaMethod method, Signature sig, int sigIndex, Map<LaunchArg, ValueNode> launchArgs, ParameterNode javaParameter) {
         if (sigIndex >= 0) {
-            ParallelOver parallelOver = getParameterAnnotation(ParallelOver.class, sigIndex, method);
+            ParallelOver parallelOver = method.getParameterAnnotation(ParallelOver.class, sigIndex);
             if (parallelOver != null && sig.getParameterType(sigIndex, method.getDeclaringClass()).equals(providers.getMetaAccess().lookupJavaType(int[].class))) {
                 ArrayLengthNode dimension = append(new ArrayLengthNode(javaParameter));
                 LaunchArg argKey = LaunchArg.valueOf(LaunchArg.class, "Dim" + parallelOver.dimension());

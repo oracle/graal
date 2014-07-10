@@ -478,29 +478,6 @@ public class MetaUtil {
     }
 
     /**
-     * Gets the annotation of a particular type for a formal parameter of a given method.
-     *
-     * @param annotationClass the Class object corresponding to the annotation type
-     * @param parameterIndex the index of a formal parameter of {@code method}
-     * @param method the method for which a parameter annotation is being requested
-     * @return the annotation of type {@code annotationClass} for the formal parameter present, else
-     *         null
-     * @throws IndexOutOfBoundsException if {@code parameterIndex} does not denote a formal
-     *             parameter
-     */
-    public static <T extends Annotation> T getParameterAnnotation(Class<T> annotationClass, int parameterIndex, ResolvedJavaMethod method) {
-        if (parameterIndex >= 0) {
-            Annotation[][] parameterAnnotations = method.getParameterAnnotations();
-            for (Annotation a : parameterAnnotations[parameterIndex]) {
-                if (a.annotationType() == annotationClass) {
-                    return annotationClass.cast(a);
-                }
-            }
-        }
-        return null;
-    }
-
-    /**
      * Convenient shortcut for calling
      * {@link #appendLocation(StringBuilder, ResolvedJavaMethod, int)} without having to supply a a
      * {@link StringBuilder} instance and convert the result to a string.

@@ -224,4 +224,27 @@ public interface ResolvedJavaMethod extends JavaMethod, InvokeTarget, ModifiersP
      * @return true is this method is present in the virtual table for subtypes of this type.
      */
     boolean isInVirtualMethodTable(ResolvedJavaType resolved);
+
+    /**
+     * Gets the annotation of a particular type for a formal parameter of this method.
+     *
+     * @param annotationClass the Class object corresponding to the annotation type
+     * @param parameterIndex the index of a formal parameter of {@code method}
+     * @return the annotation of type {@code annotationClass} for the formal parameter present, else
+     *         null
+     * @throws IndexOutOfBoundsException if {@code parameterIndex} does not denote a formal
+     *             parameter
+     */
+    default <T extends Annotation> T getParameterAnnotation(Class<T> annotationClass, int parameterIndex) {
+        if (parameterIndex >= 0) {
+            Annotation[][] parameterAnnotations = getParameterAnnotations();
+            for (Annotation a : parameterAnnotations[parameterIndex]) {
+                if (a.annotationType() == annotationClass) {
+                    return annotationClass.cast(a);
+                }
+            }
+        }
+        return null;
+    }
+
 }
