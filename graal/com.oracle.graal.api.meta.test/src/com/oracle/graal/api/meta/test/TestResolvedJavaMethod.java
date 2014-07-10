@@ -303,6 +303,7 @@ public class TestResolvedJavaMethod extends MethodUniverse {
         "getLineNumberTable",
         "getLocalVariableTable",
         "isInVirtualMethodTable",
+        "toParameterTypes",
         "getParameterAnnotation"
     };
     // @formatter:on
