@@ -265,7 +265,7 @@ public class NodeIntrinsificationPhase extends Phase {
         Constant[] arguments = null;
         Constant[] injected = null;
 
-        ResolvedJavaType[] signature = resolveJavaTypes(signatureToTypes(c.getSignature(), null), c.getDeclaringClass());
+        ResolvedJavaType[] signature = resolveJavaTypes(c.getSignature().toParameterTypes(null), c.getDeclaringClass());
         MetaAccessProvider metaAccess = providers.getMetaAccess();
         for (int i = 0; i < signature.length; i++) {
             if (c.getParameterAnnotation(InjectedNodeParameter.class, i) != null) {

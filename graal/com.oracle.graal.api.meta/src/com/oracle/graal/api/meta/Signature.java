@@ -107,4 +107,20 @@ public interface Signature {
         return sb.toString();
     }
 
+    default JavaType[] toParameterTypes(JavaType receiverType) {
+        int args = getParameterCount(false);
+        JavaType[] result;
+        int i = 0;
+        if (receiverType != null) {
+            result = new JavaType[args + 1];
+            result[0] = receiverType;
+            i = 1;
+        } else {
+            result = new JavaType[args];
+        }
+        for (int j = 0; j < args; j++) {
+            result[i + j] = getParameterType(j, null);
+        }
+        return result;
+    }
 }

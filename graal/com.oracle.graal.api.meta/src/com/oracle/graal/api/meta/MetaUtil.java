@@ -300,24 +300,7 @@ public class MetaUtil {
 
     public static JavaType[] signatureToTypes(ResolvedJavaMethod method) {
         JavaType receiver = method.isStatic() ? null : method.getDeclaringClass();
-        return signatureToTypes(method.getSignature(), receiver);
-    }
-
-    public static JavaType[] signatureToTypes(Signature signature, JavaType receiverType) {
-        int args = signature.getParameterCount(false);
-        JavaType[] result;
-        int i = 0;
-        if (receiverType != null) {
-            result = new JavaType[args + 1];
-            result[0] = receiverType;
-            i = 1;
-        } else {
-            result = new JavaType[args];
-        }
-        for (int j = 0; j < args; j++) {
-            result[i + j] = signature.getParameterType(j, null);
-        }
-        return result;
+        return method.getSignature().toParameterTypes(receiver);
     }
 
     /**
