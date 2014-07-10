@@ -29,6 +29,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.debug.*;
 import com.oracle.graal.nodes.java.*;
+import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.nodes.virtual.*;
 import com.oracle.graal.phases.common.*;
 
@@ -206,9 +207,7 @@ public class GraphEffectList extends EffectList {
             @Override
             public void apply(StructuredGraph graph, ArrayList<Node> obsoleteNodes) {
                 assert node.isAlive();
-                FixedNode next = node.next();
-                node.setNext(null);
-                node.replaceAtPredecessor(next);
+                GraphUtil.unlinkFixedNode(node);
                 assert obsoleteNodes.add(node);
             }
         });
@@ -241,9 +240,7 @@ public class GraphEffectList extends EffectList {
                 }
                 node.replaceAtUsages(replacement);
                 if (node instanceof FixedWithNextNode) {
-                    FixedNode next = ((FixedWithNextNode) node).next();
-                    ((FixedWithNextNode) node).setNext(null);
-                    node.replaceAtPredecessor(next);
+                    GraphUtil.unlinkFixedNode((FixedWithNextNode) node);
                     assert obsoleteNodes.add(node);
                 }
             }

@@ -157,10 +157,15 @@ public class GraphUtil {
                 killWithUnusedFloatingInputs(stateAfter);
             }
         }
+        unlinkFixedNode(fixed);
+        killWithUnusedFloatingInputs(fixed);
+    }
+
+    public static void unlinkFixedNode(FixedWithNextNode fixed) {
+        assert fixed.next() != null && fixed.predecessor() != null && fixed.isAlive();
         FixedNode next = fixed.next();
         fixed.setNext(null);
         fixed.replaceAtPredecessor(next);
-        killWithUnusedFloatingInputs(fixed);
     }
 
     public static void checkRedundantPhi(PhiNode phiNode) {

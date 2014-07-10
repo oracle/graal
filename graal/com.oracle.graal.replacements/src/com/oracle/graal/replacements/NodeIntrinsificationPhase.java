@@ -347,9 +347,7 @@ public class NodeIntrinsificationPhase extends Phase {
                 for (Node checkCastUsage : checkCastNode.usages().snapshot()) {
                     checkCheckCastUsage(graph, newInstance, checkCastNode, checkCastUsage);
                 }
-                FixedNode next = checkCastNode.next();
-                checkCastNode.setNext(null);
-                checkCastNode.replaceAtPredecessor(next);
+                GraphUtil.unlinkFixedNode(checkCastNode);
                 GraphUtil.killCFG(checkCastNode);
             }
         }

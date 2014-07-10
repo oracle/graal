@@ -224,9 +224,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                     if (nodeClass.inputsEqual(trueNext, falseNext) && nodeClass.valueEqual(trueNext, falseNext)) {
                         falseNext.replaceAtUsages(trueNext);
                         graph().removeFixed(falseNext);
-                        FixedNode next = trueNext.next();
-                        trueNext.setNext(null);
-                        trueNext.replaceAtPredecessor(next);
+                        GraphUtil.unlinkFixedNode(trueNext);
                         graph().addBeforeFixed(this, trueNext);
                         for (Node usage : trueNext.usages().snapshot()) {
                             if (usage.isAlive()) {
