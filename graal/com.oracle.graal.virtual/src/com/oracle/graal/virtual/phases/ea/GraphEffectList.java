@@ -26,9 +26,7 @@ import java.util.*;
 
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.debug.*;
-import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.nodes.virtual.*;
 import com.oracle.graal.phases.common.*;
@@ -36,35 +34,15 @@ import com.oracle.graal.phases.common.*;
 public class GraphEffectList extends EffectList {
 
     public void addCounterBefore(final String group, final String name, final int increment, final boolean addContext, final FixedNode position) {
-        add(new Effect() {
+        add("add counter", graph -> DynamicCounterNode.addCounterBefore(group, name, increment, addContext, position));
+    }
 
-            @Override
-            public String name() {
-                return "addCounterBefore";
-            }
-
-            @Override
-            public void apply(StructuredGraph graph, ArrayList<Node> obsoleteNodes) {
-                assert position.isAlive();
-                DynamicCounterNode.addCounterBefore(group, name, increment, addContext, position);
-            }
-        });
+    public void addCounterAfter(final String group, final String name, final int increment, final boolean addContext, final FixedWithNextNode position) {
+        add("add counter after", graph -> DynamicCounterNode.addCounterBefore(group, name, increment, addContext, position.next()));
     }
 
     public void addWeakCounterCounterBefore(final String group, final String name, final int increment, final boolean addContext, final ValueNode checkedValue, final FixedNode position) {
-        add(new Effect() {
-
-            @Override
-            public String name() {
-                return "addWeakCounterBefore";
-            }
-
-            @Override
-            public void apply(StructuredGraph graph, ArrayList<Node> obsoleteNodes) {
-                assert position.isAlive();
-                WeakCounterNode.addCounterBefore(group, name, increment, addContext, checkedValue, position);
-            }
-        });
+        add("add weak counter", graph -> WeakCounterNode.addCounterBefore(group, name, increment, addContext, checkedValue, position));
     }
 
     /**
@@ -75,18 +53,9 @@ public class GraphEffectList extends EffectList {
      * @param position The fixed node before which the node should be added.
      */
     public void addFixedNodeBefore(final FixedWithNextNode node, final FixedNode position) {
-        add(new Effect() {
-
-            @Override
-            public String name() {
-                return "addFixedNodeBefore";
-            }
-
-            @Override
-            public void apply(StructuredGraph graph, ArrayList<Node> obsoleteNodes) {
-                assert !node.isAlive() && !node.isDeleted() && position.isAlive();
-                graph.addBeforeFixed(position, graph.add(node));
-            }
+        add("add fixed node", graph -> {
+            assert !node.isAlive() && !node.isDeleted() && position.isAlive();
+            graph.addBeforeFixed(position, graph.add(node));
         });
     }
 
@@ -95,20 +64,8 @@ public class GraphEffectList extends EffectList {
      *
      * @param node The floating node to be added.
      */
-    public void addFloatingNode(final ValueNode node, final String cause) {
-        add(new Effect() {
-
-            @Override
-            public String name() {
-                return "addFloatingNode " + cause;
-            }
-
-            @Override
-            public void apply(StructuredGraph graph, ArrayList<Node> obsoleteNodes) {
-                assert !node.isAlive() && !node.isDeleted() : node + " " + cause;
-                graph.addWithoutUnique(node);
-            }
-        });
+    public void addFloatingNode(final ValueNode node, @SuppressWarnings("unused") final String cause) {
+        add("add floating node", graph -> graph.addWithoutUnique(node));
     }
 
     /**
@@ -118,18 +75,9 @@ public class GraphEffectList extends EffectList {
      * @param value The value that will be added to the phi node.
      */
     public void addPhiInput(final PhiNode node, final ValueNode value) {
-        add(new Effect() {
-
-            @Override
-            public String name() {
-                return "addPhiInput";
-            }
-
-            @Override
-            public void apply(StructuredGraph graph, ArrayList<Node> obsoleteNodes) {
-                assert node.isAlive() && value.isAlive() : node + " " + value;
-                node.addInput(value);
-            }
+        add("add phi input", graph -> {
+            assert node.isAlive() && value.isAlive() : node + " " + value;
+            node.addInput(value);
         });
     }
 
@@ -142,18 +90,9 @@ public class GraphEffectList extends EffectList {
      * @param value The new value for the phi input.
      */
     public void initializePhiInput(final PhiNode node, final int index, final ValueNode value) {
-        add(new Effect() {
-
-            @Override
-            public String name() {
-                return "setPhiInput";
-            }
-
-            @Override
-            public void apply(StructuredGraph graph, ArrayList<Node> obsoleteNodes) {
-                assert node.isAlive() && value.isAlive() && index >= 0;
-                node.initializeValueAt(index, value);
-            }
+        add("set phi input", (graph, obsoleteNodes) -> {
+            assert node.isAlive() && value.isAlive() && index >= 0;
+            node.initializeValueAt(index, value);
         });
     }
 
@@ -165,13 +104,7 @@ public class GraphEffectList extends EffectList {
      * @param state The virtual object state to add.
      */
     public void addVirtualMapping(final FrameState node, final EscapeObjectState state) {
-        add(new Effect() {
-
-            @Override
-            public String name() {
-                return "addVirtualMapping";
-            }
-
+        add("add virtual mapping", new Effect() {
             @Override
             public void apply(StructuredGraph graph, ArrayList<Node> obsoleteNodes) {
                 assert node.isAlive() && !state.isAlive() && !state.isDeleted();
@@ -197,20 +130,19 @@ public class GraphEffectList extends EffectList {
      * @param node The fixed node that should be deleted.
      */
     public void deleteFixedNode(final FixedWithNextNode node) {
-        add(new Effect() {
-
-            @Override
-            public String name() {
-                return "deleteFixedNode";
-            }
-
-            @Override
-            public void apply(StructuredGraph graph, ArrayList<Node> obsoleteNodes) {
-                assert node.isAlive();
-                GraphUtil.unlinkFixedNode(node);
-                assert obsoleteNodes.add(node);
-            }
+        add("delete fixed node", (graph, obsoleteNodes) -> {
+            GraphUtil.unlinkFixedNode(node);
+            assert obsoleteNodes.add(node);
         });
+    }
+
+    /**
+     * Removes the given fixed node from the control flow.
+     *
+     * @param node The fixed node that should be deleted.
+     */
+    public void unlinkFixedNode(final FixedWithNextNode node) {
+        add("unlink fixed node", graph -> GraphUtil.unlinkFixedNode(node));
     }
 
     /**
@@ -224,25 +156,18 @@ public class GraphEffectList extends EffectList {
      *
      */
     public void replaceAtUsages(final ValueNode node, final ValueNode replacement) {
-        add(new Effect() {
-
-            @Override
-            public String name() {
-                return "replaceAtUsages";
+        add("replace at usages", (graph, obsoleteNodes) -> {
+            assert node.isAlive() && replacement.isAlive();
+            if (replacement instanceof FixedWithNextNode && ((FixedWithNextNode) replacement).next() == null) {
+                assert node instanceof FixedNode;
+                graph.addBeforeFixed((FixedNode) node, (FixedWithNextNode) replacement);
             }
-
-            @Override
-            public void apply(StructuredGraph graph, ArrayList<Node> obsoleteNodes) {
-                assert node.isAlive() && replacement.isAlive();
-                if (replacement instanceof FixedWithNextNode && ((FixedWithNextNode) replacement).next() == null) {
-                    assert node instanceof FixedNode;
-                    graph.addBeforeFixed((FixedNode) node, (FixedWithNextNode) replacement);
-                }
-                node.replaceAtUsages(replacement);
-                if (node instanceof FixedWithNextNode) {
-                    GraphUtil.unlinkFixedNode((FixedWithNextNode) node);
-                    assert obsoleteNodes.add(node);
-                }
+            node.replaceAtUsages(replacement);
+            if (node instanceof FixedWithNextNode) {
+                FixedNode next = ((FixedWithNextNode) node).next();
+                ((FixedWithNextNode) node).setNext(null);
+                node.replaceAtPredecessor(next);
+                assert obsoleteNodes.add(node);
             }
         });
     }
@@ -255,13 +180,7 @@ public class GraphEffectList extends EffectList {
      * @param newInput The value to replace with.
      */
     public void replaceFirstInput(final Node node, final Node oldInput, final Node newInput) {
-        add(new Effect() {
-
-            @Override
-            public String name() {
-                return "replaceFirstInput";
-            }
-
+        add("replace first input", new Effect() {
             @Override
             public void apply(StructuredGraph graph, ArrayList<Node> obsoleteNodes) {
                 assert node.isAlive() && oldInput.isAlive() && newInput.isAlive();
@@ -281,83 +200,6 @@ public class GraphEffectList extends EffectList {
      * @param action The action that should be performed when the effects are applied.
      */
     public void customAction(final Runnable action) {
-        add(new Effect() {
-
-            @Override
-            public String name() {
-                return "customAction";
-            }
-
-            @Override
-            public void apply(StructuredGraph graph, ArrayList<Node> obsoleteNodes) {
-                action.run();
-            }
-        });
-    }
-
-    /**
-     * Add the materialization node to the graph's control flow at the given position, and then sets
-     * its values.
-     *
-     * @param position The fixed node before which the materialization node should be added.
-     * @param objects The allocated objects.
-     * @param locks The lock depths for each object.
-     * @param values The values (field, elements) of all objects.
-     * @param otherAllocations A list of allocations that need to be added before the rest (used for
-     *            boxing allocations).
-     */
-    public void addMaterializationBefore(final FixedNode position, final List<AllocatedObjectNode> objects, final List<List<MonitorIdNode>> locks, final List<ValueNode> values,
-                    final List<ValueNode> otherAllocations) {
-        add(new Effect() {
-
-            @Override
-            public String name() {
-                return "addMaterializationBefore";
-            }
-
-            @Override
-            public void apply(StructuredGraph graph, ArrayList<Node> obsoleteNodes) {
-                for (ValueNode otherAllocation : otherAllocations) {
-                    graph.addWithoutUnique(otherAllocation);
-                    if (otherAllocation instanceof FixedWithNextNode) {
-                        graph.addBeforeFixed(position, (FixedWithNextNode) otherAllocation);
-                    } else {
-                        assert otherAllocation instanceof FloatingNode;
-                    }
-                }
-                if (!objects.isEmpty()) {
-                    CommitAllocationNode commit;
-                    if (position.predecessor() instanceof CommitAllocationNode) {
-                        commit = (CommitAllocationNode) position.predecessor();
-                    } else {
-                        commit = graph.add(new CommitAllocationNode());
-                        graph.addBeforeFixed(position, commit);
-                    }
-                    for (AllocatedObjectNode obj : objects) {
-                        graph.addWithoutUnique(obj);
-                        commit.getVirtualObjects().add(obj.getVirtualObject());
-                        obj.setCommit(commit);
-                    }
-                    commit.getValues().addAll(values);
-                    for (List<MonitorIdNode> monitorIds : locks) {
-                        commit.addLocks(monitorIds);
-                    }
-
-                    assert commit.usages().filter(AllocatedObjectNode.class).count() == commit.usages().count();
-                    List<AllocatedObjectNode> materializedValues = commit.usages().filter(AllocatedObjectNode.class).snapshot();
-                    for (int i = 0; i < commit.getValues().size(); i++) {
-                        if (materializedValues.contains(commit.getValues().get(i))) {
-                            commit.getValues().set(i, ((AllocatedObjectNode) commit.getValues().get(i)).getVirtualObject());
-                        }
-                    }
-
-                }
-            }
-
-            @Override
-            public boolean isVisible() {
-                return true;
-            }
-        });
+        add("customAction", graph -> action.run());
     }
 }

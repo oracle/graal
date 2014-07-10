@@ -25,6 +25,8 @@ package com.oracle.graal.virtual.phases.ea;
 import java.lang.reflect.*;
 import java.util.*;
 
+import com.oracle.graal.compiler.common.*;
+import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 
@@ -34,47 +36,27 @@ import com.oracle.graal.nodes.*;
  */
 public class EffectList implements Iterable<EffectList.Effect> {
 
-    public abstract static class Effect {
-
-        public boolean isVisible() {
+    public interface Effect {
+        default boolean isVisible() {
             return true;
         }
 
-        @Override
-        public String toString() {
-            StringBuilder str = new StringBuilder();
-            for (Field field : getClass().getDeclaredFields()) {
-                String name = field.getName();
-                if (name.contains("$")) {
-                    name = name.substring(name.indexOf('$') + 1);
-                }
-                if (!Modifier.isStatic(field.getModifiers()) && !name.equals("0")) {
-                    try {
-                        field.setAccessible(true);
-                        str.append(str.length() > 0 ? ", " : "").append(name).append("=").append(format(field.get(this)));
-                    } catch (SecurityException | IllegalAccessException e) {
-                        throw new RuntimeException(e);
-                    }
-                }
-            }
-            return name() + " [" + str + "]";
+        void apply(StructuredGraph graph, ArrayList<Node> obsoleteNodes);
+    }
+
+    public interface SimpleEffect extends Effect {
+        default void apply(StructuredGraph graph, ArrayList<Node> obsoleteNodes) {
+            apply(graph);
         }
 
-        private static String format(Object object) {
-            if (object != null && Object[].class.isAssignableFrom(object.getClass())) {
-                return Arrays.toString((Object[]) object);
-            }
-            return "" + object;
-        }
-
-        public abstract String name();
-
-        public abstract void apply(StructuredGraph graph, ArrayList<Node> obsoleteNodes);
+        void apply(StructuredGraph graph);
     }
 
     private static final Effect[] EMPTY_ARRAY = new Effect[0];
+    private static final String[] EMPTY_STRING_ARRAY = new String[0];
 
     private Effect[] effects = EMPTY_ARRAY;
+    private String[] names = EMPTY_STRING_ARRAY;
     private int size;
 
     private void enlarge(int elements) {
@@ -84,26 +66,31 @@ public class EffectList implements Iterable<EffectList.Effect> {
                 length = Math.max(length * 2, 4);
             }
             effects = Arrays.copyOf(effects, length);
+            if (Debug.isEnabled()) {
+                names = Arrays.copyOf(names, length);
+            }
         }
     }
 
-    public void add(Effect effect) {
+    public void add(String name, SimpleEffect effect) {
+        add(name, (Effect) effect);
+    }
+
+    public void add(String name, Effect effect) {
         assert effect != null;
         enlarge(1);
-        effects[size++] = effect;
-    }
-
-    public void addAll(Collection<? extends Effect> list) {
-        enlarge(list.size());
-        for (Effect effect : list) {
-            assert effect != null;
-            effects[size++] = effect;
+        if (Debug.isEnabled()) {
+            names[size] = name;
         }
+        effects[size++] = effect;
     }
 
     public void addAll(EffectList list) {
         enlarge(list.size);
         System.arraycopy(list.effects, 0, effects, size, list.size);
+        if (Debug.isEnabled()) {
+            System.arraycopy(list.names, 0, names, size, list.size);
+        }
         size += list.size;
     }
 
@@ -112,6 +99,10 @@ public class EffectList implements Iterable<EffectList.Effect> {
         enlarge(list.size);
         System.arraycopy(effects, position, effects, position + list.size, size - position);
         System.arraycopy(list.effects, 0, effects, position, list.size);
+        if (Debug.isEnabled()) {
+            System.arraycopy(names, position, names, position + list.size, size - position);
+            System.arraycopy(list.names, 0, names, position, list.size);
+        }
         size += list.size;
     }
 
@@ -167,15 +158,65 @@ public class EffectList implements Iterable<EffectList.Effect> {
         return size == 0;
     }
 
+    public void apply(StructuredGraph graph, ArrayList<Node> obsoleteNodes) {
+        for (int i = 0; i < size(); i++) {
+            Effect effect = effects[i];
+            try {
+                effect.apply(graph, obsoleteNodes);
+            } catch (Throwable t) {
+                StringBuilder str = new StringBuilder();
+                toString(str, i);
+                throw new GraalInternalError(t).addContext("effect", str);
+            }
+            if (effect.isVisible() && Debug.isLogEnabled()) {
+                StringBuilder str = new StringBuilder();
+                toString(str, i);
+                Debug.log("    %s", str);
+            }
+        }
+    }
+
+    private void toString(StringBuilder str, int i) {
+        Effect effect = effects[i];
+        str.append(getName(i)).append(" [");
+        boolean first = true;
+        for (Field field : effect.getClass().getDeclaredFields()) {
+            try {
+                field.setAccessible(true);
+                str.append(first ? "" : ", ").append(format(field.get(effect)));
+                first = false;
+            } catch (SecurityException | IllegalAccessException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        str.append(']');
+    }
+
+    private static String format(Object object) {
+        if (object != null && Object[].class.isAssignableFrom(object.getClass())) {
+            return Arrays.toString((Object[]) object);
+        }
+        return "" + object;
+    }
+
     @Override
     public String toString() {
         StringBuilder str = new StringBuilder();
         for (int i = 0; i < size(); i++) {
             Effect effect = get(i);
             if (effect.isVisible()) {
-                str.append(effect).append('\n');
+                toString(str, i);
+                str.append('\n');
             }
         }
         return str.toString();
+    }
+
+    private String getName(int i) {
+        if (Debug.isEnabled()) {
+            return names[i];
+        } else {
+            return "";
+        }
     }
 }
