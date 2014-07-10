@@ -157,8 +157,14 @@ public final class NodeUtil {
      * every subclass of {@link Node} that is used.
      */
     public static final class NodeClass {
-
-        private static final Map<Class<?>, NodeClass> nodeClasses = new IdentityHashMap<>();
+        private static final ClassValue<NodeClass> nodeClasses = new ClassValue<NodeClass>() {
+            @SuppressWarnings("unchecked")
+            @Override
+            protected NodeClass computeValue(Class<?> clazz) {
+                assert Node.class.isAssignableFrom(clazz);
+                return new NodeClass((Class<? extends Node>) clazz, unsafeFieldOffsetProvider);
+            }
+        };
 
         // The comprehensive list of all fields.
         private final NodeField[] fields;
@@ -168,12 +174,7 @@ public final class NodeUtil {
         private final long[] childrenOffsets;
 
         public static NodeClass get(Class<? extends Node> clazz) {
-            NodeClass nodeClass = nodeClasses.get(clazz);
-            if (nodeClass == null) {
-                nodeClass = new NodeClass(clazz, unsafeFieldOffsetProvider);
-                nodeClasses.put(clazz, nodeClass);
-            }
-            return nodeClass;
+            return nodeClasses.get(clazz);
         }
 
         public NodeClass(Class<? extends Node> clazz, FieldOffsetProvider fieldOffsetProvider) {
