@@ -82,7 +82,7 @@ public class BytecodeDisassembler implements BytecodeDisassemblerProvider {
                     case PUTFIELD       : {
                         int cpi = stream.readCPI();
                         JavaField field = cp.lookupField(cpi, opcode);
-                        String fieldDesc = field.getDeclaringClass().getName().equals(method.getDeclaringClass().getName()) ? MetaUtil.format("%n:%T", field) : MetaUtil.format("%H.%n:%T", field);
+                        String fieldDesc = field.getDeclaringClass().getName().equals(method.getDeclaringClass().getName()) ? field.format("%n:%T") : field.format("%H.%n:%T");
                         buf.append(String.format("#%-10d // %s", cpi, fieldDesc));
                         break;
                     }
