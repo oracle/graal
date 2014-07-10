@@ -141,6 +141,15 @@ public interface ResolvedJavaType extends JavaType, ModifiersProvider {
     boolean isAssignableFrom(ResolvedJavaType other);
 
     /**
+     * Returns true if this type is exactly the type {@link java.lang.Object}.
+     */
+    default boolean isJavaLangObject() {
+        boolean result = getSuperclass() == null && !isInterface() && getKind() == Kind.Object;
+        assert result == getName().equals("Ljava/lang/Object;") : getName();
+        return result;
+    }
+
+    /**
      * Checks whether the specified object is an instance of this type.
      *
      * @param obj the object to test

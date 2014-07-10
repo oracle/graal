@@ -130,15 +130,6 @@ public class MetaUtil {
     }
 
     /**
-     * Returns true if the specified typed is exactly the type {@link java.lang.Object}.
-     */
-    public static boolean isJavaLangObject(ResolvedJavaType type) {
-        boolean result = type.getSuperclass() == null && !type.isInterface() && type.getKind() == Kind.Object;
-        assert result == type.getName().equals("Ljava/lang/Object;") : type.getName();
-        return result;
-    }
-
-    /**
      * Calls {@link JavaType#resolve(ResolvedJavaType)} on an array of types.
      */
     public static ResolvedJavaType[] resolveJavaTypes(JavaType[] types, ResolvedJavaType accessingClass) {
@@ -185,7 +176,7 @@ public class MetaUtil {
         return name.substring(index + 1);
     }
 
-    public static String internalNameToJava(String name, boolean qualified, boolean classForNameCompatible) {
+    static String internalNameToJava(String name, boolean qualified, boolean classForNameCompatible) {
         switch (name.charAt(0)) {
             case 'L': {
                 String result = name.substring(1, name.length() - 1).replace('/', '.');

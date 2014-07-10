@@ -348,6 +348,11 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
     }
 
     @Override
+    public boolean isJavaLangObject() {
+        return javaClass.equals(Object.class);
+    }
+
+    @Override
     public Kind getKind() {
         return Kind.Object;
     }
