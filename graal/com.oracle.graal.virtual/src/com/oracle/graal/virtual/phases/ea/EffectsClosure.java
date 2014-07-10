@@ -41,8 +41,8 @@ import com.oracle.graal.phases.schedule.*;
 
 public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> extends EffectsPhase.Closure<BlockT> {
 
-    private final ControlFlowGraph cfg;
-    private final SchedulePhase schedule;
+    protected final ControlFlowGraph cfg;
+    protected final SchedulePhase schedule;
 
     protected final NodeMap<ValueNode> aliases;
     protected final BlockMap<GraphEffectList> blockEffects;
