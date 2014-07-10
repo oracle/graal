@@ -25,6 +25,7 @@ package com.oracle.graal.replacements.nodes;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
+import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
@@ -164,7 +165,9 @@ public class MacroNode extends FixedWithNextNode implements Lowerable {
             InliningUtil.inline(invoke, replacementGraph, false, null);
             Debug.dump(graph(), "After inlining replacement %s", replacementGraph);
         } else {
-            assert stateAfter() != null : "cannot lower to invoke without state: " + this;
+            if (stateAfter() == null) {
+                throw new GraalInternalError("cannot lower to invoke without state: %s", this);
+            }
             invoke.lower(tool);
         }
     }
