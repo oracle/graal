@@ -891,4 +891,68 @@ public final class NodeUtil {
     private static String toStringWithClass(Object obj) {
         return obj == null ? "null" : obj + "(" + obj.getClass().getName() + ")";
     }
+
+    static void traceRewrite(Node oldNode, Node newNode, CharSequence reason) {
+        if (TruffleOptions.TraceRewritesFilterFromCost != null) {
+            if (filterByKind(oldNode, TruffleOptions.TraceRewritesFilterFromCost)) {
+                return;
+            }
+        }
+
+        if (TruffleOptions.TraceRewritesFilterToCost != null) {
+            if (filterByKind(newNode, TruffleOptions.TraceRewritesFilterToCost)) {
+                return;
+            }
+        }
+
+        String filter = TruffleOptions.TraceRewritesFilterClass;
+        Class<? extends Node> from = oldNode.getClass();
+        Class<? extends Node> to = newNode.getClass();
+        if (filter != null && (filterByContainsClassName(from, filter) || filterByContainsClassName(to, filter))) {
+            return;
+        }
+
+        final SourceSection reportedSourceSection = oldNode.getEncapsulatingSourceSection();
+
+        PrintStream out = System.out;
+        out.printf("[truffle]   rewrite %-50s |From %-40s |To %-40s |Reason %s%s%n", oldNode.toString(), formatNodeInfo(oldNode), formatNodeInfo(newNode),
+                        reason != null && reason.length() > 0 ? reason : "unknown", reportedSourceSection != null ? " at " + reportedSourceSection.getShortDescription() : "");
+    }
+
+    private static String formatNodeInfo(Node node) {
+        String cost = "?";
+        switch (node.getCost()) {
+            case NONE:
+                cost = "G";
+                break;
+            case MONOMORPHIC:
+                cost = "M";
+                break;
+            case POLYMORPHIC:
+                cost = "P";
+                break;
+            case MEGAMORPHIC:
+                cost = "G";
+                break;
+            default:
+                cost = "?";
+                break;
+        }
+        return cost + " " + node.getClass().getSimpleName();
+    }
+
+    private static boolean filterByKind(Node node, NodeCost cost) {
+        return node.getCost() == cost;
+    }
+
+    private static boolean filterByContainsClassName(Class<? extends Node> from, String filter) {
+        Class<?> currentFrom = from;
+        while (currentFrom != null) {
+            if (currentFrom.getName().contains(filter)) {
+                return false;
+            }
+            currentFrom = currentFrom.getSuperclass();
+        }
+        return true;
+    }
 }
