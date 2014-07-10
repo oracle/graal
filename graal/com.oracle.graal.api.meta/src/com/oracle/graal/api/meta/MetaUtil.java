@@ -23,8 +23,6 @@
 package com.oracle.graal.api.meta;
 
 import java.io.*;
-import java.lang.annotation.*;
-import java.lang.reflect.*;
 import java.util.*;
 
 import com.oracle.graal.api.meta.ProfilingInfo.TriState;
@@ -222,28 +220,6 @@ public class MetaUtil {
         } catch (ClassNotFoundException cnfe) {
             throw new IllegalArgumentException("could not instantiate class described by " + internal, cnfe);
         }
-    }
-
-    /**
-     * Gets the annotations of a particular type for the formal parameters of a given method.
-     *
-     * @param annotationClass the Class object corresponding to the annotation type
-     * @param method the method for which a parameter annotations are being requested
-     * @return the annotation of type {@code annotationClass} (if any) for each formal parameter
-     *         present
-     */
-    @SuppressWarnings("unchecked")
-    public static <T extends Annotation> T[] getParameterAnnotations(Class<T> annotationClass, ResolvedJavaMethod method) {
-        Annotation[][] parameterAnnotations = method.getParameterAnnotations();
-        T[] result = (T[]) Array.newInstance(annotationClass, parameterAnnotations.length);
-        for (int i = 0; i < parameterAnnotations.length; i++) {
-            for (Annotation a : parameterAnnotations[i]) {
-                if (a.annotationType() == annotationClass) {
-                    result[i] = annotationClass.cast(a);
-                }
-            }
-        }
-        return result;
     }
 
     /**

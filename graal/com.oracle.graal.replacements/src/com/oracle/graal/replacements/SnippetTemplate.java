@@ -496,7 +496,7 @@ public class SnippetTemplate {
      * Determines if any parameter of a given method is annotated with {@link ConstantParameter}.
      */
     public static boolean hasConstantParameter(ResolvedJavaMethod method) {
-        for (ConstantParameter p : MetaUtil.getParameterAnnotations(ConstantParameter.class, method)) {
+        for (ConstantParameter p : method.getParameterAnnotations(ConstantParameter.class)) {
             if (p != null) {
                 return true;
             }
