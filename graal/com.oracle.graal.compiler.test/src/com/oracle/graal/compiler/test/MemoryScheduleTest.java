@@ -464,28 +464,7 @@ public class MemoryScheduleTest extends GraphScheduleTest {
         assertReadAndWriteInSameBlock(schedule, false);
     }
 
-    /*
-     * read of field a should be in first block, read of field b in loop begin block
-     */
-    public static void testProxy1Snippet() {
-        while (container.a < container.b) {
-            container.b--;
-        }
-        container.b++;
-    }
-
-    @Test
-    public void testProxy1() {
-        SchedulePhase schedule = getFinalSchedule("testProxy1Snippet", TestMode.WITHOUT_FRAMESTATES);
-        assertReadWithinStartBlock(schedule, true); // read of container.a should be in start block
-        /*
-         * read of container.b for increment operation should be in return block. TODO: not sure
-         * though, could be replaced by read of container.b of the loop header...
-         */
-        assertReadWithinAllReturnBlocks(schedule, true);
-    }
-
-    public static void testProxy2Snippet() {
+    public static void testProxySnippet() {
         while (container.a < container.b) {
             List<Container> list = new ArrayList<>(containerList);
             while (container.c < list.size()) {
@@ -501,8 +480,8 @@ public class MemoryScheduleTest extends GraphScheduleTest {
     }
 
     @Test
-    public void testProxy2() {
-        SchedulePhase schedule = getFinalSchedule("testProxy2Snippet", TestMode.WITHOUT_FRAMESTATES);
+    public void testProxy() {
+        SchedulePhase schedule = getFinalSchedule("testProxySnippet", TestMode.WITHOUT_FRAMESTATES);
         assertReadWithinStartBlock(schedule, false);
         assertReadWithinAllReturnBlocks(schedule, false);
     }

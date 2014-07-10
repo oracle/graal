@@ -358,16 +358,6 @@ public class FloatingReadPhase extends Phase {
                     phi.initializeValueAt(endIndex, ValueNodeUtil.asNode(entry.getValue().getLastLocationAccess(key)));
                 }
             }
-            for (Map.Entry<LoopExitNode, MemoryMapImpl> entry : loopInfo.exitStates.entrySet()) {
-                LoopExitNode exit = entry.getKey();
-                MemoryMapImpl state = entry.getValue();
-                for (LocationIdentity location : modifiedLocations) {
-                    MemoryNode lastAccessAtExit = state.lastMemorySnapshot.get(location);
-                    if (lastAccessAtExit != null) {
-                        state.lastMemorySnapshot.put(location, MemoryProxyNode.forMemory(lastAccessAtExit, exit, location, loop.graph()));
-                    }
-                }
-            }
             return loopInfo.exitStates;
         }
     }
