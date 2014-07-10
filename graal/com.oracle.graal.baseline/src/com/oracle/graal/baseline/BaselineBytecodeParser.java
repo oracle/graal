@@ -87,7 +87,7 @@ public class BaselineBytecodeParser extends AbstractBytecodeParser<Value, Baseli
     protected void build() {
         if (PrintProfilingInformation.getValue()) {
             TTY.println("Profiling info for " + method.format("%H.%n(%p)"));
-            TTY.println(MetaUtil.indent(MetaUtil.profileToString(profilingInfo, method, CodeUtil.NEW_LINE), "  "));
+            TTY.println(MetaUtil.indent(profilingInfo.toString(method, CodeUtil.NEW_LINE), "  "));
         }
 
         try (Indent indent = Debug.logAndIndent("build graph for %s", method)) {

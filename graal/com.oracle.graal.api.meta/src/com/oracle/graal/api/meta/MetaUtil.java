@@ -25,8 +25,6 @@ package com.oracle.graal.api.meta;
 import java.io.*;
 import java.util.*;
 
-import com.oracle.graal.api.meta.ProfilingInfo.TriState;
-
 /**
  * Miscellaneous collection of utility methods used by {@code com.oracle.graal.api.meta} and its
  * clients.
@@ -224,7 +222,7 @@ public class MetaUtil {
 
     /**
      * Convenient shortcut for calling
-     * {@link #appendLocation(StringBuilder, ResolvedJavaMethod, int)} without having to supply a a
+     * {@link #appendLocation(StringBuilder, ResolvedJavaMethod, int)} without having to supply a
      * {@link StringBuilder} instance and convert the result to a string.
      */
     public static String toLocation(ResolvedJavaMethod method, int bci) {
@@ -267,71 +265,7 @@ public class MetaUtil {
         return sb.append(" [bci: ").append(bci).append(']');
     }
 
-    /**
-     * Formats some profiling information associated as a string.
-     *
-     * @param info the profiling info to format
-     * @param method an optional method that augments the profile string returned
-     * @param sep the separator to use for each separate profile record
-     */
-    public static String profileToString(ProfilingInfo info, ResolvedJavaMethod method, String sep) {
-        StringBuilder buf = new StringBuilder(100);
-        if (method != null) {
-            buf.append(String.format("canBeStaticallyBound: %b%s", method.canBeStaticallyBound(), sep));
-        }
-        for (int i = 0; i < info.getCodeSize(); i++) {
-            if (info.getExecutionCount(i) != -1) {
-                buf.append(String.format("executionCount@%d: %d%s", i, info.getExecutionCount(i), sep));
-            }
-
-            if (info.getBranchTakenProbability(i) != -1) {
-                buf.append(String.format("branchProbability@%d: %.6f%s", i, info.getBranchTakenProbability(i), sep));
-            }
-
-            double[] switchProbabilities = info.getSwitchProbabilities(i);
-            if (switchProbabilities != null) {
-                buf.append(String.format("switchProbabilities@%d:", i));
-                for (int j = 0; j < switchProbabilities.length; j++) {
-                    buf.append(String.format(" %.6f", switchProbabilities[j]));
-                }
-                buf.append(sep);
-            }
-
-            if (info.getExceptionSeen(i) != TriState.UNKNOWN) {
-                buf.append(String.format("exceptionSeen@%d: %s%s", i, info.getExceptionSeen(i).name(), sep));
-            }
-
-            if (info.getNullSeen(i) != TriState.UNKNOWN) {
-                buf.append(String.format("nullSeen@%d: %s%s", i, info.getNullSeen(i).name(), sep));
-            }
-
-            JavaTypeProfile typeProfile = info.getTypeProfile(i);
-            appendProfile(buf, typeProfile, i, "types", sep);
-
-            JavaMethodProfile methodProfile = info.getMethodProfile(i);
-            appendProfile(buf, methodProfile, i, "methods", sep);
-        }
-
-        boolean firstDeoptReason = true;
-        for (DeoptimizationReason reason : DeoptimizationReason.values()) {
-            int count = info.getDeoptimizationCount(reason);
-            if (count > 0) {
-                if (firstDeoptReason) {
-                    buf.append("deoptimization history").append(sep);
-                    firstDeoptReason = false;
-                }
-                buf.append(String.format(" %s: %d%s", reason.name(), count, sep));
-            }
-        }
-        if (buf.length() == 0) {
-            return "";
-        }
-        String s = buf.toString();
-        assert s.endsWith(sep);
-        return s.substring(0, s.length() - sep.length());
-    }
-
-    private static void appendProfile(StringBuilder buf, AbstractJavaProfile<?, ?> profile, int bci, String type, String sep) {
+    static void appendProfile(StringBuilder buf, AbstractJavaProfile<?, ?> profile, int bci, String type, String sep) {
         if (profile != null) {
             AbstractProfiledItem<?>[] pitems = profile.getItems();
             if (pitems != null) {
