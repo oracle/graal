@@ -35,52 +35,52 @@ import com.oracle.graal.debug.internal.*;
  * <p>
  * These options enable the associated debug facility if their filter matches the
  * {@linkplain DebugScope#getQualifiedName() name} of the {@linkplain Debug#currentScope() current
- * scope}.
+ * scope}. For the {@link GraalDebugConfig#Dump} and {@link GraalDebugConfig#Log} options, the log
+ * or dump level is set. The {@link GraalDebugConfig#Meter} and {@link GraalDebugConfig#Time}
+ * options don't have a level, for them {@code level = 0} means disabled and a {@code level > 0}
+ * means enabled.
  * <p>
- * A filter is a list of comma-separated terms. Each term is interpreted as a glob pattern if it
- * contains a "*" or "?" character. Otherwise, it is interpreted as a substring. If a term starts
- * with "~", then it is an positive term. An input is matched by a filter if any of its positive
- * terms match the input (or it has no positive terms) AND none of its negative terms match the
- * input (or it has no negative terms).
+ * A filter is a list of comma-separated terms of the form {@code <pattern>[:<level>]}.
+ * {@code <pattern>} is interpreted as a glob pattern if it contains a "*" or "?" character.
+ * Otherwise, it is interpreted as a substring. If {@code <pattern>} is empty, it matches every
+ * scope. If {@code :<level>} is omitted, it defaults to {@link Debug#DEFAULT_LOG_LEVEL}. The term
+ * {@code ~<pattern>} is a shorthand for {@code <pattern>:0} to disable a debug facility for a
+ * pattern.
  * <p>
- * Examples of filters include:
- * <p>
+ * The resulting log level of a scope is determined by the <em>last</em> matching term. If no term
+ * matches, the log level is 0 (disabled). A filter with no terms matches every scope with a log
+ * level of {@link Debug#DEFAULT_LOG_LEVEL}.
+ *
+ * <h2>Examples of filters</h2>
+ *
  * <ul>
- * <li>
- * 
- * <pre>
- * &quot;&quot;
- * </pre>
- * 
- * Matches any scope.</li>
- * <li>
- * 
- * <pre>
- * &quot;*&quot;
- * </pre>
- * 
- * Matches any scope.</li>
- * <li>
- * 
- * <pre>
- * &quot;CodeGen,CodeInstall&quot;
- * </pre>
- * 
- * Matches a scope whose name contains "CodeGen" or "CodeInstall".</li>
- * <li>
- * 
- * <pre>
- * &quot;Code*&quot;
- * </pre>
- * 
- * Matches a scope whose name starts with "Code".</li>
- * <li>
- * 
- * <pre>
- * &quot;Code,&tilde;Dead&quot;
- * </pre>
- * 
- * Matches a scope whose name contains "Code" but does not contain "Dead".</li>
+ * <li>(empty string)<br>
+ * Matches any scope with log level {@link Debug#DEFAULT_LOG_LEVEL}.
+ *
+ * <li> {@code :1}<br>
+ * Matches any scope with log level 1.
+ *
+ * <li> {@code *}<br>
+ * Matches any scope with log level {@link Debug#DEFAULT_LOG_LEVEL}.
+ *
+ * <li> {@code CodeGen,CodeInstall}<br>
+ * Matches scopes containing "CodeGen" or "CodeInstall", both with log level
+ * {@link Debug#DEFAULT_LOG_LEVEL}.
+ *
+ * <li> {@code CodeGen:2,CodeInstall:1}<br>
+ * Matches scopes containing "CodeGen" with log level 2, or "CodeInstall" with log level 1.
+ *
+ * <li> {@code :1,Dead:2}<br>
+ * Matches scopes containing "Dead" with log level 2, and all other scopes with log level 1.
+ *
+ * <li> {@code :1,Dead:0}<br>
+ * Matches all scopes with log level 1, except those containing "Dead".
+ *
+ * <li> {@code Code*}<br>
+ * Matches scopes starting with "Code" with log level {@link Debug#DEFAULT_LOG_LEVEL}.
+ *
+ * <li> {@code Code,~Dead}<br>
+ * Matches scopes containing "Code" but not "Dead", with log level {@link Debug#DEFAULT_LOG_LEVEL}.
  * </ul>
  */
 class DebugFilter {
@@ -92,69 +92,76 @@ class DebugFilter {
         return new DebugFilter(spec.split(","));
     }
 
-    final Term[] positive;
-    final Term[] negative;
+    private final Term[] terms;
 
-    DebugFilter(String[] terms) {
-        List<Term> pos = new ArrayList<>(terms.length);
-        List<Term> neg = new ArrayList<>(terms.length);
-        for (int i = 0; i < terms.length; i++) {
-            String t = terms[i];
-            if (t.startsWith("~")) {
-                neg.add(new Term(t.substring(1)));
-            } else {
-                pos.add(new Term(t));
+    private DebugFilter(String[] terms) {
+        if (terms.length == 0) {
+            this.terms = null;
+        } else {
+            this.terms = new Term[terms.length];
+            for (int i = 0; i < terms.length; i++) {
+                String t = terms[i];
+                int idx = t.indexOf(':');
+
+                String pattern;
+                int level;
+                if (idx < 0) {
+                    if (t.startsWith("~")) {
+                        pattern = t.substring(1);
+                        level = 0;
+                    } else {
+                        pattern = t;
+                        level = Debug.DEFAULT_LOG_LEVEL;
+                    }
+                } else {
+                    pattern = t.substring(0, idx);
+                    if (idx + 1 < t.length()) {
+                        level = Integer.parseInt(t.substring(idx + 1));
+                    } else {
+                        level = Debug.DEFAULT_LOG_LEVEL;
+                    }
+                }
+
+                this.terms[i] = new Term(pattern, level);
             }
         }
-        this.positive = pos.isEmpty() ? null : pos.toArray(new Term[pos.size()]);
-        this.negative = neg.isEmpty() ? null : neg.toArray(new Term[neg.size()]);
     }
 
     /**
-     * Determines if a given input is matched by this filter.
+     * Check whether a given input is matched by this filter, and determine the log level.
      */
-    public boolean matches(String input) {
-        boolean match = true;
-        if (positive != null) {
-            match = false;
-            for (Term t : positive) {
+    public int matchLevel(String input) {
+        if (terms == null) {
+            return Debug.DEFAULT_LOG_LEVEL;
+        } else {
+            int level = 0;
+            for (Term t : terms) {
                 if (t.matches(input)) {
-                    match = true;
-                    break;
+                    level = t.level;
                 }
             }
+            return level;
         }
-        if (match && negative != null) {
-            for (Term t : negative) {
-                if (t.matches(input)) {
-                    match = false;
-                    break;
-                }
-            }
-        }
-        return match;
     }
 
     @Override
     public String toString() {
-        StringBuilder buf = new StringBuilder("DebugFilter[");
-        String sep = "";
-        if (positive != null) {
-            buf.append(sep).append("pos=").append(Arrays.toString(positive));
-            sep = ", ";
+        StringBuilder buf = new StringBuilder("DebugFilter");
+        if (terms != null) {
+            buf.append(Arrays.toString(terms));
+        } else {
+            buf.append("[]");
         }
-        if (negative != null) {
-            buf.append(sep).append("neg=").append(Arrays.toString(negative));
-            sep = ", ";
-        }
-        return buf.append("]").toString();
+        return buf.toString();
     }
 
-    static class Term {
+    private static class Term {
 
-        final Pattern pattern;
+        private final Pattern pattern;
+        public final int level;
 
-        public Term(String filter) {
+        public Term(String filter, int level) {
+            this.level = level;
             if (filter.isEmpty()) {
                 this.pattern = null;
             } else if (filter.contains("*") || filter.contains("?")) {
@@ -173,7 +180,7 @@ class DebugFilter {
 
         @Override
         public String toString() {
-            return pattern == null ? ".*" : pattern.toString();
+            return (pattern == null ? ".*" : pattern.toString()) + ":" + level;
         }
     }
 }

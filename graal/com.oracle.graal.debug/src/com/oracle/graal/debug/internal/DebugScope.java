@@ -52,8 +52,8 @@ public final class DebugScope implements Debug.Scope {
             }
         }
 
-        public void log(String msg, Object... args) {
-            if (isLogEnabled()) {
+        public void log(int logLevel, String msg, Object... args) {
+            if (isLogEnabled(logLevel)) {
                 StringBuilder str = new StringBuilder();
                 printScopeName(str);
                 str.append(indent);
@@ -102,9 +102,10 @@ public final class DebugScope implements Debug.Scope {
     private boolean meterEnabled;
     private boolean timeEnabled;
     private boolean memUseTrackingEnabled;
-    private boolean dumpEnabled;
     private boolean verifyEnabled;
-    private boolean logEnabled;
+
+    private int currentDumpLevel;
+    private int currentLogLevel;
 
     private PrintStream output;
 
@@ -163,16 +164,18 @@ public final class DebugScope implements Debug.Scope {
         lastClosedTL.set(this);
     }
 
-    public boolean isDumpEnabled() {
-        return dumpEnabled;
+    public boolean isDumpEnabled(int dumpLevel) {
+        assert dumpLevel > 0;
+        return currentDumpLevel >= dumpLevel;
     }
 
     public boolean isVerifyEnabled() {
         return verifyEnabled;
     }
 
-    public boolean isLogEnabled() {
-        return logEnabled;
+    public boolean isLogEnabled(int logLevel) {
+        assert logLevel > 0;
+        return currentLogLevel >= logLevel;
     }
 
     public boolean isMeterEnabled() {
@@ -187,12 +190,12 @@ public final class DebugScope implements Debug.Scope {
         return memUseTrackingEnabled;
     }
 
-    public void log(String msg, Object... args) {
-        lastUsedIndent.log(msg, args);
+    public void log(int logLevel, String msg, Object... args) {
+        lastUsedIndent.log(logLevel, msg, args);
     }
 
-    public void dump(Object object, String formatString, Object... args) {
-        if (isDumpEnabled()) {
+    public void dump(int dumpLevel, Object object, String formatString, Object... args) {
+        if (isDumpEnabled(dumpLevel)) {
             DebugConfig config = getConfig();
             if (config != null) {
                 String message = String.format(formatString, args);
@@ -289,8 +292,9 @@ public final class DebugScope implements Debug.Scope {
             meterEnabled = false;
             memUseTrackingEnabled = false;
             timeEnabled = false;
-            dumpEnabled = false;
             verifyEnabled = false;
+
+            currentDumpLevel = 0;
 
             // Be pragmatic: provide a default log stream to prevent a crash if the stream is not
             // set while logging
@@ -299,10 +303,10 @@ public final class DebugScope implements Debug.Scope {
             meterEnabled = config.isMeterEnabled();
             memUseTrackingEnabled = config.isMemUseTrackingEnabled();
             timeEnabled = config.isTimeEnabled();
-            dumpEnabled = config.isDumpEnabled();
             verifyEnabled = config.isVerifyEnabled();
-            logEnabled = config.isLogEnabled();
             output = config.output();
+            currentDumpLevel = config.getDumpLevel();
+            currentLogLevel = config.getLogLevel();
         }
     }
 

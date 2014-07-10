@@ -38,6 +38,8 @@ import com.oracle.graal.nodes.*;
  */
 public abstract class BasePhase<C> {
 
+    public static final int PHASE_DUMP_LEVEL = 1;
+
     private CharSequence name;
 
     /**
@@ -97,8 +99,8 @@ public abstract class BasePhase<C> {
             this.run(graph, context);
             executionCount.increment();
             inputNodesCount.add(graph.getNodeCount());
-            if (dumpGraph && Debug.isDumpEnabled()) {
-                Debug.dump(graph, "After phase %s", getName());
+            if (dumpGraph && Debug.isDumpEnabled(PHASE_DUMP_LEVEL)) {
+                Debug.dump(PHASE_DUMP_LEVEL, graph, "After phase %s", getName());
             }
             if (Debug.isVerifyEnabled()) {
                 Debug.verify(graph, "After phase %s", getName());

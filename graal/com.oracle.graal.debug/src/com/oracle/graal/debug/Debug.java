@@ -82,8 +82,14 @@ public class Debug {
         return config.isDumpEnabledForMethod();
     }
 
+    public static final int DEFAULT_LOG_LEVEL = 2;
+
     public static boolean isDumpEnabled() {
-        return ENABLED && DebugScope.getInstance().isDumpEnabled();
+        return isDumpEnabled(DEFAULT_LOG_LEVEL);
+    }
+
+    public static boolean isDumpEnabled(int dumpLevel) {
+        return ENABLED && DebugScope.getInstance().isDumpEnabled(dumpLevel);
     }
 
     /**
@@ -137,7 +143,11 @@ public class Debug {
     }
 
     public static boolean isLogEnabled() {
-        return ENABLED && DebugScope.getInstance().isLogEnabled();
+        return isLogEnabled(DEFAULT_LOG_LEVEL);
+    }
+
+    public static boolean isLogEnabled(int logLevel) {
+        return ENABLED && DebugScope.getInstance().isLogEnabled(logLevel);
     }
 
     @SuppressWarnings("unused")
@@ -352,15 +362,23 @@ public class Debug {
         }
     }
 
+    public static void log(String msg) {
+        log(DEFAULT_LOG_LEVEL, msg);
+    }
+
     /**
      * Prints a message to the current debug scope's logging stream if logging is enabled.
      *
      * @param msg the message to log
      */
-    public static void log(String msg) {
+    public static void log(int logLevel, String msg) {
         if (ENABLED) {
-            DebugScope.getInstance().log(msg);
+            DebugScope.getInstance().log(logLevel, msg);
         }
+    }
+
+    public static void log(String format, Object arg) {
+        log(DEFAULT_LOG_LEVEL, format, arg);
     }
 
     /**
@@ -369,55 +387,79 @@ public class Debug {
      * @param format a format string
      * @param arg the argument referenced by the format specifiers in {@code format}
      */
-    public static void log(String format, Object arg) {
+    public static void log(int logLevel, String format, Object arg) {
         if (ENABLED) {
-            DebugScope.getInstance().log(format, arg);
+            DebugScope.getInstance().log(logLevel, format, arg);
         }
     }
 
-    /**
-     * @see #log(String, Object)
-     */
     public static void log(String format, Object arg1, Object arg2) {
-        if (ENABLED) {
-            DebugScope.getInstance().log(format, arg1, arg2);
-        }
+        log(DEFAULT_LOG_LEVEL, format, arg1, arg2);
     }
 
     /**
-     * @see #log(String, Object)
+     * @see #log(int, String, Object)
      */
+    public static void log(int logLevel, String format, Object arg1, Object arg2) {
+        if (ENABLED) {
+            DebugScope.getInstance().log(logLevel, format, arg1, arg2);
+        }
+    }
+
     public static void log(String format, Object arg1, Object arg2, Object arg3) {
-        if (ENABLED) {
-            DebugScope.getInstance().log(format, arg1, arg2, arg3);
-        }
+        log(DEFAULT_LOG_LEVEL, format, arg1, arg2, arg3);
     }
 
     /**
-     * @see #log(String, Object)
+     * @see #log(int, String, Object)
      */
+    public static void log(int logLevel, String format, Object arg1, Object arg2, Object arg3) {
+        if (ENABLED) {
+            DebugScope.getInstance().log(logLevel, format, arg1, arg2, arg3);
+        }
+    }
+
     public static void log(String format, Object arg1, Object arg2, Object arg3, Object arg4) {
-        if (ENABLED) {
-            DebugScope.getInstance().log(format, arg1, arg2, arg3, arg4);
-        }
+        log(DEFAULT_LOG_LEVEL, format, arg1, arg2, arg3, arg4);
     }
 
     /**
-     * @see #log(String, Object)
+     * @see #log(int, String, Object)
      */
+    public static void log(int logLevel, String format, Object arg1, Object arg2, Object arg3, Object arg4) {
+        if (ENABLED) {
+            DebugScope.getInstance().log(logLevel, format, arg1, arg2, arg3, arg4);
+        }
+    }
+
     public static void log(String format, Object arg1, Object arg2, Object arg3, Object arg4, Object arg5) {
-        if (ENABLED) {
-            DebugScope.getInstance().log(format, arg1, arg2, arg3, arg4, arg5);
-        }
+        log(DEFAULT_LOG_LEVEL, format, arg1, arg2, arg3, arg4, arg5);
     }
 
     /**
-     * @see #log(String, Object)
+     * @see #log(int, String, Object)
      */
-    public static void log(String format, Object arg1, Object arg2, Object arg3, Object arg4, Object arg5, Object arg6) {
+    public static void log(int logLevel, String format, Object arg1, Object arg2, Object arg3, Object arg4, Object arg5) {
         if (ENABLED) {
-            DebugScope.getInstance().log(format, arg1, arg2, arg3, arg4, arg5, arg6);
+            DebugScope.getInstance().log(logLevel, format, arg1, arg2, arg3, arg4, arg5);
         }
+    }
+
+    public static void log(String format, Object arg1, Object arg2, Object arg3, Object arg4, Object arg5, Object arg6) {
+        log(DEFAULT_LOG_LEVEL, format, arg1, arg2, arg3, arg4, arg5, arg6);
+    }
+
+    /**
+     * @see #log(int, String, Object)
+     */
+    public static void log(int logLevel, String format, Object arg1, Object arg2, Object arg3, Object arg4, Object arg5, Object arg6) {
+        if (ENABLED) {
+            DebugScope.getInstance().log(logLevel, format, arg1, arg2, arg3, arg4, arg5, arg6);
+        }
+    }
+
+    public static void logv(String format, Object... args) {
+        logv(DEFAULT_LOG_LEVEL, format, args);
     }
 
     /**
@@ -429,11 +471,11 @@ public class Debug {
      * @param format a format string
      * @param args the arguments referenced by the format specifiers in {@code format}
      */
-    public static void logv(String format, Object... args) {
+    public static void logv(int logLevel, String format, Object... args) {
         if (!ENABLED) {
             throw new InternalError("Use of Debug.logv() must be guarded by a test of Debug.isEnabled()");
         }
-        DebugScope.getInstance().log(format, args);
+        DebugScope.getInstance().log(logLevel, format, args);
     }
 
     /**
@@ -445,30 +487,58 @@ public class Debug {
     @Deprecated
     public static void log(String format, Object[] args) {
         assert false : "shouldn't use this";
-        logv(format, args);
+        log(DEFAULT_LOG_LEVEL, format, args);
+    }
+
+    /**
+     * This override exists to catch cases when {@link #log(int, String, Object)} is called with one
+     * argument bound to a varargs method parameter. It will bind to this method instead of the
+     * single arg variant and produce a deprecation warning instead of silently wrapping the
+     * Object[] inside of another Object[].
+     */
+    @Deprecated
+    public static void log(int logLevel, String format, Object[] args) {
+        assert false : "shouldn't use this";
+        logv(logLevel, format, args);
     }
 
     public static void dump(Object object, String msg) {
-        if (ENABLED && DebugScope.getInstance().isDumpEnabled()) {
-            DebugScope.getInstance().dump(object, msg);
+        dump(DEFAULT_LOG_LEVEL, object, msg);
+    }
+
+    public static void dump(int dumpLevel, Object object, String msg) {
+        if (ENABLED && DebugScope.getInstance().isDumpEnabled(dumpLevel)) {
+            DebugScope.getInstance().dump(dumpLevel, object, msg);
         }
     }
 
     public static void dump(Object object, String format, Object arg) {
-        if (ENABLED && DebugScope.getInstance().isDumpEnabled()) {
-            DebugScope.getInstance().dump(object, format, arg);
+        dump(DEFAULT_LOG_LEVEL, object, format, arg);
+    }
+
+    public static void dump(int dumpLevel, Object object, String format, Object arg) {
+        if (ENABLED && DebugScope.getInstance().isDumpEnabled(dumpLevel)) {
+            DebugScope.getInstance().dump(dumpLevel, object, format, arg);
         }
     }
 
     public static void dump(Object object, String format, Object arg1, Object arg2) {
-        if (ENABLED && DebugScope.getInstance().isDumpEnabled()) {
-            DebugScope.getInstance().dump(object, format, arg1, arg2);
+        dump(DEFAULT_LOG_LEVEL, object, format, arg1, arg2);
+    }
+
+    public static void dump(int dumpLevel, Object object, String format, Object arg1, Object arg2) {
+        if (ENABLED && DebugScope.getInstance().isDumpEnabled(dumpLevel)) {
+            DebugScope.getInstance().dump(dumpLevel, object, format, arg1, arg2);
         }
     }
 
     public static void dump(Object object, String format, Object arg1, Object arg2, Object arg3) {
-        if (ENABLED && DebugScope.getInstance().isDumpEnabled()) {
-            DebugScope.getInstance().dump(object, format, arg1, arg2, arg3);
+        dump(DEFAULT_LOG_LEVEL, object, format, arg1, arg2, arg3);
+    }
+
+    public static void dump(int dumpLevel, Object object, String format, Object arg1, Object arg2, Object arg3) {
+        if (ENABLED && DebugScope.getInstance().isDumpEnabled(dumpLevel)) {
+            DebugScope.getInstance().dump(dumpLevel, object, format, arg1, arg2, arg3);
         }
     }
 
@@ -481,8 +551,20 @@ public class Debug {
     @Deprecated
     public static void dump(Object object, String format, Object[] args) {
         assert false : "shouldn't use this";
-        if (ENABLED && DebugScope.getInstance().isDumpEnabled()) {
-            DebugScope.getInstance().dump(object, format, args);
+        dump(DEFAULT_LOG_LEVEL, object, format, args);
+    }
+
+    /**
+     * This override exists to catch cases when {@link #dump(int, Object, String, Object)} is called
+     * with one argument bound to a varargs method parameter. It will bind to this method instead of
+     * the single arg variant and produce a deprecation warning instead of silently wrapping the
+     * Object[] inside of another Object[].
+     */
+    @Deprecated
+    public static void dump(int dumpLevel, Object object, String format, Object[] args) {
+        assert false : "shouldn't use this";
+        if (ENABLED && DebugScope.getInstance().isDumpEnabled(dumpLevel)) {
+            DebugScope.getInstance().dump(dumpLevel, object, format, args);
         }
     }
 
@@ -537,8 +619,8 @@ public class Debug {
      *
      * @return an object that reverts to the current indentation level when
      *         {@linkplain Indent#close() closed} or null if debugging is disabled
-     * @see #logAndIndent(String)
-     * @see #logAndIndent(String, Object)
+     * @see #logAndIndent(int, String)
+     * @see #logAndIndent(int, String, Object)
      */
     public static Indent indent() {
         if (ENABLED) {
@@ -548,6 +630,10 @@ public class Debug {
         return null;
     }
 
+    public static Indent logAndIndent(String msg) {
+        return logAndIndent(DEFAULT_LOG_LEVEL, msg);
+    }
+
     /**
      * A convenience function which combines {@link #log(String)} and {@link #indent()}.
      *
@@ -555,11 +641,15 @@ public class Debug {
      * @return an object that reverts to the current indentation level when
      *         {@linkplain Indent#close() closed} or null if debugging is disabled
      */
-    public static Indent logAndIndent(String msg) {
+    public static Indent logAndIndent(int logLevel, String msg) {
         if (ENABLED) {
-            return logvAndIndent(msg);
+            return logvAndIndent(logLevel, msg);
         }
         return null;
+    }
+
+    public static Indent logAndIndent(String format, Object arg) {
+        return logAndIndent(DEFAULT_LOG_LEVEL, format, arg);
     }
 
     /**
@@ -570,45 +660,54 @@ public class Debug {
      * @return an object that reverts to the current indentation level when
      *         {@linkplain Indent#close() closed} or null if debugging is disabled
      */
-    public static Indent logAndIndent(String format, Object arg) {
+    public static Indent logAndIndent(int logLevel, String format, Object arg) {
         if (ENABLED) {
-            return logvAndIndent(format, arg);
+            return logvAndIndent(logLevel, format, arg);
         }
         return null;
     }
 
-    /**
-     * @see #logAndIndent(String, Object)
-     */
     public static Indent logAndIndent(String format, Object arg1, Object arg2) {
-        if (ENABLED) {
-            return logvAndIndent(format, arg1, arg2);
-        }
-        return null;
+        return logAndIndent(DEFAULT_LOG_LEVEL, format, arg1, arg2);
     }
 
     /**
-     * @see #logAndIndent(String, Object)
+     * @see #logAndIndent(int, String, Object)
      */
-    public static Indent logAndIndent(String format, Object arg1, Object arg2, Object arg3) {
+    public static Indent logAndIndent(int logLevel, String format, Object arg1, Object arg2) {
         if (ENABLED) {
-            return logvAndIndent(format, arg1, arg2, arg3);
+            return logvAndIndent(logLevel, format, arg1, arg2);
+        }
+        return null;
+    }
+
+    public static Indent logAndIndent(String format, Object arg1, Object arg2, Object arg3) {
+        return logAndIndent(DEFAULT_LOG_LEVEL, format, arg1, arg2, arg3);
+    }
+
+    /**
+     * @see #logAndIndent(int, String, Object)
+     */
+    public static Indent logAndIndent(int logLevel, String format, Object arg1, Object arg2, Object arg3) {
+        if (ENABLED) {
+            return logvAndIndent(logLevel, format, arg1, arg2, arg3);
         }
         return null;
     }
 
     /**
-     * A convenience function which combines {@link #logv(String, Object...)} and {@link #indent()}.
+     * A convenience function which combines {@link #logv(int, String, Object...)} and
+     * {@link #indent()}.
      *
      * @param format a format string
      * @param args the arguments referenced by the format specifiers in {@code format}
      * @return an object that reverts to the current indentation level when
      *         {@linkplain Indent#close() closed} or null if debugging is disabled
      */
-    public static Indent logvAndIndent(String format, Object... args) {
+    public static Indent logvAndIndent(int logLevel, String format, Object... args) {
         if (ENABLED) {
             DebugScope scope = DebugScope.getInstance();
-            scope.log(format, args);
+            scope.log(logLevel, format, args);
             return scope.pushIndentLogger();
         }
         throw new InternalError("Use of Debug.logvAndIndent() must be guarded by a test of Debug.isEnabled()");
@@ -623,7 +722,19 @@ public class Debug {
     @Deprecated
     public static void logAndIndent(String format, Object[] args) {
         assert false : "shouldn't use this";
-        logvAndIndent(format, args);
+        logAndIndent(DEFAULT_LOG_LEVEL, format, args);
+    }
+
+    /**
+     * This override exists to catch cases when {@link #logAndIndent(int, String, Object)} is called
+     * with one argument bound to a varargs method parameter. It will bind to this method instead of
+     * the single arg variant and produce a deprecation warning instead of silently wrapping the
+     * Object[] inside of another Object[].
+     */
+    @Deprecated
+    public static void logAndIndent(int logLevel, String format, Object[] args) {
+        assert false : "shouldn't use this";
+        logvAndIndent(logLevel, format, args);
     }
 
     public static Iterable<Object> context() {
@@ -845,20 +956,20 @@ public class Debug {
     }
 
     public static DebugConfig silentConfig() {
-        return fixedConfig(false, false, false, false, false, false, Collections.<DebugDumpHandler> emptyList(), Collections.<DebugVerifyHandler> emptyList(), null);
+        return fixedConfig(0, 0, false, false, false, false, Collections.<DebugDumpHandler> emptyList(), Collections.<DebugVerifyHandler> emptyList(), null);
     }
 
-    public static DebugConfig fixedConfig(final boolean isLogEnabled, final boolean isDumpEnabled, final boolean isMeterEnabled, final boolean isMemUseTrackingEnabled, final boolean isTimerEnabled,
+    public static DebugConfig fixedConfig(final int logLevel, final int dumpLevel, final boolean isMeterEnabled, final boolean isMemUseTrackingEnabled, final boolean isTimerEnabled,
                     final boolean isVerifyEnabled, final Collection<DebugDumpHandler> dumpHandlers, final Collection<DebugVerifyHandler> verifyHandlers, final PrintStream output) {
         return new DebugConfig() {
 
             @Override
-            public boolean isLogEnabled() {
-                return isLogEnabled;
+            public int getLogLevel() {
+                return logLevel;
             }
 
             public boolean isLogEnabledForMethod() {
-                return isLogEnabled;
+                return logLevel > 0;
             }
 
             @Override
@@ -872,12 +983,12 @@ public class Debug {
             }
 
             @Override
-            public boolean isDumpEnabled() {
-                return isDumpEnabled;
+            public int getDumpLevel() {
+                return dumpLevel;
             }
 
             public boolean isDumpEnabledForMethod() {
-                return isDumpEnabled;
+                return dumpLevel > 0;
             }
 
             @Override
