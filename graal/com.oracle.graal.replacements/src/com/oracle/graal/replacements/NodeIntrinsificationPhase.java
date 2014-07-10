@@ -83,7 +83,7 @@ public class NodeIntrinsificationPhase extends Phase {
             assert target.getAnnotation(Fold.class) == null;
             assert target.isStatic() : "node intrinsic must be static: " + target;
 
-            ResolvedJavaType[] parameterTypes = resolveJavaTypes(signatureToTypes(target), declaringClass);
+            ResolvedJavaType[] parameterTypes = resolveJavaTypes(target.toParameterTypes(), declaringClass);
 
             // Prepare the arguments for the reflective constructor call on the node class.
             Constant[] nodeConstructorArguments = prepareArguments(methodCallTargetNode, parameterTypes, target, false);
@@ -102,7 +102,7 @@ public class NodeIntrinsificationPhase extends Phase {
             // Clean up checkcast instructions inserted by javac if the return type is generic.
             cleanUpReturnList.add(newInstance);
         } else if (isFoldable(target)) {
-            ResolvedJavaType[] parameterTypes = resolveJavaTypes(signatureToTypes(target), declaringClass);
+            ResolvedJavaType[] parameterTypes = resolveJavaTypes(target.toParameterTypes(), declaringClass);
 
             // Prepare the arguments for the reflective method call
             Constant[] arguments = prepareArguments(methodCallTargetNode, parameterTypes, target, true);

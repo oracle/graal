@@ -298,11 +298,6 @@ public class MetaUtil {
         return sb.append(" [bci: ").append(bci).append(']');
     }
 
-    public static JavaType[] signatureToTypes(ResolvedJavaMethod method) {
-        JavaType receiver = method.isStatic() ? null : method.getDeclaringClass();
-        return method.getSignature().toParameterTypes(receiver);
-    }
-
     /**
      * Formats some profiling information associated as a string.
      *

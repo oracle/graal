@@ -89,7 +89,7 @@ public class HotSpotNmethod extends HotSpotInstalledCode {
     }
 
     private boolean checkArgs(Object... args) {
-        JavaType[] sig = MetaUtil.signatureToTypes(method);
+        JavaType[] sig = method.toParameterTypes();
         assert args.length == sig.length : method.format("%H.%n(%p): expected ") + sig.length + " args, got " + args.length;
         for (int i = 0; i < sig.length; i++) {
             Object arg = args[i];

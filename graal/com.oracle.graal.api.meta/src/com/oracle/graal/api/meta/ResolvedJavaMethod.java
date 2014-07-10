@@ -247,4 +247,9 @@ public interface ResolvedJavaMethod extends JavaMethod, InvokeTarget, ModifiersP
         return null;
     }
 
+    default JavaType[] toParameterTypes() {
+        JavaType receiver = isStatic() ? null : getDeclaringClass();
+        return getSignature().toParameterTypes(receiver);
+    }
+
 }

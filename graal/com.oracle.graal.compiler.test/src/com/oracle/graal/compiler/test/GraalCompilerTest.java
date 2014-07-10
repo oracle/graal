@@ -501,7 +501,7 @@ public abstract class GraalCompilerTest extends GraalTest {
     }
 
     protected void checkArgs(ResolvedJavaMethod method, Object[] args) {
-        JavaType[] sig = MetaUtil.signatureToTypes(method);
+        JavaType[] sig = method.toParameterTypes();
         Assert.assertEquals(sig.length, args.length);
         for (int i = 0; i < args.length; i++) {
             JavaType javaType = sig[i];
