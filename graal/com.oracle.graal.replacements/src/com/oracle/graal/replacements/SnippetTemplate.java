@@ -669,7 +669,7 @@ public class SnippetTemplate {
 
         assert checkAllVarargPlaceholdersAreDeleted(parameterCount, placeholders);
 
-        new FloatingReadPhase(FloatingReadPhase.ExecutionMode.ANALYSIS_ONLY).apply(snippetCopy);
+        new FloatingReadPhase(false, true, false).apply(snippetCopy);
 
         MemoryAnchorNode memoryAnchor = snippetCopy.add(new MemoryAnchorNode());
         snippetCopy.start().replaceAtUsages(InputType.Memory, memoryAnchor);
@@ -694,7 +694,7 @@ public class SnippetTemplate {
             List<MemoryMapNode> memMaps = returnNodes.stream().map(n -> n.getMemoryMap()).collect(Collectors.toList());
             ValueNode returnValue = InliningUtil.mergeReturns(merge, returnNodes, null);
             this.returnNode = snippet.add(new ReturnNode(returnValue));
-            MemoryMapImpl mmap = FloatingReadPhase.mergeMemoryMaps(merge, memMaps);
+            MemoryMapImpl mmap = FloatingReadPhase.mergeMemoryMaps(merge, memMaps, false);
             MemoryMapNode memoryMap = snippet.unique(new MemoryMapNode(mmap.getMap()));
             this.returnNode.setMemoryMap(memoryMap);
             for (MemoryMapNode mm : memMaps) {
