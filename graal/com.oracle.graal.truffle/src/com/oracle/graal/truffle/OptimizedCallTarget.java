@@ -370,7 +370,7 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
         Object[] args = originalArguments;
         if (this.profiledArgumentTypesAssumption != null && CompilerDirectives.inCompiledCode() && profiledArgumentTypesAssumption.isValid()) {
             args = CompilerDirectives.unsafeCast(castArrayFixedLength(args, profiledArgumentTypes.length), Object[].class, true, true);
-            if (TruffleArgumentTypeSpeculation.getValue() && this.profiledArgumentTypes != null) {
+            if (TruffleArgumentTypeSpeculation.getValue()) {
                 args = castArguments(args);
             }
         }
