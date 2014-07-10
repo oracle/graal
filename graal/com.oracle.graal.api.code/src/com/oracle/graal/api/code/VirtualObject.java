@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.api.code;
 
-import static com.oracle.graal.api.meta.MetaUtil.*;
-
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
@@ -70,7 +68,7 @@ public final class VirtualObject extends Value {
     private static StringBuilder appendValue(StringBuilder buf, Value value, Set<VirtualObject> visited) {
         if (value instanceof VirtualObject) {
             VirtualObject vo = (VirtualObject) value;
-            buf.append("vobject:").append(toJavaName(vo.type, false)).append(':').append(vo.id);
+            buf.append("vobject:").append(vo.type.toJavaName(false)).append(':').append(vo.id);
             if (!visited.contains(vo)) {
                 visited.add(vo);
                 buf.append('{');

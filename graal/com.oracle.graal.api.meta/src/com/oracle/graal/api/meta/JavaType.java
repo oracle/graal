@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.api.meta;
 
+import static com.oracle.graal.api.meta.MetaUtil.*;
+
 /**
  * Represents a resolved or unresolved type. Types include primitives, objects, {@code void}, and
  * arrays thereof.
@@ -77,4 +79,31 @@ public interface JavaType {
      * @return the resolved Java type
      */
     ResolvedJavaType resolve(ResolvedJavaType accessingClass);
+
+    /**
+     * Gets the Java programming language name for this type. The following are examples of strings
+     * returned by this method:
+     *
+     * <pre>
+     *     qualified == true:
+     *         java.lang.Object
+     *         int
+     *         boolean[][]
+     *     qualified == false:
+     *         Object
+     *         int
+     *         boolean[][]
+     * </pre>
+     *
+     * @param qualified specifies if the package prefix of this type should be included in the
+     *            returned name
+     * @return the Java name corresponding to {@code type}
+     */
+    default String toJavaName(boolean qualified) {
+        Kind kind = getKind();
+        if (kind == Kind.Object) {
+            return internalNameToJava(getName(), qualified, false);
+        }
+        return getKind().getJavaName();
+    }
 }

@@ -205,34 +205,6 @@ public class MetaUtil {
      * strings returned by this method:
      *
      * <pre>
-     *     qualified == true:
-     *         java.lang.Object
-     *         int
-     *         boolean[][]
-     *     qualified == false:
-     *         Object
-     *         int
-     *         boolean[][]
-     * </pre>
-     *
-     * @param type the type to be converted to a Java name
-     * @param qualified specifies if the package prefix of the type should be included in the
-     *            returned name
-     * @return the Java name corresponding to {@code type}
-     */
-    public static String toJavaName(JavaType type, boolean qualified) {
-        Kind kind = type.getKind();
-        if (kind == Kind.Object) {
-            return internalNameToJava(type.getName(), qualified, false);
-        }
-        return type.getKind().getJavaName();
-    }
-
-    /**
-     * Converts a given type to its Java programming language name. The following are examples of
-     * strings returned by this method:
-     *
-     * <pre>
      *      java.lang.Object
      *      int
      *      boolean[][]
@@ -242,7 +214,7 @@ public class MetaUtil {
      * @return the Java name corresponding to {@code type}
      */
     public static String toJavaName(JavaType type) {
-        return (type == null) ? null : internalNameToJava(type.getName(), true, false);
+        return internalNameToJava(type.getName(), true, false);
     }
 
     /**
@@ -252,7 +224,7 @@ public class MetaUtil {
         return internalNameToJava(type.getName(), true, true);
     }
 
-    private static String internalNameToJava(String name, boolean qualified, boolean classForNameCompatible) {
+    public static String internalNameToJava(String name, boolean qualified, boolean classForNameCompatible) {
         switch (name.charAt(0)) {
             case 'L': {
                 String result = name.substring(1, name.length() - 1).replace('/', '.');
@@ -333,14 +305,14 @@ public class MetaUtil {
                         if (sig == null) {
                             sig = method.getSignature();
                         }
-                        sb.append(toJavaName(sig.getReturnType(null), qualified));
+                        sb.append(sig.getReturnType(null).toJavaName(qualified));
                         break;
                     }
                     case 'H':
                         qualified = true;
                         // fall through
                     case 'h': {
-                        sb.append(toJavaName(method.getDeclaringClass(), qualified));
+                        sb.append(method.getDeclaringClass().toJavaName(qualified));
                         break;
                     }
                     case 'n': {
@@ -358,7 +330,7 @@ public class MetaUtil {
                             if (i != 0) {
                                 sb.append(", ");
                             }
-                            sb.append(toJavaName(sig.getParameterType(i, null), qualified));
+                            sb.append(sig.getParameterType(i, null).toJavaName(qualified));
                         }
                         break;
                     }
@@ -422,14 +394,14 @@ public class MetaUtil {
                         qualified = true;
                         // fall through
                     case 't': {
-                        sb.append(toJavaName(type, qualified));
+                        sb.append(type.toJavaName(qualified));
                         break;
                     }
                     case 'H':
                         qualified = true;
                         // fall through
                     case 'h': {
-                        sb.append(toJavaName(field.getDeclaringClass(), qualified));
+                        sb.append(field.getDeclaringClass().toJavaName(qualified));
                         break;
                     }
                     case 'n': {

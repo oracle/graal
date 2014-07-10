@@ -290,7 +290,7 @@ public class HSAILNewObjectSnippets extends NewObjectSnippets {
             args.add("hub", hub);
             args.add("prototypeMarkWord", type.prototypeMarkWord());
             args.addConst("fillContents", newInstanceNode.fillContents());
-            args.addConst("typeContext", MetaUtil.toJavaName(type, false));
+            args.addConst("typeContext", type.toJavaName(false));
 
             SnippetTemplate template = template(args);
             Debug.log("Lowering allocateInstance in %s: node=%s, template=%s, arguments=%s", graph, newInstanceNode, template, args);
@@ -320,7 +320,7 @@ public class HSAILNewObjectSnippets extends NewObjectSnippets {
             args.addConst("log2ElementSize", log2ElementSize);
             args.addConst("fillContents", newArrayNode.fillContents());
             args.addConst("maybeUnroll", length.isConstant());
-            args.addConst("typeContext", MetaUtil.toJavaName(arrayType, false));
+            args.addConst("typeContext", arrayType.toJavaName(false));
 
             SnippetTemplate template = template(args);
             Debug.log("Lowering allocateArray in %s: node=%s, template=%s, arguments=%s", graph, newArrayNode, template, args);

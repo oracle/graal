@@ -203,7 +203,7 @@ public class NodeIntrinsificationPhase extends Phase {
         } else {
             result = providers.getMetaAccess().lookupJavaType(intrinsic.value());
         }
-        assert providers.getMetaAccess().lookupJavaType(ValueNode.class).isAssignableFrom(result) : "Node intrinsic class " + toJavaName(result, false) + " derived from @" +
+        assert providers.getMetaAccess().lookupJavaType(ValueNode.class).isAssignableFrom(result) : "Node intrinsic class " + result.toJavaName(false) + " derived from @" +
                         NodeIntrinsic.class.getSimpleName() + " annotation on " + format("%H.%n(%p)", target) + " is not a subclass of " + ValueNode.class;
         return result;
     }
