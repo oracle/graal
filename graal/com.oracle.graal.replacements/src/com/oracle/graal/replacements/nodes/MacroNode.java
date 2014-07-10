@@ -128,6 +128,9 @@ public class MacroNode extends FixedWithNextNode implements Lowerable {
      */
     protected StructuredGraph lowerReplacement(final StructuredGraph replacementGraph, LoweringTool tool) {
         final PhaseContext c = new PhaseContext(tool.getMetaAccess(), tool.getConstantReflection(), tool.getLowerer(), tool.getReplacements(), tool.assumptions());
+        if (!graph().hasValueProxies()) {
+            new RemoveValueProxyPhase().apply(replacementGraph);
+        }
         GuardsStage guardsStage = graph().getGuardsStage();
         if (guardsStage.ordinal() >= GuardsStage.FIXED_DEOPTS.ordinal()) {
             new GuardLoweringPhase().apply(replacementGraph, null);
