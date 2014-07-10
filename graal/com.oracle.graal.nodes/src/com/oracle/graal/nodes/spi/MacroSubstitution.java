@@ -57,8 +57,7 @@ public @interface MacroSubstitution {
     boolean isStatic() default true;
 
     /**
-     * Gets the {@linkplain MetaUtil#signatureToMethodDescriptor signature} of the substituted
-     * method.
+     * Gets the {@linkplain Signature#toMethodDescriptor signature} of the substituted method.
      * <p>
      * If the default value is specified for this element, then the signature of the substituted
      * method is the same as the substitute method.
@@ -82,7 +81,7 @@ public @interface MacroSubstitution {
     /**
      * Determines if this method should be substituted in all cases, even if inlining thinks it is
      * not important.
-     * 
+     *
      * Note that this is still depending on whether inlining sees the correct call target, so it's
      * only a hard guarantee for static and special invocations.
      */

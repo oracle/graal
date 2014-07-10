@@ -157,8 +157,9 @@ public class HotSpotSignature extends CompilerObject implements Signature {
         return type;
     }
 
-    public String getMethodDescriptor() {
-        assert originalString.equals(MetaUtil.signatureToMethodDescriptor(this));
+    @Override
+    public String toMethodDescriptor() {
+        assert originalString.equals(Signature.super.toMethodDescriptor());
         return originalString;
     }
 

@@ -321,29 +321,6 @@ public class MetaUtil {
     }
 
     /**
-     * Gets the <a
-     * href="http://docs.oracle.com/javase/specs/jvms/se7/html/jvms-4.html#jvms-4.3.3">method
-     * descriptor</a> corresponding to this signature. For example:
-     *
-     * <pre>
-     * (ILjava/lang/String;D)V
-     * </pre>
-     *
-     * .
-     *
-     * @param sig the {@link Signature} to be converted.
-     * @return the signature as a string
-     */
-    public static String signatureToMethodDescriptor(Signature sig) {
-        StringBuilder sb = new StringBuilder("(");
-        for (int i = 0; i < sig.getParameterCount(false); ++i) {
-            sb.append(sig.getParameterType(i, null).getName());
-        }
-        sb.append(')').append(sig.getReturnType(null).getName());
-        return sb.toString();
-    }
-
-    /**
      * Formats some profiling information associated as a string.
      *
      * @param info the profiling info to format

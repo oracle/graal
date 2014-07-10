@@ -86,7 +86,7 @@ public final class CompilationStatistics {
         if (method != null) {
             holder = method.getDeclaringClass().getName();
             name = method.getName();
-            signature = method.getSignature().getMethodDescriptor();
+            signature = method.getSignature().toMethodDescriptor();
             startTime = System.nanoTime();
             bytecodeCount = method.getCodeSize();
             threadAllocatedBytesStart = getThreadAllocatedBytes();
