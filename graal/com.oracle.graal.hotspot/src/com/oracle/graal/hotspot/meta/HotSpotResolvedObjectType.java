@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.hotspot.meta;
 
-import static com.oracle.graal.api.meta.MetaUtil.*;
 import static com.oracle.graal.compiler.common.UnsafeAccess.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 
@@ -140,7 +139,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
     public ResolvedJavaType findUniqueConcreteSubtype() {
         HotSpotVMConfig config = runtime().getConfig();
         if (isArray()) {
-            return getElementalType(this).isFinal() ? this : null;
+            return getElementalType().isFinal() ? this : null;
         } else if (isInterface()) {
             final long implementorMetaspaceKlass = runtime().getCompilerToVM().getKlassImplementor(getMetaspaceKlass());
 

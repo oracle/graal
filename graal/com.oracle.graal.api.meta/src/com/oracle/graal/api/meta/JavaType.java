@@ -31,7 +31,7 @@ public interface JavaType {
     /**
      * Returns the name of this type in internal form. The following are examples of strings
      * returned by this method:
-     * 
+     *
      * <pre>
      *     "Ljava/lang/Object;"
      *     "I"
@@ -47,6 +47,19 @@ public interface JavaType {
     JavaType getComponentType();
 
     /**
+     * Gets the elemental type for this given type. The elemental type is the corresponding zero
+     * dimensional type of an array type. For example, the elemental type of {@code int[][][]} is
+     * {@code int}. A non-array type is its own elemental type.
+     */
+    default JavaType getElementalType() {
+        JavaType t = this;
+        while (t.getComponentType() != null) {
+            t = t.getComponentType();
+        }
+        return t;
+    }
+
+    /**
      * Gets the array class type representing an array with elements of this type.
      */
     JavaType getArrayClass();
@@ -59,7 +72,7 @@ public interface JavaType {
     /**
      * Resolved this type and returns a {@link ResolvedJavaType}. If this type is already a
      * {@link ResolvedJavaType}, it returns this type.
-     * 
+     *
      * @param accessingClass the class that requests resolving this type
      * @return the resolved Java type
      */

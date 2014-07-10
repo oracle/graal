@@ -165,19 +165,6 @@ public class MetaUtil {
     }
 
     /**
-     * Gets the elemental type for a given type. The elemental type of an array type is the
-     * corresponding zero dimensional (e.g., the elemental type of {@code int[][][]} is {@code int}
-     * ). A non-array type is its own elemental type.
-     */
-    public static ResolvedJavaType getElementalType(ResolvedJavaType type) {
-        ResolvedJavaType t = type;
-        while (t.getComponentType() != null) {
-            t = t.getComponentType();
-        }
-        return t;
-    }
-
-    /**
      * Extends the functionality of {@link Class#getSimpleName()} to include a non-empty string for
      * anonymous and local classes.
      *

@@ -183,8 +183,8 @@ public interface ResolvedJavaType extends JavaType, ModifiersProvider {
      * Attempts to get a unique concrete subclass of this type.
      * <p>
      * For an {@linkplain #isArray() array} type A, the unique concrete subclass is A if the
-     * {@linkplain MetaUtil#getElementalType(ResolvedJavaType) elemental} type of A is final (which
-     * includes primitive types). Otherwise {@code null} is returned for A.
+     * {@linkplain #getElementalType() elemental} type of A is final (which includes primitive
+     * types). Otherwise {@code null} is returned for A.
      * <p>
      * For a non-array type T, the result is the unique concrete type in the current hierarchy of T.
      * <p>
@@ -201,6 +201,14 @@ public interface ResolvedJavaType extends JavaType, ModifiersProvider {
     ResolvedJavaType findUniqueConcreteSubtype();
 
     ResolvedJavaType getComponentType();
+
+    default ResolvedJavaType getElementalType() {
+        ResolvedJavaType t = this;
+        while (t.getComponentType() != null) {
+            t = t.getComponentType();
+        }
+        return t;
+    }
 
     ResolvedJavaType getArrayClass();
 
