@@ -172,6 +172,7 @@ public final class NodeUtil {
         private final long parentOffset;
         private final long[] childOffsets;
         private final long[] childrenOffsets;
+        private final Class<? extends Node> clazz;
 
         public static NodeClass get(Class<? extends Node> clazz) {
             return nodeClasses.get(clazz);
@@ -210,6 +211,7 @@ public final class NodeUtil {
             this.parentOffset = parentOffsetsList.get(0);
             this.childOffsets = toLongArray(childOffsetsList);
             this.childrenOffsets = toLongArray(childrenOffsetsList);
+            this.clazz = clazz;
         }
 
         public NodeField[] getFields() {
@@ -242,73 +244,76 @@ public final class NodeUtil {
             }
             return false;
         }
+
+        public Iterator<Node> makeIterator(Node node) {
+            assert clazz.isInstance(node);
+            return new NodeIterator(node);
+        }
+
+        private final class NodeIterator implements Iterator<Node> {
+            private final Node node;
+            private final int childrenCount;
+            private int index;
+
+            protected NodeIterator(Node node) {
+                this.node = node;
+                this.index = 0;
+                this.childrenCount = childrenCount();
+            }
+
+            private int childrenCount() {
+                int nodeCount = childOffsets.length;
+                for (long fieldOffset : childrenOffsets) {
+                    Node[] children = ((Node[]) unsafe.getObject(node, fieldOffset));
+                    if (children != null) {
+                        nodeCount += children.length;
+                    }
+                }
+                return nodeCount;
+            }
+
+            private Node nodeAt(int idx) {
+                int nodeCount = childOffsets.length;
+                if (idx < nodeCount) {
+                    return (Node) unsafe.getObject(node, childOffsets[idx]);
+                } else {
+                    for (long fieldOffset : childrenOffsets) {
+                        Node[] nodeArray = (Node[]) unsafe.getObject(node, fieldOffset);
+                        if (idx < nodeCount + nodeArray.length) {
+                            return nodeArray[idx - nodeCount];
+                        }
+                        nodeCount += nodeArray.length;
+                    }
+                }
+                return null;
+            }
+
+            private void forward() {
+                if (index < childrenCount) {
+                    index++;
+                }
+            }
+
+            public boolean hasNext() {
+                return index < childrenCount;
+            }
+
+            public Node next() {
+                try {
+                    return nodeAt(index);
+                } finally {
+                    forward();
+                }
+            }
+
+            public void remove() {
+                throw new UnsupportedOperationException();
+            }
+        }
     }
 
-    static class NodeIterator implements Iterator<Node> {
-
-        private final Node node;
-        private final NodeClass nodeClass;
-        private final int childrenCount;
-        private int index;
-
-        protected NodeIterator(Node node) {
-            this.node = node;
-            this.index = 0;
-            this.nodeClass = NodeClass.get(node.getClass());
-            this.childrenCount = childrenCount();
-        }
-
-        private int childrenCount() {
-            int nodeCount = nodeClass.childOffsets.length;
-            for (long fieldOffset : nodeClass.childrenOffsets) {
-                Node[] children = ((Node[]) unsafe.getObject(node, fieldOffset));
-                if (children != null) {
-                    nodeCount += children.length;
-                }
-            }
-            return nodeCount;
-        }
-
-        private Node nodeAt(int idx) {
-            int nodeCount = nodeClass.childOffsets.length;
-            if (idx < nodeCount) {
-                return (Node) unsafe.getObject(node, nodeClass.childOffsets[idx]);
-            } else {
-                for (long fieldOffset : nodeClass.childrenOffsets) {
-                    Node[] nodeArray = (Node[]) unsafe.getObject(node, fieldOffset);
-                    if (idx < nodeCount + nodeArray.length) {
-                        return nodeArray[idx - nodeCount];
-                    }
-                    nodeCount += nodeArray.length;
-                }
-            }
-            return null;
-        }
-
-        private void forward() {
-            if (index < childrenCount) {
-                index++;
-            }
-        }
-
-        @Override
-        public boolean hasNext() {
-            return index < childrenCount;
-        }
-
-        @Override
-        public Node next() {
-            try {
-                return nodeAt(index);
-            } finally {
-                forward();
-            }
-        }
-
-        @Override
-        public void remove() {
-            throw new UnsupportedOperationException();
-        }
+    static Iterator<Node> makeIterator(Node node) {
+        return NodeClass.get(node.getClass()).makeIterator(node);
     }
 
     private static long[] toLongArray(List<Long> list) {
