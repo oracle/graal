@@ -113,28 +113,82 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
 
     @Override
     public Object call(Object... args) {
+        if (profiledArgumentTypesAssumption != null && profiledArgumentTypesAssumption.isValid()) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            profiledArgumentTypesAssumption.invalidate();
+            profiledArgumentTypes = null;
+        }
         return callBoundary(args);
     }
 
     public Object callDirect(Object... args) {
-        if (profiledArgumentTypesAssumption == null) {
-            CompilerDirectives.transferToInterpreter();
-            profiledArgumentTypesAssumption = Truffle.getRuntime().createAssumption("Profiled Argument Types");
-            profiledArgumentTypes = new Class<?>[args.length];
-        } else if (profiledArgumentTypes != null) {
-            if (profiledArgumentTypes.length != args.length) {
-                CompilerDirectives.transferToInterpreter();
-                profiledArgumentTypesAssumption.invalidate();
-                profiledArgumentTypes = null;
-            }
-        }
-
+        profileArguments(args);
         Object result = callBoundary(args);
         Class<?> klass = profiledReturnType;
         if (klass != null && CompilerDirectives.inCompiledCode() && profiledReturnTypeAssumption.isValid()) {
             result = CompilerDirectives.unsafeCast(result, klass, true, true);
         }
         return result;
+    }
+
+    @ExplodeLoop
+    private void profileArguments(Object[] args) {
+        if (profiledArgumentTypesAssumption == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            initializeProfiledArgumentTypes(args);
+        } else if (profiledArgumentTypes != null) {
+            if (profiledArgumentTypes.length != args.length) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                profiledArgumentTypesAssumption.invalidate();
+                profiledArgumentTypes = null;
+            } else if (TruffleArgumentTypeSpeculation.getValue() && profiledArgumentTypesAssumption.isValid()) {
+                for (int i = 0; i < profiledArgumentTypes.length; i++) {
+                    if (profiledArgumentTypes[i] != null && !profiledArgumentTypes[i].isInstance(args[i])) {
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
+                        updateProfiledArgumentTypes(args);
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    private void initializeProfiledArgumentTypes(Object[] args) {
+        CompilerAsserts.neverPartOfCompilation();
+        profiledArgumentTypesAssumption = Truffle.getRuntime().createAssumption("Profiled Argument Types");
+        profiledArgumentTypes = new Class<?>[args.length];
+        if (TruffleArgumentTypeSpeculation.getValue()) {
+            for (int i = 0; i < args.length; i++) {
+                profiledArgumentTypes[i] = classOf(args[i]);
+            }
+        }
+    }
+
+    private void updateProfiledArgumentTypes(Object[] args) {
+        CompilerAsserts.neverPartOfCompilation();
+        profiledArgumentTypesAssumption.invalidate();
+        for (int j = 0; j < profiledArgumentTypes.length; j++) {
+            profiledArgumentTypes[j] = joinTypes(profiledArgumentTypes[j], classOf(args[j]));
+        }
+        profiledArgumentTypesAssumption = Truffle.getRuntime().createAssumption("Profiled Argument Types");
+    }
+
+    private static Class<?> classOf(Object arg) {
+        return arg != null ? arg.getClass() : null;
+    }
+
+    private static Class<?> joinTypes(Class<?> class1, Class<?> class2) {
+        if (class1 == class2) {
+            return class1;
+        } else if (class1 == null || class2 == null) {
+            return null;
+        } else if (class1.isAssignableFrom(class2)) {
+            return class1;
+        } else if (class2.isAssignableFrom(class1)) {
+            return class2;
+        } else {
+            return Object.class;
+        }
     }
 
     @TruffleCallBoundary
@@ -313,10 +367,12 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
     }
 
     public final Object callRoot(Object[] originalArguments) {
-
         Object[] args = originalArguments;
         if (this.profiledArgumentTypesAssumption != null && CompilerDirectives.inCompiledCode() && profiledArgumentTypesAssumption.isValid()) {
             args = CompilerDirectives.unsafeCast(castArrayFixedLength(args, profiledArgumentTypes.length), Object[].class, true, true);
+            if (TruffleArgumentTypeSpeculation.getValue() && this.profiledArgumentTypes != null) {
+                args = castArguments(args);
+            }
         }
 
         VirtualFrame frame = createFrame(getRootNode().getFrameDescriptor(), args);
@@ -325,19 +381,28 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
         // Profile call return type
         if (profiledReturnTypeAssumption == null) {
             if (TruffleReturnTypeSpeculation.getValue()) {
-                CompilerDirectives.transferToInterpreter();
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 profiledReturnType = (result == null ? null : result.getClass());
                 profiledReturnTypeAssumption = Truffle.getRuntime().createAssumption("Profiled Return Type");
             }
         } else if (profiledReturnType != null) {
             if (result == null || profiledReturnType != result.getClass()) {
-                CompilerDirectives.transferToInterpreter();
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 profiledReturnType = null;
                 profiledReturnTypeAssumption.invalidate();
             }
         }
 
         return result;
+    }
+
+    @ExplodeLoop
+    private Object[] castArguments(Object[] originalArguments) {
+        Object[] castArguments = new Object[profiledArgumentTypes.length];
+        for (int i = 0; i < profiledArgumentTypes.length; i++) {
+            castArguments[i] = profiledArgumentTypes[i] != null ? CompilerDirectives.unsafeCast(originalArguments[i], profiledArgumentTypes[i], true, true) : originalArguments[i];
+        }
+        return castArguments;
     }
 
     private static Object castArrayFixedLength(Object[] args, @SuppressWarnings("unused") int length) {
