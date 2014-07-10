@@ -122,4 +122,12 @@ public interface JavaType {
         }
         return getKind().getJavaName();
     }
+
+    /**
+     * Returns this type's name in the same format as {@link Class#getName()}.
+     */
+    default String toClassName(JavaType type) {
+        return internalNameToJava(type.getName(), true, true);
+    }
+
 }
