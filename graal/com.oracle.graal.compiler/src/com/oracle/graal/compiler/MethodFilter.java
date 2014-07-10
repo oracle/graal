@@ -171,7 +171,7 @@ public class MethodFilter {
         if (methodName != null && !methodName.matcher(o.getName()).matches()) {
             return false;
         }
-        if (clazz != null && !clazz.matcher(MetaUtil.toJavaName(o.getDeclaringClass())).matches()) {
+        if (clazz != null && !clazz.matcher(o.getDeclaringClass().toJavaName()).matches()) {
             return false;
         }
         if (signature != null) {
@@ -181,7 +181,7 @@ public class MethodFilter {
             }
             for (int i = 0; i < signature.length; i++) {
                 JavaType type = sig.getParameterType(i, null);
-                String javaName = MetaUtil.toJavaName(type);
+                String javaName = type.toJavaName();
                 if (signature[i] != null && !signature[i].matcher(javaName).matches()) {
                     return false;
                 }

@@ -44,7 +44,7 @@ public class TestMetaAccessProvider extends TypeUniverse {
             assertEquals(c.getModifiers(), type.getModifiers());
             if (!type.isArray()) {
                 assertEquals(type.getName(), toInternalName(c.getName()));
-                assertEquals(toJavaName(type), c.getName());
+                assertEquals(type.toJavaName(), c.getName());
             }
         }
     }

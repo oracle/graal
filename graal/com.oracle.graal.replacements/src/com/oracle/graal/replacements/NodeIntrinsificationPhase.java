@@ -221,12 +221,12 @@ public class NodeIntrinsificationPhase extends Phase {
                     constructor = c;
                     arguments = match;
                 } else {
-                    throw new GraalInternalError("Found multiple constructors in %s compatible with signature %s: %s, %s", toJavaName(nodeClass), sigString(parameterTypes), constructor, c);
+                    throw new GraalInternalError("Found multiple constructors in %s compatible with signature %s: %s, %s", nodeClass.toJavaName(), sigString(parameterTypes), constructor, c);
                 }
             }
         }
         if (constructor == null) {
-            throw new GraalInternalError("Could not find constructor in %s compatible with signature %s", toJavaName(nodeClass), sigString(parameterTypes));
+            throw new GraalInternalError("Could not find constructor in %s compatible with signature %s", nodeClass.toJavaName(), sigString(parameterTypes));
         }
 
         try {
@@ -247,7 +247,7 @@ public class NodeIntrinsificationPhase extends Phase {
             if (i != 0) {
                 sb.append(", ");
             }
-            sb.append(toJavaName(types[i]));
+            sb.append(types[i].toJavaName());
         }
         return sb.append(")").toString();
     }
@@ -279,7 +279,7 @@ public class NodeIntrinsificationPhase extends Phase {
                 } else if (signature[i].equals(metaAccess.lookupJavaType(SnippetReflectionProvider.class))) {
                     injected[injected.length - 1] = snippetReflection.forObject(snippetReflection);
                 } else {
-                    throw new GraalInternalError("Cannot handle injected argument of type %s in %s", toJavaName(signature[i]), format("%H.%n(%p)", c));
+                    throw new GraalInternalError("Cannot handle injected argument of type %s in %s", signature[i].toJavaName(), format("%H.%n(%p)", c));
                 }
             } else {
                 if (i > 0) {

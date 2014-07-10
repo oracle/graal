@@ -71,7 +71,7 @@ public final class Assumptions implements Serializable, Iterable<Assumptions.Ass
 
         @Override
         public String toString() {
-            return "NoFinalizableSubclass[receiverType=" + toJavaName(receiverType) + "]";
+            return "NoFinalizableSubclass[receiverType=" + receiverType.toJavaName() + "]";
         }
 
     }
@@ -120,7 +120,7 @@ public final class Assumptions implements Serializable, Iterable<Assumptions.Ass
 
         @Override
         public String toString() {
-            return "ConcreteSubtype[context=" + toJavaName(context) + ", subtype=" + toJavaName(subtype) + "]";
+            return "ConcreteSubtype[context=" + context.toJavaName() + ", subtype=" + subtype.toJavaName() + "]";
         }
     }
 
@@ -174,7 +174,7 @@ public final class Assumptions implements Serializable, Iterable<Assumptions.Ass
 
         @Override
         public String toString() {
-            return "ConcreteMethod[method=" + format("%H.%n(%p)", method) + ", context=" + toJavaName(context) + ", impl=" + format("%H.%n(%p)", impl) + "]";
+            return "ConcreteMethod[method=" + format("%H.%n(%p)", method) + ", context=" + context.toJavaName() + ", impl=" + format("%H.%n(%p)", impl) + "]";
         }
     }
 

@@ -84,7 +84,7 @@ public final class HotSpotMethodData extends CompilerObject {
     /**
      * Returns the size of the extra data records. This method does the same calculation as
      * MethodData::extra_data_size().
-     * 
+     *
      * @return size of extra data records
      */
     private int extraDataSize() {
@@ -543,7 +543,7 @@ public final class HotSpotMethodData extends CompilerObject {
                             getTypesNotRecordedExecutionCount(data, pos), profile.entries));
             for (int i = 0; i < profile.entries; i++) {
                 long count = profile.counts[i];
-                sb.append(format("%n  %s (%d, %4.2f)", MetaUtil.toJavaName(profile.items[i]), count, (double) count / profile.totalCount));
+                sb.append(format("%n  %s (%d, %4.2f)", profile.items[i].toJavaName(), count, (double) count / profile.totalCount));
             }
             return sb;
         }

@@ -201,23 +201,6 @@ public class MetaUtil {
     }
 
     /**
-     * Converts a given type to its Java programming language name. The following are examples of
-     * strings returned by this method:
-     *
-     * <pre>
-     *      java.lang.Object
-     *      int
-     *      boolean[][]
-     * </pre>
-     *
-     * @param type the type to be converted to a Java name
-     * @return the Java name corresponding to {@code type}
-     */
-    public static String toJavaName(JavaType type) {
-        return internalNameToJava(type.getName(), true, false);
-    }
-
-    /**
      * Returns the type name in the same format as {@link Class#getName()}.
      */
     public static String toClassName(JavaType type) {

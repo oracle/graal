@@ -85,6 +85,22 @@ public interface JavaType {
      * returned by this method:
      *
      * <pre>
+     *      java.lang.Object
+     *      int
+     *      boolean[][]
+     * </pre>
+     *
+     * @return the Java name corresponding to this type
+     */
+    default String toJavaName() {
+        return internalNameToJava(getName(), true, false);
+    }
+
+    /**
+     * Gets the Java programming language name for this type. The following are examples of strings
+     * returned by this method:
+     *
+     * <pre>
      *     qualified == true:
      *         java.lang.Object
      *         int
@@ -97,7 +113,7 @@ public interface JavaType {
      *
      * @param qualified specifies if the package prefix of this type should be included in the
      *            returned name
-     * @return the Java name corresponding to {@code type}
+     * @return the Java name corresponding to this type
      */
     default String toJavaName(boolean qualified) {
         Kind kind = getKind();
