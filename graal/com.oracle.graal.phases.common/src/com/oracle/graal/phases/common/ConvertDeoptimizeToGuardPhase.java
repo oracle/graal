@@ -54,6 +54,7 @@ public class ConvertDeoptimizeToGuardPhase extends Phase {
 
     @Override
     protected void run(final StructuredGraph graph) {
+        assert graph.hasValueProxies() : "ConvertDeoptimizeToGuardPhase always creates proxies";
         if (graph.getNodes(DeoptimizeNode.class).isEmpty()) {
             return;
         }
