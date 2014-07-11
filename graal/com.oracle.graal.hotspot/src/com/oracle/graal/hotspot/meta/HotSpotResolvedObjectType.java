@@ -24,6 +24,7 @@ package com.oracle.graal.hotspot.meta;
 
 import static com.oracle.graal.compiler.common.UnsafeAccess.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
+import static java.util.Objects.*;
 
 import java.lang.annotation.*;
 import java.lang.reflect.*;
@@ -710,9 +711,38 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
         return mirror().getAnnotation(annotationClass);
     }
 
+    /**
+     * Determines if this type is resolved in the context of a given accessing class. This is a
+     * conservative check based on this type's class loader being identical to
+     * {@code accessingClass}'s loader. This type may still be the correct resolved type in the
+     * context of {@code accessingClass} if its loader is an ancestor of {@code accessingClass}'s
+     * loader.
+     */
+    public boolean isResolvedWithRespectTo(ResolvedJavaType accessingClass) {
+        assert accessingClass != null;
+        ResolvedJavaType elementType = getElementalType();
+        if (elementType.isPrimitive()) {
+            // Primitive type resolution is context free.
+            return true;
+        }
+        if (elementType.getName().startsWith("Ljava/")) {
+            // Classes in a java.* package can only be defined by the
+            // boot class loader. This is enforced by ClassLoader.preDefineClass()
+            assert mirror().getClassLoader() == null;
+            return true;
+        }
+        ClassLoader thisCl = mirror().getClassLoader();
+        ClassLoader accessingClassCl = ((HotSpotResolvedObjectType) accessingClass).mirror().getClassLoader();
+        return thisCl == accessingClassCl;
+    }
+
     @Override
     public ResolvedJavaType resolve(ResolvedJavaType accessingClass) {
-        return this;
+        if (isResolvedWithRespectTo(requireNonNull(accessingClass))) {
+            return this;
+        }
+        HotSpotResolvedObjectType accessingType = (HotSpotResolvedObjectType) accessingClass;
+        return (ResolvedJavaType) runtime().lookupType(getName(), accessingType, true);
     }
 
     /**

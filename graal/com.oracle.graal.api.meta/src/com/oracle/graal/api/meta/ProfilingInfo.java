@@ -206,7 +206,6 @@ public interface ProfilingInfo {
             return "";
         }
         String s = buf.toString();
-        assert s.endsWith(sep);
         return s.substring(0, s.length() - sep.length());
     }
 

@@ -114,7 +114,7 @@ public class ForeignCallStub extends Stub {
                 ForeignCallDescriptor d = linkage.getDescriptor();
                 MetaAccessProvider metaAccess = providers.getMetaAccess();
                 Class<?>[] arguments = d.getArgumentTypes();
-                JavaType[] parameters = new JavaType[arguments.length];
+                ResolvedJavaType[] parameters = new ResolvedJavaType[arguments.length];
                 for (int i = 0; i < arguments.length; i++) {
                     parameters[i] = metaAccess.lookupJavaType(arguments[i]);
                 }

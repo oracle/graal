@@ -39,15 +39,16 @@ public interface Signature {
     int getParameterCount(boolean receiver);
 
     /**
-     * Gets the parameter type at the specified position. This method returns a
-     * {@linkplain ResolvedJavaType resolved} type if possible but without triggering any class
-     * loading or resolution.
+     * Gets the parameter type at the specified position.
      *
      * @param index the index into the parameters, with {@code 0} indicating the first parameter
-     * @param accessingClass the context of the type lookup. If accessing class is provided, its
-     *            class loader is used to retrieve an existing resolved type. This value can be
-     *            {@code null} if the caller does not care for a resolved type.
+     * @param accessingClass the context of the type lookup. If non-null, its class loader is used
+     *            for resolving the type. If {@code null}, then the type returned is either
+     *            unresolved or a resolved type whose resolution is context free (e.g., a primitive
+     *            type or a type in a java.* package).
      * @return the {@code index}'th parameter type
+     * @throws LinkageError if {@code accessingClass != null} and resolution fails
+     *
      */
     JavaType getParameterType(int index, ResolvedJavaType accessingClass);
 
@@ -61,14 +62,14 @@ public interface Signature {
     Kind getParameterKind(int index);
 
     /**
-     * Gets the return type of this signature. This method will return a
-     * {@linkplain ResolvedJavaType resolved} type if possible but without triggering any class
-     * loading or resolution.
+     * Gets the return type of this signature.
      *
-     * @param accessingClass the context of the type lookup. If accessing class is provided, its
-     *            class loader is used to retrieve an existing resolved type. This value can be
-     *            {@code null} if the caller does not care for a resolved type.
+     * @param accessingClass the context of the type lookup. If non-null, its class loader is used
+     *            for resolving the type. If {@code null}, then the type returned is either
+     *            unresolved or a resolved type whose resolution is context free (e.g., a primitive
+     *            type or a type in a java.* package).
      * @return the return type
+     * @throws LinkageError if {@code accessingClass != null} and resolution fails
      */
     JavaType getReturnType(ResolvedJavaType accessingClass);
 

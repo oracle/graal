@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.hotspot.meta;
 
+import static java.util.Objects.*;
+
 import java.lang.annotation.*;
 import java.lang.reflect.*;
 import java.net.*;
@@ -75,6 +77,10 @@ public final class HotSpotResolvedPrimitiveType extends HotSpotResolvedJavaType 
         }
         Class<?> javaArrayMirror = Array.newInstance(mirror(), 0).getClass();
         return HotSpotResolvedObjectType.fromClass(javaArrayMirror);
+    }
+
+    public ResolvedJavaType getElementalType() {
+        return this;
     }
 
     @Override
@@ -204,6 +210,7 @@ public final class HotSpotResolvedPrimitiveType extends HotSpotResolvedJavaType 
 
     @Override
     public ResolvedJavaType resolve(ResolvedJavaType accessingClass) {
+        requireNonNull(accessingClass);
         return this;
     }
 

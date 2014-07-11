@@ -40,8 +40,8 @@ public class HotSpotSignature extends CompilerObject implements Signature {
     private final List<String> parameters = new ArrayList<>();
     private final String returnType;
     private final String originalString;
-    private JavaType[] parameterTypes;
-    private JavaType returnTypeCache;
+    private ResolvedJavaType[] parameterTypes;
+    private ResolvedJavaType returnTypeCache;
 
     public HotSpotSignature(String signature) {
         assert signature.length() > 0;
@@ -64,7 +64,7 @@ public class HotSpotSignature extends CompilerObject implements Signature {
         }
     }
 
-    public HotSpotSignature(JavaType returnType, JavaType... parameterTypes) {
+    public HotSpotSignature(ResolvedJavaType returnType, ResolvedJavaType... parameterTypes) {
         this.parameterTypes = parameterTypes.clone();
         this.returnTypeCache = returnType;
         this.returnType = returnType.getName();
@@ -128,30 +128,39 @@ public class HotSpotSignature extends CompilerObject implements Signature {
     }
 
     private static boolean checkValidCache(JavaType type, ResolvedJavaType accessingClass) {
+        assert accessingClass != null;
         if (!(type instanceof ResolvedJavaType)) {
             return false;
         }
 
         if (type instanceof HotSpotResolvedObjectType) {
-            HotSpotResolvedObjectType resolved = (HotSpotResolvedObjectType) type;
-            if (accessingClass == null) {
-                return resolved.mirror().getClassLoader() == null;
-            } else {
-                return resolved.mirror().getClassLoader() == ((HotSpotResolvedObjectType) accessingClass).mirror().getClassLoader();
-            }
+            return ((HotSpotResolvedObjectType) type).isResolvedWithRespectTo(accessingClass);
         }
-
         return true;
+    }
+
+    private static JavaType getUnresolvedOrPrimitiveType(String name) {
+        if (name.length() == 1) {
+            Kind kind = Kind.fromPrimitiveOrVoidTypeChar(name.charAt(0));
+            return HotSpotResolvedPrimitiveType.fromKind(kind);
+        }
+        return new HotSpotUnresolvedJavaType(name);
     }
 
     @Override
     public JavaType getParameterType(int index, ResolvedJavaType accessingClass) {
-        if (parameterTypes == null) {
-            parameterTypes = new JavaType[parameters.size()];
+        if (accessingClass == null) {
+            // Caller doesn't care about resolution context so return an unresolved
+            // or primitive type (primitive type resolution is context free)
+            return getUnresolvedOrPrimitiveType(parameters.get(index));
         }
-        JavaType type = parameterTypes[index];
+        if (parameterTypes == null) {
+            parameterTypes = new ResolvedJavaType[parameters.size()];
+        }
+
+        ResolvedJavaType type = parameterTypes[index];
         if (!checkValidCache(type, accessingClass)) {
-            type = runtime().lookupType(parameters.get(index), (HotSpotResolvedObjectType) accessingClass, false);
+            type = (ResolvedJavaType) runtime().lookupType(parameters.get(index), (HotSpotResolvedObjectType) accessingClass, true);
             parameterTypes[index] = type;
         }
         return type;
@@ -170,8 +179,13 @@ public class HotSpotSignature extends CompilerObject implements Signature {
 
     @Override
     public JavaType getReturnType(ResolvedJavaType accessingClass) {
+        if (accessingClass == null) {
+            // Caller doesn't care about resolution context so return an unresolved
+            // or primitive type (primitive type resolution is context free)
+            return getUnresolvedOrPrimitiveType(returnType);
+        }
         if (!checkValidCache(returnTypeCache, accessingClass)) {
-            returnTypeCache = runtime().lookupType(returnType, (HotSpotResolvedObjectType) accessingClass, false);
+            returnTypeCache = (ResolvedJavaType) runtime().lookupType(returnType, (HotSpotResolvedObjectType) accessingClass, true);
         }
         return returnTypeCache;
     }
