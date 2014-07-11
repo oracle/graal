@@ -395,7 +395,7 @@ public final class HotSpotGraalRuntime implements GraalRuntime, RuntimeProvider,
         final long metaspaceKlass = compilerToVm.lookupType(name, accessingType != null ? accessingType.mirror() : null, resolve);
 
         if (metaspaceKlass == 0L) {
-        	assert resolve == false;
+            assert resolve == false;
             return HotSpotUnresolvedJavaType.create(name);
         }
         return HotSpotResolvedObjectType.fromMetaspaceKlass(metaspaceKlass);
