@@ -28,8 +28,7 @@ import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.type.*;
 
 /**
- * The {@code PhiNode} represents the merging of dataflow in the graph. It refers to a merge and a
- * variable.
+ * Value {@link PhiNode}s merge data flow values at control flow merges.
  */
 @NodeInfo(nameTemplate = "ValuePhi({i#values})")
 public class ValuePhiNode extends PhiNode implements Simplifiable {

@@ -28,7 +28,7 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.extended.*;
 
 /**
- * The {@code PhiNode} represents the merging of dataflow in the memory graph.
+ * Memory {@code PhiNode}s merge memory dependencies at control flow merges.
  */
 @NodeInfo(nameTemplate = "MemoryPhi({i#values}) {p#locationIdentity/s}", allowedUsageTypes = {InputType.Memory})
 public class MemoryPhiNode extends PhiNode implements MemoryNode {

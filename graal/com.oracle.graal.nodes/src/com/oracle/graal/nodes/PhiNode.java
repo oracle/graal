@@ -27,7 +27,13 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.calc.*;
 
-public abstract class PhiNode extends FloatingNode {
+/**
+ * {@code PhiNode}s represent the merging of edges at a control flow merges ({@link MergeNode} or
+ * {@link LoopBeginNode}). For a {@link MergeNode}, the order of the values corresponds to the order
+ * of the ends. For {@link LoopBeginNode}s, the first value corresponds to the loop's predecessor,
+ * while the rest of the values correspond to the {@link LoopEndNode}s.
+ */
+public abstract class PhiNode extends FloatingNode implements Simplifiable {
 
     @Input(InputType.Association) private MergeNode merge;
 

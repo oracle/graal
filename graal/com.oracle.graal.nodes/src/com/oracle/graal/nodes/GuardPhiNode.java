@@ -26,6 +26,9 @@ import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.extended.*;
 
+/**
+ * Guard {@link PhiNode}s merge guard dependencies at control flow merges.
+ */
 @NodeInfo(nameTemplate = "GuardPhi({i#values})", allowedUsageTypes = {InputType.Guard})
 public class GuardPhiNode extends PhiNode implements GuardingNode {
 
