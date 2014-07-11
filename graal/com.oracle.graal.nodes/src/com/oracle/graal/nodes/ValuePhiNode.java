@@ -24,14 +24,13 @@ package com.oracle.graal.nodes;
 
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
-import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.type.*;
 
 /**
  * Value {@link PhiNode}s merge data flow values at control flow merges.
  */
 @NodeInfo(nameTemplate = "ValuePhi({i#values})")
-public class ValuePhiNode extends PhiNode implements Simplifiable {
+public class ValuePhiNode extends PhiNode {
 
     @Input final NodeInputList<ValueNode> values;
 

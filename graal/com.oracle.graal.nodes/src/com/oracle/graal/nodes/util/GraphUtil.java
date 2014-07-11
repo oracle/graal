@@ -174,7 +174,7 @@ public class GraphUtil {
         }
 
         ValueNode singleValue = phiNode.singleValue();
-        if (singleValue != null) {
+        if (singleValue != PhiNode.NO_VALUE) {
             Collection<PhiNode> phiUsages = phiNode.usages().filter(PhiNode.class).snapshot();
             Collection<ProxyNode> proxyUsages = phiNode.usages().filter(ProxyNode.class).snapshot();
             phiNode.graph().replaceFloating(phiNode, singleValue);
@@ -343,6 +343,9 @@ public class GraphUtil {
                 v = ((ValueProxy) v).getOriginalNode();
             } else if (v instanceof PhiNode) {
                 v = ((PhiNode) v).singleValue();
+                if (v == PhiNode.NO_VALUE) {
+                    v = null;
+                }
             } else {
                 break;
             }
