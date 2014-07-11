@@ -380,11 +380,10 @@ public final class HotSpotGraalRuntime implements GraalRuntime, RuntimeProvider,
      * @return a Java type for {@code name} which is guaranteed to be of type
      *         {@link ResolvedJavaType} if {@code resolve == true}
      * @throws LinkageError if {@code resolve == true} and the resolution failed
+     * @throws NullPointerException if {@code accessingClass} is {@code null}
      */
     public JavaType lookupType(String name, HotSpotResolvedObjectType accessingType, boolean resolve) {
-        if (accessingType == null) {
-            throw new GraalInternalError("cannot resolve " + name + " without an accessing class");
-        }
+        Objects.requireNonNull(accessingType, "cannot resolve type without an accessing class");
         // If the name represents a primitive type we can short-circuit the lookup.
         if (name.length() == 1) {
             Kind kind = Kind.fromPrimitiveOrVoidTypeChar(name.charAt(0));
@@ -392,7 +391,7 @@ public final class HotSpotGraalRuntime implements GraalRuntime, RuntimeProvider,
         }
 
         // Resolve non-primitive types in the VM.
-        final long metaspaceKlass = compilerToVm.lookupType(name, accessingType != null ? accessingType.mirror() : null, resolve);
+        final long metaspaceKlass = compilerToVm.lookupType(name, accessingType.mirror(), resolve);
 
         if (metaspaceKlass == 0L) {
             assert resolve == false;
