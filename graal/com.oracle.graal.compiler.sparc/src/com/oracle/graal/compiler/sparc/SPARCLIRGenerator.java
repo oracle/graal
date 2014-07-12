@@ -42,7 +42,6 @@ import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.JumpOp;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.sparc.*;
-import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.util.*;
 
 /**
@@ -527,7 +526,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
         if (commutative) {
             append(new BinaryCommutative(op, result, a, b));
         } else {
-            append(new BinaryRegReg(op, result, a, b));
+            append(new BinaryRegReg(op, result, a, b, state));
         }
         return result;
     }

@@ -190,12 +190,18 @@ public enum SPARCArithmetic {
         @Def({REG, HINT}) protected AllocatableValue result;
         @Use({REG}) protected AllocatableValue x;
         @Use({REG}) protected AllocatableValue y;
+        @State protected LIRFrameState state;
 
         public BinaryCommutative(SPARCArithmetic opcode, AllocatableValue result, AllocatableValue x, AllocatableValue y) {
+            this(opcode, result, x, y, null);
+        }
+
+        public BinaryCommutative(SPARCArithmetic opcode, AllocatableValue result, AllocatableValue x, AllocatableValue y, LIRFrameState state) {
             this.opcode = opcode;
             this.result = result;
             this.x = x;
             this.y = y;
+            this.state = state;
         }
 
         @Override

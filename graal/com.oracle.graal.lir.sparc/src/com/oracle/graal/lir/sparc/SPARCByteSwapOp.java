@@ -28,12 +28,11 @@ import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.sparc.*;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Asi;
+import com.oracle.graal.asm.sparc.SPARCAssembler.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.gen.*;
-import com.sun.javafx.binding.SelectBinding.*;
 
 @Opcode("BSWAP")
 public class SPARCByteSwapOp extends SPARCLIRInstruction {
@@ -53,16 +52,17 @@ public class SPARCByteSwapOp extends SPARCLIRInstruction {
     @Override
     public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
         SPARCMove.move(crb, masm, tmpSlot, input);
+        SPARCAddress addr = (SPARCAddress) crb.asAddress(tmpSlot);
+        if (addr.getIndex().equals(Register.None)) {
+            Register tempReg = ValueUtil.asLongReg(tempIndex);
+            new SPARCMacroAssembler.Setx(addr.getDisplacement(), tempReg, false).emit(masm);
+            addr = new SPARCAddress(addr.getBase(), tempReg);
+        }
         switch (input.getKind()) {
             case Int:
-                // masm.bswapl(ValueUtil.asIntReg(result));
+                new SPARCAssembler.Lduwa(addr.getBase(), addr.getIndex(), asIntReg(result), Asi.ASI_PRIMARY_LITTLE).emit(masm);
+                break;
             case Long:
-                SPARCAddress addr = (SPARCAddress) crb.asAddress(tmpSlot);
-                if (addr.getIndex().equals(Register.None)) {
-                    Register tempReg = ValueUtil.asLongReg(tempIndex);
-                    new SPARCMacroAssembler.Setx(addr.getDisplacement(), tempReg, false).emit(masm);
-                    addr = new SPARCAddress(addr.getBase(), tempReg);
-                }
                 new SPARCAssembler.Ldxa(addr.getBase(), addr.getIndex(), asLongReg(result), Asi.ASI_PRIMARY_LITTLE).emit(masm);
                 break;
             default:
