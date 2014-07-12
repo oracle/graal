@@ -22,31 +22,49 @@
  */
 package com.oracle.graal.lir.sparc;
 
+import static com.oracle.graal.api.code.ValueUtil.*;
+import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
+
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.sparc.*;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Asi;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
+import com.oracle.graal.lir.gen.*;
+import com.sun.javafx.binding.SelectBinding.*;
 
 @Opcode("BSWAP")
 public class SPARCByteSwapOp extends SPARCLIRInstruction {
 
-    @Def({OperandFlag.REG, OperandFlag.HINT}) protected Value result;
-    @Use protected Value input;
+    @Def({REG, HINT}) protected Value result;
+    @Use({REG}) protected Value input;
+    @Temp({REG}) protected Value tempIndex;
+    @Use({STACK}) protected StackSlot tmpSlot;
 
-    public SPARCByteSwapOp(Value result, Value input) {
+    public SPARCByteSwapOp(LIRGeneratorTool tool, Value result, Value input) {
         this.result = result;
         this.input = input;
+        this.tmpSlot = tool.getResult().getFrameMap().allocateSpillSlot(LIRKind.value(Kind.Long));
+        this.tempIndex = tool.newVariable(LIRKind.value(Kind.Long));
     }
 
     @Override
     public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
-        SPARCMove.move(crb, masm, result, input);
+        SPARCMove.move(crb, masm, tmpSlot, input);
         switch (input.getKind()) {
             case Int:
                 // masm.bswapl(ValueUtil.asIntReg(result));
             case Long:
-                // masm.bswapq(ValueUtil.asLongReg(result));
+                SPARCAddress addr = (SPARCAddress) crb.asAddress(tmpSlot);
+                if (addr.getIndex().equals(Register.None)) {
+                    Register tempReg = ValueUtil.asLongReg(tempIndex);
+                    new SPARCMacroAssembler.Setx(addr.getDisplacement(), tempReg, false).emit(masm);
+                    addr = new SPARCAddress(addr.getBase(), tempReg);
+                }
+                new SPARCAssembler.Ldxa(addr.getBase(), addr.getIndex(), asLongReg(result), Asi.ASI_PRIMARY_LITTLE).emit(masm);
+                break;
             default:
                 throw GraalInternalError.shouldNotReachHere();
         }

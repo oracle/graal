@@ -1082,7 +1082,10 @@ public abstract class SPARCAssembler extends Assembler {
         Staf(0x26, "staf"),
         Stdf(0b100111, "stdf"),
 
-        Fcmp(0b110101, "fcmp");
+        Fcmp(0b110101, "fcmp"),
+
+        Ldxa (0b01_1011, "ldxa"),
+        Lduwa(0b01_0000, "lduwa");
 
         // @formatter:on
 
@@ -3107,6 +3110,20 @@ public abstract class SPARCAssembler extends Assembler {
 
         public Ldx(SPARCAddress src, Register dst) {
             super(Op3s.Ldx, src, dst);
+        }
+    }
+
+    public static class Ldxa extends Fmt11 {
+
+        public Ldxa(Register src1, Register src2, Register dst, Asi asi) {
+            super(Op3s.Ldxa, src1, src2, dst, asi);
+        }
+    }
+
+    public static class Lduwa extends Fmt11 {
+
+        public Lduwa(Register src1, Register src2, Register dst, Asi asi) {
+            super(Op3s.Lduwa, src1, src2, dst, asi);
         }
     }
 
