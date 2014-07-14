@@ -286,7 +286,6 @@ public class SPARCMacroAssembler extends SPARCAssembler {
 
         public Not(Register src1, Register dst) {
             super(src1, g0, dst);
-            assert src1.encoding() != dst.encoding();
         }
 
         public Not(Register dst) {
