@@ -1956,7 +1956,7 @@ public final class LinearScan {
                                     if (spillBlock == null) {
                                         spillBlock = splitBlock;
                                     } else {
-                                        spillBlock = nearestCommonDominator(spillBlock, splitBlock);
+                                        spillBlock = commonDominator(spillBlock, splitBlock);
                                         assert spillBlock != null;
                                     }
                                 }
@@ -2084,35 +2084,6 @@ public final class LinearScan {
             }
         }
         return defBlock;
-    }
-
-    private AbstractBlock<?> nearestCommonDominator(AbstractBlock<?> a, AbstractBlock<?> b) {
-        assert a != null;
-        assert b != null;
-        try (Indent indent = Debug.logAndIndent("nearest common dominator of %s and %s", a, b)) {
-
-            if (a.equals(b)) {
-                return a;
-            }
-
-            // collect a's dominators
-            BitSet aDom = new BitSet(sortedBlocks.size());
-
-            // a != b
-            for (AbstractBlock<?> x = a; x != null; x = x.getDominator()) {
-                aDom.set(x.getId());
-            }
-
-            // walk b's dominator
-            for (AbstractBlock<?> x = b; x != null; x = x.getDominator()) {
-                if (aDom.get(x.getId())) {
-                    Debug.log("found %s", x);
-                    return x;
-                }
-            }
-        }
-        Debug.log("no common dominator found");
-        return null;
     }
 
     void printIntervals(String label) {
