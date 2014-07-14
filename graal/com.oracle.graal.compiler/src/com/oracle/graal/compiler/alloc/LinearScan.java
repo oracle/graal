@@ -25,7 +25,7 @@ package com.oracle.graal.compiler.alloc;
 import static com.oracle.graal.api.code.CodeUtil.*;
 import static com.oracle.graal.api.code.ValueUtil.*;
 import static com.oracle.graal.compiler.GraalDebugConfig.*;
-import static com.oracle.graal.compiler.common.cfg.AbstractBlock.*;
+import static com.oracle.graal.compiler.common.cfg.AbstractControlFlowGraph.*;
 import static com.oracle.graal.lir.LIRValueUtil.*;
 
 import java.util.*;
@@ -1720,7 +1720,7 @@ public final class LinearScan {
                 } else {
                     AbstractBlock<?> spillBlock = blockForId(spillPos);
                     if (interval.alwaysInMemory() && !interval.location().equals(interval.spillSlot())) {
-                        if ((spillBlock.equals(block) && op.id() > spillPos) || AbstractBlock.dominates(spillBlock, block)) {
+                        if ((spillBlock.equals(block) && op.id() > spillPos) || dominates(spillBlock, block)) {
                             assert spillPos > 0 : "position not set correctly";
                             assert interval.spillSlot() != null : "no spill slot assigned";
                             assert !isRegister(interval.operand) : "interval is on stack :  so stack slot is registered twice";
