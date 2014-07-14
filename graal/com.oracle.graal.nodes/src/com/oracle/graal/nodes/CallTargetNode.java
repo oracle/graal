@@ -24,13 +24,13 @@ package com.oracle.graal.nodes;
 
 import java.util.*;
 
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.spi.*;
 
 @NodeInfo(allowedUsageTypes = {InputType.Extension})
 public abstract class CallTargetNode extends ValueNode implements LIRLowerable {
-
     public enum InvokeKind {
         Interface,
         Special,
@@ -39,14 +39,17 @@ public abstract class CallTargetNode extends ValueNode implements LIRLowerable {
     }
 
     @Input private final NodeInputList<ValueNode> arguments;
+    private ResolvedJavaMethod targetMethod;
 
-    public CallTargetNode(ValueNode[] arguments) {
+    public CallTargetNode(ValueNode[] arguments, ResolvedJavaMethod targetMethod) {
         super(StampFactory.forVoid());
+        this.targetMethod = targetMethod;
         this.arguments = new NodeInputList<>(this, arguments);
     }
 
-    public CallTargetNode(List<ValueNode> arguments) {
+    public CallTargetNode(List<ValueNode> arguments, ResolvedJavaMethod targetMethod) {
         super(StampFactory.forVoid());
+        this.targetMethod = targetMethod;
         this.arguments = new NodeInputList<>(this, arguments);
     }
 
@@ -64,5 +67,18 @@ public abstract class CallTargetNode extends ValueNode implements LIRLowerable {
     @Override
     public void generate(NodeLIRBuilderTool gen) {
         // nop
+    }
+
+    public void setTargetMethod(ResolvedJavaMethod method) {
+        targetMethod = method;
+    }
+
+    /**
+     * Gets the target method for this invocation instruction.
+     *
+     * @return the target method
+     */
+    public ResolvedJavaMethod targetMethod() {
+        return targetMethod;
     }
 }

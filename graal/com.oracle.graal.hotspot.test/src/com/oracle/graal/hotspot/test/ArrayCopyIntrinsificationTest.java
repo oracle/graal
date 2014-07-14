@@ -52,7 +52,7 @@ public class ArrayCopyIntrinsificationTest extends GraalCompilerTest {
                         Invoke invoke = (Invoke) node;
                         Assert.assertTrue(invoke.callTarget() instanceof DirectCallTargetNode);
                         LoweredCallTargetNode directCall = (LoweredCallTargetNode) invoke.callTarget();
-                        JavaMethod callee = directCall.target();
+                        JavaMethod callee = directCall.targetMethod();
                         Assert.assertTrue(callee.getName().equals("<init>"));
                         Assert.assertTrue(getMetaAccess().lookupJavaType(ArrayIndexOutOfBoundsException.class).equals(callee.getDeclaringClass()) ||
                                         getMetaAccess().lookupJavaType(NullPointerException.class).equals(callee.getDeclaringClass()));
@@ -64,7 +64,7 @@ public class ArrayCopyIntrinsificationTest extends GraalCompilerTest {
                     if (node instanceof Invoke) {
                         Invoke invoke = (Invoke) node;
                         LoweredCallTargetNode directCall = (LoweredCallTargetNode) invoke.callTarget();
-                        JavaMethod callee = directCall.target();
+                        JavaMethod callee = directCall.targetMethod();
                         if (callee.getDeclaringClass().equals(getMetaAccess().lookupJavaType(System.class)) && callee.getName().equals("arraycopy")) {
                             found = true;
                         } else {

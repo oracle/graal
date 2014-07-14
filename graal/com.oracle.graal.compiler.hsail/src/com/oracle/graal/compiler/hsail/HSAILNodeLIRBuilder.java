@@ -47,12 +47,12 @@ public abstract class HSAILNodeLIRBuilder extends NodeLIRBuilder {
 
     @Override
     protected void emitDirectCall(DirectCallTargetNode callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState callState) {
-        throw GraalInternalError.unimplemented(callTarget.target().format("direct call to %H.%n(%p)"));
+        throw GraalInternalError.unimplemented(callTarget.targetMethod().format("direct call to %H.%n(%p)"));
     }
 
     @Override
     protected void emitIndirectCall(IndirectCallTargetNode callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState callState) {
-        throw GraalInternalError.unimplemented(callTarget.target().format("direct call to %H.%n(%p)"));
+        throw GraalInternalError.unimplemented(callTarget.targetMethod().format("direct call to %H.%n(%p)"));
     }
 
     @Override
