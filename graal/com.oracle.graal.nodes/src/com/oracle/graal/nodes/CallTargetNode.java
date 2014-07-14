@@ -35,7 +35,11 @@ public abstract class CallTargetNode extends ValueNode implements LIRLowerable {
         Interface,
         Special,
         Static,
-        Virtual
+        Virtual;
+
+        public boolean hasReceiver() {
+            return this != Static;
+        }
     }
 
     @Input private final NodeInputList<ValueNode> arguments;
