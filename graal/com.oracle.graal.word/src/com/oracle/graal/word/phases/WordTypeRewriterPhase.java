@@ -185,7 +185,7 @@ public class WordTypeRewriterPhase extends Phase {
 
         Invoke invoke = callTargetNode.invoke();
         if (!callTargetNode.isStatic()) {
-            assert callTargetNode.receiver().getKind() == wordKind : "changeToWord() missed the receiver";
+            assert callTargetNode.receiver().getKind() == wordKind : "changeToWord() missed the receiver " + callTargetNode.receiver();
             targetMethod = wordImplType.resolveMethod(targetMethod, invoke.getContextType());
         }
         Operation operation = targetMethod.getAnnotation(Word.Operation.class);
