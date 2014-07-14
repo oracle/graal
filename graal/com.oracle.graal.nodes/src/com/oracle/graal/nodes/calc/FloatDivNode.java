@@ -52,6 +52,23 @@ public final class FloatDivNode extends FloatArithmeticNode {
         if (forX.isConstant() && forY.isConstant()) {
             return ConstantNode.forPrimitive(evalConst(forX.asConstant(), forY.asConstant()));
         }
+        if (forY.isConstant()) {
+            Constant y = forY.asConstant();
+            switch (y.getKind()) {
+                case Float:
+                    if (y.asFloat() == 1.0f) {
+                        return forX;
+                    }
+                    break;
+                case Double:
+                    if (y.asDouble() == 1.0) {
+                        return forX;
+                    }
+                    break;
+                default:
+                    throw GraalGraphInternalError.shouldNotReachHere();
+            }
+        }
         return this;
     }
 

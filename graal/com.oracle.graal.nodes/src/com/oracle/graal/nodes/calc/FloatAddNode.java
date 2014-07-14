@@ -56,6 +56,26 @@ public final class FloatAddNode extends FloatArithmeticNode {
             return ConstantNode.forConstant(evalConst(forX.asConstant(), forY.asConstant()), null);
         }
         // Constant 0.0 can't be eliminated since it can affect the sign of the result.
+        // Constant -0.0 is an additive identity.
+        if (forY.isConstant()) {
+            Constant y = forY.asConstant();
+            switch (y.getKind()) {
+                case Float:
+                    // use Float.compare because -0.0f == 0.0f
+                    if (Float.compare(y.asFloat(), -0.0f) == 0) {
+                        return forX;
+                    }
+                    break;
+                case Double:
+                    // use Double.compare because -0.0f == 0.0f
+                    if (Double.compare(y.asDouble(), -0.0) == 0) {
+                        return forX;
+                    }
+                    break;
+                default:
+                    throw GraalGraphInternalError.shouldNotReachHere();
+            }
+        }
         return this;
     }
 
