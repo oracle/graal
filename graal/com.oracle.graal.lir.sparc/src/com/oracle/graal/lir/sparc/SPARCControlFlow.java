@@ -367,25 +367,25 @@ public class SPARCControlFlow {
             case Double:
                 switch (cond) {
                     case Equal:
-                        new Fbne(true, 2).emit(masm);
+                        new Fbne(true, 2 * 4).emit(masm);
                         break;
                     case Greater:
-                        new Fble(true, 2).emit(masm);
+                        new Fble(true, 2 * 4).emit(masm);
                         break;
                     case GreaterEqual:
-                        new Fbl(true, 2).emit(masm);
+                        new Fbl(true, 2 * 4).emit(masm);
                         break;
                     case Less:
-                        new Fbge(true, 2).emit(masm);
+                        new Fbge(true, 2 * 4).emit(masm);
                         break;
                     case LessEqual:
-                        new Fbg(true, 2).emit(masm);
+                        new Fbg(true, 2 * 4).emit(masm);
                         break;
                     case F_Ordered:
-                        new Fbo(true, 2).emit(masm);
+                        new Fbo(true, 2 * 4).emit(masm);
                         break;
                     case F_Unordered:
-                        new Fbu(true, 2).emit(masm);
+                        new Fbu(true, 2 * 4).emit(masm);
                         break;
                     default:
                         GraalInternalError.shouldNotReachHere("Unknown condition code " + cond);
