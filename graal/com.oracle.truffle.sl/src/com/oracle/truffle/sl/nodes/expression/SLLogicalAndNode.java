@@ -24,6 +24,7 @@ package com.oracle.truffle.sl.nodes.expression;
 
 import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.source.*;
 import com.oracle.truffle.sl.nodes.*;
 
 /**
@@ -38,6 +39,10 @@ import com.oracle.truffle.sl.nodes.*;
 @NodeInfo(shortName = "&&")
 @SuppressWarnings("unused")
 public abstract class SLLogicalAndNode extends SLBinaryNode {
+
+    public SLLogicalAndNode(SourceSection src) {
+        super(src);
+    }
 
     /**
      * This method is called after the left child was evaluated, but before the right child is

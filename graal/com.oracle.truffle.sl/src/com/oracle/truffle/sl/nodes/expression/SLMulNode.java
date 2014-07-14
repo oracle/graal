@@ -28,6 +28,7 @@ import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.CompilerDirectives.*;
 import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.source.*;
 import com.oracle.truffle.sl.nodes.*;
 
 /**
@@ -35,6 +36,10 @@ import com.oracle.truffle.sl.nodes.*;
  */
 @NodeInfo(shortName = "*")
 public abstract class SLMulNode extends SLBinaryNode {
+
+    public SLMulNode(SourceSection src) {
+        super(src);
+    }
 
     @Specialization(rewriteOn = ArithmeticException.class)
     protected long mul(long left, long right) {

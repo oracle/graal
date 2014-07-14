@@ -27,6 +27,7 @@ import java.math.*;
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.source.*;
 import com.oracle.truffle.sl.nodes.*;
 
 /**
@@ -41,6 +42,10 @@ import com.oracle.truffle.sl.nodes.*;
  */
 @NodeInfo(shortName = "+")
 public abstract class SLAddNode extends SLBinaryNode {
+
+    public SLAddNode(SourceSection src) {
+        super(src);
+    }
 
     /**
      * Specialization for primitive {@code long} values. This is the fast path of the

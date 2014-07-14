@@ -27,6 +27,7 @@ import java.math.*;
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.source.*;
 import com.oracle.truffle.sl.nodes.*;
 
 /**
@@ -34,6 +35,10 @@ import com.oracle.truffle.sl.nodes.*;
  */
 @NodeInfo(shortName = "-")
 public abstract class SLSubNode extends SLBinaryNode {
+
+    public SLSubNode(SourceSection src) {
+        super(src);
+    }
 
     @Specialization(rewriteOn = ArithmeticException.class)
     protected long sub(long left, long right) {

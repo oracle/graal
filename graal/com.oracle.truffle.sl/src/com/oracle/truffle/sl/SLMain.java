@@ -143,6 +143,7 @@ public class SLMain {
     public static void run(SLContext context, Source source, PrintStream logOutput, int repeats) {
         if (logOutput != null) {
             logOutput.println("== running on " + Truffle.getRuntime().getName());
+            // logOutput.println("Source = " + source.getCode());
         }
 
         final SourceCallback sourceCallback = context.getSourceCallback();
@@ -163,10 +164,12 @@ public class SLMain {
 
         /* Change to true if you want to see the AST on the console. */
         boolean printASTToLog = false;
+        /* Change to true if you want to see source attribution for the AST to the console */
+        boolean printSourceAttributionToLog = false;
         /* Change to dump the AST to IGV over the network. */
         boolean dumpASTToIGV = false;
 
-        printScript("before execution", context, logOutput, printASTToLog, dumpASTToIGV);
+        printScript("before execution", context, logOutput, printASTToLog, printSourceAttributionToLog, dumpASTToIGV);
         try {
             for (int i = 0; i < repeats; i++) {
                 long start = System.nanoTime();
@@ -187,7 +190,7 @@ public class SLMain {
             }
 
         } finally {
-            printScript("after execution", context, logOutput, printASTToLog, dumpASTToIGV);
+            printScript("after execution", context, logOutput, printASTToLog, printSourceAttributionToLog, dumpASTToIGV);
         }
     }
 
@@ -197,7 +200,7 @@ public class SLMain {
      * <p>
      * When printASTToLog is true: prints the ASTs to the console.
      */
-    private static void printScript(String groupName, SLContext context, PrintStream logOutput, boolean printASTToLog, boolean dumpASTToIGV) {
+    private static void printScript(String groupName, SLContext context, PrintStream logOutput, boolean printASTToLog, boolean printSourceAttributionToLog, boolean dumpASTToIGV) {
         if (dumpASTToIGV) {
             GraphPrintVisitor graphPrinter = new GraphPrintVisitor();
             graphPrinter.beginGroup(groupName);
@@ -218,6 +221,15 @@ public class SLMain {
                 }
             }
         }
+        if (printSourceAttributionToLog && logOutput != null) {
+            for (SLFunction function : context.getFunctionRegistry().getFunctions()) {
+                RootCallTarget callTarget = function.getCallTarget();
+                if (callTarget != null) {
+                    logOutput.println("=== " + function);
+                    NodeUtil.printSourceAttributionTree(logOutput, callTarget.getRootNode());
+                }
+            }
+        }
     }
 
     /**
@@ -233,7 +245,11 @@ public class SLMain {
         result.append("Type error");
         if (ex.getNode() != null && ex.getNode().getSourceSection() != null) {
             SourceSection ss = ex.getNode().getSourceSection();
-            result.append(" at ").append(ss.getSource().getName()).append(" line ").append(ss.getStartLine()).append(" col ").append(ss.getStartColumn());
+            if (ss == null || ss instanceof NullSourceSection) {
+                result.append(" at <unknown>");
+            } else {
+                result.append(" at ").append(ss.getSource().getName()).append(" line ").append(ss.getStartLine()).append(" col ").append(ss.getStartColumn());
+            }
         }
         result.append(": operation");
         if (ex.getNode() != null && ex.getNode().getClass().getAnnotation(NodeInfo.class) != null) {

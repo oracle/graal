@@ -24,6 +24,7 @@ package com.oracle.truffle.sl.nodes.expression;
 
 import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.source.*;
 import com.oracle.truffle.sl.nodes.*;
 
 /**
@@ -33,6 +34,10 @@ import com.oracle.truffle.sl.nodes.*;
 @NodeChild("valueNode")
 @NodeInfo(shortName = "!")
 public abstract class SLLogicalNotNode extends SLExpressionNode {
+
+    public SLLogicalNotNode(SourceSection src) {
+        super(src);
+    }
 
     @Specialization
     protected boolean doBoolean(boolean value) {

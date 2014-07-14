@@ -26,6 +26,7 @@ import java.math.*;
 
 import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.source.*;
 import com.oracle.truffle.sl.nodes.*;
 
 /**
@@ -35,6 +36,10 @@ import com.oracle.truffle.sl.nodes.*;
  */
 @NodeInfo(shortName = "/")
 public abstract class SLDivNode extends SLBinaryNode {
+
+    public SLDivNode(SourceSection src) {
+        super(src);
+    }
 
     @Specialization
     protected long div(long left, long right) {

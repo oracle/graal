@@ -26,6 +26,7 @@ import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.source.*;
 import com.oracle.truffle.api.utilities.*;
 import com.oracle.truffle.sl.nodes.*;
 
@@ -50,7 +51,8 @@ public final class SLWhileNode extends SLStatementNode {
     private final BranchProfile continueTaken = new BranchProfile();
     private final BranchProfile breakTaken = new BranchProfile();
 
-    public SLWhileNode(SLExpressionNode conditionNode, SLStatementNode bodyNode) {
+    public SLWhileNode(SourceSection src, SLExpressionNode conditionNode, SLStatementNode bodyNode) {
+        super(src);
         this.conditionNode = conditionNode;
         this.bodyNode = bodyNode;
     }

@@ -23,6 +23,7 @@
 package com.oracle.truffle.sl.nodes;
 
 import com.oracle.truffle.api.dsl.*;
+import com.oracle.truffle.api.source.*;
 
 /**
  * Utility base class for operations that take two arguments (per convention called "left" and
@@ -31,4 +32,8 @@ import com.oracle.truffle.api.dsl.*;
  */
 @NodeChildren({@NodeChild("leftNode"), @NodeChild("rightNode")})
 public abstract class SLBinaryNode extends SLExpressionNode {
+
+    public SLBinaryNode(SourceSection src) {
+        super(src);
+    }
 }

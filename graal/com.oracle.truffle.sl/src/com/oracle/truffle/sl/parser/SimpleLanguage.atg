@@ -84,11 +84,12 @@ Block<out SLStatementNode body, false>          (. factory.finishFunction(body);
 Block<out SLStatementNode result, boolean inLoop>
 =                                               (. factory.startBlock();
                                                    List<SLStatementNode> body = new ArrayList<>(); .)
-"{" 
+"{"    											(. int lBracePos = t.charPos; .)
 {
     Statement<out SLStatementNode s, inLoop>    (. body.add(s); .)
 }
-"}"                                             (. result = factory.finishBlock(body); .)
+"}"                                             (. int length = (t.charPos + t.val.length()) - lBracePos; .)
+												(. result = factory.finishBlock(body, lBracePos, length); .)
 .
 
 
@@ -210,8 +211,9 @@ Factor<out SLExpressionNode result>
                 "," 
                 Expression<out parameter>       (. parameters.add(parameter); .)
             }                                               
-        ]                                       (. result = factory.createCall(nameToken, parameters); .) 
-        ")"
+        ]
+        ")"					(. Token finalToken = t; .)
+                                               (. result = factory.createCall(nameToken, parameters, finalToken); .) 
     |
         "=" 
         Expression<out SLExpressionNode value>  (. result = factory.createAssignment(nameToken, value); .)
