@@ -29,12 +29,28 @@ public interface AbstractControlFlowGraph<T extends AbstractBlock<T>> {
     static final int BLOCK_ID_INITIAL = -1;
     static final int BLOCK_ID_VISITED = -2;
 
+    /**
+     * Returns the list blocks contained in this control flow graph.
+     *
+     * It is {@linkplain CFGVerifier guaranteed} that the blocks are numbered according to a reverse
+     * post order traversal of the control flow graph.
+     *
+     * @see CFGVerifier
+     */
     List<T> getBlocks();
 
     Collection<Loop<T>> getLoops();
 
     T getStartBlock();
 
+    /**
+     * Calculates the common dominator of two blocks.
+     *
+     * Note that this algorithm makes use of special properties regarding the numbering of blocks.
+     *
+     * @see #getBlocks()
+     * @see CFGVerifier
+     */
     public static AbstractBlock<?> commonDominator(AbstractBlock<?> a, AbstractBlock<?> b) {
         if (a == null) {
             return b;
@@ -55,6 +71,9 @@ public interface AbstractControlFlowGraph<T extends AbstractBlock<T>> {
         return iterA;
     }
 
+    /**
+     * @see AbstractControlFlowGraph#commonDominator(AbstractBlock, AbstractBlock)
+     */
     @SuppressWarnings("unchecked")
     public static <T extends AbstractBlock<T>> T commonDominatorTyped(T a, T b) {
         return (T) commonDominator(a, b);
