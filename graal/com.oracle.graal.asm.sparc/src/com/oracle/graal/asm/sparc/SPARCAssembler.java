@@ -28,6 +28,7 @@ import static com.oracle.graal.sparc.SPARC.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
+import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.sparc.*;
 
 /**
@@ -49,33 +50,95 @@ public abstract class SPARCAssembler extends Assembler {
 
     // @formatter:off
     /**
+     * Instruction format for Fmt00 instructions. This abstraction is needed as it
+     * makes the patching easier later on.
+     *
+     * | 00  |  ??    | op2 |               ??                        |
+     * |31 30|29    25|24 22|21                                      0|
+     */
+    // @formatter:on
+    public static abstract class Fmt00 {
+
+        protected static final int OP_SHIFT = 30;
+        protected static final int OP2_SHIFT = 22;
+
+        // @formatter:off
+        protected static final int OP_MASK  = 0b11000000000000000000000000000000;
+        protected static final int OP2_MASK = 0b00000001110000000000000000000000;
+        // @formatter:off
+
+        private int op2;
+
+        public Fmt00(int op2) {
+            this.op2 = op2;
+        }
+
+        public static Fmt00 read(SPARCAssembler masm, int pos) {
+            final int inst = masm.getInt(pos);
+            Op2s op2 = Op2s.byValue((inst&OP2_MASK) >> OP2_SHIFT);
+            switch(op2) {
+                case Fb:
+                    return Fmt00b.read(masm, op2, pos);
+                case Sethi:
+                case Illtrap:
+                    return Fmt00a.read(masm, pos);
+                case Bp:
+                    return Fmt00c.read(masm, pos);
+                default:
+                    throw GraalInternalError.shouldNotReachHere("Unknown op2 " + op2);
+            }
+        }
+
+        public void write(SPARCAssembler masm, int pos) {
+            verify();
+            masm.emitInt(getInstructionBits(), pos);
+        }
+
+        public Op2s getOp2s() {
+            return Op2s.byValue(op2);
+        }
+
+        protected int getInstructionBits() {
+            return Ops.BranchOp.getValue() << OP_SHIFT | op2 << OP2_SHIFT;
+        }
+
+        public void verify() {
+            assert ((op2 << OP2_SHIFT) & OP2_MASK) == (op2 << OP2_SHIFT);
+            assert Op2s.byValue(op2) != null : op2;
+        }
+        /**
+         * Sets the immediate (displacement) value on this instruction.
+         *
+         * @see SPARCAssembler#patchJumpTarget(int, int)
+         * @param imm Displacement/imediate value. Can either be a 22 or 19 bit immediate (dependent on the instruction)
+         */
+        public abstract void setImm(int imm);
+    }
+
+    // @formatter:off
+    /**
      * Instruction format for sethi.
      *
      * | 00  |  rd    | op2 |               imm22                     |
      * |31 30|29    25|24 22|21                                      0|
      */
     // @formatter:on
-    public static class Fmt00a {
+    public static class Fmt00a extends Fmt00 {
 
-        private static final int OP_SHIFT = 30;
         private static final int RD_SHIFT = 25;
-        private static final int OP2_SHIFT = 22;
         private static final int IMM22_SHIFT = 0;
 
         // @formatter:off
-        private static final int OP_MASK    = 0b11000000000000000000000000000000;
         private static final int RD_MASK    = 0b00111110000000000000000000000000;
-        private static final int OP2_MASK   = 0b00000001110000000000000000000000;
         private static final int IMM22_MASK = 0b00000000001111111111111111111111;
         // @formatter:on
 
         private int rd;
-        private int op2;
         private int imm22;
 
         private Fmt00a(int rd, int op2, int imm22) {
+            super(op2);
             this.rd = rd;
-            this.op2 = op2;
             this.imm22 = imm22;
             verify();
         }
@@ -84,8 +147,9 @@ public abstract class SPARCAssembler extends Assembler {
             this(rd.encoding(), op2.getValue(), imm22);
         }
 
-        private int getInstructionBits() {
-            return Ops.BranchOp.getValue() << OP_SHIFT | rd << RD_SHIFT | op2 << OP2_SHIFT | (imm22 & IMM22_MASK) << IMM22_SHIFT;
+        @Override
+        protected int getInstructionBits() {
+            return super.getInstructionBits() | rd << RD_SHIFT | (imm22 & IMM22_MASK) << IMM22_SHIFT;
         }
 
         public static Fmt00a read(SPARCAssembler masm, int pos) {
@@ -103,20 +167,25 @@ public abstract class SPARCAssembler extends Assembler {
             return new Fmt00a(op2, imm22, rd);
         }
 
-        public void write(SPARCAssembler masm, int pos) {
-            verify();
-            masm.emitInt(getInstructionBits(), pos);
-        }
-
         public void emit(SPARCAssembler masm) {
             verify();
             masm.emitInt(getInstructionBits());
         }
 
+        @Override
         public void verify() {
+            super.verify();
             assert ((rd << RD_SHIFT) & RD_MASK) == (rd << RD_SHIFT);
-            assert ((op2 << OP2_SHIFT) & OP2_MASK) == (op2 << OP2_SHIFT);
             assert ((imm22 << IMM22_SHIFT) & IMM22_MASK) == (imm22 << IMM22_SHIFT) : String.format("imm22: %d (%x)", imm22, imm22);
+        }
+
+        @Override
+        public void setImm(int imm) {
+            setImm22(imm);
+        }
+
+        public void setImm22(int imm22) {
+            this.imm22 = imm22;
         }
     }
 
@@ -128,14 +197,127 @@ public abstract class SPARCAssembler extends Assembler {
      * |31 30|29|28  25|24 22|21                                      0|
      */
     // @formatter:on
-    public static class Fmt00b {
+    public static class Fmt00b extends Fmt00 {
+        private int a;
+        private int cond;
+        private int disp22;
+        private Label label;
 
-        public Fmt00b(SPARCAssembler masm, int op, int a, int cond, int op2, int disp22) {
-            assert op == 0;
-            assert op == 0;
-            assert cond < 0x10;
-            assert op2 < 0x8;
-            masm.emitInt(op << 30 | a << 29 | cond << 25 | op2 << 22 | (disp22 & 0x003fffff));
+        private static final int A_SHIFT = 29;
+        private static final int COND_SHIFT = 25;
+        private static final int DISP22_SHIFT = 0;
+
+        // @formatter:off
+        private static final int A_MASK      = 0b00100000000000000000000000000000;
+        private static final int COND_MASK   = 0b00011110000000000000000000000000;
+        private static final int DISP22_MASK = 0b00000000001111111111111111111111;
+        // @formatter:on
+
+        public Fmt00b(boolean annul, FCond cond, Op2s op2, Label label) {
+            this(annul ? 1 : 0, cond.getValue(), op2.getValue(), 0, label);
+        }
+
+        public Fmt00b(int annul, int cond, int op2, Label label) {
+            this(annul, cond, op2, 0, label);
+        }
+
+        public Fmt00b(boolean annul, FCond cond, Op2s op2, int disp22) {
+            this(annul ? 1 : 0, cond.getValue(), op2.getValue(), disp22, null);
+        }
+
+        public Fmt00b(int annul, int cond, int op2, int disp22) {
+            this(annul, cond, op2, disp22, null);
+        }
+
+        public Fmt00b(int a, int cond, int op2, int disp22, Label label) {
+            super(op2);
+            setA(a);
+            setCond(cond);
+            setDisp22(disp22);
+            setLabel(label);
+        }
+
+        public void emit(SPARCAssembler masm) {
+            if (label != null) {
+                final int pos = label.isBound() ? label.position() : patchUnbound(masm, label);
+                final int disp = pos - masm.position();
+                setDisp22(disp);
+            }
+            verify();
+            masm.emitInt(getInstructionBits());
+        }
+
+        private static int patchUnbound(SPARCAssembler masm, Label label) {
+            label.addPatchAt(masm.position());
+            return 0;
+        }
+
+        @Override
+        protected int getInstructionBits() {
+            return super.getInstructionBits() | a << A_SHIFT | cond << COND_SHIFT | (disp22 & DISP22_MASK) << DISP22_SHIFT;
+        }
+
+        protected static Fmt00b read(SPARCAssembler masm, Op2s op2, int pos) {
+            final int inst = masm.getInt(pos);
+
+            // Make sure it's the right instruction:
+            final int op = (inst & OP_MASK) >> OP_SHIFT;
+            assert op == Ops.BranchOp.getValue();
+            final int op2Read = (inst & OP2_MASK) >> OP2_SHIFT;
+            assert op2Read == op2.getValue() : "Op2 value read: " + op2Read + " Required op2: " + op2;
+
+            // Get the instruction fields:
+            final int a = (inst & A_MASK) >> A_SHIFT;
+            final int cond = (inst & COND_MASK) >> COND_SHIFT;
+            final int disp22 = (inst & DISP22_MASK) >> DISP22_SHIFT << 2;
+
+            Fmt00b fmt = new Fmt00b(a, cond, op2.getValue(), disp22);
+            fmt.verify();
+            return fmt;
+        }
+
+        public int getA() {
+            return a;
+        }
+
+        public void setA(int a) {
+            this.a = a;
+        }
+
+        public int getCond() {
+            return cond;
+        }
+
+        public void setCond(int cond) {
+            this.cond = cond;
+        }
+
+        public int getDisp22() {
+            return disp22 << 2;
+        }
+
+        @Override
+        public void setImm(int imm) {
+            setDisp22(imm);
+        }
+
+        public void setDisp22(int disp22) {
+            this.disp22 = disp22 >> 2;
+        }
+
+        public Label getLabel() {
+            return label;
+        }
+
+        public void setLabel(Label label) {
+            this.label = label;
+        }
+
+        @Override
+        public void verify() {
+            super.verify();
+            assert (getA() << A_SHIFT & ~A_MASK) == 0 : getA();
+            assert (getCond() << COND_SHIFT & ~COND_MASK) == 0 : getCond();
         }
     }
 
@@ -147,21 +329,17 @@ public abstract class SPARCAssembler extends Assembler {
      * |31 30|29|28  25|24 22|21 |20 |19|                             0|
      */
     // @formatter:on
-    public static class Fmt00c {
+    public static class Fmt00c extends Fmt00 {
 
-        private static final int OP_SHIFT = 30;
         private static final int A_SHIFT = 29;
         private static final int COND_SHIFT = 25;
-        private static final int OP2_SHIFT = 22;
         private static final int CC_SHIFT = 20;
         private static final int P_SHIFT = 19;
         private static final int DISP19_SHIFT = 0;
 
         // @formatter:off
-        private static final int OP_MASK     = 0b11000000000000000000000000000000;
         private static final int A_MASK      = 0b00100000000000000000000000000000;
         private static final int COND_MASK   = 0b00011110000000000000000000000000;
-        private static final int OP2_MASK    = 0b00000001110000000000000000000000;
         private static final int CC_MASK     = 0b00000000001100000000000000000000;
         private static final int P_MASK      = 0b00000000000010000000000000000000;
         private static final int DISP19_MASK = 0b00000000000001111111111111111111;
@@ -169,16 +347,15 @@ public abstract class SPARCAssembler extends Assembler {
 
         private int a;
         private int cond;
-        private int op2;
         private int cc;
         private int p;
         private int disp19;
         private Label label;
 
         private Fmt00c(int a, int cond, int op2, int cc, int p, int disp19) {
+            super(op2);
             setA(a);
             setCond(cond);
-            setOp2(op2);
             setCc(cc);
             setP(p);
             setDisp19(disp19);
@@ -208,14 +385,6 @@ public abstract class SPARCAssembler extends Assembler {
 
         public void setCond(int cond) {
             this.cond = cond;
-        }
-
-        public int getOp2() {
-            return op2;
-        }
-
-        public void setOp2(int op2) {
-            this.op2 = op2;
         }
 
         public int getCc() {
@@ -248,8 +417,14 @@ public abstract class SPARCAssembler extends Assembler {
             this.disp19 = disp19 >> 2;
         }
 
-        private int getInstructionBits() {
-            return Ops.BranchOp.getValue() << OP_SHIFT | a << A_SHIFT | cond << COND_SHIFT | op2 << OP2_SHIFT | cc << CC_SHIFT | p << P_SHIFT | (disp19 & DISP19_MASK) << DISP19_SHIFT;
+        @Override
+        public void setImm(int imm) {
+            setDisp19(imm);
+        }
+
+        @Override
+        protected int getInstructionBits() {
+            return super.getInstructionBits() | a << A_SHIFT | cond << COND_SHIFT | cc << CC_SHIFT | p << P_SHIFT | (disp19 & DISP19_MASK) << DISP19_SHIFT;
         }
 
         public static Fmt00c read(SPARCAssembler masm, int pos) {
@@ -272,11 +447,6 @@ public abstract class SPARCAssembler extends Assembler {
             return fmt;
         }
 
-        public void write(SPARCAssembler masm, int pos) {
-            verify();
-            masm.emitInt(getInstructionBits(), pos);
-        }
-
         public void emit(SPARCAssembler masm) {
             if (label != null) {
                 final int pos = label.isBound() ? label.position() : patchUnbound(masm, label);
@@ -292,10 +462,16 @@ public abstract class SPARCAssembler extends Assembler {
             return 0;
         }
 
+        @Override
         public void verify() {
+            super.verify();
             assert p < 2;
             assert cond < 0x10;
-            assert op2 < 0x8;
+        }
+
+        @Override
+        public String toString() {
+            return "Fmt00c [a=" + a + ", cond=" + cond + ", cc=" + cc + ", p=" + p + ", disp19=" + disp19 + ", label=" + label + "]";
         }
     }
 
@@ -443,12 +619,12 @@ public abstract class SPARCAssembler extends Assembler {
         }
 
         public void emit(SPARCAssembler masm) {
-            assert op == 2 || op == 3;
-            assert op3 >= 0 && op3 < 0x40;
-            assert opf >= 0 && opf < 0x200;
-            assert rs1 >= 0 && rs1 < 0x20;
-            assert rs2 >= 0 && rs2 < 0x20;
-            assert rd >= 0 && rd < 0x20;
+            assert op == 2 || op == 3 : op;
+            assert op3 >= 0 && op3 < 0x40 : op3;
+            assert opf >= 0 && opf < 0x200 : opf;
+            assert rs1 >= 0 && rs1 < 0x20 : rs1;
+            assert rs2 >= 0 && rs2 < 0x20 : rs2;
+            assert rd >= 0 && rd < 0x20 : rd;
 
             masm.emitInt(op << 30 | rd << 25 | op3 << 19 | rs1 << 14 | opf << 5 | rs2);
         }
@@ -963,13 +1139,14 @@ public abstract class SPARCAssembler extends Assembler {
         // @formatter:off
 
         Illtrap(0b000),
-        Bpr(3),
-        Fb(6),
-        Fbp(5),
-        Br(2),
-        Bp(1),
-        Cb(7),
-        Sethi(0b100);
+        Bpr    (0b011),
+        Fb     (0b110),
+        Fbp    (0b101),
+        Br     (0b010),
+        Bp     (0b001),
+        Cb     (0b111),
+        Sethi  (0b100);
+
 
         // @formatter:on
 
@@ -981,6 +1158,15 @@ public abstract class SPARCAssembler extends Assembler {
 
         public int getValue() {
             return value;
+        }
+
+        public static Op2s byValue(int value) {
+            for (Op2s op : values()) {
+                if (op.getValue() == value) {
+                    return op;
+                }
+            }
+            return null;
         }
     }
 
@@ -1046,8 +1232,8 @@ public abstract class SPARCAssembler extends Assembler {
 
         Fpop1(0b11_0100, "fpop1"),
         Fpop2(0x35, "fpop2"),
-        Impdep1(0x36, "impdep1"),
-        Impdep2(0x37, "impdep2"),
+        Impdep1(0b11_0110, "impdep1"),
+        Impdep2(0b11_0111, "impdep2"),
         Jmpl(0x38, "jmpl"),
         Rett(0x39, "rett"),
         Trap(0x3a, "trap"),
@@ -1202,6 +1388,8 @@ public abstract class SPARCAssembler extends Assembler {
         Fsrc2s(0x79, "fsrc2s"),
         Foned(0x7E, "foned"),
         Fones(0x7F, "fones"),
+        Fandd(0b0_0111_0000, "fandd"),
+        Fands(0b0_0111_0001, "fands"),
         // end VIS1
 
         // start VIS2
@@ -3028,10 +3216,163 @@ public abstract class SPARCAssembler extends Assembler {
         }
     }
 
-    public static class Fbfcc extends Fmt00b {
+    public static class Fba extends Fmt00b {
+        public Fba(boolean annul, Label label) {
+            super(annul, FCond.Fba, Op2s.Fb, label);
+        }
 
-        public Fbfcc(SPARCAssembler asm, FCond cond, boolean annul, int disp) {
-            super(asm, Ops.BranchOp.getValue(), annul ? 1 : 0, cond.getValue(), 0b110, disp);
+        public Fba(boolean annul, int disp) {
+            super(annul, FCond.Fba, Op2s.Fb, disp);
+        }
+    }
+
+    public static class Fbn extends Fmt00b {
+        public Fbn(boolean annul, Label label) {
+            super(annul, FCond.Fbn, Op2s.Fb, label);
+        }
+
+        public Fbn(boolean annul, int disp) {
+            super(annul, FCond.Fbn, Op2s.Fb, disp);
+        }
+    }
+
+    public static class Fbu extends Fmt00b {
+        public Fbu(boolean annul, Label label) {
+            super(annul, FCond.Fbu, Op2s.Fb, label);
+        }
+
+        public Fbu(boolean annul, int disp) {
+            super(annul, FCond.Fbu, Op2s.Fb, disp);
+        }
+    }
+
+    public static class Fbg extends Fmt00b {
+        public Fbg(boolean annul, Label label) {
+            super(annul, FCond.Fbg, Op2s.Fb, label);
+        }
+
+        public Fbg(boolean annul, int disp) {
+            super(annul, FCond.Fbg, Op2s.Fb, disp);
+        }
+    }
+
+    public static class Fbug extends Fmt00b {
+        public Fbug(boolean annul, Label label) {
+            super(annul, FCond.Fbug, Op2s.Fb, label);
+        }
+
+        public Fbug(boolean annul, int disp) {
+            super(annul, FCond.Fbug, Op2s.Fb, disp);
+        }
+    }
+
+    public static class Fbl extends Fmt00b {
+        public Fbl(boolean annul, Label label) {
+            super(annul, FCond.Fbl, Op2s.Fb, label);
+        }
+
+        public Fbl(boolean annul, int disp) {
+            super(annul, FCond.Fbl, Op2s.Fb, disp);
+        }
+    }
+
+    public static class Fbul extends Fmt00b {
+        public Fbul(boolean annul, Label label) {
+            super(annul, FCond.Fbul, Op2s.Fb, label);
+        }
+
+        public Fbul(boolean annul, int disp) {
+            super(annul, FCond.Fbul, Op2s.Fb, disp);
+        }
+    }
+
+    public static class Fblg extends Fmt00b {
+        public Fblg(boolean annul, Label label) {
+            super(annul, FCond.Fblg, Op2s.Fb, label);
+        }
+
+        public Fblg(boolean annul, int disp) {
+            super(annul, FCond.Fblg, Op2s.Fb, disp);
+        }
+    }
+
+    public static class Fbne extends Fmt00b {
+        public Fbne(boolean annul, Label label) {
+            super(annul, FCond.Fbne, Op2s.Fb, label);
+        }
+
+        public Fbne(boolean annul, int disp) {
+            super(annul, FCond.Fbne, Op2s.Fb, disp);
+        }
+    }
+
+    public static class Fbe extends Fmt00b {
+        public Fbe(boolean annul, Label label) {
+            super(annul, FCond.Fbe, Op2s.Fb, label);
+        }
+
+        public Fbe(boolean annul, int disp) {
+            super(annul, FCond.Fbe, Op2s.Fb, disp);
+        }
+    }
+
+    public static class Fbue extends Fmt00b {
+        public Fbue(boolean annul, Label label) {
+            super(annul, FCond.Fbue, Op2s.Fb, label);
+        }
+
+        public Fbue(boolean annul, int disp) {
+            super(annul, FCond.Fbue, Op2s.Fb, disp);
+        }
+    }
+
+    public static class Fbge extends Fmt00b {
+        public Fbge(boolean annul, Label label) {
+            super(annul, FCond.Fbge, Op2s.Fb, label);
+        }
+
+        public Fbge(boolean annul, int disp) {
+            super(annul, FCond.Fbge, Op2s.Fb, disp);
+        }
+    }
+
+    public static class Fbuge extends Fmt00b {
+        public Fbuge(boolean annul, Label label) {
+            super(annul, FCond.Fbuge, Op2s.Fb, label);
+        }
+
+        public Fbuge(boolean annul, int disp) {
+            super(annul, FCond.Fbuge, Op2s.Fb, disp);
+        }
+    }
+
+    public static class Fble extends Fmt00b {
+        public Fble(boolean annul, Label label) {
+            super(annul, FCond.Fble, Op2s.Fb, label);
+        }
+
+        public Fble(boolean annul, int disp) {
+            super(annul, FCond.Fble, Op2s.Fb, disp);
+        }
+    }
+
+    public static class Fbule extends Fmt00b {
+        public Fbule(boolean annul, Label label) {
+            super(annul, FCond.Fbule, Op2s.Fb, label);
+        }
+
+        public Fbule(boolean annul, int disp) {
+            super(annul, FCond.Fbule, Op2s.Fb, disp);
+        }
+    }
+
+    public static class Fbo extends Fmt00b {
+        public Fbo(boolean annul, Label label) {
+            super(annul, FCond.Fbo, Op2s.Fb, label);
+        }
+
+        public Fbo(boolean annul, int disp) {
+            super(annul, FCond.Fbo, Op2s.Fb, disp);
         }
     }
 
@@ -3465,6 +3806,18 @@ public abstract class SPARCAssembler extends Assembler {
 
         public Srlx(Register src1, Register src2, Register dst) {
             super(Op3s.Srlx, src1, src2, dst);
+        }
+    }
+
+    public static class Fandd extends Fmt3p {
+        public Fandd(Register src1, Register src2, Register dst) {
+            super(Ops.ArithOp, Op3s.Impdep1, Opfs.Fandd, src1, src2, dst);
+        }
+    }
+
+    public static class Fands extends Fmt3p {
+        public Fands(Register src1, Register src2, Register dst) {
+            super(Ops.ArithOp, Op3s.Impdep1, Opfs.Fands, src1, src2, dst);
         }
     }
 

@@ -36,6 +36,7 @@ import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.*;
 import com.oracle.graal.lir.asm.*;
+import com.oracle.graal.sparc.*;
 
 public class SPARCMove {
 
@@ -518,12 +519,13 @@ public class SPARCMove {
                 new Ldf(scratch, asFloatReg(result)).emit(masm);
                 break;
             case Double:
-                crb.asDoubleConstRef(input);
+                // before we load this from memory and do the complicated lookup,
+                // just load it directly into a scratch register
                 scratch = g5;
                 // First load the address into the scratch register
-                new Setx(0, scratch, true).emit(masm);
+                new Setx(Double.doubleToLongBits(input.asDouble()), scratch, true).emit(masm);
                 // Now load the float value
-                new Lddf(scratch, asDoubleReg(result)).emit(masm);
+                new Movxtod(scratch, asDoubleReg(result)).emit(masm);
                 break;
             case Object:
                 if (input.isNull()) {

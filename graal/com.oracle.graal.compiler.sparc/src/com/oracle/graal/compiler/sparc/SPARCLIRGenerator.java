@@ -234,10 +234,9 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
             // append(new CompareOp(FCMP, x, y));
             // append(new BranchOp(condition, label));
             // break;
-            // case Double:
-            // append(new CompareOp(DCMP, x, y));
-            // append(new BranchOp(condition, label));
-            // break;
+            case Double:
+                append(new BranchOp(cond, trueDestination, falseDestination, kind));
+                break;
             default:
                 throw GraalInternalError.shouldNotReachHere("" + left.getKind());
         }
