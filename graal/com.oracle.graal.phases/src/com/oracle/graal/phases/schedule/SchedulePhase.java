@@ -24,8 +24,8 @@ package com.oracle.graal.phases.schedule;
 
 import static com.oracle.graal.api.meta.LocationIdentity.*;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
-import static com.oracle.graal.nodes.cfg.ControlFlowGraph.*;
 import static com.oracle.graal.compiler.common.cfg.AbstractBlock.*;
+import static com.oracle.graal.compiler.common.cfg.AbstractControlFlowGraph.*;
 
 import java.util.*;
 
@@ -654,7 +654,7 @@ public final class SchedulePhase extends Phase {
 
         @Override
         public void apply(Block newBlock) {
-            this.block = commonDominator(this.block, newBlock);
+            this.block = commonDominatorTyped(this.block, newBlock);
         }
     }
 

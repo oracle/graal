@@ -34,4 +34,29 @@ public interface AbstractControlFlowGraph<T extends AbstractBlock<T>> {
     Collection<Loop<T>> getLoops();
 
     T getStartBlock();
+
+    public static AbstractBlock<?> commonDominator(AbstractBlock<?> a, AbstractBlock<?> b) {
+        if (a == null) {
+            return b;
+        }
+        if (b == null) {
+            return a;
+        }
+        AbstractBlock<?> iterA = a;
+        AbstractBlock<?> iterB = b;
+        while (iterA != iterB) {
+            if (iterA.getId() > iterB.getId()) {
+                iterA = iterA.getDominator();
+            } else {
+                assert iterB.getId() > iterA.getId();
+                iterB = iterB.getDominator();
+            }
+        }
+        return iterA;
+    }
+
+    @SuppressWarnings("unchecked")
+    public static <T extends AbstractBlock<T>> T commonDominatorTyped(T a, T b) {
+        return (T) commonDominator(a, b);
+    }
 }

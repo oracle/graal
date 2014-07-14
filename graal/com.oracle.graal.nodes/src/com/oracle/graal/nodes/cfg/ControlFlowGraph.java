@@ -317,7 +317,7 @@ public class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
             Block dominator = null;
             for (Block pred : block.getPredecessors()) {
                 if (!pred.isLoopEnd()) {
-                    dominator = commonDominator(dominator, pred);
+                    dominator = AbstractControlFlowGraph.commonDominatorTyped(dominator, pred);
                 }
             }
             setDominator(block, dominator);
@@ -330,26 +330,6 @@ public class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
             dominator.dominated = new ArrayList<>();
         }
         dominator.dominated.add(block);
-    }
-
-    public static <T extends AbstractBlock<T>> T commonDominator(T a, T b) {
-        if (a == null) {
-            return b;
-        }
-        if (b == null) {
-            return a;
-        }
-        T iterA = a;
-        T iterB = b;
-        while (iterA != iterB) {
-            if (iterA.getId() > iterB.getId()) {
-                iterA = iterA.getDominator();
-            } else {
-                assert iterB.getId() > iterA.getId();
-                iterB = iterB.getDominator();
-            }
-        }
-        return iterA;
     }
 
     private void computePostdominators() {
