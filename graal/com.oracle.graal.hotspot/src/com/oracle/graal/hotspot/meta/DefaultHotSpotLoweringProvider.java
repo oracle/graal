@@ -202,7 +202,7 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
                                     StampFactory.forKind(wordKind), BarrierType.NONE));
 
                     loweredCallTarget = graph.add(new HotSpotIndirectCallTargetNode(metaspaceMethod, compiledEntry, parameters, invoke.asNode().stamp(), signature, callTarget.targetMethod(),
-                                    CallingConvention.Type.JavaCall));
+                                    CallingConvention.Type.JavaCall, callTarget.invokeKind()));
 
                     graph.addBeforeFixed(invoke.asNode(), metaspaceMethod);
                     graph.addAfterFixed(metaspaceMethod, compiledEntry);

@@ -30,25 +30,14 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.type.*;
 
 public class MethodCallTargetNode extends CallTargetNode implements IterableNodeType, Canonicalizable {
-
     private final JavaType returnType;
-    private InvokeKind invokeKind;
 
     /**
      * @param arguments
      */
     public MethodCallTargetNode(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] arguments, JavaType returnType) {
-        super(arguments, targetMethod);
-        this.invokeKind = invokeKind;
+        super(arguments, targetMethod, invokeKind);
         this.returnType = returnType;
-    }
-
-    public InvokeKind invokeKind() {
-        return invokeKind;
-    }
-
-    public void setInvokeKind(InvokeKind kind) {
-        this.invokeKind = kind;
     }
 
     /**
@@ -84,10 +73,10 @@ public class MethodCallTargetNode extends CallTargetNode implements IterableNode
         for (Node n : usages()) {
             assertTrue(n instanceof Invoke, "call target can only be used from an invoke (%s)", n);
         }
-        if (invokeKind == InvokeKind.Special || invokeKind == InvokeKind.Static) {
+        if (invokeKind() == InvokeKind.Special || invokeKind() == InvokeKind.Static) {
             assertFalse(targetMethod().isAbstract(), "special calls or static calls are only allowed for concrete methods (%s)", targetMethod());
         }
-        if (invokeKind == InvokeKind.Static) {
+        if (invokeKind() == InvokeKind.Static) {
             assertTrue(targetMethod().isStatic(), "static calls are only allowed for static methods (%s)", targetMethod());
         } else {
             assertFalse(targetMethod().isStatic(), "static calls are only allowed for non-static methods (%s)", targetMethod());
@@ -106,12 +95,12 @@ public class MethodCallTargetNode extends CallTargetNode implements IterableNode
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        if (invokeKind == InvokeKind.Interface || invokeKind == InvokeKind.Virtual) {
+        if (invokeKind() == InvokeKind.Interface || invokeKind() == InvokeKind.Virtual) {
             // attempt to devirtualize the call
 
             // check for trivial cases (e.g. final methods, nonvirtual methods)
             if (targetMethod().canBeStaticallyBound()) {
-                invokeKind = InvokeKind.Special;
+                setInvokeKind(InvokeKind.Special);
                 return this;
             }
 
@@ -125,7 +114,7 @@ public class MethodCallTargetNode extends CallTargetNode implements IterableNode
                  */
                 ResolvedJavaMethod resolvedMethod = type.resolveMethod(targetMethod(), invoke().getContextType());
                 if (resolvedMethod != null && (resolvedMethod.canBeStaticallyBound() || StampTool.isExactType(receiver) || type.isArray())) {
-                    invokeKind = InvokeKind.Special;
+                    setInvokeKind(InvokeKind.Special);
                     setTargetMethod(resolvedMethod);
                     return this;
                 }
@@ -135,7 +124,7 @@ public class MethodCallTargetNode extends CallTargetNode implements IterableNode
                         ResolvedJavaMethod methodFromUniqueType = uniqueConcreteType.resolveMethod(targetMethod(), invoke().getContextType());
                         if (methodFromUniqueType != null) {
                             tool.assumptions().recordConcreteSubtype(type, uniqueConcreteType);
-                            invokeKind = InvokeKind.Special;
+                            setInvokeKind(InvokeKind.Special);
                             setTargetMethod(methodFromUniqueType);
                             return this;
                         }
@@ -144,7 +133,7 @@ public class MethodCallTargetNode extends CallTargetNode implements IterableNode
                     ResolvedJavaMethod uniqueConcreteMethod = type.findUniqueConcreteMethod(targetMethod());
                     if (uniqueConcreteMethod != null) {
                         tool.assumptions().recordConcreteMethod(targetMethod(), type, uniqueConcreteMethod);
-                        invokeKind = InvokeKind.Special;
+                        setInvokeKind(InvokeKind.Special);
                         setTargetMethod(uniqueConcreteMethod);
                         return this;
                     }

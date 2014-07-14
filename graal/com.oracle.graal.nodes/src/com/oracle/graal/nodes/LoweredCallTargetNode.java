@@ -34,8 +34,8 @@ public abstract class LoweredCallTargetNode extends CallTargetNode {
     private final JavaType[] signature;
     private final CallingConvention.Type callType;
 
-    public LoweredCallTargetNode(List<ValueNode> arguments, Stamp returnStamp, JavaType[] signature, ResolvedJavaMethod target, CallingConvention.Type callType) {
-        super(arguments, target);
+    public LoweredCallTargetNode(List<ValueNode> arguments, Stamp returnStamp, JavaType[] signature, ResolvedJavaMethod target, CallingConvention.Type callType, InvokeKind invokeKind) {
+        super(arguments, target, invokeKind);
         this.returnStamp = returnStamp;
         this.signature = signature;
         this.callType = callType;
