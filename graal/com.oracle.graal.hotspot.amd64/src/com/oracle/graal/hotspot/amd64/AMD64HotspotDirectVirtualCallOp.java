@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.hotspot.amd64;
 
-import static com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind.*;
-
 import com.oracle.graal.amd64.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.amd64.*;
@@ -32,7 +30,7 @@ import com.oracle.graal.hotspot.meta.HotSpotCodeCacheProvider.MarkId;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.amd64.AMD64Call.DirectCallOp;
 import com.oracle.graal.lir.asm.*;
-import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
+import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
 
 /**
  * A direct call that complies with the conventions for such calls in HotSpot. In particular, for
@@ -53,7 +51,7 @@ final class AMD64HotspotDirectVirtualCallOp extends DirectCallOp {
     public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
         // The mark for an invocation that uses an inline cache must be placed at the
         // instruction that loads the Klass from the inline cache.
-        MarkId.recordMark(crb, invokeKind == Virtual ? MarkId.INVOKEVIRTUAL : MarkId.INVOKEINTERFACE);
+        MarkId.recordMark(crb, invokeKind == InvokeKind.Virtual ? MarkId.INVOKEVIRTUAL : MarkId.INVOKEINTERFACE);
         // This must be emitted exactly like this to ensure it's patchable
         masm.movq(AMD64.rax, HotSpotGraalRuntime.runtime().getConfig().nonOopBits);
         super.emitCode(crb, masm);

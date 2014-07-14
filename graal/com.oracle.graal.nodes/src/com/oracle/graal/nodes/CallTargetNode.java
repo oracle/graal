@@ -31,6 +31,13 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo(allowedUsageTypes = {InputType.Extension})
 public abstract class CallTargetNode extends ValueNode implements LIRLowerable {
 
+    public enum InvokeKind {
+        Interface,
+        Special,
+        Static,
+        Virtual
+    }
+
     @Input private final NodeInputList<ValueNode> arguments;
 
     public CallTargetNode(ValueNode[] arguments) {

@@ -28,7 +28,7 @@ import com.oracle.graal.hotspot.meta.HotSpotCodeCacheProvider.MarkId;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.sparc.SPARCCall.DirectCallOp;
-import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
+import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
 
 /**
  * A direct call that complies with the conventions for such calls in HotSpot. It doesn't use an

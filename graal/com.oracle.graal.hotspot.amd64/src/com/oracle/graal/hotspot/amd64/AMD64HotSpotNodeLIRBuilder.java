@@ -48,9 +48,9 @@ import com.oracle.graal.lir.amd64.*;
 import com.oracle.graal.lir.amd64.AMD64Move.CompareAndSwapOp;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
-import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
 
 /**
  * LIR generator specialized for AMD64 HotSpot.

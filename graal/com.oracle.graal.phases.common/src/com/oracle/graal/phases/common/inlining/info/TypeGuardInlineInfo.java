@@ -29,12 +29,12 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.calc.Condition;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.calc.CompareNode;
 import com.oracle.graal.nodes.extended.LoadHubNode;
 import com.oracle.graal.phases.common.inlining.InliningUtil;
 import com.oracle.graal.phases.common.inlining.info.elem.Inlineable;
 import com.oracle.graal.phases.util.Providers;
-import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
 
 /**
  * Represents an inlining opportunity for which profiling information suggests a monomorphic

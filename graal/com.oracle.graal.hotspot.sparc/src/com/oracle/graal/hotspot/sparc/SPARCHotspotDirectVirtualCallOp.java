@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.hotspot.sparc;
 
-import static com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind.*;
 import static com.oracle.graal.sparc.SPARC.*;
 
 import com.oracle.graal.api.meta.*;
@@ -33,7 +32,7 @@ import com.oracle.graal.hotspot.meta.HotSpotCodeCacheProvider.MarkId;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.sparc.SPARCCall.DirectCallOp;
-import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
+import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
 
 /**
  * A direct call that complies with the conventions for such calls in HotSpot. In particular, for
@@ -54,7 +53,7 @@ final class SPARCHotspotDirectVirtualCallOp extends DirectCallOp {
     public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
         // The mark for an invocation that uses an inline cache must be placed at the
         // instruction that loads the Klass from the inline cache.
-        MarkId.recordMark(crb, invokeKind == Virtual ? MarkId.INVOKEVIRTUAL : MarkId.INVOKEINTERFACE);
+        MarkId.recordMark(crb, invokeKind == InvokeKind.Virtual ? MarkId.INVOKEVIRTUAL : MarkId.INVOKEINTERFACE);
         new Setx(HotSpotGraalRuntime.runtime().getConfig().nonOopBits, g3, true).emit(masm);
         super.emitCode(crb, masm);
     }
