@@ -54,7 +54,7 @@ public class ExceptionObjectNode extends DispatchBeginNode implements Lowerable,
              */
             LocationIdentity locationsKilledByInvoke = ((InvokeWithExceptionNode) predecessor()).getLocationIdentity();
             BeginNode entry = graph().add(new KillingBeginNode(locationsKilledByInvoke));
-            LoadExceptionObjectNode loadException = graph().add(new LoadExceptionObjectNode(StampFactory.declaredNonNull(tool.getMetaAccess().lookupJavaType(Throwable.class))));
+            LoadExceptionObjectNode loadException = graph().add(new LoadExceptionObjectNode(stamp()));
 
             loadException.setStateAfter(stateAfter());
             replaceAtUsages(InputType.Value, loadException);
