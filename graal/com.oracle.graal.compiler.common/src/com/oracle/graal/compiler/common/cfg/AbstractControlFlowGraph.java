@@ -32,8 +32,8 @@ public interface AbstractControlFlowGraph<T extends AbstractBlock<T>> {
     /**
      * Returns the list blocks contained in this control flow graph.
      *
-     * It is {@linkplain CFGVerifier guaranteed} that the blocks are numbered according to a reverse
-     * post order traversal of the control flow graph.
+     * It is {@linkplain CFGVerifier guaranteed} that the blocks are numbered and ordered according
+     * to a reverse post order traversal of the control flow graph.
      *
      * @see CFGVerifier
      */
@@ -42,6 +42,30 @@ public interface AbstractControlFlowGraph<T extends AbstractBlock<T>> {
     Collection<Loop<T>> getLoops();
 
     T getStartBlock();
+
+    /**
+     * Computes the dominators of control flow graph.
+     */
+    static <T extends AbstractBlock<T>> void computeDominators(AbstractControlFlowGraph<T> cfg) {
+        List<T> reversePostOrder = cfg.getBlocks();
+        assert reversePostOrder.get(0).getPredecessorCount() == 0 : "start block has no predecessor and therefore no dominator";
+        for (int i = 1; i < reversePostOrder.size(); i++) {
+            T block = reversePostOrder.get(i);
+            assert block.getPredecessorCount() > 0;
+            T dominator = null;
+            for (T pred : block.getPredecessors()) {
+                if (!pred.isLoopEnd()) {
+                    dominator = commonDominatorTyped(dominator, pred);
+                }
+            }
+            // set dominator
+            block.setDominator(dominator);
+            if (dominator.getDominated().equals(Collections.emptyList())) {
+                dominator.setDominated(new ArrayList<>());
+            }
+            dominator.getDominated().add(block);
+        }
+    }
 
     /**
      * True if block {@code a} is dominated by block {@code b}.

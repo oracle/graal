@@ -49,7 +49,7 @@ public class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
             cfg.computeLoopInformation();
         }
         if (computeDominators) {
-            cfg.computeDominators();
+            AbstractControlFlowGraph.computeDominators(cfg);
         }
         if (computePostdominators) {
             cfg.computePostdominators();
@@ -307,29 +307,6 @@ public class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
                 computeLoopBlocks(pred, loop);
             }
         }
-    }
-
-    private void computeDominators() {
-        assert reversePostOrder.get(0).getPredecessorCount() == 0 : "start block has no predecessor and therefore no dominator";
-        for (int i = 1; i < reversePostOrder.size(); i++) {
-            Block block = reversePostOrder.get(i);
-            assert block.getPredecessorCount() > 0;
-            Block dominator = null;
-            for (Block pred : block.getPredecessors()) {
-                if (!pred.isLoopEnd()) {
-                    dominator = AbstractControlFlowGraph.commonDominatorTyped(dominator, pred);
-                }
-            }
-            setDominator(block, dominator);
-        }
-    }
-
-    private static void setDominator(Block block, Block dominator) {
-        block.setDominator(dominator);
-        if (dominator.dominated == null) {
-            dominator.dominated = new ArrayList<>();
-        }
-        dominator.dominated.add(block);
     }
 
     private void computePostdominators() {
