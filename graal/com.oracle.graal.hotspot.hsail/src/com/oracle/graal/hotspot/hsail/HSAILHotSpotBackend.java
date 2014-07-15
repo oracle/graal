@@ -238,10 +238,12 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
         @Override
         protected void run(StructuredGraph graph) {
             int argCount = 0;
+            Stamp nonNull = StampFactory.objectNonNull();
             for (ParameterNode param : graph.getNodes(ParameterNode.class)) {
                 argCount++;
                 if (argCount < numArgs && param.stamp() instanceof ObjectStamp) {
-                    param.setStamp(StampFactory.declaredNonNull(((ObjectStamp) param.stamp()).type()));
+                    ObjectStamp paramStamp = (ObjectStamp) param.stamp();
+                    param.setStamp(paramStamp.join(nonNull));
                 }
             }
         }
