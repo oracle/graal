@@ -187,12 +187,20 @@ public final class VirtualObject extends Value {
                 return false;
             }
             for (int i = 0; i < values.length; i++) {
-                if (!Objects.equals(values[i], l.values[i])) {
+                /*
+                 * Virtual objects can form cycles. Calling equals() could therefore lead to
+                 * infinite recursion.
+                 */
+                if (!same(values[i], l.values[i])) {
                     return false;
                 }
             }
             return true;
         }
         return false;
+    }
+
+    private static boolean same(Object o1, Object o2) {
+        return o1 == o2;
     }
 }
