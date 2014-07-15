@@ -122,15 +122,15 @@ public class JSONHelper {
         AstJsonDumpBuilder = new StringBuilder();
     }
 
-    public static JsonObjectBuilder object() {
-        return new JsonObjectBuilder();
+    public static JSONObjectBuilder object() {
+        return new JSONObjectBuilder();
     }
 
-    public static JsonArrayBuilder array() {
-        return new JsonArrayBuilder();
+    public static JSONArrayBuilder array() {
+        return new JSONArrayBuilder();
     }
 
-    public static abstract class JsonStringBuilder {
+    public static abstract class JSONStringBuilder {
         @Override
         public final String toString() {
             StringBuilder sb = new StringBuilder();
@@ -141,8 +141,8 @@ public class JSONHelper {
         protected abstract void appendTo(StringBuilder sb);
 
         protected static void appendValue(StringBuilder sb, Object value) {
-            if (value instanceof JsonStringBuilder) {
-                ((JsonStringBuilder) value).appendTo(sb);
+            if (value instanceof JSONStringBuilder) {
+                ((JSONStringBuilder) value).appendTo(sb);
             } else if (value instanceof Integer || value instanceof Boolean || value == null) {
                 sb.append(value);
             } else {
@@ -151,28 +151,28 @@ public class JSONHelper {
         }
     }
 
-    public static final class JsonObjectBuilder extends JsonStringBuilder {
+    public static final class JSONObjectBuilder extends JSONStringBuilder {
         private final Map<String, Object> contents = new LinkedHashMap<>();
 
-        private JsonObjectBuilder() {
+        private JSONObjectBuilder() {
         }
 
-        public JsonObjectBuilder add(String key, String value) {
+        public JSONObjectBuilder add(String key, String value) {
             contents.put(key, value);
             return this;
         }
 
-        public JsonObjectBuilder add(String key, Number value) {
+        public JSONObjectBuilder add(String key, Number value) {
             contents.put(key, value);
             return this;
         }
 
-        public JsonObjectBuilder add(String key, Boolean value) {
+        public JSONObjectBuilder add(String key, Boolean value) {
             contents.put(key, value);
             return this;
         }
 
-        public JsonObjectBuilder add(String key, JsonStringBuilder value) {
+        public JSONObjectBuilder add(String key, JSONStringBuilder value) {
             contents.put(key, value);
             return this;
         }
@@ -194,28 +194,28 @@ public class JSONHelper {
         }
     }
 
-    public static final class JsonArrayBuilder extends JsonStringBuilder {
+    public static final class JSONArrayBuilder extends JSONStringBuilder {
         private final List<Object> contents = new ArrayList<>();
 
-        private JsonArrayBuilder() {
+        private JSONArrayBuilder() {
         }
 
-        public JsonArrayBuilder add(String value) {
+        public JSONArrayBuilder add(String value) {
             contents.add(value);
             return this;
         }
 
-        public JsonArrayBuilder add(Number value) {
+        public JSONArrayBuilder add(Number value) {
             contents.add(value);
             return this;
         }
 
-        public JsonArrayBuilder add(Boolean value) {
+        public JSONArrayBuilder add(Boolean value) {
             contents.add(value);
             return this;
         }
 
-        public JsonArrayBuilder add(JsonStringBuilder value) {
+        public JSONArrayBuilder add(JSONStringBuilder value) {
             contents.add(value);
             return this;
         }

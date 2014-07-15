@@ -157,8 +157,14 @@ public final class NodeUtil {
      * every subclass of {@link Node} that is used.
      */
     public static final class NodeClass {
-
-        private static final Map<Class<?>, NodeClass> nodeClasses = new IdentityHashMap<>();
+        private static final ClassValue<NodeClass> nodeClasses = new ClassValue<NodeClass>() {
+            @SuppressWarnings("unchecked")
+            @Override
+            protected NodeClass computeValue(Class<?> clazz) {
+                assert Node.class.isAssignableFrom(clazz);
+                return new NodeClass((Class<? extends Node>) clazz, unsafeFieldOffsetProvider);
+            }
+        };
 
         // The comprehensive list of all fields.
         private final NodeField[] fields;
@@ -166,14 +172,10 @@ public final class NodeUtil {
         private final long parentOffset;
         private final long[] childOffsets;
         private final long[] childrenOffsets;
+        private final Class<? extends Node> clazz;
 
         public static NodeClass get(Class<? extends Node> clazz) {
-            NodeClass nodeClass = nodeClasses.get(clazz);
-            if (nodeClass == null) {
-                nodeClass = new NodeClass(clazz, unsafeFieldOffsetProvider);
-                nodeClasses.put(clazz, nodeClass);
-            }
-            return nodeClass;
+            return nodeClasses.get(clazz);
         }
 
         public NodeClass(Class<? extends Node> clazz, FieldOffsetProvider fieldOffsetProvider) {
@@ -209,6 +211,7 @@ public final class NodeUtil {
             this.parentOffset = parentOffsetsList.get(0);
             this.childOffsets = toLongArray(childOffsetsList);
             this.childrenOffsets = toLongArray(childrenOffsetsList);
+            this.clazz = clazz;
         }
 
         public NodeField[] getFields() {
@@ -241,73 +244,71 @@ public final class NodeUtil {
             }
             return false;
         }
+
+        public Iterator<Node> makeIterator(Node node) {
+            assert clazz.isInstance(node);
+            return new NodeIterator(node);
+        }
+
+        private final class NodeIterator implements Iterator<Node> {
+            private final Node node;
+            private int fieldIndex;
+            private int arrayIndex;
+
+            protected NodeIterator(Node node) {
+                this.node = node;
+            }
+
+            private void forward() {
+                if (fieldIndex < childOffsets.length) {
+                    fieldIndex++;
+                } else if (fieldIndex < childOffsets.length + childrenOffsets.length) {
+                    if (arrayIndex + 1 < currentChildrenArrayLength()) {
+                        arrayIndex++;
+                    } else {
+                        arrayIndex = 0;
+                        do {
+                            fieldIndex++;
+                        } while (fieldIndex < childOffsets.length + childrenOffsets.length && currentChildrenArrayLength() == 0);
+                    }
+                }
+            }
+
+            public boolean hasNext() {
+                return fieldIndex < childOffsets.length || (fieldIndex < childOffsets.length + childrenOffsets.length && arrayIndex < currentChildrenArrayLength());
+            }
+
+            private Node[] currentChildrenArray() {
+                assert fieldIndex >= childOffsets.length && fieldIndex < childOffsets.length + childrenOffsets.length;
+                return (Node[]) unsafe.getObject(node, childrenOffsets[fieldIndex - childOffsets.length]);
+            }
+
+            private int currentChildrenArrayLength() {
+                Node[] childrenArray = currentChildrenArray();
+                return childrenArray != null ? childrenArray.length : 0;
+            }
+
+            public Node next() {
+                Node next;
+                if (fieldIndex < childOffsets.length) {
+                    next = (Node) unsafe.getObject(node, childOffsets[fieldIndex]);
+                } else if (fieldIndex < childOffsets.length + childrenOffsets.length) {
+                    next = currentChildrenArray()[arrayIndex];
+                } else {
+                    throw new NoSuchElementException();
+                }
+                forward();
+                return next;
+            }
+
+            public void remove() {
+                throw new UnsupportedOperationException();
+            }
+        }
     }
 
-    static class NodeIterator implements Iterator<Node> {
-
-        private final Node node;
-        private final NodeClass nodeClass;
-        private final int childrenCount;
-        private int index;
-
-        protected NodeIterator(Node node) {
-            this.node = node;
-            this.index = 0;
-            this.nodeClass = NodeClass.get(node.getClass());
-            this.childrenCount = childrenCount();
-        }
-
-        private int childrenCount() {
-            int nodeCount = nodeClass.childOffsets.length;
-            for (long fieldOffset : nodeClass.childrenOffsets) {
-                Node[] children = ((Node[]) unsafe.getObject(node, fieldOffset));
-                if (children != null) {
-                    nodeCount += children.length;
-                }
-            }
-            return nodeCount;
-        }
-
-        private Node nodeAt(int idx) {
-            int nodeCount = nodeClass.childOffsets.length;
-            if (idx < nodeCount) {
-                return (Node) unsafe.getObject(node, nodeClass.childOffsets[idx]);
-            } else {
-                for (long fieldOffset : nodeClass.childrenOffsets) {
-                    Node[] nodeArray = (Node[]) unsafe.getObject(node, fieldOffset);
-                    if (idx < nodeCount + nodeArray.length) {
-                        return nodeArray[idx - nodeCount];
-                    }
-                    nodeCount += nodeArray.length;
-                }
-            }
-            return null;
-        }
-
-        private void forward() {
-            if (index < childrenCount) {
-                index++;
-            }
-        }
-
-        @Override
-        public boolean hasNext() {
-            return index < childrenCount;
-        }
-
-        @Override
-        public Node next() {
-            try {
-                return nodeAt(index);
-            } finally {
-                forward();
-            }
-        }
-
-        @Override
-        public void remove() {
-            throw new UnsupportedOperationException();
-        }
+    static Iterator<Node> makeIterator(Node node) {
+        return NodeClass.get(node.getClass()).makeIterator(node);
     }
 
     private static long[] toLongArray(List<Long> list) {
@@ -542,15 +543,12 @@ public final class NodeUtil {
         return null;
     }
 
-    public static <T extends Node> List<T> findAllNodeInstances(final Node root, final Class<T> clazz) {
+    public static <T> List<T> findAllNodeInstances(final Node root, final Class<T> clazz) {
         final List<T> nodeList = new ArrayList<>();
         root.accept(new NodeVisitor() {
-
-            @SuppressWarnings("unchecked")
-            @Override
             public boolean visit(Node node) {
                 if (clazz.isInstance(node)) {
-                    nodeList.add((T) node);
+                    nodeList.add(clazz.cast(node));
                 }
                 return true;
             }
@@ -558,53 +556,15 @@ public final class NodeUtil {
         return nodeList;
     }
 
-    // Don't visit found node instances.
-    public static <T extends Node> List<T> findNodeInstancesShallow(final Node root, final Class<T> clazz) {
+    /**
+     * Like {@link #findAllNodeInstances(Node, Class)} but do not visit children of found nodes.
+     */
+    public static <T> List<T> findNodeInstancesShallow(final Node root, final Class<T> clazz) {
         final List<T> nodeList = new ArrayList<>();
         root.accept(new NodeVisitor() {
-
-            @SuppressWarnings("unchecked")
-            @Override
             public boolean visit(Node node) {
                 if (clazz.isInstance(node)) {
-                    nodeList.add((T) node);
-                    return false;
-                }
-                return true;
-            }
-        });
-        return nodeList;
-    }
-
-    /** Find node instances within current function only (not in nested functions). */
-    public static <T extends Node> List<T> findNodeInstancesInFunction(final Node root, final Class<T> clazz) {
-        final List<T> nodeList = new ArrayList<>();
-        root.accept(new NodeVisitor() {
-
-            @SuppressWarnings("unchecked")
-            @Override
-            public boolean visit(Node node) {
-                if (clazz.isInstance(node)) {
-                    nodeList.add((T) node);
-                } else if (node instanceof RootNode && node != root) {
-                    return false;
-                }
-                return true;
-            }
-        });
-        return nodeList;
-    }
-
-    public static <I> List<I> findNodeInstancesInFunctionInterface(final Node root, final Class<I> clazz) {
-        final List<I> nodeList = new ArrayList<>();
-        root.accept(new NodeVisitor() {
-
-            @SuppressWarnings("unchecked")
-            @Override
-            public boolean visit(Node node) {
-                if (clazz.isInstance(node)) {
-                    nodeList.add((I) node);
-                } else if (node instanceof RootNode && node != root) {
+                    nodeList.add(clazz.cast(node));
                     return false;
                 }
                 return true;
@@ -893,5 +853,69 @@ public final class NodeUtil {
 
     private static String toStringWithClass(Object obj) {
         return obj == null ? "null" : obj + "(" + obj.getClass().getName() + ")";
+    }
+
+    static void traceRewrite(Node oldNode, Node newNode, CharSequence reason) {
+        if (TruffleOptions.TraceRewritesFilterFromCost != null) {
+            if (filterByKind(oldNode, TruffleOptions.TraceRewritesFilterFromCost)) {
+                return;
+            }
+        }
+
+        if (TruffleOptions.TraceRewritesFilterToCost != null) {
+            if (filterByKind(newNode, TruffleOptions.TraceRewritesFilterToCost)) {
+                return;
+            }
+        }
+
+        String filter = TruffleOptions.TraceRewritesFilterClass;
+        Class<? extends Node> from = oldNode.getClass();
+        Class<? extends Node> to = newNode.getClass();
+        if (filter != null && (filterByContainsClassName(from, filter) || filterByContainsClassName(to, filter))) {
+            return;
+        }
+
+        final SourceSection reportedSourceSection = oldNode.getEncapsulatingSourceSection();
+
+        PrintStream out = System.out;
+        out.printf("[truffle]   rewrite %-50s |From %-40s |To %-40s |Reason %s%s%n", oldNode.toString(), formatNodeInfo(oldNode), formatNodeInfo(newNode),
+                        reason != null && reason.length() > 0 ? reason : "unknown", reportedSourceSection != null ? " at " + reportedSourceSection.getShortDescription() : "");
+    }
+
+    private static String formatNodeInfo(Node node) {
+        String cost = "?";
+        switch (node.getCost()) {
+            case NONE:
+                cost = "G";
+                break;
+            case MONOMORPHIC:
+                cost = "M";
+                break;
+            case POLYMORPHIC:
+                cost = "P";
+                break;
+            case MEGAMORPHIC:
+                cost = "G";
+                break;
+            default:
+                cost = "?";
+                break;
+        }
+        return cost + " " + node.getClass().getSimpleName();
+    }
+
+    private static boolean filterByKind(Node node, NodeCost cost) {
+        return node.getCost() == cost;
+    }
+
+    private static boolean filterByContainsClassName(Class<? extends Node> from, String filter) {
+        Class<?> currentFrom = from;
+        while (currentFrom != null) {
+            if (currentFrom.getName().contains(filter)) {
+                return false;
+            }
+            currentFrom = currentFrom.getSuperclass();
+        }
+        return true;
     }
 }

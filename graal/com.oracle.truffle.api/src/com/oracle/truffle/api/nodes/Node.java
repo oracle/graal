@@ -24,7 +24,6 @@
  */
 package com.oracle.truffle.api.nodes;
 
-import java.io.*;
 import java.lang.annotation.*;
 import java.util.*;
 import java.util.concurrent.*;
@@ -280,9 +279,6 @@ public abstract class Node implements Cloneable {
             this.parent.adoptUnadoptedHelper(newNode);
         }
         reportReplace(this, newNode, reason);
-        if (TruffleOptions.TraceASTJSON) {
-            JSONHelper.dumpReplaceChild(this, newNode, reason);
-        }
         onReplace(newNode, reason);
     }
 
@@ -310,6 +306,12 @@ public abstract class Node implements Cloneable {
                 ((ReplaceObserver) target).nodeReplaced(oldNode, newNode, reason);
             }
         }
+        if (TruffleOptions.TraceRewrites) {
+            NodeUtil.traceRewrite(this, newNode, reason);
+        }
+        if (TruffleOptions.TraceASTJSON) {
+            JSONHelper.dumpReplaceChild(this, newNode, reason);
+        }
     }
 
     /**
@@ -320,36 +322,7 @@ public abstract class Node implements Cloneable {
      * @param reason the reason the replace supplied
      */
     protected void onReplace(Node newNode, CharSequence reason) {
-        if (TruffleOptions.TraceRewrites) {
-            traceRewrite(newNode, reason);
-        }
-    }
-
-    private void traceRewrite(Node newNode, CharSequence reason) {
-        if (TruffleOptions.TraceRewritesFilterFromCost != null) {
-            if (filterByKind(this, TruffleOptions.TraceRewritesFilterFromCost)) {
-                return;
-            }
-        }
-
-        if (TruffleOptions.TraceRewritesFilterToCost != null) {
-            if (filterByKind(newNode, TruffleOptions.TraceRewritesFilterToCost)) {
-                return;
-            }
-        }
-
-        String filter = TruffleOptions.TraceRewritesFilterClass;
-        Class<? extends Node> from = getClass();
-        Class<? extends Node> to = newNode.getClass();
-        if (filter != null && (filterByContainsClassName(from, filter) || filterByContainsClassName(to, filter))) {
-            return;
-        }
-
-        final SourceSection reportedSourceSection = getEncapsulatingSourceSection();
-
-        PrintStream out = System.out;
-        out.printf("[truffle]   rewrite %-50s |From %-40s |To %-40s |Reason %s%s%n", this.toString(), formatNodeInfo(this), formatNodeInfo(newNode), reason != null && reason.length() > 0 ? reason
-                        : "unknown", reportedSourceSection != null ? " at " + reportedSourceSection.getShortDescription() : "");
+        // empty default
     }
 
     /**
@@ -360,43 +333,6 @@ public abstract class Node implements Cloneable {
      */
     protected void onAdopt() {
         // empty default
-    }
-
-    private static String formatNodeInfo(Node node) {
-        String cost = "?";
-        switch (node.getCost()) {
-            case NONE:
-                cost = "G";
-                break;
-            case MONOMORPHIC:
-                cost = "M";
-                break;
-            case POLYMORPHIC:
-                cost = "P";
-                break;
-            case MEGAMORPHIC:
-                cost = "G";
-                break;
-            default:
-                cost = "?";
-                break;
-        }
-        return cost + " " + node.getClass().getSimpleName();
-    }
-
-    private static boolean filterByKind(Node node, NodeCost cost) {
-        return node.getCost() == cost;
-    }
-
-    private static boolean filterByContainsClassName(Class<? extends Node> from, String filter) {
-        Class<?> currentFrom = from;
-        while (currentFrom != null) {
-            if (currentFrom.getName().contains(filter)) {
-                return false;
-            }
-            currentFrom = currentFrom.getSuperclass();
-        }
-        return true;
     }
 
     /**
@@ -421,11 +357,9 @@ public abstract class Node implements Cloneable {
      * @return the iterator
      */
     public final Iterable<Node> getChildren() {
-        final Node node = this;
         return new Iterable<Node>() {
-
             public Iterator<Node> iterator() {
-                return new NodeUtil.NodeIterator(node);
+                return NodeUtil.makeIterator(Node.this);
             }
         };
     }
