@@ -32,7 +32,7 @@ public class ObjectStamp extends AbstractObjectStamp {
     }
 
     @Override
-    protected AbstractObjectStamp copyWith(ResolvedJavaType type, boolean exactType, boolean nonNull, boolean alwaysNull) {
+    protected ObjectStamp copyWith(ResolvedJavaType type, boolean exactType, boolean nonNull, boolean alwaysNull) {
         return new ObjectStamp(type, exactType, nonNull, alwaysNull);
     }
 
