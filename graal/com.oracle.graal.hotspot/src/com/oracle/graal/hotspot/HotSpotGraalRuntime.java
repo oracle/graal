@@ -519,38 +519,20 @@ public final class HotSpotGraalRuntime implements GraalRuntime, RuntimeProvider,
         }
     }
 
-    public Iterable<InspectedFrame> getStackTrace(ResolvedJavaMethod[] initialMethods, ResolvedJavaMethod[] matchingMethods, int initialSkip) {
+    @Override
+    public <T> T iterateFrames(ResolvedJavaMethod[] initialMethods, ResolvedJavaMethod[] matchingMethods, int initialSkip, InspectedFrameVisitor<T> visitor) {
         final long[] initialMetaMethods = toMeta(initialMethods);
         final long[] matchingMetaMethods = toMeta(matchingMethods);
-        class StackFrameIterator implements Iterator<InspectedFrame> {
 
-            private HotSpotStackFrameReference current = compilerToVm.getNextStackFrame(null, initialMetaMethods, initialSkip);
-            // we don't want to read ahead if hasNext isn't called
-            private boolean advanced = true;
-
-            public boolean hasNext() {
-                update();
-                return current != null;
+        HotSpotStackFrameReference current = compilerToVm.getNextStackFrame(null, initialMetaMethods, initialSkip);
+        while (current != null) {
+            T result = visitor.visitFrame(current);
+            if (result != null) {
+                return result;
             }
-
-            public InspectedFrame next() {
-                update();
-                advanced = false;
-                return current;
-            }
-
-            private void update() {
-                if (!advanced) {
-                    current = compilerToVm.getNextStackFrame(current, matchingMetaMethods, 0);
-                    advanced = true;
-                }
-            }
+            current = compilerToVm.getNextStackFrame(current, matchingMetaMethods, 0);
         }
-        return new Iterable<InspectedFrame>() {
-            public Iterator<InspectedFrame> iterator() {
-                return new StackFrameIterator();
-            }
-        };
+        return null;
     }
 
     private static long[] toMeta(ResolvedJavaMethod[] methods) {

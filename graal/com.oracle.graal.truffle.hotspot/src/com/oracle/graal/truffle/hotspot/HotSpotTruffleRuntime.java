@@ -245,33 +245,31 @@ public final class HotSpotTruffleRuntime implements GraalTruffleRuntime {
     }
 
     @SlowPath
-    public Iterable<FrameInstance> getStackTrace() {
+    @Override
+    public <T> T iterateFrames(FrameInstanceVisitor<T> visitor) {
         initStackIntrospection();
-        final Iterator<InspectedFrame> frames = stackIntrospection.getStackTrace(anyFrameMethod, anyFrameMethod, 1).iterator();
-        class FrameIterator implements Iterator<FrameInstance> {
 
-            public boolean hasNext() {
-                return frames.hasNext();
-            }
+        InspectedFrameVisitor<T> inspectedFrameVisitor = new InspectedFrameVisitor<T>() {
+            private boolean skipNext = false;
 
-            public FrameInstance next() {
-                InspectedFrame frame = frames.next();
-                if (frame.getMethod().equals(callNodeMethod[0])) {
-                    assert frames.hasNext();
-                    InspectedFrame calltarget2 = frames.next();
-                    assert calltarget2.getMethod().equals(callTargetMethod[0]);
-                    return new HotSpotFrameInstance.CallNodeFrame(frame);
-                } else {
-                    assert frame.getMethod().equals(callTargetMethod[0]);
-                    return new HotSpotFrameInstance.CallTargetFrame(frame, false);
+            public T visitFrame(InspectedFrame frame) {
+                if (skipNext) {
+                    assert frame.isMethod(callTargetMethod[0]);
+                    skipNext = false;
+                    return null;
                 }
-            }
-        }
-        return new Iterable<FrameInstance>() {
-            public Iterator<FrameInstance> iterator() {
-                return new FrameIterator();
+
+                if (frame.isMethod(callNodeMethod[0])) {
+                    skipNext = true;
+                    return visitor.visitFrame(new HotSpotFrameInstance.CallNodeFrame(frame));
+                } else {
+                    assert frame.isMethod(callTargetMethod[0]);
+                    return visitor.visitFrame(new HotSpotFrameInstance.CallTargetFrame(frame, false));
+                }
+
             }
         };
+        return stackIntrospection.iterateFrames(anyFrameMethod, anyFrameMethod, 1, inspectedFrameVisitor);
     }
 
     private void initStackIntrospection() {
@@ -280,15 +278,17 @@ public final class HotSpotTruffleRuntime implements GraalTruffleRuntime {
         }
     }
 
+    @Override
+    public FrameInstance getCallerFrame() {
+        return iterateFrames(frame -> frame);
+    }
+
     @SlowPath
+    @Override
     public FrameInstance getCurrentFrame() {
         initStackIntrospection();
-        Iterator<InspectedFrame> frames = stackIntrospection.getStackTrace(callTargetMethod, callTargetMethod, 0).iterator();
-        if (frames.hasNext()) {
-            return new HotSpotFrameInstance.CallTargetFrame(frames.next(), true);
-        } else {
-            return null;
-        }
+
+        return stackIntrospection.iterateFrames(callTargetMethod, callTargetMethod, 0, frame -> new HotSpotFrameInstance.CallTargetFrame(frame, true));
     }
 
     public void compile(OptimizedCallTarget optimizedCallTarget, boolean mayBeAsynchronous) {
