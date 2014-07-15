@@ -109,9 +109,21 @@ public interface TruffleRuntime {
      * {@link CallTarget}s. Iteration starts at the caller frame, i.e., it does not include the
      * current frame.
      *
-     * @return a lazy collection of {@link FrameInstance}.
+     * Iteration continues as long as {@link FrameInstanceVisitor#visitFrame}, which is invoked for
+     * every {@link FrameInstance}, returns null. Any non-null result of the visitor indicates that
+     * frame iteration should stop.
+     *
+     * @param visitor the visitor that is called for every matching frame.
+     * @return the last result returned by the visitor (which is non-null to indicate that iteration
+     *         should stop), or null if the whole stack was iterated.
      */
-    Iterable<FrameInstance> getStackTrace();
+    <T> T iterateFrames(FrameInstanceVisitor<T> visitor);
+
+    /**
+     * Accesses the caller frame. This is a convenience method that returns the first frame that is
+     * passed to the visitor of {@link #iterateFrames}.
+     */
+    FrameInstance getCallerFrame();
 
     /**
      * Accesses the current frame, i.e., the frame of the closest {@link CallTarget}. It is

@@ -1,10 +1,12 @@
 /*
- * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -20,26 +22,17 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.sl.builtins;
+package com.oracle.truffle.api.frame;
 
 import com.oracle.truffle.api.*;
-import com.oracle.truffle.api.dsl.*;
-import com.oracle.truffle.api.frame.*;
-import com.oracle.truffle.api.frame.FrameInstance.FrameAccess;
-import com.oracle.truffle.api.nodes.*;
 
 /**
- * This builtin sets the variable named "hello" in the caller frame to the string "world".
+ * Callback interface for {@link TruffleRuntime#iterateFrames}. Implementations of
+ * {@link #visitFrame} return null to indicate that frame iteration should continue and the next
+ * caller frame should be visited; and return any non-null value to indicate that frame iteration
+ * should stop.
  */
-@NodeInfo(shortName = "helloEqualsWorld")
-public abstract class SLHelloEqualsWorldBuiltin extends SLBuiltinNode {
+public interface FrameInstanceVisitor<T> {
 
-    @Specialization
-    public String change() {
-        FrameInstance frameInstance = Truffle.getRuntime().getCallerFrame();
-        Frame frame = frameInstance.getFrame(FrameAccess.READ_WRITE, false);
-        FrameSlot slot = frame.getFrameDescriptor().findOrAddFrameSlot("hello");
-        frame.setObject(slot, "world");
-        return "world";
-    }
+    T visitFrame(FrameInstance frameInstance);
 }
