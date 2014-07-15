@@ -247,10 +247,6 @@ public final class BciBlockMapping {
             return 1D;
         }
 
-        public List<BciBlock> getDominated() {
-            return null;
-        }
-
         public BciBlock getPostdominator() {
             return null;
         }

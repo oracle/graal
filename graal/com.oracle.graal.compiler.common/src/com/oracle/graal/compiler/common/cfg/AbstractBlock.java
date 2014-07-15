@@ -58,7 +58,11 @@ public interface AbstractBlock<T extends AbstractBlock<T>> {
 
     T getDominator();
 
+    void setDominator(T block);
+
     List<T> getDominated();
+
+    void setDominated(List<T> blocks);
 
     T getPostdominator();
 
